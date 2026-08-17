@@ -1,0 +1,20 @@
+# 本地配置含账号别名与真实账号映射,永远不进仓库(§9.2)
+config/settings.json
+config/*.local.json
+
+# 交易记录与熔断状态是 S1 数据
+*.db
+*.db-wal
+*.db-shm
+breaker.json
+exports/
+
+.venv/
+desktop/node_modules/
+desktop/dist/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+
+# macOS
+.DS_Store

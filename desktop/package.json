@@ -1,0 +1,58 @@
+{
+  "name": "dafri-desktop",
+  "productName": "Dafri Trading",
+  "version": "0.2.0",
+  "private": true,
+  "description": "IBKR 交易指令解析引擎的桌面界面(Electron 外壳 + Python 交易引擎 sidecar)",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "DAFRI_DEV=1 electron .",
+    "dist:mac": "electron-builder --mac dmg --arm64 --publish never",
+    "dist:win": "electron-builder --win nsis --x64 --publish never",
+    "dist": "npm run dist:mac && npm run dist:win"
+  },
+  "devDependencies": {
+    "electron": "^40.0.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.dafri.trading",
+    "productName": "Dafri Trading",
+    "asar": true,
+    "files": ["main.js", "preload.js", "rpc-client.js", "renderer/**/*"],
+    "extraResources": [
+      {
+        "from": "../src",
+        "to": "engine/src",
+        "filter": ["**/*.py", "!**/__pycache__/**", "!**/*.egg-info/**"]
+      },
+      { "from": "../prompts", "to": "engine/prompts" },
+      { "from": "../config/settings.example.json", "to": "engine/settings.example.json" }
+    ],
+    "mac": {
+      "category": "public.app-category.finance",
+      "identity": null,
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "notarize": false,
+      "artifactName": "DafriTrading-${version}-mac-${arch}.${ext}"
+    },
+    "dmg": {
+      "title": "Dafri Trading",
+      "writeUpdateInfo": false
+    },
+    "win": {
+      "target": "nsis",
+      "artifactName": "DafriTrading-${version}-win-${arch}.${ext}"
+    },
+    "nsis": {
+      "include": "build/installer.nsh",
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "Dafri Trading"
+    }
+  }
+}

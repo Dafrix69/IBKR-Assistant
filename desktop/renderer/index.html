@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'none'; form-action 'none'; base-uri 'none'"
+    />
+    <title>Dafri Trading</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <!-- SF Symbols 风格图标(描边 1.5,几何对齐系统符号),供侧栏 <use> 引用 -->
+    <svg width="0" height="0" class="svg-defs" aria-hidden="true">
+      <defs>
+        <symbol id="sf-pencil" viewBox="0 0 16 16">
+          <path d="M3 10.5 10.2 3.3a1.4 1.4 0 0 1 2 0l.5.5a1.4 1.4 0 0 1 0 2L5.5 13 3 13.5 3 10.5Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+        </symbol>
+        <symbol id="sf-board" viewBox="0 0 16 16">
+          <rect x="2.2" y="2.8" width="11.6" height="10.4" rx="2" fill="none" stroke="currentColor" stroke-width="1.4"/>
+          <line x1="2.2" y1="6.4" x2="13.8" y2="6.4" stroke="currentColor" stroke-width="1.4"/>
+          <line x1="6.4" y1="6.4" x2="6.4" y2="13.2" stroke="currentColor" stroke-width="1.4"/>
+        </symbol>
+        <symbol id="sf-antenna" viewBox="0 0 16 16">
+          <circle cx="8" cy="8" r="1.5" fill="currentColor"/>
+          <path d="M5.2 10.8a4 4 0 0 1 0-5.6M10.8 5.2a4 4 0 0 1 0 5.6M3.2 12.8a6.8 6.8 0 0 1 0-9.6M12.8 3.2a6.8 6.8 0 0 1 0 9.6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        </symbol>
+        <symbol id="sf-cpu" viewBox="0 0 16 16">
+          <rect x="4" y="4" width="8" height="8" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.4"/>
+          <rect x="6.6" y="6.6" width="2.8" height="2.8" rx="0.6" fill="currentColor"/>
+          <path d="M6 4V2M10 4V2M6 14v-2M10 14v-2M4 6H2M4 10H2M14 6h-2M14 10h-2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        </symbol>
+        <symbol id="sf-doc" viewBox="0 0 16 16">
+          <path d="M4 2.5h5.5L12.5 6v7.5a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1v-10a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+          <path d="M9.5 2.5V6h3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+          <line x1="5.8" y1="9" x2="10.2" y2="9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+          <line x1="5.8" y1="11.4" x2="10.2" y2="11.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+        </symbol>
+        <symbol id="sf-gear" viewBox="0 0 16 16">
+          <circle cx="8" cy="8" r="2.2" fill="none" stroke="currentColor" stroke-width="1.4"/>
+          <path d="M8 1.8v2M8 12.2v2M1.8 8h2M12.2 8h2M3.6 3.6l1.4 1.4M11 11l1.4 1.4M12.4 3.6 11 5M5 11l-1.4 1.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        </symbol>
+        <symbol id="sf-info" viewBox="0 0 16 16">
+          <circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" stroke-width="1.4"/>
+          <circle cx="8" cy="5.2" r="0.9" fill="currentColor"/>
+          <path d="M8 7.4v3.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </symbol>
+      </defs>
+    </svg>
+
+    <header class="topbar">
+      <div class="brand">
+        <span class="dot" id="engine-dot" title="引擎状态"></span>
+        <strong>Dafri Trading</strong>
+      </div>
+      <div class="status-chips">
+        <span class="chip" id="chip-clock">—</span>
+        <span class="chip" id="chip-market">市场 —</span>
+        <span class="chip" id="chip-model">模型 —</span>
+        <span class="chip" id="chip-broker">TWS 未连接</span>
+        <span class="chip" id="chip-mode">仅解析</span>
+      </div>
+      <div class="topbar-actions">
+        <button id="btn-connect" class="btn">连接 TWS</button>
+        <button id="btn-halt" class="btn danger" title="⌘⇧H">暂停自动执行</button>
+      </div>
+    </header>
+
+    <div id="banner" class="banner hidden"></div>
+
+    <div class="shell">
+      <!-- 源列表侧栏(macOS UI Kit 的应用模板结构) -->
+      <nav class="sidebar">
+        <div class="sidebar-group">工作区</div>
+        <button class="tab nav-item active" data-tab="trade">
+          <svg class="nav-icon"><use href="#sf-pencil"/></svg>交易指令
+        </button>
+        <button class="tab nav-item" data-tab="board">
+          <svg class="nav-icon"><use href="#sf-board"/></svg>订单看板
+          <span class="nav-badge hidden" id="sidebar-pending">0</span>
+        </button>
+        <button class="tab nav-item" data-tab="records">
+          <svg class="nav-icon"><use href="#sf-doc"/></svg>交易记录
+        </button>
+
+        <div class="sidebar-group">接入</div>
+        <button class="tab nav-item" data-tab="tws">
+          <svg class="nav-icon"><use href="#sf-antenna"/></svg>TWS 连接
+        </button>
+        <button class="tab nav-item" data-tab="llm">
+          <svg class="nav-icon"><use href="#sf-cpu"/></svg>大模型
+        </button>
+
+        <div class="sidebar-group">应用</div>
+        <button class="tab nav-item" data-tab="settings">
+          <svg class="nav-icon"><use href="#sf-gear"/></svg>设置
+        </button>
+        <button class="tab nav-item" data-tab="about">
+          <svg class="nav-icon"><use href="#sf-info"/></svg>关于
+        </button>
+      </nav>
+
+      <main class="content">
+        <!-- ============ 交易指令 ============ -->
+        <section class="tab-panel active" id="tab-trade">
+          <header class="page-head">
+            <h1>交易指令</h1>
+            <span class="muted" id="limits-hint">—</span>
+          </header>
+          <div class="trade-grid">
+            <div>
+              <textarea
+                id="instruction"
+                rows="6"
+                placeholder="例:spx到7500时,开一张今天的 7520 7550 call spread。理由:突破 7500 整数关口后追动能"
+              ></textarea>
+              <div class="row">
+                <button id="btn-parse" class="btn primary">解析并校验</button>
+                <button id="btn-execute" class="btn warn" disabled>发送到 IBKR</button>
+                <span class="muted">⌘↩ 解析</span>
+              </div>
+              <p class="hint">
+                发送需同时满足:<code>auto_execute</code> 已开、已连接 TWS、未熔断。实盘账户另需
+                <code>allow_live_trading</code>。
+              </p>
+            </div>
+            <div>
+              <div class="pane-head">
+                <h3>解析结果</h3>
+                <button id="btn-clear-result" class="btn tiny ghost">清空</button>
+              </div>
+              <div id="result" class="result">
+                <p class="empty">还没有解析结果</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ 订单看板 ============ -->
+        <section class="tab-panel" id="tab-board">
+          <header class="page-head">
+            <h1>订单看板</h1>
+            <button id="btn-refresh" class="btn tiny ghost">刷新</button>
+          </header>
+          <div class="board-grid">
+            <div>
+              <h3 class="section-title">排队等待触发 <span class="count" id="count-pending">0</span></h3>
+              <div id="pending-list" class="cards"><p class="empty">没有等待触发的条件单</p></div>
+            </div>
+            <div>
+              <h3 class="section-title">已提交 / 近期 <span class="count" id="count-live">0</span></h3>
+              <div id="live-list" class="cards"><p class="empty">今天还没有提交过订单</p></div>
+            </div>
+          </div>
+          <h3 class="section-title">通知</h3>
+          <div id="notifications" class="feed"><p class="empty">暂无通知</p></div>
+        </section>
+
+        <!-- ============ 交易记录 ============ -->
+        <section class="tab-panel" id="tab-records">
+          <header class="page-head">
+            <h1>交易记录</h1>
+            <button id="btn-export" class="btn tiny">导出</button>
+          </header>
+          <div class="row tight">
+            <input id="record-filter" type="search" class="grow" placeholder="按标的 / 原因 / 状态筛选" />
+          </div>
+          <div id="records" class="records"><p class="empty">暂无记录</p></div>
+          <div id="record-detail" class="detail hidden"></div>
+        </section>
+
+        <!-- ============ TWS 连接 ============ -->
+        <section class="tab-panel" id="tab-tws">
+          <header class="page-head"><h1>TWS 连接</h1></header>
+          <div class="notice">
+            <strong>本软件不接触你的 IBKR 账号密码。</strong>
+            登录在 TWS / IB Gateway 自己的窗口里完成,这里只检测本机 API 端口、诊断握手,
+            并核对账户别名是否对得上真实账号。
+          </div>
+
+          <div class="row tight">
+            <button id="btn-tws-scan" class="btn">重新检测</button>
+            <button id="btn-tws-diagnose" class="btn primary">检测连接</button>
+          </div>
+
+          <h3 class="section-title">1 · 程序</h3>
+          <div id="tws-apps" class="cards"><p class="empty">检测中…</p></div>
+
+          <h3 class="section-title">2 · API 端口</h3>
+          <div id="tws-ports" class="port-grid"><p class="empty">检测中…</p></div>
+
+          <h3 class="section-title">3 · 握手与账户</h3>
+          <div id="tws-diagnosis" class="cards">
+            <p class="empty">点「检测连接」会真连一次(只读)</p>
+          </div>
+
+          <h3 class="section-title">4 · 连接引擎</h3>
+          <div class="row tight">
+            <button id="btn-tws-connect" class="btn">连接 / 断开交易引擎</button>
+          </div>
+          <p class="hint">
+            上面的「检测连接」是一次性只读探测,断开即止;这里的连接才是引擎真正用来下单的长连接。
+          </p>
+
+          <h3 class="section-title">连不上时照着做</h3>
+          <ol id="tws-guide" class="guide"></ol>
+        </section>
+
+        <!-- ============ 大模型 ============ -->
+        <section class="tab-panel" id="tab-llm">
+          <header class="page-head"><h1>大模型</h1></header>
+          <div class="notice">
+            发给模型的只有 <strong>S2 级数据</strong>:指令原文、当前时间、行情快照、账户别名表与限额。
+            真实账号、余额、持仓、成交记录一概不出本机(§9.1)。
+          </div>
+
+          <h3 class="section-title">供应商</h3>
+          <div class="segmented" id="llm-providers"></div>
+
+          <div class="group">
+            <div class="field-row">
+              <label for="llm-model">模型</label>
+              <div class="select-wrap grow">
+                <select id="llm-model"></select>
+              </div>
+            </div>
+            <div class="field" id="llm-model-custom-row">
+              <label for="llm-model-custom">自定义模型标识(留空则用上面选中的)</label>
+              <input id="llm-model-custom" type="text" placeholder="如 deepseek-chat" />
+            </div>
+            <div class="field" id="llm-base-url-row">
+              <label for="llm-base-url">Base URL(OpenAI 兼容端点)</label>
+              <input id="llm-base-url" type="text" placeholder="https://api.example.com/v1" />
+            </div>
+          </div>
+
+          <h3 class="section-title">API Key</h3>
+          <div class="group">
+            <div class="field">
+              <label for="llm-key">
+                写入 macOS Keychain,按供应商分开保存;不落配置文件、不进日志
+              </label>
+              <input id="llm-key" type="password" placeholder="sk-..." autocomplete="off" />
+            </div>
+            <div class="field-row">
+              <label>当前供应商 Key<span class="sub" id="llm-key-status">检测中…</span></label>
+              <button id="btn-llm-save-key" class="btn">保存</button>
+            </div>
+          </div>
+
+          <h3 class="section-title">调用参数</h3>
+          <div class="group">
+            <div class="field-row" id="llm-effort-row">
+              <label>推理档位<span class="sub">effort,仅 Anthropic</span></label>
+              <div class="select-wrap">
+                <select id="llm-effort">
+                  <option value="low">low</option>
+                  <option value="medium">medium</option>
+                  <option value="high">high</option>
+                  <option value="xhigh">xhigh</option>
+                  <option value="max">max</option>
+                </select>
+              </div>
+            </div>
+            <div class="field-row" id="llm-temp-row">
+              <label>temperature<span class="sub">留空 = 不发送</span></label>
+              <input id="llm-temperature" type="number" min="0" max="2" step="0.1" placeholder="不发送" />
+            </div>
+            <div class="field-row">
+              <label>max_tokens</label>
+              <input id="llm-max-tokens" type="number" min="1000" step="1000" />
+            </div>
+            <div class="field-row">
+              <label>超时(秒)</label>
+              <input id="llm-timeout" type="number" min="1" step="5" />
+            </div>
+          </div>
+
+          <div class="row tight">
+            <button id="btn-llm-test" class="btn">测试连接</button>
+            <button id="btn-llm-save" class="btn primary">保存配置</button>
+          </div>
+          <div id="llm-test-result" class="cards"></div>
+          <p class="hint" id="llm-provider-docs"></p>
+        </section>
+
+        <!-- ============ 设置 ============ -->
+        <section class="tab-panel" id="tab-settings">
+          <header class="page-head"><h1>设置</h1></header>
+
+          <h3 class="section-title">执行闸门</h3>
+          <div class="group">
+            <label class="switch">
+              <span>允许自动执行<span class="sub">关闭时只解析校验,永不发单</span></span>
+              <input type="checkbox" id="opt-auto-execute" />
+            </label>
+            <label class="switch">
+              <span>允许实盘账户下单<span class="sub">默认关闭,纸面账户不受此限</span></span>
+              <input type="checkbox" id="opt-live" />
+            </label>
+            <label class="switch">
+              <span>触发方向必须有现价<span class="sub">拿不到现价就拒绝条件单</span></span>
+              <input type="checkbox" id="opt-trigger-verify" />
+            </label>
+          </div>
+
+          <h3 class="section-title">风控限额</h3>
+          <div class="group">
+            <div class="field-row">
+              <label>单笔名义金额上限<span class="sub">USD</span></label>
+              <input id="opt-notional" type="number" min="0" step="100" />
+            </div>
+            <div class="field-row">
+              <label>期权 / 价差单笔上限<span class="sub">张</span></label>
+              <input id="opt-contracts" type="number" min="1" step="1" />
+            </div>
+            <div class="field-row">
+              <label>市价单股数上限<span class="sub">无法估价时</span></label>
+              <input id="opt-mkt-shares" type="number" min="1" step="10" />
+            </div>
+            <div class="field-row">
+              <label>AUTO_MID 滑点上限<span class="sub">美元 / 张</span></label>
+              <input id="opt-slippage" type="number" min="0" step="0.01" />
+            </div>
+            <div class="field-row">
+              <label>重复防抖窗口<span class="sub">分钟</span></label>
+              <input id="opt-dupe" type="number" min="0" step="1" />
+            </div>
+          </div>
+
+          <button id="btn-save-settings" class="btn primary">保存设置</button>
+          <p class="hint">
+            账户别名与连接端口涉及真实账号,只能手动改 <code>config/settings.json</code>,界面不提供通道。
+          </p>
+        </section>
+
+        <!-- ============ 关于 ============ -->
+        <section class="tab-panel" id="tab-about">
+          <header class="page-head"><h1>关于</h1></header>
+          <div id="about" class="about"><p class="empty">加载中…</p></div>
+          <h3 class="section-title">引擎日志(stderr)</h3>
+          <pre id="engine-log" class="log"></pre>
+          <button id="btn-restart-engine" class="btn tiny">重启交易引擎</button>
+        </section>
+      </main>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

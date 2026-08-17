@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Chromium 需要 JIT(§9.7 Hardened Runtime) -->
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+
+    <!-- 出站连接:LLA API 域名 + 本机 TWS 端口(§10.3 唯一出网点) -->
+    <key>com.apple.security.network.client</key>
+    <true/>
+
+    <!-- Python sidecar 是子进程,需要继承运行时权限 -->
+    <key>com.apple.security.inherit</key>
+    <true/>
+
+    <!--
+      注意:这里没有开 com.apple.security.app-sandbox。
+      App Sandbox 会禁止拉起 bundle 之外的可执行文件,而交易引擎是 Python 子进程。
+      要满足 §9.7 的 "App Sandbox + Hardened Runtime",必须先把 Python 运行时用
+      extraResources 打进 bundle,再打开 app-sandbox,并把 Keychain 访问组一并声明。
+      在没做这一步之前就打开 app-sandbox,应用会在启动引擎时静默失败。
+    -->
+</dict>
+</plist>

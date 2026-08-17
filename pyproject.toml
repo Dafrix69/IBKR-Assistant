@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ibkr-agent"
+version = "0.1.0"
+description = "把中英混合的自然语言交易指令解析成结构化订单并直连 IBKR 执行的引擎"
+requires-python = ">=3.9"
+dependencies = [
+    "pydantic>=2.0",
+    "anthropic>=0.60",
+]
+
+[project.optional-dependencies]
+# ib_insync 已停止维护;Python 升到 3.10+ 后改装维护分支 ib_async(API 同名)
+broker = ["ib_insync>=0.9.86"]
+dev = ["pytest>=8"]
+
+[project.scripts]
+ibkr-agent = "ibkr_agent.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

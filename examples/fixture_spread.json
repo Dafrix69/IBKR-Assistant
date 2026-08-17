@@ -1,0 +1,35 @@
+{
+  "_comment": "设计文档示例 5 的解析结果(到期日改成 2026-08-20 以便当下可跑;过期后请自行更新),用于离线跑硬校验:python -m ibkr_agent validate examples/fixture_spread.json --snapshot SPX=7462.35",
+  "orders": [
+    {
+      "intent_summary": "SPX 涨到 7500 时,买入 1 张 2026-08-20 到期的 SPX 7520/7550 看涨借方价差",
+      "contract": {
+        "secType": "BAG",
+        "symbol": "SPX",
+        "exchange": "SMART",
+        "currency": "USD",
+        "combo_strategy": "VERTICAL",
+        "legs": [
+          {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260820", "strike": 7520.0, "right": "C", "tradingClass": "SPXW"},
+          {"action": "SELL", "ratio": 1, "lastTradeDateOrContractMonth": "20260820", "strike": 7550.0, "right": "C", "tradingClass": "SPXW"}
+        ]
+      },
+      "execution_type": "CONDITIONAL",
+      "trigger": {"type": "PRICE", "symbol": "SPX", "secType": "IND", "operator": ">=", "value": 7500.0},
+      "account": "DEFAULT",
+      "order": {
+        "action": "BUY",
+        "orderType": "LMT",
+        "totalQuantity": 1,
+        "price_mode": "AUTO_MID",
+        "lmtPrice": null,
+        "tif": "DAY",
+        "outsideRth": false
+      },
+      "reason": "突破 7500 整数关口后追动能",
+      "confidence": 0.96,
+      "warnings": ["未指定净权利金上限,将由软件在触发时按盘口中间价定价(AUTO_MID)"]
+    }
+  ],
+  "rejections": []
+}
