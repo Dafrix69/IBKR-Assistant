@@ -4,7 +4,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from conftest import option_order, spread_order, stock_order
+from conftest import butterfly_order, condor_order, option_order, spread_order, stock_order
 from ibkr_agent.models import ParsedOrder, parse_llm_payload
 
 
@@ -24,12 +24,12 @@ def test_market_order_must_not_carry_limit_price():
 
 
 def test_auto_mid_only_allowed_for_spreads():
-    """铁律 3 的唯一例外只给两腿价差;股票和单腿期权缺价必须硬拒。"""
-    with pytest.raises(ValidationError, match="AUTO_MID 仅适用于两腿价差"):
+    """铁律 3 的唯一例外只给期权组合;股票和单腿期权缺价必须硬拒。"""
+    with pytest.raises(ValidationError, match="AUTO_MID 仅适用于期权组合"):
         ParsedOrder.model_validate(
             stock_order(order={"price_mode": "AUTO_MID", "lmtPrice": None})
         )
-    with pytest.raises(ValidationError, match="AUTO_MID 仅适用于两腿价差"):
+    with pytest.raises(ValidationError, match="AUTO_MID 仅适用于期权组合"):
         ParsedOrder.model_validate(
             option_order(order={"price_mode": "AUTO_MID", "lmtPrice": None})
         )
@@ -55,6 +55,32 @@ def test_option_requires_all_four_elements():
 def test_stock_must_not_carry_option_fields():
     with pytest.raises(ValidationError, match="STK 合约不得携带期权/组合字段"):
         ParsedOrder.model_validate(stock_order(contract={"strike": 230.0}))
+
+
+def test_butterfly_and_condor_leg_counts_are_enforced():
+    payload = butterfly_order()
+    payload["contract"]["legs"] = payload["contract"]["legs"][:2]
+    with pytest.raises(ValidationError, match="BUTTERFLY 必须正好 3 条腿"):
+        ParsedOrder.model_validate(payload)
+
+    payload = condor_order()
+    payload["contract"]["legs"] = payload["contract"]["legs"][:3]
+    with pytest.raises(ValidationError, match="IRON_CONDOR 必须正好 4 条腿"):
+        ParsedOrder.model_validate(payload)
+
+
+def test_unknown_combo_strategy_is_rejected():
+    payload = spread_order()
+    payload["contract"]["combo_strategy"] = "CALENDAR"
+    with pytest.raises(ValidationError):
+        ParsedOrder.model_validate(payload)
+
+
+def test_leg_ratio_above_two_is_rejected():
+    payload = butterfly_order()
+    payload["contract"]["legs"][1]["ratio"] = 3
+    with pytest.raises(ValidationError):
+        ParsedOrder.model_validate(payload)
 
 
 def test_extra_fields_are_forbidden():

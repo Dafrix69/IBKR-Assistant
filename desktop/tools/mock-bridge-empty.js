@@ -1,0 +1,117 @@
+// 首次启动的样子:引擎在跑,但什么都还没配、什么都还没发生。
+//
+// 这是新用户唯一会看到的状态,却也是开发时最少看到的状态——手上有数据的时候
+// 一切都好看,空的时候才知道哪里缺引导、哪里会漏 undefined、哪个面板会一直
+// 停在"加载中"。用它跑一遍,比看十次有数据的界面有用。
+(function () {
+  var mem = {};
+  try { window.localStorage.getItem('probe'); return; } catch (e) {}
+  Object.defineProperty(window, 'localStorage', {
+    value: {
+      getItem: function (k) { return k in mem ? mem[k] : null; },
+      setItem: function (k, v) { mem[k] = String(v); },
+      removeItem: function (k) { delete mem[k]; },
+      clear: function () { mem = {}; },
+    },
+    configurable: true,
+  });
+})();
+
+window.dafri = {
+  platform: 'win32',
+  status: async () => ({
+    protocol: '1.0', now_et: '2026-08-21 09:42:11', market_status: '休市',
+    prompt_version: 'v1.7.0', prompt_fingerprint: '', model: 'claude-opus-5',
+    auto_execute: false, allow_live_trading: false,
+    breaker: { engaged: false, reason: '', consecutive_failures: 0 },
+    broker_provider: 'ibkr', broker_connected: false, broker_upstream_ok: true,
+    pending_count: 0, accounts: [],
+    limits: { max_order_notional: 5000, max_option_contracts: 5, max_mkt_shares: 200,
+              min_confidence: 0.9, max_spread_slippage: 0.1, duplicate_window_minutes: 10 },
+  }),
+  selftest: async () => ({ prompt_version: 'v1.7.0', prompt_fingerprint: '',
+    system_prompt_chars: 0, fewshot_pairs: 0, symbol_aliases: {}, accounts: [] }),
+  listRecords: async () => ({ records: [] }),
+  getRecord: async () => ({ record: null }),
+  listPending: async () => ({ pending: [] }),
+  pollPending: async () => ({ fired: [], prices: {}, synced: 0 }),
+  // 引擎是平铺返回的;这里刻意给最空的一份,看界面扛不扛得住
+  getSettings: async () => ({ path: 'config/settings.json', llm: {}, limits: {}, policies: {},
+    symbol_aliases: {}, accounts: [], connections: {} }),
+  breakerState: async () => ({ engaged: false, reason: '', consecutive_failures: 0 }),
+  listIdeas: async () => ({ ideas: [] }),
+  addIdea: async () => ({ idea: {} }), updateIdea: async () => ({}), analyzeIdea: async () => ({}),
+  listSectors: async () => ({ sectors: [] }),
+  sectorQuotes: async () => ({ connected: false, quotes: {} }),
+  addSector: async () => ({}), deleteSector: async () => ({}), pickSector: async () => ({}),
+  addSectorStock: async () => ({}), removeSectorStock: async () => ({}),
+  appInfo: async () => ({ version: '0.2.0', electron: '40.0.0', configPath: '', enginePath: '',
+    engineRunning: true }),
+  llmCatalog: async () => ({
+    providers: [{ key: 'anthropic', label: 'Anthropic(Claude)', default_model: 'claude-opus-5',
+      models: ['claude-opus-5'], supports_effort: true, supports_temperature: false,
+      needs_base_url: false, default_base_url: '', key_hint: 'sk-ant-...', docs: '' }],
+    current: { provider: 'anthropic', model: 'claude-opus-5', base_url: '', effort: 'high',
+      temperature: null, max_tokens: 8000, timeout_s: 60,
+      keychain_service: 'dafri-llm-api-key', keychain_account: 'anthropic' },
+    key_configured: { anthropic: false },        // 还没填 Key
+  }),
+  llmPatch: async () => ({}),
+  llmTest: async () => { throw new Error('Keychain 里没有 anthropic 的 API Key'); },
+  setApiKeyFor: async () => ({ ok: true }),
+  scanTws: async () => ({
+    ports: [
+      { port: 7496, label: 'TWS 实盘', kind: 'tws', paper: false, open: false, error: '端口未监听', configured_as: 'live' },
+      { port: 7497, label: 'TWS 模拟', kind: 'tws', paper: true, open: false, error: '端口未监听', configured_as: 'paper' },
+    ],
+    apps: [{ key: 'tws', name: 'Trader Workstation', installed: false, paths: [], running: false },
+           { key: 'gateway', name: 'IB Gateway', installed: false, paths: [], running: false }],
+    guide: [{ step: 1, title: '启动 TWS 或 IB Gateway 并登录', detail: '在 IBKR 自己的窗口里输入账号密码。' }],
+    connections: { paper: { host: '127.0.0.1', port: 7497, client_id: 11 } }, connected: [],
+  }),
+  diagnoseTws: async () => ({ results: [] }),
+  launchTws: async () => { throw new Error('没有找到 Trader Workstation 的安装。'); },
+  brokerCatalog: async () => ({ current: 'ibkr', connected: [], providers: [
+    { key: 'ibkr', label: '盈透证券(IBKR / TWS)', current: true,
+      connections: { paper: { host: '127.0.0.1', port: 7497, client_id: 11 } },
+      accounts: [], config_snippet: null },
+    { key: 'futu', label: '富途证券(OpenD)', current: false, connections: {}, accounts: [],
+      config_snippet: '{\n  "connections": {\n    "futu": { "broker": "futu", "port": 11111 }\n  }\n}' }],
+    futu: { trd_market: 'US', security_firm: 'FUTUSECURITIES', symbol_map: {},
+            unlock_password_saved: false } }),
+  selectBroker: async () => ({ current: 'ibkr', connections: [] }),
+  scanFutu: async () => ({ ports: [{ port: 11111, label: 'OpenD API', kind: 'opend', paper: null,
+      open: false, error: '端口未监听', configured_as: null }],
+    apps: [{ key: 'opend', name: '富途 OpenD', installed: false, paths: [], running: false }],
+    guide: [{ step: 1, title: '下载并解压 OpenD', detail: '去富途 OpenAPI 官网下载。' }],
+    connections: {}, connected: [], active: false, sdk_installed: false }),
+  diagnoseFutu: async () => ({ results: [] }),
+  launchFutu: async () => ({ launched: true }), setFutuPassword: async () => ({ ok: true }),
+  unlockFutu: async () => ({ unlocked: [], failed: {} }), installFutuSdk: async () => ({ installed: [] }),
+  submit: async () => { throw new Error('尚未连接 TWS / IB Gateway,拒绝执行。'); },
+  patchSettings: async () => ({}), setApiKey: async () => ({}),
+  connectBroker: async () => ({ provider: 'ibkr', connected: [], failed: { paper: '端口未监听' }, listeners: 0 }),
+  disconnectBroker: async () => ({ connected: [] }),
+  halt: async () => ({ engaged: true, cancelled: 0 }), resume: async () => ({ engaged: false }),
+  exportData: async () => ({}), restartEngine: async () => ({}),
+  backtestStrategies: async () => ({ strategies: [] }),
+  runBacktest: async () => { throw new Error('回测的历史行情需要 TWS / IB Gateway'); },
+  parseBacktestRules: async () => ({}),
+  orderBook: async () => { throw new Error('读取盘口需要 TWS / IB Gateway'); },
+  optionWall: async () => { throw new Error('计算期权墙需要 TWS / IB Gateway'); },
+  listAlerts: async () => ({ watches: [] }),
+  createAlert: async () => ({}), deleteAlert: async () => ({}), refreshAlert: async () => ({}),
+  pollAlerts: async () => ({ fired: [], checked: [] }),
+  paTimeframes: async () => ({ timeframes: [] }),
+  paAnalyze: async () => { throw new Error('实时 K 线需要 TWS / IB Gateway'); },
+  paComment: async () => ({}),
+  macroBoard: async () => ({ rows: [], fetched_at: null }),
+  listPositions: async () => { throw new Error('读取持仓需要 TWS / IB Gateway'); },
+  listTrackers: async () => ({ tracks: [] }),
+  addTracker: async () => ({}), updateTracker: async () => ({}),
+  deleteTracker: async () => ({}), closePositionNow: async () => ({}),
+  pollTrackers: async () => ({ rows: [], fired: [], blocked: [] }),
+  setTheme: async () => ({}), pickExportPath: async () => null,
+  confirm: async () => true, notify: async () => ({}),
+  on: () => () => {},
+};

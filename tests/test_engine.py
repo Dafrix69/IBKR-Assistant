@@ -94,7 +94,7 @@ def test_auto_execute_places_and_records(settings, now):
     record = engine.store.get_record(result.submitted[0]["record_id"])
     assert record["account"]["account_id"] == "DU7654321"   # 落库留痕的是真实账号
     assert record["input"]["raw_instruction"] == "买入 AAPL 100股 limit 230"
-    assert record["llm"]["prompt_version"] == "v1.0.0"
+    assert record["llm"]["prompt_version"] == "v1.7.0"
     assert record["ibkr"]["order_id"] == 1024
     assert record["ibkr"]["status_timeline"][0]["status"] == "Submitted"
 
@@ -181,6 +181,26 @@ def test_conditional_auto_mid_goes_to_watch_queue_then_fires(settings, now):
     record = engine.store.get_record(result.queued[0]["record_id"])
     assert record["triggered_at"] is not None
     assert record["trigger_snapshot"]["price"] == 7501.0
+
+
+def test_immediate_auto_mid_is_priced_before_placing(settings, now):
+    """不带触发条件的 AUTO_MID 组合:发单前必须先按盘口中间价定出限价。"""
+    live = make_settings(
+        policies={"auto_execute": True}, storage={"db_path": str(settings.db_path)}
+    )
+    router = FakeRouter(prices={"SPX": 7462.35})
+    payload = spread_order(execution_type="IMMEDIATE", trigger=None)
+    engine = build_engine(live, {"orders": [payload], "rejections": []}, router)
+
+    result = engine.handle_instruction("开一张今天的 7520 7550 call spread", moment=now)
+    assert len(result.submitted) == 1
+    assert len(router.placed) == 1
+    # FakeRouter 盘口:买腿中间价 12.5 − 卖腿中间价 4.5 = 8.0,+ 滑点 0.1
+    assert router.placed[0][2] == pytest.approx(8.10)
+
+    record = engine.store.get_record(result.submitted[0]["record_id"])
+    warnings = [w["message"] for w in record.get("post_warnings", [])]
+    assert any("AUTO_MID 定价" in w for w in warnings)
 
 
 def test_snapshot_is_injected_from_router_for_trigger_verification(settings, now):

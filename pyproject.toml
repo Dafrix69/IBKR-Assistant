@@ -15,6 +15,8 @@ dependencies = [
 [project.optional-dependencies]
 # ib_insync 已停止维护;Python 升到 3.10+ 后改装维护分支 ib_async(API 同名)
 broker = ["ib_insync>=0.9.86"]
+# 富途 OpenD 通道(IBKR 用不了时的备用):SDK 只连本机的 OpenD,不直连券商服务器
+futu = ["futu-api>=9.0"]
 dev = ["pytest>=8"]
 
 [project.scripts]

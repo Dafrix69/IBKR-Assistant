@@ -53,10 +53,10 @@ def _check_expiry(value: str) -> str:
 
 
 class Leg(Strict):
-    """垂直价差的一条腿。标的与 currency 继承自父 contract。"""
+    """期权组合的一条腿。标的与 currency 继承自父 contract。"""
 
     action: Action
-    ratio: int = Field(ge=1, le=1, description="目前只支持 1:1 价差")
+    ratio: int = Field(ge=1, le=2, description="垂直价差/铁鹰各腿为 1;蝴蝶中间腿为 2")
     lastTradeDateOrContractMonth: str
     strike: float = Field(gt=0)
     right: Right
@@ -80,7 +80,7 @@ class ContractSpec(Strict):
     tradingClass: Optional[str] = None
 
     # 仅 secType="BAG"
-    combo_strategy: Optional[Literal["VERTICAL"]] = None
+    combo_strategy: Optional[Literal["VERTICAL", "BUTTERFLY", "IRON_CONDOR"]] = None
     legs: Optional[List[Leg]] = None
 
     @field_validator("symbol")
@@ -110,10 +110,15 @@ class ContractSpec(Strict):
         else:  # BAG
             if any(f is not None for f in opt_fields):
                 raise ValueError("BAG 合约的期权要素必须写在 legs 里")
-            if self.combo_strategy != "VERTICAL":
-                raise ValueError("目前仅支持 combo_strategy=VERTICAL")
-            if not self.legs or len(self.legs) != 2:
-                raise ValueError("垂直价差必须正好两条腿")
+            expected_legs = {"VERTICAL": 2, "BUTTERFLY": 3, "IRON_CONDOR": 4}.get(
+                self.combo_strategy or ""
+            )
+            if expected_legs is None:
+                raise ValueError("combo_strategy 仅支持 VERTICAL / BUTTERFLY / IRON_CONDOR")
+            if not self.legs or len(self.legs) != expected_legs:
+                raise ValueError(
+                    "%s 必须正好 %d 条腿" % (self.combo_strategy, expected_legs)
+                )
         return self
 
     @property
@@ -200,9 +205,9 @@ class ParsedOrder(Strict):
             raise ValueError("CONDITIONAL 订单缺少 trigger")
         if self.execution_type == "IMMEDIATE" and self.trigger is not None:
             raise ValueError("IMMEDIATE 订单不得带 trigger")
-        # §2 铁律 3:AUTO_MID 只有两腿价差可用
+        # §2 铁律 3:AUTO_MID 只有期权组合可用
         if self.order.price_mode == "AUTO_MID" and self.contract.secType != "BAG":
-            raise ValueError("AUTO_MID 仅适用于两腿价差(BAG),单腿期权与股票缺价必须拒绝")
+            raise ValueError("AUTO_MID 仅适用于期权组合(BAG),单腿期权与股票缺价必须拒绝")
         if not self.account.strip():
             raise ValueError("account 不得为空,未指定时应为 DEFAULT")
         return self
@@ -216,6 +221,99 @@ class Rejection(Strict):
     original_text: str
     code: RejectionCode
     message: str
+
+
+class StockPick(Strict):
+    """AI 选股的一条建议。仅供参考展示,永远不会进入下单链路。"""
+
+    symbol: str
+    company: str = ""
+    reason: str = ""
+
+    @field_validator("symbol")
+    @classmethod
+    def _symbol_shape(cls, v: str) -> str:
+        v = v.strip().upper()
+        if not _SYMBOL_RE.match(v):
+            raise ValueError("选股结果里的标的不合法: %r" % v)
+        return v
+
+
+class SectorPicks(Strict):
+    """LLM 板块选股的输出 schema。"""
+
+    stocks: List[StockPick] = Field(min_length=1, max_length=15)
+
+
+RuleIndicator = Literal[
+    "close", "open", "high", "low", "sma", "ema", "rsi", "highest", "lowest", "change_pct",
+    "macd_hist",
+]
+RuleOp = Literal[">", "<", ">=", "<=", "cross_up", "cross_down"]
+_NEEDS_PERIOD = {"sma", "ema", "rsi", "highest", "lowest", "change_pct"}
+
+
+class RuleOperand(Strict):
+    """自定义策略条件的一个操作数:指标或常数。"""
+
+    kind: Literal["indicator", "const"]
+    name: Optional[RuleIndicator] = None
+    period: Optional[int] = Field(default=None, ge=1, le=250)
+    value: Optional[float] = None
+
+    @model_validator(mode="after")
+    def _shape(self) -> "RuleOperand":
+        if self.kind == "indicator":
+            if not self.name:
+                raise ValueError("指标操作数缺少 name")
+            if self.name in _NEEDS_PERIOD and not self.period:
+                raise ValueError("指标 %s 需要 period" % self.name)
+        else:
+            if self.value is None:
+                raise ValueError("常数操作数缺少 value")
+        return self
+
+
+class RuleCondition(Strict):
+    left: RuleOperand
+    op: RuleOp
+    right: RuleOperand
+
+
+class CustomRules(Strict):
+    """自定义回测策略:entry 全部满足则买入,exit 全部满足则卖出。"""
+
+    entry: List[RuleCondition] = Field(min_length=1, max_length=6)
+    exit: List[RuleCondition] = Field(default_factory=list, max_length=6)
+
+
+class BacktestInstrument(Strict):
+    """回测的交易品种:正股或(模拟定价的)借方期权结构。"""
+
+    type: Literal["stock", "call", "put", "call_spread", "put_spread", "butterfly"] = "stock"
+    dte: int = Field(default=30, ge=1, le=365, description="入场时距到期的天数")
+    offset_pct: float = Field(default=0.0, ge=-30, le=30, description="行权价相对现价的偏移%")
+    width_pct: float = Field(default=2.0, gt=0, le=20, description="价差宽度/蝴蝶翼宽,现价的%")
+    risk_pct: float = Field(default=10.0, gt=0, le=100, description="每笔投入净值的百分比")
+
+
+class IdeaAnalysis(Strict):
+    """LLM 对一条交易想法的研究分析。仅供展示参考,不进下单链路。"""
+
+    summary: str = Field(min_length=1, description="一句话解读这个想法")
+    thesis: str = Field(default="", description="想法背后的核心逻辑与成立条件")
+    checks: List[str] = Field(default_factory=list, max_length=8, description="下单前需要核实的事实/数据")
+    risks: List[str] = Field(default_factory=list, max_length=8, description="主要风险点")
+    suggestion: str = Field(default="", description="若要执行,建议如何改写成明确指令或观察计划")
+
+
+class PAComment(Strict):
+    """价格行为读盘的 AI 解读。模型只解读软件算好的事实,不产生新价位。"""
+
+    summary: str = Field(min_length=1, description="一句话结论")
+    reading: str = Field(default="", description="对当前结构的解读,2~4 句")
+    watch: List[str] = Field(default_factory=list, max_length=6, description="接下来要盯的价位或条件")
+    risks: List[str] = Field(default_factory=list, max_length=6, description="这个判断可能错在哪")
 
 
 class ParseResult(Strict):
