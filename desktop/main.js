@@ -9,7 +9,7 @@
  *   * 不加载任何远程页面,导航与开新窗口一律拦掉;
  *   * 生产构建关掉 DevTools。
  */
-const { app, BrowserWindow, Menu, ipcMain, dialog, shell, session } = require('electron');
+const { app, BrowserWindow, Menu, Notification, ipcMain, dialog, shell, session, nativeTheme } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const { EngineClient } = require('./rpc-client');
@@ -40,16 +40,55 @@ const ALLOWED_RPC = new Set([
   'breaker.state',
   'breaker.halt',
   'breaker.resume',
+  'broker.catalog',
+  'broker.select',
   'broker.connect',
   'broker.disconnect',
   'tws.scan',
   'tws.diagnose',
   'tws.launch',
+  'futu.scan',
+  'futu.diagnose',
+  'futu.launch',
+  'futu.unlock',
+  'futu.set_password',
   'llm.catalog',
   'llm.patch',
   'llm.test',
   'settings.get',
   'settings.patch',
+  'ideas.add',
+  'ideas.list',
+  'ideas.update',
+  'ideas.analyze',
+  'sectors.list',
+  'sectors.add',
+  'sectors.delete',
+  'sectors.pick',
+  'sectors.quotes',
+  'sectors.add_stock',
+  'sectors.remove_stock',
+  'backtest.strategies',
+  'backtest.run',
+  'backtest.parse_rules',
+  'book.snapshot',
+  'options.wall',
+  'alerts.list',
+  'alerts.create',
+  'alerts.delete',
+  'alerts.refresh',
+  'alerts.poll',
+  'pa.timeframes',
+  'pa.analyze',
+  'pa.comment',
+  'macro.board',
+  'positions.list',
+  'tracker.list',
+  'tracker.add',
+  'tracker.update',
+  'tracker.delete',
+  'tracker.poll',
+  'tracker.close_now',
   'keychain.set',
   'data.export',
 ]);
@@ -62,10 +101,43 @@ const SENSITIVE_RPC = new Set([
   'keychain.set',
   'tws.launch', // 会拉起外部程序,同样要求界面确认过
   'llm.patch',
+  'broker.select', // 换券商 = 换下单出口,必须是界面上的明确动作
+  'futu.launch', // 同 tws.launch:会拉起外部程序
+  'futu.unlock', // 解锁之后实盘单才发得出去
+  'futu.set_password', // 写 Keychain
+  'tracker.add', // 设的是"到价自动发单"的授权,不是一条备忘
+  'tracker.update',
+  'tracker.close_now', // 直接发平仓单
 ]);
 
 let mainWindow = null;
 let engine = null;
+
+/**
+ * Windows 标题栏叠加层的配色。必须跟着深浅色走:浅色主题下画白色的关闭按钮
+ * 就是一片看不见的空白。
+ */
+function titleBarOverlay() {
+  const dark = nativeTheme.shouldUseDarkColors;
+  return {
+    color: dark ? '#1e1e20' : '#f2f2f4',
+    symbolColor: dark ? '#ffffff' : '#1d1d1f',
+    height: 52,            // 和 .topbar 的高度对齐,否则按钮不在栏的正中
+  };
+}
+
+/** 主题变了要重画一次叠加层,不然按钮颜色会留在上一个主题里。 */
+function syncTitleBarOverlay() {
+  if (process.platform !== 'win32' || !mainWindow || mainWindow.isDestroyed()) return;
+  try {
+    mainWindow.setTitleBarOverlay(titleBarOverlay());
+  } catch {
+    /* 老版本 Windows 不支持叠加层,忽略即可——顶栏照常显示 */
+  }
+}
+
+// 跟随系统外观时,是系统在变而不是用户在点,所以也得挂上这个事件
+nativeTheme.on('updated', syncTitleBarOverlay);
 
 function ensureConfigExists() {
   if (fs.existsSync(CONFIG_PATH)) return { created: false };
@@ -89,7 +161,12 @@ function createWindow() {
     backgroundColor: process.platform === 'darwin' ? '#00000000' : '#f5f5f7',
     vibrancy: process.platform === 'darwin' ? 'under-window' : undefined,
     visualEffectState: 'active',
-    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
+    // macOS 用 hiddenInset(红绿灯浮在内容上);Windows 用 hidden + 叠加层,
+    // 把系统的最小化/最大化/关闭按钮直接画在我们自己的顶栏右侧——现代 Windows
+    // 应用(VS Code、Teams、Edge)都是这么做的,省下一整条原生标题栏的高度,
+    // 也不会出现"应用有两条栏"的割裂感。
+    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'hidden',
+    ...(process.platform === 'win32' ? { titleBarOverlay: titleBarOverlay() } : {}),
     trafficLightPosition: { x: 14, y: 18 },
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -223,6 +300,15 @@ function registerIpc() {
     return engine.call(method, clean);
   });
 
+  // 外观:走 nativeTheme,渲染层的 prefers-color-scheme 与窗口底色一起切换
+  ipcMain.handle('set-theme', (event, mode) => {
+    if (!isTrustedSender(event)) throw new Error('调用来源不受信任');
+    if (!['system', 'light', 'dark'].includes(mode)) throw new Error(`未知外观模式:${mode}`);
+    nativeTheme.themeSource = mode;
+    syncTitleBarOverlay();
+    return { mode, dark: nativeTheme.shouldUseDarkColors };
+  });
+
   ipcMain.handle('app-info', async (event) => {
     if (!isTrustedSender(event)) throw new Error('调用来源不受信任');
     return {
@@ -244,6 +330,17 @@ function registerIpc() {
     return { ok: true };
   });
 
+  // 装富途 SDK。名字由主进程写死,渲染进程只能触发、不能指定装什么——
+  // 否则就等于给了界面一个"pip install 任意包"的通道。
+  ipcMain.handle('engine-install-futu', async (event) => {
+    if (!isTrustedSender(event)) throw new Error('调用来源不受信任');
+    const result = await engine.installExtra('futu');
+    // import 在进程启动时解析,装完必须重启引擎才认得这个包
+    engine.stop();
+    engine.start().catch(() => {});
+    return result;
+  });
+
   ipcMain.handle('pick-export-path', async (event) => {
     if (!isTrustedSender(event)) throw new Error('调用来源不受信任');
     const result = await dialog.showSaveDialog(mainWindow, {
@@ -252,6 +349,20 @@ function registerIpc() {
       filters: [{ name: 'JSON', extensions: ['json'] }],
     });
     return result.canceled ? null : result.filePath;
+  });
+
+  // 系统通知。引擎侧的 notify.py 只在 macOS 上真的弹通知(其余平台只打印到
+  // stderr),而价位警告在 Windows 上必须能弹出来——所以由主进程补这一条。
+  ipcMain.handle('notify', (event, payload) => {
+    if (!isTrustedSender(event)) throw new Error('调用来源不受信任');
+    const { title, body } = payload || {};
+    if (typeof title !== 'string' || typeof body !== 'string') {
+      throw new Error('通知内容不合法');
+    }
+    if (!Notification.isSupported()) return { shown: false };
+    // 截断:通知内容来自行情与用户填的标的,不该由它决定弹窗多大
+    new Notification({ title: title.slice(0, 120), body: body.slice(0, 300) }).show();
+    return { shown: true };
   });
 
   ipcMain.handle('confirm', async (event, { title, message, detail, confirmLabel }) => {

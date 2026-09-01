@@ -56,6 +56,13 @@ def main(argv: Optional[list] = None) -> int:
     p_records = sub.add_parser("records", help="查看最近的交易记录")
     p_records.add_argument("--limit", type=int, default=10)
 
+    p_idea = sub.add_parser("idea", help="记录一条交易想法(备忘,不解析不下单)")
+    p_idea.add_argument("text")
+
+    p_ideas = sub.add_parser("ideas", help="查看已记录的想法")
+    p_ideas.add_argument("--all", action="store_true", help="包含已完成/已归档")
+    p_ideas.add_argument("--limit", type=int, default=20)
+
     p_halt = sub.add_parser("halt", help="熔断:停止自动执行")
     p_halt.add_argument("--reason", default="用户手动熔断")
     sub.add_parser("resume", help="解除熔断")
@@ -86,6 +93,20 @@ def main(argv: Optional[list] = None) -> int:
     if args.command == "records":
         store = TradeStore(settings.db_path)
         print(json.dumps(store.list_records(args.limit), ensure_ascii=False, indent=2))
+        return 0
+    if args.command == "idea":
+        from .market import extract_symbols
+
+        store = TradeStore(settings.db_path)
+        idea = store.add_idea(
+            args.text, extract_symbols(args.text, settings, default_index=False)
+        )
+        print("已记下(%s):%s" % (idea["id"][:8], idea["text"]))
+        return 0
+    if args.command == "ideas":
+        store = TradeStore(settings.db_path)
+        ideas = store.list_ideas(status=None if args.all else "active", limit=args.limit)
+        print(json.dumps(ideas, ensure_ascii=False, indent=2))
         return 0
     if args.command == "halt":
         switch = KillSwitch(settings.db_path.parent / "breaker.json")
@@ -154,14 +175,25 @@ def _run(settings, instruction: str, confirmed: bool) -> int:
     if not settings.policies.auto_execute:
         print("拒绝执行:配置里 policies.auto_execute=false。", file=sys.stderr)
         return 1
-    router = BrokerRouter(settings)
+    router = build_router(settings)
     engine = TradingEngine(settings, router=router)
     try:
         result = engine.handle_instruction(instruction)
         print(json.dumps(result.as_dict(), ensure_ascii=False, indent=2))
+        # 富途没有事件流:同步拉一次回报,否则命令行跑出来的单永远停在 Submitted
+        engine.sync_broker_orders()
     finally:
         router.disconnect_all()
     return 0
+
+
+def build_router(settings):
+    """按配置里生效的那家券商建 router(命令行与 RPC 用同一条规则)。"""
+    if settings.broker.provider == "futu":
+        from .futu_broker import FutuRouter
+
+        return FutuRouter(settings)
+    return BrokerRouter(settings)
 
 
 def _print_outcome(parsed, outcome) -> None:

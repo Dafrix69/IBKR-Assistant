@@ -201,6 +201,30 @@ class AnthropicParser:
             usage=_anthropic_usage(getattr(response, "usage", None)),
         )
 
+    def complete_json(self, system: str, user: str, schema: Dict[str, Any]) -> Dict[str, Any]:
+        """单轮小任务(如板块选股):不带交易少样本,只按给定 schema 要 JSON。"""
+        client = self._ensure_client()
+        try:
+            response = client.messages.create(
+                model=self.config.model,
+                max_tokens=self.config.max_tokens,
+                system=system,
+                messages=[{"role": "user", "content": user}],
+                output_config={
+                    "format": {"type": "json_schema", "schema": schema},
+                    "effort": self.config.effort,
+                },
+            )
+        except Exception as exc:  # noqa: BLE001
+            raise LLMError(_friendly_api_error(exc)) from exc
+        if getattr(response, "stop_reason", None) == "max_tokens":
+            raise LLMError("模型输出被 max_tokens 截断,已中止。请提高 max_tokens。")
+        text = "".join(b.text for b in response.content if getattr(b, "type", None) == "text")
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError as exc:
+            raise LLMError("模型输出不是合法 JSON:%s" % exc) from exc
+
     def test(self, api_key: Optional[str] = None) -> Dict[str, Any]:
         probe = LLMConfig(**{**self.config.__dict__, "max_tokens": 1024})
         client_parser = AnthropicParser(probe, api_key or self._api_key)
@@ -338,6 +362,24 @@ class OpenAICompatibleParser:
             raise LLMError("无法连接 %s:%s" % (self.base_url, exc.reason)) from exc
         except json.JSONDecodeError as exc:
             raise LLMError("端点返回的不是 JSON:%s" % exc) from exc
+
+    def complete_json(self, system: str, user: str, schema: Dict[str, Any]) -> Dict[str, Any]:
+        """单轮小任务(如板块选股):不带交易少样本,只按给定 schema 要 JSON。"""
+        messages = [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ]
+        data, _mode = self._complete(messages, schema)
+        choice = (data.get("choices") or [{}])[0]
+        if choice.get("finish_reason") == "length":
+            raise LLMError("模型输出被 max_tokens 截断,已中止。请提高 max_tokens。")
+        text = _strip_code_fence(((choice.get("message") or {}).get("content") or "").strip())
+        if not text:
+            raise LLMError("模型返回空内容。")
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError as exc:
+            raise LLMError("模型输出不是合法 JSON:%s" % exc) from exc
 
     def test(self, api_key: Optional[str] = None) -> Dict[str, Any]:
         probe = OpenAICompatibleParser(self.config, api_key or self._api_key)

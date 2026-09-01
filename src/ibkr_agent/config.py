@@ -61,11 +61,60 @@ class AccountConfig:
 
 @dataclass(frozen=True)
 class ConnectionConfig:
+    """一条券商本地网关连接。
+
+    `broker` 决定这条连接说的是谁家的协议:`ibkr` 走 TWS / IB Gateway 的
+    socket API,`futu` 走富途 OpenD 的网关端口。两种连接可以同时写在配置里,
+    真正被使用的只有 `broker.provider` 指定的那一种——这样切换券商只改一个
+    字段,不用把另一家的配置删掉再抄回来。
+
+    client_id 只对 IBKR 有意义(IBKR 用它区分同一个 TWS 上的多个客户端);
+    富途 OpenD 没有这个概念,填了也不会被用到。
+    """
+
     name: str
     host: str = "127.0.0.1"
     port: int = 7497
     client_id: int = 11
     readonly: bool = False
+    broker: str = "ibkr"          # ibkr | futu
+
+
+@dataclass(frozen=True)
+class FutuConfig:
+    """富途 OpenD 的接入参数(仅当 broker.provider="futu" 时生效)。
+
+    和 IBKR 一侧同一条边界:**这里不存任何密码**。富途的登录在 OpenD 自己的
+    程序里完成;实盘交易还需要一次"交易解锁",解锁密码属于 §9.1 的 S0 级,
+    只走 Keychain / DPAPI(见 keychain.py),配置文件里只记它存在哪个条目。
+
+    symbol_map 是本系统代码(AAPL / SPX)到富途代码(US.AAPL / …)的覆盖表。
+    普通美股按 `US.<代码>` 自动拼,拼不出来的(代码带后缀、ADR 之类)在这里指定。
+
+    **它不是"把指数换成 ETF"的后门**:富途 OpenAPI 压根不支持美股指数(实测
+    快照/订阅/K 线三条路都回「暂不支持美股指数」),而 SPX 七千多点、SPY 七百
+    多块,静默换标的会让触发价整个失去意义。所以指数一律在 quote_capability()
+    那里被明确拒绝,和这张表怎么写无关。
+    """
+
+    trd_market: str = "US"                       # 交易市场:US / HK / CN
+    security_firm: str = "FUTUSECURITIES"        # 券商实体:FUTUSECURITIES / FUTUINC / FUTUSG / FUTUAU
+    keychain_service: str = "dafri-futu-unlock"
+    keychain_account: str = "futu"
+    symbol_map: Dict[str, str] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class BrokerConfig:
+    """当前生效的券商接入。
+
+    只能有一个:同一时刻引擎只连一家,免得同一笔单子有两条出路。
+    IBKR 的 API 用不了(没装 TWS、握手过不去、行情权限缺)时,把 provider
+    改成 futu 就换一条通道,别名表、限额、校验层一律不变。
+    """
+
+    provider: str = "ibkr"                       # ibkr | futu
+    futu: FutuConfig = field(default_factory=FutuConfig)
 
 
 @dataclass(frozen=True)
@@ -94,6 +143,7 @@ class Settings:
     prompt_version: str = "v1.0.0"
     prompt_dir: Path = DEFAULT_PROMPT_DIR
     llm: LLMConfig = field(default_factory=LLMConfig)
+    broker: BrokerConfig = field(default_factory=BrokerConfig)
     limits: Limits = field(default_factory=Limits)
     policies: Policies = field(default_factory=Policies)
     accounts: List[AccountConfig] = field(default_factory=list)
@@ -122,6 +172,22 @@ class Settings:
 
     def alias_list(self) -> List[str]:
         return [a.alias for a in self.accounts]
+
+    # ---- 券商接入 -------------------------------------------------------
+    def connections_for(self, provider: Optional[str] = None) -> Dict[str, "ConnectionConfig"]:
+        """只属于某一家券商的连接。
+
+        两家的连接共用一张表,是为了让"切券商"只改一个字段。代价是每个
+        使用方都必须先筛一遍——把 IBKR 的 7497 发给富途的 router 是能连上
+        TCP 的,后果是握手一直超时却查不出原因。
+        """
+        target = provider or self.broker.provider
+        return {n: c for n, c in self.connections.items() if c.broker == target}
+
+    def account_broker(self, account: "AccountConfig") -> str:
+        """账户实际绑在哪家券商上(由它的连接决定)。"""
+        conn = self.connections.get(account.connection)
+        return conn.broker if conn else "ibkr"
 
     # ---- 注入提示词的表(只含别名,绝不含账号)---------------------------
     def prompt_account_table(self) -> str:
@@ -199,6 +265,16 @@ def _deep_merge(base: Dict, patch: Dict) -> Dict:
 
 _EFFORT_LEVELS = {"low", "medium", "high", "xhigh", "max"}
 _CLOSED_MARKET_POLICIES = {"allow", "reject_market_orders", "reject_all"}
+BROKER_PROVIDERS = ("ibkr", "futu")
+# 各家网关的默认端口。写在这里而不是散在解析里:配置省略 port 时,
+# 富途连接不能悄悄落到 IBKR 的 7497——那会连上另一个程序还看不出错。
+DEFAULT_BROKER_PORT = {"ibkr": 7497, "futu": 11111}
+_FUTU_MARKETS = {"US", "HK", "CN"}
+# 与 futu-api 的 SecurityFirm 枚举对齐(10.10 实测)。少写一个,用那家券商的
+# 用户就会卡在"security_firm 只能是…"上,而这跟本软件的安全边界毫无关系。
+_FUTU_FIRMS = {
+    "FUTUSECURITIES", "FUTUINC", "FUTUSG", "FUTUAU", "FUTUCA", "FUTUJP", "FUTUMY",
+}
 
 
 def _reject_unknown(cls, raw: Dict, label: str) -> None:
@@ -310,6 +386,37 @@ def _build_llm(raw: Dict) -> LLMConfig:
     )
 
 
+def _build_futu(raw: Dict) -> FutuConfig:
+    _reject_unknown(FutuConfig, raw, "broker.futu")
+    market = str(raw.get("trd_market", "US")).upper()
+    if market not in _FUTU_MARKETS:
+        raise ValueError("broker.futu.trd_market 只能是 %s" % "、".join(sorted(_FUTU_MARKETS)))
+    firm = str(raw.get("security_firm", "FUTUSECURITIES")).upper()
+    if firm not in _FUTU_FIRMS:
+        raise ValueError("broker.futu.security_firm 只能是 %s" % "、".join(sorted(_FUTU_FIRMS)))
+    symbol_map = {}
+    for key, value in (raw.get("symbol_map") or {}).items():
+        code = str(value).strip()
+        if not code:
+            raise ValueError("broker.futu.symbol_map 里 %s 的富途代码为空" % key)
+        symbol_map[str(key).strip().upper()] = code
+    return FutuConfig(
+        trd_market=market,
+        security_firm=firm,
+        keychain_service=str(raw.get("keychain_service", "dafri-futu-unlock")),
+        keychain_account=str(raw.get("keychain_account", "") or "futu"),
+        symbol_map=symbol_map,
+    )
+
+
+def _build_broker(raw: Dict) -> BrokerConfig:
+    _reject_unknown(BrokerConfig, raw, "broker")
+    provider = str(raw.get("provider", "ibkr"))
+    if provider not in BROKER_PROVIDERS:
+        raise ValueError("broker.provider 只能是 %s" % "、".join(BROKER_PROVIDERS))
+    return BrokerConfig(provider=provider, futu=_build_futu(raw.get("futu", {})))
+
+
 def _from_dict(raw: Dict, source: Optional[Path] = None) -> Settings:
     accounts = [
         AccountConfig(
@@ -324,14 +431,7 @@ def _from_dict(raw: Dict, source: Optional[Path] = None) -> Settings:
     _assert_unique_aliases(accounts)
 
     connections = {
-        name: ConnectionConfig(
-            name=name,
-            host=c.get("host", "127.0.0.1"),
-            port=int(c.get("port", 7497)),
-            client_id=int(c.get("client_id", 11)),
-            readonly=bool(c.get("readonly", False)),
-        )
-        for name, c in raw.get("connections", {}).items()
+        name: _build_connection(name, c) for name, c in raw.get("connections", {}).items()
     }
     for conn in connections.values():
         if conn.host not in ("127.0.0.1", "localhost", "::1"):
@@ -355,6 +455,7 @@ def _from_dict(raw: Dict, source: Optional[Path] = None) -> Settings:
         prompt_version=raw.get("prompt_version", "v1.0.0"),
         prompt_dir=prompt_dir,
         llm=_build_llm(raw.get("llm", {})),
+        broker=_build_broker(raw.get("broker", {})),
         limits=_build_limits(raw.get("limits", {})),
         policies=_build_policies(raw.get("policies", {})),
         accounts=accounts,
@@ -368,6 +469,22 @@ def _from_dict(raw: Dict, source: Optional[Path] = None) -> Settings:
     )
     _assert_account_connections(settings)
     return settings
+
+
+def _build_connection(name: str, raw: Dict) -> ConnectionConfig:
+    broker = str(raw.get("broker", "ibkr"))
+    if broker not in BROKER_PROVIDERS:
+        raise ValueError(
+            "连接 %s 的 broker 只能是 %s(收到 %r)" % (name, "、".join(BROKER_PROVIDERS), broker)
+        )
+    return ConnectionConfig(
+        name=name,
+        host=raw.get("host", "127.0.0.1"),
+        port=int(raw.get("port", DEFAULT_BROKER_PORT[broker])),
+        client_id=int(raw.get("client_id", 11)),
+        readonly=bool(raw.get("readonly", False)),
+        broker=broker,
+    )
 
 
 def _assert_unique_aliases(accounts: List[AccountConfig]) -> None:
@@ -390,6 +507,15 @@ def _assert_account_connections(settings: Settings) -> None:
             raise ValueError("账户 %s 指向未定义的连接 %s" % (acct.alias, acct.connection))
         if not acct.is_paper and not settings.policies.allow_live_trading:
             continue  # 实盘账户可以配置,但下单时会被 policies.allow_live_trading 拦住
+    # 生效的那家券商必须至少有一条连接,否则"已切换"其实是切到了空档:
+    # 界面显示富途,连接按钮却无处可连,错误要到下单那一刻才暴露。
+    if settings.connections and not settings.connections_for():
+        raise ValueError(
+            "broker.provider=%s,但 connections 里没有任何 broker=\"%s\" 的连接。"
+            "请先在配置里加一条(富途 OpenD 默认端口 %d)。"
+            % (settings.broker.provider, settings.broker.provider,
+               DEFAULT_BROKER_PORT[settings.broker.provider])
+        )
 
 
 def now_et() -> datetime:

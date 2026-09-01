@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from conftest import make_settings
+from conftest import make_settings, spread_order
 from ibkr_agent.broker import LegQuote, auto_mid_limit, combo_mid_price, price_condition_spec
 from ibkr_agent.config import ET
 from ibkr_agent.llm import structured_output_schema, supports_sampling_params
@@ -98,6 +98,280 @@ def test_extract_symbols_handles_mixed_language(settings):
     assert "AAPL" in found and "NVDA" in found
 
 
+# ---- 账户路由:TWS 单会话、切换登录后自动改道 -----------------------------
+class _FakeIB:
+    def __init__(self, managed):
+        self._managed = managed
+
+    def isConnected(self):
+        return True
+
+    def managedAccounts(self):
+        return self._managed
+
+    def disconnect(self):
+        pass
+
+
+class _StalledIB:
+    """TWS 收得到请求、但永远不回应 —— 上游(TWS↔IBKR)断开时的真实表现。"""
+
+    async def qualifyContractsAsync(self, contract):
+        import asyncio
+
+        await asyncio.sleep(3600)
+
+    def run(self, coro):
+        import asyncio
+
+        loop = asyncio.new_event_loop()
+        try:
+            return loop.run_until_complete(coro)
+        finally:
+            loop.close()
+
+
+def test_qualify_times_out_instead_of_wedging_the_whole_engine():
+    """合约确认必须有硬超时。
+
+    实测事故:TWS 与 IBKR 上游断开(错误 1100)后,本机 socket 仍然活着、
+    isConnected() 仍是 True,于是请求发得出去却永远等不到回应。RPC 服务是
+    串行的,这一次阻塞把后面所有请求都堵死——连根本不碰券商的 system.status
+    都连续超时 159 次,界面直接变砖。所以宁可报错,绝不能挂着。
+    """
+    from types import SimpleNamespace
+
+    from ibkr_agent.broker import BrokerError, BrokerRouter
+
+    router = BrokerRouter(make_settings())
+    router._QUALIFY_TIMEOUT = 0.05
+    with pytest.raises(BrokerError) as exc:
+        router._qualify_or_raise(_StalledIB(), SimpleNamespace(conId=0))
+    assert "没有响应" in str(exc.value)
+
+
+def test_stalled_message_names_the_upstream_break_when_that_is_the_cause():
+    """错误 1100 之后要直说是上游断了,而不是甩一句超时让人去猜。"""
+    from types import SimpleNamespace
+
+    from ibkr_agent.broker import BrokerError, BrokerRouter
+
+    router = BrokerRouter(make_settings())
+    router._QUALIFY_TIMEOUT = 0.05
+    assert router.upstream_ok is True
+    router._on_ib_connectivity(-1, 1100, "connectivity lost")
+    assert router.upstream_ok is False
+
+    with pytest.raises(BrokerError) as exc:
+        router._qualify_or_raise(_StalledIB(), SimpleNamespace(conId=0))
+    assert "1100" in str(exc.value)
+
+    router._on_ib_connectivity(-1, 1102, "connectivity restored")   # TWS 自己重连上了
+    assert router.upstream_ok is True
+
+
+class _BarsIB:
+    """按 durationStr 返回不同根数的假 TWS,用来验证退档逻辑。"""
+
+    def __init__(self, by_duration):
+        self.by_duration = by_duration
+        self.asked = []
+
+    def isConnected(self):
+        return True
+
+    def reqMarketDataType(self, kind):
+        pass
+
+    async def qualifyContractsAsync(self, contract):
+        contract.conId = 1
+        return [contract]
+
+    def run(self, coro):
+        import asyncio
+
+        loop = asyncio.new_event_loop()
+        try:
+            return loop.run_until_complete(coro)
+        finally:
+            loop.close()
+
+    def reqHistoricalData(self, contract, **kwargs):
+        from types import SimpleNamespace
+
+        duration = kwargs["durationStr"]
+        self.asked.append(duration)
+        count = self.by_duration.get(duration, 0)
+        return [
+            SimpleNamespace(date="2026-08-19 09:%02d:00" % i, open=1.0, high=1.2,
+                            low=0.9, close=1.1, volume=10)
+            for i in range(count)
+        ]
+
+
+def _bars_router(settings, ib):
+    from ibkr_agent.broker import BrokerRouter
+
+    router = BrokerRouter(settings)
+    router._connections["paper"] = ib
+    return router
+
+
+def test_intraday_bars_falls_back_to_a_longer_window_when_history_is_thin():
+    """IBKR 的 durationStr 数的是**交易日**,全时段口径下傍晚就翻篇——
+    刚过那个边界时第一档只能拿到十几根。实测踩到过:根数 10→17 一路涨,
+    每刷新一次多一根,全是实时新增的,没有任何历史。必须自动退一档。"""
+    ib = _BarsIB({"2 D": 12, "4 D": 400})          # 第一档太少,退档才够
+    router = _bars_router(make_settings(), ib)
+    bars = router.intraday_bars("NVDA", "1m")
+    assert ib.asked == ["2 D", "4 D"]              # 确实退了一档
+    assert len(bars) == 400
+
+
+def test_intraday_bars_does_not_retry_when_the_first_window_is_enough():
+    """够了就别再要一次:IBKR 对历史请求有节流,多余的重取是白白消耗配额。"""
+    ib = _BarsIB({"2 D": 380})
+    router = _bars_router(make_settings(), ib)
+    assert len(router.intraday_bars("NVDA", "1m")) == 380
+    assert ib.asked == ["2 D"]
+
+
+def _router_with_sessions(settings, sessions, dead=()):
+    """sessions: 连接名 → 可管账号列表;dead: 连不上的连接名。"""
+    from ibkr_agent.broker import BrokerError, BrokerRouter
+
+    router = BrokerRouter(settings)
+
+    def fake_connect(name):
+        if name in dead:
+            raise BrokerError("连接 %s 失败(端口未监听)" % name)
+        if name not in router._connections:
+            router._connections[name] = _FakeIB(sessions[name])
+        return router._connections[name]
+
+    router.connect = fake_connect
+    return router
+
+
+def test_account_routes_to_session_that_actually_manages_it(settings):
+    """配置写 paper→7497,但 TWS 只开了 live 连接且登录的是模拟账户 → 自动改道。"""
+    paper_account = settings.account_by_alias("模拟")
+    router = _router_with_sessions(
+        settings, {"live": ["DU7654321"]}, dead={"paper"}
+    )
+    ib = router.for_account(paper_account)
+    assert ib.managedAccounts() == ["DU7654321"]
+    assert router._account_route["DU7654321"] == "live"   # 路由被缓存
+
+
+def test_account_rejected_when_no_session_manages_it(settings):
+    """所有会话都不管这个账户(比如 TWS 登录的是另一个人)→ 拒绝而不是错发。"""
+    from ibkr_agent.broker import BrokerError
+
+    live_account = settings.account_by_alias("主账户")
+    router = _router_with_sessions(
+        settings, {"paper": ["DU7654321"], "live": ["U9999999"]}
+    )
+    with pytest.raises(BrokerError, match="找不到对应会话"):
+        router.for_account(live_account)
+
+
+def test_account_uses_configured_connection_when_it_matches(settings):
+    paper_account = settings.account_by_alias("模拟")
+    router = _router_with_sessions(
+        settings, {"paper": ["DU7654321"], "live": ["U1234567"]}
+    )
+    ib = router.for_account(paper_account)
+    assert ib.managedAccounts() == ["DU7654321"]
+
+
+def test_empty_managed_list_only_trusted_on_configured_connection(settings):
+    """会话不报账户列表时:配置指定的连接放行,扫描到的其他连接不放行。"""
+    from ibkr_agent.broker import BrokerError
+
+    paper_account = settings.account_by_alias("模拟")
+    router = _router_with_sessions(settings, {"paper": [], "live": []})
+    assert router.for_account(paper_account) is router._connections["paper"]
+
+    router2 = _router_with_sessions(settings, {"live": []}, dead={"paper"})
+    with pytest.raises(BrokerError, match="找不到对应会话"):
+        router2.for_account(paper_account)
+
+
+class _QuoteIB(_FakeIB):
+    """带盘口的假会话:记录行情模式切换,验证纸面/实盘的延迟数据边界。"""
+
+    def __init__(self, managed, bid=1.1, ask=1.3):
+        super().__init__(managed)
+        self.data_types = []
+        self.bid, self.ask = bid, ask
+        self.sleeps = 0
+
+    def reqMarketDataType(self, kind):
+        self.data_types.append(kind)
+
+    def qualifyContracts(self, contract):
+        contract.conId = 1
+        return [contract]
+
+    # 真实的 IB 对象既有同步也有 async 版本,合约确认走的是 async 那条
+    # (它是库里唯一没有 timeout 参数的阻塞调用,必须能被 wait_for 掐断)。
+    # 替身要跟着提供,否则测的就不是生产代码真正走的路径。
+    async def qualifyContractsAsync(self, contract):
+        return self.qualifyContracts(contract)
+
+    def run(self, coro):
+        import asyncio
+
+        return asyncio.new_event_loop().run_until_complete(coro)
+
+    def reqMktData(self, *args, **kwargs):
+        from types import SimpleNamespace
+
+        return SimpleNamespace(bid=self.bid, ask=self.ask)
+
+    def sleep(self, seconds):
+        self.sleeps += 1
+
+
+def test_leg_quotes_delayed_fallback_only_for_paper(settings):
+    from ibkr_agent.models import ParsedOrder
+
+    contract = ParsedOrder.model_validate(spread_order()).contract
+    paper = settings.account_by_alias("模拟")
+    live = settings.account_by_alias("主账户")
+
+    router = _router_with_sessions(settings, {"paper": ["DU7654321"], "live": ["U1234567"]})
+    router._connections["paper"] = _QuoteIB(["DU7654321"])
+    router._connections["live"] = _QuoteIB(["U1234567"])
+
+    quotes = router.leg_quotes(contract, paper)
+    assert len(quotes) == 2 and quotes[0].bid == 1.1
+    assert router._connections["paper"].data_types == [3, 1]   # 纸面:延迟兜底,用完切回
+    assert router._connections["paper"].sleeps == 2            # 盘口有效即提前退出轮询
+
+    router.leg_quotes(contract, live)
+    assert router._connections["live"].data_types == []        # 实盘:绝不碰延迟数据
+
+
+def test_extract_symbols_reads_lowercase_ticker_in_chinese_context(settings):
+    """"买入be10股":紧贴中文/数字的小写拉丁串是 ticker,即使撞上英文停用词。"""
+    assert "BE" in extract_symbols("买入be10股", settings)
+    assert "ON" in extract_symbols("市价买入on20股", settings)
+    # 纯英文句子里的同形单词不误伤
+    english = extract_symbols("wait for the price to be on the low side", settings)
+    assert "BE" not in english and "ON" not in english
+    # 长英文单词的切片不是 ticker
+    assert "MARKE" not in extract_symbols("place a market order", settings)
+
+
+def test_extract_symbols_falls_back_to_spx_when_nothing_found(settings):
+    """'7520的20cm蝴蝶'这类指令通篇没有 ticker,默认标的 SPX 的现价快照必须补上。"""
+    assert extract_symbols("7520的20cm蝴蝶 2.5", settings) == ["SPX"]
+    # 抽到了别的标的就不添乱
+    assert "SPX" not in extract_symbols("市价买入 QQQ 10 股", settings)
+
+
 # ---- 下单纯计算 ---------------------------------------------------------
 def test_combo_mid_price_is_net_debit():
     legs = [
@@ -114,9 +388,16 @@ def test_combo_mid_rejects_broken_quotes():
 
 def test_auto_mid_limit_applies_slippage_and_width_cap():
     assert auto_mid_limit(8.0, "BUY", 0.10, strike_width=30.0) == pytest.approx(8.10)
-    assert auto_mid_limit(8.0, "SELL", 0.10) == pytest.approx(7.90)
+    # 贷方(SELL)组合:净中间价为负(收权利金),让价方向朝 0(少收一点)。
+    # BAG 一律以 BUY + 带符号净价提交(IBKR 对 BAG 的 SELL 会反转腿方向)。
+    assert auto_mid_limit(-4.0, "SELL", 0.10) == pytest.approx(-3.90)
     # 数学上限:借方净权利金不可能超过行权价差
     assert auto_mid_limit(29.99, "BUY", 0.50, strike_width=30.0) == pytest.approx(30.0)
+    # 方向不一致 = 修复前会反向建仓的场景,必须拒绝
+    with pytest.raises(Exception, match="反向建仓"):
+        auto_mid_limit(8.0, "SELL", 0.10)
+    with pytest.raises(Exception, match="反向建仓"):
+        auto_mid_limit(-4.0, "BUY", 0.10)
 
 
 def test_price_condition_direction():
@@ -137,6 +418,27 @@ def _record(signature="模拟|BUY|STK|AAPL", qty=100):
         "order": {"totalQuantity": qty, "action": "BUY"},
         "signature": signature,
     }
+
+
+def test_validated_only_records_do_not_trigger_duplicate_debounce(tmp_path):
+    """「先校验、再发送」是界面引导的流程:纯校验记录绝不能挡住随后的真发送。"""
+    from datetime import datetime, timezone
+
+    store = TradeStore(tmp_path / "t.db")
+    now = datetime.now(timezone.utc)
+
+    validated = store.create_record(_record())
+    store.append_event(validated, "status", {"status": "ValidatedOnly"})
+    assert store.recent_orders(10, now) == []   # 没出过手,不算已下单
+
+    submitted = store.create_record(_record())
+    store.append_event(submitted, "status", {"status": "Submitted", "order_id": 1})
+    assert len(store.recent_orders(10, now)) == 1   # 真提交的才进防抖候选集
+
+    queued = store.create_record(_record(signature="模拟|BUY|STK|TSLA"))
+    store.append_event(queued, "status", {"status": "PendingTrigger"})
+    signatures = {r.signature for r in store.recent_orders(10, now)}
+    assert signatures == {"模拟|BUY|STK|AAPL", "模拟|BUY|STK|TSLA"}
 
 
 def test_store_is_append_only(tmp_path):
@@ -178,10 +480,10 @@ def test_recent_orders_window(tmp_path):
     now = datetime.now(tz=ET)
     fresh = _record()
     fresh["created_at"] = now.isoformat()
-    store.create_record(fresh)
+    store.append_event(store.create_record(fresh), "status", {"status": "Submitted"})
     stale = _record()
     stale["created_at"] = (now - timedelta(hours=2)).isoformat()
-    store.create_record(stale)
+    store.append_event(store.create_record(stale), "status", {"status": "Submitted"})
 
     assert len(store.recent_orders(10, now)) == 1
     assert len(store.recent_orders(300, now)) == 2

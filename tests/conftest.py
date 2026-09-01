@@ -9,7 +9,7 @@ import pytest
 from ibkr_agent.config import ET, _from_dict
 
 BASE_CONFIG: Dict[str, Any] = {
-    "prompt_version": "v1.0.0",
+    "prompt_version": "v1.7.0",
     "llm": {"model": "claude-opus-5", "effort": "high", "temperature": None},
     "limits": {
         "max_order_notional": 50_000.0,
@@ -121,6 +121,83 @@ def spread_order(**overrides: Any) -> Dict[str, Any]:
             "outsideRth": False,
         },
         "reason": "突破 7500 整数关口后追动能",
+        "confidence": 0.96,
+        "warnings": [],
+    }
+    return _deep_update(order, overrides)
+
+
+def butterfly_order(**overrides: Any) -> Dict[str, Any]:
+    order = {
+        "intent_summary": "SPX 涨到 7500 时买入 1 张 7500/7520/7540 看涨蝴蝶",
+        "contract": {
+            "secType": "BAG",
+            "symbol": "SPX",
+            "exchange": "SMART",
+            "currency": "USD",
+            "combo_strategy": "BUTTERFLY",
+            "legs": [
+                {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814",
+                 "strike": 7500.0, "right": "C", "tradingClass": "SPXW"},
+                {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814",
+                 "strike": 7520.0, "right": "C", "tradingClass": "SPXW"},
+                {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814",
+                 "strike": 7540.0, "right": "C", "tradingClass": "SPXW"},
+            ],
+        },
+        "execution_type": "CONDITIONAL",
+        "trigger": {"type": "PRICE", "symbol": "SPX", "secType": "IND", "operator": ">=",
+                    "value": 7500.0},
+        "account": "DEFAULT",
+        "order": {
+            "action": "BUY",
+            "orderType": "LMT",
+            "totalQuantity": 1,
+            "price_mode": "AUTO_MID",
+            "lmtPrice": None,
+            "tif": "DAY",
+            "outsideRth": False,
+        },
+        "reason": "预期钉住 7520",
+        "confidence": 0.95,
+        "warnings": [],
+    }
+    return _deep_update(order, overrides)
+
+
+def condor_order(**overrides: Any) -> Dict[str, Any]:
+    order = {
+        "intent_summary": "卖出 2 张 SPX 7200/7250/7650/7700 铁鹰",
+        "contract": {
+            "secType": "BAG",
+            "symbol": "SPX",
+            "exchange": "SMART",
+            "currency": "USD",
+            "combo_strategy": "IRON_CONDOR",
+            "legs": [
+                {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260918",
+                 "strike": 7200.0, "right": "P", "tradingClass": "SPX"},
+                {"action": "SELL", "ratio": 1, "lastTradeDateOrContractMonth": "20260918",
+                 "strike": 7250.0, "right": "P", "tradingClass": "SPX"},
+                {"action": "SELL", "ratio": 1, "lastTradeDateOrContractMonth": "20260918",
+                 "strike": 7650.0, "right": "C", "tradingClass": "SPX"},
+                {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260918",
+                 "strike": 7700.0, "right": "C", "tradingClass": "SPX"},
+            ],
+        },
+        "execution_type": "IMMEDIATE",
+        "trigger": None,
+        "account": "DEFAULT",
+        "order": {
+            "action": "SELL",
+            "orderType": "LMT",
+            "totalQuantity": 2,
+            "price_mode": "EXPLICIT",
+            "lmtPrice": 12.0,
+            "tif": "GTC",
+            "outsideRth": False,
+        },
+        "reason": "预计区间震荡",
         "confidence": 0.96,
         "warnings": [],
     }

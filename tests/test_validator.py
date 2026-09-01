@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from conftest import make_settings, option_order, spread_order, stock_order
+from conftest import butterfly_order, condor_order, make_settings, option_order, spread_order, stock_order
 from ibkr_agent.config import ET
 from ibkr_agent.models import ParsedOrder
 from ibkr_agent.validator import RecentOrder, Validator, order_signature
@@ -150,6 +150,121 @@ def test_debit_premium_cannot_exceed_strike_width(settings, now):
     assert "行权价差" in issues[0].message
 
 
+# ---- 蝴蝶 ---------------------------------------------------------------
+def test_long_butterfly_is_approved_with_wing_width_notional(settings, now):
+    """蝴蝶风险按翼宽算:1 × 100 × 20 = 2,000。"""
+    issues, approved = run(settings, now, butterfly_order(), snapshot={"SPX": 7462.35})
+    assert issues == []
+    assert approved.notional == pytest.approx(2_000.0)
+
+
+def test_short_butterfly_is_rejected(settings, now):
+    payload = butterfly_order(order={"action": "SELL"})
+    issues, _ = run(settings, now, payload, snapshot={"SPX": 7462.35})
+    assert "BAD_SPREAD" in codes(issues)
+    assert "买入" in issues[0].message
+
+
+def test_broken_wing_butterfly_is_rejected(settings, now):
+    payload = butterfly_order()
+    payload["contract"]["legs"][2]["strike"] = 7550.0  # 上翼 30 点、下翼 20 点
+    issues, _ = run(settings, now, payload, snapshot={"SPX": 7462.35})
+    assert "BAD_SPREAD" in codes(issues)
+    assert "等距" in issues[0].message
+
+
+def test_butterfly_middle_leg_must_be_double_sell(settings, now):
+    payload = butterfly_order()
+    payload["contract"]["legs"][1]["ratio"] = 1
+    issues, _ = run(settings, now, payload, snapshot={"SPX": 7462.35})
+    assert "BAD_SPREAD" in codes(issues)
+
+    payload = butterfly_order()
+    payload["contract"]["legs"][1]["action"] = "BUY"
+    issues, _ = run(settings, now, payload, snapshot={"SPX": 7462.35})
+    assert "BAD_SPREAD" in codes(issues)
+
+
+def test_butterfly_legs_must_share_right_and_expiry(settings, now):
+    payload = butterfly_order()
+    payload["contract"]["legs"][1]["right"] = "P"
+    issues, _ = run(settings, now, payload, snapshot={"SPX": 7462.35})
+    assert "BAD_SPREAD" in codes(issues)
+
+    payload = butterfly_order()
+    payload["contract"]["legs"][2]["lastTradeDateOrContractMonth"] = "20260821"
+    issues, _ = run(settings, now, payload, snapshot={"SPX": 7462.35})
+    assert "BAD_SPREAD" in codes(issues)
+
+
+def test_butterfly_debit_cannot_exceed_wing_width(settings, now):
+    payload = butterfly_order(order={"price_mode": "EXPLICIT", "lmtPrice": 25.0})
+    issues, _ = run(settings, now, payload, snapshot={"SPX": 7462.35})
+    assert "BAD_SPREAD" in codes(issues)
+    assert "翼宽" in issues[0].message
+
+
+def test_explicit_debit_butterfly_notional_is_the_premium(settings, now):
+    """写明净权利金的借方蝴蝶,最大亏损就是权利金:1 × 100 × 3.3 = 330。"""
+    payload = butterfly_order(order={"price_mode": "EXPLICIT", "lmtPrice": 3.3})
+    issues, approved = run(settings, now, payload, snapshot={"SPX": 7462.35})
+    assert issues == []
+    assert approved.notional == pytest.approx(330.0)
+
+
+def test_explicit_debit_vertical_notional_is_the_premium(settings, now):
+    """借方价差同理:给了净权利金就按权利金算,不再用行权价差兜底。"""
+    payload = spread_order(order={"price_mode": "EXPLICIT", "lmtPrice": 8.0})
+    _, approved = run(settings, now, payload, snapshot={"SPX": 7462.35})
+    assert approved.notional == pytest.approx(800.0)
+
+
+# ---- 铁鹰 ---------------------------------------------------------------
+def test_credit_iron_condor_notional_is_width_minus_credit(settings, now):
+    """贷方铁鹰最大亏损 = 较宽一侧翼宽 − 权利金:2 × 100 × (50 − 12) = 7,600。"""
+    issues, approved = run(settings, now, condor_order())
+    assert issues == []
+    assert approved.notional == pytest.approx(7_600.0)
+
+
+def test_long_iron_condor_is_rejected(settings, now):
+    payload = condor_order(order={"action": "BUY"})
+    issues, _ = run(settings, now, payload)
+    assert "BAD_SPREAD" in codes(issues)
+    assert "卖出" in issues[0].message
+
+
+def test_iron_butterfly_inner_strikes_equal_is_rejected(settings, now):
+    payload = condor_order()
+    payload["contract"]["legs"][1]["strike"] = 7450.0
+    payload["contract"]["legs"][2]["strike"] = 7450.0
+    issues, _ = run(settings, now, payload)
+    assert "BAD_SPREAD" in codes(issues)
+
+
+def test_condor_put_side_must_sit_below_call_side(settings, now):
+    payload = condor_order()
+    payload["contract"]["legs"][0]["strike"] = 7660.0  # 下保护翼跑到 call 侧上方
+    issues, _ = run(settings, now, payload)
+    assert "BAD_SPREAD" in codes(issues)
+
+
+def test_condor_wing_directions_are_rechecked(settings, now):
+    payload = condor_order()
+    payload["contract"]["legs"][0]["action"] = "SELL"  # 卖裸下翼
+    payload["contract"]["legs"][1]["action"] = "BUY"
+    issues, _ = run(settings, now, payload)
+    assert "BAD_SPREAD" in codes(issues)
+
+
+def test_condor_notional_uses_wider_side(settings, now):
+    payload = condor_order()
+    payload["contract"]["legs"][3]["strike"] = 7750.0  # call 翼拉宽到 100 点
+    tight = make_settings(limits={"max_order_notional": 15_000.0})
+    issues, _ = run(tight, now, payload)  # 2 × 100 × (100 − 12) = 17,600
+    assert "EXCEEDS_LIMIT" in codes(issues)
+
+
 # ---- 触发条件 -----------------------------------------------------------
 def test_trigger_direction_mismatch_is_caught(settings, now):
     payload = spread_order(trigger={"operator": "<="})  # 现价低于触发价却写成向下
@@ -222,6 +337,15 @@ def test_limit_order_allowed_when_closed_with_warning(settings):
     issues, approved = run(settings, closed, stock_order())
     assert issues == []
     assert any("休市" in w for w in approved.warnings)
+
+
+def test_outside_rth_market_order_is_rejected(settings):
+    """盘外只接受限价单:盘前市价 + outsideRth=true 与"盘外成交"意图矛盾,硬拒。"""
+    premarket = datetime(2026, 8, 14, 8, 0, tzinfo=ET)
+    payload = stock_order(order={"orderType": "MKT", "lmtPrice": None, "outsideRth": True})
+    issues, _ = run(settings, premarket, payload, snapshot={"AAPL": 230.0})
+    assert "UNSUPPORTED" in codes(issues)
+    assert "限价" in issues[0].message
 
 
 def test_premarket_without_outside_rth_warns(settings):

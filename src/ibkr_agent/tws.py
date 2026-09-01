@@ -35,25 +35,47 @@ KNOWN_ENDPOINTS: Sequence[Dict[str, Any]] = (
     {"port": 4002, "label": "IB Gateway 模拟", "kind": "gateway", "paper": True},
 )
 
-APP_CANDIDATES: Dict[str, Sequence[str]] = {
-    "tws": (
-        "/Applications/Trader Workstation.app",
-        "/Applications/Trader Workstation */Trader Workstation *.app",
-        "~/Applications/Trader Workstation.app",
-        "~/Applications/Trader Workstation */Trader Workstation *.app",
-    ),
-    "gateway": (
-        "/Applications/IB Gateway.app",
-        "/Applications/IB Gateway */IB Gateway *.app",
-        "~/Applications/IB Gateway.app",
-        "~/Applications/IB Gateway */IB Gateway *.app",
-    ),
-}
-
-PROCESS_PATTERNS: Dict[str, str] = {
-    "tws": "Trader Workstation",
-    "gateway": "ibgateway",
-}
+if platform.system() == "Windows":
+    # IBKR 的 Windows 安装器默认装到 C:\Jts(可选装到用户目录);
+    # 新版把主程序放根目录,旧版按版本号分子目录,两种布局都扫。
+    APP_CANDIDATES: Dict[str, Sequence[str]] = {
+        "tws": (
+            "C:/Jts/tws.exe",
+            "C:/Jts/*/tws.exe",
+            "~/Jts/tws.exe",
+            "~/Jts/*/tws.exe",
+            os.path.join(os.environ.get("LOCALAPPDATA", ""), "Jts", "tws.exe"),
+        ),
+        "gateway": (
+            "C:/Jts/ibgateway/*/ibgateway.exe",
+            "C:/Jts/ibgateway.exe",
+            "~/Jts/ibgateway/*/ibgateway.exe",
+            os.path.join(os.environ.get("LOCALAPPDATA", ""), "Jts", "ibgateway", "*", "ibgateway.exe"),
+        ),
+    }
+    PROCESS_PATTERNS: Dict[str, str] = {
+        "tws": "tws.exe",
+        "gateway": "ibgateway.exe",
+    }
+else:
+    APP_CANDIDATES = {
+        "tws": (
+            "/Applications/Trader Workstation.app",
+            "/Applications/Trader Workstation */Trader Workstation *.app",
+            "~/Applications/Trader Workstation.app",
+            "~/Applications/Trader Workstation */Trader Workstation *.app",
+        ),
+        "gateway": (
+            "/Applications/IB Gateway.app",
+            "/Applications/IB Gateway */IB Gateway *.app",
+            "~/Applications/IB Gateway.app",
+            "~/Applications/IB Gateway */IB Gateway *.app",
+        ),
+    }
+    PROCESS_PATTERNS = {
+        "tws": "Trader Workstation",
+        "gateway": "ibgateway",
+    }
 
 
 @dataclass
@@ -87,7 +109,7 @@ def probe_port(host: str = "127.0.0.1", port: int = 7497, timeout: float = 0.6) 
 
 def scan_ports(settings: Settings, host: str = "127.0.0.1") -> List[Dict[str, Any]]:
     """扫标准端口 + 配置里出现的端口,标出每个端口对应哪条连接。"""
-    configured = {c.port: name for name, c in settings.connections.items()}
+    configured = {c.port: name for name, c in settings.connections_for("ibkr").items()}
     entries: List[Dict[str, Any]] = [dict(e) for e in KNOWN_ENDPOINTS]
     known_ports = {e["port"] for e in entries}
     for port, name in sorted(configured.items()):
@@ -136,6 +158,15 @@ def detect_apps() -> List[Dict[str, Any]]:
 
 
 def _process_running(pattern: str) -> bool:
+    if platform.system() == "Windows":
+        try:
+            proc = subprocess.run(
+                ["tasklist", "/FI", "IMAGENAME eq %s" % pattern, "/NH", "/FO", "CSV"],
+                capture_output=True, text=True, timeout=5,
+            )
+        except (OSError, subprocess.SubprocessError):
+            return False
+        return proc.returncode == 0 and pattern.lower() in proc.stdout.lower()
     if platform.system() not in ("Darwin", "Linux"):
         return False
     try:
@@ -153,19 +184,27 @@ def launch_app(key: str) -> Dict[str, Any]:
     """
     if key not in APP_CANDIDATES:
         raise ValueError("只支持拉起 tws 或 gateway,收到:%r" % key)
-    if platform.system() != "Darwin":
+    if platform.system() not in ("Darwin", "Windows"):
         raise RuntimeError("当前平台不支持一键拉起,请手动启动 TWS / IB Gateway。")
 
     for app in detect_apps():
         if app["key"] != key or not app["paths"]:
             continue
         target = app["paths"][0]
-        proc = subprocess.run(["open", "-a", target], capture_output=True, text=True)
-        if proc.returncode != 0:
-            raise RuntimeError("启动失败:%s" % (proc.stderr.strip() or "未知错误"))
+        if platform.system() == "Windows":
+            # cwd 设为安装目录:TWS 启动器按相对路径找 jars/ 与 jts.ini
+            subprocess.Popen(
+                [target], cwd=os.path.dirname(target),
+                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS,
+                close_fds=True,
+            )
+        else:
+            proc = subprocess.run(["open", "-a", target], capture_output=True, text=True)
+            if proc.returncode != 0:
+                raise RuntimeError("启动失败:%s" % (proc.stderr.strip() or "未知错误"))
         return {"launched": True, "path": target}
     raise FileNotFoundError(
-        "没有在 /Applications 里找到 %s。请先从 IBKR 官网下载安装。"
+        "没有找到 %s 的安装。请先从 IBKR 官网下载安装。"
         % ("Trader Workstation" if key == "tws" else "IB Gateway")
     )
 
@@ -253,9 +292,9 @@ def diagnose(
 
     用一个偏移过的 clientId,避免和正在下单的那条连接抢 ID(IBKR 会报 326)。
     """
-    cfg = settings.connections.get(connection_name)
+    cfg = settings.connections_for("ibkr").get(connection_name)
     if cfg is None:
-        raise ValueError("未定义的连接:%s" % connection_name)
+        raise ValueError("未定义的连接:%s(这里只在 IBKR 连接里查找)" % connection_name)
 
     probe = probe_port(cfg.host, cfg.port)
     result: Dict[str, Any] = {
@@ -338,7 +377,7 @@ def diagnose(
 
 def connection_guide(settings: Settings) -> List[Dict[str, Any]]:
     """给界面用的分步指引。刻意写死步骤文案,保证和 TWS 的菜单路径一致。"""
-    ports = "、".join(str(c.port) for c in settings.connections.values()) or "7497"
+    ports = "、".join(str(c.port) for c in settings.connections_for("ibkr").values()) or "7497"
     return [
         {
             "step": 1,

@@ -18,6 +18,9 @@ const { EventEmitter } = require('node:events');
 
 const CALL_TIMEOUT_MS = 120000;
 const ENGINE_DEPS = ['pydantic>=2.0', 'anthropic>=0.60', 'ib_insync>=0.9.86'];
+// 富途通道的 SDK 不进首启依赖:它连着 pandas / protobuf,几十兆,而多数人一辈子
+// 用不上这条备用通道。改成用到时按需装——「富途 OpenD」面板上有按钮。
+const OPTIONAL_DEPS = { futu: ['futu-api>=9.0'] };
 
 class EngineClient extends EventEmitter {
   /**
@@ -197,6 +200,24 @@ class EngineClient extends EventEmitter {
 
     // 3. 最后退路:系统 Python(开发者自己装好了依赖的情况)
     return process.platform === 'win32' ? 'python' : 'python3';
+  }
+
+  /**
+   * 按需装一组可选依赖(目前只有富途 SDK)。装在引擎当前用的那个 Python 里,
+   * 装完要重启引擎才生效——因为 import 是进程启动时解析的。
+   */
+  async installExtra(name) {
+    const deps = OPTIONAL_DEPS[name];
+    if (!deps) throw new Error(`未知的可选依赖:${name}`);
+    const python = await this.ensurePython();
+    this.emit('bootstrap', { phase: 'deps', message: `正在安装 ${deps.join(' ')}(需要联网)…` });
+    await this.#run(
+      python,
+      ['-m', 'pip', 'install', '--disable-pip-version-check', ...deps],
+      `安装 ${name} 依赖`
+    );
+    this.emit('bootstrap', { phase: 'done', message: `${name} 依赖安装完成。` });
+    return { installed: deps };
   }
 
   start() {

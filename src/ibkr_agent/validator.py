@@ -248,6 +248,13 @@ class Validator:
 
     # ---- 价差 ---------------------------------------------------------
     def _check_spread(self, contract: ContractSpec, order: OrderSpec) -> List[ValidationIssue]:
+        if contract.combo_strategy == "BUTTERFLY":
+            return self._check_butterfly(contract, order)
+        if contract.combo_strategy == "IRON_CONDOR":
+            return self._check_iron_condor(contract, order)
+        return self._check_vertical(contract, order)
+
+    def _check_vertical(self, contract: ContractSpec, order: OrderSpec) -> List[ValidationIssue]:
         legs: List[Leg] = list(contract.legs or [])
         if len(legs) != 2:
             return [ValidationIssue("BAD_SPREAD", "垂直价差必须正好两条腿。")]
@@ -265,8 +272,8 @@ class Validator:
             issues.append(ValidationIssue("BAD_SPREAD", "垂直价差两腿到期日必须相同。"))
         if buy.strike == sell.strike:
             issues.append(ValidationIssue("BAD_SPREAD", "两腿行权价不能相同。"))
-        if buy.ratio != sell.ratio:
-            issues.append(ValidationIssue("BAD_SPREAD", "目前只支持 1:1 比例。"))
+        if buy.ratio != 1 or sell.ratio != 1:
+            issues.append(ValidationIssue("BAD_SPREAD", "垂直价差只支持 1:1 比例。"))
         if issues:
             return issues
 
@@ -303,6 +310,116 @@ class Validator:
                         % (order.lmtPrice, width),
                     )
                 )
+        return issues
+
+    def _check_butterfly(self, contract: ContractSpec, order: OrderSpec) -> List[ValidationIssue]:
+        """蝴蝶只支持买入(借方):买外翼 1:1、卖中腿 2,同权利、同到期、等翼距。
+
+        只放行借方的原因:最大亏损被净权利金封死,风险形态与现有限额模型兼容;
+        卖出蝴蝶收的权利金小、保证金规则复杂,不值得为它扩大受攻击面。
+        """
+        legs: List[Leg] = sorted(contract.legs or [], key=lambda l: l.strike)
+        if len(legs) != 3:
+            return [ValidationIssue("BAD_SPREAD", "蝴蝶必须正好三条腿。")]
+
+        lo, mid, hi = legs
+        issues: List[ValidationIssue] = []
+        if order.action != "BUY":
+            issues.append(
+                ValidationIssue(
+                    "BAD_SPREAD",
+                    "仅支持买入(借方)蝴蝶:卖出蝴蝶的保证金与风险结构不在本系统支持范围内。",
+                )
+            )
+        if len({l.right for l in legs}) != 1:
+            issues.append(ValidationIssue("BAD_SPREAD", "蝴蝶三条腿必须同为 Call 或同为 Put。"))
+        if len({l.lastTradeDateOrContractMonth for l in legs}) != 1:
+            issues.append(ValidationIssue("BAD_SPREAD", "蝴蝶三条腿到期日必须相同。"))
+        if len({l.strike for l in legs}) != 3:
+            issues.append(ValidationIssue("BAD_SPREAD", "蝴蝶三条腿行权价必须互不相同。"))
+        if lo.action != "BUY" or hi.action != "BUY" or mid.action != "SELL":
+            issues.append(
+                ValidationIssue("BAD_SPREAD", "买入蝴蝶的腿方向必须是:买最低价、卖中间价、买最高价。")
+            )
+        if lo.ratio != 1 or hi.ratio != 1 or mid.ratio != 2:
+            issues.append(
+                ValidationIssue("BAD_SPREAD", "蝴蝶比例必须是 1:-2:1(外翼各 1 张,中腿 2 张)。")
+            )
+        if issues:
+            return issues
+
+        wing_lo = mid.strike - lo.strike
+        wing_hi = hi.strike - mid.strike
+        if abs(wing_lo - wing_hi) > 0.01:
+            return [
+                ValidationIssue(
+                    "BAD_SPREAD",
+                    "蝴蝶两翼必须等距(当前 %.2f / %.2f)。不等翼(broken wing)结构不支持。"
+                    % (wing_lo, wing_hi),
+                )
+            ]
+
+        if order.price_mode == "EXPLICIT" and order.lmtPrice is not None:
+            if order.lmtPrice > wing_lo:
+                issues.append(
+                    ValidationIssue(
+                        "BAD_SPREAD",
+                        "蝴蝶净权利金 %.2f 超过翼宽 %.2f,数学上不可能盈利。"
+                        % (order.lmtPrice, wing_lo),
+                    )
+                )
+        return issues
+
+    def _check_iron_condor(self, contract: ContractSpec, order: OrderSpec) -> List[ValidationIssue]:
+        """铁鹰只支持标准贷方结构:买外侧 Put、卖内侧 Put、卖内侧 Call、买外侧 Call。
+
+        四腿 1:1、同到期、内侧行权价严格错开(内侧同价是铁蝶,不支持)。
+        最大亏损 = 较宽一侧翼宽 - 收到的权利金,风险有界。
+        """
+        legs: List[Leg] = sorted(contract.legs or [], key=lambda l: l.strike)
+        if len(legs) != 4:
+            return [ValidationIssue("BAD_SPREAD", "铁鹰必须正好四条腿。")]
+
+        issues: List[ValidationIssue] = []
+        if order.action != "SELL":
+            issues.append(
+                ValidationIssue(
+                    "BAD_SPREAD",
+                    "仅支持卖出(贷方)铁鹰:收权利金、卖内侧买外翼。借方(反向)铁鹰不支持。",
+                )
+            )
+        if len({l.lastTradeDateOrContractMonth for l in legs}) != 1:
+            issues.append(ValidationIssue("BAD_SPREAD", "铁鹰四条腿到期日必须相同。"))
+        if any(l.ratio != 1 for l in legs):
+            issues.append(ValidationIssue("BAD_SPREAD", "铁鹰四条腿比例必须都是 1。"))
+        if len({l.strike for l in legs}) != 4:
+            issues.append(
+                ValidationIssue(
+                    "BAD_SPREAD",
+                    "铁鹰四条腿行权价必须互不相同(内侧同价的铁蝶结构不支持)。",
+                )
+            )
+
+        puts = sorted([l for l in legs if l.right == "P"], key=lambda l: l.strike)
+        calls = sorted([l for l in legs if l.right == "C"], key=lambda l: l.strike)
+        if len(puts) != 2 or len(calls) != 2:
+            issues.append(ValidationIssue("BAD_SPREAD", "铁鹰必须由两条 Put 腿与两条 Call 腿组成。"))
+        if issues:
+            return issues
+
+        if puts[-1].strike >= calls[0].strike:
+            issues.append(
+                ValidationIssue("BAD_SPREAD", "铁鹰的 Put 侧行权价必须整体低于 Call 侧。")
+            )
+        # 贷方结构:外翼是买入的保护腿,内侧是卖出的收权腿
+        if puts[0].action != "BUY" or puts[1].action != "SELL":
+            issues.append(
+                ValidationIssue("BAD_SPREAD", "Put 侧腿方向不对:应买入低行权价、卖出高行权价。")
+            )
+        if calls[0].action != "SELL" or calls[1].action != "BUY":
+            issues.append(
+                ValidationIssue("BAD_SPREAD", "Call 侧腿方向不对:应卖出低行权价、买入高行权价。")
+            )
         return issues
 
     # ---- 触发条件 ------------------------------------------------------
@@ -362,21 +479,53 @@ class Validator:
         issues: List[ValidationIssue] = []
 
         if contract.secType == "BAG":
-            legs = contract.legs or []
-            width = abs(legs[0].strike - legs[1].strike) if len(legs) == 2 else 0.0
-            notional = qty * contract.multiplier_value * width
+            width = _risk_width(contract)
+            if spec.price_mode == "EXPLICIT" and spec.lmtPrice is not None:
+                if spec.action == "BUY":
+                    # 借方组合(买价差/蝴蝶)最大亏损 = 付出的净权利金
+                    notional = qty * contract.multiplier_value * spec.lmtPrice
+                else:
+                    # 贷方组合(卖价差/铁鹰)最大亏损 = 宽度 - 收到的权利金
+                    notional = qty * contract.multiplier_value * max(width - spec.lmtPrice, 0.0)
+            else:
+                # AUTO_MID:权利金未知,用结构宽度做最大亏损上界
+                notional = qty * contract.multiplier_value * width
         elif contract.secType == "OPT":
-            # 注意:标的现价不是权利金,期权这里不做快照兜底
-            premium = _reference_price(spec, None)
-            if premium is None:
-                return 0.0, [
-                    ValidationIssue(
-                        "UNPRICEABLE",
-                        "单腿期权缺少可用于估算风险敞口的价格(权利金),无法核对限额,已拒绝。"
-                        "请写明权利金上限,例如'权利金不超过 5.5'。",
-                    )
-                ]
-            notional = qty * contract.multiplier_value * premium
+            if spec.action == "SELL":
+                # 裸卖期权的风险敞口不是"收到的权利金"。修复前按权利金计,
+                # 卖 10 张 5.5 的 call 只算 5,500 敞口轻松过闸,真实风险无上限。
+                if contract.right != "P":
+                    return 0.0, [
+                        ValidationIssue(
+                            "UNSUPPORTED",
+                            "裸卖 Call 的最大亏损无上限,且本系统无法核对你是否持有正股"
+                            "(备兑)。单腿卖出 Call 不支持;备兑思路请直接在 TWS 操作,"
+                            "或改用风险有界的贷方价差(卖出 call spread)。",
+                        )
+                    ]
+                if not contract.strike or contract.strike <= 0:
+                    return 0.0, [
+                        ValidationIssue(
+                            "UNPRICEABLE",
+                            "卖出 Put 需要行权价才能按最坏情况(被行权接货)核算敞口,"
+                            "当前合约缺少行权价,已拒绝。",
+                        )
+                    ]
+                # 卖出 Put 按现金担保口径计敞口:行权价 × 乘数 × 张数(最坏情况全额接货)
+                notional = qty * contract.multiplier_value * contract.strike
+            else:
+                # 买入期权:最大亏损 = 付出的权利金。
+                # 注意:标的现价不是权利金,期权这里不做快照兜底
+                premium = _reference_price(spec, None)
+                if premium is None:
+                    return 0.0, [
+                        ValidationIssue(
+                            "UNPRICEABLE",
+                            "单腿期权缺少可用于估算风险敞口的价格(权利金),无法核对限额,已拒绝。"
+                            "请写明权利金上限,例如'权利金不超过 5.5'。",
+                        )
+                    ]
+                notional = qty * contract.multiplier_value * premium
         else:
             ref = _reference_price(spec, self.snapshot.get(contract.symbol))
             if ref is None:
@@ -435,7 +584,15 @@ class Validator:
         if status in ("盘前", "盘后") and not spec.outsideRth:
             warnings.append("当前为%s,outsideRth=false,订单要等到常规时段才会成交" % status)
         if status in ("盘前", "盘后") and spec.outsideRth and spec.orderType == "MKT":
-            warnings.append("%s市价单流动性差,滑点风险显著" % status)
+            # 交易所盘外只接受限价单:盘外市价单物理上不会在盘外成交,
+            # 只会挂到开盘——与"盘前成交"的意图直接矛盾,必须硬拒而不是警告。
+            return [
+                ValidationIssue(
+                    "UNSUPPORTED",
+                    "%s市价单不被交易所支持:盘外只接受限价单,市价单会一直等到开盘才成交,"
+                    "与盘外成交的意图矛盾。请改写为盘外限价单,例如'盘前限价 X 买入…'。" % status,
+                )
+            ]
         return []
 
     # ---- 重复防抖 ------------------------------------------------------
@@ -486,8 +643,35 @@ def order_signature(order: ParsedOrder, account_alias: str) -> str:
         ]
     elif contract.secType == "BAG":
         for leg in sorted(contract.legs or [], key=lambda l: l.strike):
-            parts += [leg.action, leg.lastTradeDateOrContractMonth, "%g" % leg.strike, leg.right]
+            parts += [
+                leg.action,
+                "%d" % leg.ratio,
+                leg.lastTradeDateOrContractMonth,
+                "%g" % leg.strike,
+                leg.right,
+            ]
     return "|".join(parts)
+
+
+def _risk_width(contract: ContractSpec) -> float:
+    """组合的最大亏损宽度(每张、每乘数单位),用于限额复算。
+
+    垂直价差=行权价差;蝴蝶=翼宽(借方最大亏损 = 净权利金 ≤ 翼宽);
+    铁鹰=较宽一侧翼宽(贷方最大亏损 = 宽翼 - 权利金 < 宽翼)。
+    结构不合法时给 0——结构校验会先拦下,这里不重复报。
+    """
+    legs = sorted(contract.legs or [], key=lambda l: l.strike)
+    strategy = contract.combo_strategy
+    if strategy == "VERTICAL" and len(legs) == 2:
+        return abs(legs[1].strike - legs[0].strike)
+    if strategy == "BUTTERFLY" and len(legs) == 3:
+        return legs[1].strike - legs[0].strike
+    if strategy == "IRON_CONDOR" and len(legs) == 4:
+        puts = sorted([l for l in legs if l.right == "P"], key=lambda l: l.strike)
+        calls = sorted([l for l in legs if l.right == "C"], key=lambda l: l.strike)
+        if len(puts) == 2 and len(calls) == 2:
+            return max(puts[1].strike - puts[0].strike, calls[1].strike - calls[0].strike)
+    return 0.0
 
 
 def _reference_price(spec: OrderSpec, snapshot_price: Optional[float]) -> Optional[float]:
