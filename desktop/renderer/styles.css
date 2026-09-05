@@ -26,6 +26,9 @@
 
   /* 焦点环只有一种:3.5px、强调色 30%——AppKit 的 focus ring。输入框、开关、按钮都用它。 */
   --focus-ring: 0 0 0 3.5px color-mix(in srgb, var(--blue) 30%, transparent);
+  --focus-outline: 3.5px solid color-mix(in srgb, var(--blue) 30%, transparent);
+  /* 语义别名:样式里多处写着 var(--accent),但它从来没被定义过——那些焦点环和悬停色一直是失效的 */
+  --accent: var(--blue);
 
   --label: #000000;
   --label-secondary: rgba(60, 60, 67, 0.6);
@@ -386,7 +389,7 @@ textarea::placeholder, input::placeholder { color: var(--label-tertiary); }
 textarea:focus, input:focus, select:focus {
   outline: none;
   border-color: var(--blue);
-  box-shadow: 0 0 0 3.5px color-mix(in srgb, var(--blue) 28%, transparent);
+  box-shadow: var(--focus-ring);
 }
 select { appearance: none; padding-right: 26px; cursor: default; }
 .select-wrap { position: relative; }
@@ -460,7 +463,7 @@ input.w-64 { width: 64px; }
 }
 .switch input:checked { background: var(--green); }
 .switch input:checked::after { transform: translateX(16px); }
-.switch input:focus-visible { outline: 3.5px solid color-mix(in srgb, var(--blue) 30%, transparent); }
+.switch input:focus-visible { outline: var(--focus-outline); }
 .switch .sub { display: block; color: var(--label-secondary); font-size: 11px; margin-top: 1px; }
 
 /* System Settings 那种内嵌分组列表 */
@@ -872,8 +875,8 @@ input.w-64 { width: 64px; }
 /* ---- 键盘可达性 ----
  * 原来只有开关有焦点环,其余控件用 Tab 走一圈完全看不出焦点在哪。 */
 :where(button, select, textarea, input, [tabindex]):focus-visible {
-  outline: 2px solid var(--blue);
-  outline-offset: 2px;
+  outline: var(--focus-outline);     /* 全站只有这一种焦点环:3.5px、强调色 30%,AppKit 的样子 */
+  outline-offset: 0;
   border-radius: var(--radius-control);
 }
 
@@ -1151,7 +1154,7 @@ kbd {
   cursor: pointer; font-size: 11px; color: var(--text-secondary);
   user-select: none; -webkit-user-select: none;
 }
-.shorthand summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.shorthand summary:focus-visible { outline: var(--focus-outline); outline-offset: 0; border-radius: 4px; }
 .shorthand .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 2px; }
 .shorthand .chip {
   font: inherit; font-size: 12px; padding: 3px 10px; border-radius: 999px;
@@ -1159,7 +1162,12 @@ kbd {
   color: var(--text-primary); cursor: pointer;
 }
 .shorthand .chip:hover { border-color: var(--accent); color: var(--accent); }
-.shorthand .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.shorthand .chip:focus-visible { outline: var(--focus-outline); outline-offset: 0; }
+.shorthand .hint-list {
+  margin: 8px 0 0; padding-left: 16px;
+  color: var(--label-secondary); font-size: 11px; line-height: 1.6;
+}
+.shorthand .hint-list li { margin: 2px 0; }
 .shorthand .hint.tight { margin-top: 6px; line-height: 1.7; }
 .shorthand .hint b { color: var(--text-primary); font-weight: 600; }
 

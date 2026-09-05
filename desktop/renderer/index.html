@@ -193,7 +193,7 @@
               ></textarea>
               <div class="row">
                 <button id="btn-parse" class="btn primary">解析并校验</button>
-                <button id="btn-execute" class="btn warn" disabled>发送到券商</button>
+                <button id="btn-execute" class="btn" disabled>发送到券商</button>
                 <span class="muted" id="hint-parse-key">解析</span>
               </div>
               <!-- 发单账户:勾一个就发到那个账户;勾两个,每笔订单各发一份(引擎按账户扇出,
@@ -215,14 +215,12 @@
                   <button type="button" class="chip" data-snippet=",权利金不超过 ">权利金上限</button>
                   <button type="button" class="chip" data-snippet=",理由:">补理由</button>
                 </div>
-                <p class="hint tight">
-                  默认:<b>1 张</b> · <b>当日到期</b> · 组合默认 <b>SPX</b> · 蝴蝶默认<b>买入</b>;
-                  <b>N cm = 翼宽 N 点</b>;末尾孤立数字 = <b>净权利金上限</b>;看涨/看跌未写时按现价推断。
-                  用到默认值时结果会带 warning,发送前核对。<br>
-                  <b>本地秒解</b>:「1.8 挂15蝴蝶 15CM」这类固定行话不经 AI。挂 = 当日限价;
-                  <b>N蝴蝶 = 现价百位 + N</b>(现价 6907 → 15蝴蝶 = 6915);「蝴蝶」二字可省:
-                  「spx明天 7850 40cm 2.3」= 明日 7810/7850/7890 蝴蝶挂 2.3。带触发价、理由等附加语义仍走 AI。
-                </p>
+                <ul class="hint-list">
+                  <li>默认 1 张、当日到期、组合默认 SPX、蝴蝶默认买入;用到默认值时结果会带 warning,发送前核对。</li>
+                  <li>N cm = 翼宽 N 点;末尾孤立数字 = 净权利金上限;看涨 / 看跌未写时按现价推断。</li>
+                  <li>固定行话本地秒解、不经 AI:「1.8 挂15蝴蝶 15CM」中「挂」= 当日限价,「N蝴蝶」= 现价百位 + N(现价 6907 → 6915)。</li>
+                  <li>「蝴蝶」二字可省:「spx明天 7850 40cm 2.3」= 明日 7810/7850/7890 蝴蝶挂 2.3;带触发价、理由等附加语义仍走 AI。</li>
+                </ul>
               </details>
               <p class="hint">
                 发送条件:<code>auto_execute</code> 已开 · <span id="hint-gateway">已连接网关</span> · 未熔断;实盘另需
