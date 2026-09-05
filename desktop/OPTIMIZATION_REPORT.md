@@ -152,7 +152,14 @@ DOM id 不变(`audit_ui.py` 0 问题),`capture_pages --check` 16 页零报错;�
 | T12 | 侧栏分级 | 16 项等权 | 「应用」组 `margin-top:auto` 沉底 |
 | T14 | 侧栏功能分级 | 16 项 4 组平铺;持仓追踪在"研究";接入三页常驻 | 12 项 3 组(工作区 / 研究 / 应用);「行情」= K线 PA + 订单簿 + 期权墙,「接入」= TWS + 富途 + 大模型,页内分段切子页并记住;组可折叠;`activateTab` 统一切页,`.tab[data-tab]` 跳转兼容;`capture_pages` 改拍叶子页 |
 | T15 | 图区底色 | 深色下蜡烛浮在卡片灰(#2f2f33)上 | `--chart-bg` 近黑 #0b0b0d(iOS 股市 / 富途夜间),画布自己铺底,8px 圆角嵌在卡片里 |
+| T16 | 持仓追踪表单 | 十个字段摊在每张卡片里 | 默认收起,「设置追踪」展开,一次一张,展开的记在 `tracker.openKey` 刷新不收 |
+| T17 | K线 PA 结论 | 九行散文 | `renderReadout`:按首个冒号拆成 dt/dd 两列(`.detail-grid`),首句与拆不开的行原样 |
 | T13 | 截图可复现 | Electron 把 file:// 的 localStorage 持久化在 %AppData%/Electron,上次的折叠态带进下次截图 | `capture_pages.js` 每次 `setPath('userData', mkdtemp)` |
+
+**打包复核(2026-09-06,含本轮全部界面改动)**:`npm run dist:win` 通过(stage:engine → smoke:engine 184 ms 应答 → electron-builder),
+安装器 91.0 MB、`win-unpacked` 310 MB(上次终态 86.8 / 301.3,增量来自本机 electron-builder 与依赖锁的漂移,
+`app.asar` 本身只多了 pa-chart.js 的十几 KB)。打包版能启动并出窗口;开发态 `DAFRI_DEV=1` 跑 60 秒,渲染进程无 error 级消息。
+逐页手点的真机验证需要接管屏幕,本会话未获授权,由用户自行点一遍。
 
 **没做的**:`mock-bridge-empty.js` 的 `paAnalyze` 按设计抛错,所以 `--check` 对空态预览会报"K 线 PA 页没有画出 canvas"——
 `git stash` 复核这一条在本轮之前就是这样,`--check` 只适用于有数据的预览;K 线本身、侧栏、顶栏、设置页本轮未动。
