@@ -19,8 +19,8 @@ sys.path.insert(0, str(ROOT / "src"))
 from ibkr_agent.priceaction import TIMEFRAMES, agreement, analyze, htf_summary  # noqa: E402
 
 golden = json.loads((ROOT.parent / "trade-ts" / "baseline" / "golden" / "priceaction.json").read_text(encoding="utf-8"))
-case = next(c for c in golden["cases"] if c["name"] == sys.argv[1] if len(sys.argv) > 1) if len(sys.argv) > 1 \
-    else next(c for c in golden["cases"] if c["name"] == "uptrend")
+names = [a for a in sys.argv[1:] if not a.startswith("--")]
+case = next(c for c in golden["cases"] if c["name"] == (names[0] if names else "uptrend"))
 rows = case["rows"]
 now = datetime.fromisoformat(case["now"])
 symbol, timeframe = "NVDA", case["timeframe"]
@@ -52,14 +52,33 @@ result["cached"] = False
 result["rth"] = False
 result["fetched_at"] = now.isoformat()
 
+if "--stress" in sys.argv:
+    # 极端样例:开盘第一根巨量(公开源常见)、5 个关键位挤在 0.3% 价格区间、FVG 与订单块重叠
+    last = result["last"]
+    result["bars"][0]["volume"] = result["bars"][0]["volume"] * 40
+    result["levels"] = [
+        {"price": round(last * (1 + k), 4), "side": "resistance" if k > 0 else "support",
+         "touches": 2, "swings": 1, "distance_pct": round(k * 100, 2)}
+        for k in (-0.003, -0.0015, -0.0005, 0.0005, 0.0015, 0.003)
+    ]
+    t0 = result["bars"][len(result["bars"]) // 2]["time"]
+    result["fvgs"] = [
+        {"side": "bull", "top": round(last * 0.995, 4), "bottom": round(last * 0.99, 4), "time": t0, "filled_pct": 0},
+        {"side": "bear", "top": round(last * 1.004, 4), "bottom": round(last * 1.001, 4),
+         "time": result["bars"][-20]["time"], "filled_pct": 30},
+    ]
+    result["order_block"] = {"top": round(last * 0.997, 4), "bottom": round(last * 0.992, 4), "time": t0}
 payload = json.dumps(result, ensure_ascii=False, separators=(",", ":"))
-data_js = HERE / "mock-bridge.js"
-src = data_js.read_text(encoding="utf-8")
+data_js = HERE / ("mock-bridge-stress.js" if "--stress" in sys.argv else "mock-bridge.js")
+src = (HERE / "mock-bridge.js").read_text(encoding="utf-8")
 pattern = re.compile(r"paAnalyze:\s*async\s*\(\)\s*=>\s*\((\{\}|\{.*?\})\),", re.S)
 assert pattern.search(src), "mock-bridge.js 里找不到 paAnalyze 定义"
 src = pattern.sub("paAnalyze: async () => (" + payload + "),", src, count=1)
 data_js.write_text(src, encoding="utf-8")
 
+if "--stress" in sys.argv:
+    print("stress mock:", data_js.name, "|", len(payload), "chars")
+    sys.exit(0)
 empty_js = HERE / "mock-bridge-empty.js"
 esrc = empty_js.read_text(encoding="utf-8")
 empty_pattern = re.compile(r"paAnalyze:\s*async\s*\(\)\s*=>\s*(\(\{\}\)|\{[^}]*\}),", re.S)
