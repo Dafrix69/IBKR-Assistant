@@ -50,3 +50,20 @@ python tools/audit_ui.py
 查四类人眼容易漏的问题:无可访问名字的按钮、没有标签也没有 placeholder 的输入框、
 app.js 引用了但 index.html 里不存在的 DOM id(点了没反应的按钮多半是这个)、
 界面文案里漏出来的内部枚举。不是替代人眼看,是把人眼不擅长的那部分交给机器。
+
+## 截图集
+
+```bash
+npx electron tools/capture_pages.js .uipreview/preview.html .uipreview/baseline/data --theme dark --scale 1 --widths 1360
+npx electron tools/capture_pages.js .uipreview/preview.html .uipreview/baseline/data --theme dark --scale 1.5 --widths 1360
+npx electron tools/capture_pages.js .uipreview/preview-empty.html .uipreview/baseline/empty --theme light --scale 1 --widths 1360
+npx electron tools/capture_pages.js .uipreview/preview.html .uipreview/baseline/pa-widths --theme dark --widths 1080,1900 --only pa
+```
+
+用 Electron 自己把预览台的每一页拍成 PNG(`<theme>-<scale>x-<width>-<tab>.png`),K线 PA 页会先填标的、
+点「分析」再拍。为什么不用浏览器:窄窗口丢弃顶栏胶囊、`titleBarOverlay` 留白、系统字体栈,这些只在
+Electron 里才是真实的。`--scale 1.5` 对应 Windows 150% 显示缩放——用户的问题截图就是在那个缩放下拍的,
+100% 下看不出同样的问题。
+
+界面改动的验收方式是**截图对比**:改前改后各出一套,并排看,差异只允许出现在该次改动声明要改的地方。
+`.uipreview/` 已 gitignore,截图集不进仓库。
