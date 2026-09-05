@@ -205,9 +205,22 @@ input, textarea { user-select: text; }
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
-.chip.ok { color: var(--green); background: color-mix(in srgb, var(--green) 14%, transparent); }
-.chip.warn { color: var(--orange); background: color-mix(in srgb, var(--orange) 14%, transparent); }
-.chip.bad { color: var(--red); background: color-mix(in srgb, var(--red) 14%, transparent); }
+/* 顶栏状态 = 一个 8px 圆点 + 常规文字。颜色只落在圆点上:Apple 的工具栏里没有彩色填充的胶囊,
+   三颗不同颜色的填充块并排,是"后台管理系统"的观感来源之一。 */
+.status-chips .chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 2px 6px; background: none; color: var(--label); font-size: 12px;
+}
+.status-chips .chip::before {
+  content: ''; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  background: var(--label-tertiary);
+}
+.status-chips .chip.ok::before { background: var(--green); }
+.status-chips .chip.warn::before { background: var(--orange); }
+.status-chips .chip.bad::before { background: var(--red); }
+.status-chips .chip.subtle { color: var(--label-tertiary); }
+.status-chips .chip.subtle::before { display: none; }
+.status-chips .chip[hidden] { display: none; }   /* 作者层的 display 会盖掉 [hidden],这里补回来 */
 
 /* 发单账户勾选:复选框样式的胶囊,勾几个发几个 */
 .account-picker {
@@ -235,9 +248,9 @@ input, textarea { user-select: text; }
 
 /* 源列表侧栏:透出窗口材质,内容区更实——经典 macOS 分界 */
 .sidebar {
-  width: 210px;
+  width: 220px;
   flex-shrink: 0;
-  padding: 10px 8px;
+  padding: 8px 0;
   overflow-y: auto;
   border-right: 0.5px solid var(--separator);
   display: flex;
@@ -245,21 +258,23 @@ input, textarea { user-select: text; }
   gap: 1px;
 }
 .sidebar-group {
-  margin: 12px 8px 3px;
+  margin: 14px 18px 4px;     /* 与项文字左对齐:10 内缩 + 8 内边距 */
   color: var(--label-tertiary);
   font-size: 11px;
   font-weight: 590;
   letter-spacing: 0.02em;
 }
-.sidebar-group:first-child { margin-top: 2px; }
+.sidebar-group:first-child { margin-top: 4px; }
 
 .nav-item {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 5px 8px;
+  min-height: 28px;          /* macOS 源列表的中号行高 */
+  margin: 0 10px;            /* 选中底不贴侧栏边,Finder / Notes 都留 10px */
+  padding: 0 8px;
   border: none;
-  border-radius: 6px;
+  border-radius: 5px;
   background: none;
   color: var(--label);
   font: inherit;
@@ -419,6 +434,8 @@ input.w-64 { width: 64px; }
 .btn.primary:hover:not(:disabled) { background: color-mix(in srgb, var(--blue) 88%, black); }
 .btn.warn { color: var(--orange); }
 .btn.danger { color: var(--red); }
+/* 「暂停自动执行」常态下是普通按钮——红字会被读成"正在告警";只有已熔断(要解除)时才红 */
+#btn-halt.engaged { color: var(--red); font-weight: 510; }
 .btn.tiny { padding: 2px 8px; font-size: 11px; }
 .btn.ghost { background: none; border-color: transparent; box-shadow: none; color: var(--blue); }
 .btn.ghost:hover:not(:disabled) { background: var(--bg-fill); }
@@ -590,7 +607,7 @@ input.w-64 { width: 64px; }
   align-items: center;
   padding: 5px 16px;
   overflow-x: auto;
-  background: var(--bg-content);
+  background: var(--bg-window);    /* 和工具栏同一块材质:chrome 是 chrome,内容区从发丝线以下开始 */
   border-bottom: 0.5px solid var(--separator);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
