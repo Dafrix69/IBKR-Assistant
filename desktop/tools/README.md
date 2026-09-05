@@ -65,8 +65,15 @@ npx electron tools/capture_pages.js .uipreview/preview.html .uipreview/baseline/
 Electron 里才是真实的。`--scale 1.5` 对应 Windows 150% 显示缩放——用户的问题截图就是在那个缩放下拍的,
 100% 下看不出同样的问题。
 
+加 `--check` 就是 renderer 的 smoke:16 页各点一遍,渲染进程有任何 error 级控制台消息(已知的 6 条内联样式 CSP 提示除外)、
+或 K线 PA 页没画出 canvas,就 FAIL;结论写在 `<outDir>/check.txt`,退出码 0/1。
+
 界面改动的验收方式是**截图对比**:改前改后各出一套,并排看,差异只允许出现在该次改动声明要改的地方。
 `.uipreview/` 已 gitignore,截图集不进仓库。
+
+K线 PA 页的数据由 `python tools/gen_pa_mock.py` 生成(引擎纯函数 × 黄金基线 K 线,写进两份 mock);
+`--stress` 另写一份 `mock-bridge-stress.js`:首根巨量、6 个关键位挤在 0.6% 区间、FVG 与订单块重叠,
+专门用来看标签避让与量能归一化。
 
 ## 打包前置:引擎暂存与自检
 

@@ -146,7 +146,9 @@ K 线参照富途/moomoo 的图表工程标准。"现状"来自基线截图与�
 | `win-unpacked` | 472 MB | **301 MB** | −36% |
 | 其中 `resources/` | 142 MB | 14.9 MB | −90% |
 
-exe 没到 −30%:剩下的 86.8 MB 里约 80 MB 是 Electron 本体压缩后的体积,是地板。下一步试 `compression: maximum`。
+exe 没到 −30%:剩下的 86.8 MB 里约 80 MB 是 Electron 本体压缩后的体积,是地板。`compression: maximum` 试过,
+NSIS 产物一个字节没变(86.8 MB),已撤回。**终态**(阶段 3 之后再打一次包,含 pa-chart.js):exe 86.8 MB,
+`win-unpacked` 301.3 MB,`app.asar` 里确认含 `pa-chart.js`。
 
 **打包版干净环境启动**:PATH 只留 `C:\Windows\System32`(机器上的 node / python 都不可见)启动
 `dist/win-unpacked/Dafri Trading.exe`,窗口正常,引擎子进程(`Dafri Trading.exe … cli.js rpc`,即 Electron-as-Node)
@@ -154,7 +156,25 @@ exe 没到 −30%:剩下的 86.8 MB 里约 80 MB 是 Electron 本体压缩后的
 
 ## 4. K 线图
 
-(阶段 3 填写)
+用户拍板:引擎加 `ma` 字段;保持绿涨红跌为默认并做成设置;canvas 重写。提交:`423edb5`(引擎 ma,两侧同步,
+黄金基线与 RPC 样例重生成)、`5d9380d`(canvas 图)。
+
+| # | 对照点 | 改后 | 截图 |
+|---|---|---|---|
+| K1 | 按像素画 | ResizeObserver + dpr,字号 11 / 线宽 1 固定;1080 / 1360 / 1900 三宽度文字大小一致 | `step3/dark-1x-{1080,1360,1900}-pa.png`、`dark-1.5x-1360-pa.png` |
+| K2 | 坐标轴 + 网格 | 右轴 1/2/2.5/5 步进,底轴按像素间距抽样、跨日带日期,网格 7% | 同上 |
+| K3 | 标签避让 | 关键位/现价标签在轴上,重叠推开 + 引线;现价固定 | `step3/stress/dark-1x-1360-pa.png`(6 个价位挤在 0.6% 内,全部可读) |
+| K4 | 区域降噪 | 7% 填充 + 22% 边线,右端止于最后一根 K 线,9px 小标签 | stress 图:FVG 与 OB 重叠仍分得开 |
+| K5 | 量能归一化 | 95 分位满格,首根 ×40 巨量只是顶格,其余柱子正常 | stress 图(基线里同样数据只见一根柱) |
+| K6 | 十字光标 | 竖/横线 + 轴上价格/时间标签 + 开高低收量涨跌读数 | 交互态,截图工具拍不到,已在 Electron 里手动看过 |
+| K7 | 摆动点 | 9px、45% 透明,上下 9px,只标最近 8 个 | 同 K1 截图 |
+| K8 | 图例 | 左上一行色块 + 词;长说明进「图上画的是什么」折叠区 | 同 K1 截图 |
+| K9 | 涨跌色 token | 全部从 CSS token 读;「涨跌配色」切换即重画(MutationObserver) | `step3/light-1x-1360-pa.png`(浅色系统色) |
+| K10 | 均线 | 引擎 `ma` MA5/10/20,左上角读数随光标 | 同 K1 截图 |
+
+设计说明:价格区高度由布局给(380px,窄窗 320),量能子图 54px,右轴 64px;价格范围取 bars 的高低与均线并留 5% 边距;
+关键位标签的最小间距 = 标签高 16px,最多 6 轮推挤后夹回绘图区。极端样例里"只有 3 根 bar"和"指数无成交量"由代码路径兜底
+(不足 2 根写一句提示;成交量全 0 不画量能子图),引擎本身对 <30 根直接拒绝,真实链路不会出现。
 
 ## 5. 没做的与建议
 
@@ -163,6 +183,12 @@ exe 没到 −30%:剩下的 86.8 MB 里约 80 MB 是 Electron 本体压缩后的
   不是空目录——根目录那份库里有 11 条交易记录、12 条成交、44 条事件、1 条持仓追踪。是不是要并回正式库、还是确认无用后删,
   由你定;按 §9 的数据规矩我不动 S1 数据。
 - 打包版干净环境启动已做(见 §3);「解析并校验」一条指令的端到端走通需要在打包版界面里手点,未自动化。
+- **renderer 最小 smoke 已补**(任务书决策 5):`npx electron tools/capture_pages.js … --check` 把 16 页各点一遍,
+  收集渲染进程 error 级控制台消息(排除已知的 6 条内联样式 CSP 提示),并要求 K线 PA 页画出 canvas;
+  结论写到 `<outDir>/check.txt`,退出码 0/1。当前:PASS。
+- 十字光标(K6)的验证方式:隐藏窗口的截图拿不到悬停帧,改为在页面里派发 mousemove 后探像素——右轴价格标签
+  与底部时间标签处为实底、远处透明,证明画出来了。
+- 窗口失焦时侧栏选中项退灰(S3)未做:要 main.js 转发 focus/blur,超出"只改皮相"。
 - `.uipreview/reference/`:用户的两张问题截图需由用户放入。
 
 ## 6. FINDINGS(按约束不许顺手改的疑似问题)
@@ -170,3 +196,9 @@ exe 没到 −30%:剩下的 86.8 MB 里约 80 MB 是 Electron 本体压缩后的
 - **预览台 PA 数据缺失**:`tools/mock-bridge.js` `paAnalyze: async()=>({})`,`mock-bridge-empty.js` 同。真实 RPC
   未连券商时抛 `-32015`,不会返回空对象;返回空对象让 `renderPa` 渲染出一整页 `undefined`。属预览台工具问题,
   本次已修(见 §1)。顺带暴露 `renderPa` 对残缺负载没有像设置页那样"缺什么空哪格"——真实链路里不会发生,记录不改。
+- **`scripts/verify_baseline.py` 在本次任何改动之前就不通过**(`git stash` 复核):`tracker.short_stock.steps[0]` 的
+  `profit_peak / profit_trail_stop / profit_drawdown_threshold` 三个字段"基线中不存在,现值 None"。是追踪器加了
+  利润回撤字段后没重跑 `make_baseline.py`,属基线过期,不是回归。按约束未顺手重生成——那是引擎侧的验收基线,应由改追踪器的人确认后再刷。
+- **`README.md`「测试」一节写的 418 项**已过时(现 642),「界面」一节写的"七个页面"也已是 16 个;本次只补了新决策,没有整体重写。
+- **trade-ts/ 不在版本控制里**(根目录与 trade-ts 都没有 .git):本次对 `trade-ts/src/priceaction.ts`、`broker.ts`、`ibSession.ts`、
+  测试与黄金基线的改动只存在于磁盘上。建议把 trade-ts 纳入 trade 仓库或单独建库。
