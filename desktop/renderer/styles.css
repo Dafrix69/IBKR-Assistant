@@ -33,6 +33,10 @@
   --orange-text: #c93400;
   --up-text: var(--green-text);
   --down-text: var(--red-text);
+  /* 蜡烛与量能柱的配色:系统绿红是给圆点和开关用的饱和色,几百根挤在一起会发光;
+     这一对(青绿 / 珊瑚红)是图表业界的通用值,深浅色都能用。文字与圆点仍用系统色。 */
+  --chart-up: #26a69a;
+  --chart-down: #ef5350;
 
   /* 焦点环只有一种:3.5px、强调色 30%——AppKit 的 focus ring。输入框、开关、按钮都用它。 */
   --focus-ring: 0 0 0 3.5px color-mix(in srgb, var(--blue) 30%, transparent);
@@ -107,6 +111,8 @@
   --down: var(--green);
   --up-text: var(--red-text);
   --down-text: var(--green-text);
+  --chart-up: #ef5350;
+  --chart-down: #26a69a;
 }
 
 /*
@@ -684,10 +690,36 @@ input.w-64 { width: 64px; }
 .book-bar.ask { background: var(--down); }
 .book-price, .book-size { position: relative; }
 /* K线 PA */
-/* K 线容器:高度由布局给,画布按真实像素填满;字号线宽在 pa-chart.js 里固定,不随宽度变 */
-.pa-chart-wrap { position: relative; height: 380px; margin-top: 6px; }
+/* 图表容器:高度由布局给,画布按真实像素填满;字号线宽在 pa-chart.js 里固定,不随宽度变。
+   三档高度:K线 PA 主图 440,交易分析的两张 320,回测净值曲线 220。 */
+.pa-chart-wrap { position: relative; height: 440px; margin-top: 6px; }
+.chart-wrap { position: relative; margin-top: 6px; }
+.chart-wrap.mid { height: 320px; }
+.chart-wrap.short { height: 220px; }
 .pa-canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
-@media (max-width: 1100px) { .pa-chart-wrap { height: 320px; } }
+@media (max-width: 1100px) { .pa-chart-wrap { height: 360px; } .chart-wrap.mid { height: 280px; } }
+
+/* 期权墙的价位梯子:一根竖轴,行按价格定位;支撑绿、阻力红、现价蓝点 */
+.ladder { position: relative; margin: 8px 0 2px; font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.ladder-axis { position: absolute; left: 96px; top: 0; bottom: 0; border-left: 1px solid var(--separator); }
+.ladder-row {
+  position: absolute; left: 0; right: 0; height: 22px;
+  display: flex; align-items: center; gap: 8px;
+  transform: translateY(-50%); color: var(--label-secondary);
+}
+.ladder-src { width: 86px; text-align: right; flex-shrink: 0; }
+.ladder-tick { width: 14px; height: 0; margin-left: 2px; border-top: 1.5px solid currentColor; flex-shrink: 0; }
+.ladder-price { font-family: var(--font-mono); font-weight: 590; color: var(--label); min-width: 58px; }
+.ladder-dist { color: var(--label-tertiary); }
+.ladder-row.support { color: var(--up-text); }
+.ladder-row.support .ladder-tick { border-color: var(--chart-up); }
+.ladder-row.resistance { color: var(--down-text); }
+.ladder-row.resistance .ladder-tick { border-color: var(--chart-down); }
+.ladder-row.spot { color: var(--blue); }
+.ladder-row.spot .ladder-src { font-weight: 590; }
+.ladder-row.spot .ladder-tick {
+  width: 8px; height: 8px; margin-left: -2px; border: none; border-radius: 50%; background: var(--blue);
+}
 .pa-score { font-family: var(--font-mono); font-weight: 700; font-size: 16px; letter-spacing: -0.02em; }
 .pa-score.up { color: var(--up-text); }
 .pa-score.down { color: var(--down-text); }
@@ -1210,15 +1242,12 @@ kbd {
 
 
 /* ---- 交易分析(蝴蝶复盘) ---- */
-.review-chart { width: 100%; height: auto; margin-top: 6px; display: block; }
 .review-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 6px; margin: 8px 0; }
 .review-stat { background: var(--bg-fill); border-radius: 8px; padding: 7px 9px; }
 .review-stat .k { font-size: 10.5px; color: var(--label-secondary); }
 .review-stat .v { font-size: 14px; font-weight: 590; margin-top: 2px; }
 .review-stat .v.pos { color: var(--up-text); }
 .review-stat .v.neg { color: var(--down-text); }
-.review-legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 10.5px; color: var(--label-secondary); margin-top: 4px; }
-.review-legend i { display: inline-block; width: 14px; height: 0; border-top: 2px solid currentColor; vertical-align: middle; margin-right: 4px; }
 .review-notes { margin: 6px 0 0; padding-left: 16px; font-size: 11.5px; color: var(--orange-text); }
 
 .review-table { width: 100%; border-collapse: collapse; font-size: 11.5px; margin-top: 6px; }
