@@ -870,9 +870,9 @@ npm run dist:win    # → dist/DafriTrading-<版本>-win-x64.exe(NSIS 安装器)
 
 | | 开发版 | 打包版 |
 |---|---|---|
-| 引擎源码 | 仓库 `src/` | `resources/engine/src`(extraResources,不进 asar) |
+| 引擎 | 仓库 `trade-ts/dist` + `trade-ts/node_modules`(`DAFRI_ENGINE=python` 时用 `src/` + `.venv`) | `resources/engine-ts`:由 `tools/stage_engine_ts.js` 按 package-lock 的**生产依赖闭包**暂存,只带当前平台的 better-sqlite3 二进制,不带 .map/.d.ts/源码;**Python 引擎不进包** |
 | 配置文件 | `config/settings.json` | `userData/settings.json`(应用包只读,首启从示例生成) |
-| Python | 仓库 `.venv` | **首启引导**:找系统 Python → 在 userData 建专属 venv → pip 装依赖(约 1 分钟,需联网) |
+| 运行时 | 系统 node(没有就用 Electron 自带的) | Electron 自带的 Node(`ELECTRON_RUN_AS_NODE`),机器上不需要装 Node 或 Python;`npm run smoke:engine` 用同一条路拉起暂存目录里的引擎发一条 system.status,`dist:*` 脚本把它作为打包前置 |
 
 首启引导找 Python 时探测的是**绝对路径**(Homebrew、python.org 安装器、CLT),因为从
 Finder 启动的 GUI 应用只有极简 PATH;连 `/usr/bin/python3` 被 Xcode 许可协议卡住的情况都

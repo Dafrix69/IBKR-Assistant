@@ -67,3 +67,13 @@ Electron 里才是真实的。`--scale 1.5` 对应 Windows 150% 显示缩放—�
 
 界面改动的验收方式是**截图对比**:改前改后各出一套,并排看,差异只允许出现在该次改动声明要改的地方。
 `.uipreview/` 已 gitignore,截图集不进仓库。
+
+## 打包前置:引擎暂存与自检
+
+```bash
+npm run stage:engine:win     # tools/stage_engine_ts.js → build/engine-ts/(按 package-lock 生产依赖闭包,只带本平台 better-sqlite3)
+npm run smoke:engine         # tools/smoke_engine_ts.js:Electron 自带 Node + 只有 System32 的 PATH,拉起暂存引擎发 system.status
+```
+
+`npm run dist:win` / `dist:mac` 会先跑这两步。为什么不用 `npm ci --omit=dev`:better-sqlite3 没有 install 脚本,
+npm 见到 binding.gyp 会去跑 node-gyp,没有 C++ 工具链的机器直接失败;而它的 tarball 本来就带了全部平台的预编译二进制。

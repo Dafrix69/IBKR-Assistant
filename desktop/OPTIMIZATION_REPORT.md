@@ -105,7 +105,26 @@ K 线参照富途/moomoo 的图表工程标准。"现状"来自基线截图与�
 
 ## 3. 体积变更逐项表
 
-(阶段 1 填写)
+| # | 改了什么 | 省了多少 | 怎么验证 | 提交 |
+|---|---|---|---|---|
+| V1 | `extraResources` 不再直接指向 `trade-ts/node_modules`,改为 `tools/stage_engine_ts.js` 按 package-lock 的生产依赖闭包暂存到 `build/engine-ts/`:去掉 103 个 devDependencies 包,better-sqlite3 只留当前平台一个 `.node`(原来 8 个平台 + sqlite 源码),去掉 protobufjs 的命令行工具、@anthropic-ai/sdk 的 TS 源码,以及所有 `.map/.d.ts/.md/.ts` | `engine-ts` 140 MB → **14.9 MB** | `npm run smoke:engine`:用 Electron 自带 Node(`ELECTRON_RUN_AS_NODE`)、PATH 只留 System32,拉起暂存引擎发 `system.status`,184 ms 应答;`dist:*` 脚本把它作为打包前置 | 阶段 1-1 |
+| V2 | 只带 TS 引擎(用户拍板):`resources/engine/src`(Python 源码)不进包;提示词与示例配置仍在 `engine/` 下,`main.js` 路径推导不变 | 2 MB | 同上;`DAFRI_ENGINE=python` 在打包版会明确失败而不是静默 | 阶段 1-1 |
+| V3 | `electronLanguages: [zh-CN, zh-TW, en-US]`:Electron 自带 55 个语言包 | `locales` 46 MB → 3 个文件 | 打包版启动界面正常(界面文案本来就不走 Chromium 语言包) | 阶段 1-1 |
+| — | 删除 `trade-ts/nul/`(5 个游离的编译产物,无任何引用) | 仓库 128 KB | — | 阶段 1-1 |
+
+**结果**(同一台机器、同一 electron-builder 26.15.3 / Electron 40.10.6):
+
+| | 基线 | 阶段 1-1 | 变化 |
+|---|---|---|---|
+| 安装器 exe | 119.6 MB | **86.8 MB** | −27% |
+| `win-unpacked` | 472 MB | **301 MB** | −36% |
+| 其中 `resources/` | 142 MB | 14.9 MB | −90% |
+
+exe 没到 −30%:剩下的 86.8 MB 里约 80 MB 是 Electron 本体压缩后的体积,是地板。下一步试 `compression: maximum`。
+
+**打包版干净环境启动**:PATH 只留 `C:\Windows\System32`(机器上的 node / python 都不可见)启动
+`dist/win-unpacked/Dafri Trading.exe`,窗口正常,引擎子进程(`Dafri Trading.exe … cli.js rpc`,即 Electron-as-Node)
+20 秒后仍在运行。
 
 ## 4. K 线图
 
@@ -113,7 +132,11 @@ K 线参照富途/moomoo 的图表工程标准。"现状"来自基线截图与�
 
 ## 5. 没做的与建议
 
-- 打包版干净环境启动验证:需要关掉开发态实例后做(单实例锁)。
+- **`./~/Library/…/trades.db` 与 `trade-ts/~/Library/…/breaker.json` 没有删。** 任务书把它们列为"疑为副作用"。复核:
+  成因是 TS 引擎早期不展开 `~`(`config.ts` 的 `expandHome` 注释记着 2026-09-04 已修),这两处是修复前留下的**数据**,
+  不是空目录——根目录那份库里有 11 条交易记录、12 条成交、44 条事件、1 条持仓追踪。是不是要并回正式库、还是确认无用后删,
+  由你定;按 §9 的数据规矩我不动 S1 数据。
+- 打包版干净环境启动已做(见 §3);「解析并校验」一条指令的端到端走通需要在打包版界面里手点,未自动化。
 - `.uipreview/reference/`:用户的两张问题截图需由用户放入。
 
 ## 6. FINDINGS(按约束不许顺手改的疑似问题)
