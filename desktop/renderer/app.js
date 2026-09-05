@@ -434,6 +434,13 @@ function renderAccountPicker() {
   const chips = $('account-chips');
   if (!picker || !chips) return;
   const usable = pickableAccounts();
+  // 「发送」按钮只在真的会发到实盘账户时才橙字——常态是普通次要按钮,常橙会被读成"一直在警告"
+  const pickedNow = new Set(selectedAccounts());
+  const liveOn = usable.length < 2
+    ? usable.some((a) => !a.is_paper)
+    : usable.some((a) => !a.is_paper && pickedNow.has(a.alias));
+  const exec = document.getElementById('btn-execute');
+  if (exec) exec.classList.toggle('warn', liveOn);
   // 只有一个账户时没什么可选,控件隐藏,行为与以前完全一样
   if (usable.length < 2) {
     picker.hidden = true;
