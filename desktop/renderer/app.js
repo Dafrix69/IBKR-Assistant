@@ -1714,7 +1714,7 @@ function renderEquityCurve(curve) {
   const eq = document.createElementNS(NS, 'polyline');
   eq.setAttribute('points', points('equity'));
   eq.setAttribute('fill', 'none');
-  eq.setAttribute('stroke', '#0A84FF');
+  eq.setAttribute('stroke', THEME.blue);
   eq.setAttribute('stroke-width', '1.6');
   svg.appendChild(eq);
 
@@ -1959,6 +1959,22 @@ const PA_BIAS_KIND = {
 const PA_SIDE_LABEL = { bull: '看涨', bear: '看跌', neutral: '中性' };
 const NS_SVG = 'http://www.w3.org/2000/svg';
 
+// 图表取色统一走 CSS token(--up/--down/--blue/--orange/--purple),跟随深浅色与「涨跌配色」设置。
+// SVG 属性与 canvas 都吃不了 var(),所以每次画图时在这里读一次计算值;主题切换后重画的图自然拿到新值。
+// 原来 54 处硬编码的是深色模式的十六进制,浅色模式下绿 #30D158 在白底上对比度不够。
+const THEME = {
+  read(name) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#8e8e93';
+  },
+  get up() { return this.read('--up'); },
+  get down() { return this.read('--down'); },
+  get blue() { return this.read('--blue'); },
+  get orange() { return this.read('--orange'); },
+  get purple() { return this.read('--purple'); },
+  get green() { return this.read('--green'); },
+  get red() { return this.read('--red'); },
+};
+
 function svgNode(tag, attrs) {
   const node = document.createElementNS(NS_SVG, tag);
   for (const key of Object.keys(attrs || {})) node.setAttribute(key, String(attrs[key]));
@@ -2176,11 +2192,11 @@ function renderReviewChart(r) {
     svg.appendChild(svgNode('rect', {
       x: PAD_L, y: y(upperBe.price), width: rightEdge - PAD_L,
       height: Math.max(y(lowerBe.price) - y(upperBe.price), 1),
-      fill: '#30D158', 'fill-opacity': 0.10,
+      fill: THEME.up, 'fill-opacity': 0.10,
     }));
   }
   // 止盈策略的临界线(|S−K| 的 0.45W / 0.55W / 0.8W)
-  const ZONE_STYLE = { hold: ['#0A84FF', '2 3'], half: ['#BF5AF2', '2 3'], stop: ['#FF453A', '1 3'] };
+  const ZONE_STYLE = { hold: [THEME.blue, '2 3'], half: [THEME.purple, '2 3'], stop: [THEME.down, '1 3'] };
   for (const z of ((r.exit_plan || {}).zones || [])) {
     const st = ZONE_STYLE[z.kind];
     if (!st) continue;
@@ -2199,11 +2215,11 @@ function renderReviewChart(r) {
 
   // 三条行权价
   const LEVEL_STYLE = {
-    lower: { color: '#FF9F0A', dash: '4 3', label: '下翼' },
-    center: { color: '#0A84FF', dash: '', label: '中心' },
-    upper: { color: '#FF9F0A', dash: '4 3', label: '上翼' },
-    lower_be: { color: '#30D158', dash: '2 2', label: '盈亏平衡' },
-    upper_be: { color: '#30D158', dash: '2 2', label: '盈亏平衡' },
+    lower: { color: THEME.orange, dash: '4 3', label: '下翼' },
+    center: { color: THEME.blue, dash: '', label: '中心' },
+    upper: { color: THEME.orange, dash: '4 3', label: '上翼' },
+    lower_be: { color: THEME.up, dash: '2 2', label: '盈亏平衡' },
+    upper_be: { color: THEME.up, dash: '2 2', label: '盈亏平衡' },
   };
   for (const level of levels) {
     const st = LEVEL_STYLE[level.kind];
@@ -2226,7 +2242,7 @@ function renderReviewChart(r) {
   for (let i = 0; i < bars.length; i += 1) {
     const bar = bars[i];
     const up = bar.close >= bar.open;
-    const color = up ? '#30D158' : '#FF453A';
+    const color = up ? THEME.up : THEME.down;
     svg.appendChild(svgNode('line', {
       x1: x(i), x2: x(i), y1: y(bar.high), y2: y(bar.low),
       stroke: color, 'stroke-width': Math.min(bodyW * 0.28, 1.1),
@@ -2238,7 +2254,7 @@ function renderReviewChart(r) {
   }
 
   // 开仓 / 平仓 / 到期 标记:竖线 + 圆点 + 文字
-  const MARK = { entry: { color: '#0A84FF', label: '开仓' }, exit: { color: '#BF5AF2', label: '平仓' }, expiry: { color: '#BF5AF2', label: '到期' } };
+  const MARK = { entry: { color: THEME.blue, label: '开仓' }, exit: { color: THEME.purple, label: '平仓' }, expiry: { color: THEME.purple, label: '到期' } };
   for (const m of r.series.markers || []) {
     if (!at.has(m.time)) continue;
     const i = at.get(m.time);
@@ -2265,7 +2281,7 @@ function renderReviewChart(r) {
   node.appendChild(svg);
 
   const legend = el('div', 'review-legend');
-  const legendItems = [['中心行权价', '#0A84FF'], ['上下翼', '#FF9F0A'], ['盈利区(到期)', '#30D158'], ['开仓', '#0A84FF'], ['平仓 / 到期', '#BF5AF2']];
+  const legendItems = [['中心行权价', THEME.blue], ['上下翼', THEME.orange], ['盈利区(到期)', THEME.up], ['开仓', THEME.blue], ['平仓 / 到期', THEME.purple]];
   if (r.exit_plan) legendItems.push(['临界线 ±0.45W / ±0.55W / ±0.8W(细虚线)', 'currentColor']);
   for (const [text, color] of legendItems) {
     const item = el('span', null, text);
@@ -2278,10 +2294,10 @@ function renderReviewChart(r) {
   return node;
 }
 
-const EXIT_LEVEL_STYLE = {
-  tp1: ['#30D158', '第一档'], tp2: ['#30D158', '第二档'],
-  trail_arm: ['#FF9F0A', '回撤追踪激活'], stop: ['#FF453A', '止损'],
-};
+const EXIT_LEVEL_STYLE = () => ({
+  tp1: [THEME.up, '第一档'], tp2: [THEME.up, '第二档'],
+  trail_arm: [THEME.orange, '回撤追踪激活'], stop: [THEME.down, '止损'],
+});
 const PHASE_LABEL = { A: '阶段 A', B: '阶段 B', C: '阶段 C' };
 
 /** 蝶价走势:组合分钟中间价的蜡烛 + 模型价虚线 + 止盈/止损水平线 + 开仓/平仓/策略事件标记。 */
@@ -2336,7 +2352,7 @@ function renderFlyChart(r) {
     if (band.phase === 'A') continue;
     svg.appendChild(svgNode('rect', {
       x: x(band.from) - slot / 2, y: PAD_T, width: slot * (band.to - band.from + 1), height: PRICE_H,
-      fill: band.phase === 'B' ? '#FF9F0A' : '#BF5AF2', 'fill-opacity': 0.06,
+      fill: band.phase === 'B' ? THEME.orange : THEME.purple, 'fill-opacity': 0.06,
     }));
     const t = svgNode('text', { x: x(band.from), y: PAD_T + 9, 'font-size': 8.5, fill: 'currentColor', 'fill-opacity': 0.55 });
     t.textContent = PHASE_LABEL[band.phase];
@@ -2345,7 +2361,7 @@ function renderFlyChart(r) {
 
   // 止盈 / 止损水平线
   for (const l of plan.levels || []) {
-    const st = EXIT_LEVEL_STYLE[l.kind];
+    const st = EXIT_LEVEL_STYLE()[l.kind];
     if (!st || l.price == null) continue;
     const py = y(l.price);
     svg.appendChild(svgNode('line', {
@@ -2373,7 +2389,7 @@ function renderFlyChart(r) {
         if (!i) d += `M${px},${y(v).toFixed(1)}`;
         else d += ` L${x(run[i - 1][0]).toFixed(1)},${y(v).toFixed(1)} L${px},${y(v).toFixed(1)}`;
       }
-      svg.appendChild(svgNode('path', { d, fill: 'none', stroke: '#FF9F0A', 'stroke-opacity': 0.85, 'stroke-width': 1.2, 'stroke-dasharray': '4 2' }));
+      svg.appendChild(svgNode('path', { d, fill: 'none', stroke: THEME.orange, 'stroke-opacity': 0.85, 'stroke-width': 1.2, 'stroke-dasharray': '4 2' }));
     }
     run = [];
   };
@@ -2389,7 +2405,7 @@ function renderFlyChart(r) {
     const b = realAt.get(times[i]);
     if (!b) continue;
     const up = b.close >= b.open;
-    const color = up ? '#30D158' : '#FF453A';
+    const color = up ? THEME.up : THEME.down;
     svg.appendChild(svgNode('line', { x1: x(i), x2: x(i), y1: y(b.high), y2: y(b.low), stroke: color, 'stroke-width': Math.min(bodyW * 0.28, 1) }));
     svg.appendChild(svgNode('rect', {
       x: x(i) - bodyW / 2, y: y(Math.max(b.open, b.close)), width: bodyW,
@@ -2404,7 +2420,7 @@ function renderFlyChart(r) {
   }
 
   // 标记:开仓 / 实际平仓 / 策略事件
-  const MARK = { entry: ['#0A84FF', '开仓'], exit: ['#BF5AF2', '实际平仓'] };
+  const MARK = { entry: [THEME.blue, '开仓'], exit: [THEME.purple, '实际平仓'] };
   for (const m of fs.markers || []) {
     if (!at.has(m.time) || m.price == null) continue;
     const i = at.get(m.time);
@@ -2418,7 +2434,7 @@ function renderFlyChart(r) {
   for (const e of sim.events || []) {
     if (!at.has(e.time)) continue;
     const i = at.get(e.time);
-    const color = e.source === 'settle' ? '#BF5AF2' : (e.pnl >= 0 ? '#30D158' : '#FF453A');
+    const color = e.source === 'settle' ? THEME.purple : (e.pnl >= 0 ? THEME.up : THEME.down);
     const py = y(e.price);
     svg.appendChild(svgNode('path', { d: `M${x(i)},${py - 9} l5,8 l-10,0 z`, fill: color }));
     const label = svgNode('text', { x: x(i), y: py - 12, 'font-size': 8.5, 'text-anchor': 'middle', fill: color });
@@ -2435,7 +2451,7 @@ function renderFlyChart(r) {
   node.appendChild(svg);
 
   const legend = el('div', 'review-legend');
-  for (const [text, color] of [['止盈档位', '#30D158'], ['止损', '#FF453A'], ['回撤激活线 / 触发价(阶梯)', '#FF9F0A'], ['开仓', '#0A84FF'], ['实际平仓', '#BF5AF2'], ['模型价(无真实报价的分钟)', 'currentColor'], ['▲ 策略出手点', '#30D158']]) {
+  for (const [text, color] of [['止盈档位', THEME.up], ['止损', THEME.down], ['回撤激活线 / 触发价(阶梯)', THEME.orange], ['开仓', THEME.blue], ['实际平仓', THEME.purple], ['模型价(无真实报价的分钟)', 'currentColor'], ['▲ 策略出手点', THEME.up]]) {
     const item = el('span', null, text);
     const swatch = el('i');
     swatch.style.color = color;
@@ -2816,7 +2832,7 @@ function renderPaChart(r) {
     svg.appendChild(svgNode('rect', {
       x: start, y: y(gap.top), width: Math.max(rightEdge - start, 2),
       height: Math.max(y(gap.bottom) - y(gap.top), 1),
-      fill: gap.side === 'bull' ? '#30D158' : '#FF453A', 'fill-opacity': 0.12,
+      fill: gap.side === 'bull' ? THEME.up : THEME.down, 'fill-opacity': 0.12,
     }));
   }
   const ob = r.order_block;
@@ -2836,12 +2852,12 @@ function renderPaChart(r) {
     const py = y(level.price);
     svg.appendChild(svgNode('line', {
       x1: PAD_L, x2: rightEdge, y1: py, y2: py,
-      stroke: level.side === 'resistance' ? '#FF453A' : '#30D158',
+      stroke: level.side === 'resistance' ? THEME.down : THEME.up,
       'stroke-opacity': 0.55, 'stroke-width': 1, 'stroke-dasharray': '4 3',
     }));
     const label = svgNode('text', {
       x: rightEdge + 4, y: py + 3, 'font-size': 9,
-      fill: level.side === 'resistance' ? '#FF453A' : '#30D158',
+      fill: level.side === 'resistance' ? THEME.down : THEME.up,
     });
     label.textContent = String(level.price);
     svg.appendChild(label);
@@ -2852,7 +2868,7 @@ function renderPaChart(r) {
   for (let i = 0; i < bars.length; i += 1) {
     const bar = bars[i];
     const up = bar.close >= bar.open;
-    const color = up ? '#30D158' : '#FF453A';
+    const color = up ? THEME.up : THEME.down;
     svg.appendChild(svgNode('line', {
       x1: x(i), x2: x(i), y1: y(bar.high), y2: y(bar.low),
       stroke: color, 'stroke-width': Math.min(bodyW * 0.28, 1.1),
@@ -2871,7 +2887,7 @@ function renderPaChart(r) {
     const above = swing.kind === 'high';
     svg.appendChild(svgNode('circle', {
       cx: x(i), cy: y(swing.price), r: 1.8,
-      fill: above ? '#FF453A' : '#30D158',
+      fill: above ? THEME.down : THEME.up,
     }));
     const label = svgNode('text', {
       x: x(i), y: y(swing.price) + (above ? -5 : 10),
@@ -2887,9 +2903,9 @@ function renderPaChart(r) {
   if (visible(r.last)) {
     svg.appendChild(svgNode('line', {
       x1: PAD_L, x2: rightEdge, y1: lastY, y2: lastY,
-      stroke: '#0A84FF', 'stroke-width': 1, 'stroke-dasharray': '1 2',
+      stroke: THEME.blue, 'stroke-width': 1, 'stroke-dasharray': '1 2',
     }));
-    const label = svgNode('text', { x: rightEdge + 4, y: lastY + 3, 'font-size': 9.5, fill: '#0A84FF' });
+    const label = svgNode('text', { x: rightEdge + 4, y: lastY + 3, 'font-size': 9.5, fill: THEME.blue });
     label.textContent = String(r.last);
     svg.appendChild(label);
   }
@@ -2902,7 +2918,7 @@ function renderPaChart(r) {
       const h = Math.max(((bar.volume || 0) / maxVol) * VOL_H, 0.5);
       svg.appendChild(svgNode('rect', {
         x: x(i) - bodyW / 2, y: VOL_TOP + VOL_H - h, width: bodyW, height: h,
-        fill: bar.close >= bar.open ? '#30D158' : '#FF453A', 'fill-opacity': 0.35,
+        fill: bar.close >= bar.open ? THEME.up : THEME.down, 'fill-opacity': 0.35,
       }));
     }
   }
@@ -3175,6 +3191,19 @@ function alertCard(watch) {
 // ======================================================================
 // 外观(夜间模式):走主进程 nativeTheme,渲染层 prefers-color-scheme 一起切
 // ======================================================================
+/** 涨跌配色是显示偏好,不是引擎配置:记在本地,只改 :root 的 data-updown,token 映射随之翻转。 */
+function applyUpDown(mode) {
+  const value = mode === 'red-up' ? 'red-up' : 'green-up';
+  document.documentElement.dataset.updown = value;
+  try { localStorage.setItem('dafri-updown', value); } catch { /* 预览台的 data: 页面没有 localStorage */ }
+  document.querySelectorAll('#updown-picker [data-updown]').forEach((btn) =>
+    btn.classList.toggle('active', btn.dataset.updown === value)
+  );
+  // 已经画在屏幕上的图不会自己变色,能重画的当场重画
+  if (typeof renderPa === 'function' && pa.data) renderPa();
+  if (typeof renderReview === 'function' && review.data) renderReview();
+}
+
 async function applyTheme(mode) {
   try {
     await window.dafri.setTheme(mode);
@@ -4687,6 +4716,10 @@ function bind() {
 
   document.querySelectorAll('#theme-picker [data-theme-mode]').forEach((btn) => {
     btn.addEventListener('click', () => applyTheme(btn.dataset.themeMode));
+  });
+  applyUpDown(localStorage.getItem('dafri-updown') || 'green-up');
+  document.querySelectorAll('#updown-picker [data-updown]').forEach((btn) => {
+    btn.addEventListener('click', () => applyUpDown(btn.dataset.updown));
   });
 
   $('bt-strategy').addEventListener('change', renderBacktestParams);

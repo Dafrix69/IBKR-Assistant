@@ -17,6 +17,15 @@
   --orange: #ff9500;
   --red: #ff3b30;
   --yellow: #ffcc00;
+  --purple: #af52de;
+
+  /* 涨跌色成对做成 token:图表、列表、行情带统一从这里取色;
+     「涨跌配色」设置只改下面两行的映射(见 :root[data-updown]),不碰任何用色的地方。 */
+  --up: var(--green);
+  --down: var(--red);
+
+  /* 焦点环只有一种:3.5px、强调色 30%——AppKit 的 focus ring。输入框、开关、按钮都用它。 */
+  --focus-ring: 0 0 0 3.5px color-mix(in srgb, var(--blue) 30%, transparent);
 
   --label: #000000;
   --label-secondary: rgba(60, 60, 67, 0.6);
@@ -56,6 +65,7 @@
     --orange: #ff9f0a;
     --red: #ff453a;
     --yellow: #ffd60a;
+    --purple: #bf5af2;
 
     --label: #ffffff;
     --label-secondary: rgba(235, 235, 245, 0.6);
@@ -73,6 +83,12 @@
     --shadow-card: 0 0.5px 1px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
     --shadow-control: 0 0.5px 1px rgba(0, 0, 0, 0.35);
   }
+}
+
+/* 「红涨绿跌」(富途中文版 / 港股 A 股习惯):只换映射,所有用 --up/--down 的地方自动跟着变 */
+:root[data-updown="red-up"] {
+  --up: var(--red);
+  --down: var(--green);
 }
 
 /*
@@ -98,17 +114,17 @@
 @media (prefers-color-scheme: dark) {
   @media (prefers-reduced-transparency: reduce) {
     :root {
-      --bg-window: #1e1e20;
-      --bg-content: #222225;
-      --bg-control: #333336;
-      --bg-elevated: #2c2c30;
+      --bg-window: #2b2b2e;      /* 侧栏、工具栏所在的窗口底:比内容区亮一档(Notes 深色:侧栏≈#2c2c2e、正文≈#1e1e1e) */
+      --bg-content: #1e1e20;
+      --bg-control: #38383c;
+      --bg-elevated: #2f2f33;    /* 卡片再浮起一档 */
     }
   }
   :root[data-vibrancy="off"] {
-    --bg-window: #1e1e20;
-    --bg-content: #222225;
-    --bg-control: #333336;
-    --bg-elevated: #2c2c30;
+    --bg-window: #2b2b2e;
+    --bg-content: #1e1e20;
+    --bg-control: #38383c;
+    --bg-elevated: #2f2f33;
   }
 }
 /* 实底时窗口自身也要有底色,否则透出来的是空。
@@ -204,8 +220,8 @@ input, textarea { user-select: text; }
   padding: 3px 9px; border-radius: 6px; cursor: pointer; user-select: none;
   background: var(--bg-fill); color: var(--label-secondary); font-size: 12px;
 }
-.account-chip input { margin: 0; accent-color: var(--accent, #0A84FF); }
-.account-chip.checked { color: var(--label); background: color-mix(in srgb, var(--accent, #0A84FF) 16%, transparent); }
+.account-chip input { margin: 0; accent-color: var(--blue); }
+.account-chip.checked { color: var(--label); background: color-mix(in srgb, var(--blue) 16%, transparent); }
 .account-chip.live.checked { color: var(--orange); background: color-mix(in srgb, var(--orange) 16%, transparent); }
 
 .topbar-actions { display: flex; gap: 8px; flex-shrink: 0; }
@@ -468,6 +484,11 @@ input.w-64 { width: 64px; }
 .segmented .seg.active {
   background: var(--bg-control); box-shadow: var(--shadow-control); font-weight: 510;
 }
+/* 分段控件按内容宽而不是撑满:System Settings 里的分段控件放在行右侧,和开关一样是一个控件 */
+.segmented.compact { display: inline-flex; margin: 0; }
+.segmented.compact .seg { flex: 0 0 auto; padding: 3px 12px; }
+.appearance-group { margin-bottom: 14px; }
+.field-row > span > .sub { display: block; color: var(--label-secondary); font-size: 11px; }
 .tab-panel { display: none; }
 .tab-panel.active { display: block; }
 
@@ -550,16 +571,16 @@ input.w-64 { width: 64px; }
   padding: 6px 10px;
   background: var(--bg-content);
   border: 0.5px solid var(--separator);
-  border-left: 3px solid var(--accent, #0A84FF);
+  border-left: 3px solid var(--blue);
   border-radius: 6px;
   font-size: 12px;
   max-width: 260px;
 }
 .flow-card .flow-title { font-weight: 600; margin-bottom: 2px; }
 .flow-card .flow-body { color: var(--label-secondary); font-size: 11px; }
-.flow-card.cond { border-left-color: #FF9F0A; }
-.flow-card.action { border-left-color: #30D158; }
-.flow-card.start { border-left-color: #0A84FF; }
+.flow-card.cond { border-left-color: var(--orange); }
+.flow-card.action { border-left-color: var(--green); }
+.flow-card.start { border-left-color: var(--blue); }
 .flow-arrow { color: var(--label-secondary); font-size: 11px; white-space: nowrap; }
 
 /* 全局宏观行情带(仿富途顶部指数条) */
@@ -588,8 +609,8 @@ input.w-64 { width: 64px; }
   color: var(--label-tertiary); font-size: 9.5px; font-family: var(--font-mono);
   margin-left: -2px;
 }
-.macro-chg.up { color: #30D158; }
-.macro-chg.down { color: #FF453A; }
+.macro-chg.up { color: var(--up); }
+.macro-chg.down { color: var(--down); }
 .macro-chg.flat { color: var(--label-secondary); }
 .macro-stale { color: var(--label-secondary); font-style: italic; }
 
@@ -609,14 +630,14 @@ input.w-64 { width: 64px; }
   border-radius: 3px;
   opacity: 0.18;
 }
-.book-bar.bid { background: #30D158; }
-.book-bar.ask { background: #FF453A; }
+.book-bar.bid { background: var(--up); }
+.book-bar.ask { background: var(--down); }
 .book-price, .book-size { position: relative; }
 /* K线 PA */
 .pa-chart { width: 100%; height: auto; margin-top: 6px; display: block; }
 .pa-score { font-family: var(--font-mono); font-weight: 700; font-size: 16px; letter-spacing: -0.02em; }
-.pa-score.up { color: #30D158; }
-.pa-score.down { color: #FF453A; }
+.pa-score.up { color: var(--up); }
+.pa-score.down { color: var(--down); }
 .pa-score.flat { color: var(--label-secondary); }
 .pa-ev {
   display: flex; align-items: baseline; gap: 8px; padding: 4px 0; font-size: 11.5px;
@@ -629,8 +650,8 @@ input.w-64 { width: 64px; }
   font-family: var(--font-mono); font-variant-numeric: tabular-nums;
   min-width: 46px; text-align: right; flex-shrink: 0;
 }
-.pa-ev-w.up { color: #30D158; }
-.pa-ev-w.down { color: #FF453A; }
+.pa-ev-w.up { color: var(--up); }
+.pa-ev-w.down { color: var(--down); }
 .pa-ev-w.flat { color: var(--label-tertiary); }
 .pa-lv { display: flex; gap: 8px; align-items: baseline; font-size: 11.5px; padding: 3px 0; }
 .pa-lv-price {
