@@ -210,6 +210,7 @@ window.dafri = {
       {price:230,label:'看涨持仓墙',source:'call_wall',kind:'resistance',state:{armed:true}},
       {price:225,label:'看涨成交墙',source:'call_vol_wall',kind:'resistance',state:{armed:true}},
       {price:220,label:'整数关口',source:'round',kind:'resistance',state:{armed:true}},
+      {price:221.3,label:'20日均线',source:'ma20',kind:'resistance',state:{armed:true}},
       {price:218.6,label:'Gamma 翻转',source:'gamma_flip',kind:'neutral',state:{armed:true}},
       {price:215,label:'最大痛点',source:'max_pain',kind:'neutral',state:{armed:true}},
       {price:215,label:'整数关口',source:'round',kind:'support',state:{armed:true}},

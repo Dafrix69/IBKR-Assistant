@@ -349,6 +349,26 @@ button.sidebar-group:hover { color: var(--label-secondary); }
   font-variant-numeric: tabular-nums;
 }
 .nav-item.active .nav-badge { background: rgba(255, 255, 255, 0.25); color: #fff; }
+/* 窗口失焦:选中项从强调色退成灰(Finder / Mail 的源列表都这样),让人一眼知道键盘焦点不在这个窗口 */
+:root[data-window-blur] .nav-item.active { background: var(--bg-fill-strong); color: var(--label); }
+:root[data-window-blur] .nav-item.active .nav-icon { color: var(--label-secondary); }
+:root[data-window-blur] .nav-item.active .nav-badge { background: var(--bg-fill-strong); color: var(--label-secondary); }
+
+/* 窄窗口:侧栏收成 56px 的图标栏(Mail / Finder 的做法),文字藏起来、组标题不显示、徽标缩成一个点;
+   项的名字进 title,悬停可见。折叠了的组在这个模式下也展开——图标栏没有地方放组标题。 */
+@media (max-width: 1000px) {
+  .sidebar { width: 56px; }
+  .sidebar button.sidebar-group { display: none; }
+  .sidebar-items[data-collapsed] { display: flex; }
+  .sidebar-group.bottom + .sidebar-items { margin-top: auto; }
+  .nav-item { position: relative; margin: 0 8px; padding: 0 12px; overflow: hidden; white-space: nowrap; color: transparent; }
+  .nav-item.active { color: transparent; }
+  .nav-badge {
+    position: absolute; top: 4px; right: 4px; width: 6px; height: 6px; padding: 0;
+    border-radius: 50%; background: var(--blue); color: transparent; overflow: hidden; font-size: 0;
+  }
+  .nav-item.active .nav-badge { background: #fff; }
+}
 
 .content {
   flex: 1;
@@ -593,7 +613,7 @@ input.w-64 { width: 64px; }
 /* 板块页:多卡片网格,卡片内滚动看成分股 */
 .sector-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(440px, 1fr));
   gap: 12px;
   align-items: start;
 }
@@ -633,6 +653,37 @@ input.w-64 { width: 64px; }
   color: var(--label-secondary);
 }
 .stock-price { font-variant-numeric: tabular-nums; }
+
+/* 板块页里的页内节(价位提醒):和页面其它部分之间留一段距离 */
+.page-section { margin-top: 22px; }
+
+/* 成分股行下面的价位条:墙、均线、52 周位、现价摆在一条横线上。
+   横线的位置由上方用了几层标签决定(--above 由脚本量过标签宽度后写入);每层 24px,最多三层。 */
+.stock-levels { padding: 6px 0 4px; border-bottom: 0.5px solid var(--separator); }
+.stock-levels.muted { font-size: 11px; padding: 2px 0 6px; }
+.lstrip { position: relative; height: 60px; margin: 0 30px 0 30px; font-size: 9.5px; line-height: 1.15; --above: 1; }
+.lstrip-track, .lstrip-mark { top: calc(6px + var(--above) * 24px); }
+.lstrip-track { position: absolute; left: -10px; right: -10px; border-top: 1px solid var(--separator); }
+.lstrip-mark { position: absolute; width: 0; color: var(--label-secondary); }
+.lstrip-mark::before { content: ''; position: absolute; left: -0.5px; border-left: 1.5px solid currentColor; }
+.lstrip-mark.above::before { bottom: 0; }
+.lstrip-mark.below::before { top: 0; }
+.lstrip-mark.t0::before { height: 6px; }
+.lstrip-mark.t1::before { height: 30px; }
+.lstrip-mark.t2::before { height: 54px; }
+.lstrip-mark.resistance { color: var(--down-text); }
+.lstrip-mark.support { color: var(--up-text); }
+.lstrip-mark.spot { color: var(--blue); }
+.lstrip-mark.spot::before { left: -4px; top: -4px; width: 8px; height: 8px; border: none; border-radius: 50%; background: var(--blue); }
+.lstrip-label { position: absolute; left: 0; transform: translateX(-50%); white-space: nowrap; text-align: center; }
+.lstrip-label b { display: block; font-weight: 590; font-family: var(--font-mono); color: var(--label); }
+.lstrip-mark.spot .lstrip-label b { color: var(--blue); }
+.lstrip-mark.above.t0 .lstrip-label { bottom: 8px; }
+.lstrip-mark.above.t1 .lstrip-label { bottom: 32px; }
+.lstrip-mark.above.t2 .lstrip-label { bottom: 56px; }
+.lstrip-mark.below.t0 .lstrip-label { top: 8px; }
+.lstrip-mark.below.t1 .lstrip-label { top: 32px; }
+.lstrip-mark.below.t2 .lstrip-label { top: 56px; }
 
 /* 回测:moomoo 风格的决策流程卡片 */
 .flow {
