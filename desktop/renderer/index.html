@@ -117,63 +117,54 @@
     <div class="shell">
       <!-- 源列表侧栏(macOS UI Kit 的应用模板结构) -->
       <nav class="sidebar" role="tablist" aria-orientation="vertical" aria-label="主导航">
-        <div class="sidebar-group">工作区</div>
-        <button class="tab nav-item active" role="tab" data-tab="trade" aria-controls="tab-trade" aria-selected="true" tabindex="0">
-          <svg class="nav-icon"><use href="#sf-pencil"/></svg>交易指令
-        </button>
-        <button class="tab nav-item" role="tab" data-tab="board" aria-controls="tab-board" aria-selected="false" tabindex="-1">
-          <svg class="nav-icon"><use href="#sf-board"/></svg>订单看板
-          <span class="nav-badge hidden" id="sidebar-pending">0</span>
-        </button>
-        <button class="tab nav-item" role="tab" data-tab="records" aria-controls="tab-records" aria-selected="false" tabindex="-1">
-          <svg class="nav-icon"><use href="#sf-doc"/></svg>交易记录
-        </button>
-
-        <div class="sidebar-group">研究</div>
-        <button class="tab nav-item" role="tab" data-tab="ideas" aria-controls="tab-ideas" aria-selected="false" tabindex="-1">
-          <svg class="nav-icon"><use href="#sf-bulb"/></svg>想法
-        </button>
-        <button class="tab nav-item" role="tab" data-tab="sectors" aria-controls="tab-sectors" aria-selected="false" tabindex="-1">
-          <svg class="nav-icon"><use href="#sf-squares"/></svg>板块
-        </button>
-        <button class="tab nav-item" role="tab" data-tab="backtest" aria-controls="tab-backtest" aria-selected="false" tabindex="-1">
-          <svg class="nav-icon"><use href="#sf-chart"/></svg>回测
-        </button>
-        <button class="tab nav-item" role="tab" data-tab="pa" aria-controls="tab-pa" aria-selected="false" tabindex="-1">
-          <svg class="nav-icon"><use href="#sf-candles"/></svg>K线 PA
-        </button>
-        <button class="tab nav-item" role="tab" data-tab="review" aria-controls="tab-review" aria-selected="false" tabindex="-1">
-          <svg class="nav-icon"><use href="#sf-chart"/></svg>交易分析
-        </button>
-        <button class="tab nav-item" role="tab" data-tab="alerts" aria-controls="tab-alerts" aria-selected="false" tabindex="-1">
-          <svg class="nav-icon"><use href="#sf-bell"/></svg>期权墙 · 警告
-          <span class="nav-badge hidden" id="sidebar-alerts">0</span>
-        </button>
-        <button class="tab nav-item" role="tab" data-tab="book" aria-controls="tab-book" aria-selected="false" tabindex="-1">
-          <svg class="nav-icon"><use href="#sf-ladder"/></svg>订单簿
-        </button>
-        <button class="tab nav-item" role="tab" data-tab="tracker" aria-controls="tab-tracker" aria-selected="false" tabindex="-1">
-          <svg class="nav-icon"><use href="#sf-target"/></svg>持仓追踪
-        </button>
-
-        <div class="sidebar-group">接入</div>
-        <button class="tab nav-item" role="tab" data-tab="tws" aria-controls="tab-tws" aria-selected="false" tabindex="-1">
-          <svg class="nav-icon"><use href="#sf-antenna"/></svg>TWS 连接
-        </button>
-        <button class="tab nav-item" role="tab" data-tab="futu" aria-controls="tab-futu" aria-selected="false" tabindex="-1">
-          <svg class="nav-icon"><use href="#sf-plug"/></svg>富途 OpenD
-        </button>
-        <button class="tab nav-item" role="tab" data-tab="llm" aria-controls="tab-llm" aria-selected="false" tabindex="-1">
-          <svg class="nav-icon"><use href="#sf-cpu"/></svg>大模型
-        </button>
-
-        <div class="sidebar-group bottom">应用</div>
-        <button class="tab nav-item" role="tab" data-tab="settings" aria-controls="tab-settings" aria-selected="false" tabindex="-1">
-          <svg class="nav-icon"><use href="#sf-gear"/></svg>设置
-        </button>
-        <button class="tab nav-item" role="tab" data-tab="about" aria-controls="tab-about" aria-selected="false" tabindex="-1">
-          <svg class="nav-icon"><use href="#sf-info"/></svg>关于
-        </button>
+        <!-- 三组:每天要点的、研究用的、应用级的。组标题可折叠;行情 / 接入 是合并页,进去后页内分段切换 -->
+        <button type="button" class="sidebar-group" data-group="work" aria-expanded="true">工作区</button>
+        <div class="sidebar-items" data-group="work">
+          <button class="tab nav-item active" role="tab" data-tab="trade" aria-controls="tab-trade" aria-selected="true" tabindex="0">
+            <svg class="nav-icon"><use href="#sf-pencil"/></svg>交易指令
+          </button>
+          <button class="tab nav-item" role="tab" data-tab="board" aria-controls="tab-board" aria-selected="false" tabindex="-1">
+            <svg class="nav-icon"><use href="#sf-board"/></svg>订单看板
+            <span class="nav-badge hidden" id="sidebar-pending">0</span>
+          </button>
+          <button class="tab nav-item" role="tab" data-tab="records" aria-controls="tab-records" aria-selected="false" tabindex="-1">
+            <svg class="nav-icon"><use href="#sf-doc"/></svg>交易记录
+          </button>
+          <button class="tab nav-item" role="tab" data-tab="tracker" aria-controls="tab-tracker" aria-selected="false" tabindex="-1">
+            <svg class="nav-icon"><use href="#sf-target"/></svg>持仓追踪
+          </button>
+        </div>
+        <button type="button" class="sidebar-group" data-group="research" aria-expanded="true">研究</button>
+        <div class="sidebar-items" data-group="research">
+          <button class="tab nav-item" role="tab" data-tab="market" data-default="pa" aria-controls="tab-market" aria-selected="false" tabindex="-1">
+            <svg class="nav-icon"><use href="#sf-candles"/></svg>行情
+            <span class="nav-badge hidden" id="sidebar-alerts">0</span>
+          </button>
+          <button class="tab nav-item" role="tab" data-tab="ideas" aria-controls="tab-ideas" aria-selected="false" tabindex="-1">
+            <svg class="nav-icon"><use href="#sf-bulb"/></svg>想法
+          </button>
+          <button class="tab nav-item" role="tab" data-tab="sectors" aria-controls="tab-sectors" aria-selected="false" tabindex="-1">
+            <svg class="nav-icon"><use href="#sf-squares"/></svg>板块
+          </button>
+          <button class="tab nav-item" role="tab" data-tab="backtest" aria-controls="tab-backtest" aria-selected="false" tabindex="-1">
+            <svg class="nav-icon"><use href="#sf-chart"/></svg>回测
+          </button>
+          <button class="tab nav-item" role="tab" data-tab="review" aria-controls="tab-review" aria-selected="false" tabindex="-1">
+            <svg class="nav-icon"><use href="#sf-chart"/></svg>交易分析
+          </button>
+        </div>
+        <button type="button" class="sidebar-group bottom" data-group="app" aria-expanded="true">应用</button>
+        <div class="sidebar-items" data-group="app">
+          <button class="tab nav-item" role="tab" data-tab="access" data-default="tws" aria-controls="tab-access" aria-selected="false" tabindex="-1">
+            <svg class="nav-icon"><use href="#sf-plug"/></svg>接入
+          </button>
+          <button class="tab nav-item" role="tab" data-tab="settings" aria-controls="tab-settings" aria-selected="false" tabindex="-1">
+            <svg class="nav-icon"><use href="#sf-gear"/></svg>设置
+          </button>
+          <button class="tab nav-item" role="tab" data-tab="about" aria-controls="tab-about" aria-selected="false" tabindex="-1">
+            <svg class="nav-icon"><use href="#sf-info"/></svg>关于
+          </button>
+        </div>
       </nav>
 
       <main class="content">
@@ -385,42 +376,111 @@
           <div id="bt-result"></div>
         </section>
 
-        <!-- ============ K线 PA ============ -->
-        <section class="tab-panel" id="tab-pa">
-          <header class="page-head">
-            <h1>K线 PA</h1>
-            <span class="muted" id="pa-freshness">—</span>
-          </header>
-          <div class="row tight">
-            <input id="pa-symbol" type="text" class="grow" placeholder="标的,如 NVDA、SPY、SPX" maxlength="12" />
-            <div class="select-wrap"><select id="pa-timeframe" aria-label="K 线周期"></select></div>
-            <button id="btn-pa-run" class="btn primary">分析</button>
-          </div>
-          <label class="switch">
-            <span>只看正常交易时段<span class="sub">默认含盘前盘后;打开只取 09:30–16:00</span></span>
-            <input id="pa-rth" type="checkbox" />
-          </label>
-          <details id="intro-pa" class="primer intro"><summary>数据来源与判断方式</summary>
-            <p class="hint">
-              K 线走 TWS 历史数据接口,需行情权限;仅延迟权限也能出图,最后一根约落后 15 分钟,
-              新鲜度见标题右侧,超 30 分钟会告警。方向判断<strong>全部由规则计算</strong>,权重公开在「判断依据」里;
-              「AI 解读」只叙述这些事实,不看图。已连网关时每 20 秒自动刷新。
-              <strong>仅供研究参考,不接下单链路。</strong>
-            </p>
-          </details>
-          <div id="pa-result"><p class="empty">输入标的后点「分析」。</p></div>
-          <details id="pa-legend-primer" class="primer">
-            <summary>图上画的是什么</summary>
-            <ul class="hint-list">
-              <li>蜡烛按涨跌着色(可在「设置 → 涨跌配色」切换红涨绿跌);量能柱同色,按 95 分位归一化,开盘第一根巨量不会把其余压成一条线。</li>
-              <li>MA5 / MA10 / MA20 是引擎算的收盘价简单均线,只作图,不进打分;左上角显示最后一根(或光标所在那根)的均线值。</li>
-              <li>虚线是关键位:支撑用涨色、阻力用跌色;价格标签放在右侧价格轴上,挤在一起时会被推开并画引线回到真实价位。</li>
-              <li>半透明色块是未回补的 FVG(缺口),灰色虚线框是订单块;它们从产生那根 K 线画到最后一根,不铺到轴上。</li>
-              <li>点 + 小字是最近的摆动点(HH / HL / LH / LL);蓝色点线是现价。鼠标悬停显示十字光标与那一根的开高低收量。</li>
-            </ul>
-          </details>
-        </section>
 
+        <!-- ============ 行情:K线 PA / 订单簿 / 期权墙 三个盯行情的工具合成一页,页内分段切换 ============ -->
+        <section class="tab-panel" id="tab-market">
+          <header class="page-head">
+            <h1>行情</h1>
+            <div class="segmented subnav" role="tablist" aria-label="行情子页">
+              <button class="tab seg" role="tab" data-tab="pa" aria-controls="tab-pa" aria-selected="false" tabindex="-1">K线 PA</button>
+              <button class="tab seg" role="tab" data-tab="book" aria-controls="tab-book" aria-selected="false" tabindex="-1">订单簿</button>
+              <button class="tab seg" role="tab" data-tab="alerts" aria-controls="tab-alerts" aria-selected="false" tabindex="-1">期权墙 · 警告</button>
+            </div>
+          </header>
+          <!-- ============ K线 PA ============ -->
+          <section class="sub-panel" id="tab-pa" role="tabpanel" aria-label="K线 PA">
+            <div class="sub-head"><span class="muted" id="pa-freshness">—</span></div>
+            <div class="row tight">
+              <input id="pa-symbol" type="text" class="grow" placeholder="标的,如 NVDA、SPY、SPX" maxlength="12" />
+              <div class="select-wrap"><select id="pa-timeframe" aria-label="K 线周期"></select></div>
+              <button id="btn-pa-run" class="btn primary">分析</button>
+            </div>
+            <label class="switch">
+              <span>只看正常交易时段<span class="sub">默认含盘前盘后;打开只取 09:30–16:00</span></span>
+              <input id="pa-rth" type="checkbox" />
+            </label>
+            <details id="intro-pa" class="primer intro"><summary>数据来源与判断方式</summary>
+              <p class="hint">
+                K 线走 TWS 历史数据接口,需行情权限;仅延迟权限也能出图,最后一根约落后 15 分钟,
+                新鲜度见标题右侧,超 30 分钟会告警。方向判断<strong>全部由规则计算</strong>,权重公开在「判断依据」里;
+                「AI 解读」只叙述这些事实,不看图。已连网关时每 20 秒自动刷新。
+                <strong>仅供研究参考,不接下单链路。</strong>
+              </p>
+            </details>
+            <div id="pa-result"><p class="empty">输入标的后点「分析」。</p></div>
+            <details id="pa-legend-primer" class="primer">
+              <summary>图上画的是什么</summary>
+              <ul class="hint-list">
+                <li>蜡烛按涨跌着色(可在「设置 → 涨跌配色」切换红涨绿跌);量能柱同色,按 95 分位归一化,开盘第一根巨量不会把其余压成一条线。</li>
+                <li>MA5 / MA10 / MA20 是引擎算的收盘价简单均线,只作图,不进打分;左上角显示最后一根(或光标所在那根)的均线值。</li>
+                <li>虚线是关键位:支撑用涨色、阻力用跌色;价格标签放在右侧价格轴上,挤在一起时会被推开并画引线回到真实价位。</li>
+                <li>半透明色块是未回补的 FVG(缺口),灰色虚线框是订单块;它们从产生那根 K 线画到最后一根,不铺到轴上。</li>
+                <li>点 + 小字是最近的摆动点(HH / HL / LH / LL);蓝色点线是现价。鼠标悬停显示十字光标与那一根的开高低收量。</li>
+              </ul>
+            </details>
+          </section>
+          <!-- ============ 订单簿 ============ -->
+          <section class="sub-panel" id="tab-book" role="tabpanel" aria-label="订单簿">
+            <div class="sub-head"><button id="btn-book-refresh-all" class="btn tiny ghost">全部刷新</button></div>
+            <div class="row tight">
+              <input id="book-symbol" type="text" class="grow" placeholder="标的,如 NVDA、SPY(指数请用对应 ETF)" maxlength="12" />
+              <button id="btn-book-load" class="btn primary">添加</button>
+            </div>
+            <p class="hint">只读展示,不参与定价与下单。无 Level 2 订阅时只显示一档;已连 TWS 时每 20 秒自动刷新。</p>
+            <div id="book-grid" class="sector-grid"><p class="empty">还没有关注的标的。</p></div>
+
+            <details id="book-primer" class="primer">
+              <summary>读盘常识</summary>
+              <div class="cards">
+              <div class="card info">
+                <div class="card-title">订单簿是什么</div>
+                <div>未成交限价单按价格聚合:买单从高到低,卖单从低到高。买一与卖一之差是<strong>价差</strong>,
+                  各价位挂单量是<strong>深度</strong>。一档(L1)只看买一/卖一;Level 2 看多档,需单独订阅。</div>
+              </div>
+              <div class="card info">
+                <div class="card-title">怎么读</div>
+                <div>价差窄、深度厚 = 流动性好、滑点小;价差宽、深度薄时大单会吃穿多档。
+                  某价位的异常大单可能是支撑/压力,也可能是随时撤掉的诱导单:挂单不等于成交。盘前盘后深度明显变薄。</div>
+              </div>
+              <div class="card warn">
+                <div class="card-title">对本系统的意义</div>
+                <div>AUTO_MID 按盘口中间价 ±滑点上限定价:价差 10 美分的票,上限 0.10 合理;
+                  价差 2 美元的期权组合则可能永远不成交。下条件单前先看价差,再定净权利金上限或滑点。
+                  期权盘口普遍比正股宽一个数量级。</div>
+              </div>
+            </div>
+          </details>
+          </section>
+          <!-- ============ 期权墙 · 警告 ============ -->
+          <section class="sub-panel" id="tab-alerts" role="tabpanel" aria-label="期权墙 · 警告">
+            <div class="sub-head"><span class="muted" id="alerts-status">—</span></div>
+            <div class="row tight">
+              <input id="alert-symbol" type="text" class="grow" placeholder="标的,如 IREN、SPY、SPX" maxlength="12" />
+              <input id="alert-step" class="narrow" type="number" min="0.1" max="1000" step="0.5" value="5"
+                     aria-label="整数关口步长" title="整数关口步长" />
+              <button id="btn-alert-add" class="btn primary">开始盯</button>
+            </div>
+            <label class="switch">
+              <span>触发时播放提示音<span class="sub">上穿升调、下破降调,并弹系统通知</span></span>
+              <span class="row tight m0">
+                <button id="btn-alert-test" class="btn tiny">试听</button>
+                <input id="alert-sound" type="checkbox" checked />
+              </span>
+            </label>
+            <details id="intro-alerts" class="primer intro"><summary>价位从哪来、什么时候报</summary>
+              <p class="hint">
+                价位来自<strong>当天期权墙</strong>(持仓墙 / 成交墙 / 最大痛点 / Gamma 翻转)和<strong>整数关口</strong>
+                (现价附近的步长整数倍:41 块、步长 5 → 40 和 45)。穿越报一次,离开足够远并过冷却后才再报,不会刷屏。
+                <strong>OI 是隔夜存量</strong>,当日到期以成交墙为准。任何页面都会检查(需已连 TWS)。
+                <strong>只通知,不下单。</strong>
+              </p>
+            </details>
+            <div id="alerts-list"><p class="empty">还没有在盯的标的。</p></div>
+
+            <h3 class="section-title">最近触发</h3>
+            <div id="alerts-feed" class="feed"><p class="empty">还没有触发记录。</p></div>
+          </section>
+        </section>
         <!-- ============ 交易分析(蝴蝶复盘) ============ -->
         <section class="tab-panel" id="tab-review">
           <header class="page-head">
@@ -461,74 +521,7 @@
           <div id="review-result"><p class="empty">选一张蝴蝶后点「分析」。</p></div>
         </section>
 
-        <!-- ============ 期权墙 · 警告 ============ -->
-        <section class="tab-panel" id="tab-alerts">
-          <header class="page-head">
-            <h1>期权墙 · 警告</h1>
-            <span class="muted" id="alerts-status">—</span>
-          </header>
-          <div class="row tight">
-            <input id="alert-symbol" type="text" class="grow" placeholder="标的,如 IREN、SPY、SPX" maxlength="12" />
-            <input id="alert-step" class="narrow" type="number" min="0.1" max="1000" step="0.5" value="5"
-                   aria-label="整数关口步长" title="整数关口步长" />
-            <button id="btn-alert-add" class="btn primary">开始盯</button>
-          </div>
-          <label class="switch">
-            <span>触发时播放提示音<span class="sub">上穿升调、下破降调,并弹系统通知</span></span>
-            <span class="row tight m0">
-              <button id="btn-alert-test" class="btn tiny">试听</button>
-              <input id="alert-sound" type="checkbox" checked />
-            </span>
-          </label>
-          <details id="intro-alerts" class="primer intro"><summary>价位从哪来、什么时候报</summary>
-            <p class="hint">
-              价位来自<strong>当天期权墙</strong>(持仓墙 / 成交墙 / 最大痛点 / Gamma 翻转)和<strong>整数关口</strong>
-              (现价附近的步长整数倍:41 块、步长 5 → 40 和 45)。穿越报一次,离开足够远并过冷却后才再报,不会刷屏。
-              <strong>OI 是隔夜存量</strong>,当日到期以成交墙为准。任何页面都会检查(需已连 TWS)。
-              <strong>只通知,不下单。</strong>
-            </p>
-          </details>
-          <div id="alerts-list"><p class="empty">还没有在盯的标的。</p></div>
 
-          <h3 class="section-title">最近触发</h3>
-          <div id="alerts-feed" class="feed"><p class="empty">还没有触发记录。</p></div>
-        </section>
-
-        <!-- ============ 订单簿 ============ -->
-        <section class="tab-panel" id="tab-book">
-          <header class="page-head">
-            <h1>订单簿</h1>
-            <button id="btn-book-refresh-all" class="btn tiny ghost">全部刷新</button>
-          </header>
-          <div class="row tight">
-            <input id="book-symbol" type="text" class="grow" placeholder="标的,如 NVDA、SPY(指数请用对应 ETF)" maxlength="12" />
-            <button id="btn-book-load" class="btn primary">添加</button>
-          </div>
-          <p class="hint">只读展示,不参与定价与下单。无 Level 2 订阅时只显示一档;已连 TWS 时每 20 秒自动刷新。</p>
-          <div id="book-grid" class="sector-grid"><p class="empty">还没有关注的标的。</p></div>
-
-          <details id="book-primer" class="primer">
-            <summary>读盘常识</summary>
-            <div class="cards">
-            <div class="card info">
-              <div class="card-title">订单簿是什么</div>
-              <div>未成交限价单按价格聚合:买单从高到低,卖单从低到高。买一与卖一之差是<strong>价差</strong>,
-                各价位挂单量是<strong>深度</strong>。一档(L1)只看买一/卖一;Level 2 看多档,需单独订阅。</div>
-            </div>
-            <div class="card info">
-              <div class="card-title">怎么读</div>
-              <div>价差窄、深度厚 = 流动性好、滑点小;价差宽、深度薄时大单会吃穿多档。
-                某价位的异常大单可能是支撑/压力,也可能是随时撤掉的诱导单:挂单不等于成交。盘前盘后深度明显变薄。</div>
-            </div>
-            <div class="card warn">
-              <div class="card-title">对本系统的意义</div>
-              <div>AUTO_MID 按盘口中间价 ±滑点上限定价:价差 10 美分的票,上限 0.10 合理;
-                价差 2 美元的期权组合则可能永远不成交。下条件单前先看价差,再定净权利金上限或滑点。
-                期权盘口普遍比正股宽一个数量级。</div>
-            </div>
-          </div>
-        </details>
-        </section>
 
         <!-- ============ 交易记录 ============ -->
         <section class="tab-panel" id="tab-records">
@@ -577,196 +570,204 @@
           <div id="trackers" class="cards"><p class="empty">还没有在追踪任何持仓</p></div>
         </section>
 
-        <!-- ============ TWS 连接 ============ -->
-        <section class="tab-panel" id="tab-tws">
-          <header class="page-head"><h1>TWS 连接</h1></header>
-          <div id="tws-broker-banner" class="notice"></div>
-          <div class="notice">
-            <strong>不接触你的 IBKR 账号密码。</strong>
-            登录在 TWS / IB Gateway 自己的窗口完成;这里只检测本机 API 端口、诊断握手、核对账户别名。
-          </div>
 
-          <div class="row tight">
-            <button id="btn-tws-scan" class="btn">重新检测</button>
-            <button id="btn-tws-diagnose" class="btn primary">检测连接</button>
-          </div>
 
-          <h3 class="section-title">1 · 程序</h3>
-          <div id="tws-apps" class="cards"><p class="empty">检测中…</p></div>
 
-          <h3 class="section-title">2 · API 端口</h3>
-          <div id="tws-ports" class="port-grid"><p class="empty">检测中…</p></div>
+        <!-- ============ 接入:TWS / 富途 OpenD / 大模型 配一次就不常来,合成一页 ============ -->
+        <section class="tab-panel" id="tab-access">
+          <header class="page-head">
+            <h1>接入</h1>
+            <div class="segmented subnav" role="tablist" aria-label="接入子页">
+              <button class="tab seg" role="tab" data-tab="tws" aria-controls="tab-tws" aria-selected="false" tabindex="-1">TWS</button>
+              <button class="tab seg" role="tab" data-tab="futu" aria-controls="tab-futu" aria-selected="false" tabindex="-1">富途 OpenD</button>
+              <button class="tab seg" role="tab" data-tab="llm" aria-controls="tab-llm" aria-selected="false" tabindex="-1">大模型</button>
+            </div>
+          </header>
+          <!-- ============ TWS 连接 ============ -->
+          <section class="sub-panel" id="tab-tws" role="tabpanel" aria-label="TWS 连接">
+            <div id="tws-broker-banner" class="notice"></div>
+            <div class="notice">
+              <strong>不接触你的 IBKR 账号密码。</strong>
+              登录在 TWS / IB Gateway 自己的窗口完成;这里只检测本机 API 端口、诊断握手、核对账户别名。
+            </div>
 
-          <h3 class="section-title">3 · 握手与账户</h3>
-          <div id="tws-diagnosis" class="cards">
-            <p class="empty">点「检测连接」做一次只读握手</p>
-          </div>
+            <div class="row tight">
+              <button id="btn-tws-scan" class="btn">重新检测</button>
+              <button id="btn-tws-diagnose" class="btn primary">检测连接</button>
+            </div>
 
-          <h3 class="section-title">4 · 连接引擎</h3>
-          <div class="row tight">
-            <button id="btn-tws-connect" class="btn">连接 / 断开交易引擎</button>
-          </div>
-          <p class="hint">
-            「检测连接」是一次性只读探测;这里才是引擎下单用的长连接。
-          </p>
+            <h3 class="section-title">1 · 程序</h3>
+            <div id="tws-apps" class="cards"><p class="empty">检测中…</p></div>
 
-          <details id="tws-primer" class="primer">
-            <summary>连不上时照着做</summary>
-            <ol id="tws-guide" class="guide"></ol>
-          </details>
-        </section>
+            <h3 class="section-title">2 · API 端口</h3>
+            <div id="tws-ports" class="port-grid"><p class="empty">检测中…</p></div>
 
-        <!-- ============ 富途 OpenD ============ -->
-        <section class="tab-panel" id="tab-futu">
-          <header class="page-head"><h1>富途 OpenD</h1></header>
-          <div class="notice">
-            <strong>IBKR API 跑不起来时的备用通道。</strong>
-            同样不接触你的富途账号密码,登录在 OpenD 自己的窗口完成;这里只检测端口、诊断握手、核对账户别名。
-            <br>
-            <strong>不支持组合单</strong>:价差 / 蝴蝶 / 铁鹰拆单有腿风险,引擎会直接拒绝,请切回 IBKR。
-            <br>
-            <strong>没有原生条件单</strong>:条件单由本软件盯盘,<em>软件关掉就不会触发</em>
-            (IBKR 的条件单挂在券商服务器,掉线仍有效)。
-          </div>
+            <h3 class="section-title">3 · 握手与账户</h3>
+            <div id="tws-diagnosis" class="cards">
+              <p class="empty">点「检测连接」做一次只读握手</p>
+            </div>
 
-          <h3 class="section-title">0 · 当前券商接入</h3>
-          <div id="broker-switch" class="cards"><p class="empty">读取中…</p></div>
-          <p class="hint">
-            同一时刻只连一家。切换会断开现有连接并写入配置;别名、限额、校验层不变。
-          </p>
+            <h3 class="section-title">4 · 连接引擎</h3>
+            <div class="row tight">
+              <button id="btn-tws-connect" class="btn">连接 / 断开交易引擎</button>
+            </div>
+            <p class="hint">
+              「检测连接」是一次性只读探测;这里才是引擎下单用的长连接。
+            </p>
 
-          <div class="row tight">
-            <button id="btn-futu-scan" class="btn">重新检测</button>
-            <button id="btn-futu-diagnose" class="btn primary">检测连接</button>
-          </div>
+            <details id="tws-primer" class="primer">
+              <summary>连不上时照着做</summary>
+              <ol id="tws-guide" class="guide"></ol>
+            </details>
+          </section>
+          <!-- ============ 富途 OpenD ============ -->
+          <section class="sub-panel" id="tab-futu" role="tabpanel" aria-label="富途 OpenD">
+            <div class="notice">
+              <strong>IBKR API 跑不起来时的备用通道。</strong>
+              同样不接触你的富途账号密码,登录在 OpenD 自己的窗口完成;这里只检测端口、诊断握手、核对账户别名。
+              <br>
+              <strong>不支持组合单</strong>:价差 / 蝴蝶 / 铁鹰拆单有腿风险,引擎会直接拒绝,请切回 IBKR。
+              <br>
+              <strong>没有原生条件单</strong>:条件单由本软件盯盘,<em>软件关掉就不会触发</em>
+              (IBKR 的条件单挂在券商服务器,掉线仍有效)。
+            </div>
 
-          <h3 class="section-title">1 · 程序</h3>
-          <div id="futu-apps" class="cards"><p class="empty">检测中…</p></div>
+            <h3 class="section-title">0 · 当前券商接入</h3>
+            <div id="broker-switch" class="cards"><p class="empty">读取中…</p></div>
+            <p class="hint">
+              同一时刻只连一家。切换会断开现有连接并写入配置;别名、限额、校验层不变。
+            </p>
 
-          <h3 class="section-title">2 · API 端口</h3>
-          <div id="futu-ports" class="port-grid"><p class="empty">检测中…</p></div>
+            <div class="row tight">
+              <button id="btn-futu-scan" class="btn">重新检测</button>
+              <button id="btn-futu-diagnose" class="btn primary">检测连接</button>
+            </div>
 
-          <h3 class="section-title">3 · 握手与账户</h3>
-          <div id="futu-diagnosis" class="cards">
-            <p class="empty">点「检测连接」做一次只读握手</p>
-          </div>
+            <h3 class="section-title">1 · 程序</h3>
+            <div id="futu-apps" class="cards"><p class="empty">检测中…</p></div>
 
-          <h3 class="section-title">4 · 连接引擎</h3>
-          <div class="row tight">
-            <button id="btn-futu-connect" class="btn">连接 / 断开交易引擎</button>
-          </div>
-          <p class="hint">
-            「检测连接」是一次性只读探测;这里才是引擎下单用的长连接。
-          </p>
+            <h3 class="section-title">2 · API 端口</h3>
+            <div id="futu-ports" class="port-grid"><p class="empty">检测中…</p></div>
 
-          <h3 class="section-title">5 · 交易解锁(仅实盘需要)</h3>
-          <div class="group">
-            <div class="field">
-              <label for="futu-password">
-                <strong>只存 md5</strong>于 Keychain / DPAPI,明文算完即丢,不写配置、不进日志。模拟盘无需解锁。
+            <h3 class="section-title">3 · 握手与账户</h3>
+            <div id="futu-diagnosis" class="cards">
+              <p class="empty">点「检测连接」做一次只读握手</p>
+            </div>
+
+            <h3 class="section-title">4 · 连接引擎</h3>
+            <div class="row tight">
+              <button id="btn-futu-connect" class="btn">连接 / 断开交易引擎</button>
+            </div>
+            <p class="hint">
+              「检测连接」是一次性只读探测;这里才是引擎下单用的长连接。
+            </p>
+
+            <h3 class="section-title">5 · 交易解锁(仅实盘需要)</h3>
+            <div class="group">
+              <div class="field">
+                <label for="futu-password">
+                  <strong>只存 md5</strong>于 Keychain / DPAPI,明文算完即丢,不写配置、不进日志。模拟盘无需解锁。
+                </label>
+                <input id="futu-password" type="password" placeholder="富途交易密码" autocomplete="off" />
+              </div>
+              <label class="switch">
+                <span>我填的已经是 md5<span class="sub">不勾则由引擎本机计算</span></span>
+                <input id="futu-password-md5" type="checkbox" />
               </label>
-              <input id="futu-password" type="password" placeholder="富途交易密码" autocomplete="off" />
-            </div>
-            <label class="switch">
-              <span>我填的已经是 md5<span class="sub">不勾则由引擎本机计算</span></span>
-              <input id="futu-password-md5" type="checkbox" />
-            </label>
-            <div class="field-row">
-              <label>解锁状态<span class="sub" id="futu-unlock-state">检测中…</span></label>
-              <span class="row tight m0">
-                <button id="btn-futu-save-password" class="btn">保存</button>
-                <button id="btn-futu-unlock" class="btn primary">交易解锁</button>
-              </span>
-            </div>
-          </div>
-          <p class="hint">
-            解锁随 OpenD 会话失效,重启 OpenD 后需重新解锁;未解锁时实盘单会在引擎侧被拦下。
-          </p>
-
-          <details id="futu-primer" class="primer">
-            <summary>连不上时照着做</summary>
-            <ol id="futu-guide" class="guide"></ol>
-          </details>
-        </section>
-
-        <!-- ============ 大模型 ============ -->
-        <section class="tab-panel" id="tab-llm">
-          <header class="page-head"><h1>大模型</h1></header>
-          <div class="notice">
-            发给模型的只有指令原文、当前时间、行情快照、账户别名与限额;
-            <strong>真实账号、余额、持仓、成交记录不出本机</strong>。
-          </div>
-
-          <h3 class="section-title">供应商</h3>
-          <div class="segmented" id="llm-providers"></div>
-
-          <div class="group">
-            <div class="field-row">
-              <label for="llm-model">模型</label>
-              <div class="select-wrap grow">
-                <select id="llm-model"></select>
+              <div class="field-row">
+                <label>解锁状态<span class="sub" id="futu-unlock-state">检测中…</span></label>
+                <span class="row tight m0">
+                  <button id="btn-futu-save-password" class="btn">保存</button>
+                  <button id="btn-futu-unlock" class="btn primary">交易解锁</button>
+                </span>
               </div>
             </div>
-            <div class="field" id="llm-model-custom-row">
-              <label for="llm-model-custom">自定义模型(留空则用上面选中的)</label>
-              <input id="llm-model-custom" type="text" placeholder="如 deepseek-chat" />
-            </div>
-            <div class="field" id="llm-base-url-row">
-              <label for="llm-base-url">Base URL(OpenAI 兼容端点)</label>
-              <input id="llm-base-url" type="text" placeholder="https://api.example.com/v1" />
-            </div>
-          </div>
+            <p class="hint">
+              解锁随 OpenD 会话失效,重启 OpenD 后需重新解锁;未解锁时实盘单会在引擎侧被拦下。
+            </p>
 
-          <h3 class="section-title">API Key</h3>
-          <div class="group">
-            <div class="field">
-              <label for="llm-key">
-                按供应商分开存于系统凭据库,不落配置、不进日志
-              </label>
-              <input id="llm-key" type="password" placeholder="sk-..." autocomplete="off" />
+            <details id="futu-primer" class="primer">
+              <summary>连不上时照着做</summary>
+              <ol id="futu-guide" class="guide"></ol>
+            </details>
+          </section>
+          <!-- ============ 大模型 ============ -->
+          <section class="sub-panel" id="tab-llm" role="tabpanel" aria-label="大模型">
+            <div class="notice">
+              发给模型的只有指令原文、当前时间、行情快照、账户别名与限额;
+              <strong>真实账号、余额、持仓、成交记录不出本机</strong>。
             </div>
-            <div class="field-row">
-              <label>当前供应商 Key<span class="sub" id="llm-key-status">检测中…</span></label>
-              <button id="btn-llm-save-key" class="btn">保存</button>
-            </div>
-          </div>
 
-          <h3 class="section-title">调用参数</h3>
-          <div class="group">
-            <div class="field-row" id="llm-effort-row">
-              <label for="llm-effort">推理档位<span class="sub">effort,仅 Anthropic</span></label>
-              <div class="select-wrap">
-                <select id="llm-effort">
-                  <option value="low">low</option>
-                  <option value="medium">medium</option>
-                  <option value="high">high</option>
-                  <option value="xhigh">xhigh</option>
-                  <option value="max">max</option>
-                </select>
+            <h3 class="section-title">供应商</h3>
+            <div class="segmented" id="llm-providers"></div>
+
+            <div class="group">
+              <div class="field-row">
+                <label for="llm-model">模型</label>
+                <div class="select-wrap grow">
+                  <select id="llm-model"></select>
+                </div>
+              </div>
+              <div class="field" id="llm-model-custom-row">
+                <label for="llm-model-custom">自定义模型(留空则用上面选中的)</label>
+                <input id="llm-model-custom" type="text" placeholder="如 deepseek-chat" />
+              </div>
+              <div class="field" id="llm-base-url-row">
+                <label for="llm-base-url">Base URL(OpenAI 兼容端点)</label>
+                <input id="llm-base-url" type="text" placeholder="https://api.example.com/v1" />
               </div>
             </div>
-            <div class="field-row" id="llm-temp-row">
-              <label for="llm-temperature">temperature<span class="sub">留空 = 不发送</span></label>
-              <input id="llm-temperature" type="number" min="0" max="2" step="0.1" placeholder="不发送" />
-            </div>
-            <div class="field-row">
-              <label for="llm-max-tokens">max_tokens</label>
-              <input id="llm-max-tokens" type="number" min="1000" step="1000" />
-            </div>
-            <div class="field-row">
-              <label for="llm-timeout">超时(秒)</label>
-              <input id="llm-timeout" type="number" min="1" step="5" />
-            </div>
-          </div>
 
-          <div class="row tight">
-            <button id="btn-llm-test" class="btn">测试连接</button>
-            <button id="btn-llm-save" class="btn primary">保存配置</button>
-          </div>
-          <div id="llm-test-result" class="cards"></div>
-          <p class="hint" id="llm-provider-docs"></p>
+            <h3 class="section-title">API Key</h3>
+            <div class="group">
+              <div class="field">
+                <label for="llm-key">
+                  按供应商分开存于系统凭据库,不落配置、不进日志
+                </label>
+                <input id="llm-key" type="password" placeholder="sk-..." autocomplete="off" />
+              </div>
+              <div class="field-row">
+                <label>当前供应商 Key<span class="sub" id="llm-key-status">检测中…</span></label>
+                <button id="btn-llm-save-key" class="btn">保存</button>
+              </div>
+            </div>
+
+            <h3 class="section-title">调用参数</h3>
+            <div class="group">
+              <div class="field-row" id="llm-effort-row">
+                <label for="llm-effort">推理档位<span class="sub">effort,仅 Anthropic</span></label>
+                <div class="select-wrap">
+                  <select id="llm-effort">
+                    <option value="low">low</option>
+                    <option value="medium">medium</option>
+                    <option value="high">high</option>
+                    <option value="xhigh">xhigh</option>
+                    <option value="max">max</option>
+                  </select>
+                </div>
+              </div>
+              <div class="field-row" id="llm-temp-row">
+                <label for="llm-temperature">temperature<span class="sub">留空 = 不发送</span></label>
+                <input id="llm-temperature" type="number" min="0" max="2" step="0.1" placeholder="不发送" />
+              </div>
+              <div class="field-row">
+                <label for="llm-max-tokens">max_tokens</label>
+                <input id="llm-max-tokens" type="number" min="1000" step="1000" />
+              </div>
+              <div class="field-row">
+                <label for="llm-timeout">超时(秒)</label>
+                <input id="llm-timeout" type="number" min="1" step="5" />
+              </div>
+            </div>
+
+            <div class="row tight">
+              <button id="btn-llm-test" class="btn">测试连接</button>
+              <button id="btn-llm-save" class="btn primary">保存配置</button>
+            </div>
+            <div id="llm-test-result" class="cards"></div>
+            <p class="hint" id="llm-provider-docs"></p>
+          </section>
         </section>
-
         <!-- ============ 设置 ============ -->
         <section class="tab-panel" id="tab-settings">
           <header class="page-head"><h1>设置</h1></header>

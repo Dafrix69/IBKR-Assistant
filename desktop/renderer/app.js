@@ -4531,37 +4531,96 @@ function bind() {
     tabs[next].click();
   });
 
-  document.querySelectorAll('.tab').forEach((tab) => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.tab').forEach((t) => {
-        t.classList.remove('active');
-        t.setAttribute('aria-selected', 'false');
-        t.tabIndex = -1;                 // 只让当前项进 Tab 序列,这是 tablist 的规矩
-      });
-      document.querySelectorAll('.tab-panel').forEach((p) => p.classList.remove('active'));
-      tab.classList.add('active');
-      tab.setAttribute('aria-selected', 'true');
-      tab.tabIndex = 0;
-      $(`tab-${tab.dataset.tab}`).classList.add('active');
-      auto.last[tab.dataset.tab] = Date.now();  // 切页时已手动加载,自动刷新从现在起算
-      if (tab.dataset.tab === 'about') loadAbout();
-      if (tab.dataset.tab === 'settings') loadSettings();
-      // 切回主页面时把光标放回输入框:这是整个软件唯一的主动作,
-      // 每次都要用鼠标点一下才能打字是白白多出来的一步
-      if (tab.dataset.tab === 'trade') $('instruction').focus();
-      if (tab.dataset.tab === 'tws') { scanTws(); loadBrokerSwitch(); }
-      if (tab.dataset.tab === 'futu') loadFutu();
-      if (tab.dataset.tab === 'llm') loadLlm();
-      if (tab.dataset.tab === 'board') { loadPending(); loadRecords(); }
-      if (tab.dataset.tab === 'ideas') loadIdeas();
-      if (tab.dataset.tab === 'review') loadReviewCandidates();
-      if (tab.dataset.tab === 'sectors') loadSectors(true);
-      if (tab.dataset.tab === 'backtest' && !bt.strategies.length) loadBacktestStrategies();
-      if (tab.dataset.tab === 'book') renderBookGrid();
-      if (tab.dataset.tab === 'tracker') loadTracker(true);
-      if (tab.dataset.tab === 'pa') { loadPaTimeframes(); renderPa(); }
-      if (tab.dataset.tab === 'alerts') loadAlerts();
+  /**
+   * 切页。两层导航:侧栏 12 项里「行情」「接入」是合并页(data-default 指向默认子页),
+   * 子页在页头的分段控件里切;子页按钮和侧栏项都是 .tab[data-tab],所以
+   * `querySelector('.tab[data-tab="tws"]').click()` 这种跳转在合并之后照样能用。
+   */
+  function activateTab(name) {
+    const tab = document.querySelector(`.tab[data-tab="${name}"]`);
+    if (!tab) return;
+    if (tab.dataset.default) {
+      // 合并页:回到上次看的那个子页
+      let sub = null;
+      try { sub = localStorage.getItem(`dafri-subtab-${name}`); } catch { /* 不可用就用默认 */ }
+      activateTab(sub && document.querySelector(`.tab[data-tab="${sub}"]`) ? sub : tab.dataset.default);
+      return;
+    }
+    const panel = $(`tab-${name}`);
+    const container = panel.classList.contains('sub-panel') ? panel.closest('.tab-panel') : null;
+    document.querySelectorAll('.tab').forEach((t) => {
+      t.classList.remove('active');
+      t.setAttribute('aria-selected', 'false');
+      t.tabIndex = -1;                 // 只让当前项进 Tab 序列,这是 tablist 的规矩
     });
+    document.querySelectorAll('.tab-panel, .sub-panel').forEach((p) => p.classList.remove('active'));
+    tab.classList.add('active');
+    tab.setAttribute('aria-selected', 'true');
+    tab.tabIndex = 0;
+    panel.classList.add('active');
+    let sideTab = tab;
+    if (container) {
+      container.classList.add('active');
+      const parent = container.id.slice(4);
+      sideTab = document.querySelector(`.sidebar .tab[data-tab="${parent}"]`);
+      if (sideTab) { sideTab.classList.add('active'); sideTab.setAttribute('aria-selected', 'true'); sideTab.tabIndex = 0; }
+      try { localStorage.setItem(`dafri-subtab-${parent}`, name); } catch { /* 同上 */ }
+    }
+    // 目标在折叠着的组里(快捷键 / 就绪清单跳过来):把组展开,不然选中项看不见
+    const group = sideTab && sideTab.closest('.sidebar-items');
+    if (group && group.hasAttribute('data-collapsed')) setSidebarGroup(group.dataset.group, true);
+
+    auto.last[name] = Date.now();  // 切页时已手动加载,自动刷新从现在起算
+    if (name === 'about') loadAbout();
+    if (name === 'settings') loadSettings();
+    // 切回主页面时把光标放回输入框:这是整个软件唯一的主动作,
+    // 每次都要用鼠标点一下才能打字是白白多出来的一步
+    if (name === 'trade') $('instruction').focus();
+    if (name === 'tws') { scanTws(); loadBrokerSwitch(); }
+    if (name === 'futu') loadFutu();
+    if (name === 'llm') loadLlm();
+    if (name === 'board') { loadPending(); loadRecords(); }
+    if (name === 'ideas') loadIdeas();
+    if (name === 'review') loadReviewCandidates();
+    if (name === 'sectors') loadSectors(true);
+    if (name === 'backtest' && !bt.strategies.length) loadBacktestStrategies();
+    if (name === 'book') renderBookGrid();
+    if (name === 'tracker') loadTracker(true);
+    if (name === 'pa') { loadPaTimeframes(); renderPa(); }
+    if (name === 'alerts') loadAlerts();
+  }
+  document.querySelectorAll('.tab').forEach((tab) => {
+    tab.addEventListener('click', () => activateTab(tab.dataset.tab));
+  });
+  // 页内分段控件里左右方向键切子页
+  document.querySelectorAll('.subnav').forEach((nav) => {
+    nav.addEventListener('keydown', (e) => {
+      const step = { ArrowRight: 1, ArrowLeft: -1 }[e.key];
+      if (!step) return;
+      e.preventDefault();
+      const tabs = [...nav.querySelectorAll('.tab')];
+      const here = Math.max(0, tabs.indexOf(document.activeElement));
+      const next = tabs[(here + step + tabs.length) % tabs.length];
+      next.focus();
+      next.click();
+    });
+  });
+
+  // 侧栏分组可折叠:状态记在本地。折叠只是收起来,不影响任何跳转——目标在折叠组里时会自动展开
+  function setSidebarGroup(key, open) {
+    const head = document.querySelector(`.sidebar-group[data-group="${key}"]`);
+    const items = document.querySelector(`.sidebar-items[data-group="${key}"]`);
+    if (!head || !items) return;
+    head.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open) items.removeAttribute('data-collapsed'); else items.setAttribute('data-collapsed', '');
+    try { localStorage.setItem(`dafri-sidegroup-${key}`, open ? '1' : '0'); } catch { /* 同上 */ }
+  }
+  document.querySelectorAll('.sidebar-group[data-group]').forEach((head) => {
+    const key = head.dataset.group;
+    let saved = null;
+    try { saved = localStorage.getItem(`dafri-sidegroup-${key}`); } catch { /* 同上 */ }
+    if (saved === '0' && !document.querySelector(`.sidebar-items[data-group="${key}"] .tab.active`)) setSidebarGroup(key, false);
+    head.addEventListener('click', () => setSidebarGroup(key, head.getAttribute('aria-expanded') !== 'true'));
   });
 
   window.dafri.on('engine-event', ({ event, data }) => {
@@ -4625,7 +4684,8 @@ const AUTO_TASKS = {
 
 function startAutoRefresh() {
   setInterval(async () => {
-    const tab = document.querySelector('.tab.active')?.dataset.tab;
+    // 合并页里侧栏项和子页按钮同时是 active,自动刷新按子页(叶子)算
+    const tab = document.querySelector('.tab.active:not([data-default])')?.dataset.tab;
     const task = AUTO_TASKS[tab];
     if (!task || auto.running.has(tab)) return;
     if (task.needBroker && !state.connected) return;

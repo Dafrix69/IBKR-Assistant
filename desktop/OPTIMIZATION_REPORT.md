@@ -150,6 +150,8 @@ DOM id 不变(`audit_ui.py` 0 问题),`capture_pages --check` 16 页零报错;�
 
 | T11 | 第一眼只看操作项 | 每页开头 2–6 行 11px 说明把输入框往下挤 | 6 页的说明收成 `details.primer.intro`(一行三级色 + 折叠箭头,按页记住);交易指令页速记片段常驻、规则与发送条件默认折叠 |
 | T12 | 侧栏分级 | 16 项等权 | 「应用」组 `margin-top:auto` 沉底 |
+| T14 | 侧栏功能分级 | 16 项 4 组平铺;持仓追踪在"研究";接入三页常驻 | 12 项 3 组(工作区 / 研究 / 应用);「行情」= K线 PA + 订单簿 + 期权墙,「接入」= TWS + 富途 + 大模型,页内分段切子页并记住;组可折叠;`activateTab` 统一切页,`.tab[data-tab]` 跳转兼容;`capture_pages` 改拍叶子页 |
+| T15 | 图区底色 | 深色下蜡烛浮在卡片灰(#2f2f33)上 | `--chart-bg` 近黑 #0b0b0d(iOS 股市 / 富途夜间),画布自己铺底,8px 圆角嵌在卡片里 |
 | T13 | 截图可复现 | Electron 把 file:// 的 localStorage 持久化在 %AppData%/Electron,上次的折叠态带进下次截图 | `capture_pages.js` 每次 `setPath('userData', mkdtemp)` |
 
 **没做的**:`mock-bridge-empty.js` 的 `paAnalyze` 按设计抛错,所以 `--check` 对空态预览会报"K 线 PA 页没有画出 canvas"——

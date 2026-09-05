@@ -50,6 +50,7 @@
       label3: cssVar('--label-tertiary', 'rgba(60,60,67,0.3)'),
       separator: cssVar('--separator', 'rgba(60,60,67,0.18)'),
       surface: cssVar('--bg-elevated', '#fff'),
+      bg: cssVar('--chart-bg', '') || cssVar('--bg-elevated', '#fff'),
       font: getComputedStyle(document.body).fontFamily || 'system-ui, sans-serif',
       mono: cssVar('--font-mono', 'ui-monospace, monospace'),
     };
@@ -203,6 +204,9 @@
       }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = P.bg;              // 图区底色自己铺(8px 圆角),导出 / 截图时不依赖容器
+      roundRect(ctx, 0, 0, W, H, 8);
+      ctx.fill();
       ctx.font = `${FONT_SIZE}px ${P.font}`;
       ctx.textBaseline = 'middle';
       ctx.lineWidth = 1;
@@ -241,7 +245,7 @@
       const xAt = (t, dflt) => (idx.has(t) ? x(idx.get(t)) : dflt);
 
       // ---- 网格 + 价格轴 ----
-      ctx.strokeStyle = alpha(P.label, 0.06);
+      ctx.strokeStyle = alpha(P.label, 0.08);
       ctx.fillStyle = P.label2;
       ctx.textAlign = 'left';
       const first = Math.ceil(lo / step) * step;
@@ -264,7 +268,7 @@
         const withDate = lastDate !== null && dateOf(times[i]) !== lastDate;
         if (lastDate === null || withDate) lastDate = dateOf(times[i]);
         const xx = x(i);
-        ctx.strokeStyle = alpha(P.label, 0.06);
+        ctx.strokeStyle = alpha(P.label, 0.08);
         ctx.beginPath(); ctx.moveTo(crisp(xx), priceTop); ctx.lineTo(crisp(xx), volBottom); ctx.stroke();
         const text = timeLabel(times[i], withDate || (i === 0 && every * 3 >= n));
         // 首尾两个标签不许出画布:靠边的改成左对齐 / 右对齐
@@ -539,13 +543,13 @@
           ctx.beginPath(); ctx.moveTo(x0, hy); ctx.lineTo(x1, hy); ctx.stroke();
           ctx.setLineDash([]);
           const price = lo + ((priceBottom - hy) / (priceBottom - priceTop)) * span;
-          drawTag(ctx, x1 + 2, hy, fmtPrice(price, dec), P.label, P.surface, P);
+          drawTag(ctx, x1 + 2, hy, fmtPrice(price, dec), P.label, P.bg, P);
         }
         ctx.setLineDash([]);
         const tlabel = timeLabel(times[hoverIdx], true);
         ctx.font = `${FONT_SIZE - 1}px ${P.font}`;
         const tw = ctx.measureText(tlabel).width + 12;
-        drawTag(ctx, Math.min(x1 - tw, Math.max(x0, hx - tw / 2)), volBottom + AXIS_H / 2, tlabel, P.label, P.surface, P, tw);
+        drawTag(ctx, Math.min(x1 - tw, Math.max(x0, hx - tw / 2)), volBottom + AXIS_H / 2, tlabel, P.label, P.bg, P, tw);
       }
     }
 
