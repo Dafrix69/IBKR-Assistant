@@ -282,6 +282,7 @@ function renderStatus(status) {
     `单笔 ≤ ${fmtMoney(status.limits.max_order_notional)} USD · 期权 ≤ ${status.limits.max_option_contracts} 张`;
 
   $('btn-halt').textContent = status.breaker.engaged ? '解除熔断' : '暂停自动执行';
+  $('btn-halt').classList.toggle('engaged', !!status.breaker.engaged);
   $('btn-execute').disabled = !status.auto_execute || !status.broker_connected || status.breaker.engaged;
   $('count-pending').textContent = String(status.pending_count);
   updateSidebarBadge(status.pending_count);
@@ -1766,7 +1767,10 @@ function fmtMacroValue(row) {
 function renderMacroStrip(board) {
   const strip = $('macro-strip');
   clear(strip);
-  for (const row of board.rows || []) {
+  const rows = board.rows || [];
+  // 一个数都没有(刚启动、公开源全部失败)时整条收起:一行 8 个「—」占着 27px,却没有任何信息
+  strip.hidden = !rows.some((row) => row.last != null);
+  for (const row of rows) {
     const item = el('div', 'macro-item');
     const live = row.source === 'tws';
     item.title = live
