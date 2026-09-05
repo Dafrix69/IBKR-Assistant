@@ -24,6 +24,16 @@
   --up: var(--green);
   --down: var(--red);
 
+  /* 文字用的语义色。systemGreen / Red / Orange 是给圆点、开关、图表用的,直接当 11px 文字放在白底上
+     对比度只有 2–3:1(浅色截图里"已成交"几乎看不清);Apple 自己为此备了一套"可访问"变体
+     (systemGreen #248A3D、systemRed #D70015、systemOrange #C93400),深色下两套相同。
+     规矩:凡是文字着色,一律用 *-text;基础色只用于面和图。 */
+  --green-text: #248a3d;
+  --red-text: #d70015;
+  --orange-text: #c93400;
+  --up-text: var(--green-text);
+  --down-text: var(--red-text);
+
   /* 焦点环只有一种:3.5px、强调色 30%——AppKit 的 focus ring。输入框、开关、按钮都用它。 */
   --focus-ring: 0 0 0 3.5px color-mix(in srgb, var(--blue) 30%, transparent);
   --focus-outline: 3.5px solid color-mix(in srgb, var(--blue) 30%, transparent);
@@ -69,6 +79,9 @@
     --red: #ff453a;
     --yellow: #ffd60a;
     --purple: #bf5af2;
+    --green-text: var(--green);
+    --red-text: var(--red);
+    --orange-text: var(--orange);
 
     --label: #ffffff;
     --label-secondary: rgba(235, 235, 245, 0.6);
@@ -92,6 +105,8 @@
 :root[data-updown="red-up"] {
   --up: var(--red);
   --down: var(--green);
+  --up-text: var(--red-text);
+  --down-text: var(--green-text);
 }
 
 /*
@@ -230,6 +245,7 @@ input, textarea { user-select: text; }
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
   margin-top: 8px; font-size: 12px;
 }
+.account-picker[hidden] { display: none; }   /* 作者层的 display:flex 会盖掉 [hidden]:只有一个账户时这行本该整个不见 */
 .account-chips { display: flex; gap: 6px; flex-wrap: wrap; }
 .account-chip {
   display: inline-flex; align-items: center; gap: 6px;
@@ -238,7 +254,7 @@ input, textarea { user-select: text; }
 }
 .account-chip input { margin: 0; accent-color: var(--blue); }
 .account-chip.checked { color: var(--label); background: color-mix(in srgb, var(--blue) 16%, transparent); }
-.account-chip.live.checked { color: var(--orange); background: color-mix(in srgb, var(--orange) 16%, transparent); }
+.account-chip.live.checked { color: var(--orange-text); background: color-mix(in srgb, var(--orange) 16%, transparent); }
 
 .topbar-actions { display: flex; gap: 8px; flex-shrink: 0; }
 
@@ -365,7 +381,9 @@ h3 { font-size: 13px; font-weight: 590; margin: 0; }
   color: var(--label-secondary); font-size: 10.5px; font-weight: 500;
 }
 .muted { color: var(--label-secondary); font-size: 11px; }
-.hint { color: var(--label-secondary); font-size: 11px; margin: 7px 0 0; line-height: 1.5; }
+/* 说明文字按行长收口:11px 的字一行跑满 1100px 有一百个汉字,回行时眼睛会丢行;68 个汉字左右是上限 */
+.hint { color: var(--label-secondary); font-size: 11px; margin: 7px 0 0; line-height: 1.55; max-width: 760px; }
+.group > .hint { margin: 0; padding: 6px 12px 8px; max-width: none; }
 .empty { color: var(--label-tertiary); font-size: 12px; padding: 14px 0; margin: 0; text-align: center; }
 code {
   font-family: var(--font-mono); font-size: 11px;
@@ -435,10 +453,10 @@ input.w-64 { width: 64px; }
   background: var(--blue); border-color: transparent; color: #fff; font-weight: 510;
 }
 .btn.primary:hover:not(:disabled) { background: color-mix(in srgb, var(--blue) 88%, black); }
-.btn.warn { color: var(--orange); }
-.btn.danger { color: var(--red); }
+.btn.warn { color: var(--orange-text); }
+.btn.danger { color: var(--red-text); }
 /* 「暂停自动执行」常态下是普通按钮——红字会被读成"正在告警";只有已熔断(要解除)时才红 */
-#btn-halt.engaged { color: var(--red); font-weight: 510; }
+#btn-halt.engaged { color: var(--red-text); font-weight: 510; }
 .btn.tiny { padding: 2px 8px; font-size: 11px; }
 .btn.ghost { background: none; border-color: transparent; box-shadow: none; color: var(--blue); }
 .btn.ghost:hover:not(:disabled) { background: var(--bg-fill); }
@@ -512,6 +530,7 @@ input.w-64 { width: 64px; }
 }
 .page-head .segmented { display: inline-flex; margin: 0; }
 .page-head .segmented > button { flex: 0 0 auto; padding: 3px 10px; }
+.page-head .btn.tiny { padding: 3px 10px; font-size: 12px; }   /* 和旁边的分段控件一样高 */
 /* 分段控件按内容宽而不是撑满:System Settings 里的分段控件放在行右侧,和开关一样是一个控件 */
 .segmented.compact { display: inline-flex; margin: 0; }
 .segmented.compact .seg { flex: 0 0 auto; padding: 3px 12px; }
@@ -525,7 +544,7 @@ input.w-64 { width: 64px; }
   padding: 8px 18px;
   background: color-mix(in srgb, var(--red) 12%, transparent);
   border-bottom: 0.5px solid color-mix(in srgb, var(--red) 40%, transparent);
-  color: var(--red);
+  color: var(--red-text);
   font-size: 12px;
 }
 .banner.info {
@@ -637,8 +656,8 @@ input.w-64 { width: 64px; }
   color: var(--label-tertiary); font-size: 9.5px; font-family: var(--font-mono);
   margin-left: -2px;
 }
-.macro-chg.up { color: var(--up); }
-.macro-chg.down { color: var(--down); }
+.macro-chg.up { color: var(--up-text); }
+.macro-chg.down { color: var(--down-text); }
 .macro-chg.flat { color: var(--label-secondary); }
 .macro-stale { color: var(--label-secondary); font-style: italic; }
 
@@ -667,8 +686,8 @@ input.w-64 { width: 64px; }
 .pa-canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
 @media (max-width: 1100px) { .pa-chart-wrap { height: 320px; } }
 .pa-score { font-family: var(--font-mono); font-weight: 700; font-size: 16px; letter-spacing: -0.02em; }
-.pa-score.up { color: var(--up); }
-.pa-score.down { color: var(--down); }
+.pa-score.up { color: var(--up-text); }
+.pa-score.down { color: var(--down-text); }
 .pa-score.flat { color: var(--label-secondary); }
 .pa-ev {
   display: flex; align-items: baseline; gap: 8px; padding: 4px 0; font-size: 11.5px;
@@ -681,8 +700,8 @@ input.w-64 { width: 64px; }
   font-family: var(--font-mono); font-variant-numeric: tabular-nums;
   min-width: 46px; text-align: right; flex-shrink: 0;
 }
-.pa-ev-w.up { color: var(--up); }
-.pa-ev-w.down { color: var(--down); }
+.pa-ev-w.up { color: var(--up-text); }
+.pa-ev-w.down { color: var(--down-text); }
 .pa-ev-w.flat { color: var(--label-tertiary); }
 .pa-lv { display: flex; gap: 8px; align-items: baseline; font-size: 11.5px; padding: 3px 0; }
 .pa-lv-price {
@@ -693,7 +712,7 @@ input.w-64 { width: 64px; }
 .cards { display: flex; flex-direction: column; gap: 8px; }
 
 .card {
-  padding: 10px 12px;
+  padding: 12px 14px;
   background: var(--bg-content);
   border: 0.5px solid var(--separator);
   border-radius: var(--radius-card);
@@ -714,25 +733,24 @@ input.w-64 { width: 64px; }
 .card.warn > .card-title::before { content: '!'; color: var(--orange); background: color-mix(in srgb, var(--orange) 22%, transparent); }
 .card.bad > .card-title::before { content: '×'; color: var(--red); background: color-mix(in srgb, var(--red) 22%, transparent); font-size: 12px; }
 
-.card-title { font-weight: 590; margin-bottom: 3px; font-size: 13px; }
+.card-title { font-weight: 590; margin-bottom: 4px; font-size: 13px; }
+.card-title > .status, .detail-head > .status { margin-left: 8px; }   /* 标题后面跟着的状态词,不贴着标题 */
+/* 元数据是一行二级色文字,不是一排灰色胶囊。Mail / Finder / Stocks 的列表里,时间、账户、金额都是直接写出来的字;
+   每张卡三四颗胶囊,一页下来几十颗,是"后台管理系统"观感的第三个来源(前两个是彩色胶囊和左边色条)。 */
 .card-meta {
-  display: flex; gap: 5px; flex-wrap: wrap; margin-top: 7px;
-}
-.card-meta span {
-  padding: 1px 6px; border-radius: 4px; background: var(--bg-fill);
-  color: var(--label-secondary); font-size: 10.5px;
+  display: flex; gap: 3px 14px; flex-wrap: wrap; margin-top: 6px;
+  color: var(--label-secondary); font-size: 11.5px;
   font-variant-numeric: tabular-nums;
 }
-.card ul { margin: 6px 0 0; padding-left: 16px; color: var(--orange); font-size: 11.5px; }
+.card-meta .strong { color: var(--label); font-weight: 510; }
+.card ul { margin: 6px 0 0; padding-left: 16px; color: var(--orange-text); font-size: 11.5px; }
 .card .reason { color: var(--label-secondary); font-size: 11.5px; margin-top: 4px; }
 .card .btn { margin-top: 8px; }
 
-.tag {
-  display: inline-block; padding: 0 5px; border-radius: 4px;
-  background: var(--bg-fill); font-size: 10.5px; font-family: var(--font-mono);
-}
-.tag.paper { color: var(--green); }
-.tag.live { color: var(--red); }
+/* 账户标签:纸面账户是常态,不该发绿光;实盘才是要一眼看见的那个 */
+.tag { display: inline-block; }
+.tag.paper { color: var(--label-secondary); }
+.tag.live { color: var(--orange-text); font-weight: 590; }
 
 /* ================= 通知流 ================= */
 .feed { display: flex; flex-direction: column; gap: 1px; max-height: 230px; overflow-y: auto; }
@@ -751,17 +769,12 @@ input.w-64 { width: 64px; }
   box-shadow: var(--shadow-card); cursor: default;
   transition: border-color 0.12s ease;
 }
-.record:hover { border-color: var(--blue); }
 .record-head { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
 .record-sym { font-family: var(--font-mono); font-weight: 590; font-size: 12px; }
-.status {
-  font-size: 10.5px; padding: 1px 7px; border-radius: 8px;
-  background: var(--bg-fill); color: var(--label-secondary);
-}
-.status.filled, .status.rejected, .status.pending { background: none; padding-left: 0; padding-right: 0; font-weight: 510; }
-.status.filled { color: var(--green); }
-.status.rejected { color: var(--red); }
-.status.pending { color: var(--orange); }
+.status { font-size: 11px; font-weight: 510; color: var(--label-secondary); white-space: nowrap; }
+.status.filled { color: var(--green-text); }
+.status.rejected { color: var(--red-text); }
+.status.pending { color: var(--orange-text); }
 
 .detail {
   margin-top: 12px; padding: 11px; background: var(--bg-content);
@@ -786,7 +799,7 @@ input.w-64 { width: 64px; }
 /* 当前生效的券商不是这一页讲的那一家时用橙色:蓝色的提示条读起来像"正常说明",
    而这条说的是"你在看的不是引擎实际在用的通道",必须一眼看出来 */
 .notice.warn { color: var(--label); }
-.notice.warn strong { color: var(--orange); }
+.notice.warn strong { color: var(--orange-text); }
 /* 空的提示条不占位:富途面板里那条横幅在数据回来之前是空的 */
 .notice:empty { display: none; }
 /* 让人照抄的配置片段:等宽、可选中、宽了自己横向滚,不把卡片撑破 */
@@ -809,7 +822,7 @@ input.w-64 { width: 64px; }
 .port-num { font-family: var(--font-mono); font-weight: 590; font-size: 13px; }
 .port-label { color: var(--label-secondary); font-size: 11px; }
 .port-state { font-size: 11px; margin-top: 3px; color: var(--label-tertiary); }
-.port-state.open { color: var(--green); }
+.port-state.open { color: var(--green-text); }
 .port-badge {
   display: inline-block; margin-top: 4px; padding: 0 5px; border-radius: 4px;
   background: var(--bg-fill); font-size: 10px; font-family: var(--font-mono);
@@ -821,8 +834,8 @@ input.w-64 { width: 64px; }
   padding: 4px 0; font-size: 11.5px; border-bottom: 0.5px solid var(--separator);
 }
 .acct-row:last-child { border-bottom: none; }
-.acct-ok { color: var(--green); }
-.acct-bad { color: var(--red); }
+.acct-ok { color: var(--green-text); }
+.acct-bad { color: var(--red-text); }
 
 .guide { margin: 0; padding-left: 20px; font-size: 11.5px; color: var(--label-secondary); }
 .guide li { margin-bottom: 9px; line-height: 1.55; }
@@ -894,7 +907,8 @@ input.w-64 { width: 64px; }
 #tab-settings, #tab-about, #tab-llm, #tab-tws, #tab-futu { max-width: 880px; }
 
 /* ---- 列表项手感 ---- */
-.record:hover { background: var(--bg-fill); border-color: var(--blue); }
+/* 悬停只提亮底色,不描蓝边:给列表行描蓝框是网页的习惯,Finder / Mail 的行只有选中态 */
+.record:hover { background: var(--bg-fill); }
 .record:active { background: var(--bg-fill-strong); }
 
 /* ---- 空状态别飘在一片虚无里 ---- */
@@ -1011,8 +1025,8 @@ input.w-64 { width: 64px; }
   font-size: 10.5px; font-weight: 590; font-family: var(--font);
 }
 .side.buy, .side.sell { background: none; padding-left: 0; padding-right: 0; font-weight: 600; }
-.side.buy { color: var(--up); }
-.side.sell { color: var(--down); }
+.side.buy { color: var(--up-text); }
+.side.sell { color: var(--down-text); }
 
 /* ---- 忙碌指示 ----
  * 只把按钮置灰,用户分不清"在跑"和"卡死"。给一个会转的圈,代价极小。 */
@@ -1132,8 +1146,9 @@ kbd {
 @media (max-width: 1180px) { #chip-model { display: none; } }
 
 /* ---- 持仓追踪 ---- */
-.pnl-up { color: var(--green); font-variant-numeric: tabular-nums; font-weight: 590; }
-.pnl-down { color: var(--red); font-variant-numeric: tabular-nums; font-weight: 590; }
+/* 盈亏跟着「涨跌配色」走:设置页写的是"K 线、行情带、盈亏数字统一跟随",这里原来却钉死了绿 */
+.pnl-up { color: var(--up-text); font-variant-numeric: tabular-nums; font-weight: 590; }
+.pnl-down { color: var(--down-text); font-variant-numeric: tabular-nums; font-weight: 590; }
 .pnl-pct { opacity: 0.75; font-weight: 400; margin-left: 4px; }
 
 .track-form {
@@ -1153,17 +1168,25 @@ kbd {
 /* ---------------- 期权速记(交易指令页) ---------------- */
 .shorthand { margin: 10px 0 2px; }
 .shorthand summary {
-  cursor: pointer; font-size: 11px; color: var(--text-secondary);
+  cursor: pointer; list-style: none; font-size: 11.5px; font-weight: 510; color: var(--label-secondary);
   user-select: none; -webkit-user-select: none;
+  display: flex; align-items: center; gap: 6px; padding: 2px 0;
 }
+.shorthand summary::-webkit-details-marker { display: none; }
+.shorthand summary::before {
+  content: '›'; display: inline-block; width: 10px; font-size: 13px; line-height: 1;
+  transition: transform 0.15s ease;
+}
+.shorthand[open] summary::before { transform: rotate(90deg); }
 .shorthand summary:focus-visible { outline: var(--focus-outline); outline-offset: 0; border-radius: 4px; }
 .shorthand .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 2px; }
+/* 速记片段是"可点的词",不是胶囊按钮:6px 圆角、填充底、无边框,和 Mail 收件人 token 同一族 */
 .shorthand .chip {
-  font: inherit; font-size: 12px; padding: 3px 10px; border-radius: 999px;
-  border: 0.5px solid var(--separator); background: var(--bg-elevated);
-  color: var(--text-primary); cursor: pointer;
+  font: inherit; font-size: 12px; padding: 3px 10px; border-radius: var(--radius-control);
+  border: none; background: var(--bg-fill);
+  color: var(--label); cursor: pointer; transition: background 0.12s ease;
 }
-.shorthand .chip:hover { border-color: var(--accent); color: var(--accent); }
+.shorthand .chip:hover { background: var(--bg-fill-strong); }
 .shorthand .chip:focus-visible { outline: var(--focus-outline); outline-offset: 0; }
 .shorthand .hint-list {
   margin: 8px 0 0; padding-left: 16px;
@@ -1171,7 +1194,7 @@ kbd {
 }
 .shorthand .hint-list li { margin: 2px 0; }
 .shorthand .hint.tight { margin-top: 6px; line-height: 1.7; }
-.shorthand .hint b { color: var(--text-primary); font-weight: 600; }
+.shorthand .hint b { color: var(--label); font-weight: 600; }
 
 
 /* ---- 交易分析(蝴蝶复盘) ---- */
@@ -1180,18 +1203,18 @@ kbd {
 .review-stat { background: var(--bg-fill); border-radius: 8px; padding: 7px 9px; }
 .review-stat .k { font-size: 10.5px; color: var(--label-secondary); }
 .review-stat .v { font-size: 14px; font-weight: 590; margin-top: 2px; }
-.review-stat .v.pos { color: var(--green); }
-.review-stat .v.neg { color: var(--red); }
+.review-stat .v.pos { color: var(--up-text); }
+.review-stat .v.neg { color: var(--down-text); }
 .review-legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 10.5px; color: var(--label-secondary); margin-top: 4px; }
 .review-legend i { display: inline-block; width: 14px; height: 0; border-top: 2px solid currentColor; vertical-align: middle; margin-right: 4px; }
-.review-notes { margin: 6px 0 0; padding-left: 16px; font-size: 11.5px; color: var(--orange); }
+.review-notes { margin: 6px 0 0; padding-left: 16px; font-size: 11.5px; color: var(--orange-text); }
 
 .review-table { width: 100%; border-collapse: collapse; font-size: 11.5px; margin-top: 6px; }
 .review-table th, .review-table td { text-align: left; padding: 4px 6px; border-bottom: 0.5px solid var(--separator); vertical-align: top; }
 .review-table th { color: var(--label-secondary); font-weight: 500; }
 .review-table td.num, .review-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
-.review-table .pos { color: var(--green); }
-.review-table .neg { color: var(--red); }
+.review-table .pos { color: var(--up-text); }
+.review-table .neg { color: var(--down-text); }
 .review-phase { display: inline-block; padding: 0 5px; border-radius: 4px; background: var(--bg-fill); font-size: 10.5px; margin-right: 4px; }
 
 /* 盯盘量表:离触发还有多远。条越满 = 越贴近触发价 */
@@ -1201,7 +1224,7 @@ kbd {
   gap: 4px;
   margin-top: 8px;
   padding-top: 8px;
-  border-top: 1px solid var(--line);
+  border-top: 0.5px solid var(--separator);
 }
 .gauge-row {
   display: grid;
@@ -1210,18 +1233,19 @@ kbd {
   gap: 8px;
   font-size: 12px;
 }
-.gauge-label { color: var(--muted); white-space: nowrap; }
+.gauge-label { color: var(--label-secondary); white-space: nowrap; }
 .gauge-bar {
   position: relative;
   height: 6px;
   border-radius: 3px;
-  background: var(--line);
+  background: var(--bg-fill-strong);
   overflow: hidden;
 }
-.gauge-fill { display: block; height: 100%; border-radius: 3px; background: var(--muted); }
-.gauge-fill.ok { background: var(--ok); }
-.gauge-fill.warn { background: var(--warn); }
-.gauge-fill.bad { background: var(--bad); }
+/* 这一段原来引用的 --line / --muted / --ok / --warn / --bad 从未定义过:量表条一直是透明的,谁也没见过它 */
+.gauge-fill { display: block; height: 100%; border-radius: 3px; background: var(--label-tertiary); }
+.gauge-fill.ok { background: var(--green); }
+.gauge-fill.warn { background: var(--orange); }
+.gauge-fill.bad { background: var(--red); }
 .gauge-value { font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 /* 刚建好的追踪:短暂高亮,让人知道"就是这一条" */
