@@ -65,6 +65,10 @@ npx electron tools/capture_pages.js .uipreview/preview.html .uipreview/baseline/
 Electron 里才是真实的。`--scale 1.5` 对应 Windows 150% 显示缩放——用户的问题截图就是在那个缩放下拍的,
 100% 下看不出同样的问题。
 
+每次运行都用一个全新的 `userData`:Electron 会把 `file://` 页面的 localStorage 持久化到 `%AppData%/Electron`,
+不清的话上一次记住的折叠态、列表密度、标的会带进下一次截图,拍出来的就不是首次启动的样子(这个坑真踩过一次:
+速记说明明明默认收起,截图里却一直是展开的)。
+
 加 `--check` 就是 renderer 的 smoke:16 页各点一遍,渲染进程有任何 error 级控制台消息(已知的 6 条内联样式 CSP 提示除外)、
 或 K线 PA 页没画出 canvas,就 FAIL;结论写在 `<outDir>/check.txt`,退出码 0/1。
 

@@ -4512,11 +4512,11 @@ function bind() {
       box.focus();
     });
   });
-  // 用过一次就记住收起状态,别每次都占一块
+  // 说明默认收起(片段本身常驻一行,不用展开也能点);手动打开过就记住
   const shorthand = document.getElementById('shorthand-panel');
   if (shorthand) {
     try {
-      if (localStorage.getItem('dafri.shorthand.closed') === '1') shorthand.open = false;
+      if (localStorage.getItem('dafri.shorthand.closed') === '0') shorthand.open = true;
     } catch { /* localStorage 不可用就保持默认展开 */ }
     shorthand.addEventListener('toggle', () => {
       try { localStorage.setItem('dafri.shorthand.closed', shorthand.open ? '0' : '1'); } catch { /* 同上 */ }

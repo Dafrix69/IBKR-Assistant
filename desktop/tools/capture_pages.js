@@ -31,6 +31,10 @@ const height = Number(flag('height', '1000'));
 const check = args.includes('--check');
 const consoleErrors = [];
 
+// 每次一个全新的 userData:Electron 会把 file:// 页面的 localStorage 持久化在 %AppData%/Electron 下,
+// 上一次运行记住的折叠态、密度、标的会带进下一次截图,"首次启动的样子"就再也拍不到了。
+app.setPath('userData', fs.mkdtempSync(path.join(require('os').tmpdir(), 'dafri-capture-')));
+
 app.commandLine.appendSwitch('force-device-scale-factor', String(scale));
 app.commandLine.appendSwitch('high-dpi-support', '1');
 
