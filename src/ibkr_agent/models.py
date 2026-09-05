@@ -307,6 +307,20 @@ class IdeaAnalysis(Strict):
     suggestion: str = Field(default="", description="若要执行,建议如何改写成明确指令或观察计划")
 
 
+class IdeaDigest(Strict):
+    """LLM 对一批归档想法的知识提炼。仅供复盘参考,不进下单链路。"""
+
+    summary: str = Field(min_length=1, description="一句话概括这批想法沉淀出的核心认知")
+    themes: List[str] = Field(default_factory=list, max_length=8,
+                              description="反复出现的主题/板块/标的,附出现次数")
+    lessons: List[str] = Field(default_factory=list, max_length=10,
+                               description="可复用的经验教训")
+    patterns: List[str] = Field(default_factory=list, max_length=8,
+                                description="想法质量的规律(哪类想法具体可执行、哪类只是情绪)")
+    actions: List[str] = Field(default_factory=list, max_length=6,
+                               description="接下来值得做的具体动作")
+
+
 class PAComment(Strict):
     """价格行为读盘的 AI 解读。模型只解读软件算好的事实,不产生新价位。"""
 

@@ -20,15 +20,52 @@
     "appId": "com.dafri.trading",
     "productName": "Dafri Trading",
     "asar": true,
-    "files": ["main.js", "preload.js", "rpc-client.js", "renderer/**/*"],
+    "files": [
+      "main.js",
+      "preload.js",
+      "rpc-client.js",
+      "renderer/**/*"
+    ],
     "extraResources": [
       {
         "from": "../src",
         "to": "engine/src",
-        "filter": ["**/*.py", "!**/__pycache__/**", "!**/*.egg-info/**"]
+        "filter": [
+          "**/*.py",
+          "!**/__pycache__/**",
+          "!**/*.egg-info/**"
+        ]
       },
-      { "from": "../prompts", "to": "engine/prompts" },
-      { "from": "../config/settings.example.json", "to": "engine/settings.example.json" }
+      {
+        "from": "../prompts",
+        "to": "engine/prompts"
+      },
+      {
+        "from": "../config/settings.example.json",
+        "to": "engine/settings.example.json"
+      },
+      {
+        "from": "../../trade-ts/dist",
+        "to": "engine-ts/dist",
+        "filter": [
+          "**/*.js"
+        ]
+      },
+      {
+        "from": "../../trade-ts/baseline/llm",
+        "to": "engine-ts/baseline/llm",
+        "filter": [
+          "*.json"
+        ]
+      },
+      {
+        "from": "../../trade-ts/node_modules",
+        "to": "engine-ts/node_modules",
+        "filter": [
+          "**/*",
+          "!**/{test,tests,docs,example,examples}/**"
+        ]
+      }
     ],
     "mac": {
       "category": "public.app-category.finance",

@@ -339,3 +339,80 @@ def test_llm_failure_trips_breaker_after_threshold(settings, now):
     # 调用失败要按"拒绝"呈现,不能混在提示里让用户以为单已经发出去了
     assert results[0].rejections[0]["code"] == "LLM_ERROR"
     assert results[0].submitted == [] and results[0].validated_only == []
+
+
+# ----------------------------------------------------------------------
+# 按勾选账户同时发单(界面上勾两个账户,每笔订单各发一份)
+def test_fanout_sends_one_copy_per_selected_account(settings, now):
+    live = make_settings(
+        policies={"auto_execute": True, "allow_live_trading": True},
+        storage={"db_path": str(settings.db_path)},
+    )
+    router = FakeRouter()
+    engine = build_engine(live, {"orders": [stock_order()], "rejections": []}, router)
+    result = engine.handle_instruction(
+        "买入 AAPL 100股 limit 230", moment=now, accounts=["模拟", "主账户"]
+    )
+
+    assert [s["account"] for s in result.submitted] == ["模拟", "主账户"]
+    assert result.rejections == []
+    assert len(router.placed) == 2
+    assert {p[1].account.account_id for p in router.placed} == {"DU7654321", "U1234567"}
+    assert any("同时发单" in w for w in result.warnings)
+    # 两个账户各一条独立记录
+    records = engine.store.list_records(10)
+    assert sorted(r["account"]["alias"] for r in records) == ["主账户", "模拟"]
+
+
+def test_fanout_keeps_live_gate_per_copy(settings, now):
+    """allow_live_trading=false 时,实盘那份被拦,纸面那份照常通过。"""
+    router = FakeRouter()
+    engine = build_engine(settings, {"orders": [stock_order()], "rejections": []}, router)
+    result = engine.handle_instruction(
+        "买入 AAPL 100股 limit 230", moment=now, accounts=["模拟", "主账户"]
+    )
+    assert [v["account"] for v in result.validated_only] == ["模拟"]
+    assert [r["code"] for r in result.rejections] == ["LIVE_TRADING_DISABLED"]
+
+
+def test_fanout_respects_explicit_account_and_single_choice(settings, now):
+    explicit = stock_order(account="主账户")
+    engine = build_engine(
+        settings, {"orders": [stock_order(), explicit], "rejections": []}, FakeRouter()
+    )
+    result = engine.handle_instruction(
+        "买入 AAPL 100股 limit 230", moment=now, accounts=["模拟"]
+    )
+    # 只勾一个账户:DEFAULT 改指向它;指令里点名的账户原样保留,不复制
+    assert [v["account"] for v in result.validated_only] == ["模拟"]
+    assert [r["code"] for r in result.rejections] == ["LIVE_TRADING_DISABLED"]
+    assert not any("同时发单" in w for w in result.warnings)
+
+
+def test_fanout_raises_limit_by_account_count(settings, now):
+    """上限按账户数放大:3 笔 × 2 账户 = 6 笔不该被 max_orders_per_input=5 拦住。"""
+    live = make_settings(
+        policies={"allow_live_trading": True},
+        storage={"db_path": str(settings.db_path)},
+    )
+    orders = [
+        stock_order(
+            intent_summary="买 %s" % sym,
+            contract={"secType": "STK", "symbol": sym, "exchange": "SMART", "currency": "USD"},
+        )
+        for sym in ("AAPL", "MSFT", "NVDA")
+    ]
+    engine = build_engine(live, {"orders": orders, "rejections": []}, FakeRouter())
+    result = engine.handle_instruction(
+        "三笔不同的单", moment=now, accounts=["模拟", "主账户"]
+    )
+    assert [r["code"] for r in result.rejections if r["code"] == "EXCEEDS_LIMIT"] == []
+    assert len(result.validated_only) == 6
+
+
+def test_fanout_unknown_alias_rejected_before_llm(settings, now):
+    parser_payload = {"orders": [stock_order()], "rejections": []}
+    engine = build_engine(settings, parser_payload, FakeRouter())
+    with pytest.raises(ValueError, match="不在别名表中"):
+        engine.handle_instruction("买入 AAPL 100股 limit 230", moment=now, accounts=["长线"])
+    assert engine.parser.calls == []

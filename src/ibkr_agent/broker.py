@@ -15,7 +15,7 @@ import math
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
-from .config import AccountConfig, Settings
+from .config import AccountConfig, Settings, now_et
 from .models import ContractSpec, OrderSpec, ParsedOrder, TriggerSpec
 from .priceaction import MIN_BARS, TIMEFRAMES
 from .validator import ApprovedOrder
@@ -76,8 +76,75 @@ def combo_mid_price(legs: Sequence[LegQuote]) -> float:
     return round(net, 4)
 
 
+def fill_row(fill) -> Optional[Dict[str, Any]]:
+    """ib_insync 的 Fill → 本系统的成交行。时间统一成 UTC ISO;拿不到 execId 的行丢掉。"""
+    from datetime import datetime as _dt, timezone as _tz
+
+    execution = getattr(fill, "execution", None)
+    contract = getattr(fill, "contract", None)
+    if execution is None or contract is None:
+        return None
+    exec_id = str(getattr(execution, "execId", "") or "")
+    if not exec_id:
+        return None
+    when = getattr(execution, "time", None)
+    if isinstance(when, _dt):
+        time_iso = (when.astimezone(_tz.utc) if when.tzinfo else when.replace(tzinfo=_tz.utc)).isoformat()
+    else:
+        time_iso = str(when or "")
+    report = getattr(fill, "commissionReport", None)
+    commission = _finite_quote(getattr(report, "commission", None)) if report is not None else None
+    strike = _finite_quote(getattr(contract, "strike", None))
+    return {
+        "exec_id": exec_id,
+        "time": time_iso,
+        "account_id": str(getattr(execution, "acctNumber", "") or ""),
+        "side": str(getattr(execution, "side", "") or ""),
+        "shares": float(getattr(execution, "shares", 0) or 0),
+        "price": float(getattr(execution, "price", 0) or 0),
+        "order_id": int(getattr(execution, "orderId", 0) or 0) or None,
+        "perm_id": int(getattr(execution, "permId", 0) or 0) or None,
+        "order_ref": str(getattr(execution, "orderRef", "") or ""),
+        "commission": commission,
+        "contract": {
+            "secType": str(getattr(contract, "secType", "") or ""),
+            "symbol": str(getattr(contract, "symbol", "") or ""),
+            "expiry": str(getattr(contract, "lastTradeDateOrContractMonth", "") or ""),
+            "strike": strike or None,
+            "right": str(getattr(contract, "right", "") or ""),
+            "tradingClass": str(getattr(contract, "tradingClass", "") or ""),
+            "multiplier": str(getattr(contract, "multiplier", "") or ""),
+            "conId": int(getattr(contract, "conId", 0) or 0) or None,
+            "currency": str(getattr(contract, "currency", "") or ""),
+            "exchange": str(getattr(contract, "exchange", "") or ""),
+        },
+    }
+
+
+#: 组合净价的最小跳动。IBKR 对 BAG 不给 contractDetails('BAG' isn't supported for
+#: contract data request),但每条 SPX 期权腿实测 minTick=0.05,组合净价按同一档走。
+#: 不对齐的后果是**下单当场被拒**:错误 110「价格不符合该合约的最小价格变动要求」——
+#: 2026-09-04 实测,AUTO_MID 算出 0.1750(3.5 个 tick),IBKR 直接退单。
+DEFAULT_COMBO_TICK = 0.05
+
+
+def align_tick_up(value: float, tick: float = DEFAULT_COMBO_TICK) -> float:
+    """把限价向上对齐到最小跳动的整数倍。
+
+    统一向上,是因为 auto_mid_limit 的让价方向本来就是 `+slippage`(见下):借方多付一点、
+    贷方少收一点,两边都朝**更容易成交**的方向。对齐后仍朝同一方向,不会把一张本来能成的
+    单子改成挂着不动。
+    """
+    if not math.isfinite(value) or tick <= 0 or not math.isfinite(tick):
+        return value
+    # 减一点容差:已经对齐的值不该因为浮点误差被推到下一档(0.20/0.05 = 4.000000001 → 5)
+    steps = math.ceil(value / tick - 1e-9)
+    return round(steps * tick, 4)
+
+
 def auto_mid_limit(
-    net_mid: float, action: str, slippage: float, strike_width: Optional[float] = None
+    net_mid: float, action: str, slippage: float, strike_width: Optional[float] = None,
+    tick: float = DEFAULT_COMBO_TICK,
 ) -> float:
     """把带符号中间价转成 BAG(以 BUY 提交)可用的带符号限价。
 
@@ -107,10 +174,12 @@ def auto_mid_limit(
             "借方组合的净中间价应为正(付权利金),实际为 %.4f——腿方向与订单方向"
             "不一致,拒绝定价以免反向建仓。" % net_mid
         )
-    limit = net_mid + slippage
+    limit = align_tick_up(net_mid + slippage, tick)
     if action == "BUY":
         if strike_width is not None:
-            limit = min(limit, strike_width)
+            # 净权利金不可能超过翼宽(§5.3a)。夹回来之后再对齐一次,方向朝下——
+            # 上限本身通常已经是整数点位,这一步只是防御。
+            limit = min(limit, align_tick_down(strike_width, tick))
         if limit <= 0:
             raise BrokerError("计算出的买入限价 %.4f 非正,拒绝下单" % limit)
     else:
@@ -119,6 +188,14 @@ def auto_mid_limit(
                 "贷方限价 %.4f 已不再为负(滑点吃光了权利金),拒绝下单" % limit
             )
     return round(limit, 4)
+
+
+def align_tick_down(value: float, tick: float = DEFAULT_COMBO_TICK) -> float:
+    """向下对齐到最小跳动(只给上限夹取用,免得夹完又变成非法档位)。"""
+    if not math.isfinite(value) or tick <= 0 or not math.isfinite(tick):
+        return value
+    steps = math.floor(value / tick + 1e-9)
+    return round(steps * tick, 4)
 
 
 def bag_signed_limit(action: str, user_limit: Optional[float]) -> Optional[float]:
@@ -201,13 +278,31 @@ def bar_timestamp(value) -> str:
     """
     from datetime import date as _date, datetime as _datetime
 
+    from .config import ET
+
     if isinstance(value, _datetime):
+        # ib_insync 给的是**交易所时区**的 aware datetime(SPX 在 Cboe → 美中,比美东慢一小时)。
+        # 直接 strftime 会把 11:40 美中当成 11:40 美东,K 线看起来永远"落后一小时",
+        # 新鲜度告警也跟着误报。全系统的钟是美东,先换过去再落成字符串。
+        if value.tzinfo is not None:
+            value = value.astimezone(ET)
         return value.strftime("%Y-%m-%d %H:%M")
     if isinstance(value, _date):
         return value.isoformat()
 
     text = str(value).strip()
     digits = text.replace("-", "").replace(":", "").split()
+    # 原样透出的字符串可能带时区名('20260902 11:40:00 US/Central'):同样换成美东
+    if len(digits) >= 3 and "/" in digits[2] and digits[0].isdigit() and digits[1][:6].isdigit():
+        try:
+            from zoneinfo import ZoneInfo
+
+            stamp = _datetime.strptime(digits[0] + digits[1][:6], "%Y%m%d%H%M%S").replace(
+                tzinfo=ZoneInfo(digits[2])
+            )
+            return stamp.astimezone(ET).strftime("%Y-%m-%d %H:%M")
+        except Exception:  # noqa: BLE001 - 时区名认不出就走下面的老路径,不编
+            pass
     if digits and len(digits[0]) == 8 and digits[0].isdigit():
         day = "%s-%s-%s" % (digits[0][:4], digits[0][4:6], digits[0][6:8])
         if len(digits) > 1 and len(digits[1]) >= 4 and digits[1][:6].isdigit():
@@ -253,6 +348,39 @@ def _finite_quote(value) -> float:
     except (TypeError, ValueError):
         return 0.0
     return v if math.isfinite(v) else 0.0
+
+
+#: 取盘口时值得告诉用户"为什么"的 IBKR 错误码。别的错误(连接农场通断 21xx 等)不归这里管。
+#:   101   行情线路配额用完(默认约 100 条并发),新请求全部被拒——ticker 永远是 NaN
+#:   354 / 10089 / 10090 / 10091 / 10167 / 10168   没有(实时或延迟)行情订阅
+#:   10197 纸面账户与另一个会话争用行情
+_MD_ERROR_CODES = frozenset({101, 354, 10089, 10090, 10091, 10167, 10168, 10197})
+
+
+def _quote_error_message(symbol: str, errors: Sequence[tuple]) -> str:
+    """把取盘口时 TWS 回的错误码翻译成"下一步做什么"。
+
+    没有这一层时用户只能看到守卫那句"盘口不可用(bid=0.0 ask=0.0)",分不清是没订阅、
+    线路用完还是行情源真的空——三种情况的处理方法完全不同。
+    """
+    codes = {int(c) for c, _ in errors}
+    raw = "; ".join("%s: %s" % (c, str(m)[:120]) for c, m in errors[:3])
+    if 101 in codes:
+        return (
+            "TWS 的行情线路已用完(IBKR 默认约 100 条并发),%s 的盘口请求被拒。"
+            "顶栏「断开 TWS」再重连可立即释放全部线路;若反复出现,说明有订阅没撤。"
+            "原始报错:%s" % (symbol, raw)
+        )
+    if 10197 in codes:
+        return (
+            "%s 的行情被另一个会话占用(IBKR 10197):同一账号同时登着别的 TWS/客户端时,"
+            "行情只发给其中一个。关掉另一个再试。原始报错:%s" % (symbol, raw)
+        )
+    return (
+        "该账户没有 %s 的行情订阅(实时和延迟都没有)。SPX / SPXW / VIX 属 Cboe 指数期权,"
+        "要在 IBKR 账户管理 → Market Data Subscriptions 单独订阅;纸面账户还需在实盘账户里"
+        "开启「与模拟账户共享行情」。原始报错:%s" % (symbol, raw)
+    )
 
 
 def strike_width(contract: ContractSpec) -> Optional[float]:
@@ -382,6 +510,16 @@ class BrokerRouter:
         # 这段断了的时候本机到 TWS 的 socket 仍然活着、isConnected() 仍是 True,
         # 只能靠事件分辨——分辨不出来的后果见 _qualify_or_raise 的注释。
         self._upstream_ok = True
+        # 托管单:orderId → (ib, trade)。改单必须拿着原 Order 对象同 id 重发,
+        # 认领(list_hosted_open)和挂单(place_hosted)都会往这里登记。
+        self._hosted_trades: Dict[int, Any] = {}
+        # conId 缓存:IBKR 的 conId 是永久标识,同一合约不必反复 reqContractDetails。
+        # 每省一次就是省一整个网络往返——"输入到下单"链路里最省得动的一段。
+        self._conid_cache: Dict[str, int] = {}
+        # 合约交易时段缓存:键是"标的|到期日",值是 (查询日, tradingHours, liquidHours, tzId)。
+        # 追踪轮询每 8 秒一轮,不能每轮都 reqContractDetails;时段表一天只会变一次,
+        # 按日缓存足够。
+        self._hours_cache: Dict[str, tuple] = {}
 
     # ---- 连接 -----------------------------------------------------------
     @property
@@ -441,9 +579,11 @@ class BrokerRouter:
         ib = sessions[0] if sessions else None
         if ib is not None:
             mod = _ib()
-            for symbol in self._streams:
+            for symbol, ticker in self._streams.items():
                 try:
-                    ib.cancelMktData(mod.Stock(symbol, "SMART", "USD"))
+                    # 期权腿/指数流存的是 ticker,按它自己的合约撤;正股流按代码拼
+                    contract = getattr(ticker, "contract", None)
+                    ib.cancelMktData(contract if contract is not None else mod.Stock(symbol, "SMART", "USD"))
                 except Exception:  # noqa: BLE001 - 撤不掉也不该拦住断开
                     pass
         self._streams.clear()
@@ -524,11 +664,17 @@ class BrokerRouter:
             return target
         return self._build_bag(ib, contract)
 
+    @staticmethod
+    def _conid_key(contract) -> str:
+        return "|".join(str(getattr(contract, attr, "") or "") for attr in (
+            "secType", "symbol", "lastTradeDateOrContractMonth", "strike",
+            "right", "tradingClass", "exchange", "currency",
+        ))
+
     def _build_bag(self, ib, contract: ContractSpec):
         mod = _ib()
-        combo_legs = []
-        for leg in contract.legs or []:
-            opt = mod.Option(
+        opts = [
+            mod.Option(
                 contract.symbol,
                 leg.lastTradeDateOrContractMonth,
                 leg.strike,
@@ -538,12 +684,24 @@ class BrokerRouter:
                 multiplier=leg.multiplier,
                 tradingClass=leg.tradingClass or "",
             )
-            self._qualify_or_raise(ib, opt)
-            combo_legs.append(
-                mod.ComboLeg(
-                    conId=opt.conId, ratio=leg.ratio, action=leg.action, exchange=contract.exchange
-                )
+            for leg in contract.legs or []
+        ]
+        # 三条腿一次批量确认,而不是三个串行往返;缓存命中的腿连这一次都省掉
+        need = []
+        for opt in opts:
+            hit = self._conid_cache.get(self._conid_key(opt))
+            if hit:
+                opt.conId = hit
+            else:
+                need.append(opt)
+        if need:
+            self._qualify_batch_or_raise(ib, need)
+        combo_legs = [
+            mod.ComboLeg(
+                conId=opt.conId, ratio=leg.ratio, action=leg.action, exchange=contract.exchange
             )
+            for opt, leg in zip(opts, contract.legs or [])
+        ]
         return mod.Contract(
             secType="BAG",
             symbol=contract.symbol,
@@ -561,19 +719,33 @@ class BrokerRouter:
     _QUALIFY_TIMEOUT = 12.0
 
     def _qualify_or_raise(self, ib, contract) -> None:
+        key = self._conid_key(contract)
+        hit = self._conid_cache.get(key)
+        if hit:
+            contract.conId = hit
+            return
+        self._qualify_batch_or_raise(ib, [contract])
+
+    def _qualify_batch_or_raise(self, ib, contracts) -> None:
+        """一次网络往返确认一批合约(qualifyContracts 本来就支持批量)。"""
         import asyncio
 
+        # 键必须在 qualify 之前算:qualify 会原地改写合约字段(交易所归一等),
+        # 事后算键与下次查询的"改写前"键对不上,缓存就永远 miss。
+        keys = [self._conid_key(c) for c in contracts]
         try:
             qualified = ib.run(
-                asyncio.wait_for(ib.qualifyContractsAsync(contract), self._QUALIFY_TIMEOUT)
+                asyncio.wait_for(ib.qualifyContractsAsync(*contracts), self._QUALIFY_TIMEOUT)
             )
         except asyncio.TimeoutError:
             raise BrokerError(self._stalled_message()) from None
-        if not qualified or not getattr(contract, "conId", 0):
-            raise BrokerError(
-                "IBKR 无法确认该合约(%s),可能是代码拼错、到期日或行权价不存在。已拦截。"
-                % _describe(contract)
-            )
+        for key, contract in zip(keys, contracts):
+            if not qualified or not getattr(contract, "conId", 0):
+                raise BrokerError(
+                    "IBKR 无法确认该合约(%s),可能是代码拼错、到期日或行权价不存在。已拦截。"
+                    % _describe(contract)
+                )
+            self._conid_cache[key] = contract.conId
 
     def _stalled_message(self) -> str:
         """TWS 没响应时,告诉用户下一步做什么,而不是甩一个超时。"""
@@ -589,55 +761,111 @@ class BrokerRouter:
         )
 
     # ---- 行情 -----------------------------------------------------------
+    #: 组合各腿盘口最多等这么久——**所有腿合计**,不是每腿。三腿串行各等 4 秒就是 12 秒起步,
+    #: 而在线路用完 / 没订阅这类"确定拿不到"的场景里,每一次解析都会把这 12 秒等满。
+    _QUOTE_WAIT = 4.0
+
     def leg_quotes(self, contract: ContractSpec, account: AccountConfig) -> List[LegQuote]:
         """组合各腿的盘口(AUTO_MID 定价用)。
 
         行情订阅边界:**纸面账户**没有实时期权订阅时退到延迟盘口(type 3)——
         测试链路的可用性优先,反正不是真钱;**实盘账户绝不用延迟盘口定价**,
         拿不到实时报价就让 LegQuote.mid 的守卫拒单,这是刻意的。
+
+        三件事这里必须一起做,少一件都出过事:
+        1. 各腿**一起**订阅、一起轮询——首笔 tick 常常 >1 秒,串行等就是腿数 × 上限;
+        2. 用完**立刻 cancelMktData**——不撤的订阅一直占着行情线路配额(约 100 条),
+           一天反复解析几十次就把配额漏光,此后 TWS 对新请求回 101,所有腿永远 NaN,
+           界面上只剩一句"盘口不可用"(2026-09-04 纸面账户实测);
+        3. 接住取盘口期间 TWS 回的行情类错误码(101 / 354 / 10167 …),缺盘口时把原因
+           翻译给用户,而不是让守卫那句通用报错兜底。
         """
         ib = self.for_account(account)
         mod = _ib()
-        quotes: List[LegQuote] = []
+        legs = list(contract.legs or [])
+        if not legs:
+            return []
         delayed_ok = account.is_paper
+        opts = [
+            mod.Option(
+                contract.symbol,
+                leg.lastTradeDateOrContractMonth,
+                leg.strike,
+                leg.right,
+                contract.exchange,
+                currency=contract.currency,
+                multiplier=leg.multiplier,
+                tradingClass=leg.tradingClass or "",
+            )
+            for leg in legs
+        ]
+        md_errors: List[tuple] = []
+
+        def on_error(reqId, errorCode, errorString, *extra) -> None:
+            try:
+                code = int(errorCode)
+            except (TypeError, ValueError):
+                return
+            if code in _MD_ERROR_CODES:
+                md_errors.append((code, str(errorString or "")))
+
+        # 与 TS 侧 session.onError?.() 同款:替身会话可以没有 errorEvent
+        error_event = getattr(ib, "errorEvent", None)
+        if error_event is not None:
+            error_event += on_error
+        tickers: List[Any] = []
         try:
             if delayed_ok:
                 ib.reqMarketDataType(3)
-            for leg in contract.legs or []:
-                opt = mod.Option(
-                    contract.symbol,
-                    leg.lastTradeDateOrContractMonth,
-                    leg.strike,
-                    leg.right,
-                    contract.exchange,
-                    currency=contract.currency,
-                    multiplier=leg.multiplier,
-                    tradingClass=leg.tradingClass or "",
+            self._qualify_all_or_raise(ib, opts)
+            tickers = [ib.reqMktData(opt, "", False, False) for opt in opts]
+            # 轮询而不是固定等待:固定 sleep 会抢跑拿到 NaN,被守卫误判成"盘口不可用"。
+            waited = 0.0
+            while waited < self._QUOTE_WAIT:
+                ib.sleep(0.25)
+                waited += 0.25
+                if all(_finite_quote(t.bid) > 0 and _finite_quote(t.ask) > 0 for t in tickers):
+                    break
+            quotes = [
+                LegQuote(
+                    action=leg.action,
+                    ratio=leg.ratio,
+                    # NaN(未收到行情)必须归零,让 LegQuote.mid 的守卫拦下来;
+                    # `ticker.bid or 0.0` 拦不住 NaN——NaN 是真值。
+                    bid=_finite_quote(t.bid),
+                    ask=_finite_quote(t.ask),
                 )
-                self._qualify_or_raise(ib, opt)
-                ticker = ib.reqMktData(opt, "", False, False)
-                # 轮询而不是固定等待:期权首笔 tick 常常 >1 秒才到,固定 sleep 会
-                # 抢跑拿到 NaN,被守卫误判成"盘口不可用"。最多等 4 秒。
-                waited = 0.0
-                while waited < 4.0:
-                    ib.sleep(0.25)
-                    waited += 0.25
-                    if _finite_quote(ticker.bid) > 0 and _finite_quote(ticker.ask) > 0:
-                        break
-                quotes.append(
-                    LegQuote(
-                        action=leg.action,
-                        ratio=leg.ratio,
-                        # NaN(未收到行情)必须归零,让 LegQuote.mid 的守卫拦下来;
-                        # `ticker.bid or 0.0` 拦不住 NaN——NaN 是真值。
-                        bid=_finite_quote(ticker.bid),
-                        ask=_finite_quote(ticker.ask),
-                    )
-                )
+                for leg, t in zip(legs, tickers)
+            ]
         finally:
+            for opt in opts[: len(tickers)]:
+                try:
+                    ib.cancelMktData(opt)   # 不撤会一直占着行情线路配额
+                except Exception:  # noqa: BLE001 - 撤订阅失败不该盖住真正的错误
+                    pass
             if delayed_ok:
                 ib.reqMarketDataType(1)
+            if error_event is not None:
+                try:
+                    error_event -= on_error
+                except Exception:  # noqa: BLE001
+                    pass
+        missing = [q for q in quotes if not (q.bid > 0 and q.ask > 0)]
+        if missing and md_errors:
+            raise BrokerError(_quote_error_message(contract.symbol, md_errors))
         return quotes
+
+    def _qualify_all_or_raise(self, ib, contracts) -> None:
+        """一批合约一次往返确认;命中 conId 缓存的不再问 TWS。"""
+        pending = []
+        for c in contracts:
+            hit = self._conid_cache.get(self._conid_key(c))
+            if hit:
+                c.conId = hit
+            else:
+                pending.append(c)
+        if pending:
+            self._qualify_batch_or_raise(ib, pending)
 
     def quote_capability(self, symbol: str) -> Optional[str]:
         """这个标的本券商能不能报价?能就回 None,不能就回"为什么"。
@@ -671,17 +899,33 @@ class BrokerRouter:
             self._qualify_or_raise(ib, target)
         except BrokerError:
             return None
-        price = self._ticker_price(ib, target)
-        if price is None:
-            # 没有实时订阅(IBKR 10168)时退到 15 分钟延迟行情。只给方向复核的
-            # 快照用——触发价与现价的差距远大于延迟窗口内的波动才有意义,过近
-            # 会被 trigger_min_gap_bps 拦下。AUTO_MID 定价(leg_quotes)不走这里,
-            # 绝不用延迟盘口给真单定价。
-            try:
-                ib.reqMarketDataType(3)
-                price = self._ticker_price(ib, target, wait=2.0)
-            finally:
-                ib.reqMarketDataType(1)
+        # 常驻订阅:第一次要等首笔 tick,之后每次调用都是读缓存(百毫秒内)。
+        # 快照是"输入到下单"链路的第一段,不能每单都重新订阅再干等一秒。
+        stream_key = "idx:%s" % symbol
+        cached = self._streams.get(stream_key)
+        if cached is not None:
+            price = self._poll_ticker(ib, cached, wait=0.25)
+            if price is not None:
+                return price
+            self._streams.pop(stream_key, None)  # 常驻流断了数据:丢掉重订
+        ticker = ib.reqMktData(target, "", False, False)
+        price = self._poll_ticker(ib, ticker, wait=1.2)
+        if price is not None:
+            self._streams[stream_key] = ticker
+            return price
+        # 没有实时订阅(IBKR 10168)时退到 15 分钟延迟行情。只给方向复核的
+        # 快照用——触发价与现价的差距远大于延迟窗口内的波动才有意义,过近
+        # 会被 trigger_min_gap_bps 拦下。AUTO_MID 定价(leg_quotes)不走这里,
+        # 绝不用延迟盘口给真单定价。
+        ib.cancelMktData(target)
+        try:
+            ib.reqMarketDataType(3)
+            ticker = ib.reqMktData(target, "", False, False)
+            price = self._poll_ticker(ib, ticker, wait=2.0)
+            if price is not None:
+                self._streams[stream_key] = ticker
+        finally:
+            ib.reqMarketDataType(1)
         return price
 
     def stock_quotes(self, symbols: Sequence[str]) -> Dict[str, Dict[str, Optional[float]]]:
@@ -1102,15 +1346,149 @@ class BrokerRouter:
         return out
 
     @staticmethod
-    def _ticker_price(ib, target, wait: float = 1.0) -> Optional[float]:
-        ticker = ib.reqMktData(target, "", False, False)
-        ib.sleep(wait)
+    def _read_ticker(ticker) -> Optional[float]:
         for candidate in (ticker.last, ticker.close, ticker.marketPrice()):
             if candidate and candidate == candidate:  # 排除 NaN
                 return float(candidate)
         return None
 
+    @classmethod
+    def _poll_ticker(cls, ib, ticker, wait: float = 1.0) -> Optional[float]:
+        """轮询而不是死等:价格到了立刻返回,wait 只是上限。"""
+        waited = 0.0
+        while True:
+            price = cls._read_ticker(ticker)
+            if price is not None:
+                return price
+            if waited >= wait:
+                return None
+            ib.sleep(0.1)
+            waited += 0.1
+
+    @classmethod
+    def _ticker_price(cls, ib, target, wait: float = 1.0) -> Optional[float]:
+        return cls._poll_ticker(ib, ib.reqMktData(target, "", False, False), wait)
+
     # ---- 持仓 -----------------------------------------------------------
+    def combo_bars(self, symbol: str, legs: Sequence[Dict[str, Any]], day: str,
+                   bar_size: str = "1 min") -> List[Dict[str, Any]]:
+        """一张组合(BAG)在某一天的分钟中间价——交易分析里的"蝶价走势"。
+
+        IBKR 对组合合约支持历史数据(MIDPOINT),已到期的腿要带 includeExpired 才能
+        qualify;拿的是 endDateTime 往前一整天(含前一晚的全球时段),调用方自己裁。
+        """
+        sessions = self.sessions()
+        ib = sessions[0] if sessions else None
+        if ib is None:
+            raise BrokerError("引擎未连接 TWS,无法获取蝶价分钟线。请先在「TWS 连接」面板连接引擎。")
+        from datetime import datetime as _dt, timezone as _tz
+
+        from .config import ET
+
+        mod = _ib()
+        combo_legs = []
+        for leg in legs:
+            opt = mod.Option(
+                symbol, str(leg.get("lastTradeDateOrContractMonth") or ""), float(leg.get("strike") or 0),
+                str(leg.get("right") or ""), "SMART", currency="USD",
+                tradingClass=str(leg.get("tradingClass") or ""),
+            )
+            opt.includeExpired = True
+            self._qualify_or_raise(ib, opt)
+            combo_legs.append(mod.ComboLeg(
+                conId=opt.conId, ratio=int(leg.get("ratio") or 1),
+                action=str(leg.get("action") or "BUY"), exchange="SMART",
+            ))
+        bag = mod.Contract(secType="BAG", symbol=symbol, exchange="SMART", currency="USD", comboLegs=combo_legs)
+        y, m, d = (int(x) for x in str(day).split("-"))
+        end = _dt(y, m, d, 16, 5, tzinfo=ET).astimezone(_tz.utc).strftime("%Y%m%d-%H:%M:%S")
+        try:
+            ib.reqMarketDataType(3)
+            raw = ib.reqHistoricalData(
+                bag, endDateTime=end, durationStr="1 D", barSizeSetting=bar_size,
+                whatToShow="MIDPOINT", useRTH=False, formatDate=1,
+            )
+        except Exception as exc:  # noqa: BLE001
+            raise BrokerError("获取 %s 组合分钟线失败:%s" % (symbol, exc)) from exc
+        finally:
+            ib.reqMarketDataType(1)
+        return [
+            {"time": bar_timestamp(b.date), "open": float(b.open), "high": float(b.high),
+             "low": float(b.low), "close": float(b.close)}
+            for b in (raw or [])
+        ]
+
+    def executions(self) -> List[Dict[str, Any]]:
+        """本次 TWS 会话(当天)的逐笔成交,归一成本系统的形状,按时间升序。
+
+        IBKR 的 API 只回当天的成交;要看更早的,只能靠每次拉到的都存进本地库
+        (store.remember_fills)慢慢累积。一张组合单会回 1 条 BAG 行 + 每条腿一行,
+        同一订单共用 permId——合成蝴蝶的活在 ibtrades 里做,这里只搬运。
+        """
+        out: Dict[str, Dict[str, Any]] = {}
+        for ib in self.sessions():
+            try:
+                fills = list(ib.reqExecutions() or [])
+            except Exception as exc:  # noqa: BLE001
+                raise BrokerError("读取成交明细失败:%s" % exc) from exc
+            for fill in fills:
+                row = fill_row(fill)
+                if row is not None and row["exec_id"] not in out:
+                    out[row["exec_id"]] = row
+        return sorted(out.values(), key=lambda r: (r["time"], r["exec_id"]))
+
+    def contract_hours(self, row: Dict[str, Any], account) -> Optional[tuple]:
+        """这条持仓所在合约的真实交易时段 (tradingHours, liquidHours, timeZoneId)。
+
+        **为什么不能用 `Settings.market_status`**:那张表是照美股正股写的
+        (4:00 盘前 / 9:30 盘中 / 16:00 盘后 / 20:00 休市)。SPX 期权不是这个时段——
+        IBKR 报的 SPXW 是 `19:15–次日 08:25` 加 `08:30–15:00`(US/Central,即美东
+        20:15–09:25 与 09:30–16:00)。拿正股的表去判期权,0DTE 蝶在隔夜那一整段会被
+        当成"休市",追踪止盈整段不设防(2026-09-04 实测:美东 01:10 被判休市,而 IBKR
+        说那时能交易)。
+
+        组合(BAG)本身没有时段,取它第一条腿的——同一到期日的腿时段相同。
+        查不到就回 None,让调用方退回正股那套,而不是把仓位卡死在"休市"。
+        """
+        sec_type = str(row.get("sec_type") or "")
+        contract = row.get("contract") or {}
+        if sec_type == "BAG":
+            legs = contract.get("legs") or []
+            if not legs:
+                return None
+            leg = legs[0]
+            expiry = leg.get("lastTradeDateOrContractMonth")
+            strike, right = leg.get("strike"), leg.get("right")
+        elif sec_type in ("OPT", "FOP"):
+            expiry = contract.get("lastTradeDateOrContractMonth")
+            strike, right = contract.get("strike"), contract.get("right")
+        else:
+            return None
+        if not expiry or strike in (None, "") or not right:
+            return None
+
+        key = "%s|%s" % (row.get("symbol"), expiry)
+        today = now_et().date().isoformat()
+        hit = self._hours_cache.get(key)
+        if hit and hit[0] == today:
+            return hit[1:]
+
+        try:
+            ib = self.for_account(account)
+            mod = _ib()
+            probe = mod.Option(str(row.get("symbol")), str(expiry), float(strike),
+                               str(right)[:1].upper(), "SMART", currency="USD")
+            details = ib.reqContractDetails(probe)
+        except Exception:  # noqa: BLE001 - 查不到时段不该炸掉轮询,退回正股表即可
+            return None
+        if not details:
+            return None
+        d = details[0]
+        out = (getattr(d, "tradingHours", "") or "", getattr(d, "liquidHours", "") or "",
+               getattr(d, "timeZoneId", "") or "")
+        self._hours_cache[key] = (today,) + out
+        return out
+
     def positions(self) -> List[Dict[str, Any]]:
         """账户里现在拿着什么。
 
@@ -1131,13 +1509,21 @@ class BrokerRouter:
             except Exception:  # noqa: BLE001 - 没订阅账户更新时会空手而归
                 items = []
             for item in items:
-                row = self._position_row(item.contract, item.position, alias_of)
+                # 账号在持仓项上(item.account),不在合约上——从合约取永远是空,
+                # 结果是所有账户的仓都被记到默认账户名下
+                row = self._position_row(
+                    item.contract, item.position, alias_of, getattr(item, "account", "") or ""
+                )
                 if row is None:
                     continue
                 row["avg_cost"] = _clean_price(item.averageCost) or 0.0
                 row["market_price"] = _clean_price(item.marketPrice)
                 row["market_value"] = _finite_quote(item.marketValue) or None
-                row["unrealized_pnl"] = _finite_quote(item.unrealizedPnL)
+                # 大小写是 ib_insync 的坑:PortfolioItem 上是 unrealizedPNL(全大写),
+                # 只有 PnL 那个类才是 unrealizedPnL。写错不会静默出错,而是 AttributeError
+                # ——账户里一有持仓,整个 positions() 就炸,持仓列表与组合追踪全瘫。
+                # 假 router 测不出来,只有连上带持仓的真账户才暴露(2026-09-04 纸面实测)。
+                row["unrealized_pnl"] = _finite_quote(item.unrealizedPNL)
                 out[row["key"]] = row
 
             try:
@@ -1145,7 +1531,9 @@ class BrokerRouter:
             except Exception:  # noqa: BLE001
                 raw = []
             for pos in raw:
-                row = self._position_row(pos.contract, pos.position, alias_of)
+                row = self._position_row(
+                    pos.contract, pos.position, alias_of, getattr(pos, "account", "") or ""
+                )
                 if row is None or row["key"] in out:
                     continue      # portfolio 已经给过更准的那份
                 row["avg_cost"] = _clean_price(pos.avgCost) or 0.0
@@ -1155,14 +1543,30 @@ class BrokerRouter:
         self._fill_position_prices(rows)
         return sorted(rows, key=lambda r: (r["account"], r["symbol"]))
 
-    def _position_row(self, contract, quantity, alias_of) -> Optional[Dict[str, Any]]:
+    def _position_row(
+        self, contract, quantity, alias_of, account: str = ""
+    ) -> Optional[Dict[str, Any]]:
         """IBKR 的持仓行 → 本系统的形状。账号不在别名表里的一律跳过——
-        LLM 指不到的账户,追踪也不该管,否则会出现"界面上有、下单时找不到"的洞。"""
-        account = getattr(contract, "account", "") or ""
+        LLM 指不到的账户,追踪也不该管,否则会出现"界面上有、下单时找不到"的洞;
+        更糟的是别的账户的仓挂在这个账户名下,追踪的"实际持仓"就不是实际的了。"""
+        account = account or getattr(contract, "account", "") or ""
         alias = alias_of.get(account)
         if alias is None:
-            # portfolio/positions 的 account 在 item 上而不是 contract 上,取不到时
-            # 退到默认账户——单账户是绝大多数情况
+            if account:
+                # 券商报了账号但别名表里没有:不是本软件管的账户,不显示、不追踪。
+                # 每个账号只提醒一次(持仓面板几秒刷一轮)。
+                seen = getattr(self, "_unmapped_accounts", None)
+                if seen is None:
+                    seen = self._unmapped_accounts = set()
+                if account not in seen:
+                    seen.add(account)
+                    _log_stderr(
+                        "[ibkr] 账户 %s 不在配置的别名表里,它的持仓不显示、不追踪。"
+                        "要管这个账户,把它加进 config/settings.json 的 accounts。"
+                        % redact_for_log(account)
+                    )
+                return None
+            # 券商没报账号(极少见)才退到默认账户——单账户是绝大多数情况
             default = self.settings.default_account()
             if default is None:
                 return None
@@ -1175,11 +1579,30 @@ class BrokerRouter:
             multiplier = float(getattr(contract, "multiplier", "") or 1)
         except (TypeError, ValueError):
             multiplier = 1.0
+        from .tracker import leg_of, position_key, position_label
+
+        spec = {
+            "secType": sec_type,
+            "symbol": symbol,
+            "exchange": getattr(contract, "exchange", "") or "SMART",
+            "currency": getattr(contract, "currency", "USD") or "USD",
+            "lastTradeDateOrContractMonth":
+                getattr(contract, "lastTradeDateOrContractMonth", "") or None,
+            "strike": float(getattr(contract, "strike", 0) or 0) or None,
+            "right": getattr(contract, "right", "") or None,
+            "multiplier": str(int(multiplier)) if multiplier else "100",
+            "tradingClass": getattr(contract, "tradingClass", "") or None,
+        }
+        # 期权按腿区分:一只蝴蝶三条腿都是同一个 symbol/secType,
+        # key 不带腿身份就会互相覆盖,界面上只剩一条、追踪也会认错腿
+        leg = leg_of(spec)
         return {
-            "key": "%s|%s|%s" % (alias, symbol, sec_type),
+            "key": position_key(alias, symbol, sec_type, leg),
             "account": alias,
             "symbol": symbol,
             "sec_type": sec_type,
+            "leg": leg,
+            "label": position_label(symbol, sec_type, spec),
             "quantity": float(quantity or 0),
             "multiplier": multiplier,
             "currency": getattr(contract, "currency", "USD") or "USD",
@@ -1187,34 +1610,72 @@ class BrokerRouter:
             "market_price": None,
             "market_value": None,
             "unrealized_pnl": None,
-            "contract": {
-                "secType": sec_type,
-                "symbol": symbol,
-                "exchange": getattr(contract, "exchange", "") or "SMART",
-                "currency": getattr(contract, "currency", "USD") or "USD",
-                "lastTradeDateOrContractMonth":
-                    getattr(contract, "lastTradeDateOrContractMonth", "") or None,
-                "strike": float(getattr(contract, "strike", 0) or 0) or None,
-                "right": getattr(contract, "right", "") or None,
-                "multiplier": str(int(multiplier)) if multiplier else "100",
-                "tradingClass": getattr(contract, "tradingClass", "") or None,
-            },
+            "contract": spec,
         }
 
     def _fill_position_prices(self, rows) -> None:
-        """给还没有现价的正股补一次报价。期权不在这里补——一条期权链的报价要
-        单独订阅,而追踪面板刷得很勤,那样会把行情线路配额吃干。"""
+        """给还没有现价的持仓补报价。
+
+        正股走批量快照;期权腿走**常驻订阅**(每条腿一条行情线路,订阅一次留着,
+        之后每轮只读缓存)——持仓里的期权腿就那么几条,不会吃光配额;不订阅的话
+        组合价格永远是"—",追踪也永远不触发。
+        """
         need = [r["symbol"] for r in rows if r["market_price"] is None and r["sec_type"] == "STK"]
-        if not need:
+        if need:
+            try:
+                quotes = self.stock_quotes(sorted(set(need)))
+            except BrokerError:
+                quotes = {}
+            for row in rows:
+                quote = quotes.get(row["symbol"]) or {}
+                if row["market_price"] is None and row["sec_type"] == "STK":
+                    row["market_price"] = quote.get("last")
+        self._fill_option_prices(rows)
+
+    def _fill_option_prices(self, rows) -> None:
+        """期权腿的现价:常驻 reqMktData,读中间价(没盘口时退到最新价/标记价)。"""
+        legs = [r for r in rows if r["market_price"] is None and r["sec_type"] in ("OPT", "FOP")]
+        if not legs:
             return
-        try:
-            quotes = self.stock_quotes(sorted(set(need)))
-        except BrokerError:
+        sessions = self.sessions()
+        ib = sessions[0] if sessions else None
+        if ib is None:
             return
-        for row in rows:
-            quote = quotes.get(row["symbol"]) or {}
-            if row["market_price"] is None:
-                row["market_price"] = quote.get("last")
+        mod = _ib()
+        fresh = False
+        for row in legs:
+            key = "opt:%s" % row["key"]
+            if key in self._streams:
+                continue
+            spec = row["contract"] or {}
+            try:
+                target = mod.Option(
+                    row["symbol"], spec.get("lastTradeDateOrContractMonth") or "",
+                    float(spec.get("strike") or 0.0), spec.get("right") or "",
+                    spec.get("exchange") or "SMART", multiplier=spec.get("multiplier") or "100",
+                    currency=spec.get("currency") or "USD",
+                )
+                if spec.get("tradingClass"):
+                    target.tradingClass = spec["tradingClass"]
+                self._qualify_or_raise(ib, target)
+            except (BrokerError, Exception):  # noqa: BLE001 - 认不出的合约不反复重试
+                self._streams[key] = None
+                continue
+            self._streams[key] = ib.reqMktData(target, "", False, False)
+            fresh = True
+        # 首次订阅要等第一笔 tick 落地;之后每轮只是从常驻订阅的缓存里读,泵一下事件
+        # 循环就够。追踪轮询按秒跑,这里每多等 0.1 秒就是 10% 的占用,而 RPC 是单线程的
+        # ——省下来的时间直接变成别的请求的响应速度。
+        ib.sleep(1.5 if fresh else 0.05)
+        for row in legs:
+            ticker = self._streams.get("opt:%s" % row["key"])
+            if ticker is None:
+                continue
+            bid, ask = _clean_price(ticker.bid), _clean_price(ticker.ask)
+            if bid is not None and ask is not None and ask >= bid:
+                row["market_price"] = round((bid + ask) / 2.0, 4)
+            else:
+                row["market_price"] = _clean_price(ticker.last) or _clean_price(ticker.marketPrice())
 
     # ---- 下单 -----------------------------------------------------------
     def place(
@@ -1246,8 +1707,10 @@ class BrokerRouter:
             order.conditions = [self._price_condition(ib, parsed.trigger)]
             order.conditionsCancelOrder = False
 
+        # orderId 在 placeOrder 返回时已确定;只泵 0.15 秒事件循环收早期状态,
+        # 其余状态与成交由回报异步落库——为"也许能看到的状态"陪 0.5 秒不值得。
         trade = ib.placeOrder(contract, order)
-        ib.sleep(0.5)
+        ib.sleep(0.15)
         return PlacementResult(
             record_id=record_id,
             order_id=getattr(trade.order, "orderId", None),
@@ -1272,6 +1735,120 @@ class BrokerRouter:
             isMore=spec["isMore"],
             price=spec["price"],
         )
+
+    # ---- 券商托管的止盈/止损(GTC + OCA,挂在 IBKR 服务器上)---------------
+    #: 富途的 router 没有这套(OpenD 不给同形的 OCA/TRAIL),置 False。
+    SUPPORTS_HOSTED_CLOSE = True
+
+    def place_hosted(
+        self,
+        account: AccountConfig,
+        contract_spec: ContractSpec,
+        item: Dict[str, Any],
+        oca_group: str,
+        order_ref: str,
+    ) -> Dict[str, Any]:
+        """挂一张托管单。GTC:软件关掉它也站岗——这正是托管的意义。
+
+        OCA 组内一张成交,券商自动撤其余,与软件盯盘"触发一次就落闩"同义。
+        """
+        mod = _ib()
+        ib = self.for_account(account)
+        contract = self.qualify(contract_spec, account)
+        order = mod.Order(
+            action=item["action"],
+            orderType=item["order_type"],
+            totalQuantity=item["quantity"],
+        )
+        if item.get("lmt_price") is not None:
+            order.lmtPrice = item["lmt_price"]
+        if item.get("aux_price") is not None:
+            order.auxPrice = item["aux_price"]
+        if item.get("trailing_percent") is not None:
+            order.trailingPercent = item["trailing_percent"]
+            # 用持久化峰值播种初始停损:重启不把已锁住的利润放开
+            if item.get("trail_stop_seed") is not None:
+                order.trailStopPrice = item["trail_stop_seed"]
+        order.tif = "GTC"
+        # 托管止盈/止损同样要全时段站岗:股票开盘外标志,盘前盘后也能触发成交。
+        # 期权没有盘外交易(SPX 的全球时段另算),标志对它无意义,不打。
+        order.outsideRth = (getattr(contract_spec, "secType", None) or "") == "STK"
+        order.account = account.account_id
+        order.orderRef = order_ref
+        order.ocaGroup = oca_group
+        order.ocaType = 1                     # 一张成交,整组撤销
+        order.transmit = True
+        trade = ib.placeOrder(contract, order)
+        ib.sleep(0.15)
+        order_id = getattr(trade.order, "orderId", None)
+        if order_id:
+            self._hosted_trades[int(order_id)] = (ib, trade)
+        return {
+            "order_id": order_id,
+            "perm_id": getattr(trade.order, "permId", None),
+            "status": getattr(trade.orderStatus, "status", "Submitted"),
+        }
+
+    def modify_hosted(self, order_id: int, item: Dict[str, Any]) -> bool:
+        """改一张托管单的价格/数量(同 orderId 重发 = IBKR 的改单语义)。
+
+        撤了重挂会留出一段没有保护的窗口,改单没有——所以必须是改,不是换。
+        """
+        entry = self._hosted_trades.get(int(order_id))
+        if entry is None:
+            return False
+        ib, trade = entry
+        order = trade.order
+        order.totalQuantity = item["quantity"]
+        if item.get("lmt_price") is not None:
+            order.lmtPrice = item["lmt_price"]
+        if item.get("aux_price") is not None:
+            order.auxPrice = item["aux_price"]
+        if item.get("trailing_percent") is not None:
+            order.trailingPercent = item["trailing_percent"]
+        ib.placeOrder(trade.contract, order)
+        return True
+
+    def cancel_hosted(self, order_id: int) -> bool:
+        entry = self._hosted_trades.pop(int(order_id), None)
+        if entry is None:
+            return False
+        ib, trade = entry
+        ib.cancelOrder(trade.order)
+        return True
+
+    def list_hosted_open(self, ref_prefix: str = "trk:") -> List[Dict[str, Any]]:
+        """从券商未成交单里认领托管单(orderRef 前缀匹配)。
+
+        重启后的第一件事:先认领再对账,否则同一追踪会被再挂一遍。
+        """
+        rows: List[Dict[str, Any]] = []
+        for ib in self._connections.values():
+            if not ib.isConnected():
+                continue
+            for trade in ib.openTrades():
+                ref = str(getattr(trade.order, "orderRef", "") or "")
+                if not ref.startswith(ref_prefix):
+                    continue
+                order_id = getattr(trade.order, "orderId", None)
+                if order_id:
+                    self._hosted_trades[int(order_id)] = (ib, trade)
+                rows.append({
+                    "order_ref": ref,
+                    "order_id": order_id,
+                    "perm_id": getattr(trade.order, "permId", None),
+                    "account": getattr(trade.order, "account", ""),
+                    "action": getattr(trade.order, "action", ""),
+                    "order_type": getattr(trade.order, "orderType", ""),
+                    "quantity": float(getattr(trade.order, "totalQuantity", 0) or 0),
+                    "lmt_price": _clean_price(getattr(trade.order, "lmtPrice", None)),
+                    "aux_price": _clean_price(getattr(trade.order, "auxPrice", None)),
+                    "trailing_percent": _clean_price(
+                        getattr(trade.order, "trailingPercent", None)
+                    ),
+                    "status": getattr(trade.orderStatus, "status", ""),
+                })
+        return rows
 
     def sessions(self) -> List[Any]:
         """已建立的连接,供上层挂成交/状态回调。"""

@@ -8,7 +8,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
-from typing import Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
+
+#: 能交易、但交易所只收限价单的时段。"盘外"来自合约自己的交易时段
+#: (config.hours_status):SPX 期权的隔夜段既不是正股口径的"盘前"也不是"盘后"。
+#: 与 tracker.EXTENDED_SESSIONS 同一套语义,两边都改才不会一边放行一边拦。
+EXTENDED_STATUSES = ("盘前", "盘后", "盘外")
 
 from .config import AccountConfig, Settings
 from .models import ContractSpec, Leg, OrderSpec, ParsedOrder
@@ -89,17 +94,42 @@ class Validator:
         now_et: datetime,
         snapshot: Optional[Mapping[str, float]] = None,
         recent_orders: Optional[Sequence[RecentOrder]] = None,
+        market_status_fn: Optional[Any] = None,
     ):
         self.settings = settings
         self.now_et = now_et
         self.snapshot = {k.upper(): float(v) for k, v in (snapshot or {}).items()}
         self.recent_orders = list(recent_orders or [])
         self.market_status = settings.market_status(now_et)
+        # 按订单问一次"这个合约此刻能不能交易"。给 None 就退回上面那个全局值。
+        # 存在的理由:`settings.market_status` 是照**美股正股**写的,而 SPX 期权
+        # 还有 20:15–次日 09:25 这一整段隔夜可交易时间(IBKR 报的 SPXW 时段)。
+        # 拿正股的表判期权,隔夜下单会被误告"当前休市,订单将挂到下一个交易时段",
+        # 而那时它其实能成交。(2026-09-04 实测)
+        self._market_status_fn = market_status_fn
+
+    def status_for(self, order: ParsedOrder) -> str:
+        """这一单此刻面对的时段。期权/组合优先用合约自己的,拿不到退回正股表。"""
+        if self._market_status_fn is not None:
+            try:
+                got = self._market_status_fn(order)
+            except Exception:  # noqa: BLE001 - 查时段失败不该让校验整个炸
+                got = None
+            if got:
+                return str(got)
+        return self.market_status
 
     # ------------------------------------------------------------------
-    def validate_all(self, orders: Sequence[ParsedOrder]) -> ValidationOutcome:
+    def validate_all(
+        self, orders: Sequence[ParsedOrder], limit: Optional[int] = None
+    ) -> ValidationOutcome:
+        """逐条校验一批订单。
+
+        ``limit`` 覆盖单次输入的订单上限:引擎按账户扇出后同一条输入会变成
+        N 倍订单,上限也要按同样倍数放大,否则第二个账户的订单会被当成超额拦掉。
+        """
         outcome = ValidationOutcome()
-        limit = self.settings.limits.max_orders_per_input
+        limit = self.settings.limits.max_orders_per_input if limit is None else limit
         seen_in_batch: Dict[str, float] = {}
 
         for index, order in enumerate(orders):
@@ -561,7 +591,7 @@ class Validator:
     # ---- 交易时段 ------------------------------------------------------
     def _check_session(self, order: ParsedOrder, warnings: List[str]) -> List[ValidationIssue]:
         policy = self.settings.policies.closed_market_policy
-        status = self.market_status
+        status = self.status_for(order)
         spec = order.order
 
         if status == "休市":
@@ -581,9 +611,14 @@ class Validator:
             warnings.append("当前休市,订单将挂到下一个交易时段")
             return []
 
-        if status in ("盘前", "盘后") and not spec.outsideRth:
-            warnings.append("当前为%s,outsideRth=false,订单要等到常规时段才会成交" % status)
-        if status in ("盘前", "盘后") and spec.outsideRth and spec.orderType == "MKT":
+        if status in EXTENDED_STATUSES and not spec.outsideRth:
+            # 光说"要等"没用——用户要的是知道怎么让它现在就走。IBKR 那边的原话是
+            # "您的委托单在 …前不会被下达交易所",单子会一直挂着。
+            warnings.append(
+                "当前为%s,outsideRth=false:订单会挂着,到常规时段才送交易所。"
+                "要在%s就成交,指令里加「盘外」或「隔夜」。" % (status, status)
+            )
+        if status in EXTENDED_STATUSES and spec.outsideRth and spec.orderType == "MKT":
             # 交易所盘外只接受限价单:盘外市价单物理上不会在盘外成交,
             # 只会挂到开盘——与"盘前成交"的意图直接矛盾,必须硬拒而不是警告。
             return [

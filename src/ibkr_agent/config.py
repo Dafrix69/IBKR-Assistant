@@ -43,6 +43,16 @@ class Limits:
 class Policies:
     auto_execute: bool = False           # 总开关:false = 只解析校验不下单(§9.7 熔断)
     allow_live_trading: bool = False     # 实盘开关,默认关闭(§11 先跑纸面账户)
+    # 组合(BAG)自动平仓:纸面账户不受此开关约束,实盘账户必须显式打开。
+    # 平组合要反转每条腿再发 BAG 单,这条路还没在真机上核对过——在核对通过之前,
+    # "允许碰实盘"和"信任这条新路径"是两件事,分开授权。
+    allow_combo_live: bool = False
+    # 合约此刻在盘外时段能交易时,自动给订单打上 outsideRth。
+    # 不打这个标志的后果是单子挂着不动——IBKR 会等到常规时段才送交易所(原话:
+    # "您的委托单在 …前不会被下达交易所")。而 SPX 期权 20:15–次日 09:25 本来就能成交,
+    # 在那个时段下单的人要的显然是现在就成交,不是等明早。默认开;盘外流动性薄、
+    # 点差宽,不想在那个时段成交就关掉它。
+    auto_outside_rth: bool = True
     require_trigger_price_verification: bool = True
     trigger_min_gap_bps: float = 5.0     # 现价与触发价过近 → 方向不可靠,拒绝
     closed_market_policy: str = "reject_market_orders"  # allow | reject_market_orders | reject_all
@@ -228,6 +238,75 @@ class Settings:
         return self.index_symbols.get(symbol.upper())
 
 
+#: `market_status` 之外的第三种答案:合约在交易,但不在流动性时段(盘外/隔夜)。
+#: 闸门认的是"能不能交易",这个和"盘前/盘后"一样属于能交易。
+STATUS_OPEN = "盘中"
+STATUS_OUTSIDE = "盘外"
+STATUS_CLOSED = "休市"
+
+
+def parse_trading_hours(spec: str) -> List[tuple]:
+    """把 IBKR `contractDetails.tradingHours` 拆成 [(开始, 结束)] 的**朴素**时刻对。
+
+    格式:`20260903:1915-20260904:0825;20260904:0830-20260904:1500;20260905:CLOSED`。
+    时刻是合约自己的时区(`timeZoneId`,SPX 期权是 US/Central),这里不做时区换算——
+    换算交给调用方,因为只有它知道 timeZoneId。CLOSED 的日子直接跳过。
+
+    IBKR 已经把节假日算进去了(周末、假期都会是 CLOSED),所以拿它当权威表比自己
+    维护一份假期列表可靠。
+    """
+    out: List[tuple] = []
+    for chunk in (spec or "").split(";"):
+        chunk = chunk.strip()
+        if not chunk or chunk.endswith(":CLOSED"):
+            continue
+        try:
+            start_raw, end_raw = chunk.split("-", 1)
+            start = datetime.strptime(start_raw.strip(), "%Y%m%d:%H%M")
+            end_raw = end_raw.strip()
+            if ":" in end_raw:
+                end = datetime.strptime(end_raw, "%Y%m%d:%H%M")
+            else:                      # 少数交易所只给结束时刻,当作同一天
+                end = datetime.strptime("%s:%s" % (start_raw.split(":")[0], end_raw), "%Y%m%d:%H%M")
+        except ValueError:
+            continue                   # 认不出的片段跳过,不猜
+        if end > start:
+            out.append((start, end))
+    return out
+
+
+def hours_status(spec: str, tz_id: str, moment: datetime,
+                 liquid: Optional[str] = None) -> str:
+    """按合约自己的交易时段判断此刻能不能交易。
+
+    这条路存在的原因:`Settings.market_status` 是照**美股正股**写死的
+    (4:00 盘前 / 9:30 盘中 / 16:00 盘后 / 20:00 休市),而 SPX 期权不是那个时段——
+    IBKR 报的 SPXW 是 `20:15–次日 09:25`(隔夜)加 `09:30–16:00`(常规,美东)。
+    拿正股的表去判期权,0DTE 蝶在隔夜那一整段会被当成"休市",追踪止盈完全不设防。
+
+    返回 STATUS_OPEN(在流动性时段)/ STATUS_OUTSIDE(能交易但不在流动性时段)/
+    STATUS_CLOSED。拿不到时段表时返回空串,让调用方退回正股那套。
+    """
+    if not spec:
+        return ""
+    try:
+        tz = ZoneInfo(tz_id) if tz_id else None
+    except Exception:                  # noqa: BLE001 - 认不出的时区不猜,退回正股表
+        return ""
+    if tz is None:
+        return ""
+    local = moment.astimezone(tz).replace(tzinfo=None)
+    windows = parse_trading_hours(spec)
+    if not windows:
+        return STATUS_CLOSED
+    if not any(start <= local < end for start, end in windows):
+        return STATUS_CLOSED
+    liquid_windows = parse_trading_hours(liquid or "")
+    if liquid_windows and not any(start <= local < end for start, end in liquid_windows):
+        return STATUS_OUTSIDE
+    return STATUS_OPEN
+
+
 def load_settings(path: Optional[Path] = None) -> Settings:
     path = Path(path) if path else DEFAULT_CONFIG_PATH
     if not path.exists():
@@ -334,6 +413,8 @@ def _build_policies(raw: Dict) -> Policies:
     return Policies(
         auto_execute=_flag(raw, "auto_execute", False, "policies"),
         allow_live_trading=_flag(raw, "allow_live_trading", False, "policies"),
+        allow_combo_live=_flag(raw, "allow_combo_live", False, "policies"),
+        auto_outside_rth=_flag(raw, "auto_outside_rth", True, "policies"),
         require_trigger_price_verification=_flag(
             raw, "require_trigger_price_verification", True, "policies"
         ),

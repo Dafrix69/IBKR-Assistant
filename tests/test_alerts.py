@@ -9,7 +9,7 @@ import pytest
 
 from ibkr_agent.alerts import (
     DEFAULT_COOLDOWN, AlertError, AlertLevel, LevelState, build_levels, describe,
-    evaluate, level_key, round_levels,
+    evaluate, level_key, round_levels, trend_levels, trend_snapshot,
 )
 
 
@@ -106,6 +106,92 @@ def test_too_many_levels_are_trimmed_to_the_nearest_ones():
     big = wall(call_wall={"strike": 900.0}, put_wall={"strike": 1.0})
     levels = build_levels(41.0, big, step=0.5, max_levels=4)
     assert len(levels) == 4
+
+
+# ---------------------------------------------------------------- 趋势位
+def daily_bars(closes, low_dip=0.0, high_pop=0.0):
+    """把一串收盘价变成日 K。low/high 在收盘价上下各让一点,模拟影线。"""
+    return [
+        {"date": "2026-01-%02d" % (i % 28 + 1), "open": c,
+         "high": c * (1 + high_pop), "low": c * (1 - low_dip), "close": c}
+        for i, c in enumerate(closes)
+    ]
+
+
+def test_trend_levels_compute_the_moving_averages():
+    """300 根 40→70 的日线:MA60/120/200 都该有,且离现价越远的均线越低。"""
+    closes = [40.0 + i * 0.1 for i in range(300)]     # 收在 69.9
+    levels = trend_levels(daily_bars(closes), 69.9)
+    by_source = {l.source: l for l in levels}
+    assert {"ma60", "ma120", "ma200"} <= set(by_source)
+    # 均线值就是最后 N 根的简单平均,上升趋势里周期越长值越低
+    assert by_source["ma60"].price == pytest.approx(sum(closes[-60:]) / 60, abs=1e-4)
+    assert by_source["ma200"].price < by_source["ma120"].price < by_source["ma60"].price
+    # 上升趋势里均线都在现价下方 → 全是支撑
+    assert all(by_source["ma%d" % p].kind == "support" for p in (60, 120, 200))
+
+
+def test_trend_levels_include_the_52_week_extremes():
+    closes = [50.0] * 250
+    closes[10] = 42.0      # 一年里的最低收盘
+    closes[200] = 61.0     # 最高
+    bars = daily_bars(closes, low_dip=0.01, high_pop=0.01)
+    levels = {l.source: l for l in trend_levels(bars, 50.0)}
+    # 高低点用最高/最低价,不是收盘价:衡量"历史上到过哪儿"要用真实摸到的价格
+    assert levels["low_52w"].price == pytest.approx(42.0 * 0.99, abs=1e-4)
+    assert levels["high_52w"].price == pytest.approx(61.0 * 1.01, abs=1e-4)
+    assert levels["low_52w"].label == "52周低点" and levels["low_52w"].kind == "support"
+    assert levels["high_52w"].kind == "resistance"
+
+
+def test_short_history_gives_fewer_levels_not_wrong_ones():
+    """只有 80 根日线:拿 80 根算"120日均线"是撒谎,直接不给;
+    高低点降级为"历史高低点",标签跟着改——降级可以,不能假装是 52 周。"""
+    closes = [30.0 + i * 0.05 for i in range(80)]
+    levels = {l.source: l for l in trend_levels(daily_bars(closes), 34.0)}
+    assert "ma60" in levels and "ma120" not in levels and "ma200" not in levels
+    assert levels["low_52w"].label == "历史低点"
+    assert levels["high_52w"].label == "历史高点"
+
+
+def test_a_handful_of_bars_gives_nothing():
+    closes = [30.0] * 10
+    assert trend_levels(daily_bars(closes), 30.0) == []
+    assert trend_levels(None, 30.0) == []
+    assert trend_levels(daily_bars(closes), 0.0) == []
+
+
+def test_build_levels_merges_trend_with_walls_and_round_numbers():
+    """均线正好压在整数关口上时只报一个位,价位以均线为准(它有数据依据)。"""
+    closes = [40.0] * 300                      # 所有均线都是 40 整
+    bars = daily_bars(closes)
+    levels = build_levels(41.0, None, step=5.0, history=bars)
+    at_40 = [l for l in levels if abs(l.price - 40.0) < 0.01]
+    assert len(at_40) == 1
+    assert at_40[0].source.startswith("ma")     # 均线赢了整数关口
+    assert "整数关口" in at_40[0].label          # 但标签两个都留着
+
+
+def test_trend_snapshot_reads_the_position_in_the_yearly_range():
+    closes = [50.0] * 250
+    closes[10] = 40.0
+    closes[200] = 60.0
+    snap = trend_snapshot(daily_bars(closes), 45.0)
+    assert snap["low_52w"] == 40.0 and snap["high_52w"] == 60.0
+    # 45 在 40~60 的 25% 处:0 = 贴着 52 周低点,数字越小离历史低位越近
+    assert snap["range_pos_pct"] == pytest.approx(25.0, abs=0.1)
+    assert snap["bars"] == 250
+    assert trend_snapshot(daily_bars([50.0] * 5), 45.0) is None
+
+
+def test_crossing_the_ma_fires_like_any_other_level():
+    """整条链路的目的:标的跌到 60 日均线,报一次,不刷屏。"""
+    closes = [40.0] * 300
+    levels = build_levels(41.0, None, step=100.0, history=daily_bars(closes))
+    events = run(levels, [41.0, 40.5, 39.9])
+    ma_hits = [e for e in events if str(e["source"]).startswith("ma")]
+    assert len(ma_hits) == 1
+    assert ma_hits[0]["direction"] == "down" and "均线" in ma_hits[0]["text"]
 
 
 # ---------------------------------------------------------------- 触发

@@ -334,6 +334,9 @@ class FutuRouter:
     #: engine 据此把**所有**条件单都送进方式 B 的软件盯盘队列——少了这个标记,
     #: 带明确价格的条件单会被当成普通单立刻发出去,触发价形同虚设。
     SUPPORTS_NATIVE_CONDITIONS = False
+    #: 同理,止盈/止损也没有可同形托管的 GTC+OCA/TRAIL 组合——富途账户的
+    #: 追踪只能走软件盯盘。engine 与 RPC 都按这个标记拒绝 host_at_broker。
+    SUPPORTS_HOSTED_CLOSE = False
 
     #: 富途的行情订阅有额度(按资产等级,常见 100 条)。一次性铺开整条期权链
     #: 会把额度吃干,连 AUTO_MID 定价都会跟着拿不到报价,所以每侧最多取这么多档。
@@ -1300,6 +1303,8 @@ class FutuRouter:
             "account": alias,
             "symbol": symbol,
             "sec_type": "STK",
+            "leg": "",
+            "label": symbol,
             "quantity": qty,
             "multiplier": 1.0,
             "currency": "USD",

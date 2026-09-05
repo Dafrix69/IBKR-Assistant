@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from conftest import make_settings, spread_order
+from conftest import BASE_CONFIG, make_settings, spread_order
 from ibkr_agent.broker import LegQuote, auto_mid_limit, combo_mid_price, price_condition_spec
 from ibkr_agent.config import ET
 from ibkr_agent.llm import structured_output_schema, supports_sampling_params
@@ -310,15 +310,16 @@ class _QuoteIB(_FakeIB):
     def reqMarketDataType(self, kind):
         self.data_types.append(kind)
 
-    def qualifyContracts(self, contract):
-        contract.conId = 1
-        return [contract]
+    def qualifyContracts(self, *contracts):   # 真实签名是 *contracts,批量确认一次往返
+        for contract in contracts:
+            contract.conId = 1
+        return list(contracts)
 
     # 真实的 IB 对象既有同步也有 async 版本,合约确认走的是 async 那条
     # (它是库里唯一没有 timeout 参数的阻塞调用,必须能被 wait_for 掐断)。
     # 替身要跟着提供,否则测的就不是生产代码真正走的路径。
-    async def qualifyContractsAsync(self, contract):
-        return self.qualifyContracts(contract)
+    async def qualifyContractsAsync(self, *contracts):
+        return self.qualifyContracts(*contracts)
 
     def run(self, coro):
         import asyncio
@@ -348,7 +349,7 @@ def test_leg_quotes_delayed_fallback_only_for_paper(settings):
     quotes = router.leg_quotes(contract, paper)
     assert len(quotes) == 2 and quotes[0].bid == 1.1
     assert router._connections["paper"].data_types == [3, 1]   # 纸面:延迟兜底,用完切回
-    assert router._connections["paper"].sleeps == 2            # 盘口有效即提前退出轮询
+    assert router._connections["paper"].sleeps == 1            # 各腿一起轮询,盘口有效即提前退出(串行时是每腿一次)
 
     router.leg_quotes(contract, live)
     assert router._connections["live"].data_types == []        # 实盘:绝不碰延迟数据
@@ -499,3 +500,69 @@ def test_purge_requires_exact_confirmation(tmp_path):
 def test_account_redaction():
     assert redact_account("DU7654321") == "DU***321"
     assert redact_account("") == ""
+
+
+# ---------------------------------------------------------------- 配置里的 ~
+def test_db_path_with_a_tilde_is_expanded_to_the_home_directory(tmp_path):
+    """配置里的 `~/…` 必须展开成家目录,不能当成一个叫 `~` 的普通目录。
+
+    不展开的后果不是报错,是**静悄悄写到别的地方**:TS 侧曾经把它当字面目录名,
+    相对 cwd 建出一个叫 `~` 的文件夹(2026-09-04 实测:项目根目录下真的多出来一个,
+    WAL 有 1.5MB)。同一份配置、两个库,切引擎时交易记录、追踪、想法全部"消失"。
+    """
+    import json
+    from pathlib import Path
+
+    from ibkr_agent.config import load_settings
+
+    raw = json.loads(json.dumps(BASE_CONFIG))
+    raw["storage"] = {"db_path": "~/Library/Application Support/dafri/trades.db"}
+    cfg = tmp_path / "settings.json"
+    cfg.write_text(json.dumps(raw, ensure_ascii=False), encoding="utf-8")
+
+    settings = load_settings(cfg)
+    assert "~" not in str(settings.db_path)
+    assert settings.db_path == Path.home() / "Library/Application Support/dafri/trades.db"
+    assert settings.db_path.is_absolute()
+
+    # 绝对路径与相对路径都原样保留(只有开头的 ~ 才展开)
+    for literal in (str(tmp_path / "a.db"), "data/b.db"):
+        raw["storage"] = {"db_path": literal}
+        cfg.write_text(json.dumps(raw, ensure_ascii=False), encoding="utf-8")
+        assert str(load_settings(cfg).db_path) == str(Path(literal))
+
+
+# ---------------------------------------------------------------- 最小价格变动
+def test_auto_mid_limit_aligns_to_the_minimum_tick():
+    """AUTO_MID 的限价必须落在合法档位上,否则 IBKR 当场退单(错误 110)。
+
+    2026-09-04 纸面实测:一张 SPX 蝶的中间价 0.125 + 滑点 0.05 = 0.1750,那是 3.5 个 tick,
+    IBKR 回「110 价格不符合该合约的最小价格变动要求」,单子根本没进订单簿。
+    IBKR 对 BAG 不给 contractDetails,但每条 SPX 期权腿实测 minTick=0.05。
+    """
+    from ibkr_agent.broker import (DEFAULT_COMBO_TICK, align_tick_down, align_tick_up,
+                                   auto_mid_limit)
+
+    assert DEFAULT_COMBO_TICK == 0.05
+    # 那次失败的定价:0.175 → 0.20
+    assert auto_mid_limit(0.125, "BUY", 0.05, 10.0) == 0.2
+    # 已经对齐的值不能被浮点误差推到下一档
+    for v in (0.05, 0.10, 0.15, 0.20, 2.25, 12.35):
+        assert align_tick_up(v) == v, v
+    assert align_tick_up(0.1750) == 0.2
+    assert align_tick_up(12.34) == 12.35
+    assert align_tick_down(12.36) == 12.35
+
+    # 贷方:限价是负数,同样向上对齐 = 少收一点 = 更容易成交
+    credit = auto_mid_limit(-12.34, "SELL", 0.05)
+    assert credit == -12.25 and credit % 0.05 == pytest.approx(0.0, abs=1e-9)
+
+    # 借方仍受翼宽上限约束,且夹完之后依然是合法档位
+    capped = auto_mid_limit(19.99, "BUY", 0.5, 20.0)
+    assert capped == 20.0
+
+    # 每个结果都必须是 tick 的整数倍——这条是这个测试真正要守的东西
+    for mid, action, slip in ((0.125, "BUY", 0.05), (1.07, "BUY", 0.03), (3.33, "BUY", 0.1),
+                              (-2.07, "SELL", 0.02), (-9.99, "SELL", 0.005)):
+        out = auto_mid_limit(mid, action, slip)
+        assert abs(round(out / 0.05) * 0.05 - out) < 1e-9, (mid, action, slip, out)

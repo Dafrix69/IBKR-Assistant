@@ -294,3 +294,342 @@ def test_close_payload_passes_the_order_schema():
         parsed = parse_llm_payload({"orders": [payload], "rejections": []})
         assert parsed.orders and not parsed.rejections
         assert parsed.orders[0].order.action == "SELL"
+
+
+# ---- 利润回撤追踪平仓(用户需求:利润比峰值低 30% 时卖出 50%)------------------
+def _pos(qty=100.0, cost=200.0, mult=1.0):
+    from ibkr_agent.tracker import Position
+
+    return Position(account="模拟", symbol="AAPL", quantity=qty, avg_cost=cost,
+                    multiplier=mult)
+
+
+def test_profit_drawdown_fires_when_profit_falls_from_peak():
+    from ibkr_agent import tracker as tk
+
+    targets = tk.Targets(profit_drawdown_pct=30.0)
+    # 峰值价 260 → 峰值利润 6000;现价 240 → 利润 4000,回撤 33.3% > 30% → 触发
+    result = tk.evaluate(_pos(), targets, price=240.0, peak=260.0)
+    assert result["state"] == tk.STATE_PROFIT_TRAIL
+    assert result["profit_peak"] == 6000.0
+    assert abs(result["profit_drawdown_pct"] - 33.33) < 0.01
+    assert "利润回撤触发" in result["reason"]
+
+
+def test_profit_drawdown_does_not_fire_within_threshold():
+    from ibkr_agent import tracker as tk
+
+    targets = tk.Targets(profit_drawdown_pct=30.0)
+    # 现价 250 → 利润 5000,回撤 16.7% < 30% → 继续持有
+    result = tk.evaluate(_pos(), targets, price=250.0, peak=260.0)
+    assert result["state"] == tk.STATE_HOLDING
+    assert abs(result["profit_drawdown_pct"] - 16.67) < 0.01
+
+
+def test_profit_drawdown_needs_a_profitable_peak():
+    from ibkr_agent import tracker as tk
+
+    # 峰值价 190 < 成本 200:从未盈利,谈不上"利润回撤",不触发
+    targets = tk.Targets(profit_drawdown_pct=30.0)
+    result = tk.evaluate(_pos(), targets, price=180.0, peak=190.0)
+    assert result["state"] == tk.STATE_HOLDING
+    assert result["profit_drawdown_pct"] is None
+
+
+def test_profit_drawdown_works_for_shorts():
+    from ibkr_agent import tracker as tk
+
+    # 空头:成本 200 卖出,峰值价 150 → 峰值利润 5000;反弹到 185 → 利润 1500,回撤 70%
+    targets = tk.Targets(profit_drawdown_pct=30.0)
+    result = tk.evaluate(_pos(qty=-100.0), targets, price=185.0, peak=150.0)
+    assert result["state"] == tk.STATE_PROFIT_TRAIL
+
+
+def test_stop_loss_still_beats_profit_trail():
+    from ibkr_agent import tracker as tk
+
+    targets = tk.Targets(profit_drawdown_pct=30.0, stop_loss=190.0)
+    result = tk.evaluate(_pos(), targets, price=185.0, peak=260.0)
+    assert result["state"] == tk.STATE_STOP_LOSS   # 止损优先,按最坏的一边算
+
+
+def test_partial_close_rounds_down_and_never_exceeds():
+    from ibkr_agent import tracker as tk
+
+    contract = {"secType": "STK", "symbol": "AAPL"}
+    auto = tk.AutoClose(enabled=True, order_type="MKT", close_fraction_pct=50.0)
+    payload = tk.build_close_order(_pos(qty=101.0), auto, 240.0, tk.STATE_PROFIT_TRAIL, contract)
+    assert payload["order"]["totalQuantity"] == 50      # 101 × 50% 向下取整
+    assert "利润回撤平仓" in payload["intent_summary"]
+    assert "平 50/101" in payload["intent_summary"]
+
+    # 1 股持仓也至少平 1 股;100% 时不带"平 x/y"标记
+    payload = tk.build_close_order(_pos(qty=1.0), auto, 240.0, tk.STATE_PROFIT_TRAIL, contract)
+    assert payload["order"]["totalQuantity"] == 1
+    full = tk.AutoClose(enabled=True, close_fraction_pct=100.0)
+    payload = tk.build_close_order(_pos(qty=100.0), full, 240.0, tk.STATE_STOP_LOSS, contract)
+    assert payload["order"]["totalQuantity"] == 100
+    assert "平 " not in payload["intent_summary"]
+
+    import pytest
+
+    with pytest.raises(tk.TrackerError):
+        tk.build_close_order(_pos(), tk.AutoClose(close_fraction_pct=0.0), 240.0,
+                             tk.STATE_STOP_LOSS, contract)
+    with pytest.raises(tk.TrackerError):
+        tk.build_close_order(_pos(), tk.AutoClose(close_fraction_pct=150.0), 240.0,
+                             tk.STATE_STOP_LOSS, contract)
+
+
+def test_profit_drawdown_validation():
+    from ibkr_agent import tracker as tk
+    import pytest
+
+    tk.validate(_pos(), tk.Targets(profit_drawdown_pct=30.0), 240.0)   # 合法
+    for bad in (0.0, 100.0, -5.0):
+        with pytest.raises(tk.TrackerError, match="利润回撤"):
+            tk.validate(_pos(), tk.Targets(profit_drawdown_pct=bad), 240.0)
+
+
+# ======================================================================
+# 券商托管:hosted_plan 与利润回撤的停损价换算
+# ======================================================================
+def _auto_hosted(**kw):
+    base = dict(enabled=True, host_at_broker=True)
+    base.update(kw)
+    return tk.AutoClose(**base)
+
+
+def test_hosted_plan_is_empty_when_hosting_is_off():
+    targets = tk.Targets(take_profit=250.0)
+    assert tk.hosted_plan(long_stock(), targets, tk.AutoClose(enabled=True), 200.0) == []
+
+
+def test_hosted_plan_static_targets_become_lmt_and_stp():
+    targets = tk.Targets(take_profit=250.0, stop_loss=160.0)
+    plan = tk.hosted_plan(long_stock(), targets, _auto_hosted(), 200.0)
+    assert [p["kind"] for p in plan] == ["tp", "sl"]
+    tp, sl = plan
+    assert (tp["order_type"], tp["action"], tp["quantity"], tp["lmt_price"]) == \
+        ("LMT", "SELL", 100, 250.0)
+    assert (sl["order_type"], sl["aux_price"]) == ("STP", 160.0)
+
+
+def test_hosted_trail_uses_native_trail_seeded_from_peak():
+    # 峰值 260、回撤 5% → 初始停损 247:重启不把已锁住的利润放开
+    plan = tk.hosted_plan(long_stock(), tk.Targets(trail_pct=5.0), _auto_hosted(), 260.0)
+    assert plan[0]["kind"] == "trail"
+    assert plan[0]["order_type"] == "TRAIL"
+    assert plan[0]["trailing_percent"] == 5.0
+    assert plan[0]["trail_stop_seed"] == 247.0
+
+
+def test_profit_trail_stop_matches_evaluate_trigger_price():
+    """托管停损价必须与软件盯盘的触发条件给出同一个价位——两条路径不同价,
+    用户换一种模式就换一种风险,这是不可接受的。"""
+    position = long_stock()          # 成本 180
+    stop = tk.profit_trail_stop_price(position, 260.0, 30.0)
+    assert stop == pytest.approx(236.0)   # 180 + 80×0.7
+    # 在这个价位上,evaluate 恰好触发(<= 峰值利润×70%)
+    result = tk.evaluate(position, tk.Targets(profit_drawdown_pct=30.0), 236.0, peak=260.0)
+    assert result["state"] == tk.STATE_PROFIT_TRAIL
+    # 高一分钱就不触发
+    result = tk.evaluate(position, tk.Targets(profit_drawdown_pct=30.0), 236.01, peak=260.0)
+    assert result["state"] == tk.STATE_HOLDING
+
+
+def test_profit_trail_stop_requires_a_profitable_peak():
+    assert tk.profit_trail_stop_price(long_stock(), 175.0, 30.0) is None
+    plan = tk.hosted_plan(
+        long_stock(), tk.Targets(profit_drawdown_pct=30.0), _auto_hosted(), 175.0
+    )
+    assert plan == []
+
+
+def test_profit_trail_stop_for_shorts_is_a_buy_stop_above():
+    position = short_stock()         # 成本 400,空头
+    stop = tk.profit_trail_stop_price(position, 300.0, 30.0)
+    assert stop == pytest.approx(330.0)   # 400 − 100×0.7
+    plan = tk.hosted_plan(
+        position, tk.Targets(profit_drawdown_pct=30.0), _auto_hosted(), 300.0
+    )
+    assert plan[0]["kind"] == "ptrail"
+    assert (plan[0]["action"], plan[0]["order_type"], plan[0]["aux_price"]) == \
+        ("BUY", "STP", 330.0)
+
+
+def test_profit_trail_stop_divides_out_the_option_multiplier():
+    # avgCost 550 是含乘数的整张成本,每股成本 5.50;峰值报价 8.00、回撤 50%
+    position = long_option()
+    stop = tk.profit_trail_stop_price(position, 8.0, 50.0)
+    assert stop == pytest.approx(6.75)    # 5.5 + 2.5×0.5
+
+
+def test_hosted_plan_applies_the_close_fraction_to_every_order():
+    position = long_stock(quantity=101)
+    targets = tk.Targets(take_profit=250.0, stop_loss=160.0)
+    plan = tk.hosted_plan(position, targets, _auto_hosted(close_fraction_pct=50.0), 200.0)
+    assert [p["quantity"] for p in plan] == [50, 50]
+
+
+def test_hosted_prices_snap_to_cents():
+    # 4 位小数的停损价会被 IBKR 110 拒掉;托管价一律收敛到 2 位
+    plan = tk.hosted_plan(
+        long_stock(), tk.Targets(take_profit=236.456789), _auto_hosted(), 200.0
+    )
+    assert plan[0]["lmt_price"] == 236.46
+
+
+def test_hosted_needs_update_ignores_sub_cent_jitter():
+    cur = {"quantity": 100, "aux_price": 236.0, "lmt_price": None, "trailing_percent": None}
+    assert not tk.hosted_needs_update(cur, {**cur, "aux_price": 236.004})
+    assert tk.hosted_needs_update(cur, {**cur, "aux_price": 236.01})
+    assert tk.hosted_needs_update(cur, {**cur, "quantity": 50})
+    assert tk.hosted_needs_update(cur, {**cur, "aux_price": None})
+
+
+# ======================================================================
+# 全时段:盘前/盘后照样平,平仓单自动转盘外限价
+# ======================================================================
+def test_extended_session_market_close_becomes_outside_rth_limit():
+    """交易所盘外不收市价单:盘前触发的市价平仓要转成带盘外标志的限价单,让价方向不变。"""
+    payload = tk.build_close_order(
+        long_stock(), tk.AutoClose(enabled=True, order_type="MKT", slippage_pct=1.0), 200.0,
+        tk.STATE_TAKE_PROFIT, CONTRACT, market_status="盘前",
+    )
+    assert payload["order"]["orderType"] == "LMT"
+    assert payload["order"]["outsideRth"] is True
+    assert payload["order"]["lmtPrice"] == 198.0        # 卖:让低
+    assert "盘外限价" in payload["intent_summary"]
+
+
+def test_extended_session_limit_close_keeps_limit_and_flags_outside_rth():
+    payload = tk.build_close_order(
+        short_stock(), tk.AutoClose(enabled=True, order_type="LMT", slippage_pct=1.0), 400.0,
+        tk.STATE_STOP_LOSS, CONTRACT, market_status="盘后",
+    )
+    assert payload["order"]["orderType"] == "LMT"
+    assert payload["order"]["outsideRth"] is True
+    assert payload["order"]["lmtPrice"] == 404.0        # 买:让高
+
+
+def test_regular_and_closed_sessions_are_unchanged():
+    for status in ("盘中", "休市"):
+        payload = tk.build_close_order(
+            long_stock(), tk.AutoClose(enabled=True), 200.0, tk.STATE_TAKE_PROFIT, CONTRACT,
+            market_status=status,
+        )
+        assert payload["order"]["orderType"] == "MKT"
+        assert payload["order"]["outsideRth"] is False
+
+
+def test_extended_session_without_price_is_refused():
+    with pytest.raises(tk.TrackerError, match="盘外只能限价平仓"):
+        tk.build_close_order(
+            long_stock(), tk.AutoClose(enabled=True), None, tk.STATE_STOP_LOSS, CONTRACT,
+            market_status="盘前",
+        )
+
+
+def test_extended_close_payload_passes_the_order_schema():
+    from ibkr_agent.models import parse_llm_payload
+
+    payload = tk.build_close_order(
+        long_stock(), tk.AutoClose(enabled=True), 200.0, tk.STATE_STOP_LOSS, CONTRACT,
+        market_status="盘后",
+    )
+    parsed = parse_llm_payload({"orders": [payload], "rejections": []})
+    assert parsed.orders and not parsed.rejections
+    assert parsed.orders[0].order.outsideRth is True
+
+
+def test_close_limit_price_snaps_to_tick_in_the_concession_direction():
+    """TWS 对不合最小跳动的限价直接拒单;取整必须仍朝让价方向。"""
+    assert tk.close_limit_price(long_stock(), 324.7, 0.3) == 323.72      # 323.7259 → 向下
+    assert tk.close_limit_price(short_stock(), 324.7, 0.3) == 325.68     # 325.6741 → 向上
+    assert tk.close_limit_price(long_stock(), 200.0, 1.0) == 198.0       # 已在跳动上不动
+    opt = tk.Position(account="模拟", symbol="SPX", sec_type="OPT", quantity=1, avg_cost=550.0,
+                      multiplier=100.0, currency="USD", market_price=5.5)
+    assert tk.close_limit_price(opt, 5.5, 1.0) == 5.4                    # 5.445 → 0.05 跳动向下
+
+
+def test_close_order_uses_a_clean_smart_contract_for_stocks():
+    """持仓行里的合约(NASDAQ / NMS / multiplier="1")原样下单会被 TWS 以 200 拒掉。"""
+    raw = {"secType": "STK", "symbol": "AAPL", "exchange": "NASDAQ", "currency": "USD",
+           "lastTradeDateOrContractMonth": None, "strike": None, "right": None,
+           "multiplier": "1", "tradingClass": "NMS"}
+    payload = tk.build_close_order(long_stock(), tk.AutoClose(enabled=True), 200.0,
+                                   tk.STATE_TAKE_PROFIT, raw)
+    assert payload["contract"] == {"secType": "STK", "symbol": "AAPL",
+                                   "exchange": "SMART", "currency": "USD"}
+    opt = {"secType": "OPT", "symbol": "SPX", "exchange": "CBOE", "currency": "USD",
+           "lastTradeDateOrContractMonth": "20260903", "strike": 7600.0, "right": "P",
+           "multiplier": "100", "tradingClass": "SPXW", "conId": None}
+    assert "conId" not in tk.close_contract(opt)
+    assert tk.close_contract(opt)["tradingClass"] == "SPXW"
+
+
+# ---------------------------------------------------------------- 分档利润回撤
+def test_tiered_drawdown_picks_the_highest_matching_tier():
+    """档位按浮盈倍数选:取所有 above ≤ 当前倍数 里最高的那一档。"""
+    tiers = [{"above": 0, "pct": 40}, {"above": 1, "pct": 30}, {"above": 3, "pct": 20}]
+    tg = tk.Targets(profit_drawdown_tiers=tiers)
+    basis = 225.0                                   # D=2.25、1 张、乘数 100
+    assert tk.drawdown_threshold(tg, 75.0, basis) == 40      # 浮盈 0.33×D
+    assert tk.drawdown_threshold(tg, 225.0, basis) == 30     # 正好 1×D:进中档
+    assert tk.drawdown_threshold(tg, 525.0, basis) == 30     # 2.33×D
+    assert tk.drawdown_threshold(tg, 775.0, basis) == 20     # 3.44×D
+    # 档位乱序也要对
+    assert tk.drawdown_threshold(tk.Targets(profit_drawdown_tiers=list(reversed(tiers))),
+                                 525.0, basis) == 30
+    # 没配分档就是那个固定值;两个都没配就是 None
+    assert tk.drawdown_threshold(tk.Targets(profit_drawdown_pct=25.0), 525.0, basis) == 25
+    assert tk.drawdown_threshold(tk.Targets(), 525.0, basis) is None
+
+
+def test_tiered_drawdown_tightens_late_in_the_day():
+    tg = tk.Targets(profit_drawdown_tiers=[{"above": 0, "pct": 30}],
+                    profit_drawdown_late={"after": "15:00", "factor": 0.5})
+    assert tk.drawdown_threshold(tg, 525.0, 225.0, 14 * 60 + 59) == 30
+    assert tk.drawdown_threshold(tg, 525.0, 225.0, 15 * 60) == 15
+    assert tk.drawdown_threshold(tg, 525.0, 225.0, None) == 30      # 不给时刻就不收紧
+
+
+def test_live_tiers_and_replay_tiers_agree_on_the_same_trigger_price():
+    """实盘按"浮盈/成本"选档、回放按"浮盈/D"选档——同一张组合必须算出同一个触发价。
+
+    两者只差 数量×乘数 这个公因子;差一点就意味着界面上看到的和真实发单的不是一回事。
+    """
+    from ibkr_agent import flyexit as fx
+
+    d, mult, qty = 2.25, 100.0, 1.0
+    pos = tk.Position(account="模拟", symbol="SPX", sec_type="BAG",
+                      quantity=qty, avg_cost=d * mult, multiplier=mult)
+    tg = tk.Targets(profit_drawdown_tiers=fx.drawdown_tiers(None),
+                    profit_drawdown_late=fx.drawdown_late(None))
+    basis = tk.cost_basis(pos)
+    for peak_price, hhmm in ((3.0, "11:00"), (4.5, "11:00"), (7.5, "11:00"),
+                             (10.0, "11:00"), (7.5, "15:30")):
+        minute = fx.minutes_of(hhmm)
+        peak_pts = peak_price - d
+        pct = tk.drawdown_threshold(tg, peak_pts * mult * qty, basis, minute)
+        live = d + peak_pts * (1 - pct / 100.0)
+        assert live == pytest.approx(fx.trail_stop(peak_pts, d, minute, fx.params_from(None)))
+    # 09-03 那张单:浮盈峰值 5.25 点 → 30% 档 → 5.925 触发
+    assert tk.drawdown_threshold(tg, 5.25 * mult, basis, fx.minutes_of("11:29")) == 30
+
+
+def test_evaluate_uses_the_tier_in_force_and_reports_it():
+    tg = tk.Targets(profit_drawdown_tiers=[{"above": 0, "pct": 40}, {"above": 3, "pct": 20}])
+    pos = tk.Position(account="模拟", symbol="SPX", sec_type="BAG", quantity=1.0,
+                      avg_cost=225.0, multiplier=100.0)
+    # 峰值 8.0(浮盈 2.56×D → 40% 档):跌到 5.7 时回撤 (575-345)/575 = 40%,正好触发
+    out = tk.evaluate(pos, tg, 5.70, peak=8.00)
+    assert out["profit_drawdown_threshold"] == 40 and out["state"] == tk.STATE_PROFIT_TRAIL
+    assert "阈值 40%" in out["reason"]
+    # 同样的峰值只跌到 6.5:回撤 26% < 40%,继续持有
+    assert tk.evaluate(pos, tg, 6.50, peak=8.00)["state"] == tk.STATE_HOLDING
+    # 浮盈更大时换到 20% 档:峰值 12.0(4.33×D),浮盈 975 让掉 20% → 10.05 触发
+    assert tk.evaluate(pos, tg, 10.10, peak=12.00)["state"] == tk.STATE_HOLDING
+    out2 = tk.evaluate(pos, tg, 10.00, peak=12.00)
+    assert out2["profit_drawdown_threshold"] == 20 and out2["state"] == tk.STATE_PROFIT_TRAIL
