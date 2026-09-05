@@ -662,7 +662,10 @@ input.w-64 { width: 64px; }
 .book-bar.ask { background: var(--down); }
 .book-price, .book-size { position: relative; }
 /* K线 PA */
-.pa-chart { width: 100%; height: auto; margin-top: 6px; display: block; }
+/* K 线容器:高度由布局给,画布按真实像素填满;字号线宽在 pa-chart.js 里固定,不随宽度变 */
+.pa-chart-wrap { position: relative; height: 380px; margin-top: 6px; }
+.pa-canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+@media (max-width: 1100px) { .pa-chart-wrap { height: 320px; } }
 .pa-score { font-family: var(--font-mono); font-weight: 700; font-size: 16px; letter-spacing: -0.02em; }
 .pa-score.up { color: var(--up); }
 .pa-score.down { color: var(--down); }

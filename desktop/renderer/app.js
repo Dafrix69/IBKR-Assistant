@@ -2807,143 +2807,16 @@ function renderPa() {
 }
 
 /**
- * K 线图。刻意画得朴素:蜡烛 + 关键位 + 缺口 + 摆动点标签 + 量能,没有别的。
- * 图上出现的每一条线都对应引擎算出的一个字段,不在这里新算任何东西。
+ * K 线图:交给 pa-chart.js 的 canvas 实现。这里只负责卡片与容器,画什么、怎么画都在那边。
+ * 容器进了文档、有了尺寸,ResizeObserver 才会触发第一次绘制——所以这里不必等。
  */
 function renderPaChart(r) {
   const node = card('info', `K 线(${r.timeframe_label})`);
-  const bars = (r.bars || []).slice(-120);
-  if (bars.length < 2) return node;
-
-  const W = 660, H = 300;
-  const PAD_L = 6, PAD_R = 62, PAD_T = 10;
-  const PRICE_H = 226, VOL_H = 34;
-  const VOL_TOP = PAD_T + PRICE_H + 12;
-
-  let lo = Math.min(...bars.map((b) => b.low));
-  let hi = Math.max(...bars.map((b) => b.high));
-  const pad = (hi - lo) * 0.06 || Math.abs(hi) * 0.001 || 1;
-  lo -= pad;
-  hi += pad;
-  const span = hi - lo || 1;
-
-  const slot = (W - PAD_L - PAD_R) / bars.length;
-  const x = (i) => PAD_L + slot * (i + 0.5);
-  const y = (p) => PAD_T + PRICE_H - ((p - lo) / span) * PRICE_H;
-  const visible = (p) => p != null && p >= lo && p <= hi;
-  const at = new Map(bars.map((b, i) => [b.time, i]));
-  const rightEdge = W - PAD_R;
-
-  const svg = svgNode('svg', { viewBox: `0 0 ${W} ${H}`, class: 'pa-chart' });
-
-  // 缺口与订单块画在最底层:它们是区域,不该盖住蜡烛
-  for (const gap of r.fvgs || []) {
-    if (!visible(gap.top) && !visible(gap.bottom)) continue;
-    const start = at.has(gap.time) ? x(at.get(gap.time)) : PAD_L;
-    svg.appendChild(svgNode('rect', {
-      x: start, y: y(gap.top), width: Math.max(rightEdge - start, 2),
-      height: Math.max(y(gap.bottom) - y(gap.top), 1),
-      fill: gap.side === 'bull' ? THEME.up : THEME.down, 'fill-opacity': 0.12,
-    }));
-  }
-  const ob = r.order_block;
-  if (ob && (visible(ob.top) || visible(ob.bottom))) {
-    const start = at.has(ob.time) ? x(at.get(ob.time)) : PAD_L;
-    svg.appendChild(svgNode('rect', {
-      x: start, y: y(ob.top), width: Math.max(rightEdge - start, 2),
-      height: Math.max(y(ob.bottom) - y(ob.top), 1),
-      fill: 'currentColor', 'fill-opacity': 0.1,
-      stroke: 'currentColor', 'stroke-opacity': 0.25, 'stroke-dasharray': '2 2',
-    }));
-  }
-
-  // 关键位
-  for (const level of r.levels || []) {
-    if (!visible(level.price)) continue;
-    const py = y(level.price);
-    svg.appendChild(svgNode('line', {
-      x1: PAD_L, x2: rightEdge, y1: py, y2: py,
-      stroke: level.side === 'resistance' ? THEME.down : THEME.up,
-      'stroke-opacity': 0.55, 'stroke-width': 1, 'stroke-dasharray': '4 3',
-    }));
-    const label = svgNode('text', {
-      x: rightEdge + 4, y: py + 3, 'font-size': 9,
-      fill: level.side === 'resistance' ? THEME.down : THEME.up,
-    });
-    label.textContent = String(level.price);
-    svg.appendChild(label);
-  }
-
-  // 蜡烛
-  const bodyW = Math.max(slot * 0.6, 1);
-  for (let i = 0; i < bars.length; i += 1) {
-    const bar = bars[i];
-    const up = bar.close >= bar.open;
-    const color = up ? THEME.up : THEME.down;
-    svg.appendChild(svgNode('line', {
-      x1: x(i), x2: x(i), y1: y(bar.high), y2: y(bar.low),
-      stroke: color, 'stroke-width': Math.min(bodyW * 0.28, 1.1),
-    }));
-    const top = y(Math.max(bar.open, bar.close));
-    svg.appendChild(svgNode('rect', {
-      x: x(i) - bodyW / 2, y: top, width: bodyW,
-      height: Math.max(Math.abs(y(bar.close) - y(bar.open)), 0.8), fill: color,
-    }));
-  }
-
-  // 摆动点标签(只标最近几个,多了就成马赛克)
-  for (const swing of (r.swings || []).slice(-6)) {
-    if (!at.has(swing.time) || !visible(swing.price)) continue;
-    const i = at.get(swing.time);
-    const above = swing.kind === 'high';
-    svg.appendChild(svgNode('circle', {
-      cx: x(i), cy: y(swing.price), r: 1.8,
-      fill: above ? THEME.down : THEME.up,
-    }));
-    const label = svgNode('text', {
-      x: x(i), y: y(swing.price) + (above ? -5 : 10),
-      'font-size': 8.5, 'text-anchor': 'middle',
-      fill: 'currentColor', 'fill-opacity': 0.72,
-    });
-    label.textContent = swing.label;
-    svg.appendChild(label);
-  }
-
-  // 现价
-  const lastY = y(r.last);
-  if (visible(r.last)) {
-    svg.appendChild(svgNode('line', {
-      x1: PAD_L, x2: rightEdge, y1: lastY, y2: lastY,
-      stroke: THEME.blue, 'stroke-width': 1, 'stroke-dasharray': '1 2',
-    }));
-    const label = svgNode('text', { x: rightEdge + 4, y: lastY + 3, 'font-size': 9.5, fill: THEME.blue });
-    label.textContent = String(r.last);
-    svg.appendChild(label);
-  }
-
-  // 量能条(指数没有成交量,整段为 0 时直接不画)
-  const maxVol = Math.max(...bars.map((b) => b.volume || 0));
-  if (maxVol > 0) {
-    for (let i = 0; i < bars.length; i += 1) {
-      const bar = bars[i];
-      const h = Math.max(((bar.volume || 0) / maxVol) * VOL_H, 0.5);
-      svg.appendChild(svgNode('rect', {
-        x: x(i) - bodyW / 2, y: VOL_TOP + VOL_H - h, width: bodyW, height: h,
-        fill: bar.close >= bar.open ? THEME.up : THEME.down, 'fill-opacity': 0.35,
-      }));
-    }
-  }
-
-  const first = svgNode('text', { x: PAD_L, y: H - 3, 'font-size': 9, fill: 'currentColor', 'fill-opacity': 0.5 });
-  first.textContent = bars[0].time;
-  svg.appendChild(first);
-  const last = svgNode('text', { x: rightEdge, y: H - 3, 'font-size': 9, 'text-anchor': 'end', fill: 'currentColor', 'fill-opacity': 0.5 });
-  last.textContent = bars[bars.length - 1].time;
-  svg.appendChild(last);
-
-  node.appendChild(svg);
-  node.appendChild(el('div', 'card-meta',
-    `绿/红=阳/阴线 · 虚线=关键位(绿支撑 / 红阻力) · 半透明块=未回补 FVG 与订单块 · 点+标签=摆动点 · 蓝线=现价 ${r.last}`));
+  if (!(r.bars || []).length) return node;
+  const wrap = el('div', 'pa-chart-wrap');
+  node.appendChild(wrap);
+  if (window.DafriPaChart) window.DafriPaChart.mount(wrap, r);
+  else wrap.appendChild(el('p', 'empty', '图表模块未加载'));
   return node;
 }
 

@@ -7,6 +7,7 @@ app.js 原样装进来(全部内联,免得被当成快照转成 data: URL 之后
 间距、层级和真应用完全一致。
 """
 import pathlib
+import re
 import sys
 
 root = pathlib.Path(sys.argv[1])            # desktop/
@@ -15,10 +16,12 @@ stub_path = pathlib.Path(sys.argv[3])       # 假 contextBridge
 
 html = (root / "renderer" / "index.html").read_text(encoding="utf-8")
 body = html.split("<body>", 1)[1].rsplit("</body>", 1)[0]
-body = body.replace('<script src="app.js"></script>', "")
+# renderer 可能有多个脚本(pa-chart.js、app.js…),按 body 里出现的顺序内联,和运行时加载顺序一致
+scripts = re.findall(r'<script src="([^"]+)"></script>', body)
+body = re.sub(r'\s*<script src="[^"]+"></script>', "", body)
 
 css = (root / "renderer" / "styles.css").read_text(encoding="utf-8")
-js = (root / "renderer" / "app.js").read_text(encoding="utf-8")
+js = "\n".join((root / "renderer" / name).read_text(encoding="utf-8") for name in scripts)
 stub = stub_path.read_text(encoding="utf-8")
 
 parts = [

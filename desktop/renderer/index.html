@@ -404,6 +404,16 @@
             <strong>仅供研究参考,不接下单链路。</strong>
           </p>
           <div id="pa-result"><p class="empty">输入标的后点「分析」。</p></div>
+          <details id="pa-legend-primer" class="primer">
+            <summary>图上画的是什么</summary>
+            <ul class="hint-list">
+              <li>蜡烛按涨跌着色(可在「设置 → 涨跌配色」切换红涨绿跌);量能柱同色,按 95 分位归一化,开盘第一根巨量不会把其余压成一条线。</li>
+              <li>MA5 / MA10 / MA20 是引擎算的收盘价简单均线,只作图,不进打分;左上角显示最后一根(或光标所在那根)的均线值。</li>
+              <li>虚线是关键位:支撑用涨色、阻力用跌色;价格标签放在右侧价格轴上,挤在一起时会被推开并画引线回到真实价位。</li>
+              <li>半透明色块是未回补的 FVG(缺口),灰色虚线框是订单块;它们从产生那根 K 线画到最后一根,不铺到轴上。</li>
+              <li>点 + 小字是最近的摆动点(HH / HL / LH / LL);蓝色点线是现价。鼠标悬停显示十字光标与那一根的开高低收量。</li>
+            </ul>
+          </details>
         </section>
 
         <!-- ============ 交易分析(蝴蝶复盘) ============ -->
@@ -825,6 +835,7 @@
       </main>
     </div>
 
+    <script src="pa-chart.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
