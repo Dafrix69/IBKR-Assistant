@@ -1259,10 +1259,24 @@ function renderSectors() {
           row.appendChild(el('span', 'muted', '—'));
         }
 
+        const watch = alerts.watches.find((w) => w.symbol === stock.symbol);
+        if (!watch) {
+          const eye = el('button', 'btn tiny ghost', '盯');
+          eye.title = '算这只股的期权墙 / 均线 / 整数关口,并在穿越时提醒';
+          eye.addEventListener('click', () => watchSymbol(stock.symbol, eye));
+          row.appendChild(eye);
+        }
         const remove = el('button', 'btn tiny ghost', '移除');
         remove.addEventListener('click', () => removeSectorStock(sector.id, stock.symbol));
         row.appendChild(remove);
         stocksBox.appendChild(row);
+        if (watch && (watch.levels || []).length) {
+          const strip = el('div', 'stock-levels');
+          strip.appendChild(levelStrip(watch.levels, watch.last_price != null ? watch.last_price : (quote && quote.last)));
+          stocksBox.appendChild(strip);
+        } else if (watch) {
+          stocksBox.appendChild(el('div', 'stock-levels muted', alerts.busy.has(watch.id) ? '正在算价位…' : '价位还没算出来:到下面「价位提醒」点「重算墙」。'));
+        }
       }
       node.appendChild(stocksBox);
       const upd = el('div', 'card-meta', `更新于 ${fmtTimeShort(sector.updated_at)} · AI 结果仅供参考`);
@@ -2700,9 +2714,87 @@ const ALERT_SOURCE_LABEL = {
   call_wall: '持仓墙', put_wall: '持仓墙',
   call_vol_wall: '成交墙', put_vol_wall: '成交墙',
   max_pain: '最大痛点', gamma_flip: 'Gamma 翻转', round: '整数关口',
-  ma60: '60日线', ma120: '120日线', ma200: '200日线',
+  ma20: '20日线', ma60: '60日线', ma120: '120日线', ma200: '200日线',
   low_52w: '52周低点', high_52w: '52周高点',
 };
+// 价位条上的短名:一行里要摆七八个,字要短;完整名进悬停提示
+const ALERT_SOURCE_SHORT = {
+  call_wall: 'C 墙', put_wall: 'P 墙', call_vol_wall: 'C 成交墙', put_vol_wall: 'P 成交墙',
+  max_pain: '痛点', gamma_flip: 'γ 翻转', round: '关口',
+  ma20: 'MA20', ma60: 'MA60', ma120: 'MA120', ma200: 'MA200',
+  low_52w: '52周低', high_52w: '52周高',
+};
+
+/**
+ * 水平价位条:一只股票的墙、均线、52 周位和现价摆在一条横线上,离现价多远一眼可见。
+ * 阻力 / 中性的标签在线上方,支撑和现价在线下方;同一侧相邻太近的抬到第二层。名字 + 价格两行,9.5px。
+ */
+function levelStrip(levels, spot) {
+  const box = el('div', 'lstrip');
+  const pts = levels.map((l) => ({ price: l.price, level: l }));
+  if (spot != null) pts.push({ price: spot, spot: true });
+  const prices = pts.map((pt) => pt.price);
+  let lo = Math.min(...prices);
+  let hi = Math.max(...prices);
+  const pad = (hi - lo) * 0.06 || Math.abs(hi) * 0.005 || 1;
+  lo -= pad;
+  hi += pad;
+  const xOf = (price) => ((price - lo) / (hi - lo)) * 100;
+  box.appendChild(el('i', 'lstrip-track'));
+  const marks = [];
+  for (const pt of pts.slice().sort((a, b) => a.price - b.price)) {
+    const x = xOf(pt.price);
+    const kind = pt.spot ? 'spot' : pt.level.kind === 'resistance' ? 'resistance' : pt.level.kind === 'support' ? 'support' : 'neutral';
+    const side = pt.spot || kind === 'support' ? 'below' : 'above';
+    const mark = el('span', `lstrip-mark ${kind} ${side} t0`);
+    mark.style.left = `${x}%`;
+    const label = el('span', 'lstrip-label', pt.spot ? '现价' : (ALERT_SOURCE_SHORT[pt.level.source] || ALERT_SOURCE_LABEL[pt.level.source] || '价位'));
+    label.appendChild(el('b', null, String(pt.price)));
+    mark.appendChild(label);
+    if (!pt.spot) {
+      const gap = spot ? ((pt.price / spot - 1) * 100).toFixed(2) : null;
+      mark.title = `${pt.level.label || ''} ${pt.price}${gap != null ? ` · 距现价 ${gap > 0 ? '+' : ''}${gap}%` : ''}`;
+    }
+    box.appendChild(mark);
+    marks.push({ mark, label, x, side });
+  }
+  // 分层要量真实像素:卡片宽窄不一,按百分比猜会叠。进了文档、有了宽度再量一次标签宽度,
+  // 同一侧从左到右贪心——和前一层最右端重叠就往上一层放,最多三层;条的高度按用到的层数定。
+  const layout = () => {
+    const w = box.clientWidth;
+    if (!w) return;
+    const rightEdge = { above: [], below: [] };
+    const used = { above: 1, below: 1 };
+    for (const m of marks) {
+      const half = m.label.offsetWidth / 2 + 3;
+      const px = (m.x / 100) * w;
+      const edges = rightEdge[m.side];
+      let tier = 0;
+      while (tier < 2 && edges[tier] != null && px - half < edges[tier]) tier += 1;
+      edges[tier] = px + half;
+      used[m.side] = Math.max(used[m.side], tier + 1);
+      m.mark.className = m.mark.className.replace(/\bt\d\b/, `t${tier}`);
+    }
+    box.style.height = `${12 + used.above * 24 + used.below * 24}px`;
+    box.style.setProperty('--above', String(used.above));
+  };
+  requestAnimationFrame(layout);
+  return box;
+}
+
+/** 板块行里点「盯」:建一个提醒并立刻算墙,和「价位提醒」那一节里手填标的是同一条路。 */
+async function watchSymbol(symbol, button) {
+  if (button) button.disabled = true;
+  const step = Number(($('alert-step') || {}).value) || 5;
+  try {
+    const { watch } = await window.dafri.createAlert(symbol, step);
+    await loadAlerts();
+    await refreshAlertWatch(watch.id);
+  } catch (err) {
+    showBanner(`盯 ${symbol} 失败:${err.message}`, false);
+    if (button) button.disabled = false;
+  }
+}
 
 async function loadAlerts() {
   try {
@@ -2796,6 +2888,7 @@ function updateAlertBadge() {
 
 function renderAlerts() {
   updateAlertBadge();
+  if (state.sectors.length) renderSectors();   // 成分股行下面的价位条来自同一份 watches
   const box = $('alerts-list');
   if (!alerts.watches.length) {
     empty(box, '还没有在盯的标的。');
@@ -3329,7 +3422,7 @@ function renderPortsInto(box, ports, connected) {
       )
     );
     if (port.configured_as) {
-      const badge = el('span', 'port-badge', `配置:${port.configured_as}`);
+      const badge = el('span', 'port-badge', `配置为${{ live: '实盘', paper: '模拟' }[port.configured_as] || port.configured_as}`);
       if ((connected || []).includes(port.configured_as)) badge.textContent += ' · 已连接';
       node.appendChild(badge);
     }
@@ -4323,6 +4416,7 @@ const SHORTCUTS = [
   { keys: ['mod', 'R'], what: '刷新状态' },
   { keys: ['Esc'], what: '收起打开的记录详情' },
   { keys: ['↑', '↓'], what: '侧栏导航移动(焦点在侧栏时)' },
+  { keys: ['mod', '1 ~ 9'], what: '按侧栏顺序切换页面' },
 ];
 
 function renderShortcuts() {
@@ -4594,6 +4688,12 @@ function bind() {
       return;
     }
     const panel = $(`tab-${name}`);
+    if (panel.classList.contains('page-section')) {
+      // 页内的一节(价位提醒住在板块页里):切到那一页,再滚到这一节
+      activateTab(panel.closest('.tab-panel').id.slice(4));
+      panel.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      return;
+    }
     const container = panel.classList.contains('sub-panel') ? panel.closest('.tab-panel') : null;
     document.querySelectorAll('.tab').forEach((t) => {
       t.classList.remove('active');
@@ -4629,7 +4729,7 @@ function bind() {
     if (name === 'board') { loadPending(); loadRecords(); }
     if (name === 'ideas') loadIdeas();
     if (name === 'review') loadReviewCandidates();
-    if (name === 'sectors') loadSectors(true);
+    if (name === 'sectors') { loadSectors(true); loadAlerts(); }
     if (name === 'backtest' && !bt.strategies.length) loadBacktestStrategies();
     if (name === 'book') renderBookGrid();
     if (name === 'tracker') loadTracker(true);
@@ -4639,6 +4739,24 @@ function bind() {
   document.querySelectorAll('.tab').forEach((tab) => {
     tab.addEventListener('click', () => activateTab(tab.dataset.tab));
   });
+  // Ctrl/⌘ + 1…9:按侧栏顺序切页(Mail / Finder 都有);输入框里也生效,因为这组键没有别的含义
+  window.addEventListener('keydown', (e) => {
+    if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return;
+    const n = Number(e.key);
+    if (!(n >= 1 && n <= 9)) return;
+    const tabs = [...document.querySelectorAll('.sidebar .tab[data-tab]')];
+    if (!tabs[n - 1]) return;
+    e.preventDefault();
+    activateTab(tabs[n - 1].dataset.tab);
+  });
+  // 窗口失焦时侧栏选中项退成灰(AppKit 的源列表就是这样);窄窗口只剩图标时给项加悬停名字
+  window.dafri.on('window', ({ focused }) => document.documentElement.toggleAttribute('data-window-blur', !focused));
+  const narrow = window.matchMedia('(max-width: 1000px)');
+  const syncNarrow = () => document.querySelectorAll('.sidebar .nav-item').forEach((t) => {
+    if (narrow.matches) t.title = t.textContent.trim().replace(/\s*\d+$/, ''); else t.removeAttribute('title');
+  });
+  narrow.addEventListener('change', syncNarrow);
+  syncNarrow();
   // 页内分段控件里左右方向键切子页
   document.querySelectorAll('.subnav').forEach((nav) => {
     nav.addEventListener('keydown', (e) => {

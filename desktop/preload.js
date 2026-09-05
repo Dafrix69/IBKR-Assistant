@@ -8,7 +8,7 @@
  */
 const { contextBridge, ipcRenderer } = require('electron');
 
-const EVENT_CHANNELS = ['engine-event', 'engine-log', 'engine-exit', 'bootstrap', 'menu'];
+const EVENT_CHANNELS = ['engine-event', 'engine-log', 'engine-exit', 'bootstrap', 'menu', 'window'];
 
 contextBridge.exposeInMainWorld('dafri', {
   // 平台标识:界面据此决定要不要退回实底(没有 vibrancy 底材的平台)

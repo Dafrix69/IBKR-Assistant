@@ -165,7 +165,7 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1360,
     height: 900,
-    minWidth: 1080,
+    minWidth: 900,             // 1000 以下侧栏收成图标栏,内容区仍有 840 以上
     minHeight: 700,
     title: 'Dafri Trading',
     // 透明底 + 材质:让 macOS 的模糊背景透出来(不透明背景会把 vibrancy 盖掉)
@@ -213,6 +213,10 @@ function createWindow() {
       console.log(`[renderer:${level}] ${event.message} (${event.sourceId}:${event.lineNumber})`);
     });
   }
+
+  // 焦点状态转给渲染层:窗口失焦时侧栏选中项退灰,这是 AppKit 源列表的标准表现
+  mainWindow.on('focus', () => send('window', { focused: true }));
+  mainWindow.on('blur', () => send('window', { focused: false }));
 
   mainWindow.on('closed', () => {
     mainWindow = null;

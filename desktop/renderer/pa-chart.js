@@ -624,7 +624,7 @@
       ariaLabel: `${r.symbol || ''} ${r.timeframe_label || ''} K 线图`,
       bars: r.bars || [],
       last: r.last,
-      lines: periods.map((p) => ({ values: ma[String(p)] || [], color: MA_STYLE[p] || 'label2', alpha: 0.85, label: `MA${p}` })),
+      lines: periods.map((p) => ({ values: ma[String(p)] || [], color: MA_STYLE[p] || 'label2', alpha: 0.7, label: `MA${p}` })),
       hlines: (r.levels || []).map((l) => ({
         price: l.price, color: l.side === 'resistance' ? 'down' : 'up', dash: [2, 2], alpha: 0.45, fit: false,
       })),

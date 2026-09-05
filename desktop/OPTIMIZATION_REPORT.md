@@ -154,6 +154,11 @@ DOM id 不变(`audit_ui.py` 0 问题),`capture_pages --check` 16 页零报错;�
 | T15 | 图区底色 | 深色下蜡烛浮在卡片灰(#2f2f33)上 | `--chart-bg` 近黑 #0b0b0d(iOS 股市 / 富途夜间),画布自己铺底,8px 圆角嵌在卡片里 |
 | T16 | 持仓追踪表单 | 十个字段摊在每张卡片里 | 默认收起,「设置追踪」展开,一次一张,展开的记在 `tracker.openKey` 刷新不收 |
 | T17 | K线 PA 结论 | 九行散文 | `renderReadout`:按首个冒号拆成 dt/dd 两列(`.detail-grid`),首句与拆不开的行原样 |
+| T18 | 价位提醒并入板块 | 独立页,和板块里的股是两份清单 | `tab-alerts` 变成板块页的 `page-section`;`activateTab` 对页内节:切到所在页再滚过去;徽标挪到「板块」 |
+| T19 | 成分股行价位条 | 墙 / 均线只在提醒页的列表里 | `levelStrip`:横线上摆墙、MA20/60/120/200、52 周位、关口、现价;进文档后量标签宽度分层(≤3 层),条高按层数;行右侧「盯」建提醒并算墙 |
+| T20 | 引擎 MA20 | 默认均线 60/120/200 | 两侧 `DEFAULT_MA_PERIODS` = 20/60/120/200,黄金基线重生成;pytest 642 / vitest 395 |
+| T21 | 键盘与窗口 | 无数字键切页;minWidth 1080;失焦无变化 | Ctrl/⌘+1…9;窄于 1000px 侧栏 56px 图标栏(minWidth 900);main.js 转发 focus/blur → `data-window-blur` 退灰 |
+| T22 | 零碎 | 交易分析与回测同图标;`配置:live`;均线 85% | `sf-review` 放大镜图标;"配置为实盘 / 模拟";均线 70% |
 | T13 | 截图可复现 | Electron 把 file:// 的 localStorage 持久化在 %AppData%/Electron,上次的折叠态带进下次截图 | `capture_pages.js` 每次 `setPath('userData', mkdtemp)` |
 
 **打包复核(2026-09-06,含本轮全部界面改动)**:`npm run dist:win` 通过(stage:engine → smoke:engine 184 ms 应答 → electron-builder),
