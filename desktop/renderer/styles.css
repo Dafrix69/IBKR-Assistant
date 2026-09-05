@@ -763,6 +763,9 @@ input.w-64 { width: 64px; }
 .pa-ev-w.up { color: var(--up-text); }
 .pa-ev-w.down { color: var(--down-text); }
 .pa-ev-w.flat { color: var(--label-tertiary); }
+.pa-readout .reason { margin-top: 6px; }
+.pa-readout-grid { margin-top: 8px; font-size: 12px; }
+.pa-readout-grid dt { white-space: nowrap; }
 .pa-lv { display: flex; gap: 8px; align-items: baseline; font-size: 11.5px; padding: 3px 0; }
 .pa-lv-price {
   font-family: var(--font-mono); font-weight: 590;
@@ -1226,6 +1229,8 @@ kbd {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 10px;
   align-items: end;
 }
+.track-toggle { margin-top: 8px; }
+.track-holder { margin-top: 2px; }
 .track-field { display: flex; flex-direction: column; gap: 3px; }
 .track-field > span { color: var(--label-secondary); font-size: 11px; }
 .track-field input, .track-field select { width: 100%; }
