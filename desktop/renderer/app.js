@@ -2457,6 +2457,24 @@ function paFreshness(r) {
   return parts.join(' · ');
 }
 
+/**
+ * 引擎的 readout 是一组"字段:结论"的句子(结构 / 最近结构事件 / 近端摆动序列 / 位置 / 流动性 / 形态 / 确认条件 / 失效条件)。
+ * 九行散文扫不动;拆成两列,字段名进左列二级色,和记录详情那张"单据"同一做法。首句是总括,原样留着;
+ * 拆不开的行(没有冒号,或冒号前不像字段名)也原样留着——界面不替引擎改写结论。
+ */
+function renderReadout(lines) {
+  const box = el('div', 'pa-readout');
+  const dl = el('dl', 'detail-grid pa-readout-grid');
+  lines.forEach((line, i) => {
+    const m = /^([^:：]{1,12})[:：]\s*(.+)$/.exec(String(line));
+    if (i === 0 || !m) { box.appendChild(el('div', 'reason', line)); return; }
+    dl.appendChild(el('dt', null, m[1].trim()));
+    dl.appendChild(el('dd', null, m[2].trim()));
+  });
+  if (dl.children.length) box.appendChild(dl);
+  return box;
+}
+
 function renderPa() {
   const box = $('pa-result');
   $('pa-freshness').textContent = pa.loading ? '读取中…' : paFreshness(pa.data);
@@ -2475,7 +2493,7 @@ function renderPa() {
     `${r.score > 0 ? '+' : ''}${r.score}`));
   scoreRow.appendChild(el('span', 'muted', `打分区间 −100 ~ +100 · 置信度 ${r.confidence}`));
   head.appendChild(scoreRow);
-  for (const line of r.readout || []) head.appendChild(el('div', 'reason', line));
+  head.appendChild(renderReadout(r.readout || []));
   box.appendChild(head);
 
   // ---- 图 ------------------------------------------------------------
@@ -3480,9 +3498,38 @@ function positionBody(p, node, compact) {
 
   if (p.tracked) {
     node.appendChild(el('div', 'muted', '已在追踪中,设置见下方。'));
-  } else {
-    node.appendChild(trackForm(p));
+    return;
   }
+  // 表单默认收起:十个字段摊在每张卡片里,两只持仓就是两屏表单。点「设置追踪」才展开,
+  // 一次只展开一张(设置的对象就在眼前这张卡上,不用记)。展开的那张记在 tracker.openKey,刷新后不收回去。
+  const row = el('div', 'row tight track-toggle');
+  const toggle = el('button', 'btn tiny', '设置追踪');
+  row.appendChild(toggle);
+  node.appendChild(row);
+  const holder = el('div', 'track-holder hidden');
+  node.appendChild(holder);
+  const openForm = () => {
+    if (!holder.children.length) holder.appendChild(trackForm(p));
+    holder.classList.remove('hidden');
+    toggle.textContent = '收起';
+    tracker.openKey = p.key;
+  };
+  toggle.addEventListener('click', () => {
+    const opening = holder.classList.contains('hidden');
+    document.querySelectorAll('#positions .track-holder').forEach((h) => {
+      h.classList.add('hidden');
+      const b = h.previousElementSibling && h.previousElementSibling.querySelector('button');
+      if (b) b.textContent = '设置追踪';
+    });
+    if (opening) {
+      openForm();
+      const first = holder.querySelector('input');
+      if (first) first.focus();
+    } else {
+      tracker.openKey = null;
+    }
+  });
+  if (tracker.openKey === p.key) openForm();
 }
 
 function renderPositions() {
