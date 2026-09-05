@@ -284,6 +284,9 @@ input, textarea { user-select: text; }
   letter-spacing: 0.02em;
 }
 .sidebar-group:first-child { margin-top: 4px; }
+/* 「应用」组(设置 / 关于)沉到侧栏底部:它们是应用级的,不是每天要点的工作项——
+   Slack / Linear / Xcode 都把设置放在导航的最底下,和工作区拉开距离 */
+.sidebar-group.bottom { margin-top: auto; padding-top: 14px; }
 
 .nav-item {
   display: flex;
@@ -1105,6 +1108,15 @@ kbd {
 .primer[open] > summary::before { transform: rotate(90deg); }
 .primer > summary:hover { background: var(--bg-fill-strong); color: var(--label); }
 .primer > *:not(summary) { margin-top: 10px; }
+/* 页面开头的"这一页怎么用":一行三级色的文字 + 折叠箭头,不是一个盒子。
+   第一眼应该看到的是输入框和主按钮;来龙去脉在需要的时候一点就有,不需要的时候只占一行。 */
+.primer.intro { margin: 4px 0 12px; }
+.primer.intro > summary {
+  display: inline-flex; padding: 2px 0; border: none; background: none;
+  color: var(--label-tertiary); font-weight: 400;
+}
+.primer.intro > summary:hover { background: none; color: var(--label-secondary); }
+.primer.intro > .hint { margin-top: 6px; }
 
 /* ---- 交易记录:紧凑密度 ----
  * 一行一笔,列对列。扫"哪笔出了问题"用它;回看"当时在想什么"用舒适模式。 */
@@ -1166,7 +1178,7 @@ kbd {
 @media (max-width: 900px) { .track-form { grid-template-columns: 1fr 1fr; } }
 
 /* ---------------- 期权速记(交易指令页) ---------------- */
-.shorthand { margin: 10px 0 2px; }
+.shorthand { margin: 8px 0 2px; }
 .shorthand summary {
   cursor: pointer; list-style: none; font-size: 11.5px; font-weight: 510; color: var(--label-secondary);
   user-select: none; -webkit-user-select: none;
@@ -1179,15 +1191,15 @@ kbd {
 }
 .shorthand[open] summary::before { transform: rotate(90deg); }
 .shorthand summary:focus-visible { outline: var(--focus-outline); outline-offset: 0; border-radius: 4px; }
-.shorthand .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 2px; }
+.shorthand-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; }
 /* 速记片段是"可点的词",不是胶囊按钮:6px 圆角、填充底、无边框,和 Mail 收件人 token 同一族 */
-.shorthand .chip {
+.shorthand-chips .chip {
   font: inherit; font-size: 12px; padding: 3px 10px; border-radius: var(--radius-control);
   border: none; background: var(--bg-fill);
   color: var(--label); cursor: pointer; transition: background 0.12s ease;
 }
-.shorthand .chip:hover { background: var(--bg-fill-strong); }
-.shorthand .chip:focus-visible { outline: var(--focus-outline); outline-offset: 0; }
+.shorthand-chips .chip:hover { background: var(--bg-fill-strong); }
+.shorthand-chips .chip:focus-visible { outline: var(--focus-outline); outline-offset: 0; }
 .shorthand .hint-list {
   margin: 8px 0 0; padding-left: 16px;
   color: var(--label-secondary); font-size: 11px; line-height: 1.6;

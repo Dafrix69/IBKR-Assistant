@@ -148,6 +148,10 @@ DOM id 不变(`audit_ui.py` 0 问题),`capture_pages --check` 16 页零报错;�
 | T9 | 页头控件等高 | `.btn.tiny` 比旁边的分段控件矮 | `.page-head .btn.tiny` 3px 内边距 / 12px 字 |
 | T10 | 卡片呼吸 | `.card` 10×12 内边距,和 `.readiness` 的 12×14 不一致 | 统一 12×14;标题后跟的状态词留 8px |
 
+| T11 | 第一眼只看操作项 | 每页开头 2–6 行 11px 说明把输入框往下挤 | 6 页的说明收成 `details.primer.intro`(一行三级色 + 折叠箭头,按页记住);交易指令页速记片段常驻、规则与发送条件默认折叠 |
+| T12 | 侧栏分级 | 16 项等权 | 「应用」组 `margin-top:auto` 沉底 |
+| T13 | 截图可复现 | Electron 把 file:// 的 localStorage 持久化在 %AppData%/Electron,上次的折叠态带进下次截图 | `capture_pages.js` 每次 `setPath('userData', mkdtemp)` |
+
 **没做的**:`mock-bridge-empty.js` 的 `paAnalyze` 按设计抛错,所以 `--check` 对空态预览会报"K 线 PA 页没有画出 canvas"——
 `git stash` 复核这一条在本轮之前就是这样,`--check` 只适用于有数据的预览;K 线本身、侧栏、顶栏、设置页本轮未动。
 
