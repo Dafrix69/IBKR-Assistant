@@ -52,6 +52,7 @@ TIMEFRAMES: Dict[str, Dict[str, Any]] = {
 MIN_BARS = 30          # 少于这个数量不出结论:摆动点都凑不齐两组,谈结构是编的
 SWING_STRENGTH = 2     # 分形左右各看几根
 CHART_BARS = 140       # 回给界面画图的 K 线根数
+MA_PERIODS = (5, 10, 20)   # 图上叠的均线周期(富途默认那三条);只作图,不进打分
 
 # 打分权重。全部摆在这里是有意的:结论怎么来的必须能被逐条质疑,
 # 而不是藏在一串 if 里。正 = 看涨,负 = 看跌。
@@ -683,11 +684,35 @@ def analyze(
              "close": b.close, "volume": b.volume}
             for b in bars[-CHART_BARS:]
         ],
+        "ma": moving_averages(bars),
     }
     result["extended_hours"] = extended_hours
     result["warnings"] = _warnings(result, now, extended_hours)
     result["readout"] = _readout(result)
     return result
+
+
+def moving_averages(
+    bars: Sequence[PABar], periods: Sequence[int] = MA_PERIODS, count: int = CHART_BARS,
+) -> Dict[str, List[Optional[float]]]:
+    """收盘价简单均线,和 result["bars"](最后 count 根)逐根对齐;历史不够一个周期的位置为 None。
+
+    只给界面画线用,不参与任何打分或判定——"图上每条线都对应引擎算出的一个字段"这条规矩
+    要求它必须由引擎算,而不是界面自己算。求和写成显式切片求和而不是滑动累加,
+    是为了和 TS 版逐字节一致(浮点加法顺序相同)。
+    """
+    closes = [b.close for b in bars]
+    start = max(0, len(closes) - count)
+    out: Dict[str, List[Optional[float]]] = {}
+    for period in periods:
+        series: List[Optional[float]] = []
+        for i in range(start, len(closes)):
+            if i + 1 < period:
+                series.append(None)
+            else:
+                series.append(round(sum(closes[i + 1 - period:i + 1]) / period, 4))
+        out[str(period)] = series
+    return out
 
 
 def _plan(
