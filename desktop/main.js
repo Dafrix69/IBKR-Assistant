@@ -20,6 +20,15 @@ const PACKAGED = app.isPackaged;
 const REPO_ROOT = PACKAGED
   ? path.join(process.resourcesPath, 'engine')
   : path.resolve(__dirname, '..');
+// TS 引擎(重写版):有 dist 就优先用它——不需要 Python、不需要首启引导。
+// DAFRI_ENGINE=python 可强制回退到 Python 引擎。
+const TS_ENGINE_ROOT = PACKAGED
+  ? path.join(process.resourcesPath, 'engine-ts')
+  : path.resolve(__dirname, '..', '..', 'trade-ts');
+// TS 引擎在打包布局下找不到 trade/prompts 的相对位置,用环境变量显式指过去
+if (PACKAGED && !process.env.DAFRI_PROMPT_DIR) {
+  process.env.DAFRI_PROMPT_DIR = path.join(process.resourcesPath, 'engine', 'prompts');
+}
 // 打包后配置放 userData(应用包只读);开发时沿用仓库里的 config/
 const CONFIG_PATH =
   process.env.DAFRI_CONFIG ||
@@ -61,6 +70,8 @@ const ALLOWED_RPC = new Set([
   'ideas.list',
   'ideas.update',
   'ideas.analyze',
+  'ideas.digest',
+  'ideas.digests',
   'sectors.list',
   'sectors.add',
   'sectors.delete',
@@ -82,7 +93,7 @@ const ALLOWED_RPC = new Set([
   'pa.analyze',
   'pa.comment',
   'macro.board',
-  'positions.list',
+  'positions.list', 'review.candidates', 'review.analyze',
   'tracker.list',
   'tracker.add',
   'tracker.update',
@@ -177,6 +188,8 @@ function createWindow() {
       webSecurity: true,
       allowRunningInsecureContent: false,
       spellcheck: false,
+      // 托管单的秒级调整循环跑在 renderer:窗口最小化时不能被节流
+      backgroundThrottling: false,
       devTools: DEV,
     },
   });
@@ -275,6 +288,7 @@ function wireEngine() {
     userDataDir: app.getPath('userData'),
     packaged: PACKAGED,
     appVersion: app.getVersion(),
+    tsEngineRoot: TS_ENGINE_ROOT,
   });
   engine.on('engine-event', (payload) => send('engine-event', payload));
   engine.on('log', (line) => send('engine-log', { line }));

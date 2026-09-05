@@ -110,7 +110,7 @@
     </header>
 
     <!-- 全局宏观行情带(公开数据,只读展示,不参与定价) -->
-    <div id="macro-strip" class="macro-strip" title="双源:已连 TWS 且有实时权限的走流式(每 2 秒,标的名以小字标出);其余走公开数据源(分钟级)。仅供参考,订单定价只用 TWS 实时盘口"></div>
+    <div id="macro-strip" class="macro-strip" title="仅供参考,不参与定价。已连 TWS 且有实时权限的走 2 秒流式;其余为公开数据源,分钟级"></div>
 
     <div id="banner" class="banner hidden"></div>
 
@@ -141,6 +141,9 @@
         </button>
         <button class="tab nav-item" role="tab" data-tab="pa" aria-controls="tab-pa" aria-selected="false" tabindex="-1">
           <svg class="nav-icon"><use href="#sf-candles"/></svg>K线 PA
+        </button>
+        <button class="tab nav-item" role="tab" data-tab="review" aria-controls="tab-review" aria-selected="false" tabindex="-1">
+          <svg class="nav-icon"><use href="#sf-chart"/></svg>交易分析
         </button>
         <button class="tab nav-item" role="tab" data-tab="alerts" aria-controls="tab-alerts" aria-selected="false" tabindex="-1">
           <svg class="nav-icon"><use href="#sf-bell"/></svg>期权墙 · 警告
@@ -193,8 +196,36 @@
                 <button id="btn-execute" class="btn warn" disabled>发送到券商</button>
                 <span class="muted" id="hint-parse-key">解析</span>
               </div>
+              <!-- 发单账户:勾一个就发到那个账户;勾两个,每笔订单各发一份(引擎按账户扇出,
+                   各自独立校验、落库、下单)。指令里明确点名账户的订单不受这里影响。 -->
+              <div class="account-picker" id="account-picker" hidden>
+                <span class="muted">发单账户</span>
+                <div class="account-chips" id="account-chips"></div>
+                <span class="muted" id="account-picker-hint"></span>
+              </div>
+              <!-- 期权速记:内容与提示词的既定偏好逐条同源(§2 铁律 1/5 的用户例外),
+                   不在这里发明任何解析器不认识的规则 -->
+              <details class="shorthand" id="shorthand-panel" open>
+                <summary>期权速记与默认值</summary>
+                <div class="chips" id="shorthand-chips">
+                  <button type="button" class="chip" data-snippet="1.8 挂15蝴蝶 15CM">1.8 挂15蝴蝶 15CM</button>
+                  <button type="button" class="chip" data-snippet="7520的20cm蝴蝶">7520的20cm蝴蝶</button>
+                  <button type="button" class="chip" data-snippet="开一张今天的 7520 7550 call spread">call spread</button>
+                  <button type="button" class="chip" data-snippet="卖出 7200/7250/7650/7700 铁鹰">卖出铁鹰</button>
+                  <button type="button" class="chip" data-snippet=",权利金不超过 ">权利金上限</button>
+                  <button type="button" class="chip" data-snippet=",理由:">补理由</button>
+                </div>
+                <p class="hint tight">
+                  默认:<b>1 张</b> · <b>当日到期</b> · 组合默认 <b>SPX</b> · 蝴蝶默认<b>买入</b>;
+                  <b>N cm = 翼宽 N 点</b>;末尾孤立数字 = <b>净权利金上限</b>;看涨/看跌未写时按现价推断。
+                  用到默认值时结果会带 warning,发送前核对。<br>
+                  <b>本地秒解</b>:「1.8 挂15蝴蝶 15CM」这类固定行话不经 AI。挂 = 当日限价;
+                  <b>N蝴蝶 = 现价百位 + N</b>(现价 6907 → 15蝴蝶 = 6915);「蝴蝶」二字可省:
+                  「spx明天 7850 40cm 2.3」= 明日 7810/7850/7890 蝴蝶挂 2.3。带触发价、理由等附加语义仍走 AI。
+                </p>
+              </details>
               <p class="hint">
-                发送需同时满足:<code>auto_execute</code> 已开、<span id="hint-gateway">已连接网关</span>、未熔断。实盘账户另需
+                发送条件:<code>auto_execute</code> 已开 · <span id="hint-gateway">已连接网关</span> · 未熔断;实盘另需
                 <code>allow_live_trading</code>。
               </p>
             </div>
@@ -247,13 +278,16 @@
             <button id="btn-idea-add" class="btn primary">记下</button>
           </div>
           <p class="hint">
-            想法只是备忘。「AI 分析」调用你配置的大模型对想法做研究解读(逻辑、要核实的点、风险),
-            <strong>仅供参考,不会下单</strong>;「发到解析」才是把文本带到「交易指令」页走交易解析。
+            「AI 分析」用配置的大模型解读逻辑、待核实点与风险,<strong>仅供参考,不会下单</strong>;
+            「发到解析」把文本带到「交易指令」页。
           </p>
           <div class="row tight">
             <button id="btn-ideas-active" class="btn tiny">进行中</button>
             <button id="btn-ideas-all" class="btn tiny ghost">全部</button>
+            <span class="grow"></span>
+            <button id="btn-ideas-digest" class="btn tiny">总结知识</button>
           </div>
+          <div id="idea-digest-box"></div>
           <div id="ideas-list" class="cards"><p class="empty">还没有想法</p></div>
         </section>
 
@@ -274,8 +308,8 @@
             <button id="btn-sector-add" class="btn primary">新建板块</button>
           </div>
           <p class="hint">
-            「AI 选股」由你在「大模型」面板配置的模型给出该板块的代表性美股,<strong>仅供研究参考,不构成投资建议</strong>;
-            成分股不会自动交易。行情来自 TWS 连接,未订阅的标的自动用 15 分钟延迟数据;停留本页时每 30 秒自动刷新。
+            「AI 选股」由大模型给出板块代表性美股,<strong>仅供研究参考</strong>,不会自动交易。
+            行情来自 TWS,未订阅标的用 15 分钟延迟数据;本页每 30 秒自动刷新。
           </p>
           <div id="sectors-list" class="sector-grid"><p class="empty">还没有板块。输入一个主题试试,比如「AI 算力」。</p></div>
         </section>
@@ -336,8 +370,8 @@
                 <input id="bt-inst-risk" type="number" min="1" max="100" step="1" value="10" />
               </div>
               <p class="hint">
-                期权按标的历史走势 + Black-Scholes 理论价模拟(波动率取近 20 日已实现值,r=0,无偏度与买卖价差):
-                信号出场按模型价,到期按内在价值结算,信号仍在则以新行权价续仓。仅供研究相对优劣。
+                期权按标的历史走势 + Black-Scholes 理论价模拟(近 20 日已实现波动率,r=0,无偏度与价差);
+                信号出场按模型价,到期按内在价值结算,信号持续则续仓。仅用于比较相对优劣。
               </p>
             </div>
           </div>
@@ -345,7 +379,7 @@
           <div id="bt-flow" class="flow"></div>
           <div class="row tight">
             <button id="btn-bt-run" class="btn primary">运行回测</button>
-            <span class="muted">历史数据来自 TWS,需先连接引擎;结果仅供研究参考</span>
+            <span class="muted">数据来自 TWS,需先连接引擎 · 仅供研究参考</span>
           </div>
           <div id="bt-result"></div>
         </section>
@@ -362,18 +396,54 @@
             <button id="btn-pa-run" class="btn primary">分析</button>
           </div>
           <label class="switch">
-            <span>只看正常交易时段<span class="sub">默认关闭,读全时段(含盘前盘后)。打开则只取 09:30–16:00——收盘后 K 线会停在当日收盘</span></span>
+            <span>只看正常交易时段<span class="sub">默认含盘前盘后;打开只取 09:30–16:00</span></span>
             <input id="pa-rth" type="checkbox" />
           </label>
           <p class="hint">
-            K 线走 TWS 的历史数据接口。<strong>历史数据同样要行情权限</strong>:引擎会先切到延迟行情再请求,
-            所以只有延迟权限的账户也能出图,但最后一根大约落后 15 分钟——
-            新鲜度显示在标题右侧,超过 30 分钟会明确告警。方向判断<strong>全部由软件按规则算</strong>,
-            权重逐条公开在「判断依据」里,可以一条条推翻;「AI 解读」只拿这些算好的事实做叙述,不会自己看图。
-            停留本页且已连网关时每 20 秒自动刷新(IBKR 对历史请求有节流,引擎侧最短 15 秒才会真正重取)。
-            <strong>仅供研究参考,不构成投资建议,不接任何下单链路。</strong>
+            K 线走 TWS 历史数据接口,需行情权限;仅延迟权限也能出图,最后一根约落后 15 分钟,
+            新鲜度见标题右侧,超 30 分钟会告警。方向判断<strong>全部由规则计算</strong>,权重公开在「判断依据」里;
+            「AI 解读」只叙述这些事实,不看图。已连网关时每 20 秒自动刷新。
+            <strong>仅供研究参考,不接下单链路。</strong>
           </p>
           <div id="pa-result"><p class="empty">输入标的后点「分析」。</p></div>
+        </section>
+
+        <!-- ============ 交易分析(蝴蝶复盘) ============ -->
+        <section class="tab-panel" id="tab-review">
+          <header class="page-head">
+            <h1>交易分析</h1>
+            <span class="muted" id="review-freshness">—</span>
+          </header>
+          <div class="row tight">
+            <div class="select-wrap grow"><select id="review-record" aria-label="选择一张蝴蝶"></select></div>
+            <div class="select-wrap"><select id="review-timeframe" aria-label="K 线周期">
+              <option value="auto">自动周期</option>
+              <option value="1m">1 分钟</option>
+              <option value="5m">5 分钟</option>
+              <option value="15m">15 分钟</option>
+              <option value="1h">1 小时</option>
+              <option value="1d">日线</option>
+            </select></div>
+            <label class="row tight m0 gap-4" title="当日 0DTE 隐含日内波动(点):策略文档要求每日从 ATM straddle 取,EM = straddle × 0.85;默认 36">
+              <span class="muted nowrap-11">EM</span>
+              <input id="review-em" type="number" min="1" max="500" step="0.5" value="36" class="w-64" aria-label="隐含日内波动 EM" />
+            </label>
+            <button id="btn-review-refresh" class="btn tiny ghost" title="向 TWS 重新拉取成交明细并刷新列表">同步成交</button>
+            <button id="btn-review-run" class="btn primary">分析</button>
+          </div>
+          <label class="switch">
+            <span>附带本地未成交的记录<span class="sub">默认只列 IBKR 真实成交过的蝴蝶;打开后把本地校验过但没成交的也列出来(按限价估算)</span></span>
+            <input id="review-include-local" type="checkbox" />
+          </label>
+          <p class="hint">
+            列表来自 <strong>IBKR 的成交明细</strong>:引擎从 TWS 拉取逐笔成交,按订单把三条腿合成一张蝴蝶,并存进本地库累积
+            (TWS 的接口只给当天的成交,所以历史靠每次连着时同步来的那些)。选一张后拉取标的在<strong>开仓前后到平仓 / 到期</strong>的 K 线,
+            画出三条行权价与盈利区,并按规则给出结论:开仓位置、开仓前后走势、持有期间离中心多远、曾经的机会、结局与方向对错。
+            理论价值按<strong>到期内在价值</strong>算(是下界,不是当时能卖到的价)。平仓按同一张蝴蝶的反向成交认定,没有就按到期结算。
+            K 线走 TWS 历史数据,需连接引擎。<strong>止盈策略</strong>按《SPX 0DTE 蝶式止盈策略 v2.0》回放:蝶价走势取 IBKR 组合分钟中间价,
+            标出 1.35×D / 1.70×D 两档止盈、0.5×D 止损与预计盈利,SPX 图上标出 ±0.45W / ±0.55W / ±0.8W 临界线,并逐分钟回放策略会在哪里出手、与实际结果对比。
+          </p>
+          <div id="review-result"><p class="empty">选一张蝴蝶后点「分析」。</p></div>
         </section>
 
         <!-- ============ 期权墙 · 警告 ============ -->
@@ -389,18 +459,17 @@
             <button id="btn-alert-add" class="btn primary">开始盯</button>
           </div>
           <label class="switch">
-            <span>触发时播放提示音<span class="sub">上穿是升调、下破是降调;系统通知同时弹出</span></span>
-            <span class="row tight" style="margin:0">
+            <span>触发时播放提示音<span class="sub">上穿升调、下破降调,并弹系统通知</span></span>
+            <span class="row tight m0">
               <button id="btn-alert-test" class="btn tiny">试听</button>
               <input id="alert-sound" type="checkbox" checked />
             </span>
           </label>
           <p class="hint">
-            盯住的价位有两个来源:<strong>当天期权墙</strong>(持仓墙 / 成交墙 / 最大痛点 / Gamma 翻转位)
-            和<strong>整数关口</strong>(现价上下最近的步长整数倍——IREN 41 块、步长 5,就是 40 和 45)。
-            价格穿过任一价位时报一次,然后<strong>落防</strong>:要等价格离开足够远、并过了冷却时间才会再报,
-            所以在关口附近来回蹭不会刷屏。<strong>OI 是隔夜存量</strong>,当天到期的合约请以成交墙为准。
-            警告在任何页面都会检查(需已连 TWS)。<strong>只发通知,不下单。</strong>
+            价位来自<strong>当天期权墙</strong>(持仓墙 / 成交墙 / 最大痛点 / Gamma 翻转)和<strong>整数关口</strong>
+            (现价附近的步长整数倍:41 块、步长 5 → 40 和 45)。穿越报一次,离开足够远并过冷却后才再报,不会刷屏。
+            <strong>OI 是隔夜存量</strong>,当日到期以成交墙为准。任何页面都会检查(需已连 TWS)。
+            <strong>只通知,不下单。</strong>
           </p>
           <div id="alerts-list"><p class="empty">还没有在盯的标的。</p></div>
 
@@ -415,32 +484,30 @@
             <button id="btn-book-refresh-all" class="btn tiny ghost">全部刷新</button>
           </header>
           <div class="row tight">
-            <input id="book-symbol" type="text" class="grow" placeholder="添加标的,如 NVDA、SPY(指数没有订单簿,请用对应 ETF)" maxlength="12" />
+            <input id="book-symbol" type="text" class="grow" placeholder="标的,如 NVDA、SPY(指数请用对应 ETF)" maxlength="12" />
             <button id="btn-book-load" class="btn primary">添加</button>
           </div>
-          <p class="hint">盘口只读展示,不参与定价与下单;关注列表本地保存。没有 Level 2 订阅时只显示一档。停留本页时每 20 秒自动刷新(需引擎已连 TWS)。</p>
+          <p class="hint">只读展示,不参与定价与下单。无 Level 2 订阅时只显示一档;已连 TWS 时每 20 秒自动刷新。</p>
           <div id="book-grid" class="sector-grid"><p class="empty">还没有关注的标的。</p></div>
 
           <details id="book-primer" class="primer">
-            <summary>读盘常识 —— 订单簿是什么、怎么读、对本系统的意义</summary>
+            <summary>读盘常识</summary>
             <div class="cards">
             <div class="card info">
               <div class="card-title">订单簿是什么</div>
-              <div>所有未成交的限价单按价格聚合排队:买单从高到低(买一最高),卖单从低到高(卖一最低)。
-                买一与卖一之间的距离是<strong>价差(spread)</strong>,各价位上的挂单量是<strong>深度</strong>。
-                一档盘口(L1)只看买一/卖一;Level 2 能看到多档深度,但需要单独订阅。</div>
+              <div>未成交限价单按价格聚合:买单从高到低,卖单从低到高。买一与卖一之差是<strong>价差</strong>,
+                各价位挂单量是<strong>深度</strong>。一档(L1)只看买一/卖一;Level 2 看多档,需单独订阅。</div>
             </div>
             <div class="card info">
               <div class="card-title">怎么读</div>
-              <div>价差窄、深度厚 = 流动性好,市价单滑点小;价差宽、深度薄的票,大单会一路吃穿好几档价位。
-                某个价位挂着异常大的单量,可能是真实的支撑/压力,也可能是随时会撤的诱导单——
-                挂单不等于成交意愿,只有成交量是真的。盘前盘后深度会薄很多。</div>
+              <div>价差窄、深度厚 = 流动性好、滑点小;价差宽、深度薄时大单会吃穿多档。
+                某价位的异常大单可能是支撑/压力,也可能是随时撤掉的诱导单:挂单不等于成交。盘前盘后深度明显变薄。</div>
             </div>
             <div class="card warn">
               <div class="card-title">对本系统的意义</div>
-              <div>AUTO_MID 条件单按盘口中间价 ±滑点上限定价:价差 10 美分的票,滑点上限 0.10 很合理;
-                价差 2 美元的期权组合,同样的上限可能永远成交不了。下条件单之前看一眼盘口价差,
-                再决定净权利金上限或滑点设置,拒单率会低很多。期权盘口普遍比正股宽一个数量级。</div>
+              <div>AUTO_MID 按盘口中间价 ±滑点上限定价:价差 10 美分的票,上限 0.10 合理;
+                价差 2 美元的期权组合则可能永远不成交。下条件单前先看价差,再定净权利金上限或滑点。
+                期权盘口普遍比正股宽一个数量级。</div>
             </div>
           </div>
         </details>
@@ -450,7 +517,7 @@
         <section class="tab-panel" id="tab-records">
           <header class="page-head">
             <h1>交易记录</h1>
-            <span class="row tight" style="margin:0">
+            <span class="row tight m0">
               <span class="segmented" id="record-density" role="group" aria-label="列表密度">
                 <button data-density="cozy" class="on">舒适</button>
                 <button data-density="compact">紧凑</button>
@@ -474,15 +541,17 @@
           </header>
           <div class="notice warn">
             <strong>这一页会真的发单。</strong>
-            打开某个持仓的「到价自动平仓」之后,价格碰到你设的止盈 / 止损时,软件会在你不在场的
-            情况下自动发出平仓单。它仍然受三道闸门约束:<code>auto_execute</code> 要开、实盘账户
-            还要 <code>allow_live_trading</code>、熔断期间一律不发。
+            打开「到价自动平仓」后,价格触及止盈 / 止损时软件会自动发出平仓单;
+            仍受三道闸门约束:<code>auto_execute</code> 已开、实盘另需 <code>allow_live_trading</code>、熔断期间不发。
             <br>
-            <strong>软件必须开着。</strong>盯盘在本机进行,关掉软件就不再盯——和挂在 IBKR
-            服务器上的条件单不是一回事。
+            <strong>软件必须开着。</strong>盯盘在本机进行,关掉就不再盯,不同于挂在券商服务器上的条件单。
           </div>
 
           <h3 class="section-title">账户持仓</h3>
+          <p class="hint">
+            这里只列<strong>券商账户里的实际持仓</strong>(IBKR 走 portfolio / positions,富途走持仓查询),
+            且只含配置里有别名的账户。已校验未发送、排队中、已提交未成交的订单都不是持仓,不会出现在这里,也不能追踪。
+          </p>
           <div id="positions" class="cards"><p class="empty">连接券商后显示</p></div>
 
           <h3 class="section-title">正在追踪</h3>
@@ -494,9 +563,8 @@
           <header class="page-head"><h1>TWS 连接</h1></header>
           <div id="tws-broker-banner" class="notice"></div>
           <div class="notice">
-            <strong>本软件不接触你的 IBKR 账号密码。</strong>
-            登录在 TWS / IB Gateway 自己的窗口里完成,这里只检测本机 API 端口、诊断握手,
-            并核对账户别名是否对得上真实账号。
+            <strong>不接触你的 IBKR 账号密码。</strong>
+            登录在 TWS / IB Gateway 自己的窗口完成;这里只检测本机 API 端口、诊断握手、核对账户别名。
           </div>
 
           <div class="row tight">
@@ -512,7 +580,7 @@
 
           <h3 class="section-title">3 · 握手与账户</h3>
           <div id="tws-diagnosis" class="cards">
-            <p class="empty">点「检测连接」会真连一次(只读)</p>
+            <p class="empty">点「检测连接」做一次只读握手</p>
           </div>
 
           <h3 class="section-title">4 · 连接引擎</h3>
@@ -520,7 +588,7 @@
             <button id="btn-tws-connect" class="btn">连接 / 断开交易引擎</button>
           </div>
           <p class="hint">
-            上面的「检测连接」是一次性只读探测,断开即止;这里的连接才是引擎真正用来下单的长连接。
+            「检测连接」是一次性只读探测;这里才是引擎下单用的长连接。
           </p>
 
           <details id="tws-primer" class="primer">
@@ -533,22 +601,19 @@
         <section class="tab-panel" id="tab-futu">
           <header class="page-head"><h1>富途 OpenD</h1></header>
           <div class="notice">
-            <strong>IBKR 的 API 跑不起来时的备用通道。</strong>
-            本软件同样不接触你的富途账号密码——登录在 OpenD 自己的窗口里完成,
-            这里只检测本机端口、诊断握手,并核对账户别名是否对得上真实账号。
+            <strong>IBKR API 跑不起来时的备用通道。</strong>
+            同样不接触你的富途账号密码,登录在 OpenD 自己的窗口完成;这里只检测端口、诊断握手、核对账户别名。
             <br>
-            <strong>富途不支持组合单</strong>:价差 / 蝴蝶 / 铁鹰这类多腿结构在富途只能拆成单腿,
-            拆单会产生腿风险,所以引擎会直接拒绝——这类订单请切回 IBKR。
+            <strong>不支持组合单</strong>:价差 / 蝴蝶 / 铁鹰拆单有腿风险,引擎会直接拒绝,请切回 IBKR。
             <br>
-            <strong>富途也没有原生条件单</strong>:走这条通道时,所有条件单都由本软件盯盘,
-            <em>软件关掉就不会触发</em>(IBKR 那边条件挂在券商服务器上,掉线仍有效)。
+            <strong>没有原生条件单</strong>:条件单由本软件盯盘,<em>软件关掉就不会触发</em>
+            (IBKR 的条件单挂在券商服务器,掉线仍有效)。
           </div>
 
           <h3 class="section-title">0 · 当前券商接入</h3>
           <div id="broker-switch" class="cards"><p class="empty">读取中…</p></div>
           <p class="hint">
-            同一时刻只连一家。切换会先断开现有连接,并把选择写进配置文件;
-            别名表、限额、校验层一律不变。
+            同一时刻只连一家。切换会断开现有连接并写入配置;别名、限额、校验层不变。
           </p>
 
           <div class="row tight">
@@ -564,7 +629,7 @@
 
           <h3 class="section-title">3 · 握手与账户</h3>
           <div id="futu-diagnosis" class="cards">
-            <p class="empty">点「检测连接」会真连一次(只读)</p>
+            <p class="empty">点「检测连接」做一次只读握手</p>
           </div>
 
           <h3 class="section-title">4 · 连接引擎</h3>
@@ -572,33 +637,31 @@
             <button id="btn-futu-connect" class="btn">连接 / 断开交易引擎</button>
           </div>
           <p class="hint">
-            上面的「检测连接」是一次性只读探测,断开即止;这里的连接才是引擎真正用来下单的长连接。
+            「检测连接」是一次性只读探测;这里才是引擎下单用的长连接。
           </p>
 
           <h3 class="section-title">5 · 交易解锁(仅实盘需要)</h3>
           <div class="group">
             <div class="field">
               <label for="futu-password">
-                写入 macOS Keychain / Windows DPAPI,<strong>只存 md5</strong>:明文算完即丢,
-                不写配置、不进日志。模拟盘不需要解锁。
+                <strong>只存 md5</strong>于 Keychain / DPAPI,明文算完即丢,不写配置、不进日志。模拟盘无需解锁。
               </label>
               <input id="futu-password" type="password" placeholder="富途交易密码" autocomplete="off" />
             </div>
             <label class="switch">
-              <span>我填的已经是 md5<span class="sub">富途的解锁接口收的就是 md5;不勾就由引擎在本机算一次</span></span>
+              <span>我填的已经是 md5<span class="sub">不勾则由引擎本机计算</span></span>
               <input id="futu-password-md5" type="checkbox" />
             </label>
             <div class="field-row">
               <label>解锁状态<span class="sub" id="futu-unlock-state">检测中…</span></label>
-              <span class="row tight" style="margin:0">
+              <span class="row tight m0">
                 <button id="btn-futu-save-password" class="btn">保存</button>
                 <button id="btn-futu-unlock" class="btn primary">交易解锁</button>
               </span>
             </div>
           </div>
           <p class="hint">
-            解锁状态跟着 OpenD 的会话走:重启 OpenD 之后要再解锁一次。
-            没解锁时实盘单会被引擎拦下,而不是发出去之后才失败。
+            解锁随 OpenD 会话失效,重启 OpenD 后需重新解锁;未解锁时实盘单会在引擎侧被拦下。
           </p>
 
           <details id="futu-primer" class="primer">
@@ -611,8 +674,8 @@
         <section class="tab-panel" id="tab-llm">
           <header class="page-head"><h1>大模型</h1></header>
           <div class="notice">
-            发给模型的只有 <strong>S2 级数据</strong>:指令原文、当前时间、行情快照、账户别名表与限额。
-            真实账号、余额、持仓、成交记录一概不出本机(§9.1)。
+            发给模型的只有指令原文、当前时间、行情快照、账户别名与限额;
+            <strong>真实账号、余额、持仓、成交记录不出本机</strong>。
           </div>
 
           <h3 class="section-title">供应商</h3>
@@ -626,7 +689,7 @@
               </div>
             </div>
             <div class="field" id="llm-model-custom-row">
-              <label for="llm-model-custom">自定义模型标识(留空则用上面选中的)</label>
+              <label for="llm-model-custom">自定义模型(留空则用上面选中的)</label>
               <input id="llm-model-custom" type="text" placeholder="如 deepseek-chat" />
             </div>
             <div class="field" id="llm-base-url-row">
@@ -639,7 +702,7 @@
           <div class="group">
             <div class="field">
               <label for="llm-key">
-                写入 macOS Keychain,按供应商分开保存;不落配置文件、不进日志
+                按供应商分开存于系统凭据库,不落配置、不进日志
               </label>
               <input id="llm-key" type="password" placeholder="sk-..." autocomplete="off" />
             </div>
@@ -738,7 +801,7 @@
 
           <button id="btn-save-settings" class="btn primary">保存设置</button>
           <p class="hint">
-            账户别名与连接端口涉及真实账号,只能手动改 <code>config/settings.json</code>,界面不提供通道。
+            账户别名与连接端口涉及真实账号,仅可手动编辑 <code>config/settings.json</code>。
           </p>
         </section>
 
@@ -748,7 +811,7 @@
           <div id="about" class="about"><p class="empty">加载中…</p></div>
           <h3 class="section-title">键盘快捷键</h3>
           <dl id="shortcuts" class="keys"></dl>
-          <h3 class="section-title">引擎日志(stderr)</h3>
+          <h3 class="section-title">引擎日志</h3>
           <pre id="engine-log" class="log"></pre>
           <button id="btn-restart-engine" class="btn tiny">重启交易引擎</button>
         </section>

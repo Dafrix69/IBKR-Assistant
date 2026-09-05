@@ -30,6 +30,9 @@ contextBridge.exposeInMainWorld('dafri', {
   updateIdea: (id, status) =>
     ipcRenderer.invoke('rpc', { method: 'ideas.update', params: { id, status } }),
   analyzeIdea: (id) => ipcRenderer.invoke('rpc', { method: 'ideas.analyze', params: { id } }),
+  digestIdeas: (scope) =>
+    ipcRenderer.invoke('rpc', { method: 'ideas.digest', params: { scope } }),
+  listIdeaDigests: () => ipcRenderer.invoke('rpc', { method: 'ideas.digests', params: {} }),
 
   // ---- 自定义板块 + AI 选股(展示用数据,不进下单链路)--------------------
   listSectors: () => ipcRenderer.invoke('rpc', { method: 'sectors.list', params: {} }),
@@ -92,10 +95,16 @@ contextBridge.exposeInMainWorld('dafri', {
   installFutuSdk: () => ipcRenderer.invoke('engine-install-futu'),
 
   // ---- 会产生后果的操作(主进程会校验 __confirmed)----------------------
-  submit: (text, execute) =>
+  // accounts:界面勾选的目标账户别名;勾两个就同时向两个账户发单(引擎按账户扇出)
+  submit: (text, execute, accounts) =>
     ipcRenderer.invoke('rpc', {
       method: 'instruction.submit',
-      params: { text, execute: Boolean(execute), __confirmed: true },
+      params: {
+        text,
+        execute: Boolean(execute),
+        accounts: Array.isArray(accounts) ? accounts.map(String) : [],
+        __confirmed: true,
+      },
     }),
   patchSettings: (patch) =>
     ipcRenderer.invoke('rpc', { method: 'settings.patch', params: { patch, __confirmed: true } }),
@@ -133,6 +142,8 @@ contextBridge.exposeInMainWorld('dafri', {
   paTimeframes: () => ipcRenderer.invoke('rpc', { method: 'pa.timeframes', params: {} }),
   paAnalyze: (spec) => ipcRenderer.invoke('rpc', { method: 'pa.analyze', params: spec }),
   paComment: (spec) => ipcRenderer.invoke('rpc', { method: 'pa.comment', params: spec }),
+  reviewCandidates: (limit, includeLocal) => ipcRenderer.invoke('rpc', { method: 'review.candidates', params: { limit, include_local: Boolean(includeLocal) } }),
+  reviewAnalyze: (spec) => ipcRenderer.invoke('rpc', { method: 'review.analyze', params: spec }),
   macroBoard: (force) => ipcRenderer.invoke('rpc', { method: 'macro.board', params: { force } }),
 
   // ---- 持仓追踪(tracker.add / update / close_now 会真的发单)--------------
@@ -144,6 +155,8 @@ contextBridge.exposeInMainWorld('dafri', {
     ipcRenderer.invoke('rpc', { method: 'tracker.update', params: { ...spec, __confirmed: true } }),
   deleteTracker: (id) => ipcRenderer.invoke('rpc', { method: 'tracker.delete', params: { id } }),
   pollTrackers: () => ipcRenderer.invoke('rpc', { method: 'tracker.poll', params: {} }),
+  // 券商托管对账:界面按秒驱动,动态停损价的秒级调整走这条路
+  reconcileTrackers: () => ipcRenderer.invoke('rpc', { method: 'tracker.reconcile', params: {} }),
   closePositionNow: (id) =>
     ipcRenderer.invoke('rpc', { method: 'tracker.close_now', params: { id, __confirmed: true } }),
 

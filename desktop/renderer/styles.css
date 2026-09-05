@@ -193,6 +193,21 @@ input, textarea { user-select: text; }
 .chip.warn { color: var(--orange); background: color-mix(in srgb, var(--orange) 14%, transparent); }
 .chip.bad { color: var(--red); background: color-mix(in srgb, var(--red) 14%, transparent); }
 
+/* 发单账户勾选:复选框样式的胶囊,勾几个发几个 */
+.account-picker {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-top: 8px; font-size: 12px;
+}
+.account-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.account-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 9px; border-radius: 6px; cursor: pointer; user-select: none;
+  background: var(--bg-fill); color: var(--label-secondary); font-size: 12px;
+}
+.account-chip input { margin: 0; accent-color: var(--accent, #0A84FF); }
+.account-chip.checked { color: var(--label); background: color-mix(in srgb, var(--accent, #0A84FF) 16%, transparent); }
+.account-chip.live.checked { color: var(--orange); background: color-mix(in srgb, var(--orange) 16%, transparent); }
+
 .topbar-actions { display: flex; gap: 8px; flex-shrink: 0; }
 
 /* ================= 布局:侧栏 + 内容(macOS UI Kit 应用模板) ================= */
@@ -359,6 +374,13 @@ select { appearance: none; padding-right: 26px; cursor: default; }
 /* 数字输入框基础样式是 width:100%,放进 flex 行里会把 .grow 挤没
    (flex:1 的 flex-basis 是 0,不设 flex 的那个 basis 是 auto)。必须钉死宽度。 */
 .row > .narrow { flex: 0 0 92px; max-width: 92px; }
+
+/* 小工具类:CSP 是 style-src 'self',HTML 里的内联 style 会被整条拦掉,所以用类替代。
+   .m0 写成双选择器是为了盖过 .row.tight 的 margin;input.w-64 靠同特异性、后声明盖过 input[type="number"]。 */
+.m0, .row.tight.m0 { margin: 0; }
+.gap-4 { gap: 4px; }
+input.w-64 { width: 64px; }
+.nowrap-11 { font-size: 11px; white-space: nowrap; }
 
 .btn {
   padding: 5px 12px;
@@ -1071,3 +1093,79 @@ kbd {
 .track-form > .switch { grid-column: 1 / -1; margin: 2px 0 0; }
 .track-form > .btn { grid-column: 1 / -1; justify-self: start; }
 @media (max-width: 900px) { .track-form { grid-template-columns: 1fr 1fr; } }
+
+/* ---------------- 期权速记(交易指令页) ---------------- */
+.shorthand { margin: 10px 0 2px; }
+.shorthand summary {
+  cursor: pointer; font-size: 11px; color: var(--text-secondary);
+  user-select: none; -webkit-user-select: none;
+}
+.shorthand summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.shorthand .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 2px; }
+.shorthand .chip {
+  font: inherit; font-size: 12px; padding: 3px 10px; border-radius: 999px;
+  border: 0.5px solid var(--separator); background: var(--bg-elevated);
+  color: var(--text-primary); cursor: pointer;
+}
+.shorthand .chip:hover { border-color: var(--accent); color: var(--accent); }
+.shorthand .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.shorthand .hint.tight { margin-top: 6px; line-height: 1.7; }
+.shorthand .hint b { color: var(--text-primary); font-weight: 600; }
+
+
+/* ---- 交易分析(蝴蝶复盘) ---- */
+.review-chart { width: 100%; height: auto; margin-top: 6px; display: block; }
+.review-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 6px; margin: 8px 0; }
+.review-stat { background: var(--bg-fill); border-radius: 8px; padding: 7px 9px; }
+.review-stat .k { font-size: 10.5px; color: var(--label-secondary); }
+.review-stat .v { font-size: 14px; font-weight: 590; margin-top: 2px; }
+.review-stat .v.pos { color: var(--green); }
+.review-stat .v.neg { color: var(--red); }
+.review-legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 10.5px; color: var(--label-secondary); margin-top: 4px; }
+.review-legend i { display: inline-block; width: 14px; height: 0; border-top: 2px solid currentColor; vertical-align: middle; margin-right: 4px; }
+.review-notes { margin: 6px 0 0; padding-left: 16px; font-size: 11.5px; color: var(--orange); }
+
+.review-table { width: 100%; border-collapse: collapse; font-size: 11.5px; margin-top: 6px; }
+.review-table th, .review-table td { text-align: left; padding: 4px 6px; border-bottom: 0.5px solid var(--separator); vertical-align: top; }
+.review-table th { color: var(--label-secondary); font-weight: 500; }
+.review-table td.num, .review-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.review-table .pos { color: var(--green); }
+.review-table .neg { color: var(--red); }
+.review-phase { display: inline-block; padding: 0 5px; border-radius: 4px; background: var(--bg-fill); font-size: 10.5px; margin-right: 4px; }
+
+/* 盯盘量表:离触发还有多远。条越满 = 越贴近触发价 */
+.track-gauge {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+.gauge-row {
+  display: grid;
+  grid-template-columns: 92px 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.gauge-label { color: var(--muted); white-space: nowrap; }
+.gauge-bar {
+  position: relative;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--line);
+  overflow: hidden;
+}
+.gauge-fill { display: block; height: 100%; border-radius: 3px; background: var(--muted); }
+.gauge-fill.ok { background: var(--ok); }
+.gauge-fill.warn { background: var(--warn); }
+.gauge-fill.bad { background: var(--bad); }
+.gauge-value { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* 刚建好的追踪:短暂高亮,让人知道"就是这一条" */
+@keyframes track-flash {
+  from { box-shadow: 0 0 0 2px var(--accent); }
+  to { box-shadow: 0 0 0 0 transparent; }
+}
+.card.just-added { animation: track-flash 1.6s ease-out; }

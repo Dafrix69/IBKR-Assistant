@@ -43,9 +43,13 @@ def main(argv: Optional[list] = None) -> int:
     p_parse = sub.add_parser("parse", help="调用 LLM 解析并校验,不下单")
     p_parse.add_argument("instruction")
     p_parse.add_argument("--snapshot", type=str, default="")
+    p_parse.add_argument("--accounts", type=str, default="",
+                         help='目标账户别名,逗号分隔;写两个就同时向两个账户发单,如 "模拟,主账户"')
 
     p_run = sub.add_parser("run", help="完整流程(需要 TWS/Gateway 在线)")
     p_run.add_argument("instruction")
+    p_run.add_argument("--accounts", type=str, default="",
+                       help='目标账户别名,逗号分隔;写两个就同时向两个账户发单,如 "模拟,主账户"')
     p_run.add_argument(
         "--i-understand-this-places-real-orders",
         action="store_true",
@@ -87,9 +91,9 @@ def main(argv: Optional[list] = None) -> int:
     if args.command == "validate":
         return _validate(settings, args.payload, _parse_snapshot(args.snapshot))
     if args.command == "parse":
-        return _parse(settings, args.instruction, _parse_snapshot(args.snapshot))
+        return _parse(settings, args.instruction, _parse_snapshot(args.snapshot), args.accounts)
     if args.command == "run":
-        return _run(settings, args.instruction, args.confirmed)
+        return _run(settings, args.instruction, args.confirmed, args.accounts)
     if args.command == "records":
         store = TradeStore(settings.db_path)
         print(json.dumps(store.list_records(args.limit), ensure_ascii=False, indent=2))
@@ -159,16 +163,20 @@ def _validate(settings, payload_path: Path, snapshot: Dict[str, float]) -> int:
     return 0 if not outcome.rejected else 2
 
 
-def _parse(settings, instruction: str, snapshot: Dict[str, float]) -> int:
+def _accounts_arg(raw: str) -> list:
+    return [a.strip() for a in (raw or "").split(",") if a.strip()]
+
+
+def _parse(settings, instruction: str, snapshot: Dict[str, float], accounts: str = "") -> int:
     # parse 子命令永不下单,不管配置怎么写
     settings.policies = replace(settings.policies, auto_execute=False)
     engine = TradingEngine(settings, notifier=Notifier(enabled=False))
-    result = engine.handle_instruction(instruction, snapshot=snapshot)
+    result = engine.handle_instruction(instruction, snapshot=snapshot, accounts=_accounts_arg(accounts))
     print(json.dumps(result.as_dict(), ensure_ascii=False, indent=2))
     return 0 if not result.rejections else 2
 
 
-def _run(settings, instruction: str, confirmed: bool) -> int:
+def _run(settings, instruction: str, confirmed: bool, accounts: str = "") -> int:
     if not confirmed:
         print("拒绝执行:缺少 --i-understand-this-places-real-orders 开关。", file=sys.stderr)
         return 1
@@ -178,7 +186,7 @@ def _run(settings, instruction: str, confirmed: bool) -> int:
     router = build_router(settings)
     engine = TradingEngine(settings, router=router)
     try:
-        result = engine.handle_instruction(instruction)
+        result = engine.handle_instruction(instruction, accounts=_accounts_arg(accounts))
         print(json.dumps(result.as_dict(), ensure_ascii=False, indent=2))
         # 富途没有事件流:同步拉一次回报,否则命令行跑出来的单永远停在 Submitted
         engine.sync_broker_orders()

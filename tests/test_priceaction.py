@@ -245,3 +245,19 @@ def test_bar_timestamp_normalises_every_shape_ibkr_returns():
     assert bar_timestamp("20260819  09:35:00") == "2026-08-19 09:35"
     assert bar_timestamp("20260819") == "2026-08-19"
     assert bar_timestamp("看不懂的东西") == "看不懂的东西"   # 解析不了就原样透出,不编
+
+
+def test_bar_timestamp_converts_exchange_timezone_to_eastern():
+    """ib_insync 给的是交易所时区的 aware datetime(SPX 在 Cboe → 美中)。
+    直接 strftime 会让 K 线"永远落后一小时",新鲜度告警误报——实测踩到的。"""
+    from datetime import datetime, timezone, timedelta
+    from zoneinfo import ZoneInfo
+
+    central = datetime(2026, 9, 2, 11, 40, tzinfo=ZoneInfo("US/Central"))
+    assert bar_timestamp(central) == "2026-09-02 12:40"
+    assert bar_timestamp(datetime(2026, 9, 2, 16, 40, tzinfo=timezone.utc)) == "2026-09-02 12:40"
+    assert bar_timestamp(datetime(2026, 9, 2, 11, 40, tzinfo=timezone(timedelta(hours=-5)))) == "2026-09-02 12:40"
+    # 带时区名的原始字符串同样换算;没带时区的照旧当美东
+    assert bar_timestamp("20260902 11:40:00 US/Central") == "2026-09-02 12:40"
+    assert bar_timestamp("20260902 12:40:00 US/Eastern") == "2026-09-02 12:40"
+    assert bar_timestamp("20260902 11:40:00") == "2026-09-02 11:40"

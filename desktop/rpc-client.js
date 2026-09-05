@@ -30,19 +30,49 @@ class EngineClient extends EventEmitter {
    * @param {string} [opts.userDataDir] 打包模式的可写目录(venv 建在这里)
    * @param {boolean} [opts.packaged]
    */
-  constructor({ repoRoot, configPath, userDataDir, packaged, appVersion }) {
+  constructor({ repoRoot, configPath, userDataDir, packaged, appVersion, tsEngineRoot }) {
     super();
     this.repoRoot = repoRoot;
     this.configPath = configPath;
     this.userDataDir = userDataDir || null;
     this.packaged = Boolean(packaged);
     this.appVersion = appVersion || '0';
+    // TS 引擎根(含 dist/src/cli.js 与 baseline/):有它就优先用,
+    // 打包版因此不再需要任何 Python 首启引导。DAFRI_ENGINE=python 可强制回退。
+    this.tsEngineRoot = tsEngineRoot || null;
+    this.engineKind = null; // 'ts' | 'python',start() 时定
     this.child = null;
     this.starting = null;
     this.pending = new Map();
     this.nextId = 1;
     this.stderrTail = [];
     this.exitInfo = null;
+  }
+
+  /**
+   * TS 引擎的启动方式(找不到或被 DAFRI_ENGINE=python 禁用时回 null)。
+   *
+   * 运行时选择:开发机优先系统 node(node_modules 按系统 node 的 ABI 编译,
+   * better-sqlite3 是原生模块);没有系统 node 再用 Electron 自带的
+   * Node(ELECTRON_RUN_AS_NODE=1)——打包版走这条,原生模块由
+   * electron-builder 按 Electron ABI 重编(见 package.json 注释)。
+   */
+  #resolveTsEngine() {
+    if (process.env.DAFRI_ENGINE === 'python') return null;
+    if (!this.tsEngineRoot) return null;
+    const entry = path.join(this.tsEngineRoot, 'dist', 'src', 'cli.js');
+    if (!fs.existsSync(entry)) return null;
+    const args = [entry, 'rpc', '--config', this.configPath];
+    if (!this.packaged) {
+      const probe = spawnSync('node', ['--version'], { timeout: 8000 });
+      if (probe.status === 0) return { cmd: 'node', args, env: {}, label: 'node' };
+    }
+    return {
+      cmd: process.execPath,
+      args,
+      env: { ELECTRON_RUN_AS_NODE: '1' },
+      label: 'electron-as-node',
+    };
   }
 
   #log(line) {
@@ -232,6 +262,24 @@ class EngineClient extends EventEmitter {
 
   async #doStart() {
     if (this.child) return;
+
+    // 1. TS 引擎(有 dist 就用;不需要 Python、不需要首启引导)
+    const ts = this.#resolveTsEngine();
+    if (ts) {
+      this.engineKind = 'ts';
+      this.#log(`[engine] 使用 TS 引擎(${ts.label}):${path.join(this.tsEngineRoot, 'dist')}`);
+      this.child = spawn(ts.cmd, ts.args, {
+        cwd: this.packaged && this.userDataDir ? this.userDataDir : this.tsEngineRoot,
+        env: { ...process.env, ...ts.env },
+        stdio: ['pipe', 'pipe', 'pipe'],
+        shell: false,
+      });
+      this.#wireChild();
+      return;
+    }
+
+    // 2. Python 引擎(原路径,含首启引导)
+    this.engineKind = 'python';
     const python = await this.ensurePython();
     const args = ['-m', 'ibkr_agent', '--config', this.configPath, 'rpc'];
     this.child = spawn(python, args, {
@@ -247,7 +295,12 @@ class EngineClient extends EventEmitter {
       },
       stdio: ['pipe', 'pipe', 'pipe'],
     });
+    this.#wireChild();
+  }
 
+  /** stdout(协议)/stderr(日志)/exit 的统一接线,TS 与 Python 两条路共用。 */
+  #wireChild() {
+    const kind = this.engineKind === 'ts' ? 'TS' : 'Python';
     readline.createInterface({ input: this.child.stdout }).on('line', (line) => {
       this.#handleLine(line);
     });
@@ -269,7 +322,7 @@ class EngineClient extends EventEmitter {
     this.child.on('error', (err) => {
       this.child = null;
       this.starting = null;
-      this.emit('exit', { code: -1, signal: null, detail: `无法启动 Python:${err.message}` });
+      this.emit('exit', { code: -1, signal: null, detail: `无法启动 ${kind} 引擎:${err.message}` });
     });
   }
 

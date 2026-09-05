@@ -25,6 +25,12 @@ function empty(node, message) {
   node.appendChild(el('p', 'empty', message));
 }
 
+/** 定点小数,不带千分位——量表里要看清 0.0500 这种小数。 */
+function fmtNum(value, digits = 2) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n.toFixed(digits) : '—';
+}
+
 function fmtMoney(value) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) return '—';
   return Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -102,7 +108,10 @@ function brokerShortName() {
 /** 顶栏、按钮、提示里那些跟平台或券商绑定的文案,统一在这里刷新。 */
 function syncPlatformLabels() {
   const parseKey = document.getElementById('hint-parse-key');
-  if (parseKey) parseKey.textContent = `${MOD_KEY}${ENTER_KEY} 解析`;
+  if (parseKey) {
+    parseKey.textContent = `${MOD_KEY}${ENTER_KEY} 解析 · ${MOD_KEY}${
+      MOD_KEY === '⌘' ? '⇧' : 'Shift+'}${ENTER_KEY} 发送`;
+  }
   const halt = document.getElementById('btn-halt');
   if (halt) halt.title = `${MOD_KEY}${MOD_KEY === '⌘' ? '⇧H' : 'Shift+H'}`;
   const execute = document.getElementById('btn-execute');
@@ -121,7 +130,7 @@ function readinessSteps() {
     {
       done: keyed !== false,                 // 还没查过就先不报红,别吓人
       title: '配置大模型 API Key',
-      todo: '没有 Key 就没法解析指令。Key 写进系统凭据库,不落配置文件。',
+      todo: '没有 Key 无法解析指令。Key 存于系统凭据库,不落配置文件。',
       ok: '已配置',
       tab: 'llm',
       action: '去配置',
@@ -137,7 +146,7 @@ function readinessSteps() {
     {
       done: Boolean(st.auto_execute),
       title: '打开自动执行',
-      todo: '当前是「仅解析」——校验通过的订单也不会发出去。这是安全默认,确认要下单再打开。',
+      todo: '当前「仅解析」,校验通过也不发单。确认要下单再打开。',
       ok: '已打开',
       tab: 'settings',
       action: '去设置',
@@ -160,7 +169,7 @@ function renderReadiness() {
   clear(box);
   box.appendChild(el('div', 'readiness-head', `还差 ${blocking.length} 步才能开始`));
   box.appendChild(el('div', 'readiness-sub',
-    '下面这几项没做完,指令解析或下单会被挡住。点右边的按钮直接跳过去。'));
+    '未完成项会挡住解析或下单,点右侧按钮前往。'));
 
   for (const step of steps) {
     const row = el('div', `readiness-step ${step.done ? 'done' : 'todo'}`);
@@ -246,7 +255,7 @@ function renderStatus(status) {
     : status.broker_connected ? `${gateway} 已连接` : `${gateway} 未连接`;
   broker.className = 'chip ' + (upstreamDown ? 'warn' : status.broker_connected ? 'ok' : '');
   broker.title = upstreamDown
-    ? `${gateway} 与券商服务器之间的连接中断:本机到 ${gateway} 还通,但行情请求拿不到回应。等它自己重连,或检查网络。`
+    ? `${gateway} 与券商服务器断连:本机连得上 ${gateway},但行情无回应。等待自动重连或检查网络。`
     : '';
   $('btn-connect').textContent = status.broker_connected ? `断开 ${gateway}` : `连接 ${gateway}`;
   syncPlatformLabels();
@@ -255,6 +264,7 @@ function renderStatus(status) {
   syncPrimer('tws-primer', !status.broker_connected);
   syncPrimer('futu-primer', !status.broker_connected);
   syncExecuteHint(status);
+  renderAccountPicker();
 
   const mode = $('chip-mode');
   if (status.breaker.engaged) {
@@ -343,11 +353,17 @@ async function submit(execute) {
   const text = $('instruction').value.trim();
   if (!text) return;
   if (state.busy) return;
+  const accounts = selectedAccounts();
+  if (!accounts.length) {
+    showBanner('请至少勾选一个发单账户', false);
+    return;
+  }
 
   if (execute) {
+    const fanout = accounts.length > 1 ? `同时发到 ${accounts.length} 个账户,每笔订单各一份:` : '目标账户:';
     const ok = await window.dafri.confirm({
       title: '发送真实订单',
-      message: `这条指令解析后会直接发送到${brokerShortName()},没有二次确认环节。`,
+      message: `这条指令解析后会直接发送到${brokerShortName()},没有二次确认环节。${fanout}${accounts.join('、')}。`,
       detail: text,
       confirmLabel: '我确认,发送',
     });
@@ -359,10 +375,12 @@ async function submit(execute) {
   $('btn-parse').disabled = true;
   $('btn-execute').disabled = true;
   const result = $('result');
-  working(result, execute ? '正在解析并发送…' : '正在解析…(模型思考中,最长约 1 分钟)');
+  working(result, execute ? '正在解析并发送…' : '正在解析…(最长约 1 分钟)');
 
+  const t0 = performance.now();
   try {
-    const payload = await window.dafri.submit(text, execute);
+    const payload = await window.dafri.submit(text, execute, accounts);
+    payload.__elapsedMs = Math.round(performance.now() - t0);
     renderResult(payload);
     await Promise.all([refreshStatus(), loadRecords(), loadPending()]);
   } catch (err) {
@@ -374,6 +392,76 @@ async function submit(execute) {
     $('btn-parse').disabled = false;
     $('btn-execute').disabled = !(state.status && state.status.auto_execute && state.connected && !state.breakerEngaged);
   }
+}
+
+// ======================================================================
+// 发单账户勾选:勾一个发一个,勾两个每笔各发一份(引擎按账户扇出)
+// 只列当前生效券商下的账户——把富途账户勾进 IBKR 的发单里,发出去只会换来券商错误。
+// 勾选状态存本地;没存过时默认只勾默认账户,行为与没有这个控件时一致。
+// ======================================================================
+const ACCOUNT_PICK_KEY = 'dafri-submit-accounts';
+
+function pickableAccounts() {
+  const status = state.status;
+  if (!status || !Array.isArray(status.accounts)) return [];
+  const provider = status.broker_provider || 'ibkr';
+  return status.accounts.filter((a) => (a.broker || 'ibkr') === provider);
+}
+
+function loadPickedAccounts() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(ACCOUNT_PICK_KEY) || 'null');
+    if (Array.isArray(raw)) return raw.map(String);
+  } catch (err) { /* 存坏了就当没存 */ }
+  return null;
+}
+
+function selectedAccounts() {
+  const usable = pickableAccounts();
+  if (!usable.length) return [];
+  const saved = loadPickedAccounts();
+  const aliases = usable.map((a) => a.alias);
+  if (saved === null) {
+    const def = usable.find((a) => a.default) || usable[0];
+    return [def.alias];
+  }
+  return saved.filter((alias) => aliases.includes(alias));
+}
+
+function renderAccountPicker() {
+  const picker = $('account-picker');
+  const chips = $('account-chips');
+  if (!picker || !chips) return;
+  const usable = pickableAccounts();
+  // 只有一个账户时没什么可选,控件隐藏,行为与以前完全一样
+  if (usable.length < 2) {
+    picker.hidden = true;
+    return;
+  }
+  const picked = new Set(selectedAccounts());
+  clear(chips);
+  for (const account of usable) {
+    const label = el('label', 'account-chip' + (account.is_paper ? '' : ' live') + (picked.has(account.alias) ? ' checked' : ''));
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.checked = picked.has(account.alias);
+    input.addEventListener('change', () => {
+      const next = new Set(selectedAccounts());
+      if (input.checked) next.add(account.alias); else next.delete(account.alias);
+      localStorage.setItem(ACCOUNT_PICK_KEY, JSON.stringify(usable.map((a) => a.alias).filter((x) => next.has(x))));
+      renderAccountPicker();
+    });
+    label.appendChild(input);
+    label.appendChild(el('span', null, `${account.alias} · ${account.is_paper ? '纸面' : '实盘'}`));
+    label.title = `${account.account_masked} · 连接 ${account.connection}`;
+    chips.appendChild(label);
+  }
+  const hint = $('account-picker-hint');
+  const n = picked.size;
+  hint.textContent = n > 1
+    ? `每笔订单各发 ${n} 份,各自独立校验与记录`
+    : n === 1 ? '' : '未勾选账户,无法发单';
+  picker.hidden = false;
 }
 
 function card(kind, title, body, meta) {
@@ -426,13 +514,20 @@ function renderResult(payload, target) {
   }
 
   if (payload.llm) {
-    box.appendChild(
-      card('info', '本次解析', null, [
+    // 本地速记命中时不显示 token 用量——根本没调大模型,显示 0 tokens 反而让人疑惑
+    const local = payload.llm.model === 'local-shorthand';
+    const elapsed = payload.__elapsedMs != null ? `全链路 ${payload.__elapsedMs} ms` : null;
+    const meta = local
+      ? [`语法 ${payload.llm.model}`, '毫秒级本地解析,规则与 AI 同一套校验']
+      : [
         `模型 ${payload.llm.model}`,
         `提示词 ${payload.llm.prompt_version}`,
-        `${payload.llm.latency_ms} ms`,
+        `模型 ${payload.llm.latency_ms} ms`,
         `in ${payload.llm.usage?.input_tokens ?? '—'} / out ${payload.llm.usage?.output_tokens ?? '—'} tokens`,
-      ])
+      ];
+    if (elapsed) meta.push(elapsed);
+    box.appendChild(
+      card('info', local ? '本次解析 · 本地秒解(未经大模型)' : '本次解析', null, meta)
     );
   }
 
@@ -719,6 +814,11 @@ function renderRecordDetail(box, record) {
   box.appendChild(head);
 
   if (record.error_detail) box.appendChild(card('bad', '失败原因', record.error_detail));
+  if ((record.contract || {}).combo_strategy === 'BUTTERFLY') {
+    const go = el('button', 'btn tiny', '分析这笔交易');
+    go.addEventListener('click', () => openReviewFor(record.id));
+    head.insertBefore(go, close);
+  }
 
   const c = record.contract || {};
   const o = record.order || {};
@@ -834,6 +934,7 @@ async function loadIdeas() {
   } catch (err) {
     empty($('ideas-list'), `读取失败:${err.message}`);
   }
+  loadIdeaDigests(); // 不阻塞想法列表;失败只记 console
 }
 
 const IDEA_STATUS_LABEL = { active: '进行中', done: '已完成', archived: '已归档' };
@@ -1006,6 +1107,67 @@ async function addIdea() {
 function syncIdeaFilterButtons() {
   $('btn-ideas-active').className = state.ideaFilter === 'active' ? 'btn tiny' : 'btn tiny ghost';
   $('btn-ideas-all').className = state.ideaFilter === 'all' ? 'btn tiny' : 'btn tiny ghost';
+}
+
+// ---- 想法知识总结:归档不是丢弃,攒起来的想法能一键提炼成知识,总结历史落库可回看
+async function loadIdeaDigests() {
+  try {
+    const { digests } = await window.dafri.listIdeaDigests();
+    state.ideaDigests = digests || [];
+    renderIdeaDigests();
+  } catch (err) {
+    console.warn('读取知识总结失败', err);
+  }
+}
+
+function renderIdeaDigests() {
+  const box = $('idea-digest-box');
+  clear(box);
+  const digests = state.ideaDigests || [];
+  if (!digests.length) return;
+
+  const latest = digests[0];
+  const d = latest.digest || {};
+  const node = card('info', `知识总结 · ${d.summary || ''}`);
+
+  const addList = (title, items) => {
+    if (!items || !items.length) return;
+    node.appendChild(el('div', null, title));
+    const list = el('ul');
+    items.forEach((item) => list.appendChild(el('li', null, item)));
+    node.appendChild(list);
+  };
+  addList('反复出现的主题:', d.themes);
+  addList('经验教训:', d.lessons);
+  addList('想法质量的规律:', d.patterns);
+  addList('下一步:', d.actions);
+
+  const meta = el('div', 'card-meta');
+  meta.appendChild(el('span', null, `基于 ${latest.idea_count} 条想法`));
+  if (d.model) meta.appendChild(el('span', null, `模型 ${d.model}`));
+  const at = el('span', null, `总结于 ${fmtTimeShort(latest.created_at)}`);
+  at.title = fmtTime(latest.created_at);
+  meta.appendChild(at);
+  if (digests.length > 1) meta.appendChild(el('span', null, `共 ${digests.length} 次总结,新的在上`));
+  meta.appendChild(el('span', null, '仅供复盘参考,不构成投资建议'));
+  node.appendChild(meta);
+  box.appendChild(node);
+}
+
+async function digestIdeas() {
+  const button = $('btn-ideas-digest');
+  button.disabled = true;
+  const original = button.textContent;
+  button.textContent = '总结中…';
+  try {
+    await window.dafri.digestIdeas('all');   // 已归档 + 已完成一起看,规律才完整
+    await loadIdeaDigests();
+  } catch (err) {
+    showBanner(`知识总结失败:${err.message}`, false);
+  } finally {
+    button.disabled = false;
+    button.textContent = original;
+  }
 }
 
 // ======================================================================
@@ -1508,7 +1670,7 @@ function renderBacktestResult(r) {
   }
 
   box.appendChild(
-    card('warn', '注意', '收盘价成交、未计滑点与成本、单标的全仓。回测收益不代表未来表现,参数调得越漂亮越要怀疑过拟合。')
+    card('warn', '注意', '收盘价成交、未计滑点与成本、单标的全仓。历史收益不代表未来;参数越漂亮越要怀疑过拟合。')
   );
 }
 
@@ -1803,6 +1965,579 @@ function svgNode(tag, attrs) {
   return node;
 }
 
+// ---------------------------------------------------------------- 交易分析(蝴蝶复盘)
+const review = {
+  candidates: [],
+  selected: localStorage.getItem('dafri-review-record') || '',
+  timeframe: localStorage.getItem('dafri-review-timeframe') || 'auto',
+  data: null,
+  error: null,
+  loading: false,
+};
+
+function reviewCandidateLabel(c) {
+  const when = fmtTimeShort(c.created_at);
+  const strikes = (c.strikes || []).map((s) => String(s)).join('/');
+  const state = c.source === 'ibkr' ? 'IBKR 成交'
+    : (c.filled ? '已成交' : (c.final_status ? (FINAL_STATUS_LABEL[c.final_status] || c.final_status) : (c.status || '本地 · 未成交')));
+  const price = c.price == null ? '' : ` @ ${c.price}${c.price_estimated ? '(限价)' : ''}`;
+  const acct = c.account ? ` · ${c.account}` : '';
+  if (c.exit) {
+    const pnl = c.exit.pnl == null ? '' : ` · 盈亏 ${c.exit.pnl > 0 ? '+' : ''}${c.exit.pnl}`;
+    return `${when} ${c.action === 'BUY' ? '买' : '卖'} @ ${c.price ?? '—'} → ${fmtTimeShort(c.exit.time)} 平 @ ${c.exit.price ?? '—'}${pnl} · ${c.qty} 张 ${c.symbol} ${strikes} ${c.right}蝴蝶 · 到期 ${c.expiry}${acct} · ${state}`;
+  }
+  return `${when} · ${c.action === 'BUY' ? '买' : '卖'} ${c.qty} ${c.symbol} ${strikes} ${c.right}蝴蝶 · 到期 ${c.expiry}${price}${acct} · ${state} · 未平仓 / 到期`;
+}
+
+async function loadReviewCandidates() {
+  const select = $('review-record');
+  const includeLocal = $('review-include-local').checked;
+  let result;
+  try {
+    result = await window.dafri.reviewCandidates(200, includeLocal);
+    review.candidates = result.candidates || [];
+  } catch (err) {
+    showBanner(`读取成交明细失败:${err.message}`, false);
+    return;
+  }
+  if (!review.data) {
+    const bits = [];
+    if (result.ibkr_available) bits.push(result.synced == null ? '已连 TWS' : `本次新增 ${result.synced} 笔成交`);
+    else bits.push('未连 TWS,只看本地累积的成交');
+    bits.push(`库内成交 ${result.fills_stored ?? 0} 笔`);
+    $('review-freshness').textContent = bits.join(' · ');
+  }
+  clear(select);
+  if (!review.candidates.length) {
+    const option = el('option', null, result.ibkr_available
+      ? '今天的成交里没有蝴蝶(TWS 只给当天的;更早的要在连着时同步过才有)'
+      : '还没有同步到任何 IBKR 成交:先连接 TWS 再点「同步成交」');
+    option.value = '';
+    select.appendChild(option);
+  }
+  for (const c of review.candidates) {
+    const option = el('option', null, reviewCandidateLabel(c));
+    option.value = c.id;
+    select.appendChild(option);
+  }
+  if (review.candidates.some((c) => c.id === review.selected)) select.value = review.selected;
+  else review.selected = select.value || '';
+  $('review-timeframe').value = review.timeframe;
+  const savedEm = localStorage.getItem('dafri-review-em');
+  if (savedEm && !$('review-em').dataset.touched) $('review-em').value = savedEm;
+}
+
+/** 从交易记录详情跳过来:选中那一张并直接分析。 */
+async function openReviewFor(recordId) {
+  review.selected = recordId;
+  localStorage.setItem('dafri-review-record', recordId);
+  document.querySelector('.tab[data-tab="review"]').click();
+  await loadReviewCandidates();
+  $('review-record').value = recordId;
+  await runReview();
+}
+
+async function runReview() {
+  const id = $('review-record').value;
+  if (!id) {
+    showBanner('先选一张蝴蝶', true);
+    return;
+  }
+  review.selected = id;
+  review.timeframe = $('review-timeframe').value;
+  const em = Number($('review-em').value) || 36;
+  localStorage.setItem('dafri-review-record', id);
+  localStorage.setItem('dafri-review-timeframe', review.timeframe);
+  localStorage.setItem('dafri-review-em', String(em));
+  review.loading = true;
+  renderReview();
+  try {
+    review.data = await window.dafri.reviewAnalyze({ id, timeframe: review.timeframe, exit: { em } });
+    review.error = null;
+  } catch (err) {
+    review.data = null;
+    review.error = err.message;
+  } finally {
+    review.loading = false;
+    renderReview();
+  }
+}
+
+function reviewStat(k, v, sign) {
+  const node = el('div', 'review-stat');
+  node.appendChild(el('div', 'k', k));
+  const val = el('div', 'v', v);
+  if (sign > 0) val.classList.add('pos');
+  if (sign < 0) val.classList.add('neg');
+  node.appendChild(val);
+  return node;
+}
+
+const REVIEW_TONE = { good: 'ok', warn: 'warn', bad: 'bad', info: 'info' };
+const REVIEW_KIND = { closed: '已平仓', expired: '已到期', open: '持仓中' };
+
+function renderReview() {
+  const box = $('review-result');
+  clear(box);
+  $('review-freshness').textContent = review.data
+    ? `${review.data.timeframe_label} · ${review.data.series.bars.length} 根 · ${REVIEW_KIND[review.data.outcome.kind] || ''}`
+    : '—';
+  if (review.loading) {
+    box.appendChild(el('p', 'empty', '正在拉取 K 线并复盘…'));
+    return;
+  }
+  if (review.error) {
+    box.appendChild(card('bad', '分析失败', review.error));
+    return;
+  }
+  const r = review.data;
+  if (!r) {
+    box.appendChild(el('p', 'empty', '选一张蝴蝶后点「分析」。'));
+    return;
+  }
+  const p = r.profile;
+  const z = r.zone;
+  const o = r.outcome;
+  const s = r.stats;
+  const pnl = o.kind === 'open' ? o.pnl_if_expired_now : o.pnl;
+  const pnlLabel = o.kind === 'open' ? '若此刻到期' : '盈亏';
+
+  if (r.source === 'local') box.appendChild(card('warn', '这是本地记录,不是券商成交', '这张蝴蝶没有在 IBKR 成交过,下面的权利金按限价、开仓时刻按提交时间估算。'));
+  const stats = el('div', 'review-stats');
+  stats.appendChild(reviewStat('结构', `${p.symbol} ${p.lower}/${p.center}/${p.upper} ${p.right_label}`, 0));
+  stats.appendChild(reviewStat(`权利金${p.price_estimated ? '(估算)' : ''}`, p.debit == null ? '—' : String(p.debit), 0));
+  stats.appendChild(reviewStat('盈利区', z.known ? `${z.lower_be} ~ ${z.upper_be}` : '—', 0));
+  stats.appendChild(reviewStat('开仓时标的', `${s.entry_underlying}(距中心 ${s.dist_entry > 0 ? '+' : ''}${s.dist_entry})`, 0));
+  stats.appendChild(reviewStat(o.kind === 'open' ? '最新标的' : '结局时标的',
+    `${s.exit_underlying}(距中心 ${s.dist_exit > 0 ? '+' : ''}${s.dist_exit})`, 0));
+  stats.appendChild(reviewStat(pnlLabel, pnl == null ? '—' : `${fmtMoney(pnl)}${o.pnl_pct != null ? ` (${o.pnl_pct}%)` : ''}`,
+    pnl == null ? 0 : (pnl > 0 ? 1 : -1)));
+  box.appendChild(stats);
+
+  box.appendChild(renderReviewChart(r));
+  if (r.exit_plan) {
+    box.appendChild(renderFlyChart(r));
+    box.appendChild(renderExitPlan(r));
+  }
+
+  for (const f of r.findings || []) {
+    box.appendChild(card(REVIEW_TONE[f.tone] || 'info', f.title, f.text));
+  }
+
+  const detail = detailSection('明细', [
+    ['开仓时间(美东)', `${r.entry.time_et}${r.entry.estimated ? '(按提交时间)' : ''}`],
+    ['结局', `${REVIEW_KIND[o.kind] || o.kind}${o.time_et ? ' · ' + o.time_et : ''}`],
+    ['平仓 / 结算价', o.price == null ? null : String(o.price)],
+    ['持有 K 线数', s.hold_bars],
+    ['持有期间标的区间', `${s.hold_low} ~ ${s.hold_high}`],
+    ['最接近中心', s.closest ? `${s.closest.price}(${s.closest.time},距 ${s.closest.distance})` : null],
+    ['盈利区内收盘 K 线', s.in_zone_bars == null ? null : `${s.in_zone_bars}/${s.hold_bars}`],
+    ['最好的理论时刻', s.best_theoretical ? `${s.best_theoretical.time} · ${fmtMoney(s.best_theoretical.pnl)}` : null],
+    ['最大盈利 / 最大亏损', z.known ? `${fmtMoney(z.max_profit)} / ${fmtMoney(z.max_loss)}` : null],
+    ['平仓记录', o.record_id],
+  ]);
+  if (detail) box.appendChild(detail);
+
+  if ((r.notes || []).length) {
+    const ul = el('ul', 'review-notes');
+    for (const n of r.notes) ul.appendChild(el('li', null, n));
+    box.appendChild(ul);
+  }
+}
+
+function renderReviewChart(r) {
+  const node = card('info', `标的走势(${r.timeframe_label},开仓前后到${REVIEW_KIND[r.outcome.kind] === '持仓中' ? '现在' : '结局'})`);
+  const bars = r.series.bars || [];
+  if (bars.length < 2) return node;
+
+  const W = 660, H = 300;
+  const PAD_L = 6, PAD_R = 62, PAD_T = 10, PAD_B = 16;
+  const PRICE_H = H - PAD_T - PAD_B;
+
+  const levels = r.series.levels || [];
+  let lo = Math.min(...bars.map((b) => b.low), ...levels.map((l) => l.price));
+  let hi = Math.max(...bars.map((b) => b.high), ...levels.map((l) => l.price));
+  const pad = (hi - lo) * 0.06 || Math.abs(hi) * 0.001 || 1;
+  lo -= pad;
+  hi += pad;
+  const span = hi - lo || 1;
+
+  const slot = (W - PAD_L - PAD_R) / bars.length;
+  const x = (i) => PAD_L + slot * (i + 0.5);
+  const y = (p) => PAD_T + PRICE_H - ((p - lo) / span) * PRICE_H;
+  const at = new Map(bars.map((b, i) => [b.time, i]));
+  const rightEdge = W - PAD_R;
+  const svg = svgNode('svg', { viewBox: `0 0 ${W} ${H}`, class: 'review-chart' });
+
+  // 盈利区底色
+  const lowerBe = levels.find((l) => l.kind === 'lower_be');
+  const upperBe = levels.find((l) => l.kind === 'upper_be');
+  if (lowerBe && upperBe) {
+    svg.appendChild(svgNode('rect', {
+      x: PAD_L, y: y(upperBe.price), width: rightEdge - PAD_L,
+      height: Math.max(y(lowerBe.price) - y(upperBe.price), 1),
+      fill: '#30D158', 'fill-opacity': 0.10,
+    }));
+  }
+  // 止盈策略的临界线(|S−K| 的 0.45W / 0.55W / 0.8W)
+  const ZONE_STYLE = { hold: ['#0A84FF', '2 3'], half: ['#BF5AF2', '2 3'], stop: ['#FF453A', '1 3'] };
+  for (const z of ((r.exit_plan || {}).zones || [])) {
+    const st = ZONE_STYLE[z.kind];
+    if (!st) continue;
+    for (const price of [z.low, z.high]) {
+      const py = y(price);
+      if (py < PAD_T || py > PAD_T + PRICE_H) continue;
+      svg.appendChild(svgNode('line', {
+        x1: PAD_L, x2: rightEdge, y1: py, y2: py,
+        stroke: st[0], 'stroke-opacity': 0.45, 'stroke-width': 0.8, 'stroke-dasharray': st[1],
+      }));
+    }
+    const label = svgNode('text', { x: PAD_L + 2, y: y(z.high) - 2, 'font-size': 8, fill: st[0], 'fill-opacity': 0.8 });
+    label.textContent = `±${z.half_width}`;
+    if (y(z.high) >= PAD_T + 8) svg.appendChild(label);
+  }
+
+  // 三条行权价
+  const LEVEL_STYLE = {
+    lower: { color: '#FF9F0A', dash: '4 3', label: '下翼' },
+    center: { color: '#0A84FF', dash: '', label: '中心' },
+    upper: { color: '#FF9F0A', dash: '4 3', label: '上翼' },
+    lower_be: { color: '#30D158', dash: '2 2', label: '盈亏平衡' },
+    upper_be: { color: '#30D158', dash: '2 2', label: '盈亏平衡' },
+  };
+  for (const level of levels) {
+    const st = LEVEL_STYLE[level.kind];
+    if (!st) continue;
+    const py = y(level.price);
+    svg.appendChild(svgNode('line', {
+      x1: PAD_L, x2: rightEdge, y1: py, y2: py,
+      stroke: st.color, 'stroke-opacity': 0.8, 'stroke-width': level.kind === 'center' ? 1.2 : 1,
+      'stroke-dasharray': st.dash,
+    }));
+    if (level.kind !== 'lower_be' && level.kind !== 'upper_be') {
+      const label = svgNode('text', { x: rightEdge + 4, y: py + 3, 'font-size': 9, fill: st.color });
+      label.textContent = String(level.price);
+      svg.appendChild(label);
+    }
+  }
+
+  // 蜡烛
+  const bodyW = Math.max(slot * 0.6, 1);
+  for (let i = 0; i < bars.length; i += 1) {
+    const bar = bars[i];
+    const up = bar.close >= bar.open;
+    const color = up ? '#30D158' : '#FF453A';
+    svg.appendChild(svgNode('line', {
+      x1: x(i), x2: x(i), y1: y(bar.high), y2: y(bar.low),
+      stroke: color, 'stroke-width': Math.min(bodyW * 0.28, 1.1),
+    }));
+    svg.appendChild(svgNode('rect', {
+      x: x(i) - bodyW / 2, y: y(Math.max(bar.open, bar.close)), width: bodyW,
+      height: Math.max(Math.abs(y(bar.close) - y(bar.open)), 0.8), fill: color,
+    }));
+  }
+
+  // 开仓 / 平仓 / 到期 标记:竖线 + 圆点 + 文字
+  const MARK = { entry: { color: '#0A84FF', label: '开仓' }, exit: { color: '#BF5AF2', label: '平仓' }, expiry: { color: '#BF5AF2', label: '到期' } };
+  for (const m of r.series.markers || []) {
+    if (!at.has(m.time)) continue;
+    const i = at.get(m.time);
+    const st = MARK[m.kind] || MARK.entry;
+    svg.appendChild(svgNode('line', {
+      x1: x(i), x2: x(i), y1: PAD_T, y2: PAD_T + PRICE_H,
+      stroke: st.color, 'stroke-width': 1, 'stroke-dasharray': '3 3', 'stroke-opacity': 0.8,
+    }));
+    svg.appendChild(svgNode('circle', { cx: x(i), cy: y(m.price), r: 3, fill: st.color }));
+    const label = svgNode('text', {
+      x: x(i) + (i > bars.length / 2 ? -4 : 4), y: PAD_T + 10, 'font-size': 9.5,
+      'text-anchor': i > bars.length / 2 ? 'end' : 'start', fill: st.color,
+    });
+    label.textContent = `${st.label} ${m.price}`;
+    svg.appendChild(label);
+  }
+
+  const first = svgNode('text', { x: PAD_L, y: H - 3, 'font-size': 9, fill: 'currentColor', 'fill-opacity': 0.5 });
+  first.textContent = bars[0].time;
+  svg.appendChild(first);
+  const last = svgNode('text', { x: rightEdge, y: H - 3, 'font-size': 9, 'text-anchor': 'end', fill: 'currentColor', 'fill-opacity': 0.5 });
+  last.textContent = bars[bars.length - 1].time;
+  svg.appendChild(last);
+  node.appendChild(svg);
+
+  const legend = el('div', 'review-legend');
+  const legendItems = [['中心行权价', '#0A84FF'], ['上下翼', '#FF9F0A'], ['盈利区(到期)', '#30D158'], ['开仓', '#0A84FF'], ['平仓 / 到期', '#BF5AF2']];
+  if (r.exit_plan) legendItems.push(['临界线 ±0.45W / ±0.55W / ±0.8W(细虚线)', 'currentColor']);
+  for (const [text, color] of legendItems) {
+    const item = el('span', null, text);
+    const swatch = el('i');
+    swatch.style.color = color;
+    item.insertBefore(swatch, item.firstChild);
+    legend.appendChild(item);
+  }
+  node.appendChild(legend);
+  return node;
+}
+
+const EXIT_LEVEL_STYLE = {
+  tp1: ['#30D158', '第一档'], tp2: ['#30D158', '第二档'],
+  trail_arm: ['#FF9F0A', '回撤追踪激活'], stop: ['#FF453A', '止损'],
+};
+const PHASE_LABEL = { A: '阶段 A', B: '阶段 B', C: '阶段 C' };
+
+/** 蝶价走势:组合分钟中间价的蜡烛 + 模型价虚线 + 止盈/止损水平线 + 开仓/平仓/策略事件标记。 */
+function renderFlyChart(r) {
+  const plan = r.exit_plan || {};
+  const sim = plan.simulation || {};
+  const fs = r.fly_series || {};
+  const real = fs.bars || [];
+  const path = sim.series || [];
+  const node = card('info', `蝶价走势(组合中间价 · 1 分钟 · ${fs.source === 'ibkr' ? 'IBKR 真实数据' : '模型价'})`);
+  // 时间轴:真实 K 线与回放序列的并集,按时间排序
+  const times = Array.from(new Set([...real.map((b) => b.time), ...path.map((p) => p.time)])).sort();
+  if (times.length < 2) {
+    node.appendChild(el('p', 'empty', '没有蝶价数据:引擎未连 TWS,或 IBKR 没有这张组合的历史分钟线。'));
+    return node;
+  }
+  const realAt = new Map(real.map((b) => [b.time, b]));
+  const pathAt = new Map(path.map((p) => [p.time, p]));
+  const levels = (plan.levels || []).map((l) => l.price);
+  const prices = [];
+  for (const b of real) prices.push(b.low, b.high);
+  for (const p of path) {
+    prices.push(p.price);
+    if (p.trail_stop != null) prices.push(p.trail_stop);
+  }
+  for (const m of fs.markers || []) if (m.price != null) prices.push(m.price);
+  let lo = Math.min(...prices, ...levels.filter((v) => v != null));
+  let hi = Math.max(...prices, ...levels.filter((v) => v != null));
+  const pad = (hi - lo) * 0.08 || 0.5;
+  lo = Math.max(0, lo - pad);
+  hi += pad;
+  const span = hi - lo || 1;
+  const W = 660, H = 260, PAD_L = 6, PAD_R = 92, PAD_T = 12, PAD_B = 16;
+  const PRICE_H = H - PAD_T - PAD_B;
+  const slot = (W - PAD_L - PAD_R) / times.length;
+  const x = (i) => PAD_L + slot * (i + 0.5);
+  const y = (p) => PAD_T + PRICE_H - ((p - lo) / span) * PRICE_H;
+  const at = new Map(times.map((t, i) => [t, i]));
+  const rightEdge = W - PAD_R;
+  const svg = svgNode('svg', { viewBox: `0 0 ${W} ${H}`, class: 'review-chart' });
+
+  // 阶段底色:B、C 段淡淡标出来
+  const phaseBands = [];
+  for (let i = 0; i < times.length; i += 1) {
+    const ph = (pathAt.get(times[i]) || {}).phase;
+    if (!ph) continue;
+    const lastBand = phaseBands[phaseBands.length - 1];
+    if (lastBand && lastBand.phase === ph) lastBand.to = i;
+    else phaseBands.push({ phase: ph, from: i, to: i });
+  }
+  for (const band of phaseBands) {
+    if (band.phase === 'A') continue;
+    svg.appendChild(svgNode('rect', {
+      x: x(band.from) - slot / 2, y: PAD_T, width: slot * (band.to - band.from + 1), height: PRICE_H,
+      fill: band.phase === 'B' ? '#FF9F0A' : '#BF5AF2', 'fill-opacity': 0.06,
+    }));
+    const t = svgNode('text', { x: x(band.from), y: PAD_T + 9, 'font-size': 8.5, fill: 'currentColor', 'fill-opacity': 0.55 });
+    t.textContent = PHASE_LABEL[band.phase];
+    svg.appendChild(t);
+  }
+
+  // 止盈 / 止损水平线
+  for (const l of plan.levels || []) {
+    const st = EXIT_LEVEL_STYLE[l.kind];
+    if (!st || l.price == null) continue;
+    const py = y(l.price);
+    svg.appendChild(svgNode('line', {
+      x1: PAD_L, x2: rightEdge, y1: py, y2: py, stroke: st[0], 'stroke-opacity': 0.8, 'stroke-width': 1,
+      'stroke-dasharray': l.kind === 'trail_arm' ? '2 2' : '5 3',
+    }));
+    const label = svgNode('text', { x: rightEdge + 4, y: py + 3, 'font-size': 8.5, fill: st[0] });
+    label.textContent = `${st[1]} ${l.price}`;
+    svg.appendChild(label);
+  }
+
+  // 回撤追踪线:触发价随浮盈高水位往上棘轮,只在激活之后有值。画成阶梯,断点处不连线。
+  const trailSegs = [];
+  for (const p of path) {
+    if (p.trail_stop == null || !at.has(p.time)) { trailSegs.push(null); continue; }
+    trailSegs.push([at.get(p.time), p.trail_stop]);
+  }
+  let run = [];
+  const flushTrail = () => {
+    if (run.length > 1) {
+      let d = '';
+      for (let i = 0; i < run.length; i += 1) {
+        const [xi, v] = run[i];
+        const px = x(xi).toFixed(1);
+        if (!i) d += `M${px},${y(v).toFixed(1)}`;
+        else d += ` L${x(run[i - 1][0]).toFixed(1)},${y(v).toFixed(1)} L${px},${y(v).toFixed(1)}`;
+      }
+      svg.appendChild(svgNode('path', { d, fill: 'none', stroke: '#FF9F0A', 'stroke-opacity': 0.85, 'stroke-width': 1.2, 'stroke-dasharray': '4 2' }));
+    }
+    run = [];
+  };
+  for (const seg of trailSegs) {
+    if (seg) run.push(seg);
+    else flushTrail();
+  }
+  flushTrail();
+
+  // 蜡烛(真实分钟线)
+  const bodyW = Math.max(slot * 0.6, 1);
+  for (let i = 0; i < times.length; i += 1) {
+    const b = realAt.get(times[i]);
+    if (!b) continue;
+    const up = b.close >= b.open;
+    const color = up ? '#30D158' : '#FF453A';
+    svg.appendChild(svgNode('line', { x1: x(i), x2: x(i), y1: y(b.high), y2: y(b.low), stroke: color, 'stroke-width': Math.min(bodyW * 0.28, 1) }));
+    svg.appendChild(svgNode('rect', {
+      x: x(i) - bodyW / 2, y: y(Math.max(b.open, b.close)), width: bodyW,
+      height: Math.max(Math.abs(y(b.close) - y(b.open)), 0.8), fill: color,
+    }));
+  }
+  // 模型价:只画没有真实数据的那些分钟,虚线
+  const modelPts = path.filter((p) => p.source === 'model' && at.has(p.time));
+  if (modelPts.length) {
+    const d = modelPts.map((p, i) => `${i ? 'L' : 'M'}${x(at.get(p.time)).toFixed(1)},${y(p.price).toFixed(1)}`).join(' ');
+    svg.appendChild(svgNode('path', { d, fill: 'none', stroke: 'currentColor', 'stroke-opacity': 0.6, 'stroke-width': 1, 'stroke-dasharray': '3 2' }));
+  }
+
+  // 标记:开仓 / 实际平仓 / 策略事件
+  const MARK = { entry: ['#0A84FF', '开仓'], exit: ['#BF5AF2', '实际平仓'] };
+  for (const m of fs.markers || []) {
+    if (!at.has(m.time) || m.price == null) continue;
+    const i = at.get(m.time);
+    const st = MARK[m.kind] || MARK.entry;
+    svg.appendChild(svgNode('line', { x1: x(i), x2: x(i), y1: PAD_T, y2: PAD_T + PRICE_H, stroke: st[0], 'stroke-width': 1, 'stroke-dasharray': '3 3', 'stroke-opacity': 0.8 }));
+    svg.appendChild(svgNode('circle', { cx: x(i), cy: y(m.price), r: 3, fill: st[0] }));
+    const label = svgNode('text', { x: x(i) + 4, y: y(m.price) - 5, 'font-size': 9, fill: st[0] });
+    label.textContent = `${st[1]} ${m.price}`;
+    svg.appendChild(label);
+  }
+  for (const e of sim.events || []) {
+    if (!at.has(e.time)) continue;
+    const i = at.get(e.time);
+    const color = e.source === 'settle' ? '#BF5AF2' : (e.pnl >= 0 ? '#30D158' : '#FF453A');
+    const py = y(e.price);
+    svg.appendChild(svgNode('path', { d: `M${x(i)},${py - 9} l5,8 l-10,0 z`, fill: color }));
+    const label = svgNode('text', { x: x(i), y: py - 12, 'font-size': 8.5, 'text-anchor': 'middle', fill: color });
+    label.textContent = `策略 ${e.qty} 张 @ ${e.price}`;
+    svg.appendChild(label);
+  }
+
+  const first = svgNode('text', { x: PAD_L, y: H - 3, 'font-size': 9, fill: 'currentColor', 'fill-opacity': 0.5 });
+  first.textContent = times[0];
+  svg.appendChild(first);
+  const last = svgNode('text', { x: rightEdge, y: H - 3, 'font-size': 9, 'text-anchor': 'end', fill: 'currentColor', 'fill-opacity': 0.5 });
+  last.textContent = times[times.length - 1];
+  svg.appendChild(last);
+  node.appendChild(svg);
+
+  const legend = el('div', 'review-legend');
+  for (const [text, color] of [['止盈档位', '#30D158'], ['止损', '#FF453A'], ['回撤激活线 / 触发价(阶梯)', '#FF9F0A'], ['开仓', '#0A84FF'], ['实际平仓', '#BF5AF2'], ['模型价(无真实报价的分钟)', 'currentColor'], ['▲ 策略出手点', '#30D158']]) {
+    const item = el('span', null, text);
+    const swatch = el('i');
+    swatch.style.color = color;
+    item.insertBefore(swatch, item.firstChild);
+    legend.appendChild(item);
+  }
+  node.appendChild(legend);
+  return node;
+}
+
+function signedCell(v) {
+  const td = el('td', 'num', v == null ? '—' : fmtMoney(v));
+  if (v != null && v > 0) td.classList.add('pos');
+  if (v != null && v < 0) td.classList.add('neg');
+  return td;
+}
+
+/** 止盈点位与预计盈利 + 策略回放事件 + 三种结局对比。 */
+function renderExitPlan(r) {
+  const plan = r.exit_plan || {};
+  const sim = plan.simulation || {};
+  const p = r.profile || {};
+  const box = el('div', 'detail-section');
+  box.appendChild(el('h4', null, '止盈策略(SPX 0DTE 蝶式 v2.1 · 浮盈回撤追踪)'));
+  const ph = plan.phases || {};
+  box.appendChild(el('p', 'hint',
+    `入场 D = ${p.debit ?? '—'},翼宽 W = ${p.width},EM = ${ph.em_at_open}(翼宽 = ${ph.wing_in_sigma ?? '—'} 个日 σ)。` +
+    `阶段 A 到 ${ph.a_until};阶段 C 自 ${ph.c_from} 起(σ_剩余 ${ph.sigma_at_switch} < W/1.6 = ${ph.threshold})。` +
+    (r.exit_plan.actual_exit_mult != null ? ` 实际平仓价 = ${r.exit_plan.actual_exit_mult}×D。` : '')));
+
+  const table = el('table', 'review-table');
+  const head = el('tr');
+  for (const [h, num] of [['点位', 0], ['蝶价', 1], ['倍数', 1], ['张数', 1], ['每张盈亏', 1], ['预计盈亏', 1]]) head.appendChild(el('th', num ? 'num' : null, h));
+  table.appendChild(head);
+  for (const l of plan.levels || []) {
+    const tr = el('tr');
+    tr.appendChild(el('td', null, l.label));
+    tr.appendChild(el('td', 'num', String(l.price)));
+    tr.appendChild(el('td', 'num', `${l.mult_of_debit}×D`));
+    tr.appendChild(el('td', 'num', l.tranche_qty ? String(l.tranche_qty) : '—'));
+    tr.appendChild(signedCell(l.pnl_per_contract));
+    tr.appendChild(signedCell(l.expected_pnl));
+    table.appendChild(tr);
+  }
+  box.appendChild(table);
+
+  if (sim.applicable === false) {
+    box.appendChild(card('warn', '不能回放', sim.reason || ''));
+  } else {
+    const t = sim.totals || {};
+    const cmp = el('table', 'review-table');
+    const h2 = el('tr');
+    for (const [h, num] of [['结局对比', 0], ['盈亏', 1], ['说明', 0]]) h2.appendChild(el('th', num ? 'num' : null, h));
+    cmp.appendChild(h2);
+    const rows = [
+      ['按策略回放', t.strategy, `${(sim.events || []).length} 次出手`],
+      ['实际', t.actual, r.outcome.kind === 'closed' ? `以 ${r.outcome.price} 平仓` : (r.outcome.kind === 'expired' ? '到期结算' : '持仓中,未计')],
+      ['持到结算 / 最新', t.hold_to_settle, '按最后一根标的 K 线的内在价值'],
+      ['最高蝶价', t.best_mid_pnl, t.best_mid != null ? `中间价曾到 ${t.best_mid}` : ''],
+      ['浮盈高水位', t.profit_peak != null && p.debit != null ? t.profit_peak * p.multiplier * p.qty : null,
+        t.profit_peak ? `激活之后记到 ${t.profit_peak} 点,回撤追踪按它算` : '没到回撤追踪的激活线'],
+    ];
+    for (const [k, v, note] of rows) {
+      const tr = el('tr');
+      tr.appendChild(el('td', null, k));
+      tr.appendChild(signedCell(v));
+      tr.appendChild(el('td', null, note));
+      cmp.appendChild(tr);
+    }
+    box.appendChild(cmp);
+
+    const ev = el('table', 'review-table');
+    const h3 = el('tr');
+    for (const [h, num] of [['时间', 0], ['阶段', 0], ['张数', 1], ['蝶价', 1], ['盈亏', 1], ['规则', 0]]) h3.appendChild(el('th', num ? 'num' : null, h));
+    ev.appendChild(h3);
+    for (const e of sim.events || []) {
+      const tr = el('tr');
+      tr.appendChild(el('td', null, String(e.time).slice(11)));
+      const ph2 = el('td');
+      ph2.appendChild(el('span', 'review-phase', PHASE_LABEL[e.phase] || e.phase));
+      tr.appendChild(ph2);
+      tr.appendChild(el('td', 'num', String(e.qty)));
+      tr.appendChild(el('td', 'num', `${e.price}${e.source === 'model' ? '(模型)' : ''}`));
+      tr.appendChild(signedCell(e.pnl));
+      tr.appendChild(el('td', null, e.rule));
+      ev.appendChild(tr);
+    }
+    if (!(sim.events || []).length) {
+      const tr = el('tr');
+      tr.appendChild(el('td', null, '策略在这段数据里没有出手'));
+      ev.appendChild(tr);
+    }
+    box.appendChild(ev);
+  }
+  if ((plan.notes || []).length) {
+    const ul = el('ul', 'review-notes');
+    for (const n of plan.notes) ul.appendChild(el('li', null, n));
+    box.appendChild(ul);
+  }
+  return box;
+}
+
 async function loadPaTimeframes() {
   const select = $('pa-timeframe');
   if (!pa.timeframes.length) {
@@ -1931,7 +2666,7 @@ function renderPa() {
     row.appendChild(el('span', `pa-ev-w ${dir}`, `${item.weight > 0 ? '+' : ''}${item.weight}`));
     ev.appendChild(row);
   }
-  ev.appendChild(el('div', 'reason', '每一项的权重都写死在引擎的 priceaction.py 里,不随行情浮动;不同意某一条,可以直接把它从总分里减掉再看结论。'));
+  ev.appendChild(el('div', 'reason', '权重固定在引擎里,不随行情浮动;不认同某条,可从总分中减去再看结论。'));
   box.appendChild(ev);
 
   // ---- 结构与关键位 ---------------------------------------------------
@@ -1992,7 +2727,7 @@ function renderPa() {
   for (const item of plan.watch || []) planCard.appendChild(el('div', 'reason', `观察点:${item}`));
   if (plan.atr_note) planCard.appendChild(el('div', 'reason', plan.atr_note));
   planCard.appendChild(el('div', 'card-meta',
-    '以上只是价位与条件,不是建议:要不要做、做多大,是你的决定。本页不接下单链路,仅供研究参考,不构成投资建议。'));
+    '以上只是价位与条件,不是建议;本页不接下单链路,仅供研究参考。'));
   box.appendChild(planCard);
 
   // ---- 高周期 ---------------------------------------------------------
@@ -2020,7 +2755,7 @@ function renderPa() {
   // ---- AI 解读 --------------------------------------------------------
   const ai = card('info', 'AI 解读(可选)');
   ai.appendChild(el('div', 'reason',
-    '模型拿到的只有上面这些算好的事实(结构、关键位、缺口、扫单、形态、ATR),拿不到原始 K 线,也不会自己看图;它只负责把这些事实串成话。'));
+    '模型只拿到上面算好的事实,看不到原始 K 线;它只负责把事实串成叙述。'));
   if (pa.comment) {
     ai.appendChild(el('div', 'card-title', pa.comment.summary));
     if (pa.comment.reading) ai.appendChild(el('div', null, pa.comment.reading));
@@ -2249,6 +2984,8 @@ const ALERT_SOURCE_LABEL = {
   call_wall: '持仓墙', put_wall: '持仓墙',
   call_vol_wall: '成交墙', put_vol_wall: '成交墙',
   max_pain: '最大痛点', gamma_flip: 'Gamma 翻转', round: '整数关口',
+  ma60: '60日线', ma120: '120日线', ma200: '200日线',
+  low_52w: '52周低点', high_52w: '52周高点',
 };
 
 async function loadAlerts() {
@@ -2284,9 +3021,12 @@ async function refreshAlertWatch(id, expiry) {
   try {
     const result = await window.dafri.refreshAlert(id, expiry || '');
     await loadAlerts();
-    // 期权墙失败时会降级成只用整数关口 —— 降级可以,但必须说出来
+    // 期权墙/日线历史失败时降级继续 —— 降级可以,但必须说出来
     if (result && result.wall_error) {
-      showBanner(`期权墙没算出来,已降级为只用整数关口:${result.wall_error}`, true);
+      showBanner(`期权墙没算出来,已降级:${result.wall_error}`, true);
+    }
+    if (result && result.history_error) {
+      showBanner(`均线/52周位没算出来,已降级:${result.history_error}`, true);
     }
   } catch (err) {
     showBanner(`计算期权墙失败:${err.message}`, false);
@@ -2402,8 +3142,7 @@ function alertCard(watch) {
       // 不标出来的话,用户会以为它和真实报价是一回事。
       const derived = el('span', null, '现价由期权链反推');
       derived.title =
-        '当前券商拿不到该标的的现价,这里的现价是用看跌看涨平价关系从这条期权链自己算出来的。' +
-        '精度取决于链上报价的质量;报价不干净时引擎会拒绝计算,而不是给一个错价。';
+        '券商未提供现价,此处由期权链的看跌看涨平价反推;报价不干净时引擎会拒绝计算,而非给出错价。';
       gex.appendChild(derived);
     }
     if (wall.pc_ratio_oi != null) gex.appendChild(el('span', null, `P/C ${wall.pc_ratio_oi}`));
@@ -2709,7 +3448,7 @@ async function testLlm() {
       const node = card('ok', `连通 · ${result.model}`, null, meta);
       if (result.structured_mode === 'json_object') {
         node.appendChild(
-          el('div', 'reason', '该端点不支持 json_schema,已降级为 json_object + 提示词内嵌 schema。解析可靠性会下降,拒绝率可能升高。')
+          el('div', 'reason', '端点不支持 json_schema,已降级为 json_object + 提示词内嵌 schema,拒绝率可能升高。')
         );
       }
       box.appendChild(node);
@@ -2842,7 +3581,7 @@ function renderGuideInto(box, steps) {
 async function diagnoseTws() {
   const box = $('tws-diagnosis');
   const restore = busy($('btn-tws-diagnose'));
-  working(box, '正在握手…(第一次连接时 TWS 会弹确认框,记得点 Yes)');
+  working(box, '正在握手…(首次连接 TWS 会弹确认框,点 Yes)');
   try {
     const { results } = await window.dafri.diagnoseTws();
     clear(box);
@@ -2903,11 +3642,12 @@ function renderDiagnosis(result) {
 // ======================================================================
 // 持仓追踪:盯住一个持仓,到价自动平仓
 // ======================================================================
-const tracker = { positions: [], tracks: [], rows: {}, busy: false };
+const tracker = { positions: [], tracks: [], rows: {}, busy: false, hosted: {}, delayed: false, sig: '' };
 
 const TRACK_STATE_LABEL = {
   holding: '持有中',
   take_profit: '止盈已触发',
+  profit_trail: '利润回撤已触发',
   stop_loss: '止损已触发',
   closed: '持仓已不在',
 };
@@ -2945,6 +3685,51 @@ async function loadTracker(refreshPositions) {
   renderTrackers();
 }
 
+/** 期权腿显示成票面样子:SPX 7615P 2026-09-01;组合用引擎给的组合名。
+ * 引擎给了 label 就用引擎的,老引擎没给时从合约现场拼(追踪卡片存的是合约)。 */
+function legLabel(symbol, secType, contract) {
+  const c = contract || {};
+  if (secType === 'BAG') return c.label ? `${symbol} · ${c.label}` : `${symbol} 组合`;
+  if (secType !== 'OPT' && secType !== 'FOP') return symbol;
+  let expiry = String(c.lastTradeDateOrContractMonth || '').slice(0, 8);
+  if (expiry.length === 8) expiry = `${expiry.slice(0, 4)}-${expiry.slice(4, 6)}-${expiry.slice(6)}`;
+  const strike = c.strike != null ? String(Number(c.strike)) : '';
+  const right = String(c.right || '').slice(0, 1).toUpperCase();
+  return [symbol, strike + right, expiry].filter((s) => s.trim()).join(' ');
+}
+
+/** 一条持仓(正股、期权腿或组合)的卡片主体:数量、成本、现价、盈亏、追踪表单。 */
+function positionBody(p, node, compact) {
+  const isCombo = p.sec_type === 'BAG';
+  const unit = isCombo ? '组' : p.sec_type === 'OPT' ? '张' : '股';
+  const meta = el('div', 'card-meta');
+  meta.appendChild(el('span', null, `${Math.abs(p.quantity)} ${unit}`));
+  // 组合的成本/现价是"每组净价"(IBKR 口径含乘数的成本 → 按乘数折回每股价),借方/贷方要标出来
+  const perUnit = (v) => (isCombo && v != null ? v / (p.multiplier || 100) : v);
+  meta.appendChild(el('span', null,
+    `${isCombo ? (p.net_side === 'credit' ? '净收' : '净付') : '成本'} ${fmtMoney(perUnit(p.avg_cost))}`));
+  meta.appendChild(el('span', isCombo ? 'strong' : null,
+    p.market_price != null ? `${isCombo ? '组合现价' : '现价'} ${fmtMoney(p.market_price)}` : `${isCombo ? '组合现价' : '现价'} —`));
+  if (!compact) meta.appendChild(el('span', null, `账户 ${p.account}`));
+  node.appendChild(meta);
+
+  const pnlRow = el('div', 'card-meta');
+  pnlRow.appendChild(el('span', null, isCombo ? '组合未实现盈亏' : '未实现盈亏'));
+  pnlRow.appendChild(pnlNode(p.unrealized_pnl, p.unrealized_pct != null ? Number(p.unrealized_pct).toFixed(2) : null));
+  if (p.pnl_source === 'computed') {
+    const src = el('span', 'muted', '本地按现价计算');
+    src.title = '券商这条路没报盈亏(只给了成本),这里用与追踪器同一套口径算出来;对账以券商为准。';
+    pnlRow.appendChild(src);
+  }
+  node.appendChild(pnlRow);
+
+  if (p.tracked) {
+    node.appendChild(el('div', 'muted', '已在追踪中,设置见下方。'));
+  } else {
+    node.appendChild(trackForm(p));
+  }
+}
+
 function renderPositions() {
   const box = $('positions');
   if (!tracker.positions.length) {
@@ -2953,31 +3738,47 @@ function renderPositions() {
       : `连接${gatewayName()}之后才能读到持仓。`);
   }
   clear(box);
-  for (const p of tracker.positions) {
+  const byKey = new Map(tracker.positions.map((p) => [p.key, p]));
+  const combos = tracker.positions.filter((p) => p.sec_type === 'BAG');
+  const inCombo = new Set(combos.flatMap((c) => c.legs || []));
+
+  // 组合优先:一只蝴蝶就是一张卡,组合价格与盈亏在最上面,整组一个追踪表单;
+  // 腿明细折叠在下面,想按腿追踪再展开。
+  for (const combo of combos) {
     const node = el('div', 'card info');
     const head = el('div', 'card-title');
-    head.appendChild(el('span', null, p.symbol));
+    head.appendChild(el('span', null, `${combo.symbol} · ${combo.label}`));
+    head.appendChild(el('span', `side ${combo.quantity > 0 ? 'buy' : 'sell'}`,
+      combo.net_side === 'credit' ? '贷方(收权利金)' : '借方(付权利金)'));
+    node.appendChild(head);
+    positionBody(combo, node, false);
+
+    const legs = (combo.legs || []).map((k) => byKey.get(k)).filter(Boolean);
+    const details = el('details', 'combo-legs');
+    details.appendChild(el('summary', 'muted', `腿明细(${legs.length})· 按腿追踪`));
+    for (const p of legs) {
+      const legNode = el('div', 'card');
+      const legHead = el('div', 'card-title');
+      legHead.appendChild(el('span', null, p.label || legLabel(p.symbol, p.sec_type, p.contract)));
+      legHead.appendChild(el('span', `side ${p.quantity > 0 ? 'buy' : 'sell'}`,
+        p.quantity > 0 ? '多头' : '空头'));
+      legNode.appendChild(legHead);
+      positionBody(p, legNode, true);
+      details.appendChild(legNode);
+    }
+    node.appendChild(details);
+    box.appendChild(node);
+  }
+
+  for (const p of tracker.positions) {
+    if (p.sec_type === 'BAG' || inCombo.has(p.key)) continue;
+    const node = el('div', 'card info');
+    const head = el('div', 'card-title');
+    head.appendChild(el('span', null, p.label || legLabel(p.symbol, p.sec_type, p.contract)));
     head.appendChild(el('span', `side ${p.quantity > 0 ? 'buy' : 'sell'}`,
       p.quantity > 0 ? '多头' : '空头'));
     node.appendChild(head);
-
-    const meta = el('div', 'card-meta');
-    meta.appendChild(el('span', null, `${Math.abs(p.quantity)} ${p.sec_type === 'OPT' ? '张' : '股'}`));
-    meta.appendChild(el('span', null, `成本 ${fmtMoney(p.avg_cost)}`));
-    meta.appendChild(el('span', null, p.market_price != null ? `现价 ${fmtMoney(p.market_price)}` : '现价 —'));
-    meta.appendChild(el('span', null, `账户 ${p.account}`));
-    node.appendChild(meta);
-
-    const pnlRow = el('div', 'card-meta');
-    pnlRow.appendChild(el('span', null, '未实现盈亏'));
-    pnlRow.appendChild(pnlNode(p.unrealized_pnl, null));
-    node.appendChild(pnlRow);
-
-    if (p.tracked) {
-      node.appendChild(el('div', 'muted', '已在追踪中,设置见下方。'));
-    } else {
-      node.appendChild(trackForm(p));
-    }
+    positionBody(p, node, false);
     box.appendChild(node);
   }
 }
@@ -3001,12 +3802,33 @@ function trackForm(p) {
   const long = p.quantity > 0;
   const tp = mk('止盈价', long ? '高于现价' : '低于现价');
   const sl = mk('止损价', long ? '低于现价' : '高于现价');
-  const trail = mk('跟踪止损 %', '如 5');
+  // 两个"追踪"是不同刻度,标签必须自解释:价格回撤 5% 在利润口径上
+  // 会被成本杠杆放大(如成本 200 峰值 260 时 ≈ 利润回撤 21.7%)
+  const trail = mk('跟踪止损 %(按价格)', '价格从峰值回落 N%,全平');
+  const profitDd = mk('利润回撤 %(按利润)', '利润从峰值缩水 N%');
+  // 分档回撤:蝶式那套 40/30/20。勾上之后固定百分比让位给档位——蝶式的盈利有硬天花板
+  // (最大值 = 翼宽),浮盈越大剩余上涨空间越小,越该收紧。
+  const tierWrap = el('label', 'switch');
+  const tierText = el('span', null, '分档利润回撤(蝶式 40/30/20)');
+  tierText.appendChild(el('span', 'sub',
+    '按浮盈相对成本的倍数换档:<1× 让 40%、1–3× 让 30%、≥3× 让 20%,15:00 后一律减半。' +
+    '勾上就不看上面那个固定百分比'));
+  tierWrap.appendChild(tierText);
+  const tiers = el('input');
+  tiers.type = 'checkbox';
+  tierWrap.appendChild(tiers);
+  form.appendChild(tierWrap);
+  tiers.addEventListener('change', () => {
+    profitDd.disabled = tiers.checked;
+    if (tiers.checked) profitDd.value = '';
+  });
+  // 触发后平掉多少仓位:100 = 全平,50 = 卖一半锁利。向下取整,绝不超过持仓
+  const fraction = mk('触发后平仓比例 %', '默认 100 全平,50=卖一半');
 
   const autoWrap = el('label', 'switch');
   const autoText = el('span', null, '到价自动平仓');
   autoText.appendChild(el('span', 'sub',
-    '打开后价格到位就自动发平仓单,不再问你。仍受 auto_execute / 实盘开关 / 熔断约束'));
+    '到价即自动发平仓单,不再询问;仍受 auto_execute / 实盘开关 / 熔断约束'));
   autoWrap.appendChild(autoText);
   const auto = el('input');
   auto.type = 'checkbox';
@@ -3024,6 +3846,46 @@ function trackForm(p) {
   typeWrap.appendChild(select);
   form.appendChild(typeWrap);
 
+  // 托管到券商:GTC+OCA 挂在 IBKR 服务器,关机也生效;富途账户引擎会当场拒绝
+  const hostWrap = el('label', 'switch');
+  const hostText = el('span', null, '止盈/止损托管到券商(IBKR)');
+  hostText.appendChild(el('span', 'sub',
+    'GTC 单挂在券商服务器,关机也触发,不受本机轮询与行情延迟影响。' +
+    '利润回撤为动态停损,软件开着时按秒调整,关掉则停在最后价位'));
+  hostWrap.appendChild(hostText);
+  const host = el('input');
+  host.type = 'checkbox';
+  hostWrap.appendChild(host);
+  form.appendChild(hostWrap);
+  if (p.sec_type === 'BAG') {
+    // 自动平仓已打通:引擎盯盘、到价发反向腿的 BAG 限价单(组合一律不发市价单)。
+    // 托管这条路没核对过——组合的 GTC+OCA 在 IBKR 侧支持不明,继续拦着。
+    host.disabled = true;
+    select.value = 'LMT';
+    select.disabled = true;
+    // 闸门按账户分:纸面账户组合追踪与自动平仓**完全放开**,只有实盘要额外开关。
+    // 原来把"实盘"埋在长句尾巴上,看起来像是组合一律受限,反而让人不敢在模拟盘上测。
+    const acctInfo = pickableAccounts().find((a) => a.alias === p.account);
+    const isPaper = acctInfo ? acctInfo.is_paper : true;
+    const note = el('div', 'muted');
+    note.appendChild(el('div', null,
+      '组合按整组净价触发。平仓会发一张腿方向全部反转的 BAG 限价单' +
+      '(组合不发市价单:每条腿各吃一次价差)。托管到券商对组合仍不可用。'));
+    const gate = el('div', null);
+    if (isPaper) {
+      gate.appendChild(el('span', 'tag paper', '模拟账户'));
+      gate.appendChild(el('span', null,
+        ' 组合追踪与到价自动平仓已完全开放,不需要任何额外开关——就在这里测。'));
+    } else {
+      gate.appendChild(el('span', 'tag live', '实盘账户'));
+      gate.appendChild(el('span', null,
+        ' 组合平仓单还没在实盘核对过:到价会算、会提醒,但不会发单,' +
+        '除非在配置里打开 policies.allow_combo_live。建议先在模拟账户跑通。'));
+    }
+    note.appendChild(gate);
+    form.appendChild(note);
+  }
+
   const btn = el('button', 'btn primary tiny', '开始追踪');
   btn.addEventListener('click', async () => {
     const spec = {
@@ -3031,10 +3893,29 @@ function trackForm(p) {
       take_profit: tp.value.trim(),
       stop_loss: sl.value.trim(),
       trail_pct: trail.value.trim(),
+      profit_drawdown_pct: tiers.checked ? '' : profitDd.value.trim(),
+      profit_drawdown_preset: tiers.checked ? 'fly' : undefined,
+      close_fraction_pct: fraction.value.trim() || undefined,
       auto_close: auto.checked,
       order_type: select.value,
+      host_at_broker: host.checked,
     };
-    if (spec.auto_close) {
+    if (spec.host_at_broker && !spec.auto_close) {
+      // 托管单就是授权发单——没有总开关的托管是自相矛盾的设置
+      showBanner('托管到券商需先打开「到价自动平仓」:挂托管单即发单授权。', false);
+      return;
+    }
+    if (spec.host_at_broker) {
+      const ok = await window.dafri.confirm({
+        title: '托管到券商服务器',
+        message: `${p.symbol} 的止盈/止损将作为 GTC 单挂在券商服务器上。`,
+        detail: `数量 ${Math.abs(p.quantity)} · 账户 ${p.account}\n` +
+          '软件关闭后托管单仍然有效;利润回撤停损停在最后一次调整的价位。\n' +
+          '触发由券商实时行情决定,一张成交其余自动撤销(OCA)。',
+        confirmLabel: '我确认',
+      });
+      if (!ok) return;
+    } else if (spec.auto_close) {
       // 这一步是在授权软件替你发单,值得一次明确的确认
       const ok = await window.dafri.confirm({
         title: '开启到价自动平仓',
@@ -3047,9 +3928,11 @@ function trackForm(p) {
     }
     const restore = busy(btn);
     try {
-      await window.dafri.addTracker(spec);
-      showBanner(`已开始追踪 ${p.symbol}。`, true);
+      const created = await window.dafri.addTracker(spec);
+      showBanner(`已开始追踪 ${p.symbol},下面「正在追踪」里可以看盯盘进度。`, true);
       await loadTracker(true);
+      // 点完按钮页面纹丝不动,人不知道追踪到底建没建。滚到那张卡片并闪一下。
+      revealTrack((created && created.track && created.track.id) || null);
     } catch (err) {
       showBanner(err.message, false);
     } finally {
@@ -3058,6 +3941,80 @@ function trackForm(p) {
   });
   form.appendChild(btn);
   return form;
+}
+
+/** 建完追踪后把视线带过去:滚到「正在追踪」,并把那张新卡片闪一下。
+ * 没有这一步,点完按钮页面不动,人不知道到底建没建成。 */
+function revealTrack(trackId) {
+  const box = $('trackers');
+  if (!box) return;
+  const heading = box.previousElementSibling;
+  (heading || box).scrollIntoView({ behavior: 'smooth', block: 'center' });
+  if (!trackId) return;
+  const node = box.querySelector(`[data-track-id="${trackId}"]`);
+  if (!node) return;
+  node.classList.add('just-added');
+  setTimeout(() => node.classList.remove('just-added'), 1800);
+}
+
+/** 一条"离触发还有多远"的量表。没有现价就不画——画一条假的比不画更坏。 */
+function trackGauge(live, targets) {
+  const box = el('div', 'track-gauge');
+  const price = live.price;
+  if (price == null) {
+    box.appendChild(el('span', 'muted', '拿不到现价,本轮不判断'));
+    return box;
+  }
+  const rows = [];
+  const pending = [];
+  // 利润回撤(含分档):引擎每轮算出当前档位与它对应的价格
+  const hasTrail = Boolean(targets.profit_drawdown_tiers) || targets.profit_drawdown_pct != null;
+  if (live.profit_trail_stop != null) {
+    const pct = live.profit_drawdown_threshold;
+    rows.push({
+      label: pct != null ? `利润回撤 ${fmtNum(pct)}%` : '利润回撤',
+      target: live.profit_trail_stop,
+      note: live.profit_peak != null ? `峰值利润 ${fmtMoney(live.profit_peak)}` : '',
+      tone: 'warn',
+    });
+  } else if (hasTrail) {
+    // 设了回撤、但峰值利润还没越过成本:回撤无从谈起,不是"没设"。
+    // 这两件事看起来一样,说反了会让人以为设置没生效。
+    const peak = live.profit_peak;
+    pending.push(peak != null && peak <= 0
+      ? `利润回撤已设,但这笔从建仓起还没盈利过(峰值利润 ${fmtMoney(peak)})——` +
+        '先转正才会开始算回撤,在那之前只有止损能保护它。'
+      : '利润回撤已设,等第一次盈利后开始记峰值。');
+  }
+  if (targets.take_profit != null) {
+    rows.push({ label: '止盈', target: targets.take_profit, note: '', tone: 'ok' });
+  }
+  if (live.stop_effective != null) {
+    rows.push({ label: live.trail_stop != null && live.stop_effective === live.trail_stop
+      ? '跟踪止损' : '止损', target: live.stop_effective, note: '', tone: 'bad' });
+  }
+  if (!rows.length && !pending.length) {
+    box.appendChild(el('span', 'muted', '没设任何触发条件,只是挂着看'));
+    return box;
+  }
+  for (const text of pending) box.appendChild(el('div', 'muted', text));
+  for (const r of rows) {
+    const line = el('div', 'gauge-row');
+    line.appendChild(el('span', 'gauge-label', r.label));
+    const gap = r.target - price;
+    const pct = price ? Math.abs(gap / price) * 100 : 0;
+    const bar = el('div', 'gauge-bar');
+    const fill = el('i', `gauge-fill ${r.tone}`);
+    // 距离越近条越满:20% 以外就算"还远",满格 = 已经贴着触发价
+    fill.style.width = `${Math.max(2, Math.min(100, 100 - Math.min(pct, 20) * 5))}%`;
+    bar.appendChild(fill);
+    line.appendChild(bar);
+    line.appendChild(el('span', 'gauge-value',
+      `${fmtMoney(r.target)} · ${gap >= 0 ? '还差 +' : '还差 '}${fmtNum(gap, 4)}(${fmtNum(pct, 1)}%)`));
+    if (r.note) line.appendChild(el('span', 'muted', r.note));
+    box.appendChild(line);
+  }
+  return box;
 }
 
 function renderTrackers() {
@@ -3072,9 +4029,10 @@ function renderTrackers() {
     const kind = fired ? (t.fired_state === 'take_profit' ? 'ok' : 'bad')
       : t.enabled ? 'info' : 'warn';
     const node = el('div', `card ${kind}`);
+    node.dataset.trackId = t.id;
 
     const head = el('div', 'card-title');
-    head.appendChild(el('span', null, `${t.symbol} · ${t.account}`));
+    head.appendChild(el('span', null, `${legLabel(t.symbol, t.sec_type, t.contract)} · ${t.account}`));
     head.appendChild(el('span', `status ${fired ? (t.fired_state === 'take_profit' ? 'filled' : 'rejected') : 'pending'}`,
       fired ? TRACK_STATE_LABEL[t.fired_state] || '已触发'
         : t.enabled ? (TRACK_STATE_LABEL[live.state] || '持有中') : '已暂停'));
@@ -3084,6 +4042,19 @@ function renderTrackers() {
     const meta = el('div', 'card-meta');
     if (targets.take_profit) meta.appendChild(el('span', null, `止盈 ${fmtMoney(targets.take_profit)}`));
     if (targets.stop_loss) meta.appendChild(el('span', null, `止损 ${fmtMoney(targets.stop_loss)}`));
+    const ddTiers = targets.profit_drawdown_tiers || null;
+    if (targets.profit_drawdown_pct || ddTiers) {
+      const frac = (t.auto_close || {}).close_fraction_pct;
+      // 分档时阈值每一轮都可能变,显示当前生效的那一档而不是配置里的静态值
+      const now = live.profit_drawdown_threshold;
+      const label = ddTiers
+        ? `利润回撤 分档${now != null ? ` · 当前 ${now}%` : ''}`
+        : `利润回撤 ${targets.profit_drawdown_pct}%`;
+      meta.appendChild(el('span', null, `${label}${frac && frac < 100 ? ` → 平 ${frac}%` : ''}`));
+      if (ddTiers && live.profit_peak != null) {
+        meta.appendChild(el('span', null, `峰值利润 ${fmtMoney(live.profit_peak)}`));
+      }
+    }
     if (targets.trail_pct) {
       const s = el('span', null, `跟踪 ${targets.trail_pct}%`);
       if (live.trail_stop) s.textContent += ` → ${fmtMoney(live.trail_stop)}`;
@@ -3094,6 +4065,29 @@ function renderTrackers() {
       (t.auto_close || {}).enabled ? '自动平仓已开' : '仅提醒'));
     node.appendChild(meta);
 
+    // 券商托管状态:每张托管单一个 chip,来自按秒的 reconcile 结果
+    if ((t.auto_close || {}).host_at_broker) {
+      const hosted = tracker.hosted[t.id];
+      const row = el('div', 'card-meta');
+      row.appendChild(el('span', 'tag live', '券商托管'));
+      const orders = (hosted && hosted.orders) || [];
+      if (orders.length) {
+        for (const o of orders) {
+          row.appendChild(el('span', null,
+            o.kind === 'ptrail' ? `${o.label}(秒级调整)` : o.label));
+        }
+      } else {
+        row.appendChild(el('span', 'muted', state.connected
+          ? '托管单尚未挂出(对账中,或被闸门拦住——看下方提示)'
+          : `连接${gatewayName()}后自动挂出`));
+      }
+      if (tracker.delayed) {
+        row.appendChild(el('span', 'muted',
+          '行情可能延迟:动态调整或滞后;触发由券商实时行情决定,不受影响'));
+      }
+      node.appendChild(row);
+    }
+
     if (live.unrealized_pnl !== undefined) {
       const row = el('div', 'card-meta');
       row.appendChild(el('span', null, '未实现盈亏'));
@@ -3101,6 +4095,9 @@ function renderTrackers() {
       if (live.price != null) row.appendChild(el('span', null, `现价 ${fmtMoney(live.price)}`));
       node.appendChild(row);
     }
+    // 盯盘条:离触发还有多远。百分比看不出紧迫感,画出来才一眼看得懂;
+    // 分档回撤的触发价每轮都会跳,所以取引擎算好的那个,不在界面上按配置自己算。
+    if (!fired && t.enabled) node.appendChild(trackGauge(live, targets));
     if (live.reason) node.appendChild(el('div', 'reason', live.reason));
     if (live.blocked && live.blocked.length) {
       node.appendChild(card('warn', '到价了但没有平仓', live.blocked.join('、')));
@@ -3183,7 +4180,16 @@ async function pollTrackers() {
       await Promise.all([loadTracker(true), loadRecords()]);
       return;
     }
-    if (document.querySelector('.tab-panel.active')?.id === 'tab-tracker') renderTrackers();
+    // 1 秒一轮之后,盘口不动的那些轮次不该重建 DOM——重建会把用户正按下去的按钮
+    // 换掉,点击就丢了。只有真正影响显示的字段变了才重绘。
+    const sig = JSON.stringify((result.rows || []).map((r) => [
+      r.id, r.state, r.price, r.unrealized_pnl, r.profit_peak,
+      r.profit_drawdown_threshold, r.profit_trail_stop, r.stop_effective, r.blocked,
+    ]));
+    if (sig !== tracker.sig) {
+      tracker.sig = sig;
+      if (document.querySelector('.tab-panel.active')?.id === 'tab-tracker') renderTrackers();
+    }
   } catch {
     /* 单轮失败不打断界面;下一轮再来 */
   } finally {
@@ -3191,12 +4197,39 @@ async function pollTrackers() {
   }
 }
 
+/**
+ * 券商托管对账,一秒一轮。把"追踪设置"和券商侧挂着的托管单对齐:
+ * 该挂的挂上、利润回撤的动态停损价随峰值棘轮上移、不该在的撤掉。
+ * 软件关掉不影响已挂的托管单——这正是托管的意义;这个循环只负责"调整"。
+ */
+async function reconcileHosted() {
+  if (reconcileHosted.busy || !state.connected) return;
+  if (!(tracker.tracks || []).some((t) => (t.auto_close || {}).host_at_broker)) return;
+  reconcileHosted.busy = true;
+  try {
+    const result = await window.dafri.reconcileTrackers();
+    tracker.hosted = {};
+    for (const h of result.hosted || []) tracker.hosted[h.id] = h;
+    tracker.delayed = Boolean(result.quote_maybe_delayed);
+    // 每秒都重画会打断正在点按钮的手:只有内容变了、且正停在本页才重画
+    const snap = JSON.stringify([tracker.hosted, tracker.delayed, result.blocked || []]);
+    if (snap !== reconcileHosted.last) {
+      reconcileHosted.last = snap;
+      if (document.querySelector('.tab-panel.active')?.id === 'tab-tracker') renderTrackers();
+    }
+  } catch {
+    /* 单轮失败不打扰;托管单仍在券商侧站岗,下一秒再对 */
+  } finally {
+    reconcileHosted.busy = false;
+  }
+}
+
 // ======================================================================
 // 富途 OpenD 接入
 // ======================================================================
 const BROKER_HINT = {
-  ibkr: '需要本机跑着 TWS 或 IB Gateway 并已登录。支持组合单(价差 / 蝴蝶 / 铁鹰)。',
-  futu: '需要本机跑着富途 OpenD 并已登录。不支持组合单——多腿结构会被引擎拒绝。',
+  ibkr: '需本机运行并登录 TWS 或 IB Gateway。支持组合单(价差 / 蝴蝶 / 铁鹰)。',
+  futu: '需本机运行并登录富途 OpenD。不支持组合单,多腿结构会被拒绝。',
 };
 
 async function loadFutu() {
@@ -3240,7 +4273,7 @@ function renderBrokerSwitch(catalog) {
 
     if (provider.config_snippet) {
       // 账户与连接不给界面通道(§9.6),那至少别让人去猜字段名和默认端口
-      const tip = el('div', null, '还没配这家的连接和账户。把下面这段并进 config/settings.json,再回来切换:');
+      const tip = el('div', null, '尚未配置连接与账户。把下面这段并入 config/settings.json 后再切换:');
       tip.style.marginTop = '8px';
       node.appendChild(tip);
       const pre = el('pre', 'snippet', provider.config_snippet);
@@ -3284,13 +4317,13 @@ function renderTwsBrokerBanner(catalog) {
   if (catalog.current === 'ibkr') {
     box.className = 'notice';
     box.appendChild(el('strong', null, '当前券商接入:IBKR。'));
-    box.appendChild(el('span', null, ' 这一页的检测与连接,对应的就是引擎实际在用的通道。'));
+    box.appendChild(el('span', null, ' 引擎正通过此通道下单。'));
     return;
   }
   box.className = 'notice warn';
   box.appendChild(el('strong', null, '当前券商接入:富途 OpenD。'));
   box.appendChild(
-    el('span', null, ' 这一页只是 IBKR 侧的检测,引擎不会走这里下单。要换回来请到「富途 OpenD」页切换。')
+    el('span', null, ' 本页仅检测 IBKR,引擎不经此下单;切换请到「富途 OpenD」页。')
   );
 }
 
@@ -3299,8 +4332,8 @@ function renderFutuUnlockState(catalog) {
   if (!node) return;
   const saved = catalog.futu && catalog.futu.unlock_password_saved;
   node.textContent = saved
-    ? '已存密码(md5)。连接引擎后点「交易解锁」即可下实盘单'
-    : '未存密码。不存也能跑模拟盘,实盘单会被拦下';
+    ? '已存密码(md5),连接引擎后点「交易解锁」'
+    : '未存密码,模拟盘不受影响,实盘单会被拦下';
 }
 
 async function scanFutu() {
@@ -3326,7 +4359,7 @@ function renderFutuApps(apps, sdkInstalled) {
     const node = card(
       'bad',
       'futu-api(Python SDK)未安装',
-      '这条通道要它才能连 OpenD。它体积不小(带 pandas / protobuf),所以默认不装。'
+      '连接 OpenD 必需;体积较大(含 pandas / protobuf),默认不装。'
     );
     const btn = el('button', 'btn tiny', '安装 futu-api');
     btn.addEventListener('click', async () => {
@@ -3353,7 +4386,7 @@ function renderFutuApps(apps, sdkInstalled) {
       ? '正在运行'
       : app.installed
         ? '已安装,未运行'
-        : '未找到(OpenD 是绿色解压包,放在非常见目录时发现不了,不影响你手动启动它)';
+        : '未找到(绿色包放在非常见目录时检测不到,可手动启动)';
     const node = card(kind, app.name, stateText, app.paths.length ? [app.paths[0]] : []);
 
     if (app.installed && !app.running) {
@@ -3379,7 +4412,7 @@ function renderFutuApps(apps, sdkInstalled) {
 async function diagnoseFutu() {
   const box = $('futu-diagnosis');
   const restore = busy($('btn-futu-diagnose'));
-  working(box, '正在握手…(OpenD 必须已经登录,否则会一直超时)');
+  working(box, '正在握手…(OpenD 需已登录,否则超时)');
   try {
     const { results } = await window.dafri.diagnoseFutu();
     clear(box);
@@ -3483,10 +4516,11 @@ async function unlockFutu() {
 // 注册在案的快捷键。别在这里编不存在的——列表本身就是承诺。
 const SHORTCUTS = [
   { keys: ['mod', 'Enter'], what: '解析当前指令(不发送)' },
+  { keys: ['mod', 'Shift', 'Enter'], what: '解析并发送(有确认框)' },
   { keys: ['mod', 'Shift', 'H'], what: '暂停全部自动执行(熔断)' },
   { keys: ['mod', 'R'], what: '刷新状态' },
   { keys: ['Esc'], what: '收起打开的记录详情' },
-  { keys: ['↑', '↓'], what: '在侧栏导航之间移动(焦点在侧栏时)' },
+  { keys: ['↑', '↓'], what: '侧栏导航移动(焦点在侧栏时)' },
 ];
 
 function renderShortcuts() {
@@ -3543,9 +4577,36 @@ function bind() {
   });
 
   $('instruction').addEventListener('keydown', (e) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') submit(false);
+    // Ctrl+Enter 解析;Ctrl+Shift+Enter 解析并发送(走同一个确认框)
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') submit(e.shiftKey);
     if (e.key === 'Escape' && closeRecordDetail()) e.preventDefault();
   });
+
+  // 期权速记:点一下把片段插到光标处。片段与提示词的既定偏好同源,
+  // 界面绝不发明解析器不认识的写法——这里只是把已经生效的默认值摆到眼前。
+  document.querySelectorAll('#shorthand-chips .chip').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      const box = $('instruction');
+      const snippet = chip.dataset.snippet || '';
+      const start = box.selectionStart != null ? box.selectionStart : box.value.length;
+      const end = box.selectionEnd != null ? box.selectionEnd : box.value.length;
+      // 追加到句尾时,整句片段前补换行;逗号开头的补充片段原样接上
+      const atTail = start === box.value.length;
+      const sep = atTail && box.value && !box.value.endsWith('\n') && !snippet.startsWith(',') ? '\n' : '';
+      box.setRangeText(sep + snippet, start, end, 'end');
+      box.focus();
+    });
+  });
+  // 用过一次就记住收起状态,别每次都占一块
+  const shorthand = document.getElementById('shorthand-panel');
+  if (shorthand) {
+    try {
+      if (localStorage.getItem('dafri.shorthand.closed') === '1') shorthand.open = false;
+    } catch { /* localStorage 不可用就保持默认展开 */ }
+    shorthand.addEventListener('toggle', () => {
+      try { localStorage.setItem('dafri.shorthand.closed', shorthand.open ? '0' : '1'); } catch { /* 同上 */ }
+    });
+  }
 
   $('btn-halt').addEventListener('click', async () => {
     try {
@@ -3622,6 +4683,7 @@ function bind() {
     syncIdeaFilterButtons();
     loadIdeas();
   });
+  $('btn-ideas-digest').addEventListener('click', digestIdeas);
 
   document.querySelectorAll('#theme-picker [data-theme-mode]').forEach((btn) => {
     btn.addEventListener('click', () => applyTheme(btn.dataset.themeMode));
@@ -3651,6 +4713,13 @@ function bind() {
   });
 
   $('btn-pa-run').addEventListener('click', submitPa);
+  $('btn-review-run').addEventListener('click', () => runReview());
+  $('btn-review-refresh').addEventListener('click', () => loadReviewCandidates());
+  $('review-include-local').addEventListener('change', () => loadReviewCandidates());
+  $('review-record').addEventListener('change', () => {
+    review.selected = $('review-record').value;
+    localStorage.setItem('dafri-review-record', review.selected);
+  });
   $('pa-symbol').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') submitPa();
   });
@@ -3726,6 +4795,7 @@ function bind() {
       if (tab.dataset.tab === 'llm') loadLlm();
       if (tab.dataset.tab === 'board') { loadPending(); loadRecords(); }
       if (tab.dataset.tab === 'ideas') loadIdeas();
+      if (tab.dataset.tab === 'review') loadReviewCandidates();
       if (tab.dataset.tab === 'sectors') loadSectors(true);
       if (tab.dataset.tab === 'backtest' && !bt.strategies.length) loadBacktestStrategies();
       if (tab.dataset.tab === 'book') renderBookGrid();
@@ -3790,6 +4860,8 @@ const AUTO_TASKS = {
   sectors: { every: 30_000, fn: refreshSectorQuotes, needBroker: true },
   book: { every: 20_000, fn: refreshAllBooks, needBroker: true },
   pa: { every: 20_000, fn: () => fetchPa(false), needBroker: true },
+  // 持仓的现价与盈亏要跟着行情走:在追踪页时每 5 秒重读一次持仓(引擎侧是低优先级请求)
+  tracker: { every: 5_000, fn: () => loadTracker(true), needBroker: true },
 };
 
 function startAutoRefresh() {
@@ -3836,7 +4908,11 @@ async function boot() {
   // 警告切走了不报就没用了;持仓追踪更甚——止损是用来保命的。
   setInterval(pollAlerts, 10_000);
   loadTracker(false);
-  setInterval(pollTrackers, 8_000);
+  // 1 秒一轮:0DTE 蝶的价格几秒就能走完一个档位,8 秒的判断间隔会让"回撤 30% 就平"
+  // 变成"回撤到 45% 才发现"。单轮不重绘持仓表单、有 busy 防重入、没有追踪时直接跳过,
+  // 所以频率提上来不会把 RPC(单线程)压垮。
+  setInterval(pollTrackers, 1_000);
+  setInterval(reconcileHosted, 1_000);
   loadMacroBoard();
   startMacroRefresh();   // 连了 TWS 走 2 秒,没连回落 60 秒
   // 方式 B 盯盘:连接着且有排队订单时才轮询,避免空转

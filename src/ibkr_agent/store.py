@@ -43,6 +43,14 @@ CREATE TABLE IF NOT EXISTS record_events (
 );
 CREATE INDEX IF NOT EXISTS idx_events_record ON record_events(record_id, seq);
 
+CREATE TABLE IF NOT EXISTS broker_fills (
+    exec_id     TEXT PRIMARY KEY,
+    account_id  TEXT NOT NULL,
+    perm_id     TEXT NOT NULL DEFAULT '',
+    time        TEXT NOT NULL,
+    fill_json   TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_fills_time ON broker_fills(time);
 CREATE TABLE IF NOT EXISTS audit_log (
     seq    INTEGER PRIMARY KEY AUTOINCREMENT,
     at     TEXT NOT NULL,
@@ -71,6 +79,19 @@ CREATE TABLE IF NOT EXISTS ideas (
     analysis   TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_ideas_created ON ideas(created_at);
+
+-- 想法知识总结(对一批归档想法的 LLM 提炼)。想法本身归档后一直留在 ideas
+-- 表里;这张表存的是每次"总结知识"的产出,保留历史,复盘时能看到认知怎么
+-- 一步步变的。只增不改,删除交给用户显式操作(暂未开放)。
+CREATE TABLE IF NOT EXISTS idea_digests (
+    id         TEXT PRIMARY KEY,
+    created_at TEXT NOT NULL,
+    scope      TEXT NOT NULL DEFAULT 'archived',
+    idea_count INTEGER NOT NULL DEFAULT 0,
+    idea_ids   TEXT NOT NULL DEFAULT '[]',
+    digest     TEXT NOT NULL DEFAULT '{}'
+);
+CREATE INDEX IF NOT EXISTS idx_idea_digests_created ON idea_digests(created_at);
 
 -- 价位警告(不是交易记录,可增删改;状态要跨重启保留,否则重开一次
 -- 应用就会把现价附近的价位全部重报一遍)
@@ -110,7 +131,8 @@ CREATE TABLE IF NOT EXISTS position_tracks (
     fired_state TEXT NOT NULL DEFAULT '',
     fired_record TEXT NOT NULL DEFAULT '',
     note       TEXT NOT NULL DEFAULT '',
-    UNIQUE(account, symbol, sec_type)
+    leg        TEXT NOT NULL DEFAULT '',
+    UNIQUE(account, symbol, sec_type, leg)
 );
 
 -- append-only:任何修改历史的尝试都直接失败
@@ -166,6 +188,45 @@ class TradeStore:
         if cols and "analysis" not in cols:
             self._conn.execute("ALTER TABLE ideas ADD COLUMN analysis TEXT NOT NULL DEFAULT ''")
 
+        # 追踪表加"腿身份"列并把唯一约束改成含腿:老约束 (account, symbol, sec_type)
+        # 让一只蝴蝶的三条腿只能追踪一条。SQLite 改不了约束,只能整表重建;
+        # 老记录 leg 全填空串,正股语义不变。
+        tcols = {row["name"] for row in self._conn.execute("PRAGMA table_info(position_tracks)")}
+        if tcols and "leg" not in tcols:
+            self._conn.executescript(
+                """
+                BEGIN;
+                CREATE TABLE position_tracks_v2 (
+                    id         TEXT PRIMARY KEY,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    account    TEXT NOT NULL,
+                    symbol     TEXT NOT NULL,
+                    sec_type   TEXT NOT NULL DEFAULT 'STK',
+                    contract   TEXT NOT NULL DEFAULT '{}',
+                    targets    TEXT NOT NULL DEFAULT '{}',
+                    auto_close TEXT NOT NULL DEFAULT '{}',
+                    enabled    INTEGER NOT NULL DEFAULT 1,
+                    peak       REAL,
+                    fired_at   TEXT,
+                    fired_state TEXT NOT NULL DEFAULT '',
+                    fired_record TEXT NOT NULL DEFAULT '',
+                    note       TEXT NOT NULL DEFAULT '',
+                    leg        TEXT NOT NULL DEFAULT '',
+                    UNIQUE(account, symbol, sec_type, leg)
+                );
+                INSERT INTO position_tracks_v2
+                    (id, created_at, updated_at, account, symbol, sec_type, contract, targets,
+                     auto_close, enabled, peak, fired_at, fired_state, fired_record, note, leg)
+                SELECT id, created_at, updated_at, account, symbol, sec_type, contract, targets,
+                       auto_close, enabled, peak, fired_at, fired_state, fired_record, note, ''
+                FROM position_tracks;
+                DROP TABLE position_tracks;
+                ALTER TABLE position_tracks_v2 RENAME TO position_tracks;
+                COMMIT;
+                """
+            )
+
     def close(self) -> None:
         self._conn.close()
 
@@ -215,6 +276,31 @@ class TradeStore:
         if status not in TERMINAL_STATUSES:
             raise ValueError("未知终态:%s" % status)
         self.append_event(record_id, "final", {"final_status": status, "error_detail": error_detail})
+
+    # ---- 券商成交:只增不改,按 exec_id 去重 ------------------------------
+    def remember_fills(self, rows) -> int:
+        """把券商报回来的成交行存下来。IBKR 的 API 只给当天的,靠这里一天天累积成历史。
+        返回新增条数;同一 exec_id 再来一次直接忽略。"""
+        added = 0
+        for row in rows:
+            exec_id = str(row.get("exec_id") or "")
+            if not exec_id:
+                continue
+            cur = self._conn.execute(
+                "INSERT OR IGNORE INTO broker_fills (exec_id, account_id, perm_id, time, fill_json)"
+                " VALUES (?, ?, ?, ?, ?)",
+                (exec_id, str(row.get("account_id") or ""), str(row.get("perm_id") or ""),
+                 str(row.get("time") or ""), json.dumps(row, ensure_ascii=False, sort_keys=True)),
+            )
+            added += int(cur.rowcount or 0)
+        self._conn.commit()
+        return added
+
+    def list_fills(self, limit: int = 5000) -> List[Dict[str, Any]]:
+        rows = self._conn.execute(
+            "SELECT fill_json FROM broker_fills ORDER BY time ASC, exec_id ASC LIMIT ?", (limit,)
+        ).fetchall()
+        return [json.loads(r["fill_json"]) for r in rows]
 
     def audit(self, actor: str, action: str, detail: Optional[Dict[str, Any]] = None) -> None:
         """§9.6:切换账户、改限额、改别名表、开关自动执行等关键操作单独留痕。"""
@@ -325,23 +411,25 @@ class TradeStore:
             "fired_state": "",
             "fired_record": "",
             "note": track.get("note", ""),
+            "leg": track.get("leg") or "",
         }
         try:
             with self._tx() as conn:
                 conn.execute(
                     "INSERT INTO position_tracks"
                     " (id, created_at, updated_at, account, symbol, sec_type, contract,"
-                    "  targets, auto_close, peak, note)"
-                    " VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                    "  targets, auto_close, peak, note, leg)"
+                    " VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
                     (row["id"], row["created_at"], row["updated_at"], row["account"],
                      row["symbol"], row["sec_type"],
                      json.dumps(row["contract"], ensure_ascii=False),
                      json.dumps(row["targets"], ensure_ascii=False),
                      json.dumps(row["auto_close"], ensure_ascii=False),
-                     row["peak"], row["note"]),
+                     row["peak"], row["note"], row["leg"]),
                 )
         except sqlite3.IntegrityError:
-            raise ValueError("已经在追踪 %s 的 %s 了" % (row["account"], row["symbol"]))
+            what = "%s %s" % (row["symbol"], row["leg"]) if row["leg"] else row["symbol"]
+            raise ValueError("已经在追踪 %s 的 %s 了" % (row["account"], what))
         return row
 
     def list_tracks(self) -> List[Dict[str, Any]]:
@@ -538,6 +626,45 @@ class TradeStore:
                 (status, _now_iso(), idea_id),
             )
         return cur.rowcount > 0
+
+    # ---- 想法知识总结 ----------------------------------------------------
+    def add_idea_digest(
+        self, scope: str, idea_ids: List[str], digest: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        row = {
+            "id": str(uuid.uuid4()),
+            "created_at": _now_iso(),
+            "scope": scope,
+            "idea_count": len(idea_ids),
+            "idea_ids": list(idea_ids),
+            "digest": dict(digest),
+        }
+        with self._tx() as conn:
+            conn.execute(
+                "INSERT INTO idea_digests (id, created_at, scope, idea_count, idea_ids, digest)"
+                " VALUES (?,?,?,?,?,?)",
+                (
+                    row["id"], row["created_at"], row["scope"], row["idea_count"],
+                    json.dumps(row["idea_ids"], ensure_ascii=False),
+                    json.dumps(row["digest"], ensure_ascii=False),
+                ),
+            )
+        return row
+
+    def list_idea_digests(self, limit: int = 20) -> List[Dict[str, Any]]:
+        rows = self._conn.execute(
+            "SELECT * FROM idea_digests ORDER BY created_at DESC LIMIT ?", (limit,)
+        ).fetchall()
+        out = []
+        for row in rows:
+            digest = dict(row)
+            for key, empty in (("idea_ids", []), ("digest", {})):
+                try:
+                    digest[key] = json.loads(digest.get(key) or "null") or empty
+                except json.JSONDecodeError:
+                    digest[key] = empty
+            out.append(digest)
+        return out
 
     # ---- 读取 -----------------------------------------------------------
     def get_record(self, record_id: str) -> Optional[Dict[str, Any]]:

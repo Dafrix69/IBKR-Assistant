@@ -5,21 +5,23 @@
 """
 from __future__ import annotations
 
+import json
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Mapping, Optional
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 from .broker import BrokerError, BrokerRouter, PendingTrigger, auto_mid_limit, combo_mid_price, strike_width
-from .config import Settings, now_et
+from .config import Settings, hours_status, now_et
 from .killswitch import KillSwitch
 from .llm import LLMError, LLMResponse, build_parser
 from .market import build_snapshot, extract_symbols
 from .models import LenientParseResult, ParsedOrder, Rejection, parse_llm_payload
 from .notify import Notifier
 from .prompts import PromptBundle, load_prompt_bundle, render_user
+from .shorthand import LOCAL_MODEL, looks_like_shorthand, try_parse_shorthand
 from .store import TradeStore, redact_account
-from .validator import ApprovedOrder, RejectedOrder, Validator
+from .validator import EXTENDED_STATUSES, ApprovedOrder, RejectedOrder, Validator
 
 
 @dataclass
@@ -40,6 +42,55 @@ class EngineResult:
             "warnings": self.warnings,
             "llm": self.llm,
         }
+
+
+def resolve_fanout_accounts(settings, accounts: Optional[Sequence[str]]) -> List[str]:
+    """把界面/命令行传来的账户别名列表清洗成去重后的有效别名。
+
+    别名表外的名字直接抛 ValueError——这是用户勾选出来的,不该静默丢掉;
+    RPC 层会把它变成 -32602 让界面报错。
+    """
+    if not accounts:
+        return []
+    seen: List[str] = []
+    for alias in accounts:
+        alias = str(alias).strip()
+        if not alias or alias in seen:
+            continue
+        if alias == "DEFAULT" or settings.account_by_alias(alias) is None:
+            raise ValueError(
+                "账户别名 %r 不在别名表中(可用:%s)。"
+                % (alias, "、".join(settings.alias_list()) or "(未配置)")
+            )
+        seen.append(alias)
+    return seen
+
+
+def fan_out_orders(
+    orders: Sequence[ParsedOrder], accounts: Sequence[str]
+) -> Tuple[List[ParsedOrder], Optional[str]]:
+    """按勾选账户复制未指定账户的订单;返回(新订单列表, 给用户看的说明或 None)。
+
+    - 勾了 1 个账户:DEFAULT 订单改指向它(相当于"这次默认发到这个账户")。
+    - 勾了 N 个账户:DEFAULT 订单变 N 份,顺序为 账户1 的所有订单、账户2 的所有订单……
+      重复防抖的指纹含账户别名,同一笔订单发到两个账户不会被互相当成重复。
+    - 指令里明确写了账户别名的订单原样保留,不复制:用户说了算。
+    """
+    if not accounts:
+        return list(orders), None
+    defaults = [o for o in orders if o.account == "DEFAULT"]
+    explicit = [o for o in orders if o.account != "DEFAULT"]
+    expanded: List[ParsedOrder] = []
+    for alias in accounts:
+        for order in defaults:
+            expanded.append(order.model_copy(update={"account": alias}))
+    expanded.extend(explicit)
+    if len(accounts) == 1 or not defaults:
+        return expanded, None
+    note = "已按勾选账户同时发单:%s(每笔订单各 %d 份,各自独立校验与记录)" % (
+        "、".join(accounts), len(accounts)
+    )
+    return expanded, note
 
 
 class TradingEngine:
@@ -64,6 +115,14 @@ class TradingEngine:
         self.router = router
         self.bundle = bundle or load_prompt_bundle(settings)
         self.pending_triggers: List[PendingTrigger] = []
+        # 券商托管单的对账缓存:track_id → {kind: 托管单信息};orderId → (track_id, kind)。
+        # 真相永远在券商那边——重启后由 _adopt_hosted() 按 orderRef 认领重建,
+        # 这两张表只是为了少打接口。
+        self._hosted: Dict[str, Dict[str, Dict[str, Any]]] = {}
+        self._hosted_index: Dict[int, Any] = {}
+        self._hosted_adopted = False
+        # 速记解析的公开源现价注入点(测试替身用;None = macro.public_index_price)
+        self.public_price_fn: Optional[Any] = None
         # IBKR orderId / permId → 记录 id,回报进来才知道该往哪条记录上追加
         self._order_index: Dict[int, str] = {}
         self._finalized: set = set()
@@ -79,9 +138,18 @@ class TradingEngine:
         channel: str = "manual",
         moment: Optional[datetime] = None,
         snapshot: Optional[Mapping[str, float]] = None,
+        accounts: Optional[Sequence[str]] = None,
     ) -> EngineResult:
+        """解析一条指令并走完校验/执行。
+
+        ``accounts`` 是用户在界面上勾选的目标账户别名。给了就把模型没有指定账户
+        (account="DEFAULT")的订单按别名逐个复制——勾两个账户,每笔订单就变成两笔,
+        各自独立走校验、落库、下单;指令里明确点名账户的订单不受影响。
+        不给或为空维持原行为(DEFAULT → 默认账户)。
+        """
         result = EngineResult()
         moment = moment or now_et()
+        targets = resolve_fanout_accounts(self.settings, accounts)
 
         breaker = self.killswitch.state()
         if breaker.engaged:
@@ -95,12 +163,59 @@ class TradingEngine:
             symbols = extract_symbols(instruction, self.settings)
             snapshot = build_snapshot(symbols, self.router.index_price, cached=snapshot)
 
-        user_message = render_user(
-            self.bundle, self.settings, instruction, moment, snapshot=snapshot
-        )
+        # 本地速记优先:用户的固定行话(如「1.8 挂15蝴蝶 15CM」)不必等大模型,
+        # 微秒级出与 LLM 同形的 payload,走完全相同的校验与执行路径。
+        # 本地解析抛任何异常都静默回落到 LLM——快是锦上添花,不能成为新的故障点。
+        local_payload = None
+        shorthand_note = None
+        try:
+            if looks_like_shorthand(instruction):
+                # 没连券商时快照里没有现价,「15蝴蝶」的中心算不出来——
+                # 用宏观行情带同款公开源兜底(^GSPC 就是 SPX 本尊,分钟级延迟)。
+                from .macro import public_index_price
+                from .shorthand import shorthand_symbols
+
+                fetch = self.public_price_fn or public_index_price
+                for sym in shorthand_symbols(instruction):
+                    if snapshot.get(sym) is None:
+                        price = fetch(sym)
+                        if price is not None:
+                            snapshot[sym] = price
+                            shorthand_note = (
+                                "现价来自公开数据源(可能延迟数分钟),请核对中心行权价与方向"
+                            )
+            local_payload = try_parse_shorthand(instruction, snapshot, moment)
+            if local_payload is not None and shorthand_note:
+                for item in local_payload["orders"]:
+                    item["warnings"].append(shorthand_note)
+        except Exception:  # noqa: BLE001
+            local_payload = None
+
+        if local_payload is None and looks_like_shorthand(instruction):
+            # 观测点:哪条蝴蝶写法没被本地语法接住(落到大模型)。
+            # 不影响任何行为,只为日后照着真实落网样本扩语法。
+            self.store.audit("engine", "shorthand_fallback", {"instruction": instruction[:120]})
+
+        if local_payload is not None:
+            response = LLMResponse(
+                text=json.dumps(local_payload, ensure_ascii=False),
+                model=LOCAL_MODEL,
+                prompt_version=self.bundle.version,
+                prompt_fingerprint=self.bundle.fingerprint,
+                latency_ms=0,
+                usage={},
+                structured_mode="none",
+            )
+
+        user_message = None
+        if local_payload is None:
+            user_message = render_user(
+                self.bundle, self.settings, instruction, moment, snapshot=snapshot
+            )
 
         try:
-            response = self.parser.parse(self.bundle, user_message)
+            if local_payload is None:
+                response = self.parser.parse(self.bundle, user_message)
         except LLMError as exc:
             # 调用失败 = 这条指令被拒了,不是"提示"。界面要按拒绝显示,别让用户以为下单了
             self.killswitch.record_failure(str(exc), kind="parse")
@@ -147,7 +262,15 @@ class TradingEngine:
                  "original_text": rejection.original_text}
             )
 
-        # 2. 软件层硬校验
+        # 2. 软件层硬校验(先按勾选账户扇出:同一笔订单每个账户一份)
+        orders, fanout_note = fan_out_orders(parsed.orders, targets)
+        if fanout_note:
+            result.warnings.append(fanout_note)
+            self.store.audit(
+                "engine", "fanout",
+                {"accounts": list(targets), "orders": len(parsed.orders), "expanded": len(orders)},
+            )
+        orders = self._auto_outside_rth(orders, moment)
         validator = Validator(
             self.settings,
             moment,
@@ -155,8 +278,11 @@ class TradingEngine:
             recent_orders=self.store.recent_orders(
                 self.settings.limits.duplicate_window_minutes, moment
             ),
+            market_status_fn=lambda o: self._order_market_status(o, moment),
         )
-        outcome = validator.validate_all(parsed.orders)
+        outcome = validator.validate_all(
+            orders, limit=self.settings.limits.max_orders_per_input * max(1, len(targets))
+        )
 
         for rejected in outcome.rejected:
             self._record_validator_rejection(instruction, channel, response, rejected)
@@ -407,14 +533,14 @@ class TradingEngine:
             return out
 
         try:
-            positions = {p["key"]: p for p in (self.router.positions() or [])}
+            positions = {p["key"]: p for p in tk.with_combos(self.router.positions() or [])}
         except Exception as exc:  # noqa: BLE001 - 读不到持仓不该炸掉轮询
             self.store.audit("engine", "positions_failed", {"error": str(exc)[:300]})
             return out
 
         breaker = self.killswitch.state()
         for track in tracks:
-            key = "%s|%s|%s" % (track["account"], track["symbol"], track["sec_type"])
+            key = tk.track_key(track)
             raw = positions.get(key)
             if raw is None:
                 # 仓位已经不在了(手动平掉、或被别的单平了)。停掉追踪但不删——
@@ -427,6 +553,17 @@ class TradingEngine:
                 out["rows"].append({**track, "state": "closed", "reason": "持仓已不存在"})
                 continue
 
+            # 持仓行里的现价来自 TWS 的 portfolio 推送,盘前/盘后常常是空的——
+            # 追踪要全时段有效,拿不到就退到行情接口再要一次(只对股票;
+            # 期权腿的价格接口不同,拿不到就照实说"本轮不判断")。
+            if raw.get("market_price") is None and raw.get("sec_type") == "STK":
+                try:
+                    fallback = self.router.index_price(raw["symbol"])
+                except Exception:  # noqa: BLE001 - 行情失败不该炸掉轮询
+                    fallback = None
+                if fallback is not None:
+                    raw["market_price"] = fallback
+                    raw["price_source"] = "quote"
             position = tk.Position(
                 account=raw["account"], symbol=raw["symbol"], sec_type=raw["sec_type"],
                 quantity=raw["quantity"], avg_cost=raw["avg_cost"],
@@ -435,7 +572,8 @@ class TradingEngine:
                 unrealized_pnl=raw["unrealized_pnl"],
             )
             targets = tk.Targets(**(track["targets"] or {}))
-            result = tk.evaluate(position, targets, raw["market_price"], track.get("peak"))
+            result = tk.evaluate(position, targets, raw["market_price"], track.get("peak"),
+                                 minute=moment.hour * 60 + moment.minute)
 
             # 峰值只在变了的时候写,免得每一轮都打一次库
             if result["peak"] is not None and result["peak"] != track.get("peak"):
@@ -448,14 +586,28 @@ class TradingEngine:
                 continue
 
             auto = tk.AutoClose(**(track["auto_close"] or {}))
+            if auto.host_at_broker and getattr(
+                self.router, "SUPPORTS_HOSTED_CLOSE", False
+            ):
+                # 触发与执行都归券商托管单(sync_hosted 那条路)。这里若再发一次
+                # 平仓,就是托管单 + 软件单各平一次——双重平仓等于反向开仓。
+                row["hosted"] = True
+                continue
+            # 追踪止盈全时段有效:盘前/盘后照样平(平仓单会自动转盘外限价),
+            # 只有休市才真的发不出去。期权/组合按**合约自己的**时段判——
+            # Settings.market_status 是照美股正股写的,SPX 期权还有 20:15–次日 09:25
+            # 那一整段隔夜可交易时间,用正股表会把它整段当成休市(见 broker.contract_hours)。
+            market_status = self._market_status_for(raw, moment)
             blockers = tk.close_blockers(
                 auto=auto, position=position,
                 account_is_paper=self._account_is_paper(track["account"]),
                 auto_execute=self.settings.policies.auto_execute,
                 allow_live_trading=self.settings.policies.allow_live_trading,
                 breaker_engaged=breaker.engaged,
-                market_status=self.settings.market_status(moment),
+                market_status=market_status,
+                outside_rth=True,
                 already_fired=bool(track.get("fired_at")),
+                combo_live_ok=self.settings.policies.allow_combo_live,
             )
             if blockers:
                 # 到价了但发不出去,这件事必须让用户当场知道——他可能正指望
@@ -471,16 +623,98 @@ class TradingEngine:
                                        "reason": result["reason"], "blockers": blockers})
                 continue
 
-            fired = self._close_position(track, position, auto, result)
+            fired = self._close_position(track, position, auto, result, market_status)
             if fired:
                 out["fired"].append(fired)
         return out
+
+    def _auto_outside_rth(self, orders: Sequence[ParsedOrder], moment: datetime) -> List[ParsedOrder]:
+        """合约此刻在盘外时段能交易时,自动给订单打上 outsideRth。
+
+        不打这个标志,IBKR 只会把单子挂着、等常规时段才送交易所(TWS 原话:"您的委托单在
+        08:30:00 美国/中部前不会被下达交易所")。而 SPX 期权 20:15–次日 09:25 本来就能成交——
+        在那个时段按下发送的人要的是现在就成交,不是等明早开盘。
+
+        两条不碰:
+          * **市价单不自动打**。盘外只收限价单,打上反而从"挂到开盘"变成"当场被拒";
+            让它挂着更接近用户本意。
+          * 用户已经显式写了 outsideRth 的不动——显式永远压过自动。
+        """
+        if not self.settings.policies.auto_outside_rth:
+            return list(orders)
+        out: List[ParsedOrder] = []
+        for order in orders:
+            spec = order.order
+            status = (self._order_market_status(order, moment)
+                      or self.settings.market_status(moment))
+            if status in EXTENDED_STATUSES and not spec.outsideRth and spec.orderType != "MKT":
+                order = order.model_copy(update={
+                    "order": spec.model_copy(update={"outsideRth": True}),
+                    "warnings": list(order.warnings) + [
+                        "当前为%s,已自动打上盘外标志(outsideRth=true):不打的话这张单会挂着,"
+                        "等常规时段才送交易所。不想在盘外成交就把 policies.auto_outside_rth 关掉。"
+                        % status
+                    ],
+                })
+            out.append(order)
+        return out
+
+    def _order_market_status(self, order, moment: datetime) -> Optional[str]:
+        """一张**待下单**的期权/组合此刻面对的时段(拿不到回 None,让校验退回正股表)。
+
+        和持仓那条路(_market_status_for)同一个来源:合约自己的 tradingHours。
+        下单与平仓用同一张时段表,否则会出现"能平不能开"或反过来的荒唐结果。
+        """
+        contract = getattr(order, "contract", None)
+        if contract is None or contract.secType not in ("OPT", "FOP", "BAG"):
+            return None
+        legs = getattr(contract, "legs", None) or []
+        if contract.secType == "BAG":
+            if not legs:
+                return None
+            leg = legs[0]
+            row_contract = {"secType": "BAG", "symbol": contract.symbol, "legs": [{
+                "lastTradeDateOrContractMonth": leg.lastTradeDateOrContractMonth,
+                "strike": leg.strike, "right": leg.right, "ratio": 1.0}]}
+        else:
+            row_contract = {
+                "secType": contract.secType, "symbol": contract.symbol,
+                "lastTradeDateOrContractMonth": contract.lastTradeDateOrContractMonth,
+                "strike": contract.strike, "right": contract.right,
+            }
+        row = {"account": order.account, "symbol": contract.symbol,
+               "sec_type": contract.secType, "contract": row_contract}
+        status = self._market_status_for(row, moment)
+        # 与正股表一致时返回 None:让 validator 用它自己那个,少一次无谓的分歧
+        return None if status == self.settings.market_status(moment) else status
+
+    def _market_status_for(self, raw: Dict[str, Any], moment: datetime) -> str:
+        """这条持仓此刻能不能交易。期权/组合优先用合约的真实时段,拿不到就退回正股表。"""
+        if str(raw.get("sec_type") or "") not in ("OPT", "FOP", "BAG"):
+            return self.settings.market_status(moment)
+        getter = getattr(self.router, "contract_hours", None)
+        if getter is None:
+            return self.settings.market_status(moment)
+        account = self.settings.account_by_alias(raw.get("account") or "")
+        if account is None:
+            return self.settings.market_status(moment)
+        try:
+            hours = getter(raw, account)
+        except Exception:  # noqa: BLE001 - 查时段失败不该炸掉轮询
+            hours = None
+        if not hours:
+            return self.settings.market_status(moment)
+        trading, liquid, tz_id = hours
+        status = hours_status(trading, tz_id, moment, liquid)
+        return status or self.settings.market_status(moment)
 
     def _account_is_paper(self, alias: str) -> bool:
         account = self.settings.account_by_alias(alias)
         return bool(account.is_paper) if account else True
 
-    def _close_position(self, track, position, auto, result) -> Optional[Dict[str, Any]]:
+    def _close_position(
+        self, track, position, auto, result, market_status: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
         """真的把平仓单发出去,并且**先落闩再发**。
 
         闩(fired_at)必须在发单之前写:place() 走到一半抛异常时,单子可能已经
@@ -491,7 +725,8 @@ class TradingEngine:
         from .models import parse_llm_payload
 
         payload = tk.build_close_order(
-            position, auto, result.get("price"), result["state"], track["contract"] or {}
+            position, auto, result.get("price"), result["state"], track["contract"] or {},
+            market_status=market_status or self.settings.market_status(now_et()),
         )
         try:
             parsed = parse_llm_payload({"orders": [payload], "rejections": []})
@@ -552,6 +787,275 @@ class TradingEngine:
         return {"id": track["id"], "symbol": track["symbol"], "state": result["state"],
                 "record_id": record_id, "reason": result["reason"],
                 "order_id": placement.order_id}
+
+    # ---- 券商托管的止盈/止损:对账循环 -----------------------------------
+    def sync_hosted(self, moment: Optional[datetime] = None) -> Dict[str, Any]:
+        """把"追踪设置"和"券商侧挂着的托管单"对齐(挂缺的、改变了的、撤多余的)。
+
+        由界面按秒驱动。软件盯盘怕的三件事——轮询漏插针、软件必须开着、我们
+        这头行情延迟——托管单都不怕:触发发生在券商服务器的实时行情上。这里
+        每一轮只做增量:该挂的挂上、动态停损价变了就改、不该在的撤掉。
+        """
+        from . import tracker as tk
+
+        out: Dict[str, Any] = {"hosted": [], "blocked": [], "quote_maybe_delayed": False}
+        router = self.router
+        if router is None or not getattr(router, "SUPPORTS_HOSTED_CLOSE", False):
+            return out
+        tracks = self.store.list_tracks()
+        wants_hosting = any((t["auto_close"] or {}).get("host_at_broker") for t in tracks)
+        if not wants_hosting and not self._hosted:
+            return out
+        if not self._hosted_adopted:
+            self._adopt_hosted()
+
+        try:
+            positions = {p["key"]: p for p in tk.with_combos(router.positions() or [])}
+        except Exception as exc:  # noqa: BLE001 - 读不到持仓不该炸掉对账
+            self.store.audit("engine", "hosted_positions_failed", {"error": str(exc)[:300]})
+            return out
+
+        breaker = self.killswitch.state()
+        alive = set()
+        for track in tracks:
+            tid = track["id"]
+            auto = tk.AutoClose(**(track["auto_close"] or {}))
+            if not auto.host_at_broker:
+                self._cancel_hosted_track(tid, "托管已关闭")
+                continue
+            if self._account_is_paper(track["account"]):
+                # 模拟账户常拿延迟行情:动态调整可能滞后(且只会偏松,不会偏紧),
+                # 托管单本身仍由券商实时触发——把这件事告诉界面。
+                out["quote_maybe_delayed"] = True
+            key = tk.track_key(track)
+            raw = positions.get(key)
+            if raw is None:
+                self._cancel_hosted_track(tid, "持仓已不存在")
+                continue
+            position = tk.Position(
+                account=raw["account"], symbol=raw["symbol"], sec_type=raw["sec_type"],
+                quantity=raw["quantity"], avg_cost=raw["avg_cost"],
+                multiplier=raw["multiplier"], currency=raw["currency"],
+                market_price=raw["market_price"], market_value=raw["market_value"],
+                unrealized_pnl=raw["unrealized_pnl"],
+            )
+            # 托管单只是挂着,不是立刻成交——时段闸门不适用,其余闸门照过:
+            # 挂单也是发单,授权(auto_execute/实盘开关)与熔断一个都不能少。
+            blockers = tk.close_blockers(
+                auto=auto, position=position,
+                account_is_paper=self._account_is_paper(track["account"]),
+                auto_execute=self.settings.policies.auto_execute,
+                allow_live_trading=self.settings.policies.allow_live_trading,
+                breaker_engaged=breaker.engaged,
+                market_status="盘中",
+                already_fired=bool(track.get("fired_at")),
+            )
+            if blockers:
+                self._cancel_hosted_track(tid, "、".join(blockers))
+                out["blocked"].append({"id": tid, "symbol": track["symbol"],
+                                       "blockers": blockers})
+                continue
+
+            peak = tk.advance_peak(position, raw["market_price"], track.get("peak"))
+            if peak is not None and peak != track.get("peak"):
+                self.store.update_track(tid, peak=peak)
+            plan = tk.hosted_plan(
+                position, tk.Targets(**(track["targets"] or {})), auto, peak
+            )
+            alive.add(tid)
+            current = self._hosted.setdefault(tid, {})
+            desired = {item["kind"] for item in plan}
+            for kind in [k for k in current if k not in desired]:
+                self._cancel_hosted_one(tid, kind, "该目标已移除")
+            oca = "dafri-trk-%s" % tid[:8]
+            for item in plan:
+                cur = current.get(item["kind"])
+                try:
+                    if cur is None:
+                        self._place_hosted_one(track, item, oca)
+                    elif tk.hosted_needs_update(cur, item):
+                        self._modify_hosted_one(track, cur, item)
+                except Exception as exc:  # noqa: BLE001 - 单张失败不拖垮整轮
+                    self.store.audit("engine", "hosted_place_failed", {
+                        "track": tid, "kind": item["kind"], "error": str(exc)[:300],
+                    })
+                    self.killswitch.record_failure(str(exc), kind="broker")
+            entries = self._hosted.get(tid) or {}
+            out["hosted"].append({
+                "id": tid, "symbol": track["symbol"],
+                "orders": [
+                    {k: v.get(k) for k in ("kind", "label", "quantity", "lmt_price",
+                                            "aux_price", "trailing_percent", "order_id")}
+                    for v in entries.values()
+                ],
+            })
+
+        for tid in [t for t in self._hosted if t not in alive and t not in
+                    {tr["id"] for tr in tracks}]:
+            self._cancel_hosted_track(tid, "追踪已删除")
+        return out
+
+    def _adopt_hosted(self) -> None:
+        """重启后按 orderRef 认领券商侧还挂着的托管单——先认领再对账,
+        否则同一追踪会被再挂一遍。"""
+        lister = getattr(self.router, "list_hosted_open", None)
+        if not callable(lister):
+            self._hosted_adopted = True
+            return
+        try:
+            rows = lister()
+        except Exception as exc:  # noqa: BLE001 - 下一轮再试
+            self.store.audit("engine", "hosted_adopt_failed", {"error": str(exc)[:300]})
+            return
+        from . import tracker as tk
+
+        for row in rows:
+            parts = str(row.get("order_ref") or "").split(":")
+            if len(parts) != 3 or parts[0] != "trk":
+                continue
+            _, tid, kind = parts
+            entry = {
+                "kind": kind,
+                "label": tk.HOSTED_LABELS.get(kind, kind),
+                "order_id": row.get("order_id"),
+                "record_id": None,
+                "quantity": row.get("quantity"),
+                "lmt_price": row.get("lmt_price"),
+                "aux_price": row.get("aux_price"),
+                "trailing_percent": row.get("trailing_percent"),
+            }
+            self._hosted.setdefault(tid, {})[kind] = entry
+            if row.get("order_id"):
+                self._hosted_index[int(row["order_id"])] = (tid, kind)
+        self._hosted_adopted = True
+        if rows:
+            self.store.audit("engine", "hosted_adopted", {"count": len(rows)})
+
+    def _place_hosted_one(self, track, item, oca: str) -> None:
+        from .models import ContractSpec
+
+        account = self.settings.account_by_alias(track["account"])
+        if account is None:
+            raise BrokerError("账户别名 %s 已不存在。" % track["account"])
+        contract_spec = ContractSpec.model_validate(track["contract"] or {})
+        ref = "trk:%s:%s" % (track["id"], item["kind"])
+        record = self._base_record(
+            "%s:%s %d %s(GTC,挂在券商服务器)" % (
+                item["label"], item["action"], item["quantity"], track["symbol"]
+            ),
+            "tracker", None,
+        )
+        record["account"] = {"alias": account.alias, "account_id": account.account_id,
+                             "is_paper": account.is_paper}
+        record["contract"] = dict(track["contract"] or {})
+        record["order"] = {k: item.get(k) for k in
+                           ("action", "order_type", "quantity", "lmt_price",
+                            "aux_price", "trailing_percent")}
+        record["execution_type"] = "HOSTED"
+        record["signature"] = ref
+        record_id = self.store.create_record(record)
+
+        result = self.router.place_hosted(account, contract_spec, item, oca, ref)
+        entry = {**item, "order_id": result.get("order_id"), "record_id": record_id}
+        self._hosted.setdefault(track["id"], {})[item["kind"]] = entry
+        if result.get("order_id"):
+            self._hosted_index[int(result["order_id"])] = (track["id"], item["kind"])
+            self._order_index[int(result["order_id"])] = record_id
+        if result.get("perm_id"):
+            self._order_index[int(result["perm_id"])] = record_id
+        self.store.append_event(record_id, "status", {
+            "status": result.get("status"), "order_id": result.get("order_id"),
+        })
+        self.killswitch.record_success(kind="broker")
+        self.notifier.notify("托管单已挂出", "%s:%s" % (track["symbol"], item["label"]))
+
+    def _modify_hosted_one(self, track, current, item) -> None:
+        order_id = current.get("order_id")
+        if not order_id:
+            return
+        ok = self.router.modify_hosted(int(order_id), item)
+        if not ok:
+            # 券商侧已经不认识这张单(成交/撤销竞态):丢掉缓存,下一轮重挂
+            self._drop_hosted_entry(track["id"], current.get("kind"))
+            return
+        record_id = current.get("record_id")
+        if record_id:
+            self.store.append_event(record_id, "status", {
+                "status": "Adjusted",
+                "lmt_price": item.get("lmt_price"),
+                "aux_price": item.get("aux_price"),
+                "quantity": item.get("quantity"),
+            })
+        current.update({k: item.get(k) for k in
+                        ("quantity", "lmt_price", "aux_price", "trailing_percent",
+                         "label")})
+
+    def _cancel_hosted_track(self, track_id: str, reason: str) -> None:
+        entries = self._hosted.get(track_id)
+        if not entries:
+            return
+        for kind in list(entries):
+            self._cancel_hosted_one(track_id, kind, reason)
+
+    def _cancel_hosted_one(self, track_id: str, kind: str, reason: str) -> None:
+        entries = self._hosted.get(track_id) or {}
+        entry = entries.get(kind)
+        if entry is None:
+            return
+        order_id = entry.get("order_id")
+        if order_id:
+            try:
+                self.router.cancel_hosted(int(order_id))
+            except Exception as exc:  # noqa: BLE001 - 撤单失败要让人知道,但不炸循环
+                self.store.audit("engine", "hosted_cancel_failed", {
+                    "track": track_id, "kind": kind, "error": str(exc)[:300],
+                })
+                return
+        record_id = entry.get("record_id")
+        if record_id:
+            self.store.append_event(record_id, "status",
+                                    {"status": "Cancelled", "reason": reason})
+        self._drop_hosted_entry(track_id, kind)
+
+    def _drop_hosted_entry(self, track_id: str, kind) -> None:
+        entries = self._hosted.get(track_id)
+        if entries and kind in entries:
+            order_id = entries[kind].get("order_id")
+            if order_id:
+                self._hosted_index.pop(int(order_id), None)
+            del entries[kind]
+        if entries is not None and not entries:
+            self._hosted.pop(track_id, None)
+
+    #: 托管单成交 → 追踪落闩时,kind 映射回软件盯盘同一套触发状态
+    _HOSTED_FIRED_STATE = {"tp": "take_profit", "sl": "stop_loss",
+                           "trail": "stop_loss", "ptrail": "profit_trail"}
+
+    def _hosted_on_status(self, trade) -> None:
+        """托管单的终态处理:成交 → 追踪落闩;撤销 → 丢缓存。
+
+        OCA 的兄弟单由券商自动撤,撤单回报走同一条路清理缓存。
+        """
+        order_id = getattr(getattr(trade, "order", None), "orderId", None)
+        if not order_id or int(order_id) not in self._hosted_index:
+            return
+        tid, kind = self._hosted_index[int(order_id)]
+        status = getattr(getattr(trade, "orderStatus", None), "status", "")
+        if status == "Filled":
+            entry = (self._hosted.get(tid) or {}).get(kind) or {}
+            self.store.update_track(
+                tid, fired_at=now_et().isoformat(timespec="seconds"),
+                fired_state=self._HOSTED_FIRED_STATE.get(kind, kind),
+                fired_record=entry.get("record_id") or "", enabled=False,
+            )
+            track = self.store.get_track(tid)
+            symbol = track["symbol"] if track else "?"
+            self.notifier.notify("托管单已成交", "%s:%s" % (symbol, entry.get("label", kind)))
+            # 整组落闩:OCA 兄弟单券商会自己撤,这里直接清缓存
+            for k in list(self._hosted.get(tid) or {}):
+                self._drop_hosted_entry(tid, k)
+        elif status in ("Cancelled", "ApiCancelled", "Inactive"):
+            self._drop_hosted_entry(tid, kind)
 
     def expire_pending(self, moment: Optional[datetime] = None) -> int:
         """收盘后清理当日未触发的条件单(tif=DAY 的语义,§8.2b)。"""
@@ -724,6 +1228,7 @@ class TradingEngine:
         return None
 
     def _on_order_status(self, trade) -> None:
+        self._hosted_on_status(trade)
         record_id = self._record_for(trade)
         if not record_id:
             self._stash_unmatched("status", trade)
@@ -792,6 +1297,10 @@ class TradingEngine:
         state = self.killswitch.engage(reason)
         cancelled = self.router.cancel_all_open() if self.router else 0
         self.pending_triggers.clear()
+        # 托管单也被 cancel_all_open 撤掉了,缓存跟着清;熔断解除后由对账循环
+        # 按闸门决定要不要重挂(熔断未解除时闸门会拦住)。
+        self._hosted.clear()
+        self._hosted_index.clear()
         self.store.audit("user", "halt", {"reason": reason, "cancelled": cancelled})
         self.notifier.breaker("%s(已撤销 %d 笔未成交单)" % (reason, cancelled))
         return {"engaged": state.engaged, "cancelled": cancelled}

@@ -101,6 +101,50 @@ def test_idea_analyze_stores_result_with_fake_llm(server, monkeypatch):
     assert listed["analysis"]["checks"] == ["确认 AXTI 流动性", "查财报日期"]
 
 
+def test_idea_digest_summarizes_archived_ideas_and_persists(server, monkeypatch):
+    """归档不是丢弃:攒起来的想法要能一键总结成知识,总结本身也落库可回看。"""
+    first = call(server, "ideas.add", {"text": "AXTI 周五尾盘买入"})["result"]["idea"]
+    second = call(server, "ideas.add", {"text": "NVDA 回调到 120 日均线低吸"})["result"]["idea"]
+    call(server, "ideas.update", {"id": first["id"], "status": "archived"})
+    call(server, "ideas.update", {"id": second["id"], "status": "archived"})
+
+    class FakeParser:
+        def complete_json(self, system, user, schema):
+            # 两条想法都要在场,且按时间从早到晚
+            assert user.index("AXTI") < user.index("NVDA")
+            assert "已归档" in user
+            return {
+                "summary": "偏好尾盘动量与均线低吸",
+                "themes": ["半导体(2 条)"],
+                "lessons": ["想法都带了明确价位条件"],
+                "patterns": ["具体可执行"],
+                "actions": ["给 NVDA 建一个 120 日均线价位警告"],
+            }
+
+    import ibkr_agent.rpc as rpc_mod
+
+    monkeypatch.setattr(rpc_mod, "build_parser", lambda cfg: FakeParser())
+    digest = call(server, "ideas.digest", {})["result"]["digest"]
+    assert digest["digest"]["summary"].startswith("偏好")
+    assert digest["idea_count"] == 2
+    assert digest["digest"]["model"]      # 记录了用哪个模型总结的
+
+    # 总结历史落库:重新 list 还在,最新的在前
+    listed = call(server, "ideas.digests", {})["result"]["digests"]
+    assert len(listed) == 1
+    assert listed[0]["digest"]["summary"].startswith("偏好")
+    assert listed[0]["idea_ids"] == [first["id"], second["id"]] or \
+        set(listed[0]["idea_ids"]) == {first["id"], second["id"]}
+
+
+def test_idea_digest_refuses_when_nothing_is_archived(server):
+    call(server, "ideas.add", {"text": "还在进行中的想法"})
+    response = call(server, "ideas.digest", {})
+    assert response["error"]["code"] == -32602
+    assert "归档" in response["error"]["message"]
+    assert call(server, "ideas.digest", {"scope": "nope"})["error"]["code"] == -32602
+
+
 def test_idea_symbols_never_fall_back_to_spx(server):
     """想法没提标的就是没提:不能兜底 SPX,否则分析会拿错行情。"""
     idea = call(server, "ideas.add", {"text": "感觉市场情绪过热,要谨慎"})["result"]["idea"]
@@ -374,6 +418,52 @@ def test_alert_refresh_falls_back_to_round_numbers_without_an_option_chain(serve
     prices = [l["price"] for l in refreshed["levels"]]
     assert prices == [40.0, 45.0]           # IREN 41 块 → 40 和 45
     assert refreshed["last_price"] == 41.0
+
+
+class _HistoryRouter(_PriceRouter):
+    """现价 + 日线历史都有的假 router,用来跑均线/52周位。"""
+
+    def __init__(self, price, closes):
+        super().__init__(price)
+        self.closes = closes
+        self.history_calls = 0
+
+    def historical_bars(self, symbol, start, end):
+        self.history_calls += 1
+        return [
+            {"date": "2026-01-01", "open": c, "high": c, "low": c, "close": c}
+            for c in self.closes
+        ]
+
+
+def test_alert_refresh_adds_ma_and_52w_levels_from_daily_history(server):
+    """用户预先选好标的,重算后价位里就有 60/120/200 日均线和 52 周高低点;
+    之后 poll 到价穿过均线时会像其他价位一样自动通知。"""
+    server.router = _HistoryRouter(41.0, [40.0 + i * 0.1 for i in range(300)])
+    watch = call(server, "alerts.create", {"symbol": "IREN", "step": 5})["result"]["watch"]
+    result = call(server, "alerts.refresh", {"id": watch["id"]})["result"]
+
+    sources = {l["source"] for l in result["watch"]["levels"]}
+    assert {"ma60", "ma120", "ma200", "low_52w", "high_52w"} <= sources
+    assert result["history_error"] is None
+    # 趋势摘要给界面:52 周低点是最后 250 根里的最低价,不是全历史
+    assert result["trend"]["low_52w"] == 45.0
+    assert result["trend"]["high_52w"] == 69.9
+
+    # 日线历史有 TTL 缓存:紧接着再刷新不该再打一次券商
+    call(server, "alerts.refresh", {"id": watch["id"]})
+    assert server.router.history_calls == 1
+
+
+def test_alert_refresh_degrades_loudly_when_history_is_unavailable(server):
+    """拿不到日线(额度用完/没权限/券商不支持)时降级继续——
+    整数关口照样能用,但失败原因必须带回界面,不能悄悄降级。"""
+    server.router = _PriceRouter(41.0)   # 没有 historical_bars
+    watch = call(server, "alerts.create", {"symbol": "IREN", "step": 5})["result"]["watch"]
+    result = call(server, "alerts.refresh", {"id": watch["id"]})["result"]
+    assert result["history_error"]
+    assert result["trend"] is None
+    assert [l["price"] for l in result["watch"]["levels"]] == [40.0, 45.0]
 
 
 def test_alert_poll_fires_once_on_a_crossing_and_notifies(server):
@@ -689,3 +779,235 @@ def test_llm_test_reports_failure_instead_of_raising(server):
     assert result["ok"] is False
     assert result["error"]
     assert result["provider"] == "openai_compatible"
+
+
+# ---- 协议:优先级排队 ---------------------------------------------------
+def test_serve_lets_user_requests_jump_ahead_of_periodic_polls(tmp_path):
+    """引擎单线程顺序处理,但用户亲手发的请求要插到周期轮询前面——
+    否则「解析并校验」排在 macro.board 后面,毫秒级本地解析看起来要十几秒。"""
+    config = dict(BASE_CONFIG)
+    config["storage"] = {"db_path": str(tmp_path / "trades.db")}
+    path = tmp_path / "settings.json"
+    path.write_text(json.dumps(config, ensure_ascii=False), encoding="utf-8")
+
+    # 一口气喂进去:三条轮询在前,一条用户请求在后;末尾一条坏 JSON
+    lines = [
+        {"jsonrpc": "2.0", "id": 1, "method": "system.status", "params": {}},
+        {"jsonrpc": "2.0", "id": 2, "method": "pending.poll", "params": {}},
+        {"jsonrpc": "2.0", "id": 3, "method": "macro.board", "params": {}},
+        {"jsonrpc": "2.0", "id": 4, "method": "records.list", "params": {"limit": 1}},
+    ]
+    stdin = io.StringIO("\n".join(json.dumps(l) for l in lines) + "\nnot json\n")
+    server = RpcServer(path, stdout=io.StringIO(), stdin=stdin)
+
+    import ibkr_agent.macro as macro_mod
+    monkeypatch_urlopen = macro_mod.urllib.request.urlopen
+    macro_mod.urllib.request.urlopen = lambda *a, **k: (_ for _ in ()).throw(OSError("offline"))
+    try:
+        server.serve()
+    finally:
+        macro_mod.urllib.request.urlopen = monkeypatch_urlopen
+
+    responses = [json.loads(l) for l in server.stdout.getvalue().splitlines()
+                 if l.strip() and "\"id\"" in l and json.loads(l).get("method") != "event"]
+    order = [r.get("id") for r in responses]
+    # 用户请求(4)先于三条轮询;坏 JSON 也在(id=None);轮询之间保持先来后到
+    assert order[0] == 4
+    assert [i for i in order if i in (1, 2, 3)] == [1, 2, 3]
+    assert None in order
+
+
+# ---- 持仓列表:组合虚拟行 + 本地算盈亏 ------------------------------------
+class _PositionsRouter(_PriceRouter):
+    """给 positions.list 用的假 router:返回券商持仓行(没报盈亏)。"""
+
+    def __init__(self, rows):
+        super().__init__(100.0)
+        self.rows = rows
+
+    def positions(self):
+        return [dict(r) for r in self.rows]
+
+
+def _opt_row(strike, qty, cost, price):
+    from ibkr_agent import tracker as tk
+
+    contract = {"secType": "OPT", "symbol": "SPX", "lastTradeDateOrContractMonth": "20260901",
+                "strike": strike, "right": "P", "multiplier": "100"}
+    leg = tk.leg_of(contract)
+    return {"key": tk.position_key("模拟", "SPX", "OPT", leg), "account": "模拟", "symbol": "SPX",
+            "sec_type": "OPT", "leg": leg, "label": tk.position_label("SPX", "OPT", contract),
+            "quantity": qty, "avg_cost": cost, "multiplier": 100.0, "currency": "USD",
+            "market_price": price, "market_value": None, "unrealized_pnl": None, "contract": contract}
+
+
+def test_positions_list_adds_a_trackable_combo_row_and_computes_missing_pnl(server):
+    """蝴蝶三条腿 → 多一条 BAG 虚拟行;券商没报盈亏的行本地按现价算并标 computed。"""
+    server.router = _PositionsRouter([
+        {"key": "模拟|GOOG|STK", "account": "模拟", "symbol": "GOOG", "sec_type": "STK", "leg": "",
+         "label": "GOOG", "quantity": 20.0, "avg_cost": 341.62, "multiplier": 1.0, "currency": "USD",
+         "market_price": 333.46, "market_value": None, "unrealized_pnl": None,
+         "contract": {"secType": "STK", "symbol": "GOOG"}},
+        _opt_row(7600.0, 1.0, 30.0, 0.35), _opt_row(7615.0, -2.0, 40.0, 0.35), _opt_row(7630.0, 1.0, 50.0, 0.40),
+    ])
+    rows = call(server, "positions.list")["result"]["positions"]
+    by_type = {}
+    for r in rows:
+        by_type.setdefault(r["sec_type"], []).append(r)
+    goog = by_type["STK"][0]
+    assert goog["unrealized_pnl"] == pytest.approx((333.46 - 341.62) * 20, abs=1e-6)
+    assert goog["pnl_source"] == "computed"
+    fly = by_type["BAG"][0]
+    assert fly["label"] == "买入看跌蝴蝶 7600/7615/7630" and fly["quantity"] == 1.0
+    assert fly["market_price"] == pytest.approx(0.05) and fly["avg_cost"] == 0.0
+    assert fly["unrealized_pnl"] == pytest.approx(5.0)        # 0.05 × 100 × 1 − 0
+    assert fly["tracked"] is False
+
+    # 整组追踪:止盈按组合净价。托管到券商仍然拦(组合的 GTC+OCA 没核对过),
+    # 到价自动平仓已经打通——引擎盯盘、到价发反向腿的 BAG 限价单。
+    denied = call(server, "tracker.add", {"key": fly["key"], "take_profit": 0.5, "host_at_broker": True})
+    assert denied["error"]["code"] == -32602 and "托管到券商" in denied["error"]["message"]
+    track = call(server, "tracker.add", {"key": fly["key"], "take_profit": 0.5, "auto_close": True})["result"]["track"]
+    assert track["sec_type"] == "BAG" and track["leg"].startswith("20260901|")
+    assert track["auto_close"]["enabled"] is True
+    # 再读持仓:组合行标记已追踪
+    rows = call(server, "positions.list")["result"]["positions"]
+    assert [r["tracked"] for r in rows if r["sec_type"] == "BAG"] == [True]
+
+
+def test_submit_accounts_param_is_validated(server):
+    bad_alias = call(server, "instruction.submit", {"text": "买入 AAPL 100股 limit 230", "accounts": ["长线"]})
+    assert bad_alias["error"]["code"] == -32602
+    assert "长线" in bad_alias["error"]["message"]
+    bad_type = call(server, "instruction.submit", {"text": "买入 AAPL 100股 limit 230", "accounts": "模拟"})
+    assert bad_type["error"]["code"] == -32602
+
+
+def test_submit_fans_out_to_selected_accounts(server, monkeypatch):
+    from ibkr_agent import rpc as rpc_mod
+    from ibkr_agent.llm import LLMResponse
+
+    class FakeParser:
+        def parse(self, bundle, user_message):
+            return LLMResponse(
+                text=json.dumps({"orders": [stock_order()], "rejections": []}, ensure_ascii=False),
+                model="claude-opus-5",
+                prompt_version=bundle.version,
+                prompt_fingerprint=bundle.fingerprint,
+                latency_ms=1,
+            )
+
+    monkeypatch.setattr(rpc_mod, "build_parser", lambda cfg: FakeParser())
+    result = call(
+        server, "instruction.submit",
+        {"text": "买入 AAPL 100股 limit 230", "accounts": ["模拟", "主账户"]},
+    )["result"]
+    # 纸面那份通过校验(auto_execute=false → 只校验),实盘那份被 allow_live_trading 闸拦下
+    assert [v["account"] for v in result["validated_only"]] == ["模拟"]
+    assert [r["code"] for r in result["rejections"]] == ["LIVE_TRADING_DISABLED"]
+    assert any("同时发单" in w for w in result["warnings"])
+    status = call(server, "system.status", {})["result"]
+    assert {a["alias"]: a["broker"] for a in status["accounts"]} == {"模拟": "ibkr", "主账户": "ibkr"}
+
+
+# ---- 交易分析(蝴蝶复盘)-----------------------------------------------
+def _store_butterfly(server, rid="fly-1"):
+    from datetime import datetime, timezone
+
+    legs = [
+        {"action": "BUY", "ratio": 1, "strike": 7600, "right": "P", "lastTradeDateOrContractMonth": "20260812"},
+        {"action": "SELL", "ratio": 2, "strike": 7615, "right": "P", "lastTradeDateOrContractMonth": "20260812"},
+        {"action": "BUY", "ratio": 1, "strike": 7630, "right": "P", "lastTradeDateOrContractMonth": "20260812"},
+    ]
+    server.engine.store.create_record({
+        "id": rid, "created_at": datetime(2026, 8, 12, 14, 35, tzinfo=timezone.utc).isoformat(),
+        "contract": {"secType": "BAG", "symbol": "SPX", "multiplier": "100", "combo_strategy": "BUTTERFLY",
+                     "legs": legs, "exchange": "SMART", "currency": "USD"},
+        "order": {"action": "BUY", "totalQuantity": 1, "lmtPrice": 1.8, "orderType": "LMT"},
+        "account": {"alias": "模拟", "account_id": "DU7654321", "is_paper": True},
+        "llm": {"intent_summary": "买入 1 张 SPX 7600/7615/7630 看跌蝴蝶"},
+        "input": {"raw_instruction": "1.8 挂15蝴蝶", "reason": "测试"},
+        "execution_type": "IMMEDIATE",
+    })
+
+
+def test_review_candidates_lists_only_butterflies(server):
+    _store_butterfly(server)
+    server.engine.store.create_record({
+        "id": "stk-1", "created_at": "2026-08-12T15:00:00+00:00",
+        "contract": {"secType": "STK", "symbol": "AAPL", "exchange": "SMART", "currency": "USD"},
+        "order": {"action": "BUY", "totalQuantity": 1, "orderType": "MKT"},
+        "account": {"alias": "模拟", "account_id": "DU7654321", "is_paper": True},
+        "llm": {"intent_summary": "买 AAPL"}, "input": {"raw_instruction": "买 AAPL"}, "execution_type": "IMMEDIATE",
+    })
+    # 默认只列券商真实成交的:本地没成交的记录不算数
+    result = call(server, "review.candidates")["result"]
+    assert result["candidates"] == [] and result["ibkr_available"] is False
+    # 明确要求时才附上本地未成交的,并标 source=local
+    result = call(server, "review.candidates", {"include_local": True})["result"]
+    assert [c["id"] for c in result["candidates"]] == ["fly-1"]
+    c = result["candidates"][0]
+    assert c["source"] == "local"
+    assert c["strikes"] == [7600, 7615, 7630] and c["width"] == 15 and c["right"] == "看跌"
+    assert c["price"] == 1.8 and c["price_estimated"] is True and c["filled"] is False
+
+
+class _FakeFillRouter:
+    """只会报成交的假券商:交易分析从这里拉真实成交。"""
+
+    def __init__(self, rows):
+        self.rows = rows
+        self.calls = 0
+
+    def sessions(self):
+        return [object()]
+
+    def executions(self):
+        self.calls += 1
+        return self.rows
+
+
+def _fly_fills():
+    T = "2026-09-03T14:03:34+00:00"
+
+    def fill(exec_id, side, shares, price, sec="OPT", strike=None):
+        return {"exec_id": exec_id, "time": T, "account_id": "DU7654321", "side": side, "shares": shares,
+                "price": price, "order_id": 0, "perm_id": 256406619, "order_ref": "", "commission": None,
+                "contract": {"secType": sec, "symbol": "SPX", "currency": "USD", "exchange": "CBOE",
+                             "expiry": "20260903" if sec != "BAG" else "", "strike": strike, "right": "C",
+                             "tradingClass": "SPXW", "multiplier": "100", "conId": 1}}
+    return [fill("bag", "BOT", 1, 2.25, sec="BAG"), fill("e1", "BOT", 1, 0.22, strike=7760),
+            fill("e2", "SLD", 2, 0.82, strike=7740), fill("e3", "BOT", 1, 3.67, strike=7720)]
+
+
+def test_review_candidates_come_from_broker_fills_and_accumulate(server):
+    server.router = _FakeFillRouter(_fly_fills())
+    result = call(server, "review.candidates")["result"]
+    assert result["ibkr_available"] is True and result["synced"] == 4 and result["fills_stored"] == 4
+    assert len(result["candidates"]) == 1
+    c = result["candidates"][0]
+    assert c["id"] == "ib:256406619" and c["source"] == "ibkr" and c["filled"] is True
+    assert c["account"] == "模拟" and c["price"] == 2.25 and c["price_estimated"] is False
+    assert c["strikes"] == [7720, 7740, 7760] and c["action"] == "BUY"
+    # 券商断开后,库里累积的成交仍然列得出来
+    server.router = None
+    again = call(server, "review.candidates")["result"]
+    assert [x["id"] for x in again["candidates"]] == ["ib:256406619"] and again["ibkr_available"] is False
+
+
+def test_review_analyze_refuses_non_butterfly_and_needs_a_connection(server):
+    _store_butterfly(server)
+    server.engine.store.create_record({
+        "id": "stk-2", "created_at": "2026-08-12T15:00:00+00:00",
+        "contract": {"secType": "STK", "symbol": "AAPL", "exchange": "SMART", "currency": "USD"},
+        "order": {"action": "BUY", "totalQuantity": 1, "orderType": "MKT"},
+        "account": {"alias": "模拟", "account_id": "DU7654321", "is_paper": True},
+        "llm": {"intent_summary": "买 AAPL"}, "input": {"raw_instruction": "买 AAPL"}, "execution_type": "IMMEDIATE",
+    })
+    assert call(server, "review.analyze", {"id": "nope"})["error"]["code"] == -32005
+    assert call(server, "review.analyze", {"id": "stk-2"})["error"]["code"] == -32602
+    bad_tf = call(server, "review.analyze", {"id": "fly-1", "timeframe": "3m"})["error"]
+    assert bad_tf["code"] == -32602 and "未知 K 线周期" in bad_tf["message"]
+    # 没连券商:明确要求连接,而不是拿空 K 线硬算
+    no_conn = call(server, "review.analyze", {"id": "fly-1"})["error"]
+    assert no_conn["code"] == -32015

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import time
 
 import pytest
 
@@ -147,3 +148,62 @@ def test_macro_symbols_are_fixed_public_codes():
     keys = {s["key"] for s in macro.MACRO_SYMBOLS}
     assert {"^TNX", "GC=F", "CL=F", "^VIX"} <= keys
     assert all(s["fmt"] in ("price", "pct", "plain") for s in macro.MACRO_SYMBOLS)
+
+
+def test_macro_board_serves_stale_and_refreshes_in_background(monkeypatch):
+    """周期轮询过期时旧值先给、后台刷新:公开源再慢也不能挡住引擎主循环——
+    否则用户的「解析并校验」会排在行情带后面,毫秒级解析看起来要十几秒。"""
+    import threading
+
+    macro._CACHE.clear()
+    gate = threading.Event()
+    calls = {"n": 0}
+
+    def fake_urlopen(request, timeout=None):
+        calls["n"] += 1
+        if calls["n"] > len(macro.MACRO_SYMBOLS):
+            gate.wait(5.0)             # 第二轮请求故意挂住:主循环若等它,测试会卡住
+            return _FakeResponse(_fake_payload(43.0, 41.0))
+        return _FakeResponse(_fake_payload(42.0, 41.0))
+
+    monkeypatch.setattr(macro.urllib.request, "urlopen", fake_urlopen)
+    macro.macro_board()
+    # 把缓存整体拨到"过期但没老到没用"
+    for hit in macro._CACHE.values():
+        hit["at"] -= macro._TTL_IDLE + 5
+
+    second = macro.macro_board()
+    assert second["rows"][0]["last"] == 42.0            # 旧值立刻返回
+    assert second["rows"][0].get("refreshing") is True
+    # 等后台线程都跑到挂住的那一步,再验证单飞:再打一次不会起第二批后台请求
+    deadline = time.time() + 5.0
+    while time.time() < deadline and calls["n"] < len(macro.MACRO_SYMBOLS) * 2:
+        time.sleep(0.01)
+    macro.macro_board()
+    assert calls["n"] == len(macro.MACRO_SYMBOLS) * 2
+
+    gate.set()
+    deadline = time.time() + 5.0
+    while time.time() < deadline and macro._INFLIGHT:
+        time.sleep(0.01)
+    third = macro.macro_board()
+    assert third["rows"][0]["last"] == 43.0             # 后台取回的新值落到缓存
+
+
+def test_public_index_price_serves_stale_and_refreshes_in_background(monkeypatch):
+    macro._CACHE.clear()
+    macro._CACHE["cboe:SPX"] = {"at": time.time() - 60.0, "row": {"last": 7600.0}}
+    seen = {"n": 0}
+
+    def slow(*args, **kwargs):
+        seen["n"] += 1
+        raise OSError("慢到超时")
+
+    monkeypatch.setattr(macro.urllib.request, "urlopen", slow)
+    t0 = time.perf_counter()
+    assert macro.public_index_price("SPX") == 7600.0   # 60 秒前的旧值先给
+    assert time.perf_counter() - t0 < 0.5
+    deadline = time.time() + 5.0
+    while time.time() < deadline and macro._INFLIGHT:
+        time.sleep(0.01)
+    assert seen["n"] == 1                               # 后台确实去取过一次
