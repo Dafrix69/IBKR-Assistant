@@ -8,9 +8,12 @@
   "scripts": {
     "start": "electron .",
     "dev": "DAFRI_DEV=1 electron .",
-    "dist:mac": "electron-builder --mac dmg --arm64 --publish never",
-    "dist:win": "electron-builder --win nsis --x64 --publish never",
-    "dist": "npm run dist:mac && npm run dist:win"
+    "dist:mac": "npm run stage:engine:mac && npm run smoke:engine && electron-builder --mac dmg --arm64 --publish never",
+    "dist:win": "npm run stage:engine:win && npm run smoke:engine && electron-builder --win nsis --x64 --publish never",
+    "dist": "npm run dist:mac && npm run dist:win",
+    "stage:engine:win": "node tools/stage_engine_ts.js --platform win32 --arch x64",
+    "stage:engine:mac": "node tools/stage_engine_ts.js --platform darwin --arch arm64",
+    "smoke:engine": "node tools/smoke_engine_ts.js"
   },
   "devDependencies": {
     "electron": "^40.0.0",
@@ -28,15 +31,6 @@
     ],
     "extraResources": [
       {
-        "from": "../src",
-        "to": "engine/src",
-        "filter": [
-          "**/*.py",
-          "!**/__pycache__/**",
-          "!**/*.egg-info/**"
-        ]
-      },
-      {
         "from": "../prompts",
         "to": "engine/prompts"
       },
@@ -45,25 +39,18 @@
         "to": "engine/settings.example.json"
       },
       {
-        "from": "../../trade-ts/dist",
-        "to": "engine-ts/dist",
-        "filter": [
-          "**/*.js"
-        ]
-      },
-      {
-        "from": "../../trade-ts/baseline/llm",
-        "to": "engine-ts/baseline/llm",
-        "filter": [
-          "*.json"
-        ]
-      },
-      {
-        "from": "../../trade-ts/node_modules",
-        "to": "engine-ts/node_modules",
+        "from": "build/engine-ts",
+        "to": "engine-ts",
         "filter": [
           "**/*",
-          "!**/{test,tests,docs,example,examples}/**"
+          "!node_modules/**"
+        ]
+      },
+      {
+        "from": "build/engine-ts/node_modules",
+        "to": "engine-ts/node_modules",
+        "filter": [
+          "**/*"
         ]
       }
     ],
@@ -90,6 +77,11 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "shortcutName": "Dafri Trading"
-    }
+    },
+    "electronLanguages": [
+      "zh-CN",
+      "zh-TW",
+      "en-US"
+    ]
   }
 }

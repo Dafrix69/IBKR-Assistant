@@ -19,3 +19,6 @@ __pycache__/
 # macOS
 .DS_Store
 .uipreview/
+
+# TS 引擎打包暂存(tools/stage_engine_ts.js 生成)
+desktop/build/engine-ts/
