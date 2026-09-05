@@ -129,6 +129,28 @@ K 线参照富途/moomoo 的图表工程标准。"现状"来自基线截图与�
 
 每一步的截图在 `.uipreview/step2-1 … step2-5b`,与 `baseline/` 并排即为 before/after。
 
+### 2.6 第三轮:一致性与可读性(2026-09-06)
+
+阶段 2 之后再对着 Mail / Stocks / System Settings 并排看,剩下的差距全在用法一致性上。全部只动 renderer 三个文件,
+DOM id 不变(`audit_ui.py` 0 问题),`capture_pages --check` 16 页零报错;交互态(紧凑列表、记录详情、想法「全部」、
+追踪卡片)另用一次性脚本拍过。截图在 `.uipreview/round3/`(`dark/`、`light/`、`light-empty/`、`states/`)。
+
+| # | 对照点 | 现状 | 改法 |
+|---|---|---|---|
+| T1 | Mail / Stocks:列表元数据是二级色文字 | `.card-meta span` 每项一颗灰胶囊,一页几十颗 | 去底色,11.5px 二级色,项间 14px;`.status` 同样只着色文字 |
+| T2 | 文字着色要过对比度 | systemGreen #28cd41 当 11px 文字放白底 ≈2.3:1,浅色"已成交"看不清 | 新增 `--green/red/orange-text`(Apple 可访问变体)与 `--up/down-text`;`.status/.side/.macro-chg/.pnl-*/.acct-*/.card ul/.notice.warn strong/.btn.warn/.banner` 等 20 处文字改走它 |
+| T3 | 盈亏跟随「涨跌配色」 | `.pnl-up/.pnl-down` 钉死绿红,与设置页说明不符 | 走 `--up-text/--down-text`,红涨绿跌时自动翻转 |
+| T4 | 颜色只给要一眼看见的 | 纸面账户标签绿色等宽字 | 纸面二级色;实盘 / 券商托管 / 自动平仓已开才橙 |
+| T5 | 文案不露配置键名 | 「`auto_execute` 已开 … `allow_live_trading`」两处;看板 `BUY 2 NVDA`、`SPY >= 775`;详情标题 `NVDA · BUY 2` | 全部翻成用户语言;比较符走 `TRIGGER_OP_LABEL`(≥ / ≤) |
+| T6 | 说明文字行长 | `.hint` 跑满 1100px | `max-width: 760px`;`.group > .hint` 补内边距(回测策略描述原来贴左边框) |
+| T7 | 同一件事一种控件 | 想法页筛选是两个普通按钮;速记片段是 999px 胶囊;列表行悬停描蓝边 | 分段控件(`.segmented.compact`);6px 填充 token;悬停只提亮底 |
+| T8 | 从未生效的样式 | 追踪量表条引用 `--line/--ok/--warn/--bad`(未定义,条透明);速记区 `--text-*`(未定义);`.account-picker` 的 `display:flex` 盖掉 `[hidden]` | 换成存在的 token;补 `[hidden]{display:none}` |
+| T9 | 页头控件等高 | `.btn.tiny` 比旁边的分段控件矮 | `.page-head .btn.tiny` 3px 内边距 / 12px 字 |
+| T10 | 卡片呼吸 | `.card` 10×12 内边距,和 `.readiness` 的 12×14 不一致 | 统一 12×14;标题后跟的状态词留 8px |
+
+**没做的**:`mock-bridge-empty.js` 的 `paAnalyze` 按设计抛错,所以 `--check` 对空态预览会报"K 线 PA 页没有画出 canvas"——
+`git stash` 复核这一条在本轮之前就是这样,`--check` 只适用于有数据的预览;K 线本身、侧栏、顶栏、设置页本轮未动。
+
 ## 3. 体积变更逐项表
 
 | # | 改了什么 | 省了多少 | 怎么验证 | 提交 |

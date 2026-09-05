@@ -216,15 +216,14 @@
                   <button type="button" class="chip" data-snippet=",理由:">补理由</button>
                 </div>
                 <ul class="hint-list">
-                  <li>默认 1 张、当日到期、组合默认 SPX、蝴蝶默认买入;用到默认值时结果会带 warning,发送前核对。</li>
+                  <li>默认 1 张、当日到期、组合默认 SPX、蝴蝶默认买入;用到默认值时结果会带警告,发送前核对。</li>
                   <li>N cm = 翼宽 N 点;末尾孤立数字 = 净权利金上限;看涨 / 看跌未写时按现价推断。</li>
                   <li>固定行话本地秒解、不经 AI:「1.8 挂15蝴蝶 15CM」中「挂」= 当日限价,「N蝴蝶」= 现价百位 + N(现价 6907 → 6915)。</li>
                   <li>「蝴蝶」二字可省:「spx明天 7850 40cm 2.3」= 明日 7810/7850/7890 蝴蝶挂 2.3;带触发价、理由等附加语义仍走 AI。</li>
                 </ul>
               </details>
               <p class="hint">
-                发送条件:<code>auto_execute</code> 已开 · <span id="hint-gateway">已连接网关</span> · 未熔断;实盘另需
-                <code>allow_live_trading</code>。
+                发送条件:自动执行已打开 · <span id="hint-gateway">已连接网关</span> · 未熔断;实盘账户还需在「设置」里允许实盘下单。
               </p>
             </div>
             <div>
@@ -280,8 +279,10 @@
             「发到解析」把文本带到「交易指令」页。
           </p>
           <div class="row tight">
-            <button id="btn-ideas-active" class="btn tiny">进行中</button>
-            <button id="btn-ideas-all" class="btn tiny ghost">全部</button>
+            <div class="segmented compact" role="group" aria-label="想法筛选">
+              <button id="btn-ideas-active" class="seg active">进行中</button>
+              <button id="btn-ideas-all" class="seg">全部</button>
+            </div>
             <span class="grow"></span>
             <button id="btn-ideas-digest" class="btn tiny">总结知识</button>
           </div>
@@ -550,7 +551,7 @@
           <div class="notice warn">
             <strong>这一页会真的发单。</strong>
             打开「到价自动平仓」后,价格触及止盈 / 止损时软件会自动发出平仓单;
-            仍受三道闸门约束:<code>auto_execute</code> 已开、实盘另需 <code>allow_live_trading</code>、熔断期间不发。
+            仍受三道闸门约束:自动执行已打开、实盘账户需在「设置」里允许实盘下单、熔断期间不发。
             <br>
             <strong>软件必须开着。</strong>盯盘在本机进行,关掉就不再盯,不同于挂在券商服务器上的条件单。
           </div>

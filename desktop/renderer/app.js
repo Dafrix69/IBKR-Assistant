@@ -556,7 +556,8 @@ async function loadPending() {
     for (const item of pending) {
       box.appendChild(
         card('info', item.intent_summary, null, [
-          `${item.symbol} ${item.operator} ${item.value}`,
+          // 比较符是协议里的取值,摆给人看要用数学符号(和记录详情里的翻译口径一致)
+          `${item.symbol} ${TRIGGER_OP_LABEL[item.operator] || item.operator} ${item.value}`,
           `账户 ${item.account}`,
           `入队 ${fmtTimeShort(item.created_at)}`,
         ])
@@ -612,7 +613,7 @@ function renderLive(records) {
   for (const record of live) {
     const kind = record.final_status === 'filled' ? 'ok' : record.final_status ? 'warn' : 'info';
     const meta = [
-      `${record.action || ''} ${record.quantity ?? ''} ${record.symbol}`,
+      `${ACTION_LABEL[record.action] || record.action || ''} ${record.quantity ?? ''} ${record.symbol}`,
       `账户 ${record.account}`,
       statusLabel(record, '—'),
     ];
@@ -773,6 +774,7 @@ async function showRecordDetail(id) {
 // 内部枚举 → 人话。查不到就原样显示:露一个英文,好过编一个错的中文。
 const SEC_TYPE_LABEL = { STK: '股票', OPT: '期权', BAG: '组合(多腿)', IND: '指数' };
 const ACTION_LABEL = { BUY: '买入', SELL: '卖出' };
+const TRIGGER_OP_LABEL = { '>=': '≥', '<=': '≤', '>': '>', '<': '<', '==': '=' };
 const ORDER_TYPE_LABEL = {
   MKT: '市价单', LMT: '限价单', STP: '止损单',
   'STP LMT': '止损限价单', TRAIL: '跟踪止损单',
@@ -810,7 +812,7 @@ function detailSection(title, rows) {
 function renderRecordDetail(box, record) {
   const head = el('div', 'detail-head');
   head.appendChild(el('strong', null,
-    `${record.contract?.symbol || '—'} · ${record.order?.action || ''} ${record.order?.totalQuantity ?? ''}`));
+    `${record.contract?.symbol || '—'} · ${ACTION_LABEL[record.order?.action] || record.order?.action || ''} ${record.order?.totalQuantity ?? ''}`));
   const status = record.final_status
     ? (FINAL_STATUS_LABEL[record.final_status] || record.final_status)
     : '进行中';
@@ -1113,8 +1115,8 @@ async function addIdea() {
 }
 
 function syncIdeaFilterButtons() {
-  $('btn-ideas-active').className = state.ideaFilter === 'active' ? 'btn tiny' : 'btn tiny ghost';
-  $('btn-ideas-all').className = state.ideaFilter === 'all' ? 'btn tiny' : 'btn tiny ghost';
+  $('btn-ideas-active').className = state.ideaFilter === 'active' ? 'seg active' : 'seg';
+  $('btn-ideas-all').className = state.ideaFilter === 'all' ? 'seg active' : 'seg';
 }
 
 // ---- 想法知识总结:归档不是丢弃,攒起来的想法能一键提炼成知识,总结历史落库可回看
@@ -3741,7 +3743,7 @@ function trackForm(p) {
   const autoWrap = el('label', 'switch');
   const autoText = el('span', null, '到价自动平仓');
   autoText.appendChild(el('span', 'sub',
-    '到价即自动发平仓单,不再询问;仍受 auto_execute / 实盘开关 / 熔断约束'));
+    '到价即自动发平仓单,不再询问;仍受自动执行、实盘开关、熔断三道闸门约束'));
   autoWrap.appendChild(autoText);
   const auto = el('input');
   auto.type = 'checkbox';
