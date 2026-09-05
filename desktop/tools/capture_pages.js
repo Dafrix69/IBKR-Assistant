@@ -70,14 +70,15 @@ async function run() {
     }
     await win.loadFile(previewPath);
     await sleep(600);
+    // 叶子页:侧栏里不带 data-default 的项 + 合并页(行情 / 接入)页头分段控件里的子页
     const tabs = await win.webContents.executeJavaScript(
-      `Array.from(document.querySelectorAll('.nav-item[data-tab]')).map((b) => b.dataset.tab)`,
+      `Array.from(document.querySelectorAll('.tab[data-tab]:not([data-default])')).map((b) => b.dataset.tab)`,
     );
     const wanted = only ? only.split(',') : tabs;
     for (const tab of tabs) {
       if (!wanted.includes(tab)) continue;
       await win.webContents.executeJavaScript(
-        `document.querySelector('.nav-item[data-tab="${tab}"]').click(); document.querySelector('.content').scrollTop = 0;`,
+        `document.querySelector('.tab[data-tab="${tab}"]').click(); document.querySelector('.content').scrollTop = 0;`,
       );
       await sleep(350);
       if (tab === 'pa') {

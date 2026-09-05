@@ -37,6 +37,8 @@
      这一对(青绿 / 珊瑚红)是图表业界的通用值,深浅色都能用。文字与圆点仍用系统色。 */
   --chart-up: #26a69a;
   --chart-down: #ef5350;
+  /* 图区底色:浅色下是白;深色下取近黑(iOS 股市、富途夜间的图区都比周围的面暗得多),蜡烛和网格都靠它衬 */
+  --chart-bg: #ffffff;
 
   /* 焦点环只有一种:3.5px、强调色 30%——AppKit 的 focus ring。输入框、开关、按钮都用它。 */
   --focus-ring: 0 0 0 3.5px color-mix(in srgb, var(--blue) 30%, transparent);
@@ -86,6 +88,7 @@
     --green-text: var(--green);
     --red-text: var(--red);
     --orange-text: var(--orange);
+    --chart-bg: #0b0b0d;
 
     --label: #ffffff;
     --label-secondary: rgba(235, 235, 245, 0.6);
@@ -290,6 +293,20 @@ input, textarea { user-select: text; }
   letter-spacing: 0.02em;
 }
 .sidebar-group:first-child { margin-top: 4px; }
+/* 组标题是个按钮:点一下折叠 / 展开这一组,状态记在本地。Finder / Mail 的源列表组标题就是这么用的 */
+button.sidebar-group {
+  display: flex; align-items: center; gap: 4px;
+  border: none; background: none; font: inherit; font-size: 11px; font-weight: 590;
+  color: var(--label-tertiary); text-align: left; cursor: default;
+}
+button.sidebar-group::before {
+  content: '›'; display: inline-block; width: 8px; font-size: 12px; line-height: 1;
+  transform: rotate(90deg); transition: transform 0.15s ease;
+}
+button.sidebar-group[aria-expanded="false"]::before { transform: none; }
+button.sidebar-group:hover { color: var(--label-secondary); }
+.sidebar-items { display: flex; flex-direction: column; gap: 1px; }
+.sidebar-items[data-collapsed] { display: none; }
 /* 「应用」组(设置 / 关于)沉到侧栏底部:它们是应用级的,不是每天要点的工作项——
    Slack / Linear / Xcode 都把设置放在导航的最底下,和工作区拉开距离 */
 .sidebar-group.bottom { margin-top: auto; padding-top: 14px; }
@@ -547,6 +564,12 @@ input.w-64 { width: 64px; }
 .field-row > span > .sub { display: block; color: var(--label-secondary); font-size: 11px; }
 .tab-panel { display: none; }
 .tab-panel.active { display: block; }
+/* 合并页(行情 / 接入)里的子页:同一时刻只显示一个;子页自己不带 h1,标题在合并页页头的分段控件里 */
+.sub-panel { display: none; }
+.sub-panel.active { display: block; }
+.sub-head { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin: -4px 0 8px; min-height: 18px; }
+.sub-head:empty { display: none; }
+.page-head .subnav { margin-left: auto; }
 
 /* ================= 横幅 ================= */
 .banner {
@@ -692,6 +715,8 @@ input.w-64 { width: 64px; }
 /* K线 PA */
 /* 图表容器:高度由布局给,画布按真实像素填满;字号线宽在 pa-chart.js 里固定,不随宽度变。
    三档高度:K线 PA 主图 440,交易分析的两张 320,回测净值曲线 220。 */
+/* 圆角底色由画布自己画(pa-chart.js 先铺一块 8px 圆角的 --chart-bg):容器上加 overflow:hidden + border-radius
+   会把画布切成单独的合成层,隐藏窗口里 capturePage 拍出来是一块纯黑——截图工具就抓不到图了 */
 .pa-chart-wrap { position: relative; height: 440px; margin-top: 6px; }
 .chart-wrap { position: relative; margin-top: 6px; }
 .chart-wrap.mid { height: 320px; }
@@ -939,7 +964,7 @@ input.w-64 { width: 64px; }
 /* ---- 内容宽度 ----
  * 数据页越宽越好用,表单和说明文字太宽反而难读——按页分开定。 */
 .content > .tab-panel { max-width: 1180px; }
-#tab-settings, #tab-about, #tab-llm, #tab-tws, #tab-futu { max-width: 880px; }
+#tab-settings, #tab-about, #tab-access { max-width: 880px; }
 
 /* ---- 列表项手感 ---- */
 /* 悬停只提亮底色,不描蓝边:给列表行描蓝框是网页的习惯,Finder / Mail 的行只有选中态 */
