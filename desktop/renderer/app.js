@@ -1662,7 +1662,7 @@ function renderBacktestResult(r) {
     box.appendChild(rulesCard);
   }
 
-  box.appendChild(renderEquityCurve(r.curve));
+  box.appendChild(renderEquityCurve(r.curve, r.trade_list));
 
   if (r.trade_list && r.trade_list.length && r.strategy !== 'buy_hold') {
     const tradesCard = card('info', `交易明细(${r.trade_list.length})`);
@@ -1684,52 +1684,40 @@ function renderBacktestResult(r) {
   );
 }
 
-function renderEquityCurve(curve) {
-  const node = card('info', '净值曲线(蓝=策略,灰=买入持有,起点=1.0)');
+/** 把一份 spec 交给图表引擎(pa-chart.js)画到卡片里。容器进了文档、有了尺寸,ResizeObserver 才会触发第一次绘制。 */
+function mountChart(node, size, spec) {
+  const wrap = el('div', `chart-wrap ${size}`);
+  node.appendChild(wrap);
+  if (window.DafriChart) window.DafriChart.mount(wrap, spec);
+  else wrap.appendChild(el('p', 'empty', '图表模块未加载'));
+  return wrap;
+}
+
+/** 净值曲线:策略与买入持有两条线,起点 1.0 的基线,交易明细的进出点标在策略线上。全部来自引擎的 curve / trade_list。 */
+function renderEquityCurve(curve, tradeList) {
+  const node = card('info', '净值曲线(起点 = 1.0)');
   if (!curve || curve.length < 2) return node;
-
-  const W = 640, H = 160, PAD = 6;
-  const values = curve.flatMap((p) => [p.equity, p.bench]);
-  const lo = Math.min(...values), hi = Math.max(...values);
-  const span = hi - lo || 1;
-  const x = (i) => PAD + (i / (curve.length - 1)) * (W - PAD * 2);
-  const y = (v) => H - PAD - ((v - lo) / span) * (H - PAD * 2);
-  const points = (key) => curve.map((p, i) => `${x(i).toFixed(1)},${y(p[key]).toFixed(1)}`).join(' ');
-
-  const NS = 'http://www.w3.org/2000/svg';
-  const svg = document.createElementNS(NS, 'svg');
-  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-  svg.setAttribute('preserveAspectRatio', 'none');
-  svg.style.width = '100%';
-  svg.style.height = '160px';
-
-  const baseline = document.createElementNS(NS, 'line');
-  baseline.setAttribute('x1', String(PAD));
-  baseline.setAttribute('x2', String(W - PAD));
-  baseline.setAttribute('y1', String(y(1)));
-  baseline.setAttribute('y2', String(y(1)));
-  baseline.setAttribute('stroke', 'currentColor');
-  baseline.setAttribute('stroke-opacity', '0.2');
-  baseline.setAttribute('stroke-dasharray', '3 3');
-  svg.appendChild(baseline);
-
-  const bench = document.createElementNS(NS, 'polyline');
-  bench.setAttribute('points', points('bench'));
-  bench.setAttribute('fill', 'none');
-  bench.setAttribute('stroke', 'currentColor');
-  bench.setAttribute('stroke-opacity', '0.35');
-  bench.setAttribute('stroke-width', '1.2');
-  svg.appendChild(bench);
-
-  const eq = document.createElementNS(NS, 'polyline');
-  eq.setAttribute('points', points('equity'));
-  eq.setAttribute('fill', 'none');
-  eq.setAttribute('stroke', THEME.blue);
-  eq.setAttribute('stroke-width', '1.6');
-  svg.appendChild(eq);
-
-  node.appendChild(svg);
-  const first = curve[0], last = curve[curve.length - 1];
+  const times = curve.map((pt) => pt.date);
+  const at = new Map(times.map((t, i) => [t, i]));
+  const markers = [];
+  for (const t of tradeList || []) {
+    if (at.has(t.entry_date)) markers.push({ time: t.entry_date, price: curve[at.get(t.entry_date)].equity, shape: 'tri-up', color: 'up', fit: false });
+    if (t.exit_date && at.has(t.exit_date)) markers.push({ time: t.exit_date, price: curve[at.get(t.exit_date)].equity, shape: 'tri-down', color: 'down', fit: false });
+  }
+  mountChart(node, 'short', {
+    ariaLabel: '净值曲线',
+    times,
+    lines: [
+      { values: curve.map((pt) => pt.bench), color: 'label2', alpha: 0.6, label: '买入持有' },
+      { values: curve.map((pt) => pt.equity), color: 'blue', width: 1.5, label: '策略' },
+    ],
+    hlines: [{ price: 1, color: 'label', dash: [3, 3], alpha: 0.25, tag: false }],
+    markers,
+    legend: [['—', 'blue', '策略'], ['—', 'label2', '买入持有'], ['▲', 'up', '买入'], ['▼', 'down', '卖出'], ['╌', 'label2', '起点 1.0']],
+    decimals: 3,
+  });
+  const first = curve[0];
+  const last = curve[curve.length - 1];
   node.appendChild(el('div', 'card-meta', `${first.date} → ${last.date} · 期末净值 策略 ${last.equity} / 基准 ${last.bench}`));
   return node;
 }
@@ -2174,136 +2162,49 @@ function renderReview() {
   }
 }
 
+/** 标的走势:蜡烛 + 三条行权价 + 盈利区 + 止盈策略的临界线 + 开仓/平仓竖线。字段全部来自 r.series 与 r.exit_plan。 */
 function renderReviewChart(r) {
   const node = card('info', `标的走势(${r.timeframe_label},开仓前后到${REVIEW_KIND[r.outcome.kind] === '持仓中' ? '现在' : '结局'})`);
   const bars = r.series.bars || [];
   if (bars.length < 2) return node;
-
-  const W = 660, H = 300;
-  const PAD_L = 6, PAD_R = 62, PAD_T = 10, PAD_B = 16;
-  const PRICE_H = H - PAD_T - PAD_B;
-
   const levels = r.series.levels || [];
-  let lo = Math.min(...bars.map((b) => b.low), ...levels.map((l) => l.price));
-  let hi = Math.max(...bars.map((b) => b.high), ...levels.map((l) => l.price));
-  const pad = (hi - lo) * 0.06 || Math.abs(hi) * 0.001 || 1;
-  lo -= pad;
-  hi += pad;
-  const span = hi - lo || 1;
-
-  const slot = (W - PAD_L - PAD_R) / bars.length;
-  const x = (i) => PAD_L + slot * (i + 0.5);
-  const y = (p) => PAD_T + PRICE_H - ((p - lo) / span) * PRICE_H;
-  const at = new Map(bars.map((b, i) => [b.time, i]));
-  const rightEdge = W - PAD_R;
-  const svg = svgNode('svg', { viewBox: `0 0 ${W} ${H}`, class: 'review-chart' });
-
-  // 盈利区底色
-  const lowerBe = levels.find((l) => l.kind === 'lower_be');
-  const upperBe = levels.find((l) => l.kind === 'upper_be');
-  if (lowerBe && upperBe) {
-    svg.appendChild(svgNode('rect', {
-      x: PAD_L, y: y(upperBe.price), width: rightEdge - PAD_L,
-      height: Math.max(y(lowerBe.price) - y(upperBe.price), 1),
-      fill: THEME.up, 'fill-opacity': 0.10,
-    }));
+  const LEVEL_STYLE = {
+    lower: { color: 'orange', dash: [4, 3], alpha: 0.8, label: '下翼' },
+    center: { color: 'blue', dash: [], alpha: 0.9, label: '中心' },
+    upper: { color: 'orange', dash: [4, 3], alpha: 0.8, label: '上翼' },
+    lower_be: { color: 'up', dash: [2, 2], alpha: 0.6, tag: false, label: '盈亏平衡' },
+    upper_be: { color: 'up', dash: [2, 2], alpha: 0.6, tag: false, label: '盈亏平衡' },
+  };
+  const hlines = [];
+  for (const l of levels) {
+    const st = LEVEL_STYLE[l.kind];
+    if (st) hlines.push({ price: l.price, ...st });
   }
-  // 止盈策略的临界线(|S−K| 的 0.45W / 0.55W / 0.8W)
-  const ZONE_STYLE = { hold: [THEME.blue, '2 3'], half: [THEME.purple, '2 3'], stop: [THEME.down, '1 3'] };
+  // 止盈策略的临界线(|S−K| 的 0.45W / 0.55W / 0.8W):不撑开区间、不占轴,名字写在上沿那条线的左端
+  const ZONE_STYLE = { hold: ['blue', '持有'], half: ['purple', '清半'], stop: ['down', '止损'] };
   for (const z of ((r.exit_plan || {}).zones || [])) {
     const st = ZONE_STYLE[z.kind];
     if (!st) continue;
-    for (const price of [z.low, z.high]) {
-      const py = y(price);
-      if (py < PAD_T || py > PAD_T + PRICE_H) continue;
-      svg.appendChild(svgNode('line', {
-        x1: PAD_L, x2: rightEdge, y1: py, y2: py,
-        stroke: st[0], 'stroke-opacity': 0.45, 'stroke-width': 0.8, 'stroke-dasharray': st[1],
-      }));
-    }
-    const label = svgNode('text', { x: PAD_L + 2, y: y(z.high) - 2, 'font-size': 8, fill: st[0], 'fill-opacity': 0.8 });
-    label.textContent = `±${z.half_width}`;
-    if (y(z.high) >= PAD_T + 8) svg.appendChild(label);
+    hlines.push({ price: z.high, color: st[0], dash: [2, 3], alpha: 0.45, tag: false, fit: false, label: `${st[1]} ±${z.half_width}` });
+    hlines.push({ price: z.low, color: st[0], dash: [2, 3], alpha: 0.45, tag: false, fit: false });
   }
-
-  // 三条行权价
-  const LEVEL_STYLE = {
-    lower: { color: THEME.orange, dash: '4 3', label: '下翼' },
-    center: { color: THEME.blue, dash: '', label: '中心' },
-    upper: { color: THEME.orange, dash: '4 3', label: '上翼' },
-    lower_be: { color: THEME.up, dash: '2 2', label: '盈亏平衡' },
-    upper_be: { color: THEME.up, dash: '2 2', label: '盈亏平衡' },
-  };
-  for (const level of levels) {
-    const st = LEVEL_STYLE[level.kind];
-    if (!st) continue;
-    const py = y(level.price);
-    svg.appendChild(svgNode('line', {
-      x1: PAD_L, x2: rightEdge, y1: py, y2: py,
-      stroke: st.color, 'stroke-opacity': 0.8, 'stroke-width': level.kind === 'center' ? 1.2 : 1,
-      'stroke-dasharray': st.dash,
-    }));
-    if (level.kind !== 'lower_be' && level.kind !== 'upper_be') {
-      const label = svgNode('text', { x: rightEdge + 4, y: py + 3, 'font-size': 9, fill: st.color });
-      label.textContent = String(level.price);
-      svg.appendChild(label);
-    }
-  }
-
-  // 蜡烛
-  const bodyW = Math.max(slot * 0.6, 1);
-  for (let i = 0; i < bars.length; i += 1) {
-    const bar = bars[i];
-    const up = bar.close >= bar.open;
-    const color = up ? THEME.up : THEME.down;
-    svg.appendChild(svgNode('line', {
-      x1: x(i), x2: x(i), y1: y(bar.high), y2: y(bar.low),
-      stroke: color, 'stroke-width': Math.min(bodyW * 0.28, 1.1),
-    }));
-    svg.appendChild(svgNode('rect', {
-      x: x(i) - bodyW / 2, y: y(Math.max(bar.open, bar.close)), width: bodyW,
-      height: Math.max(Math.abs(y(bar.close) - y(bar.open)), 0.8), fill: color,
-    }));
-  }
-
-  // 开仓 / 平仓 / 到期 标记:竖线 + 圆点 + 文字
-  const MARK = { entry: { color: THEME.blue, label: '开仓' }, exit: { color: THEME.purple, label: '平仓' }, expiry: { color: THEME.purple, label: '到期' } };
+  const lowerBe = levels.find((l) => l.kind === 'lower_be');
+  const upperBe = levels.find((l) => l.kind === 'upper_be');
+  const bands = lowerBe && upperBe ? [{ top: upperBe.price, bottom: lowerBe.price, color: 'up', fill: 0.1 }] : [];
+  const MARK = { entry: ['blue', '开仓'], exit: ['purple', '平仓'], expiry: ['purple', '到期'] };
+  const vlines = [];
+  const markers = [];
   for (const m of r.series.markers || []) {
-    if (!at.has(m.time)) continue;
-    const i = at.get(m.time);
     const st = MARK[m.kind] || MARK.entry;
-    svg.appendChild(svgNode('line', {
-      x1: x(i), x2: x(i), y1: PAD_T, y2: PAD_T + PRICE_H,
-      stroke: st.color, 'stroke-width': 1, 'stroke-dasharray': '3 3', 'stroke-opacity': 0.8,
-    }));
-    svg.appendChild(svgNode('circle', { cx: x(i), cy: y(m.price), r: 3, fill: st.color }));
-    const label = svgNode('text', {
-      x: x(i) + (i > bars.length / 2 ? -4 : 4), y: PAD_T + 10, 'font-size': 9.5,
-      'text-anchor': i > bars.length / 2 ? 'end' : 'start', fill: st.color,
-    });
-    label.textContent = `${st.label} ${m.price}`;
-    svg.appendChild(label);
+    vlines.push({ time: m.time, color: st[0], label: `${st[1]} ${m.price}` });
+    markers.push({ time: m.time, price: m.price, shape: 'dot', color: st[0], fit: false });
   }
-
-  const first = svgNode('text', { x: PAD_L, y: H - 3, 'font-size': 9, fill: 'currentColor', 'fill-opacity': 0.5 });
-  first.textContent = bars[0].time;
-  svg.appendChild(first);
-  const last = svgNode('text', { x: rightEdge, y: H - 3, 'font-size': 9, 'text-anchor': 'end', fill: 'currentColor', 'fill-opacity': 0.5 });
-  last.textContent = bars[bars.length - 1].time;
-  svg.appendChild(last);
-  node.appendChild(svg);
-
-  const legend = el('div', 'review-legend');
-  const legendItems = [['中心行权价', THEME.blue], ['上下翼', THEME.orange], ['盈利区(到期)', THEME.up], ['开仓', THEME.blue], ['平仓 / 到期', THEME.purple]];
-  if (r.exit_plan) legendItems.push(['临界线 ±0.45W / ±0.55W / ±0.8W(细虚线)', 'currentColor']);
-  for (const [text, color] of legendItems) {
-    const item = el('span', null, text);
-    const swatch = el('i');
-    swatch.style.color = color;
-    item.insertBefore(swatch, item.firstChild);
-    legend.appendChild(item);
-  }
-  node.appendChild(legend);
+  const legend = [
+    ['■', 'up', '阳线'], ['■', 'down', '阴线'], ['—', 'blue', '中心'], ['╌', 'orange', '上下翼'],
+    ['▮', 'up', '盈利区(到期)'], ['┆', 'blue', '开仓'], ['┆', 'purple', '平仓 / 到期'],
+  ];
+  if (r.exit_plan) legend.push(['╌', 'label2', '临界线 ±0.45W / 0.55W / 0.8W']);
+  mountChart(node, 'mid', { ariaLabel: '标的走势', bars, hlines, bands, vlines, markers, legend, volume: false });
   return node;
 }
 
@@ -2314,6 +2215,7 @@ const EXIT_LEVEL_STYLE = () => ({
 const PHASE_LABEL = { A: '阶段 A', B: '阶段 B', C: '阶段 C' };
 
 /** 蝶价走势:组合分钟中间价的蜡烛 + 模型价虚线 + 止盈/止损水平线 + 开仓/平仓/策略事件标记。 */
+/** 蝶价走势:组合分钟中间价的蜡烛 + 模型价虚线 + 止盈/止损水平线 + 回撤触发价阶梯 + 开仓/平仓/策略事件标记。 */
 function renderFlyChart(r) {
   const plan = r.exit_plan || {};
   const sim = plan.simulation || {};
@@ -2322,156 +2224,50 @@ function renderFlyChart(r) {
   const path = sim.series || [];
   const node = card('info', `蝶价走势(组合中间价 · 1 分钟 · ${fs.source === 'ibkr' ? 'IBKR 真实数据' : '模型价'})`);
   // 时间轴:真实 K 线与回放序列的并集,按时间排序
-  const times = Array.from(new Set([...real.map((b) => b.time), ...path.map((p) => p.time)])).sort();
+  const times = Array.from(new Set([...real.map((b) => b.time), ...path.map((pt) => pt.time)])).sort();
   if (times.length < 2) {
     node.appendChild(el('p', 'empty', '没有蝶价数据:引擎未连 TWS,或 IBKR 没有这张组合的历史分钟线。'));
     return node;
   }
-  const realAt = new Map(real.map((b) => [b.time, b]));
-  const pathAt = new Map(path.map((p) => [p.time, p]));
-  const levels = (plan.levels || []).map((l) => l.price);
-  const prices = [];
-  for (const b of real) prices.push(b.low, b.high);
-  for (const p of path) {
-    prices.push(p.price);
-    if (p.trail_stop != null) prices.push(p.trail_stop);
-  }
-  for (const m of fs.markers || []) if (m.price != null) prices.push(m.price);
-  let lo = Math.min(...prices, ...levels.filter((v) => v != null));
-  let hi = Math.max(...prices, ...levels.filter((v) => v != null));
-  const pad = (hi - lo) * 0.08 || 0.5;
-  lo = Math.max(0, lo - pad);
-  hi += pad;
-  const span = hi - lo || 1;
-  const W = 660, H = 260, PAD_L = 6, PAD_R = 92, PAD_T = 12, PAD_B = 16;
-  const PRICE_H = H - PAD_T - PAD_B;
-  const slot = (W - PAD_L - PAD_R) / times.length;
-  const x = (i) => PAD_L + slot * (i + 0.5);
-  const y = (p) => PAD_T + PRICE_H - ((p - lo) / span) * PRICE_H;
-  const at = new Map(times.map((t, i) => [t, i]));
-  const rightEdge = W - PAD_R;
-  const svg = svgNode('svg', { viewBox: `0 0 ${W} ${H}`, class: 'review-chart' });
-
+  const pathAt = new Map(path.map((pt) => [pt.time, pt]));
   // 阶段底色:B、C 段淡淡标出来
-  const phaseBands = [];
-  for (let i = 0; i < times.length; i += 1) {
-    const ph = (pathAt.get(times[i]) || {}).phase;
-    if (!ph) continue;
-    const lastBand = phaseBands[phaseBands.length - 1];
-    if (lastBand && lastBand.phase === ph) lastBand.to = i;
-    else phaseBands.push({ phase: ph, from: i, to: i });
+  const phases = [];
+  let band = null;
+  for (const t of times) {
+    const ph = (pathAt.get(t) || {}).phase;
+    if (!ph) { band = null; continue; }
+    if (band && band.phase === ph) band.to = t;
+    else { band = { phase: ph, from: t, to: t }; phases.push(band); }
   }
-  for (const band of phaseBands) {
-    if (band.phase === 'A') continue;
-    svg.appendChild(svgNode('rect', {
-      x: x(band.from) - slot / 2, y: PAD_T, width: slot * (band.to - band.from + 1), height: PRICE_H,
-      fill: band.phase === 'B' ? THEME.orange : THEME.purple, 'fill-opacity': 0.06,
-    }));
-    const t = svgNode('text', { x: x(band.from), y: PAD_T + 9, 'font-size': 8.5, fill: 'currentColor', 'fill-opacity': 0.55 });
-    t.textContent = PHASE_LABEL[band.phase];
-    svg.appendChild(t);
-  }
-
-  // 止盈 / 止损水平线
-  for (const l of plan.levels || []) {
-    const st = EXIT_LEVEL_STYLE()[l.kind];
-    if (!st || l.price == null) continue;
-    const py = y(l.price);
-    svg.appendChild(svgNode('line', {
-      x1: PAD_L, x2: rightEdge, y1: py, y2: py, stroke: st[0], 'stroke-opacity': 0.8, 'stroke-width': 1,
-      'stroke-dasharray': l.kind === 'trail_arm' ? '2 2' : '5 3',
-    }));
-    const label = svgNode('text', { x: rightEdge + 4, y: py + 3, 'font-size': 8.5, fill: st[0] });
-    label.textContent = `${st[1]} ${l.price}`;
-    svg.appendChild(label);
-  }
-
-  // 回撤追踪线:触发价随浮盈高水位往上棘轮,只在激活之后有值。画成阶梯,断点处不连线。
-  const trailSegs = [];
-  for (const p of path) {
-    if (p.trail_stop == null || !at.has(p.time)) { trailSegs.push(null); continue; }
-    trailSegs.push([at.get(p.time), p.trail_stop]);
-  }
-  let run = [];
-  const flushTrail = () => {
-    if (run.length > 1) {
-      let d = '';
-      for (let i = 0; i < run.length; i += 1) {
-        const [xi, v] = run[i];
-        const px = x(xi).toFixed(1);
-        if (!i) d += `M${px},${y(v).toFixed(1)}`;
-        else d += ` L${x(run[i - 1][0]).toFixed(1)},${y(v).toFixed(1)} L${px},${y(v).toFixed(1)}`;
-      }
-      svg.appendChild(svgNode('path', { d, fill: 'none', stroke: THEME.orange, 'stroke-opacity': 0.85, 'stroke-width': 1.2, 'stroke-dasharray': '4 2' }));
-    }
-    run = [];
-  };
-  for (const seg of trailSegs) {
-    if (seg) run.push(seg);
-    else flushTrail();
-  }
-  flushTrail();
-
-  // 蜡烛(真实分钟线)
-  const bodyW = Math.max(slot * 0.6, 1);
-  for (let i = 0; i < times.length; i += 1) {
-    const b = realAt.get(times[i]);
-    if (!b) continue;
-    const up = b.close >= b.open;
-    const color = up ? THEME.up : THEME.down;
-    svg.appendChild(svgNode('line', { x1: x(i), x2: x(i), y1: y(b.high), y2: y(b.low), stroke: color, 'stroke-width': Math.min(bodyW * 0.28, 1) }));
-    svg.appendChild(svgNode('rect', {
-      x: x(i) - bodyW / 2, y: y(Math.max(b.open, b.close)), width: bodyW,
-      height: Math.max(Math.abs(y(b.close) - y(b.open)), 0.8), fill: color,
-    }));
-  }
-  // 模型价:只画没有真实数据的那些分钟,虚线
-  const modelPts = path.filter((p) => p.source === 'model' && at.has(p.time));
-  if (modelPts.length) {
-    const d = modelPts.map((p, i) => `${i ? 'L' : 'M'}${x(at.get(p.time)).toFixed(1)},${y(p.price).toFixed(1)}`).join(' ');
-    svg.appendChild(svgNode('path', { d, fill: 'none', stroke: 'currentColor', 'stroke-opacity': 0.6, 'stroke-width': 1, 'stroke-dasharray': '3 2' }));
-  }
-
-  // 标记:开仓 / 实际平仓 / 策略事件
-  const MARK = { entry: [THEME.blue, '开仓'], exit: [THEME.purple, '实际平仓'] };
+  const bands = phases.filter((b) => b.phase !== 'A').map((b) => ({
+    v: true, from: b.from, to: b.to, color: b.phase === 'B' ? 'orange' : 'purple', fill: 0.06, label: PHASE_LABEL[b.phase],
+  }));
+  const EXIT = { tp1: ['up', '第一档'], tp2: ['up', '第二档'], trail_arm: ['orange', '回撤追踪激活'], stop: ['down', '止损'] };
+  const hlines = (plan.levels || []).filter((l) => EXIT[l.kind] && l.price != null).map((l) => ({
+    price: l.price, color: EXIT[l.kind][0], dash: l.kind === 'trail_arm' ? [2, 2] : [5, 3], alpha: 0.8, label: EXIT[l.kind][1],
+  }));
+  const lines = [
+    // 模型价:只画没有真实报价的那些分钟
+    { points: path.filter((pt) => pt.source === 'model').map((pt) => ({ time: pt.time, value: pt.price })), color: 'label', alpha: 0.55, dash: [3, 2], label: '模型价' },
+    // 回撤触发价随浮盈高水位往上棘轮,只在激活之后有值:画成阶梯
+    { points: path.filter((pt) => pt.trail_stop != null).map((pt) => ({ time: pt.time, value: pt.trail_stop })), color: 'orange', alpha: 0.85, dash: [4, 2], step: true, label: '回撤触发价' },
+  ];
+  const MARK = { entry: ['blue', '开仓'], exit: ['purple', '实际平仓'] };
+  const markers = [];
   for (const m of fs.markers || []) {
-    if (!at.has(m.time) || m.price == null) continue;
-    const i = at.get(m.time);
+    if (m.price == null) continue;
     const st = MARK[m.kind] || MARK.entry;
-    svg.appendChild(svgNode('line', { x1: x(i), x2: x(i), y1: PAD_T, y2: PAD_T + PRICE_H, stroke: st[0], 'stroke-width': 1, 'stroke-dasharray': '3 3', 'stroke-opacity': 0.8 }));
-    svg.appendChild(svgNode('circle', { cx: x(i), cy: y(m.price), r: 3, fill: st[0] }));
-    const label = svgNode('text', { x: x(i) + 4, y: y(m.price) - 5, 'font-size': 9, fill: st[0] });
-    label.textContent = `${st[1]} ${m.price}`;
-    svg.appendChild(label);
+    markers.push({ time: m.time, price: m.price, shape: 'dot', color: st[0], label: `${st[1]} ${m.price}` });
   }
   for (const e of sim.events || []) {
-    if (!at.has(e.time)) continue;
-    const i = at.get(e.time);
-    const color = e.source === 'settle' ? THEME.purple : (e.pnl >= 0 ? THEME.up : THEME.down);
-    const py = y(e.price);
-    svg.appendChild(svgNode('path', { d: `M${x(i)},${py - 9} l5,8 l-10,0 z`, fill: color }));
-    const label = svgNode('text', { x: x(i), y: py - 12, 'font-size': 8.5, 'text-anchor': 'middle', fill: color });
-    label.textContent = `策略 ${e.qty} 张 @ ${e.price}`;
-    svg.appendChild(label);
+    const color = e.source === 'settle' ? 'purple' : (e.pnl >= 0 ? 'up' : 'down');
+    markers.push({ time: e.time, price: e.price, shape: 'tri-down', color, label: `策略 ${e.qty} 张 @ ${e.price}` });
   }
-
-  const first = svgNode('text', { x: PAD_L, y: H - 3, 'font-size': 9, fill: 'currentColor', 'fill-opacity': 0.5 });
-  first.textContent = times[0];
-  svg.appendChild(first);
-  const last = svgNode('text', { x: rightEdge, y: H - 3, 'font-size': 9, 'text-anchor': 'end', fill: 'currentColor', 'fill-opacity': 0.5 });
-  last.textContent = times[times.length - 1];
-  svg.appendChild(last);
-  node.appendChild(svg);
-
-  const legend = el('div', 'review-legend');
-  for (const [text, color] of [['止盈档位', THEME.up], ['止损', THEME.down], ['回撤激活线 / 触发价(阶梯)', THEME.orange], ['开仓', THEME.blue], ['实际平仓', THEME.purple], ['模型价(无真实报价的分钟)', 'currentColor'], ['▲ 策略出手点', THEME.up]]) {
-    const item = el('span', null, text);
-    const swatch = el('i');
-    swatch.style.color = color;
-    item.insertBefore(swatch, item.firstChild);
-    legend.appendChild(item);
-  }
-  node.appendChild(legend);
+  const legend = [
+    ['╌', 'up', '止盈档位'], ['╌', 'down', '止损'], ['╌', 'orange', '回撤激活 / 触发价'],
+    ['·', 'blue', '开仓'], ['·', 'purple', '实际平仓'], ['╌', 'label2', '模型价'], ['▼', 'up', '策略出手点'],
+  ];
+  mountChart(node, 'mid', { ariaLabel: '蝶价走势', times, bars: real, lines, hlines, bands, markers, legend, volume: false, yMin: 0, padPct: 0.08 });
   return node;
 }
 
@@ -3060,18 +2856,62 @@ function alertCard(watch) {
     return node;
   }
 
-  const spot = watch.last_price;
-  for (const level of watch.levels) {
-    const row = el('div', 'pa-lv');
-    const kind = level.kind === 'resistance' ? 'rejected' : level.kind === 'support' ? 'filled' : 'pending';
-    row.appendChild(el('span', `status ${kind}`, ALERT_SOURCE_LABEL[level.source] || '价位'));
-    row.appendChild(el('span', 'pa-lv-price', String(level.price)));
-    const gap = spot ? ((level.price / spot - 1) * 100).toFixed(2) : null;
-    row.appendChild(el('span', 'muted',
-      `${level.label}${gap != null ? ` · ${gap > 0 ? '+' : ''}${gap}%` : ''}`));
-    node.appendChild(row);
-  }
+  node.appendChild(renderLadder(watch.levels, watch.last_price));
   return node;
+}
+
+/**
+ * 价位梯子:把墙、关口、现价按价格摆到一根竖轴上,离现价多远一眼可见——一列数字要一个个读,
+ * 位置不用读。挤在一起的行按和图表轴上标签同一套逻辑推开;行高 22px,整体高度随价位数走。
+ */
+function renderLadder(levels, spot) {
+  const box = el('div', 'ladder');
+  const rows = levels.map((l) => ({ price: l.price, level: l }));
+  if (spot != null) rows.push({ price: spot, spot: true, pinned: true });
+  const prices = rows.map((r) => r.price);
+  let lo = Math.min(...prices);
+  let hi = Math.max(...prices);
+  const pad = (hi - lo) * 0.1 || Math.abs(hi) * 0.005 || 1;
+  lo -= pad;
+  hi += pad;
+  const ROW = 22;
+  const H = Math.max(120, rows.length * ROW + 16);
+  box.style.height = `${H}px`;
+  for (const r of rows) r.y = 8 + (1 - (r.price - lo) / (hi - lo)) * (H - 16);
+  const sorted = rows.slice().sort((a, b) => a.y - b.y);
+  for (const r of sorted) r.ly = r.y;
+  for (let pass = 0; pass < 8; pass += 1) {
+    let moved = false;
+    for (let i = 1; i < sorted.length; i += 1) {
+      const a = sorted[i - 1];
+      const b = sorted[i];
+      const overlap = a.ly + ROW - b.ly;
+      if (overlap > 0) {
+        moved = true;
+        if (a.pinned) b.ly += overlap;
+        else if (b.pinned) a.ly -= overlap;
+        else { a.ly -= overlap / 2; b.ly += overlap / 2; }
+      }
+    }
+    for (const r of sorted) if (!r.pinned) r.ly = Math.min(H - ROW / 2, Math.max(ROW / 2, r.ly));
+    if (!moved) break;
+  }
+  box.appendChild(el('div', 'ladder-axis'));
+  for (const r of sorted) {
+    const kind = r.spot ? 'spot' : r.level.kind === 'resistance' ? 'resistance' : r.level.kind === 'support' ? 'support' : 'neutral';
+    const row = el('div', `ladder-row ${kind}`);
+    row.style.top = `${r.ly}px`;
+    row.appendChild(el('span', 'ladder-src', r.spot ? '现价' : (ALERT_SOURCE_LABEL[r.level.source] || '价位')));
+    row.appendChild(el('i', 'ladder-tick'));
+    row.appendChild(el('span', 'ladder-price', String(r.price)));
+    if (!r.spot) {
+      const gap = spot ? ((r.price / spot - 1) * 100).toFixed(2) : null;
+      row.appendChild(el('span', 'ladder-dist', gap != null ? `${gap > 0 ? '+' : ''}${gap}%` : ''));
+      row.title = r.level.label || '';
+    }
+    box.appendChild(row);
+  }
+  return box;
 }
 
 // ======================================================================
