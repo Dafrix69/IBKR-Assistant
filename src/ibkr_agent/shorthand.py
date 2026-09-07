@@ -28,7 +28,7 @@ from typing import Any, Dict, List, Mapping, Optional, Tuple
 #: 记录里的"模型名":一眼能看出这单没经过大模型
 LOCAL_MODEL = "local-shorthand"
 #: 语法版本:改语法必须升版本,记录里跟着走
-GRAMMAR_VERSION = "shorthand-v2"
+GRAMMAR_VERSION = "shorthand-v3"
 
 #: 中文数量词(「两张」「十张」)。十以上没人这么写蝴蝶,不猜。
 _CN_NUM = {"一": 1, "两": 2, "二": 2, "三": 3, "四": 4, "五": 5,
@@ -79,6 +79,18 @@ def shorthand_symbols(instruction: str) -> List[str]:
     return [token] if token not in ("CM", "GTC", "CALL", "PUT", "DTE") else ["SPX"]
 
 
+def _weekend_rejection(text: str, day_name: str) -> Dict[str, Any]:
+    """周末的"当日到期"蝴蝶:与大模型同形的拒绝 payload(orders 为空,rejections 一条)。"""
+    return {
+        "orders": [],
+        "rejections": [{
+            "original_text": text,
+            "code": "UNSUPPORTED",
+            "message": "今天(%s)不是交易日,默认当日到期的蝴蝶无法下单;要下周一的写「明天」,或写明到期日。" % day_name,
+        }],
+    }
+
+
 def try_parse_shorthand(
     instruction: str,
     snapshot: Mapping[str, float],
@@ -86,7 +98,19 @@ def try_parse_shorthand(
 ) -> Optional[Dict[str, Any]]:
     """严格语法命中 → 与大模型同形的 payload;任何不确定 → None(交给大模型)。"""
     # 全角数字/字母/标点统一成半角(中文输入法常见),CJK 本身不受影响
-    text = unicodedata.normalize("NFKC", (instruction or "")).strip()
+    full = unicodedata.normalize("NFKC", (instruction or "")).strip()
+    # 尾巴上的「理由:…」是给复盘看的,不参与语法:先摘下来,原文进 reason。
+    # v2 曾把带理由的整句交给大模型"连理由一起入库",实测大模型看不懂这套行话,
+    # 花 3~4 秒换来一个 UNCLEAR——界面上的「补理由」按钮正好把用户推进这条死路。
+    reason = "本地速记解析"
+    m_reason = re.search(r"[,,。;;\s]*理由\s*:?\s*(.*)$", full)
+    text = full
+    if m_reason:
+        reason_text = m_reason.group(1).strip()
+        if not reason_text:
+            return None  # 「理由:」后面是空的:说不清,交给大模型
+        reason = reason_text
+        text = full[: m_reason.start()].strip()
     if not text or len(text) > 80:
         return None
     has_butterfly_word = "蝴蝶" in text
@@ -220,7 +244,9 @@ def try_parse_shorthand(
         warnings.append("「明天」按下一交易日 %s 处理" % day.strftime("%Y-%m-%d"))
     else:
         if moment.weekday() >= 5:
-            return None
+            # 周末:默认"当日到期"的合约不存在。这条原来回落给大模型,而大模型也只会以"不是交易日"拒——
+            # 白等 3~5 秒。本地直接拒,2 毫秒,话也说得更清楚:要下周一的写「明天」。
+            return _weekend_rejection(full, "周六" if moment.weekday() == 5 else "周日")
         expiry = moment.strftime("%Y%m%d")
         expiry_label = "%s 当日到期" % moment.strftime("%Y-%m-%d")
         warnings.append("未写到期日,已按默认当日到期处理")
@@ -310,7 +336,7 @@ def try_parse_shorthand(
             "trigger": None,
             "account": "DEFAULT",
             "order": order,
-            "reason": "本地速记解析",
+            "reason": reason,
             "confidence": 1.0,
             "warnings": warnings,
         }],

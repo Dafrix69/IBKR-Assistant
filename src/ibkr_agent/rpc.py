@@ -106,6 +106,20 @@ class RpcServer:
         import threading
 
         self._emit("ready", {"protocol": PROTOCOL_VERSION, "config": str(self.settings.source_path)})
+
+        # 预热 SPX 公开现价(与 TS 同):本地速记「15蝴蝶」的中心要靠它算,冷取一次约 0.7 秒。
+        # 启动就取、之后每 4 分钟后台刷一次,让速记这条毫秒级的路径不因为"第一次"变成 700 毫秒。
+        def warm_spot_loop() -> None:
+            from .macro import public_index_price
+
+            while True:
+                try:
+                    public_index_price("SPX")
+                except Exception:
+                    pass
+                time.sleep(240)
+
+        threading.Thread(target=warm_spot_loop, name="spot-warm", daemon=True).start()
         inbox: "queue.PriorityQueue" = queue.PriorityQueue()
         seq = itertools.count()
         _EOF = {"__eof__": True}

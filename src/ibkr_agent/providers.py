@@ -313,6 +313,10 @@ class OpenAICompatibleParser:
             structured_mode=mode,
         )
 
+    # 端点拒过 json_schema(HTTP 400)就记住:后面直接走 json_object,不再每次先撞一遍 400。
+    # 实测 DeepSeek 每次都 400,不记住就每条指令白多一个往返(12.5k token 的提示词上传两遍)。
+    _schema_rejected = False
+
     def _complete(self, messages, schema):
         """先试 json_schema;端点不认再退到 json_object,并把 schema 写进系统提示词。"""
         body = {
@@ -325,11 +329,13 @@ class OpenAICompatibleParser:
                 "json_schema": {"name": "parse_result", "strict": True, "schema": schema},
             },
         }
-        try:
-            return self._post("/chat/completions", body), "json_schema"
-        except LLMError as exc:
-            if "400" not in str(exc) and "response_format" not in str(exc):
-                raise
+        if not self._schema_rejected:
+            try:
+                return self._post("/chat/completions", body), "json_schema"
+            except LLMError as exc:
+                if "400" not in str(exc) and "response_format" not in str(exc):
+                    raise
+                self._schema_rejected = True
         fallback = list(messages)
         fallback[0] = {
             "role": "system",
@@ -407,6 +413,9 @@ def _openai_usage(usage: Any) -> Dict[str, Any]:
     return {
         "input_tokens": usage.get("prompt_tokens"),
         "output_tokens": usage.get("completion_tokens"),
+        # DeepSeek 等端点报的前缀缓存命中 / 未命中;命中率决定首 token 时延
+        "cache_hit_tokens": usage.get("prompt_cache_hit_tokens"),
+        "cache_miss_tokens": usage.get("prompt_cache_miss_tokens"),
     }
 
 

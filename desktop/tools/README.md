@@ -88,3 +88,20 @@ npm run smoke:engine         # tools/smoke_engine_ts.js:Electron 自带 Node + �
 
 `npm run dist:win` / `dist:mac` 会先跑这两步。为什么不用 `npm ci --omit=dev`:better-sqlite3 没有 install 脚本,
 npm 见到 binding.gyp 会去跑 node-gyp,没有 C++ 工具链的机器直接失败;而它的 tarball 本来就带了全部平台的预编译二进制。
+
+## 解析链路时延压测
+
+```bash
+node tools/latency_bench.js                 # TS 引擎,进程内,固定交易日时钟(美东 2026-08-14 10:32,盘中)
+node tools/latency_bench.js --engine py     # Python 引擎,走 stdio RPC(真实时钟)
+node tools/latency_bench.js --only A,B      # 只跑某几类;--repeat N 重复;--cold 不预热 SPX 现价
+```
+
+38 条自拟指令分八类(固定行话 / 蝴蝶与组合 / 正股 / 期权 / 触发与多单 / 应拒 / 边界 / 重复),逐条
+`instruction.submit`(`execute:false`,**绝不下单**),记墙钟时延、走的是本地速记还是大模型、模型自报时延、
+token 用量(含前缀缓存命中)、结果计数,写到 `.uipreview/latency/<engine>-<clock>.json`,末尾打一份分位数汇总和
+"路径与预期不符"的清单。数据库一律指到临时目录,不碰真实的 trades.db(解析模式也会落拒绝记录)。
+
+为什么要固定时钟:速记的默认到期是"当日",周末跑出来全是"非交易日"的拒绝,量的不是解析。第一次跑就是在周日跑的,
+八条行话七条落到了大模型——查下来是周末,不是语法;固定时钟后八条全中,中位 1.6 毫秒。
+大模型那一段是真调用(会花钱,几十条约几分钱);数字见 `OPTIMIZATION_REPORT.md` §7。
