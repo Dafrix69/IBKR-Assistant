@@ -117,9 +117,29 @@ def test_tail_center_without_spot_falls_back():
     assert parse("1.8 挂15蝴蝶 15CM", {}) is None
 
 
-def test_weekend_falls_back():
+@pytest.mark.parametrize("text,reason", [
+    ("7520的20cm蝴蝶 3.3,理由:突破回踩", "突破回踩"),
+    ("1.8 挂15蝴蝶 15CM 理由:开盘冲高回落", "开盘冲高回落"),
+    ("7520的20cm蝴蝶 3.3 理由 涨得太急", "涨得太急"),
+])
+def test_reason_suffix_is_kept_locally(text, reason):
+    """v3:尾巴上的理由本地接住,原文进 reason;理由里的词(突破)不触发回落。"""
+    payload = parse(text, {"SPX": 7462.35} if "7520" in text else {"SPX": 7745.2})
+    assert payload is not None, text
+    order = payload["orders"][0]
+    assert order["reason"] == reason
+    assert order["order"]["lmtPrice"] in (3.3, 1.8)
+    assert "shorthand-v3" in order["warnings"][-1]
+
+
+def test_weekend_rejects_locally():
+    """周末不回落大模型:本地直接拒(毫秒级),而不是让大模型花 4 秒说"不是交易日"。"""
     saturday = datetime(2026, 8, 15, 10, 32, tzinfo=ET)
-    assert parse("1.8 挂15蝴蝶 15CM", {"SPX": 6907.35}, saturday) is None
+    out = parse("1.8 挂15蝴蝶 15CM", {"SPX": 6907.35}, saturday)
+    assert out["orders"] == []
+    assert out["rejections"][0]["code"] == "UNSUPPORTED"
+    assert "周六" in out["rejections"][0]["message"]
+    assert out["rejections"][0]["original_text"] == "1.8 挂15蝴蝶 15CM"
 
 
 # ======================================================================
@@ -183,7 +203,7 @@ MISS_VARIANTS = [
     "7400 7500 20cm蝴蝶 2.5",        # 两个行权价量级的数:说不清哪个是中心
     "230的5cm蝴蝶 看涨 1.2",         # 中心与 SPX 现价偏离 >20%:多半写漏了标的
     "230的5cm蝴蝶 1.2",
-    "7520的20cm蝴蝶 3.3,理由:突破回踩",  # 带理由:交给大模型连理由一起入库
+    "7520的20cm蝴蝶 3.3 理由",           # 「理由」后面是空的:说不清,交给大模型
 ]
 
 
