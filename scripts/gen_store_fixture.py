@@ -35,7 +35,7 @@ rec1 = {
     "contract": {"secType": "STK", "symbol": "AAPL", "exchange": "SMART", "currency": "USD"},
     "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 100, "lmtPrice": 230.0},
     "account": {"alias": "模拟", "account_id": "DU7654321"},
-    "llm": {"prompt_version": "v1.7.0", "prompt_fingerprint": "abc123", "model": "claude-opus-5"},
+    "llm": {"prompt_version": "v1.8.0", "prompt_fingerprint": "abc123", "model": "claude-opus-5"},
     "reason": "回调到位",
 }
 rid1 = store.create_record(dict(rec1))
@@ -54,7 +54,7 @@ rec2 = {
     "contract": {"secType": "BAG", "symbol": "SPX"},
     "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1},
     "account": {"alias": "模拟", "account_id": "DU7654321"},
-    "llm": {"prompt_version": "v1.7.0"},
+    "llm": {"prompt_version": "v1.8.0"},
 }
 rid2 = store.create_record(dict(rec2))
 store.append_event(rid2, "status", {"status": "PendingTrigger"})
@@ -71,7 +71,7 @@ rec3 = {
     "contract": {"secType": "OPT", "symbol": "NVDA"},
     "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 2},
     "account": {"alias": "模拟", "account_id": "DU7654321"},
-    "llm": {"prompt_version": "v1.7.0"},
+    "llm": {"prompt_version": "v1.8.0"},
 }
 rid3 = store.create_record(dict(rec3))
 store.append_event(rid3, "status", {"status": "ValidatedOnly"})

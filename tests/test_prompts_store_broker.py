@@ -22,7 +22,6 @@ def test_bundle_renders_without_leftover_placeholders(settings, now):
     assert "{{" not in bundle.system_text
     assert "苹果=AAPL" in bundle.system_text
     assert "模拟=纸面测试账户(默认)" in bundle.system_text
-    assert "50000" in bundle.system_text  # 限额已注入
     assert len(bundle.fewshot) >= 6
 
 
@@ -57,9 +56,15 @@ def test_snapshot_line_present_only_when_there_is_data(settings, now):
     assert "盘中" in with_snapshot
 
 
-def test_fingerprint_changes_with_limits(settings):
-    other = make_settings(limits={"max_order_notional": 999.0})
-    assert load_prompt_bundle(settings).fingerprint != load_prompt_bundle(other).fingerprint
+def test_fingerprint_tracks_what_the_model_sees(settings):
+    """v1.8.0 起限额不进提示词(校验层复算):改限额不换指纹,改别名表才换;v1.7.0 照旧随限额变。"""
+    tighter = make_settings(limits={"max_order_notional": 999.0})
+    assert load_prompt_bundle(settings).fingerprint == load_prompt_bundle(tighter).fingerprint
+    aliased = make_settings(symbol_aliases={"微软": "MSFT"})
+    assert load_prompt_bundle(settings).fingerprint != load_prompt_bundle(aliased).fingerprint
+    legacy = make_settings(prompt_version="v1.7.0")
+    legacy_tighter = make_settings(prompt_version="v1.7.0", limits={"max_order_notional": 999.0})
+    assert load_prompt_bundle(legacy).fingerprint != load_prompt_bundle(legacy_tighter).fingerprint
 
 
 # ---- LLM 层的两个约定 ----------------------------------------------------

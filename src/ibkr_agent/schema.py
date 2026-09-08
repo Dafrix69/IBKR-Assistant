@@ -6,7 +6,8 @@
 """
 from __future__ import annotations
 
-from typing import Any, Dict, Type
+import re
+from typing import Any, Dict, Tuple, Type
 
 from pydantic import BaseModel
 
@@ -29,6 +30,28 @@ def structured_output_schema(model: Type[BaseModel]) -> Dict[str, Any]:
     schema = model.model_json_schema()
     _strip(schema)
     return schema
+
+
+def parse_schema_for_prompt(prompt_version: str) -> Dict[str, Any]:
+    """发给模型的 ParseResult schema,随提示词版本走。
+
+    v1.8.0 起限额只在校验层复算,提示词让模型"不要输出 EXCEEDS_LIMIT"——发出去的 enum 就不能再列它,
+    否则 json_object 降级时同一条系统消息里既说不要输出、又把它列成合法值。pydantic 模型本身保留该码
+    (v1.7.0 回滚、以及模型不听话时仍能解析),剥掉的只是"给 API 看的那一份"。
+    """
+    from .models import ParseResult
+
+    schema = structured_output_schema(ParseResult)
+    if _version_tuple(prompt_version) >= (1, 8, 0):
+        code = schema.get("$defs", {}).get("Rejection", {}).get("properties", {}).get("code", {})
+        if isinstance(code.get("enum"), list):
+            code["enum"] = [c for c in code["enum"] if c != "EXCEEDS_LIMIT"]
+    return schema
+
+
+def _version_tuple(version: str) -> Tuple[int, ...]:
+    digits = re.findall(r"\d+", version or "")
+    return tuple(int(d) for d in digits[:3]) or (0,)
 
 
 def _strip(node: Any) -> None:

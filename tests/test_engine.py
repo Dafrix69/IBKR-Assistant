@@ -94,7 +94,7 @@ def test_auto_execute_places_and_records(settings, now):
     record = engine.store.get_record(result.submitted[0]["record_id"])
     assert record["account"]["account_id"] == "DU7654321"   # 落库留痕的是真实账号
     assert record["input"]["raw_instruction"] == "买入 AAPL 100股 limit 230"
-    assert record["llm"]["prompt_version"] == "v1.7.0"
+    assert record["llm"]["prompt_version"] == "v1.8.0"
     assert record["ibkr"]["order_id"] == 1024
     assert record["ibkr"]["status_timeline"][0]["status"] == "Submitted"
 

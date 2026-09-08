@@ -6,6 +6,7 @@
 //   node tools/latency_bench.js --clock real          # TS 引擎也用真实时钟(周末会看到速记的本地拒绝)
 //   node tools/latency_bench.js --only A,C --repeat 2 # 只跑某几类,重复几轮
 //   node tools/latency_bench.js --cold                # 不预热 SPX 现价,量速记第一次冷取的代价
+//   node tools/latency_bench.js --match 英伟达,SPY      # 只跑指令文本含这些片段的行(改完提示词抽查几条,少花钱)
 //
 // 为什么要固定时钟:速记的默认到期是"当日",周末跑出来的数字全是"非交易日"的拒绝,量的不是解析。
 // 数据库一律指向临时目录,不碰真实的 trades.db(解析模式也会落拒绝记录)。大模型那部分是真调用,会花钱。
@@ -24,6 +25,7 @@ const engine = flag('engine', 'ts');
 const clock = flag('clock', 'fixed');
 const repeat = Number(flag('repeat', '1'));
 const only = flag('only', '');
+const match = flag('match', '');
 const outFile = flag('out', path.join(DESKTOP, '.uipreview', 'latency', `${engine}-${clock}.json`));
 
 // 语料:分类 + 预期路径。local = 本地速记;llm = 大模型;error = RPC 直接报错。
@@ -150,10 +152,12 @@ async function main() {
   await client.call('system.status', {});
   const startupMs = Number(process.hrtime.bigint() - t0) / 1e6;
   const wanted = only ? only.split(',') : null;
+  const needles = match ? match.split(',').map((x) => x.trim()).filter(Boolean) : null;
   const rows = [];
   for (let r = 0; r < repeat; r += 1) {
     for (const [cat, expect, text] of CORPUS) {
       if (wanted && !wanted.includes(cat)) continue;
+      if (needles && !needles.some((n) => text.includes(n))) continue;
       const started = process.hrtime.bigint();
       let msg;
       try { msg = await client.call('instruction.submit', { text, execute: false }); }

@@ -23,12 +23,13 @@ from ibkr_agent import config as cfg_mod  # noqa: E402
 from ibkr_agent.config import ET, Settings, _from_dict  # noqa: E402
 from ibkr_agent.models import parse_llm_payload  # noqa: E402
 from ibkr_agent.prompts import PromptError, load_prompt_bundle, render_user  # noqa: E402
+from ibkr_agent.schema import parse_schema_for_prompt  # noqa: E402
 from ibkr_agent.validator import RecentOrder, Validator, order_signature  # noqa: E402
 from ibkr_agent.models import ParsedOrder  # noqa: E402
 
 # 与 tests/conftest.py 一致的基准配置
 BASE_CONFIG = {
-    "prompt_version": "v1.7.0",
+    "prompt_version": "v1.8.0",
     "llm": {"model": "claude-opus-5", "effort": "high", "temperature": None},
     "limits": {
         "max_order_notional": 50_000.0,
@@ -332,6 +333,43 @@ def gen_validator():
     case("option_buy_mkt_unpriceable", option_order(order={
         "orderType": "MKT", "lmtPrice": None, "price_mode": "EXPLICIT"}))
     case("option_contracts_over", option_order(order={"totalQuantity": 11, "lmtPrice": 0.5}))
+    # 限额只在本地校验(提示词 v1.8.0):压测里模型自己算限额误拒的四条,校验层按 5000 USD / 5 张放行;真超限的拦
+    tight = {"limits": {"max_order_notional": 5_000.0, "max_option_contracts": 5}}
+    case("tight_nvda_two_calls_ok", option_order(), settings_over=tight)  # 2 × 100 × 5.5 = 1100
+    case("tight_spy_put_ok", option_order(
+        intent_summary="限价 3 买入 1 张 SPY 20260814 560 Put",
+        contract={"symbol": "SPY", "strike": 560.0, "right": "P",
+                  "lastTradeDateOrContractMonth": "20260814"},
+        order={"totalQuantity": 1, "lmtPrice": 3.0}), settings_over=tight)  # 1 × 100 × 3 = 300
+    case("tight_condor_4800_ok", condor_order(
+        intent_summary="卖出 1 张 SPX 今天 7300/7350/7700/7750 铁鹰,收权利金不低于 2",
+        contract={"legs": [
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7300.0, "right": "P", "tradingClass": "SPXW"},
+        {"action": "SELL", "ratio": 1, "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7350.0, "right": "P", "tradingClass": "SPXW"},
+        {"action": "SELL", "ratio": 1, "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7700.0, "right": "C", "tradingClass": "SPXW"},
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7750.0, "right": "C", "tradingClass": "SPXW"},
+    ]}, order={"totalQuantity": 1, "lmtPrice": 2.0, "tif": "DAY"}), settings_over=tight)  # (50 − 2) × 100 = 4800
+    case("tight_call_spread_auto_mid_ok", spread_order(), settings_over=tight)  # 宽度 30 × 100 = 3000
+    case("tight_stock_23000_over", stock_order(), settings_over=tight)  # 100 × 230 = 23000 → 拦
+    case("tight_mkt_1000_shares_over", stock_order(
+        contract={"symbol": "MSFT"},
+        order={"orderType": "MKT", "lmtPrice": None, "totalQuantity": 1000}),
+        settings_over=tight)  # 无参考价,超 200 股 → 拦
+    case("tight_six_contracts_over", option_order(order={"totalQuantity": 6, "lmtPrice": 0.5}),
+         settings_over=tight)  # 敞口 300 不超,张数 6 > 5 → 拦
+    case("notional_only_six_contracts_ok", option_order(order={"totalQuantity": 6, "lmtPrice": 0.5}),
+         settings_over={"limits": {"max_order_notional": 5_000.0}})  # 张数上限回落到基准 10(不是引擎默认 5)→ 放行:钉住合并语义
+    case("tight_mkt_ref_22940_over", stock_order(order={"orderType": "MKT", "lmtPrice": None}),
+         settings_over=tight)  # 市价单有快照:229.4 × 100 = 22940 → 按金额拦,不是按股数
+    case("tight_mkt_ref_20_ok", stock_order(order={"orderType": "MKT", "lmtPrice": None, "totalQuantity": 20}),
+         settings_over=tight)  # 20 × 229.4 = 4588 → 放行
+    case("tight_mkt_ref_300_over", stock_order(order={"orderType": "MKT", "lmtPrice": None, "totalQuantity": 300}),
+         settings_over=tight)  # 68820 → 金额消息;200 股上限只在无参考价时生效
+    case("tight_condor_sell_two_7600_over", condor_order(), settings_over=tight)  # 2 × (50 − 12) × 100 = 7600 → 拦
     case("stock_mkt_no_ref_over_shares", stock_order(
         contract={"symbol": "ZZZZ"},
         order={"orderType": "MKT", "lmtPrice": None, "totalQuantity": 300}))
@@ -1378,6 +1416,8 @@ def gen_prompts():
             "user_sha256": hashlib.sha256(user_text.encode("utf-8")).hexdigest(),
             "user_len": len(user_text),
             "fewshot_count": len(bundle.fewshot),
+            # 发给模型的 rejection 代码表随提示词版本走(v1.8.0 起不列 EXCEEDS_LIMIT)
+            "rejection_codes_sent": parse_schema_for_prompt(v)["$defs"]["Rejection"]["properties"]["code"]["enum"],
         })
     # 账号泄漏自检:把账号塞进指令,渲染必须炸
     settings = make_settings()

@@ -48,7 +48,7 @@ window.dafri = {
   platform: 'win32',
   status: async () => ({
     protocol:'1.0', now_et:'2026-08-21 09:42:11', market_status:'盘中',
-    prompt_version:'v1.7.0', prompt_fingerprint:'a3f9', model:'claude-opus-5',
+    prompt_version:'v1.8.0', prompt_fingerprint:'a3f9', model:'claude-opus-5',
     auto_execute:true, allow_live_trading:false,
     breaker:{engaged:false, reason:'', consecutive_failures:0},
     broker_provider:'futu', broker_connected:true, broker_upstream_ok:true,
@@ -59,14 +59,14 @@ window.dafri = {
     limits:{max_order_notional:5000,max_option_contracts:5,max_mkt_shares:200,
             min_confidence:0.9,max_spread_slippage:0.1,duplicate_window_minutes:10},
   }),
-  selftest: async () => ({prompt_version:'v1.7.0', prompt_fingerprint:'a3f9c1', system_prompt_chars:8421,
+  selftest: async () => ({prompt_version:'v1.8.0', prompt_fingerprint:'a3f9c1', system_prompt_chars:8421,
     fewshot_pairs:7, symbol_aliases:{苹果:'AAPL',英伟达:'NVDA'}, accounts:[]}),
   listRecords: async () => ({records:RECORDS}),
   // 详情要拿完整记录(store 折叠事件之后的那份),不是列表里的摘要
   getRecord: async (id) => ({record:{
     id:id||'r1', created_at:'2026-08-21T13:41:02Z',
     input:{raw_instruction:'买2张英伟达周五180call 限价5.5', reason:'财报前布局', input_channel:'manual'},
-    llm:{model:'claude-opus-5', prompt_version:'v1.7.0', prompt_fingerprint:'a3f9c1',
+    llm:{model:'claude-opus-5', prompt_version:'v1.8.0', prompt_fingerprint:'a3f9c1',
          intent_summary:'限价 5.5 买入 2 张 NVDA 20260821 180 Call', confidence:0.97,
          warnings:[], usage:{input_tokens:3120, output_tokens:210}},
     execution_type:'IMMEDIATE', trigger:null,

@@ -9,7 +9,7 @@ import pytest
 from ibkr_agent.config import ET, _from_dict
 
 BASE_CONFIG: Dict[str, Any] = {
-    "prompt_version": "v1.7.0",
+    "prompt_version": "v1.8.0",
     "llm": {"model": "claude-opus-5", "effort": "high", "temperature": None},
     "limits": {
         "max_order_notional": 50_000.0,
