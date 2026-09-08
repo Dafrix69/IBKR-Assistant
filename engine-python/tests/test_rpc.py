@@ -1057,3 +1057,98 @@ def test_screener_validates_before_touching_the_broker(server):
     assert call(server, "screener.deviation", {"symbol": "NVDA", "z_extreme": 9})["error"]["code"] == -32602
     err = call(server, "screener.deviation", {"symbol": "NVDA", "timeframe": "1w"})["error"]
     assert err["code"] == -32018 and "极值偏离" in err["message"]
+
+
+class _FakeRouter:
+    """假券商:只提供扫描器要的三样——有会话、日线、日内 K 线。记下每次请求,好数节流与封顶。"""
+
+    BROKER = "ibkr"
+    upstream_ok = True
+
+    def __init__(self, fail=()):
+        self.fail = set(fail)
+        self.calls = []
+
+    def sessions(self):
+        return [object()]
+
+    def historical_bars(self, symbol, start, end):
+        from ibkr_agent.broker import BrokerError
+
+        self.calls.append(("daily", symbol))
+        if symbol in self.fail:
+            raise BrokerError("%s 历史 K 线额度用完" % symbol)
+        import random
+        from datetime import date, timedelta
+
+        rng = random.Random(hash(symbol) % 1000)
+        day, price, bars = date(2025, 6, 2), 100.0, []
+        for _ in range(300):
+            while day.weekday() >= 5:
+                day += timedelta(days=1)
+            price = max(price * (1 + rng.gauss(0.0005, 0.02)), 1.0)
+            bars.append({"date": day.isoformat(), "open": price, "high": price * 1.01,
+                         "low": price * 0.99, "close": price, "volume": 1e6})
+            day += timedelta(days=1)
+        return bars
+
+    def intraday_bars(self, symbol, timeframe, rth=False):
+        self.calls.append((timeframe, symbol))
+        return [{"time": "2026-09-08 %02d:%02d" % (9 + i // 12, (i % 12) * 5), "open": 50 + i * 0.1,
+                 "high": 50.6 + i * 0.1, "low": 49.6 + i * 0.1, "close": 50.2 + i * 0.1, "volume": 1000}
+                for i in range(80)]
+
+
+def _pool(server, symbols):
+    sector = call(server, "sectors.add", {"name": "实测"})["result"]["sector"]
+    for sym, tag in symbols:
+        call(server, "sectors.add_stock", {"id": sector["id"], "symbol": sym, "tag": tag})
+    return sector["id"]
+
+
+def test_screener_rs_end_to_end_with_fake_broker(server):
+    server.router = _FakeRouter(fail={"COHR"})
+    sector_id = _pool(server, [("NVDA", "芯片"), ("AMD", "芯片"), ("COHR", "光模块"), ("VRT", "")])
+    result = call(server, "screener.rs", {"sector": sector_id, "benchmark": "SPY"})["result"]
+    assert result["sector"] == "实测" and result["benchmark"] == "SPY" and result["bench_bars"] == 300
+    rows = {r["symbol"]: r for r in result["rows"]}
+    assert rows["COHR"]["error"] and rows["COHR"]["score"] is None and rows["COHR"]["rank"] is None
+    assert set(rows["NVDA"]["rs"]) == {"5", "20", "60", "120", "250"}
+    assert rows["VRT"]["tag"] == "未分类"
+    assert result["counted"] == 3 and result["total"] == 4
+    assert {t["tag"] for t in result["tags"]} == {"芯片", "光模块", "未分类"}
+    # 基准 + 四只 = 5 次日线请求;再扫一次全走缓存,一次都不多打
+    assert len(server.router.calls) == 5
+    call(server, "screener.rs", {"sector": "all", "benchmark": "QQQ"})
+    # 只多了 QQQ 与上次失败的 COHR(失败不进缓存,下次要重试)
+    assert len(server.router.calls) == 7
+
+
+def test_screener_inflection_resamples_weekly_and_caps_intraday(server):
+    server.router = _FakeRouter()
+    server.SCREEN_INTRADAY_CAP = 3
+    symbols = [("A%d" % i, "x") for i in range(5)]
+    sector_id = _pool(server, symbols)
+    result = call(server, "screener.inflection",
+                  {"sector": sector_id, "timeframes": ["1w", "1d", "1h"], "ma_period": 20})["result"]
+    assert result["timeframes"] == ["1w", "1d", "1h"] and result["ma_period"] == 20
+    assert len(result["rows"]) == 5
+    weekly = [r["signals"]["1w"]["bars"] for r in result["rows"]]
+    assert all(55 <= n <= 65 for n in weekly)      # 300 个交易日 ≈ 60 周
+    assert all(r["signals"]["1d"]["bars"] == 300 for r in result["rows"])
+    hourly = [r["signals"]["1h"] for r in result["rows"]]
+    assert sum(1 for h in hourly if "error" not in h) == 3
+    assert all("已达上限" in h["error"] for h in hourly if "error" in h)
+    # 周线由日线重采样,不另打券商:每只 1 次日线 + 最多 3 次日内
+    assert sum(1 for c in server.router.calls if c[0] == "daily") == 5
+    assert sum(1 for c in server.router.calls if c[0] == "1h") == 3
+
+
+def test_screener_deviation_end_to_end(server):
+    server.router = _FakeRouter()
+    result = call(server, "screener.deviation", {"symbol": "nvda", "timeframe": "1w", "period": 5, "lookback": 20})["result"]
+    assert result["symbol"] == "NVDA" and result["timeframe"] == "1w" and result["period"] == 5
+    assert result["last"]["z"] is not None and len(result["series"]) <= 120
+    assert result["readout"]
+    intraday = call(server, "screener.deviation", {"symbol": "NVDA", "timeframe": "30m"})["result"]
+    assert intraday["bars"] == 80 and intraday["series"][-1]["time"].startswith("2026-09-08")
