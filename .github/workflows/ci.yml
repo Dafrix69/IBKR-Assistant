@@ -33,4 +33,11 @@ jobs:
           cache-dependency-path: engine-ts/package-lock.json
       - run: npm ci
       - run: npx tsc --noEmit
-      - run: npx vitest run --reporter=default --reporter=github-actions
+      # 失败时把最后 80 行输出塞进一条 annotation:公开仓库不用登录就能从 check-runs API 读到
+      - run: |
+          set -o pipefail
+          npx vitest run --reporter=default --reporter=github-actions 2>&1 | tee vitest.log || {
+            echo "::error title=vitest::$(tail -n 80 vitest.log | sed 's/\[[0-9;]*m//g' | sed ':a;N;$!ba;s/
+/%0A/g' | cut -c1-6000)"
+            exit 1
+          }
