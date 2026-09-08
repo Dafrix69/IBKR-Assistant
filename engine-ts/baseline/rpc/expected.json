@@ -1,0 +1,1387 @@
+[
+ {
+  "result": {
+   "prompt_version": "v1.8.0",
+   "prompt_fingerprint": "5a368bc6d0919d8e",
+   "system_prompt_chars": 9991,
+   "fewshot_pairs": 9,
+   "symbol_aliases": {
+    "苹果": "AAPL",
+    "英伟达": "NVDA",
+    "特斯拉": "TSLA"
+   },
+   "accounts": [
+    {
+     "alias": "模拟",
+     "account_masked": "DU***321",
+     "is_paper": true,
+     "connection": "paper",
+     "broker": "ibkr",
+     "default": true
+    },
+    {
+     "alias": "主账户",
+     "account_masked": "U1***567",
+     "is_paper": false,
+     "connection": "live",
+     "broker": "ibkr",
+     "default": false
+    }
+   ]
+  }
+ },
+ {
+  "result": {
+   "protocol": "1.0",
+   "now_et": "<VAR>",
+   "market_status": "盘中",
+   "prompt_version": "v1.8.0",
+   "prompt_fingerprint": "5a368bc6d0919d8e",
+   "model": "claude-opus-5",
+   "auto_execute": false,
+   "allow_live_trading": false,
+   "breaker": {
+    "engaged": false,
+    "reason": "",
+    "consecutive_failures": 0
+   },
+   "broker_provider": "ibkr",
+   "broker_connected": false,
+   "broker_upstream_ok": true,
+   "pending_count": 0,
+   "accounts": [
+    {
+     "alias": "模拟",
+     "account_masked": "DU***321",
+     "is_paper": true,
+     "connection": "paper",
+     "broker": "ibkr",
+     "default": true
+    },
+    {
+     "alias": "主账户",
+     "account_masked": "U1***567",
+     "is_paper": false,
+     "connection": "live",
+     "broker": "ibkr",
+     "default": false
+    }
+   ],
+   "limits": {
+    "max_order_notional": 50000.0,
+    "max_option_contracts": 10,
+    "max_mkt_shares": 200,
+    "min_confidence": 0.9,
+    "max_spread_slippage": 0.1,
+    "duplicate_window_minutes": 10
+   }
+  }
+ },
+ {
+  "result": {
+   "strategies": [
+    {
+     "key": "buy_hold",
+     "label": "买入持有",
+     "desc": "第一天买入,一直持有到区间结束。是所有策略的基准。",
+     "params": {},
+     "param_labels": {}
+    },
+    {
+     "key": "sma_cross",
+     "label": "均线交叉",
+     "desc": "快线上穿慢线持有,下穿空仓。",
+     "params": {
+      "fast": 10,
+      "slow": 50
+     },
+     "param_labels": {
+      "fast": "快线周期(日)",
+      "slow": "慢线周期(日)"
+     }
+    },
+    {
+     "key": "rsi",
+     "label": "RSI 超卖买入",
+     "desc": "RSI 跌破买入线建仓,升破卖出线离场。",
+     "params": {
+      "period": 14,
+      "buy_below": 30,
+      "sell_above": 70
+     },
+     "param_labels": {
+      "period": "RSI 周期(日)",
+      "buy_below": "跌破这个值买入",
+      "sell_above": "升破这个值卖出"
+     }
+    },
+    {
+     "key": "breakout",
+     "label": "N 日突破",
+     "desc": "收盘创 N 日新高买入,跌破 M 日低点离场(唐奇安通道)。",
+     "params": {
+      "entry": 20,
+      "exit": 10
+     },
+     "param_labels": {
+      "entry": "入场:创 N 日新高",
+      "exit": "出场:跌破 M 日低点"
+     }
+    },
+    {
+     "key": "custom",
+     "label": "自定义(多条件)",
+     "desc": "自己搭条件:全部入场条件同时满足时买入,全部出场条件同时满足时卖出。",
+     "params": {},
+     "param_labels": {}
+    }
+   ]
+  }
+ },
+ {
+  "result": {
+   "timeframes": [
+    {
+     "key": "1m",
+     "label": "1 分钟",
+     "seconds": 60,
+     "htf": "15m"
+    },
+    {
+     "key": "2m",
+     "label": "2 分钟",
+     "seconds": 120,
+     "htf": "30m"
+    },
+    {
+     "key": "5m",
+     "label": "5 分钟",
+     "seconds": 300,
+     "htf": "1h"
+    },
+    {
+     "key": "15m",
+     "label": "15 分钟",
+     "seconds": 900,
+     "htf": "1h"
+    },
+    {
+     "key": "30m",
+     "label": "30 分钟",
+     "seconds": 1800,
+     "htf": "1d"
+    },
+    {
+     "key": "1h",
+     "label": "1 小时",
+     "seconds": 3600,
+     "htf": "1d"
+    },
+    {
+     "key": "1d",
+     "label": "日线",
+     "seconds": 86400,
+     "htf": null
+    }
+   ],
+   "min_interval": 15.0
+  }
+ },
+ {
+  "result": {
+   "path": "<VAR>",
+   "llm": {
+    "model": "claude-opus-5",
+    "effort": "high",
+    "max_tokens": 8000
+   },
+   "limits": {
+    "max_order_notional": 50000.0,
+    "max_option_contracts": 10,
+    "max_mkt_shares": 200,
+    "min_confidence": 0.9,
+    "max_spread_slippage": 0.1,
+    "max_orders_per_input": 5,
+    "duplicate_window_minutes": 10,
+    "duplicate_qty_tolerance": 0.2
+   },
+   "policies": {
+    "auto_execute": false,
+    "allow_live_trading": false,
+    "allow_combo_live": false,
+    "auto_outside_rth": true,
+    "require_trigger_price_verification": true,
+    "trigger_min_gap_bps": 5.0,
+    "closed_market_policy": "reject_market_orders",
+    "consecutive_failure_breaker": 3,
+    "review_feature_enabled": false
+   },
+   "symbol_aliases": {
+    "苹果": "AAPL",
+    "英伟达": "NVDA",
+    "特斯拉": "TSLA"
+   },
+   "accounts": [
+    {
+     "alias": "模拟",
+     "account_masked": "DU***321",
+     "is_paper": true,
+     "connection": "paper",
+     "broker": "ibkr",
+     "default": true
+    },
+    {
+     "alias": "主账户",
+     "account_masked": "U1***567",
+     "is_paper": false,
+     "connection": "live",
+     "broker": "ibkr",
+     "default": false
+    }
+   ],
+   "connections": {
+    "paper": {
+     "host": "127.0.0.1",
+     "port": 7497
+    },
+    "live": {
+     "host": "127.0.0.1",
+     "port": 7496
+    }
+   }
+  }
+ },
+ {
+  "error": {
+   "code": -32006,
+   "message": "账户与连接配置不允许从界面修改:accounts"
+  }
+ },
+ {
+  "error": {
+   "code": -32007,
+   "message": "配置校验失败,已回滚:limits.max_order_notional 不能小于 0.01(收到 -1.0)"
+  }
+ },
+ {
+  "result": {
+   "path": "<VAR>",
+   "llm": {
+    "model": "claude-opus-5",
+    "effort": "high",
+    "max_tokens": 8000
+   },
+   "limits": {
+    "max_order_notional": 40000.0,
+    "max_option_contracts": 10,
+    "max_mkt_shares": 200,
+    "min_confidence": 0.9,
+    "max_spread_slippage": 0.1,
+    "max_orders_per_input": 5,
+    "duplicate_window_minutes": 10,
+    "duplicate_qty_tolerance": 0.2
+   },
+   "policies": {
+    "auto_execute": false,
+    "allow_live_trading": false,
+    "allow_combo_live": false,
+    "auto_outside_rth": true,
+    "require_trigger_price_verification": true,
+    "trigger_min_gap_bps": 5.0,
+    "closed_market_policy": "reject_market_orders",
+    "consecutive_failure_breaker": 3,
+    "review_feature_enabled": false
+   },
+   "symbol_aliases": {
+    "苹果": "AAPL",
+    "英伟达": "NVDA",
+    "特斯拉": "TSLA"
+   },
+   "accounts": [
+    {
+     "alias": "模拟",
+     "account_masked": "DU***321",
+     "is_paper": true,
+     "connection": "paper",
+     "broker": "ibkr",
+     "default": true
+    },
+    {
+     "alias": "主账户",
+     "account_masked": "U1***567",
+     "is_paper": false,
+     "connection": "live",
+     "broker": "ibkr",
+     "default": false
+    }
+   ],
+   "connections": {
+    "paper": {
+     "host": "127.0.0.1",
+     "port": 7497
+    },
+    "live": {
+     "host": "127.0.0.1",
+     "port": 7496
+    }
+   }
+  }
+ },
+ {
+  "error": {
+   "code": -32602,
+   "message": "不允许修改的字段:bogus"
+  }
+ },
+ {
+  "result": {
+   "providers": [
+    {
+     "key": "anthropic",
+     "label": "Anthropic(Claude)",
+     "default_model": "claude-opus-5",
+     "models": [
+      "claude-opus-5",
+      "claude-sonnet-5",
+      "claude-haiku-4-5"
+     ],
+     "supports_effort": true,
+     "supports_temperature": false,
+     "needs_base_url": false,
+     "default_base_url": "",
+     "key_hint": "sk-ant-...",
+     "docs": "https://platform.claude.com/"
+    },
+    {
+     "key": "openai_compatible",
+     "label": "OpenAI 兼容端点",
+     "default_model": "",
+     "models": [
+      "deepseek-chat",
+      "deepseek-reasoner",
+      "qwen-max",
+      "moonshot-v1-128k",
+      "glm-4-plus",
+      "gpt-4o"
+     ],
+     "supports_effort": false,
+     "supports_temperature": true,
+     "needs_base_url": true,
+     "default_base_url": "https://api.deepseek.com/v1",
+     "key_hint": "sk-...",
+     "docs": "填你的服务商给的 base_url,通常以 /v1 结尾"
+    }
+   ],
+   "current": {
+    "provider": "anthropic",
+    "model": "claude-sonnet-5",
+    "base_url": "",
+    "effort": "high",
+    "temperature": null,
+    "max_tokens": 8000,
+    "timeout_s": 60.0,
+    "keychain_service": "dafri-llm-api-key",
+    "keychain_account": "anthropic"
+   },
+   "key_configured": "<VAR>"
+  }
+ },
+ {
+  "result": {
+   "providers": [
+    {
+     "key": "anthropic",
+     "label": "Anthropic(Claude)",
+     "default_model": "claude-opus-5",
+     "models": [
+      "claude-opus-5",
+      "claude-sonnet-5",
+      "claude-haiku-4-5"
+     ],
+     "supports_effort": true,
+     "supports_temperature": false,
+     "needs_base_url": false,
+     "default_base_url": "",
+     "key_hint": "sk-ant-...",
+     "docs": "https://platform.claude.com/"
+    },
+    {
+     "key": "openai_compatible",
+     "label": "OpenAI 兼容端点",
+     "default_model": "",
+     "models": [
+      "deepseek-chat",
+      "deepseek-reasoner",
+      "qwen-max",
+      "moonshot-v1-128k",
+      "glm-4-plus",
+      "gpt-4o"
+     ],
+     "supports_effort": false,
+     "supports_temperature": true,
+     "needs_base_url": true,
+     "default_base_url": "https://api.deepseek.com/v1",
+     "key_hint": "sk-...",
+     "docs": "填你的服务商给的 base_url,通常以 /v1 结尾"
+    }
+   ],
+   "current": {
+    "provider": "anthropic",
+    "model": "claude-sonnet-5",
+    "base_url": "",
+    "effort": "high",
+    "temperature": null,
+    "max_tokens": 8000,
+    "timeout_s": 60.0,
+    "keychain_service": "dafri-llm-api-key",
+    "keychain_account": "anthropic"
+   },
+   "key_configured": "<VAR>"
+  }
+ },
+ {
+  "result": {
+   "engaged": false,
+   "reason": "",
+   "at": "<VAR>",
+   "consecutive_failures": 0
+  }
+ },
+ {
+  "result": {
+   "engaged": true,
+   "cancelled": 0
+  }
+ },
+ {
+  "result": {
+   "engaged": true,
+   "reason": "契约测试",
+   "at": "<VAR>",
+   "consecutive_failures": 0
+  }
+ },
+ {
+  "result": {
+   "engaged": false
+  }
+ },
+ {
+  "error": {
+   "code": -32602,
+   "message": "指令为空"
+  }
+ },
+ {
+  "error": {
+   "code": -32003,
+   "message": "配置里 auto_execute=false,拒绝执行。请先在设置里打开。"
+  }
+ },
+ {
+  "result": {
+   "submitted": [],
+   "queued": [],
+   "validated_only": [
+    {
+     "record_id": "<ID>",
+     "intent_summary": "限价 230 买入 100 股 AAPL",
+     "account": "模拟",
+     "notional": 23000.0
+    }
+   ],
+   "rejections": [
+    {
+     "source": "llm",
+     "code": "UNCLEAR",
+     "message": "「梭哈」没有明确数量与标的,拒绝。",
+     "original_text": "顺便梭哈"
+    }
+   ],
+   "warnings": [],
+   "llm": {
+    "model": "fake-model",
+    "prompt_version": "v1.8.0",
+    "prompt_fingerprint": "5a368bc6d0919d8e",
+    "latency_ms": "<VAR>",
+    "usage": {
+     "input_tokens": 100,
+     "output_tokens": 50
+    }
+   },
+   "executed": false
+  }
+ },
+ {
+  "result": {
+   "submitted": [],
+   "queued": [],
+   "validated_only": [
+    {
+     "record_id": "<ID>",
+     "intent_summary": "限价 230 买入 100 股 AAPL",
+     "account": "模拟",
+     "notional": 23000.0
+    }
+   ],
+   "rejections": [
+    {
+     "source": "llm",
+     "code": "UNCLEAR",
+     "message": "「梭哈」没有明确数量与标的,拒绝。",
+     "original_text": "顺便梭哈"
+    },
+    {
+     "source": "validator",
+     "code": "LIVE_TRADING_DISABLED",
+     "message": "订单指向实盘账户 主账户,但当前 allow_live_trading=false(默认关闭)。请先在纸面账户跑够回归测试,再显式开启实盘。",
+     "intent_summary": "限价 230 买入 100 股 AAPL"
+    }
+   ],
+   "warnings": [
+    "已按勾选账户同时发单:模拟、主账户(每笔订单各 2 份,各自独立校验与记录)"
+   ],
+   "llm": {
+    "model": "fake-model",
+    "prompt_version": "v1.8.0",
+    "prompt_fingerprint": "5a368bc6d0919d8e",
+    "latency_ms": "<VAR>",
+    "usage": {
+     "input_tokens": 100,
+     "output_tokens": 50
+    }
+   },
+   "executed": false
+  }
+ },
+ {
+  "error": {
+   "code": -32602,
+   "message": "账户别名 '长线' 不在别名表中(可用:模拟、主账户)。"
+  }
+ },
+ {
+  "error": {
+   "code": -32602,
+   "message": "accounts 必须是账户别名数组"
+  }
+ },
+ {
+  "result": {
+   "records": [
+    {
+     "id": "<ID>",
+     "created_at": "<VAR>",
+     "intent_summary": "限价 230 买入 100 股 AAPL",
+     "raw_instruction": "买入 MSFT 50股 limit 400",
+     "reason": "回调到位",
+     "symbol": "AAPL",
+     "secType": "STK",
+     "action": "BUY",
+     "quantity": 100,
+     "account": "模拟",
+     "account_masked": "DU***321",
+     "is_paper": true,
+     "execution_type": "IMMEDIATE",
+     "final_status": null,
+     "status": "ValidatedOnly",
+     "avg_fill_price": null,
+     "total_commission": null,
+     "confidence": 0.99,
+     "rejection": null,
+     "notional_estimate": 23000.0
+    },
+    {
+     "id": "<ID>",
+     "created_at": "<VAR>",
+     "intent_summary": "限价 230 买入 100 股 AAPL",
+     "raw_instruction": "买入 MSFT 50股 limit 400",
+     "reason": "回调到位",
+     "symbol": "AAPL",
+     "secType": "STK",
+     "action": "BUY",
+     "quantity": 100,
+     "account": "",
+     "account_masked": "",
+     "is_paper": null,
+     "execution_type": "IMMEDIATE",
+     "final_status": "rejected_by_validator",
+     "status": null,
+     "avg_fill_price": null,
+     "total_commission": null,
+     "confidence": 0.99,
+     "rejection": {
+      "code": "LIVE_TRADING_DISABLED",
+      "issues": [
+       {
+        "code": "LIVE_TRADING_DISABLED",
+        "message": "订单指向实盘账户 主账户,但当前 allow_live_trading=false(默认关闭)。请先在纸面账户跑够回归测试,再显式开启实盘。"
+       }
+      ],
+      "message": "订单指向实盘账户 主账户,但当前 allow_live_trading=false(默认关闭)。请先在纸面账户跑够回归测试,再显式开启实盘。"
+     },
+     "notional_estimate": null
+    },
+    {
+     "id": "<ID>",
+     "created_at": "<VAR>",
+     "intent_summary": "顺便梭哈",
+     "raw_instruction": "买入 MSFT 50股 limit 400",
+     "reason": "",
+     "symbol": "",
+     "secType": "",
+     "action": "",
+     "quantity": null,
+     "account": "",
+     "account_masked": "",
+     "is_paper": null,
+     "execution_type": null,
+     "final_status": "rejected_by_llm",
+     "status": null,
+     "avg_fill_price": null,
+     "total_commission": null,
+     "confidence": null,
+     "rejection": {
+      "code": "UNCLEAR",
+      "message": "「梭哈」没有明确数量与标的,拒绝。",
+      "original_text": "顺便梭哈"
+     },
+     "notional_estimate": null
+    },
+    {
+     "id": "<ID>",
+     "created_at": "<VAR>",
+     "intent_summary": "限价 230 买入 100 股 AAPL",
+     "raw_instruction": "买入 AAPL 100股 limit 230,顺便梭哈",
+     "reason": "回调到位",
+     "symbol": "AAPL",
+     "secType": "STK",
+     "action": "BUY",
+     "quantity": 100,
+     "account": "模拟",
+     "account_masked": "DU***321",
+     "is_paper": true,
+     "execution_type": "IMMEDIATE",
+     "final_status": null,
+     "status": "ValidatedOnly",
+     "avg_fill_price": null,
+     "total_commission": null,
+     "confidence": 0.99,
+     "rejection": null,
+     "notional_estimate": 23000.0
+    },
+    {
+     "id": "<ID>",
+     "created_at": "<VAR>",
+     "intent_summary": "顺便梭哈",
+     "raw_instruction": "买入 AAPL 100股 limit 230,顺便梭哈",
+     "reason": "",
+     "symbol": "",
+     "secType": "",
+     "action": "",
+     "quantity": null,
+     "account": "",
+     "account_masked": "",
+     "is_paper": null,
+     "execution_type": null,
+     "final_status": "rejected_by_llm",
+     "status": null,
+     "avg_fill_price": null,
+     "total_commission": null,
+     "confidence": null,
+     "rejection": {
+      "code": "UNCLEAR",
+      "message": "「梭哈」没有明确数量与标的,拒绝。",
+      "original_text": "顺便梭哈"
+     },
+     "notional_estimate": null
+    }
+   ]
+  }
+ },
+ {
+  "error": {
+   "code": -32005,
+   "message": "记录不存在"
+  }
+ },
+ {
+  "result": {
+   "pending": []
+  }
+ },
+ {
+  "result": {
+   "idea": {
+    "id": "<ID>",
+    "created_at": "<VAR>",
+    "updated_at": "<VAR>",
+    "text": "上周五尾盘买入的 AAPL,考虑加仓",
+    "symbols": [
+     "AAPL"
+    ],
+    "status": "active",
+    "analysis": null
+   }
+  }
+ },
+ {
+  "result": {
+   "idea": {
+    "id": "<ID>",
+    "created_at": "<VAR>",
+    "updated_at": "<VAR>",
+    "text": "上周五尾盘买入的 AAPL,考虑加仓",
+    "symbols": [
+     "AAPL"
+    ],
+    "status": "active",
+    "analysis": {
+     "summary": "回调加仓想法与当前动能匹配度一般",
+     "thesis": "需要价格站回均线之上",
+     "checks": [
+      "财报日期"
+     ],
+     "risks": [
+      "波动率偏高"
+     ],
+     "suggestion": "等回调到锚点再考虑",
+     "analyzed_at": "<VAR>",
+     "model": "claude-sonnet-5",
+     "symbol": "AAPL",
+     "brief": null
+    }
+   }
+  }
+ },
+ {
+  "result": {
+   "ideas": [
+    {
+     "id": "<ID>",
+     "created_at": "<VAR>",
+     "updated_at": "<VAR>",
+     "text": "上周五尾盘买入的 AAPL,考虑加仓",
+     "symbols": [
+      "AAPL"
+     ],
+     "status": "active",
+     "analysis": {
+      "summary": "回调加仓想法与当前动能匹配度一般",
+      "thesis": "需要价格站回均线之上",
+      "checks": [
+       "财报日期"
+      ],
+      "risks": [
+       "波动率偏高"
+      ],
+      "suggestion": "等回调到锚点再考虑",
+      "analyzed_at": "<VAR>",
+      "model": "claude-sonnet-5",
+      "symbol": "AAPL",
+      "brief": null
+     }
+    }
+   ]
+  }
+ },
+ {
+  "result": {
+   "id": "<ID>",
+   "status": "done"
+  }
+ },
+ {
+  "error": {
+   "code": -32602,
+   "message": "未知想法状态:nope"
+  }
+ },
+ {
+  "error": {
+   "code": -32602,
+   "message": "缺少想法 id"
+  }
+ },
+ {
+  "error": {
+   "code": -32602,
+   "message": "没有可总结的想法。先把几条想法归档或标记完成,再来总结。"
+  }
+ },
+ {
+  "error": {
+   "code": -32602,
+   "message": "未知总结范围:nope(可选:archived、done、all)"
+  }
+ },
+ {
+  "result": {
+   "digest": {
+    "id": "<ID>",
+    "created_at": "<VAR>",
+    "scope": "all",
+    "idea_count": 1,
+    "idea_ids": [
+     "<ID>"
+    ],
+    "digest": {
+     "summary": "偏好半导体尾盘动量,想法多带明确价位",
+     "themes": [
+      "半导体(2 条)"
+     ],
+     "lessons": [
+      "想法带价位条件的更可执行"
+     ],
+     "patterns": [
+      "具体价位 + 条件的想法质量高"
+     ],
+     "actions": [
+      "把尾盘动量写成可回测的规则"
+     ],
+     "model": "claude-sonnet-5"
+    }
+   }
+  }
+ },
+ {
+  "result": {
+   "digests": [
+    {
+     "id": "<ID>",
+     "created_at": "<VAR>",
+     "scope": "all",
+     "idea_count": 1,
+     "idea_ids": [
+      "<ID>"
+     ],
+     "digest": {
+      "summary": "偏好半导体尾盘动量,想法多带明确价位",
+      "themes": [
+       "半导体(2 条)"
+      ],
+      "lessons": [
+       "想法带价位条件的更可执行"
+      ],
+      "patterns": [
+       "具体价位 + 条件的想法质量高"
+      ],
+      "actions": [
+       "把尾盘动量写成可回测的规则"
+      ],
+      "model": "claude-sonnet-5"
+     }
+    }
+   ]
+  }
+ },
+ {
+  "result": {
+   "sector": {
+    "id": "<ID>",
+    "created_at": "<VAR>",
+    "updated_at": "<VAR>",
+    "name": "AI 算力",
+    "stocks": []
+   }
+  }
+ },
+ {
+  "error": {
+   "code": -32602,
+   "message": "板块已存在:AI 算力"
+  }
+ },
+ {
+  "error": {
+   "code": -32602,
+   "message": "股票代码不合法:bad$"
+  }
+ },
+ {
+  "result": {
+   "sector": {
+    "id": "<ID>",
+    "created_at": "<VAR>",
+    "updated_at": "<VAR>",
+    "name": "AI 算力",
+    "stocks": [
+     {
+      "symbol": "NVDA",
+      "company": "英伟达",
+      "reason": "手动添加"
+     }
+    ]
+   }
+  }
+ },
+ {
+  "result": {
+   "sector": {
+    "id": "<ID>",
+    "created_at": "<VAR>",
+    "updated_at": "<VAR>",
+    "name": "AI 算力",
+    "stocks": []
+   }
+  }
+ },
+ {
+  "error": {
+   "code": -32602,
+   "message": "NVDA 不在该板块中"
+  }
+ },
+ {
+  "result": {
+   "sector": {
+    "id": "<ID>",
+    "created_at": "<VAR>",
+    "updated_at": "<VAR>",
+    "name": "AI 算力",
+    "stocks": [
+     {
+      "symbol": "NVDA",
+      "company": "英伟达",
+      "reason": "AI 芯片份额第一"
+     },
+     {
+      "symbol": "AMD",
+      "company": "AMD",
+      "reason": "数据中心第二供应商"
+     }
+    ]
+   }
+  }
+ },
+ {
+  "result": {
+   "sectors": [
+    {
+     "id": "<ID>",
+     "created_at": "<VAR>",
+     "updated_at": "<VAR>",
+     "name": "AI 算力",
+     "stocks": [
+      {
+       "symbol": "NVDA",
+       "company": "英伟达",
+       "reason": "AI 芯片份额第一"
+      },
+      {
+       "symbol": "AMD",
+       "company": "AMD",
+       "reason": "数据中心第二供应商"
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "result": {
+   "connected": "<MACHINE>",
+   "quotes": {}
+  }
+ },
+ {
+  "result": {
+   "deleted": "<ID>"
+  }
+ },
+ {
+  "error": {
+   "code": -32602,
+   "message": "板块不存在:<ID>"
+  }
+ },
+ {
+  "error": {
+   "code": -32602,
+   "message": "标的代码不合法:'bad$'"
+  }
+ },
+ {
+  "result": {
+   "watch": {
+    "id": "<ID>",
+    "created_at": "<VAR>",
+    "updated_at": "<VAR>",
+    "symbol": "IREN",
+    "step": 5.0,
+    "enabled": 1,
+    "expiry": "",
+    "levels": [],
+    "states": {},
+    "last_price": null,
+    "wall": null,
+    "events": []
+   }
+  }
+ },
+ {
+  "error": {
+   "code": -32602,
+   "message": "已经在盯 IREN 了"
+  }
+ },
+ {
+  "result": {
+   "watches": [
+    {
+     "id": "<ID>",
+     "created_at": "<VAR>",
+     "updated_at": "<VAR>",
+     "symbol": "IREN",
+     "step": 5.0,
+     "enabled": true,
+     "expiry": "",
+     "levels": [],
+     "states": {},
+     "last_price": null,
+     "wall": null,
+     "events": []
+    }
+   ]
+  }
+ },
+ {
+  "result": {
+   "fired": [],
+   "checked": []
+  }
+ },
+ {
+  "result": {
+   "deleted": "<ID>"
+  }
+ },
+ {
+  "error": {
+   "code": -32602,
+   "message": "没有这个警告:<ID>"
+  }
+ },
+ {
+  "result": {
+   "tracks": []
+  }
+ },
+ {
+  "error": {
+   "code": -32602,
+   "message": "没有这个追踪"
+  }
+ },
+ {
+  "error": {
+   "code": -32602,
+   "message": "没有这个追踪"
+  }
+ },
+ {
+  "result": {
+   "hosted": [],
+   "blocked": [],
+   "quote_maybe_delayed": false
+  }
+ },
+ {
+  "error": {
+   "code": -32018,
+   "message": "读取持仓需要TWS / IB Gateway:请先在「TWS 连接」面板连接引擎。"
+  }
+ },
+ {
+  "error": {
+   "code": -32014,
+   "message": "读取盘口需要TWS / IB Gateway:请先在「TWS 连接」面板连接引擎。"
+  }
+ },
+ {
+  "error": {
+   "code": -32602,
+   "message": "股票代码不合法:'bad$'"
+  }
+ },
+ {
+  "error": {
+   "code": -32017,
+   "message": "计算期权墙需要TWS / IB Gateway:请先在「TWS 连接」面板连接引擎。"
+  }
+ },
+ {
+  "error": {
+   "code": -32015,
+   "message": "实时 K 线需要TWS / IB Gateway:请先在「TWS 连接」面板连接引擎。"
+  }
+ },
+ {
+  "error": {
+   "code": -32602,
+   "message": "未知 K 线周期:7m(可选:1m、2m、5m、15m、30m、1h、1d)"
+  }
+ },
+ {
+  "error": {
+   "code": -32602,
+   "message": "股票代码不合法:'bad$'"
+  }
+ },
+ {
+  "error": {
+   "code": -32602,
+   "message": "日期必须是 YYYY-MM-DD"
+  }
+ },
+ {
+  "error": {
+   "code": -32602,
+   "message": "开始日期必须早于结束日期"
+  }
+ },
+ {
+  "error": {
+   "code": -32602,
+   "message": "回测区间最长 10 年"
+  }
+ },
+ {
+  "error": {
+   "code": -32012,
+   "message": "回测的历史行情需要TWS / IB Gateway:请先在「TWS 连接」面板连接引擎。"
+  }
+ },
+ {
+  "error": {
+   "code": -32602,
+   "message": "策略描述为空"
+  }
+ },
+ {
+  "result": {
+   "rules": {
+    "entry": [
+     {
+      "left": {
+       "kind": "indicator",
+       "name": "macd_hist",
+       "period": null,
+       "value": null
+      },
+      "op": "cross_up",
+      "right": {
+       "kind": "const",
+       "name": null,
+       "period": null,
+       "value": 0.0
+      }
+     }
+    ],
+    "exit": []
+   }
+  }
+ },
+ {
+  "error": {
+   "code": -32010,
+   "message": "当前券商接入不是富途,无需解锁。"
+  }
+ },
+ {
+  "error": {
+   "code": -32602,
+   "message": "勾了「已经是 md5」,但填的不是 32 位十六进制字符串"
+  }
+ },
+ {
+  "error": {
+   "code": -32602,
+   "message": "只支持 ibkr、futu"
+  }
+ },
+ {
+  "error": {
+   "code": -32006,
+   "message": "配置里还没有 富途证券(OpenD) 的连接和账户。请在 config/settings.json 里加上,再回来切换:\n{\n  \"connections\": {\n    \"futu\": {\n      \"broker\": \"futu\",\n      \"host\": \"127.0.0.1\",\n      \"port\": 11111\n    }\n  },\n  \"accounts\": [\n    {\n      \"alias\": \"富途模拟\",\n      \"account_id\": \"8801234(富途账号,一串数字)\",\n      \"is_paper\": true,\n      \"connection\": \"futu\"\n    }\n  ]\n}"
+  }
+ },
+ {
+  "error": {
+   "code": -32602,
+   "message": "未定义的连接:nope"
+  }
+ },
+ {
+  "result": {
+   "current": "ibkr",
+   "connected": "<MACHINE>",
+   "providers": [
+    {
+     "key": "ibkr",
+     "label": "盈透证券(IBKR / TWS)",
+     "current": true,
+     "connections": {
+      "paper": {
+       "host": "127.0.0.1",
+       "port": 7497,
+       "client_id": 11
+      },
+      "live": {
+       "host": "127.0.0.1",
+       "port": 7496,
+       "client_id": 12
+      }
+     },
+     "accounts": [
+      {
+       "alias": "模拟",
+       "account_masked": "DU***321",
+       "is_paper": true,
+       "connection": "paper",
+       "default": true
+      },
+      {
+       "alias": "主账户",
+       "account_masked": "U1***567",
+       "is_paper": false,
+       "connection": "live",
+       "default": false
+      }
+     ],
+     "config_snippet": null
+    },
+    {
+     "key": "futu",
+     "label": "富途证券(OpenD)",
+     "current": false,
+     "connections": {},
+     "accounts": [],
+     "config_snippet": "{\n  \"connections\": {\n    \"futu\": {\n      \"broker\": \"futu\",\n      \"host\": \"127.0.0.1\",\n      \"port\": 11111\n    }\n  },\n  \"accounts\": [\n    {\n      \"alias\": \"富途模拟\",\n      \"account_id\": \"8801234(富途账号,一串数字)\",\n      \"is_paper\": true,\n      \"connection\": \"futu\"\n    }\n  ]\n}"
+    }
+   ],
+   "futu": {
+    "trd_market": "US",
+    "security_firm": "FUTUSECURITIES",
+    "symbol_map": {},
+    "unlock_password_saved": "<VAR>"
+   }
+  }
+ },
+ {
+  "result": {
+   "ports": "<MACHINE>",
+   "apps": "<MACHINE>",
+   "guide": [
+    {
+     "step": 1,
+     "title": "下载并解压 OpenD",
+     "detail": "去富途 OpenAPI 官网下载 FutuOpenD(海外版叫 moomooOpenD)。它是绿色包,解压到哪都行,但别放在中文或带空格的深层目录里。"
+    },
+    {
+     "step": 2,
+     "title": "启动 OpenD 并登录",
+     "detail": "在 OpenD 自己的窗口里输入富途账号密码(或在 FutuOpenD.xml 里配好)。本软件不接触、也不保存你的富途凭证。没登录成功时 API 不会响应。"
+    },
+    {
+     "step": 3,
+     "title": "核对 API 端口",
+     "detail": "OpenD 的 api_port 要和本软件配置里的端口一致(当前配置:11111)。OpenD 默认 11111;改过就同步改这边。"
+    },
+    {
+     "step": 4,
+     "title": "只信任本机",
+     "detail": "OpenD 的 ip 只填 127.0.0.1,不要绑到 0.0.0.0(§9.2:API 端口绝不暴露到局域网)。"
+    },
+    {
+     "step": 5,
+     "title": "确认行情权限",
+     "detail": "富途的美股行情要单独开通:LV1 够用报价与 K 线,多档盘口要 LV2,**期权链还要单独的美股期权行情权限**。没权限时报价为空,AUTO_MID 定价会直接拒单——这是刻意的,不会拿坏报价去下真单。"
+    },
+    {
+     "step": 6,
+     "title": "知道它做不了什么",
+     "detail": "富途 OpenAPI **不支持美股指数**(SPX / NDX / VIX / RUT):快照、订阅、K 线三条路都会回「暂不支持美股指数」。涉及指数的行情、K 线、条件单会被明确拒绝,不会静默换成 ETF——点数和乘数都不一样。另外它没有原生条件单,所有条件单由本软件盯盘,软件关掉就不会触发。"
+    },
+    {
+     "step": 7,
+     "title": "实盘还要交易解锁",
+     "detail": "模拟盘不需要。实盘下单前要用交易密码解锁一次,密码只存 Keychain / DPAPI,不写配置文件、不进日志。"
+    },
+    {
+     "step": 8,
+     "title": "回到这里点「检测连接」",
+     "detail": "检测会真握手一次并读回账户列表,同时核对账户别名与 is_paper 是否对得上真实账号——is_paper 写反等于把实盘闸门关掉,必须在这一步暴露。"
+    }
+   ],
+   "connections": {},
+   "connected": "<MACHINE>",
+   "active": false,
+   "sdk_installed": "<MACHINE>"
+  }
+ },
+ {
+  "result": {
+   "ports": "<MACHINE>",
+   "apps": "<MACHINE>",
+   "guide": [
+    {
+     "step": 1,
+     "title": "启动 TWS 或 IB Gateway 并登录",
+     "detail": "在 IBKR 自己的窗口里输入账号密码。本软件不接触、也不保存你的 IBKR 凭证。停在登录界面时 API 不会响应。"
+    },
+    {
+     "step": 2,
+     "title": "打开 API 开关",
+     "detail": "TWS:Configure(齿轮)→ API → Settings,勾选「Enable ActiveX and Socket Clients」。IB Gateway:Configure → Settings → API → Settings。"
+    },
+    {
+     "step": 3,
+     "title": "核对 Socket port",
+     "detail": "同一页的「Socket port」要和本软件配置里的端口一致(当前配置:7497、7496)。IBKR 默认:TWS 实盘 7496 / 模拟 7497,Gateway 实盘 4001 / 模拟 4002。"
+    },
+    {
+     "step": 4,
+     "title": "只信任本机",
+     "detail": "同一页「Trusted IPs」只留 127.0.0.1,不要勾「Allow connections from localhost only」以外的放行(§9.2:API 端口绝不暴露到局域网)。"
+    },
+    {
+     "step": 5,
+     "title": "第一次连接时点「Yes」",
+     "detail": "TWS 会弹出「Accept incoming connection attempt?」,点 Yes。不点的话这里会一直显示握手超时。"
+    },
+    {
+     "step": 6,
+     "title": "回到这里点「检测连接」",
+     "detail": "检测会真握手一次并读回账户列表,同时核对你的账户别名是否对得上真实账号。"
+    }
+   ],
+   "connections": {
+    "paper": {
+     "host": "127.0.0.1",
+     "port": 7497,
+     "client_id": 11
+    },
+    "live": {
+     "host": "127.0.0.1",
+     "port": 7496,
+     "client_id": 12
+    }
+   },
+   "connected": "<MACHINE>"
+  }
+ },
+ {
+  "result": {
+   "fired": [],
+   "prices": {},
+   "synced": 0
+  }
+ },
+ {
+  "result": {
+   "path": "<VAR>",
+   "records": 5
+  }
+ }
+]

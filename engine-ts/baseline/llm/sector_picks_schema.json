@@ -1,0 +1,45 @@
+{
+ "$defs": {
+  "StockPick": {
+   "additionalProperties": false,
+   "description": "AI 选股的一条建议。仅供参考展示,永远不会进入下单链路。",
+   "properties": {
+    "symbol": {
+     "title": "Symbol",
+     "type": "string"
+    },
+    "company": {
+     "default": "",
+     "title": "Company",
+     "type": "string"
+    },
+    "reason": {
+     "default": "",
+     "title": "Reason",
+     "type": "string"
+    }
+   },
+   "required": [
+    "symbol"
+   ],
+   "title": "StockPick",
+   "type": "object"
+  }
+ },
+ "additionalProperties": false,
+ "description": "LLM 板块选股的输出 schema。",
+ "properties": {
+  "stocks": {
+   "items": {
+    "$ref": "#/$defs/StockPick"
+   },
+   "title": "Stocks",
+   "type": "array"
+  }
+ },
+ "required": [
+  "stocks"
+ ],
+ "title": "SectorPicks",
+ "type": "object"
+}

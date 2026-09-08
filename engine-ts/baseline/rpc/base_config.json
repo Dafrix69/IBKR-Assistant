@@ -1,0 +1,70 @@
+{
+  "prompt_version": "v1.8.0",
+  "llm": {
+    "model": "claude-opus-5",
+    "effort": "high",
+    "temperature": null
+  },
+  "limits": {
+    "max_order_notional": 50000.0,
+    "max_option_contracts": 10,
+    "max_mkt_shares": 200,
+    "min_confidence": 0.9,
+    "max_spread_slippage": 0.1,
+    "max_orders_per_input": 5,
+    "duplicate_window_minutes": 10,
+    "duplicate_qty_tolerance": 0.2
+  },
+  "policies": {
+    "auto_execute": false,
+    "allow_live_trading": false,
+    "require_trigger_price_verification": true,
+    "trigger_min_gap_bps": 5.0,
+    "closed_market_policy": "reject_market_orders"
+  },
+  "connections": {
+    "paper": {
+      "host": "127.0.0.1",
+      "port": 7497,
+      "client_id": 11
+    },
+    "live": {
+      "host": "127.0.0.1",
+      "port": 7496,
+      "client_id": 12
+    }
+  },
+  "accounts": [
+    {
+      "alias": "模拟",
+      "account_id": "DU7654321",
+      "is_paper": true,
+      "connection": "paper",
+      "default": true
+    },
+    {
+      "alias": "主账户",
+      "account_id": "U1234567",
+      "is_paper": false,
+      "connection": "live"
+    }
+  ],
+  "symbol_aliases": {
+    "苹果": "AAPL",
+    "英伟达": "NVDA",
+    "特斯拉": "TSLA"
+  },
+  "index_symbols": {
+    "SPX": {
+      "exchange": "CBOE",
+      "daily_trading_class": "SPXW",
+      "monthly_trading_class": "SPX"
+    }
+  },
+  "market_holidays": [
+    "2026-09-07"
+  ],
+  "early_close_days": [
+    "2026-11-27"
+  ]
+}

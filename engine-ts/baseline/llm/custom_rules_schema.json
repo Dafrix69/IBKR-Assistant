@@ -1,0 +1,125 @@
+{
+ "$defs": {
+  "RuleCondition": {
+   "additionalProperties": false,
+   "properties": {
+    "left": {
+     "$ref": "#/$defs/RuleOperand"
+    },
+    "op": {
+     "enum": [
+      ">",
+      "<",
+      ">=",
+      "<=",
+      "cross_up",
+      "cross_down"
+     ],
+     "title": "Op",
+     "type": "string"
+    },
+    "right": {
+     "$ref": "#/$defs/RuleOperand"
+    }
+   },
+   "required": [
+    "left",
+    "op",
+    "right"
+   ],
+   "title": "RuleCondition",
+   "type": "object"
+  },
+  "RuleOperand": {
+   "additionalProperties": false,
+   "description": "自定义策略条件的一个操作数:指标或常数。",
+   "properties": {
+    "kind": {
+     "enum": [
+      "indicator",
+      "const"
+     ],
+     "title": "Kind",
+     "type": "string"
+    },
+    "name": {
+     "anyOf": [
+      {
+       "enum": [
+        "close",
+        "open",
+        "high",
+        "low",
+        "sma",
+        "ema",
+        "rsi",
+        "highest",
+        "lowest",
+        "change_pct",
+        "macd_hist"
+       ],
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Name"
+    },
+    "period": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Period"
+    },
+    "value": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Value"
+    }
+   },
+   "required": [
+    "kind"
+   ],
+   "title": "RuleOperand",
+   "type": "object"
+  }
+ },
+ "additionalProperties": false,
+ "description": "自定义回测策略:entry 全部满足则买入,exit 全部满足则卖出。",
+ "properties": {
+  "entry": {
+   "items": {
+    "$ref": "#/$defs/RuleCondition"
+   },
+   "title": "Entry",
+   "type": "array"
+  },
+  "exit": {
+   "items": {
+    "$ref": "#/$defs/RuleCondition"
+   },
+   "title": "Exit",
+   "type": "array"
+  }
+ },
+ "required": [
+  "entry"
+ ],
+ "title": "CustomRules",
+ "type": "object"
+}

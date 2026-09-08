@@ -1,0 +1,554 @@
+[
+ {
+  "method": "system.selftest",
+  "params": {},
+  "capture": {}
+ },
+ {
+  "method": "system.status",
+  "params": {},
+  "capture": {}
+ },
+ {
+  "method": "backtest.strategies",
+  "params": {},
+  "capture": {}
+ },
+ {
+  "method": "pa.timeframes",
+  "params": {},
+  "capture": {}
+ },
+ {
+  "method": "settings.get",
+  "params": {},
+  "capture": {}
+ },
+ {
+  "method": "settings.patch",
+  "params": {
+   "patch": {
+    "accounts": []
+   }
+  },
+  "capture": {}
+ },
+ {
+  "method": "settings.patch",
+  "params": {
+   "patch": {
+    "limits": {
+     "max_order_notional": -1
+    }
+   }
+  },
+  "capture": {}
+ },
+ {
+  "method": "settings.patch",
+  "params": {
+   "patch": {
+    "limits": {
+     "max_order_notional": 40000.0
+    }
+   }
+  },
+  "capture": {}
+ },
+ {
+  "method": "llm.patch",
+  "params": {
+   "llm": {
+    "bogus": 1
+   }
+  },
+  "capture": {}
+ },
+ {
+  "method": "llm.patch",
+  "params": {
+   "llm": {
+    "model": "claude-sonnet-5"
+   }
+  },
+  "capture": {}
+ },
+ {
+  "method": "llm.catalog",
+  "params": {},
+  "capture": {}
+ },
+ {
+  "method": "breaker.state",
+  "params": {},
+  "capture": {}
+ },
+ {
+  "method": "breaker.halt",
+  "params": {
+   "reason": "契约测试"
+  },
+  "capture": {}
+ },
+ {
+  "method": "breaker.state",
+  "params": {},
+  "capture": {}
+ },
+ {
+  "method": "breaker.resume",
+  "params": {},
+  "capture": {}
+ },
+ {
+  "method": "instruction.submit",
+  "params": {},
+  "capture": {}
+ },
+ {
+  "method": "instruction.submit",
+  "params": {
+   "text": "买入 AAPL 100股 limit 230",
+   "execute": true
+  },
+  "capture": {}
+ },
+ {
+  "method": "instruction.submit",
+  "params": {
+   "text": "买入 AAPL 100股 limit 230,顺便梭哈"
+  },
+  "capture": {}
+ },
+ {
+  "method": "instruction.submit",
+  "params": {
+   "text": "买入 MSFT 50股 limit 400",
+   "accounts": [
+    "模拟",
+    "主账户"
+   ]
+  },
+  "capture": {}
+ },
+ {
+  "method": "instruction.submit",
+  "params": {
+   "text": "买入 AAPL 100股 limit 230",
+   "accounts": [
+    "长线"
+   ]
+  },
+  "capture": {}
+ },
+ {
+  "method": "instruction.submit",
+  "params": {
+   "text": "买入 AAPL 100股 limit 230",
+   "accounts": "模拟"
+  },
+  "capture": {}
+ },
+ {
+  "method": "records.list",
+  "params": {
+   "limit": 10
+  },
+  "capture": {}
+ },
+ {
+  "method": "records.get",
+  "params": {
+   "id": "nope"
+  },
+  "capture": {}
+ },
+ {
+  "method": "pending.list",
+  "params": {},
+  "capture": {}
+ },
+ {
+  "method": "ideas.add",
+  "params": {
+   "text": "上周五尾盘买入的 AAPL,考虑加仓"
+  },
+  "capture": {
+   "IDEA_ID": "result.idea.id"
+  }
+ },
+ {
+  "method": "ideas.analyze",
+  "params": {
+   "id": "$IDEA_ID"
+  },
+  "capture": {}
+ },
+ {
+  "method": "ideas.list",
+  "params": {},
+  "capture": {}
+ },
+ {
+  "method": "ideas.update",
+  "params": {
+   "id": "$IDEA_ID",
+   "status": "done"
+  },
+  "capture": {}
+ },
+ {
+  "method": "ideas.update",
+  "params": {
+   "id": "$IDEA_ID",
+   "status": "nope"
+  },
+  "capture": {}
+ },
+ {
+  "method": "ideas.update",
+  "params": {
+   "status": "done"
+  },
+  "capture": {}
+ },
+ {
+  "method": "ideas.digest",
+  "params": {
+   "scope": "archived"
+  },
+  "capture": {}
+ },
+ {
+  "method": "ideas.digest",
+  "params": {
+   "scope": "nope"
+  },
+  "capture": {}
+ },
+ {
+  "method": "ideas.digest",
+  "params": {
+   "scope": "all"
+  },
+  "capture": {}
+ },
+ {
+  "method": "ideas.digests",
+  "params": {},
+  "capture": {}
+ },
+ {
+  "method": "sectors.add",
+  "params": {
+   "name": "AI 算力"
+  },
+  "capture": {
+   "SECTOR_ID": "result.sector.id"
+  }
+ },
+ {
+  "method": "sectors.add",
+  "params": {
+   "name": "AI 算力"
+  },
+  "capture": {}
+ },
+ {
+  "method": "sectors.add_stock",
+  "params": {
+   "id": "$SECTOR_ID",
+   "symbol": "bad$"
+  },
+  "capture": {}
+ },
+ {
+  "method": "sectors.add_stock",
+  "params": {
+   "id": "$SECTOR_ID",
+   "symbol": "NVDA",
+   "company": "英伟达"
+  },
+  "capture": {}
+ },
+ {
+  "method": "sectors.remove_stock",
+  "params": {
+   "id": "$SECTOR_ID",
+   "symbol": "NVDA"
+  },
+  "capture": {}
+ },
+ {
+  "method": "sectors.remove_stock",
+  "params": {
+   "id": "$SECTOR_ID",
+   "symbol": "NVDA"
+  },
+  "capture": {}
+ },
+ {
+  "method": "sectors.pick",
+  "params": {
+   "id": "$SECTOR_ID"
+  },
+  "capture": {}
+ },
+ {
+  "method": "sectors.list",
+  "params": {},
+  "capture": {}
+ },
+ {
+  "method": "sectors.quotes",
+  "params": {},
+  "capture": {}
+ },
+ {
+  "method": "sectors.delete",
+  "params": {
+   "id": "$SECTOR_ID"
+  },
+  "capture": {}
+ },
+ {
+  "method": "sectors.delete",
+  "params": {
+   "id": "$SECTOR_ID"
+  },
+  "capture": {}
+ },
+ {
+  "method": "alerts.create",
+  "params": {
+   "symbol": "bad$"
+  },
+  "capture": {}
+ },
+ {
+  "method": "alerts.create",
+  "params": {
+   "symbol": "IREN",
+   "step": 5
+  },
+  "capture": {
+   "WATCH_ID": "result.watch.id"
+  }
+ },
+ {
+  "method": "alerts.create",
+  "params": {
+   "symbol": "IREN"
+  },
+  "capture": {}
+ },
+ {
+  "method": "alerts.list",
+  "params": {},
+  "capture": {}
+ },
+ {
+  "method": "alerts.poll",
+  "params": {},
+  "capture": {}
+ },
+ {
+  "method": "alerts.delete",
+  "params": {
+   "id": "$WATCH_ID"
+  },
+  "capture": {}
+ },
+ {
+  "method": "alerts.delete",
+  "params": {
+   "id": "$WATCH_ID"
+  },
+  "capture": {}
+ },
+ {
+  "method": "tracker.list",
+  "params": {},
+  "capture": {}
+ },
+ {
+  "method": "tracker.update",
+  "params": {
+   "id": "nope",
+   "enabled": true
+  },
+  "capture": {}
+ },
+ {
+  "method": "tracker.delete",
+  "params": {
+   "id": "nope"
+  },
+  "capture": {}
+ },
+ {
+  "method": "tracker.reconcile",
+  "params": {},
+  "capture": {}
+ },
+ {
+  "method": "positions.list",
+  "params": {},
+  "capture": {}
+ },
+ {
+  "method": "book.snapshot",
+  "params": {
+   "symbol": "AAPL"
+  },
+  "capture": {}
+ },
+ {
+  "method": "book.snapshot",
+  "params": {
+   "symbol": "bad$"
+  },
+  "capture": {}
+ },
+ {
+  "method": "options.wall",
+  "params": {
+   "symbol": "SPY"
+  },
+  "capture": {}
+ },
+ {
+  "method": "pa.analyze",
+  "params": {
+   "symbol": "SPY"
+  },
+  "capture": {}
+ },
+ {
+  "method": "pa.analyze",
+  "params": {
+   "symbol": "SPY",
+   "timeframe": "7m"
+  },
+  "capture": {}
+ },
+ {
+  "method": "backtest.run",
+  "params": {
+   "symbol": "bad$"
+  },
+  "capture": {}
+ },
+ {
+  "method": "backtest.run",
+  "params": {
+   "symbol": "AAPL",
+   "start": "not-a-date",
+   "end": "2026-01-01"
+  },
+  "capture": {}
+ },
+ {
+  "method": "backtest.run",
+  "params": {
+   "symbol": "AAPL",
+   "start": "2026-02-01",
+   "end": "2026-01-01"
+  },
+  "capture": {}
+ },
+ {
+  "method": "backtest.run",
+  "params": {
+   "symbol": "AAPL",
+   "start": "2010-01-01",
+   "end": "2026-01-01"
+  },
+  "capture": {}
+ },
+ {
+  "method": "backtest.run",
+  "params": {
+   "symbol": "AAPL",
+   "start": "2025-01-01",
+   "end": "2026-01-01",
+   "strategy": "sma_cross"
+  },
+  "capture": {}
+ },
+ {
+  "method": "backtest.parse_rules",
+  "params": {},
+  "capture": {}
+ },
+ {
+  "method": "backtest.parse_rules",
+  "params": {
+   "text": "MACD金叉买入"
+  },
+  "capture": {}
+ },
+ {
+  "method": "futu.unlock",
+  "params": {},
+  "capture": {}
+ },
+ {
+  "method": "futu.set_password",
+  "params": {
+   "password": "xyz",
+   "already_md5": true
+  },
+  "capture": {}
+ },
+ {
+  "method": "broker.select",
+  "params": {
+   "provider": "schwab"
+  },
+  "capture": {}
+ },
+ {
+  "method": "broker.select",
+  "params": {
+   "provider": "futu"
+  },
+  "capture": {}
+ },
+ {
+  "method": "tws.diagnose",
+  "params": {
+   "connections": [
+    "nope"
+   ]
+  },
+  "capture": {}
+ },
+ {
+  "method": "broker.catalog",
+  "params": {},
+  "capture": {}
+ },
+ {
+  "method": "futu.scan",
+  "params": {},
+  "capture": {}
+ },
+ {
+  "method": "tws.scan",
+  "params": {},
+  "capture": {}
+ },
+ {
+  "method": "pending.poll",
+  "params": {},
+  "capture": {}
+ },
+ {
+  "method": "data.export",
+  "params": {
+   "path": "$EXPORT_PATH"
+  },
+  "capture": {}
+ }
+]

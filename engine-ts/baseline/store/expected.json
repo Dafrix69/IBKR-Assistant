@@ -1,0 +1,389 @@
+{
+ "record_ids": [
+  "3655c5b2-2173-4580-8c73-4d313c3b8452",
+  "5a607f3c-5bfd-4ffc-a01d-7e65be4f5bad",
+  "c45f20f9-951f-43b1-bf36-f6ec188b3cf8",
+  "572a1283-c99e-4021-b577-dbc6f9ed45c2"
+ ],
+ "get_record": {
+  "3655c5b2-2173-4580-8c73-4d313c3b8452": {
+   "account": {
+    "account_id": "DU7654321",
+    "alias": "模拟"
+   },
+   "contract": {
+    "currency": "USD",
+    "exchange": "SMART",
+    "secType": "STK",
+    "symbol": "AAPL"
+   },
+   "created_at": "2026-09-08T04:02:28+00:00",
+   "id": "3655c5b2-2173-4580-8c73-4d313c3b8452",
+   "instruction": "买入 AAPL 100股 limit 230",
+   "intent_summary": "限价 230 买入 100 股 AAPL",
+   "llm": {
+    "model": "claude-opus-5",
+    "prompt_fingerprint": "abc123",
+    "prompt_version": "v1.8.0"
+   },
+   "order": {
+    "action": "BUY",
+    "lmtPrice": 230.0,
+    "orderType": "LMT",
+    "totalQuantity": 100
+   },
+   "reason": "回调到位",
+   "signature": "DEFAULT|BUY|STK|AAPL",
+   "ibkr": {
+    "status_timeline": [
+     {
+      "status": "Submitted",
+      "at": "2026-09-08T04:02:28+00:00"
+     },
+     {
+      "status": "Filled",
+      "at": "2026-09-08T04:02:28+00:00"
+     }
+    ],
+    "fills": [
+     {
+      "qty": 40,
+      "price": 229.98,
+      "exec_id": "e1",
+      "commission": 0.5,
+      "time": "2026-09-08T04:02:28+00:00"
+     },
+     {
+      "qty": 60,
+      "price": 230.0,
+      "exec_id": "e2",
+      "commission": 0.7,
+      "time": "2026-08-14T10:35:00+00:00"
+     }
+    ],
+    "order_id": 101,
+    "perm_id": 900101,
+    "avg_fill_price": 229.99199999999996,
+    "total_commission": 1.4,
+    "realized_pnl": 12.5
+   },
+   "commissions": [
+    {
+     "commission": 0.2,
+     "realized_pnl": 12.5,
+     "at": "2026-09-08T04:02:28+00:00"
+    }
+   ],
+   "final_status": "filled",
+   "error_detail": null
+  },
+  "5a607f3c-5bfd-4ffc-a01d-7e65be4f5bad": {
+   "account": {
+    "account_id": "DU7654321",
+    "alias": "模拟"
+   },
+   "contract": {
+    "secType": "BAG",
+    "symbol": "SPX"
+   },
+   "created_at": "2026-09-08T04:02:28+00:00",
+   "id": "5a607f3c-5bfd-4ffc-a01d-7e65be4f5bad",
+   "instruction": "SPX 涨到 7500 买 spread",
+   "llm": {
+    "prompt_version": "v1.8.0"
+   },
+   "order": {
+    "action": "BUY",
+    "orderType": "LMT",
+    "totalQuantity": 1
+   },
+   "signature": "DEFAULT|BUY|BAG|SPX|BUY|1|20260814|7520|C|SELL|1|20260814|7550|C",
+   "ibkr": {
+    "status_timeline": [
+     {
+      "status": "PendingTrigger",
+      "at": "2026-09-08T04:02:28+00:00"
+     },
+     {
+      "status": "Submitted",
+      "at": "2026-09-08T04:02:28+00:00"
+     },
+     {
+      "status": "Cancelled",
+      "at": "2026-09-08T04:02:28+00:00"
+     }
+    ],
+    "fills": [],
+    "order_id": 102
+   },
+   "triggered_at": "2026-09-08T04:02:28+00:00",
+   "trigger_snapshot": {
+    "symbol": "SPX",
+    "price": 7500.5,
+    "operator": ">="
+   },
+   "post_warnings": [
+    {
+     "message": "盘口价差偏大",
+     "at": "2026-09-08T04:02:28+00:00"
+    }
+   ],
+   "final_status": "cancelled",
+   "error_detail": "用户手动取消"
+  },
+  "c45f20f9-951f-43b1-bf36-f6ec188b3cf8": {
+   "account": {
+    "account_id": "DU7654321",
+    "alias": "模拟"
+   },
+   "contract": {
+    "secType": "OPT",
+    "symbol": "NVDA"
+   },
+   "created_at": "2026-09-08T04:02:28+00:00",
+   "id": "c45f20f9-951f-43b1-bf36-f6ec188b3cf8",
+   "instruction": "买入 NVDA 2 张 call",
+   "llm": {
+    "prompt_version": "v1.8.0"
+   },
+   "order": {
+    "action": "BUY",
+    "orderType": "LMT",
+    "totalQuantity": 2
+   },
+   "signature": "DEFAULT|BUY|OPT|NVDA|20260821|180|C",
+   "ibkr": {
+    "status_timeline": [
+     {
+      "status": "ValidatedOnly",
+      "at": "2026-09-08T04:02:28+00:00"
+     }
+    ],
+    "fills": []
+   },
+   "final_status": "rejected_by_validator",
+   "error_detail": "仅校验,未发送"
+  },
+  "572a1283-c99e-4021-b577-dbc6f9ed45c2": {
+   "account": {
+    "account_id": ""
+   },
+   "contract": {
+    "symbol": ""
+   },
+   "created_at": "2026-09-08T04:02:28+00:00",
+   "id": "572a1283-c99e-4021-b577-dbc6f9ed45c2",
+   "instruction": "看看行情",
+   "order": {},
+   "ibkr": {
+    "status_timeline": [],
+    "fills": []
+   },
+   "final_status": "rejected_by_llm",
+   "error_detail": "不是交易指令"
+  }
+ },
+ "list_records_limit_2": [
+  {
+   "account": {
+    "account_id": ""
+   },
+   "contract": {
+    "symbol": ""
+   },
+   "created_at": "2026-09-08T04:02:28+00:00",
+   "id": "572a1283-c99e-4021-b577-dbc6f9ed45c2",
+   "instruction": "看看行情",
+   "order": {},
+   "ibkr": {
+    "status_timeline": [],
+    "fills": []
+   },
+   "final_status": "rejected_by_llm",
+   "error_detail": "不是交易指令"
+  },
+  {
+   "account": {
+    "account_id": "DU7654321",
+    "alias": "模拟"
+   },
+   "contract": {
+    "secType": "OPT",
+    "symbol": "NVDA"
+   },
+   "created_at": "2026-09-08T04:02:28+00:00",
+   "id": "c45f20f9-951f-43b1-bf36-f6ec188b3cf8",
+   "instruction": "买入 NVDA 2 张 call",
+   "llm": {
+    "prompt_version": "v1.8.0"
+   },
+   "order": {
+    "action": "BUY",
+    "orderType": "LMT",
+    "totalQuantity": 2
+   },
+   "signature": "DEFAULT|BUY|OPT|NVDA|20260821|180|C",
+   "ibkr": {
+    "status_timeline": [
+     {
+      "status": "ValidatedOnly",
+      "at": "2026-09-08T04:02:28+00:00"
+     }
+    ],
+    "fills": []
+   },
+   "final_status": "rejected_by_validator",
+   "error_detail": "仅校验,未发送"
+  }
+ ],
+ "recent_now": "2026-09-08T04:02:28.679943+00:00",
+ "recent_orders": [
+  {
+   "signature": "DEFAULT|BUY|BAG|SPX|BUY|1|20260814|7520|C|SELL|1|20260814|7550|C",
+   "quantity": 1.0,
+   "created_at": "2026-09-08T04:02:28+00:00"
+  },
+  {
+   "signature": "DEFAULT|BUY|STK|AAPL",
+   "quantity": 100.0,
+   "created_at": "2026-09-08T04:02:28+00:00"
+  }
+ ],
+ "watches": [
+  {
+   "id": "bee2d0dc-097b-412f-aa0a-abed213d0819",
+   "created_at": "2026-09-08T04:02:28+00:00",
+   "updated_at": "2026-09-08T04:02:28+00:00",
+   "symbol": "IREN",
+   "step": 5.0,
+   "enabled": true,
+   "expiry": "",
+   "levels": [
+    {
+     "price": 40.0,
+     "label": "整数关口 40",
+     "source": "round",
+     "kind": "pivot"
+    }
+   ],
+   "states": {
+    "40.0000": {
+     "armed": false,
+     "last_fired_at": 1755000000.0
+    }
+   },
+   "last_price": 41.2,
+   "wall": null,
+   "events": [
+    {
+     "price": 40.0,
+     "text": "整数关口 40 上穿 40"
+    }
+   ]
+  }
+ ],
+ "tracks": [
+  {
+   "id": "eca39cac-66d1-4248-9c10-484833e9a9b2",
+   "created_at": "2026-09-08T04:02:28+00:00",
+   "updated_at": "2026-09-08T04:02:28+00:00",
+   "account": "模拟",
+   "symbol": "AAPL",
+   "sec_type": "STK",
+   "contract": {
+    "secType": "STK",
+    "symbol": "AAPL"
+   },
+   "targets": {
+    "take_profit": 250.0,
+    "stop_loss": 210.0,
+    "trail_pct": null
+   },
+   "auto_close": {
+    "enabled": true,
+    "order_type": "MKT",
+    "slippage_pct": 0.3
+   },
+   "enabled": true,
+   "peak": 245.5,
+   "fired_at": null,
+   "fired_state": "",
+   "fired_record": "",
+   "note": "财报前的仓",
+   "leg": ""
+  }
+ ],
+ "sectors": [
+  {
+   "id": "a3fc87a2-3b53-48d6-a90d-d3179121a124",
+   "created_at": "2026-09-08T04:02:28+00:00",
+   "updated_at": "2026-09-08T04:02:28+00:00",
+   "name": "AI 算力",
+   "stocks": [
+    {
+     "symbol": "NVDA",
+     "company": "英伟达",
+     "reason": "龙头"
+    }
+   ]
+  }
+ ],
+ "ideas_all": [
+  {
+   "id": "028b8c0e-f7b5-4f4f-8500-3502b49c66c9",
+   "created_at": "2026-09-08T04:02:28+00:00",
+   "updated_at": "2026-09-08T04:02:28+00:00",
+   "text": "上周五尾盘买入的 AAPL,考虑加仓",
+   "symbols": [
+    "AAPL"
+   ],
+   "status": "done",
+   "analysis": {
+    "summary": "回调加仓想法",
+    "risks": [
+     "财报波动"
+    ]
+   }
+  }
+ ],
+ "ideas_done": [
+  {
+   "id": "028b8c0e-f7b5-4f4f-8500-3502b49c66c9",
+   "created_at": "2026-09-08T04:02:28+00:00",
+   "updated_at": "2026-09-08T04:02:28+00:00",
+   "text": "上周五尾盘买入的 AAPL,考虑加仓",
+   "symbols": [
+    "AAPL"
+   ],
+   "status": "done",
+   "analysis": {
+    "summary": "回调加仓想法",
+    "risks": [
+     "财报波动"
+    ]
+   }
+  }
+ ],
+ "audit_rows": [
+  {
+   "seq": 1,
+   "at": "2026-09-08T04:02:28+00:00",
+   "actor": "user",
+   "action": "settings.patch",
+   "detail": "{\"path\": \"limits.max_order_notional\", \"to\": 5000}"
+  },
+  {
+   "seq": 2,
+   "at": "2026-09-08T04:02:28+00:00",
+   "actor": "engine",
+   "action": "breaker.engage",
+   "detail": "{\"reason\": \"连续失败\"}"
+  }
+ ],
+ "redact": {
+  "DU7654321": "DU***321",
+  "U12345": "U1***345",
+  "": "",
+  "AB": "A***"
+ }
+}

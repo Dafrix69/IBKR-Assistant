@@ -7,6 +7,23 @@
 
 ---
 
+## 仓库布局
+
+一个仓库,两套引擎,一个桌面端。提示词与配置是两个引擎共用的资产,放在根目录。
+
+| 目录 | 内容 |
+|---|---|
+| `engine-python/` | Python 引擎,行为规格的唯一事实源:`src/ibkr_agent` 实现、`tests/` 离线测试、`scripts/gen_golden.py` 等生成 TS 侧的黄金基线 |
+| `engine-ts/` | TypeScript 引擎,桌面端默认加载它(不需要 Python):`tests/golden-*.spec.ts` 与 Python 逐字段对拍,`baseline/` 是生成出来的基线 |
+| `desktop/` | Electron 桌面端:`main.js` / `preload.js` / `rpc-client.js` / `renderer/`;`tools/` 是预览、截图、压测与打包暂存脚本 |
+| `prompts/` | 大模型提示词资产,按版本号只增不改,两个引擎读同一份 |
+| `config/` | `settings.example.json`;本机的 `settings.json` 含账户映射,永不进仓库 |
+| `docs/` | `briefs/` 任务书、`reports/` 审计与重写报告、`orderbook-primer.md` |
+
+两个引擎必须同步改:纯函数改动在 `engine-python/scripts/gen_golden.py` 加样例并重生成 `engine-ts/baseline/golden/*.json`,
+RPC 面改动用 `gen_rpc_samples.py`,库文件夹具用 `gen_store_fixture.py`。`DAFRI_ENGINE=python` 让桌面端回退到 Python 引擎;
+`DAFRI_CONFIG` / `DAFRI_PROMPT_DIR` 覆盖默认的根目录资产位置。CI(`.github/workflows/ci.yml`)跑两套引擎的离线测试。
+
 ## 当前进度
 
 | 已实现 | 说明 |
@@ -25,7 +42,8 @@
 ## 快速开始(桌面端)
 
 ```bash
-python3 -m venv .venv && .venv/bin/pip install -e ".[dev,broker]"   # 用富途通道再加 ,futu
+(cd engine-ts && npm install && npm run build)                                          # TS 引擎:桌面端默认加载它
+(cd engine-python && python3 -m venv .venv && .venv/bin/pip install -e ".[dev,broker]")  # Python 引擎:规格与黄金基线;用富途通道再加 ,futu
 cd desktop && npm install && npm start
 ```
 
@@ -161,7 +179,7 @@ vibrancy 底材时,自动切换成实底**(`prefers-reduced-transparency` + 非 
   和悬停色一直是失效的。
 
 宏观行情带全部无数据时整条收起;「暂停自动执行」常态是普通按钮,已熔断时才红——常红会被读成"一直在告警"。
-这些决定与截图对比记录在 `desktop/OPTIMIZATION_REPORT.md`。
+这些决定与截图对比记录在 `docs/reports/desktop-optimization-report.md`。
 
 ### 第三轮:把"成熟产品"差的那几毫米补上
 
@@ -403,7 +421,7 @@ Nielsen 那十条可用性启发式。另外配了一份**首次启动的数据�
   紧限额用例(`validator.tight_*` / `notional_only_*`,5000 USD / 5 张):压测里被模型误拒的四条在校验层全部放行
   (1100 / 300 / 4800 / 3000 USD),真超限的被拦(23000 USD、按快照算的 22940 / 68820 USD、无参考价的 1000 股市价单、
   贷方铁鹰 7600 USD、6 张超 5 张),还有一条只收紧金额上限时 6 张放行——钉住"没覆盖的限额键回落到配置而不是引擎默认值";
-  `tests/test_local_limits.py` 与 TS 黄金对拍是同一组用例。
+  `engine-python/tests/test_local_limits.py` 与 TS 黄金对拍是同一组用例。
 - 发给模型的 schema 也随提示词版本走:v1.8.0 起 rejection 代码的 enum 不再列 EXCEEDS_LIMIT——兼容端点退到 json_object 时
   schema 会整段写进系统提示词,不能一边说"不要输出"一边把它列成合法值。pydantic / zod 模型保留该码,回滚到 v1.7.0
   或模型不听话时仍能解析(按模型侧拒绝原样透传,界面上 source=llm 可见)。
@@ -735,7 +753,7 @@ C − K·D ... 严格写作   C − P = S − K·D        (D = e^(−rT),折现�
 ### 装它
 
 ```bash
-.venv/bin/pip install -e ".[futu]"     # futu-api,只连本机的 OpenD,不直连券商服务器
+(cd engine-python && .venv/bin/pip install -e ".[futu]")   # futu-api,只连本机的 OpenD,不直连券商服务器
 ```
 
 没装也不会影响 IBKR 通道:SDK 是延迟导入的,缺了只在富途面板上报"怎么装"。
@@ -825,7 +843,7 @@ C − K·D ... 严格写作   C − P = S − K·D        (D = e^(−rT),折现�
 串起来才会暴露只有真机才碰得到的那类问题——`unrealizedPNL` 那个拼写错就是这么找到的:
 纯函数全绿,账户一有持仓就整个炸。
 
-> **真机核对到哪一步(2026-09-04,纸面账户 TWS 7497)。** `scripts/preview_combo_close.py`
+> **真机核对到哪一步(2026-09-04,纸面账户 TWS 7497)。** `engine-python/scripts/preview_combo_close.py`
 > 是这条路的只读预演:连上 TWS、把将要发的那张单打出来,然后停住——它不调用 `place()`。
 >
 > | 环节 | 状态 | 怎么验的 |
@@ -838,10 +856,10 @@ C − K·D ... 严格写作   C − P = S − K·D        (D = e^(−rT),折现�
 > | **真正发一次单** | ⬜ | 同上;做完之前 `allow_combo_live` 保持关闭 |
 >
 > 不用持仓就能验前三项:
-> `python scripts/preview_combo_close.py --probe SPX:20260904:7700,7720,7740 --whatif`
+> `python engine-python/scripts/preview_combo_close.py --probe SPX:20260904:7700,7720,7740 --whatif`
 >
 > **走完最后两项**:在纸面账户里建一只蝶(1 张即可),然后
-> `python scripts/preview_combo_close.py --account 模拟 --place-real-close`。
+> `python engine-python/scripts/preview_combo_close.py --account 模拟 --place-real-close`。
 > 那个标志会**真的发一张平仓单**——建临时追踪 → `poll_trackers` → 过全部闸门 → 发 BAG 限价单
 > → 收回报 → 落库 → 再跑一轮确认持仓消失、追踪停止,和盘中自动平仓完全同一条路,不走捷径。
 > 两道硬保险:只允许纸面账户(实盘一律拒,与 `allow_combo_live` 无关——核对不该在实盘上做
@@ -962,6 +980,8 @@ IBKR 优先用 `ib.portfolio()`、富途用 `position_list_query` 的 `pl_val`�
 
 ## 命令行(不启动界面也能用)
 
+在 `engine-python/` 下执行(`pip install -e .` 之后 `python -m ibkr_agent` 在任何目录都能用):
+
 ```bash
 python -m ibkr_agent selftest                              # 不联网:渲染提示词、检查配置
 python -m ibkr_agent validate examples/fixture_spread.json --snapshot SPX=7462.35   # 不联网:跑硬校验
@@ -1042,7 +1062,7 @@ npm run dist:win    # → dist/DafriTrading-<版本>-win-x64.exe(NSIS 安装器)
 
 | | 开发版 | 打包版 |
 |---|---|---|
-| 引擎 | 仓库 `trade-ts/dist` + `trade-ts/node_modules`(`DAFRI_ENGINE=python` 时用 `src/` + `.venv`) | `resources/engine-ts`:由 `tools/stage_engine_ts.js` 按 package-lock 的**生产依赖闭包**暂存,只带当前平台的 better-sqlite3 二进制,不带 .map/.d.ts/源码;**Python 引擎不进包** |
+| 引擎 | 仓库 `engine-ts/dist` + `engine-ts/node_modules`(`DAFRI_ENGINE=python` 时用 `engine-python/src` + `engine-python/.venv`) | `resources/engine-ts`:由 `tools/stage_engine_ts.js` 按 package-lock 的**生产依赖闭包**暂存,只带当前平台的 better-sqlite3 二进制,不带 .map/.d.ts/源码;**Python 引擎不进包** |
 | 配置文件 | `config/settings.json` | `userData/settings.json`(应用包只读,首启从示例生成) |
 | 运行时 | 系统 node(没有就用 Electron 自带的) | Electron 自带的 Node(`ELECTRON_RUN_AS_NODE`),机器上不需要装 Node 或 Python;`npm run smoke:engine` 用同一条路拉起暂存目录里的引擎发一条 system.status,`dist:*` 脚本把它作为打包前置 |
 
@@ -1149,8 +1169,8 @@ Python 子进程,要开必须先把 Python 运行时整个打进包里(体积 +1
 ## 测试
 
 ```bash
-.venv/bin/python -m pytest -q     # 654 项,全部离线,不需要 TWS / OpenD,也不需要 API Key
-cd ../trade-ts && npx vitest run  # 402 项:TS 引擎单测 + 与 Python 的黄金对拍 / RPC 契约回放
+cd engine-python && .venv/bin/python -m pytest -q   # 661 项,全部离线,不需要 TWS / OpenD,也不需要 API Key
+cd engine-ts && npx vitest run                       # 409 项:TS 引擎单测 + 与 Python 的黄金对拍 / RPC 契约回放
 ```
 
 覆盖重点对着 §9.8 的上线前清单:限额复算、触发方向复核、账户映射、价差结构、

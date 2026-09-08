@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """给预览台的 mock-bridge.js 生成一份真实形状的 pa.analyze 返回值。
 
-数据来源:黄金基线 trade-ts/baseline/golden/priceaction.json 里的 K 线,交给引擎的纯函数
+数据来源:黄金基线 engine-ts/baseline/golden/priceaction.json 里的 K 线,交给引擎的纯函数
 analyze() / htf_summary() / agreement() 算——和 rpc._pa_result 组装的字段一模一样,只是 K 线
 不来自券商。这样 K线 PA 页在预览台里画出来的就是引擎真会给的东西,而不是手编的样子货。
 
@@ -14,11 +14,11 @@ import sys
 from datetime import datetime
 
 HERE = pathlib.Path(__file__).resolve().parent
-ROOT = HERE.parent.parent                       # trade/
+ROOT = HERE.parent.parent                       # 仓库根
 sys.path.insert(0, str(ROOT / "src"))
 from ibkr_agent.priceaction import TIMEFRAMES, agreement, analyze, htf_summary  # noqa: E402
 
-golden = json.loads((ROOT.parent / "trade-ts" / "baseline" / "golden" / "priceaction.json").read_text(encoding="utf-8"))
+golden = json.loads((ROOT / "engine-ts" / "baseline" / "golden" / "priceaction.json").read_text(encoding="utf-8"))
 names = [a for a in sys.argv[1:] if not a.startswith("--")]
 case = next(c for c in golden["cases"] if c["name"] == (names[0] if names else "uptrend"))
 rows = case["rows"]

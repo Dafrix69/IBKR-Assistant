@@ -1,0 +1,30 @@
+{
+  "name": "dafri-engine",
+  "version": "0.1.0",
+  "private": true,
+  "description": "IBKR 交易指令解析引擎(TypeScript 重写)。行为规格 = ../engine-python 的 Python 实现。",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "golden": "vitest run tests/golden.spec.ts"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/node": "^24.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.122.0",
+    "@stdlib/math-base-special-erf": "^0.2.6",
+    "@stoqey/ib": "^1.6.7",
+    "better-sqlite3": "^13.0.3",
+    "futu-api": "^10.10.7008",
+    "zod": "^3.24.0"
+  }
+}

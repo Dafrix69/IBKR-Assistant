@@ -1,0 +1,44 @@
+{
+ "additionalProperties": false,
+ "description": "LLM 对一条交易想法的研究分析。仅供展示参考,不进下单链路。",
+ "properties": {
+  "summary": {
+   "description": "一句话解读这个想法",
+   "title": "Summary",
+   "type": "string"
+  },
+  "thesis": {
+   "default": "",
+   "description": "想法背后的核心逻辑与成立条件",
+   "title": "Thesis",
+   "type": "string"
+  },
+  "checks": {
+   "description": "下单前需要核实的事实/数据",
+   "items": {
+    "type": "string"
+   },
+   "title": "Checks",
+   "type": "array"
+  },
+  "risks": {
+   "description": "主要风险点",
+   "items": {
+    "type": "string"
+   },
+   "title": "Risks",
+   "type": "array"
+  },
+  "suggestion": {
+   "default": "",
+   "description": "若要执行,建议如何改写成明确指令或观察计划",
+   "title": "Suggestion",
+   "type": "string"
+  }
+ },
+ "required": [
+  "summary"
+ ],
+ "title": "IdeaAnalysis",
+ "type": "object"
+}

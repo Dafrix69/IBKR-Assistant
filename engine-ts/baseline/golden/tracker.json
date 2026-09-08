@@ -1,0 +1,7152 @@
+{
+ "positions": {
+  "long_stock": {
+   "account": "模拟",
+   "symbol": "AAPL",
+   "sec_type": "STK",
+   "quantity": 100.0,
+   "avg_cost": 220.0,
+   "multiplier": 1.0
+  },
+  "short_stock": {
+   "account": "模拟",
+   "symbol": "TSLA",
+   "sec_type": "STK",
+   "quantity": -50.0,
+   "avg_cost": 250.0,
+   "multiplier": 1.0
+  },
+  "long_option": {
+   "account": "模拟",
+   "symbol": "NVDA",
+   "sec_type": "OPT",
+   "quantity": 2.0,
+   "avg_cost": 550.0,
+   "multiplier": 100.0
+  },
+  "broker_pnl": {
+   "account": "模拟",
+   "symbol": "SPY",
+   "sec_type": "STK",
+   "quantity": 10.0,
+   "avg_cost": 500.0,
+   "multiplier": 1.0,
+   "market_price": 510.0,
+   "market_value": 5100.0,
+   "unrealized_pnl": 99.5
+  },
+  "long_fly": {
+   "account": "模拟",
+   "symbol": "SPX",
+   "sec_type": "BAG",
+   "quantity": 1.0,
+   "avg_cost": 225.0,
+   "multiplier": 100.0
+  },
+  "short_condor": {
+   "account": "模拟",
+   "symbol": "SPX",
+   "sec_type": "BAG",
+   "quantity": -1.0,
+   "avg_cost": 200.0,
+   "multiplier": 100.0
+  }
+ },
+ "drawdown_tiers_params": [
+  {
+   "name": "preset_fly",
+   "params": {
+    "profit_drawdown_preset": "fly"
+   },
+   "expect": {
+    "tiers": [
+     {
+      "above": 0.0,
+      "pct": 40.0
+     },
+     {
+      "above": 1.0,
+      "pct": 30.0
+     },
+     {
+      "above": 3.0,
+      "pct": 20.0
+     }
+    ],
+    "late": {
+     "after": "15:00",
+     "factor": 0.5
+    }
+   }
+  },
+  {
+   "name": "preset_case_insensitive",
+   "params": {
+    "profit_drawdown_preset": "FLY"
+   },
+   "expect": {
+    "tiers": [
+     {
+      "above": 0.0,
+      "pct": 40.0
+     },
+     {
+      "above": 1.0,
+      "pct": 30.0
+     },
+     {
+      "above": 3.0,
+      "pct": 20.0
+     }
+    ],
+    "late": {
+     "after": "15:00",
+     "factor": 0.5
+    }
+   }
+  },
+  {
+   "name": "empty",
+   "params": {},
+   "expect": {
+    "tiers": null,
+    "late": null
+   }
+  },
+  {
+   "name": "explicit_null",
+   "params": {
+    "profit_drawdown_tiers": null
+   },
+   "expect": {
+    "tiers": null,
+    "late": null
+   }
+  },
+  {
+   "name": "custom",
+   "params": {
+    "profit_drawdown_tiers": [
+     {
+      "above": 0,
+      "pct": 50
+     },
+     {
+      "above": 2,
+      "pct": 25
+     }
+    ]
+   },
+   "expect": {
+    "tiers": [
+     {
+      "above": 0.0,
+      "pct": 50.0
+     },
+     {
+      "above": 2.0,
+      "pct": 25.0
+     }
+    ],
+    "late": null
+   }
+  },
+  {
+   "name": "custom_with_late",
+   "params": {
+    "profit_drawdown_tiers": [
+     {
+      "above": 0,
+      "pct": 35
+     }
+    ],
+    "profit_drawdown_late": {
+     "after": "15:30",
+     "factor": 0.4
+    }
+   },
+   "expect": {
+    "tiers": [
+     {
+      "above": 0.0,
+      "pct": 35.0
+     }
+    ],
+    "late": {
+     "after": "15:30",
+     "factor": 0.4
+    }
+   }
+  },
+  {
+   "name": "late_without_tiers",
+   "params": {
+    "profit_drawdown_late": {
+     "after": "15:30",
+     "factor": 0.4
+    }
+   },
+   "expect": {
+    "tiers": null,
+    "late": null
+   }
+  },
+  {
+   "name": "bad_not_list",
+   "params": {
+    "profit_drawdown_tiers": {
+     "above": 0,
+     "pct": 30
+    }
+   },
+   "error": {
+    "code": -32602,
+    "message": "profit_drawdown_tiers 要是一个非空数组"
+   }
+  },
+  {
+   "name": "bad_empty_list",
+   "params": {
+    "profit_drawdown_tiers": []
+   },
+   "error": {
+    "code": -32602,
+    "message": "profit_drawdown_tiers 要是一个非空数组"
+   }
+  },
+  {
+   "name": "bad_item",
+   "params": {
+    "profit_drawdown_tiers": [
+     1,
+     2
+    ]
+   },
+   "error": {
+    "code": -32602,
+    "message": "分档的每一项要是 {above, pct} 对象"
+   }
+  },
+  {
+   "name": "bad_missing",
+   "params": {
+    "profit_drawdown_tiers": [
+     {
+      "above": 0
+     }
+    ]
+   },
+   "error": {
+    "code": -32602,
+    "message": "分档的 above 与 pct 都不能空"
+   }
+  },
+  {
+   "name": "bad_negative_above",
+   "params": {
+    "profit_drawdown_tiers": [
+     {
+      "above": -1,
+      "pct": 30
+     }
+    ]
+   },
+   "error": {
+    "code": -32602,
+    "message": "分档的 above(浮盈倍数)不能为负"
+   }
+  },
+  {
+   "name": "bad_pct_zero",
+   "params": {
+    "profit_drawdown_tiers": [
+     {
+      "above": 0,
+      "pct": 0
+     }
+    ]
+   },
+   "error": {
+    "code": -32602,
+    "message": "分档的 pct 要在 0(不含)到 100 之间,当前 0"
+   }
+  },
+  {
+   "name": "bad_pct_over",
+   "params": {
+    "profit_drawdown_tiers": [
+     {
+      "above": 0,
+      "pct": 101
+     }
+    ]
+   },
+   "error": {
+    "code": -32602,
+    "message": "分档的 pct 要在 0(不含)到 100 之间,当前 101"
+   }
+  },
+  {
+   "name": "bad_factor",
+   "params": {
+    "profit_drawdown_tiers": [
+     {
+      "above": 0,
+      "pct": 30
+     }
+    ],
+    "profit_drawdown_late": {
+     "after": "15:00",
+     "factor": 2
+    }
+   },
+   "error": {
+    "code": -32602,
+    "message": "尾盘收紧的 factor 要在 0(不含)到 1 之间"
+   }
+  }
+ ],
+ "group_legs": [
+  {
+   "name": "butterfly",
+   "rows": [
+    {
+     "key": "模拟|SPX|OPT|20260901|7630|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7630|P",
+     "label": "SPX 7630P 2026-09-01",
+     "quantity": 1.0,
+     "avg_cost": 50.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": 40.0,
+     "unrealized_pnl": -10.0,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7630.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7600|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7600|P",
+     "label": "SPX 7600P 2026-09-01",
+     "quantity": 1.0,
+     "avg_cost": 30.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": 35.0,
+     "unrealized_pnl": 5.0,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7600.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7615|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7615|P",
+     "label": "SPX 7615P 2026-09-01",
+     "quantity": -2.0,
+     "avg_cost": 40.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": -70.0,
+     "unrealized_pnl": 10.0,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7615.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|AAPL|STK",
+     "account": "模拟",
+     "symbol": "AAPL",
+     "sec_type": "STK",
+     "leg": "",
+     "label": "AAPL",
+     "quantity": 100.0,
+     "avg_cost": 220.0,
+     "multiplier": 1.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "STK",
+      "symbol": "AAPL"
+     }
+    }
+   ],
+   "expect": [
+    {
+     "account": "模拟",
+     "symbol": "SPX",
+     "expiry": "20260901",
+     "right": "P",
+     "kind": "butterfly",
+     "label": "买入看跌蝴蝶 7600/7615/7630",
+     "quantity": 1.0,
+     "net_cost": 0.0,
+     "market_value": 5.0,
+     "unrealized_pnl": 5.0,
+     "legs": [
+      "模拟|SPX|OPT|20260901|7600|P",
+      "模拟|SPX|OPT|20260901|7615|P",
+      "模拟|SPX|OPT|20260901|7630|P"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "vertical",
+   "rows": [
+    {
+     "key": "模拟|NVDA|OPT|20260918|180|C",
+     "account": "模拟",
+     "symbol": "NVDA",
+     "sec_type": "OPT",
+     "leg": "20260918|180|C",
+     "label": "NVDA 180C 2026-09-18",
+     "quantity": 2.0,
+     "avg_cost": 500.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "NVDA",
+      "lastTradeDateOrContractMonth": "20260918",
+      "strike": 180.0,
+      "right": "C",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|NVDA|OPT|20260918|190|C",
+     "account": "模拟",
+     "symbol": "NVDA",
+     "sec_type": "OPT",
+     "leg": "20260918|190|C",
+     "label": "NVDA 190C 2026-09-18",
+     "quantity": -2.0,
+     "avg_cost": 200.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "NVDA",
+      "lastTradeDateOrContractMonth": "20260918",
+      "strike": 190.0,
+      "right": "C",
+      "multiplier": "100"
+     }
+    }
+   ],
+   "expect": [
+    {
+     "account": "模拟",
+     "symbol": "NVDA",
+     "expiry": "20260918",
+     "right": "C",
+     "kind": "vertical",
+     "label": "看涨价差 180/190",
+     "quantity": 2.0,
+     "net_cost": 600.0,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "legs": [
+      "模拟|NVDA|OPT|20260918|180|C",
+      "模拟|NVDA|OPT|20260918|190|C"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "condor",
+   "rows": [
+    {
+     "key": "模拟|SPX|OPT|20260901|7500|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7500|P",
+     "label": "SPX 7500P 2026-09-01",
+     "quantity": 1.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7500.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7550|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7550|P",
+     "label": "SPX 7550P 2026-09-01",
+     "quantity": -1.0,
+     "avg_cost": 20.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7550.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7700|C",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7700|C",
+     "label": "SPX 7700C 2026-09-01",
+     "quantity": -1.0,
+     "avg_cost": 20.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7700.0,
+      "right": "C",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7750|C",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7750|C",
+     "label": "SPX 7750C 2026-09-01",
+     "quantity": 1.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7750.0,
+      "right": "C",
+      "multiplier": "100"
+     }
+    }
+   ],
+   "expect": [
+    {
+     "account": "模拟",
+     "symbol": "SPX",
+     "expiry": "20260901",
+     "right": "",
+     "kind": "iron_condor",
+     "label": "铁鹰 7500/7550/7700/7750",
+     "quantity": 1.0,
+     "net_cost": -20.0,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "legs": [
+      "模拟|SPX|OPT|20260901|7500|P",
+      "模拟|SPX|OPT|20260901|7550|P",
+      "模拟|SPX|OPT|20260901|7700|C",
+      "模拟|SPX|OPT|20260901|7750|C"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "iron_fly",
+   "rows": [
+    {
+     "key": "模拟|SPX|OPT|20260901|7550|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7550|P",
+     "label": "SPX 7550P 2026-09-01",
+     "quantity": 1.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7550.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7600|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7600|P",
+     "label": "SPX 7600P 2026-09-01",
+     "quantity": -1.0,
+     "avg_cost": 20.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7600.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7600|C",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7600|C",
+     "label": "SPX 7600C 2026-09-01",
+     "quantity": -1.0,
+     "avg_cost": 20.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7600.0,
+      "right": "C",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7650|C",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7650|C",
+     "label": "SPX 7650C 2026-09-01",
+     "quantity": 1.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7650.0,
+      "right": "C",
+      "multiplier": "100"
+     }
+    }
+   ],
+   "expect": [
+    {
+     "account": "模拟",
+     "symbol": "SPX",
+     "expiry": "20260901",
+     "right": "",
+     "kind": "custom",
+     "label": "组合(4 腿) 7550/7600/7600/7650",
+     "quantity": null,
+     "net_cost": -20.0,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "legs": [
+      "模拟|SPX|OPT|20260901|7550|P",
+      "模拟|SPX|OPT|20260901|7600|C",
+      "模拟|SPX|OPT|20260901|7600|P",
+      "模拟|SPX|OPT|20260901|7650|C"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "custom",
+   "rows": [
+    {
+     "key": "模拟|SPX|OPT|20260901|7500|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7500|P",
+     "label": "SPX 7500P 2026-09-01",
+     "quantity": 1.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7500.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7550|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7550|P",
+     "label": "SPX 7550P 2026-09-01",
+     "quantity": 3.0,
+     "avg_cost": 20.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7550.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    }
+   ],
+   "expect": [
+    {
+     "account": "模拟",
+     "symbol": "SPX",
+     "expiry": "20260901",
+     "right": "P",
+     "kind": "custom",
+     "label": "组合(2 腿) 7500/7550",
+     "quantity": null,
+     "net_cost": 70.0,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "legs": [
+      "模拟|SPX|OPT|20260901|7500|P",
+      "模拟|SPX|OPT|20260901|7550|P"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "two_flies_mixed_right",
+   "rows": [
+    {
+     "key": "模拟|SPX|OPT|20260904|7595|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7595|P",
+     "label": "SPX 7595P 2026-09-04",
+     "quantity": 1.0,
+     "avg_cost": 36.54,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7595.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260904|7620|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7620|P",
+     "label": "SPX 7620P 2026-09-04",
+     "quantity": -2.0,
+     "avg_cost": 43.81,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7620.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260904|7645|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7645|P",
+     "label": "SPX 7645P 2026-09-04",
+     "quantity": 1.0,
+     "avg_cost": 86.54,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7645.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260904|7800|C",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7800|C",
+     "label": "SPX 7800C 2026-09-04",
+     "quantity": 1.0,
+     "avg_cost": 256.63,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7800.0,
+      "right": "C",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260904|7820|C",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7820|C",
+     "label": "SPX 7820C 2026-09-04",
+     "quantity": -2.0,
+     "avg_cost": 108.72,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7820.0,
+      "right": "C",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260904|7840|C",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7840|C",
+     "label": "SPX 7840C 2026-09-04",
+     "quantity": 1.0,
+     "avg_cost": 61.54,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7840.0,
+      "right": "C",
+      "multiplier": "100"
+     }
+    }
+   ],
+   "expect": [
+    {
+     "account": "模拟",
+     "symbol": "SPX",
+     "expiry": "20260904",
+     "right": "P",
+     "kind": "butterfly",
+     "label": "买入看跌蝴蝶 7595/7620/7645",
+     "quantity": 1.0,
+     "net_cost": 35.46,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "legs": [
+      "模拟|SPX|OPT|20260904|7595|P",
+      "模拟|SPX|OPT|20260904|7620|P",
+      "模拟|SPX|OPT|20260904|7645|P"
+     ]
+    },
+    {
+     "account": "模拟",
+     "symbol": "SPX",
+     "expiry": "20260904",
+     "right": "C",
+     "kind": "butterfly",
+     "label": "买入看涨蝴蝶 7800/7820/7840",
+     "quantity": 1.0,
+     "net_cost": 100.73,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "legs": [
+      "模拟|SPX|OPT|20260904|7800|C",
+      "模拟|SPX|OPT|20260904|7820|C",
+      "模拟|SPX|OPT|20260904|7840|C"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "two_flies_same_right",
+   "rows": [
+    {
+     "key": "模拟|SPX|OPT|20260904|7595|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7595|P",
+     "label": "SPX 7595P 2026-09-04",
+     "quantity": 1.0,
+     "avg_cost": 30.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7595.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260904|7620|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7620|P",
+     "label": "SPX 7620P 2026-09-04",
+     "quantity": -2.0,
+     "avg_cost": 40.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7620.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260904|7645|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7645|P",
+     "label": "SPX 7645P 2026-09-04",
+     "quantity": 1.0,
+     "avg_cost": 50.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7645.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260904|7800|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7800|P",
+     "label": "SPX 7800P 2026-09-04",
+     "quantity": 1.0,
+     "avg_cost": 20.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7800.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260904|7820|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7820|P",
+     "label": "SPX 7820P 2026-09-04",
+     "quantity": -2.0,
+     "avg_cost": 30.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7820.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260904|7840|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7840|P",
+     "label": "SPX 7840P 2026-09-04",
+     "quantity": 1.0,
+     "avg_cost": 40.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7840.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    }
+   ],
+   "expect": [
+    {
+     "account": "模拟",
+     "symbol": "SPX",
+     "expiry": "20260904",
+     "right": "P",
+     "kind": "butterfly",
+     "label": "买入看跌蝴蝶 7595/7620/7645",
+     "quantity": 1.0,
+     "net_cost": 0.0,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "legs": [
+      "模拟|SPX|OPT|20260904|7595|P",
+      "模拟|SPX|OPT|20260904|7620|P",
+      "模拟|SPX|OPT|20260904|7645|P"
+     ]
+    },
+    {
+     "account": "模拟",
+     "symbol": "SPX",
+     "expiry": "20260904",
+     "right": "P",
+     "kind": "butterfly",
+     "label": "买入看跌蝴蝶 7800/7820/7840",
+     "quantity": 1.0,
+     "net_cost": 0.0,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "legs": [
+      "模拟|SPX|OPT|20260904|7800|P",
+      "模拟|SPX|OPT|20260904|7820|P",
+      "模拟|SPX|OPT|20260904|7840|P"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "fly_plus_leftovers",
+   "rows": [
+    {
+     "key": "模拟|SPX|OPT|20260901|7500|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7500|P",
+     "label": "SPX 7500P 2026-09-01",
+     "quantity": 1.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7500.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7520|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7520|P",
+     "label": "SPX 7520P 2026-09-01",
+     "quantity": -2.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7520.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7540|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7540|P",
+     "label": "SPX 7540P 2026-09-01",
+     "quantity": 1.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7540.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7900|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7900|P",
+     "label": "SPX 7900P 2026-09-01",
+     "quantity": 3.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7900.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7950|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7950|P",
+     "label": "SPX 7950P 2026-09-01",
+     "quantity": 7.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7950.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    }
+   ],
+   "expect": [
+    {
+     "account": "模拟",
+     "symbol": "SPX",
+     "expiry": "20260901",
+     "right": "P",
+     "kind": "butterfly",
+     "label": "买入看跌蝴蝶 7500/7520/7540",
+     "quantity": 1.0,
+     "net_cost": 0.0,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "legs": [
+      "模拟|SPX|OPT|20260901|7500|P",
+      "模拟|SPX|OPT|20260901|7520|P",
+      "模拟|SPX|OPT|20260901|7540|P"
+     ]
+    },
+    {
+     "account": "模拟",
+     "symbol": "SPX",
+     "expiry": "20260901",
+     "right": "P",
+     "kind": "custom",
+     "label": "组合(2 腿) 7900/7950",
+     "quantity": null,
+     "net_cost": 100.0,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "legs": [
+      "模拟|SPX|OPT|20260901|7900|P",
+      "模拟|SPX|OPT|20260901|7950|P"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "single_and_split",
+   "rows": [
+    {
+     "key": "模拟|SPX|OPT|20260901|7600|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7600|P",
+     "label": "SPX 7600P 2026-09-01",
+     "quantity": 1.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7600.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260902|7615|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260902|7615|P",
+     "label": "SPX 7615P 2026-09-02",
+     "quantity": -1.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260902",
+      "strike": 7615.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    }
+   ],
+   "expect": []
+  }
+ ],
+ "split_structures": [
+  {
+   "name": "butterfly",
+   "rows": [
+    {
+     "key": "模拟|SPX|OPT|20260901|7600|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7600|P",
+     "label": "SPX 7600P 2026-09-01",
+     "quantity": 1.0,
+     "avg_cost": 30.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": 35.0,
+     "unrealized_pnl": 5.0,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7600.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7615|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7615|P",
+     "label": "SPX 7615P 2026-09-01",
+     "quantity": -2.0,
+     "avg_cost": 40.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": -70.0,
+     "unrealized_pnl": 10.0,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7615.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7630|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7630|P",
+     "label": "SPX 7630P 2026-09-01",
+     "quantity": 1.0,
+     "avg_cost": 50.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": 40.0,
+     "unrealized_pnl": -10.0,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7630.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    }
+   ],
+   "expect": [
+    [
+     "模拟|SPX|OPT|20260901|7600|P",
+     "模拟|SPX|OPT|20260901|7615|P",
+     "模拟|SPX|OPT|20260901|7630|P"
+    ]
+   ],
+   "shapes": [
+    [
+     "butterfly",
+     1.0
+    ]
+   ]
+  },
+  {
+   "name": "vertical",
+   "rows": [
+    {
+     "key": "模拟|NVDA|OPT|20260918|180|C",
+     "account": "模拟",
+     "symbol": "NVDA",
+     "sec_type": "OPT",
+     "leg": "20260918|180|C",
+     "label": "NVDA 180C 2026-09-18",
+     "quantity": 2.0,
+     "avg_cost": 500.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "NVDA",
+      "lastTradeDateOrContractMonth": "20260918",
+      "strike": 180.0,
+      "right": "C",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|NVDA|OPT|20260918|190|C",
+     "account": "模拟",
+     "symbol": "NVDA",
+     "sec_type": "OPT",
+     "leg": "20260918|190|C",
+     "label": "NVDA 190C 2026-09-18",
+     "quantity": -2.0,
+     "avg_cost": 200.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "NVDA",
+      "lastTradeDateOrContractMonth": "20260918",
+      "strike": 190.0,
+      "right": "C",
+      "multiplier": "100"
+     }
+    }
+   ],
+   "expect": [
+    [
+     "模拟|NVDA|OPT|20260918|180|C",
+     "模拟|NVDA|OPT|20260918|190|C"
+    ]
+   ],
+   "shapes": [
+    [
+     "vertical",
+     2.0
+    ]
+   ]
+  },
+  {
+   "name": "condor",
+   "rows": [
+    {
+     "key": "模拟|SPX|OPT|20260901|7500|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7500|P",
+     "label": "SPX 7500P 2026-09-01",
+     "quantity": 1.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7500.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7550|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7550|P",
+     "label": "SPX 7550P 2026-09-01",
+     "quantity": -1.0,
+     "avg_cost": 20.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7550.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7700|C",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7700|C",
+     "label": "SPX 7700C 2026-09-01",
+     "quantity": -1.0,
+     "avg_cost": 20.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7700.0,
+      "right": "C",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7750|C",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7750|C",
+     "label": "SPX 7750C 2026-09-01",
+     "quantity": 1.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7750.0,
+      "right": "C",
+      "multiplier": "100"
+     }
+    }
+   ],
+   "expect": [
+    [
+     "模拟|SPX|OPT|20260901|7500|P",
+     "模拟|SPX|OPT|20260901|7550|P",
+     "模拟|SPX|OPT|20260901|7700|C",
+     "模拟|SPX|OPT|20260901|7750|C"
+    ]
+   ],
+   "shapes": [
+    [
+     "iron_condor",
+     1.0
+    ]
+   ]
+  },
+  {
+   "name": "iron_fly",
+   "rows": [
+    {
+     "key": "模拟|SPX|OPT|20260901|7550|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7550|P",
+     "label": "SPX 7550P 2026-09-01",
+     "quantity": 1.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7550.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7600|C",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7600|C",
+     "label": "SPX 7600C 2026-09-01",
+     "quantity": -1.0,
+     "avg_cost": 20.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7600.0,
+      "right": "C",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7600|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7600|P",
+     "label": "SPX 7600P 2026-09-01",
+     "quantity": -1.0,
+     "avg_cost": 20.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7600.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7650|C",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7650|C",
+     "label": "SPX 7650C 2026-09-01",
+     "quantity": 1.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7650.0,
+      "right": "C",
+      "multiplier": "100"
+     }
+    }
+   ],
+   "expect": [
+    [
+     "模拟|SPX|OPT|20260901|7550|P",
+     "模拟|SPX|OPT|20260901|7600|C",
+     "模拟|SPX|OPT|20260901|7600|P",
+     "模拟|SPX|OPT|20260901|7650|C"
+    ]
+   ],
+   "shapes": [
+    null
+   ]
+  },
+  {
+   "name": "custom",
+   "rows": [
+    {
+     "key": "模拟|SPX|OPT|20260901|7500|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7500|P",
+     "label": "SPX 7500P 2026-09-01",
+     "quantity": 1.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7500.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7550|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7550|P",
+     "label": "SPX 7550P 2026-09-01",
+     "quantity": 3.0,
+     "avg_cost": 20.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7550.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    }
+   ],
+   "expect": [
+    [
+     "模拟|SPX|OPT|20260901|7500|P",
+     "模拟|SPX|OPT|20260901|7550|P"
+    ]
+   ],
+   "shapes": [
+    null
+   ]
+  },
+  {
+   "name": "two_flies_mixed_right",
+   "rows": [
+    {
+     "key": "模拟|SPX|OPT|20260904|7595|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7595|P",
+     "label": "SPX 7595P 2026-09-04",
+     "quantity": 1.0,
+     "avg_cost": 36.54,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7595.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260904|7620|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7620|P",
+     "label": "SPX 7620P 2026-09-04",
+     "quantity": -2.0,
+     "avg_cost": 43.81,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7620.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260904|7645|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7645|P",
+     "label": "SPX 7645P 2026-09-04",
+     "quantity": 1.0,
+     "avg_cost": 86.54,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7645.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260904|7800|C",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7800|C",
+     "label": "SPX 7800C 2026-09-04",
+     "quantity": 1.0,
+     "avg_cost": 256.63,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7800.0,
+      "right": "C",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260904|7820|C",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7820|C",
+     "label": "SPX 7820C 2026-09-04",
+     "quantity": -2.0,
+     "avg_cost": 108.72,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7820.0,
+      "right": "C",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260904|7840|C",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7840|C",
+     "label": "SPX 7840C 2026-09-04",
+     "quantity": 1.0,
+     "avg_cost": 61.54,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7840.0,
+      "right": "C",
+      "multiplier": "100"
+     }
+    }
+   ],
+   "expect": [
+    [
+     "模拟|SPX|OPT|20260904|7595|P",
+     "模拟|SPX|OPT|20260904|7620|P",
+     "模拟|SPX|OPT|20260904|7645|P"
+    ],
+    [
+     "模拟|SPX|OPT|20260904|7800|C",
+     "模拟|SPX|OPT|20260904|7820|C",
+     "模拟|SPX|OPT|20260904|7840|C"
+    ]
+   ],
+   "shapes": [
+    [
+     "butterfly",
+     1.0
+    ],
+    [
+     "butterfly",
+     1.0
+    ]
+   ]
+  },
+  {
+   "name": "two_flies_same_right",
+   "rows": [
+    {
+     "key": "模拟|SPX|OPT|20260904|7595|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7595|P",
+     "label": "SPX 7595P 2026-09-04",
+     "quantity": 1.0,
+     "avg_cost": 30.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7595.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260904|7620|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7620|P",
+     "label": "SPX 7620P 2026-09-04",
+     "quantity": -2.0,
+     "avg_cost": 40.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7620.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260904|7645|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7645|P",
+     "label": "SPX 7645P 2026-09-04",
+     "quantity": 1.0,
+     "avg_cost": 50.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7645.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260904|7800|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7800|P",
+     "label": "SPX 7800P 2026-09-04",
+     "quantity": 1.0,
+     "avg_cost": 20.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7800.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260904|7820|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7820|P",
+     "label": "SPX 7820P 2026-09-04",
+     "quantity": -2.0,
+     "avg_cost": 30.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7820.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260904|7840|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7840|P",
+     "label": "SPX 7840P 2026-09-04",
+     "quantity": 1.0,
+     "avg_cost": 40.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7840.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    }
+   ],
+   "expect": [
+    [
+     "模拟|SPX|OPT|20260904|7595|P",
+     "模拟|SPX|OPT|20260904|7620|P",
+     "模拟|SPX|OPT|20260904|7645|P"
+    ],
+    [
+     "模拟|SPX|OPT|20260904|7800|P",
+     "模拟|SPX|OPT|20260904|7820|P",
+     "模拟|SPX|OPT|20260904|7840|P"
+    ]
+   ],
+   "shapes": [
+    [
+     "butterfly",
+     1.0
+    ],
+    [
+     "butterfly",
+     1.0
+    ]
+   ]
+  },
+  {
+   "name": "fly_plus_leftovers",
+   "rows": [
+    {
+     "key": "模拟|SPX|OPT|20260901|7500|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7500|P",
+     "label": "SPX 7500P 2026-09-01",
+     "quantity": 1.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7500.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7520|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7520|P",
+     "label": "SPX 7520P 2026-09-01",
+     "quantity": -2.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7520.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7540|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7540|P",
+     "label": "SPX 7540P 2026-09-01",
+     "quantity": 1.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7540.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7900|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7900|P",
+     "label": "SPX 7900P 2026-09-01",
+     "quantity": 3.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7900.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7950|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7950|P",
+     "label": "SPX 7950P 2026-09-01",
+     "quantity": 7.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7950.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    }
+   ],
+   "expect": [
+    [
+     "模拟|SPX|OPT|20260901|7500|P",
+     "模拟|SPX|OPT|20260901|7520|P",
+     "模拟|SPX|OPT|20260901|7540|P"
+    ],
+    [
+     "模拟|SPX|OPT|20260901|7900|P",
+     "模拟|SPX|OPT|20260901|7950|P"
+    ]
+   ],
+   "shapes": [
+    [
+     "butterfly",
+     1.0
+    ],
+    null
+   ]
+  },
+  {
+   "name": "single_and_split",
+   "rows": [
+    {
+     "key": "模拟|SPX|OPT|20260901|7600|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7600|P",
+     "label": "SPX 7600P 2026-09-01",
+     "quantity": 1.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7600.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260902|7615|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260902|7615|P",
+     "label": "SPX 7615P 2026-09-02",
+     "quantity": -1.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260902",
+      "strike": 7615.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    }
+   ],
+   "expect": [
+    [
+     "模拟|SPX|OPT|20260901|7600|P",
+     "模拟|SPX|OPT|20260902|7615|P"
+    ]
+   ],
+   "shapes": [
+    [
+     "vertical",
+     1.0
+    ]
+   ]
+  }
+ ],
+ "with_combos": [
+  {
+   "name": "butterfly",
+   "rows": [
+    {
+     "key": "模拟|SPX|OPT|20260901|7630|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7630|P",
+     "label": "SPX 7630P 2026-09-01",
+     "quantity": 1.0,
+     "avg_cost": 50.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.35,
+     "market_value": 40.0,
+     "unrealized_pnl": -10.0,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7630.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7600|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7600|P",
+     "label": "SPX 7600P 2026-09-01",
+     "quantity": 1.0,
+     "avg_cost": 30.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.35,
+     "market_value": 35.0,
+     "unrealized_pnl": 5.0,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7600.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7615|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7615|P",
+     "label": "SPX 7615P 2026-09-01",
+     "quantity": -2.0,
+     "avg_cost": 40.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.4,
+     "market_value": -70.0,
+     "unrealized_pnl": 10.0,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7615.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|AAPL|STK",
+     "account": "模拟",
+     "symbol": "AAPL",
+     "sec_type": "STK",
+     "leg": "",
+     "label": "AAPL",
+     "quantity": 100.0,
+     "avg_cost": 220.0,
+     "multiplier": 1.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "STK",
+      "symbol": "AAPL"
+     }
+    }
+   ],
+   "expect": [
+    {
+     "key": "模拟|SPX|OPT|20260901|7630|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7630|P",
+     "label": "SPX 7630P 2026-09-01",
+     "quantity": 1.0,
+     "avg_cost": 50.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.35,
+     "market_value": 40.0,
+     "unrealized_pnl": -10.0,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7630.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7600|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7600|P",
+     "label": "SPX 7600P 2026-09-01",
+     "quantity": 1.0,
+     "avg_cost": 30.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.35,
+     "market_value": 35.0,
+     "unrealized_pnl": 5.0,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7600.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7615|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7615|P",
+     "label": "SPX 7615P 2026-09-01",
+     "quantity": -2.0,
+     "avg_cost": 40.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.4,
+     "market_value": -70.0,
+     "unrealized_pnl": 10.0,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7615.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|AAPL|STK",
+     "account": "模拟",
+     "symbol": "AAPL",
+     "sec_type": "STK",
+     "leg": "",
+     "label": "AAPL",
+     "quantity": 100.0,
+     "avg_cost": 220.0,
+     "multiplier": 1.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "STK",
+      "symbol": "AAPL"
+     }
+    },
+    {
+     "key": "模拟|SPX|BAG|20260901|+1x7600P,-2x7615P,+1x7630P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "BAG",
+     "leg": "20260901|+1x7600P,-2x7615P,+1x7630P",
+     "label": "买入看跌蝴蝶 7600/7615/7630",
+     "kind": "butterfly",
+     "quantity": 1.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "avg_cost": 0.0,
+     "market_price": 0.1,
+     "net_side": "debit",
+     "market_value": 5.0,
+     "unrealized_pnl": 5.0,
+     "legs": [
+      "模拟|SPX|OPT|20260901|7600|P",
+      "模拟|SPX|OPT|20260901|7615|P",
+      "模拟|SPX|OPT|20260901|7630|P"
+     ],
+     "ratios": [
+      1.0,
+      -2.0,
+      1.0
+     ],
+     "contract": {
+      "secType": "BAG",
+      "symbol": "SPX",
+      "exchange": "SMART",
+      "currency": "USD",
+      "multiplier": "100",
+      "combo_strategy": "BUTTERFLY",
+      "label": "买入看跌蝴蝶 7600/7615/7630",
+      "legs": [
+       {
+        "lastTradeDateOrContractMonth": "20260901",
+        "strike": 7600.0,
+        "right": "P",
+        "ratio": 1.0
+       },
+       {
+        "lastTradeDateOrContractMonth": "20260901",
+        "strike": 7615.0,
+        "right": "P",
+        "ratio": -2.0
+       },
+       {
+        "lastTradeDateOrContractMonth": "20260901",
+        "strike": 7630.0,
+        "right": "P",
+        "ratio": 1.0
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "name": "vertical",
+   "rows": [
+    {
+     "key": "模拟|NVDA|OPT|20260918|180|C",
+     "account": "模拟",
+     "symbol": "NVDA",
+     "sec_type": "OPT",
+     "leg": "20260918|180|C",
+     "label": "NVDA 180C 2026-09-18",
+     "quantity": 2.0,
+     "avg_cost": 500.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.35,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "NVDA",
+      "lastTradeDateOrContractMonth": "20260918",
+      "strike": 180.0,
+      "right": "C",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|NVDA|OPT|20260918|190|C",
+     "account": "模拟",
+     "symbol": "NVDA",
+     "sec_type": "OPT",
+     "leg": "20260918|190|C",
+     "label": "NVDA 190C 2026-09-18",
+     "quantity": -2.0,
+     "avg_cost": 200.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.35,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "NVDA",
+      "lastTradeDateOrContractMonth": "20260918",
+      "strike": 190.0,
+      "right": "C",
+      "multiplier": "100"
+     }
+    }
+   ],
+   "expect": [
+    {
+     "key": "模拟|NVDA|OPT|20260918|180|C",
+     "account": "模拟",
+     "symbol": "NVDA",
+     "sec_type": "OPT",
+     "leg": "20260918|180|C",
+     "label": "NVDA 180C 2026-09-18",
+     "quantity": 2.0,
+     "avg_cost": 500.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.35,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "NVDA",
+      "lastTradeDateOrContractMonth": "20260918",
+      "strike": 180.0,
+      "right": "C",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|NVDA|OPT|20260918|190|C",
+     "account": "模拟",
+     "symbol": "NVDA",
+     "sec_type": "OPT",
+     "leg": "20260918|190|C",
+     "label": "NVDA 190C 2026-09-18",
+     "quantity": -2.0,
+     "avg_cost": 200.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.35,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "NVDA",
+      "lastTradeDateOrContractMonth": "20260918",
+      "strike": 190.0,
+      "right": "C",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|NVDA|BAG|20260918|+1x180C,-1x190C",
+     "account": "模拟",
+     "symbol": "NVDA",
+     "sec_type": "BAG",
+     "leg": "20260918|+1x180C,-1x190C",
+     "label": "看涨价差 180/190",
+     "kind": "vertical",
+     "quantity": 2.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "avg_cost": 300.0,
+     "market_price": 0.0,
+     "net_side": "debit",
+     "market_value": null,
+     "unrealized_pnl": null,
+     "legs": [
+      "模拟|NVDA|OPT|20260918|180|C",
+      "模拟|NVDA|OPT|20260918|190|C"
+     ],
+     "ratios": [
+      1.0,
+      -1.0
+     ],
+     "contract": {
+      "secType": "BAG",
+      "symbol": "NVDA",
+      "exchange": "SMART",
+      "currency": "USD",
+      "multiplier": "100",
+      "combo_strategy": "VERTICAL",
+      "label": "看涨价差 180/190",
+      "legs": [
+       {
+        "lastTradeDateOrContractMonth": "20260918",
+        "strike": 180.0,
+        "right": "C",
+        "ratio": 1.0
+       },
+       {
+        "lastTradeDateOrContractMonth": "20260918",
+        "strike": 190.0,
+        "right": "C",
+        "ratio": -1.0
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "name": "condor",
+   "rows": [
+    {
+     "key": "模拟|SPX|OPT|20260901|7500|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7500|P",
+     "label": "SPX 7500P 2026-09-01",
+     "quantity": 1.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.35,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7500.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7550|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7550|P",
+     "label": "SPX 7550P 2026-09-01",
+     "quantity": -1.0,
+     "avg_cost": 20.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.35,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7550.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7700|C",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7700|C",
+     "label": "SPX 7700C 2026-09-01",
+     "quantity": -1.0,
+     "avg_cost": 20.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.4,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7700.0,
+      "right": "C",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7750|C",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7750|C",
+     "label": "SPX 7750C 2026-09-01",
+     "quantity": 1.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 6.0,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7750.0,
+      "right": "C",
+      "multiplier": "100"
+     }
+    }
+   ],
+   "expect": [
+    {
+     "key": "模拟|SPX|OPT|20260901|7500|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7500|P",
+     "label": "SPX 7500P 2026-09-01",
+     "quantity": 1.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.35,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7500.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7550|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7550|P",
+     "label": "SPX 7550P 2026-09-01",
+     "quantity": -1.0,
+     "avg_cost": 20.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.35,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7550.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7700|C",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7700|C",
+     "label": "SPX 7700C 2026-09-01",
+     "quantity": -1.0,
+     "avg_cost": 20.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.4,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7700.0,
+      "right": "C",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7750|C",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7750|C",
+     "label": "SPX 7750C 2026-09-01",
+     "quantity": 1.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 6.0,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7750.0,
+      "right": "C",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|BAG|20260901|+1x7500P,-1x7550P,-1x7700C,+1x7750C",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "BAG",
+     "leg": "20260901|+1x7500P,-1x7550P,-1x7700C,+1x7750C",
+     "label": "铁鹰 7500/7550/7700/7750",
+     "kind": "iron_condor",
+     "quantity": -1.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "avg_cost": 20.0,
+     "market_price": 5.6,
+     "net_side": "credit",
+     "market_value": null,
+     "unrealized_pnl": null,
+     "legs": [
+      "模拟|SPX|OPT|20260901|7500|P",
+      "模拟|SPX|OPT|20260901|7550|P",
+      "模拟|SPX|OPT|20260901|7700|C",
+      "模拟|SPX|OPT|20260901|7750|C"
+     ],
+     "ratios": [
+      1.0,
+      -1.0,
+      -1.0,
+      1.0
+     ],
+     "contract": {
+      "secType": "BAG",
+      "symbol": "SPX",
+      "exchange": "SMART",
+      "currency": "USD",
+      "multiplier": "100",
+      "combo_strategy": "IRON_CONDOR",
+      "label": "铁鹰 7500/7550/7700/7750",
+      "legs": [
+       {
+        "lastTradeDateOrContractMonth": "20260901",
+        "strike": 7500.0,
+        "right": "P",
+        "ratio": 1.0
+       },
+       {
+        "lastTradeDateOrContractMonth": "20260901",
+        "strike": 7550.0,
+        "right": "P",
+        "ratio": -1.0
+       },
+       {
+        "lastTradeDateOrContractMonth": "20260901",
+        "strike": 7700.0,
+        "right": "C",
+        "ratio": -1.0
+       },
+       {
+        "lastTradeDateOrContractMonth": "20260901",
+        "strike": 7750.0,
+        "right": "C",
+        "ratio": 1.0
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "name": "iron_fly",
+   "rows": [
+    {
+     "key": "模拟|SPX|OPT|20260901|7550|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7550|P",
+     "label": "SPX 7550P 2026-09-01",
+     "quantity": 1.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.35,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7550.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7600|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7600|P",
+     "label": "SPX 7600P 2026-09-01",
+     "quantity": -1.0,
+     "avg_cost": 20.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.35,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7600.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7600|C",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7600|C",
+     "label": "SPX 7600C 2026-09-01",
+     "quantity": -1.0,
+     "avg_cost": 20.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.4,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7600.0,
+      "right": "C",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7650|C",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7650|C",
+     "label": "SPX 7650C 2026-09-01",
+     "quantity": 1.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 6.0,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7650.0,
+      "right": "C",
+      "multiplier": "100"
+     }
+    }
+   ],
+   "expect": [
+    {
+     "key": "模拟|SPX|OPT|20260901|7550|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7550|P",
+     "label": "SPX 7550P 2026-09-01",
+     "quantity": 1.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.35,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7550.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7600|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7600|P",
+     "label": "SPX 7600P 2026-09-01",
+     "quantity": -1.0,
+     "avg_cost": 20.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.35,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7600.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7600|C",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7600|C",
+     "label": "SPX 7600C 2026-09-01",
+     "quantity": -1.0,
+     "avg_cost": 20.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.4,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7600.0,
+      "right": "C",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7650|C",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7650|C",
+     "label": "SPX 7650C 2026-09-01",
+     "quantity": 1.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 6.0,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7650.0,
+      "right": "C",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|BAG|20260901|+1x7550P,-1x7600C,-1x7600P,+1x7650C",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "BAG",
+     "leg": "20260901|+1x7550P,-1x7600C,-1x7600P,+1x7650C",
+     "label": "组合(4 腿) 7550/7600/7600/7650",
+     "kind": "custom",
+     "quantity": -1.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "avg_cost": 20.0,
+     "market_price": 5.6,
+     "net_side": "credit",
+     "market_value": null,
+     "unrealized_pnl": null,
+     "legs": [
+      "模拟|SPX|OPT|20260901|7550|P",
+      "模拟|SPX|OPT|20260901|7600|C",
+      "模拟|SPX|OPT|20260901|7600|P",
+      "模拟|SPX|OPT|20260901|7650|C"
+     ],
+     "ratios": [
+      1.0,
+      -1.0,
+      -1.0,
+      1.0
+     ],
+     "contract": {
+      "secType": "BAG",
+      "symbol": "SPX",
+      "exchange": "SMART",
+      "currency": "USD",
+      "multiplier": "100",
+      "combo_strategy": null,
+      "label": "组合(4 腿) 7550/7600/7600/7650",
+      "legs": [
+       {
+        "lastTradeDateOrContractMonth": "20260901",
+        "strike": 7550.0,
+        "right": "P",
+        "ratio": 1.0
+       },
+       {
+        "lastTradeDateOrContractMonth": "20260901",
+        "strike": 7600.0,
+        "right": "C",
+        "ratio": -1.0
+       },
+       {
+        "lastTradeDateOrContractMonth": "20260901",
+        "strike": 7600.0,
+        "right": "P",
+        "ratio": -1.0
+       },
+       {
+        "lastTradeDateOrContractMonth": "20260901",
+        "strike": 7650.0,
+        "right": "C",
+        "ratio": 1.0
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "name": "custom",
+   "rows": [
+    {
+     "key": "模拟|SPX|OPT|20260901|7500|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7500|P",
+     "label": "SPX 7500P 2026-09-01",
+     "quantity": 1.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.35,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7500.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7550|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7550|P",
+     "label": "SPX 7550P 2026-09-01",
+     "quantity": 3.0,
+     "avg_cost": 20.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.35,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7550.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    }
+   ],
+   "expect": [
+    {
+     "key": "模拟|SPX|OPT|20260901|7500|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7500|P",
+     "label": "SPX 7500P 2026-09-01",
+     "quantity": 1.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.35,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7500.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7550|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7550|P",
+     "label": "SPX 7550P 2026-09-01",
+     "quantity": 3.0,
+     "avg_cost": 20.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.35,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7550.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|BAG|20260901|+1x7500P,+3x7550P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "BAG",
+     "leg": "20260901|+1x7500P,+3x7550P",
+     "label": "组合(2 腿) 7500/7550",
+     "kind": "custom",
+     "quantity": 1.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "avg_cost": 70.0,
+     "market_price": 1.4,
+     "net_side": "debit",
+     "market_value": null,
+     "unrealized_pnl": null,
+     "legs": [
+      "模拟|SPX|OPT|20260901|7500|P",
+      "模拟|SPX|OPT|20260901|7550|P"
+     ],
+     "ratios": [
+      1.0,
+      3.0
+     ],
+     "contract": {
+      "secType": "BAG",
+      "symbol": "SPX",
+      "exchange": "SMART",
+      "currency": "USD",
+      "multiplier": "100",
+      "combo_strategy": null,
+      "label": "组合(2 腿) 7500/7550",
+      "legs": [
+       {
+        "lastTradeDateOrContractMonth": "20260901",
+        "strike": 7500.0,
+        "right": "P",
+        "ratio": 1.0
+       },
+       {
+        "lastTradeDateOrContractMonth": "20260901",
+        "strike": 7550.0,
+        "right": "P",
+        "ratio": 3.0
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "name": "two_flies_mixed_right",
+   "rows": [
+    {
+     "key": "模拟|SPX|OPT|20260904|7595|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7595|P",
+     "label": "SPX 7595P 2026-09-04",
+     "quantity": 1.0,
+     "avg_cost": 36.54,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.35,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7595.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260904|7620|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7620|P",
+     "label": "SPX 7620P 2026-09-04",
+     "quantity": -2.0,
+     "avg_cost": 43.81,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.35,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7620.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260904|7645|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7645|P",
+     "label": "SPX 7645P 2026-09-04",
+     "quantity": 1.0,
+     "avg_cost": 86.54,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.4,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7645.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260904|7800|C",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7800|C",
+     "label": "SPX 7800C 2026-09-04",
+     "quantity": 1.0,
+     "avg_cost": 256.63,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 6.0,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7800.0,
+      "right": "C",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260904|7820|C",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7820|C",
+     "label": "SPX 7820C 2026-09-04",
+     "quantity": -2.0,
+     "avg_cost": 108.72,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 1.2,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7820.0,
+      "right": "C",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260904|7840|C",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7840|C",
+     "label": "SPX 7840C 2026-09-04",
+     "quantity": 1.0,
+     "avg_cost": 61.54,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 1.2,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7840.0,
+      "right": "C",
+      "multiplier": "100"
+     }
+    }
+   ],
+   "expect": [
+    {
+     "key": "模拟|SPX|OPT|20260904|7595|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7595|P",
+     "label": "SPX 7595P 2026-09-04",
+     "quantity": 1.0,
+     "avg_cost": 36.54,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.35,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7595.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260904|7620|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7620|P",
+     "label": "SPX 7620P 2026-09-04",
+     "quantity": -2.0,
+     "avg_cost": 43.81,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.35,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7620.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260904|7645|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7645|P",
+     "label": "SPX 7645P 2026-09-04",
+     "quantity": 1.0,
+     "avg_cost": 86.54,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.4,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7645.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260904|7800|C",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7800|C",
+     "label": "SPX 7800C 2026-09-04",
+     "quantity": 1.0,
+     "avg_cost": 256.63,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 6.0,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7800.0,
+      "right": "C",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260904|7820|C",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7820|C",
+     "label": "SPX 7820C 2026-09-04",
+     "quantity": -2.0,
+     "avg_cost": 108.72,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 1.2,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7820.0,
+      "right": "C",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260904|7840|C",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7840|C",
+     "label": "SPX 7840C 2026-09-04",
+     "quantity": 1.0,
+     "avg_cost": 61.54,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 1.2,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7840.0,
+      "right": "C",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|BAG|20260904|+1x7595P,-2x7620P,+1x7645P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "BAG",
+     "leg": "20260904|+1x7595P,-2x7620P,+1x7645P",
+     "label": "买入看跌蝴蝶 7595/7620/7645",
+     "kind": "butterfly",
+     "quantity": 1.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "avg_cost": 35.46,
+     "market_price": 0.05,
+     "net_side": "debit",
+     "market_value": null,
+     "unrealized_pnl": null,
+     "legs": [
+      "模拟|SPX|OPT|20260904|7595|P",
+      "模拟|SPX|OPT|20260904|7620|P",
+      "模拟|SPX|OPT|20260904|7645|P"
+     ],
+     "ratios": [
+      1.0,
+      -2.0,
+      1.0
+     ],
+     "contract": {
+      "secType": "BAG",
+      "symbol": "SPX",
+      "exchange": "SMART",
+      "currency": "USD",
+      "multiplier": "100",
+      "combo_strategy": "BUTTERFLY",
+      "label": "买入看跌蝴蝶 7595/7620/7645",
+      "legs": [
+       {
+        "lastTradeDateOrContractMonth": "20260904",
+        "strike": 7595.0,
+        "right": "P",
+        "ratio": 1.0
+       },
+       {
+        "lastTradeDateOrContractMonth": "20260904",
+        "strike": 7620.0,
+        "right": "P",
+        "ratio": -2.0
+       },
+       {
+        "lastTradeDateOrContractMonth": "20260904",
+        "strike": 7645.0,
+        "right": "P",
+        "ratio": 1.0
+       }
+      ]
+     }
+    },
+    {
+     "key": "模拟|SPX|BAG|20260904|+1x7800C,-2x7820C,+1x7840C",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "BAG",
+     "leg": "20260904|+1x7800C,-2x7820C,+1x7840C",
+     "label": "买入看涨蝴蝶 7800/7820/7840",
+     "kind": "butterfly",
+     "quantity": 1.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "avg_cost": 100.73,
+     "market_price": 4.8,
+     "net_side": "debit",
+     "market_value": null,
+     "unrealized_pnl": null,
+     "legs": [
+      "模拟|SPX|OPT|20260904|7800|C",
+      "模拟|SPX|OPT|20260904|7820|C",
+      "模拟|SPX|OPT|20260904|7840|C"
+     ],
+     "ratios": [
+      1.0,
+      -2.0,
+      1.0
+     ],
+     "contract": {
+      "secType": "BAG",
+      "symbol": "SPX",
+      "exchange": "SMART",
+      "currency": "USD",
+      "multiplier": "100",
+      "combo_strategy": "BUTTERFLY",
+      "label": "买入看涨蝴蝶 7800/7820/7840",
+      "legs": [
+       {
+        "lastTradeDateOrContractMonth": "20260904",
+        "strike": 7800.0,
+        "right": "C",
+        "ratio": 1.0
+       },
+       {
+        "lastTradeDateOrContractMonth": "20260904",
+        "strike": 7820.0,
+        "right": "C",
+        "ratio": -2.0
+       },
+       {
+        "lastTradeDateOrContractMonth": "20260904",
+        "strike": 7840.0,
+        "right": "C",
+        "ratio": 1.0
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "name": "two_flies_same_right",
+   "rows": [
+    {
+     "key": "模拟|SPX|OPT|20260904|7595|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7595|P",
+     "label": "SPX 7595P 2026-09-04",
+     "quantity": 1.0,
+     "avg_cost": 30.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.35,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7595.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260904|7620|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7620|P",
+     "label": "SPX 7620P 2026-09-04",
+     "quantity": -2.0,
+     "avg_cost": 40.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.35,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7620.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260904|7645|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7645|P",
+     "label": "SPX 7645P 2026-09-04",
+     "quantity": 1.0,
+     "avg_cost": 50.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.4,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7645.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260904|7800|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7800|P",
+     "label": "SPX 7800P 2026-09-04",
+     "quantity": 1.0,
+     "avg_cost": 20.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 6.0,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7800.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260904|7820|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7820|P",
+     "label": "SPX 7820P 2026-09-04",
+     "quantity": -2.0,
+     "avg_cost": 30.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 1.2,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7820.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260904|7840|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7840|P",
+     "label": "SPX 7840P 2026-09-04",
+     "quantity": 1.0,
+     "avg_cost": 40.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 1.2,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7840.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    }
+   ],
+   "expect": [
+    {
+     "key": "模拟|SPX|OPT|20260904|7595|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7595|P",
+     "label": "SPX 7595P 2026-09-04",
+     "quantity": 1.0,
+     "avg_cost": 30.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.35,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7595.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260904|7620|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7620|P",
+     "label": "SPX 7620P 2026-09-04",
+     "quantity": -2.0,
+     "avg_cost": 40.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.35,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7620.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260904|7645|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7645|P",
+     "label": "SPX 7645P 2026-09-04",
+     "quantity": 1.0,
+     "avg_cost": 50.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.4,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7645.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260904|7800|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7800|P",
+     "label": "SPX 7800P 2026-09-04",
+     "quantity": 1.0,
+     "avg_cost": 20.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 6.0,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7800.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260904|7820|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7820|P",
+     "label": "SPX 7820P 2026-09-04",
+     "quantity": -2.0,
+     "avg_cost": 30.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 1.2,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7820.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260904|7840|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260904|7840|P",
+     "label": "SPX 7840P 2026-09-04",
+     "quantity": 1.0,
+     "avg_cost": 40.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 1.2,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260904",
+      "strike": 7840.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|BAG|20260904|+1x7595P,-2x7620P,+1x7645P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "BAG",
+     "leg": "20260904|+1x7595P,-2x7620P,+1x7645P",
+     "label": "买入看跌蝴蝶 7595/7620/7645",
+     "kind": "butterfly",
+     "quantity": 1.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "avg_cost": 0.0,
+     "market_price": 0.05,
+     "net_side": "debit",
+     "market_value": null,
+     "unrealized_pnl": null,
+     "legs": [
+      "模拟|SPX|OPT|20260904|7595|P",
+      "模拟|SPX|OPT|20260904|7620|P",
+      "模拟|SPX|OPT|20260904|7645|P"
+     ],
+     "ratios": [
+      1.0,
+      -2.0,
+      1.0
+     ],
+     "contract": {
+      "secType": "BAG",
+      "symbol": "SPX",
+      "exchange": "SMART",
+      "currency": "USD",
+      "multiplier": "100",
+      "combo_strategy": "BUTTERFLY",
+      "label": "买入看跌蝴蝶 7595/7620/7645",
+      "legs": [
+       {
+        "lastTradeDateOrContractMonth": "20260904",
+        "strike": 7595.0,
+        "right": "P",
+        "ratio": 1.0
+       },
+       {
+        "lastTradeDateOrContractMonth": "20260904",
+        "strike": 7620.0,
+        "right": "P",
+        "ratio": -2.0
+       },
+       {
+        "lastTradeDateOrContractMonth": "20260904",
+        "strike": 7645.0,
+        "right": "P",
+        "ratio": 1.0
+       }
+      ]
+     }
+    },
+    {
+     "key": "模拟|SPX|BAG|20260904|+1x7800P,-2x7820P,+1x7840P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "BAG",
+     "leg": "20260904|+1x7800P,-2x7820P,+1x7840P",
+     "label": "买入看跌蝴蝶 7800/7820/7840",
+     "kind": "butterfly",
+     "quantity": 1.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "avg_cost": 0.0,
+     "market_price": 4.8,
+     "net_side": "debit",
+     "market_value": null,
+     "unrealized_pnl": null,
+     "legs": [
+      "模拟|SPX|OPT|20260904|7800|P",
+      "模拟|SPX|OPT|20260904|7820|P",
+      "模拟|SPX|OPT|20260904|7840|P"
+     ],
+     "ratios": [
+      1.0,
+      -2.0,
+      1.0
+     ],
+     "contract": {
+      "secType": "BAG",
+      "symbol": "SPX",
+      "exchange": "SMART",
+      "currency": "USD",
+      "multiplier": "100",
+      "combo_strategy": "BUTTERFLY",
+      "label": "买入看跌蝴蝶 7800/7820/7840",
+      "legs": [
+       {
+        "lastTradeDateOrContractMonth": "20260904",
+        "strike": 7800.0,
+        "right": "P",
+        "ratio": 1.0
+       },
+       {
+        "lastTradeDateOrContractMonth": "20260904",
+        "strike": 7820.0,
+        "right": "P",
+        "ratio": -2.0
+       },
+       {
+        "lastTradeDateOrContractMonth": "20260904",
+        "strike": 7840.0,
+        "right": "P",
+        "ratio": 1.0
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "name": "fly_plus_leftovers",
+   "rows": [
+    {
+     "key": "模拟|SPX|OPT|20260901|7500|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7500|P",
+     "label": "SPX 7500P 2026-09-01",
+     "quantity": 1.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.35,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7500.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7520|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7520|P",
+     "label": "SPX 7520P 2026-09-01",
+     "quantity": -2.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.35,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7520.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7540|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7540|P",
+     "label": "SPX 7540P 2026-09-01",
+     "quantity": 1.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.4,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7540.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7900|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7900|P",
+     "label": "SPX 7900P 2026-09-01",
+     "quantity": 3.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 6.0,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7900.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7950|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7950|P",
+     "label": "SPX 7950P 2026-09-01",
+     "quantity": 7.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 1.2,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7950.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    }
+   ],
+   "expect": [
+    {
+     "key": "模拟|SPX|OPT|20260901|7500|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7500|P",
+     "label": "SPX 7500P 2026-09-01",
+     "quantity": 1.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.35,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7500.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7520|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7520|P",
+     "label": "SPX 7520P 2026-09-01",
+     "quantity": -2.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.35,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7520.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7540|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7540|P",
+     "label": "SPX 7540P 2026-09-01",
+     "quantity": 1.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.4,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7540.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7900|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7900|P",
+     "label": "SPX 7900P 2026-09-01",
+     "quantity": 3.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 6.0,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7900.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260901|7950|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7950|P",
+     "label": "SPX 7950P 2026-09-01",
+     "quantity": 7.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 1.2,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7950.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|BAG|20260901|+1x7500P,-2x7520P,+1x7540P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "BAG",
+     "leg": "20260901|+1x7500P,-2x7520P,+1x7540P",
+     "label": "买入看跌蝴蝶 7500/7520/7540",
+     "kind": "butterfly",
+     "quantity": 1.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "avg_cost": 0.0,
+     "market_price": 0.05,
+     "net_side": "debit",
+     "market_value": null,
+     "unrealized_pnl": null,
+     "legs": [
+      "模拟|SPX|OPT|20260901|7500|P",
+      "模拟|SPX|OPT|20260901|7520|P",
+      "模拟|SPX|OPT|20260901|7540|P"
+     ],
+     "ratios": [
+      1.0,
+      -2.0,
+      1.0
+     ],
+     "contract": {
+      "secType": "BAG",
+      "symbol": "SPX",
+      "exchange": "SMART",
+      "currency": "USD",
+      "multiplier": "100",
+      "combo_strategy": "BUTTERFLY",
+      "label": "买入看跌蝴蝶 7500/7520/7540",
+      "legs": [
+       {
+        "lastTradeDateOrContractMonth": "20260901",
+        "strike": 7500.0,
+        "right": "P",
+        "ratio": 1.0
+       },
+       {
+        "lastTradeDateOrContractMonth": "20260901",
+        "strike": 7520.0,
+        "right": "P",
+        "ratio": -2.0
+       },
+       {
+        "lastTradeDateOrContractMonth": "20260901",
+        "strike": 7540.0,
+        "right": "P",
+        "ratio": 1.0
+       }
+      ]
+     }
+    },
+    {
+     "key": "模拟|SPX|BAG|20260901|+3x7900P,+7x7950P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "BAG",
+     "leg": "20260901|+3x7900P,+7x7950P",
+     "label": "组合(2 腿) 7900/7950",
+     "kind": "custom",
+     "quantity": 1.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "avg_cost": 100.0,
+     "market_price": 26.4,
+     "net_side": "debit",
+     "market_value": null,
+     "unrealized_pnl": null,
+     "legs": [
+      "模拟|SPX|OPT|20260901|7900|P",
+      "模拟|SPX|OPT|20260901|7950|P"
+     ],
+     "ratios": [
+      3.0,
+      7.0
+     ],
+     "contract": {
+      "secType": "BAG",
+      "symbol": "SPX",
+      "exchange": "SMART",
+      "currency": "USD",
+      "multiplier": "100",
+      "combo_strategy": null,
+      "label": "组合(2 腿) 7900/7950",
+      "legs": [
+       {
+        "lastTradeDateOrContractMonth": "20260901",
+        "strike": 7900.0,
+        "right": "P",
+        "ratio": 3.0
+       },
+       {
+        "lastTradeDateOrContractMonth": "20260901",
+        "strike": 7950.0,
+        "right": "P",
+        "ratio": 7.0
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "name": "single_and_split",
+   "rows": [
+    {
+     "key": "模拟|SPX|OPT|20260901|7600|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7600|P",
+     "label": "SPX 7600P 2026-09-01",
+     "quantity": 1.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.35,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7600.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260902|7615|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260902|7615|P",
+     "label": "SPX 7615P 2026-09-02",
+     "quantity": -1.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.35,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260902",
+      "strike": 7615.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    }
+   ],
+   "expect": [
+    {
+     "key": "模拟|SPX|OPT|20260901|7600|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260901|7600|P",
+     "label": "SPX 7600P 2026-09-01",
+     "quantity": 1.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.35,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7600.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|SPX|OPT|20260902|7615|P",
+     "account": "模拟",
+     "symbol": "SPX",
+     "sec_type": "OPT",
+     "leg": "20260902|7615|P",
+     "label": "SPX 7615P 2026-09-02",
+     "quantity": -1.0,
+     "avg_cost": 10.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 0.35,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "lastTradeDateOrContractMonth": "20260902",
+      "strike": 7615.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    }
+   ]
+  },
+  {
+   "name": "vertical_no_quote",
+   "rows": [
+    {
+     "key": "模拟|NVDA|OPT|20260918|180|C",
+     "account": "模拟",
+     "symbol": "NVDA",
+     "sec_type": "OPT",
+     "leg": "20260918|180|C",
+     "label": "NVDA 180C 2026-09-18",
+     "quantity": 2.0,
+     "avg_cost": 500.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 6.0,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "NVDA",
+      "lastTradeDateOrContractMonth": "20260918",
+      "strike": 180.0,
+      "right": "C",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|NVDA|OPT|20260918|190|C",
+     "account": "模拟",
+     "symbol": "NVDA",
+     "sec_type": "OPT",
+     "leg": "20260918|190|C",
+     "label": "NVDA 190C 2026-09-18",
+     "quantity": -2.0,
+     "avg_cost": 200.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "NVDA",
+      "lastTradeDateOrContractMonth": "20260918",
+      "strike": 190.0,
+      "right": "C",
+      "multiplier": "100"
+     }
+    }
+   ],
+   "expect": [
+    {
+     "key": "模拟|NVDA|OPT|20260918|180|C",
+     "account": "模拟",
+     "symbol": "NVDA",
+     "sec_type": "OPT",
+     "leg": "20260918|180|C",
+     "label": "NVDA 180C 2026-09-18",
+     "quantity": 2.0,
+     "avg_cost": 500.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": 6.0,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "NVDA",
+      "lastTradeDateOrContractMonth": "20260918",
+      "strike": 180.0,
+      "right": "C",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|NVDA|OPT|20260918|190|C",
+     "account": "模拟",
+     "symbol": "NVDA",
+     "sec_type": "OPT",
+     "leg": "20260918|190|C",
+     "label": "NVDA 190C 2026-09-18",
+     "quantity": -2.0,
+     "avg_cost": 200.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "market_price": null,
+     "market_value": null,
+     "unrealized_pnl": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "NVDA",
+      "lastTradeDateOrContractMonth": "20260918",
+      "strike": 190.0,
+      "right": "C",
+      "multiplier": "100"
+     }
+    },
+    {
+     "key": "模拟|NVDA|BAG|20260918|+1x180C,-1x190C",
+     "account": "模拟",
+     "symbol": "NVDA",
+     "sec_type": "BAG",
+     "leg": "20260918|+1x180C,-1x190C",
+     "label": "看涨价差 180/190",
+     "kind": "vertical",
+     "quantity": 2.0,
+     "multiplier": 100.0,
+     "currency": "USD",
+     "avg_cost": 300.0,
+     "market_price": null,
+     "net_side": "debit",
+     "market_value": null,
+     "unrealized_pnl": null,
+     "legs": [
+      "模拟|NVDA|OPT|20260918|180|C",
+      "模拟|NVDA|OPT|20260918|190|C"
+     ],
+     "ratios": [
+      1.0,
+      -1.0
+     ],
+     "contract": {
+      "secType": "BAG",
+      "symbol": "NVDA",
+      "exchange": "SMART",
+      "currency": "USD",
+      "multiplier": "100",
+      "combo_strategy": "VERTICAL",
+      "label": "看涨价差 180/190",
+      "legs": [
+       {
+        "lastTradeDateOrContractMonth": "20260918",
+        "strike": 180.0,
+        "right": "C",
+        "ratio": 1.0
+       },
+       {
+        "lastTradeDateOrContractMonth": "20260918",
+        "strike": 190.0,
+        "right": "C",
+        "ratio": -1.0
+       }
+      ]
+     }
+    }
+   ]
+  }
+ ],
+ "legs": [
+  {
+   "symbol": "SPX",
+   "sec_type": "OPT",
+   "contract": {
+    "secType": "OPT",
+    "lastTradeDateOrContractMonth": "20260901",
+    "strike": 7615.0,
+    "right": "P"
+   },
+   "leg": "20260901|7615|P",
+   "label": "SPX 7615P 2026-09-01",
+   "key": "模拟|SPX|OPT|20260901|7615|P"
+  },
+  {
+   "symbol": "NVDA",
+   "sec_type": "OPT",
+   "contract": {
+    "secType": "OPT",
+    "lastTradeDateOrContractMonth": "20260918",
+    "strike": 182.5,
+    "right": "C"
+   },
+   "leg": "20260918|182.5|C",
+   "label": "NVDA 182.5C 2026-09-18",
+   "key": "模拟|NVDA|OPT|20260918|182.5|C"
+  },
+  {
+   "symbol": "AAPL",
+   "sec_type": "STK",
+   "contract": {
+    "secType": "STK"
+   },
+   "leg": "",
+   "label": "AAPL",
+   "key": "模拟|AAPL|STK"
+  }
+ ],
+ "track_key": [
+  {
+   "track": {
+    "account": "模拟",
+    "symbol": "AAPL",
+    "sec_type": "STK"
+   },
+   "expect": "模拟|AAPL|STK"
+  },
+  {
+   "track": {
+    "account": "模拟",
+    "symbol": "SPX",
+    "sec_type": "OPT",
+    "leg": "20260901|7615|P"
+   },
+   "expect": "模拟|SPX|OPT|20260901|7615|P"
+  },
+  {
+   "track": {
+    "account": "模拟",
+    "symbol": "SPX",
+    "sec_type": "OPT"
+   },
+   "expect": "模拟|SPX|OPT"
+  }
+ ],
+ "unrealized": [
+  {
+   "position": "long_stock",
+   "price": 230.0,
+   "expect": {
+    "cost_basis": 22000.0,
+    "market_value": 23000.0,
+    "unrealized_pnl": 1000.0,
+    "unrealized_pct": 4.545,
+    "pnl_source": "computed"
+   }
+  },
+  {
+   "position": "long_stock",
+   "price": null,
+   "expect": {
+    "cost_basis": 22000.0,
+    "market_value": null,
+    "unrealized_pnl": null,
+    "unrealized_pct": null,
+    "pnl_source": "computed"
+   }
+  },
+  {
+   "position": "short_stock",
+   "price": 240.0,
+   "expect": {
+    "cost_basis": -12500.0,
+    "market_value": -12000.0,
+    "unrealized_pnl": 500.0,
+    "unrealized_pct": 4.0,
+    "pnl_source": "computed"
+   }
+  },
+  {
+   "position": "short_stock",
+   "price": 260.0,
+   "expect": {
+    "cost_basis": -12500.0,
+    "market_value": -13000.0,
+    "unrealized_pnl": -500.0,
+    "unrealized_pct": -4.0,
+    "pnl_source": "computed"
+   }
+  },
+  {
+   "position": "long_option",
+   "price": 6.5,
+   "expect": {
+    "cost_basis": 1100.0,
+    "market_value": 1300.0,
+    "unrealized_pnl": 200.0,
+    "unrealized_pct": 18.182,
+    "pnl_source": "computed"
+   }
+  },
+  {
+   "position": "broker_pnl",
+   "price": 505.0,
+   "expect": {
+    "cost_basis": 5000.0,
+    "market_value": 5100.0,
+    "unrealized_pnl": 99.5,
+    "unrealized_pct": 1.99,
+    "pnl_source": "broker"
+   }
+  }
+ ],
+ "validate": [
+  {
+   "position": "long_stock",
+   "targets": {},
+   "price": 230.0,
+   "expect": {
+    "ok": false,
+    "error": "至少要设一个:止盈价、止损价,或跟踪止损百分比。"
+   }
+  },
+  {
+   "position": "long_stock",
+   "targets": {
+    "take_profit": 250.0,
+    "stop_loss": 210.0
+   },
+   "price": 230.0,
+   "expect": {
+    "ok": true
+   }
+  },
+  {
+   "position": "long_stock",
+   "targets": {
+    "take_profit": 210.0
+   },
+   "price": 230.0,
+   "expect": {
+    "ok": false,
+    "error": "多头的止盈价要高于现价(现价 230.0000,你填了 210.0000)——填在下方会立刻触发。"
+   }
+  },
+  {
+   "position": "long_stock",
+   "targets": {
+    "stop_loss": 250.0
+   },
+   "price": 230.0,
+   "expect": {
+    "ok": false,
+    "error": "多头的止损价要低于现价(现价 230.0000,你填了 250.0000)——填在上方会立刻触发。"
+   }
+  },
+  {
+   "position": "long_stock",
+   "targets": {
+    "take_profit": 250.0,
+    "stop_loss": 260.0
+   },
+   "price": null,
+   "expect": {
+    "ok": false,
+    "error": "多头的止损价必须低于止盈价。"
+   }
+  },
+  {
+   "position": "short_stock",
+   "targets": {
+    "take_profit": 230.0,
+    "stop_loss": 270.0
+   },
+   "price": 250.0,
+   "expect": {
+    "ok": true
+   }
+  },
+  {
+   "position": "short_stock",
+   "targets": {
+    "take_profit": 270.0
+   },
+   "price": 250.0,
+   "expect": {
+    "ok": false,
+    "error": "空头的止盈价要低于现价(现价 250.0000,你填了 270.0000)——空头是跌了才赚。"
+   }
+  },
+  {
+   "position": "short_stock",
+   "targets": {
+    "stop_loss": 240.0
+   },
+   "price": 250.0,
+   "expect": {
+    "ok": false,
+    "error": "空头的止损价要高于现价(现价 250.0000,你填了 240.0000)。"
+   }
+  },
+  {
+   "position": "long_stock",
+   "targets": {
+    "trail_pct": 150.0
+   },
+   "price": 230.0,
+   "expect": {
+    "ok": false,
+    "error": "跟踪止损的回撤百分比要在 0 到 100 之间。"
+   }
+  },
+  {
+   "position": "long_stock",
+   "targets": {
+    "take_profit": -5.0
+   },
+   "price": 230.0,
+   "expect": {
+    "ok": false,
+    "error": "止盈价必须是正数。"
+   }
+  },
+  {
+   "position": "long_stock",
+   "targets": {
+    "trail_pct": 5.0
+   },
+   "price": null,
+   "expect": {
+    "ok": true
+   }
+  },
+  {
+   "position": "long_stock",
+   "targets": {
+    "profit_drawdown_pct": 30.0
+   },
+   "price": 230.0,
+   "expect": {
+    "ok": true
+   }
+  },
+  {
+   "position": "long_stock",
+   "targets": {
+    "profit_drawdown_pct": 100.0
+   },
+   "price": 230.0,
+   "expect": {
+    "ok": false,
+    "error": "利润回撤的百分比要在 0 到 100 之间。"
+   }
+  }
+ ],
+ "advance_peak": [
+  {
+   "position": "long_stock",
+   "price": 240.0,
+   "peak": 235.0,
+   "expect": 240.0
+  },
+  {
+   "position": "long_stock",
+   "price": 230.0,
+   "peak": 235.0,
+   "expect": 235.0
+  },
+  {
+   "position": "short_stock",
+   "price": 240.0,
+   "peak": 245.0,
+   "expect": 240.0
+  },
+  {
+   "position": "short_stock",
+   "price": 250.0,
+   "peak": 245.0,
+   "expect": 245.0
+  },
+  {
+   "position": "long_stock",
+   "price": null,
+   "peak": 235.0,
+   "expect": 235.0
+  },
+  {
+   "position": "long_stock",
+   "price": 240.0,
+   "peak": null,
+   "expect": 240.0
+  }
+ ],
+ "trail_stop": [
+  {
+   "position": "long_stock",
+   "peak": 240.0,
+   "trail_pct": 5.0,
+   "expect": 228.0
+  },
+  {
+   "position": "short_stock",
+   "peak": 230.0,
+   "trail_pct": 4.0,
+   "expect": 239.20000000000002
+  },
+  {
+   "position": "long_stock",
+   "peak": null,
+   "trail_pct": 5.0,
+   "expect": null
+  }
+ ],
+ "evaluate": [
+  {
+   "position": "long_stock",
+   "targets": {
+    "take_profit": 250.0,
+    "stop_loss": 210.0
+   },
+   "price": 251.0,
+   "peak": null,
+   "expect": {
+    "state": "take_profit",
+    "price": 251.0,
+    "peak": 251.0,
+    "trail_stop": null,
+    "reason": "止盈触发:现价 251.0000 涨到 250.0000",
+    "cost_basis": 22000.0,
+    "market_value": 25100.0,
+    "unrealized_pnl": 3100.0,
+    "unrealized_pct": 14.091,
+    "pnl_source": "computed",
+    "profit_peak": null,
+    "profit_drawdown_pct": null,
+    "profit_drawdown_threshold": null,
+    "profit_trail_stop": null,
+    "stop_effective": 210.0,
+    "to_take_profit_pct": -0.398,
+    "to_stop_pct": -16.335
+   }
+  },
+  {
+   "position": "long_stock",
+   "targets": {
+    "take_profit": 250.0,
+    "stop_loss": 210.0
+   },
+   "price": 209.0,
+   "peak": null,
+   "expect": {
+    "state": "stop_loss",
+    "price": 209.0,
+    "peak": 209.0,
+    "trail_stop": null,
+    "reason": "止损触发:现价 209.0000 跌破 210.0000",
+    "cost_basis": 22000.0,
+    "market_value": 20900.0,
+    "unrealized_pnl": -1100.0,
+    "unrealized_pct": -5.0,
+    "pnl_source": "computed",
+    "profit_peak": null,
+    "profit_drawdown_pct": null,
+    "profit_drawdown_threshold": null,
+    "profit_trail_stop": null,
+    "stop_effective": 210.0,
+    "to_take_profit_pct": 19.617,
+    "to_stop_pct": 0.478
+   }
+  },
+  {
+   "position": "long_stock",
+   "targets": {
+    "take_profit": 250.0,
+    "stop_loss": 260.0
+   },
+   "price": 300.0,
+   "peak": null,
+   "expect": {
+    "state": "take_profit",
+    "price": 300.0,
+    "peak": 300.0,
+    "trail_stop": null,
+    "reason": "止盈触发:现价 300.0000 涨到 250.0000",
+    "cost_basis": 22000.0,
+    "market_value": 30000.0,
+    "unrealized_pnl": 8000.0,
+    "unrealized_pct": 36.364,
+    "pnl_source": "computed",
+    "profit_peak": null,
+    "profit_drawdown_pct": null,
+    "profit_drawdown_threshold": null,
+    "profit_trail_stop": null,
+    "stop_effective": 260.0,
+    "to_take_profit_pct": -16.667,
+    "to_stop_pct": -13.333
+   }
+  },
+  {
+   "position": "long_stock",
+   "targets": {
+    "trail_pct": 5.0
+   },
+   "price": 228.0,
+   "peak": 240.0,
+   "expect": {
+    "state": "stop_loss",
+    "price": 228.0,
+    "peak": 240.0,
+    "trail_stop": 228.0,
+    "reason": "跟踪止损触发:现价 228.0000 跌破 228.0000",
+    "cost_basis": 22000.0,
+    "market_value": 22800.0,
+    "unrealized_pnl": 800.0,
+    "unrealized_pct": 3.636,
+    "pnl_source": "computed",
+    "profit_peak": null,
+    "profit_drawdown_pct": null,
+    "profit_drawdown_threshold": null,
+    "profit_trail_stop": null,
+    "stop_effective": 228.0,
+    "to_take_profit_pct": null,
+    "to_stop_pct": 0.0
+   }
+  },
+  {
+   "position": "long_stock",
+   "targets": {
+    "trail_pct": 5.0,
+    "stop_loss": 220.0
+   },
+   "price": 236.0,
+   "peak": 250.0,
+   "expect": {
+    "state": "stop_loss",
+    "price": 236.0,
+    "peak": 250.0,
+    "trail_stop": 237.5,
+    "reason": "跟踪止损触发:现价 236.0000 跌破 237.5000",
+    "cost_basis": 22000.0,
+    "market_value": 23600.0,
+    "unrealized_pnl": 1600.0,
+    "unrealized_pct": 7.273,
+    "pnl_source": "computed",
+    "profit_peak": null,
+    "profit_drawdown_pct": null,
+    "profit_drawdown_threshold": null,
+    "profit_trail_stop": null,
+    "stop_effective": 237.5,
+    "to_take_profit_pct": null,
+    "to_stop_pct": 0.636
+   }
+  },
+  {
+   "position": "short_stock",
+   "targets": {
+    "take_profit": 230.0
+   },
+   "price": 229.0,
+   "peak": null,
+   "expect": {
+    "state": "take_profit",
+    "price": 229.0,
+    "peak": 229.0,
+    "trail_stop": null,
+    "reason": "止盈触发:现价 229.0000 跌到 230.0000",
+    "cost_basis": -12500.0,
+    "market_value": -11450.0,
+    "unrealized_pnl": 1050.0,
+    "unrealized_pct": 8.4,
+    "pnl_source": "computed",
+    "profit_peak": null,
+    "profit_drawdown_pct": null,
+    "profit_drawdown_threshold": null,
+    "profit_trail_stop": null,
+    "stop_effective": null,
+    "to_take_profit_pct": 0.437,
+    "to_stop_pct": null
+   }
+  },
+  {
+   "position": "short_stock",
+   "targets": {
+    "trail_pct": 4.0
+   },
+   "price": 240.0,
+   "peak": 230.0,
+   "expect": {
+    "state": "stop_loss",
+    "price": 240.0,
+    "peak": 230.0,
+    "trail_stop": 239.2,
+    "reason": "跟踪止损触发:现价 240.0000 涨破 239.2000",
+    "cost_basis": -12500.0,
+    "market_value": -12000.0,
+    "unrealized_pnl": 500.0,
+    "unrealized_pct": 4.0,
+    "pnl_source": "computed",
+    "profit_peak": null,
+    "profit_drawdown_pct": null,
+    "profit_drawdown_threshold": null,
+    "profit_trail_stop": null,
+    "stop_effective": 239.2,
+    "to_take_profit_pct": null,
+    "to_stop_pct": -0.333
+   }
+  },
+  {
+   "position": "long_stock",
+   "targets": {
+    "take_profit": 250.0
+   },
+   "price": null,
+   "peak": 235.0,
+   "expect": {
+    "state": "holding",
+    "price": null,
+    "peak": 235.0,
+    "trail_stop": null,
+    "reason": "拿不到现价,本轮不判断",
+    "cost_basis": 22000.0,
+    "market_value": null,
+    "unrealized_pnl": null,
+    "unrealized_pct": null,
+    "pnl_source": "computed"
+   }
+  },
+  {
+   "position": "long_stock",
+   "targets": {
+    "profit_drawdown_pct": 30.0
+   },
+   "price": 240.0,
+   "peak": 260.0,
+   "expect": {
+    "state": "profit_trail",
+    "price": 240.0,
+    "peak": 260.0,
+    "trail_stop": null,
+    "reason": "利润回撤触发:峰值利润 4000.00,当前 2000.00,回撤 50.0%(阈值 30%)",
+    "cost_basis": 22000.0,
+    "market_value": 24000.0,
+    "unrealized_pnl": 2000.0,
+    "unrealized_pct": 9.091,
+    "pnl_source": "computed",
+    "profit_peak": 4000.0,
+    "profit_drawdown_pct": 50.0,
+    "profit_drawdown_threshold": 30.0,
+    "profit_trail_stop": 248.0,
+    "stop_effective": null,
+    "to_take_profit_pct": null,
+    "to_stop_pct": null
+   }
+  },
+  {
+   "position": "long_stock",
+   "targets": {
+    "profit_drawdown_pct": 30.0
+   },
+   "price": 255.0,
+   "peak": 260.0,
+   "expect": {
+    "state": "holding",
+    "price": 255.0,
+    "peak": 260.0,
+    "trail_stop": null,
+    "reason": "",
+    "cost_basis": 22000.0,
+    "market_value": 25500.0,
+    "unrealized_pnl": 3500.0,
+    "unrealized_pct": 15.909,
+    "pnl_source": "computed",
+    "profit_peak": 4000.0,
+    "profit_drawdown_pct": 12.5,
+    "profit_drawdown_threshold": 30.0,
+    "profit_trail_stop": 248.0,
+    "stop_effective": null,
+    "to_take_profit_pct": null,
+    "to_stop_pct": null
+   }
+  },
+  {
+   "position": "long_stock",
+   "targets": {
+    "profit_drawdown_pct": 30.0
+   },
+   "price": 180.0,
+   "peak": 190.0,
+   "expect": {
+    "state": "holding",
+    "price": 180.0,
+    "peak": 190.0,
+    "trail_stop": null,
+    "reason": "",
+    "cost_basis": 22000.0,
+    "market_value": 18000.0,
+    "unrealized_pnl": -4000.0,
+    "unrealized_pct": -18.182,
+    "pnl_source": "computed",
+    "profit_peak": -3000.0,
+    "profit_drawdown_pct": null,
+    "profit_drawdown_threshold": null,
+    "profit_trail_stop": null,
+    "stop_effective": null,
+    "to_take_profit_pct": null,
+    "to_stop_pct": null
+   }
+  },
+  {
+   "position": "short_stock",
+   "targets": {
+    "profit_drawdown_pct": 30.0
+   },
+   "price": 235.0,
+   "peak": 200.0,
+   "expect": {
+    "state": "profit_trail",
+    "price": 235.0,
+    "peak": 200.0,
+    "trail_stop": null,
+    "reason": "利润回撤触发:峰值利润 2500.00,当前 750.00,回撤 70.0%(阈值 30%)",
+    "cost_basis": -12500.0,
+    "market_value": -11750.0,
+    "unrealized_pnl": 750.0,
+    "unrealized_pct": 6.0,
+    "pnl_source": "computed",
+    "profit_peak": 2500.0,
+    "profit_drawdown_pct": 70.0,
+    "profit_drawdown_threshold": 30.0,
+    "profit_trail_stop": 215.0,
+    "stop_effective": null,
+    "to_take_profit_pct": null,
+    "to_stop_pct": null
+   }
+  },
+  {
+   "position": "long_stock",
+   "targets": {
+    "profit_drawdown_pct": 30.0,
+    "stop_loss": 190.0
+   },
+   "price": 185.0,
+   "peak": 260.0,
+   "expect": {
+    "state": "stop_loss",
+    "price": 185.0,
+    "peak": 260.0,
+    "trail_stop": null,
+    "reason": "止损触发:现价 185.0000 跌破 190.0000",
+    "cost_basis": 22000.0,
+    "market_value": 18500.0,
+    "unrealized_pnl": -3500.0,
+    "unrealized_pct": -15.909,
+    "pnl_source": "computed",
+    "profit_peak": 4000.0,
+    "profit_drawdown_pct": 187.5,
+    "profit_drawdown_threshold": 30.0,
+    "profit_trail_stop": 248.0,
+    "stop_effective": 190.0,
+    "to_take_profit_pct": null,
+    "to_stop_pct": 2.703
+   }
+  },
+  {
+   "position": "long_fly",
+   "targets": {
+    "profit_drawdown_tiers": [
+     {
+      "above": 0.0,
+      "pct": 40.0
+     },
+     {
+      "above": 1.0,
+      "pct": 30.0
+     },
+     {
+      "above": 3.0,
+      "pct": 20.0
+     }
+    ]
+   },
+   "price": 5.7,
+   "peak": 8.0,
+   "expect": {
+    "state": "profit_trail",
+    "price": 5.7,
+    "peak": 8.0,
+    "trail_stop": null,
+    "reason": "利润回撤触发:峰值利润 575.00,当前 345.00,回撤 40.0%(阈值 30%)",
+    "cost_basis": 225.0,
+    "market_value": 570.0,
+    "unrealized_pnl": 345.0,
+    "unrealized_pct": 153.333,
+    "pnl_source": "computed",
+    "profit_peak": 575.0,
+    "profit_drawdown_pct": 40.0,
+    "profit_drawdown_threshold": 30.0,
+    "profit_trail_stop": 6.2749999999999995,
+    "stop_effective": null,
+    "to_take_profit_pct": null,
+    "to_stop_pct": null
+   }
+  },
+  {
+   "position": "long_fly",
+   "targets": {
+    "profit_drawdown_tiers": [
+     {
+      "above": 0.0,
+      "pct": 40.0
+     },
+     {
+      "above": 1.0,
+      "pct": 30.0
+     },
+     {
+      "above": 3.0,
+      "pct": 20.0
+     }
+    ]
+   },
+   "price": 6.5,
+   "peak": 8.0,
+   "expect": {
+    "state": "holding",
+    "price": 6.5,
+    "peak": 8.0,
+    "trail_stop": null,
+    "reason": "",
+    "cost_basis": 225.0,
+    "market_value": 650.0,
+    "unrealized_pnl": 425.0,
+    "unrealized_pct": 188.889,
+    "pnl_source": "computed",
+    "profit_peak": 575.0,
+    "profit_drawdown_pct": 26.09,
+    "profit_drawdown_threshold": 30.0,
+    "profit_trail_stop": 6.2749999999999995,
+    "stop_effective": null,
+    "to_take_profit_pct": null,
+    "to_stop_pct": null
+   }
+  },
+  {
+   "position": "long_fly",
+   "targets": {
+    "profit_drawdown_tiers": [
+     {
+      "above": 0.0,
+      "pct": 40.0
+     },
+     {
+      "above": 1.0,
+      "pct": 30.0
+     },
+     {
+      "above": 3.0,
+      "pct": 20.0
+     }
+    ]
+   },
+   "price": 10.0,
+   "peak": 12.0,
+   "expect": {
+    "state": "profit_trail",
+    "price": 10.0,
+    "peak": 12.0,
+    "trail_stop": null,
+    "reason": "利润回撤触发:峰值利润 975.00,当前 775.00,回撤 20.5%(阈值 20%)",
+    "cost_basis": 225.0,
+    "market_value": 1000.0,
+    "unrealized_pnl": 775.0,
+    "unrealized_pct": 344.444,
+    "pnl_source": "computed",
+    "profit_peak": 975.0,
+    "profit_drawdown_pct": 20.51,
+    "profit_drawdown_threshold": 20.0,
+    "profit_trail_stop": 10.05,
+    "stop_effective": null,
+    "to_take_profit_pct": null,
+    "to_stop_pct": null
+   }
+  },
+  {
+   "position": "long_fly",
+   "targets": {
+    "profit_drawdown_tiers": [
+     {
+      "above": 0.0,
+      "pct": 40.0
+     },
+     {
+      "above": 1.0,
+      "pct": 30.0
+     },
+     {
+      "above": 3.0,
+      "pct": 20.0
+     }
+    ]
+   },
+   "price": 2.6,
+   "peak": 3.0,
+   "expect": {
+    "state": "profit_trail",
+    "price": 2.6,
+    "peak": 3.0,
+    "trail_stop": null,
+    "reason": "利润回撤触发:峰值利润 75.00,当前 35.00,回撤 53.3%(阈值 40%)",
+    "cost_basis": 225.0,
+    "market_value": 260.0,
+    "unrealized_pnl": 35.0,
+    "unrealized_pct": 15.556,
+    "pnl_source": "computed",
+    "profit_peak": 75.0,
+    "profit_drawdown_pct": 53.33,
+    "profit_drawdown_threshold": 40.0,
+    "profit_trail_stop": 2.7,
+    "stop_effective": null,
+    "to_take_profit_pct": null,
+    "to_stop_pct": null
+   }
+  },
+  {
+   "position": "long_fly",
+   "targets": {
+    "profit_drawdown_tiers": [
+     {
+      "above": 0.0,
+      "pct": 40.0
+     },
+     {
+      "above": 1.0,
+      "pct": 30.0
+     },
+     {
+      "above": 3.0,
+      "pct": 20.0
+     }
+    ],
+    "profit_drawdown_late": {
+     "after": "15:00",
+     "factor": 0.5
+    }
+   },
+   "price": 5.9,
+   "peak": 7.5,
+   "minute": 899,
+   "expect": {
+    "state": "profit_trail",
+    "price": 5.9,
+    "peak": 7.5,
+    "trail_stop": null,
+    "reason": "利润回撤触发:峰值利润 525.00,当前 365.00,回撤 30.5%(阈值 30%)",
+    "cost_basis": 225.0,
+    "market_value": 590.0,
+    "unrealized_pnl": 365.0,
+    "unrealized_pct": 162.222,
+    "pnl_source": "computed",
+    "profit_peak": 525.0,
+    "profit_drawdown_pct": 30.48,
+    "profit_drawdown_threshold": 30.0,
+    "profit_trail_stop": 5.925,
+    "stop_effective": null,
+    "to_take_profit_pct": null,
+    "to_stop_pct": null
+   }
+  },
+  {
+   "position": "long_fly",
+   "targets": {
+    "profit_drawdown_tiers": [
+     {
+      "above": 0.0,
+      "pct": 40.0
+     },
+     {
+      "above": 1.0,
+      "pct": 30.0
+     },
+     {
+      "above": 3.0,
+      "pct": 20.0
+     }
+    ],
+    "profit_drawdown_late": {
+     "after": "15:00",
+     "factor": 0.5
+    }
+   },
+   "price": 5.9,
+   "peak": 7.5,
+   "minute": 900,
+   "expect": {
+    "state": "profit_trail",
+    "price": 5.9,
+    "peak": 7.5,
+    "trail_stop": null,
+    "reason": "利润回撤触发:峰值利润 525.00,当前 365.00,回撤 30.5%(阈值 15%)",
+    "cost_basis": 225.0,
+    "market_value": 590.0,
+    "unrealized_pnl": 365.0,
+    "unrealized_pct": 162.222,
+    "pnl_source": "computed",
+    "profit_peak": 525.0,
+    "profit_drawdown_pct": 30.48,
+    "profit_drawdown_threshold": 15.0,
+    "profit_trail_stop": 6.7124999999999995,
+    "stop_effective": null,
+    "to_take_profit_pct": null,
+    "to_stop_pct": null
+   }
+  },
+  {
+   "position": "short_condor",
+   "targets": {
+    "profit_drawdown_tiers": [
+     {
+      "above": 0.0,
+      "pct": 40.0
+     },
+     {
+      "above": 1.0,
+      "pct": 30.0
+     },
+     {
+      "above": 3.0,
+      "pct": 20.0
+     }
+    ]
+   },
+   "price": 1.2,
+   "peak": 0.4,
+   "expect": {
+    "state": "profit_trail",
+    "price": 1.2,
+    "peak": 0.4,
+    "trail_stop": null,
+    "reason": "利润回撤触发:峰值利润 160.00,当前 80.00,回撤 50.0%(阈值 40%)",
+    "cost_basis": -200.0,
+    "market_value": -120.0,
+    "unrealized_pnl": 80.0,
+    "unrealized_pct": 40.0,
+    "pnl_source": "computed",
+    "profit_peak": 160.0,
+    "profit_drawdown_pct": 50.0,
+    "profit_drawdown_threshold": 40.0,
+    "profit_trail_stop": 1.04,
+    "stop_effective": null,
+    "to_take_profit_pct": null,
+    "to_stop_pct": null
+   }
+  },
+  {
+   "position": "long_fly",
+   "targets": {
+    "profit_drawdown_pct": 90.0,
+    "profit_drawdown_tiers": [
+     {
+      "above": 0.0,
+      "pct": 40.0
+     },
+     {
+      "above": 1.0,
+      "pct": 30.0
+     },
+     {
+      "above": 3.0,
+      "pct": 20.0
+     }
+    ]
+   },
+   "price": 5.7,
+   "peak": 8.0,
+   "expect": {
+    "state": "profit_trail",
+    "price": 5.7,
+    "peak": 8.0,
+    "trail_stop": null,
+    "reason": "利润回撤触发:峰值利润 575.00,当前 345.00,回撤 40.0%(阈值 30%)",
+    "cost_basis": 225.0,
+    "market_value": 570.0,
+    "unrealized_pnl": 345.0,
+    "unrealized_pct": 153.333,
+    "pnl_source": "computed",
+    "profit_peak": 575.0,
+    "profit_drawdown_pct": 40.0,
+    "profit_drawdown_threshold": 30.0,
+    "profit_trail_stop": 6.2749999999999995,
+    "stop_effective": null,
+    "to_take_profit_pct": null,
+    "to_stop_pct": null
+   }
+  },
+  {
+   "position": "long_fly",
+   "targets": {},
+   "price": 5.7,
+   "peak": 8.0,
+   "expect": {
+    "state": "holding",
+    "price": 5.7,
+    "peak": 8.0,
+    "trail_stop": null,
+    "reason": "",
+    "cost_basis": 225.0,
+    "market_value": 570.0,
+    "unrealized_pnl": 345.0,
+    "unrealized_pct": 153.333,
+    "pnl_source": "computed",
+    "profit_peak": null,
+    "profit_drawdown_pct": null,
+    "profit_drawdown_threshold": null,
+    "profit_trail_stop": null,
+    "stop_effective": null,
+    "to_take_profit_pct": null,
+    "to_stop_pct": null
+   }
+  }
+ ],
+ "drawdown_threshold": [
+  {
+   "targets": "tiers",
+   "profit_peak": 75.0,
+   "basis": 225.0,
+   "minute": null,
+   "expect": 40.0
+  },
+  {
+   "targets": "tiers_late",
+   "profit_peak": 75.0,
+   "basis": 225.0,
+   "minute": null,
+   "expect": 40.0
+  },
+  {
+   "targets": "flat",
+   "profit_peak": 75.0,
+   "basis": 225.0,
+   "minute": null,
+   "expect": 25.0
+  },
+  {
+   "targets": "none",
+   "profit_peak": 75.0,
+   "basis": 225.0,
+   "minute": null,
+   "expect": null
+  },
+  {
+   "targets": "tiers",
+   "profit_peak": 225.0,
+   "basis": 225.0,
+   "minute": null,
+   "expect": 30.0
+  },
+  {
+   "targets": "tiers_late",
+   "profit_peak": 225.0,
+   "basis": 225.0,
+   "minute": null,
+   "expect": 30.0
+  },
+  {
+   "targets": "flat",
+   "profit_peak": 225.0,
+   "basis": 225.0,
+   "minute": null,
+   "expect": 25.0
+  },
+  {
+   "targets": "none",
+   "profit_peak": 225.0,
+   "basis": 225.0,
+   "minute": null,
+   "expect": null
+  },
+  {
+   "targets": "tiers",
+   "profit_peak": 525.0,
+   "basis": 225.0,
+   "minute": null,
+   "expect": 30.0
+  },
+  {
+   "targets": "tiers_late",
+   "profit_peak": 525.0,
+   "basis": 225.0,
+   "minute": null,
+   "expect": 30.0
+  },
+  {
+   "targets": "flat",
+   "profit_peak": 525.0,
+   "basis": 225.0,
+   "minute": null,
+   "expect": 25.0
+  },
+  {
+   "targets": "none",
+   "profit_peak": 525.0,
+   "basis": 225.0,
+   "minute": null,
+   "expect": null
+  },
+  {
+   "targets": "tiers",
+   "profit_peak": 775.0,
+   "basis": 225.0,
+   "minute": null,
+   "expect": 20.0
+  },
+  {
+   "targets": "tiers_late",
+   "profit_peak": 775.0,
+   "basis": 225.0,
+   "minute": null,
+   "expect": 20.0
+  },
+  {
+   "targets": "flat",
+   "profit_peak": 775.0,
+   "basis": 225.0,
+   "minute": null,
+   "expect": 25.0
+  },
+  {
+   "targets": "none",
+   "profit_peak": 775.0,
+   "basis": 225.0,
+   "minute": null,
+   "expect": null
+  },
+  {
+   "targets": "tiers",
+   "profit_peak": 525.0,
+   "basis": 225.0,
+   "minute": 900,
+   "expect": 30.0
+  },
+  {
+   "targets": "tiers_late",
+   "profit_peak": 525.0,
+   "basis": 225.0,
+   "minute": 900,
+   "expect": 15.0
+  },
+  {
+   "targets": "flat",
+   "profit_peak": 525.0,
+   "basis": 225.0,
+   "minute": 900,
+   "expect": 25.0
+  },
+  {
+   "targets": "none",
+   "profit_peak": 525.0,
+   "basis": 225.0,
+   "minute": 900,
+   "expect": null
+  },
+  {
+   "targets": "tiers",
+   "profit_peak": 525.0,
+   "basis": -200.0,
+   "minute": null,
+   "expect": 30.0
+  },
+  {
+   "targets": "tiers_late",
+   "profit_peak": 525.0,
+   "basis": -200.0,
+   "minute": null,
+   "expect": 30.0
+  },
+  {
+   "targets": "flat",
+   "profit_peak": 525.0,
+   "basis": -200.0,
+   "minute": null,
+   "expect": 25.0
+  },
+  {
+   "targets": "none",
+   "profit_peak": 525.0,
+   "basis": -200.0,
+   "minute": null,
+   "expect": null
+  },
+  {
+   "targets": "tiers",
+   "profit_peak": 0.0,
+   "basis": 225.0,
+   "minute": null,
+   "expect": 40.0
+  },
+  {
+   "targets": "tiers_late",
+   "profit_peak": 0.0,
+   "basis": 225.0,
+   "minute": null,
+   "expect": 40.0
+  },
+  {
+   "targets": "flat",
+   "profit_peak": 0.0,
+   "basis": 225.0,
+   "minute": null,
+   "expect": 25.0
+  },
+  {
+   "targets": "none",
+   "profit_peak": 0.0,
+   "basis": 225.0,
+   "minute": null,
+   "expect": null
+  }
+ ],
+ "drawdown_threshold_targets": {
+  "tiers": {
+   "profit_drawdown_tiers": [
+    {
+     "above": 0.0,
+     "pct": 40.0
+    },
+    {
+     "above": 1.0,
+     "pct": 30.0
+    },
+    {
+     "above": 3.0,
+     "pct": 20.0
+    }
+   ]
+  },
+  "tiers_late": {
+   "profit_drawdown_tiers": [
+    {
+     "above": 0.0,
+     "pct": 40.0
+    },
+    {
+     "above": 1.0,
+     "pct": 30.0
+    },
+    {
+     "above": 3.0,
+     "pct": 20.0
+    }
+   ],
+   "profit_drawdown_late": {
+    "after": "15:00",
+    "factor": 0.5
+   }
+  },
+  "flat": {
+   "profit_drawdown_pct": 25.0
+  },
+  "none": {}
+ },
+ "fly_tiers": {
+  "tiers": [
+   {
+    "above": 0.0,
+    "pct": 40.0
+   },
+   {
+    "above": 1.0,
+    "pct": 30.0
+   },
+   {
+    "above": 3.0,
+    "pct": 20.0
+   }
+  ],
+  "late": {
+   "after": "15:00",
+   "factor": 0.5
+  }
+ },
+ "close_blockers": [
+  {
+   "auto": {
+    "enabled": true
+   },
+   "position": "long_stock",
+   "account_is_paper": true,
+   "auto_execute": true,
+   "allow_live_trading": false,
+   "breaker_engaged": false,
+   "market_status": "盘中",
+   "outside_rth": false,
+   "already_fired": false,
+   "expect": []
+  },
+  {
+   "auto": {
+    "enabled": false
+   },
+   "position": "long_stock",
+   "account_is_paper": false,
+   "auto_execute": false,
+   "allow_live_trading": false,
+   "breaker_engaged": true,
+   "market_status": "盘前",
+   "outside_rth": false,
+   "already_fired": true,
+   "expect": [
+    "该持仓没有开启自动平仓",
+    "这个追踪已经触发过一次,不重复发单",
+    "全局 auto_execute 未打开",
+    "实盘账户需要先打开 allow_live_trading",
+    "已熔断,不再发出任何新单",
+    "当前时段不能交易(当前:盘前)"
+   ]
+  },
+  {
+   "auto": {
+    "enabled": true
+   },
+   "position": "long_stock",
+   "account_is_paper": true,
+   "auto_execute": true,
+   "allow_live_trading": false,
+   "breaker_engaged": false,
+   "market_status": "盘前",
+   "outside_rth": true,
+   "already_fired": false,
+   "expect": []
+  },
+  {
+   "auto": {
+    "enabled": true
+   },
+   "position": "long_fly",
+   "account_is_paper": true,
+   "auto_execute": true,
+   "allow_live_trading": true,
+   "breaker_engaged": false,
+   "market_status": "盘中",
+   "outside_rth": false,
+   "already_fired": false,
+   "expect": []
+  },
+  {
+   "auto": {
+    "enabled": true
+   },
+   "position": "long_fly",
+   "account_is_paper": false,
+   "auto_execute": true,
+   "allow_live_trading": true,
+   "breaker_engaged": false,
+   "market_status": "盘中",
+   "outside_rth": false,
+   "already_fired": false,
+   "expect": [
+    "组合平仓单还没在实盘核对过,实盘账户需要先打开 allow_combo_live"
+   ]
+  },
+  {
+   "auto": {
+    "enabled": true
+   },
+   "position": "long_fly",
+   "account_is_paper": false,
+   "auto_execute": true,
+   "allow_live_trading": true,
+   "breaker_engaged": false,
+   "market_status": "盘中",
+   "outside_rth": false,
+   "already_fired": false,
+   "combo_live_ok": true,
+   "expect": []
+  },
+  {
+   "auto": {
+    "enabled": true
+   },
+   "position": "long_option",
+   "account_is_paper": false,
+   "auto_execute": true,
+   "allow_live_trading": true,
+   "breaker_engaged": false,
+   "market_status": "盘中",
+   "outside_rth": false,
+   "already_fired": false,
+   "expect": []
+  }
+ ],
+ "close_bag_contract": [
+  {
+   "name": "butterfly",
+   "contract": {
+    "secType": "BAG",
+    "symbol": "SPX",
+    "exchange": "SMART",
+    "currency": "USD",
+    "multiplier": "100",
+    "combo_strategy": "BUTTERFLY",
+    "label": "买入看跌蝶 7600/7615/7630",
+    "legs": [
+     {
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7600.0,
+      "right": "P",
+      "ratio": 1.0
+     },
+     {
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7615.0,
+      "right": "P",
+      "ratio": -2.0
+     },
+     {
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7630.0,
+      "right": "P",
+      "ratio": 1.0
+     }
+    ]
+   },
+   "expect": {
+    "secType": "BAG",
+    "symbol": "SPX",
+    "exchange": "SMART",
+    "currency": "USD",
+    "legs": [
+     {
+      "action": "SELL",
+      "ratio": 1,
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7600.0,
+      "right": "P",
+      "multiplier": "100"
+     },
+     {
+      "action": "BUY",
+      "ratio": 2,
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7615.0,
+      "right": "P",
+      "multiplier": "100"
+     },
+     {
+      "action": "SELL",
+      "ratio": 1,
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7630.0,
+      "right": "P",
+      "multiplier": "100"
+     }
+    ],
+    "combo_strategy": "BUTTERFLY"
+   }
+  },
+  {
+   "name": "condor",
+   "contract": {
+    "secType": "BAG",
+    "symbol": "SPX",
+    "exchange": "SMART",
+    "currency": "USD",
+    "multiplier": "100",
+    "combo_strategy": "IRON_CONDOR",
+    "label": "铁鹰",
+    "legs": [
+     {
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7500.0,
+      "right": "P",
+      "ratio": 1.0
+     },
+     {
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7550.0,
+      "right": "P",
+      "ratio": -1.0
+     },
+     {
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7700.0,
+      "right": "C",
+      "ratio": -1.0
+     },
+     {
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7750.0,
+      "right": "C",
+      "ratio": 1.0
+     }
+    ]
+   },
+   "expect": {
+    "secType": "BAG",
+    "symbol": "SPX",
+    "exchange": "SMART",
+    "currency": "USD",
+    "legs": [
+     {
+      "action": "SELL",
+      "ratio": 1,
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7500.0,
+      "right": "P",
+      "multiplier": "100"
+     },
+     {
+      "action": "BUY",
+      "ratio": 1,
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7550.0,
+      "right": "P",
+      "multiplier": "100"
+     },
+     {
+      "action": "BUY",
+      "ratio": 1,
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7700.0,
+      "right": "C",
+      "multiplier": "100"
+     },
+     {
+      "action": "SELL",
+      "ratio": 1,
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7750.0,
+      "right": "C",
+      "multiplier": "100"
+     }
+    ],
+    "combo_strategy": "IRON_CONDOR"
+   }
+  }
+ ],
+ "close_bag_contract_errors": [
+  {
+   "name": "no_legs",
+   "contract": {
+    "secType": "BAG",
+    "symbol": "SPX",
+    "legs": []
+   },
+   "error": "组合持仓没有腿信息,拼不出平仓的 BAG 合约。"
+  },
+  {
+   "name": "ratio_3",
+   "contract": {
+    "secType": "BAG",
+    "symbol": "SPX",
+    "legs": [
+     {
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7500.0,
+      "right": "P",
+      "ratio": 3.0
+     }
+    ]
+   },
+   "error": "组合的腿比例 3 不是 1 或 2(只支持垂直价差/蝴蝶/铁鹰的标准比例),拒绝拼平仓单。"
+  },
+  {
+   "name": "ratio_zero",
+   "contract": {
+    "secType": "BAG",
+    "symbol": "SPX",
+    "legs": [
+     {
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": 7500.0,
+      "right": "P",
+      "ratio": 0
+     }
+    ]
+   },
+   "error": "组合的某条腿比例是 0,认不出方向,拒绝拼平仓单。"
+  },
+  {
+   "name": "no_strike",
+   "contract": {
+    "secType": "BAG",
+    "symbol": "SPX",
+    "legs": [
+     {
+      "lastTradeDateOrContractMonth": "20260901",
+      "strike": null,
+      "right": "P",
+      "ratio": 1.0
+     }
+    ]
+   },
+   "error": "组合的某条腿缺少 strike,拼不出平仓的 BAG 合约。"
+  }
+ ],
+ "build_close_order_bag": [
+  {
+   "position": "long_fly",
+   "auto": {
+    "enabled": true,
+    "order_type": "MKT"
+   },
+   "price": 5.75,
+   "state": "profit_trail",
+   "contract": "fly",
+   "expect": {
+    "intent_summary": "利润回撤平仓:卖出 1 SPX(限价 5.7)",
+    "contract": {
+     "secType": "BAG",
+     "symbol": "SPX",
+     "exchange": "SMART",
+     "currency": "USD",
+     "legs": [
+      {
+       "action": "SELL",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260901",
+       "strike": 7600.0,
+       "right": "P",
+       "multiplier": "100"
+      },
+      {
+       "action": "BUY",
+       "ratio": 2,
+       "lastTradeDateOrContractMonth": "20260901",
+       "strike": 7615.0,
+       "right": "P",
+       "multiplier": "100"
+      },
+      {
+       "action": "SELL",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260901",
+       "strike": 7630.0,
+       "right": "P",
+       "multiplier": "100"
+      }
+     ],
+     "combo_strategy": "BUTTERFLY"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "模拟",
+    "order": {
+     "action": "SELL",
+     "orderType": "LMT",
+     "totalQuantity": 1,
+     "price_mode": "EXPLICIT",
+     "tif": "DAY",
+     "outsideRth": false,
+     "lmtPrice": 5.7
+    },
+    "reason": "持仓追踪利润回撤触发,自动平仓",
+    "confidence": 1.0,
+    "warnings": []
+   }
+  },
+  {
+   "position": "long_fly",
+   "auto": {
+    "enabled": true,
+    "order_type": "LMT",
+    "slippage_pct": 5.0
+   },
+   "price": 5.75,
+   "state": "profit_trail",
+   "contract": "fly",
+   "expect": {
+    "intent_summary": "利润回撤平仓:卖出 1 SPX(限价 5.45)",
+    "contract": {
+     "secType": "BAG",
+     "symbol": "SPX",
+     "exchange": "SMART",
+     "currency": "USD",
+     "legs": [
+      {
+       "action": "SELL",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260901",
+       "strike": 7600.0,
+       "right": "P",
+       "multiplier": "100"
+      },
+      {
+       "action": "BUY",
+       "ratio": 2,
+       "lastTradeDateOrContractMonth": "20260901",
+       "strike": 7615.0,
+       "right": "P",
+       "multiplier": "100"
+      },
+      {
+       "action": "SELL",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260901",
+       "strike": 7630.0,
+       "right": "P",
+       "multiplier": "100"
+      }
+     ],
+     "combo_strategy": "BUTTERFLY"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "模拟",
+    "order": {
+     "action": "SELL",
+     "orderType": "LMT",
+     "totalQuantity": 1,
+     "price_mode": "EXPLICIT",
+     "tif": "DAY",
+     "outsideRth": false,
+     "lmtPrice": 5.45
+    },
+    "reason": "持仓追踪利润回撤触发,自动平仓",
+    "confidence": 1.0,
+    "warnings": []
+   }
+  },
+  {
+   "position": "short_condor",
+   "auto": {
+    "enabled": true,
+    "order_type": "LMT",
+    "slippage_pct": 5.0
+   },
+   "price": 1.4,
+   "state": "stop_loss",
+   "contract": "condor",
+   "expect": {
+    "intent_summary": "止损平仓:买入 1 SPX(限价 1.5)",
+    "contract": {
+     "secType": "BAG",
+     "symbol": "SPX",
+     "exchange": "SMART",
+     "currency": "USD",
+     "legs": [
+      {
+       "action": "SELL",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260901",
+       "strike": 7500.0,
+       "right": "P",
+       "multiplier": "100"
+      },
+      {
+       "action": "BUY",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260901",
+       "strike": 7550.0,
+       "right": "P",
+       "multiplier": "100"
+      },
+      {
+       "action": "BUY",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260901",
+       "strike": 7700.0,
+       "right": "C",
+       "multiplier": "100"
+      },
+      {
+       "action": "SELL",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260901",
+       "strike": 7750.0,
+       "right": "C",
+       "multiplier": "100"
+      }
+     ],
+     "combo_strategy": "IRON_CONDOR"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "模拟",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 1,
+     "price_mode": "EXPLICIT",
+     "tif": "DAY",
+     "outsideRth": false,
+     "lmtPrice": 1.5
+    },
+    "reason": "持仓追踪止损触发,自动平仓",
+    "confidence": 1.0,
+    "warnings": []
+   }
+  },
+  {
+   "position": "long_fly",
+   "auto": {
+    "enabled": true,
+    "order_type": "MKT"
+   },
+   "price": 5.75,
+   "state": "take_profit",
+   "contract": "fly",
+   "market_status": "盘后",
+   "expect": {
+    "intent_summary": "止盈平仓:卖出 1 SPX(盘外限价 5.7)",
+    "contract": {
+     "secType": "BAG",
+     "symbol": "SPX",
+     "exchange": "SMART",
+     "currency": "USD",
+     "legs": [
+      {
+       "action": "SELL",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260901",
+       "strike": 7600.0,
+       "right": "P",
+       "multiplier": "100"
+      },
+      {
+       "action": "BUY",
+       "ratio": 2,
+       "lastTradeDateOrContractMonth": "20260901",
+       "strike": 7615.0,
+       "right": "P",
+       "multiplier": "100"
+      },
+      {
+       "action": "SELL",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260901",
+       "strike": 7630.0,
+       "right": "P",
+       "multiplier": "100"
+      }
+     ],
+     "combo_strategy": "BUTTERFLY"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "模拟",
+    "order": {
+     "action": "SELL",
+     "orderType": "LMT",
+     "totalQuantity": 1,
+     "price_mode": "EXPLICIT",
+     "tif": "DAY",
+     "outsideRth": true,
+     "lmtPrice": 5.7
+    },
+    "reason": "持仓追踪止盈触发,自动平仓",
+    "confidence": 1.0,
+    "warnings": []
+   }
+  }
+ ],
+ "build_close_order_bag_error": {
+  "position": "long_fly",
+  "auto": {
+   "enabled": true,
+   "order_type": "MKT"
+  },
+  "price": null,
+  "state": "profit_trail",
+  "contract": "fly",
+  "error": "组合只能限价平仓,但拿不到组合现价算不出限价——拒绝下单。"
+ },
+ "close_limit_price": [
+  {
+   "position": "long_stock",
+   "price": 230.0,
+   "slippage_pct": 0.3,
+   "expect": 229.31
+  },
+  {
+   "position": "short_stock",
+   "price": 250.0,
+   "slippage_pct": 0.5,
+   "expect": 251.25
+  },
+  {
+   "position": "long_stock",
+   "price": null,
+   "slippage_pct": 0.3,
+   "expect": null
+  },
+  {
+   "position": "long_stock",
+   "price": 0.02,
+   "slippage_pct": 90.0,
+   "expect": 0.01
+  }
+ ],
+ "build_close_order": [
+  {
+   "position": "long_stock",
+   "auto": {
+    "enabled": true,
+    "order_type": "MKT"
+   },
+   "price": 230.0,
+   "state": "take_profit",
+   "expect": {
+    "intent_summary": "止盈平仓:卖出 100 AAPL(市价)",
+    "contract": {
+     "secType": "STK",
+     "symbol": "AAPL",
+     "exchange": "SMART",
+     "currency": "USD"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "模拟",
+    "order": {
+     "action": "SELL",
+     "orderType": "MKT",
+     "totalQuantity": 100,
+     "price_mode": "EXPLICIT",
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "持仓追踪止盈触发,自动平仓",
+    "confidence": 1.0,
+    "warnings": []
+   }
+  },
+  {
+   "position": "short_stock",
+   "auto": {
+    "enabled": true,
+    "order_type": "LMT",
+    "slippage_pct": 0.5
+   },
+   "price": 250.0,
+   "state": "stop_loss",
+   "expect": {
+    "intent_summary": "止损平仓:买入 50 TSLA(限价 251.25)",
+    "contract": {
+     "secType": "STK",
+     "symbol": "AAPL",
+     "exchange": "SMART",
+     "currency": "USD"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "模拟",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 50,
+     "price_mode": "EXPLICIT",
+     "tif": "DAY",
+     "outsideRth": false,
+     "lmtPrice": 251.25
+    },
+    "reason": "持仓追踪止损触发,自动平仓",
+    "confidence": 1.0,
+    "warnings": []
+   }
+  },
+  {
+   "position": "long_stock",
+   "auto": {
+    "enabled": true,
+    "order_type": "MKT",
+    "close_fraction_pct": 50.0
+   },
+   "price": 240.0,
+   "state": "profit_trail",
+   "expect": {
+    "intent_summary": "利润回撤平仓:卖出 50 AAPL(市价,平 50/100)",
+    "contract": {
+     "secType": "STK",
+     "symbol": "AAPL",
+     "exchange": "SMART",
+     "currency": "USD"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "模拟",
+    "order": {
+     "action": "SELL",
+     "orderType": "MKT",
+     "totalQuantity": 50,
+     "price_mode": "EXPLICIT",
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "持仓追踪利润回撤触发,自动平仓",
+    "confidence": 1.0,
+    "warnings": []
+   }
+  },
+  {
+   "position": "long_stock",
+   "auto": {
+    "enabled": true,
+    "order_type": "MKT"
+   },
+   "price": 230.0,
+   "state": "take_profit",
+   "market_status": "盘前",
+   "expect": {
+    "intent_summary": "止盈平仓:卖出 100 AAPL(盘外限价 229.31)",
+    "contract": {
+     "secType": "STK",
+     "symbol": "AAPL",
+     "exchange": "SMART",
+     "currency": "USD"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "模拟",
+    "order": {
+     "action": "SELL",
+     "orderType": "LMT",
+     "totalQuantity": 100,
+     "price_mode": "EXPLICIT",
+     "tif": "DAY",
+     "outsideRth": true,
+     "lmtPrice": 229.31
+    },
+    "reason": "持仓追踪止盈触发,自动平仓",
+    "confidence": 1.0,
+    "warnings": []
+   }
+  },
+  {
+   "position": "short_stock",
+   "auto": {
+    "enabled": true,
+    "order_type": "LMT",
+    "slippage_pct": 0.5
+   },
+   "price": 250.0,
+   "state": "stop_loss",
+   "market_status": "盘后",
+   "expect": {
+    "intent_summary": "止损平仓:买入 50 TSLA(盘外限价 251.25)",
+    "contract": {
+     "secType": "STK",
+     "symbol": "AAPL",
+     "exchange": "SMART",
+     "currency": "USD"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "模拟",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 50,
+     "price_mode": "EXPLICIT",
+     "tif": "DAY",
+     "outsideRth": true,
+     "lmtPrice": 251.25
+    },
+    "reason": "持仓追踪止损触发,自动平仓",
+    "confidence": 1.0,
+    "warnings": []
+   }
+  },
+  {
+   "position": "long_stock",
+   "auto": {
+    "enabled": true,
+    "order_type": "MKT"
+   },
+   "price": 230.0,
+   "state": "take_profit",
+   "market_status": "休市",
+   "expect": {
+    "intent_summary": "止盈平仓:卖出 100 AAPL(市价)",
+    "contract": {
+     "secType": "STK",
+     "symbol": "AAPL",
+     "exchange": "SMART",
+     "currency": "USD"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "模拟",
+    "order": {
+     "action": "SELL",
+     "orderType": "MKT",
+     "totalQuantity": 100,
+     "price_mode": "EXPLICIT",
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "持仓追踪止盈触发,自动平仓",
+    "confidence": 1.0,
+    "warnings": []
+   }
+  }
+ ],
+ "build_close_order_error": {
+  "position": "long_stock",
+  "auto": {
+   "enabled": true,
+   "order_type": "LMT"
+  },
+  "price": null,
+  "state": "stop_loss",
+  "error": "拿不到现价,限价平仓算不出限价——拒绝下单。"
+ },
+ "build_close_order_error_extended": {
+  "position": "long_stock",
+  "auto": {
+   "enabled": true,
+   "order_type": "MKT"
+  },
+  "price": null,
+  "state": "stop_loss",
+  "market_status": "盘前",
+  "error": "盘外只能限价平仓,但拿不到现价算不出限价——拒绝下单。"
+ },
+ "close_side": {
+  "long_stock": "SELL",
+  "short_stock": "BUY"
+ },
+ "profit_trail_stop": [
+  {
+   "position": "long_stock",
+   "peak": 260.0,
+   "dd": 30.0,
+   "expect": 248.0
+  },
+  {
+   "position": "long_stock",
+   "peak": 215.0,
+   "dd": 30.0,
+   "expect": null
+  },
+  {
+   "position": "short_stock",
+   "peak": 200.0,
+   "dd": 30.0,
+   "expect": 215.0
+  },
+  {
+   "position": "short_stock",
+   "peak": 260.0,
+   "dd": 30.0,
+   "expect": null
+  },
+  {
+   "position": "long_option",
+   "peak": 8.0,
+   "dd": 50.0,
+   "expect": 6.75
+  },
+  {
+   "position": "long_stock",
+   "peak": null,
+   "dd": 30.0,
+   "expect": null
+  },
+  {
+   "position": "long_stock",
+   "peak": 260.0,
+   "dd": null,
+   "expect": null
+  }
+ ],
+ "hosted_plan": [
+  {
+   "position": "long_stock",
+   "targets": {
+    "take_profit": 250.0,
+    "stop_loss": 200.0
+   },
+   "auto": {
+    "enabled": true,
+    "host_at_broker": true
+   },
+   "peak": 230.0,
+   "expect": [
+    {
+     "kind": "tp",
+     "action": "SELL",
+     "order_type": "LMT",
+     "quantity": 100,
+     "lmt_price": 250.0,
+     "aux_price": null,
+     "trailing_percent": null,
+     "trail_stop_seed": null,
+     "label": "托管止盈 250.0"
+    },
+    {
+     "kind": "sl",
+     "action": "SELL",
+     "order_type": "STP",
+     "quantity": 100,
+     "lmt_price": null,
+     "aux_price": 200.0,
+     "trailing_percent": null,
+     "trail_stop_seed": null,
+     "label": "托管止损 200.0"
+    }
+   ]
+  },
+  {
+   "position": "long_stock",
+   "targets": {
+    "take_profit": 250.0,
+    "trail_pct": 5.0,
+    "profit_drawdown_pct": 30.0
+   },
+   "auto": {
+    "enabled": true,
+    "host_at_broker": true,
+    "close_fraction_pct": 50.0
+   },
+   "peak": 260.0,
+   "expect": [
+    {
+     "kind": "tp",
+     "action": "SELL",
+     "order_type": "LMT",
+     "quantity": 50,
+     "lmt_price": 250.0,
+     "aux_price": null,
+     "trailing_percent": null,
+     "trail_stop_seed": null,
+     "label": "托管止盈 250.0"
+    },
+    {
+     "kind": "trail",
+     "action": "SELL",
+     "order_type": "TRAIL",
+     "quantity": 50,
+     "lmt_price": null,
+     "aux_price": null,
+     "trailing_percent": 5.0,
+     "trail_stop_seed": 247.0,
+     "label": "托管跟踪止损 5%"
+    },
+    {
+     "kind": "ptrail",
+     "action": "SELL",
+     "order_type": "STP",
+     "quantity": 50,
+     "lmt_price": null,
+     "aux_price": 248.0,
+     "trailing_percent": null,
+     "trail_stop_seed": null,
+     "label": "利润回撤动态停损 248.0"
+    }
+   ]
+  },
+  {
+   "position": "short_stock",
+   "targets": {
+    "stop_loss": 270.0,
+    "profit_drawdown_pct": 30.0
+   },
+   "auto": {
+    "enabled": true,
+    "host_at_broker": true
+   },
+   "peak": 200.0,
+   "expect": [
+    {
+     "kind": "sl",
+     "action": "BUY",
+     "order_type": "STP",
+     "quantity": 50,
+     "lmt_price": null,
+     "aux_price": 270.0,
+     "trailing_percent": null,
+     "trail_stop_seed": null,
+     "label": "托管止损 270.0"
+    },
+    {
+     "kind": "ptrail",
+     "action": "BUY",
+     "order_type": "STP",
+     "quantity": 50,
+     "lmt_price": null,
+     "aux_price": 215.0,
+     "trailing_percent": null,
+     "trail_stop_seed": null,
+     "label": "利润回撤动态停损 215.0"
+    }
+   ]
+  },
+  {
+   "position": "long_option",
+   "targets": {
+    "take_profit": 9.876543,
+    "profit_drawdown_pct": 50.0
+   },
+   "auto": {
+    "enabled": true,
+    "host_at_broker": true
+   },
+   "peak": 8.0,
+   "expect": [
+    {
+     "kind": "tp",
+     "action": "SELL",
+     "order_type": "LMT",
+     "quantity": 2,
+     "lmt_price": 9.88,
+     "aux_price": null,
+     "trailing_percent": null,
+     "trail_stop_seed": null,
+     "label": "托管止盈 9.88"
+    },
+    {
+     "kind": "ptrail",
+     "action": "SELL",
+     "order_type": "STP",
+     "quantity": 2,
+     "lmt_price": null,
+     "aux_price": 6.75,
+     "trailing_percent": null,
+     "trail_stop_seed": null,
+     "label": "利润回撤动态停损 6.75"
+    }
+   ]
+  },
+  {
+   "position": "long_stock",
+   "targets": {
+    "take_profit": 250.0
+   },
+   "auto": {
+    "enabled": true
+   },
+   "peak": 230.0,
+   "expect": []
+  }
+ ],
+ "hosted_needs_update": [
+  {
+   "current": {
+    "quantity": 100,
+    "aux_price": 236.0
+   },
+   "desired": {
+    "quantity": 100,
+    "aux_price": 236.004
+   },
+   "expect": false
+  },
+  {
+   "current": {
+    "quantity": 100,
+    "aux_price": 236.0
+   },
+   "desired": {
+    "quantity": 100,
+    "aux_price": 236.01
+   },
+   "expect": true
+  },
+  {
+   "current": {
+    "quantity": 100,
+    "aux_price": 236.0
+   },
+   "desired": {
+    "quantity": 50,
+    "aux_price": 236.0
+   },
+   "expect": true
+  },
+  {
+   "current": {
+    "quantity": 100,
+    "aux_price": 236.0
+   },
+   "desired": {
+    "quantity": 100,
+    "aux_price": null
+   },
+   "expect": true
+  },
+  {
+   "current": {
+    "quantity": 100,
+    "lmt_price": 250.0
+   },
+   "desired": {
+    "quantity": 100,
+    "lmt_price": 250.0
+   },
+   "expect": false
+  }
+ ]
+}

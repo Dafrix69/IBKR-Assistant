@@ -3,7 +3,7 @@
   "productName": "Dafri Trading",
   "version": "0.2.0",
   "private": true,
-  "description": "IBKR 交易指令解析引擎的桌面界面(Electron 外壳 + Python 交易引擎 sidecar)",
+  "description": "IBKR 交易指令解析引擎的桌面界面(Electron 外壳 + TS 交易引擎 sidecar,可回退 Python 引擎)",
   "main": "main.js",
   "scripts": {
     "start": "electron .",

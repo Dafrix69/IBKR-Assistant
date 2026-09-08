@@ -17,8 +17,9 @@ const os = require('node:os');
 const path = require('node:path');
 
 const DESKTOP = path.resolve(__dirname, '..');
-const TRADE = path.resolve(DESKTOP, '..');
-const TS_ROOT = path.resolve(TRADE, '..', 'trade-ts');
+const ROOT = path.resolve(DESKTOP, '..');            // 仓库根:config/ 与 prompts/ 在这里
+const PY_ROOT = path.join(ROOT, 'engine-python');
+const TS_ROOT = path.join(ROOT, 'engine-ts');
 const args = process.argv.slice(2);
 const flag = (n, d) => { const i = args.indexOf('--' + n); return i >= 0 ? args[i + 1] : d; };
 const engine = flag('engine', 'ts');
@@ -73,7 +74,7 @@ const CORPUS = [
 
 /** 临时配置:真实 settings.json 的一份拷贝,只把数据库指到临时目录。 */
 function scratchConfig() {
-  const src = JSON.parse(fs.readFileSync(path.join(TRADE, 'config', 'settings.json'), 'utf8'));
+  const src = JSON.parse(fs.readFileSync(path.join(ROOT, 'config', 'settings.json'), 'utf8'));
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dafri-latency-'));
   src.storage = { db_path: path.join(dir, 'trades.db') };
   const file = path.join(dir, 'settings.json');
@@ -97,7 +98,7 @@ function summarize(row) {
 }
 
 async function tsInProcess(configPath) {
-  process.env.DAFRI_PROMPT_DIR = process.env.DAFRI_PROMPT_DIR || path.join(TRADE, 'prompts');
+  process.env.DAFRI_PROMPT_DIR = process.env.DAFRI_PROMPT_DIR || path.join(ROOT, 'prompts');
   const { RpcServer } = require(path.join(TS_ROOT, 'dist', 'src', 'rpc.js'));
   const { setClock } = require(path.join(TS_ROOT, 'dist', 'src', 'config.js'));
   if (clock !== 'real') setClock(Date.parse('2026-08-14T10:32:00-04:00'));
@@ -115,10 +116,10 @@ async function tsInProcess(configPath) {
 }
 
 function pyStdio(configPath) {
-  const python = process.env.DAFRI_PYTHON || path.join(TRADE, '.venv', 'Scripts', 'python.exe');
+  const python = process.env.DAFRI_PYTHON || path.join(PY_ROOT, '.venv', 'Scripts', 'python.exe');
   const proc = spawn(python, ['-m', 'ibkr_agent', 'rpc'], {
-    cwd: TRADE,
-    env: { ...process.env, DAFRI_CONFIG: configPath, PYTHONPATH: path.join(TRADE, 'src'), PYTHONIOENCODING: 'utf-8', PYTHONUNBUFFERED: '1' },
+    cwd: PY_ROOT,
+    env: { ...process.env, DAFRI_CONFIG: configPath, PYTHONPATH: path.join(PY_ROOT, 'src'), PYTHONIOENCODING: 'utf-8', PYTHONUNBUFFERED: '1' },
   });
   proc.stderr.on('data', () => {});
   const pending = new Map();
