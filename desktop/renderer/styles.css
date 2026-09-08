@@ -1376,3 +1376,71 @@ kbd {
   to { box-shadow: 0 0 0 0 transparent; }
 }
 .card.just-added { animation: track-flash 1.6s ease-out; }
+
+
+/* ============ 板块页:业务标签胶囊(点击可改)============ */
+.stock-tag {
+  flex-shrink: 0;
+  font-size: 10px;
+  line-height: 16px;
+  padding: 0 7px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--blue) 14%, transparent);
+  color: var(--blue);
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.stock-tag.none { background: var(--bg-fill); color: var(--label-tertiary); }
+.stock-tag:hover { filter: brightness(0.92); }
+.stock-tag-input { width: 96px; font-size: 11px; padding: 1px 6px; }
+
+/* ============ 扫描页 ============ */
+.screen-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.screen-table th, .screen-table td { padding: 5px 8px; text-align: right; border-bottom: 0.5px solid var(--separator); white-space: nowrap; }
+.screen-table th { color: var(--label-secondary); font-weight: 510; font-size: 11px; position: sticky; top: 0; background: var(--bg-content); }
+.screen-table th:first-child, .screen-table td:first-child,
+.screen-table th.text, .screen-table td.text { text-align: left; }
+.screen-table tbody tr:hover { background: var(--bg-fill); }
+.screen-table tr.dim td { color: var(--label-tertiary); }
+.screen-table td.rank { color: var(--label-tertiary); font-variant-numeric: tabular-nums; width: 28px; }
+.screen-table .sym { font-family: var(--font-mono); font-weight: 590; }
+.screen-table .sym-btn { background: none; border: none; padding: 0; font: inherit; color: var(--blue); cursor: pointer; }
+.screen-table .sym-btn:hover { text-decoration: underline; }
+.screen-wrap { max-height: 520px; overflow: auto; border: 0.5px solid var(--separator); border-radius: var(--radius-card); background: var(--bg-content); }
+.screen-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 10px 0 6px; }
+
+/* RS 热力格:正为绿、负为红,深浅按幅度 */
+.rs-cell { font-variant-numeric: tabular-nums; border-radius: 4px; }
+.rs-cell.pos { background: color-mix(in srgb, var(--green) calc(var(--heat) * 1%), transparent); }
+.rs-cell.neg { background: color-mix(in srgb, var(--red) calc(var(--heat) * 1%), transparent); }
+.rs-tags { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; margin: 10px 0; }
+.rs-tag-card { padding: 8px 10px; border: 0.5px solid var(--separator); border-radius: var(--radius-card); background: var(--bg-content); }
+.rs-tag-card .rs-tag-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.rs-tag-card .rs-tag-name { font-weight: 590; }
+.rs-tag-card .rs-tag-score { font-family: var(--font-mono); font-size: 12px; }
+.rs-tag-card .rs-tag-row { display: flex; gap: 4px; margin-top: 6px; }
+.rs-tag-card .rs-tag-row span { flex: 1; text-align: center; font-size: 10px; padding: 2px 0; border-radius: 4px; font-variant-numeric: tabular-nums; }
+.rs-tag-card .rs-tag-syms { margin-top: 5px; font-size: 10px; color: var(--label-tertiary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 拐点格 */
+.sig { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 6px; font-weight: 510; }
+.sig.bull { background: color-mix(in srgb, var(--green) 16%, transparent); color: var(--green-text); }
+.sig.bear { background: color-mix(in srgb, var(--red) 16%, transparent); color: var(--red-text); }
+.sig.none { color: var(--label-tertiary); }
+.sig.err { color: var(--orange-text); }
+.sig .sub { font-weight: 400; opacity: 0.8; margin-left: 3px; }
+.sig-detail { font-size: 10px; color: var(--label-tertiary); display: block; }
+
+/* 极值偏离 */
+.dev-stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin: 8px 0; }
+.dev-stat { padding: 8px 10px; border: 0.5px solid var(--separator); border-radius: var(--radius-card); background: var(--bg-content); }
+.dev-stat .k { font-size: 10px; color: var(--label-secondary); }
+.dev-stat .v { font-family: var(--font-mono); font-size: 15px; margin-top: 2px; }
+.dev-stat.hot .v { color: var(--red-text); }
+.dev-stat.cold .v { color: var(--green-text); }
+.dev-readout { margin: 8px 0 0; padding-left: 18px; font-size: 12px; line-height: 1.6; }
+.dev-readout li { margin: 2px 0; }

@@ -305,6 +305,146 @@
   "capture": {}
  },
  {
+  "method": "sectors.add_stock",
+  "params": {
+   "id": "$SECTOR_ID",
+   "symbol": "VRT",
+   "tag": " 电力设备 "
+  },
+  "capture": {}
+ },
+ {
+  "method": "sectors.set_tag",
+  "params": {
+   "id": "$SECTOR_ID",
+   "symbol": "amd",
+   "tag": "数据中心"
+  },
+  "capture": {}
+ },
+ {
+  "method": "sectors.set_tag",
+  "params": {
+   "id": "$SECTOR_ID",
+   "symbol": "TSLA",
+   "tag": "x"
+  },
+  "capture": {}
+ },
+ {
+  "method": "sectors.set_tag",
+  "params": {
+   "id": "$SECTOR_ID",
+   "symbol": "VRT",
+   "tag": "一二三四五六七八九十一二三四"
+  },
+  "capture": {}
+ },
+ {
+  "method": "screener.rs",
+  "params": {
+   "benchmark": "IWM"
+  },
+  "capture": {}
+ },
+ {
+  "method": "screener.rs",
+  "params": {
+   "sector": "nope"
+  },
+  "capture": {}
+ },
+ {
+  "method": "screener.rs",
+  "params": {
+   "sector": "$SECTOR_ID",
+   "benchmark": "qqq"
+  },
+  "capture": {}
+ },
+ {
+  "method": "screener.inflection",
+  "params": {
+   "timeframes": [
+    "3m"
+   ]
+  },
+  "capture": {}
+ },
+ {
+  "method": "screener.inflection",
+  "params": {
+   "timeframes": "1d"
+  },
+  "capture": {}
+ },
+ {
+  "method": "screener.inflection",
+  "params": {
+   "ma_period": 1
+  },
+  "capture": {}
+ },
+ {
+  "method": "screener.inflection",
+  "params": {
+   "ma_period": "abc"
+  },
+  "capture": {}
+ },
+ {
+  "method": "screener.inflection",
+  "params": {
+   "sector": "all",
+   "timeframes": [
+    "1d",
+    "1w",
+    "1d"
+   ],
+   "ma_period": 20
+  },
+  "capture": {}
+ },
+ {
+  "method": "screener.deviation",
+  "params": {
+   "symbol": "bad$"
+  },
+  "capture": {}
+ },
+ {
+  "method": "screener.deviation",
+  "params": {
+   "symbol": "NVDA",
+   "timeframe": "5m"
+  },
+  "capture": {}
+ },
+ {
+  "method": "screener.deviation",
+  "params": {
+   "symbol": "NVDA",
+   "period": 1
+  },
+  "capture": {}
+ },
+ {
+  "method": "screener.deviation",
+  "params": {
+   "symbol": "NVDA",
+   "z_extreme": 9
+  },
+  "capture": {}
+ },
+ {
+  "method": "screener.deviation",
+  "params": {
+   "symbol": "NVDA",
+   "timeframe": "1w"
+  },
+  "capture": {}
+ },
+ {
   "method": "sectors.delete",
   "params": {
    "id": "$SECTOR_ID"

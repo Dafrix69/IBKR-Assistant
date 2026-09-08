@@ -70,6 +70,10 @@
           <line x1="11" y1="2.8" x2="11" y2="13.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
           <rect x="9.2" y="6.6" width="3.6" height="4.6" rx="0.8" fill="currentColor"/>
         </symbol>
+        <symbol id="sf-scan" viewBox="0 0 16 16">
+          <path d="M2.5 5V3.5a1 1 0 0 1 1-1H5M11 2.5h1.5a1 1 0 0 1 1 1V5M13.5 11v1.5a1 1 0 0 1-1 1H11M5 13.5H3.5a1 1 0 0 1-1-1V11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          <path d="M4.5 9.5 6.5 7l1.8 1.6 3.2-3.6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </symbol>
         <symbol id="sf-chart" viewBox="0 0 16 16">
           <path d="M2.5 2.5v10a1 1 0 0 0 1 1h10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
           <path d="M4.5 10.5 7 7.5l2.2 1.8 3.3-4.3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
@@ -150,6 +154,9 @@
           <button class="tab nav-item" role="tab" data-tab="sectors" aria-controls="tab-sectors" aria-selected="false" tabindex="-1">
             <svg class="nav-icon"><use href="#sf-squares"/></svg>板块
             <span class="nav-badge hidden" id="sidebar-alerts">0</span>
+          </button>
+          <button class="tab nav-item" role="tab" data-tab="screener" data-default="rs" aria-controls="tab-screener" aria-selected="false" tabindex="-1">
+            <svg class="nav-icon"><use href="#sf-scan"/></svg>扫描
           </button>
           <button class="tab nav-item" role="tab" data-tab="backtest" aria-controls="tab-backtest" aria-selected="false" tabindex="-1">
             <svg class="nav-icon"><use href="#sf-chart"/></svg>回测
@@ -340,6 +347,102 @@
             <h3 class="section-title">最近触发</h3>
             <div id="alerts-feed" class="feed"><p class="empty">还没有触发记录。</p></div>
           </div>
+        </section>
+
+        <!-- ============ 扫描:RS 强度 / 拐点筛选 / 极值偏离 ============ -->
+        <section class="tab-panel" id="tab-screener">
+          <header class="page-head">
+            <h1>扫描</h1>
+            <div class="segmented subnav" role="tablist" aria-label="扫描子页">
+              <button class="tab seg" role="tab" data-tab="rs" aria-controls="tab-rs" aria-selected="false" tabindex="-1">RS 强度</button>
+              <button class="tab seg" role="tab" data-tab="inflection" aria-controls="tab-inflection" aria-selected="false" tabindex="-1">拐点筛选</button>
+              <button class="tab seg" role="tab" data-tab="deviation" aria-controls="tab-deviation" aria-selected="false" tabindex="-1">极值偏离</button>
+            </div>
+          </header>
+
+          <!-- ============ RS 强度 ============ -->
+          <section class="sub-panel" id="tab-rs" role="tabpanel" aria-label="RS 强度">
+            <div class="sub-head"><span class="muted" id="rs-status">—</span></div>
+            <div class="row tight">
+              <div class="select-wrap grow"><select id="rs-sector" aria-label="股票池"></select></div>
+              <div class="segmented compact" id="rs-benchmark" role="group" aria-label="基准">
+                <button type="button" class="seg on" data-value="SPY">SPY</button>
+                <button type="button" class="seg" data-value="QQQ">QQQ</button>
+              </div>
+              <button id="btn-rs-run" class="btn primary">扫描</button>
+            </div>
+            <details id="intro-rs" class="primer intro"><summary>RS 是怎么算的</summary>
+              <p class="hint">
+                每个区间(1 周 / 1 月 / 1 季 / 半年 / 1 年,按交易日)算成员收益与基准收益,
+                <strong>RS = (1 + 成员收益) ÷ (1 + 基准收益) − 1</strong>,就是"跑赢基准多少"。综合分是各区间 RS 的平均;
+                按成分股的<strong>业务标签</strong>汇总时取中位数(抗一只妖股),并数跑赢家数。
+                标签在「板块」页的成分股行上点击即可改。日线来自券商,10 分钟内重复扫描不重新拉取。
+              </p>
+            </details>
+            <div id="rs-tags"></div>
+            <div id="rs-table"><p class="empty">选一个股票池,点「扫描」。</p></div>
+          </section>
+
+          <!-- ============ 拐点筛选 ============ -->
+          <section class="sub-panel" id="tab-inflection" role="tabpanel" aria-label="拐点筛选">
+            <div class="sub-head"><span class="muted" id="infl-status">—</span></div>
+            <div class="row tight">
+              <div class="select-wrap grow"><select id="infl-sector" aria-label="股票池"></select></div>
+              <div class="segmented compact" id="infl-timeframes" role="group" aria-label="K 线周期(可多选)">
+                <button type="button" class="seg on" data-value="1w">周线</button>
+                <button type="button" class="seg on" data-value="1d">日线</button>
+                <button type="button" class="seg" data-value="1h">1 小时</button>
+                <button type="button" class="seg" data-value="30m">30 分</button>
+                <button type="button" class="seg" data-value="15m">15 分</button>
+              </div>
+              <input id="infl-ma" class="narrow" type="number" min="0" max="250" step="1" value="20"
+                     aria-label="右侧确认均线周期(0 = 不要求)" title="右侧确认均线周期,0 = 不要求确认" />
+              <button id="btn-infl-run" class="btn primary">扫描</button>
+            </div>
+            <details id="intro-infl" class="primer intro"><summary>什么算拐点</summary>
+              <p class="hint">
+                <strong>CD 背离</strong>:CD 指 MACD 快线 DIF(EMA12 − EMA26)。价格创更低的低点、DIF 却抬高 = 底背离;
+                价格创新高、DIF 却走低 = 顶背离;经典口径要求两个点的 DIF 在零轴同一侧。这是<strong>左侧</strong>信号——
+                拐点还没确认,所以可选<strong>右侧均线确认</strong>:背离之后收盘穿过指定均线且仍站在那一侧才算「已确认」,
+                穿过又回去算「作废」。周线由日线重采样;日内周期走 K线 PA 的节流缓存,一次最多 40 个(标的 × 周期)。
+              </p>
+            </details>
+            <div id="infl-table"><p class="empty">选一个股票池和周期,点「扫描」。</p></div>
+          </section>
+
+          <!-- ============ 极值偏离 ============ -->
+          <section class="sub-panel" id="tab-deviation" role="tabpanel" aria-label="极值偏离">
+            <div class="sub-head"><span class="muted" id="dev-status">—</span></div>
+            <div class="row tight">
+              <div class="select-wrap"><select id="dev-sector" aria-label="股票池"></select></div>
+              <div class="select-wrap"><select id="dev-symbol" aria-label="标的"></select></div>
+              <input id="dev-symbol-free" type="text" class="narrow" placeholder="或手输" maxlength="12" aria-label="手输标的" />
+              <div class="select-wrap"><select id="dev-timeframe" aria-label="K 线周期">
+                <option value="1w">周线</option>
+                <option value="1d" selected>日线</option>
+                <option value="1h">1 小时</option>
+                <option value="30m">30 分</option>
+                <option value="15m">15 分</option>
+              </select></div>
+              <input id="dev-period" class="narrow" type="number" min="2" max="250" step="1" value="20" aria-label="均线周期" title="偏离用的均线周期" />
+              <input id="dev-lookback" class="narrow" type="number" min="10" max="500" step="10" value="120" aria-label="z 分数历史长度" title="折 z 分数用的历史根数" />
+              <button id="btn-dev-run" class="btn primary">复盘</button>
+            </div>
+            <div class="row tight">
+              <button id="btn-dev-prev" class="btn tiny ghost" title="上一只">‹</button>
+              <button id="btn-dev-next" class="btn tiny ghost" title="下一只">›</button>
+              <span class="muted" id="dev-pos">—</span>
+            </div>
+            <details id="intro-dev" class="primer intro"><summary>买卖压力与偏离怎么算</summary>
+              <p class="hint">
+                <strong>修正版买卖压力</strong>:收盘在当根<strong>真实区间</strong>(把前收盘算进高低点,跳空也量得出)里的位置,
+                折成 −1 … +1,按相对成交量加权(当根量 ÷ 前 20 根均量,封顶 3 倍),再做 5 根 EMA 平滑。
+                <strong>偏离程度</strong>:收盘相对均线的百分比,对近段历史折 <strong>z 分数</strong>——同样偏离 8%,
+                对日常波动 1% 的股是极值,对波动 5% 的不算;|z| ≥ 2 标为极值。只陈述数字,不给操作建议。
+              </p>
+            </details>
+            <div id="dev-result"><p class="empty">选一只股,点「复盘」。</p></div>
+          </section>
         </section>
 
         <!-- ============ 回测 ============ -->

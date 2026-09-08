@@ -55,8 +55,8 @@ const FAKE_PARSE_PAYLOAD = {
 const FAKE_JSON_BY_SCHEMA: Record<string, Record<string, unknown>> = {
   stocks: {
     stocks: [
-      { symbol: "NVDA", company: "英伟达", reason: "AI 芯片份额第一" },
-      { symbol: "AMD", company: "AMD", reason: "数据中心第二供应商" },
+      { symbol: "NVDA", company: "英伟达", reason: "AI 芯片份额第一", tag: "芯片" },
+      { symbol: "AMD", company: "AMD", reason: "数据中心第二供应商", tag: "芯片" },
     ],
   },
   entry: {

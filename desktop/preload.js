@@ -40,10 +40,17 @@ contextBridge.exposeInMainWorld('dafri', {
   deleteSector: (id) => ipcRenderer.invoke('rpc', { method: 'sectors.delete', params: { id } }),
   pickSector: (id) => ipcRenderer.invoke('rpc', { method: 'sectors.pick', params: { id } }),
   sectorQuotes: () => ipcRenderer.invoke('rpc', { method: 'sectors.quotes', params: {} }),
-  addSectorStock: (id, symbol) =>
-    ipcRenderer.invoke('rpc', { method: 'sectors.add_stock', params: { id, symbol } }),
+  addSectorStock: (id, symbol, tag) =>
+    ipcRenderer.invoke('rpc', { method: 'sectors.add_stock', params: { id, symbol, tag: tag || '' } }),
   removeSectorStock: (id, symbol) =>
     ipcRenderer.invoke('rpc', { method: 'sectors.remove_stock', params: { id, symbol } }),
+  setSectorTag: (id, symbol, tag) =>
+    ipcRenderer.invoke('rpc', { method: 'sectors.set_tag', params: { id, symbol, tag } }),
+
+  // ---- 扫描器:RS 强度 / 拐点筛选 / 极值偏离(纯计算,只读)-------------------
+  screenerRs: (spec) => ipcRenderer.invoke('rpc', { method: 'screener.rs', params: spec }),
+  screenerInflection: (spec) => ipcRenderer.invoke('rpc', { method: 'screener.inflection', params: spec }),
+  screenerDeviation: (spec) => ipcRenderer.invoke('rpc', { method: 'screener.deviation', params: spec }),
   appInfo: () => ipcRenderer.invoke('app-info'),
 
   // ---- 大模型接入 ------------------------------------------------------

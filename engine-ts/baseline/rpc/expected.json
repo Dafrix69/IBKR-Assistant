@@ -909,7 +909,8 @@
      {
       "symbol": "NVDA",
       "company": "英伟达",
-      "reason": "手动添加"
+      "reason": "手动添加",
+      "tag": ""
      }
     ]
    }
@@ -943,12 +944,14 @@
      {
       "symbol": "NVDA",
       "company": "英伟达",
-      "reason": "AI 芯片份额第一"
+      "reason": "AI 芯片份额第一",
+      "tag": "芯片"
      },
      {
       "symbol": "AMD",
       "company": "AMD",
-      "reason": "数据中心第二供应商"
+      "reason": "数据中心第二供应商",
+      "tag": "芯片"
      }
     ]
    }
@@ -966,12 +969,14 @@
       {
        "symbol": "NVDA",
        "company": "英伟达",
-       "reason": "AI 芯片份额第一"
+       "reason": "AI 芯片份额第一",
+       "tag": "芯片"
       },
       {
        "symbol": "AMD",
        "company": "AMD",
-       "reason": "数据中心第二供应商"
+       "reason": "数据中心第二供应商",
+       "tag": "芯片"
       }
      ]
     }
@@ -982,6 +987,180 @@
   "result": {
    "connected": "<MACHINE>",
    "quotes": {}
+  }
+ },
+ {
+  "result": {
+   "sector": {
+    "id": "<ID>",
+    "created_at": "<VAR>",
+    "updated_at": "<VAR>",
+    "name": "AI 算力",
+    "stocks": [
+     {
+      "symbol": "NVDA",
+      "company": "英伟达",
+      "reason": "AI 芯片份额第一",
+      "tag": "芯片"
+     },
+     {
+      "symbol": "AMD",
+      "company": "AMD",
+      "reason": "数据中心第二供应商",
+      "tag": "芯片"
+     },
+     {
+      "symbol": "VRT",
+      "company": "",
+      "reason": "手动添加",
+      "tag": "电力设备"
+     }
+    ]
+   }
+  }
+ },
+ {
+  "result": {
+   "sector": {
+    "id": "<ID>",
+    "created_at": "<VAR>",
+    "updated_at": "<VAR>",
+    "name": "AI 算力",
+    "stocks": [
+     {
+      "symbol": "NVDA",
+      "company": "英伟达",
+      "reason": "AI 芯片份额第一",
+      "tag": "芯片"
+     },
+     {
+      "symbol": "AMD",
+      "company": "AMD",
+      "reason": "数据中心第二供应商",
+      "tag": "数据中心"
+     },
+     {
+      "symbol": "VRT",
+      "company": "",
+      "reason": "手动添加",
+      "tag": "电力设备"
+     }
+    ]
+   }
+  }
+ },
+ {
+  "error": {
+   "code": -32602,
+   "message": "TSLA 不在该板块中"
+  }
+ },
+ {
+  "result": {
+   "sector": {
+    "id": "<ID>",
+    "created_at": "<VAR>",
+    "updated_at": "<VAR>",
+    "name": "AI 算力",
+    "stocks": [
+     {
+      "symbol": "NVDA",
+      "company": "英伟达",
+      "reason": "AI 芯片份额第一",
+      "tag": "芯片"
+     },
+     {
+      "symbol": "AMD",
+      "company": "AMD",
+      "reason": "数据中心第二供应商",
+      "tag": "数据中心"
+     },
+     {
+      "symbol": "VRT",
+      "company": "",
+      "reason": "手动添加",
+      "tag": "一二三四五六七八九十一二"
+     }
+    ]
+   }
+  }
+ },
+ {
+  "error": {
+   "code": -32602,
+   "message": "基准只能是 SPY / QQQ"
+  }
+ },
+ {
+  "error": {
+   "code": -32602,
+   "message": "板块不存在:nope"
+  }
+ },
+ {
+  "error": {
+   "code": -32018,
+   "message": "RS 强度扫描需要TWS / IB Gateway:请先在「TWS 连接」面板连接引擎。"
+  }
+ },
+ {
+  "error": {
+   "code": -32602,
+   "message": "未知周期:3m(可选:1w、1d、1h、30m、15m)"
+  }
+ },
+ {
+  "error": {
+   "code": -32602,
+   "message": "timeframes 要是非空数组"
+  }
+ },
+ {
+  "error": {
+   "code": -32602,
+   "message": "确认均线周期要在 2~250 之间"
+  }
+ },
+ {
+  "error": {
+   "code": -32602,
+   "message": "整数参数不合法:'abc'"
+  }
+ },
+ {
+  "error": {
+   "code": -32018,
+   "message": "拐点筛选需要TWS / IB Gateway:请先在「TWS 连接」面板连接引擎。"
+  }
+ },
+ {
+  "error": {
+   "code": -32602,
+   "message": "标的代码不合法:'bad$'"
+  }
+ },
+ {
+  "error": {
+   "code": -32602,
+   "message": "未知周期:5m(可选:1w、1d、1h、30m、15m)"
+  }
+ },
+ {
+  "error": {
+   "code": -32602,
+   "message": "参数越界:均线 2~250、历史 10~500、平滑 1~50"
+  }
+ },
+ {
+  "error": {
+   "code": -32602,
+   "message": "极值阈值要在 0.5~5 个标准差之间"
+  }
+ },
+ {
+  "error": {
+   "code": -32018,
+   "message": "极值偏离需要TWS / IB Gateway:请先在「TWS 连接」面板连接引擎。"
   }
  },
  {
