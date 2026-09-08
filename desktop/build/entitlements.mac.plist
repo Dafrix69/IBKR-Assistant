@@ -12,15 +12,15 @@
     <key>com.apple.security.network.client</key>
     <true/>
 
-    <!-- Python sidecar 是子进程,需要继承运行时权限 -->
+    <!-- 交易引擎是子进程,需要继承运行时权限 -->
     <key>com.apple.security.inherit</key>
     <true/>
 
     <!--
       注意:这里没有开 com.apple.security.app-sandbox。
-      App Sandbox 会禁止拉起 bundle 之外的可执行文件,而交易引擎是 Python 子进程。
-      要满足 §9.7 的 "App Sandbox + Hardened Runtime",必须先把 Python 运行时用
-      extraResources 打进 bundle,再打开 app-sandbox,并把 Keychain 访问组一并声明。
+      App Sandbox 对子进程与网络的限制尚未在引擎子进程(Electron 自带 Node 拉起 resources/engine-ts)上验证。
+      要满足 §9.7 的 "App Sandbox + Hardened Runtime",得先验证沙箱下能拉起引擎并连 127.0.0.1 的 TWS,
+      再打开 app-sandbox,并把 Keychain 访问组一并声明。
       在没做这一步之前就打开 app-sandbox,应用会在启动引擎时静默失败。
     -->
 </dict>

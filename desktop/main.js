@@ -20,8 +20,7 @@ const PACKAGED = app.isPackaged;
 const REPO_ROOT = PACKAGED
   ? path.join(process.resourcesPath, 'engine')
   : path.resolve(__dirname, '..');
-// TS 引擎(重写版):有 dist 就优先用它——不需要 Python、不需要首启引导。
-// DAFRI_ENGINE=python 可强制回退到 Python 引擎。
+// 交易引擎:engine-ts 编译出的 dist(开发时 tools/ensure_engine_ts.js 保证它新鲜;打包版在 resources/engine-ts)
 const TS_ENGINE_ROOT = PACKAGED
   ? path.join(process.resourcesPath, 'engine-ts')
   : path.resolve(__dirname, '..', 'engine-ts');
@@ -291,7 +290,6 @@ function isTrustedSender(event) {
 
 function wireEngine() {
   engine = new EngineClient({
-    repoRoot: REPO_ROOT,
     configPath: CONFIG_PATH,
     userDataDir: app.getPath('userData'),
     packaged: PACKAGED,
@@ -301,8 +299,7 @@ function wireEngine() {
   engine.on('engine-event', (payload) => send('engine-event', payload));
   engine.on('log', (line) => send('engine-log', { line }));
   engine.on('exit', (info) => send('engine-exit', info));
-  engine.on('bootstrap', (info) => send('bootstrap', { message: info.message }));
-  // 首次启动可能要建 venv 装依赖,失败会以 engine-exit 事件呈现在界面上
+  // 启动失败会以 engine-exit 事件呈现在界面上
   engine.start().catch(() => {});
 }
 
@@ -352,16 +349,6 @@ function registerIpc() {
     return { ok: true };
   });
 
-  // 装富途 SDK。名字由主进程写死,渲染进程只能触发、不能指定装什么——
-  // 否则就等于给了界面一个"pip install 任意包"的通道。
-  ipcMain.handle('engine-install-futu', async (event) => {
-    if (!isTrustedSender(event)) throw new Error('调用来源不受信任');
-    const result = await engine.installExtra('futu');
-    // import 在进程启动时解析,装完必须重启引擎才认得这个包
-    engine.stop();
-    engine.start().catch(() => {});
-    return result;
-  });
 
   ipcMain.handle('pick-export-path', async (event) => {
     if (!isTrustedSender(event)) throw new Error('调用来源不受信任');

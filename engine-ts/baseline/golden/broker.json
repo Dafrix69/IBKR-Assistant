@@ -3,108 +3,48 @@
   {
    "name": "debit_call_spread",
    "legs": [
-    [
-     "BUY",
-     1,
-     12.4,
-     12.8
-    ],
-    [
-     "SELL",
-     1,
-     5.1,
-     5.3
-    ]
+    ["BUY", 1, 12.4, 12.8],
+    ["SELL", 1, 5.1, 5.3]
    ],
    "expect": 7.4
   },
   {
    "name": "credit_condor",
    "legs": [
-    [
-     "BUY",
-     1,
-     1.0,
-     1.2
-    ],
-    [
-     "SELL",
-     1,
-     3.0,
-     3.2
-    ],
-    [
-     "SELL",
-     1,
-     2.8,
-     3.0
-    ],
-    [
-     "BUY",
-     1,
-     0.9,
-     1.1
-    ]
+    ["BUY", 1, 1, 1.2],
+    ["SELL", 1, 3, 3.2],
+    ["SELL", 1, 2.8, 3],
+    ["BUY", 1, 0.9, 1.1]
    ],
    "expect": -3.9
   },
   {
    "name": "butterfly",
    "legs": [
-    [
-     "BUY",
-     1,
-     10.0,
-     10.4
-    ],
-    [
-     "SELL",
-     2,
-     6.0,
-     6.2
-    ],
-    [
-     "BUY",
-     1,
-     3.0,
-     3.2
-    ]
+    ["BUY", 1, 10, 10.4],
+    ["SELL", 2, 6, 6.2],
+    ["BUY", 1, 3, 3.2]
    ],
    "expect": 1.1
   },
   {
    "name": "bad_bid_zero",
    "legs": [
-    [
-     "BUY",
-     1,
-     0.0,
-     5.0
-    ]
+    ["BUY", 1, 0, 5]
    ],
    "error": "盘口不可用(bid=0.0 ask=5.0),拒绝用坏报价定价"
   },
   {
    "name": "bad_crossed",
    "legs": [
-    [
-     "BUY",
-     1,
-     6.0,
-     5.0
-    ]
+    ["BUY", 1, 6, 5]
    ],
    "error": "盘口不可用(bid=6.0 ask=5.0),拒绝用坏报价定价"
   },
   {
    "name": "bad_nan",
    "legs": [
-    [
-     "BUY",
-     1,
-     null,
-     5.0
-    ]
+    ["BUY", 1, null, 5]
    ],
    "error": "盘口不可用(bid=nan ask=5.0),拒绝用坏报价定价"
   }
@@ -112,324 +52,135 @@
  "auto_mid_limit": [
   {
    "name": "debit_ok",
-   "args": [
-    7.85,
-    "BUY",
-    0.1,
-    30.0
-   ],
+   "args": [7.85, "BUY", 0.1, 30],
    "expect": 7.95
   },
   {
    "name": "debit_capped_by_width",
-   "args": [
-    29.98,
-    "BUY",
-    0.1,
-    30.0
-   ],
-   "expect": 30.0
+   "args": [29.98, "BUY", 0.1, 30],
+   "expect": 30
   },
   {
    "name": "credit_ok",
-   "args": [
-    -12.6,
-    "SELL",
-    0.1,
-    null
-   ],
+   "args": [-12.6, "SELL", 0.1, null],
    "expect": -12.5
   },
   {
    "name": "credit_eaten",
-   "args": [
-    -0.05,
-    "SELL",
-    0.1,
-    null
-   ],
+   "args": [-0.05, "SELL", 0.1, null],
    "error": "贷方限价 0.0500 已不再为负(滑点吃光了权利金),拒绝下单"
   },
   {
    "name": "sell_positive_mid",
-   "args": [
-    7.85,
-    "SELL",
-    0.1,
-    null
-   ],
+   "args": [7.85, "SELL", 0.1, null],
    "error": "贷方组合的净中间价应为负(收权利金),实际为 7.8500——腿方向与订单方向不一致,拒绝定价以免反向建仓。"
   },
   {
    "name": "buy_negative_mid",
-   "args": [
-    -7.85,
-    "BUY",
-    0.1,
-    null
-   ],
+   "args": [-7.85, "BUY", 0.1, null],
    "error": "借方组合的净中间价应为正(付权利金),实际为 -7.8500——腿方向与订单方向不一致,拒绝定价以免反向建仓。"
   },
   {
    "name": "negative_slippage",
-   "args": [
-    7.85,
-    "BUY",
-    -0.1,
-    null
-   ],
+   "args": [7.85, "BUY", -0.1, null],
    "error": "滑点上限不能为负"
   },
   {
    "name": "nan_mid",
-   "args": [
-    "nan",
-    "BUY",
-    0.1,
-    null
-   ],
+   "args": ["nan", "BUY", 0.1, null],
    "error": "中间价不是有限数值(nan),拒绝定价"
   },
   {
    "name": "tick_half_step",
-   "args": [
-    0.125,
-    "BUY",
-    0.05,
-    10.0
-   ],
+   "args": [0.125, "BUY", 0.05, 10],
    "expect": 0.2
   },
   {
    "name": "tick_already_aligned",
-   "args": [
-    0.15,
-    "BUY",
-    0.05,
-    10.0
-   ],
+   "args": [0.15, "BUY", 0.05, 10],
    "expect": 0.2
   },
   {
    "name": "tick_rounds_up",
-   "args": [
-    2.32,
-    "BUY",
-    0.01,
-    20.0
-   ],
+   "args": [2.32, "BUY", 0.01, 20],
    "expect": 2.35
   },
   {
    "name": "tick_credit_rounds_toward_zero",
-   "args": [
-    -12.34,
-    "SELL",
-    0.05,
-    null
-   ],
+   "args": [-12.34, "SELL", 0.05, null],
    "expect": -12.25
   },
   {
    "name": "tick_credit_tiny_slippage",
-   "args": [
-    -9.99,
-    "SELL",
-    0.005,
-    null
-   ],
+   "args": [-9.99, "SELL", 0.005, null],
    "expect": -9.95
   },
   {
    "name": "tick_capped_width_stays_legal",
-   "args": [
-    19.99,
-    "BUY",
-    0.5,
-    20.0
-   ],
-   "expect": 20.0
+   "args": [19.99, "BUY", 0.5, 20],
+   "expect": 20
   }
  ],
  "bag_signed_limit": [
-  {
-   "action": "BUY",
-   "limit": 7.9,
-   "expect": 7.9
-  },
-  {
-   "action": "SELL",
-   "limit": 12.0,
-   "expect": -12.0
-  },
-  {
-   "action": "SELL",
-   "limit": null,
-   "expect": null
-  }
+  {"action": "BUY", "limit": 7.9, "expect": 7.9},
+  {"action": "SELL", "limit": 12, "expect": -12},
+  {"action": "SELL", "limit": null, "expect": null}
  ],
  "combo_tick": 0.05,
  "align_tick": [
-  {
-   "value": 0.0,
-   "up": 0.0,
-   "down": 0.0
-  },
-  {
-   "value": 0.01,
-   "up": 0.05,
-   "down": 0.0
-  },
-  {
-   "value": 0.05,
-   "up": 0.05,
-   "down": 0.05
-  },
-  {
-   "value": 0.1,
-   "up": 0.1,
-   "down": 0.1
-  },
-  {
-   "value": 0.125,
-   "up": 0.15,
-   "down": 0.1
-  },
-  {
-   "value": 0.15,
-   "up": 0.15,
-   "down": 0.15
-  },
-  {
-   "value": 0.175,
-   "up": 0.2,
-   "down": 0.15
-  },
-  {
-   "value": 0.2,
-   "up": 0.2,
-   "down": 0.2
-  },
-  {
-   "value": 2.25,
-   "up": 2.25,
-   "down": 2.25
-  },
-  {
-   "value": 2.26,
-   "up": 2.3,
-   "down": 2.25
-  },
-  {
-   "value": 12.34,
-   "up": 12.35,
-   "down": 12.3
-  },
-  {
-   "value": 12.35,
-   "up": 12.35,
-   "down": 12.35
-  },
-  {
-   "value": 19.99,
-   "up": 20.0,
-   "down": 19.95
-  },
-  {
-   "value": 20.0,
-   "up": 20.0,
-   "down": 20.0
-  },
-  {
-   "value": -0.05,
-   "up": -0.05,
-   "down": -0.05
-  },
-  {
-   "value": -12.29,
-   "up": -12.25,
-   "down": -12.3
-  },
-  {
-   "value": -12.34,
-   "up": -12.3,
-   "down": -12.35
-  },
-  {
-   "value": -12.3,
-   "up": -12.3,
-   "down": -12.3
-  }
+  {"value": 0, "up": 0, "down": 0},
+  {"value": 0.01, "up": 0.05, "down": 0},
+  {"value": 0.05, "up": 0.05, "down": 0.05},
+  {"value": 0.1, "up": 0.1, "down": 0.1},
+  {"value": 0.125, "up": 0.15, "down": 0.1},
+  {"value": 0.15, "up": 0.15, "down": 0.15},
+  {"value": 0.175, "up": 0.2, "down": 0.15},
+  {"value": 0.2, "up": 0.2, "down": 0.2},
+  {"value": 2.25, "up": 2.25, "down": 2.25},
+  {"value": 2.26, "up": 2.3, "down": 2.25},
+  {"value": 12.34, "up": 12.35, "down": 12.3},
+  {"value": 12.35, "up": 12.35, "down": 12.35},
+  {"value": 19.99, "up": 20, "down": 19.95},
+  {"value": 20, "up": 20, "down": 20},
+  {"value": -0.05, "up": -0.05, "down": -0.05},
+  {"value": -12.29, "up": -12.25, "down": -12.3},
+  {"value": -12.34, "up": -12.3, "down": -12.35},
+  {"value": -12.3, "up": -12.3, "down": -12.3}
  ],
  "book_liquidity": [
   {
    "name": "l2",
    "book": {
-    "l1": {
-     "spread_bps": 3.2,
-     "bid_size": 5,
-     "ask_size": 7
-    },
+    "l1": {"spread_bps": 3.2, "bid_size": 5, "ask_size": 7},
     "bids": [
-     {
-      "size": 100
-     },
-     {
-      "size": 200
-     }
+     {"size": 100},
+     {"size": 200}
     ],
     "asks": [
-     {
-      "size": 50
-     },
-     {
-      "size": 60
-     },
-     {
-      "size": 40
-     }
+     {"size": 50},
+     {"size": 60},
+     {"size": 40}
     ]
    },
-   "expect": {
-    "spread_bps": 3.2,
-    "spread_grade": "很好",
-    "bid_depth": 300.0,
-    "ask_depth": 150.0,
-    "levels": 3,
-    "imbalance_pct": 33.3
-   }
+   "expect": {"spread_bps": 3.2, "spread_grade": "很好", "bid_depth": 300, "ask_depth": 150, "levels": 3, "imbalance_pct": 33.3}
   },
   {
    "name": "l1_only",
    "book": {
-    "l1": {
-     "spread_bps": 25.0,
-     "bid_size": 30,
-     "ask_size": 10
-    },
+    "l1": {"spread_bps": 25, "bid_size": 30, "ask_size": 10},
     "bids": [],
     "asks": []
    },
-   "expect": {
-    "spread_bps": 25.0,
-    "spread_grade": "偏宽",
-    "imbalance_pct": 50.0,
-    "l1_only": true
-   }
+   "expect": {"spread_bps": 25, "spread_grade": "偏宽", "imbalance_pct": 50, "l1_only": true}
   },
   {
    "name": "wide",
    "book": {
-    "l1": {
-     "spread_bps": 80.0
-    },
+    "l1": {"spread_bps": 80},
     "bids": [],
     "asks": []
    },
-   "expect": {
-    "spread_bps": 80.0,
-    "spread_grade": "很宽"
-   }
+   "expect": {"spread_bps": 80, "spread_grade": "很宽"}
   },
   {
    "name": "empty",
@@ -453,47 +204,19 @@
      "currency": "USD",
      "combo_strategy": "VERTICAL",
      "legs": [
-      {
-       "action": "BUY",
-       "ratio": 1,
-       "lastTradeDateOrContractMonth": "20260814",
-       "strike": 7520.0,
-       "right": "C",
-       "tradingClass": "SPXW"
-      },
-      {
-       "action": "SELL",
-       "ratio": 1,
-       "lastTradeDateOrContractMonth": "20260814",
-       "strike": 7550.0,
-       "right": "C",
-       "tradingClass": "SPXW"
-      }
+      {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7520, "right": "C", "tradingClass": "SPXW"},
+      {"action": "SELL", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7550, "right": "C", "tradingClass": "SPXW"}
      ]
     },
     "execution_type": "CONDITIONAL",
-    "trigger": {
-     "type": "PRICE",
-     "symbol": "SPX",
-     "secType": "IND",
-     "operator": ">=",
-     "value": 7500.0
-    },
+    "trigger": {"type": "PRICE", "symbol": "SPX", "secType": "IND", "operator": ">=", "value": 7500},
     "account": "DEFAULT",
-    "order": {
-     "action": "BUY",
-     "orderType": "LMT",
-     "totalQuantity": 1,
-     "price_mode": "AUTO_MID",
-     "lmtPrice": null,
-     "tif": "DAY",
-     "outsideRth": false
-    },
+    "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "AUTO_MID", "lmtPrice": null, "tif": "DAY", "outsideRth": false},
     "reason": "突破 7500 整数关口后追动能",
     "confidence": 0.96,
     "warnings": []
    },
-   "expect": 30.0
+   "expect": 30
   },
   {
    "name": "butterfly",
@@ -506,55 +229,20 @@
      "currency": "USD",
      "combo_strategy": "BUTTERFLY",
      "legs": [
-      {
-       "action": "BUY",
-       "ratio": 1,
-       "lastTradeDateOrContractMonth": "20260814",
-       "strike": 7500.0,
-       "right": "C",
-       "tradingClass": "SPXW"
-      },
-      {
-       "action": "SELL",
-       "ratio": 2,
-       "lastTradeDateOrContractMonth": "20260814",
-       "strike": 7520.0,
-       "right": "C",
-       "tradingClass": "SPXW"
-      },
-      {
-       "action": "BUY",
-       "ratio": 1,
-       "lastTradeDateOrContractMonth": "20260814",
-       "strike": 7540.0,
-       "right": "C",
-       "tradingClass": "SPXW"
-      }
+      {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7500, "right": "C", "tradingClass": "SPXW"},
+      {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7520, "right": "C", "tradingClass": "SPXW"},
+      {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7540, "right": "C", "tradingClass": "SPXW"}
      ]
     },
     "execution_type": "CONDITIONAL",
-    "trigger": {
-     "type": "PRICE",
-     "symbol": "SPX",
-     "secType": "IND",
-     "operator": ">=",
-     "value": 7500.0
-    },
+    "trigger": {"type": "PRICE", "symbol": "SPX", "secType": "IND", "operator": ">=", "value": 7500},
     "account": "DEFAULT",
-    "order": {
-     "action": "BUY",
-     "orderType": "LMT",
-     "totalQuantity": 1,
-     "price_mode": "AUTO_MID",
-     "lmtPrice": null,
-     "tif": "DAY",
-     "outsideRth": false
-    },
+    "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "AUTO_MID", "lmtPrice": null, "tif": "DAY", "outsideRth": false},
     "reason": "预期钉住 7520",
     "confidence": 0.95,
     "warnings": []
    },
-   "expect": 20.0
+   "expect": 20
   },
   {
    "name": "condor",
@@ -567,52 +255,16 @@
      "currency": "USD",
      "combo_strategy": "IRON_CONDOR",
      "legs": [
-      {
-       "action": "BUY",
-       "ratio": 1,
-       "lastTradeDateOrContractMonth": "20260918",
-       "strike": 7200.0,
-       "right": "P",
-       "tradingClass": "SPX"
-      },
-      {
-       "action": "SELL",
-       "ratio": 1,
-       "lastTradeDateOrContractMonth": "20260918",
-       "strike": 7250.0,
-       "right": "P",
-       "tradingClass": "SPX"
-      },
-      {
-       "action": "SELL",
-       "ratio": 1,
-       "lastTradeDateOrContractMonth": "20260918",
-       "strike": 7650.0,
-       "right": "C",
-       "tradingClass": "SPX"
-      },
-      {
-       "action": "BUY",
-       "ratio": 1,
-       "lastTradeDateOrContractMonth": "20260918",
-       "strike": 7700.0,
-       "right": "C",
-       "tradingClass": "SPX"
-      }
+      {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260918", "strike": 7200, "right": "P", "tradingClass": "SPX"},
+      {"action": "SELL", "ratio": 1, "lastTradeDateOrContractMonth": "20260918", "strike": 7250, "right": "P", "tradingClass": "SPX"},
+      {"action": "SELL", "ratio": 1, "lastTradeDateOrContractMonth": "20260918", "strike": 7650, "right": "C", "tradingClass": "SPX"},
+      {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260918", "strike": 7700, "right": "C", "tradingClass": "SPX"}
      ]
     },
     "execution_type": "IMMEDIATE",
     "trigger": null,
     "account": "DEFAULT",
-    "order": {
-     "action": "SELL",
-     "orderType": "LMT",
-     "totalQuantity": 2,
-     "price_mode": "EXPLICIT",
-     "lmtPrice": 12.0,
-     "tif": "GTC",
-     "outsideRth": false
-    },
+    "order": {"action": "SELL", "orderType": "LMT", "totalQuantity": 2, "price_mode": "EXPLICIT", "lmtPrice": 12, "tif": "GTC", "outsideRth": false},
     "reason": "预计区间震荡",
     "confidence": 0.96,
     "warnings": []
@@ -621,300 +273,107 @@
   }
  ],
  "price_condition": {
-  "trigger": {
-   "type": "PRICE",
-   "symbol": "SPX",
-   "secType": "IND",
-   "operator": ">=",
-   "value": 7500.0
-  },
-  "expect": {
-   "symbol": "SPX",
-   "secType": "IND",
-   "isMore": true,
-   "price": 7500.0
-  }
+  "trigger": {"type": "PRICE", "symbol": "SPX", "secType": "IND", "operator": ">=", "value": 7500},
+  "expect": {"symbol": "SPX", "secType": "IND", "isMore": true, "price": 7500}
  },
  "bar_timestamp": [
-  {
-   "raw": "20260819  09:35:00",
-   "expect": "2026-08-19 09:35"
-  },
-  {
-   "raw": "20260819",
-   "expect": "2026-08-19"
-  },
-  {
-   "raw": "2026-08-19 09:35:00",
-   "expect": "2026-08-19 09:35"
-  },
-  {
-   "raw": "garbage",
-   "expect": "garbage"
-  },
-  {
-   "raw": "20260902 11:40:00 US/Central",
-   "expect": "2026-09-02 12:40"
-  },
-  {
-   "raw": "20260902 12:40:00 US/Eastern",
-   "expect": "2026-09-02 12:40"
-  },
-  {
-   "raw": "20260115 11:40:00 America/Chicago",
-   "expect": "2026-01-15 12:40"
-  },
-  {
-   "raw": "20260902 11:40:00",
-   "expect": "2026-09-02 11:40"
-  }
+  {"raw": "20260819  09:35:00", "expect": "2026-08-19 09:35"},
+  {"raw": "20260819", "expect": "2026-08-19"},
+  {"raw": "2026-08-19 09:35:00", "expect": "2026-08-19 09:35"},
+  {"raw": "garbage", "expect": "garbage"},
+  {"raw": "20260902 11:40:00 US/Central", "expect": "2026-09-02 12:40"},
+  {"raw": "20260902 12:40:00 US/Eastern", "expect": "2026-09-02 12:40"},
+  {"raw": "20260115 11:40:00 America/Chicago", "expect": "2026-01-15 12:40"},
+  {"raw": "20260902 11:40:00", "expect": "2026-09-02 11:40"}
  ],
  "parity": [
   {
    "name": "clean",
    "pairs": [
-    [
-     7300.0,
-     229.29282280198004,
-     5.0
-    ],
-    [
-     7325.0,
-     204.37601740061746,
-     5.0
-    ],
-    [
-     7350.0,
-     179.45921199925397,
-     5.0
-    ],
-    [
-     7375.0,
-     154.54240659789048,
-     5.0
-    ],
-    [
-     7400.0,
-     129.6256011965279,
-     5.0
-    ],
-    [
-     7425.0,
-     104.7087957951644,
-     5.0
-    ],
-    [
-     7450.0,
-     84.79199039380183,
-     10.0
-    ],
-    [
-     7475.0,
-     69.87518499243834,
-     20.0
-    ],
-    [
-     7500.0,
-     54.958379591075754,
-     30.0
-    ],
-    [
-     7525.0,
-     40.041574189712264,
-     40.0
-    ],
-    [
-     7550.0,
-     25.124768788349684,
-     50.0
-    ],
-    [
-     7575.0,
-     10.207963386986194,
-     60.0
-    ]
+    [7300, 229.29282280198004, 5],
+    [7325, 204.37601740061746, 5],
+    [7350, 179.45921199925397, 5],
+    [7375, 154.54240659789048, 5],
+    [7400, 129.6256011965279, 5],
+    [7425, 104.7087957951644, 5],
+    [7450, 84.79199039380183, 10],
+    [7475, 69.87518499243834, 20],
+    [7500, 54.958379591075754, 30],
+    [7525, 40.041574189712264, 40],
+    [7550, 25.124768788349684, 50],
+    [7575, 10.207963386986194, 60]
    ],
-   "expect": {
-    "spot": 7500.0,
-    "discount": 0.996672,
-    "residual": 0.0,
-    "samples": 12
-   }
+   "expect": {"spot": 7500, "discount": 0.996672, "residual": 0, "samples": 12}
   },
   {
    "name": "dirty",
    "pairs": [
-    [
-     7300.0,
-     229.29282280198004,
-     5.0
-    ],
-    [
-     7325.0,
-     204.37601740061746,
-     5.0
-    ],
-    [
-     7350.0,
-     179.45921199925397,
-     5.0
-    ],
-    [
-     7375.0,
-     234.54240659789048,
-     5.0
-    ],
-    [
-     7400.0,
-     129.6256011965279,
-     5.0
-    ],
-    [
-     7425.0,
-     104.7087957951644,
-     5.0
-    ],
-    [
-     7450.0,
-     84.79199039380183,
-     10.0
-    ],
-    [
-     7475.0,
-     69.87518499243834,
-     20.0
-    ],
-    [
-     7500.0,
-     54.958379591075754,
-     30.0
-    ],
-    [
-     7525.0,
-     40.041574189712264,
-     40.0
-    ],
-    [
-     7550.0,
-     25.124768788349684,
-     50.0
-    ],
-    [
-     7575.0,
-     10.207963386986194,
-     60.0
-    ]
+    [7300, 229.29282280198004, 5],
+    [7325, 204.37601740061746, 5],
+    [7350, 179.45921199925397, 5],
+    [7375, 234.54240659789048, 5],
+    [7400, 129.6256011965279, 5],
+    [7425, 104.7087957951644, 5],
+    [7450, 84.79199039380183, 10],
+    [7475, 69.87518499243834, 20],
+    [7500, 54.958379591075754, 30],
+    [7525, 40.041574189712264, 40],
+    [7550, 25.124768788349684, 50],
+    [7575, 10.207963386986194, 60]
    ],
    "error": "反推出的折现因子 1.0526 不合理(应在 0.90 ~ 1.001 之间),这条链的报价对不上平价关系,拒绝据此定位墙。"
   },
   {
    "name": "few",
    "pairs": [
-    [
-     7300.0,
-     229.29282280198004,
-     5.0
-    ],
-    [
-     7325.0,
-     204.37601740061746,
-     5.0
-    ],
-    [
-     7350.0,
-     179.45921199925397,
-     5.0
-    ]
+    [7300, 229.29282280198004, 5],
+    [7325, 204.37601740061746, 5],
+    [7350, 179.45921199925397, 5]
    ],
    "error": "只有 3 个行权价同时拿到了看涨与看跌的有效报价(至少要 4 个),无法反推标的现价。多半是这条链的盘口太稀疏。"
   },
   {
    "name": "flat",
    "pairs": [
-    [
-     7500.0,
-     30.0,
-     25.0
-    ],
-    [
-     7500.0,
-     30.0,
-     25.0
-    ],
-    [
-     7500.0,
-     30.0,
-     25.0
-    ],
-    [
-     7500.0,
-     30.0,
-     25.0
-    ],
-    [
-     7500.0,
-     30.0,
-     25.0
-    ],
-    [
-     7500.0,
-     30.0,
-     25.0
-    ]
+    [7500, 30, 25],
+    [7500, 30, 25],
+    [7500, 30, 25],
+    [7500, 30, 25],
+    [7500, 30, 25],
+    [7500, 30, 25]
    ],
    "error": "反推现价失败:所有取样的行权价都一样,拟合不出斜率。"
   }
  ],
  "helpers": {
   "futu_date": [
-   {
-    "in": "20260814",
-    "out": "2026-08-14"
-   },
-   {
-    "in": "2026-08-14",
-    "out": "2026-08-14"
-   }
+   {"in": "20260814", "out": "2026-08-14"},
+   {"in": "2026-08-14", "out": "2026-08-14"}
   ],
   "plain_date": [
-   {
-    "in": "2026-08-14",
-    "out": "20260814"
-   }
+   {"in": "2026-08-14", "out": "20260814"}
   ],
   "bar_time": [
    {
-    "in": [
-     "2026-08-14 09:35:00",
-     false
-    ],
+    "in": ["2026-08-14 09:35:00", false],
     "out": "2026-08-14 09:35"
    },
    {
-    "in": [
-     "2026-08-14 09:35:00",
-     true
-    ],
+    "in": ["2026-08-14 09:35:00", true],
     "out": "2026-08-14"
    }
   ],
   "duration_days": [
    {
-    "in": {
-     "duration": "5 D"
-    },
+    "in": {"duration": "5 D"},
     "out": 12
    },
    {
-    "in": {
-     "duration": "1 Y"
-    },
+    "in": {"duration": "1 Y"},
     "out": 375
    },
    {
-    "in": {
-     "duration": "30 D"
-    },
+    "in": {"duration": "30 D"},
     "out": 50
    },
    {
@@ -923,72 +382,21 @@
    }
   ],
   "iv": [
-   {
-    "in": 32.5,
-    "out": 0.325
-   },
-   {
-    "in": 0.32,
-    "out": 0.32
-   },
-   {
-    "in": null,
-    "out": null
-   }
+   {"in": 32.5, "out": 0.325},
+   {"in": 0.32, "out": 0.32},
+   {"in": null, "out": null}
   ],
-  "order_status_map": {
-   "UNSUBMITTED": "PendingSubmit",
-   "WAITING_SUBMIT": "PreSubmitted",
-   "SUBMITTING": "PreSubmitted",
-   "SUBMITTED": "Submitted",
-   "FILLED_PART": "Submitted",
-   "FILLED_ALL": "Filled",
-   "CANCELLING_ALL": "PendingCancel",
-   "CANCELLING_PART": "PendingCancel",
-   "CANCELLED_ALL": "Cancelled",
-   "CANCELLED_PART": "Cancelled",
-   "FILL_CANCELLED": "Cancelled",
-   "DELETED": "Cancelled",
-   "FAILED": "Inactive",
-   "SUBMIT_FAILED": "Inactive",
-   "DISABLED": "Inactive",
-   "TIMEOUT": "Inactive",
-   "NONE": "Unknown"
-  },
-  "open_status": [
-   "UNSUBMITTED",
-   "WAITING_SUBMIT",
-   "SUBMITTING",
-   "SUBMITTED",
-   "FILLED_PART"
-  ],
+  "order_status_map": {"UNSUBMITTED": "PendingSubmit", "WAITING_SUBMIT": "PreSubmitted", "SUBMITTING": "PreSubmitted", "SUBMITTED": "Submitted", "FILLED_PART": "Submitted", "FILLED_ALL": "Filled", "CANCELLING_ALL": "PendingCancel", "CANCELLING_PART": "PendingCancel", "CANCELLED_ALL": "Cancelled", "CANCELLED_PART": "Cancelled", "FILL_CANCELLED": "Cancelled", "DELETED": "Cancelled", "FAILED": "Inactive", "SUBMIT_FAILED": "Inactive", "DISABLED": "Inactive", "TIMEOUT": "Inactive", "NONE": "Unknown"},
+  "open_status": ["UNSUBMITTED", "WAITING_SUBMIT", "SUBMITTING", "SUBMITTED", "FILLED_PART"],
   "quote_error": [
-   {
-    "in": "没有权限:美股期权",
-    "out": "富途返回「没有美股期权行情权限」。这份权限和股票行情是**分开**的:股票报价能用不代表期权能用,而且没有它连期权链的到期日都取不到。请在富途 / moomoo 客户端里开通「美股期权行情」,开通后重连引擎即可。原始报错:没有权限:美股期权"
-   },
-   {
-    "in": "no right to access",
-    "out": "富途返回「没有行情权限」。美股行情要在富途/moomoo 客户端里单独开通(LV1 基础报价即可满足报价与 K 线;多档盘口需要 LV2)。原始报错:no right to access"
-   },
-   {
-    "in": "历史K线额度不足",
-    "out": "富途返回「额度不足」。它的历史 K 线和行情订阅都是按额度计的:历史 K 线按标的数计费,订阅按条数计。等额度恢复,或减少同时关注的标的。原始报错:历史K线额度不足"
-   },
-   {
-    "in": "别的错",
-    "out": "富途取数失败:别的错"
-   }
+   {"in": "没有权限:美股期权", "out": "富途返回「没有美股期权行情权限」。这份权限和股票行情是**分开**的:股票报价能用不代表期权能用,而且没有它连期权链的到期日都取不到。请在富途 / moomoo 客户端里开通「美股期权行情」,开通后重连引擎即可。原始报错:没有权限:美股期权"},
+   {"in": "no right to access", "out": "富途返回「没有行情权限」。美股行情要在富途/moomoo 客户端里单独开通(LV1 基础报价即可满足报价与 K 线;多档盘口需要 LV2)。原始报错:no right to access"},
+   {"in": "历史K线额度不足", "out": "富途返回「额度不足」。它的历史 K 线和行情订阅都是按额度计的:历史 K 线按标的数计费,订阅按条数计。等额度恢复,或减少同时关注的标的。原始报错:历史K线额度不足"},
+   {"in": "别的错", "out": "富途取数失败:别的错"}
   ],
   "bars_error": [
-   {
-    "in": "Error 162: no market data permissions",
-    "out": "SPX 没有 5 分钟 的行情权限。IBKR 的历史数据同样要订阅,连延迟数据也要账户里先开通对应交易所。去 IBKR 账户管理 → Settings → User Settings → Market Data Subscriptions 里订阅该标的所属交易所(美股至少要一档 Level 1;SPX / VIX / RUT 这类指数属于 Cboe,要单独订阅)。原始报错:Error 162: no market data permissions"
-   },
-   {
-    "in": "boom",
-    "out": "获取 AAPL 的 日线 K 线失败:boom"
-   }
+   {"in": "Error 162: no market data permissions", "out": "SPX 没有 5 分钟 的行情权限。IBKR 的历史数据同样要订阅,连延迟数据也要账户里先开通对应交易所。去 IBKR 账户管理 → Settings → User Settings → Market Data Subscriptions 里订阅该标的所属交易所(美股至少要一档 Level 1;SPX / VIX / RUT 这类指数属于 Cboe,要单独订阅)。原始报错:Error 162: no market data permissions"},
+   {"in": "boom", "out": "获取 AAPL 的 日线 K 线失败:boom"}
   ]
  }
 }

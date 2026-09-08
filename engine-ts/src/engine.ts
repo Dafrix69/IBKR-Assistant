@@ -1202,6 +1202,9 @@ export class TradingEngine {
     if (typeof session.onFill === "function") {
       session.onFill((trade: any, fill: any) => this.onExecDetails(trade, fill));
     }
+    if (typeof session.onCommission === "function") {
+      session.onCommission((trade: any, fill: any, report: any) => this.onCommission(trade, fill, report));
+    }
     if (typeof session.onError === "function") {
       session.onError((reqId: number, code: number, message: string) =>
         this.onIbError(reqId, code, message));
@@ -1273,6 +1276,10 @@ export class TradingEngine {
   // IBKR 信息类代码:行情农场连接状态等,与订单成败无关
   private static readonly IB_INFO_MIN = 2100;
   private static readonly IB_INFO_MAX = 2200;
+  /** 订单级"警告"码:IBKR 只是附一句话,订单仍然有效——399 委托单消息、404 股票待借入(订单挂起)。
+   *  2026-09-08 模拟盘实测:收到 399「为了不与相关挂单交叉,您的委托单被拒」的卖单照样成交了;
+   *  当成拒单会让记录停在 ibkr_error、后面的成交回报接不上。 */
+  private static readonly IB_WARNING_CODES: ReadonlySet<number> = new Set([399, 404]);
 
   /** 订单级 errorEvent → 终态落库(110 价格档位、201 保证金、203 无权限只走这条路)。 */
   onIbError(reqId: unknown, errorCode: unknown, errorString: unknown): void {
@@ -1283,8 +1290,10 @@ export class TradingEngine {
     const recordId = this.orderIndex.get(req);
     if (recordId === undefined) return;
     const message = String(errorString ?? "");
-    if (code >= TradingEngine.IB_INFO_MIN && code < TradingEngine.IB_INFO_MAX) {
+    const informational = code >= TradingEngine.IB_INFO_MIN && code < TradingEngine.IB_INFO_MAX;
+    if (informational || TradingEngine.IB_WARNING_CODES.has(code)) {
       this.store.appendEvent(recordId, "warning", { message: `IBKR ${code}: ${message}` });
+      if (!informational) this.notifier.warning(`IBKR ${code}: ${message}`);
       return;
     }
     const final = code === 202 ? "cancelled" : "ibkr_error";

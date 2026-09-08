@@ -2,7 +2,6 @@
 // 记每条的墙钟时延、走的是本地速记还是大模型、模型自报时延与 token 用量、结果计数。
 //
 //   node tools/latency_bench.js                       # TS 引擎,进程内,固定交易日时钟(美东 2026-08-14 10:32,盘中)
-//   node tools/latency_bench.js --engine py           # Python 引擎,走 stdio RPC,真实时钟(没有时钟钩子)
 //   node tools/latency_bench.js --clock real          # TS 引擎也用真实时钟(周末会看到速记的本地拒绝)
 //   node tools/latency_bench.js --only A,C --repeat 2 # 只跑某几类,重复几轮
 //   node tools/latency_bench.js --cold                # 不预热 SPX 现价,量速记第一次冷取的代价
@@ -18,11 +17,10 @@ const path = require('node:path');
 
 const DESKTOP = path.resolve(__dirname, '..');
 const ROOT = path.resolve(DESKTOP, '..');            // 仓库根:config/ 与 prompts/ 在这里
-const PY_ROOT = path.join(ROOT, 'engine-python');
 const TS_ROOT = path.join(ROOT, 'engine-ts');
 const args = process.argv.slice(2);
 const flag = (n, d) => { const i = args.indexOf('--' + n); return i >= 0 ? args[i + 1] : d; };
-const engine = flag('engine', 'ts');
+const engine = 'ts';
 const clock = flag('clock', 'fixed');
 const repeat = Number(flag('repeat', '1'));
 const only = flag('only', '');
@@ -115,40 +113,9 @@ async function tsInProcess(configPath) {
   };
 }
 
-function pyStdio(configPath) {
-  const python = process.env.DAFRI_PYTHON || path.join(PY_ROOT, '.venv', 'Scripts', 'python.exe');
-  const proc = spawn(python, ['-m', 'ibkr_agent', 'rpc'], {
-    cwd: PY_ROOT,
-    env: { ...process.env, DAFRI_CONFIG: configPath, PYTHONPATH: path.join(PY_ROOT, 'src'), PYTHONIOENCODING: 'utf-8', PYTHONUNBUFFERED: '1' },
-  });
-  proc.stderr.on('data', () => {});
-  const pending = new Map();
-  let buf = '';
-  proc.stdout.on('data', (d) => {
-    buf += String(d);
-    let i;
-    while ((i = buf.indexOf('\n')) >= 0) {
-      const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
-      if (!line) continue;
-      let msg; try { msg = JSON.parse(line); } catch { continue; }
-      if (msg.id != null && pending.has(msg.id)) { pending.get(msg.id)(msg); pending.delete(msg.id); }
-    }
-  });
-  let id = 0;
-  return {
-    call: (method, params) => new Promise((resolve, reject) => {
-      const n = ++id;
-      const t = setTimeout(() => { pending.delete(n); reject(new Error('timeout ' + method)); }, 120000);
-      pending.set(n, (m) => { clearTimeout(t); resolve(m); });
-      proc.stdin.write(JSON.stringify({ jsonrpc: '2.0', id: n, method, params }) + '\n');
-    }),
-    close: () => { proc.stdin.end(); setTimeout(() => { try { proc.kill(); } catch { /* 已退出 */ } }, 300); },
-  };
-}
-
 async function main() {
   const configPath = scratchConfig();
-  const client = engine === 'py' ? pyStdio(configPath) : await tsInProcess(configPath);
+  const client = await tsInProcess(configPath);
   const t0 = process.hrtime.bigint();
   await client.call('system.status', {});
   const startupMs = Number(process.hrtime.bigint() - t0) / 1e6;

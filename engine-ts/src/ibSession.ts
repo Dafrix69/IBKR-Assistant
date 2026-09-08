@@ -31,6 +31,44 @@ function emptyTicker(): TickerData {
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
+/** 底层 IBApi 的 orderStatus 事件 → 引擎期望的 trade(ib_insync 同形:order / orderStatus / contract)。 */
+export function tradeFromOrderStatus(
+  orderId: unknown, status: unknown, filled: unknown, remaining: unknown, avgFillPrice: unknown,
+  permId: unknown, contract: Record<string, unknown> | undefined,
+): { order: { orderId: number; permId: number | null }; orderStatus: Record<string, unknown>; contract: Record<string, unknown> } {
+  return {
+    order: { orderId: Number(orderId) || 0, permId: Number(permId) || null },
+    orderStatus: {
+      status: String(status ?? ""),
+      filled: Number(filled) || 0,
+      remaining: Number(remaining) || 0,
+      avgFillPrice: Number(avgFillPrice) || 0,
+    },
+    contract: contract ?? {},
+  };
+}
+
+/** 底层 IBApi 的 execDetails 事件 → 引擎期望的 [trade, fill]。 */
+export function fillFromExecDetails(
+  contract: Record<string, unknown> | undefined, execution: Record<string, any> | undefined,
+): [{ order: { orderId: number; permId: number | null }; contract: Record<string, unknown> }, { contract: Record<string, unknown>; execution: Record<string, unknown> }] {
+  const e = execution ?? {};
+  const c = contract ?? {};
+  const orderId = Number(e["orderId"]) || 0;
+  const permId = Number(e["permId"]) || null;
+  return [
+    { order: { orderId, permId }, contract: c },
+    {
+      contract: c,
+      execution: {
+        execId: e["execId"] ?? "", time: e["time"] ?? "", price: e["price"] ?? 0, shares: e["shares"] ?? 0,
+        side: e["side"] ?? "", acctNumber: e["acctNumber"] ?? "", orderId, permId,
+        cumQty: e["cumQty"] ?? null, avgPrice: e["avgPrice"] ?? null,
+      },
+    },
+  ];
+}
+
 export async function createIbApiNextSession(cfg: {
   host: string;
   port: number;
@@ -46,6 +84,7 @@ export async function createIbApiNextSession(cfg: {
   const errorCbs: Array<(reqId: number, code: number, message: string) => void> = [];
   const orderStatusCbs: Array<(trade: any) => void> = [];
   const fillCbs: Array<(trade: any, fill: any) => void> = [];
+  const commissionCbs: Array<(trade: any, fill: any, report: any) => void> = [];
   const tickers = new Map<string, LiveTicker>();
 
   // 连接级错误(1100/1101/1102 等)与订单级错误(reqId = orderId,如 200 证券定义、
@@ -68,13 +107,41 @@ export async function createIbApiNextSession(cfg: {
   managed = await withTimeout(api.getManagedAccounts(), 10_000, "连接超时");
   connected = true;
 
-  // 成交/状态推流:engine 的推式回报(库自带 getAllOpenOrders / executions 流)
-  try {
+  // 订单状态 / 成交 / 佣金:直接挂在底层 IBApi 的事件上,转成引擎期望的 ib_insync 同形对象。
+  // IBApiNext 的 getOpenOrders 推的是 OpenOrdersUpdate 集合、不带成交明细——2026-09-08 模拟盘实测:
+  // 单子成交了,记录却永远停在 Submitted,fillCbs 一次都没被调用。这三个事件 TWS 会主动推给下单的
+  // client(与 ib_insync 的 orderStatusEvent / execDetailsEvent / commissionReportEvent 同源)。
+  const raw: any = (api as any).api;
+  const E: any = mod.EventName ?? {};
+  const contractsByOrder = new Map<number, Record<string, unknown>>();
+  const tradesByExec = new Map<string, any>();
+  if (raw && typeof raw.on === "function") {
+    raw.on(E.openOrder ?? "openOrder", (orderId: unknown, contract: any) => {
+      contractsByOrder.set(Number(orderId), contract ?? {});
+    });
+    raw.on(E.orderStatus ?? "orderStatus", (
+      orderId: unknown, status: unknown, filled: unknown, remaining: unknown, avgFillPrice: unknown, permId?: unknown,
+    ) => {
+      const trade = tradeFromOrderStatus(
+        orderId, status, filled, remaining, avgFillPrice, permId, contractsByOrder.get(Number(orderId)),
+      );
+      for (const cb of orderStatusCbs) cb(trade);
+    });
+    raw.on(E.execDetails ?? "execDetails", (_reqId: unknown, contract: any, execution: any) => {
+      const [trade, fill] = fillFromExecDetails(contract, execution);
+      tradesByExec.set(String(fill.execution["execId"] ?? ""), trade);
+      for (const cb of fillCbs) cb(trade, fill);
+    });
+    raw.on(E.commissionReport ?? "commissionReport", (report: any) => {
+      const trade = tradesByExec.get(String(report?.execId ?? ""));
+      if (!trade) return;
+      for (const cb of commissionCbs) cb(trade, null, report);
+    });
+  } else {
+    // 拿不到底层事件源(库版本差异)就退回集合推流;engine 侧对账循环兜底
     api.getOpenOrders?.().subscribe?.((update: any) => {
       for (const cb of orderStatusCbs) cb(update);
     });
-  } catch {
-    /* 版本差异,engine 侧还有轮询兜底 */
   }
 
   const keyOf = (c: IbContract): string =>
@@ -319,6 +386,9 @@ export async function createIbApiNextSession(cfg: {
     },
     onFill(cb) {
       fillCbs.push(cb);
+    },
+    onCommission(cb) {
+      commissionCbs.push(cb);
     },
   };
   return session;

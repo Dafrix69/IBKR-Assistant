@@ -478,6 +478,7 @@ export interface IbSession {
   /** engine 挂订单回报监听用(推式)。 */
   onOrderStatus?(cb: (trade: any) => void): void;
   onFill?(cb: (trade: any, fill: any) => void): void;
+  onCommission?(cb: (trade: any, fill: any, report: any) => void): void;
   /** 订单级错误(reqId = orderId):200 证券定义、110 跳动、201 拒单等 */
   onError?(cb: (reqId: number, code: number, message: string) => void): void;
   /** 摘掉 onError 挂上的回调(legQuotes 的临时监听用)。 */
@@ -1014,7 +1015,8 @@ export class BrokerRouter {
     let fresh = false;
     for (const symbol of symbols) {
       if (this.streams.has(symbol)) continue;
-      const target = stockContract(symbol);
+      const crypto = cryptoSymbol(symbol);
+      const target = crypto ? cryptoContract(crypto) : stockContract(symbol);
       try {
         await this.qualifyOrRaise(session, target);
       } catch (exc) {
@@ -1813,6 +1815,18 @@ export function stockContract(symbol: string, exchange = "SMART", currency = "US
 
 export function indexContract(symbol: string, exchange: string): IbContract {
   return { secType: "IND", symbol, exchange, currency: "USD", conId: 0 };
+}
+
+/** 加密货币现货(IBKR 走 PAXOS,行情免订阅;2026-09-08 真机实测 BTC 两秒内到价)。 */
+export function cryptoContract(symbol: string): IbContract {
+  return { secType: "CRYPTO", symbol, exchange: "PAXOS", currency: "USD", conId: 0 };
+}
+
+/** 流式报价里的加密标记:`CRYPTO:BTC` → `BTC`;不是这个形状回 null。
+ * 宏观带用它把比特币这一格接到 PAXOS 现货上;富途通道见到它直接跳过。 */
+export function cryptoSymbol(symbol: string): string | null {
+  const m = /^CRYPTO:([A-Z]{2,10})$/.exec((symbol ?? "").trim().toUpperCase());
+  return m ? m[1]! : null;
 }
 
 export function optionContract(

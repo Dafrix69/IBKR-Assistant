@@ -2,7 +2,7 @@
   "name": "dafri-engine",
   "version": "0.1.0",
   "private": true,
-  "description": "IBKR 交易指令解析引擎(TypeScript 重写)。行为规格 = ../engine-python 的 Python 实现。",
+  "description": "IBKR 交易指令解析引擎(TypeScript)。",
   "type": "module",
   "engines": {
     "node": ">=22"
@@ -11,7 +11,8 @@
     "test": "vitest run",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "golden": "vitest run tests/golden.spec.ts"
+    "golden": "vitest run golden-",
+    "golden:update": "node scripts/update-golden.mjs"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^9.6.0",

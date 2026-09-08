@@ -120,9 +120,10 @@ export async function loadFutuBridge(): Promise<FutuBridge> {
       `原始报错:${(exc as Error).message}`,
     );
   }
-  throw new FutuUnavailable(
+  const err = new FutuUnavailable(
     "npm futu-api 的适配桥尚未完成真机核对(接口签名、返回列名、枚举取值都要连着" +
-    "本机 OpenD 逐一对过,与 Python 版当年的联调路径相同)。富途通道在 TS 引擎里" +
-    "暂不可用;需要富途请暂用 Python 引擎,或等待适配完成。",
+    "本机 OpenD 逐一对过)。富途通道暂不可用,等待真机联调完成;IBKR 通道不受影响。",
   );
+  (err as Error & { code?: string }).code = "bridge_unverified";
+  throw err;
 }
