@@ -33,4 +33,4 @@ jobs:
           cache-dependency-path: engine-ts/package-lock.json
       - run: npm ci
       - run: npx tsc --noEmit
-      - run: npx vitest run
+      - run: npx vitest run --reporter=default --reporter=github-actions
