@@ -7,7 +7,7 @@ TypeScript 版交易引擎,桌面端默认加载它(不需要 Python)。行为�
 
 ```bash
 npm install
-npm run build        # tsc → dist/(不进仓库;桌面端与 desktop/tools/stage_engine_ts.js 都读 dist)
+npm run build        # tsc → dist/(不进仓库;桌面端 npm start 会自动检查并重编,见 desktop/tools/ensure_engine_ts.js)
 npm test             # vitest:单测 + 黄金对拍 + RPC 契约回放
 npm run typecheck
 ```
