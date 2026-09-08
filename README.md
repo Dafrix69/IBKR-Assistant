@@ -42,7 +42,7 @@ RPC 面改动用 `gen_rpc_samples.py`,库文件夹具用 `gen_store_fixture.py`�
 ## 快速开始(桌面端)
 
 ```bash
-(cd engine-ts && npm install && npm run build)                                          # TS 引擎:桌面端默认加载它
+(cd engine-ts && npm install)                                                            # TS 引擎依赖;dist 由桌面端 npm start 自动编
 (cd engine-python && python3 -m venv .venv && .venv/bin/pip install -e ".[dev,broker]")  # Python 引擎:规格与黄金基线;用富途通道再加 ,futu
 cd desktop && npm install && npm start
 ```

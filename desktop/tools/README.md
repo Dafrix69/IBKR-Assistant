@@ -106,3 +106,9 @@ token 用量(含前缀缓存命中)、结果计数,写到 `.uipreview/latency/<e
 为什么要固定时钟:速记的默认到期是"当日",周末跑出来全是"非交易日"的拒绝,量的不是解析。第一次跑就是在周日跑的,
 八条行话七条落到了大模型——查下来是周末,不是语法;固定时钟后八条全中,中位 1.6 毫秒。
 大模型那一段是真调用(会花钱,几十条约几分钱);数字见 `docs/reports/desktop-optimization-report.md` §7。
+
+## 启动前自动编 TS 引擎
+
+`npm start` / `npm run dev` / `stage:engine:*` 之前都会先跑 `tools/ensure_engine_ts.js`:`../engine-ts/dist` 不存在或比
+`src/*.ts`(含 tsconfig)旧就用 engine-ts 自带的 tsc 重编;engine-ts 没装依赖只提示不阻断(桌面端回退到 Python 引擎),
+`DAFRI_ENGINE=python` 直接跳过;tsc 失败则不启动。dist 不进仓库,新 clone 不用再记得手动编。
