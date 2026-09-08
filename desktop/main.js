@@ -24,8 +24,8 @@ const REPO_ROOT = PACKAGED
 // DAFRI_ENGINE=python 可强制回退到 Python 引擎。
 const TS_ENGINE_ROOT = PACKAGED
   ? path.join(process.resourcesPath, 'engine-ts')
-  : path.resolve(__dirname, '..', '..', 'trade-ts');
-// TS 引擎在打包布局下找不到 trade/prompts 的相对位置,用环境变量显式指过去
+  : path.resolve(__dirname, '..', 'engine-ts');
+// TS 引擎在打包布局下找不到仓库根 prompts/ 的相对位置,用环境变量显式指过去
 if (PACKAGED && !process.env.DAFRI_PROMPT_DIR) {
   process.env.DAFRI_PROMPT_DIR = path.join(process.resourcesPath, 'engine', 'prompts');
 }

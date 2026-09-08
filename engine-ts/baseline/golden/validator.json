@@ -1,0 +1,3476 @@
+{
+ "base_config": {
+  "prompt_version": "v1.8.0",
+  "llm": {
+   "model": "claude-opus-5",
+   "effort": "high",
+   "temperature": null
+  },
+  "limits": {
+   "max_order_notional": 50000.0,
+   "max_option_contracts": 10,
+   "max_mkt_shares": 200,
+   "min_confidence": 0.9,
+   "max_spread_slippage": 0.1,
+   "max_orders_per_input": 5,
+   "duplicate_window_minutes": 10,
+   "duplicate_qty_tolerance": 0.2
+  },
+  "policies": {
+   "auto_execute": false,
+   "allow_live_trading": false,
+   "require_trigger_price_verification": true,
+   "trigger_min_gap_bps": 5.0,
+   "closed_market_policy": "reject_market_orders"
+  },
+  "connections": {
+   "paper": {
+    "host": "127.0.0.1",
+    "port": 7497,
+    "client_id": 11
+   },
+   "live": {
+    "host": "127.0.0.1",
+    "port": 7496,
+    "client_id": 12
+   }
+  },
+  "accounts": [
+   {
+    "alias": "模拟",
+    "account_id": "DU7654321",
+    "is_paper": true,
+    "connection": "paper",
+    "default": true
+   },
+   {
+    "alias": "主账户",
+    "account_id": "U1234567",
+    "is_paper": false,
+    "connection": "live"
+   }
+  ],
+  "symbol_aliases": {
+   "苹果": "AAPL",
+   "英伟达": "NVDA",
+   "特斯拉": "TSLA"
+  },
+  "index_symbols": {
+   "SPX": {
+    "exchange": "CBOE",
+    "daily_trading_class": "SPXW",
+    "monthly_trading_class": "SPX"
+   }
+  },
+  "market_holidays": [
+   "2026-09-07"
+  ],
+  "early_close_days": [
+   "2026-11-27"
+  ]
+ },
+ "cases": [
+  {
+   "name": "stock_ok",
+   "payload": {
+    "intent_summary": "限价 230 买入 100 股 AAPL",
+    "contract": {
+     "secType": "STK",
+     "symbol": "AAPL",
+     "exchange": "SMART",
+     "currency": "USD"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 100,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": 230.0,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "回调到位",
+    "confidence": 0.99,
+    "warnings": []
+   },
+   "settings_over": null,
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [],
+    "signature": "DEFAULT|BUY|STK|AAPL",
+    "approved": {
+     "notional": 23000.0,
+     "signature": "DEFAULT|BUY|STK|AAPL",
+     "warnings": [],
+     "account_id": "DU7654321"
+    },
+    "contract_trading_class": null,
+    "leg_trading_classes": []
+   }
+  },
+  {
+   "name": "low_confidence",
+   "payload": {
+    "intent_summary": "限价 230 买入 100 股 AAPL",
+    "contract": {
+     "secType": "STK",
+     "symbol": "AAPL",
+     "exchange": "SMART",
+     "currency": "USD"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 100,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": 230.0,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "回调到位",
+    "confidence": 0.5,
+    "warnings": []
+   },
+   "settings_over": null,
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [
+     {
+      "code": "LOW_CONFIDENCE",
+      "message": "解析置信度 0.50 低于阈值 0.90,按规则改判拒绝。请把指令写得更明确后重试。"
+     }
+    ],
+    "signature": "DEFAULT|BUY|STK|AAPL"
+   }
+  },
+  {
+   "name": "unknown_account",
+   "payload": {
+    "intent_summary": "限价 230 买入 100 股 AAPL",
+    "contract": {
+     "secType": "STK",
+     "symbol": "AAPL",
+     "exchange": "SMART",
+     "currency": "USD"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "不存在",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 100,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": 230.0,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "回调到位",
+    "confidence": 0.99,
+    "warnings": []
+   },
+   "settings_over": null,
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [
+     {
+      "code": "UNKNOWN_ACCOUNT",
+      "message": "账户别名 '不存在' 不在别名表中(可用:模拟、主账户)。请改写指令或先在设置里添加别名。"
+     }
+    ],
+    "signature": "不存在|BUY|STK|AAPL"
+   }
+  },
+  {
+   "name": "live_disabled",
+   "payload": {
+    "intent_summary": "限价 230 买入 100 股 AAPL",
+    "contract": {
+     "secType": "STK",
+     "symbol": "AAPL",
+     "exchange": "SMART",
+     "currency": "USD"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "主账户",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 100,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": 230.0,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "回调到位",
+    "confidence": 0.99,
+    "warnings": []
+   },
+   "settings_over": null,
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [
+     {
+      "code": "LIVE_TRADING_DISABLED",
+      "message": "订单指向实盘账户 主账户,但当前 allow_live_trading=false(默认关闭)。请先在纸面账户跑够回归测试,再显式开启实盘。"
+     }
+    ],
+    "signature": "主账户|BUY|STK|AAPL"
+   }
+  },
+  {
+   "name": "live_enabled",
+   "payload": {
+    "intent_summary": "限价 230 买入 100 股 AAPL",
+    "contract": {
+     "secType": "STK",
+     "symbol": "AAPL",
+     "exchange": "SMART",
+     "currency": "USD"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "主账户",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 100,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": 230.0,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "回调到位",
+    "confidence": 0.99,
+    "warnings": []
+   },
+   "settings_over": {
+    "policies": {
+     "allow_live_trading": true
+    }
+   },
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [],
+    "signature": "主账户|BUY|STK|AAPL",
+    "approved": {
+     "notional": 23000.0,
+     "signature": "主账户|BUY|STK|AAPL",
+     "warnings": [],
+     "account_id": "U1234567"
+    },
+    "contract_trading_class": null,
+    "leg_trading_classes": []
+   }
+  },
+  {
+   "name": "expired_contract",
+   "payload": {
+    "intent_summary": "限价 5.5 买入 2 张 NVDA 20260821 180 Call",
+    "contract": {
+     "secType": "OPT",
+     "symbol": "NVDA",
+     "exchange": "SMART",
+     "currency": "USD",
+     "lastTradeDateOrContractMonth": "20250102",
+     "strike": 180.0,
+     "right": "C",
+     "multiplier": "100"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 2,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": 5.5,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "财报前布局",
+    "confidence": 0.97,
+    "warnings": []
+   },
+   "settings_over": null,
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [
+     {
+      "code": "EXPIRED_CONTRACT",
+      "message": "到期日 20250102 已早于当前美东日期 2026-08-14,合约不存在。"
+     }
+    ],
+    "signature": "DEFAULT|BUY|OPT|NVDA|20250102|180|C"
+   }
+  },
+  {
+   "name": "weekend_expiry",
+   "payload": {
+    "intent_summary": "限价 5.5 买入 2 张 NVDA 20260821 180 Call",
+    "contract": {
+     "secType": "OPT",
+     "symbol": "NVDA",
+     "exchange": "SMART",
+     "currency": "USD",
+     "lastTradeDateOrContractMonth": "20260815",
+     "strike": 180.0,
+     "right": "C",
+     "multiplier": "100"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 2,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": 5.5,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "财报前布局",
+    "confidence": 0.97,
+    "warnings": []
+   },
+   "settings_over": null,
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [
+     {
+      "code": "EXPIRED_CONTRACT",
+      "message": "到期日 20260815 不是交易日(周末或休市日),请确认后重写。"
+     }
+    ],
+    "signature": "DEFAULT|BUY|OPT|NVDA|20260815|180|C"
+   }
+  },
+  {
+   "name": "holiday_expiry",
+   "payload": {
+    "intent_summary": "限价 5.5 买入 2 张 NVDA 20260821 180 Call",
+    "contract": {
+     "secType": "OPT",
+     "symbol": "NVDA",
+     "exchange": "SMART",
+     "currency": "USD",
+     "lastTradeDateOrContractMonth": "20260907",
+     "strike": 180.0,
+     "right": "C",
+     "multiplier": "100"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 2,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": 5.5,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "财报前布局",
+    "confidence": 0.97,
+    "warnings": []
+   },
+   "settings_over": null,
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [
+     {
+      "code": "EXPIRED_CONTRACT",
+      "message": "到期日 20260907 不是交易日(周末或休市日),请确认后重写。"
+     }
+    ],
+    "signature": "DEFAULT|BUY|OPT|NVDA|20260907|180|C"
+   }
+  },
+  {
+   "name": "tclass_monthly_fix",
+   "payload": {
+    "intent_summary": "卖出 2 张 SPX 7200/7250/7650/7700 铁鹰",
+    "contract": {
+     "secType": "BAG",
+     "symbol": "SPX",
+     "exchange": "SMART",
+     "currency": "USD",
+     "combo_strategy": "IRON_CONDOR",
+     "legs": [
+      {
+       "action": "BUY",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260918",
+       "strike": 7200.0,
+       "right": "P",
+       "tradingClass": "SPXW"
+      },
+      {
+       "action": "SELL",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260918",
+       "strike": 7250.0,
+       "right": "P",
+       "tradingClass": "SPX"
+      },
+      {
+       "action": "SELL",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260918",
+       "strike": 7650.0,
+       "right": "C",
+       "tradingClass": "SPX"
+      },
+      {
+       "action": "BUY",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260918",
+       "strike": 7700.0,
+       "right": "C",
+       "tradingClass": "SPX"
+      }
+     ]
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "SELL",
+     "orderType": "LMT",
+     "totalQuantity": 2,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": 12.0,
+     "tif": "GTC",
+     "outsideRth": false
+    },
+    "reason": "预计区间震荡",
+    "confidence": 0.96,
+    "warnings": []
+   },
+   "settings_over": null,
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [],
+    "signature": "DEFAULT|SELL|BAG|SPX|BUY|1|20260918|7200|P|SELL|1|20260918|7250|P|SELL|1|20260918|7650|C|BUY|1|20260918|7700|C",
+    "approved": {
+     "notional": 7600.0,
+     "signature": "DEFAULT|SELL|BAG|SPX|BUY|1|20260918|7200|P|SELL|1|20260918|7250|P|SELL|1|20260918|7650|C|BUY|1|20260918|7700|C",
+     "warnings": [
+      "SPX 20260918 到期的 tradingClass 由 'SPXW' 复核为 'SPX'(按到期日判定)"
+     ],
+     "account_id": "DU7654321"
+    },
+    "contract_trading_class": null,
+    "leg_trading_classes": [
+     "SPX",
+     "SPX",
+     "SPX",
+     "SPX"
+    ]
+   }
+  },
+  {
+   "name": "vertical_ok",
+   "payload": {
+    "intent_summary": "SPX 涨到 7500 时买入 1 张 7520/7550 看涨借方价差",
+    "contract": {
+     "secType": "BAG",
+     "symbol": "SPX",
+     "exchange": "SMART",
+     "currency": "USD",
+     "combo_strategy": "VERTICAL",
+     "legs": [
+      {
+       "action": "BUY",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260814",
+       "strike": 7520.0,
+       "right": "C",
+       "tradingClass": "SPXW"
+      },
+      {
+       "action": "SELL",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260814",
+       "strike": 7550.0,
+       "right": "C",
+       "tradingClass": "SPXW"
+      }
+     ]
+    },
+    "execution_type": "CONDITIONAL",
+    "trigger": {
+     "type": "PRICE",
+     "symbol": "SPX",
+     "secType": "IND",
+     "operator": ">=",
+     "value": 7500.0
+    },
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 1,
+     "price_mode": "AUTO_MID",
+     "lmtPrice": null,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "突破 7500 整数关口后追动能",
+    "confidence": 0.96,
+    "warnings": []
+   },
+   "settings_over": null,
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [],
+    "signature": "DEFAULT|BUY|BAG|SPX|BUY|1|20260814|7520|C|SELL|1|20260814|7550|C",
+    "approved": {
+     "notional": 3000.0,
+     "signature": "DEFAULT|BUY|BAG|SPX|BUY|1|20260814|7520|C|SELL|1|20260814|7550|C",
+     "warnings": [
+      "已复核:SPX 现价 7462.3500,触发条件 >= 7500.0000 方向一致"
+     ],
+     "account_id": "DU7654321"
+    },
+    "contract_trading_class": null,
+    "leg_trading_classes": [
+     "SPXW",
+     "SPXW"
+    ]
+   }
+  },
+  {
+   "name": "vertical_mixed_right",
+   "payload": {
+    "intent_summary": "SPX 涨到 7500 时买入 1 张 7520/7550 看涨借方价差",
+    "contract": {
+     "secType": "BAG",
+     "symbol": "SPX",
+     "exchange": "SMART",
+     "currency": "USD",
+     "combo_strategy": "VERTICAL",
+     "legs": [
+      {
+       "action": "BUY",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260814",
+       "strike": 7520.0,
+       "right": "C",
+       "tradingClass": "SPXW"
+      },
+      {
+       "action": "SELL",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260814",
+       "strike": 7550.0,
+       "right": "P",
+       "tradingClass": "SPXW"
+      }
+     ]
+    },
+    "execution_type": "CONDITIONAL",
+    "trigger": {
+     "type": "PRICE",
+     "symbol": "SPX",
+     "secType": "IND",
+     "operator": ">=",
+     "value": 7500.0
+    },
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 1,
+     "price_mode": "AUTO_MID",
+     "lmtPrice": null,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "突破 7500 整数关口后追动能",
+    "confidence": 0.96,
+    "warnings": []
+   },
+   "settings_over": null,
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [
+     {
+      "code": "BAD_SPREAD",
+      "message": "两腿必须同为 Call 或同为 Put。"
+     }
+    ],
+    "signature": "DEFAULT|BUY|BAG|SPX|BUY|1|20260814|7520|C|SELL|1|20260814|7550|P"
+   }
+  },
+  {
+   "name": "vertical_diff_expiry",
+   "payload": {
+    "intent_summary": "SPX 涨到 7500 时买入 1 张 7520/7550 看涨借方价差",
+    "contract": {
+     "secType": "BAG",
+     "symbol": "SPX",
+     "exchange": "SMART",
+     "currency": "USD",
+     "combo_strategy": "VERTICAL",
+     "legs": [
+      {
+       "action": "BUY",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260814",
+       "strike": 7520.0,
+       "right": "C",
+       "tradingClass": "SPXW"
+      },
+      {
+       "action": "SELL",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260821",
+       "strike": 7550.0,
+       "right": "C",
+       "tradingClass": "SPXW"
+      }
+     ]
+    },
+    "execution_type": "CONDITIONAL",
+    "trigger": {
+     "type": "PRICE",
+     "symbol": "SPX",
+     "secType": "IND",
+     "operator": ">=",
+     "value": 7500.0
+    },
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 1,
+     "price_mode": "AUTO_MID",
+     "lmtPrice": null,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "突破 7500 整数关口后追动能",
+    "confidence": 0.96,
+    "warnings": []
+   },
+   "settings_over": null,
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [
+     {
+      "code": "BAD_SPREAD",
+      "message": "垂直价差两腿到期日必须相同。"
+     }
+    ],
+    "signature": "DEFAULT|BUY|BAG|SPX|BUY|1|20260814|7520|C|SELL|1|20260821|7550|C"
+   }
+  },
+  {
+   "name": "vertical_debit_wrong_way",
+   "payload": {
+    "intent_summary": "SPX 涨到 7500 时买入 1 张 7520/7550 看涨借方价差",
+    "contract": {
+     "secType": "BAG",
+     "symbol": "SPX",
+     "exchange": "SMART",
+     "currency": "USD",
+     "combo_strategy": "VERTICAL",
+     "legs": [
+      {
+       "action": "BUY",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260814",
+       "strike": 7550.0,
+       "right": "C",
+       "tradingClass": "SPXW"
+      },
+      {
+       "action": "SELL",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260814",
+       "strike": 7520.0,
+       "right": "C",
+       "tradingClass": "SPXW"
+      }
+     ]
+    },
+    "execution_type": "CONDITIONAL",
+    "trigger": {
+     "type": "PRICE",
+     "symbol": "SPX",
+     "secType": "IND",
+     "operator": ">=",
+     "value": 7500.0
+    },
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 1,
+     "price_mode": "AUTO_MID",
+     "lmtPrice": null,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "突破 7500 整数关口后追动能",
+    "confidence": 0.96,
+    "warnings": []
+   },
+   "settings_over": null,
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [
+     {
+      "code": "BAD_SPREAD",
+      "message": "买入(借方) call spread 的腿方向不对:买 7550.00 / 卖 7520.00 不构成该方向的垂直价差。"
+     }
+    ],
+    "signature": "DEFAULT|BUY|BAG|SPX|SELL|1|20260814|7520|C|BUY|1|20260814|7550|C"
+   }
+  },
+  {
+   "name": "vertical_premium_over_width",
+   "payload": {
+    "intent_summary": "SPX 涨到 7500 时买入 1 张 7520/7550 看涨借方价差",
+    "contract": {
+     "secType": "BAG",
+     "symbol": "SPX",
+     "exchange": "SMART",
+     "currency": "USD",
+     "combo_strategy": "VERTICAL",
+     "legs": [
+      {
+       "action": "BUY",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260814",
+       "strike": 7520.0,
+       "right": "C",
+       "tradingClass": "SPXW"
+      },
+      {
+       "action": "SELL",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260814",
+       "strike": 7550.0,
+       "right": "C",
+       "tradingClass": "SPXW"
+      }
+     ]
+    },
+    "execution_type": "CONDITIONAL",
+    "trigger": {
+     "type": "PRICE",
+     "symbol": "SPX",
+     "secType": "IND",
+     "operator": ">=",
+     "value": 7500.0
+    },
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 1,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": 45.0,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "突破 7500 整数关口后追动能",
+    "confidence": 0.96,
+    "warnings": []
+   },
+   "settings_over": null,
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [
+     {
+      "code": "BAD_SPREAD",
+      "message": "借方价差净权利金 45.00 超过行权价差 30.00,数学上不可能盈利。"
+     }
+    ],
+    "signature": "DEFAULT|BUY|BAG|SPX|BUY|1|20260814|7520|C|SELL|1|20260814|7550|C"
+   }
+  },
+  {
+   "name": "butterfly_ok",
+   "payload": {
+    "intent_summary": "SPX 涨到 7500 时买入 1 张 7500/7520/7540 看涨蝴蝶",
+    "contract": {
+     "secType": "BAG",
+     "symbol": "SPX",
+     "exchange": "SMART",
+     "currency": "USD",
+     "combo_strategy": "BUTTERFLY",
+     "legs": [
+      {
+       "action": "BUY",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260814",
+       "strike": 7500.0,
+       "right": "C",
+       "tradingClass": "SPXW"
+      },
+      {
+       "action": "SELL",
+       "ratio": 2,
+       "lastTradeDateOrContractMonth": "20260814",
+       "strike": 7520.0,
+       "right": "C",
+       "tradingClass": "SPXW"
+      },
+      {
+       "action": "BUY",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260814",
+       "strike": 7540.0,
+       "right": "C",
+       "tradingClass": "SPXW"
+      }
+     ]
+    },
+    "execution_type": "CONDITIONAL",
+    "trigger": {
+     "type": "PRICE",
+     "symbol": "SPX",
+     "secType": "IND",
+     "operator": ">=",
+     "value": 7500.0
+    },
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 1,
+     "price_mode": "AUTO_MID",
+     "lmtPrice": null,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "预期钉住 7520",
+    "confidence": 0.95,
+    "warnings": []
+   },
+   "settings_over": null,
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [],
+    "signature": "DEFAULT|BUY|BAG|SPX|BUY|1|20260814|7500|C|SELL|2|20260814|7520|C|BUY|1|20260814|7540|C",
+    "approved": {
+     "notional": 2000.0,
+     "signature": "DEFAULT|BUY|BAG|SPX|BUY|1|20260814|7500|C|SELL|2|20260814|7520|C|BUY|1|20260814|7540|C",
+     "warnings": [
+      "已复核:SPX 现价 7462.3500,触发条件 >= 7500.0000 方向一致"
+     ],
+     "account_id": "DU7654321"
+    },
+    "contract_trading_class": null,
+    "leg_trading_classes": [
+     "SPXW",
+     "SPXW",
+     "SPXW"
+    ]
+   }
+  },
+  {
+   "name": "butterfly_unequal_wings",
+   "payload": {
+    "intent_summary": "SPX 涨到 7500 时买入 1 张 7500/7520/7540 看涨蝴蝶",
+    "contract": {
+     "secType": "BAG",
+     "symbol": "SPX",
+     "exchange": "SMART",
+     "currency": "USD",
+     "combo_strategy": "BUTTERFLY",
+     "legs": [
+      {
+       "action": "BUY",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260814",
+       "strike": 7500.0,
+       "right": "C",
+       "tradingClass": "SPXW"
+      },
+      {
+       "action": "SELL",
+       "ratio": 2,
+       "lastTradeDateOrContractMonth": "20260814",
+       "strike": 7520.0,
+       "right": "C",
+       "tradingClass": "SPXW"
+      },
+      {
+       "action": "BUY",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260814",
+       "strike": 7550.0,
+       "right": "C",
+       "tradingClass": "SPXW"
+      }
+     ]
+    },
+    "execution_type": "CONDITIONAL",
+    "trigger": {
+     "type": "PRICE",
+     "symbol": "SPX",
+     "secType": "IND",
+     "operator": ">=",
+     "value": 7500.0
+    },
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 1,
+     "price_mode": "AUTO_MID",
+     "lmtPrice": null,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "预期钉住 7520",
+    "confidence": 0.95,
+    "warnings": []
+   },
+   "settings_over": null,
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [
+     {
+      "code": "BAD_SPREAD",
+      "message": "蝴蝶两翼必须等距(当前 20.00 / 30.00)。不等翼(broken wing)结构不支持。"
+     }
+    ],
+    "signature": "DEFAULT|BUY|BAG|SPX|BUY|1|20260814|7500|C|SELL|2|20260814|7520|C|BUY|1|20260814|7550|C"
+   }
+  },
+  {
+   "name": "condor_ok",
+   "payload": {
+    "intent_summary": "卖出 2 张 SPX 7200/7250/7650/7700 铁鹰",
+    "contract": {
+     "secType": "BAG",
+     "symbol": "SPX",
+     "exchange": "SMART",
+     "currency": "USD",
+     "combo_strategy": "IRON_CONDOR",
+     "legs": [
+      {
+       "action": "BUY",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260918",
+       "strike": 7200.0,
+       "right": "P",
+       "tradingClass": "SPX"
+      },
+      {
+       "action": "SELL",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260918",
+       "strike": 7250.0,
+       "right": "P",
+       "tradingClass": "SPX"
+      },
+      {
+       "action": "SELL",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260918",
+       "strike": 7650.0,
+       "right": "C",
+       "tradingClass": "SPX"
+      },
+      {
+       "action": "BUY",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260918",
+       "strike": 7700.0,
+       "right": "C",
+       "tradingClass": "SPX"
+      }
+     ]
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "SELL",
+     "orderType": "LMT",
+     "totalQuantity": 2,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": 12.0,
+     "tif": "GTC",
+     "outsideRth": false
+    },
+    "reason": "预计区间震荡",
+    "confidence": 0.96,
+    "warnings": []
+   },
+   "settings_over": null,
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [],
+    "signature": "DEFAULT|SELL|BAG|SPX|BUY|1|20260918|7200|P|SELL|1|20260918|7250|P|SELL|1|20260918|7650|C|BUY|1|20260918|7700|C",
+    "approved": {
+     "notional": 7600.0,
+     "signature": "DEFAULT|SELL|BAG|SPX|BUY|1|20260918|7200|P|SELL|1|20260918|7250|P|SELL|1|20260918|7650|C|BUY|1|20260918|7700|C",
+     "warnings": [],
+     "account_id": "DU7654321"
+    },
+    "contract_trading_class": null,
+    "leg_trading_classes": [
+     "SPX",
+     "SPX",
+     "SPX",
+     "SPX"
+    ]
+   }
+  },
+  {
+   "name": "condor_buy_rejected",
+   "payload": {
+    "intent_summary": "卖出 2 张 SPX 7200/7250/7650/7700 铁鹰",
+    "contract": {
+     "secType": "BAG",
+     "symbol": "SPX",
+     "exchange": "SMART",
+     "currency": "USD",
+     "combo_strategy": "IRON_CONDOR",
+     "legs": [
+      {
+       "action": "BUY",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260918",
+       "strike": 7200.0,
+       "right": "P",
+       "tradingClass": "SPX"
+      },
+      {
+       "action": "SELL",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260918",
+       "strike": 7250.0,
+       "right": "P",
+       "tradingClass": "SPX"
+      },
+      {
+       "action": "SELL",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260918",
+       "strike": 7650.0,
+       "right": "C",
+       "tradingClass": "SPX"
+      },
+      {
+       "action": "BUY",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260918",
+       "strike": 7700.0,
+       "right": "C",
+       "tradingClass": "SPX"
+      }
+     ]
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 2,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": 12.0,
+     "tif": "GTC",
+     "outsideRth": false
+    },
+    "reason": "预计区间震荡",
+    "confidence": 0.96,
+    "warnings": []
+   },
+   "settings_over": null,
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [
+     {
+      "code": "BAD_SPREAD",
+      "message": "仅支持卖出(贷方)铁鹰:收权利金、卖内侧买外翼。借方(反向)铁鹰不支持。"
+     }
+    ],
+    "signature": "DEFAULT|BUY|BAG|SPX|BUY|1|20260918|7200|P|SELL|1|20260918|7250|P|SELL|1|20260918|7650|C|BUY|1|20260918|7700|C"
+   }
+  },
+  {
+   "name": "trigger_no_snapshot",
+   "payload": {
+    "intent_summary": "SPX 涨到 7500 时买入 1 张 7520/7550 看涨借方价差",
+    "contract": {
+     "secType": "BAG",
+     "symbol": "SPX",
+     "exchange": "SMART",
+     "currency": "USD",
+     "combo_strategy": "VERTICAL",
+     "legs": [
+      {
+       "action": "BUY",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260814",
+       "strike": 7520.0,
+       "right": "C",
+       "tradingClass": "SPXW"
+      },
+      {
+       "action": "SELL",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260814",
+       "strike": 7550.0,
+       "right": "C",
+       "tradingClass": "SPXW"
+      }
+     ]
+    },
+    "execution_type": "CONDITIONAL",
+    "trigger": {
+     "type": "PRICE",
+     "symbol": "SPX",
+     "secType": "IND",
+     "operator": ">=",
+     "value": 7500.0
+    },
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 1,
+     "price_mode": "AUTO_MID",
+     "lmtPrice": null,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "突破 7500 整数关口后追动能",
+    "confidence": 0.96,
+    "warnings": []
+   },
+   "settings_over": null,
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {},
+   "recents": null,
+   "expect": {
+    "issues": [
+     {
+      "code": "AMBIGUOUS_TRIGGER",
+      "message": "缺少 SPX 的现价快照,无法独立复核触发方向(>= 7500.0000),按策略拒绝。"
+     }
+    ],
+    "signature": "DEFAULT|BUY|BAG|SPX|BUY|1|20260814|7520|C|SELL|1|20260814|7550|C"
+   }
+  },
+  {
+   "name": "trigger_no_snapshot_lenient",
+   "payload": {
+    "intent_summary": "SPX 涨到 7500 时买入 1 张 7520/7550 看涨借方价差",
+    "contract": {
+     "secType": "BAG",
+     "symbol": "SPX",
+     "exchange": "SMART",
+     "currency": "USD",
+     "combo_strategy": "VERTICAL",
+     "legs": [
+      {
+       "action": "BUY",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260814",
+       "strike": 7520.0,
+       "right": "C",
+       "tradingClass": "SPXW"
+      },
+      {
+       "action": "SELL",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260814",
+       "strike": 7550.0,
+       "right": "C",
+       "tradingClass": "SPXW"
+      }
+     ]
+    },
+    "execution_type": "CONDITIONAL",
+    "trigger": {
+     "type": "PRICE",
+     "symbol": "SPX",
+     "secType": "IND",
+     "operator": ">=",
+     "value": 7500.0
+    },
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 1,
+     "price_mode": "AUTO_MID",
+     "lmtPrice": null,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "突破 7500 整数关口后追动能",
+    "confidence": 0.96,
+    "warnings": []
+   },
+   "settings_over": {
+    "policies": {
+     "require_trigger_price_verification": false
+    }
+   },
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {},
+   "recents": null,
+   "expect": {
+    "issues": [],
+    "signature": "DEFAULT|BUY|BAG|SPX|BUY|1|20260814|7520|C|SELL|1|20260814|7550|C",
+    "approved": {
+     "notional": 3000.0,
+     "signature": "DEFAULT|BUY|BAG|SPX|BUY|1|20260814|7520|C|SELL|1|20260814|7550|C",
+     "warnings": [
+      "未取得 SPX 现价,触发方向未经软件层复核"
+     ],
+     "account_id": "DU7654321"
+    },
+    "contract_trading_class": null,
+    "leg_trading_classes": [
+     "SPXW",
+     "SPXW"
+    ]
+   }
+  },
+  {
+   "name": "trigger_gap_too_small",
+   "payload": {
+    "intent_summary": "SPX 涨到 7500 时买入 1 张 7520/7550 看涨借方价差",
+    "contract": {
+     "secType": "BAG",
+     "symbol": "SPX",
+     "exchange": "SMART",
+     "currency": "USD",
+     "combo_strategy": "VERTICAL",
+     "legs": [
+      {
+       "action": "BUY",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260814",
+       "strike": 7520.0,
+       "right": "C",
+       "tradingClass": "SPXW"
+      },
+      {
+       "action": "SELL",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260814",
+       "strike": 7550.0,
+       "right": "C",
+       "tradingClass": "SPXW"
+      }
+     ]
+    },
+    "execution_type": "CONDITIONAL",
+    "trigger": {
+     "type": "PRICE",
+     "symbol": "SPX",
+     "secType": "IND",
+     "operator": ">=",
+     "value": 7462.4
+    },
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 1,
+     "price_mode": "AUTO_MID",
+     "lmtPrice": null,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "突破 7500 整数关口后追动能",
+    "confidence": 0.96,
+    "warnings": []
+   },
+   "settings_over": null,
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [
+     {
+      "code": "AMBIGUOUS_TRIGGER",
+      "message": "SPX 现价 7462.3500 与触发价 7462.4000 相差仅 0.1 个基点,方向不可靠,已拒绝。"
+     }
+    ],
+    "signature": "DEFAULT|BUY|BAG|SPX|BUY|1|20260814|7520|C|SELL|1|20260814|7550|C"
+   }
+  },
+  {
+   "name": "trigger_wrong_operator",
+   "payload": {
+    "intent_summary": "SPX 涨到 7500 时买入 1 张 7520/7550 看涨借方价差",
+    "contract": {
+     "secType": "BAG",
+     "symbol": "SPX",
+     "exchange": "SMART",
+     "currency": "USD",
+     "combo_strategy": "VERTICAL",
+     "legs": [
+      {
+       "action": "BUY",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260814",
+       "strike": 7520.0,
+       "right": "C",
+       "tradingClass": "SPXW"
+      },
+      {
+       "action": "SELL",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260814",
+       "strike": 7550.0,
+       "right": "C",
+       "tradingClass": "SPXW"
+      }
+     ]
+    },
+    "execution_type": "CONDITIONAL",
+    "trigger": {
+     "type": "PRICE",
+     "symbol": "SPX",
+     "secType": "IND",
+     "operator": "<=",
+     "value": 7500.0
+    },
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 1,
+     "price_mode": "AUTO_MID",
+     "lmtPrice": null,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "突破 7500 整数关口后追动能",
+    "confidence": 0.96,
+    "warnings": []
+   },
+   "settings_over": null,
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [
+     {
+      "code": "TRIGGER_MISMATCH",
+      "message": "触发方向判反了:SPX 现价 7462.3500 低于 触发价 7500.0000,应为 >=,模型给的是 <=。"
+     }
+    ],
+    "signature": "DEFAULT|BUY|BAG|SPX|BUY|1|20260814|7520|C|SELL|1|20260814|7550|C"
+   }
+  },
+  {
+   "name": "stock_notional_over",
+   "payload": {
+    "intent_summary": "限价 230 买入 100 股 AAPL",
+    "contract": {
+     "secType": "STK",
+     "symbol": "AAPL",
+     "exchange": "SMART",
+     "currency": "USD"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 300,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": 230.0,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "回调到位",
+    "confidence": 0.99,
+    "warnings": []
+   },
+   "settings_over": null,
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [
+     {
+      "code": "EXCEEDS_LIMIT",
+      "message": "本笔风险敞口约 69000.00 USD,超过单笔上限 50000.00 USD。"
+     }
+    ],
+    "signature": "DEFAULT|BUY|STK|AAPL"
+   }
+  },
+  {
+   "name": "option_sell_call_rejected",
+   "payload": {
+    "intent_summary": "限价 5.5 买入 2 张 NVDA 20260821 180 Call",
+    "contract": {
+     "secType": "OPT",
+     "symbol": "NVDA",
+     "exchange": "SMART",
+     "currency": "USD",
+     "lastTradeDateOrContractMonth": "20260821",
+     "strike": 180.0,
+     "right": "C",
+     "multiplier": "100"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "SELL",
+     "orderType": "LMT",
+     "totalQuantity": 2,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": 5.5,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "财报前布局",
+    "confidence": 0.97,
+    "warnings": []
+   },
+   "settings_over": null,
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [
+     {
+      "code": "UNSUPPORTED",
+      "message": "裸卖 Call 的最大亏损无上限,且本系统无法核对你是否持有正股(备兑)。单腿卖出 Call 不支持;备兑思路请直接在 TWS 操作,或改用风险有界的贷方价差(卖出 call spread)。"
+     }
+    ],
+    "signature": "DEFAULT|SELL|OPT|NVDA|20260821|180|C"
+   }
+  },
+  {
+   "name": "option_sell_put_cash_secured",
+   "payload": {
+    "intent_summary": "限价 5.5 买入 2 张 NVDA 20260821 180 Call",
+    "contract": {
+     "secType": "OPT",
+     "symbol": "NVDA",
+     "exchange": "SMART",
+     "currency": "USD",
+     "lastTradeDateOrContractMonth": "20260821",
+     "strike": 180.0,
+     "right": "P",
+     "multiplier": "100"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "SELL",
+     "orderType": "LMT",
+     "totalQuantity": 2,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": 5.5,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "财报前布局",
+    "confidence": 0.97,
+    "warnings": []
+   },
+   "settings_over": null,
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [],
+    "signature": "DEFAULT|SELL|OPT|NVDA|20260821|180|P",
+    "approved": {
+     "notional": 36000.0,
+     "signature": "DEFAULT|SELL|OPT|NVDA|20260821|180|P",
+     "warnings": [],
+     "account_id": "DU7654321"
+    },
+    "contract_trading_class": null,
+    "leg_trading_classes": []
+   }
+  },
+  {
+   "name": "option_sell_put_over_limit",
+   "payload": {
+    "intent_summary": "限价 5.5 买入 2 张 NVDA 20260821 180 Call",
+    "contract": {
+     "secType": "OPT",
+     "symbol": "NVDA",
+     "exchange": "SMART",
+     "currency": "USD",
+     "lastTradeDateOrContractMonth": "20260821",
+     "strike": 400.0,
+     "right": "P",
+     "multiplier": "100"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "SELL",
+     "orderType": "LMT",
+     "totalQuantity": 10,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": 3.0,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "财报前布局",
+    "confidence": 0.97,
+    "warnings": []
+   },
+   "settings_over": null,
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [
+     {
+      "code": "EXCEEDS_LIMIT",
+      "message": "本笔风险敞口约 400000.00 USD,超过单笔上限 50000.00 USD。"
+     }
+    ],
+    "signature": "DEFAULT|SELL|OPT|NVDA|20260821|400|P"
+   }
+  },
+  {
+   "name": "option_buy_mkt_unpriceable",
+   "payload": {
+    "intent_summary": "限价 5.5 买入 2 张 NVDA 20260821 180 Call",
+    "contract": {
+     "secType": "OPT",
+     "symbol": "NVDA",
+     "exchange": "SMART",
+     "currency": "USD",
+     "lastTradeDateOrContractMonth": "20260821",
+     "strike": 180.0,
+     "right": "C",
+     "multiplier": "100"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "MKT",
+     "totalQuantity": 2,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": null,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "财报前布局",
+    "confidence": 0.97,
+    "warnings": []
+   },
+   "settings_over": null,
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [
+     {
+      "code": "UNPRICEABLE",
+      "message": "单腿期权缺少可用于估算风险敞口的价格(权利金),无法核对限额,已拒绝。请写明权利金上限,例如'权利金不超过 5.5'。"
+     }
+    ],
+    "signature": "DEFAULT|BUY|OPT|NVDA|20260821|180|C"
+   }
+  },
+  {
+   "name": "option_contracts_over",
+   "payload": {
+    "intent_summary": "限价 5.5 买入 2 张 NVDA 20260821 180 Call",
+    "contract": {
+     "secType": "OPT",
+     "symbol": "NVDA",
+     "exchange": "SMART",
+     "currency": "USD",
+     "lastTradeDateOrContractMonth": "20260821",
+     "strike": 180.0,
+     "right": "C",
+     "multiplier": "100"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 11,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": 0.5,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "财报前布局",
+    "confidence": 0.97,
+    "warnings": []
+   },
+   "settings_over": null,
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [
+     {
+      "code": "EXCEEDS_LIMIT",
+      "message": "期权/价差单笔 11 张,超过上限 10 张。"
+     }
+    ],
+    "signature": "DEFAULT|BUY|OPT|NVDA|20260821|180|C"
+   }
+  },
+  {
+   "name": "tight_nvda_two_calls_ok",
+   "payload": {
+    "intent_summary": "限价 5.5 买入 2 张 NVDA 20260821 180 Call",
+    "contract": {
+     "secType": "OPT",
+     "symbol": "NVDA",
+     "exchange": "SMART",
+     "currency": "USD",
+     "lastTradeDateOrContractMonth": "20260821",
+     "strike": 180.0,
+     "right": "C",
+     "multiplier": "100"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 2,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": 5.5,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "财报前布局",
+    "confidence": 0.97,
+    "warnings": []
+   },
+   "settings_over": {
+    "limits": {
+     "max_order_notional": 5000.0,
+     "max_option_contracts": 5
+    }
+   },
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [],
+    "signature": "DEFAULT|BUY|OPT|NVDA|20260821|180|C",
+    "approved": {
+     "notional": 1100.0,
+     "signature": "DEFAULT|BUY|OPT|NVDA|20260821|180|C",
+     "warnings": [],
+     "account_id": "DU7654321"
+    },
+    "contract_trading_class": null,
+    "leg_trading_classes": []
+   }
+  },
+  {
+   "name": "tight_spy_put_ok",
+   "payload": {
+    "intent_summary": "限价 3 买入 1 张 SPY 20260814 560 Put",
+    "contract": {
+     "secType": "OPT",
+     "symbol": "SPY",
+     "exchange": "SMART",
+     "currency": "USD",
+     "lastTradeDateOrContractMonth": "20260814",
+     "strike": 560.0,
+     "right": "P",
+     "multiplier": "100"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 1,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": 3.0,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "财报前布局",
+    "confidence": 0.97,
+    "warnings": []
+   },
+   "settings_over": {
+    "limits": {
+     "max_order_notional": 5000.0,
+     "max_option_contracts": 5
+    }
+   },
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [],
+    "signature": "DEFAULT|BUY|OPT|SPY|20260814|560|P",
+    "approved": {
+     "notional": 300.0,
+     "signature": "DEFAULT|BUY|OPT|SPY|20260814|560|P",
+     "warnings": [],
+     "account_id": "DU7654321"
+    },
+    "contract_trading_class": null,
+    "leg_trading_classes": []
+   }
+  },
+  {
+   "name": "tight_condor_4800_ok",
+   "payload": {
+    "intent_summary": "卖出 1 张 SPX 今天 7300/7350/7700/7750 铁鹰,收权利金不低于 2",
+    "contract": {
+     "secType": "BAG",
+     "symbol": "SPX",
+     "exchange": "SMART",
+     "currency": "USD",
+     "combo_strategy": "IRON_CONDOR",
+     "legs": [
+      {
+       "action": "BUY",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260814",
+       "strike": 7300.0,
+       "right": "P",
+       "tradingClass": "SPXW"
+      },
+      {
+       "action": "SELL",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260814",
+       "strike": 7350.0,
+       "right": "P",
+       "tradingClass": "SPXW"
+      },
+      {
+       "action": "SELL",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260814",
+       "strike": 7700.0,
+       "right": "C",
+       "tradingClass": "SPXW"
+      },
+      {
+       "action": "BUY",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260814",
+       "strike": 7750.0,
+       "right": "C",
+       "tradingClass": "SPXW"
+      }
+     ]
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "SELL",
+     "orderType": "LMT",
+     "totalQuantity": 1,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": 2.0,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "预计区间震荡",
+    "confidence": 0.96,
+    "warnings": []
+   },
+   "settings_over": {
+    "limits": {
+     "max_order_notional": 5000.0,
+     "max_option_contracts": 5
+    }
+   },
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [],
+    "signature": "DEFAULT|SELL|BAG|SPX|BUY|1|20260814|7300|P|SELL|1|20260814|7350|P|SELL|1|20260814|7700|C|BUY|1|20260814|7750|C",
+    "approved": {
+     "notional": 4800.0,
+     "signature": "DEFAULT|SELL|BAG|SPX|BUY|1|20260814|7300|P|SELL|1|20260814|7350|P|SELL|1|20260814|7700|C|BUY|1|20260814|7750|C",
+     "warnings": [],
+     "account_id": "DU7654321"
+    },
+    "contract_trading_class": null,
+    "leg_trading_classes": [
+     "SPXW",
+     "SPXW",
+     "SPXW",
+     "SPXW"
+    ]
+   }
+  },
+  {
+   "name": "tight_call_spread_auto_mid_ok",
+   "payload": {
+    "intent_summary": "SPX 涨到 7500 时买入 1 张 7520/7550 看涨借方价差",
+    "contract": {
+     "secType": "BAG",
+     "symbol": "SPX",
+     "exchange": "SMART",
+     "currency": "USD",
+     "combo_strategy": "VERTICAL",
+     "legs": [
+      {
+       "action": "BUY",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260814",
+       "strike": 7520.0,
+       "right": "C",
+       "tradingClass": "SPXW"
+      },
+      {
+       "action": "SELL",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260814",
+       "strike": 7550.0,
+       "right": "C",
+       "tradingClass": "SPXW"
+      }
+     ]
+    },
+    "execution_type": "CONDITIONAL",
+    "trigger": {
+     "type": "PRICE",
+     "symbol": "SPX",
+     "secType": "IND",
+     "operator": ">=",
+     "value": 7500.0
+    },
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 1,
+     "price_mode": "AUTO_MID",
+     "lmtPrice": null,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "突破 7500 整数关口后追动能",
+    "confidence": 0.96,
+    "warnings": []
+   },
+   "settings_over": {
+    "limits": {
+     "max_order_notional": 5000.0,
+     "max_option_contracts": 5
+    }
+   },
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [],
+    "signature": "DEFAULT|BUY|BAG|SPX|BUY|1|20260814|7520|C|SELL|1|20260814|7550|C",
+    "approved": {
+     "notional": 3000.0,
+     "signature": "DEFAULT|BUY|BAG|SPX|BUY|1|20260814|7520|C|SELL|1|20260814|7550|C",
+     "warnings": [
+      "已复核:SPX 现价 7462.3500,触发条件 >= 7500.0000 方向一致"
+     ],
+     "account_id": "DU7654321"
+    },
+    "contract_trading_class": null,
+    "leg_trading_classes": [
+     "SPXW",
+     "SPXW"
+    ]
+   }
+  },
+  {
+   "name": "tight_stock_23000_over",
+   "payload": {
+    "intent_summary": "限价 230 买入 100 股 AAPL",
+    "contract": {
+     "secType": "STK",
+     "symbol": "AAPL",
+     "exchange": "SMART",
+     "currency": "USD"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 100,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": 230.0,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "回调到位",
+    "confidence": 0.99,
+    "warnings": []
+   },
+   "settings_over": {
+    "limits": {
+     "max_order_notional": 5000.0,
+     "max_option_contracts": 5
+    }
+   },
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [
+     {
+      "code": "EXCEEDS_LIMIT",
+      "message": "本笔风险敞口约 23000.00 USD,超过单笔上限 5000.00 USD。"
+     }
+    ],
+    "signature": "DEFAULT|BUY|STK|AAPL"
+   }
+  },
+  {
+   "name": "tight_mkt_1000_shares_over",
+   "payload": {
+    "intent_summary": "限价 230 买入 100 股 AAPL",
+    "contract": {
+     "secType": "STK",
+     "symbol": "MSFT",
+     "exchange": "SMART",
+     "currency": "USD"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "MKT",
+     "totalQuantity": 1000,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": null,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "回调到位",
+    "confidence": 0.99,
+    "warnings": []
+   },
+   "settings_over": {
+    "limits": {
+     "max_order_notional": 5000.0,
+     "max_option_contracts": 5
+    }
+   },
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [
+     {
+      "code": "EXCEEDS_LIMIT",
+      "message": "无法估算市价单金额(指令与行情快照都没有参考价),股数 1000 超过市价单上限 200 股。"
+     }
+    ],
+    "signature": "DEFAULT|BUY|STK|MSFT"
+   }
+  },
+  {
+   "name": "tight_six_contracts_over",
+   "payload": {
+    "intent_summary": "限价 5.5 买入 2 张 NVDA 20260821 180 Call",
+    "contract": {
+     "secType": "OPT",
+     "symbol": "NVDA",
+     "exchange": "SMART",
+     "currency": "USD",
+     "lastTradeDateOrContractMonth": "20260821",
+     "strike": 180.0,
+     "right": "C",
+     "multiplier": "100"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 6,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": 0.5,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "财报前布局",
+    "confidence": 0.97,
+    "warnings": []
+   },
+   "settings_over": {
+    "limits": {
+     "max_order_notional": 5000.0,
+     "max_option_contracts": 5
+    }
+   },
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [
+     {
+      "code": "EXCEEDS_LIMIT",
+      "message": "期权/价差单笔 6 张,超过上限 5 张。"
+     }
+    ],
+    "signature": "DEFAULT|BUY|OPT|NVDA|20260821|180|C"
+   }
+  },
+  {
+   "name": "notional_only_six_contracts_ok",
+   "payload": {
+    "intent_summary": "限价 5.5 买入 2 张 NVDA 20260821 180 Call",
+    "contract": {
+     "secType": "OPT",
+     "symbol": "NVDA",
+     "exchange": "SMART",
+     "currency": "USD",
+     "lastTradeDateOrContractMonth": "20260821",
+     "strike": 180.0,
+     "right": "C",
+     "multiplier": "100"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 6,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": 0.5,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "财报前布局",
+    "confidence": 0.97,
+    "warnings": []
+   },
+   "settings_over": {
+    "limits": {
+     "max_order_notional": 5000.0
+    }
+   },
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [],
+    "signature": "DEFAULT|BUY|OPT|NVDA|20260821|180|C",
+    "approved": {
+     "notional": 300.0,
+     "signature": "DEFAULT|BUY|OPT|NVDA|20260821|180|C",
+     "warnings": [],
+     "account_id": "DU7654321"
+    },
+    "contract_trading_class": null,
+    "leg_trading_classes": []
+   }
+  },
+  {
+   "name": "tight_mkt_ref_22940_over",
+   "payload": {
+    "intent_summary": "限价 230 买入 100 股 AAPL",
+    "contract": {
+     "secType": "STK",
+     "symbol": "AAPL",
+     "exchange": "SMART",
+     "currency": "USD"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "MKT",
+     "totalQuantity": 100,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": null,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "回调到位",
+    "confidence": 0.99,
+    "warnings": []
+   },
+   "settings_over": {
+    "limits": {
+     "max_order_notional": 5000.0,
+     "max_option_contracts": 5
+    }
+   },
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [
+     {
+      "code": "EXCEEDS_LIMIT",
+      "message": "本笔风险敞口约 22940.00 USD,超过单笔上限 5000.00 USD。"
+     }
+    ],
+    "signature": "DEFAULT|BUY|STK|AAPL"
+   }
+  },
+  {
+   "name": "tight_mkt_ref_20_ok",
+   "payload": {
+    "intent_summary": "限价 230 买入 100 股 AAPL",
+    "contract": {
+     "secType": "STK",
+     "symbol": "AAPL",
+     "exchange": "SMART",
+     "currency": "USD"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "MKT",
+     "totalQuantity": 20,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": null,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "回调到位",
+    "confidence": 0.99,
+    "warnings": []
+   },
+   "settings_over": {
+    "limits": {
+     "max_order_notional": 5000.0,
+     "max_option_contracts": 5
+    }
+   },
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [],
+    "signature": "DEFAULT|BUY|STK|AAPL",
+    "approved": {
+     "notional": 4588.0,
+     "signature": "DEFAULT|BUY|STK|AAPL",
+     "warnings": [],
+     "account_id": "DU7654321"
+    },
+    "contract_trading_class": null,
+    "leg_trading_classes": []
+   }
+  },
+  {
+   "name": "tight_mkt_ref_300_over",
+   "payload": {
+    "intent_summary": "限价 230 买入 100 股 AAPL",
+    "contract": {
+     "secType": "STK",
+     "symbol": "AAPL",
+     "exchange": "SMART",
+     "currency": "USD"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "MKT",
+     "totalQuantity": 300,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": null,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "回调到位",
+    "confidence": 0.99,
+    "warnings": []
+   },
+   "settings_over": {
+    "limits": {
+     "max_order_notional": 5000.0,
+     "max_option_contracts": 5
+    }
+   },
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [
+     {
+      "code": "EXCEEDS_LIMIT",
+      "message": "本笔风险敞口约 68820.00 USD,超过单笔上限 5000.00 USD。"
+     }
+    ],
+    "signature": "DEFAULT|BUY|STK|AAPL"
+   }
+  },
+  {
+   "name": "tight_condor_sell_two_7600_over",
+   "payload": {
+    "intent_summary": "卖出 2 张 SPX 7200/7250/7650/7700 铁鹰",
+    "contract": {
+     "secType": "BAG",
+     "symbol": "SPX",
+     "exchange": "SMART",
+     "currency": "USD",
+     "combo_strategy": "IRON_CONDOR",
+     "legs": [
+      {
+       "action": "BUY",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260918",
+       "strike": 7200.0,
+       "right": "P",
+       "tradingClass": "SPX"
+      },
+      {
+       "action": "SELL",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260918",
+       "strike": 7250.0,
+       "right": "P",
+       "tradingClass": "SPX"
+      },
+      {
+       "action": "SELL",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260918",
+       "strike": 7650.0,
+       "right": "C",
+       "tradingClass": "SPX"
+      },
+      {
+       "action": "BUY",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260918",
+       "strike": 7700.0,
+       "right": "C",
+       "tradingClass": "SPX"
+      }
+     ]
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "SELL",
+     "orderType": "LMT",
+     "totalQuantity": 2,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": 12.0,
+     "tif": "GTC",
+     "outsideRth": false
+    },
+    "reason": "预计区间震荡",
+    "confidence": 0.96,
+    "warnings": []
+   },
+   "settings_over": {
+    "limits": {
+     "max_order_notional": 5000.0,
+     "max_option_contracts": 5
+    }
+   },
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [
+     {
+      "code": "EXCEEDS_LIMIT",
+      "message": "本笔风险敞口约 7600.00 USD,超过单笔上限 5000.00 USD。"
+     }
+    ],
+    "signature": "DEFAULT|SELL|BAG|SPX|BUY|1|20260918|7200|P|SELL|1|20260918|7250|P|SELL|1|20260918|7650|C|BUY|1|20260918|7700|C"
+   }
+  },
+  {
+   "name": "stock_mkt_no_ref_over_shares",
+   "payload": {
+    "intent_summary": "限价 230 买入 100 股 AAPL",
+    "contract": {
+     "secType": "STK",
+     "symbol": "ZZZZ",
+     "exchange": "SMART",
+     "currency": "USD"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "MKT",
+     "totalQuantity": 300,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": null,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "回调到位",
+    "confidence": 0.99,
+    "warnings": []
+   },
+   "settings_over": null,
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [
+     {
+      "code": "EXCEEDS_LIMIT",
+      "message": "无法估算市价单金额(指令与行情快照都没有参考价),股数 300 超过市价单上限 200 股。"
+     }
+    ],
+    "signature": "DEFAULT|BUY|STK|ZZZZ"
+   }
+  },
+  {
+   "name": "stock_mkt_no_ref_ok",
+   "payload": {
+    "intent_summary": "限价 230 买入 100 股 AAPL",
+    "contract": {
+     "secType": "STK",
+     "symbol": "ZZZZ",
+     "exchange": "SMART",
+     "currency": "USD"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "MKT",
+     "totalQuantity": 100,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": null,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "回调到位",
+    "confidence": 0.99,
+    "warnings": []
+   },
+   "settings_over": null,
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [],
+    "signature": "DEFAULT|BUY|STK|ZZZZ",
+    "approved": {
+     "notional": 0.0,
+     "signature": "DEFAULT|BUY|STK|ZZZZ",
+     "warnings": [],
+     "account_id": "DU7654321"
+    },
+    "contract_trading_class": null,
+    "leg_trading_classes": []
+   }
+  },
+  {
+   "name": "bag_auto_mid_width_bound",
+   "payload": {
+    "intent_summary": "SPX 涨到 7500 时买入 1 张 7520/7550 看涨借方价差",
+    "contract": {
+     "secType": "BAG",
+     "symbol": "SPX",
+     "exchange": "SMART",
+     "currency": "USD",
+     "combo_strategy": "VERTICAL",
+     "legs": [
+      {
+       "action": "BUY",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260814",
+       "strike": 7520.0,
+       "right": "C",
+       "tradingClass": "SPXW"
+      },
+      {
+       "action": "SELL",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260814",
+       "strike": 7550.0,
+       "right": "C",
+       "tradingClass": "SPXW"
+      }
+     ]
+    },
+    "execution_type": "CONDITIONAL",
+    "trigger": {
+     "type": "PRICE",
+     "symbol": "SPX",
+     "secType": "IND",
+     "operator": ">=",
+     "value": 7500.0
+    },
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 20,
+     "price_mode": "AUTO_MID",
+     "lmtPrice": null,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "突破 7500 整数关口后追动能",
+    "confidence": 0.96,
+    "warnings": []
+   },
+   "settings_over": null,
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [
+     {
+      "code": "EXCEEDS_LIMIT",
+      "message": "本笔风险敞口约 60000.00 USD,超过单笔上限 50000.00 USD。"
+     },
+     {
+      "code": "EXCEEDS_LIMIT",
+      "message": "期权/价差单笔 20 张,超过上限 10 张。"
+     }
+    ],
+    "signature": "DEFAULT|BUY|BAG|SPX|BUY|1|20260814|7520|C|SELL|1|20260814|7550|C"
+   }
+  },
+  {
+   "name": "closed_immediate_mkt",
+   "payload": {
+    "intent_summary": "限价 230 买入 100 股 AAPL",
+    "contract": {
+     "secType": "STK",
+     "symbol": "AAPL",
+     "exchange": "SMART",
+     "currency": "USD"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "MKT",
+     "totalQuantity": 100,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": null,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "回调到位",
+    "confidence": 0.99,
+    "warnings": []
+   },
+   "settings_over": null,
+   "now": "2026-08-15T11:00:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [
+     {
+      "code": "MARKET_CLOSED",
+      "message": "当前休市,市价单会在开盘瞬间以未知价格成交,风险过大,已拒绝。请改成限价单,例如'限价 230 买入'。"
+     }
+    ],
+    "signature": "DEFAULT|BUY|STK|AAPL"
+   }
+  },
+  {
+   "name": "closed_immediate_lmt_warn",
+   "payload": {
+    "intent_summary": "限价 230 买入 100 股 AAPL",
+    "contract": {
+     "secType": "STK",
+     "symbol": "AAPL",
+     "exchange": "SMART",
+     "currency": "USD"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 100,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": 230.0,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "回调到位",
+    "confidence": 0.99,
+    "warnings": []
+   },
+   "settings_over": null,
+   "now": "2026-08-15T11:00:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [],
+    "signature": "DEFAULT|BUY|STK|AAPL",
+    "approved": {
+     "notional": 23000.0,
+     "signature": "DEFAULT|BUY|STK|AAPL",
+     "warnings": [
+      "当前休市,订单将挂到下一个交易时段"
+     ],
+     "account_id": "DU7654321"
+    },
+    "contract_trading_class": null,
+    "leg_trading_classes": []
+   }
+  },
+  {
+   "name": "closed_conditional_queue",
+   "payload": {
+    "intent_summary": "SPX 涨到 7500 时买入 1 张 7520/7550 看涨借方价差",
+    "contract": {
+     "secType": "BAG",
+     "symbol": "SPX",
+     "exchange": "SMART",
+     "currency": "USD",
+     "combo_strategy": "VERTICAL",
+     "legs": [
+      {
+       "action": "BUY",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260814",
+       "strike": 7520.0,
+       "right": "C",
+       "tradingClass": "SPXW"
+      },
+      {
+       "action": "SELL",
+       "ratio": 1,
+       "lastTradeDateOrContractMonth": "20260814",
+       "strike": 7550.0,
+       "right": "C",
+       "tradingClass": "SPXW"
+      }
+     ]
+    },
+    "execution_type": "CONDITIONAL",
+    "trigger": {
+     "type": "PRICE",
+     "symbol": "SPX",
+     "secType": "IND",
+     "operator": ">=",
+     "value": 7500.0
+    },
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 1,
+     "price_mode": "AUTO_MID",
+     "lmtPrice": null,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "突破 7500 整数关口后追动能",
+    "confidence": 0.96,
+    "warnings": []
+   },
+   "settings_over": null,
+   "now": "2026-08-15T11:00:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [
+     {
+      "code": "EXPIRED_CONTRACT",
+      "message": "到期日 20260814 已早于当前美东日期 2026-08-15,合约不存在。"
+     },
+     {
+      "code": "EXPIRED_CONTRACT",
+      "message": "到期日 20260814 已早于当前美东日期 2026-08-15,合约不存在。"
+     }
+    ],
+    "signature": "DEFAULT|BUY|BAG|SPX|BUY|1|20260814|7520|C|SELL|1|20260814|7550|C"
+   }
+  },
+  {
+   "name": "closed_reject_all",
+   "payload": {
+    "intent_summary": "限价 230 买入 100 股 AAPL",
+    "contract": {
+     "secType": "STK",
+     "symbol": "AAPL",
+     "exchange": "SMART",
+     "currency": "USD"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 100,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": 230.0,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "回调到位",
+    "confidence": 0.99,
+    "warnings": []
+   },
+   "settings_over": {
+    "policies": {
+     "closed_market_policy": "reject_all"
+    }
+   },
+   "now": "2026-08-15T11:00:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [
+     {
+      "code": "MARKET_CLOSED",
+      "message": "当前休市,按策略拒绝所有直接执行型订单。"
+     }
+    ],
+    "signature": "DEFAULT|BUY|STK|AAPL"
+   }
+  },
+  {
+   "name": "premarket_mkt_outside_rth",
+   "payload": {
+    "intent_summary": "限价 230 买入 100 股 AAPL",
+    "contract": {
+     "secType": "STK",
+     "symbol": "AAPL",
+     "exchange": "SMART",
+     "currency": "USD"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "MKT",
+     "totalQuantity": 100,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": null,
+     "tif": "DAY",
+     "outsideRth": true
+    },
+    "reason": "回调到位",
+    "confidence": 0.99,
+    "warnings": []
+   },
+   "settings_over": null,
+   "now": "2026-08-14T08:00:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [
+     {
+      "code": "UNSUPPORTED",
+      "message": "盘前市价单不被交易所支持:盘外只接受限价单,市价单会一直等到开盘才成交,与盘外成交的意图矛盾。请改写为盘外限价单,例如'盘前限价 X 买入…'。"
+     }
+    ],
+    "signature": "DEFAULT|BUY|STK|AAPL"
+   }
+  },
+  {
+   "name": "premarket_lmt_wait",
+   "payload": {
+    "intent_summary": "限价 230 买入 100 股 AAPL",
+    "contract": {
+     "secType": "STK",
+     "symbol": "AAPL",
+     "exchange": "SMART",
+     "currency": "USD"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 100,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": 230.0,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "回调到位",
+    "confidence": 0.99,
+    "warnings": []
+   },
+   "settings_over": null,
+   "now": "2026-08-14T08:00:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [],
+    "signature": "DEFAULT|BUY|STK|AAPL",
+    "approved": {
+     "notional": 23000.0,
+     "signature": "DEFAULT|BUY|STK|AAPL",
+     "warnings": [
+      "当前为盘前,outsideRth=false:订单会挂着,到常规时段才送交易所。要在盘前就成交,指令里加「盘外」或「隔夜」。"
+     ],
+     "account_id": "DU7654321"
+    },
+    "contract_trading_class": null,
+    "leg_trading_classes": []
+   }
+  },
+  {
+   "name": "early_close_after",
+   "payload": {
+    "intent_summary": "限价 230 买入 100 股 AAPL",
+    "contract": {
+     "secType": "STK",
+     "symbol": "AAPL",
+     "exchange": "SMART",
+     "currency": "USD"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 100,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": 230.0,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "回调到位",
+    "confidence": 0.99,
+    "warnings": []
+   },
+   "settings_over": null,
+   "now": "2026-11-27T14:00:00-05:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [],
+    "signature": "DEFAULT|BUY|STK|AAPL",
+    "approved": {
+     "notional": 23000.0,
+     "signature": "DEFAULT|BUY|STK|AAPL",
+     "warnings": [
+      "当前为盘后,outsideRth=false:订单会挂着,到常规时段才送交易所。要在盘后就成交,指令里加「盘外」或「隔夜」。"
+     ],
+     "account_id": "DU7654321"
+    },
+    "contract_trading_class": null,
+    "leg_trading_classes": []
+   }
+  },
+  {
+   "name": "dup_recent_window",
+   "payload": {
+    "intent_summary": "限价 230 买入 100 股 AAPL",
+    "contract": {
+     "secType": "STK",
+     "symbol": "AAPL",
+     "exchange": "SMART",
+     "currency": "USD"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 100,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": 230.0,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "回调到位",
+    "confidence": 0.99,
+    "warnings": []
+   },
+   "settings_over": null,
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": [
+    {
+     "signature": "DEFAULT|BUY|STK|AAPL",
+     "quantity": 100.0,
+     "created_at": "2026-08-14T10:27:00-04:00"
+    }
+   ],
+   "expect": {
+    "issues": [
+     {
+      "code": "DUPLICATE_ORDER",
+      "message": "10 分钟内已提交过高度相似的订单(DEFAULT|BUY|STK|AAPL,数量 100),已拦截以防重复下单。如确需再下一笔,请等待窗口结束或改变数量。"
+     }
+    ],
+    "signature": "DEFAULT|BUY|STK|AAPL"
+   }
+  },
+  {
+   "name": "dup_outside_window",
+   "payload": {
+    "intent_summary": "限价 230 买入 100 股 AAPL",
+    "contract": {
+     "secType": "STK",
+     "symbol": "AAPL",
+     "exchange": "SMART",
+     "currency": "USD"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 100,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": 230.0,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "回调到位",
+    "confidence": 0.99,
+    "warnings": []
+   },
+   "settings_over": null,
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": [
+    {
+     "signature": "DEFAULT|BUY|STK|AAPL",
+     "quantity": 100.0,
+     "created_at": "2026-08-14T10:07:00-04:00"
+    }
+   ],
+   "expect": {
+    "issues": [],
+    "signature": "DEFAULT|BUY|STK|AAPL",
+    "approved": {
+     "notional": 23000.0,
+     "signature": "DEFAULT|BUY|STK|AAPL",
+     "warnings": [],
+     "account_id": "DU7654321"
+    },
+    "contract_trading_class": null,
+    "leg_trading_classes": []
+   }
+  },
+  {
+   "name": "dup_qty_tolerance",
+   "payload": {
+    "intent_summary": "限价 230 买入 100 股 AAPL",
+    "contract": {
+     "secType": "STK",
+     "symbol": "AAPL",
+     "exchange": "SMART",
+     "currency": "USD"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 110,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": 230.0,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "回调到位",
+    "confidence": 0.99,
+    "warnings": []
+   },
+   "settings_over": null,
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": [
+    {
+     "signature": "DEFAULT|BUY|STK|AAPL",
+     "quantity": 100.0,
+     "created_at": "2026-08-14T10:27:00-04:00"
+    }
+   ],
+   "expect": {
+    "issues": [
+     {
+      "code": "DUPLICATE_ORDER",
+      "message": "10 分钟内已提交过高度相似的订单(DEFAULT|BUY|STK|AAPL,数量 100),已拦截以防重复下单。如确需再下一笔,请等待窗口结束或改变数量。"
+     }
+    ],
+    "signature": "DEFAULT|BUY|STK|AAPL"
+   }
+  },
+  {
+   "name": "no_reason_warn",
+   "payload": {
+    "intent_summary": "限价 230 买入 100 股 AAPL",
+    "contract": {
+     "secType": "STK",
+     "symbol": "AAPL",
+     "exchange": "SMART",
+     "currency": "USD"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 100,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": 230.0,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "",
+    "confidence": 0.99,
+    "warnings": []
+   },
+   "settings_over": null,
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {
+    "SPX": 7462.35,
+    "AAPL": 229.4,
+    "NVDA": 181.2
+   },
+   "recents": null,
+   "expect": {
+    "issues": [],
+    "signature": "DEFAULT|BUY|STK|AAPL",
+    "approved": {
+     "notional": 23000.0,
+     "signature": "DEFAULT|BUY|STK|AAPL",
+     "warnings": [
+      "未提供操作原因,建议补充以便复盘"
+     ],
+     "account_id": "DU7654321"
+    },
+    "contract_trading_class": null,
+    "leg_trading_classes": []
+   }
+  }
+ ],
+ "batch": {
+  "payloads": [
+   {
+    "intent_summary": "限价 230 买入 100 股 AAPL",
+    "contract": {
+     "secType": "STK",
+     "symbol": "AAPL",
+     "exchange": "SMART",
+     "currency": "USD"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 100,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": 230.0,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "回调到位",
+    "confidence": 0.99,
+    "warnings": []
+   },
+   {
+    "intent_summary": "限价 230 买入 100 股 AAPL",
+    "contract": {
+     "secType": "STK",
+     "symbol": "AAPL",
+     "exchange": "SMART",
+     "currency": "USD"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 100,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": 230.0,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "回调到位",
+    "confidence": 0.99,
+    "warnings": []
+   },
+   {
+    "intent_summary": "限价 5.5 买入 2 张 NVDA 20260821 180 Call",
+    "contract": {
+     "secType": "OPT",
+     "symbol": "NVDA",
+     "exchange": "SMART",
+     "currency": "USD",
+     "lastTradeDateOrContractMonth": "20260821",
+     "strike": 180.0,
+     "right": "C",
+     "multiplier": "100"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 2,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": 5.5,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "财报前布局",
+    "confidence": 0.97,
+    "warnings": []
+   },
+   {
+    "intent_summary": "限价 5.5 买入 2 张 NVDA 20260821 180 Call",
+    "contract": {
+     "secType": "OPT",
+     "symbol": "NVDA",
+     "exchange": "SMART",
+     "currency": "USD",
+     "lastTradeDateOrContractMonth": "20260821",
+     "strike": 180.0,
+     "right": "C",
+     "multiplier": "100"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 2,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": 5.5,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "财报前布局",
+    "confidence": 0.97,
+    "warnings": []
+   },
+   {
+    "intent_summary": "限价 5.5 买入 2 张 NVDA 20260821 180 Call",
+    "contract": {
+     "secType": "OPT",
+     "symbol": "NVDA",
+     "exchange": "SMART",
+     "currency": "USD",
+     "lastTradeDateOrContractMonth": "20260821",
+     "strike": 180.0,
+     "right": "C",
+     "multiplier": "100"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 2,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": 5.5,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "财报前布局",
+    "confidence": 0.97,
+    "warnings": []
+   },
+   {
+    "intent_summary": "限价 5.5 买入 2 张 NVDA 20260821 180 Call",
+    "contract": {
+     "secType": "OPT",
+     "symbol": "NVDA",
+     "exchange": "SMART",
+     "currency": "USD",
+     "lastTradeDateOrContractMonth": "20260821",
+     "strike": 180.0,
+     "right": "C",
+     "multiplier": "100"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 2,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": 5.5,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "财报前布局",
+    "confidence": 0.97,
+    "warnings": []
+   },
+   {
+    "intent_summary": "限价 5.5 买入 2 张 NVDA 20260821 180 Call",
+    "contract": {
+     "secType": "OPT",
+     "symbol": "NVDA",
+     "exchange": "SMART",
+     "currency": "USD",
+     "lastTradeDateOrContractMonth": "20260821",
+     "strike": 180.0,
+     "right": "C",
+     "multiplier": "100"
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {
+     "action": "BUY",
+     "orderType": "LMT",
+     "totalQuantity": 2,
+     "price_mode": "EXPLICIT",
+     "lmtPrice": 5.5,
+     "tif": "DAY",
+     "outsideRth": false
+    },
+    "reason": "财报前布局",
+    "confidence": 0.97,
+    "warnings": []
+   }
+  ],
+  "now": "2026-08-14T10:32:00-04:00",
+  "snapshot": {
+   "SPX": 7462.35,
+   "AAPL": 229.4,
+   "NVDA": 181.2
+  },
+  "approved": [
+   {
+    "notional": 23000.0,
+    "signature": "DEFAULT|BUY|STK|AAPL",
+    "warnings": []
+   },
+   {
+    "notional": 1100.0,
+    "signature": "DEFAULT|BUY|OPT|NVDA|20260821|180|C",
+    "warnings": []
+   }
+  ],
+  "rejected": [
+   {
+    "codes": [
+     "DUPLICATE_ORDER"
+    ],
+    "message": "同一条输入里出现了重复订单(DEFAULT|BUY|STK|AAPL),已拦截第二笔以防重复下单。"
+   },
+   {
+    "codes": [
+     "DUPLICATE_ORDER"
+    ],
+    "message": "同一条输入里出现了重复订单(DEFAULT|BUY|OPT|NVDA|20260821|180|C),已拦截第二笔以防重复下单。"
+   },
+   {
+    "codes": [
+     "DUPLICATE_ORDER"
+    ],
+    "message": "同一条输入里出现了重复订单(DEFAULT|BUY|OPT|NVDA|20260821|180|C),已拦截第二笔以防重复下单。"
+   },
+   {
+    "codes": [
+     "EXCEEDS_LIMIT"
+    ],
+    "message": "单次输入最多解析 5 笔订单,本条排在第 6 位,已拦截。请拆成多次提交。"
+   },
+   {
+    "codes": [
+     "EXCEEDS_LIMIT"
+    ],
+    "message": "单次输入最多解析 5 笔订单,本条排在第 7 位,已拦截。请拆成多次提交。"
+   }
+  ]
+ }
+}

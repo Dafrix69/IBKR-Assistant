@@ -1,0 +1,444 @@
+{
+ "$defs": {
+  "ContractSpec": {
+   "additionalProperties": false,
+   "properties": {
+    "secType": {
+     "enum": [
+      "STK",
+      "OPT",
+      "BAG"
+     ],
+     "title": "Sectype",
+     "type": "string"
+    },
+    "symbol": {
+     "title": "Symbol",
+     "type": "string"
+    },
+    "exchange": {
+     "default": "SMART",
+     "title": "Exchange",
+     "type": "string"
+    },
+    "currency": {
+     "const": "USD",
+     "default": "USD",
+     "title": "Currency",
+     "type": "string"
+    },
+    "lastTradeDateOrContractMonth": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Lasttradedateorcontractmonth"
+    },
+    "strike": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Strike"
+    },
+    "right": {
+     "anyOf": [
+      {
+       "enum": [
+        "C",
+        "P"
+       ],
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Right"
+    },
+    "multiplier": {
+     "default": "100",
+     "title": "Multiplier",
+     "type": "string"
+    },
+    "tradingClass": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Tradingclass"
+    },
+    "combo_strategy": {
+     "anyOf": [
+      {
+       "enum": [
+        "VERTICAL",
+        "BUTTERFLY",
+        "IRON_CONDOR"
+       ],
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Combo Strategy"
+    },
+    "legs": {
+     "anyOf": [
+      {
+       "items": {
+        "$ref": "#/$defs/Leg"
+       },
+       "type": "array"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Legs"
+    }
+   },
+   "required": [
+    "secType",
+    "symbol"
+   ],
+   "title": "ContractSpec",
+   "type": "object"
+  },
+  "Leg": {
+   "additionalProperties": false,
+   "description": "期权组合的一条腿。标的与 currency 继承自父 contract。",
+   "properties": {
+    "action": {
+     "enum": [
+      "BUY",
+      "SELL"
+     ],
+     "title": "Action",
+     "type": "string"
+    },
+    "ratio": {
+     "description": "垂直价差/铁鹰各腿为 1;蝴蝶中间腿为 2",
+     "title": "Ratio",
+     "type": "integer"
+    },
+    "lastTradeDateOrContractMonth": {
+     "title": "Lasttradedateorcontractmonth",
+     "type": "string"
+    },
+    "strike": {
+     "title": "Strike",
+     "type": "number"
+    },
+    "right": {
+     "enum": [
+      "C",
+      "P"
+     ],
+     "title": "Right",
+     "type": "string"
+    },
+    "tradingClass": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Tradingclass"
+    },
+    "multiplier": {
+     "default": "100",
+     "title": "Multiplier",
+     "type": "string"
+    }
+   },
+   "required": [
+    "action",
+    "ratio",
+    "lastTradeDateOrContractMonth",
+    "strike",
+    "right"
+   ],
+   "title": "Leg",
+   "type": "object"
+  },
+  "OrderSpec": {
+   "additionalProperties": false,
+   "properties": {
+    "action": {
+     "enum": [
+      "BUY",
+      "SELL"
+     ],
+     "title": "Action",
+     "type": "string"
+    },
+    "orderType": {
+     "enum": [
+      "LMT",
+      "MKT",
+      "STP",
+      "STP LMT",
+      "TRAIL"
+     ],
+     "title": "Ordertype",
+     "type": "string"
+    },
+    "totalQuantity": {
+     "title": "Totalquantity",
+     "type": "integer"
+    },
+    "price_mode": {
+     "default": "EXPLICIT",
+     "enum": [
+      "EXPLICIT",
+      "AUTO_MID"
+     ],
+     "title": "Price Mode",
+     "type": "string"
+    },
+    "lmtPrice": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Lmtprice"
+    },
+    "auxPrice": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Auxprice"
+    },
+    "trailingPercent": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Trailingpercent"
+    },
+    "tif": {
+     "default": "DAY",
+     "enum": [
+      "DAY",
+      "GTC"
+     ],
+     "title": "Tif",
+     "type": "string"
+    },
+    "outsideRth": {
+     "default": false,
+     "title": "Outsiderth",
+     "type": "boolean"
+    }
+   },
+   "required": [
+    "action",
+    "orderType",
+    "totalQuantity"
+   ],
+   "title": "OrderSpec",
+   "type": "object"
+  },
+  "ParsedOrder": {
+   "additionalProperties": false,
+   "properties": {
+    "intent_summary": {
+     "title": "Intent Summary",
+     "type": "string"
+    },
+    "contract": {
+     "$ref": "#/$defs/ContractSpec"
+    },
+    "execution_type": {
+     "enum": [
+      "IMMEDIATE",
+      "CONDITIONAL"
+     ],
+     "title": "Execution Type",
+     "type": "string"
+    },
+    "trigger": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/TriggerSpec"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "account": {
+     "default": "DEFAULT",
+     "title": "Account",
+     "type": "string"
+    },
+    "order": {
+     "$ref": "#/$defs/OrderSpec"
+    },
+    "reason": {
+     "default": "",
+     "title": "Reason",
+     "type": "string"
+    },
+    "confidence": {
+     "title": "Confidence",
+     "type": "number"
+    },
+    "warnings": {
+     "items": {
+      "type": "string"
+     },
+     "title": "Warnings",
+     "type": "array"
+    }
+   },
+   "required": [
+    "intent_summary",
+    "contract",
+    "execution_type",
+    "order",
+    "confidence"
+   ],
+   "title": "ParsedOrder",
+   "type": "object"
+  },
+  "Rejection": {
+   "additionalProperties": false,
+   "properties": {
+    "original_text": {
+     "title": "Original Text",
+     "type": "string"
+    },
+    "code": {
+     "enum": [
+      "MISSING_QUANTITY",
+      "MISSING_PRICE",
+      "AMBIGUOUS_SYMBOL",
+      "INCOMPLETE_OPTION",
+      "AMBIGUOUS_TRIGGER",
+      "UNKNOWN_ACCOUNT",
+      "EXCEEDS_LIMIT",
+      "UNSUPPORTED",
+      "UNCLEAR"
+     ],
+     "title": "Code",
+     "type": "string"
+    },
+    "message": {
+     "title": "Message",
+     "type": "string"
+    }
+   },
+   "required": [
+    "original_text",
+    "code",
+    "message"
+   ],
+   "title": "Rejection",
+   "type": "object"
+  },
+  "TriggerSpec": {
+   "additionalProperties": false,
+   "properties": {
+    "type": {
+     "const": "PRICE",
+     "default": "PRICE",
+     "title": "Type",
+     "type": "string"
+    },
+    "symbol": {
+     "title": "Symbol",
+     "type": "string"
+    },
+    "secType": {
+     "enum": [
+      "IND",
+      "STK"
+     ],
+     "title": "Sectype",
+     "type": "string"
+    },
+    "operator": {
+     "enum": [
+      ">=",
+      "<="
+     ],
+     "title": "Operator",
+     "type": "string"
+    },
+    "value": {
+     "title": "Value",
+     "type": "number"
+    }
+   },
+   "required": [
+    "symbol",
+    "secType",
+    "operator",
+    "value"
+   ],
+   "title": "TriggerSpec",
+   "type": "object"
+  }
+ },
+ "additionalProperties": false,
+ "properties": {
+  "orders": {
+   "items": {
+    "$ref": "#/$defs/ParsedOrder"
+   },
+   "title": "Orders",
+   "type": "array"
+  },
+  "rejections": {
+   "items": {
+    "$ref": "#/$defs/Rejection"
+   },
+   "title": "Rejections",
+   "type": "array"
+  }
+ },
+ "title": "ParseResult",
+ "type": "object"
+}

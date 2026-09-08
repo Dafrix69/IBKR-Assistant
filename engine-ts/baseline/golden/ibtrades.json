@@ -1,0 +1,1973 @@
+{
+ "accounts": [
+  {
+   "alias": "主账户",
+   "account_id": "U18051177",
+   "is_paper": false
+  },
+  {
+   "alias": "模拟",
+   "account_id": "DUR075261",
+   "is_paper": true
+  }
+ ],
+ "cases": [
+  {
+   "name": "bag_plus_legs",
+   "fills": [
+    {
+     "exec_id": "bag",
+     "time": "2026-09-03T14:03:34+00:00",
+     "account_id": "U18051177",
+     "side": "BOT",
+     "shares": 1,
+     "price": 2.25,
+     "order_id": 0,
+     "perm_id": 256406619,
+     "order_ref": "",
+     "commission": null,
+     "contract": {
+      "secType": "BAG",
+      "symbol": "SPX",
+      "currency": "USD",
+      "exchange": "CBOE",
+      "expiry": "",
+      "strike": null,
+      "right": "C",
+      "tradingClass": "",
+      "multiplier": "100",
+      "conId": 1
+     }
+    },
+    {
+     "exec_id": "e1",
+     "time": "2026-09-03T14:03:34+00:00",
+     "account_id": "U18051177",
+     "side": "BOT",
+     "shares": 1,
+     "price": 0.22,
+     "order_id": 0,
+     "perm_id": 256406619,
+     "order_ref": "",
+     "commission": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "currency": "USD",
+      "exchange": "CBOE",
+      "expiry": "20260903",
+      "strike": 7760,
+      "right": "C",
+      "tradingClass": "SPXW",
+      "multiplier": "100",
+      "conId": 1
+     }
+    },
+    {
+     "exec_id": "e2",
+     "time": "2026-09-03T14:03:34+00:00",
+     "account_id": "U18051177",
+     "side": "SLD",
+     "shares": 2,
+     "price": 0.82,
+     "order_id": 0,
+     "perm_id": 256406619,
+     "order_ref": "",
+     "commission": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "currency": "USD",
+      "exchange": "CBOE",
+      "expiry": "20260903",
+      "strike": 7740,
+      "right": "C",
+      "tradingClass": "SPXW",
+      "multiplier": "100",
+      "conId": 1
+     }
+    },
+    {
+     "exec_id": "e3",
+     "time": "2026-09-03T14:03:34+00:00",
+     "account_id": "U18051177",
+     "side": "BOT",
+     "shares": 1,
+     "price": 3.67,
+     "order_id": 0,
+     "perm_id": 256406619,
+     "order_ref": "",
+     "commission": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "currency": "USD",
+      "exchange": "CBOE",
+      "expiry": "20260903",
+      "strike": 7720,
+      "right": "C",
+      "tradingClass": "SPXW",
+      "multiplier": "100",
+      "conId": 1
+     }
+    }
+   ],
+   "expect": [
+    {
+     "id": "ib:256406619",
+     "source": "ibkr",
+     "created_at": "2026-09-03T14:03:34+00:00",
+     "contract": {
+      "secType": "BAG",
+      "symbol": "SPX",
+      "exchange": "SMART",
+      "currency": "USD",
+      "combo_strategy": "BUTTERFLY",
+      "multiplier": "100",
+      "legs": [
+       {
+        "action": "BUY",
+        "ratio": 1,
+        "strike": 7720.0,
+        "right": "C",
+        "lastTradeDateOrContractMonth": "20260903",
+        "tradingClass": "SPXW",
+        "multiplier": "100",
+        "conId": 1,
+        "fill_price": 3.67
+       },
+       {
+        "action": "SELL",
+        "ratio": 2,
+        "strike": 7740.0,
+        "right": "C",
+        "lastTradeDateOrContractMonth": "20260903",
+        "tradingClass": "SPXW",
+        "multiplier": "100",
+        "conId": 1,
+        "fill_price": 0.82
+       },
+       {
+        "action": "BUY",
+        "ratio": 1,
+        "strike": 7760.0,
+        "right": "C",
+        "lastTradeDateOrContractMonth": "20260903",
+        "tradingClass": "SPXW",
+        "multiplier": "100",
+        "conId": 1,
+        "fill_price": 0.22
+       }
+      ]
+     },
+     "order": {
+      "action": "BUY",
+      "totalQuantity": 1,
+      "orderType": "",
+      "lmtPrice": null,
+      "price_mode": "EXPLICIT",
+      "tif": "",
+      "outsideRth": false
+     },
+     "ibkr": {
+      "avg_fill_price": 2.25,
+      "fills": [
+       {
+        "time": "2026-09-03T14:03:34+00:00",
+        "price": 2.25,
+        "qty": 1.0,
+        "exec_id": "bag"
+       }
+      ],
+      "perm_id": 256406619,
+      "order_id": null,
+      "total_commission": null,
+      "status_timeline": [
+       {
+        "status": "Filled",
+        "at": "2026-09-03T14:03:34+00:00"
+       }
+      ]
+     },
+     "final_status": "filled",
+     "account": {
+      "alias": "主账户",
+      "account_id": "U18051177",
+      "is_paper": false
+     },
+     "llm": {
+      "intent_summary": "买入 1 张 SPX 7720/7740/7760 看涨蝴蝶(翼宽 20)@ 2.25"
+     },
+     "input": {
+      "raw_instruction": "",
+      "reason": "券商成交记录",
+      "input_channel": "ibkr"
+     },
+     "execution_type": "IMMEDIATE",
+     "expiry": "2026-09-03"
+    }
+   ]
+  },
+  {
+   "name": "legs_only",
+   "fills": [
+    {
+     "exec_id": "e1",
+     "time": "2026-09-03T14:03:34+00:00",
+     "account_id": "U18051177",
+     "side": "BOT",
+     "shares": 1,
+     "price": 0.22,
+     "order_id": 0,
+     "perm_id": 256406619,
+     "order_ref": "",
+     "commission": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "currency": "USD",
+      "exchange": "CBOE",
+      "expiry": "20260903",
+      "strike": 7760,
+      "right": "C",
+      "tradingClass": "SPXW",
+      "multiplier": "100",
+      "conId": 1
+     }
+    },
+    {
+     "exec_id": "e2",
+     "time": "2026-09-03T14:03:34+00:00",
+     "account_id": "U18051177",
+     "side": "SLD",
+     "shares": 2,
+     "price": 0.82,
+     "order_id": 0,
+     "perm_id": 256406619,
+     "order_ref": "",
+     "commission": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "currency": "USD",
+      "exchange": "CBOE",
+      "expiry": "20260903",
+      "strike": 7740,
+      "right": "C",
+      "tradingClass": "SPXW",
+      "multiplier": "100",
+      "conId": 1
+     }
+    },
+    {
+     "exec_id": "e3",
+     "time": "2026-09-03T14:03:34+00:00",
+     "account_id": "U18051177",
+     "side": "BOT",
+     "shares": 1,
+     "price": 3.67,
+     "order_id": 0,
+     "perm_id": 256406619,
+     "order_ref": "",
+     "commission": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "currency": "USD",
+      "exchange": "CBOE",
+      "expiry": "20260903",
+      "strike": 7720,
+      "right": "C",
+      "tradingClass": "SPXW",
+      "multiplier": "100",
+      "conId": 1
+     }
+    }
+   ],
+   "expect": [
+    {
+     "id": "ib:256406619",
+     "source": "ibkr",
+     "created_at": "2026-09-03T14:03:34+00:00",
+     "contract": {
+      "secType": "BAG",
+      "symbol": "SPX",
+      "exchange": "SMART",
+      "currency": "USD",
+      "combo_strategy": "BUTTERFLY",
+      "multiplier": "100",
+      "legs": [
+       {
+        "action": "BUY",
+        "ratio": 1,
+        "strike": 7720.0,
+        "right": "C",
+        "lastTradeDateOrContractMonth": "20260903",
+        "tradingClass": "SPXW",
+        "multiplier": "100",
+        "conId": 1,
+        "fill_price": 3.67
+       },
+       {
+        "action": "SELL",
+        "ratio": 2,
+        "strike": 7740.0,
+        "right": "C",
+        "lastTradeDateOrContractMonth": "20260903",
+        "tradingClass": "SPXW",
+        "multiplier": "100",
+        "conId": 1,
+        "fill_price": 0.82
+       },
+       {
+        "action": "BUY",
+        "ratio": 1,
+        "strike": 7760.0,
+        "right": "C",
+        "lastTradeDateOrContractMonth": "20260903",
+        "tradingClass": "SPXW",
+        "multiplier": "100",
+        "conId": 1,
+        "fill_price": 0.22
+       }
+      ]
+     },
+     "order": {
+      "action": "BUY",
+      "totalQuantity": 1,
+      "orderType": "",
+      "lmtPrice": null,
+      "price_mode": "EXPLICIT",
+      "tif": "",
+      "outsideRth": false
+     },
+     "ibkr": {
+      "avg_fill_price": 2.25,
+      "fills": [
+       {
+        "time": "2026-09-03T14:03:34+00:00",
+        "price": 2.25,
+        "qty": 1,
+        "exec_id": "(合成)"
+       }
+      ],
+      "perm_id": 256406619,
+      "order_id": null,
+      "total_commission": null,
+      "status_timeline": [
+       {
+        "status": "Filled",
+        "at": "2026-09-03T14:03:34+00:00"
+       }
+      ]
+     },
+     "final_status": "filled",
+     "account": {
+      "alias": "主账户",
+      "account_id": "U18051177",
+      "is_paper": false
+     },
+     "llm": {
+      "intent_summary": "买入 1 张 SPX 7720/7740/7760 看涨蝴蝶(翼宽 20)@ 2.25"
+     },
+     "input": {
+      "raw_instruction": "",
+      "reason": "券商成交记录",
+      "input_channel": "ibkr"
+     },
+     "execution_type": "IMMEDIATE",
+     "expiry": "2026-09-03"
+    }
+   ]
+  },
+  {
+   "name": "short_put_with_commission",
+   "fills": [
+    {
+     "exec_id": "b",
+     "time": "2026-09-02T17:16:06+00:00",
+     "account_id": "U18051177",
+     "side": "SLD",
+     "shares": 1,
+     "price": 2.85,
+     "order_id": 0,
+     "perm_id": 392673899,
+     "order_ref": "",
+     "commission": null,
+     "contract": {
+      "secType": "BAG",
+      "symbol": "SPX",
+      "currency": "USD",
+      "exchange": "CBOE",
+      "expiry": "",
+      "strike": null,
+      "right": "C",
+      "tradingClass": "",
+      "multiplier": "100",
+      "conId": 1
+     }
+    },
+    {
+     "exec_id": "1",
+     "time": "2026-09-02T17:16:06+00:00",
+     "account_id": "U18051177",
+     "side": "BOT",
+     "shares": 2,
+     "price": 0.72,
+     "order_id": 0,
+     "perm_id": 392673899,
+     "order_ref": "",
+     "commission": 1.1,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "currency": "USD",
+      "exchange": "CBOE",
+      "expiry": "20260902",
+      "strike": 7635,
+      "right": "P",
+      "tradingClass": "SPXW",
+      "multiplier": "100",
+      "conId": 1
+     }
+    },
+    {
+     "exec_id": "2",
+     "time": "2026-09-02T17:16:06+00:00",
+     "account_id": "U18051177",
+     "side": "SLD",
+     "shares": 1,
+     "price": 4.02,
+     "order_id": 0,
+     "perm_id": 392673899,
+     "order_ref": "",
+     "commission": 0.55,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "currency": "USD",
+      "exchange": "CBOE",
+      "expiry": "20260902",
+      "strike": 7660,
+      "right": "P",
+      "tradingClass": "SPXW",
+      "multiplier": "100",
+      "conId": 1
+     }
+    },
+    {
+     "exec_id": "3",
+     "time": "2026-09-02T17:16:06+00:00",
+     "account_id": "U18051177",
+     "side": "SLD",
+     "shares": 1,
+     "price": 0.27,
+     "order_id": 0,
+     "perm_id": 392673899,
+     "order_ref": "",
+     "commission": 0.55,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "currency": "USD",
+      "exchange": "CBOE",
+      "expiry": "20260902",
+      "strike": 7610,
+      "right": "P",
+      "tradingClass": "SPXW",
+      "multiplier": "100",
+      "conId": 1
+     }
+    }
+   ],
+   "expect": [
+    {
+     "id": "ib:392673899",
+     "source": "ibkr",
+     "created_at": "2026-09-02T17:16:06+00:00",
+     "contract": {
+      "secType": "BAG",
+      "symbol": "SPX",
+      "exchange": "SMART",
+      "currency": "USD",
+      "combo_strategy": "BUTTERFLY",
+      "multiplier": "100",
+      "legs": [
+       {
+        "action": "SELL",
+        "ratio": 1,
+        "strike": 7610.0,
+        "right": "P",
+        "lastTradeDateOrContractMonth": "20260902",
+        "tradingClass": "SPXW",
+        "multiplier": "100",
+        "conId": 1,
+        "fill_price": 0.27
+       },
+       {
+        "action": "BUY",
+        "ratio": 2,
+        "strike": 7635.0,
+        "right": "P",
+        "lastTradeDateOrContractMonth": "20260902",
+        "tradingClass": "SPXW",
+        "multiplier": "100",
+        "conId": 1,
+        "fill_price": 0.72
+       },
+       {
+        "action": "SELL",
+        "ratio": 1,
+        "strike": 7660.0,
+        "right": "P",
+        "lastTradeDateOrContractMonth": "20260902",
+        "tradingClass": "SPXW",
+        "multiplier": "100",
+        "conId": 1,
+        "fill_price": 4.02
+       }
+      ]
+     },
+     "order": {
+      "action": "SELL",
+      "totalQuantity": 1,
+      "orderType": "",
+      "lmtPrice": null,
+      "price_mode": "EXPLICIT",
+      "tif": "",
+      "outsideRth": false
+     },
+     "ibkr": {
+      "avg_fill_price": 2.85,
+      "fills": [
+       {
+        "time": "2026-09-02T17:16:06+00:00",
+        "price": 2.85,
+        "qty": 1.0,
+        "exec_id": "b"
+       }
+      ],
+      "perm_id": 392673899,
+      "order_id": null,
+      "total_commission": 2.2,
+      "status_timeline": [
+       {
+        "status": "Filled",
+        "at": "2026-09-02T17:16:06+00:00"
+       }
+      ]
+     },
+     "final_status": "filled",
+     "account": {
+      "alias": "主账户",
+      "account_id": "U18051177",
+      "is_paper": false
+     },
+     "llm": {
+      "intent_summary": "卖出 1 张 SPX 7610/7635/7660 看跌蝴蝶(翼宽 25)@ 2.85"
+     },
+     "input": {
+      "raw_instruction": "",
+      "reason": "券商成交记录",
+      "input_channel": "ibkr"
+     },
+     "execution_type": "IMMEDIATE",
+     "expiry": "2026-09-02"
+    }
+   ]
+  },
+  {
+   "name": "partial_fills",
+   "fills": [
+    {
+     "exec_id": "e1a",
+     "time": "2026-09-03T14:03:34+00:00",
+     "account_id": "U18051177",
+     "side": "BOT",
+     "shares": 1,
+     "price": 0.2,
+     "order_id": 0,
+     "perm_id": 7,
+     "order_ref": "",
+     "commission": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "currency": "USD",
+      "exchange": "CBOE",
+      "expiry": "20260903",
+      "strike": 7760,
+      "right": "C",
+      "tradingClass": "SPXW",
+      "multiplier": "100",
+      "conId": 1
+     }
+    },
+    {
+     "exec_id": "e1b",
+     "time": "2026-09-03T14:03:30+00:00",
+     "account_id": "U18051177",
+     "side": "BOT",
+     "shares": 1,
+     "price": 0.24,
+     "order_id": 0,
+     "perm_id": 7,
+     "order_ref": "",
+     "commission": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "currency": "USD",
+      "exchange": "CBOE",
+      "expiry": "20260903",
+      "strike": 7760,
+      "right": "C",
+      "tradingClass": "SPXW",
+      "multiplier": "100",
+      "conId": 1
+     }
+    },
+    {
+     "exec_id": "e2",
+     "time": "2026-09-03T14:03:34+00:00",
+     "account_id": "U18051177",
+     "side": "SLD",
+     "shares": 4,
+     "price": 0.82,
+     "order_id": 0,
+     "perm_id": 7,
+     "order_ref": "",
+     "commission": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "currency": "USD",
+      "exchange": "CBOE",
+      "expiry": "20260903",
+      "strike": 7740,
+      "right": "C",
+      "tradingClass": "SPXW",
+      "multiplier": "100",
+      "conId": 1
+     }
+    },
+    {
+     "exec_id": "e3",
+     "time": "2026-09-03T14:03:34+00:00",
+     "account_id": "U18051177",
+     "side": "BOT",
+     "shares": 2,
+     "price": 3.67,
+     "order_id": 0,
+     "perm_id": 7,
+     "order_ref": "",
+     "commission": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "currency": "USD",
+      "exchange": "CBOE",
+      "expiry": "20260903",
+      "strike": 7720,
+      "right": "C",
+      "tradingClass": "SPXW",
+      "multiplier": "100",
+      "conId": 1
+     }
+    }
+   ],
+   "expect": [
+    {
+     "id": "ib:7",
+     "source": "ibkr",
+     "created_at": "2026-09-03T14:03:30+00:00",
+     "contract": {
+      "secType": "BAG",
+      "symbol": "SPX",
+      "exchange": "SMART",
+      "currency": "USD",
+      "combo_strategy": "BUTTERFLY",
+      "multiplier": "100",
+      "legs": [
+       {
+        "action": "BUY",
+        "ratio": 1,
+        "strike": 7720.0,
+        "right": "C",
+        "lastTradeDateOrContractMonth": "20260903",
+        "tradingClass": "SPXW",
+        "multiplier": "100",
+        "conId": 1,
+        "fill_price": 3.67
+       },
+       {
+        "action": "SELL",
+        "ratio": 2,
+        "strike": 7740.0,
+        "right": "C",
+        "lastTradeDateOrContractMonth": "20260903",
+        "tradingClass": "SPXW",
+        "multiplier": "100",
+        "conId": 1,
+        "fill_price": 0.82
+       },
+       {
+        "action": "BUY",
+        "ratio": 1,
+        "strike": 7760.0,
+        "right": "C",
+        "lastTradeDateOrContractMonth": "20260903",
+        "tradingClass": "SPXW",
+        "multiplier": "100",
+        "conId": 1,
+        "fill_price": 0.22
+       }
+      ]
+     },
+     "order": {
+      "action": "BUY",
+      "totalQuantity": 2,
+      "orderType": "",
+      "lmtPrice": null,
+      "price_mode": "EXPLICIT",
+      "tif": "",
+      "outsideRth": false
+     },
+     "ibkr": {
+      "avg_fill_price": 2.25,
+      "fills": [
+       {
+        "time": "2026-09-03T14:03:30+00:00",
+        "price": 2.25,
+        "qty": 2,
+        "exec_id": "(合成)"
+       }
+      ],
+      "perm_id": 7,
+      "order_id": null,
+      "total_commission": null,
+      "status_timeline": [
+       {
+        "status": "Filled",
+        "at": "2026-09-03T14:03:30+00:00"
+       }
+      ]
+     },
+     "final_status": "filled",
+     "account": {
+      "alias": "主账户",
+      "account_id": "U18051177",
+      "is_paper": false
+     },
+     "llm": {
+      "intent_summary": "买入 2 张 SPX 7720/7740/7760 看涨蝴蝶(翼宽 20)@ 2.25"
+     },
+     "input": {
+      "raw_instruction": "",
+      "reason": "券商成交记录",
+      "input_channel": "ibkr"
+     },
+     "execution_type": "IMMEDIATE",
+     "expiry": "2026-09-03"
+    }
+   ]
+  },
+  {
+   "name": "mixed_two_orders",
+   "fills": [
+    {
+     "exec_id": "bag",
+     "time": "2026-09-03T14:03:34+00:00",
+     "account_id": "U18051177",
+     "side": "BOT",
+     "shares": 1,
+     "price": 2.25,
+     "order_id": 0,
+     "perm_id": 256406619,
+     "order_ref": "",
+     "commission": null,
+     "contract": {
+      "secType": "BAG",
+      "symbol": "SPX",
+      "currency": "USD",
+      "exchange": "CBOE",
+      "expiry": "",
+      "strike": null,
+      "right": "C",
+      "tradingClass": "",
+      "multiplier": "100",
+      "conId": 1
+     }
+    },
+    {
+     "exec_id": "e1",
+     "time": "2026-09-03T14:03:34+00:00",
+     "account_id": "U18051177",
+     "side": "BOT",
+     "shares": 1,
+     "price": 0.22,
+     "order_id": 0,
+     "perm_id": 256406619,
+     "order_ref": "",
+     "commission": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "currency": "USD",
+      "exchange": "CBOE",
+      "expiry": "20260903",
+      "strike": 7760,
+      "right": "C",
+      "tradingClass": "SPXW",
+      "multiplier": "100",
+      "conId": 1
+     }
+    },
+    {
+     "exec_id": "e2",
+     "time": "2026-09-03T14:03:34+00:00",
+     "account_id": "U18051177",
+     "side": "SLD",
+     "shares": 2,
+     "price": 0.82,
+     "order_id": 0,
+     "perm_id": 256406619,
+     "order_ref": "",
+     "commission": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "currency": "USD",
+      "exchange": "CBOE",
+      "expiry": "20260903",
+      "strike": 7740,
+      "right": "C",
+      "tradingClass": "SPXW",
+      "multiplier": "100",
+      "conId": 1
+     }
+    },
+    {
+     "exec_id": "e3",
+     "time": "2026-09-03T14:03:34+00:00",
+     "account_id": "U18051177",
+     "side": "BOT",
+     "shares": 1,
+     "price": 3.67,
+     "order_id": 0,
+     "perm_id": 256406619,
+     "order_ref": "",
+     "commission": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "currency": "USD",
+      "exchange": "CBOE",
+      "expiry": "20260903",
+      "strike": 7720,
+      "right": "C",
+      "tradingClass": "SPXW",
+      "multiplier": "100",
+      "conId": 1
+     }
+    },
+    {
+     "exec_id": "b",
+     "time": "2026-09-02T17:16:06+00:00",
+     "account_id": "U18051177",
+     "side": "SLD",
+     "shares": 1,
+     "price": 2.85,
+     "order_id": 0,
+     "perm_id": 392673899,
+     "order_ref": "",
+     "commission": null,
+     "contract": {
+      "secType": "BAG",
+      "symbol": "SPX",
+      "currency": "USD",
+      "exchange": "CBOE",
+      "expiry": "",
+      "strike": null,
+      "right": "C",
+      "tradingClass": "",
+      "multiplier": "100",
+      "conId": 1
+     }
+    },
+    {
+     "exec_id": "1",
+     "time": "2026-09-02T17:16:06+00:00",
+     "account_id": "U18051177",
+     "side": "BOT",
+     "shares": 2,
+     "price": 0.72,
+     "order_id": 0,
+     "perm_id": 392673899,
+     "order_ref": "",
+     "commission": 1.1,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "currency": "USD",
+      "exchange": "CBOE",
+      "expiry": "20260902",
+      "strike": 7635,
+      "right": "P",
+      "tradingClass": "SPXW",
+      "multiplier": "100",
+      "conId": 1
+     }
+    },
+    {
+     "exec_id": "2",
+     "time": "2026-09-02T17:16:06+00:00",
+     "account_id": "U18051177",
+     "side": "SLD",
+     "shares": 1,
+     "price": 4.02,
+     "order_id": 0,
+     "perm_id": 392673899,
+     "order_ref": "",
+     "commission": 0.55,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "currency": "USD",
+      "exchange": "CBOE",
+      "expiry": "20260902",
+      "strike": 7660,
+      "right": "P",
+      "tradingClass": "SPXW",
+      "multiplier": "100",
+      "conId": 1
+     }
+    },
+    {
+     "exec_id": "3",
+     "time": "2026-09-02T17:16:06+00:00",
+     "account_id": "U18051177",
+     "side": "SLD",
+     "shares": 1,
+     "price": 0.27,
+     "order_id": 0,
+     "perm_id": 392673899,
+     "order_ref": "",
+     "commission": 0.55,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "currency": "USD",
+      "exchange": "CBOE",
+      "expiry": "20260902",
+      "strike": 7610,
+      "right": "P",
+      "tradingClass": "SPXW",
+      "multiplier": "100",
+      "conId": 1
+     }
+    },
+    {
+     "exec_id": "e1a",
+     "time": "2026-09-03T14:03:34+00:00",
+     "account_id": "U18051177",
+     "side": "BOT",
+     "shares": 1,
+     "price": 0.2,
+     "order_id": 0,
+     "perm_id": 7,
+     "order_ref": "",
+     "commission": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "currency": "USD",
+      "exchange": "CBOE",
+      "expiry": "20260903",
+      "strike": 7760,
+      "right": "C",
+      "tradingClass": "SPXW",
+      "multiplier": "100",
+      "conId": 1
+     }
+    },
+    {
+     "exec_id": "e1b",
+     "time": "2026-09-03T14:03:30+00:00",
+     "account_id": "U18051177",
+     "side": "BOT",
+     "shares": 1,
+     "price": 0.24,
+     "order_id": 0,
+     "perm_id": 7,
+     "order_ref": "",
+     "commission": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "currency": "USD",
+      "exchange": "CBOE",
+      "expiry": "20260903",
+      "strike": 7760,
+      "right": "C",
+      "tradingClass": "SPXW",
+      "multiplier": "100",
+      "conId": 1
+     }
+    },
+    {
+     "exec_id": "e2",
+     "time": "2026-09-03T14:03:34+00:00",
+     "account_id": "U18051177",
+     "side": "SLD",
+     "shares": 4,
+     "price": 0.82,
+     "order_id": 0,
+     "perm_id": 7,
+     "order_ref": "",
+     "commission": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "currency": "USD",
+      "exchange": "CBOE",
+      "expiry": "20260903",
+      "strike": 7740,
+      "right": "C",
+      "tradingClass": "SPXW",
+      "multiplier": "100",
+      "conId": 1
+     }
+    },
+    {
+     "exec_id": "e3",
+     "time": "2026-09-03T14:03:34+00:00",
+     "account_id": "U18051177",
+     "side": "BOT",
+     "shares": 2,
+     "price": 3.67,
+     "order_id": 0,
+     "perm_id": 7,
+     "order_ref": "",
+     "commission": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "currency": "USD",
+      "exchange": "CBOE",
+      "expiry": "20260903",
+      "strike": 7720,
+      "right": "C",
+      "tradingClass": "SPXW",
+      "multiplier": "100",
+      "conId": 1
+     }
+    }
+   ],
+   "expect": [
+    {
+     "id": "ib:392673899",
+     "source": "ibkr",
+     "created_at": "2026-09-02T17:16:06+00:00",
+     "contract": {
+      "secType": "BAG",
+      "symbol": "SPX",
+      "exchange": "SMART",
+      "currency": "USD",
+      "combo_strategy": "BUTTERFLY",
+      "multiplier": "100",
+      "legs": [
+       {
+        "action": "SELL",
+        "ratio": 1,
+        "strike": 7610.0,
+        "right": "P",
+        "lastTradeDateOrContractMonth": "20260902",
+        "tradingClass": "SPXW",
+        "multiplier": "100",
+        "conId": 1,
+        "fill_price": 0.27
+       },
+       {
+        "action": "BUY",
+        "ratio": 2,
+        "strike": 7635.0,
+        "right": "P",
+        "lastTradeDateOrContractMonth": "20260902",
+        "tradingClass": "SPXW",
+        "multiplier": "100",
+        "conId": 1,
+        "fill_price": 0.72
+       },
+       {
+        "action": "SELL",
+        "ratio": 1,
+        "strike": 7660.0,
+        "right": "P",
+        "lastTradeDateOrContractMonth": "20260902",
+        "tradingClass": "SPXW",
+        "multiplier": "100",
+        "conId": 1,
+        "fill_price": 4.02
+       }
+      ]
+     },
+     "order": {
+      "action": "SELL",
+      "totalQuantity": 1,
+      "orderType": "",
+      "lmtPrice": null,
+      "price_mode": "EXPLICIT",
+      "tif": "",
+      "outsideRth": false
+     },
+     "ibkr": {
+      "avg_fill_price": 2.85,
+      "fills": [
+       {
+        "time": "2026-09-02T17:16:06+00:00",
+        "price": 2.85,
+        "qty": 1.0,
+        "exec_id": "b"
+       }
+      ],
+      "perm_id": 392673899,
+      "order_id": null,
+      "total_commission": 2.2,
+      "status_timeline": [
+       {
+        "status": "Filled",
+        "at": "2026-09-02T17:16:06+00:00"
+       }
+      ]
+     },
+     "final_status": "filled",
+     "account": {
+      "alias": "主账户",
+      "account_id": "U18051177",
+      "is_paper": false
+     },
+     "llm": {
+      "intent_summary": "卖出 1 张 SPX 7610/7635/7660 看跌蝴蝶(翼宽 25)@ 2.85"
+     },
+     "input": {
+      "raw_instruction": "",
+      "reason": "券商成交记录",
+      "input_channel": "ibkr"
+     },
+     "execution_type": "IMMEDIATE",
+     "expiry": "2026-09-02"
+    },
+    {
+     "id": "ib:7",
+     "source": "ibkr",
+     "created_at": "2026-09-03T14:03:30+00:00",
+     "contract": {
+      "secType": "BAG",
+      "symbol": "SPX",
+      "exchange": "SMART",
+      "currency": "USD",
+      "combo_strategy": "BUTTERFLY",
+      "multiplier": "100",
+      "legs": [
+       {
+        "action": "BUY",
+        "ratio": 1,
+        "strike": 7720.0,
+        "right": "C",
+        "lastTradeDateOrContractMonth": "20260903",
+        "tradingClass": "SPXW",
+        "multiplier": "100",
+        "conId": 1,
+        "fill_price": 3.67
+       },
+       {
+        "action": "SELL",
+        "ratio": 2,
+        "strike": 7740.0,
+        "right": "C",
+        "lastTradeDateOrContractMonth": "20260903",
+        "tradingClass": "SPXW",
+        "multiplier": "100",
+        "conId": 1,
+        "fill_price": 0.82
+       },
+       {
+        "action": "BUY",
+        "ratio": 1,
+        "strike": 7760.0,
+        "right": "C",
+        "lastTradeDateOrContractMonth": "20260903",
+        "tradingClass": "SPXW",
+        "multiplier": "100",
+        "conId": 1,
+        "fill_price": 0.22
+       }
+      ]
+     },
+     "order": {
+      "action": "BUY",
+      "totalQuantity": 2,
+      "orderType": "",
+      "lmtPrice": null,
+      "price_mode": "EXPLICIT",
+      "tif": "",
+      "outsideRth": false
+     },
+     "ibkr": {
+      "avg_fill_price": 2.25,
+      "fills": [
+       {
+        "time": "2026-09-03T14:03:30+00:00",
+        "price": 2.25,
+        "qty": 2,
+        "exec_id": "(合成)"
+       }
+      ],
+      "perm_id": 7,
+      "order_id": null,
+      "total_commission": null,
+      "status_timeline": [
+       {
+        "status": "Filled",
+        "at": "2026-09-03T14:03:30+00:00"
+       }
+      ]
+     },
+     "final_status": "filled",
+     "account": {
+      "alias": "主账户",
+      "account_id": "U18051177",
+      "is_paper": false
+     },
+     "llm": {
+      "intent_summary": "买入 2 张 SPX 7720/7740/7760 看涨蝴蝶(翼宽 20)@ 2.25"
+     },
+     "input": {
+      "raw_instruction": "",
+      "reason": "券商成交记录",
+      "input_channel": "ibkr"
+     },
+     "execution_type": "IMMEDIATE",
+     "expiry": "2026-09-03"
+    },
+    {
+     "id": "ib:256406619",
+     "source": "ibkr",
+     "created_at": "2026-09-03T14:03:34+00:00",
+     "contract": {
+      "secType": "BAG",
+      "symbol": "SPX",
+      "exchange": "SMART",
+      "currency": "USD",
+      "combo_strategy": "BUTTERFLY",
+      "multiplier": "100",
+      "legs": [
+       {
+        "action": "BUY",
+        "ratio": 1,
+        "strike": 7720.0,
+        "right": "C",
+        "lastTradeDateOrContractMonth": "20260903",
+        "tradingClass": "SPXW",
+        "multiplier": "100",
+        "conId": 1,
+        "fill_price": 3.67
+       },
+       {
+        "action": "SELL",
+        "ratio": 2,
+        "strike": 7740.0,
+        "right": "C",
+        "lastTradeDateOrContractMonth": "20260903",
+        "tradingClass": "SPXW",
+        "multiplier": "100",
+        "conId": 1,
+        "fill_price": 0.82
+       },
+       {
+        "action": "BUY",
+        "ratio": 1,
+        "strike": 7760.0,
+        "right": "C",
+        "lastTradeDateOrContractMonth": "20260903",
+        "tradingClass": "SPXW",
+        "multiplier": "100",
+        "conId": 1,
+        "fill_price": 0.22
+       }
+      ]
+     },
+     "order": {
+      "action": "BUY",
+      "totalQuantity": 1,
+      "orderType": "",
+      "lmtPrice": null,
+      "price_mode": "EXPLICIT",
+      "tif": "",
+      "outsideRth": false
+     },
+     "ibkr": {
+      "avg_fill_price": 2.25,
+      "fills": [
+       {
+        "time": "2026-09-03T14:03:34+00:00",
+        "price": 2.25,
+        "qty": 1.0,
+        "exec_id": "bag"
+       }
+      ],
+      "perm_id": 256406619,
+      "order_id": null,
+      "total_commission": null,
+      "status_timeline": [
+       {
+        "status": "Filled",
+        "at": "2026-09-03T14:03:34+00:00"
+       }
+      ]
+     },
+     "final_status": "filled",
+     "account": {
+      "alias": "主账户",
+      "account_id": "U18051177",
+      "is_paper": false
+     },
+     "llm": {
+      "intent_summary": "买入 1 张 SPX 7720/7740/7760 看涨蝴蝶(翼宽 20)@ 2.25"
+     },
+     "input": {
+      "raw_instruction": "",
+      "reason": "券商成交记录",
+      "input_channel": "ibkr"
+     },
+     "execution_type": "IMMEDIATE",
+     "expiry": "2026-09-03"
+    }
+   ]
+  },
+  {
+   "name": "broken_group",
+   "fills": [
+    {
+     "exec_id": "bag",
+     "time": "2026-09-03T14:03:34+00:00",
+     "account_id": "U18051177",
+     "side": "BOT",
+     "shares": 1,
+     "price": 2.25,
+     "order_id": 0,
+     "perm_id": 256406619,
+     "order_ref": "",
+     "commission": null,
+     "contract": {
+      "secType": "BAG",
+      "symbol": "SPX",
+      "currency": "USD",
+      "exchange": "CBOE",
+      "expiry": "",
+      "strike": null,
+      "right": "C",
+      "tradingClass": "",
+      "multiplier": "100",
+      "conId": 1
+     }
+    },
+    {
+     "exec_id": "e1",
+     "time": "2026-09-03T14:03:34+00:00",
+     "account_id": "U18051177",
+     "side": "BOT",
+     "shares": 1,
+     "price": 0.22,
+     "order_id": 0,
+     "perm_id": 999,
+     "order_ref": "",
+     "commission": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "currency": "USD",
+      "exchange": "CBOE",
+      "expiry": "20260903",
+      "strike": 7760,
+      "right": "C",
+      "tradingClass": "SPXW",
+      "multiplier": "100",
+      "conId": 1
+     }
+    },
+    {
+     "exec_id": "e2",
+     "time": "2026-09-03T14:03:34+00:00",
+     "account_id": "U18051177",
+     "side": "SLD",
+     "shares": 2,
+     "price": 0.82,
+     "order_id": 0,
+     "perm_id": 256406619,
+     "order_ref": "",
+     "commission": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "currency": "USD",
+      "exchange": "CBOE",
+      "expiry": "20260903",
+      "strike": 7740,
+      "right": "C",
+      "tradingClass": "SPXW",
+      "multiplier": "100",
+      "conId": 1
+     }
+    },
+    {
+     "exec_id": "e3",
+     "time": "2026-09-03T14:03:34+00:00",
+     "account_id": "U18051177",
+     "side": "BOT",
+     "shares": 1,
+     "price": 3.67,
+     "order_id": 0,
+     "perm_id": 256406619,
+     "order_ref": "",
+     "commission": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "currency": "USD",
+      "exchange": "CBOE",
+      "expiry": "20260903",
+      "strike": 7720,
+      "right": "C",
+      "tradingClass": "SPXW",
+      "multiplier": "100",
+      "conId": 1
+     }
+    }
+   ],
+   "expect": []
+  },
+  {
+   "name": "unmapped_paper_account",
+   "fills": [
+    {
+     "exec_id": "bag",
+     "time": "2026-09-03T14:03:34+00:00",
+     "account_id": "DU1234567",
+     "side": "BOT",
+     "shares": 1,
+     "price": 2.25,
+     "order_id": 0,
+     "perm_id": 256406619,
+     "order_ref": "",
+     "commission": null,
+     "contract": {
+      "secType": "BAG",
+      "symbol": "SPX",
+      "currency": "USD",
+      "exchange": "CBOE",
+      "expiry": "",
+      "strike": null,
+      "right": "C",
+      "tradingClass": "",
+      "multiplier": "100",
+      "conId": 1
+     }
+    },
+    {
+     "exec_id": "e1",
+     "time": "2026-09-03T14:03:34+00:00",
+     "account_id": "DU1234567",
+     "side": "BOT",
+     "shares": 1,
+     "price": 0.22,
+     "order_id": 0,
+     "perm_id": 256406619,
+     "order_ref": "",
+     "commission": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "currency": "USD",
+      "exchange": "CBOE",
+      "expiry": "20260903",
+      "strike": 7760,
+      "right": "C",
+      "tradingClass": "SPXW",
+      "multiplier": "100",
+      "conId": 1
+     }
+    },
+    {
+     "exec_id": "e2",
+     "time": "2026-09-03T14:03:34+00:00",
+     "account_id": "DU1234567",
+     "side": "SLD",
+     "shares": 2,
+     "price": 0.82,
+     "order_id": 0,
+     "perm_id": 256406619,
+     "order_ref": "",
+     "commission": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "currency": "USD",
+      "exchange": "CBOE",
+      "expiry": "20260903",
+      "strike": 7740,
+      "right": "C",
+      "tradingClass": "SPXW",
+      "multiplier": "100",
+      "conId": 1
+     }
+    },
+    {
+     "exec_id": "e3",
+     "time": "2026-09-03T14:03:34+00:00",
+     "account_id": "DU1234567",
+     "side": "BOT",
+     "shares": 1,
+     "price": 3.67,
+     "order_id": 0,
+     "perm_id": 256406619,
+     "order_ref": "",
+     "commission": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "currency": "USD",
+      "exchange": "CBOE",
+      "expiry": "20260903",
+      "strike": 7720,
+      "right": "C",
+      "tradingClass": "SPXW",
+      "multiplier": "100",
+      "conId": 1
+     }
+    }
+   ],
+   "expect": [
+    {
+     "id": "ib:256406619",
+     "source": "ibkr",
+     "created_at": "2026-09-03T14:03:34+00:00",
+     "contract": {
+      "secType": "BAG",
+      "symbol": "SPX",
+      "exchange": "SMART",
+      "currency": "USD",
+      "combo_strategy": "BUTTERFLY",
+      "multiplier": "100",
+      "legs": [
+       {
+        "action": "BUY",
+        "ratio": 1,
+        "strike": 7720.0,
+        "right": "C",
+        "lastTradeDateOrContractMonth": "20260903",
+        "tradingClass": "SPXW",
+        "multiplier": "100",
+        "conId": 1,
+        "fill_price": 3.67
+       },
+       {
+        "action": "SELL",
+        "ratio": 2,
+        "strike": 7740.0,
+        "right": "C",
+        "lastTradeDateOrContractMonth": "20260903",
+        "tradingClass": "SPXW",
+        "multiplier": "100",
+        "conId": 1,
+        "fill_price": 0.82
+       },
+       {
+        "action": "BUY",
+        "ratio": 1,
+        "strike": 7760.0,
+        "right": "C",
+        "lastTradeDateOrContractMonth": "20260903",
+        "tradingClass": "SPXW",
+        "multiplier": "100",
+        "conId": 1,
+        "fill_price": 0.22
+       }
+      ]
+     },
+     "order": {
+      "action": "BUY",
+      "totalQuantity": 1,
+      "orderType": "",
+      "lmtPrice": null,
+      "price_mode": "EXPLICIT",
+      "tif": "",
+      "outsideRth": false
+     },
+     "ibkr": {
+      "avg_fill_price": 2.25,
+      "fills": [
+       {
+        "time": "2026-09-03T14:03:34+00:00",
+        "price": 2.25,
+        "qty": 1.0,
+        "exec_id": "bag"
+       }
+      ],
+      "perm_id": 256406619,
+      "order_id": null,
+      "total_commission": null,
+      "status_timeline": [
+       {
+        "status": "Filled",
+        "at": "2026-09-03T14:03:34+00:00"
+       }
+      ]
+     },
+     "final_status": "filled",
+     "account": {
+      "alias": "未配置账户 DU***567",
+      "account_id": "DU1234567",
+      "is_paper": true
+     },
+     "llm": {
+      "intent_summary": "买入 1 张 SPX 7720/7740/7760 看涨蝴蝶(翼宽 20)@ 2.25"
+     },
+     "input": {
+      "raw_instruction": "",
+      "reason": "券商成交记录",
+      "input_channel": "ibkr"
+     },
+     "execution_type": "IMMEDIATE",
+     "expiry": "2026-09-03"
+    }
+   ]
+  },
+  {
+   "name": "no_perm_id",
+   "fills": [
+    {
+     "exec_id": "bag",
+     "time": "2026-09-03T14:03:34+00:00",
+     "account_id": "U18051177",
+     "side": "BOT",
+     "shares": 1,
+     "price": 2.25,
+     "order_id": 42,
+     "perm_id": null,
+     "order_ref": "",
+     "commission": null,
+     "contract": {
+      "secType": "BAG",
+      "symbol": "SPX",
+      "currency": "USD",
+      "exchange": "CBOE",
+      "expiry": "",
+      "strike": null,
+      "right": "C",
+      "tradingClass": "",
+      "multiplier": "100",
+      "conId": 1
+     }
+    },
+    {
+     "exec_id": "e1",
+     "time": "2026-09-03T14:03:34+00:00",
+     "account_id": "U18051177",
+     "side": "BOT",
+     "shares": 1,
+     "price": 0.22,
+     "order_id": 42,
+     "perm_id": null,
+     "order_ref": "",
+     "commission": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "currency": "USD",
+      "exchange": "CBOE",
+      "expiry": "20260903",
+      "strike": 7760,
+      "right": "C",
+      "tradingClass": "SPXW",
+      "multiplier": "100",
+      "conId": 1
+     }
+    },
+    {
+     "exec_id": "e2",
+     "time": "2026-09-03T14:03:34+00:00",
+     "account_id": "U18051177",
+     "side": "SLD",
+     "shares": 2,
+     "price": 0.82,
+     "order_id": 42,
+     "perm_id": null,
+     "order_ref": "",
+     "commission": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "currency": "USD",
+      "exchange": "CBOE",
+      "expiry": "20260903",
+      "strike": 7740,
+      "right": "C",
+      "tradingClass": "SPXW",
+      "multiplier": "100",
+      "conId": 1
+     }
+    },
+    {
+     "exec_id": "e3",
+     "time": "2026-09-03T14:03:34+00:00",
+     "account_id": "U18051177",
+     "side": "BOT",
+     "shares": 1,
+     "price": 3.67,
+     "order_id": 42,
+     "perm_id": null,
+     "order_ref": "",
+     "commission": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "currency": "USD",
+      "exchange": "CBOE",
+      "expiry": "20260903",
+      "strike": 7720,
+      "right": "C",
+      "tradingClass": "SPXW",
+      "multiplier": "100",
+      "conId": 1
+     }
+    }
+   ],
+   "expect": [
+    {
+     "id": "ib:o42",
+     "source": "ibkr",
+     "created_at": "2026-09-03T14:03:34+00:00",
+     "contract": {
+      "secType": "BAG",
+      "symbol": "SPX",
+      "exchange": "SMART",
+      "currency": "USD",
+      "combo_strategy": "BUTTERFLY",
+      "multiplier": "100",
+      "legs": [
+       {
+        "action": "BUY",
+        "ratio": 1,
+        "strike": 7720.0,
+        "right": "C",
+        "lastTradeDateOrContractMonth": "20260903",
+        "tradingClass": "SPXW",
+        "multiplier": "100",
+        "conId": 1,
+        "fill_price": 3.67
+       },
+       {
+        "action": "SELL",
+        "ratio": 2,
+        "strike": 7740.0,
+        "right": "C",
+        "lastTradeDateOrContractMonth": "20260903",
+        "tradingClass": "SPXW",
+        "multiplier": "100",
+        "conId": 1,
+        "fill_price": 0.82
+       },
+       {
+        "action": "BUY",
+        "ratio": 1,
+        "strike": 7760.0,
+        "right": "C",
+        "lastTradeDateOrContractMonth": "20260903",
+        "tradingClass": "SPXW",
+        "multiplier": "100",
+        "conId": 1,
+        "fill_price": 0.22
+       }
+      ]
+     },
+     "order": {
+      "action": "BUY",
+      "totalQuantity": 1,
+      "orderType": "",
+      "lmtPrice": null,
+      "price_mode": "EXPLICIT",
+      "tif": "",
+      "outsideRth": false
+     },
+     "ibkr": {
+      "avg_fill_price": 2.25,
+      "fills": [
+       {
+        "time": "2026-09-03T14:03:34+00:00",
+        "price": 2.25,
+        "qty": 1.0,
+        "exec_id": "bag"
+       }
+      ],
+      "perm_id": null,
+      "order_id": 42,
+      "total_commission": null,
+      "status_timeline": [
+       {
+        "status": "Filled",
+        "at": "2026-09-03T14:03:34+00:00"
+       }
+      ]
+     },
+     "final_status": "filled",
+     "account": {
+      "alias": "主账户",
+      "account_id": "U18051177",
+      "is_paper": false
+     },
+     "llm": {
+      "intent_summary": "买入 1 张 SPX 7720/7740/7760 看涨蝴蝶(翼宽 20)@ 2.25"
+     },
+     "input": {
+      "raw_instruction": "",
+      "reason": "券商成交记录",
+      "input_channel": "ibkr"
+     },
+     "execution_type": "IMMEDIATE",
+     "expiry": "2026-09-03"
+    }
+   ]
+  },
+  {
+   "name": "spread_and_stock_ignored",
+   "fills": [
+    {
+     "exec_id": "s1",
+     "time": "2026-09-03T14:03:34+00:00",
+     "account_id": "U18051177",
+     "side": "BOT",
+     "shares": 1,
+     "price": 1.0,
+     "order_id": 0,
+     "perm_id": 5,
+     "order_ref": "",
+     "commission": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "currency": "USD",
+      "exchange": "CBOE",
+      "expiry": "20260903",
+      "strike": 7700,
+      "right": "C",
+      "tradingClass": "SPXW",
+      "multiplier": "100",
+      "conId": 1
+     }
+    },
+    {
+     "exec_id": "s2",
+     "time": "2026-09-03T14:03:34+00:00",
+     "account_id": "U18051177",
+     "side": "SLD",
+     "shares": 1,
+     "price": 0.5,
+     "order_id": 0,
+     "perm_id": 5,
+     "order_ref": "",
+     "commission": null,
+     "contract": {
+      "secType": "OPT",
+      "symbol": "SPX",
+      "currency": "USD",
+      "exchange": "CBOE",
+      "expiry": "20260903",
+      "strike": 7720,
+      "right": "C",
+      "tradingClass": "SPXW",
+      "multiplier": "100",
+      "conId": 1
+     }
+    },
+    {
+     "exec_id": "x",
+     "time": "2026-09-03T14:03:34+00:00",
+     "account_id": "U18051177",
+     "side": "BOT",
+     "shares": 1,
+     "price": 326,
+     "perm_id": 3,
+     "contract": {
+      "secType": "STK",
+      "symbol": "AAPL"
+     }
+    }
+   ],
+   "expect": []
+  }
+ ],
+ "group_key": [
+  {
+   "fill": {
+    "exec_id": "bag",
+    "time": "2026-09-03T14:03:34+00:00",
+    "account_id": "U18051177",
+    "side": "BOT",
+    "shares": 1,
+    "price": 2.25,
+    "order_id": 0,
+    "perm_id": 256406619,
+    "order_ref": "",
+    "commission": null,
+    "contract": {
+     "secType": "BAG",
+     "symbol": "SPX",
+     "currency": "USD",
+     "exchange": "CBOE",
+     "expiry": "",
+     "strike": null,
+     "right": "C",
+     "tradingClass": "",
+     "multiplier": "100",
+     "conId": 1
+    }
+   },
+   "expect": "p256406619"
+  },
+  {
+   "fill": {
+    "exec_id": "bag",
+    "time": "2026-09-03T14:03:34+00:00",
+    "account_id": "U18051177",
+    "side": "BOT",
+    "shares": 1,
+    "price": 2.25,
+    "order_id": 42,
+    "perm_id": null,
+    "order_ref": "",
+    "commission": null,
+    "contract": {
+     "secType": "BAG",
+     "symbol": "SPX",
+     "currency": "USD",
+     "exchange": "CBOE",
+     "expiry": "",
+     "strike": null,
+     "right": "C",
+     "tradingClass": "",
+     "multiplier": "100",
+     "conId": 1
+    }
+   },
+   "expect": "o42"
+  },
+  {
+   "fill": {
+    "exec_id": "zz"
+   },
+   "expect": "ezz"
+  }
+ ]
+}

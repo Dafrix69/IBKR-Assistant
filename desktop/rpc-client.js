@@ -170,8 +170,8 @@ class EngineClient extends EventEmitter {
 
     // 1. 开发模式:仓库自带的 venv
     for (const candidate of [
-      path.join(this.repoRoot, '.venv', 'bin', 'python'),
-      path.join(this.repoRoot, '.venv', 'Scripts', 'python.exe'),
+      path.join(this.repoRoot, 'engine-python', '.venv', 'bin', 'python'),
+      path.join(this.repoRoot, 'engine-python', '.venv', 'Scripts', 'python.exe'),
     ]) {
       if (fs.existsSync(candidate)) return candidate;
     }
@@ -289,7 +289,7 @@ class EngineClient extends EventEmitter {
       cwd: this.packaged && this.userDataDir ? this.userDataDir : this.repoRoot,
       env: {
         ...process.env,
-        PYTHONPATH: path.join(this.repoRoot, 'src'),
+        PYTHONPATH: path.join(this.repoRoot, 'engine-python', 'src'),
         PYTHONUNBUFFERED: '1',
         PYTHONIOENCODING: 'utf-8',
       },

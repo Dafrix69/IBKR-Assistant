@@ -1,0 +1,6 @@
+node_modules/
+dist/
+# gen_rpc_samples.py 跑 Python 引擎时的工作目录,只有 expected.json 是基线
+baseline/rpc/pywork/
+# 某次把 ~ 当成家目录建出来的数据目录,里面是真实交易记录(S1),不进仓库
+~/

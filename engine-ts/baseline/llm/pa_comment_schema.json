@@ -1,0 +1,38 @@
+{
+ "additionalProperties": false,
+ "description": "价格行为读盘的 AI 解读。模型只解读软件算好的事实,不产生新价位。",
+ "properties": {
+  "summary": {
+   "description": "一句话结论",
+   "title": "Summary",
+   "type": "string"
+  },
+  "reading": {
+   "default": "",
+   "description": "对当前结构的解读,2~4 句",
+   "title": "Reading",
+   "type": "string"
+  },
+  "watch": {
+   "description": "接下来要盯的价位或条件",
+   "items": {
+    "type": "string"
+   },
+   "title": "Watch",
+   "type": "array"
+  },
+  "risks": {
+   "description": "这个判断可能错在哪",
+   "items": {
+    "type": "string"
+   },
+   "title": "Risks",
+   "type": "array"
+  }
+ },
+ "required": [
+  "summary"
+ ],
+ "title": "PAComment",
+ "type": "object"
+}

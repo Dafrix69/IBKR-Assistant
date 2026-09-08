@@ -2,7 +2,7 @@
 //
 //   node tools/stage_engine_ts.js --platform win32 --arch x64      → build/engine-ts/
 //
-// 为什么要这一步:原来 extraResources 直接指向 ../../trade-ts/node_modules,把 devDependencies
+// 为什么要这一步:原来 extraResources 直接指向 ../engine-ts/node_modules,把 devDependencies
 // (typescript、vite、vitest、esbuild、rollup、@types…约 51 MB)、better-sqlite3 的 8 个平台预编译
 // 二进制与 sqlite 源码、protobufjs 的命令行工具、以及所有 .map / .d.ts / .md 一起打进了安装包。
 // 这里按 package-lock.json 的生产依赖闭包复制(npm ci --omit=dev 在没有 C++ 工具链的机器上会因
@@ -20,7 +20,7 @@ const platform = flag('platform', process.platform);
 const arch = flag('arch', process.arch);
 
 const DESKTOP = path.resolve(__dirname, '..');
-const TS_ROOT = path.resolve(DESKTOP, '..', '..', 'trade-ts');
+const TS_ROOT = path.resolve(DESKTOP, '..', 'engine-ts');
 const OUT = path.join(DESKTOP, 'build', 'engine-ts');
 
 // ---- 文件级过滤:这些在运行时一个都用不到 -----------------------------------
@@ -91,7 +91,7 @@ const mb = (n) => (n / 1048576).toFixed(1) + ' MB';
 
 // ---- 开始 --------------------------------------------------------------------
 if (!fs.existsSync(path.join(TS_ROOT, 'dist', 'src', 'cli.js'))) {
-  console.error('找不到 trade-ts/dist/src/cli.js:先在 trade-ts 下跑 npx tsc');
+  console.error('找不到 engine-ts/dist/src/cli.js:先在 engine-ts 下跑 npx tsc');
   process.exit(1);
 }
 fs.rmSync(OUT, { recursive: true, force: true });
@@ -116,7 +116,7 @@ for (const [key, meta] of Object.entries(lock.packages)) {
   if (!key || meta.dev) continue;
   const src = path.join(TS_ROOT, key);
   if (!fs.existsSync(src)) {
-    console.error('lock 里有但磁盘上没有:', key, '——先在 trade-ts 下 npm install');
+    console.error('lock 里有但磁盘上没有:', key, '——先在 engine-ts 下 npm install');
     process.exit(1);
   }
   const pkgName = key.slice(key.lastIndexOf('node_modules/') + 'node_modules/'.length);

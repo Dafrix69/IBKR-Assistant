@@ -1,0 +1,2225 @@
+{
+ "now": "2026-08-14T10:32",
+ "cases": [
+  {
+   "text": "1.8 挂15蝴蝶 15CM",
+   "snapshot": {
+    "SPX": 6907.35
+   },
+   "expect": {
+    "orders": [
+     {
+      "intent_summary": "买入 1 张 2026-08-14 当日到期的 SPX 6900/6915/6930 看涨蝴蝶(翼宽 15 点),净权利金上限 1.8",
+      "contract": {
+       "secType": "BAG",
+       "symbol": "SPX",
+       "exchange": "SMART",
+       "currency": "USD",
+       "combo_strategy": "BUTTERFLY",
+       "legs": [
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 6900.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "SELL",
+         "ratio": 2,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 6915.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 6930.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        }
+       ]
+      },
+      "execution_type": "IMMEDIATE",
+      "trigger": null,
+      "account": "DEFAULT",
+      "order": {
+       "action": "BUY",
+       "orderType": "LMT",
+       "totalQuantity": 1,
+       "price_mode": "EXPLICIT",
+       "lmtPrice": 1.8,
+       "tif": "DAY",
+       "outsideRth": false
+      },
+      "reason": "本地速记解析",
+      "confidence": 1.0,
+      "warnings": [
+       "未写张数,已按默认 1 张处理",
+       "未写标的,默认按 SPX 处理",
+       "未写到期日,已按默认当日到期处理",
+       "「15蝴蝶」按中心 6915(现价百位+15)理解",
+       "中心 6915 高于现价 6907.35,推断为看涨蝴蝶",
+       "本地速记解析(未经大模型),语法 shorthand-v3"
+      ]
+     }
+    ],
+    "rejections": []
+   }
+  },
+  {
+   "text": "1.8 挂15蝴蝶 15CM",
+   "snapshot": {
+    "SPX": 6992.1
+   },
+   "expect": {
+    "orders": [
+     {
+      "intent_summary": "买入 1 张 2026-08-14 当日到期的 SPX 6900/6915/6930 看跌蝴蝶(翼宽 15 点),净权利金上限 1.8",
+      "contract": {
+       "secType": "BAG",
+       "symbol": "SPX",
+       "exchange": "SMART",
+       "currency": "USD",
+       "combo_strategy": "BUTTERFLY",
+       "legs": [
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 6900.0,
+         "right": "P",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "SELL",
+         "ratio": 2,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 6915.0,
+         "right": "P",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 6930.0,
+         "right": "P",
+         "tradingClass": "SPXW"
+        }
+       ]
+      },
+      "execution_type": "IMMEDIATE",
+      "trigger": null,
+      "account": "DEFAULT",
+      "order": {
+       "action": "BUY",
+       "orderType": "LMT",
+       "totalQuantity": 1,
+       "price_mode": "EXPLICIT",
+       "lmtPrice": 1.8,
+       "tif": "DAY",
+       "outsideRth": false
+      },
+      "reason": "本地速记解析",
+      "confidence": 1.0,
+      "warnings": [
+       "未写张数,已按默认 1 张处理",
+       "未写标的,默认按 SPX 处理",
+       "未写到期日,已按默认当日到期处理",
+       "「15蝴蝶」按中心 6915(现价百位+15)理解",
+       "中心 6915 低于现价 6992.1,推断为看跌蝴蝶",
+       "本地速记解析(未经大模型),语法 shorthand-v3"
+      ]
+     }
+    ],
+    "rejections": []
+   }
+  },
+  {
+   "text": "7520的20cm蝴蝶 2.5",
+   "snapshot": {
+    "SPX": 7462.35
+   },
+   "expect": {
+    "orders": [
+     {
+      "intent_summary": "买入 1 张 2026-08-14 当日到期的 SPX 7500/7520/7540 看涨蝴蝶(翼宽 20 点),净权利金上限 2.5",
+      "contract": {
+       "secType": "BAG",
+       "symbol": "SPX",
+       "exchange": "SMART",
+       "currency": "USD",
+       "combo_strategy": "BUTTERFLY",
+       "legs": [
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7500.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "SELL",
+         "ratio": 2,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7520.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7540.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        }
+       ]
+      },
+      "execution_type": "IMMEDIATE",
+      "trigger": null,
+      "account": "DEFAULT",
+      "order": {
+       "action": "BUY",
+       "orderType": "LMT",
+       "totalQuantity": 1,
+       "price_mode": "EXPLICIT",
+       "lmtPrice": 2.5,
+       "tif": "DAY",
+       "outsideRth": false
+      },
+      "reason": "本地速记解析",
+      "confidence": 1.0,
+      "warnings": [
+       "未写张数,已按默认 1 张处理",
+       "未写标的,默认按 SPX 处理",
+       "未写到期日,已按默认当日到期处理",
+       "中心 7520 高于现价 7462.35,推断为看涨蝴蝶",
+       "本地速记解析(未经大模型),语法 shorthand-v3"
+      ]
+     }
+    ],
+    "rejections": []
+   }
+  },
+  {
+   "text": "7520的20cm看跌蝴蝶",
+   "snapshot": {
+    "SPX": 7462.35
+   },
+   "expect": {
+    "orders": [
+     {
+      "intent_summary": "买入 1 张 2026-08-14 当日到期的 SPX 7500/7520/7540 看跌蝴蝶(翼宽 20 点),净权利金按下单时盘口中间价确定",
+      "contract": {
+       "secType": "BAG",
+       "symbol": "SPX",
+       "exchange": "SMART",
+       "currency": "USD",
+       "combo_strategy": "BUTTERFLY",
+       "legs": [
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7500.0,
+         "right": "P",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "SELL",
+         "ratio": 2,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7520.0,
+         "right": "P",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7540.0,
+         "right": "P",
+         "tradingClass": "SPXW"
+        }
+       ]
+      },
+      "execution_type": "IMMEDIATE",
+      "trigger": null,
+      "account": "DEFAULT",
+      "order": {
+       "action": "BUY",
+       "orderType": "LMT",
+       "totalQuantity": 1,
+       "price_mode": "AUTO_MID",
+       "lmtPrice": null,
+       "tif": "DAY",
+       "outsideRth": false
+      },
+      "reason": "本地速记解析",
+      "confidence": 1.0,
+      "warnings": [
+       "未写张数,已按默认 1 张处理",
+       "未写标的,默认按 SPX 处理",
+       "未写到期日,已按默认当日到期处理",
+       "未指定净权利金上限,将在下单时按盘口中间价定价(AUTO_MID);若成交成本敏感,请写明如'权利金不超过 3'",
+       "本地速记解析(未经大模型),语法 shorthand-v3"
+      ]
+     }
+    ],
+    "rejections": []
+   }
+  },
+  {
+   "text": "3张 7520的20cm蝴蝶 2.5",
+   "snapshot": {
+    "SPX": 7462.35
+   },
+   "expect": {
+    "orders": [
+     {
+      "intent_summary": "买入 3 张 2026-08-14 当日到期的 SPX 7500/7520/7540 看涨蝴蝶(翼宽 20 点),净权利金上限 2.5",
+      "contract": {
+       "secType": "BAG",
+       "symbol": "SPX",
+       "exchange": "SMART",
+       "currency": "USD",
+       "combo_strategy": "BUTTERFLY",
+       "legs": [
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7500.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "SELL",
+         "ratio": 2,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7520.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7540.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        }
+       ]
+      },
+      "execution_type": "IMMEDIATE",
+      "trigger": null,
+      "account": "DEFAULT",
+      "order": {
+       "action": "BUY",
+       "orderType": "LMT",
+       "totalQuantity": 3,
+       "price_mode": "EXPLICIT",
+       "lmtPrice": 2.5,
+       "tif": "DAY",
+       "outsideRth": false
+      },
+      "reason": "本地速记解析",
+      "confidence": 1.0,
+      "warnings": [
+       "未写标的,默认按 SPX 处理",
+       "未写到期日,已按默认当日到期处理",
+       "中心 7520 高于现价 7462.35,推断为看涨蝴蝶",
+       "本地速记解析(未经大模型),语法 shorthand-v3"
+      ]
+     }
+    ],
+    "rejections": []
+   }
+  },
+  {
+   "text": "ndx 21020的30cm蝴蝶 5",
+   "snapshot": {
+    "NDX": 20988.0
+   },
+   "expect": {
+    "orders": [
+     {
+      "intent_summary": "买入 1 张 2026-08-14 当日到期的 NDX 20990/21020/21050 看涨蝴蝶(翼宽 30 点),净权利金上限 5",
+      "contract": {
+       "secType": "BAG",
+       "symbol": "NDX",
+       "exchange": "SMART",
+       "currency": "USD",
+       "combo_strategy": "BUTTERFLY",
+       "legs": [
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 20990.0,
+         "right": "C"
+        },
+        {
+         "action": "SELL",
+         "ratio": 2,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 21020.0,
+         "right": "C"
+        },
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 21050.0,
+         "right": "C"
+        }
+       ]
+      },
+      "execution_type": "IMMEDIATE",
+      "trigger": null,
+      "account": "DEFAULT",
+      "order": {
+       "action": "BUY",
+       "orderType": "LMT",
+       "totalQuantity": 1,
+       "price_mode": "EXPLICIT",
+       "lmtPrice": 5.0,
+       "tif": "DAY",
+       "outsideRth": false
+      },
+      "reason": "本地速记解析",
+      "confidence": 1.0,
+      "warnings": [
+       "未写张数,已按默认 1 张处理",
+       "未写到期日,已按默认当日到期处理",
+       "中心 21020 高于现价 20988,推断为看涨蝴蝶",
+       "本地速记解析(未经大模型),语法 shorthand-v3"
+      ]
+     }
+    ],
+    "rejections": []
+   }
+  },
+  {
+   "text": "gtc 7520的20cm蝴蝶 2.5",
+   "snapshot": {
+    "SPX": 7462.35
+   },
+   "expect": {
+    "orders": [
+     {
+      "intent_summary": "买入 1 张 2026-08-14 当日到期的 SPX 7500/7520/7540 看涨蝴蝶(翼宽 20 点),净权利金上限 2.5",
+      "contract": {
+       "secType": "BAG",
+       "symbol": "SPX",
+       "exchange": "SMART",
+       "currency": "USD",
+       "combo_strategy": "BUTTERFLY",
+       "legs": [
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7500.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "SELL",
+         "ratio": 2,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7520.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7540.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        }
+       ]
+      },
+      "execution_type": "IMMEDIATE",
+      "trigger": null,
+      "account": "DEFAULT",
+      "order": {
+       "action": "BUY",
+       "orderType": "LMT",
+       "totalQuantity": 1,
+       "price_mode": "EXPLICIT",
+       "lmtPrice": 2.5,
+       "tif": "GTC",
+       "outsideRth": false
+      },
+      "reason": "本地速记解析",
+      "confidence": 1.0,
+      "warnings": [
+       "未写张数,已按默认 1 张处理",
+       "未写标的,默认按 SPX 处理",
+       "未写到期日,已按默认当日到期处理",
+       "中心 7520 高于现价 7462.35,推断为看涨蝴蝶",
+       "本地速记解析(未经大模型),语法 shorthand-v3"
+      ]
+     }
+    ],
+    "rejections": []
+   }
+  },
+  {
+   "text": "盘外 7520的20cm蝴蝶 2.5",
+   "snapshot": {
+    "SPX": 7462.35
+   },
+   "expect": {
+    "orders": [
+     {
+      "intent_summary": "买入 1 张 2026-08-14 当日到期的 SPX 7500/7520/7540 看涨蝴蝶(翼宽 20 点),净权利金上限 2.5",
+      "contract": {
+       "secType": "BAG",
+       "symbol": "SPX",
+       "exchange": "SMART",
+       "currency": "USD",
+       "combo_strategy": "BUTTERFLY",
+       "legs": [
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7500.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "SELL",
+         "ratio": 2,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7520.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7540.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        }
+       ]
+      },
+      "execution_type": "IMMEDIATE",
+      "trigger": null,
+      "account": "DEFAULT",
+      "order": {
+       "action": "BUY",
+       "orderType": "LMT",
+       "totalQuantity": 1,
+       "price_mode": "EXPLICIT",
+       "lmtPrice": 2.5,
+       "tif": "DAY",
+       "outsideRth": true
+      },
+      "reason": "本地速记解析",
+      "confidence": 1.0,
+      "warnings": [
+       "未写张数,已按默认 1 张处理",
+       "未写标的,默认按 SPX 处理",
+       "未写到期日,已按默认当日到期处理",
+       "中心 7520 高于现价 7462.35,推断为看涨蝴蝶",
+       "本地速记解析(未经大模型),语法 shorthand-v3"
+      ]
+     }
+    ],
+    "rejections": []
+   }
+  },
+  {
+   "text": "隔夜 7520的20cm蝴蝶",
+   "snapshot": {
+    "SPX": 7462.35
+   },
+   "expect": {
+    "orders": [
+     {
+      "intent_summary": "买入 1 张 2026-08-14 当日到期的 SPX 7500/7520/7540 看涨蝴蝶(翼宽 20 点),净权利金按下单时盘口中间价确定",
+      "contract": {
+       "secType": "BAG",
+       "symbol": "SPX",
+       "exchange": "SMART",
+       "currency": "USD",
+       "combo_strategy": "BUTTERFLY",
+       "legs": [
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7500.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "SELL",
+         "ratio": 2,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7520.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7540.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        }
+       ]
+      },
+      "execution_type": "IMMEDIATE",
+      "trigger": null,
+      "account": "DEFAULT",
+      "order": {
+       "action": "BUY",
+       "orderType": "LMT",
+       "totalQuantity": 1,
+       "price_mode": "AUTO_MID",
+       "lmtPrice": null,
+       "tif": "DAY",
+       "outsideRth": true
+      },
+      "reason": "本地速记解析",
+      "confidence": 1.0,
+      "warnings": [
+       "未写张数,已按默认 1 张处理",
+       "未写标的,默认按 SPX 处理",
+       "未写到期日,已按默认当日到期处理",
+       "中心 7520 高于现价 7462.35,推断为看涨蝴蝶",
+       "未指定净权利金上限,将在下单时按盘口中间价定价(AUTO_MID);若成交成本敏感,请写明如'权利金不超过 3'",
+       "本地速记解析(未经大模型),语法 shorthand-v3"
+      ]
+     }
+    ],
+    "rejections": []
+   }
+  },
+  {
+   "text": "7520的20cm蝴蝶 夜盘 2.5",
+   "snapshot": {
+    "SPX": 7462.35
+   },
+   "expect": {
+    "orders": [
+     {
+      "intent_summary": "买入 1 张 2026-08-14 当日到期的 SPX 7500/7520/7540 看涨蝴蝶(翼宽 20 点),净权利金上限 2.5",
+      "contract": {
+       "secType": "BAG",
+       "symbol": "SPX",
+       "exchange": "SMART",
+       "currency": "USD",
+       "combo_strategy": "BUTTERFLY",
+       "legs": [
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7500.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "SELL",
+         "ratio": 2,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7520.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7540.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        }
+       ]
+      },
+      "execution_type": "IMMEDIATE",
+      "trigger": null,
+      "account": "DEFAULT",
+      "order": {
+       "action": "BUY",
+       "orderType": "LMT",
+       "totalQuantity": 1,
+       "price_mode": "EXPLICIT",
+       "lmtPrice": 2.5,
+       "tif": "DAY",
+       "outsideRth": true
+      },
+      "reason": "本地速记解析",
+      "confidence": 1.0,
+      "warnings": [
+       "未写张数,已按默认 1 张处理",
+       "未写标的,默认按 SPX 处理",
+       "未写到期日,已按默认当日到期处理",
+       "中心 7520 高于现价 7462.35,推断为看涨蝴蝶",
+       "本地速记解析(未经大模型),语法 shorthand-v3"
+      ]
+     }
+    ],
+    "rejections": []
+   }
+  },
+  {
+   "text": "gtc 盘外 3张 7520的20cm蝴蝶 2.5",
+   "snapshot": {
+    "SPX": 7462.35
+   },
+   "expect": {
+    "orders": [
+     {
+      "intent_summary": "买入 3 张 2026-08-14 当日到期的 SPX 7500/7520/7540 看涨蝴蝶(翼宽 20 点),净权利金上限 2.5",
+      "contract": {
+       "secType": "BAG",
+       "symbol": "SPX",
+       "exchange": "SMART",
+       "currency": "USD",
+       "combo_strategy": "BUTTERFLY",
+       "legs": [
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7500.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "SELL",
+         "ratio": 2,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7520.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7540.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        }
+       ]
+      },
+      "execution_type": "IMMEDIATE",
+      "trigger": null,
+      "account": "DEFAULT",
+      "order": {
+       "action": "BUY",
+       "orderType": "LMT",
+       "totalQuantity": 3,
+       "price_mode": "EXPLICIT",
+       "lmtPrice": 2.5,
+       "tif": "GTC",
+       "outsideRth": true
+      },
+      "reason": "本地速记解析",
+      "confidence": 1.0,
+      "warnings": [
+       "未写标的,默认按 SPX 处理",
+       "未写到期日,已按默认当日到期处理",
+       "中心 7520 高于现价 7462.35,推断为看涨蝴蝶",
+       "本地速记解析(未经大模型),语法 shorthand-v3"
+      ]
+     }
+    ],
+    "rejections": []
+   }
+  },
+  {
+   "text": "6915的15cm蝴蝶 1.8",
+   "snapshot": {
+    "SPX": 6915.0
+   },
+   "expect": {
+    "orders": [
+     {
+      "intent_summary": "买入 1 张 2026-08-14 当日到期的 SPX 6900/6915/6930 看涨蝴蝶(翼宽 15 点),净权利金上限 1.8",
+      "contract": {
+       "secType": "BAG",
+       "symbol": "SPX",
+       "exchange": "SMART",
+       "currency": "USD",
+       "combo_strategy": "BUTTERFLY",
+       "legs": [
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 6900.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "SELL",
+         "ratio": 2,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 6915.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 6930.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        }
+       ]
+      },
+      "execution_type": "IMMEDIATE",
+      "trigger": null,
+      "account": "DEFAULT",
+      "order": {
+       "action": "BUY",
+       "orderType": "LMT",
+       "totalQuantity": 1,
+       "price_mode": "EXPLICIT",
+       "lmtPrice": 1.8,
+       "tif": "DAY",
+       "outsideRth": false
+      },
+      "reason": "本地速记解析",
+      "confidence": 1.0,
+      "warnings": [
+       "未写张数,已按默认 1 张处理",
+       "未写标的,默认按 SPX 处理",
+       "未写到期日,已按默认当日到期处理",
+       "中心 6915 等于现价,默认按看涨蝴蝶处理",
+       "本地速记解析(未经大模型),语法 shorthand-v3"
+      ]
+     }
+    ],
+    "rejections": []
+   }
+  },
+  {
+   "text": "spx涨到7500时 7520的20cm蝴蝶",
+   "snapshot": {
+    "SPX": 7462.35
+   },
+   "expect": null
+  },
+  {
+   "text": "卖出7520的20cm蝴蝶 2.5",
+   "snapshot": {
+    "SPX": 7462.35
+   },
+   "expect": null
+  },
+  {
+   "text": "1.8 2.5 挂15蝴蝶 15CM",
+   "snapshot": {
+    "SPX": 6907.35
+   },
+   "expect": null
+  },
+  {
+   "text": "20 挂15蝴蝶 15CM",
+   "snapshot": {
+    "SPX": 6907.35
+   },
+   "expect": null
+  },
+  {
+   "text": "1.8 挂15蝴蝶 15CM",
+   "snapshot": {},
+   "expect": null
+  },
+  {
+   "text": "买入 AAPL 100股 limit 230",
+   "snapshot": {
+    "SPX": 6907.35
+   },
+   "expect": null
+  },
+  {
+   "text": "1.8 挂15蝴蝶 15cm,",
+   "snapshot": {
+    "SPX": 6907.35
+   },
+   "expect": {
+    "orders": [
+     {
+      "intent_summary": "买入 1 张 2026-08-14 当日到期的 SPX 6900/6915/6930 看涨蝴蝶(翼宽 15 点),净权利金上限 1.8",
+      "contract": {
+       "secType": "BAG",
+       "symbol": "SPX",
+       "exchange": "SMART",
+       "currency": "USD",
+       "combo_strategy": "BUTTERFLY",
+       "legs": [
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 6900.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "SELL",
+         "ratio": 2,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 6915.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 6930.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        }
+       ]
+      },
+      "execution_type": "IMMEDIATE",
+      "trigger": null,
+      "account": "DEFAULT",
+      "order": {
+       "action": "BUY",
+       "orderType": "LMT",
+       "totalQuantity": 1,
+       "price_mode": "EXPLICIT",
+       "lmtPrice": 1.8,
+       "tif": "DAY",
+       "outsideRth": false
+      },
+      "reason": "本地速记解析",
+      "confidence": 1.0,
+      "warnings": [
+       "未写张数,已按默认 1 张处理",
+       "未写标的,默认按 SPX 处理",
+       "未写到期日,已按默认当日到期处理",
+       "「15蝴蝶」按中心 6915(现价百位+15)理解",
+       "中心 6915 高于现价 6907.35,推断为看涨蝴蝶",
+       "本地速记解析(未经大模型),语法 shorthand-v3"
+      ]
+     }
+    ],
+    "rejections": []
+   }
+  },
+  {
+   "text": "spx7400来个25cm蝴蝶 3.3",
+   "snapshot": {
+    "SPX": 7462.35
+   },
+   "expect": {
+    "orders": [
+     {
+      "intent_summary": "买入 1 张 2026-08-14 当日到期的 SPX 7375/7400/7425 看跌蝴蝶(翼宽 25 点),净权利金上限 3.3",
+      "contract": {
+       "secType": "BAG",
+       "symbol": "SPX",
+       "exchange": "SMART",
+       "currency": "USD",
+       "combo_strategy": "BUTTERFLY",
+       "legs": [
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7375.0,
+         "right": "P",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "SELL",
+         "ratio": 2,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7400.0,
+         "right": "P",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7425.0,
+         "right": "P",
+         "tradingClass": "SPXW"
+        }
+       ]
+      },
+      "execution_type": "IMMEDIATE",
+      "trigger": null,
+      "account": "DEFAULT",
+      "order": {
+       "action": "BUY",
+       "orderType": "LMT",
+       "totalQuantity": 1,
+       "price_mode": "EXPLICIT",
+       "lmtPrice": 3.3,
+       "tif": "DAY",
+       "outsideRth": false
+      },
+      "reason": "本地速记解析",
+      "confidence": 1.0,
+      "warnings": [
+       "未写张数,已按默认 1 张处理",
+       "未写到期日,已按默认当日到期处理",
+       "中心 7400 低于现价 7462.35,推断为看跌蝴蝶",
+       "本地速记解析(未经大模型),语法 shorthand-v3"
+      ]
+     }
+    ],
+    "rejections": []
+   }
+  },
+  {
+   "text": "两张 7520的20cm蝴蝶 2.5",
+   "snapshot": {
+    "SPX": 7462.35
+   },
+   "expect": {
+    "orders": [
+     {
+      "intent_summary": "买入 2 张 2026-08-14 当日到期的 SPX 7500/7520/7540 看涨蝴蝶(翼宽 20 点),净权利金上限 2.5",
+      "contract": {
+       "secType": "BAG",
+       "symbol": "SPX",
+       "exchange": "SMART",
+       "currency": "USD",
+       "combo_strategy": "BUTTERFLY",
+       "legs": [
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7500.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "SELL",
+         "ratio": 2,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7520.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7540.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        }
+       ]
+      },
+      "execution_type": "IMMEDIATE",
+      "trigger": null,
+      "account": "DEFAULT",
+      "order": {
+       "action": "BUY",
+       "orderType": "LMT",
+       "totalQuantity": 2,
+       "price_mode": "EXPLICIT",
+       "lmtPrice": 2.5,
+       "tif": "DAY",
+       "outsideRth": false
+      },
+      "reason": "本地速记解析",
+      "confidence": 1.0,
+      "warnings": [
+       "未写标的,默认按 SPX 处理",
+       "未写到期日,已按默认当日到期处理",
+       "中心 7520 高于现价 7462.35,推断为看涨蝴蝶",
+       "本地速记解析(未经大模型),语法 shorthand-v3"
+      ]
+     }
+    ],
+    "rejections": []
+   }
+  },
+  {
+   "text": "买一张 7520的20cm蝴蝶 2.5",
+   "snapshot": {
+    "SPX": 7462.35
+   },
+   "expect": {
+    "orders": [
+     {
+      "intent_summary": "买入 1 张 2026-08-14 当日到期的 SPX 7500/7520/7540 看涨蝴蝶(翼宽 20 点),净权利金上限 2.5",
+      "contract": {
+       "secType": "BAG",
+       "symbol": "SPX",
+       "exchange": "SMART",
+       "currency": "USD",
+       "combo_strategy": "BUTTERFLY",
+       "legs": [
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7500.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "SELL",
+         "ratio": 2,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7520.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7540.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        }
+       ]
+      },
+      "execution_type": "IMMEDIATE",
+      "trigger": null,
+      "account": "DEFAULT",
+      "order": {
+       "action": "BUY",
+       "orderType": "LMT",
+       "totalQuantity": 1,
+       "price_mode": "EXPLICIT",
+       "lmtPrice": 2.5,
+       "tif": "DAY",
+       "outsideRth": false
+      },
+      "reason": "本地速记解析",
+      "confidence": 1.0,
+      "warnings": [
+       "未写标的,默认按 SPX 处理",
+       "未写到期日,已按默认当日到期处理",
+       "中心 7520 高于现价 7462.35,推断为看涨蝴蝶",
+       "本地速记解析(未经大模型),语法 shorthand-v3"
+      ]
+     }
+    ],
+    "rejections": []
+   }
+  },
+  {
+   "text": "十张 7520的20cm蝴蝶 2.5",
+   "snapshot": {
+    "SPX": 7462.35
+   },
+   "expect": {
+    "orders": [
+     {
+      "intent_summary": "买入 10 张 2026-08-14 当日到期的 SPX 7500/7520/7540 看涨蝴蝶(翼宽 20 点),净权利金上限 2.5",
+      "contract": {
+       "secType": "BAG",
+       "symbol": "SPX",
+       "exchange": "SMART",
+       "currency": "USD",
+       "combo_strategy": "BUTTERFLY",
+       "legs": [
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7500.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "SELL",
+         "ratio": 2,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7520.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7540.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        }
+       ]
+      },
+      "execution_type": "IMMEDIATE",
+      "trigger": null,
+      "account": "DEFAULT",
+      "order": {
+       "action": "BUY",
+       "orderType": "LMT",
+       "totalQuantity": 10,
+       "price_mode": "EXPLICIT",
+       "lmtPrice": 2.5,
+       "tif": "DAY",
+       "outsideRth": false
+      },
+      "reason": "本地速记解析",
+      "confidence": 1.0,
+      "warnings": [
+       "未写标的,默认按 SPX 处理",
+       "未写到期日,已按默认当日到期处理",
+       "中心 7520 高于现价 7462.35,推断为看涨蝴蝶",
+       "本地速记解析(未经大模型),语法 shorthand-v3"
+      ]
+     }
+    ],
+    "rejections": []
+   }
+  },
+  {
+   "text": "7520的20cm蝴蝶 权利金不超过2",
+   "snapshot": {
+    "SPX": 7462.35
+   },
+   "expect": {
+    "orders": [
+     {
+      "intent_summary": "买入 1 张 2026-08-14 当日到期的 SPX 7500/7520/7540 看涨蝴蝶(翼宽 20 点),净权利金上限 2",
+      "contract": {
+       "secType": "BAG",
+       "symbol": "SPX",
+       "exchange": "SMART",
+       "currency": "USD",
+       "combo_strategy": "BUTTERFLY",
+       "legs": [
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7500.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "SELL",
+         "ratio": 2,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7520.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7540.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        }
+       ]
+      },
+      "execution_type": "IMMEDIATE",
+      "trigger": null,
+      "account": "DEFAULT",
+      "order": {
+       "action": "BUY",
+       "orderType": "LMT",
+       "totalQuantity": 1,
+       "price_mode": "EXPLICIT",
+       "lmtPrice": 2.0,
+       "tif": "DAY",
+       "outsideRth": false
+      },
+      "reason": "本地速记解析",
+      "confidence": 1.0,
+      "warnings": [
+       "未写张数,已按默认 1 张处理",
+       "未写标的,默认按 SPX 处理",
+       "未写到期日,已按默认当日到期处理",
+       "中心 7520 高于现价 7462.35,推断为看涨蝴蝶",
+       "本地速记解析(未经大模型),语法 shorthand-v3"
+      ]
+     }
+    ],
+    "rejections": []
+   }
+  },
+  {
+   "text": "7520的蝴蝶 ±20点 2.5",
+   "snapshot": {
+    "SPX": 7462.35
+   },
+   "expect": {
+    "orders": [
+     {
+      "intent_summary": "买入 1 张 2026-08-14 当日到期的 SPX 7500/7520/7540 看涨蝴蝶(翼宽 20 点),净权利金上限 2.5",
+      "contract": {
+       "secType": "BAG",
+       "symbol": "SPX",
+       "exchange": "SMART",
+       "currency": "USD",
+       "combo_strategy": "BUTTERFLY",
+       "legs": [
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7500.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "SELL",
+         "ratio": 2,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7520.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7540.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        }
+       ]
+      },
+      "execution_type": "IMMEDIATE",
+      "trigger": null,
+      "account": "DEFAULT",
+      "order": {
+       "action": "BUY",
+       "orderType": "LMT",
+       "totalQuantity": 1,
+       "price_mode": "EXPLICIT",
+       "lmtPrice": 2.5,
+       "tif": "DAY",
+       "outsideRth": false
+      },
+      "reason": "本地速记解析",
+      "confidence": 1.0,
+      "warnings": [
+       "未写张数,已按默认 1 张处理",
+       "未写标的,默认按 SPX 处理",
+       "未写到期日,已按默认当日到期处理",
+       "中心 7520 高于现价 7462.35,推断为看涨蝴蝶",
+       "本地速记解析(未经大模型),语法 shorthand-v3"
+      ]
+     }
+    ],
+    "rejections": []
+   }
+  },
+  {
+   "text": "帮我挂 7520的20cm蝴蝶 2.5",
+   "snapshot": {
+    "SPX": 7462.35
+   },
+   "expect": {
+    "orders": [
+     {
+      "intent_summary": "买入 1 张 2026-08-14 当日到期的 SPX 7500/7520/7540 看涨蝴蝶(翼宽 20 点),净权利金上限 2.5",
+      "contract": {
+       "secType": "BAG",
+       "symbol": "SPX",
+       "exchange": "SMART",
+       "currency": "USD",
+       "combo_strategy": "BUTTERFLY",
+       "legs": [
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7500.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "SELL",
+         "ratio": 2,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7520.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7540.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        }
+       ]
+      },
+      "execution_type": "IMMEDIATE",
+      "trigger": null,
+      "account": "DEFAULT",
+      "order": {
+       "action": "BUY",
+       "orderType": "LMT",
+       "totalQuantity": 1,
+       "price_mode": "EXPLICIT",
+       "lmtPrice": 2.5,
+       "tif": "DAY",
+       "outsideRth": false
+      },
+      "reason": "本地速记解析",
+      "confidence": 1.0,
+      "warnings": [
+       "未写张数,已按默认 1 张处理",
+       "未写标的,默认按 SPX 处理",
+       "未写到期日,已按默认当日到期处理",
+       "中心 7520 高于现价 7462.35,推断为看涨蝴蝶",
+       "本地速记解析(未经大模型),语法 shorthand-v3"
+      ]
+     }
+    ],
+    "rejections": []
+   }
+  },
+  {
+   "text": "7515蝴蝶 15cm 1.8",
+   "snapshot": {
+    "SPX": 7462.35
+   },
+   "expect": {
+    "orders": [
+     {
+      "intent_summary": "买入 1 张 2026-08-14 当日到期的 SPX 7500/7515/7530 看涨蝴蝶(翼宽 15 点),净权利金上限 1.8",
+      "contract": {
+       "secType": "BAG",
+       "symbol": "SPX",
+       "exchange": "SMART",
+       "currency": "USD",
+       "combo_strategy": "BUTTERFLY",
+       "legs": [
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7500.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "SELL",
+         "ratio": 2,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7515.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7530.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        }
+       ]
+      },
+      "execution_type": "IMMEDIATE",
+      "trigger": null,
+      "account": "DEFAULT",
+      "order": {
+       "action": "BUY",
+       "orderType": "LMT",
+       "totalQuantity": 1,
+       "price_mode": "EXPLICIT",
+       "lmtPrice": 1.8,
+       "tif": "DAY",
+       "outsideRth": false
+      },
+      "reason": "本地速记解析",
+      "confidence": 1.0,
+      "warnings": [
+       "未写张数,已按默认 1 张处理",
+       "未写标的,默认按 SPX 处理",
+       "未写到期日,已按默认当日到期处理",
+       "中心 7515 高于现价 7462.35,推断为看涨蝴蝶",
+       "本地速记解析(未经大模型),语法 shorthand-v3"
+      ]
+     }
+    ],
+    "rejections": []
+   }
+  },
+  {
+   "text": "12.5cm 6915的蝴蝶 1.8",
+   "snapshot": {
+    "SPX": 6907.35
+   },
+   "expect": {
+    "orders": [
+     {
+      "intent_summary": "买入 1 张 2026-08-14 当日到期的 SPX 6902.5/6915/6927.5 看涨蝴蝶(翼宽 12.5 点),净权利金上限 1.8",
+      "contract": {
+       "secType": "BAG",
+       "symbol": "SPX",
+       "exchange": "SMART",
+       "currency": "USD",
+       "combo_strategy": "BUTTERFLY",
+       "legs": [
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 6902.5,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "SELL",
+         "ratio": 2,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 6915.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 6927.5,
+         "right": "C",
+         "tradingClass": "SPXW"
+        }
+       ]
+      },
+      "execution_type": "IMMEDIATE",
+      "trigger": null,
+      "account": "DEFAULT",
+      "order": {
+       "action": "BUY",
+       "orderType": "LMT",
+       "totalQuantity": 1,
+       "price_mode": "EXPLICIT",
+       "lmtPrice": 1.8,
+       "tif": "DAY",
+       "outsideRth": false
+      },
+      "reason": "本地速记解析",
+      "confidence": 1.0,
+      "warnings": [
+       "未写张数,已按默认 1 张处理",
+       "未写标的,默认按 SPX 处理",
+       "未写到期日,已按默认当日到期处理",
+       "中心 6915 高于现价 6907.35,推断为看涨蝴蝶",
+       "本地速记解析(未经大模型),语法 shorthand-v3"
+      ]
+     }
+    ],
+    "rejections": []
+   }
+  },
+  {
+   "text": "230的5cm蝴蝶 看涨 1.2",
+   "snapshot": {
+    "SPX": 6907.35
+   },
+   "expect": null
+  },
+  {
+   "text": "7400 7500 20cm蝴蝶 2.5",
+   "snapshot": {
+    "SPX": 7462.35
+   },
+   "expect": null
+  },
+  {
+   "text": "7520的20cm蝴蝶 3.3,理由:突破回踩",
+   "snapshot": {
+    "SPX": 7462.35
+   },
+   "expect": {
+    "orders": [
+     {
+      "intent_summary": "买入 1 张 2026-08-14 当日到期的 SPX 7500/7520/7540 看涨蝴蝶(翼宽 20 点),净权利金上限 3.3",
+      "contract": {
+       "secType": "BAG",
+       "symbol": "SPX",
+       "exchange": "SMART",
+       "currency": "USD",
+       "combo_strategy": "BUTTERFLY",
+       "legs": [
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7500.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "SELL",
+         "ratio": 2,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7520.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7540.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        }
+       ]
+      },
+      "execution_type": "IMMEDIATE",
+      "trigger": null,
+      "account": "DEFAULT",
+      "order": {
+       "action": "BUY",
+       "orderType": "LMT",
+       "totalQuantity": 1,
+       "price_mode": "EXPLICIT",
+       "lmtPrice": 3.3,
+       "tif": "DAY",
+       "outsideRth": false
+      },
+      "reason": "突破回踩",
+      "confidence": 1.0,
+      "warnings": [
+       "未写张数,已按默认 1 张处理",
+       "未写标的,默认按 SPX 处理",
+       "未写到期日,已按默认当日到期处理",
+       "中心 7520 高于现价 7462.35,推断为看涨蝴蝶",
+       "本地速记解析(未经大模型),语法 shorthand-v3"
+      ]
+     }
+    ],
+    "rejections": []
+   }
+  },
+  {
+   "text": "1.8 挂15蝴蝶 15CM 理由:开盘冲高回落",
+   "snapshot": {
+    "SPX": 7745.2
+   },
+   "expect": {
+    "orders": [
+     {
+      "intent_summary": "买入 1 张 2026-08-14 当日到期的 SPX 7700/7715/7730 看跌蝴蝶(翼宽 15 点),净权利金上限 1.8",
+      "contract": {
+       "secType": "BAG",
+       "symbol": "SPX",
+       "exchange": "SMART",
+       "currency": "USD",
+       "combo_strategy": "BUTTERFLY",
+       "legs": [
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7700.0,
+         "right": "P",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "SELL",
+         "ratio": 2,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7715.0,
+         "right": "P",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7730.0,
+         "right": "P",
+         "tradingClass": "SPXW"
+        }
+       ]
+      },
+      "execution_type": "IMMEDIATE",
+      "trigger": null,
+      "account": "DEFAULT",
+      "order": {
+       "action": "BUY",
+       "orderType": "LMT",
+       "totalQuantity": 1,
+       "price_mode": "EXPLICIT",
+       "lmtPrice": 1.8,
+       "tif": "DAY",
+       "outsideRth": false
+      },
+      "reason": "开盘冲高回落",
+      "confidence": 1.0,
+      "warnings": [
+       "未写张数,已按默认 1 张处理",
+       "未写标的,默认按 SPX 处理",
+       "未写到期日,已按默认当日到期处理",
+       "「15蝴蝶」按中心 7715(现价百位+15)理解",
+       "中心 7715 低于现价 7745.2,推断为看跌蝴蝶",
+       "本地速记解析(未经大模型),语法 shorthand-v3"
+      ]
+     }
+    ],
+    "rejections": []
+   }
+  },
+  {
+   "text": "7520的20cm蝴蝶 3.3 理由",
+   "snapshot": {
+    "SPX": 7462.35
+   },
+   "expect": null
+  },
+  {
+   "text": "尝试下 1.8 挂15蝴蝶 15CM",
+   "snapshot": {
+    "SPX": 7745.2
+   },
+   "expect": {
+    "orders": [
+     {
+      "intent_summary": "买入 1 张 2026-08-14 当日到期的 SPX 7700/7715/7730 看跌蝴蝶(翼宽 15 点),净权利金上限 1.8",
+      "contract": {
+       "secType": "BAG",
+       "symbol": "SPX",
+       "exchange": "SMART",
+       "currency": "USD",
+       "combo_strategy": "BUTTERFLY",
+       "legs": [
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7700.0,
+         "right": "P",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "SELL",
+         "ratio": 2,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7715.0,
+         "right": "P",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7730.0,
+         "right": "P",
+         "tradingClass": "SPXW"
+        }
+       ]
+      },
+      "execution_type": "IMMEDIATE",
+      "trigger": null,
+      "account": "DEFAULT",
+      "order": {
+       "action": "BUY",
+       "orderType": "LMT",
+       "totalQuantity": 1,
+       "price_mode": "EXPLICIT",
+       "lmtPrice": 1.8,
+       "tif": "DAY",
+       "outsideRth": false
+      },
+      "reason": "本地速记解析",
+      "confidence": 1.0,
+      "warnings": [
+       "未写张数,已按默认 1 张处理",
+       "未写标的,默认按 SPX 处理",
+       "未写到期日,已按默认当日到期处理",
+       "「15蝴蝶」按中心 7715(现价百位+15)理解",
+       "中心 7715 低于现价 7745.2,推断为看跌蝴蝶",
+       "本地速记解析(未经大模型),语法 shorthand-v3"
+      ]
+     }
+    ],
+    "rejections": []
+   }
+  },
+  {
+   "text": "开个明天的7830蝴蝶吧 30CM的 5块钱",
+   "snapshot": {
+    "SPX": 7745.2
+   },
+   "expect": {
+    "orders": [
+     {
+      "intent_summary": "买入 1 张 2026-08-17 到期的 SPX 7800/7830/7860 看涨蝴蝶(翼宽 30 点),净权利金上限 5",
+      "contract": {
+       "secType": "BAG",
+       "symbol": "SPX",
+       "exchange": "SMART",
+       "currency": "USD",
+       "combo_strategy": "BUTTERFLY",
+       "legs": [
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260817",
+         "strike": 7800.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "SELL",
+         "ratio": 2,
+         "lastTradeDateOrContractMonth": "20260817",
+         "strike": 7830.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260817",
+         "strike": 7860.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        }
+       ]
+      },
+      "execution_type": "IMMEDIATE",
+      "trigger": null,
+      "account": "DEFAULT",
+      "order": {
+       "action": "BUY",
+       "orderType": "LMT",
+       "totalQuantity": 1,
+       "price_mode": "EXPLICIT",
+       "lmtPrice": 5.0,
+       "tif": "DAY",
+       "outsideRth": false
+      },
+      "reason": "本地速记解析",
+      "confidence": 1.0,
+      "warnings": [
+       "未写张数,已按默认 1 张处理",
+       "未写标的,默认按 SPX 处理",
+       "「明天」按下一交易日 2026-08-17 处理",
+       "中心 7830 高于现价 7745.2,推断为看涨蝴蝶",
+       "本地速记解析(未经大模型),语法 shorthand-v3"
+      ]
+     }
+    ],
+    "rejections": []
+   }
+  },
+  {
+   "text": "看看7700蝴蝶 25CM 5块钱能不能挂进去",
+   "snapshot": {
+    "SPX": 7745.2
+   },
+   "expect": {
+    "orders": [
+     {
+      "intent_summary": "买入 1 张 2026-08-14 当日到期的 SPX 7675/7700/7725 看跌蝴蝶(翼宽 25 点),净权利金上限 5",
+      "contract": {
+       "secType": "BAG",
+       "symbol": "SPX",
+       "exchange": "SMART",
+       "currency": "USD",
+       "combo_strategy": "BUTTERFLY",
+       "legs": [
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7675.0,
+         "right": "P",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "SELL",
+         "ratio": 2,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7700.0,
+         "right": "P",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7725.0,
+         "right": "P",
+         "tradingClass": "SPXW"
+        }
+       ]
+      },
+      "execution_type": "IMMEDIATE",
+      "trigger": null,
+      "account": "DEFAULT",
+      "order": {
+       "action": "BUY",
+       "orderType": "LMT",
+       "totalQuantity": 1,
+       "price_mode": "EXPLICIT",
+       "lmtPrice": 5.0,
+       "tif": "DAY",
+       "outsideRth": false
+      },
+      "reason": "本地速记解析",
+      "confidence": 1.0,
+      "warnings": [
+       "未写张数,已按默认 1 张处理",
+       "未写标的,默认按 SPX 处理",
+       "未写到期日,已按默认当日到期处理",
+       "中心 7700 低于现价 7745.2,推断为看跌蝴蝶",
+       "本地速记解析(未经大模型),语法 shorthand-v3"
+      ]
+     }
+    ],
+    "rejections": []
+   }
+  },
+  {
+   "text": "挂个45蝴蝶彩票吧 20CM的 3块钱",
+   "snapshot": {
+    "SPX": 7745.2
+   },
+   "expect": {
+    "orders": [
+     {
+      "intent_summary": "买入 1 张 2026-08-14 当日到期的 SPX 7725/7745/7765 看跌蝴蝶(翼宽 20 点),净权利金上限 3",
+      "contract": {
+       "secType": "BAG",
+       "symbol": "SPX",
+       "exchange": "SMART",
+       "currency": "USD",
+       "combo_strategy": "BUTTERFLY",
+       "legs": [
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7725.0,
+         "right": "P",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "SELL",
+         "ratio": 2,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7745.0,
+         "right": "P",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7765.0,
+         "right": "P",
+         "tradingClass": "SPXW"
+        }
+       ]
+      },
+      "execution_type": "IMMEDIATE",
+      "trigger": null,
+      "account": "DEFAULT",
+      "order": {
+       "action": "BUY",
+       "orderType": "LMT",
+       "totalQuantity": 1,
+       "price_mode": "EXPLICIT",
+       "lmtPrice": 3.0,
+       "tif": "DAY",
+       "outsideRth": false
+      },
+      "reason": "本地速记解析",
+      "confidence": 1.0,
+      "warnings": [
+       "未写张数,已按默认 1 张处理",
+       "未写标的,默认按 SPX 处理",
+       "未写到期日,已按默认当日到期处理",
+       "「45蝴蝶」按中心 7745(现价百位+45)理解",
+       "中心 7745 低于现价 7745.2,推断为看跌蝴蝶",
+       "本地速记解析(未经大模型),语法 shorthand-v3"
+      ]
+     }
+    ],
+    "rejections": []
+   }
+  },
+  {
+   "text": "00蝴蝶 看看4.4 25cm",
+   "snapshot": {
+    "SPX": 7745.2
+   },
+   "expect": {
+    "orders": [
+     {
+      "intent_summary": "买入 1 张 2026-08-14 当日到期的 SPX 7675/7700/7725 看跌蝴蝶(翼宽 25 点),净权利金上限 4.4",
+      "contract": {
+       "secType": "BAG",
+       "symbol": "SPX",
+       "exchange": "SMART",
+       "currency": "USD",
+       "combo_strategy": "BUTTERFLY",
+       "legs": [
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7675.0,
+         "right": "P",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "SELL",
+         "ratio": 2,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7700.0,
+         "right": "P",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7725.0,
+         "right": "P",
+         "tradingClass": "SPXW"
+        }
+       ]
+      },
+      "execution_type": "IMMEDIATE",
+      "trigger": null,
+      "account": "DEFAULT",
+      "order": {
+       "action": "BUY",
+       "orderType": "LMT",
+       "totalQuantity": 1,
+       "price_mode": "EXPLICIT",
+       "lmtPrice": 4.4,
+       "tif": "DAY",
+       "outsideRth": false
+      },
+      "reason": "本地速记解析",
+      "confidence": 1.0,
+      "warnings": [
+       "未写张数,已按默认 1 张处理",
+       "未写标的,默认按 SPX 处理",
+       "未写到期日,已按默认当日到期处理",
+       "「0蝴蝶」按中心 7700(现价百位+0)理解",
+       "中心 7700 低于现价 7745.2,推断为看跌蝴蝶",
+       "本地速记解析(未经大模型),语法 shorthand-v3"
+      ]
+     }
+    ],
+    "rejections": []
+   }
+  },
+  {
+   "text": "spx明天 7850 40cm 2.3",
+   "snapshot": {
+    "SPX": 7745.2
+   },
+   "expect": {
+    "orders": [
+     {
+      "intent_summary": "买入 1 张 2026-08-17 到期的 SPX 7810/7850/7890 看涨蝴蝶(翼宽 40 点),净权利金上限 2.3",
+      "contract": {
+       "secType": "BAG",
+       "symbol": "SPX",
+       "exchange": "SMART",
+       "currency": "USD",
+       "combo_strategy": "BUTTERFLY",
+       "legs": [
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260817",
+         "strike": 7810.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "SELL",
+         "ratio": 2,
+         "lastTradeDateOrContractMonth": "20260817",
+         "strike": 7850.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260817",
+         "strike": 7890.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        }
+       ]
+      },
+      "execution_type": "IMMEDIATE",
+      "trigger": null,
+      "account": "DEFAULT",
+      "order": {
+       "action": "BUY",
+       "orderType": "LMT",
+       "totalQuantity": 1,
+       "price_mode": "EXPLICIT",
+       "lmtPrice": 2.3,
+       "tif": "DAY",
+       "outsideRth": false
+      },
+      "reason": "本地速记解析",
+      "confidence": 1.0,
+      "warnings": [
+       "未写张数,已按默认 1 张处理",
+       "「明天」按下一交易日 2026-08-17 处理",
+       "中心 7850 高于现价 7745.2,推断为看涨蝴蝶",
+       "未写「蝴蝶」,按 cm 行话默认为蝴蝶组合",
+       "本地速记解析(未经大模型),语法 shorthand-v3"
+      ]
+     }
+    ],
+    "rejections": []
+   }
+  },
+  {
+   "text": "7850 40cm 2.3",
+   "snapshot": {
+    "SPX": 7745.2
+   },
+   "expect": {
+    "orders": [
+     {
+      "intent_summary": "买入 1 张 2026-08-14 当日到期的 SPX 7810/7850/7890 看涨蝴蝶(翼宽 40 点),净权利金上限 2.3",
+      "contract": {
+       "secType": "BAG",
+       "symbol": "SPX",
+       "exchange": "SMART",
+       "currency": "USD",
+       "combo_strategy": "BUTTERFLY",
+       "legs": [
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7810.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "SELL",
+         "ratio": 2,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7850.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        },
+        {
+         "action": "BUY",
+         "ratio": 1,
+         "lastTradeDateOrContractMonth": "20260814",
+         "strike": 7890.0,
+         "right": "C",
+         "tradingClass": "SPXW"
+        }
+       ]
+      },
+      "execution_type": "IMMEDIATE",
+      "trigger": null,
+      "account": "DEFAULT",
+      "order": {
+       "action": "BUY",
+       "orderType": "LMT",
+       "totalQuantity": 1,
+       "price_mode": "EXPLICIT",
+       "lmtPrice": 2.3,
+       "tif": "DAY",
+       "outsideRth": false
+      },
+      "reason": "本地速记解析",
+      "confidence": 1.0,
+      "warnings": [
+       "未写张数,已按默认 1 张处理",
+       "未写标的,默认按 SPX 处理",
+       "未写到期日,已按默认当日到期处理",
+       "中心 7850 高于现价 7745.2,推断为看涨蝴蝶",
+       "未写「蝴蝶」,按 cm 行话默认为蝴蝶组合",
+       "本地速记解析(未经大模型),语法 shorthand-v3"
+      ]
+     }
+    ],
+    "rejections": []
+   }
+  },
+  {
+   "text": "7720蝴蝶 30CM 尝试下4.4 y",
+   "snapshot": {
+    "SPX": 7745.2
+   },
+   "expect": null
+  },
+  {
+   "text": "1.8 挂15 15cm",
+   "snapshot": {
+    "SPX": 7745.2
+   },
+   "expect": null
+  },
+  {
+   "text": "40cm 2.3",
+   "snapshot": {
+    "SPX": 7745.2
+   },
+   "expect": null
+  },
+  {
+   "text": "尝试下7730蝴蝶 4.4能不能接到",
+   "snapshot": {
+    "SPX": 7745.2
+   },
+   "expect": null
+  },
+  {
+   "text": "彩票考虑下135蝴蝶 或者135日历吧",
+   "snapshot": {
+    "SPX": 7745.2
+   },
+   "expect": null
+  }
+ ],
+ "weekend": {
+  "text": "1.8 挂15蝴蝶 15CM",
+  "snapshot": {
+   "SPX": 6907.35
+  },
+  "moment": "2026-08-15",
+  "expect": {
+   "orders": [],
+   "rejections": [
+    {
+     "original_text": "1.8 挂15蝴蝶 15CM",
+     "code": "UNSUPPORTED",
+     "message": "今天(周六)不是交易日,默认当日到期的蝴蝶无法下单;要下周一的写「明天」,或写明到期日。"
+    }
+   ]
+  }
+ }
+}

@@ -2,23 +2,16 @@
 config/settings.json
 config/*.local.json
 
-# 交易记录与熔断状态是 S1 数据
-*.db
-*.db-wal
-*.db-shm
-breaker.json
-exports/
-
-.venv/
+# 桌面端:依赖、打包产物、预览与压测输出
 desktop/node_modules/
 desktop/dist/
-__pycache__/
-*.egg-info/
-.pytest_cache/
-
-# macOS
-.DS_Store
+desktop/build/engine-ts/
 .uipreview/
 
-# TS 引擎打包暂存(tools/stage_engine_ts.js 生成)
-desktop/build/engine-ts/
+# 两个引擎各自的忽略见 engine-python/.gitignore、engine-ts/.gitignore
+node_modules/
+.claude/
+.DS_Store
+
+# 某次把 ~ 当成家目录建出来的数据目录,里面是真实交易记录(S1),不进仓库
+~/

@@ -1,0 +1,36 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  engine-python:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: engine-python
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e ".[dev,broker,futu]"
+      - run: python -m pytest -q
+
+  engine-ts:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: engine-ts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: engine-ts/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npx vitest run
