@@ -6,24 +6,11 @@
     "orders": [
      {
       "intent_summary": "限价 230 买入 100 股 AAPL",
-      "contract": {
-       "secType": "STK",
-       "symbol": "AAPL",
-       "exchange": "SMART",
-       "currency": "USD"
-      },
+      "contract": {"secType": "STK", "symbol": "AAPL", "exchange": "SMART", "currency": "USD"},
       "execution_type": "IMMEDIATE",
       "trigger": null,
       "account": "DEFAULT",
-      "order": {
-       "action": "BUY",
-       "orderType": "LMT",
-       "totalQuantity": 100,
-       "price_mode": "EXPLICIT",
-       "lmtPrice": 230.0,
-       "tif": "DAY",
-       "outsideRth": false
-      },
+      "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 100, "price_mode": "EXPLICIT", "lmtPrice": 230, "tif": "DAY", "outsideRth": false},
       "reason": "回调到位",
       "confidence": 0.99,
       "warnings": []
@@ -35,33 +22,11 @@
     "orders": [
      {
       "intent_summary": "限价 230 买入 100 股 AAPL",
-      "contract": {
-       "secType": "STK",
-       "symbol": "AAPL",
-       "exchange": "SMART",
-       "currency": "USD",
-       "lastTradeDateOrContractMonth": null,
-       "strike": null,
-       "right": null,
-       "multiplier": "100",
-       "tradingClass": null,
-       "combo_strategy": null,
-       "legs": null
-      },
+      "contract": {"secType": "STK", "symbol": "AAPL", "exchange": "SMART", "currency": "USD", "lastTradeDateOrContractMonth": null, "strike": null, "right": null, "multiplier": "100", "tradingClass": null, "combo_strategy": null, "legs": null},
       "execution_type": "IMMEDIATE",
       "trigger": null,
       "account": "DEFAULT",
-      "order": {
-       "action": "BUY",
-       "orderType": "LMT",
-       "totalQuantity": 100,
-       "price_mode": "EXPLICIT",
-       "lmtPrice": 230.0,
-       "auxPrice": null,
-       "trailingPercent": null,
-       "tif": "DAY",
-       "outsideRth": false
-      },
+      "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 100, "price_mode": "EXPLICIT", "lmtPrice": 230, "auxPrice": null, "trailingPercent": null, "tif": "DAY", "outsideRth": false},
       "reason": "回调到位",
       "confidence": 0.99,
       "warnings": []
@@ -85,42 +50,14 @@
        "currency": "USD",
        "combo_strategy": "VERTICAL",
        "legs": [
-        {
-         "action": "BUY",
-         "ratio": 1,
-         "lastTradeDateOrContractMonth": "20260814",
-         "strike": 7520.0,
-         "right": "C",
-         "tradingClass": "SPXW"
-        },
-        {
-         "action": "SELL",
-         "ratio": 1,
-         "lastTradeDateOrContractMonth": "20260814",
-         "strike": 7550.0,
-         "right": "C",
-         "tradingClass": "SPXW"
-        }
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7520, "right": "C", "tradingClass": "SPXW"},
+        {"action": "SELL", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7550, "right": "C", "tradingClass": "SPXW"}
        ]
       },
       "execution_type": "CONDITIONAL",
-      "trigger": {
-       "type": "PRICE",
-       "symbol": "SPX",
-       "secType": "IND",
-       "operator": ">=",
-       "value": 7500.0
-      },
+      "trigger": {"type": "PRICE", "symbol": "SPX", "secType": "IND", "operator": ">=", "value": 7500},
       "account": "DEFAULT",
-      "order": {
-       "action": "BUY",
-       "orderType": "LMT",
-       "totalQuantity": 1,
-       "price_mode": "AUTO_MID",
-       "lmtPrice": null,
-       "tif": "DAY",
-       "outsideRth": false
-      },
+      "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "AUTO_MID", "lmtPrice": null, "tif": "DAY", "outsideRth": false},
       "reason": "突破 7500 整数关口后追动能",
       "confidence": 0.96,
       "warnings": []
@@ -144,46 +81,14 @@
        "tradingClass": null,
        "combo_strategy": "VERTICAL",
        "legs": [
-        {
-         "action": "BUY",
-         "ratio": 1,
-         "lastTradeDateOrContractMonth": "20260814",
-         "strike": 7520.0,
-         "right": "C",
-         "tradingClass": "SPXW",
-         "multiplier": "100"
-        },
-        {
-         "action": "SELL",
-         "ratio": 1,
-         "lastTradeDateOrContractMonth": "20260814",
-         "strike": 7550.0,
-         "right": "C",
-         "tradingClass": "SPXW",
-         "multiplier": "100"
-        }
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7520, "right": "C", "tradingClass": "SPXW", "multiplier": "100"},
+        {"action": "SELL", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7550, "right": "C", "tradingClass": "SPXW", "multiplier": "100"}
        ]
       },
       "execution_type": "CONDITIONAL",
-      "trigger": {
-       "type": "PRICE",
-       "symbol": "SPX",
-       "secType": "IND",
-       "operator": ">=",
-       "value": 7500.0
-      },
+      "trigger": {"type": "PRICE", "symbol": "SPX", "secType": "IND", "operator": ">=", "value": 7500},
       "account": "DEFAULT",
-      "order": {
-       "action": "BUY",
-       "orderType": "LMT",
-       "totalQuantity": 1,
-       "price_mode": "AUTO_MID",
-       "lmtPrice": null,
-       "auxPrice": null,
-       "trailingPercent": null,
-       "tif": "DAY",
-       "outsideRth": false
-      },
+      "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "AUTO_MID", "lmtPrice": null, "auxPrice": null, "trailingPercent": null, "tif": "DAY", "outsideRth": false},
       "reason": "突破 7500 整数关口后追动能",
       "confidence": 0.96,
       "warnings": []
@@ -200,24 +105,11 @@
     "orders": [
      {
       "intent_summary": "限价 230 买入 100 股 AAPL",
-      "contract": {
-       "secType": "STK",
-       "symbol": " aapl ",
-       "exchange": "SMART",
-       "currency": "USD"
-      },
+      "contract": {"secType": "STK", "symbol": " aapl ", "exchange": "SMART", "currency": "USD"},
       "execution_type": "IMMEDIATE",
       "trigger": null,
       "account": "DEFAULT",
-      "order": {
-       "action": "BUY",
-       "orderType": "LMT",
-       "totalQuantity": 100,
-       "price_mode": "EXPLICIT",
-       "lmtPrice": 230.0,
-       "tif": "DAY",
-       "outsideRth": false
-      },
+      "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 100, "price_mode": "EXPLICIT", "lmtPrice": 230, "tif": "DAY", "outsideRth": false},
       "reason": "回调到位",
       "confidence": 0.99,
       "warnings": []
@@ -229,33 +121,11 @@
     "orders": [
      {
       "intent_summary": "限价 230 买入 100 股 AAPL",
-      "contract": {
-       "secType": "STK",
-       "symbol": "AAPL",
-       "exchange": "SMART",
-       "currency": "USD",
-       "lastTradeDateOrContractMonth": null,
-       "strike": null,
-       "right": null,
-       "multiplier": "100",
-       "tradingClass": null,
-       "combo_strategy": null,
-       "legs": null
-      },
+      "contract": {"secType": "STK", "symbol": "AAPL", "exchange": "SMART", "currency": "USD", "lastTradeDateOrContractMonth": null, "strike": null, "right": null, "multiplier": "100", "tradingClass": null, "combo_strategy": null, "legs": null},
       "execution_type": "IMMEDIATE",
       "trigger": null,
       "account": "DEFAULT",
-      "order": {
-       "action": "BUY",
-       "orderType": "LMT",
-       "totalQuantity": 100,
-       "price_mode": "EXPLICIT",
-       "lmtPrice": 230.0,
-       "auxPrice": null,
-       "trailingPercent": null,
-       "tif": "DAY",
-       "outsideRth": false
-      },
+      "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 100, "price_mode": "EXPLICIT", "lmtPrice": 230, "auxPrice": null, "trailingPercent": null, "tif": "DAY", "outsideRth": false},
       "reason": "回调到位",
       "confidence": 0.99,
       "warnings": []
@@ -272,48 +142,22 @@
     "orders": [
      {
       "intent_summary": "限价 230 买入 100 股 AAPL",
-      "contract": {
-       "secType": "STK",
-       "symbol": "AAPL",
-       "exchange": "SMART",
-       "currency": "USD"
-      },
+      "contract": {"secType": "STK", "symbol": "AAPL", "exchange": "SMART", "currency": "USD"},
       "execution_type": "IMMEDIATE",
       "trigger": null,
       "account": "DEFAULT",
-      "order": {
-       "action": "BUY",
-       "orderType": "LMT",
-       "totalQuantity": 100,
-       "price_mode": "EXPLICIT",
-       "lmtPrice": 230.0,
-       "tif": "DAY",
-       "outsideRth": false
-      },
+      "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 100, "price_mode": "EXPLICIT", "lmtPrice": 230, "tif": "DAY", "outsideRth": false},
       "reason": "回调到位",
       "confidence": 0.99,
       "warnings": []
      },
      {
       "intent_summary": "限价 230 买入 100 股 AAPL",
-      "contract": {
-       "secType": "STK",
-       "symbol": "AAPL",
-       "exchange": "SMART",
-       "currency": "USD"
-      },
+      "contract": {"secType": "STK", "symbol": "AAPL", "exchange": "SMART", "currency": "USD"},
       "execution_type": "IMMEDIATE",
       "trigger": null,
       "account": "DEFAULT",
-      "order": {
-       "action": "BUY",
-       "orderType": "LMT",
-       "totalQuantity": -5,
-       "price_mode": "EXPLICIT",
-       "lmtPrice": 230.0,
-       "tif": "DAY",
-       "outsideRth": false
-      },
+      "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": -5, "price_mode": "EXPLICIT", "lmtPrice": 230, "tif": "DAY", "outsideRth": false},
       "reason": "回调到位",
       "confidence": 0.99,
       "warnings": []
@@ -325,44 +169,18 @@
     "orders": [
      {
       "intent_summary": "限价 230 买入 100 股 AAPL",
-      "contract": {
-       "secType": "STK",
-       "symbol": "AAPL",
-       "exchange": "SMART",
-       "currency": "USD",
-       "lastTradeDateOrContractMonth": null,
-       "strike": null,
-       "right": null,
-       "multiplier": "100",
-       "tradingClass": null,
-       "combo_strategy": null,
-       "legs": null
-      },
+      "contract": {"secType": "STK", "symbol": "AAPL", "exchange": "SMART", "currency": "USD", "lastTradeDateOrContractMonth": null, "strike": null, "right": null, "multiplier": "100", "tradingClass": null, "combo_strategy": null, "legs": null},
       "execution_type": "IMMEDIATE",
       "trigger": null,
       "account": "DEFAULT",
-      "order": {
-       "action": "BUY",
-       "orderType": "LMT",
-       "totalQuantity": 100,
-       "price_mode": "EXPLICIT",
-       "lmtPrice": 230.0,
-       "auxPrice": null,
-       "trailingPercent": null,
-       "tif": "DAY",
-       "outsideRth": false
-      },
+      "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 100, "price_mode": "EXPLICIT", "lmtPrice": 230, "auxPrice": null, "trailingPercent": null, "tif": "DAY", "outsideRth": false},
       "reason": "回调到位",
       "confidence": 0.99,
       "warnings": []
      }
     ],
-    "rejection_codes": [
-     "UNCLEAR"
-    ],
-    "rejection_texts": [
-     "限价 230 买入 100 股 AAPL"
-    ],
+    "rejection_codes": ["UNCLEAR"],
+    "rejection_texts": ["限价 230 买入 100 股 AAPL"],
     "schema_error_count": 1
    }
   },
@@ -372,24 +190,11 @@
     "orders": [
      {
       "intent_summary": "限价 230 买入 100 股 AAPL",
-      "contract": {
-       "secType": "STK",
-       "symbol": "AAPL",
-       "exchange": "SMART",
-       "currency": "USD"
-      },
+      "contract": {"secType": "STK", "symbol": "AAPL", "exchange": "SMART", "currency": "USD"},
       "execution_type": "IMMEDIATE",
       "trigger": null,
       "account": "DEFAULT",
-      "order": {
-       "action": "BUY",
-       "orderType": "LMT",
-       "totalQuantity": 100,
-       "price_mode": "EXPLICIT",
-       "lmtPrice": 230.0,
-       "tif": "DAY",
-       "outsideRth": false
-      },
+      "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 100, "price_mode": "EXPLICIT", "lmtPrice": 230, "tif": "DAY", "outsideRth": false},
       "reason": "回调到位",
       "confidence": 0.99,
       "warnings": [],
@@ -400,12 +205,8 @@
    },
    "expect": {
     "orders": [],
-    "rejection_codes": [
-     "UNCLEAR"
-    ],
-    "rejection_texts": [
-     "限价 230 买入 100 股 AAPL"
-    ],
+    "rejection_codes": ["UNCLEAR"],
+    "rejection_texts": ["限价 230 买入 100 股 AAPL"],
     "schema_error_count": 1
    }
   },
@@ -415,24 +216,11 @@
     "orders": [
      {
       "intent_summary": "限价 230 买入 100 股 AAPL",
-      "contract": {
-       "secType": "STK",
-       "symbol": "AAPL",
-       "exchange": "SMART",
-       "currency": "USD"
-      },
+      "contract": {"secType": "STK", "symbol": "AAPL", "exchange": "SMART", "currency": "USD"},
       "execution_type": "IMMEDIATE",
       "trigger": null,
       "account": "DEFAULT",
-      "order": {
-       "action": "BUY",
-       "orderType": "LMT",
-       "totalQuantity": 100,
-       "price_mode": "EXPLICIT",
-       "lmtPrice": null,
-       "tif": "DAY",
-       "outsideRth": false
-      },
+      "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 100, "price_mode": "EXPLICIT", "lmtPrice": null, "tif": "DAY", "outsideRth": false},
       "reason": "回调到位",
       "confidence": 0.99,
       "warnings": []
@@ -442,12 +230,8 @@
    },
    "expect": {
     "orders": [],
-    "rejection_codes": [
-     "UNCLEAR"
-    ],
-    "rejection_texts": [
-     "限价 230 买入 100 股 AAPL"
-    ],
+    "rejection_codes": ["UNCLEAR"],
+    "rejection_texts": ["限价 230 买入 100 股 AAPL"],
     "schema_error_count": 1
    }
   },
@@ -457,24 +241,11 @@
     "orders": [
      {
       "intent_summary": "限价 230 买入 100 股 AAPL",
-      "contract": {
-       "secType": "STK",
-       "symbol": "AAPL",
-       "exchange": "SMART",
-       "currency": "USD"
-      },
+      "contract": {"secType": "STK", "symbol": "AAPL", "exchange": "SMART", "currency": "USD"},
       "execution_type": "IMMEDIATE",
       "trigger": null,
       "account": "DEFAULT",
-      "order": {
-       "action": "BUY",
-       "orderType": "LMT",
-       "totalQuantity": 100,
-       "price_mode": "AUTO_MID",
-       "lmtPrice": null,
-       "tif": "DAY",
-       "outsideRth": false
-      },
+      "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 100, "price_mode": "AUTO_MID", "lmtPrice": null, "tif": "DAY", "outsideRth": false},
       "reason": "回调到位",
       "confidence": 0.99,
       "warnings": []
@@ -484,12 +255,8 @@
    },
    "expect": {
     "orders": [],
-    "rejection_codes": [
-     "UNCLEAR"
-    ],
-    "rejection_texts": [
-     "限价 230 买入 100 股 AAPL"
-    ],
+    "rejection_codes": ["UNCLEAR"],
+    "rejection_texts": ["限价 230 买入 100 股 AAPL"],
     "schema_error_count": 1
    }
   },
@@ -499,24 +266,11 @@
     "orders": [
      {
       "intent_summary": "限价 230 买入 100 股 AAPL",
-      "contract": {
-       "secType": "STK",
-       "symbol": "AAPL",
-       "exchange": "SMART",
-       "currency": "USD"
-      },
+      "contract": {"secType": "STK", "symbol": "AAPL", "exchange": "SMART", "currency": "USD"},
       "execution_type": "CONDITIONAL",
       "trigger": null,
       "account": "DEFAULT",
-      "order": {
-       "action": "BUY",
-       "orderType": "LMT",
-       "totalQuantity": 100,
-       "price_mode": "EXPLICIT",
-       "lmtPrice": 230.0,
-       "tif": "DAY",
-       "outsideRth": false
-      },
+      "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 100, "price_mode": "EXPLICIT", "lmtPrice": 230, "tif": "DAY", "outsideRth": false},
       "reason": "回调到位",
       "confidence": 0.99,
       "warnings": []
@@ -526,12 +280,8 @@
    },
    "expect": {
     "orders": [],
-    "rejection_codes": [
-     "UNCLEAR"
-    ],
-    "rejection_texts": [
-     "限价 230 买入 100 股 AAPL"
-    ],
+    "rejection_codes": ["UNCLEAR"],
+    "rejection_texts": ["限价 230 买入 100 股 AAPL"],
     "schema_error_count": 1
    }
   },
@@ -541,30 +291,11 @@
     "orders": [
      {
       "intent_summary": "限价 230 买入 100 股 AAPL",
-      "contract": {
-       "secType": "STK",
-       "symbol": "AAPL",
-       "exchange": "SMART",
-       "currency": "USD"
-      },
+      "contract": {"secType": "STK", "symbol": "AAPL", "exchange": "SMART", "currency": "USD"},
       "execution_type": "IMMEDIATE",
-      "trigger": {
-       "type": "PRICE",
-       "symbol": "AAPL",
-       "secType": "STK",
-       "operator": ">=",
-       "value": 231.0
-      },
+      "trigger": {"type": "PRICE", "symbol": "AAPL", "secType": "STK", "operator": ">=", "value": 231},
       "account": "DEFAULT",
-      "order": {
-       "action": "BUY",
-       "orderType": "LMT",
-       "totalQuantity": 100,
-       "price_mode": "EXPLICIT",
-       "lmtPrice": 230.0,
-       "tif": "DAY",
-       "outsideRth": false
-      },
+      "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 100, "price_mode": "EXPLICIT", "lmtPrice": 230, "tif": "DAY", "outsideRth": false},
       "reason": "回调到位",
       "confidence": 0.99,
       "warnings": []
@@ -574,12 +305,8 @@
    },
    "expect": {
     "orders": [],
-    "rejection_codes": [
-     "UNCLEAR"
-    ],
-    "rejection_texts": [
-     "限价 230 买入 100 股 AAPL"
-    ],
+    "rejection_codes": ["UNCLEAR"],
+    "rejection_texts": ["限价 230 买入 100 股 AAPL"],
     "schema_error_count": 1
    }
   },
@@ -596,42 +323,14 @@
        "currency": "USD",
        "combo_strategy": "BUTTERFLY",
        "legs": [
-        {
-         "action": "BUY",
-         "ratio": 1,
-         "lastTradeDateOrContractMonth": "20260814",
-         "strike": 7500.0,
-         "right": "C",
-         "tradingClass": "SPXW"
-        },
-        {
-         "action": "SELL",
-         "ratio": 2,
-         "lastTradeDateOrContractMonth": "20260814",
-         "strike": 7520.0,
-         "right": "C",
-         "tradingClass": "SPXW"
-        }
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7500, "right": "C", "tradingClass": "SPXW"},
+        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7520, "right": "C", "tradingClass": "SPXW"}
        ]
       },
       "execution_type": "CONDITIONAL",
-      "trigger": {
-       "type": "PRICE",
-       "symbol": "SPX",
-       "secType": "IND",
-       "operator": ">=",
-       "value": 7500.0
-      },
+      "trigger": {"type": "PRICE", "symbol": "SPX", "secType": "IND", "operator": ">=", "value": 7500},
       "account": "DEFAULT",
-      "order": {
-       "action": "BUY",
-       "orderType": "LMT",
-       "totalQuantity": 1,
-       "price_mode": "AUTO_MID",
-       "lmtPrice": null,
-       "tif": "DAY",
-       "outsideRth": false
-      },
+      "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "AUTO_MID", "lmtPrice": null, "tif": "DAY", "outsideRth": false},
       "reason": "预期钉住 7520",
       "confidence": 0.95,
       "warnings": []
@@ -641,12 +340,8 @@
    },
    "expect": {
     "orders": [],
-    "rejection_codes": [
-     "UNCLEAR"
-    ],
-    "rejection_texts": [
-     "SPX 涨到 7500 时买入 1 张 7500/7520/7540 看涨蝴蝶"
-    ],
+    "rejection_codes": ["UNCLEAR"],
+    "rejection_texts": ["SPX 涨到 7500 时买入 1 张 7500/7520/7540 看涨蝴蝶"],
     "schema_error_count": 1
    }
   },
@@ -656,28 +351,11 @@
     "orders": [
      {
       "intent_summary": "限价 5.5 买入 2 张 NVDA 20260821 180 Call",
-      "contract": {
-       "secType": "OPT",
-       "symbol": "NVDA",
-       "exchange": "SMART",
-       "currency": "USD",
-       "lastTradeDateOrContractMonth": "20260821",
-       "strike": null,
-       "right": "C",
-       "multiplier": "100"
-      },
+      "contract": {"secType": "OPT", "symbol": "NVDA", "exchange": "SMART", "currency": "USD", "lastTradeDateOrContractMonth": "20260821", "strike": null, "right": "C", "multiplier": "100"},
       "execution_type": "IMMEDIATE",
       "trigger": null,
       "account": "DEFAULT",
-      "order": {
-       "action": "BUY",
-       "orderType": "LMT",
-       "totalQuantity": 2,
-       "price_mode": "EXPLICIT",
-       "lmtPrice": 5.5,
-       "tif": "DAY",
-       "outsideRth": false
-      },
+      "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 2, "price_mode": "EXPLICIT", "lmtPrice": 5.5, "tif": "DAY", "outsideRth": false},
       "reason": "财报前布局",
       "confidence": 0.97,
       "warnings": []
@@ -687,12 +365,8 @@
    },
    "expect": {
     "orders": [],
-    "rejection_codes": [
-     "UNCLEAR"
-    ],
-    "rejection_texts": [
-     "限价 5.5 买入 2 张 NVDA 20260821 180 Call"
-    ],
+    "rejection_codes": ["UNCLEAR"],
+    "rejection_texts": ["限价 5.5 买入 2 张 NVDA 20260821 180 Call"],
     "schema_error_count": 1
    }
   },
@@ -702,25 +376,11 @@
     "orders": [
      {
       "intent_summary": "限价 230 买入 100 股 AAPL",
-      "contract": {
-       "secType": "STK",
-       "symbol": "AAPL",
-       "exchange": "SMART",
-       "currency": "USD",
-       "lastTradeDateOrContractMonth": "20260821"
-      },
+      "contract": {"secType": "STK", "symbol": "AAPL", "exchange": "SMART", "currency": "USD", "lastTradeDateOrContractMonth": "20260821"},
       "execution_type": "IMMEDIATE",
       "trigger": null,
       "account": "DEFAULT",
-      "order": {
-       "action": "BUY",
-       "orderType": "LMT",
-       "totalQuantity": 100,
-       "price_mode": "EXPLICIT",
-       "lmtPrice": 230.0,
-       "tif": "DAY",
-       "outsideRth": false
-      },
+      "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 100, "price_mode": "EXPLICIT", "lmtPrice": 230, "tif": "DAY", "outsideRth": false},
       "reason": "回调到位",
       "confidence": 0.99,
       "warnings": []
@@ -730,12 +390,8 @@
    },
    "expect": {
     "orders": [],
-    "rejection_codes": [
-     "UNCLEAR"
-    ],
-    "rejection_texts": [
-     "限价 230 买入 100 股 AAPL"
-    ],
+    "rejection_codes": ["UNCLEAR"],
+    "rejection_texts": ["限价 230 买入 100 股 AAPL"],
     "schema_error_count": 1
    }
   },
@@ -745,28 +401,11 @@
     "orders": [
      {
       "intent_summary": "限价 5.5 买入 2 张 NVDA 20260821 180 Call",
-      "contract": {
-       "secType": "OPT",
-       "symbol": "NVDA",
-       "exchange": "SMART",
-       "currency": "USD",
-       "lastTradeDateOrContractMonth": "20260231",
-       "strike": 180.0,
-       "right": "C",
-       "multiplier": "100"
-      },
+      "contract": {"secType": "OPT", "symbol": "NVDA", "exchange": "SMART", "currency": "USD", "lastTradeDateOrContractMonth": "20260231", "strike": 180, "right": "C", "multiplier": "100"},
       "execution_type": "IMMEDIATE",
       "trigger": null,
       "account": "DEFAULT",
-      "order": {
-       "action": "BUY",
-       "orderType": "LMT",
-       "totalQuantity": 2,
-       "price_mode": "EXPLICIT",
-       "lmtPrice": 5.5,
-       "tif": "DAY",
-       "outsideRth": false
-      },
+      "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 2, "price_mode": "EXPLICIT", "lmtPrice": 5.5, "tif": "DAY", "outsideRth": false},
       "reason": "财报前布局",
       "confidence": 0.97,
       "warnings": []
@@ -776,12 +415,8 @@
    },
    "expect": {
     "orders": [],
-    "rejection_codes": [
-     "UNCLEAR"
-    ],
-    "rejection_texts": [
-     "限价 5.5 买入 2 张 NVDA 20260821 180 Call"
-    ],
+    "rejection_codes": ["UNCLEAR"],
+    "rejection_texts": ["限价 5.5 买入 2 张 NVDA 20260821 180 Call"],
     "schema_error_count": 1
    }
   },
@@ -791,26 +426,11 @@
     "orders": [
      {
       "intent_summary": "限价 230 买入 100 股 AAPL",
-      "contract": {
-       "secType": "STK",
-       "symbol": "AAPL",
-       "exchange": "SMART",
-       "currency": "USD"
-      },
+      "contract": {"secType": "STK", "symbol": "AAPL", "exchange": "SMART", "currency": "USD"},
       "execution_type": "IMMEDIATE",
       "trigger": null,
       "account": "DEFAULT",
-      "order": {
-       "action": "BUY",
-       "orderType": "TRAIL",
-       "totalQuantity": 100,
-       "price_mode": "EXPLICIT",
-       "lmtPrice": null,
-       "tif": "DAY",
-       "outsideRth": false,
-       "auxPrice": 210.0,
-       "trailingPercent": 5.0
-      },
+      "order": {"action": "BUY", "orderType": "TRAIL", "totalQuantity": 100, "price_mode": "EXPLICIT", "lmtPrice": null, "tif": "DAY", "outsideRth": false, "auxPrice": 210, "trailingPercent": 5},
       "reason": "回调到位",
       "confidence": 0.99,
       "warnings": []
@@ -820,12 +440,8 @@
    },
    "expect": {
     "orders": [],
-    "rejection_codes": [
-     "UNCLEAR"
-    ],
-    "rejection_texts": [
-     "限价 230 买入 100 股 AAPL"
-    ],
+    "rejection_codes": ["UNCLEAR"],
+    "rejection_texts": ["限价 230 买入 100 股 AAPL"],
     "schema_error_count": 1
    }
   },
@@ -835,25 +451,11 @@
     "orders": [
      {
       "intent_summary": "限价 230 买入 100 股 AAPL",
-      "contract": {
-       "secType": "STK",
-       "symbol": "AAPL",
-       "exchange": "SMART",
-       "currency": "USD"
-      },
+      "contract": {"secType": "STK", "symbol": "AAPL", "exchange": "SMART", "currency": "USD"},
       "execution_type": "IMMEDIATE",
       "trigger": null,
       "account": "DEFAULT",
-      "order": {
-       "action": "BUY",
-       "orderType": "STP",
-       "totalQuantity": 100,
-       "price_mode": "EXPLICIT",
-       "lmtPrice": null,
-       "tif": "DAY",
-       "outsideRth": false,
-       "auxPrice": 210.0
-      },
+      "order": {"action": "BUY", "orderType": "STP", "totalQuantity": 100, "price_mode": "EXPLICIT", "lmtPrice": null, "tif": "DAY", "outsideRth": false, "auxPrice": 210},
       "reason": "回调到位",
       "confidence": 0.99,
       "warnings": []
@@ -865,33 +467,11 @@
     "orders": [
      {
       "intent_summary": "限价 230 买入 100 股 AAPL",
-      "contract": {
-       "secType": "STK",
-       "symbol": "AAPL",
-       "exchange": "SMART",
-       "currency": "USD",
-       "lastTradeDateOrContractMonth": null,
-       "strike": null,
-       "right": null,
-       "multiplier": "100",
-       "tradingClass": null,
-       "combo_strategy": null,
-       "legs": null
-      },
+      "contract": {"secType": "STK", "symbol": "AAPL", "exchange": "SMART", "currency": "USD", "lastTradeDateOrContractMonth": null, "strike": null, "right": null, "multiplier": "100", "tradingClass": null, "combo_strategy": null, "legs": null},
       "execution_type": "IMMEDIATE",
       "trigger": null,
       "account": "DEFAULT",
-      "order": {
-       "action": "BUY",
-       "orderType": "STP",
-       "totalQuantity": 100,
-       "price_mode": "EXPLICIT",
-       "lmtPrice": null,
-       "auxPrice": 210.0,
-       "trailingPercent": null,
-       "tif": "DAY",
-       "outsideRth": false
-      },
+      "order": {"action": "BUY", "orderType": "STP", "totalQuantity": 100, "price_mode": "EXPLICIT", "lmtPrice": null, "auxPrice": 210, "trailingPercent": null, "tif": "DAY", "outsideRth": false},
       "reason": "回调到位",
       "confidence": 0.99,
       "warnings": []
@@ -907,21 +487,13 @@
    "payload": {
     "orders": [],
     "rejections": [
-     {
-      "original_text": "买点什么",
-      "code": "UNCLEAR",
-      "message": "指令含糊"
-     }
+     {"original_text": "买点什么", "code": "UNCLEAR", "message": "指令含糊"}
     ]
    },
    "expect": {
     "orders": [],
-    "rejection_codes": [
-     "UNCLEAR"
-    ],
-    "rejection_texts": [
-     "买点什么"
-    ],
+    "rejection_codes": ["UNCLEAR"],
+    "rejection_texts": ["买点什么"],
     "schema_error_count": 0
    }
   },
@@ -930,21 +502,13 @@
    "payload": {
     "orders": [],
     "rejections": [
-     {
-      "original_text": "x",
-      "code": "NOT_A_CODE",
-      "message": "?"
-     }
+     {"original_text": "x", "code": "NOT_A_CODE", "message": "?"}
     ]
    },
    "expect": {
     "orders": [],
-    "rejection_codes": [
-     "UNCLEAR"
-    ],
-    "rejection_texts": [
-     "x"
-    ],
+    "rejection_codes": ["UNCLEAR"],
+    "rejection_texts": ["x"],
     "schema_error_count": 1
    }
   },
@@ -953,9 +517,7 @@
    "payload": {
     "orders": [],
     "rejections": [],
-    "meta": {
-     "x": 1
-    }
+    "meta": {"x": 1}
    },
    "expect": {
     "orders": [],

@@ -1,7 +1,7 @@
 /** 阶段 6 验收:RPC 契约回放。
  *
- * Python 版 RpcServer 在固定时钟、假 LLM、无券商连接下执行了 76 步请求序列
- * (baseline/rpc/)。这里用 TS 版 RpcServer 回放同一序列,归一化后逐条对拍
+ * 固定时钟、假 LLM、无券商连接下的 76 步请求序列(baseline/rpc/,最初由已退役的 Python 参考实现
+ * 生成,现在是本引擎的契约快照)。这里用 RpcServer 回放同一序列,归一化后逐条对拍
  * ——方法表、参数校验、错误码、错误文案、返回形状全部一致,
  * 现有 Electron renderer 才能一行不改地对接。
  */
@@ -16,7 +16,7 @@ import type { PromptBundle } from "../src/prompts.js";
 import { fingerprint } from "../src/prompts.js";
 import { LLMResponse } from "../src/providers.js";
 import { RpcServer } from "../src/rpc.js";
-import { expectSame } from "./util.js";
+import { expectSame, loadGoldenFile } from "./util.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const RPC_DIR = path.resolve(HERE, "..", "baseline", "rpc");
@@ -25,9 +25,7 @@ const baseConfig = JSON.parse(fs.readFileSync(path.join(RPC_DIR, "base_config.js
 const requests: Array<Record<string, any>> = JSON.parse(
   fs.readFileSync(path.join(RPC_DIR, "requests.json"), "utf-8"),
 );
-const expected: Array<Record<string, any>> = JSON.parse(
-  fs.readFileSync(path.join(RPC_DIR, "expected.json"), "utf-8"),
-);
+const expected: Array<Record<string, any>> = loadGoldenFile(path.join(RPC_DIR, "expected.json"));
 
 // ---------------------------------------------------------------- 假解析器(与 Python 生成器镜像)
 const FAKE_PARSE_PAYLOAD = {

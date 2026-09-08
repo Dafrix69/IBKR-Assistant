@@ -8,8 +8,8 @@
  */
 import type { AccountConfig, Settings } from "./config.js";
 import {
-  BrokerError, LegQuote, PlacementResult, bookLiquidity, cleanPrice, finiteQuote, logStderr,
-  redactForLog,
+  BrokerError, LegQuote, PlacementResult, bookLiquidity, cleanPrice, cryptoSymbol, finiteQuote,
+  logStderr, redactForLog,
 } from "./broker.js";
 import type { FutuBridge, FutuQuoteCtx, FutuTradeCtx } from "./futuBridge.js";
 import { loadFutuBridge } from "./futuBridge.js";
@@ -740,6 +740,7 @@ export class FutuRouter {
     const codes: Record<string, string> = {};
     for (const symbol of symbols) {
       if (this.quoteCapability(symbol)) continue; // 指数交给公开源兜底
+      if (cryptoSymbol(symbol)) continue; // 加密现货是 IBKR/PAXOS 的事,富途没有;混进批量订阅会把整批拖垮
       try {
         codes[symbol] = await this.code(symbol);
       } catch (exc) {

@@ -8,7 +8,7 @@
  */
 const { contextBridge, ipcRenderer } = require('electron');
 
-const EVENT_CHANNELS = ['engine-event', 'engine-log', 'engine-exit', 'bootstrap', 'menu', 'window'];
+const EVENT_CHANNELS = ['engine-event', 'engine-log', 'engine-exit', 'menu', 'window'];
 
 contextBridge.exposeInMainWorld('dafri', {
   // 平台标识:界面据此决定要不要退回实底(没有 vibrancy 底材的平台)
@@ -98,8 +98,6 @@ contextBridge.exposeInMainWorld('dafri', {
       method: 'futu.unlock',
       params: { connection, __confirmed: true },
     }),
-  // 装什么由主进程写死,这里只能触发
-  installFutuSdk: () => ipcRenderer.invoke('engine-install-futu'),
 
   // ---- 会产生后果的操作(主进程会校验 __confirmed)----------------------
   // accounts:界面勾选的目标账户别名;勾两个就同时向两个账户发单(引擎按账户扇出)

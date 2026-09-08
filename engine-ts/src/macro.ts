@@ -1,8 +1,8 @@
 /** 宏观行情带(对应 Python macro.py)。
  *
  * TWS 流式 + 公开数据源双来源;VIX 与美债10Y 永远走公开源(没有不失真的 ETF
- * 替身:VIXY 有 contango 损耗,TLT 与收益率反向)。固定清单写死在代码里,
- * 界面不可注入任意符号。
+ * 替身:VIXY 有 contango 损耗,TLT 与收益率反向)。比特币不用 IBIT(差一个量级),
+ * 连 TWS 时读 PAXOS 现货。固定清单写死在代码里,界面不可注入任意符号。
  */
 import { pyRound } from "./py.js";
 
@@ -15,9 +15,10 @@ export const MACRO_SYMBOLS: Array<Record<string, any>> = [
   { key: "^VIX", label: "VIX", fmt: "plain", live: null }, // VIXY 会失真
   { key: "^TNX", label: "美债10Y", fmt: "pct", live: null }, // TLT 方向相反
   { key: "GC=F", label: "黄金", fmt: "price", live: "GLD" },
-  { key: "CL=F", label: "原油", fmt: "price", live: "USO" },
-  { key: "DX-Y.NYB", label: "美元指数", fmt: "plain", live: "UUP" },
-  { key: "BTC-USD", label: "比特币", fmt: "price", live: "IBIT" },
+  { key: "BZ=F", label: "布油", fmt: "price", live: "BNO" }, // 布伦特,不是 WTI
+  // 比特币要的是币价本身(几万美元),IBIT 差一个量级,看着像行情崩了。
+  // 连着 TWS 时读 PAXOS 现货(免订阅,真机实测);断开时公开源 BTC-USD 兜底。
+  { key: "BTC-USD", label: "比特币", fmt: "price", live: "CRYPTO:BTC", liveLabel: "PAXOS" },
 ];
 
 interface CacheHit {
@@ -93,7 +94,7 @@ export async function macroBoard(
       rows.push({
         key: item["key"], label: item["label"], fmt: item["fmt"],
         last: quote.last, change_pct: quote.change_pct ?? null,
-        source: "tws", instrument: item["live"],
+        source: "tws", instrument: item["liveLabel"] ?? item["live"],
       });
     } else {
       // 用户点了强制刷新才同步等;周期轮询一律"旧值先给、后台去取"

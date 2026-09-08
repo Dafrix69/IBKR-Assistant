@@ -661,29 +661,38 @@ input.w-64 { width: 64px; }
    横线的位置由上方用了几层标签决定(--above 由脚本量过标签宽度后写入);每层 24px,最多三层。 */
 .stock-levels { padding: 6px 0 4px; border-bottom: 0.5px solid var(--separator); }
 .stock-levels.muted { font-size: 11px; padding: 2px 0 6px; }
-.lstrip { position: relative; height: 60px; margin: 0 30px 0 30px; font-size: 9.5px; line-height: 1.15; --above: 1; }
-.lstrip-track, .lstrip-mark { top: calc(6px + var(--above) * 24px); }
-.lstrip-track { position: absolute; left: -10px; right: -10px; border-top: 1px solid var(--separator); }
-.lstrip-mark { position: absolute; width: 0; color: var(--label-secondary); }
-.lstrip-mark::before { content: ''; position: absolute; left: -0.5px; border-left: 1.5px solid currentColor; }
-.lstrip-mark.above::before { bottom: 0; }
-.lstrip-mark.below::before { top: 0; }
-.lstrip-mark.t0::before { height: 6px; }
-.lstrip-mark.t1::before { height: 30px; }
-.lstrip-mark.t2::before { height: 54px; }
-.lstrip-mark.resistance { color: var(--down-text); }
-.lstrip-mark.support { color: var(--up-text); }
-.lstrip-mark.spot { color: var(--blue); }
-.lstrip-mark.spot::before { left: -4px; top: -4px; width: 8px; height: 8px; border: none; border-radius: 50%; background: var(--blue); }
-.lstrip-label { position: absolute; left: 0; transform: translateX(-50%); white-space: nowrap; text-align: center; }
-.lstrip-label b { display: block; font-weight: 590; font-family: var(--font-mono); color: var(--label); }
-.lstrip-mark.spot .lstrip-label b { color: var(--blue); }
-.lstrip-mark.above.t0 .lstrip-label { bottom: 8px; }
-.lstrip-mark.above.t1 .lstrip-label { bottom: 32px; }
-.lstrip-mark.above.t2 .lstrip-label { bottom: 56px; }
-.lstrip-mark.below.t0 .lstrip-label { top: 8px; }
-.lstrip-mark.below.t1 .lstrip-label { top: 32px; }
-.lstrip-mark.below.t2 .lstrip-label { top: 56px; }
+
+/* 板块卡里一只股 = 行 + 价位条,是一个整体。以前两者各画一条同样的 0.5px 线,
+   几只股一起展开时"自己的价位条"和"下一只股"之间的分界和块内一样弱,眼睛分不出层级。
+   现在:块内不画线,价位条铺一层浅底(和下一只股的行形成明暗交替),块之间一条整像素的线。 */
+.stock-block { padding: 1px 0 6px; border-bottom: 1px solid var(--separator); }
+.stock-block:last-child { border-bottom: none; padding-bottom: 0; }
+.stock-block .stock-row { border-bottom: none; }
+.stock-block .stock-levels {
+  border-bottom: none;
+  margin: 0 -4px;
+  padding: 6px 4px 4px;
+  background: var(--bg-fill);
+  border-radius: 6px;
+}
+.stock-block .stock-levels.muted { padding: 3px 6px 4px; }
+.lstrip { margin: 2px 0 0; }
+.lstrip-svg { display: block; overflow: visible; font-size: 10px; }
+.lstrip-axis { stroke: var(--separator); stroke-width: 1; }
+.lstrip-break { stroke: var(--label-tertiary); stroke-width: 1; fill: none; }
+.lstrip-tick { stroke: var(--label-tertiary); stroke-width: 2; stroke-linecap: round; }
+.lstrip-tick.resistance { stroke: var(--down); }
+.lstrip-tick.support { stroke: var(--up); }
+.lstrip-spot { fill: var(--blue); stroke: var(--bg-elevated); stroke-width: 1.5; }
+.lstrip-lead { stroke: var(--label-tertiary); stroke-width: 0.8; fill: none; opacity: 0.8; }
+.lstrip-lead.resistance { stroke: var(--down); }
+.lstrip-lead.support { stroke: var(--up); }
+.lstrip-lead.spot { stroke: var(--blue); }
+.lstrip-text { fill: var(--label-secondary); font-size: 10px; font-weight: 500; }
+.lstrip-text .lstrip-price { fill: var(--label); font-family: var(--font-mono); font-weight: 600; }
+.lstrip-text.resistance .lstrip-name { fill: var(--down-text); }
+.lstrip-text.support .lstrip-name { fill: var(--up-text); }
+.lstrip-text.spot .lstrip-name, .lstrip-text.spot .lstrip-price { fill: var(--blue); }
 
 /* 回测:moomoo 风格的决策流程卡片 */
 .flow {

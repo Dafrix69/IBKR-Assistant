@@ -82,6 +82,12 @@ describe("macro", () => {
     expect(tnx["live"]).toBeNull();
     expect(liveTickers()).not.toContain("VIXY");
     expect(liveTickers()).not.toContain("TLT");
+    // 比特币要看币价本身:不给 IBIT 替身,走 PAXOS 现货;原油这格是布伦特
+    const btc = MACRO_SYMBOLS.find((s) => s["key"] === "BTC-USD")!;
+    expect(btc["live"]).toBe("CRYPTO:BTC");
+    expect(liveTickers()).not.toContain("IBIT");
+    expect(MACRO_SYMBOLS.some((s) => s["key"] === "BZ=F")).toBe(true);
+    expect(MACRO_SYMBOLS.some((s) => s["key"] === "DX-Y.NYB")).toBe(false);
   });
 
   it("TWS 流有数的格走 tws,其余走公开源;失败只丢一格", async () => {
@@ -92,13 +98,21 @@ describe("macro", () => {
       };
     };
     const router = {
-      streamQuotes: () => ({ SPY: { last: 450.1, change_pct: 0.5 } }),
+      streamQuotes: () => ({
+        SPY: { last: 450.1, change_pct: 0.5 },
+        "CRYPTO:BTC": { last: 78609.25, change_pct: -0.94 },
+      }),
     };
     const board = await macroBoard({ router, fetcher, now: () => 1000 });
     const spy = board["rows"].find((r: any) => r["key"] === "^GSPC");
     expect(spy["source"]).toBe("tws");
     expect(spy["instrument"]).toBe("SPY");
     expect(spy["last"]).toBe(450.1);
+    // 比特币格:流里的键是加密标记,界面上标的是 PAXOS,数值是币价本身
+    const btc = board["rows"].find((r: any) => r["key"] === "BTC-USD");
+    expect(btc["source"]).toBe("tws");
+    expect(btc["instrument"]).toBe("PAXOS");
+    expect(btc["last"]).toBe(78609.25);
     const vix = board["rows"].find((r: any) => r["key"] === "^VIX");
     expect(vix["source"]).toBe("public");
     expect(vix["last"]).toBeNull();
@@ -106,7 +120,7 @@ describe("macro", () => {
     const gold = board["rows"].find((r: any) => r["key"] === "GC=F");
     expect(gold["last"]).toBe(100.0);
     expect(gold["change_pct"]).toBeCloseTo(1.01, 6);
-    expect(board["live_count"]).toBe(1);
+    expect(board["live_count"]).toBe(2);
   });
 
   it("公开源失败时保留上一次的值并标 stale", async () => {
@@ -214,8 +228,10 @@ describe("rpc serve: 用户请求插队到周期轮询前面", () => {
       .map((l) => JSON.parse(l) as Record<string, any>)
       .filter((m) => m["method"] !== "event")
       .map((m) => m["id"]);
-    expect(order[0]).toBe(3);
-    expect(order.filter((i) => i === 1 || i === 2)).toEqual([1, 2]);
+    // system.status 与 records.list 现在都走本地道(即来即答),pending.poll 走交易道:
+    // 用户亲手发的 records.list 必须先于排在它前面的 pending.poll 得到响应
+    expect(order.indexOf(3)).toBeLessThan(order.indexOf(2));
+    expect(order).toContain(1);
     expect(order).toContain(null);
   });
 });

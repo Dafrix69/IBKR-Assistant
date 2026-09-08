@@ -1,251 +1,65 @@
 {
  "base_config": {
   "prompt_version": "v1.8.0",
-  "llm": {
-   "model": "claude-opus-5",
-   "effort": "high",
-   "temperature": null
-  },
-  "limits": {
-   "max_order_notional": 50000.0,
-   "max_option_contracts": 10,
-   "max_mkt_shares": 200,
-   "min_confidence": 0.9,
-   "max_spread_slippage": 0.1,
-   "max_orders_per_input": 5,
-   "duplicate_window_minutes": 10,
-   "duplicate_qty_tolerance": 0.2
-  },
-  "policies": {
-   "auto_execute": false,
-   "allow_live_trading": false,
-   "require_trigger_price_verification": true,
-   "trigger_min_gap_bps": 5.0,
-   "closed_market_policy": "reject_market_orders"
-  },
+  "llm": {"model": "claude-opus-5", "effort": "high", "temperature": null},
+  "limits": {"max_order_notional": 50000, "max_option_contracts": 10, "max_mkt_shares": 200, "min_confidence": 0.9, "max_spread_slippage": 0.1, "max_orders_per_input": 5, "duplicate_window_minutes": 10, "duplicate_qty_tolerance": 0.2},
+  "policies": {"auto_execute": false, "allow_live_trading": false, "require_trigger_price_verification": true, "trigger_min_gap_bps": 5, "closed_market_policy": "reject_market_orders"},
   "connections": {
-   "paper": {
-    "host": "127.0.0.1",
-    "port": 7497,
-    "client_id": 11
-   },
-   "live": {
-    "host": "127.0.0.1",
-    "port": 7496,
-    "client_id": 12
-   }
+   "paper": {"host": "127.0.0.1", "port": 7497, "client_id": 11},
+   "live": {"host": "127.0.0.1", "port": 7496, "client_id": 12}
   },
   "accounts": [
-   {
-    "alias": "模拟",
-    "account_id": "DU7654321",
-    "is_paper": true,
-    "connection": "paper",
-    "default": true
-   },
-   {
-    "alias": "主账户",
-    "account_id": "U1234567",
-    "is_paper": false,
-    "connection": "live"
-   }
+   {"alias": "模拟", "account_id": "DU7654321", "is_paper": true, "connection": "paper", "default": true},
+   {"alias": "主账户", "account_id": "U1234567", "is_paper": false, "connection": "live"}
   ],
-  "symbol_aliases": {
-   "苹果": "AAPL",
-   "英伟达": "NVDA",
-   "特斯拉": "TSLA"
-  },
+  "symbol_aliases": {"苹果": "AAPL", "英伟达": "NVDA", "特斯拉": "TSLA"},
   "index_symbols": {
-   "SPX": {
-    "exchange": "CBOE",
-    "daily_trading_class": "SPXW",
-    "monthly_trading_class": "SPX"
-   }
+   "SPX": {"exchange": "CBOE", "daily_trading_class": "SPXW", "monthly_trading_class": "SPX"}
   },
-  "market_holidays": [
-   "2026-09-07"
-  ],
-  "early_close_days": [
-   "2026-11-27"
-  ]
+  "market_holidays": ["2026-09-07"],
+  "early_close_days": ["2026-11-27"]
  },
  "market_status": [
-  {
-   "now": "2026-08-14T03:59:00-04:00",
-   "expect": "休市"
-  },
-  {
-   "now": "2026-08-14T04:00:00-04:00",
-   "expect": "盘前"
-  },
-  {
-   "now": "2026-08-14T09:29:00-04:00",
-   "expect": "盘前"
-  },
-  {
-   "now": "2026-08-14T09:30:00-04:00",
-   "expect": "盘中"
-  },
-  {
-   "now": "2026-08-14T15:59:00-04:00",
-   "expect": "盘中"
-  },
-  {
-   "now": "2026-08-14T16:00:00-04:00",
-   "expect": "盘后"
-  },
-  {
-   "now": "2026-08-14T19:59:00-04:00",
-   "expect": "盘后"
-  },
-  {
-   "now": "2026-08-14T20:00:00-04:00",
-   "expect": "休市"
-  },
-  {
-   "now": "2026-08-15T11:00:00-04:00",
-   "expect": "休市"
-  },
-  {
-   "now": "2026-09-07T11:00:00-04:00",
-   "expect": "休市"
-  },
-  {
-   "now": "2026-11-27T12:59:00-05:00",
-   "expect": "盘中"
-  },
-  {
-   "now": "2026-11-27T13:00:00-05:00",
-   "expect": "盘后"
-  }
+  {"now": "2026-08-14T03:59:00-04:00", "expect": "休市"},
+  {"now": "2026-08-14T04:00:00-04:00", "expect": "盘前"},
+  {"now": "2026-08-14T09:29:00-04:00", "expect": "盘前"},
+  {"now": "2026-08-14T09:30:00-04:00", "expect": "盘中"},
+  {"now": "2026-08-14T15:59:00-04:00", "expect": "盘中"},
+  {"now": "2026-08-14T16:00:00-04:00", "expect": "盘后"},
+  {"now": "2026-08-14T19:59:00-04:00", "expect": "盘后"},
+  {"now": "2026-08-14T20:00:00-04:00", "expect": "休市"},
+  {"now": "2026-08-15T11:00:00-04:00", "expect": "休市"},
+  {"now": "2026-09-07T11:00:00-04:00", "expect": "休市"},
+  {"now": "2026-11-27T12:59:00-05:00", "expect": "盘中"},
+  {"now": "2026-11-27T13:00:00-05:00", "expect": "盘后"}
  ],
  "hours_status": [
-  {
-   "spec": "20260903:1915-20260904:0825;20260904:0830-20260904:1500;20260905:CLOSED",
-   "liquid": "20260904:0830-20260904:1500;20260905:CLOSED",
-   "tz": "US/Central",
-   "now": "2026-09-04T01:10:00-04:00",
-   "expect": "盘外",
-   "stock_table": "休市"
-  },
-  {
-   "spec": "20260903:1915-20260904:0825;20260904:0830-20260904:1500;20260905:CLOSED",
-   "liquid": "20260904:0830-20260904:1500;20260905:CLOSED",
-   "tz": "US/Central",
-   "now": "2026-09-04T08:00:00-04:00",
-   "expect": "盘外",
-   "stock_table": "盘前"
-  },
-  {
-   "spec": "20260903:1915-20260904:0825;20260904:0830-20260904:1500;20260905:CLOSED",
-   "liquid": "20260904:0830-20260904:1500;20260905:CLOSED",
-   "tz": "US/Central",
-   "now": "2026-09-04T09:24:00-04:00",
-   "expect": "盘外",
-   "stock_table": "盘前"
-  },
-  {
-   "spec": "20260903:1915-20260904:0825;20260904:0830-20260904:1500;20260905:CLOSED",
-   "liquid": "20260904:0830-20260904:1500;20260905:CLOSED",
-   "tz": "US/Central",
-   "now": "2026-09-04T09:26:00-04:00",
-   "expect": "休市",
-   "stock_table": "盘前"
-  },
-  {
-   "spec": "20260903:1915-20260904:0825;20260904:0830-20260904:1500;20260905:CLOSED",
-   "liquid": "20260904:0830-20260904:1500;20260905:CLOSED",
-   "tz": "US/Central",
-   "now": "2026-09-04T09:40:00-04:00",
-   "expect": "盘中",
-   "stock_table": "盘中"
-  },
-  {
-   "spec": "20260903:1915-20260904:0825;20260904:0830-20260904:1500;20260905:CLOSED",
-   "liquid": "20260904:0830-20260904:1500;20260905:CLOSED",
-   "tz": "US/Central",
-   "now": "2026-09-04T15:59:00-04:00",
-   "expect": "盘中",
-   "stock_table": "盘中"
-  },
-  {
-   "spec": "20260903:1915-20260904:0825;20260904:0830-20260904:1500;20260905:CLOSED",
-   "liquid": "20260904:0830-20260904:1500;20260905:CLOSED",
-   "tz": "US/Central",
-   "now": "2026-09-04T16:30:00-04:00",
-   "expect": "休市",
-   "stock_table": "盘后"
-  },
-  {
-   "spec": "20260903:1915-20260904:0825;20260904:0830-20260904:1500;20260905:CLOSED",
-   "liquid": "20260904:0830-20260904:1500;20260905:CLOSED",
-   "tz": "US/Central",
-   "now": "2026-09-05T11:00:00-04:00",
-   "expect": "休市",
-   "stock_table": "休市"
-  },
-  {
-   "spec": "20260903:1915-20260904:0825;20260904:0830-20260904:1500;20260905:CLOSED",
-   "liquid": "",
-   "tz": "US/Central",
-   "now": "2026-09-04T01:10:00-04:00",
-   "expect": "盘中",
-   "stock_table": "休市"
-  },
-  {
-   "spec": "",
-   "liquid": "",
-   "tz": "US/Central",
-   "now": "2026-09-04T01:10:00-04:00",
-   "expect": "",
-   "stock_table": "休市"
-  },
-  {
-   "spec": "20260903:1915-20260904:0825;20260904:0830-20260904:1500;20260905:CLOSED",
-   "liquid": "20260904:0830-20260904:1500;20260905:CLOSED",
-   "tz": "",
-   "now": "2026-09-04T01:10:00-04:00",
-   "expect": "",
-   "stock_table": "休市"
-  },
-  {
-   "spec": "20260905:CLOSED;20260906:CLOSED",
-   "liquid": "",
-   "tz": "US/Central",
-   "now": "2026-09-04T01:10:00-04:00",
-   "expect": "休市",
-   "stock_table": "休市"
-  },
-  {
-   "spec": "垃圾;20260904:0830-20260904:1500",
-   "liquid": "20260904:0830-20260904:1500;20260905:CLOSED",
-   "tz": "US/Central",
-   "now": "2026-09-04T09:40:00-04:00",
-   "expect": "盘中",
-   "stock_table": "盘中"
-  }
+  {"spec": "20260903:1915-20260904:0825;20260904:0830-20260904:1500;20260905:CLOSED", "liquid": "20260904:0830-20260904:1500;20260905:CLOSED", "tz": "US/Central", "now": "2026-09-04T01:10:00-04:00", "expect": "盘外", "stock_table": "休市"},
+  {"spec": "20260903:1915-20260904:0825;20260904:0830-20260904:1500;20260905:CLOSED", "liquid": "20260904:0830-20260904:1500;20260905:CLOSED", "tz": "US/Central", "now": "2026-09-04T08:00:00-04:00", "expect": "盘外", "stock_table": "盘前"},
+  {"spec": "20260903:1915-20260904:0825;20260904:0830-20260904:1500;20260905:CLOSED", "liquid": "20260904:0830-20260904:1500;20260905:CLOSED", "tz": "US/Central", "now": "2026-09-04T09:24:00-04:00", "expect": "盘外", "stock_table": "盘前"},
+  {"spec": "20260903:1915-20260904:0825;20260904:0830-20260904:1500;20260905:CLOSED", "liquid": "20260904:0830-20260904:1500;20260905:CLOSED", "tz": "US/Central", "now": "2026-09-04T09:26:00-04:00", "expect": "休市", "stock_table": "盘前"},
+  {"spec": "20260903:1915-20260904:0825;20260904:0830-20260904:1500;20260905:CLOSED", "liquid": "20260904:0830-20260904:1500;20260905:CLOSED", "tz": "US/Central", "now": "2026-09-04T09:40:00-04:00", "expect": "盘中", "stock_table": "盘中"},
+  {"spec": "20260903:1915-20260904:0825;20260904:0830-20260904:1500;20260905:CLOSED", "liquid": "20260904:0830-20260904:1500;20260905:CLOSED", "tz": "US/Central", "now": "2026-09-04T15:59:00-04:00", "expect": "盘中", "stock_table": "盘中"},
+  {"spec": "20260903:1915-20260904:0825;20260904:0830-20260904:1500;20260905:CLOSED", "liquid": "20260904:0830-20260904:1500;20260905:CLOSED", "tz": "US/Central", "now": "2026-09-04T16:30:00-04:00", "expect": "休市", "stock_table": "盘后"},
+  {"spec": "20260903:1915-20260904:0825;20260904:0830-20260904:1500;20260905:CLOSED", "liquid": "20260904:0830-20260904:1500;20260905:CLOSED", "tz": "US/Central", "now": "2026-09-05T11:00:00-04:00", "expect": "休市", "stock_table": "休市"},
+  {"spec": "20260903:1915-20260904:0825;20260904:0830-20260904:1500;20260905:CLOSED", "liquid": "", "tz": "US/Central", "now": "2026-09-04T01:10:00-04:00", "expect": "盘中", "stock_table": "休市"},
+  {"spec": "", "liquid": "", "tz": "US/Central", "now": "2026-09-04T01:10:00-04:00", "expect": "", "stock_table": "休市"},
+  {"spec": "20260903:1915-20260904:0825;20260904:0830-20260904:1500;20260905:CLOSED", "liquid": "20260904:0830-20260904:1500;20260905:CLOSED", "tz": "", "now": "2026-09-04T01:10:00-04:00", "expect": "", "stock_table": "休市"},
+  {"spec": "20260905:CLOSED;20260906:CLOSED", "liquid": "", "tz": "US/Central", "now": "2026-09-04T01:10:00-04:00", "expect": "休市", "stock_table": "休市"},
+  {"spec": "垃圾;20260904:0830-20260904:1500", "liquid": "20260904:0830-20260904:1500;20260905:CLOSED", "tz": "US/Central", "now": "2026-09-04T09:40:00-04:00", "expect": "盘中", "stock_table": "盘中"}
  ],
  "parse_trading_hours": [
   {
    "spec": "20260903:1915-20260904:0825;20260904:0830-20260904:1500;20260905:CLOSED",
    "expect": [
-    [
-     "2026-09-03T19:15:00",
-     "2026-09-04T08:25:00"
-    ],
-    [
-     "2026-09-04T08:30:00",
-     "2026-09-04T15:00:00"
-    ]
+    ["2026-09-03T19:15:00", "2026-09-04T08:25:00"],
+    ["2026-09-04T08:30:00", "2026-09-04T15:00:00"]
    ]
   },
   {
    "spec": "20260904:0830-20260904:1500;20260905:CLOSED",
    "expect": [
-    [
-     "2026-09-04T08:30:00",
-     "2026-09-04T15:00:00"
-    ]
+    ["2026-09-04T08:30:00", "2026-09-04T15:00:00"]
    ]
   },
   {
@@ -259,10 +73,7 @@
   {
    "spec": "20260904:0830-1500",
    "expect": [
-    [
-     "2026-09-04T08:30:00",
-     "2026-09-04T15:00:00"
-    ]
+    ["2026-09-04T08:30:00", "2026-09-04T15:00:00"]
    ]
   },
   {
@@ -279,19 +90,8 @@
    "name": "dup_alias",
    "overrides": {
     "accounts": [
-     {
-      "alias": "模拟",
-      "account_id": "DU1",
-      "is_paper": true,
-      "connection": "paper",
-      "default": true
-     },
-     {
-      "alias": "模拟",
-      "account_id": "DU2",
-      "is_paper": true,
-      "connection": "paper"
-     }
+     {"alias": "模拟", "account_id": "DU1", "is_paper": true, "connection": "paper", "default": true},
+     {"alias": "模拟", "account_id": "DU2", "is_paper": true, "connection": "paper"}
     ]
    },
    "error": "账户别名重复:模拟"
@@ -300,13 +100,7 @@
    "name": "alias_default_reserved",
    "overrides": {
     "accounts": [
-     {
-      "alias": "DEFAULT",
-      "account_id": "DU1",
-      "is_paper": true,
-      "connection": "paper",
-      "default": true
-     }
+     {"alias": "DEFAULT", "account_id": "DU1", "is_paper": true, "connection": "paper", "default": true}
     ]
    },
    "error": "别名不得叫 DEFAULT(保留字)"
@@ -315,20 +109,8 @@
    "name": "two_defaults",
    "overrides": {
     "accounts": [
-     {
-      "alias": "a",
-      "account_id": "DU1",
-      "is_paper": true,
-      "connection": "paper",
-      "default": true
-     },
-     {
-      "alias": "b",
-      "account_id": "DU2",
-      "is_paper": true,
-      "connection": "paper",
-      "default": true
-     }
+     {"alias": "a", "account_id": "DU1", "is_paper": true, "connection": "paper", "default": true},
+     {"alias": "b", "account_id": "DU2", "is_paper": true, "connection": "paper", "default": true}
     ]
    },
    "error": "必须且只能有一个账户标记 default=true(当前 2 个)"
@@ -337,11 +119,7 @@
    "name": "bad_host",
    "overrides": {
     "connections": {
-     "paper": {
-      "host": "10.0.0.5",
-      "port": 7497,
-      "client_id": 11
-     }
+     "paper": {"host": "10.0.0.5", "port": 7497, "client_id": 11}
     }
    },
    "error": "连接 paper 的 host 必须是本机地址,当前为 10.0.0.5"
@@ -350,13 +128,7 @@
    "name": "orphan_connection",
    "overrides": {
     "accounts": [
-     {
-      "alias": "a",
-      "account_id": "DU1",
-      "is_paper": true,
-      "connection": "nope",
-      "default": true
-     }
+     {"alias": "a", "account_id": "DU1", "is_paper": true, "connection": "nope", "default": true}
     ]
    },
    "error": "账户 a 指向未定义的连接 nope"
@@ -364,54 +136,42 @@
   {
    "name": "bad_policy",
    "overrides": {
-    "policies": {
-     "closed_market_policy": "whatever"
-    }
+    "policies": {"closed_market_policy": "whatever"}
    },
    "error": "policies.closed_market_policy 只能是 allow、reject_all、reject_market_orders"
   },
   {
    "name": "bad_effort",
    "overrides": {
-    "llm": {
-     "effort": "ultra"
-    }
+    "llm": {"effort": "ultra"}
    },
    "error": "llm.effort 只能是 high、low、max、medium、xhigh"
   },
   {
    "name": "bad_flag_string",
    "overrides": {
-    "policies": {
-     "auto_execute": "true"
-    }
+    "policies": {"auto_execute": "true"}
    },
    "error": "policies.auto_execute 必须是 true/false,收到 'true'"
   },
   {
    "name": "bad_limit_low",
    "overrides": {
-    "limits": {
-     "max_order_notional": 0.0
-    }
+    "limits": {"max_order_notional": 0}
    },
    "error": "limits.max_order_notional 不能小于 0.01(收到 0.0)"
   },
   {
    "name": "unknown_limit_key",
    "overrides": {
-    "limits": {
-     "max_notional": 5.0
-    }
+    "limits": {"max_notional": 5}
    },
    "error": "limits 里有未知配置项:max_notional"
   },
   {
    "name": "bad_broker",
    "overrides": {
-    "broker": {
-     "provider": "schwab"
-    }
+    "broker": {"provider": "schwab"}
    },
    "error": "broker.provider 只能是 ibkr、futu"
   },
@@ -419,9 +179,7 @@
    "name": "bad_futu_market",
    "overrides": {
     "broker": {
-     "futu": {
-      "trd_market": "JP"
-     }
+     "futu": {"trd_market": "JP"}
     }
    },
    "error": "broker.futu.trd_market 只能是 CN、HK、US"
@@ -429,40 +187,22 @@
   {
    "name": "broker_no_connection",
    "overrides": {
-    "broker": {
-     "provider": "futu"
-    }
+    "broker": {"provider": "futu"}
    },
    "error": "broker.provider=futu,但 connections 里没有任何 broker=\"futu\" 的连接。请先在配置里加一条(富途 OpenD 默认端口 11111)。"
   },
   {
    "name": "bad_confidence",
    "overrides": {
-    "limits": {
-     "min_confidence": 1.5
-    }
+    "limits": {"min_confidence": 1.5}
    },
    "error": "limits.min_confidence 不能大于 1.0(收到 1.5)"
   }
  ],
  "prompt_account_table": "模拟=纸面测试账户(默认);主账户=实盘账户",
  "prompt_symbol_table": "苹果=AAPL;英伟达=NVDA;特斯拉=TSLA",
- "alias_list": [
-  "模拟",
-  "主账户"
- ],
- "account_by_alias": {
-  "DEFAULT": "DU7654321",
-  "主账户": "U1234567",
-  "missing": null
- },
- "connections_for_default": [
-  "live",
-  "paper"
- ],
- "is_trading_day": {
-  "2026-08-14": true,
-  "2026-08-15": false,
-  "2026-09-07": false
- }
+ "alias_list": ["模拟", "主账户"],
+ "account_by_alias": {"DEFAULT": "DU7654321", "主账户": "U1234567", "missing": null},
+ "connections_for_default": ["live", "paper"],
+ "is_trading_day": {"2026-08-14": true, "2026-08-15": false, "2026-09-07": false}
 }

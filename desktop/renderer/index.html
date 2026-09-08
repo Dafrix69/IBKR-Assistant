@@ -958,6 +958,32 @@
     </div>
 
     <script src="pa-chart.js"></script>
-    <script src="app.js"></script>
+    <!-- 界面逻辑按页面拆成 app/*.js,经典脚本按序加载,共享同一个全局作用域;顺序即依赖顺序,boot.js 最后 -->
+    <script src="app/core.js"></script>
+    <script src="app/levelstrip.js"></script>
+    <script src="app/topbar.js"></script>
+    <script src="app/readiness.js"></script>
+    <script src="app/submit.js"></script>
+    <script src="app/accounts.js"></script>
+    <script src="app/board.js"></script>
+    <script src="app/records.js"></script>
+    <script src="app/ideas.js"></script>
+    <script src="app/sectors.js"></script>
+    <script src="app/backtest.js"></script>
+    <script src="app/macro.js"></script>
+    <script src="app/book.js"></script>
+    <script src="app/pa.js"></script>
+    <script src="app/tradereview.js"></script>
+    <script src="app/alerts.js"></script>
+    <script src="app/theme.js"></script>
+    <script src="app/screener.js"></script>
+    <script src="app/settings.js"></script>
+    <script src="app/llm.js"></script>
+    <script src="app/tws.js"></script>
+    <script src="app/tracker.js"></script>
+    <script src="app/futu.js"></script>
+    <script src="app/about.js"></script>
+    <script src="app/bind.js"></script>
+    <script src="app/boot.js"></script>
   </body>
 </html>

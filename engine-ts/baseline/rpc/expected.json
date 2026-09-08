@@ -68,7 +68,7 @@
     }
    ],
    "limits": {
-    "max_order_notional": 50000.0,
+    "max_order_notional": 50000,
     "max_option_contracts": 10,
     "max_mkt_shares": 200,
     "min_confidence": 0.9,
@@ -184,7 +184,7 @@
      "htf": null
     }
    ],
-   "min_interval": 15.0
+   "min_interval": 15
   }
  },
  {
@@ -196,7 +196,7 @@
     "max_tokens": 8000
    },
    "limits": {
-    "max_order_notional": 50000.0,
+    "max_order_notional": 50000,
     "max_option_contracts": 10,
     "max_mkt_shares": 200,
     "min_confidence": 0.9,
@@ -211,7 +211,7 @@
     "allow_combo_live": false,
     "auto_outside_rth": true,
     "require_trigger_price_verification": true,
-    "trigger_min_gap_bps": 5.0,
+    "trigger_min_gap_bps": 5,
     "closed_market_policy": "reject_market_orders",
     "consecutive_failure_breaker": 3,
     "review_feature_enabled": false
@@ -272,7 +272,7 @@
     "max_tokens": 8000
    },
    "limits": {
-    "max_order_notional": 40000.0,
+    "max_order_notional": 40000,
     "max_option_contracts": 10,
     "max_mkt_shares": 200,
     "min_confidence": 0.9,
@@ -287,7 +287,7 @@
     "allow_combo_live": false,
     "auto_outside_rth": true,
     "require_trigger_price_verification": true,
-    "trigger_min_gap_bps": 5.0,
+    "trigger_min_gap_bps": 5,
     "closed_market_policy": "reject_market_orders",
     "consecutive_failure_breaker": 3,
     "review_feature_enabled": false
@@ -379,7 +379,7 @@
     "effort": "high",
     "temperature": null,
     "max_tokens": 8000,
-    "timeout_s": 60.0,
+    "timeout_s": 60,
     "keychain_service": "dafri-llm-api-key",
     "keychain_account": "anthropic"
    },
@@ -432,7 +432,7 @@
     "effort": "high",
     "temperature": null,
     "max_tokens": 8000,
-    "timeout_s": 60.0,
+    "timeout_s": 60,
     "keychain_service": "dafri-llm-api-key",
     "keychain_account": "anthropic"
    },
@@ -487,7 +487,7 @@
      "record_id": "<ID>",
      "intent_summary": "限价 230 买入 100 股 AAPL",
      "account": "模拟",
-     "notional": 23000.0
+     "notional": 23000
     }
    ],
    "rejections": [
@@ -521,7 +521,7 @@
      "record_id": "<ID>",
      "intent_summary": "限价 230 买入 100 股 AAPL",
      "account": "模拟",
-     "notional": 23000.0
+     "notional": 23000
     }
    ],
    "rejections": [
@@ -589,7 +589,7 @@
      "total_commission": null,
      "confidence": 0.99,
      "rejection": null,
-     "notional_estimate": 23000.0
+     "notional_estimate": 23000
     },
     {
      "id": "<ID>",
@@ -668,7 +668,7 @@
      "total_commission": null,
      "confidence": 0.99,
      "rejection": null,
-     "notional_estimate": 23000.0
+     "notional_estimate": 23000
     },
     {
      "id": "<ID>",
@@ -1187,7 +1187,7 @@
     "created_at": "<VAR>",
     "updated_at": "<VAR>",
     "symbol": "IREN",
-    "step": 5.0,
+    "step": 5,
     "enabled": 1,
     "expiry": "",
     "levels": [],
@@ -1212,7 +1212,7 @@
      "created_at": "<VAR>",
      "updated_at": "<VAR>",
      "symbol": "IREN",
-     "step": 5.0,
+     "step": 5,
      "enabled": true,
      "expiry": "",
      "levels": [],
@@ -1353,7 +1353,7 @@
        "kind": "const",
        "name": null,
        "period": null,
-       "value": 0.0
+       "value": 0
       }
      }
     ],

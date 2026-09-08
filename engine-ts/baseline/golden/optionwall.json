@@ -3,322 +3,48 @@
   {
    "name": "monthly",
    "rows": [
-    {
-     "strike": 400.0,
-     "right": "C",
-     "oi": 1596,
-     "volume": 744,
-     "iv": 0.2573,
-     "gamma": 0.002502
-    },
-    {
-     "strike": 400.0,
-     "right": "P",
-     "oi": 4339,
-     "volume": 1787,
-     "iv": 0.2573,
-     "gamma": 0.002766
-    },
-    {
-     "strike": 405.0,
-     "right": "C",
-     "oi": 2203,
-     "volume": 2081,
-     "iv": 0.2473
-    },
-    {
-     "strike": 405.0,
-     "right": "P",
-     "oi": 2558,
-     "volume": 847,
-     "iv": 0.2473
-    },
-    {
-     "strike": 410.0,
-     "right": "C",
-     "oi": 2688,
-     "volume": 2183,
-     "iv": 0.2404,
-     "gamma": 0.003365
-    },
-    {
-     "strike": 410.0,
-     "right": "P",
-     "oi": 4080,
-     "volume": 1103,
-     "iv": 0.2404,
-     "gamma": 0.002305
-    },
-    {
-     "strike": 415.0,
-     "right": "C",
-     "oi": 2456,
-     "volume": 138,
-     "iv": 0.2351
-    },
-    {
-     "strike": 415.0,
-     "right": "P",
-     "oi": 2789,
-     "volume": 4642,
-     "iv": 0.2351
-    },
-    {
-     "strike": 420.0,
-     "right": "C",
-     "oi": 4801,
-     "volume": 1341,
-     "iv": 0.2233,
-     "gamma": 0.002408
-    },
-    {
-     "strike": 420.0,
-     "right": "P",
-     "oi": 4091,
-     "volume": 3124,
-     "iv": 0.2233,
-     "gamma": 0.003979
-    },
-    {
-     "strike": 425.0,
-     "right": "C",
-     "oi": 3441,
-     "volume": 3886,
-     "iv": 0.2264
-    },
-    {
-     "strike": 425.0,
-     "right": "P",
-     "oi": 5899,
-     "volume": 2020,
-     "iv": 0.2264
-    },
-    {
-     "strike": 430.0,
-     "right": "C",
-     "oi": 4949,
-     "volume": 3627,
-     "iv": 0.2179,
-     "gamma": 0.003191
-    },
-    {
-     "strike": 430.0,
-     "right": "P",
-     "oi": 7569,
-     "volume": 3043,
-     "iv": 0.2179,
-     "gamma": 0.003966
-    },
-    {
-     "strike": 435.0,
-     "right": "C",
-     "oi": 8202,
-     "volume": 3698,
-     "iv": 0.2081
-    },
-    {
-     "strike": 435.0,
-     "right": "P",
-     "oi": 6489,
-     "volume": 3845,
-     "iv": 0.2081
-    },
-    {
-     "strike": 440.0,
-     "right": "C",
-     "oi": 6925,
-     "volume": 3432,
-     "iv": 0.1998,
-     "gamma": 0.002011
-    },
-    {
-     "strike": 440.0,
-     "right": "P",
-     "oi": 7188,
-     "volume": 4417,
-     "iv": 0.1998,
-     "gamma": 0.002659
-    },
-    {
-     "strike": 445.0,
-     "right": "C",
-     "oi": 6201,
-     "volume": 4422,
-     "iv": 0.1922
-    },
-    {
-     "strike": 445.0,
-     "right": "P",
-     "oi": 8097,
-     "volume": 4195,
-     "iv": 0.1922
-    },
-    {
-     "strike": 450.0,
-     "right": "C",
-     "oi": 7652,
-     "volume": 4867,
-     "iv": 0.1904,
-     "gamma": 0.003844
-    },
-    {
-     "strike": 450.0,
-     "right": "P",
-     "oi": 10266,
-     "volume": 3874,
-     "iv": 0.1904,
-     "gamma": 0.002262
-    },
-    {
-     "strike": 455.0,
-     "right": "C",
-     "oi": 9077,
-     "volume": 4759,
-     "iv": 0.1873
-    },
-    {
-     "strike": 455.0,
-     "right": "P",
-     "oi": 7230,
-     "volume": 3365,
-     "iv": 0.1873
-    },
-    {
-     "strike": 460.0,
-     "right": "C",
-     "oi": 7902,
-     "volume": 4690,
-     "iv": 0.1913,
-     "gamma": 0.002415
-    },
-    {
-     "strike": 460.0,
-     "right": "P",
-     "oi": 8740,
-     "volume": 5272,
-     "iv": 0.1913,
-     "gamma": 0.003122
-    },
-    {
-     "strike": 465.0,
-     "right": "C",
-     "oi": 7031,
-     "volume": 4244,
-     "iv": 0.2047
-    },
-    {
-     "strike": 465.0,
-     "right": "P",
-     "oi": 5107,
-     "volume": 3710,
-     "iv": 0.2047
-    },
-    {
-     "strike": 470.0,
-     "right": "C",
-     "oi": 6382,
-     "volume": 3088,
-     "iv": 0.2035,
-     "gamma": 0.002433
-    },
-    {
-     "strike": 470.0,
-     "right": "P",
-     "oi": 7805,
-     "volume": 5349,
-     "iv": 0.2035,
-     "gamma": 0.002798
-    },
-    {
-     "strike": 475.0,
-     "right": "C",
-     "oi": 6290,
-     "volume": 2029,
-     "iv": 0.2106
-    },
-    {
-     "strike": 475.0,
-     "right": "P",
-     "oi": 5412,
-     "volume": 3993,
-     "iv": 0.2106
-    },
-    {
-     "strike": 480.0,
-     "right": "C",
-     "oi": 7564,
-     "volume": 2364,
-     "iv": 0.2208,
-     "gamma": 0.002623
-    },
-    {
-     "strike": 480.0,
-     "right": "P",
-     "oi": 3944,
-     "volume": 1805,
-     "iv": 0.2208,
-     "gamma": 0.003309
-    },
-    {
-     "strike": 485.0,
-     "right": "C",
-     "oi": 3826,
-     "volume": 3485,
-     "iv": 0.2251
-    },
-    {
-     "strike": 485.0,
-     "right": "P",
-     "oi": 4716,
-     "volume": 1232,
-     "iv": 0.2251
-    },
-    {
-     "strike": 490.0,
-     "right": "C",
-     "oi": 4851,
-     "volume": 1696,
-     "iv": 0.2371,
-     "gamma": 0.00216
-    },
-    {
-     "strike": 490.0,
-     "right": "P",
-     "oi": 3189,
-     "volume": 3198,
-     "iv": 0.2371,
-     "gamma": 0.002876
-    },
-    {
-     "strike": 495.0,
-     "right": "C",
-     "oi": 4628,
-     "volume": 0,
-     "iv": 0.245
-    },
-    {
-     "strike": 495.0,
-     "right": "P",
-     "oi": 4524,
-     "volume": 1738,
-     "iv": 0.245
-    },
-    {
-     "strike": 500.0,
-     "right": "C",
-     "oi": 3413,
-     "volume": 1647,
-     "iv": 0.2517,
-     "gamma": 0.002819
-    },
-    {
-     "strike": 500.0,
-     "right": "P",
-     "oi": 2489,
-     "volume": 993,
-     "iv": 0.2517,
-     "gamma": 0.003316
-    }
+    {"strike": 400, "right": "C", "oi": 1596, "volume": 744, "iv": 0.2573, "gamma": 0.002502},
+    {"strike": 400, "right": "P", "oi": 4339, "volume": 1787, "iv": 0.2573, "gamma": 0.002766},
+    {"strike": 405, "right": "C", "oi": 2203, "volume": 2081, "iv": 0.2473},
+    {"strike": 405, "right": "P", "oi": 2558, "volume": 847, "iv": 0.2473},
+    {"strike": 410, "right": "C", "oi": 2688, "volume": 2183, "iv": 0.2404, "gamma": 0.003365},
+    {"strike": 410, "right": "P", "oi": 4080, "volume": 1103, "iv": 0.2404, "gamma": 0.002305},
+    {"strike": 415, "right": "C", "oi": 2456, "volume": 138, "iv": 0.2351},
+    {"strike": 415, "right": "P", "oi": 2789, "volume": 4642, "iv": 0.2351},
+    {"strike": 420, "right": "C", "oi": 4801, "volume": 1341, "iv": 0.2233, "gamma": 0.002408},
+    {"strike": 420, "right": "P", "oi": 4091, "volume": 3124, "iv": 0.2233, "gamma": 0.003979},
+    {"strike": 425, "right": "C", "oi": 3441, "volume": 3886, "iv": 0.2264},
+    {"strike": 425, "right": "P", "oi": 5899, "volume": 2020, "iv": 0.2264},
+    {"strike": 430, "right": "C", "oi": 4949, "volume": 3627, "iv": 0.2179, "gamma": 0.003191},
+    {"strike": 430, "right": "P", "oi": 7569, "volume": 3043, "iv": 0.2179, "gamma": 0.003966},
+    {"strike": 435, "right": "C", "oi": 8202, "volume": 3698, "iv": 0.2081},
+    {"strike": 435, "right": "P", "oi": 6489, "volume": 3845, "iv": 0.2081},
+    {"strike": 440, "right": "C", "oi": 6925, "volume": 3432, "iv": 0.1998, "gamma": 0.002011},
+    {"strike": 440, "right": "P", "oi": 7188, "volume": 4417, "iv": 0.1998, "gamma": 0.002659},
+    {"strike": 445, "right": "C", "oi": 6201, "volume": 4422, "iv": 0.1922},
+    {"strike": 445, "right": "P", "oi": 8097, "volume": 4195, "iv": 0.1922},
+    {"strike": 450, "right": "C", "oi": 7652, "volume": 4867, "iv": 0.1904, "gamma": 0.003844},
+    {"strike": 450, "right": "P", "oi": 10266, "volume": 3874, "iv": 0.1904, "gamma": 0.002262},
+    {"strike": 455, "right": "C", "oi": 9077, "volume": 4759, "iv": 0.1873},
+    {"strike": 455, "right": "P", "oi": 7230, "volume": 3365, "iv": 0.1873},
+    {"strike": 460, "right": "C", "oi": 7902, "volume": 4690, "iv": 0.1913, "gamma": 0.002415},
+    {"strike": 460, "right": "P", "oi": 8740, "volume": 5272, "iv": 0.1913, "gamma": 0.003122},
+    {"strike": 465, "right": "C", "oi": 7031, "volume": 4244, "iv": 0.2047},
+    {"strike": 465, "right": "P", "oi": 5107, "volume": 3710, "iv": 0.2047},
+    {"strike": 470, "right": "C", "oi": 6382, "volume": 3088, "iv": 0.2035, "gamma": 0.002433},
+    {"strike": 470, "right": "P", "oi": 7805, "volume": 5349, "iv": 0.2035, "gamma": 0.002798},
+    {"strike": 475, "right": "C", "oi": 6290, "volume": 2029, "iv": 0.2106},
+    {"strike": 475, "right": "P", "oi": 5412, "volume": 3993, "iv": 0.2106},
+    {"strike": 480, "right": "C", "oi": 7564, "volume": 2364, "iv": 0.2208, "gamma": 0.002623},
+    {"strike": 480, "right": "P", "oi": 3944, "volume": 1805, "iv": 0.2208, "gamma": 0.003309},
+    {"strike": 485, "right": "C", "oi": 3826, "volume": 3485, "iv": 0.2251},
+    {"strike": 485, "right": "P", "oi": 4716, "volume": 1232, "iv": 0.2251},
+    {"strike": 490, "right": "C", "oi": 4851, "volume": 1696, "iv": 0.2371, "gamma": 0.00216},
+    {"strike": 490, "right": "P", "oi": 3189, "volume": 3198, "iv": 0.2371, "gamma": 0.002876},
+    {"strike": 495, "right": "C", "oi": 4628, "volume": 0, "iv": 0.245},
+    {"strike": 495, "right": "P", "oi": 4524, "volume": 1738, "iv": 0.245},
+    {"strike": 500, "right": "C", "oi": 3413, "volume": 1647, "iv": 0.2517, "gamma": 0.002819},
+    {"strike": 500, "right": "P", "oi": 2489, "volume": 993, "iv": 0.2517, "gamma": 0.003316}
    ],
    "spot": 452.6,
    "expiry": "20260918",
@@ -328,572 +54,100 @@
     "symbol": "SPY",
     "expiry": "20260918",
     "spot": 452.6,
-    "multiplier": 100.0,
+    "multiplier": 100,
     "strike_count": 21,
     "days_to_expiry": 35.228,
     "strikes": [
-     {
-      "strike": 400.0,
-      "call_oi": 1596.0,
-      "put_oi": 4339.0,
-      "call_vol": 744.0,
-      "put_vol": 1787.0,
-      "net_gex": -1640512.0
-     },
-     {
-      "strike": 405.0,
-      "call_oi": 2203.0,
-      "put_oi": 2558.0,
-      "call_vol": 2081.0,
-      "put_vol": 847.0,
-      "net_gex": -277087.0
-     },
-     {
-      "strike": 410.0,
-      "call_oi": 2688.0,
-      "put_oi": 4080.0,
-      "call_vol": 2183.0,
-      "put_vol": 1103.0,
-      "net_gex": -73597.0
-     },
-     {
-      "strike": 415.0,
-      "call_oi": 2456.0,
-      "put_oi": 2789.0,
-      "call_vol": 138.0,
-      "put_vol": 4642.0,
-      "net_gex": -389227.0
-     },
-     {
-      "strike": 420.0,
-      "call_oi": 4801.0,
-      "put_oi": 4091.0,
-      "call_vol": 1341.0,
-      "put_vol": 3124.0,
-      "net_gex": -966320.0
-     },
-     {
-      "strike": 425.0,
-      "call_oi": 3441.0,
-      "put_oi": 5899.0,
-      "call_vol": 3886.0,
-      "put_vol": 2020.0,
-      "net_gex": -4095720.0
-     },
-     {
-      "strike": 430.0,
-      "call_oi": 4949.0,
-      "put_oi": 7569.0,
-      "call_vol": 3627.0,
-      "put_vol": 3043.0,
-      "net_gex": -2914231.0
-     },
-     {
-      "strike": 435.0,
-      "call_oi": 8202.0,
-      "put_oi": 6489.0,
-      "call_vol": 3698.0,
-      "put_vol": 3845.0,
-      "net_gex": 3883685.0
-     },
-     {
-      "strike": 440.0,
-      "call_oi": 6925.0,
-      "put_oi": 7188.0,
-      "call_vol": 3432.0,
-      "put_vol": 4417.0,
-      "net_gex": -1062482.0
-     },
-     {
-      "strike": 445.0,
-      "call_oi": 6201.0,
-      "put_oi": 8097.0,
-      "call_vol": 4422.0,
-      "put_vol": 4195.0,
-      "net_gex": -5458539.0
-     },
-     {
-      "strike": 450.0,
-      "call_oi": 7652.0,
-      "put_oi": 10266.0,
-      "call_vol": 4867.0,
-      "put_vol": 3874.0,
-      "net_gex": 1268533.0
-     },
-     {
-      "strike": 455.0,
-      "call_oi": 9077.0,
-      "put_oi": 7230.0,
-      "call_vol": 4759.0,
-      "put_vol": 3365.0,
-      "net_gex": 5720425.0
-     },
-     {
-      "strike": 460.0,
-      "call_oi": 7902.0,
-      "put_oi": 8740.0,
-      "call_vol": 4690.0,
-      "put_vol": 5272.0,
-      "net_gex": -1680348.0
-     },
-     {
-      "strike": 465.0,
-      "call_oi": 7031.0,
-      "put_oi": 5107.0,
-      "call_vol": 4244.0,
-      "put_vol": 3710.0,
-      "net_gex": 5056374.0
-     },
-     {
-      "strike": 470.0,
-      "call_oi": 6382.0,
-      "put_oi": 7805.0,
-      "call_vol": 3088.0,
-      "put_vol": 5349.0,
-      "net_gex": -1292785.0
-     },
-     {
-      "strike": 475.0,
-      "call_oi": 6290.0,
-      "put_oi": 5412.0,
-      "call_vol": 2029.0,
-      "put_vol": 3993.0,
-      "net_gex": 1889078.0
-     },
-     {
-      "strike": 480.0,
-      "call_oi": 7564.0,
-      "put_oi": 3944.0,
-      "call_vol": 2364.0,
-      "put_vol": 1805.0,
-      "net_gex": 1390843.0
-     },
-     {
-      "strike": 485.0,
-      "call_oi": 3826.0,
-      "put_oi": 4716.0,
-      "call_vol": 3485.0,
-      "put_vol": 1232.0,
-      "net_gex": -1458241.0
-     },
-     {
-      "strike": 490.0,
-      "call_oi": 4851.0,
-      "put_oi": 3189.0,
-      "call_vol": 1696.0,
-      "put_vol": 3198.0,
-      "net_gex": 267652.0
-     },
-     {
-      "strike": 495.0,
-      "call_oi": 4628.0,
-      "put_oi": 4524.0,
-      "call_vol": 0.0,
-      "put_vol": 1738.0,
-      "net_gex": 129048.0
-     },
-     {
-      "strike": 500.0,
-      "call_oi": 3413.0,
-      "put_oi": 2489.0,
-      "call_vol": 1647.0,
-      "put_vol": 993.0,
-      "net_gex": 280174.0
-     }
+     {"strike": 400, "call_oi": 1596, "put_oi": 4339, "call_vol": 744, "put_vol": 1787, "net_gex": -1640512},
+     {"strike": 405, "call_oi": 2203, "put_oi": 2558, "call_vol": 2081, "put_vol": 847, "net_gex": -277087},
+     {"strike": 410, "call_oi": 2688, "put_oi": 4080, "call_vol": 2183, "put_vol": 1103, "net_gex": -73597},
+     {"strike": 415, "call_oi": 2456, "put_oi": 2789, "call_vol": 138, "put_vol": 4642, "net_gex": -389227},
+     {"strike": 420, "call_oi": 4801, "put_oi": 4091, "call_vol": 1341, "put_vol": 3124, "net_gex": -966320},
+     {"strike": 425, "call_oi": 3441, "put_oi": 5899, "call_vol": 3886, "put_vol": 2020, "net_gex": -4095720},
+     {"strike": 430, "call_oi": 4949, "put_oi": 7569, "call_vol": 3627, "put_vol": 3043, "net_gex": -2914231},
+     {"strike": 435, "call_oi": 8202, "put_oi": 6489, "call_vol": 3698, "put_vol": 3845, "net_gex": 3883685},
+     {"strike": 440, "call_oi": 6925, "put_oi": 7188, "call_vol": 3432, "put_vol": 4417, "net_gex": -1062482},
+     {"strike": 445, "call_oi": 6201, "put_oi": 8097, "call_vol": 4422, "put_vol": 4195, "net_gex": -5458539},
+     {"strike": 450, "call_oi": 7652, "put_oi": 10266, "call_vol": 4867, "put_vol": 3874, "net_gex": 1268533},
+     {"strike": 455, "call_oi": 9077, "put_oi": 7230, "call_vol": 4759, "put_vol": 3365, "net_gex": 5720425},
+     {"strike": 460, "call_oi": 7902, "put_oi": 8740, "call_vol": 4690, "put_vol": 5272, "net_gex": -1680348},
+     {"strike": 465, "call_oi": 7031, "put_oi": 5107, "call_vol": 4244, "put_vol": 3710, "net_gex": 5056374},
+     {"strike": 470, "call_oi": 6382, "put_oi": 7805, "call_vol": 3088, "put_vol": 5349, "net_gex": -1292785},
+     {"strike": 475, "call_oi": 6290, "put_oi": 5412, "call_vol": 2029, "put_vol": 3993, "net_gex": 1889078},
+     {"strike": 480, "call_oi": 7564, "put_oi": 3944, "call_vol": 2364, "put_vol": 1805, "net_gex": 1390843},
+     {"strike": 485, "call_oi": 3826, "put_oi": 4716, "call_vol": 3485, "put_vol": 1232, "net_gex": -1458241},
+     {"strike": 490, "call_oi": 4851, "put_oi": 3189, "call_vol": 1696, "put_vol": 3198, "net_gex": 267652},
+     {"strike": 495, "call_oi": 4628, "put_oi": 4524, "call_vol": 0, "put_vol": 1738, "net_gex": 129048},
+     {"strike": 500, "call_oi": 3413, "put_oi": 2489, "call_vol": 1647, "put_vol": 993, "net_gex": 280174}
     ],
-    "call_wall": {
-     "strike": 455.0,
-     "size": 9077.0,
-     "distance_pct": 0.53
-    },
-    "put_wall": {
-     "strike": 450.0,
-     "size": 10266.0,
-     "distance_pct": -0.57
-    },
-    "call_vol_wall": {
-     "strike": 455.0,
-     "size": 4759.0,
-     "distance_pct": 0.53
-    },
-    "put_vol_wall": {
-     "strike": 415.0,
-     "size": 4642.0,
-     "distance_pct": -8.31
-    },
-    "max_pain": {
-     "strike": 455.0,
-     "pain": 214505000.0
-    },
-    "net_gex": -1423275.0,
+    "call_wall": {"strike": 455, "size": 9077, "distance_pct": 0.53},
+    "put_wall": {"strike": 450, "size": 10266, "distance_pct": -0.57},
+    "call_vol_wall": {"strike": 455, "size": 4759, "distance_pct": 0.53},
+    "put_vol_wall": {"strike": 415, "size": 4642, "distance_pct": -8.31},
+    "max_pain": {"strike": 455, "pain": 214505000},
+    "net_gex": -1423275,
     "gamma_flip": 462.31,
     "regime": "negative",
-    "total_call_oi": 112078.0,
-    "total_put_oi": 116521.0,
+    "total_call_oi": 112078,
+    "total_put_oi": 116521,
     "pc_ratio_oi": 1.04,
     "pc_ratio_volume": 1.088,
     "has_greeks": true,
-    "warnings": [
-     "OI 是隔夜存量:OCC 每天开盘前公布一次,盘中看到的不含当天的流。",
-     "GEX 的符号建立在「做市商多头 call、空头 put」这个假设上——真实持仓没人看得到,换个假设结论可能反过来。它适合判断波动会被压住还是放大,不适合判断方向。",
-     "最大痛点只是个统计量;「到期会被拉到那儿」这个因果没有可靠证据。"
-    ],
-    "readout": [
-     "SPY 20260918:现价 452.6,链上 21 个行权价,距到期 35.23 天。",
-     "持仓量墙:上方 Call 墙 455.0(9077.0 张,距现价 +0.53%);下方 Put 墙 450.0(10266.0 张,距现价 -0.57%)。",
-     "成交量墙(今日真实流向):上方成交墙 455.0(4759.0 张,距现价 +0.53%);下方成交墙 415.0(4642.0 张,距现价 -8.31%)。",
-     "净 GEX -1.4 M(负):做市商空头 gamma,倾向于涨了追、跌了砍,放大波动。",
-     "Gamma 翻转位 462.31(现价上方):越过它,压波动与放大波动的性质会掉个个儿。",
-     "最大痛点 455.0(距现价 +0.53%)——参考位,不是预言。",
-     "Put/Call 比:持仓 1.04,成交 1.09。"
-    ]
+    "warnings": ["OI 是隔夜存量:OCC 每天开盘前公布一次,盘中看到的不含当天的流。", "GEX 的符号建立在「做市商多头 call、空头 put」这个假设上——真实持仓没人看得到,换个假设结论可能反过来。它适合判断波动会被压住还是放大,不适合判断方向。", "最大痛点只是个统计量;「到期会被拉到那儿」这个因果没有可靠证据。"],
+    "readout": ["SPY 20260918:现价 452.6,链上 21 个行权价,距到期 35.23 天。", "持仓量墙:上方 Call 墙 455.0(9077.0 张,距现价 +0.53%);下方 Put 墙 450.0(10266.0 张,距现价 -0.57%)。", "成交量墙(今日真实流向):上方成交墙 455.0(4759.0 张,距现价 +0.53%);下方成交墙 415.0(4642.0 张,距现价 -8.31%)。", "净 GEX -1.4 M(负):做市商空头 gamma,倾向于涨了追、跌了砍,放大波动。", "Gamma 翻转位 462.31(现价上方):越过它,压波动与放大波动的性质会掉个个儿。", "最大痛点 455.0(距现价 +0.53%)——参考位,不是预言。", "Put/Call 比:持仓 1.04,成交 1.09。"]
    },
    "levels_for_pa": [
-    {
-     "price": 455.0,
-     "kind": "resistance",
-     "note": "持仓量最大的上方行权价",
-     "distance_pct": 0.53
-    },
-    {
-     "price": 450.0,
-     "kind": "support",
-     "note": "持仓量最大的下方行权价",
-     "distance_pct": -0.57
-    },
-    {
-     "price": 455.0,
-     "kind": "pivot",
-     "note": "最大痛点(统计量,非预言)",
-     "distance_pct": null
-    },
-    {
-     "price": 462.31,
-     "kind": "pivot",
-     "note": "Gamma 翻转位",
-     "distance_pct": null
-    }
+    {"price": 455, "kind": "resistance", "note": "持仓量最大的上方行权价", "distance_pct": 0.53},
+    {"price": 450, "kind": "support", "note": "持仓量最大的下方行权价", "distance_pct": -0.57},
+    {"price": 455, "kind": "pivot", "note": "最大痛点(统计量,非预言)", "distance_pct": null},
+    {"price": 462.31, "kind": "pivot", "note": "Gamma 翻转位", "distance_pct": null}
    ]
   },
   {
    "name": "zero_dte",
    "rows": [
-    {
-     "strike": 400.0,
-     "right": "C",
-     "oi": 1485,
-     "volume": 0,
-     "iv": 0.2596,
-     "gamma": 0.003334
-    },
-    {
-     "strike": 400.0,
-     "right": "P",
-     "oi": 2986,
-     "volume": 0,
-     "iv": 0.2596,
-     "gamma": 0.00288
-    },
-    {
-     "strike": 405.0,
-     "right": "C",
-     "oi": 669,
-     "volume": 0,
-     "iv": 0.25
-    },
-    {
-     "strike": 405.0,
-     "right": "P",
-     "oi": 6416,
-     "volume": 2841,
-     "iv": 0.25
-    },
-    {
-     "strike": 410.0,
-     "right": "C",
-     "oi": 4441,
-     "volume": 860,
-     "iv": 0.2429,
-     "gamma": 0.003314
-    },
-    {
-     "strike": 410.0,
-     "right": "P",
-     "oi": 4548,
-     "volume": 1140,
-     "iv": 0.2429,
-     "gamma": 0.003486
-    },
-    {
-     "strike": 415.0,
-     "right": "C",
-     "oi": 4738,
-     "volume": 2384,
-     "iv": 0.2338
-    },
-    {
-     "strike": 415.0,
-     "right": "P",
-     "oi": 4451,
-     "volume": 1327,
-     "iv": 0.2338
-    },
-    {
-     "strike": 420.0,
-     "right": "C",
-     "oi": 5949,
-     "volume": 3154,
-     "iv": 0.2299,
-     "gamma": 0.003495
-    },
-    {
-     "strike": 420.0,
-     "right": "P",
-     "oi": 6957,
-     "volume": 2587,
-     "iv": 0.2299,
-     "gamma": 0.002335
-    },
-    {
-     "strike": 425.0,
-     "right": "C",
-     "oi": 5426,
-     "volume": 3114,
-     "iv": 0.224
-    },
-    {
-     "strike": 425.0,
-     "right": "P",
-     "oi": 4669,
-     "volume": 4896,
-     "iv": 0.224
-    },
-    {
-     "strike": 430.0,
-     "right": "C",
-     "oi": 3794,
-     "volume": 1765,
-     "iv": 0.2176,
-     "gamma": 0.003538
-    },
-    {
-     "strike": 430.0,
-     "right": "P",
-     "oi": 7121,
-     "volume": 2223,
-     "iv": 0.2176,
-     "gamma": 0.002401
-    },
-    {
-     "strike": 435.0,
-     "right": "C",
-     "oi": 6835,
-     "volume": 2885,
-     "iv": 0.2129
-    },
-    {
-     "strike": 435.0,
-     "right": "P",
-     "oi": 7341,
-     "volume": 5264,
-     "iv": 0.2129
-    },
-    {
-     "strike": 440.0,
-     "right": "C",
-     "oi": 5416,
-     "volume": 1152,
-     "iv": 0.2026,
-     "gamma": 0.00259
-    },
-    {
-     "strike": 440.0,
-     "right": "P",
-     "oi": 8466,
-     "volume": 3159,
-     "iv": 0.2026,
-     "gamma": 0.003513
-    },
-    {
-     "strike": 445.0,
-     "right": "C",
-     "oi": 9855,
-     "volume": 3736,
-     "iv": 0.1947
-    },
-    {
-     "strike": 445.0,
-     "right": "P",
-     "oi": 8107,
-     "volume": 5028,
-     "iv": 0.1947
-    },
-    {
-     "strike": 450.0,
-     "right": "C",
-     "oi": 8273,
-     "volume": 2562,
-     "iv": 0.1905,
-     "gamma": 0.002836
-    },
-    {
-     "strike": 450.0,
-     "right": "P",
-     "oi": 9315,
-     "volume": 5762,
-     "iv": 0.1905,
-     "gamma": 0.003909
-    },
-    {
-     "strike": 455.0,
-     "right": "C",
-     "oi": 8238,
-     "volume": 4557,
-     "iv": 0.1921
-    },
-    {
-     "strike": 455.0,
-     "right": "P",
-     "oi": 9788,
-     "volume": 6555,
-     "iv": 0.1921
-    },
-    {
-     "strike": 460.0,
-     "right": "C",
-     "oi": 5136,
-     "volume": 5611,
-     "iv": 0.1987,
-     "gamma": 0.003779
-    },
-    {
-     "strike": 460.0,
-     "right": "P",
-     "oi": 10152,
-     "volume": 4076,
-     "iv": 0.1987,
-     "gamma": 0.002953
-    },
-    {
-     "strike": 465.0,
-     "right": "C",
-     "oi": 6971,
-     "volume": 3991,
-     "iv": 0.1966
-    },
-    {
-     "strike": 465.0,
-     "right": "P",
-     "oi": 8284,
-     "volume": 5532,
-     "iv": 0.1966
-    },
-    {
-     "strike": 470.0,
-     "right": "C",
-     "oi": 5313,
-     "volume": 2461,
-     "iv": 0.2088,
-     "gamma": 0.003066
-    },
-    {
-     "strike": 470.0,
-     "right": "P",
-     "oi": 8806,
-     "volume": 5476,
-     "iv": 0.2088,
-     "gamma": 0.003267
-    },
-    {
-     "strike": 475.0,
-     "right": "C",
-     "oi": 4280,
-     "volume": 3825,
-     "iv": 0.2102
-    },
-    {
-     "strike": 475.0,
-     "right": "P",
-     "oi": 6001,
-     "volume": 4779,
-     "iv": 0.2102
-    },
-    {
-     "strike": 480.0,
-     "right": "C",
-     "oi": 6432,
-     "volume": 2831,
-     "iv": 0.2179,
-     "gamma": 0.002878
-    },
-    {
-     "strike": 480.0,
-     "right": "P",
-     "oi": 6585,
-     "volume": 4995,
-     "iv": 0.2179,
-     "gamma": 0.003391
-    },
-    {
-     "strike": 485.0,
-     "right": "C",
-     "oi": 2205,
-     "volume": 2683,
-     "iv": 0.2257
-    },
-    {
-     "strike": 485.0,
-     "right": "P",
-     "oi": 7120,
-     "volume": 3089,
-     "iv": 0.2257
-    },
-    {
-     "strike": 490.0,
-     "right": "C",
-     "oi": 2761,
-     "volume": 2185,
-     "iv": 0.2366,
-     "gamma": 0.003305
-    },
-    {
-     "strike": 490.0,
-     "right": "P",
-     "oi": 6721,
-     "volume": 3647,
-     "iv": 0.2366,
-     "gamma": 0.00363
-    },
-    {
-     "strike": 495.0,
-     "right": "C",
-     "oi": 5472,
-     "volume": 899,
-     "iv": 0.2377
-    },
-    {
-     "strike": 495.0,
-     "right": "P",
-     "oi": 5890,
-     "volume": 0,
-     "iv": 0.2377
-    },
-    {
-     "strike": 500.0,
-     "right": "C",
-     "oi": 5139,
-     "volume": 373,
-     "iv": 0.2515,
-     "gamma": 0.003434
-    },
-    {
-     "strike": 500.0,
-     "right": "P",
-     "oi": 5596,
-     "volume": 811,
-     "iv": 0.2515,
-     "gamma": 0.00323
-    }
+    {"strike": 400, "right": "C", "oi": 1485, "volume": 0, "iv": 0.2596, "gamma": 0.003334},
+    {"strike": 400, "right": "P", "oi": 2986, "volume": 0, "iv": 0.2596, "gamma": 0.00288},
+    {"strike": 405, "right": "C", "oi": 669, "volume": 0, "iv": 0.25},
+    {"strike": 405, "right": "P", "oi": 6416, "volume": 2841, "iv": 0.25},
+    {"strike": 410, "right": "C", "oi": 4441, "volume": 860, "iv": 0.2429, "gamma": 0.003314},
+    {"strike": 410, "right": "P", "oi": 4548, "volume": 1140, "iv": 0.2429, "gamma": 0.003486},
+    {"strike": 415, "right": "C", "oi": 4738, "volume": 2384, "iv": 0.2338},
+    {"strike": 415, "right": "P", "oi": 4451, "volume": 1327, "iv": 0.2338},
+    {"strike": 420, "right": "C", "oi": 5949, "volume": 3154, "iv": 0.2299, "gamma": 0.003495},
+    {"strike": 420, "right": "P", "oi": 6957, "volume": 2587, "iv": 0.2299, "gamma": 0.002335},
+    {"strike": 425, "right": "C", "oi": 5426, "volume": 3114, "iv": 0.224},
+    {"strike": 425, "right": "P", "oi": 4669, "volume": 4896, "iv": 0.224},
+    {"strike": 430, "right": "C", "oi": 3794, "volume": 1765, "iv": 0.2176, "gamma": 0.003538},
+    {"strike": 430, "right": "P", "oi": 7121, "volume": 2223, "iv": 0.2176, "gamma": 0.002401},
+    {"strike": 435, "right": "C", "oi": 6835, "volume": 2885, "iv": 0.2129},
+    {"strike": 435, "right": "P", "oi": 7341, "volume": 5264, "iv": 0.2129},
+    {"strike": 440, "right": "C", "oi": 5416, "volume": 1152, "iv": 0.2026, "gamma": 0.00259},
+    {"strike": 440, "right": "P", "oi": 8466, "volume": 3159, "iv": 0.2026, "gamma": 0.003513},
+    {"strike": 445, "right": "C", "oi": 9855, "volume": 3736, "iv": 0.1947},
+    {"strike": 445, "right": "P", "oi": 8107, "volume": 5028, "iv": 0.1947},
+    {"strike": 450, "right": "C", "oi": 8273, "volume": 2562, "iv": 0.1905, "gamma": 0.002836},
+    {"strike": 450, "right": "P", "oi": 9315, "volume": 5762, "iv": 0.1905, "gamma": 0.003909},
+    {"strike": 455, "right": "C", "oi": 8238, "volume": 4557, "iv": 0.1921},
+    {"strike": 455, "right": "P", "oi": 9788, "volume": 6555, "iv": 0.1921},
+    {"strike": 460, "right": "C", "oi": 5136, "volume": 5611, "iv": 0.1987, "gamma": 0.003779},
+    {"strike": 460, "right": "P", "oi": 10152, "volume": 4076, "iv": 0.1987, "gamma": 0.002953},
+    {"strike": 465, "right": "C", "oi": 6971, "volume": 3991, "iv": 0.1966},
+    {"strike": 465, "right": "P", "oi": 8284, "volume": 5532, "iv": 0.1966},
+    {"strike": 470, "right": "C", "oi": 5313, "volume": 2461, "iv": 0.2088, "gamma": 0.003066},
+    {"strike": 470, "right": "P", "oi": 8806, "volume": 5476, "iv": 0.2088, "gamma": 0.003267},
+    {"strike": 475, "right": "C", "oi": 4280, "volume": 3825, "iv": 0.2102},
+    {"strike": 475, "right": "P", "oi": 6001, "volume": 4779, "iv": 0.2102},
+    {"strike": 480, "right": "C", "oi": 6432, "volume": 2831, "iv": 0.2179, "gamma": 0.002878},
+    {"strike": 480, "right": "P", "oi": 6585, "volume": 4995, "iv": 0.2179, "gamma": 0.003391},
+    {"strike": 485, "right": "C", "oi": 2205, "volume": 2683, "iv": 0.2257},
+    {"strike": 485, "right": "P", "oi": 7120, "volume": 3089, "iv": 0.2257},
+    {"strike": 490, "right": "C", "oi": 2761, "volume": 2185, "iv": 0.2366, "gamma": 0.003305},
+    {"strike": 490, "right": "P", "oi": 6721, "volume": 3647, "iv": 0.2366, "gamma": 0.00363},
+    {"strike": 495, "right": "C", "oi": 5472, "volume": 899, "iv": 0.2377},
+    {"strike": 495, "right": "P", "oi": 5890, "volume": 0, "iv": 0.2377},
+    {"strike": 500, "right": "C", "oi": 5139, "volume": 373, "iv": 0.2515, "gamma": 0.003434},
+    {"strike": 500, "right": "P", "oi": 5596, "volume": 811, "iv": 0.2515, "gamma": 0.00323}
    ],
    "spot": 452.6,
    "expiry": "20260814",
@@ -903,521 +157,102 @@
     "symbol": "SPY",
     "expiry": "20260814",
     "spot": 452.6,
-    "multiplier": 100.0,
+    "multiplier": 100,
     "strike_count": 21,
     "days_to_expiry": 0.228,
     "strikes": [
-     {
-      "strike": 400.0,
-      "call_oi": 1485.0,
-      "put_oi": 2986.0,
-      "call_vol": 0.0,
-      "put_vol": 0.0,
-      "net_gex": -747422.0
-     },
-     {
-      "strike": 405.0,
-      "call_oi": 669.0,
-      "put_oi": 6416.0,
-      "call_vol": 0.0,
-      "put_vol": 2841.0,
-      "net_gex": -0.0
-     },
-     {
-      "strike": 410.0,
-      "call_oi": 4441.0,
-      "put_oi": 4548.0,
-      "call_vol": 860.0,
-      "put_vol": 1140.0,
-      "net_gex": -232881.0
-     },
-     {
-      "strike": 415.0,
-      "call_oi": 4738.0,
-      "put_oi": 4451.0,
-      "call_vol": 2384.0,
-      "put_vol": 1327.0,
-      "net_gex": 0.0
-     },
-     {
-      "strike": 420.0,
-      "call_oi": 5949.0,
-      "put_oi": 6957.0,
-      "call_vol": 3154.0,
-      "put_vol": 2587.0,
-      "net_gex": 931471.0
-     },
-     {
-      "strike": 425.0,
-      "call_oi": 5426.0,
-      "put_oi": 4669.0,
-      "call_vol": 3114.0,
-      "put_vol": 4896.0,
-      "net_gex": 0.0
-     },
-     {
-      "strike": 430.0,
-      "call_oi": 3794.0,
-      "put_oi": 7121.0,
-      "call_vol": 1765.0,
-      "put_vol": 2223.0,
-      "net_gex": -752678.0
-     },
-     {
-      "strike": 435.0,
-      "call_oi": 6835.0,
-      "put_oi": 7341.0,
-      "call_vol": 2885.0,
-      "put_vol": 5264.0,
-      "net_gex": -0.0
-     },
-     {
-      "strike": 440.0,
-      "call_oi": 5416.0,
-      "put_oi": 8466.0,
-      "call_vol": 1152.0,
-      "put_vol": 3159.0,
-      "net_gex": -3218884.0
-     },
-     {
-      "strike": 445.0,
-      "call_oi": 9855.0,
-      "put_oi": 8107.0,
-      "call_vol": 3736.0,
-      "put_vol": 5028.0,
-      "net_gex": 150019.0
-     },
-     {
-      "strike": 450.0,
-      "call_oi": 8273.0,
-      "put_oi": 9315.0,
-      "call_vol": 2562.0,
-      "put_vol": 5762.0,
-      "net_gex": -2652787.0
-     },
-     {
-      "strike": 455.0,
-      "call_oi": 8238.0,
-      "put_oi": 9788.0,
-      "call_vol": 4557.0,
-      "put_vol": 6555.0,
-      "net_gex": -31858586.0
-     },
-     {
-      "strike": 460.0,
-      "call_oi": 5136.0,
-      "put_oi": 10152.0,
-      "call_vol": 5611.0,
-      "put_vol": 4076.0,
-      "net_gex": -2165212.0
-     },
-     {
-      "strike": 465.0,
-      "call_oi": 6971.0,
-      "put_oi": 8284.0,
-      "call_vol": 3991.0,
-      "put_vol": 5532.0,
-      "net_gex": -13.0
-     },
-     {
-      "strike": 470.0,
-      "call_oi": 5313.0,
-      "put_oi": 8806.0,
-      "call_vol": 2461.0,
-      "put_vol": 5476.0,
-      "net_gex": -2556394.0
-     },
-     {
-      "strike": 475.0,
-      "call_oi": 4280.0,
-      "put_oi": 6001.0,
-      "call_vol": 3825.0,
-      "put_vol": 4779.0,
-      "net_gex": -0.0
-     },
-     {
-      "strike": 480.0,
-      "call_oi": 6432.0,
-      "put_oi": 6585.0,
-      "call_vol": 2831.0,
-      "put_vol": 4995.0,
-      "net_gex": -782195.0
-     },
-     {
-      "strike": 485.0,
-      "call_oi": 2205.0,
-      "put_oi": 7120.0,
-      "call_vol": 2683.0,
-      "put_vol": 3089.0,
-      "net_gex": -0.0
-     },
-     {
-      "strike": 490.0,
-      "call_oi": 2761.0,
-      "put_oi": 6721.0,
-      "call_vol": 2185.0,
-      "put_vol": 3647.0,
-      "net_gex": -3128445.0
-     },
-     {
-      "strike": 495.0,
-      "call_oi": 5472.0,
-      "put_oi": 5890.0,
-      "call_vol": 899.0,
-      "put_vol": 0.0,
-      "net_gex": -0.0
-     },
-     {
-      "strike": 500.0,
-      "call_oi": 5139.0,
-      "put_oi": 5596.0,
-      "call_vol": 373.0,
-      "put_vol": 811.0,
-      "net_gex": -87624.0
-     }
+     {"strike": 400, "call_oi": 1485, "put_oi": 2986, "call_vol": 0, "put_vol": 0, "net_gex": -747422},
+     {"strike": 405, "call_oi": 669, "put_oi": 6416, "call_vol": 0, "put_vol": 2841, "net_gex": 0},
+     {"strike": 410, "call_oi": 4441, "put_oi": 4548, "call_vol": 860, "put_vol": 1140, "net_gex": -232881},
+     {"strike": 415, "call_oi": 4738, "put_oi": 4451, "call_vol": 2384, "put_vol": 1327, "net_gex": 0},
+     {"strike": 420, "call_oi": 5949, "put_oi": 6957, "call_vol": 3154, "put_vol": 2587, "net_gex": 931471},
+     {"strike": 425, "call_oi": 5426, "put_oi": 4669, "call_vol": 3114, "put_vol": 4896, "net_gex": 0},
+     {"strike": 430, "call_oi": 3794, "put_oi": 7121, "call_vol": 1765, "put_vol": 2223, "net_gex": -752678},
+     {"strike": 435, "call_oi": 6835, "put_oi": 7341, "call_vol": 2885, "put_vol": 5264, "net_gex": 0},
+     {"strike": 440, "call_oi": 5416, "put_oi": 8466, "call_vol": 1152, "put_vol": 3159, "net_gex": -3218884},
+     {"strike": 445, "call_oi": 9855, "put_oi": 8107, "call_vol": 3736, "put_vol": 5028, "net_gex": 150019},
+     {"strike": 450, "call_oi": 8273, "put_oi": 9315, "call_vol": 2562, "put_vol": 5762, "net_gex": -2652787},
+     {"strike": 455, "call_oi": 8238, "put_oi": 9788, "call_vol": 4557, "put_vol": 6555, "net_gex": -31858586},
+     {"strike": 460, "call_oi": 5136, "put_oi": 10152, "call_vol": 5611, "put_vol": 4076, "net_gex": -2165212},
+     {"strike": 465, "call_oi": 6971, "put_oi": 8284, "call_vol": 3991, "put_vol": 5532, "net_gex": -13},
+     {"strike": 470, "call_oi": 5313, "put_oi": 8806, "call_vol": 2461, "put_vol": 5476, "net_gex": -2556394},
+     {"strike": 475, "call_oi": 4280, "put_oi": 6001, "call_vol": 3825, "put_vol": 4779, "net_gex": 0},
+     {"strike": 480, "call_oi": 6432, "put_oi": 6585, "call_vol": 2831, "put_vol": 4995, "net_gex": -782195},
+     {"strike": 485, "call_oi": 2205, "put_oi": 7120, "call_vol": 2683, "put_vol": 3089, "net_gex": 0},
+     {"strike": 490, "call_oi": 2761, "put_oi": 6721, "call_vol": 2185, "put_vol": 3647, "net_gex": -3128445},
+     {"strike": 495, "call_oi": 5472, "put_oi": 5890, "call_vol": 899, "put_vol": 0, "net_gex": 0},
+     {"strike": 500, "call_oi": 5139, "put_oi": 5596, "call_vol": 373, "put_vol": 811, "net_gex": -87624}
     ],
-    "call_wall": {
-     "strike": 455.0,
-     "size": 8238.0,
-     "distance_pct": 0.53
-    },
-    "put_wall": {
-     "strike": 450.0,
-     "size": 9315.0,
-     "distance_pct": -0.57
-    },
-    "call_vol_wall": {
-     "strike": 460.0,
-     "size": 5611.0,
-     "distance_pct": 1.63
-    },
-    "put_vol_wall": {
-     "strike": 450.0,
-     "size": 5762.0,
-     "distance_pct": -0.57
-    },
-    "max_pain": {
-     "strike": 460.0,
-     "pain": 281460000.0
-    },
-    "net_gex": -47101633.0,
+    "call_wall": {"strike": 455, "size": 8238, "distance_pct": 0.53},
+    "put_wall": {"strike": 450, "size": 9315, "distance_pct": -0.57},
+    "call_vol_wall": {"strike": 460, "size": 5611, "distance_pct": 1.63},
+    "put_vol_wall": {"strike": 450, "size": 5762, "distance_pct": -0.57},
+    "max_pain": {"strike": 460, "pain": 281460000},
+    "net_gex": -47101633,
     "gamma_flip": 414.22,
     "regime": "negative",
-    "total_call_oi": 108828.0,
-    "total_put_oi": 145320.0,
+    "total_call_oi": 108828,
+    "total_put_oi": 145320,
     "pc_ratio_oi": 1.335,
     "pc_ratio_volume": 1.434,
     "has_greeks": true,
-    "warnings": [
-     "OI 是隔夜存量:OCC 每天开盘前公布一次,盘中看到的不含当天的流。",
-     "GEX 的符号建立在「做市商多头 call、空头 put」这个假设上——真实持仓没人看得到,换个假设结论可能反过来。它适合判断波动会被压住还是放大,不适合判断方向。",
-     "当日/次日到期:0DTE 合约绝大多数当天开当天平,**OI 墙基本没有参考价值**,请以成交量墙为准。",
-     "最大痛点只是个统计量;「到期会被拉到那儿」这个因果没有可靠证据。"
-    ],
-    "readout": [
-     "SPY 20260814:现价 452.6,链上 21 个行权价,距到期 0.23 天。",
-     "持仓量墙:上方 Call 墙 455.0(8238.0 张,距现价 +0.53%);下方 Put 墙 450.0(9315.0 张,距现价 -0.57%)。(0DTE 下参考价值有限)",
-     "成交量墙(今日真实流向):上方成交墙 460.0(5611.0 张,距现价 +1.63%);下方成交墙 450.0(5762.0 张,距现价 -0.57%)。",
-     "净 GEX -47.1 M(负):做市商空头 gamma,倾向于涨了追、跌了砍,放大波动。",
-     "Gamma 翻转位 414.22(现价下方):越过它,压波动与放大波动的性质会掉个个儿。",
-     "最大痛点 460.0(距现价 +1.63%)——参考位,不是预言。",
-     "Put/Call 比:持仓 1.33,成交 1.43。"
-    ]
+    "warnings": ["OI 是隔夜存量:OCC 每天开盘前公布一次,盘中看到的不含当天的流。", "GEX 的符号建立在「做市商多头 call、空头 put」这个假设上——真实持仓没人看得到,换个假设结论可能反过来。它适合判断波动会被压住还是放大,不适合判断方向。", "当日/次日到期:0DTE 合约绝大多数当天开当天平,**OI 墙基本没有参考价值**,请以成交量墙为准。", "最大痛点只是个统计量;「到期会被拉到那儿」这个因果没有可靠证据。"],
+    "readout": ["SPY 20260814:现价 452.6,链上 21 个行权价,距到期 0.23 天。", "持仓量墙:上方 Call 墙 455.0(8238.0 张,距现价 +0.53%);下方 Put 墙 450.0(9315.0 张,距现价 -0.57%)。(0DTE 下参考价值有限)", "成交量墙(今日真实流向):上方成交墙 460.0(5611.0 张,距现价 +1.63%);下方成交墙 450.0(5762.0 张,距现价 -0.57%)。", "净 GEX -47.1 M(负):做市商空头 gamma,倾向于涨了追、跌了砍,放大波动。", "Gamma 翻转位 414.22(现价下方):越过它,压波动与放大波动的性质会掉个个儿。", "最大痛点 460.0(距现价 +1.63%)——参考位,不是预言。", "Put/Call 比:持仓 1.33,成交 1.43。"]
    },
    "levels_for_pa": [
-    {
-     "price": 460.0,
-     "kind": "resistance",
-     "note": "今日成交最密的上方行权价",
-     "distance_pct": 1.63
-    },
-    {
-     "price": 450.0,
-     "kind": "support",
-     "note": "今日成交最密的下方行权价",
-     "distance_pct": -0.57
-    },
-    {
-     "price": 455.0,
-     "kind": "resistance",
-     "note": "持仓量最大的上方行权价",
-     "distance_pct": 0.53
-    },
-    {
-     "price": 450.0,
-     "kind": "support",
-     "note": "持仓量最大的下方行权价",
-     "distance_pct": -0.57
-    },
-    {
-     "price": 460.0,
-     "kind": "pivot",
-     "note": "最大痛点(统计量,非预言)",
-     "distance_pct": null
-    },
-    {
-     "price": 414.22,
-     "kind": "pivot",
-     "note": "Gamma 翻转位",
-     "distance_pct": null
-    }
+    {"price": 460, "kind": "resistance", "note": "今日成交最密的上方行权价", "distance_pct": 1.63},
+    {"price": 450, "kind": "support", "note": "今日成交最密的下方行权价", "distance_pct": -0.57},
+    {"price": 455, "kind": "resistance", "note": "持仓量最大的上方行权价", "distance_pct": 0.53},
+    {"price": 450, "kind": "support", "note": "持仓量最大的下方行权价", "distance_pct": -0.57},
+    {"price": 460, "kind": "pivot", "note": "最大痛点(统计量,非预言)", "distance_pct": null},
+    {"price": 414.22, "kind": "pivot", "note": "Gamma 翻转位", "distance_pct": null}
    ]
   },
   {
    "name": "no_greeks",
    "rows": [
-    {
-     "strike": 400.0,
-     "right": "C",
-     "oi": 2558,
-     "volume": 139
-    },
-    {
-     "strike": 400.0,
-     "right": "P",
-     "oi": 1713,
-     "volume": 1303
-    },
-    {
-     "strike": 405.0,
-     "right": "C",
-     "oi": 1799,
-     "volume": 1080
-    },
-    {
-     "strike": 405.0,
-     "right": "P",
-     "oi": 6024,
-     "volume": 2070
-    },
-    {
-     "strike": 410.0,
-     "right": "C",
-     "oi": 4828,
-     "volume": 3136
-    },
-    {
-     "strike": 410.0,
-     "right": "P",
-     "oi": 5894,
-     "volume": 1369
-    },
-    {
-     "strike": 415.0,
-     "right": "C",
-     "oi": 5467,
-     "volume": 1453
-    },
-    {
-     "strike": 415.0,
-     "right": "P",
-     "oi": 5376,
-     "volume": 1683
-    },
-    {
-     "strike": 420.0,
-     "right": "C",
-     "oi": 4848,
-     "volume": 120
-    },
-    {
-     "strike": 420.0,
-     "right": "P",
-     "oi": 4703,
-     "volume": 3314
-    },
-    {
-     "strike": 425.0,
-     "right": "C",
-     "oi": 5504,
-     "volume": 3565
-    },
-    {
-     "strike": 425.0,
-     "right": "P",
-     "oi": 5820,
-     "volume": 747
-    },
-    {
-     "strike": 430.0,
-     "right": "C",
-     "oi": 6970,
-     "volume": 2276
-    },
-    {
-     "strike": 430.0,
-     "right": "P",
-     "oi": 4556,
-     "volume": 4127
-    },
-    {
-     "strike": 435.0,
-     "right": "C",
-     "oi": 7580,
-     "volume": 3224
-    },
-    {
-     "strike": 435.0,
-     "right": "P",
-     "oi": 7676,
-     "volume": 4455
-    },
-    {
-     "strike": 440.0,
-     "right": "C",
-     "oi": 9566,
-     "volume": 4254
-    },
-    {
-     "strike": 440.0,
-     "right": "P",
-     "oi": 6674,
-     "volume": 3252
-    },
-    {
-     "strike": 445.0,
-     "right": "C",
-     "oi": 8324,
-     "volume": 5336
-    },
-    {
-     "strike": 445.0,
-     "right": "P",
-     "oi": 9355,
-     "volume": 5081
-    },
-    {
-     "strike": 450.0,
-     "right": "C",
-     "oi": 6696,
-     "volume": 4229
-    },
-    {
-     "strike": 450.0,
-     "right": "P",
-     "oi": 7929,
-     "volume": 5912
-    },
-    {
-     "strike": 455.0,
-     "right": "C",
-     "oi": 7935,
-     "volume": 5432
-    },
-    {
-     "strike": 455.0,
-     "right": "P",
-     "oi": 8412,
-     "volume": 3491
-    },
-    {
-     "strike": 460.0,
-     "right": "C",
-     "oi": 5012,
-     "volume": 6723
-    },
-    {
-     "strike": 460.0,
-     "right": "P",
-     "oi": 7579,
-     "volume": 4883
-    },
-    {
-     "strike": 465.0,
-     "right": "C",
-     "oi": 6319,
-     "volume": 1330
-    },
-    {
-     "strike": 465.0,
-     "right": "P",
-     "oi": 9237,
-     "volume": 4004
-    },
-    {
-     "strike": 470.0,
-     "right": "C",
-     "oi": 6408,
-     "volume": 4290
-    },
-    {
-     "strike": 470.0,
-     "right": "P",
-     "oi": 9080,
-     "volume": 3757
-    },
-    {
-     "strike": 475.0,
-     "right": "C",
-     "oi": 5087,
-     "volume": 1851
-    },
-    {
-     "strike": 475.0,
-     "right": "P",
-     "oi": 6054,
-     "volume": 2873
-    },
-    {
-     "strike": 480.0,
-     "right": "C",
-     "oi": 4762,
-     "volume": 3344
-    },
-    {
-     "strike": 480.0,
-     "right": "P",
-     "oi": 6131,
-     "volume": 5459
-    },
-    {
-     "strike": 485.0,
-     "right": "C",
-     "oi": 5106,
-     "volume": 3054
-    },
-    {
-     "strike": 485.0,
-     "right": "P",
-     "oi": 6925,
-     "volume": 2532
-    },
-    {
-     "strike": 490.0,
-     "right": "C",
-     "oi": 2637,
-     "volume": 3418
-    },
-    {
-     "strike": 490.0,
-     "right": "P",
-     "oi": 4517,
-     "volume": 2227
-    },
-    {
-     "strike": 495.0,
-     "right": "C",
-     "oi": 0,
-     "volume": 1718
-    },
-    {
-     "strike": 495.0,
-     "right": "P",
-     "oi": 4718,
-     "volume": 1721
-    },
-    {
-     "strike": 500.0,
-     "right": "C",
-     "oi": 1808,
-     "volume": 2618
-    },
-    {
-     "strike": 500.0,
-     "right": "P",
-     "oi": 3566,
-     "volume": 3363
-    }
+    {"strike": 400, "right": "C", "oi": 2558, "volume": 139},
+    {"strike": 400, "right": "P", "oi": 1713, "volume": 1303},
+    {"strike": 405, "right": "C", "oi": 1799, "volume": 1080},
+    {"strike": 405, "right": "P", "oi": 6024, "volume": 2070},
+    {"strike": 410, "right": "C", "oi": 4828, "volume": 3136},
+    {"strike": 410, "right": "P", "oi": 5894, "volume": 1369},
+    {"strike": 415, "right": "C", "oi": 5467, "volume": 1453},
+    {"strike": 415, "right": "P", "oi": 5376, "volume": 1683},
+    {"strike": 420, "right": "C", "oi": 4848, "volume": 120},
+    {"strike": 420, "right": "P", "oi": 4703, "volume": 3314},
+    {"strike": 425, "right": "C", "oi": 5504, "volume": 3565},
+    {"strike": 425, "right": "P", "oi": 5820, "volume": 747},
+    {"strike": 430, "right": "C", "oi": 6970, "volume": 2276},
+    {"strike": 430, "right": "P", "oi": 4556, "volume": 4127},
+    {"strike": 435, "right": "C", "oi": 7580, "volume": 3224},
+    {"strike": 435, "right": "P", "oi": 7676, "volume": 4455},
+    {"strike": 440, "right": "C", "oi": 9566, "volume": 4254},
+    {"strike": 440, "right": "P", "oi": 6674, "volume": 3252},
+    {"strike": 445, "right": "C", "oi": 8324, "volume": 5336},
+    {"strike": 445, "right": "P", "oi": 9355, "volume": 5081},
+    {"strike": 450, "right": "C", "oi": 6696, "volume": 4229},
+    {"strike": 450, "right": "P", "oi": 7929, "volume": 5912},
+    {"strike": 455, "right": "C", "oi": 7935, "volume": 5432},
+    {"strike": 455, "right": "P", "oi": 8412, "volume": 3491},
+    {"strike": 460, "right": "C", "oi": 5012, "volume": 6723},
+    {"strike": 460, "right": "P", "oi": 7579, "volume": 4883},
+    {"strike": 465, "right": "C", "oi": 6319, "volume": 1330},
+    {"strike": 465, "right": "P", "oi": 9237, "volume": 4004},
+    {"strike": 470, "right": "C", "oi": 6408, "volume": 4290},
+    {"strike": 470, "right": "P", "oi": 9080, "volume": 3757},
+    {"strike": 475, "right": "C", "oi": 5087, "volume": 1851},
+    {"strike": 475, "right": "P", "oi": 6054, "volume": 2873},
+    {"strike": 480, "right": "C", "oi": 4762, "volume": 3344},
+    {"strike": 480, "right": "P", "oi": 6131, "volume": 5459},
+    {"strike": 485, "right": "C", "oi": 5106, "volume": 3054},
+    {"strike": 485, "right": "P", "oi": 6925, "volume": 2532},
+    {"strike": 490, "right": "C", "oi": 2637, "volume": 3418},
+    {"strike": 490, "right": "P", "oi": 4517, "volume": 2227},
+    {"strike": 495, "right": "C", "oi": 0, "volume": 1718},
+    {"strike": 495, "right": "P", "oi": 4718, "volume": 1721},
+    {"strike": 500, "right": "C", "oi": 1808, "volume": 2618},
+    {"strike": 500, "right": "P", "oi": 3566, "volume": 3363}
    ],
    "spot": 452.6,
    "expiry": "20260918",
@@ -1427,308 +262,69 @@
     "symbol": "SPY",
     "expiry": "20260918",
     "spot": 452.6,
-    "multiplier": 100.0,
+    "multiplier": 100,
     "strike_count": 21,
     "days_to_expiry": 35.228,
     "strikes": [
-     {
-      "strike": 400.0,
-      "call_oi": 2558.0,
-      "put_oi": 1713.0,
-      "call_vol": 139.0,
-      "put_vol": 1303.0,
-      "net_gex": 0.0
-     },
-     {
-      "strike": 405.0,
-      "call_oi": 1799.0,
-      "put_oi": 6024.0,
-      "call_vol": 1080.0,
-      "put_vol": 2070.0,
-      "net_gex": 0.0
-     },
-     {
-      "strike": 410.0,
-      "call_oi": 4828.0,
-      "put_oi": 5894.0,
-      "call_vol": 3136.0,
-      "put_vol": 1369.0,
-      "net_gex": 0.0
-     },
-     {
-      "strike": 415.0,
-      "call_oi": 5467.0,
-      "put_oi": 5376.0,
-      "call_vol": 1453.0,
-      "put_vol": 1683.0,
-      "net_gex": 0.0
-     },
-     {
-      "strike": 420.0,
-      "call_oi": 4848.0,
-      "put_oi": 4703.0,
-      "call_vol": 120.0,
-      "put_vol": 3314.0,
-      "net_gex": 0.0
-     },
-     {
-      "strike": 425.0,
-      "call_oi": 5504.0,
-      "put_oi": 5820.0,
-      "call_vol": 3565.0,
-      "put_vol": 747.0,
-      "net_gex": 0.0
-     },
-     {
-      "strike": 430.0,
-      "call_oi": 6970.0,
-      "put_oi": 4556.0,
-      "call_vol": 2276.0,
-      "put_vol": 4127.0,
-      "net_gex": 0.0
-     },
-     {
-      "strike": 435.0,
-      "call_oi": 7580.0,
-      "put_oi": 7676.0,
-      "call_vol": 3224.0,
-      "put_vol": 4455.0,
-      "net_gex": 0.0
-     },
-     {
-      "strike": 440.0,
-      "call_oi": 9566.0,
-      "put_oi": 6674.0,
-      "call_vol": 4254.0,
-      "put_vol": 3252.0,
-      "net_gex": 0.0
-     },
-     {
-      "strike": 445.0,
-      "call_oi": 8324.0,
-      "put_oi": 9355.0,
-      "call_vol": 5336.0,
-      "put_vol": 5081.0,
-      "net_gex": 0.0
-     },
-     {
-      "strike": 450.0,
-      "call_oi": 6696.0,
-      "put_oi": 7929.0,
-      "call_vol": 4229.0,
-      "put_vol": 5912.0,
-      "net_gex": 0.0
-     },
-     {
-      "strike": 455.0,
-      "call_oi": 7935.0,
-      "put_oi": 8412.0,
-      "call_vol": 5432.0,
-      "put_vol": 3491.0,
-      "net_gex": 0.0
-     },
-     {
-      "strike": 460.0,
-      "call_oi": 5012.0,
-      "put_oi": 7579.0,
-      "call_vol": 6723.0,
-      "put_vol": 4883.0,
-      "net_gex": 0.0
-     },
-     {
-      "strike": 465.0,
-      "call_oi": 6319.0,
-      "put_oi": 9237.0,
-      "call_vol": 1330.0,
-      "put_vol": 4004.0,
-      "net_gex": 0.0
-     },
-     {
-      "strike": 470.0,
-      "call_oi": 6408.0,
-      "put_oi": 9080.0,
-      "call_vol": 4290.0,
-      "put_vol": 3757.0,
-      "net_gex": 0.0
-     },
-     {
-      "strike": 475.0,
-      "call_oi": 5087.0,
-      "put_oi": 6054.0,
-      "call_vol": 1851.0,
-      "put_vol": 2873.0,
-      "net_gex": 0.0
-     },
-     {
-      "strike": 480.0,
-      "call_oi": 4762.0,
-      "put_oi": 6131.0,
-      "call_vol": 3344.0,
-      "put_vol": 5459.0,
-      "net_gex": 0.0
-     },
-     {
-      "strike": 485.0,
-      "call_oi": 5106.0,
-      "put_oi": 6925.0,
-      "call_vol": 3054.0,
-      "put_vol": 2532.0,
-      "net_gex": 0.0
-     },
-     {
-      "strike": 490.0,
-      "call_oi": 2637.0,
-      "put_oi": 4517.0,
-      "call_vol": 3418.0,
-      "put_vol": 2227.0,
-      "net_gex": 0.0
-     },
-     {
-      "strike": 495.0,
-      "call_oi": 0.0,
-      "put_oi": 4718.0,
-      "call_vol": 1718.0,
-      "put_vol": 1721.0,
-      "net_gex": 0.0
-     },
-     {
-      "strike": 500.0,
-      "call_oi": 1808.0,
-      "put_oi": 3566.0,
-      "call_vol": 2618.0,
-      "put_vol": 3363.0,
-      "net_gex": 0.0
-     }
+     {"strike": 400, "call_oi": 2558, "put_oi": 1713, "call_vol": 139, "put_vol": 1303, "net_gex": 0},
+     {"strike": 405, "call_oi": 1799, "put_oi": 6024, "call_vol": 1080, "put_vol": 2070, "net_gex": 0},
+     {"strike": 410, "call_oi": 4828, "put_oi": 5894, "call_vol": 3136, "put_vol": 1369, "net_gex": 0},
+     {"strike": 415, "call_oi": 5467, "put_oi": 5376, "call_vol": 1453, "put_vol": 1683, "net_gex": 0},
+     {"strike": 420, "call_oi": 4848, "put_oi": 4703, "call_vol": 120, "put_vol": 3314, "net_gex": 0},
+     {"strike": 425, "call_oi": 5504, "put_oi": 5820, "call_vol": 3565, "put_vol": 747, "net_gex": 0},
+     {"strike": 430, "call_oi": 6970, "put_oi": 4556, "call_vol": 2276, "put_vol": 4127, "net_gex": 0},
+     {"strike": 435, "call_oi": 7580, "put_oi": 7676, "call_vol": 3224, "put_vol": 4455, "net_gex": 0},
+     {"strike": 440, "call_oi": 9566, "put_oi": 6674, "call_vol": 4254, "put_vol": 3252, "net_gex": 0},
+     {"strike": 445, "call_oi": 8324, "put_oi": 9355, "call_vol": 5336, "put_vol": 5081, "net_gex": 0},
+     {"strike": 450, "call_oi": 6696, "put_oi": 7929, "call_vol": 4229, "put_vol": 5912, "net_gex": 0},
+     {"strike": 455, "call_oi": 7935, "put_oi": 8412, "call_vol": 5432, "put_vol": 3491, "net_gex": 0},
+     {"strike": 460, "call_oi": 5012, "put_oi": 7579, "call_vol": 6723, "put_vol": 4883, "net_gex": 0},
+     {"strike": 465, "call_oi": 6319, "put_oi": 9237, "call_vol": 1330, "put_vol": 4004, "net_gex": 0},
+     {"strike": 470, "call_oi": 6408, "put_oi": 9080, "call_vol": 4290, "put_vol": 3757, "net_gex": 0},
+     {"strike": 475, "call_oi": 5087, "put_oi": 6054, "call_vol": 1851, "put_vol": 2873, "net_gex": 0},
+     {"strike": 480, "call_oi": 4762, "put_oi": 6131, "call_vol": 3344, "put_vol": 5459, "net_gex": 0},
+     {"strike": 485, "call_oi": 5106, "put_oi": 6925, "call_vol": 3054, "put_vol": 2532, "net_gex": 0},
+     {"strike": 490, "call_oi": 2637, "put_oi": 4517, "call_vol": 3418, "put_vol": 2227, "net_gex": 0},
+     {"strike": 495, "call_oi": 0, "put_oi": 4718, "call_vol": 1718, "put_vol": 1721, "net_gex": 0},
+     {"strike": 500, "call_oi": 1808, "put_oi": 3566, "call_vol": 2618, "put_vol": 3363, "net_gex": 0}
     ],
-    "call_wall": {
-     "strike": 455.0,
-     "size": 7935.0,
-     "distance_pct": 0.53
-    },
-    "put_wall": {
-     "strike": 445.0,
-     "size": 9355.0,
-     "distance_pct": -1.68
-    },
-    "call_vol_wall": {
-     "strike": 460.0,
-     "size": 6723.0,
-     "distance_pct": 1.63
-    },
-    "put_vol_wall": {
-     "strike": 450.0,
-     "size": 5912.0,
-     "distance_pct": -0.57
-    },
-    "max_pain": {
-     "strike": 455.0,
-     "pain": 284329500.0
-    },
-    "net_gex": 0.0,
+    "call_wall": {"strike": 455, "size": 7935, "distance_pct": 0.53},
+    "put_wall": {"strike": 445, "size": 9355, "distance_pct": -1.68},
+    "call_vol_wall": {"strike": 460, "size": 6723, "distance_pct": 1.63},
+    "put_vol_wall": {"strike": 450, "size": 5912, "distance_pct": -0.57},
+    "max_pain": {"strike": 455, "pain": 284329500},
+    "net_gex": 0,
     "gamma_flip": null,
     "regime": "positive",
-    "total_call_oi": 109214.0,
-    "total_put_oi": 131939.0,
+    "total_call_oi": 109214,
+    "total_put_oi": 131939,
     "pc_ratio_oi": 1.208,
     "pc_ratio_volume": 1.08,
     "has_greeks": false,
-    "warnings": [
-     "OI 是隔夜存量:OCC 每天开盘前公布一次,盘中看到的不含当天的流。",
-     "GEX 的符号建立在「做市商多头 call、空头 put」这个假设上——真实持仓没人看得到,换个假设结论可能反过来。它适合判断波动会被压住还是放大,不适合判断方向。",
-     "没拿到隐含波动率,gamma 只能用券商给的模型值或直接缺失,gamma 翻转位不可用。",
-     "最大痛点只是个统计量;「到期会被拉到那儿」这个因果没有可靠证据。"
-    ],
-    "readout": [
-     "SPY 20260918:现价 452.6,链上 21 个行权价,距到期 35.23 天。",
-     "持仓量墙:上方 Call 墙 455.0(7935.0 张,距现价 +0.53%);下方 Put 墙 445.0(9355.0 张,距现价 -1.68%)。",
-     "成交量墙(今日真实流向):上方成交墙 460.0(6723.0 张,距现价 +1.63%);下方成交墙 450.0(5912.0 张,距现价 -0.57%)。",
-     "净 GEX 0(正):做市商多头 gamma,倾向于涨了卖、跌了买,压住波动。",
-     "最大痛点 455.0(距现价 +0.53%)——参考位,不是预言。",
-     "Put/Call 比:持仓 1.21,成交 1.08。"
-    ]
+    "warnings": ["OI 是隔夜存量:OCC 每天开盘前公布一次,盘中看到的不含当天的流。", "GEX 的符号建立在「做市商多头 call、空头 put」这个假设上——真实持仓没人看得到,换个假设结论可能反过来。它适合判断波动会被压住还是放大,不适合判断方向。", "没拿到隐含波动率,gamma 只能用券商给的模型值或直接缺失,gamma 翻转位不可用。", "最大痛点只是个统计量;「到期会被拉到那儿」这个因果没有可靠证据。"],
+    "readout": ["SPY 20260918:现价 452.6,链上 21 个行权价,距到期 35.23 天。", "持仓量墙:上方 Call 墙 455.0(7935.0 张,距现价 +0.53%);下方 Put 墙 445.0(9355.0 张,距现价 -1.68%)。", "成交量墙(今日真实流向):上方成交墙 460.0(6723.0 张,距现价 +1.63%);下方成交墙 450.0(5912.0 张,距现价 -0.57%)。", "净 GEX 0(正):做市商多头 gamma,倾向于涨了卖、跌了买,压住波动。", "最大痛点 455.0(距现价 +0.53%)——参考位,不是预言。", "Put/Call 比:持仓 1.21,成交 1.08。"]
    },
    "levels_for_pa": [
-    {
-     "price": 455.0,
-     "kind": "resistance",
-     "note": "持仓量最大的上方行权价",
-     "distance_pct": 0.53
-    },
-    {
-     "price": 445.0,
-     "kind": "support",
-     "note": "持仓量最大的下方行权价",
-     "distance_pct": -1.68
-    },
-    {
-     "price": 455.0,
-     "kind": "pivot",
-     "note": "最大痛点(统计量,非预言)",
-     "distance_pct": null
-    }
+    {"price": 455, "kind": "resistance", "note": "持仓量最大的上方行权价", "distance_pct": 0.53},
+    {"price": 445, "kind": "support", "note": "持仓量最大的下方行权价", "distance_pct": -1.68},
+    {"price": 455, "kind": "pivot", "note": "最大痛点(统计量,非预言)", "distance_pct": null}
    ]
   }
  ],
  "errors": [
-  {
-   "name": "no_spot",
-   "error": "缺少标的现价,无法判断墙在现价上方还是下方。"
-  },
-  {
-   "name": "few_strikes",
-   "error": "只有 3 个行权价的数据(至少需要 5 个),画不出分布。可能是行权价范围取得太窄,或该到期日的链没有报价。"
-  }
+  {"name": "no_spot", "error": "缺少标的现价,无法判断墙在现价上方还是下方。"},
+  {"name": "few_strikes", "error": "只有 3 个行权价的数据(至少需要 5 个),画不出分布。可能是行权价范围取得太窄,或该到期日的链没有报价。"}
  ],
  "bs_gamma": [
-  {
-   "spot": 452.6,
-   "strike": 450.0,
-   "t": 0.1,
-   "sigma": 0.2,
-   "expect": 0.013832335998834521
-  },
-  {
-   "spot": 452.6,
-   "strike": 500.0,
-   "t": 0.002,
-   "sigma": 0.35,
-   "expect": 9.548819684568333e-11
-  },
-  {
-   "spot": 452.6,
-   "strike": 450.0,
-   "t": 0.0,
-   "sigma": 0.2,
-   "expect": 0.010858430916534314
-  },
-  {
-   "spot": 0.0,
-   "strike": 450.0,
-   "t": 0.1,
-   "sigma": 0.2,
-   "expect": 0.0
-  }
+  {"spot": 452.6, "strike": 450, "t": 0.1, "sigma": 0.2, "expect": 0.013832335998834521},
+  {"spot": 452.6, "strike": 500, "t": 0.002, "sigma": 0.35, "expect": 9.548819684568333e-11},
+  {"spot": 452.6, "strike": 450, "t": 0, "sigma": 0.2, "expect": 0.010858430916534314},
+  {"spot": 0, "strike": 450, "t": 0.1, "sigma": 0.2, "expect": 0}
  ],
  "years_to_expiry": [
-  {
-   "expiry": "20260918",
-   "now": "2026-08-14T10:32:00-04:00",
-   "expect": 0.0965144596651446
-  },
-  {
-   "expiry": "20260814",
-   "now": "2026-08-14T10:32:00-04:00",
-   "expect": 0.0006240487062404871
-  },
-  {
-   "expiry": "bogus",
-   "now": "2026-08-14T10:32:00-04:00",
-   "expect": 0.00011415525114155251
-  },
-  {
-   "expiry": "20260231",
-   "now": "2026-08-14T10:32:00-04:00",
-   "expect": 0.00011415525114155251
-  }
+  {"expiry": "20260918", "now": "2026-08-14T10:32:00-04:00", "expect": 0.0965144596651446},
+  {"expiry": "20260814", "now": "2026-08-14T10:32:00-04:00", "expect": 0.0006240487062404871},
+  {"expiry": "bogus", "now": "2026-08-14T10:32:00-04:00", "expect": 0.00011415525114155251},
+  {"expiry": "20260231", "now": "2026-08-14T10:32:00-04:00", "expect": 0.00011415525114155251}
  ]
 }

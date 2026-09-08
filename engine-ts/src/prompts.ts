@@ -41,13 +41,17 @@ export function fingerprint(bundle: PromptBundle): string {
   return crypto.createHash("sha256").update(payload, "utf-8").digest("hex").slice(0, 16);
 }
 
+/** 只改了系统提示词、少样本原样沿用的版本,不再复制一份字节相同的 fewshot 文件:指到内容相同的旧版本。
+ *  指纹只算渲染后的系统提示词与少样本内容,所以别名不改变任何版本的指纹。与 Python prompts.py 同一张表。 */
+const FEWSHOT_ALIAS: Record<string, string> = { "v1.7.0": "v1.6.0" };
+
 export function loadPromptBundle(settings: Settings): PromptBundle {
   const version = settings.prompt_version;
   const directory = settings.prompt_dir;
   const systemRaw = readFile(path.join(directory, `system_${version}.md`));
   const userRaw = readFile(path.join(directory, `user_message_${version}.md`));
 
-  const fewshotPath = path.join(directory, `fewshot_${version}.json`);
+  const fewshotPath = path.join(directory, `fewshot_${FEWSHOT_ALIAS[version] ?? version}.json`);
   const fewshot: FewShotPair[] = [];
   if (fs.existsSync(fewshotPath)) {
     const text = fs.readFileSync(fewshotPath, "utf-8");

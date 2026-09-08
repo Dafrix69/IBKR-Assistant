@@ -1,6 +1,6 @@
 // 截图集生成器:用 Electron 自己把预览台的每一页拍成 PNG。
 //
-//   npx electron tools/capture_pages.js <preview.html> <outDir> [--theme dark|light] [--scale 1|1.5] [--widths 1360,1900] [--only pa,trade] [--check]
+//   npx electron tools/capture_pages.js <preview.html> <outDir> [--theme dark|light] [--scale 1|1.5] [--widths 1360,1900] [--only pa,trade] [--check] [--demo]
 //
 // 为什么用 Electron 而不是浏览器:窄窗口丢弃顶栏胶囊、titleBarOverlay 留白、系统字体栈,
 // 这些都只在 Electron 里才是真实的。为什么要 --scale:用户的问题截图是在 Windows 150% 缩放下
@@ -27,6 +27,7 @@ const theme = flag('theme', 'dark');
 const scale = Number(flag('scale', '1'));
 const widths = flag('widths', '1360').split(',').map(Number);
 const only = flag('only', '');          // 只拍这些页,逗号分隔
+const demo = args.includes('--demo');  // 各页先点一遍主按钮(解析 / 分析 / 回测 / 扫描),拍出有内容的样子,给 README 用
 const height = Number(flag('height', '1000'));
 const check = args.includes('--check');
 const consoleErrors = [];
@@ -89,6 +90,20 @@ async function run() {
           if (b) b.click();
         `);
         await sleep(900);
+      }
+      if (demo) {
+        const DEMO = {
+          trade: "(() => { try { localStorage.setItem('dafri-submit-accounts', JSON.stringify(['富途模拟', '模拟'])); } catch (e) {} if (typeof renderAccountPicker === 'function') renderAccountPicker(); const c = document.querySelector('#account-chips input[type=checkbox]'); if (c && !c.checked) c.click(); const t = document.getElementById('instruction'); if (t) t.value = '买入 AAPL 100股 limit 316,理由:回调到位'; const b = document.getElementById('btn-parse'); if (b) b.click(); })();",
+          review: "(() => { const b = document.getElementById('btn-review-run'); if (b) b.click(); })();",
+          backtest: "(() => { const i = document.getElementById('bt-symbol'); if (i) i.value = 'NVDA'; const b = document.getElementById('btn-bt-run'); if (b) b.click(); })();",
+          book: "(() => { const i = document.getElementById('book-symbol'); if (i) i.value = 'SPY'; const b = document.getElementById('btn-book-load'); if (b) b.click(); })();",
+          rs: "(() => { const b = document.getElementById('btn-rs-run'); if (b) b.click(); })();",
+          inflection: "(() => { const b = document.getElementById('btn-infl-run'); if (b) b.click(); })();",
+        };
+        if (DEMO[tab]) {
+          await win.webContents.executeJavaScript(DEMO[tab]);
+          await sleep(900);
+        }
       }
       const name = `${theme}-${scale}x-${width}-${tab}`;
       if (check && tab === 'pa') {

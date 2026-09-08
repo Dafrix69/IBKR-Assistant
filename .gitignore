@@ -8,7 +8,7 @@ desktop/dist/
 desktop/build/engine-ts/
 .uipreview/
 
-# 两个引擎各自的忽略见 engine-python/.gitignore、engine-ts/.gitignore
+# 引擎自己的忽略见 engine-ts/.gitignore
 node_modules/
 .claude/
 .DS_Store

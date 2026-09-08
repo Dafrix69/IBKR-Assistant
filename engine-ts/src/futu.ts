@@ -124,6 +124,9 @@ export function explainConnectError(
   const lowered = text.toLowerCase();
 
   if (exc instanceof FutuUnavailable) {
+    if ((exc as FutuUnavailable & { code?: string }).code === "bridge_unverified") {
+      return { reason: text, hint: "等 TS 侧的富途桥完成真机联调;IBKR 通道照常可用。", code: "bridge_unverified" };
+    }
     return { reason: text, hint: "装完 futu-api 后重启引擎再试。", code: "sdk_missing" };
   }
   if ((exc as NodeJS.ErrnoException).code === "ECONNREFUSED" || lowered.includes("refused")) {

@@ -129,6 +129,25 @@ export class RpcServer {
     "system.status", "macro.board", "alerts.poll", "tracker.poll", "tracker.reconcile",
     "pending.poll", "positions.list", "sectors.quotes", "pa.analyze", "book.snapshot",
   ]);
+  // 三条道(2026-09-08,用户反馈"移除板块成分股太慢"):
+  //  · 本地道:同步的本地库 / 配置读写,来了就答,不排队——删一行成分股是一次 SQLite 写,
+  //    没道理排在等网络的行情请求后面。
+  //  · 读道:只读的行情 / 探测 / 纯计算,最多 READ_CONCURRENCY 个并发;彼此独立,也不碰下单状态。
+  //  · 交易道(其余):严格顺序,用户请求插到周期轮询前面。下单、熔断、连接切换、追踪轮询都在这里。
+  // 单线程不是瓶颈,"一次只处理一个"才是;真正需要顺序的只有交易道。
+  static readonly LOCAL_METHODS = new Set([
+    "system.status",
+    "sectors.list", "sectors.add", "sectors.delete", "sectors.add_stock", "sectors.remove_stock", "sectors.set_tag",
+    "ideas.list", "ideas.add", "ideas.update", "ideas.digests",
+    "records.list", "records.get", "settings.get", "breaker.state", "alerts.list", "tracker.list",
+    "llm.catalog", "broker.catalog",
+  ]);
+  static readonly READ_METHODS = new Set([
+    "positions.list", "sectors.quotes", "pa.analyze", "book.snapshot", "options.wall", "macro.board",
+    "screener.rs", "screener.inflection", "screener.deviation", "backtest.run", "backtest.strategies",
+    "pa.timeframes", "tws.scan", "tws.diagnose", "futu.scan", "futu.diagnose",
+  ]);
+  static readonly READ_CONCURRENCY = 4;
   static readonly SLOW_MS = 1000; // 超过这个时长的请求记到 stderr
 
   async serve(input: NodeJS.ReadableStream = process.stdin): Promise<number> {
@@ -143,6 +162,9 @@ export class RpcServer {
     const BAD: Rec = { __bad_json__: true };
     const normal: Rec[] = [];
     const low: Rec[] = [];
+    const reads: Rec[] = [];
+    let readsInFlight = 0;
+    let detached = 0; // 本地道 + 读道里还没答完的请求数:EOF 后要等它们答完再退出
     let closed = false;
     let wake: (() => void) | null = null;
     const kick = (): void => {
@@ -150,6 +172,26 @@ export class RpcServer {
         const w = wake;
         wake = null;
         w();
+      }
+    };
+    const runDetached = (request: Rec): void => {
+      detached += 1;
+      void this.handle(request).finally(() => {
+        detached -= 1;
+        kick();
+      });
+    };
+    const pumpReads = (): void => {
+      while (readsInFlight < RpcServer.READ_CONCURRENCY && reads.length) {
+        const next = reads.shift()!;
+        readsInFlight += 1;
+        detached += 1;
+        void this.handle(next).finally(() => {
+          readsInFlight -= 1;
+          detached -= 1;
+          pumpReads();
+          kick();
+        });
       }
     };
     rl.on("line", (rawLine: string) => {
@@ -163,7 +205,17 @@ export class RpcServer {
         kick();
         return;
       }
-      (RpcServer.LOW_PRIORITY_METHODS.has(String(request["method"])) ? low : normal).push(request);
+      const method = String(request["method"] ?? "");
+      if (RpcServer.LOCAL_METHODS.has(method)) {
+        runDetached(request); // 本地道:来了就答
+        return;
+      }
+      if (RpcServer.READ_METHODS.has(method)) {
+        reads.push(request); // 读道:有限并发
+        pumpReads();
+        return;
+      }
+      (RpcServer.LOW_PRIORITY_METHODS.has(method) ? low : normal).push(request); // 交易道:严格顺序
       kick();
     });
     rl.on("close", () => {
@@ -174,7 +226,7 @@ export class RpcServer {
     for (;;) {
       const request = normal.shift() ?? low.shift();
       if (request === undefined) {
-        if (closed) break; // EOF 且队列已空:先把手里的处理完再退出
+        if (closed && detached === 0) break; // EOF、队列已空、在途请求都答完了,才退出
         await new Promise<void>((resolve) => {
           wake = resolve;
         });
@@ -2425,9 +2477,10 @@ export function summarize(record: Rec): Rec {
 function futuSdkInstalled(): boolean {
   // 按依赖是否装上判断(npm futu-api);适配桥的真机状态另见 futuBridge
   try {
-    const here = fileURLToPath(import.meta.url);
-    const pkg = path.resolve(path.dirname(here), "..", "node_modules", "futu-api", "package.json");
-    return fs.existsSync(pkg);
+    const here = path.dirname(fileURLToPath(import.meta.url));
+    // src/rpc.ts 时根在上一级;dist/src/rpc.js 时在上两级
+    return ["..", path.join("..", "..")].some((up) =>
+      fs.existsSync(path.resolve(here, up, "node_modules", "futu-api", "package.json")));
   } catch {
     return false;
   }
