@@ -227,11 +227,15 @@ export const RejectionSchema = z
   .strict();
 export type Rejection = z.infer<typeof RejectionSchema>;
 
+export const MAX_TAG_LEN = 12; // 业务标签最长(界面上要塞进一个小胶囊)
+
 export const StockPickSchema = z
   .object({
     symbol: makeSymbolField((v) => `选股结果里的标的不合法: '${v}'`),
     company: z.string().trim().default(""),
     reason: z.string().trim().default(""),
+    // 业务标签(如"芯片""数据中心"):RS 强度按它汇总强弱
+    tag: z.string().default("").transform((v) => v.trim().slice(0, MAX_TAG_LEN)),
   })
   .strict();
 

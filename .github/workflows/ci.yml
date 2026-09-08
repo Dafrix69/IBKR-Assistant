@@ -28,46 +28,17 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # better-sqlite3 13 要 Node >= 22(Node 20 上预编译包直接段错误);桌面端开发机与 Electron 40 内置的都是 Node 24
+          node-version: 24
           cache: npm
           cache-dependency-path: engine-ts/package-lock.json
       - run: npm ci
       - run: npx tsc --noEmit
-      # 诊断:原生模块能不能加载;失败文件用 threads 池跑一次,看真实异常
-      - run: |
-          set +e
-          ls node_modules/better-sqlite3/build/Release node_modules/better-sqlite3/prebuilds 2>&1 | tr '\n' ' ' > diag.log; echo >> diag.log
-          node -e "const D=require('better-sqlite3');const db=new D(':memory:');console.log('sqlite ok',JSON.stringify(db.prepare('select sqlite_version() v').get()))" >> diag.log 2>&1
-          echo "node rc=$?" >> diag.log
-          npx vitest run tests/golden-store.spec.ts --pool=threads 2>&1 | tail -n 30 >> diag.log
-          msg=$(sed -r 's/\x1b\[[0-9;]*[A-Za-z]//g' diag.log | awk '{printf "%s%%0A", $0}' | tail -c 3500)
-          echo "::notice title=diag::$msg"
+      # 失败时把输出末尾写成一条 annotation:公开仓库不用登录就能从 check-runs API 读到
       - run: |
           set -o pipefail
           npx vitest run 2>&1 | tee vitest.log || {
             msg=$(tail -n 60 vitest.log | sed -r 's/\x1b\[[0-9;]*[A-Za-z]//g' | awk '{printf "%s%%0A", $0}' | tail -c 3500)
             echo "::error title=vitest::$msg"
-            exit 1
-          }
-
-  engine-ts-prebuilt:
-    # 不跑安装脚本:better-sqlite3 用包里自带的 prebuilds(与本机开发环境一致)
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: engine-ts
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: engine-ts/package-lock.json
-      - run: npm ci --ignore-scripts
-      - run: |
-          set -o pipefail
-          npx vitest run 2>&1 | tee vitest.log || {
-            msg=$(tail -n 60 vitest.log | sed -r 's/\x1b\[[0-9;]*[A-Za-z]//g' | awk '{printf "%s%%0A", $0}' | tail -c 3500)
-            echo "::error title=vitest-prebuilt::$msg"
             exit 1
           }

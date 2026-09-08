@@ -51,8 +51,8 @@ FAKE_PARSE_PAYLOAD = {
 
 FAKE_JSON_BY_SCHEMA = {
     "stocks": {"stocks": [
-        {"symbol": "NVDA", "company": "英伟达", "reason": "AI 芯片份额第一"},
-        {"symbol": "AMD", "company": "AMD", "reason": "数据中心第二供应商"},
+        {"symbol": "NVDA", "company": "英伟达", "reason": "AI 芯片份额第一", "tag": "芯片"},
+        {"symbol": "AMD", "company": "AMD", "reason": "数据中心第二供应商", "tag": "芯片"},
     ]},
     "entry": {"entry": [{"left": {"kind": "indicator", "name": "macd_hist"},
                           "op": "cross_up", "right": {"kind": "const", "value": 0.0}}],
@@ -200,6 +200,24 @@ def script(export_path: str):
     step("sectors.pick", {"id": "$SECTOR_ID"})
     step("sectors.list")
     step("sectors.quotes")
+    # 业务标签 + 扫描器(离线:参数校验与"需要连接"的错误文案要两边一致)
+    step("sectors.add_stock", {"id": "$SECTOR_ID", "symbol": "VRT", "tag": " 电力设备 "})
+    step("sectors.set_tag", {"id": "$SECTOR_ID", "symbol": "amd", "tag": "数据中心"})
+    step("sectors.set_tag", {"id": "$SECTOR_ID", "symbol": "TSLA", "tag": "x"})
+    step("sectors.set_tag", {"id": "$SECTOR_ID", "symbol": "VRT", "tag": "一二三四五六七八九十一二三四"})
+    step("screener.rs", {"benchmark": "IWM"})
+    step("screener.rs", {"sector": "nope"})
+    step("screener.rs", {"sector": "$SECTOR_ID", "benchmark": "qqq"})
+    step("screener.inflection", {"timeframes": ["3m"]})
+    step("screener.inflection", {"timeframes": "1d"})
+    step("screener.inflection", {"ma_period": 1})
+    step("screener.inflection", {"ma_period": "abc"})
+    step("screener.inflection", {"sector": "all", "timeframes": ["1d", "1w", "1d"], "ma_period": 20})
+    step("screener.deviation", {"symbol": "bad$"})
+    step("screener.deviation", {"symbol": "NVDA", "timeframe": "5m"})
+    step("screener.deviation", {"symbol": "NVDA", "period": 1})
+    step("screener.deviation", {"symbol": "NVDA", "z_extreme": 9})
+    step("screener.deviation", {"symbol": "NVDA", "timeframe": "1w"})
     step("sectors.delete", {"id": "$SECTOR_ID"})
     step("sectors.delete", {"id": "$SECTOR_ID"})
     step("alerts.create", {"symbol": "bad$"})

@@ -18,7 +18,7 @@ sys.path.insert(0, str(ROOT / "src"))
 OUT = ROOT.parent / "engine-ts" / "baseline" / "golden"
 OUT.mkdir(parents=True, exist_ok=True)
 
-from ibkr_agent import alerts, backtest, market, optionwall, priceaction, research, tracker  # noqa: E402
+from ibkr_agent import alerts, backtest, market, optionwall, priceaction, research, screener, tracker  # noqa: E402
 from ibkr_agent import config as cfg_mod  # noqa: E402
 from ibkr_agent.config import ET, Settings, _from_dict  # noqa: E402
 from ibkr_agent.models import parse_llm_payload  # noqa: E402
@@ -1299,6 +1299,138 @@ def gen_research():
     })
 
 
+# ================================================================ screener
+def _daily_closes(closes, start="2026-01-05", volume=1_000_000.0, spread=0.01, seed=None):
+    """把一串收盘价铺成日线(跳过周末);seed 给了就让高低点与成交量带点随机。"""
+    from datetime import date as _date
+
+    rng = random.Random(seed) if seed is not None else None
+    day = _date.fromisoformat(start)
+    bars = []
+    for c in closes:
+        while day.weekday() >= 5:
+            day += timedelta(days=1)
+        hi = c * (1 + spread * (1 + (rng.random() if rng else 0)))
+        lo = c * (1 - spread * (1 + (rng.random() if rng else 0)))
+        vol = volume * (0.5 + rng.random() * 1.5) if rng else volume
+        bars.append({"date": day.isoformat(), "open": round(c * (1 + (rng.uniform(-0.004, 0.004) if rng else 0)), 4),
+                     "high": round(hi, 4), "low": round(lo, 4), "close": round(c, 4), "volume": round(vol)})
+        day += timedelta(days=1)
+    return bars
+
+
+def _walk_closes(seed, n, start=100.0, drift=0.0, vol=0.01):
+    rng = random.Random(seed)
+    closes, price = [], start
+    for _ in range(n):
+        price = max(price * (1 + rng.gauss(drift, vol)), 1.0)
+        closes.append(round(price, 4))
+    return closes
+
+
+def _v_shape(seed, first_low=90.0, second_low=89.0, slow=25):
+    closes = [100.0] * 30
+    closes += [100.0 - (100.0 - first_low) * i / 5 for i in range(1, 6)]
+    closes += [first_low + (98.0 - first_low) * i / 10 for i in range(1, 11)]
+    closes += [98.0 - (98.0 - second_low) * i / slow for i in range(1, slow + 1)]
+    closes += [second_low + 0.8, second_low + 1.5, second_low + 2.2]
+    rng = random.Random(seed)
+    return [round(c + rng.uniform(-0.03, 0.03), 4) for c in closes]
+
+
+def gen_screener():
+    # ---- RS 强度:成员含停牌缺日、历史过短、空数据、带错误、无标签
+    bench = _daily_closes(_walk_closes(101, 300, 400.0, 0.0004, 0.01), seed=1)
+    members = []
+    for i, (sym, tag, seed, drift) in enumerate([
+        ("NVDA", "芯片", 11, 0.002), ("AMD", "芯片", 12, 0.0005), ("VRT", "电力", 13, 0.001),
+        ("ANET", "网络", 14, -0.0005), ("SMCI", "服务器", 15, -0.002),
+    ]):
+        bars = _daily_closes(_walk_closes(seed, 300, 50.0 + 10 * i, drift, 0.02), seed=seed)
+        if sym == "AMD":
+            del bars[-4]                                   # 停牌一天:基准要按日期对齐
+        if sym == "SMCI":
+            bars = bars[-40:]                              # 历史短:长区间没有
+        members.append({"symbol": sym, "tag": tag, "company": sym.title(), "bars": bars})
+    members.append({"symbol": "COHR", "tag": "光模块", "company": "Coherent", "bars": [], "error": "额度用完"})
+    members.append({"symbol": "MU", "tag": "", "bars": _daily_closes(_walk_closes(16, 300, 80.0, 0.001, 0.02), seed=16)})
+    rs_cases = [
+        {"name": "spy", "members": members, "bench": bench, "benchmark": "SPY",
+         "expect": screener.rs_strength(members, bench, "SPY")},
+        {"name": "short_windows", "members": members[:2], "bench": bench, "benchmark": "QQQ",
+         "windows": [5, 20], "expect": screener.rs_strength(members[:2], bench, "QQQ", (5, 20))},
+        {"name": "no_bench", "members": members[:1], "bench": None, "benchmark": "SPY",
+         "expect": screener.rs_strength(members[:1], None, "SPY")},
+    ]
+
+    # ---- 周线重采样
+    weekly_daily = _daily_closes(_walk_closes(21, 60, 120.0, 0.0, 0.015), seed=21)
+    weekly_daily.append({"date": "not-a-date", "open": 1, "high": 1, "low": 1, "close": 1})
+    weekly = {"bars": weekly_daily, "expect": screener.resample_weekly(weekly_daily)}
+
+    # ---- CD 背离
+    cd_series = {
+        "bull": _daily_closes(_v_shape(1), seed=31),
+        "bull_deeper": _daily_closes(_v_shape(3, 90.0, 86.0), seed=32),
+        "bear": _daily_closes([200.0 - (c - 100.0) for c in _v_shape(3)], seed=33),
+        "stale": _daily_closes(_v_shape(4) + [100.0] * 20, seed=34),
+        "confirmed": _daily_closes(_v_shape(5) + [99.0, 101.0, 103.0], seed=35),
+        "failed": _daily_closes(_v_shape(5) + [99.0, 101.0, 103.0, 88.0], seed=36),
+        "random": _daily_closes(_walk_closes(37, 200, 60.0, 0.0, 0.02), seed=37),
+        "short": _daily_closes([100.0] * 30),
+        "flat": _daily_closes([100.0] * 80),
+    }
+    cd_cases = []
+    for name, bars in cd_series.items():
+        for ma in (None, 30):
+            kw = {"ma_period": ma}
+            if name in ("stale", "confirmed", "failed"):
+                kw["max_age"] = 40 if name == "stale" else 20
+            cd_cases.append({"name": name, "bars": bars, "kw": kw,
+                             "expect": screener.cd_divergence(bars, **kw)})
+
+    infl_members = [
+        {"symbol": "flat", "tag": "芯片", "frames": {"1d": cd_series["flat"], "1w": cd_series["flat"]}},
+        {"symbol": "hit", "tag": "芯片", "frames": {"1d": cd_series["bull"], "1w": cd_series["flat"]}},
+        {"symbol": "bear", "tag": "电力", "frames": {"1d": cd_series["bear"], "1w": cd_series["confirmed"]}},
+        {"symbol": "broken", "tag": "", "frames": {}, "errors": {"1d": "额度用完", "1w": ""}},
+    ]
+    inflections = [
+        {"members": infl_members, "timeframes": ["1d", "1w"], "ma_period": None,
+         "expect": screener.screen_inflections(infl_members, ["1d", "1w"], None)},
+        {"members": infl_members, "timeframes": ["1w", "1d"], "ma_period": 30,
+         "expect": screener.screen_inflections(infl_members, ["1w", "1d"], 30)},
+    ]
+
+    # ---- 极值偏离
+    base = _walk_closes(9, 200, vol=0.01)
+    dev_series = {
+        "calm": _daily_closes(base, seed=41),
+        "spike": _daily_closes(base + [base[-1] * 1.25], seed=42),
+        "crash": _daily_closes(base + [base[-1] * 0.75], seed=43),
+        "gap": _daily_closes([100.0] * 30) + [{"date": "2026-03-02", "open": 110.0, "high": 112.0,
+                                               "low": 108.0, "close": 108.0, "volume": 3_000_000.0}],
+        "short": _daily_closes([100.0] * 10),
+        "wild": _daily_closes(_walk_closes(44, 150, 20.0, 0.0, 0.05), seed=44),
+    }
+    dev_series["broken"] = [dict(b) for b in dev_series["calm"][:60]]
+    dev_series["broken"][5]["close"] = None
+    dev_series["broken"][6]["high"] = -1
+    dev_cases = []
+    for name, bars in dev_series.items():
+        for kw in ({}, {"period": 5, "lookback": 20, "smooth": 1, "keep": 30},
+                   {"period": 50, "lookback": 60, "z_extreme": 1.5}):
+            dev_cases.append({"name": name, "bars": bars, "kw": kw,
+                              "expect": screener.deviation_review(bars, **kw)})
+
+    dump("screener", {
+        "rs": rs_cases, "weekly": weekly, "cd": cd_cases, "inflections": inflections,
+        "deviation": dev_cases,
+        "constants": {"RS_WINDOWS": list(screener.RS_WINDOWS), "RS_BENCHMARKS": list(screener.RS_BENCHMARKS),
+                      "UNTAGGED": screener.UNTAGGED, "MIN_CD_BARS": screener.MIN_CD_BARS},
+    })
+
+
 # ================================================================ config
 def gen_config():
     settings = make_settings()
@@ -1599,6 +1731,7 @@ def _all():
     gen_alerts()
     gen_market()
     gen_research()
+    gen_screener()
     gen_config()
     gen_prompts()
     gen_models()

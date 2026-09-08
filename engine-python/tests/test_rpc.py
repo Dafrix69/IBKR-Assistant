@@ -1011,3 +1011,49 @@ def test_review_analyze_refuses_non_butterfly_and_needs_a_connection(server):
     # 没连券商:明确要求连接,而不是拿空 K 线硬算
     no_conn = call(server, "review.analyze", {"id": "fly-1"})["error"]
     assert no_conn["code"] == -32015
+
+
+# ---------------------------------------------------------------- 扫描器 + 业务标签
+def test_sector_tag_can_be_set_and_cleared(server):
+    sector = call(server, "sectors.add", {"name": "AI 算力"})["result"]["sector"]
+    call(server, "sectors.add_stock", {"id": sector["id"], "symbol": "NVDA", "tag": "芯片"})
+    call(server, "sectors.add_stock", {"id": sector["id"], "symbol": "VRT"})
+    stocks = call(server, "sectors.list")["result"]["sectors"][0]["stocks"]
+    assert {s["symbol"]: s["tag"] for s in stocks} == {"NVDA": "芯片", "VRT": ""}
+
+    out = call(server, "sectors.set_tag", {"id": sector["id"], "symbol": "vrt", "tag": " 电力设备 "})
+    assert [s["tag"] for s in out["result"]["sector"]["stocks"]] == ["芯片", "电力设备"]
+    out = call(server, "sectors.set_tag", {"id": sector["id"], "symbol": "VRT", "tag": ""})
+    assert [s["tag"] for s in out["result"]["sector"]["stocks"]] == ["芯片", ""]
+    # 标签太长截到 12 字,不报错
+    out = call(server, "sectors.set_tag", {"id": sector["id"], "symbol": "VRT", "tag": "一" * 30})
+    assert out["result"]["sector"]["stocks"][1]["tag"] == "一" * 12
+
+    assert call(server, "sectors.set_tag", {"id": sector["id"], "symbol": "AMD", "tag": "x"})["error"]["code"] == -32602
+    assert call(server, "sectors.set_tag", {"id": "nope", "symbol": "NVDA", "tag": "x"})["error"]["code"] == -32602
+
+
+def test_screener_validates_before_touching_the_broker(server):
+    """参数错、股票池空,都该在连券商之前就拒;真要拉 K 线时没连接再报连接错。"""
+    assert call(server, "screener.rs", {"benchmark": "IWM"})["error"]["code"] == -32602
+    assert "股票池是空的" in call(server, "screener.rs", {"benchmark": "SPY"})["error"]["message"]
+    assert call(server, "screener.rs", {"sector": "nope"})["error"]["code"] == -32602
+
+    sector = call(server, "sectors.add", {"name": "AI 算力"})["result"]["sector"]
+    call(server, "sectors.add_stock", {"id": sector["id"], "symbol": "NVDA", "tag": "芯片"})
+    err = call(server, "screener.rs", {"sector": sector["id"], "benchmark": "qqq"})["error"]
+    assert err["code"] == -32018 and "RS 强度扫描" in err["message"]
+
+    assert call(server, "screener.inflection", {"timeframes": ["3m"]})["error"]["code"] == -32602
+    assert call(server, "screener.inflection", {"timeframes": "1d"})["error"]["code"] == -32602
+    assert call(server, "screener.inflection", {"ma_period": 1})["error"]["code"] == -32602
+    assert call(server, "screener.inflection", {"ma_period": "abc"})["error"]["code"] == -32602
+    err = call(server, "screener.inflection", {"sector": "all", "timeframes": ["1d", "1w", "1d"], "ma_period": 20})["error"]
+    assert err["code"] == -32018 and "拐点筛选" in err["message"]
+
+    assert call(server, "screener.deviation", {"symbol": "bad$"})["error"]["code"] == -32602
+    assert call(server, "screener.deviation", {"symbol": "NVDA", "timeframe": "5m"})["error"]["code"] == -32602
+    assert call(server, "screener.deviation", {"symbol": "NVDA", "period": 1})["error"]["code"] == -32602
+    assert call(server, "screener.deviation", {"symbol": "NVDA", "z_extreme": 9})["error"]["code"] == -32602
+    err = call(server, "screener.deviation", {"symbol": "NVDA", "timeframe": "1w"})["error"]
+    assert err["code"] == -32018 and "极值偏离" in err["message"]

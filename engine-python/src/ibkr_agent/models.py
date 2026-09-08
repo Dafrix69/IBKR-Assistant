@@ -223,12 +223,16 @@ class Rejection(Strict):
     message: str
 
 
+MAX_TAG_LEN = 12   # 业务标签最长(界面上要塞进一个小胶囊)
+
+
 class StockPick(Strict):
     """AI 选股的一条建议。仅供参考展示,永远不会进入下单链路。"""
 
     symbol: str
     company: str = ""
     reason: str = ""
+    tag: str = ""      # 业务标签(如"芯片""数据中心"):RS 强度按它汇总强弱
 
     @field_validator("symbol")
     @classmethod
@@ -237,6 +241,11 @@ class StockPick(Strict):
         if not _SYMBOL_RE.match(v):
             raise ValueError("选股结果里的标的不合法: %r" % v)
         return v
+
+    @field_validator("tag")
+    @classmethod
+    def _tag_shape(cls, v: str) -> str:
+        return v.strip()[:MAX_TAG_LEN]
 
 
 class SectorPicks(Strict):

@@ -102,16 +102,58 @@ window.dafri = {
     {id:'i2', text:'留意 SPY 770 这个整数关口', status:'done', symbols:['SPY'], created_at:'2026-08-19T14:00:00Z'}]}),
   addIdea: async () => ({idea:{}}), updateIdea: async () => ({}), analyzeIdea: async () => ({}),
   listSectors: async () => ({sectors:[
-    {id:'s1', name:'AI 算力', stocks:[{symbol:'NVDA',company:'英伟达',reason:'龙头'},
-      {symbol:'AMD',company:'超威',reason:'追赶者'},{symbol:'AVGO',company:'博通',reason:'定制芯片'}]},
-    {id:'s2', name:'核电', stocks:[{symbol:'CEG',company:'星座能源',reason:'数据中心供电'},
+    {id:'s1', name:'AI 算力', stocks:[{symbol:'NVDA',company:'英伟达',reason:'龙头',tag:'芯片'},
+      {symbol:'AMD',company:'超威',reason:'追赶者'},{symbol:'AVGO',company:'博通',reason:'定制芯片',tag:'芯片'}]},
+    {id:'s2', name:'核电', stocks:[{symbol:'CEG',company:'星座能源',reason:'数据中心供电',tag:'电力'},
       {symbol:'VST',company:'Vistra',reason:'同上'}]}]}),
   sectorQuotes: async () => ({connected:true, quotes:{
     NVDA:{last:219.74,close:219.74,change_pct:0}, AMD:{last:242.1,close:238.0,change_pct:1.72},
     AVGO:{last:388.5,close:392.2,change_pct:-0.94}, CEG:{last:341.2,close:335.5,change_pct:1.70},
     VST:{last:208.8,close:211.0,change_pct:-1.04}}}),
   addSector: async()=>({}), deleteSector: async()=>({}), pickSector: async()=>({}),
-  addSectorStock: async()=>({}), removeSectorStock: async()=>({}),
+  addSectorStock: async()=>({}), removeSectorStock: async()=>({}), setSectorTag: async()=>({sector:{}}),
+  screenerRs: async () => ({sector:'AI 算力', benchmark:'SPY', bench_last:645.2, counted:4, total:5, fetched_at:'2026-09-08T14:00:00Z',
+    windows:[{n:5,label:'1周'},{n:20,label:'1月'},{n:60,label:'1季'},{n:120,label:'半年'},{n:250,label:'1年'}],
+    rows:[
+      {symbol:'NVDA',tag:'芯片',company:'英伟达',last:219.74,bars:290,rank:1,score:18.4,error:null,
+       rs:{'5':{ret_pct:3.1,bench_pct:0.8,rs_pct:2.28,beats:true},'20':{ret_pct:12.5,bench_pct:2.1,rs_pct:10.19,beats:true},'60':{ret_pct:31.0,bench_pct:8.2,rs_pct:21.07,beats:true},'120':{ret_pct:44.0,bench_pct:12.0,rs_pct:28.57,beats:true},'250':{ret_pct:80.0,bench_pct:20.0,rs_pct:50.0,beats:true}}},
+      {symbol:'AVGO',tag:'芯片',company:'博通',last:388.5,bars:290,rank:2,score:6.2,error:null,
+       rs:{'5':{ret_pct:-1.0,bench_pct:0.8,rs_pct:-1.79,beats:false},'20':{ret_pct:5.0,bench_pct:2.1,rs_pct:2.84,beats:true},'60':{ret_pct:12.0,bench_pct:8.2,rs_pct:3.51,beats:true},'120':{ret_pct:20.0,bench_pct:12.0,rs_pct:7.14,beats:true},'250':{ret_pct:40.0,bench_pct:20.0,rs_pct:16.67,beats:true}}},
+      {symbol:'CEG',tag:'电力',company:'星座能源',last:341.2,bars:290,rank:3,score:-2.1,error:null,
+       rs:{'5':{ret_pct:0.5,bench_pct:0.8,rs_pct:-0.3,beats:false},'20':{ret_pct:-3.0,bench_pct:2.1,rs_pct:-4.99,beats:false},'60':{ret_pct:6.0,bench_pct:8.2,rs_pct:-2.03,beats:false},'120':{ret_pct:10.0,bench_pct:12.0,rs_pct:-1.79,beats:false},'250':{ret_pct:18.0,bench_pct:20.0,rs_pct:-1.67,beats:false}}},
+      {symbol:'AMD',tag:'芯片',company:'超威',last:242.1,bars:38,rank:4,score:-9.5,error:null,
+       rs:{'5':{ret_pct:-8.0,bench_pct:0.8,rs_pct:-8.73,beats:false},'20':{ret_pct:-8.5,bench_pct:2.1,rs_pct:-10.38,beats:false}}},
+      {symbol:'VST',tag:'',company:'Vistra',last:null,bars:0,rank:null,score:null,error:'历史 K 线额度用完',rs:{}}],
+    tags:[
+      {tag:'芯片',count:3,score:6.2,symbols:['NVDA','AVGO','AMD'],rs:{'5':{median_pct:-1.79,beats:1,total:3},'20':{median_pct:2.84,beats:2,total:3},'60':{median_pct:12.29,beats:2,total:2},'120':{median_pct:17.86,beats:2,total:2},'250':{median_pct:33.33,beats:2,total:2}}},
+      {tag:'电力',count:1,score:-2.1,symbols:['CEG'],rs:{'5':{median_pct:-0.3,beats:0,total:1},'20':{median_pct:-4.99,beats:0,total:1},'60':{median_pct:-2.03,beats:0,total:1},'120':{median_pct:-1.79,beats:0,total:1},'250':{median_pct:-1.67,beats:0,total:1}}},
+      {tag:'未分类',count:1,score:null,symbols:['VST'],rs:{}}]}),
+  screenerInflection: async () => ({sector:'AI 算力', timeframes:['1w','1d'], ma_period:20, hit_count:2, total:4, fetched_at:'2026-09-08T14:00:00Z',
+    per_timeframe:{'1w':{bull:1,bear:0,confirmed:0},'1d':{bull:1,bear:1,confirmed:1}},
+    rows:[
+      {symbol:'AMD',tag:'芯片',company:'超威',hits:2,confirmed:1,signals:{
+        '1w':{signal:'bull',label:'底背离',bars:60,last:242.1,dif_last:-3.21,dif_side:'below',age:2,price_gap_pct:-1.8,dif_gap:0.92,reason:null,
+              pivots:[{index:40,time:'2026-06-26',price:212.4,dif:-5.1},{index:57,time:'2026-08-28',price:208.6,dif:-4.18}],confirm:{ma:20,status:'waiting',at:null,age:null}},
+        '1d':{signal:'bull',label:'底背离',bars:290,last:242.1,dif_last:-1.2,dif_side:'below',age:5,price_gap_pct:-2.4,dif_gap:1.3,reason:null,
+              pivots:[{index:250,time:'2026-08-12',price:214.0,dif:-6.2},{index:284,time:'2026-09-01',price:208.9,dif:-4.9}],confirm:{ma:20,status:'confirmed',at:'2026-09-04',age:2}}}},
+      {symbol:'NVDA',tag:'芯片',company:'英伟达',hits:1,confirmed:0,signals:{
+        '1w':{signal:null,label:'无',bars:60,last:219.7,dif_last:4.2,dif_side:'above',age:null,price_gap_pct:null,dif_gap:null,reason:'最近 12 根内没有新的背离摆动点',pivots:[],confirm:null},
+        '1d':{signal:'bear',label:'顶背离',bars:290,last:219.7,dif_last:2.1,dif_side:'above',age:3,price_gap_pct:1.6,dif_gap:-0.8,reason:null,
+              pivots:[{index:260,time:'2026-08-19',price:224.0,dif:5.4},{index:286,time:'2026-09-03',price:227.6,dif:4.6}],confirm:{ma:20,status:'waiting',at:null,age:null}}}},
+      {symbol:'AVGO',tag:'芯片',company:'博通',hits:0,confirmed:0,signals:{
+        '1w':{signal:null,label:'无',bars:60,last:388.5,dif_last:1.1,dif_side:'above',age:null,price_gap_pct:null,dif_gap:null,reason:'最近 12 根内没有新的背离摆动点',pivots:[],confirm:null},
+        '1d':{error:'历史 K 线额度用完'}}},
+      {symbol:'CEG',tag:'电力',company:'星座能源',hits:0,confirmed:0,signals:{
+        '1w':{signal:null,label:'无',bars:12,last:341.2,dif_last:null,dif_side:null,age:null,price_gap_pct:null,dif_gap:null,reason:'K 线不足 40 根,算不出 DIF 摆动点',pivots:[],confirm:null},
+        '1d':{signal:null,label:'无',bars:290,last:341.2,dif_last:0.4,dif_side:'above',age:null,price_gap_pct:null,dif_gap:null,reason:'最近 12 根内没有新的背离摆动点',pivots:[],confirm:null}}}]}),
+  screenerDeviation: async ({symbol, timeframe}) => { const n=120; const series=[]; let z=0; let p=0; const d=new Date(2026,2,20);
+    for (let i=0;i<n;i++){ d.setDate(d.getDate()+ (d.getDay()===5?3:1)); z = z*0.92 + (Math.sin(i/9)*1.4 + Math.cos(i/23)) * 0.5; p = p*0.8 + Math.sin(i/5)*0.5;
+      const dev = z*3.1; series.push({time:d.toISOString().slice(0,10), close:+(200+dev*2).toFixed(2), ma:200, dev_pct:+dev.toFixed(2), z:+z.toFixed(2), rank_pct:+(50+z*20).toFixed(1), pressure:+p.toFixed(3), buy_pct:+(50+p*40).toFixed(1), volume_ratio:+(1+Math.abs(p)).toFixed(2)}); }
+    const last = series[n-1]; last.z = 2.31; last.dev_pct = 7.16; last.pressure = -0.412; last.buy_pct = 22.0; last.rank_pct = 98.3;
+    return {symbol: symbol||'NVDA', timeframe: timeframe||'1d', period:20, lookback:120, smooth:5, z_extreme:2.0, bars:290, fetched_at:'2026-09-08T14:00:00Z',
+      series, last, extreme:'overbought', extreme_label:'上方极值(超买)',
+      window:{dev_max:{time:last.time,dev_pct:7.16}, dev_min:{time:series[40].time,dev_pct:-5.02}, pressure_max:{time:series[70].time,pressure:0.88}, pressure_min:{time:series[12].time,pressure:-0.93}},
+      readout:['收盘在 20 周期均线上方 7.16%,折近 120 根历史 z = +2.31(分位 98%)。','修正版买卖压力 -0.412(卖压占优),最近一根收盘位于真实区间 22% 处。','偏离已到上方极值:z ≥ 2.0,历史上这种拉伸幅度很少见。','拉得很高但买压转负——推升的力量在减弱,注意衰竭。','本段(120 根)偏离最大 +7.16%(2026-09-05),最小 -5.02%(2026-05-15)。']}; },
   appInfo: async () => ({version:'0.2.0', electron:'40.0.0', configPath:'config/settings.json',
     enginePath:'src/ibkr_agent', engineRunning:true}),
   llmCatalog: async () => ({providers:[

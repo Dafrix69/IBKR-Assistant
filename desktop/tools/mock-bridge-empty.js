@@ -44,7 +44,10 @@ window.dafri = {
   listSectors: async () => ({ sectors: [] }),
   sectorQuotes: async () => ({ connected: false, quotes: {} }),
   addSector: async () => ({}), deleteSector: async () => ({}), pickSector: async () => ({}),
-  addSectorStock: async () => ({}), removeSectorStock: async () => ({}),
+  addSectorStock: async () => ({}), removeSectorStock: async () => ({}), setSectorTag: async () => ({ sector: {} }),
+  screenerRs: async () => { throw new Error('股票池是空的:先在「板块」页加成分股'); },
+  screenerInflection: async () => { throw new Error('股票池是空的:先在「板块」页加成分股'); },
+  screenerDeviation: async () => { throw new Error('极值偏离需要 TWS / IB Gateway:请先在「TWS 连接」面板连接引擎。'); },
   appInfo: async () => ({ version: '0.2.0', electron: '40.0.0', configPath: '', enginePath: '',
     engineRunning: true }),
   llmCatalog: async () => ({

@@ -6,6 +6,7 @@ TypeScript 版交易引擎,桌面端默认加载它(不需要 Python)。行为�
 `baseline/llm/*_schema.json` 是 pydantic dump 出来的结构化输出 schema,TS 只消费不生成。重写过程见 `../docs/reports/ts-rewrite-report.md`。
 
 ```bash
+# Node >= 22(better-sqlite3 13 的预编译包在 Node 20 上会段错误);开发机与 Electron 40 内置的都是 Node 24
 npm install
 npm run build        # tsc → dist/(不进仓库;桌面端 npm start 会自动检查并重编,见 desktop/tools/ensure_engine_ts.js)
 npm test             # vitest:单测 + 黄金对拍 + RPC 契约回放
