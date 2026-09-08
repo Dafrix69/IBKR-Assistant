@@ -95,6 +95,7 @@ npm 见到 binding.gyp 会去跑 node-gyp,没有 C++ 工具链的机器直接失
 node tools/latency_bench.js                 # TS 引擎,进程内,固定交易日时钟(美东 2026-08-14 10:32,盘中)
 node tools/latency_bench.js --engine py     # Python 引擎,走 stdio RPC(真实时钟)
 node tools/latency_bench.js --only A,B      # 只跑某几类;--repeat N 重复;--cold 不预热 SPX 现价
+node tools/latency_bench.js --match 英伟达,SPY # 只跑指令文本含这些片段的行:改完提示词抽查几条,少打付费端点
 ```
 
 38 条自拟指令分八类(固定行话 / 蝴蝶与组合 / 正股 / 期权 / 触发与多单 / 应拒 / 边界 / 重复),逐条

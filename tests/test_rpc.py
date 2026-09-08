@@ -47,7 +47,7 @@ def test_status_reports_the_three_gates(server):
     assert result["allow_live_trading"] is False
     assert result["breaker"]["engaged"] is False
     assert result["market_status"] in {"盘前", "盘中", "盘后", "休市"}
-    assert result["prompt_version"] == "v1.7.0"
+    assert result["prompt_version"] == "v1.8.0"
 
 
 def test_accounts_are_masked_over_the_wire(server):

@@ -164,8 +164,7 @@ class AnthropicParser:
         return kwargs
 
     def parse(self, bundle: PromptBundle, user_message: str) -> LLMResponse:
-        from .models import ParseResult
-        from .schema import structured_output_schema
+        from .schema import parse_schema_for_prompt
 
         client = self._ensure_client()
         messages = _fewshot_messages(bundle, cache_last=True)
@@ -174,7 +173,7 @@ class AnthropicParser:
         started = time.monotonic()
         try:
             response = client.messages.create(
-                **self._request_kwargs(bundle.system_text, messages, structured_output_schema(ParseResult))
+                **self._request_kwargs(bundle.system_text, messages, parse_schema_for_prompt(bundle.version))
             )
         except Exception as exc:  # noqa: BLE001
             raise LLMError("调用 Anthropic 失败:%s: %s" % (type(exc).__name__, exc)) from exc
@@ -277,10 +276,9 @@ class OpenAICompatibleParser:
         self.base_url = validate_base_url(config.base_url)
 
     def parse(self, bundle: PromptBundle, user_message: str) -> LLMResponse:
-        from .models import ParseResult
-        from .schema import structured_output_schema
+        from .schema import parse_schema_for_prompt
 
-        schema = structured_output_schema(ParseResult)
+        schema = parse_schema_for_prompt(bundle.version)
         messages = [{"role": "system", "content": bundle.system_text}]
         for pair in bundle.fewshot:
             messages.append({"role": "user", "content": pair.user})

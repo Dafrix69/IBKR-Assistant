@@ -21,7 +21,7 @@ window.dafri = {
   platform: 'win32',
   status: async () => ({
     protocol: '1.0', now_et: '2026-08-21 09:42:11', market_status: '休市',
-    prompt_version: 'v1.7.0', prompt_fingerprint: '', model: 'claude-opus-5',
+    prompt_version: 'v1.8.0', prompt_fingerprint: '', model: 'claude-opus-5',
     auto_execute: false, allow_live_trading: false,
     breaker: { engaged: false, reason: '', consecutive_failures: 0 },
     broker_provider: 'ibkr', broker_connected: false, broker_upstream_ok: true,
@@ -29,7 +29,7 @@ window.dafri = {
     limits: { max_order_notional: 5000, max_option_contracts: 5, max_mkt_shares: 200,
               min_confidence: 0.9, max_spread_slippage: 0.1, duplicate_window_minutes: 10 },
   }),
-  selftest: async () => ({ prompt_version: 'v1.7.0', prompt_fingerprint: '',
+  selftest: async () => ({ prompt_version: 'v1.8.0', prompt_fingerprint: '',
     system_prompt_chars: 0, fewshot_pairs: 0, symbol_aliases: {}, accounts: [] }),
   listRecords: async () => ({ records: [] }),
   getRecord: async () => ({ record: null }),
