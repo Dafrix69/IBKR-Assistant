@@ -36,8 +36,8 @@ jobs:
       # 失败时把最后 80 行输出塞进一条 annotation:公开仓库不用登录就能从 check-runs API 读到
       - run: |
           set -o pipefail
-          npx vitest run --reporter=default --reporter=github-actions 2>&1 | tee vitest.log || {
-            msg=$(tail -n 80 vitest.log | sed -r 's/\x1b\[[0-9;]*[A-Za-z]//g' | awk '{printf "%s%%0A", $0}' | cut -c1-6000)
+          npx vitest run --no-file-parallelism --reporter=verbose --reporter=github-actions 2>&1 | tee vitest.log || {
+            msg=$(tail -n 70 vitest.log | sed -r 's/\x1b\[[0-9;]*[A-Za-z]//g' | awk '{printf "%s%%0A", $0}' | cut -c1-4000)
             echo "::error title=vitest::$msg"
             exit 1
           }
