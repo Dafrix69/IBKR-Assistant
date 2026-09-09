@@ -32,6 +32,86 @@
 内容区**。选中项为强调色填充(窗口失焦退灰),图标是按 SF Symbols 几何手绘的内联 SVG
 (描边 1.4,`currentColor`,不引外部字体,CSP 依旧只允许 'self');窗口窄于 1000px 时侧栏收成图标栏。
 
+## React + Ant Design 重写(2026-09,已完成)
+
+界面在 2026-09-08 一天内从无框架的手写 DOM 迁到了 React + Ant Design 5,代码在 `desktop/renderer-react/`
+(Vite + TypeScript)。做法是**单壳、逐页**:先把壳层(顶栏、侧栏、横幅、宏观行情带、主题)换成 React,
+旧页面被原样解析进一个隐藏的寄宿池、按需搬进内容区继续跑,然后一页一页重写、每迁完一页就删掉它的旧代码,
+任何时刻应用都是完整可用的;最后一页迁完,寄宿池和旧 `renderer/` 整个删掉。没有引入微前端:这是一个人维护的
+桌面应用,状态天然全局(熔断、连接、持仓轮询),拆成子应用只会多一层总线。
+
+**结构。** `src/shell/` 是壳(App / Topbar / Sidebar / Banner / MacroStrip / nav),`src/pages/` 每个侧栏项一个文件
+(合并页的子页在同一文件里,`pages/index.ts` 登记页面与子页清单),`src/store/` 是跨页共用的状态与循环
+(status 5 秒、tracker 与托管对账每秒、alerts 10 秒、macro 2 秒 / 60 秒、records / pending / notify 跟着引擎事件),
+`src/lib/` 是格式化、标签词表、canvas 图表与价位条的包装,`src/theme/` 是外观与 AntD 主题。
+图表引擎 `public/pa-chart.js` 仍是一个经典脚本(挂 `window.DafriChart` / `DafriPaChart`),React 只包容器。
+`window.dafri`(preload)的契约没有动,类型在 `src/bridge.ts`。
+
+**视觉不变。** 壳层复用 `styles.css` 里的同名类(`.topbar` / `.sidebar` / `.nav-item` / `.content`),
+像素一致;Ant Design 的主题 token 全部从 `:root` 的 CSS 变量现读(系统色、字号层级、圆角、控件高度、
+3.5px 的焦点环),深浅色切换后重算,两套界面永远取同一份值。迁到 React 的页面继续用
+`.group` / `.field-row` / `.section-title` 这些布局类,控件换成 AntD 的 Switch / Segmented / InputNumber / Table。
+
+**CSP 只放宽一条。** AntD 5 用 CSS-in-JS 注入 `<style>`,`style-src 'self'` 会拦;构建期生成一个随机
+nonce 写进页面 meta 与 `dist/csp-nonce.txt`,主进程把它拼进响应头的 CSP,两处一致。`script-src` 仍是 `'self'`,
+不允许任何远程资源。AntD 的主样式经 ConfigProvider 的 `csp` 拿到 nonce,但 rc-util 里两处工具样式
+(测滚动条宽度的临时 `<style>`、弹层的滚动锁)不接收 nonce,会被拦下并在控制台报错——入口处给每个动态创建的 `<style>`
+补上页面的 nonce(`main.tsx`),能创建它们的只有我们自己的包。截图 smoke 对 CSP 违规不再豁免。
+`window.dafri` 的契约不动,类型在 `renderer-react/src/bridge.ts`;
+写 DOM 的规矩不变——React 默认转义,`dangerouslySetInnerHTML` 不允许出现。
+
+**各页的要点。** 交易记录是 AntD Table 加单据式详情,记录列表的 store 与看板共用;持仓追踪的每秒盯盘与托管对账在
+`store/tracker.ts`,启动即跑、不看当前在哪一页,表单、确认框文案、三道闸门的提示与原来逐字一致;扫描的 RS 热力格与信号胶囊
+套在 AntD Table 上,极值偏离的两张图用 `lib/Chart.tsx` 包着图表引擎画;板块与行情在 `store/sectors.ts`,价位提醒、提示音与
+10 秒轮询在 `store/alerts.ts`,价位条的 SVG 排版移植到 `lib/LevelStrip.tsx`;订单看板读 `store/pending.ts` 与 `store/records.ts`;
+回测有条件搭建器、流程图与净值曲线;交易分析的两张图仍走 canvas 引擎,记录详情的「分析这笔交易」经 `store/review.ts`
+跳过来直接分析;接入的券商连接与熔断动作抽到 `store/broker.ts` 供顶栏与接入页共用,模型目录在 `store/llm.ts`;
+交易指令的就绪清单读 status 与模型目录,想法页「发到解析」经 `store/trade.ts` 带文本过来;行情页的 K线 PA 与订单簿
+各自 20 秒自动刷新(需已连券商)。合并页的子页由 `store/nav.ts` 记,localStorage 的键与原来相同,用户的选择不丢。
+
+**验证方式。** `npm run ui:typecheck`;`npm run ui:preview`(或 `DAFRI_MOCK=mock-bridge-empty.js` 看首启)之后
+`npx electron tools/capture_pages.js renderer-react/dist-preview/index.html <outDir> --theme dark --check --demo`,
+两套主题各拍一遍、18 个叶子页零报错。截图台的几个隐藏窗口专属的坑(过渡不推进、canvas 要第二帧、受控输入框要派发事件)
+记在 `desktop/tools/README.md`。
+
+## Ant Design 组件化(2026-09-09)
+
+迁到 React 之后的第一版只把表单控件换成了 AntD,卡片、分组列表、空态、提示条、就绪清单、通知流、侧栏、顶栏状态
+仍是手写 DOM + 1400 行 CSS,而且迁移时丢了侧栏图标(旧 `index.html` 里的 `<symbol>` 没跟过来)。这一版把界面**整体落到 AntD 的组件上**,
+设计语言不变——仍是 macOS:
+
+- **主题层**(`src/theme/antd.ts`)按 HIG 给 30 余个组件配了 component token:Menu(源列表)、Card、List(内嵌分组列表)、
+  Alert、Collapse、Steps、Statistic、Progress、Badge、Notification、Splitter、Tag、Empty、Skeleton……颜色只落在圆点、图标、
+  开关、主按钮上;面是中性的,警告面只淡染 10%;弹层是实底 + 0.5px 发丝边 + 软投影。主题走 **CSS 变量模式**(`cssVar`),
+  切深浅色只改变量;`ConfigProvider` 关掉了点击水波纹(那是 Material / Ant 的语言),按钮按下只是变暗、缩 1.5%。
+- **构件库**(`src/ui/kit.tsx`)是各页共用的、已按 macOS 配好的组合件:`StatusCard`(带 ✓ / ! / × 圆标的卡片,Card)、
+  `Group / GroupRow / SwitchRow / NumberRow`(System Settings 那种内嵌分组列表,List)、`Notice`(Alert)、
+  `Primer`(一行三级色文字 + 折叠箭头,Collapse)、`EmptyState`(Empty)、`Feed`(List)、`StatTile`(Statistic)、
+  `Working / LoadingBlock`(Spin / Skeleton)、`SectionTitle`(可带 Badge 条数)。各页只组装,不再各自手写 InfoCard / Primer。
+- **壳层**:侧栏是 AntD `Menu`(inline,组可折叠、状态记在本地,窄窗口 `inlineCollapsed` 成 56px 图标栏并自带悬停提示),
+  图标改成 React 组件 `src/ui/Icons.tsx`(SF Symbols 几何的线稿,不再依赖页面里的 `<defs>`);顶栏状态是 `Badge status` 的
+  8px 圆点 + 文字,说明进 `Tooltip`;横幅换成从窗口顶部中央落下的 `notification`(`src/ui/Toasts.tsx`,`showBanner` 契约不变:
+  提示 6 秒自己走、错误留着等人看,都可关)。
+- **页面**:交易指令的输入 / 结果两栏是可拖的 `Splitter`(窄于 980px 时上下叠放),就绪清单是 `Steps`,发单账户是
+  `Tag.CheckableTag`;持仓追踪的盯盘量表是 `Progress`;交易分析 / 回测 / 极值偏离的数字瓦片是 `Statistic`,止盈策略三张表是 `Table`,回测区间是带预设的 `RangePicker`;
+  接入页的端口是 `Card` + `Badge`,连接指引是 `Steps`(progressDot),账户核对是 `List`;板块卡、订单簿卡、想法卡都是 `Card`。
+- **样式瘦身**:`styles.css` 只剩 token、壳层布局、各页排版与 canvas / SVG 图表周边的语义类(1455 → 约 740 行);
+  AntD 组件在这套外观下的微调集中在 `shell.css`。手写的 `.btn / .switch / .segmented / .group / .card / .notice / .readiness /
+  .feed / .banner / .nav-item` 全部删除。
+
+**顺带修掉的五个交互 bug**(都是这次逐页重写时发现的,与 AntD 无关,原来那版也有):
+侧栏组标题点了收不起来——"目标在折叠着的组里就展开它"那段每次渲染都跑,用户刚收起自己正在看的那一组就被立刻顶开,改成只在**切页**时才展开;
+从交易记录点「分析这笔交易」跳到交易分析页,下拉框会退回第一条 IBKR 成交,而图和结论却是点进来的那一张——重拉候选列表时保住指定的那一张,
+它若是本地未成交的记录就自动把「附带本地未成交的记录」打开;接入页的模型表单在目录对象刷新时会重填,保存一次 API Key 就把还没保存的模型名、
+Base URL 静默冲掉,改成只在供应商或已存配置真的变了时才重填。
+交易指令页的输入框与解析结果原来是组件局部状态,而壳一次只挂载一页——解析完切去看一眼订单看板再回来,指令原文和结果卡片都没了,
+而这恰恰是发单前后最想回头核对的两样东西:现在编辑器状态与提交动作都在 `store/trade.ts`,页面中途卸载也不影响结果落地。
+K线 PA 的 20 秒自动刷新把 `loading` 写进了定时器依赖,每取一次数就拆掉重建一次定时器,周期会漂成「20 秒 + 一次取数耗时」;
+改成用一个 ref 做防重入,定时器只在连接状态变化时重建。
+
+验证方式不变(`ui:typecheck` → `ui:preview` → `capture_pages.js --check --demo`),深浅两套主题 18 页零报错,
+900px 窄窗口下图标栏与叠放布局也拍过。截图台里 `--demo` 对 K线 PA / 交易分析的 canvas 仍可能拍到取数中的一帧,这是 mock 时序,不是渲染问题。
+
 ## 视觉底子:按 macOS HIG 来
 
 - **系统字体与字号层级**(正文 13px / 说明 11px),不自造字号
@@ -227,7 +307,7 @@ Nielsen 那十条可用性启发式。另外配了一份**首次启动的数据�
 **读屏与标签。** 18 个输入框看着有标签,但那个 `<label>` 没有 `for`——读屏软件只会念
 "一个数字输入框",点标签也不会聚焦到输入框(所有原生表单都有的行为,少了会让人觉得
 这个界面"怪怪的")。这类问题人眼一页页看很容易漏,所以写了
-[`tools/audit_ui.js`](../../desktop/tools/audit_ui.js) 让机器扫:无名按钮、无标签输入、
+当时用一份静态审计脚本(随无框架界面一起退役)让机器扫:无名按钮、无标签输入、
 引用了不存在的 DOM id、界面文案里漏出来的内部枚举。
 
 **交易记录给了密度切换。** 之前在"卡片流"和"密集表格"之间纠结过:表格扫得快,但塞不下

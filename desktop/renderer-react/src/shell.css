@@ -1,0 +1,342 @@
+/*
+ * Ant Design 组件在这套 macOS 外观里的微调。
+ * 颜色、字号、圆角、控件高度都已经由 theme/antd.ts 的 token 给了,这里只处理 token 表达不了的:
+ * 布局上的对齐、组件内部某个元素的密度、源列表侧栏那种 AppKit 特有的交互态。
+ */
+
+/* body 是竖向 flex(见 styles.css),挂载点要吃掉剩余高度,壳层才能 flex: 1 */
+#root,
+#root > .ant-app {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ================= 源列表侧栏(Menu) ================= */
+.sidebar-menu.ant-menu { border-inline-end: none !important; background: transparent; width: 100%; }
+.sidebar-menu.bottom { margin-top: auto; }
+.sidebar-menu .ant-menu-item,
+.sidebar-menu .ant-menu-submenu-title { display: flex; align-items: center; }
+/* 组标题:11px 三级色、可点击折叠,右侧一个会转的小箭头(Finder / Mail 的源列表组标题就是这么用的) */
+.sidebar-menu .ant-menu-submenu > .ant-menu-submenu-title {
+  height: 22px; line-height: 22px;
+  margin: 12px 10px 2px; padding-inline: 8px !important;
+  font-size: 11px; font-weight: 590; letter-spacing: 0.02em;
+  color: var(--label-tertiary);
+}
+.sidebar-menu .ant-menu-submenu:first-child > .ant-menu-submenu-title { margin-top: 2px; }
+.sidebar-menu .ant-menu-submenu > .ant-menu-submenu-title:hover { color: var(--label-secondary); background: none; }
+.sidebar-menu .ant-menu-submenu-title .ant-menu-submenu-arrow { display: none; }
+.sidebar-menu .group-chevron {
+  position: absolute; right: 8px; top: 50%;
+  width: 5px; height: 5px; margin-top: -4px;
+  border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor;
+  transform: rotate(-45deg); transition: transform 0.15s ease; opacity: 0;
+}
+.sidebar-menu .ant-menu-submenu-title:hover .group-chevron { opacity: 1; }
+.sidebar-menu .group-chevron.open { transform: rotate(45deg); margin-top: -5px; }
+.sidebar-menu .ant-menu-submenu-title[aria-expanded="false"] .group-chevron { opacity: 1; }
+/* 项:28px 行高、10px 内缩、5px 圆角;图标是强调色的线稿,选中后随文字变白 */
+.sidebar-menu .ant-menu-item { padding-inline: 8px !important; margin-inline: 10px; width: calc(100% - 20px); }
+.sidebar-menu .ant-menu-sub.ant-menu-inline { background: transparent !important; }
+.sidebar-menu .ant-menu-item .ant-menu-item-icon { color: var(--blue); display: inline-flex; }
+.sidebar-menu .ant-menu-item-selected .ant-menu-item-icon { color: inherit; }
+.sidebar-menu .ant-menu-item-selected { font-weight: 510; }
+.sidebar-menu .ant-menu-title-content { flex: 1; min-width: 0; }
+.nav-label { display: flex; align-items: center; gap: 8px; }
+.nav-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* 徽标:灰色胶囊,不是红点——排队数不是"未读",不该喊 */
+.nav-badge .ant-badge-count {
+  background: var(--bg-fill-strong); color: var(--label-secondary);
+  box-shadow: none; font-size: 10.5px; font-weight: 500; min-width: 16px; height: 16px; line-height: 16px; padding: 0 5px;
+}
+.nav-badge .ant-badge-count-sm { font-size: 10.5px; }
+.ant-menu-item-selected .nav-badge .ant-badge-count { background: rgba(255, 255, 255, 0.25); color: #fff; }
+/* 窗口失焦:选中项从强调色退成灰(Finder / Mail 的源列表都这样) */
+:root[data-window-blur] .sidebar-menu .ant-menu-item-selected { background: var(--bg-fill-strong) !important; color: var(--label) !important; }
+:root[data-window-blur] .sidebar-menu .ant-menu-item-selected .ant-menu-item-icon { color: var(--label-secondary); }
+:root[data-window-blur] .ant-menu-item-selected .nav-badge .ant-badge-count { background: var(--bg-fill-strong); color: var(--label-secondary); }
+/* 窄窗口:图标栏。Menu 折叠后把徽标缩成右上角一个点 */
+.sidebar.narrow .sidebar-menu .ant-menu-item { margin-inline: 8px; width: calc(100% - 16px); padding-inline: 12px !important; }
+.sidebar.narrow .nav-dot { position: absolute; top: 4px; right: 4px; }
+.sidebar.narrow .nav-dot .ant-badge-dot { background: var(--blue); box-shadow: none; }
+.sidebar.narrow .ant-menu-item-selected .nav-dot .ant-badge-dot { background: #fff; }
+.sidebar.narrow .ant-menu-inline-collapsed > .ant-menu-item { padding-inline: calc(50% - 8px) !important; }
+
+/* ================= 工具栏 ================= */
+.topbar .brand .ant-badge { display: inline-flex; }
+.topbar .chip .ant-badge-status-text { font-size: 12px; margin-inline-start: 6px; color: var(--label); }
+.topbar .chip .ant-badge-status-dot { width: 8px; height: 8px; }
+.topbar .ant-badge-status-default { background: var(--label-tertiary); }
+/* 「暂停自动执行」常态下是普通按钮——红字会被读成"正在告警";只有已熔断(要解除)时才红 */
+.topbar .ant-btn.halt.engaged { font-weight: 510; }
+
+/* ================= 顶部通知(横幅的替代) ================= */
+.ant-notification .toast { padding: 12px 16px; }
+.ant-notification .toast .ant-notification-notice-message { font-size: 13px; font-weight: 510; margin-bottom: 0; padding-inline-end: 20px; }
+.ant-notification .toast .ant-notification-notice-with-icon .ant-notification-notice-message { margin-inline-start: 30px; }
+.ant-notification .toast .ant-notification-notice-icon { font-size: 18px; margin-top: 1px; }
+
+/* ================= 通用控件微调 ================= */
+/* 分段控件按内容宽、选中项带 AppKit 的控件阴影;字重与 System Settings 一致 */
+.ant-segmented { font-size: 12px; }
+.ant-segmented .ant-segmented-item-selected { font-weight: 510; }
+.ant-segmented-sm .ant-segmented-item-label { padding: 0 12px; }
+.ant-segmented .n { margin-left: 5px; opacity: 0.7; font-variant-numeric: tabular-nums; }
+.page-head .ant-segmented { margin-left: auto; }
+/* 按钮按下只是变暗一点、缩 1.5%——AppKit 的按下反馈,没有水波纹(wave 已在 ConfigProvider 关掉) */
+.ant-btn:not(:disabled):active { transform: scale(0.985); }
+.ant-btn.btn-warn:not(:disabled) { color: var(--orange-text); }
+.ant-btn.card-action { margin-top: 8px; }
+.ant-input-number-input, .ant-input[type="date"] { font-variant-numeric: tabular-nums; }
+.ant-select-dropdown, .ant-tooltip-inner, .ant-popover-inner, .ant-notification-notice { -webkit-font-smoothing: antialiased; }
+.ant-tooltip { max-width: 320px; }
+.ant-tooltip-inner { padding: 4px 8px; min-height: 0; }
+/* 小圆标:卡片标题前、就绪清单里的 ✓ / ! / × */
+.tone-icon { font-size: 14px; margin-right: 6px; vertical-align: -1px; }
+.tone-icon.ok { color: var(--green); }
+.tone-icon.warn { color: var(--orange); }
+.tone-icon.bad { color: var(--red); }
+/* 条数徽标(分组小标题后面):灰色胶囊 */
+.count-badge .ant-badge-count {
+  background: var(--bg-fill-strong); color: var(--label-secondary); box-shadow: none;
+  font-size: 10.5px; font-weight: 500; min-width: 16px; height: 16px; line-height: 16px; padding: 0 5px;
+}
+
+/* ================= 卡片(StatusCard / Card) ================= */
+.ant-card { box-shadow: var(--shadow-card); }
+.ant-card-small > .ant-card-head { min-height: 0; border-bottom: none; padding: 10px 12px 0; }
+.ant-card-small > .ant-card-head .ant-card-head-title { font-size: 13px; font-weight: 590; padding: 0; line-height: 1.5; }
+.ant-card-small > .ant-card-head .ant-card-extra { padding: 0; font-size: 11.5px; }
+.ant-card-small > .ant-card-body { padding: 4px 12px 12px; }
+.ant-card-small > .ant-card-head + .ant-card-body:empty { padding-top: 0; }
+.status-card-title { display: inline-flex; align-items: center; min-width: 0; }
+.status-card-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.status-card ul { margin: 6px 0 0; padding-left: 16px; color: var(--orange-text); font-size: 11.5px; }
+.status-card.tone-info ul, .status-card.tone-ok ul { color: var(--label); }
+.status-card .card-actions { margin-top: 8px; }
+.status-card .ant-card-body > .card-meta:first-child { margin-top: 2px; }
+.idea-card .ant-card-body > div:first-child { font-size: 13px; }
+.idea-card .card-actions { margin-top: 8px; }
+.idea-card .result { margin-top: 8px; }
+.digest-card { margin-bottom: 8px; }
+.digest-card ul, .idea-card ul { margin: 2px 0 6px; padding-left: 16px; font-size: 12px; color: var(--label); }
+/* 板块卡:卡片内滚动看成分股,标题行右侧一组小按钮 */
+.sector-card.ant-card > .ant-card-head { padding-top: 8px; }
+.sector-card .ant-card-head-title .record-sym { font-size: 13px; }
+.sector-card .ant-btn-sm { padding-inline: 6px; height: 22px; }
+.sector-card .row.tight { margin: 8px 0 0; }
+.sector-card .row.tight .ant-input.narrow { flex: 0 0 92px; }
+/* 端口卡:开放的描一圈淡绿边 */
+.port.ant-card.open { border-color: color-mix(in srgb, var(--green) 45%, transparent); }
+.port.ant-card > .ant-card-body { padding: 8px 10px; }
+.port .port-state .ant-badge-status-text { font-size: 11px; }
+.port .port-state .ant-badge-status-default { background: var(--label-tertiary); }
+/* 组合腿明细:折叠区里的子卡片再退一层 */
+.combo-legs { margin-top: 8px; }
+.combo-legs .ant-collapse-header { padding: 4px 0 !important; }
+.combo-legs .ant-collapse-content-box { padding: 0 !important; display: flex; flex-direction: column; gap: 8px; }
+.combo-legs .ant-card { background: var(--bg-content); box-shadow: none; }
+
+/* ================= 内嵌分组列表(Group = List) ================= */
+.group.ant-list { background: var(--bg-elevated); box-shadow: var(--shadow-card); margin-bottom: 14px; border-color: var(--separator); }
+.group.ant-list .ant-list-item { padding: 8px 12px; gap: 12px; align-items: center; }
+.group.ant-list .ant-list-item.stacked { flex-direction: column; align-items: stretch; gap: 6px; }
+.group.ant-list .ant-list-footer { padding: 6px 12px 8px; color: var(--label-secondary); font-size: 11px; line-height: 1.55; }
+.group.ant-list .ant-spin-nested-loading, .group.ant-list .ant-spin-container { width: 100%; }
+.group-label { flex: 1; min-width: 0; font-size: 13px; color: var(--label); }
+.group-label .sub, .switch-row .sub { display: block; color: var(--label-secondary); font-size: 11px; margin-top: 1px; }
+.group-control { flex-shrink: 0; display: inline-flex; align-items: center; gap: 8px; }
+.stacked > .group-control { width: 100%; }
+.stacked > .group-control > * { flex: 1; }
+.stacked > .group-control > .rule-builder { width: 100%; }
+/* 开关行:整行是一个 label,点文字也能拨 */
+.switch-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; cursor: default; }
+.switch-row .group-label { flex: 1; }
+.switch-row .group-control { flex-shrink: 0; }
+/* 关于页:描述列表与旧 <dl> 同一密度,值用等宽字 */
+.about .ant-descriptions-item-label { color: var(--label-secondary); }
+.about .ant-descriptions-item-content { font-family: var(--font-mono); word-break: break-all; user-select: text; }
+.keys .ant-descriptions-item-content { color: var(--label-secondary); font-size: 12px; }
+.keys .ant-descriptions-row > th, .keys .ant-descriptions-row > td { padding-bottom: 6px; }
+
+/* ================= 提示条(Notice = Alert) ================= */
+.notice.ant-alert { margin-bottom: 14px; align-items: flex-start; }
+.notice.ant-alert .ant-alert-message { font-size: 12px; font-weight: 590; color: var(--label); }
+.notice.ant-alert .ant-alert-description { font-size: 11.5px; line-height: 1.55; color: var(--label-secondary); }
+.notice.ant-alert .ant-alert-description strong { color: var(--label); }
+.notice.ant-alert-info .ant-alert-message strong { color: var(--blue); }
+.notice.ant-alert-warning .ant-alert-message { color: var(--orange-text); }
+.notice.ant-alert .ant-alert-icon { margin-top: 2px; font-size: 14px; }
+.notice.ant-alert:empty { display: none; }
+
+/* ================= 参考资料(Primer = Collapse) ================= */
+/* 页面开头的"这一页怎么用":一行三级色的文字 + 折叠箭头,不是一个盒子 */
+.primer.ant-collapse { margin: 4px 0 12px; }
+.primer.ant-collapse > .ant-collapse-item > .ant-collapse-header {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 2px 0 !important; font-size: 11.5px; color: var(--label-tertiary); font-weight: 400;
+}
+.primer.ant-collapse > .ant-collapse-item > .ant-collapse-header:hover { color: var(--label-secondary); }
+.primer.ant-collapse .ant-collapse-expand-icon { padding-inline-end: 0 !important; height: auto !important; }
+.primer.ant-collapse .ant-collapse-expand-icon .anticon { font-size: 10px; color: inherit; transition: transform 0.15s ease; }
+.primer.ant-collapse > .ant-collapse-item > .ant-collapse-content > .ant-collapse-content-box { padding: 6px 0 0 !important; }
+.primer.ant-collapse .hint { margin-top: 0; }
+/* 非 intro 的参考资料(连接指引、读盘常识):一颗填充底的小按钮,第一次来的时候它们是救命的,连上之后就该让路 */
+.primer.ant-collapse:not(.intro) { margin-top: 16px; }
+.primer.ant-collapse:not(.intro) > .ant-collapse-item > .ant-collapse-header {
+  padding: 5px 10px !important;
+  border: 0.5px solid var(--separator); border-radius: var(--radius-control);
+  background: var(--bg-fill); color: var(--label-secondary); font-weight: 510;
+}
+.primer.ant-collapse:not(.intro) > .ant-collapse-item > .ant-collapse-header:hover { background: var(--bg-fill-strong); color: var(--label); }
+.primer.ant-collapse:not(.intro) > .ant-collapse-item > .ant-collapse-content > .ant-collapse-content-box { padding-top: 10px !important; }
+/* 连接指引:Steps 的点线,标题正文各一行 */
+.guide.ant-steps { padding-left: 4px; }
+.guide.ant-steps .ant-steps-item-title { font-size: 12.5px; font-weight: 510; color: var(--label); line-height: 20px; }
+.guide.ant-steps .ant-steps-item-description { font-size: 11.5px; color: var(--label-secondary); line-height: 1.55; padding-bottom: 8px; }
+.guide.ant-steps .ant-steps-item-tail::after { background: var(--separator) !important; }
+.guide.ant-steps .ant-steps-icon-dot { background: var(--label-tertiary) !important; }
+
+/* ================= 就绪检查表(Steps) ================= */
+.readiness-steps.ant-steps .ant-steps-item-title { font-size: 13px; font-weight: 510; line-height: 20px; }
+.readiness-steps.ant-steps .ant-steps-item-finish .ant-steps-item-title { color: var(--label-secondary); }
+.readiness-steps.ant-steps .ant-steps-item-description { font-size: 11.5px; color: var(--label-secondary); padding-bottom: 8px; }
+.readiness-steps.ant-steps .ant-steps-item-icon { margin-inline-end: 8px; }
+.readiness-steps.ant-steps .ant-steps-item-icon .tone-icon { font-size: 18px; margin: 0; }
+.readiness-steps.ant-steps .ant-steps-item-tail::after { background: var(--separator) !important; }
+.readiness-steps.ant-steps .ant-steps-item:last-child .ant-steps-item-description { padding-bottom: 0; }
+
+/* ================= 空态 / 忙碌 / 骨架 ================= */
+.empty-state.ant-empty { margin: 10px 0; padding: 8px 12px 10px; }
+.empty-state.ant-empty .ant-empty-image { height: 28px; margin-bottom: 4px; opacity: 0.55; }
+.empty-state.ant-empty .ant-empty-description { color: var(--label-tertiary); font-size: 12px; }
+.empty-state.ant-empty.compact { margin: 4px 0; padding: 4px; }
+.empty-state.ant-empty.compact .ant-empty-image { height: 22px; }
+.cards > .empty-state, .sector-grid > .empty-state { grid-column: 1 / -1; min-height: 72px; display: flex; flex-direction: column; justify-content: center; }
+.working { display: inline-flex; align-items: center; gap: 7px; color: var(--label-secondary); font-size: 12px; }
+.loading-block { margin: 6px 0 14px; }
+
+/* ================= 通知流(Feed = List) ================= */
+.feed.ant-list { max-height: 230px; overflow-y: auto; }
+.feed.ant-list .ant-list-item.feed-item {
+  justify-content: flex-start; gap: 8px; padding: 5px 9px;
+  border-radius: 6px; font-size: 11.5px; color: var(--label-secondary);
+}
+.feed.ant-list .ant-list-item.feed-item:nth-child(odd) { background: var(--bg-fill); }
+.feed.ant-list .feed-item time { color: var(--label-tertiary); font-family: var(--font-mono); flex-shrink: 0; }
+.acct-list.ant-list { margin-top: 8px; }
+.acct-list.ant-list .ant-list-item { padding: 4px 0; font-size: 11.5px; }
+.acct-list .ant-badge-status-text { font-size: 11.5px; }
+.trade-list.ant-list .ant-list-item.stock-row { padding: 5px 0; }
+
+/* ================= 数字瓦片(StatTile = Statistic) ================= */
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 6px; margin: 8px 0; }
+.stat-tile { background: var(--bg-fill); border-radius: 8px; padding: 7px 9px; min-width: 0; }
+.stat-tile .ant-statistic-title { font-size: 10.5px; color: var(--label-secondary); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stat-tile .ant-statistic-content { font-size: 14px; font-weight: 590; line-height: 1.3; color: var(--label); font-variant-numeric: tabular-nums; }
+.stat-tile.mono .ant-statistic-content { font-family: var(--font-mono); font-size: 15px; font-weight: 500; }
+.stat-tile.pos .ant-statistic-content { color: var(--up-text); }
+.stat-tile.neg .ant-statistic-content { color: var(--down-text); }
+.stat-tile.hot .ant-statistic-content { color: var(--red-text); }
+.stat-tile.cold .ant-statistic-content { color: var(--green-text); }
+
+/* ================= 交易指令页 ================= */
+.trade-split.ant-splitter { margin-top: 2px; }
+.trade-split .ant-splitter-panel { overflow: visible !important; }
+.trade-split .ant-splitter-panel:first-child { padding-right: 16px; }
+.trade-split .ant-splitter-panel:last-child { padding-left: 16px; }
+.trade-split .ant-splitter-bar-dragger::before { background: var(--separator) !important; }
+.trade-editor .ant-input { width: 100%; font-size: 13px; }
+.trade-editor .row .ant-btn + .ant-btn { margin-left: 0; }
+.trade-results .pane-head { margin-bottom: 8px; }
+/* 发单账户:可勾选的胶囊,实盘的用橙色 */
+.account-chip.ant-tag { margin: 0; padding: 3px 9px; border-radius: 6px; font-size: 12px; line-height: 1.5; background: var(--bg-fill); color: var(--label-secondary); cursor: pointer; }
+.account-chip.ant-tag-checkable-checked { color: var(--label); background: color-mix(in srgb, var(--blue) 16%, transparent); }
+.account-chip.live.ant-tag-checkable-checked { color: var(--orange-text); background: color-mix(in srgb, var(--orange) 16%, transparent); }
+/* 速记片段是"可点的词",不是胶囊按钮:6px 圆角、填充底、无边框,和 Mail 收件人 token 同一族 */
+.shorthand-chips { margin-top: 10px; }
+.chip-tag.ant-tag { margin: 0; padding: 3px 10px; border-radius: var(--radius-control); font-size: 12px; line-height: 1.5; background: var(--bg-fill); color: var(--label); cursor: pointer; transition: background 0.12s ease; }
+.chip-tag.ant-tag:hover { background: var(--bg-fill-strong); }
+.readiness.ant-card { margin-bottom: 16px; }
+
+/* ================= 交易记录 ================= */
+.records-table .ant-table { background: transparent; }
+.records-table .ant-table-thead > tr > th { font-size: 11px; font-weight: 590; }
+.records-table .ant-table-tbody > tr > td { font-size: 12px; }
+.records-table .ant-table-tbody > tr.row-open > td { background: color-mix(in srgb, var(--blue) 10%, transparent); }
+.records-table .reason { display: block; color: var(--label-secondary); font-size: 11px; }
+.records-table .side { margin-left: 6px; font-weight: 400; font-family: var(--font); }
+.records-table .side.buy { color: var(--up-text); }
+.records-table .side.sell { color: var(--down-text); }
+.row.tight .ant-segmented { flex-shrink: 0; }
+.row.tight .ant-input-search { flex: 1; }
+.detail-head .detail-actions { margin-left: auto; display: inline-flex; gap: 6px; }
+.detail .ant-descriptions-item-label { color: var(--label-secondary); font-size: 12px; width: 84px; }
+.detail .ant-descriptions-item-content { font-size: 12px; font-variant-numeric: tabular-nums; word-break: break-word; user-select: text; }
+.detail .ant-descriptions-row > th, .detail .ant-descriptions-row > td { padding-bottom: 4px; }
+.detail .timeline-item { display: inline-flex; gap: 10px; font-size: 12px; }
+.detail .timeline-item span { color: var(--label-secondary); font-variant-numeric: tabular-nums; }
+.detail .ant-timeline .ant-timeline-item { padding-bottom: 8px; font-size: 12px; }
+.detail .detail-raw .ant-collapse-header { padding-left: 0 !important; font-size: 12px; color: var(--label-secondary); }
+.detail .detail-raw pre {
+  margin: 0; font-family: var(--font-mono); font-size: 11px;
+  white-space: pre-wrap; word-break: break-word; color: var(--label-secondary); user-select: text;
+}
+
+/* ================= 持仓追踪 ================= */
+.gauge-bar.ant-progress { margin: 0; line-height: 0; }
+.gauge-bar.ant-progress .ant-progress-outer { display: block; }
+.gauge-bar.ant-progress .ant-progress-inner { background: var(--bg-fill-strong); }
+
+/* ================= 扫描页 ================= */
+.screen-table .ant-table { background: transparent; font-size: 12px; }
+.screen-table .ant-table-thead > tr > th { font-size: 11px; white-space: nowrap; }
+.screen-table .ant-table-tbody > tr > td { white-space: nowrap; }
+.screen-table .ant-table-tbody > tr > td.sym { font-family: var(--font-mono); font-weight: 590; }
+.screen-table .ant-table-tbody > tr > td.rank { color: var(--label-tertiary); font-variant-numeric: tabular-nums; }
+.screen-table .ant-table-tbody > tr.dim > td { color: var(--label-tertiary); }
+.screen-table .ant-table-tbody > tr > td.rs-cell { border-radius: 0; }
+.screen-table .ant-table-tbody > tr > td.rs-cell.dim { color: var(--label-tertiary); }
+.screen-table .ant-btn.sym-btn { padding: 0; height: auto; font-family: var(--font-mono); font-weight: 590; font-size: 12px; }
+.screen-table .ant-btn.sym-btn:hover { text-decoration: underline; }
+.row.tight .ant-select.grow { flex: 1; }
+.row.tight .ant-input-number.narrow, .row.tight .ant-input.narrow { flex: 0 0 92px; max-width: 92px; }
+/* 周期多选:可勾选的胶囊,放在一条分段控件样式的槽里 */
+.tf-picks { display: inline-flex; gap: 2px; padding: 2px; background: var(--bg-fill); border-radius: 8px; }
+.tf-picks .ant-tag { margin: 0; padding: 2px 10px; border-radius: 6px; font-size: 12px; line-height: 1.5; background: none; border: none; color: var(--label); }
+.tf-picks .ant-tag-checkable:not(.ant-tag-checkable-checked):hover { background: var(--bg-fill); color: var(--label); }
+.tf-picks .ant-tag-checkable-checked { background: var(--bg-control); color: var(--label); box-shadow: var(--shadow-control); font-weight: 510; }
+
+/* ================= 板块页 ================= */
+.stock-row .ant-btn-sm { padding-inline: 6px; height: 22px; }
+.stock-row .stock-sub { min-width: 0; }
+/* 业务标签胶囊(点击可改):10px 字、16px 高;没有标签时退成灰字 */
+.stock-tag.ant-tag {
+  flex-shrink: 0; margin: 0; font-size: 10px; line-height: 16px; padding: 0 7px; border-radius: 8px;
+  max-width: 96px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer;
+}
+.stock-tag.ant-tag.none { background: var(--bg-fill); color: var(--label-tertiary); }
+.stock-tag.ant-tag:hover { filter: brightness(0.92); }
+.stock-tag-input.ant-input { font-size: 11px; padding: 1px 6px; height: 20px; }
+#section-alerts .group.ant-list { margin-bottom: 8px; }
+
+/* ================= 行情页 ================= */
+.pa-readout-grid .ant-descriptions-item-label { color: var(--label-secondary); font-size: 12px; white-space: nowrap; }
+.pa-readout-grid .ant-descriptions-item-content { font-size: 12px; }
+.pa-readout-grid .ant-descriptions-row > th, .pa-readout-grid .ant-descriptions-row > td { padding-bottom: 3px; }
+.sub-head .ant-btn { margin-left: auto; }
+
+/* ================= 交易分析 ================= */
+.review-table.ant-table-wrapper { margin-top: 8px; }
+.review-table .ant-table { background: transparent; font-size: 11.5px; }
+.review-table .ant-table-thead > tr > th { font-size: 11px; font-weight: 500; }
+.review-table .ant-table-tbody > tr > td { font-size: 11.5px; vertical-align: top; }
+.review-table .ant-tag { margin: 0; font-size: 10.5px; line-height: 16px; padding: 0 5px; }
+.detail-section .ant-descriptions-item-label { color: var(--label-secondary); font-size: 12px; }
+.detail-section .ant-descriptions-item-content { font-size: 12px; font-variant-numeric: tabular-nums; }
+.detail-section .ant-descriptions-row > th, .detail-section .ant-descriptions-row > td { padding-bottom: 4px; }
+
+/* ================= 回测 ================= */
+.rule-builder .row.tight { margin-bottom: 6px; }

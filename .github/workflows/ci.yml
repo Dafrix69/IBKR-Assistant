@@ -29,3 +29,22 @@ jobs:
             echo "::error title=vitest::$msg"
             exit 1
           }
+
+  # React 壳:只做类型检查与 Vite 构建,不下载 Electron 二进制、不打包
+  desktop-ui:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: desktop
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - run: npm ci
+      - run: npm run ui:typecheck
+      - run: npm run ui:build

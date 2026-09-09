@@ -88,9 +88,9 @@ cd desktop && npm install && npm start             # 启动前会自动确认引
 
 ```bash
 cd engine-ts && npx tsc --noEmit && npx vitest run  # 引擎:单测 + 黄金回归 + RPC 契约回放,全部离线
-cd desktop && node tools/audit_ui.js                # 界面静态审计
-cd desktop && node tools/build_preview.js . .uipreview/preview.html tools/mock-bridge.js \
-  && npx electron tools/capture_pages.js .uipreview/preview.html .uipreview/check --check   # 界面 smoke
+cd desktop && npm run ui:typecheck                  # 界面类型检查(React + TS)
+cd desktop && npm run ui:preview \
+  && npx electron tools/capture_pages.js renderer-react/dist-preview/index.html .uipreview/check --check   # 界面 smoke:每页各点一遍,控制台零报错
 ```
 
 命令行也能用同一个引擎:`node dist/src/cli.js selftest | validate | parse | run | rpc`,危险程度递增,`run` 必须带 `--i-understand-this-places-real-orders`。
@@ -114,7 +114,7 @@ cd desktop && node tools/build_preview.js . .uipreview/preview.html tools/mock-b
 | 目录 | 内容 |
 |---|---|
 | `engine-ts/` | 交易引擎(TypeScript):`src/` 实现、`tests/` 测试、`baseline/` 回归基线、`examples/` 校验样例 |
-| `desktop/` | Electron 桌面端:主进程、preload、`renderer/app/*.js` 按页面拆分的界面、`tools/` 预览台 / 截图 / 审计 / 压测 / 打包 |
+| `desktop/` | Electron 桌面端:主进程、preload、`renderer-react/` 界面(React + Ant Design 5,Vite 构建;壳 / 页面 / store 分层,见 `docs/features/ui.md`)、`tools/` 预览数据源 / 截图 smoke / 压测 / 打包 |
 | `prompts/` | 提示词资产,按版本号只增不改 |
 | `config/` | `settings.example.json` |
 | `docs/` | `features/` 功能文档、`journal/` 事故记录、`briefs/` 与 `reports/` 历史文档、`screenshots/` |

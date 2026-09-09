@@ -1,0 +1,586 @@
+import { useEffect, useRef, useState } from 'react';
+import { Alert, Button, Collapse, InputNumber, Progress, Select, Space, Switch } from 'antd';
+import { dafri, errorMessage } from '../bridge';
+import { fmtMoney, fmtNum } from '../lib/format';
+import { showBanner } from '../store/banner';
+import { loadRecords } from '../store/records';
+import { gatewayName, pickableAccounts, useStatus } from '../store/status';
+import { loadTracker, useTracker, type LiveRow, type Position, type Track, type TrackTargets } from '../store/tracker';
+import { EmptyState, Meta, Notice, PageHead, Primer, SectionTitle, StatusCard, type Tone } from '../ui/kit';
+
+const TRACK_STATE_LABEL: Record<string, string> = {
+  holding: '持有中',
+  take_profit: '止盈已触发',
+  profit_trail: '利润回撤已触发',
+  stop_loss: '止损已触发',
+  closed: '持仓已不在',
+};
+
+/** 盈亏的颜色和符号。0 不着色——把 0 画成绿色会让人以为赚了。 */
+function Pnl({ value, pct }: { value: number | null | undefined; pct?: number | string | null }) {
+  if (value === null || value === undefined) return <span className="muted">—</span>;
+  const up = value > 0;
+  const cls = value === 0 ? 'muted' : up ? 'pnl-up' : 'pnl-down';
+  const sign = up ? '+' : '';
+  return (
+    <span className={cls}>
+      {`${sign}${fmtMoney(value)}`}
+      {pct !== null && pct !== undefined ? <span className="pnl-pct">{` ${sign}${pct}%`}</span> : null}
+    </span>
+  );
+}
+
+/** 期权腿显示成票面样子:SPX 7615P 2026-09-01;组合用引擎给的组合名。 */
+function legLabel(symbol: string, secType: string, contract?: Record<string, unknown>): string {
+  const c = contract || {};
+  if (secType === 'BAG') return c.label ? `${symbol} · ${c.label}` : `${symbol} 组合`;
+  if (secType !== 'OPT' && secType !== 'FOP') return symbol;
+  let expiry = String(c.lastTradeDateOrContractMonth || '').slice(0, 8);
+  if (expiry.length === 8) expiry = `${expiry.slice(0, 4)}-${expiry.slice(4, 6)}-${expiry.slice(6)}`;
+  const strike = c.strike != null ? String(Number(c.strike)) : '';
+  const right = String(c.right || '').slice(0, 1).toUpperCase();
+  return [symbol, strike + right, expiry].filter((s) => s.trim()).join(' ');
+}
+
+export function TrackerPage() {
+  const status = useStatus();
+  const snap = useTracker();
+  const connected = Boolean(status?.broker_connected);
+  const [openKey, setOpenKey] = useState<string | null>(null);
+  const [flashId, setFlashId] = useState<string | null>(null);
+  const trackersHead = useRef<HTMLHeadingElement>(null);
+
+  // 进页即刷;停留期间持仓的现价与盈亏要跟着行情走,每 5 秒重读一次(引擎侧是低优先级请求)
+  useEffect(() => {
+    void loadTracker(true);
+    const t = setInterval(() => {
+      if (connected) void loadTracker(true);
+    }, 5_000);
+    return () => clearInterval(t);
+  }, [connected]);
+
+  /** 建完追踪后把视线带过去:滚到「正在追踪」,并把那张新卡片闪一下。 */
+  function reveal(trackId: string | null) {
+    trackersHead.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (!trackId) return;
+    setFlashId(trackId);
+    setTimeout(() => setFlashId((v) => (v === trackId ? null : v)), 1800);
+  }
+
+  const byKey = new Map(snap.positions.map((p) => [p.key, p]));
+  const combos = snap.positions.filter((p) => p.sec_type === 'BAG');
+  const inCombo = new Set(combos.flatMap((c) => c.legs || []));
+  const singles = snap.positions.filter((p) => p.sec_type !== 'BAG' && !inCombo.has(p.key));
+
+  return (
+    <section className="tab-panel active" id="page-tracker">
+      <PageHead
+        title="持仓追踪"
+        extra={
+          <Button size="small" onClick={() => void loadTracker(true)}>
+            刷新持仓
+          </Button>
+        }
+      />
+      <Notice tone="warn" title="这一页会真的发单。">
+        打开「到价自动平仓」后,价格触及止盈 / 止损时软件会自动发出平仓单;仍受三道闸门约束:自动执行已打开、实盘账户需在「设置」里允许实盘下单、熔断期间不发。
+        <strong>软件必须开着。</strong>盯盘在本机进行,关掉就不再盯,不同于挂在券商服务器上的条件单。
+      </Notice>
+
+      <SectionTitle>账户持仓</SectionTitle>
+      <Primer id="intro-tracker" intro summary="哪些持仓会出现在这里">
+        <p className="hint">
+          这里只列<strong>券商账户里的实际持仓</strong>(IBKR 走 portfolio / positions,富途走持仓查询),
+          且只含配置里有别名的账户。已校验未发送、排队中、已提交未成交的订单都不是持仓,不会出现在这里,也不能追踪。
+        </p>
+      </Primer>
+      <div className="cards" id="positions">
+        {snap.positionsError ? (
+          <EmptyState>{snap.positionsError}</EmptyState>
+        ) : !snap.positions.length ? (
+          <EmptyState>{connected ? '这个账户里没有持仓。' : `连接${gatewayName(status)}之后才能读到持仓。`}</EmptyState>
+        ) : (
+          <>
+            {/* 组合优先:一只蝴蝶就是一张卡,组合价格与盈亏在最上面,整组一个追踪表单;腿明细折叠在下面 */}
+            {combos.map((combo) => {
+              const legs = (combo.legs || []).map((k) => byKey.get(k)).filter((p): p is Position => Boolean(p));
+              return (
+                <StatusCard
+                  key={combo.key}
+                  title={`${combo.symbol} · ${combo.label}`}
+                  extra={<span className={`side ${combo.quantity > 0 ? 'buy' : 'sell'}`}>{combo.net_side === 'credit' ? '贷方(收权利金)' : '借方(付权利金)'}</span>}
+                >
+                  <PositionBody p={combo} compact={false} openKey={openKey} setOpenKey={setOpenKey} onCreated={reveal} />
+                  <Collapse
+                    ghost
+                    size="small"
+                    className="combo-legs"
+                    items={[
+                      {
+                        key: 'legs',
+                        label: <span className="muted">{`腿明细(${legs.length})· 按腿追踪`}</span>,
+                        children: legs.map((p) => (
+                          <StatusCard key={p.key} title={p.label || legLabel(p.symbol, p.sec_type, p.contract)} extra={<span className={`side ${p.quantity > 0 ? 'buy' : 'sell'}`}>{p.quantity > 0 ? '多头' : '空头'}</span>}>
+                            <PositionBody p={p} compact openKey={openKey} setOpenKey={setOpenKey} onCreated={reveal} />
+                          </StatusCard>
+                        )),
+                      },
+                    ]}
+                  />
+                </StatusCard>
+              );
+            })}
+            {singles.map((p) => (
+              <StatusCard key={p.key} title={p.label || legLabel(p.symbol, p.sec_type, p.contract)} extra={<span className={`side ${p.quantity > 0 ? 'buy' : 'sell'}`}>{p.quantity > 0 ? '多头' : '空头'}</span>}>
+                <PositionBody p={p} compact={false} openKey={openKey} setOpenKey={setOpenKey} onCreated={reveal} />
+              </StatusCard>
+            ))}
+          </>
+        )}
+      </div>
+
+      <SectionTitle innerRef={trackersHead}>正在追踪</SectionTitle>
+      <div className="cards" id="trackers">
+        {!snap.tracks.length ? (
+          <EmptyState>还没有在追踪任何持仓。在上面的持仓卡片里设置止盈止损。</EmptyState>
+        ) : (
+          snap.tracks.map((t) => (
+            <TrackCard key={t.id} t={t} live={snap.rows[t.id] || { id: t.id }} hosted={snap.hosted[t.id]} delayed={snap.delayed} connected={connected} flash={t.id === flashId} />
+          ))
+        )}
+      </div>
+    </section>
+  );
+}
+
+// ---- 一条持仓(正股、期权腿或组合)的卡片主体:数量、成本、现价、盈亏、追踪表单 ----------------
+
+function PositionBody({
+  p,
+  compact,
+  openKey,
+  setOpenKey,
+  onCreated,
+}: {
+  p: Position;
+  compact: boolean;
+  openKey: string | null;
+  setOpenKey: (k: string | null) => void;
+  onCreated: (id: string | null) => void;
+}) {
+  const isCombo = p.sec_type === 'BAG';
+  const unit = isCombo ? '组' : p.sec_type === 'OPT' ? '张' : '股';
+  // 组合的成本/现价是"每组净价"(IBKR 口径含乘数的成本 → 按乘数折回每股价),借方/贷方要标出来
+  const perUnit = (v: number | null | undefined) => (isCombo && v != null ? v / (p.multiplier || 100) : v);
+  const open = openKey === p.key;
+  return (
+    <>
+      <Meta
+        items={[
+          `${Math.abs(p.quantity)} ${unit}`,
+          `${isCombo ? (p.net_side === 'credit' ? '净收' : '净付') : '成本'} ${fmtMoney(perUnit(p.avg_cost))}`,
+          <span className={isCombo ? 'strong' : undefined}>{`${isCombo ? '组合现价' : '现价'} ${p.market_price != null ? fmtMoney(p.market_price) : '—'}`}</span>,
+          !compact ? `账户 ${p.account}` : null,
+        ]}
+      />
+      <Meta
+        items={[
+          isCombo ? '组合未实现盈亏' : '未实现盈亏',
+          <Pnl value={p.unrealized_pnl} pct={p.unrealized_pct != null ? Number(p.unrealized_pct).toFixed(2) : null} />,
+          p.pnl_source === 'computed' ? (
+            <span className="muted" title="券商这条路没报盈亏(只给了成本),这里用与追踪器同一套口径算出来;对账以券商为准。">
+              本地按现价计算
+            </span>
+          ) : null,
+        ]}
+      />
+      {p.tracked ? (
+        <div className="muted">已在追踪中,设置见下方。</div>
+      ) : (
+        <>
+          {/* 表单默认收起:十个字段摊在每张卡片里,两只持仓就是两屏表单。一次只展开一张 */}
+          <div className="row tight track-toggle">
+            <Button size="small" onClick={() => setOpenKey(open ? null : p.key)}>
+              {open ? '收起' : '设置追踪'}
+            </Button>
+          </div>
+          {open ? <TrackForm p={p} onCreated={onCreated} /> : null}
+        </>
+      )}
+    </>
+  );
+}
+
+/** 给一个持仓配止盈止损的表单。刻意做在卡片里——设置的对象就在眼前,不用记。 */
+function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: string | null) => void }) {
+  const status = useStatus();
+  const long = p.quantity > 0;
+  const isCombo = p.sec_type === 'BAG';
+  const [tp, setTp] = useState<number | null>(null);
+  const [sl, setSl] = useState<number | null>(null);
+  const [trail, setTrail] = useState<number | null>(null);
+  const [profitDd, setProfitDd] = useState<number | null>(null);
+  const [tiers, setTiers] = useState(false);
+  const [fraction, setFraction] = useState<number | null>(null);
+  const [auto, setAuto] = useState(false);
+  const [orderType, setOrderType] = useState<'MKT' | 'LMT'>(isCombo ? 'LMT' : 'MKT');
+  const [host, setHost] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const acct = pickableAccounts(status).find((a) => a.alias === p.account);
+  const isPaper = acct ? acct.is_paper : true;
+  const str = (v: number | null) => (v === null || v === undefined ? '' : String(v));
+
+  async function start() {
+    const spec = {
+      key: p.key,
+      take_profit: str(tp),
+      stop_loss: str(sl),
+      trail_pct: str(trail),
+      profit_drawdown_pct: tiers ? '' : str(profitDd),
+      profit_drawdown_preset: tiers ? 'fly' : undefined,
+      close_fraction_pct: str(fraction) || undefined,
+      auto_close: auto,
+      order_type: orderType,
+      host_at_broker: host,
+    };
+    if (spec.host_at_broker && !spec.auto_close) {
+      // 托管单就是授权发单——没有总开关的托管是自相矛盾的设置
+      showBanner('托管到券商需先打开「到价自动平仓」:挂托管单即发单授权。', false);
+      return;
+    }
+    if (spec.host_at_broker) {
+      const ok = await dafri.confirm({
+        title: '托管到券商服务器',
+        message: `${p.symbol} 的止盈/止损将作为 GTC 单挂在券商服务器上。`,
+        detail:
+          `数量 ${Math.abs(p.quantity)} · 账户 ${p.account}\n` +
+          '软件关闭后托管单仍然有效;利润回撤停损停在最后一次调整的价位。\n' +
+          '触发由券商实时行情决定,一张成交其余自动撤销(OCA)。',
+        confirmLabel: '我确认',
+      });
+      if (!ok) return;
+    } else if (spec.auto_close) {
+      // 这一步是在授权软件替你发单,值得一次明确的确认
+      const ok = await dafri.confirm({
+        title: '开启到价自动平仓',
+        message: `${p.symbol} 到价后会自动发出平仓单,不再询问。`,
+        detail: `数量 ${Math.abs(p.quantity)} · 账户 ${p.account} · ${orderType === 'MKT' ? '市价平仓' : '限价平仓'}\n软件关闭后不再盯盘。`,
+        confirmLabel: '我确认',
+      });
+      if (!ok) return;
+    }
+    setSaving(true);
+    try {
+      const created = await dafri.addTracker(spec);
+      showBanner(`已开始追踪 ${p.symbol},下面「正在追踪」里可以看盯盘进度。`, true);
+      await loadTracker(true);
+      onCreated(created?.track?.id || null);
+    } catch (err) {
+      showBanner(errorMessage(err), false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const num = (props: { label: string; hint: string; value: number | null; onChange: (v: number | null) => void; disabled?: boolean; autoFocus?: boolean }) => (
+    <label className="track-field">
+      <span>{props.label}</span>
+      <InputNumber
+        min={0}
+        step={0.01}
+        placeholder={props.hint}
+        value={props.value}
+        disabled={props.disabled}
+        autoFocus={props.autoFocus}
+        onChange={(v) => props.onChange(v === null || v === undefined ? null : Number(v))}
+      />
+    </label>
+  );
+
+  return (
+    <div className="track-form">
+      {num({ label: '止盈价', hint: long ? '高于现价' : '低于现价', value: tp, onChange: setTp, autoFocus: true })}
+      {num({ label: '止损价', hint: long ? '低于现价' : '高于现价', value: sl, onChange: setSl })}
+      {/* 两个"追踪"是不同刻度,标签必须自解释:价格回撤 5% 在利润口径上会被成本杠杆放大 */}
+      {num({ label: '跟踪止损 %(按价格)', hint: '价格从峰值回落 N%,全平', value: trail, onChange: setTrail })}
+      {num({ label: '利润回撤 %(按利润)', hint: '利润从峰值缩水 N%', value: profitDd, onChange: setProfitDd, disabled: tiers })}
+      <label className="switch-row">
+        <span className="group-label">
+          分档利润回撤(蝶式 40/30/20)
+          <span className="sub">按浮盈相对成本的倍数换档:&lt;1× 让 40%、1–3× 让 30%、≥3× 让 20%,15:00 后一律减半。勾上就不看上面那个固定百分比</span>
+        </span>
+        <Switch
+          checked={tiers}
+          onChange={(v) => {
+            setTiers(v);
+            if (v) setProfitDd(null);
+          }}
+        />
+      </label>
+      {/* 触发后平掉多少仓位:100 = 全平,50 = 卖一半锁利。向下取整,绝不超过持仓 */}
+      {num({ label: '触发后平仓比例 %', hint: '默认 100 全平,50=卖一半', value: fraction, onChange: setFraction })}
+      <label className="switch-row">
+        <span className="group-label">
+          到价自动平仓
+          <span className="sub">到价即自动发平仓单,不再询问;仍受自动执行、实盘开关、熔断三道闸门约束</span>
+        </span>
+        <Switch checked={auto} onChange={setAuto} />
+      </label>
+      <label className="track-field">
+        <span>平仓方式</span>
+        <Select
+          value={orderType}
+          disabled={isCombo}
+          onChange={(v) => setOrderType(v)}
+          options={[
+            { value: 'MKT', label: '市价(一定成交)' },
+            { value: 'LMT', label: '限价(控价,可能不成交)' },
+          ]}
+        />
+      </label>
+      {/* 托管到券商:GTC+OCA 挂在 IBKR 服务器,关机也生效;富途账户引擎会当场拒绝 */}
+      <label className="switch-row">
+        <span className="group-label">
+          止盈/止损托管到券商(IBKR)
+          <span className="sub">GTC 单挂在券商服务器,关机也触发,不受本机轮询与行情延迟影响。利润回撤为动态停损,软件开着时按秒调整,关掉则停在最后价位</span>
+        </span>
+        <Switch checked={host} disabled={isCombo} onChange={setHost} />
+      </label>
+      {isCombo ? (
+        <div className="muted combo-note">
+          <div>
+            组合按整组净价触发。平仓会发一张腿方向全部反转的 BAG 限价单(组合不发市价单:每条腿各吃一次价差)。托管到券商对组合仍不可用。
+          </div>
+          <div>
+            {isPaper ? (
+              <>
+                <span className="tag paper">模拟账户</span> 组合追踪与到价自动平仓已完全开放,不需要任何额外开关——就在这里测。
+              </>
+            ) : (
+              <>
+                <span className="tag live">实盘账户</span> 组合平仓单还没在实盘核对过:到价会算、会提醒,但不会发单,除非在配置里打开
+                policies.allow_combo_live。建议先在模拟账户跑通。
+              </>
+            )}
+          </div>
+        </div>
+      ) : null}
+      <Button type="primary" size="small" loading={saving} onClick={() => void start()}>
+        开始追踪
+      </Button>
+    </div>
+  );
+}
+
+// ---- 正在追踪的一条 ------------------------------------------------------------------------
+
+const GAUGE_COLOR: Record<'ok' | 'warn' | 'bad', string> = { ok: 'var(--green)', warn: 'var(--orange)', bad: 'var(--red)' };
+
+/** 一条"离触发还有多远"的量表。没有现价就不画——画一条假的比不画更坏。 */
+function Gauge({ live, targets }: { live: LiveRow; targets: TrackTargets }) {
+  const price = live.price;
+  if (price == null) {
+    return (
+      <div className="track-gauge">
+        <span className="muted">拿不到现价,本轮不判断</span>
+      </div>
+    );
+  }
+  const rows: { label: string; target: number; note: string; tone: 'ok' | 'warn' | 'bad' }[] = [];
+  const pending: string[] = [];
+  const hasTrail = Boolean(targets.profit_drawdown_tiers) || targets.profit_drawdown_pct != null;
+  if (live.profit_trail_stop != null) {
+    const pct = live.profit_drawdown_threshold;
+    rows.push({
+      label: pct != null ? `利润回撤 ${fmtNum(pct)}%` : '利润回撤',
+      target: live.profit_trail_stop,
+      note: live.profit_peak != null ? `峰值利润 ${fmtMoney(live.profit_peak)}` : '',
+      tone: 'warn',
+    });
+  } else if (hasTrail) {
+    // 设了回撤、但峰值利润还没越过成本:回撤无从谈起,不是"没设"
+    const peak = live.profit_peak;
+    pending.push(
+      peak != null && peak <= 0
+        ? `利润回撤已设,但这笔从建仓起还没盈利过(峰值利润 ${fmtMoney(peak)})——先转正才会开始算回撤,在那之前只有止损能保护它。`
+        : '利润回撤已设,等第一次盈利后开始记峰值。',
+    );
+  }
+  if (targets.take_profit != null) rows.push({ label: '止盈', target: targets.take_profit, note: '', tone: 'ok' });
+  if (live.stop_effective != null) {
+    rows.push({
+      label: live.trail_stop != null && live.stop_effective === live.trail_stop ? '跟踪止损' : '止损',
+      target: live.stop_effective,
+      note: '',
+      tone: 'bad',
+    });
+  }
+  if (!rows.length && !pending.length) {
+    return (
+      <div className="track-gauge">
+        <span className="muted">没设任何触发条件,只是挂着看</span>
+      </div>
+    );
+  }
+  return (
+    <div className="track-gauge">
+      {pending.map((text) => (
+        <div className="muted" key={text}>
+          {text}
+        </div>
+      ))}
+      {rows.map((r) => {
+        const gap = r.target - price;
+        const pct = price ? Math.abs(gap / price) * 100 : 0;
+        // 距离越近条越满:20% 以外就算"还远",满格 = 已经贴着触发价
+        const width = Math.max(2, Math.min(100, 100 - Math.min(pct, 20) * 5));
+        return (
+          <div className="gauge-row" key={r.label}>
+            <span className="gauge-label">{r.label}</span>
+            <Progress percent={width} showInfo={false} size={['100%', 6]} strokeColor={GAUGE_COLOR[r.tone]} className="gauge-bar" />
+            <span className="gauge-value">{`${fmtMoney(r.target)} · ${gap >= 0 ? '还差 +' : '还差 '}${fmtNum(gap, 4)}(${fmtNum(pct, 1)}%)`}</span>
+            {r.note ? <span className="muted">{r.note}</span> : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function TrackCard({
+  t,
+  live,
+  hosted,
+  delayed,
+  connected,
+  flash,
+}: {
+  t: Track;
+  live: LiveRow;
+  hosted?: { orders: { kind: string; label: string }[] };
+  delayed: boolean;
+  connected: boolean;
+  flash: boolean;
+}) {
+  const status = useStatus();
+  const [busy, setBusy] = useState<'toggle' | 'close' | 'delete' | null>(null);
+  const fired = Boolean(t.fired_at);
+  const kind: Tone = fired ? (t.fired_state === 'take_profit' ? 'ok' : 'bad') : t.enabled ? 'info' : 'warn';
+  const targets = t.targets || {};
+  const autoClose = t.auto_close || {};
+  const ddTiers = targets.profit_drawdown_tiers || null;
+  const frac = autoClose.close_fraction_pct;
+  const now = live.profit_drawdown_threshold;
+
+  async function toggle() {
+    setBusy('toggle');
+    try {
+      await dafri.updateTracker({ id: t.id, enabled: !t.enabled });
+      await loadTracker(false);
+    } catch (err) {
+      showBanner(errorMessage(err), false);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function closeNow() {
+    const ok = await dafri.confirm({
+      title: '立即平仓',
+      message: `马上把 ${t.symbol} 的持仓平掉?`,
+      detail: '这会立刻发出一张平仓单,和到价自动平仓走的是同一条路。',
+      confirmLabel: '平仓',
+    });
+    if (!ok) return;
+    setBusy('close');
+    try {
+      const res = await dafri.closePositionNow(t.id);
+      showBanner(`平仓单已发出:${res?.fired?.reason ?? ''}`, true);
+      await Promise.all([loadTracker(true), loadRecords()]);
+    } catch (err) {
+      showBanner(errorMessage(err), false);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function remove() {
+    const ok = await dafri.confirm({
+      title: '删除追踪',
+      message: `不再追踪 ${t.symbol}?`,
+      detail: '只删除追踪设置,不影响持仓本身。',
+      confirmLabel: '删除',
+    });
+    if (!ok) return;
+    setBusy('delete');
+    try {
+      await dafri.deleteTracker(t.id);
+      await loadTracker(false);
+    } catch (err) {
+      showBanner(errorMessage(err), false);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <StatusCard
+      tone={kind}
+      flash={flash}
+      title={`${legLabel(t.symbol, t.sec_type, t.contract)} · ${t.account}`}
+      extra={
+        <span className={`status ${fired ? (t.fired_state === 'take_profit' ? 'filled' : 'rejected') : 'pending'}`}>
+          {fired ? TRACK_STATE_LABEL[t.fired_state || ''] || '已触发' : t.enabled ? TRACK_STATE_LABEL[live.state || ''] || '持有中' : '已暂停'}
+        </span>
+      }
+    >
+      <Meta
+        items={[
+          targets.take_profit ? `止盈 ${fmtMoney(targets.take_profit)}` : null,
+          targets.stop_loss ? `止损 ${fmtMoney(targets.stop_loss)}` : null,
+          // 分档时阈值每一轮都可能变,显示当前生效的那一档而不是配置里的静态值
+          targets.profit_drawdown_pct || ddTiers
+            ? (ddTiers ? `利润回撤 分档${now != null ? ` · 当前 ${now}%` : ''}` : `利润回撤 ${targets.profit_drawdown_pct}%`) + (frac && frac < 100 ? ` → 平 ${frac}%` : '')
+            : null,
+          ddTiers && live.profit_peak != null ? `峰值利润 ${fmtMoney(live.profit_peak)}` : null,
+          targets.trail_pct ? `跟踪 ${targets.trail_pct}%${live.trail_stop ? ` → ${fmtMoney(live.trail_stop)}` : ''}` : null,
+          t.peak ? `最有利价 ${fmtMoney(t.peak)}` : null,
+          <span className={autoClose.enabled ? 'tag live' : 'tag paper'}>{autoClose.enabled ? '自动平仓已开' : '仅提醒'}</span>,
+        ]}
+      />
+
+      {autoClose.host_at_broker ? (
+        <Meta
+          items={[
+            <span className="tag live">券商托管</span>,
+            ...(hosted?.orders?.length
+              ? hosted.orders.map((o) => (o.kind === 'ptrail' ? `${o.label}(秒级调整)` : o.label))
+              : [<span className="muted">{connected ? '托管单尚未挂出(对账中,或被闸门拦住——看下方提示)' : `连接${gatewayName(status)}后自动挂出`}</span>]),
+            delayed ? <span className="muted">行情可能延迟:动态调整或滞后;触发由券商实时行情决定,不受影响</span> : null,
+          ]}
+        />
+      ) : null}
+
+      {live.unrealized_pnl !== undefined ? (
+        <Meta items={['未实现盈亏', <Pnl value={live.unrealized_pnl} pct={live.unrealized_pct} />, live.price != null ? `现价 ${fmtMoney(live.price)}` : null]} />
+      ) : null}
+      {/* 盯盘条:离触发还有多远。分档回撤的触发价每轮都会跳,所以取引擎算好的那个 */}
+      {!fired && t.enabled ? <Gauge live={live} targets={targets} /> : null}
+      {live.reason ? <div className="reason">{live.reason}</div> : null}
+      {live.blocked?.length ? <Alert type="warning" showIcon message="到价了但没有平仓" description={live.blocked.join('、')} style={{ marginTop: 8 }} /> : null}
+
+      <Space size={6} className="card-actions" wrap>
+        <Button size="small" loading={busy === 'toggle'} onClick={() => void toggle()}>
+          {t.enabled ? '暂停' : '恢复'}
+        </Button>
+        <Button size="small" className="btn-warn" loading={busy === 'close'} onClick={() => void closeNow()}>
+          立即平仓
+        </Button>
+        <Button size="small" type="text" loading={busy === 'delete'} onClick={() => void remove()}>
+          删除
+        </Button>
+      </Space>
+    </StatusCard>
+  );
+}

@@ -8,8 +8,8 @@
 //
 // 每一页对应一个 PNG:<theme>-<scale>x-<width>-<tab>.png。K线 PA 页会先填标的、点「分析」再拍。
 //
-// --check:不只是拍照,还收集渲染进程的控制台错误。除了 index.html 里那 6 处已知的内联样式 CSP 提示,
-// 任何 error 级消息都算失败,K线 PA 页必须画出 canvas——这是 renderer 唯一的自动化 smoke:16 页各点一遍,控制台零报错。
+// --check:不只是拍照,还收集渲染进程的控制台错误。任何 error 级消息都算失败(CSP 违规也在内:
+// 动态注入的 <style> 都该带 nonce),K线 PA 页必须画出 canvas——这是渲染层唯一的自动化 smoke:每页各点一遍,控制台零报错。
 'use strict';
 const { app, BrowserWindow, nativeTheme } = require('electron');
 const fs = require('fs');
@@ -46,7 +46,17 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const NL = String.fromCharCode(10);
 
 async function shoot(win, name) {
-  const img = await win.webContents.capturePage();
+  // 隐藏窗口只在被截图时才合成一帧,canvas 图的 requestAnimationFrame 绘制发生在那一帧之后:
+  // 第一张里图是空的。有还没画的 canvas(仍是默认 300×150)就再截,最多三次。
+  let img = await win.webContents.capturePage();
+  for (let i = 0; i < 3; i++) {
+    const undrawn = await win.webContents.executeJavaScript(
+      `Array.from(document.querySelectorAll('canvas.pa-canvas')).some((c) => c.width === 300 && c.height === 150)`,
+    );
+    if (!undrawn) break;
+    await sleep(400);
+    img = await win.webContents.capturePage();
+  }
   fs.writeFileSync(path.join(outDir, `${name}.png`), img.toPNG());
 }
 
@@ -63,54 +73,77 @@ async function run() {
     });
     if (check) {
       win.webContents.on('console-message', (event) => {
-        // Electron ≥ 36:事件对象带 level('error' 等)与 message;旧的位置参数已废弃
-        if (event.level === 'error' && !/inline style/.test(String(event.message))) {
+        // Electron ≥ 36:事件对象带 level('error' 等)与 message;旧的位置参数已废弃。
+        // CSP 违规也算错误:动态 <style> 都该带 nonce(见 renderer-react/src/main.tsx),不再豁免
+        if (event.level === 'error') {
           consoleErrors.push(String(event.message).slice(0, 200));
         }
       });
     }
     await win.loadFile(previewPath);
     await sleep(600);
+    // 隐藏窗口里 CSS 过渡不会推进:控件从"禁用"翻到"可用"时会停在起始色,拍出来全是灰的。
+    // 截图只要终态,过渡与动画一律关掉(insertCSS 走调试通道,不受页面 CSP 约束)。
+    await win.webContents.insertCSS('*, *::before, *::after { transition: none !important; animation: none !important; }');
     // 叶子页:侧栏里不带 data-default 的项 + 合并页(行情 / 接入)页头分段控件里的子页
-    const tabs = await win.webContents.executeJavaScript(
-      `Array.from(document.querySelectorAll('.tab[data-tab]:not([data-default])')).map((b) => b.dataset.tab)`,
-    );
+    // 叶子页清单由 React 壳报出(window.__dafriLeafTabs:侧栏项 + 合并页的子页)
+    const tabs = await win.webContents.executeJavaScript(`window.__dafriLeafTabs || []`);
     const wanted = only ? only.split(',') : tabs;
     for (const tab of tabs) {
       if (!wanted.includes(tab)) continue;
       await win.webContents.executeJavaScript(
-        `document.querySelector('.tab[data-tab="${tab}"]').click(); document.querySelector('.content').scrollTop = 0;`,
+        `(() => {
+          if (window.__dafriNavigate) window.__dafriNavigate('${tab}');
+          const c = document.querySelector('#root .content');
+          if (c) c.scrollTop = 0;
+        })()`,
       );
       await sleep(350);
       if (tab === 'pa') {
+        // React 的受控输入框:直接赋 value 状态不会变,要走原生 setter 再派发 input 事件
         await win.webContents.executeJavaScript(`
           const s = document.getElementById('pa-symbol');
-          if (s && !s.value) { s.value = 'NVDA'; }
+          if (s && !s.value) {
+            Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(s, 'NVDA');
+            s.dispatchEvent(new Event('input', { bubbles: true }));
+          }
           const b = document.getElementById('btn-pa-run');
-          if (b) b.click();
+          if (b) setTimeout(() => b.click(), 50);
         `);
         await sleep(900);
       }
       if (demo) {
         const DEMO = {
-          trade: "(() => { try { localStorage.setItem('dafri-submit-accounts', JSON.stringify(['富途模拟', '模拟'])); } catch (e) {} if (typeof renderAccountPicker === 'function') renderAccountPicker(); const c = document.querySelector('#account-chips input[type=checkbox]'); if (c && !c.checked) c.click(); const t = document.getElementById('instruction'); if (t) t.value = '买入 AAPL 100股 limit 316,理由:回调到位'; const b = document.getElementById('btn-parse'); if (b) b.click(); })();",
+          trade: "(() => { const t = document.getElementById('instruction'); if (t) { Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(t, '买入 AAPL 100股 limit 316,理由:回调到位'); t.dispatchEvent(new Event('input', { bubbles: true })); } const b = document.getElementById('btn-parse'); if (b) setTimeout(() => b.click(), 50); })();",
           review: "(() => { const b = document.getElementById('btn-review-run'); if (b) b.click(); })();",
-          backtest: "(() => { const i = document.getElementById('bt-symbol'); if (i) i.value = 'NVDA'; const b = document.getElementById('btn-bt-run'); if (b) b.click(); })();",
-          book: "(() => { const i = document.getElementById('book-symbol'); if (i) i.value = 'SPY'; const b = document.getElementById('btn-book-load'); if (b) b.click(); })();",
+          records: "(() => { const r = document.querySelector('.records-table tbody tr[data-row-key]'); if (r) r.click(); })();",
+          tracker: "(() => { const b = [...document.querySelectorAll('#page-tracker button')].find((x) => x.textContent.trim() === '设置追踪'); if (b) b.click(); })();",
+          // React 的受控输入框:直接赋 value 状态不会变,要走原生 setter 再派发 input 事件
+          backtest: "(() => { const i = document.getElementById('bt-symbol'); if (i) { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(i, 'NVDA'); i.dispatchEvent(new Event('input', { bubbles: true })); } const b = document.getElementById('btn-bt-run'); if (b) setTimeout(() => b.click(), 50); })();",
+          book: "(() => { const i = document.getElementById('book-symbol'); if (i) { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(i, 'SPY'); i.dispatchEvent(new Event('input', { bubbles: true })); } const b = document.getElementById('btn-book-load'); if (b) setTimeout(() => b.click(), 50); })();",
           rs: "(() => { const b = document.getElementById('btn-rs-run'); if (b) b.click(); })();",
           inflection: "(() => { const b = document.getElementById('btn-infl-run'); if (b) b.click(); })();",
+          deviation: "(() => { const b = document.getElementById('btn-dev-run'); if (b) b.click(); })();",
         };
         if (DEMO[tab]) {
           await win.webContents.executeJavaScript(DEMO[tab]);
-          await sleep(900);
+          // 隐藏窗口里 requestAnimationFrame 来得慢,canvas 图要多等一拍才画出来
+          await sleep(1800);
         }
       }
       const name = `${theme}-${scale}x-${width}-${tab}`;
       if (check && tab === 'pa') {
-        const ok = await win.webContents.executeJavaScript(
-          `(() => { const c = document.querySelector('.pa-canvas'); return !!c && c.width > 0 && c.height > 0; })()`,
+        // 只在真出了结果时要求画布:首次启动那份数据源里 paAnalyze 是拒绝的,页面本就该显示"还没数据",
+        // 那种情况下要求 canvas 等于要求它凭空画一张图
+        const verdict = await win.webContents.executeJavaScript(
+          `(() => {
+            const c = document.querySelector('.pa-canvas');
+            if (c && c.width > 0 && c.height > 0) return 'drawn';
+            const box = document.getElementById('pa-result');
+            return box && box.querySelector('.empty, .empty-state, .ant-empty, .ant-alert') ? 'no-data' : 'missing';
+          })()`,
         );
-        if (!ok) consoleErrors.push('K线 PA 页没有画出 canvas');
+        if (verdict === 'missing') consoleErrors.push('K线 PA 页既没画出 canvas,也没说明为什么没有');
       }
       await shoot(win, name);
       manifest.push(name);

@@ -34,7 +34,22 @@ const CONFIG_PATH =
   (PACKAGED
     ? path.join(app.getPath('userData'), 'settings.json')
     : path.join(REPO_ROOT, 'config', 'settings.json'));
-const RENDERER_INDEX = path.join(__dirname, 'renderer', 'index.html');
+// 界面:renderer-react/dist(Vite 构建产物;npm start 的 prestart 会先构建)。
+// Ant Design 用 CSS-in-JS 注入样式,构建期生成的 nonce 要拼进响应头的 CSP,与页面里的 meta 一致。
+const REACT_DIST = path.join(__dirname, 'renderer-react', 'dist');
+const RENDERER_INDEX = path.join(REACT_DIST, 'index.html');
+// 每次发响应头时现读:开发时 ui:build / ui:watch 会重建出新的 nonce,启动时读死那一份的话,
+// 重载之后页面里的 <style nonce=新> 满足 meta 却不满足响应头,整套 AntD 样式被静默拦掉,界面变成无样式骨架。
+function styleNonce() {
+  try {
+    return fs.readFileSync(path.join(REACT_DIST, 'csp-nonce.txt'), 'utf8').trim();
+  } catch {
+    return '';
+  }
+}
+if (!fs.existsSync(RENDERER_INDEX)) {
+  console.error('界面产物不存在:先运行 npm run ui:build(或直接 npm start,它会自动构建)。');
+}
 
 /** renderer 允许调用的引擎方法。不在表里的一律拒绝,新增方法必须显式登记。 */
 const ALLOWED_RPC = new Set([
@@ -102,6 +117,8 @@ const ALLOWED_RPC = new Set([
   'tracker.update',
   'tracker.delete',
   'tracker.poll',
+  // 券商托管对账:界面按秒驱动,动态停损价的秒级调整走这条路。漏了它,托管单永远挂不出去
+  'tracker.reconcile',
   'tracker.close_now',
   'keychain.set',
   'data.export',
@@ -285,7 +302,7 @@ function isTrustedSender(event) {
   const frame = event.senderFrame;
   if (frame && frame.parent) return false; // 子 frame 不许下单
   const url = event.sender.getURL();
-  return url.startsWith('file://') && url.includes('renderer/index.html');
+  return url.startsWith('file://') && url.includes('renderer-react/dist/index.html');
 }
 
 function wireEngine() {
@@ -490,11 +507,12 @@ if (!gotLock) {
     if (await offerMoveToApplications()) return; // 已复制并打开新副本,本进程退出
     // 严格 CSP:不允许任何远程资源、不允许 eval
     session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+      const nonce = styleNonce();
       callback({
         responseHeaders: {
           ...details.responseHeaders,
           'Content-Security-Policy': [
-            "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'none'; form-action 'none'; base-uri 'none'",
+            `default-src 'none'; script-src 'self'; style-src 'self'${nonce ? ` 'nonce-${nonce}'` : ''}; img-src 'self' data:; font-src 'self'; connect-src 'none'; form-action 'none'; base-uri 'none'`,
           ],
         },
       });

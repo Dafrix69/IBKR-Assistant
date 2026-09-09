@@ -112,6 +112,16 @@ window.dafri = {
     VST:{last:208.8,close:211.0,change_pct:-1.04}}}),
   addSector: async()=>({}), deleteSector: async()=>({}), pickSector: async()=>({}),
   addSectorStock: async()=>({}), removeSectorStock: async()=>({}),
+  setSectorTag: async()=>({sector:{}}),
+  listIdeaDigests: async()=>({digests:[]}), digestIdeas: async()=>({}),
+  // 压力那份只为 K 线 PA 造数据,扫描三页拿它当空池即可——但方法必须在,否则整页只剩一条报错横幅
+  screenerRs: async()=>({sector:'压力测试', benchmark:'SPY', bench_last:645.2, counted:0, total:0,
+    fetched_at:'2026-09-08T14:00:00Z', windows:[], rows:[], tags:[]}),
+  screenerInflection: async()=>({sector:'压力测试', timeframes:[], ma_period:20, hit_count:0, total:0,
+    fetched_at:'2026-09-08T14:00:00Z', per_timeframe:{}, rows:[]}),
+  screenerDeviation: async()=>({symbol:'NVDA', timeframe:'1d', period:20, lookback:120, smooth:5,
+    z_extreme:2.0, bars:0, fetched_at:'2026-09-08T14:00:00Z', series:[], last:null, extreme:null,
+    extreme_label:'数据不够', window:null, readout:['压力数据源只造了 K 线 PA 的数据。']}),
   appInfo: async () => ({version:'0.2.0', electron:'40.0.0', configPath:'config/settings.json',
     enginePath:'src/ibkr_agent', engineRunning:true}),
   llmCatalog: async () => ({providers:[
