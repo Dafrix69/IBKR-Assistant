@@ -8,7 +8,7 @@
  */
 import type { AccountConfig, Settings } from "./config.js";
 import {
-  BrokerError, LegQuote, PlacementResult, bookLiquidity, cleanPrice, cryptoSymbol, finiteQuote,
+  BrokerError, LegQuote, PlacementResult, bookLiquidity, cleanPrice, finiteQuote,
   logStderr, redactForLog,
 } from "./broker.js";
 import type { FutuBridge, FutuQuoteCtx, FutuTradeCtx } from "./futuBridge.js";
@@ -740,7 +740,10 @@ export class FutuRouter {
     const codes: Record<string, string> = {};
     for (const symbol of symbols) {
       if (this.quoteCapability(symbol)) continue; // 指数交给公开源兜底
-      if (cryptoSymbol(symbol)) continue; // 加密现货是 IBKR/PAXOS 的事,富途没有;混进批量订阅会把整批拖垮
+      // 带前缀的记号(CRYPTO: / CONTFUT: / IND:)都是 IBKR 那边的合约写法:加密现货走
+      // PAXOS、商品走期货、指数走 Cboe,富途一个都没有。混进批量订阅会把整批拖垮,
+      // 直接跳过交给公开源兜底。
+      if (/^(CRYPTO|CONTFUT|FUT|IND):/.test(symbol.trim().toUpperCase())) continue;
       try {
         codes[symbol] = await this.code(symbol);
       } catch (exc) {

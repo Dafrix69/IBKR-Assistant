@@ -75,19 +75,51 @@ describe("killswitch", () => {
 describe("macro", () => {
   beforeEach(() => clearMacroCache());
 
-  it("VIX 与美债10Y 永远不给 ETF 替身(test_vix_and_10y_never_get_an_etf_stand_in)", () => {
-    const vix = MACRO_SYMBOLS.find((s) => s["key"] === "^VIX")!;
-    const tnx = MACRO_SYMBOLS.find((s) => s["key"] === "^TNX")!;
-    expect(vix["live"]).toBeNull();
-    expect(tnx["live"]).toBeNull();
-    expect(liveTickers()).not.toContain("VIXY");
-    expect(liveTickers()).not.toContain("TLT");
-    // 比特币要看币价本身:不给 IBIT 替身,走 PAXOS 现货;原油这格是布伦特
-    const btc = MACRO_SYMBOLS.find((s) => s["key"] === "BTC-USD")!;
-    expect(btc["live"]).toBe("CRYPTO:BTC");
-    expect(liveTickers()).not.toContain("IBIT");
-    expect(MACRO_SYMBOLS.some((s) => s["key"] === "BZ=F")).toBe(true);
+  it("每一格都取标的本身,不用会失真的 ETF 替身", () => {
+    // 原来这条只钉 "^VIX / ^TNX 的 live 必须是 null",守的是字面而不是道理,
+    // 结果黄金挂着 GLD(403 对黄金 4412)、布油挂着 BNO(58 对布伦特 99.9)一路没人管。
+    // 改成守原则:这些替身一个都不许出现在流式清单里。
+    const live = liveTickers();
+    for (const bad of ["VIXY", "TLT", "IBIT", "GLD", "BNO", "USO", "SLV"]) {
+      expect(live, `${bad} 是会失真的替身`).not.toContain(bad);
+    }
+    for (const bad of ["SPY", "QQQ"]) {
+      expect(live, `${bad} 与指数差一个量级`).not.toContain(bad);
+    }
+    const bySymbol = (key: string) => MACRO_SYMBOLS.find((s) => s["key"] === key)!;
+    // 指数格看指数本身
+    expect(bySymbol("^GSPC")["live"]).toBe("IND:SPX@CBOE");
+    expect(bySymbol("^NDX")["live"]).toBe("IND:NDX@NASDAQ");
+    // 商品看期货本身;比特币看 PAXOS 现货;收益率看 Cboe 的 TNX 指数
+    expect(bySymbol("GC=F")["live"]).toBe("CONTFUT:GC@COMEX");
+    expect(bySymbol("GC=F")["label"]).toBe("纽约金");
+    expect(bySymbol("BZ=F")["live"]).toBe("CONTFUT:BZ@NYMEX"); // 布伦特,不是 WTI
+    expect(bySymbol("BTC-USD")["live"]).toBe("CRYPTO:BTC");
+    // TNX 是 10 倍口径:48.06 → 4.806%。少了这个 scale 界面上会写 48% 的十年期
+    expect(bySymbol("^TNX")["live"]).toBe("IND:TNX@CBOE");
+    expect(bySymbol("^TNX")["scale"]).toBe(0.1);
+    // VIX 取 Cboe 的指数本身,不是 VIXY
+    expect(bySymbol("^VIX")["live"]).toBe("IND:VIX@CBOE");
     expect(MACRO_SYMBOLS.some((s) => s["key"] === "DX-Y.NYB")).toBe(false);
+  });
+
+  it("TNX 的 10 倍口径两条路都要折算,涨跌幅不跟着缩放", async () => {
+    // TWS 那路
+    const router = { streamQuotes: () => ({ "IND:TNX@CBOE": { last: 48.06, change_pct: 0.42 } }) };
+    const board = await macroBoard({ router, fetcher: async () => { throw new Error("x"); }, now: () => 7000 });
+    const tnx = board["rows"].find((r: any) => r["key"] === "^TNX")!;
+    expect(tnx["last"]).toBe(4.806);
+    expect(tnx["change_pct"]).toBe(0.42); // 比值不缩放
+    expect(tnx["instrument"]).toBe("TNX");
+
+    // 公开源那路
+    clearMacroCache();
+    const cboe = async (url: string) => {
+      if (url.includes("_TNX")) return { data: { current_price: 48.06, close: 48.06, price_change: 0 } };
+      throw new Error("数据源返回 HTTP 403 Forbidden");
+    };
+    const board2 = await macroBoard({ fetcher: cboe, now: () => 8000 });
+    expect(board2["rows"].find((r: any) => r["key"] === "^TNX")!["last"]).toBe(4.806);
   });
 
   it("TWS 流有数的格走 tws,其余走公开源;失败只丢一格", async () => {
@@ -99,15 +131,15 @@ describe("macro", () => {
     };
     const router = {
       streamQuotes: () => ({
-        SPY: { last: 450.1, change_pct: 0.5 },
+        "IND:SPX@CBOE": { last: 7673.52, change_pct: 0.5 },
         "CRYPTO:BTC": { last: 78609.25, change_pct: -0.94 },
       }),
     };
     const board = await macroBoard({ router, fetcher, now: () => 1000 });
     const spy = board["rows"].find((r: any) => r["key"] === "^GSPC");
     expect(spy["source"]).toBe("tws");
-    expect(spy["instrument"]).toBe("SPY");
-    expect(spy["last"]).toBe(450.1);
+    expect(spy["instrument"]).toBe("SPX");
+    expect(spy["last"]).toBe(7673.52);
     // 比特币格:流里的键是加密标记,界面上标的是 PAXOS,数值是币价本身
     const btc = board["rows"].find((r: any) => r["key"] === "BTC-USD");
     expect(btc["source"]).toBe("tws");

@@ -1,21 +1,37 @@
 /** 宏观行情带(对应 Python macro.py)。
  *
- * TWS 流式 + 公开数据源双来源;VIX 与美债10Y 永远走公开源(没有不失真的 ETF
- * 替身:VIXY 有 contango 损耗,TLT 与收益率反向)。比特币不用 IBIT(差一个量级),
- * 连 TWS 时读 PAXOS 现货。固定清单写死在代码里,界面不可注入任意符号。
+ * TWS 流式 + 公开数据源双来源。每一格取的都是标的本身:指数走 Cboe 的指数合约、
+ * 商品走期货、比特币走 PAXOS 现货,一律不用会失真的 ETF 替身(VIXY 有 contango 损耗、
+ * TLT 与收益率反向、GLD 与 IBIT 差一个量级)。TWS 那路取不到就落回公开源。
+ * 固定清单写死在代码里,界面不可注入任意符号。
  */
 import { pyRound } from "./py.js";
 
 const ENDPOINT = "https://query1.finance.yahoo.com/v8/finance/chart/%s?interval=1d&range=5d";
 
-// live = 已连 TWS 时改读的那个 ETF;null 表示这一格永远走公开源。
+// live = 已连 TWS 时改读的标的(裸代码=正股/ETF,另认 CRYPTO: / CONTFUT: / IND: 前缀);
+// null 表示这一格永远走公开源。scale = 拿到的报价要乘的系数(TNX 那种 10 倍口径用)。
+//
+// 铁律:这一格显示的数必须就是标的本身的价,不能拿"跟着走"的替身糊弄。
+// 差一个量级的替身比空着还糟——用户看到的是个和标的毫无关系的数,却没有任何提示。
+// 2026-09-09 真机对比:GLD 403.7 / 黄金 4412,BNO 58.26 / 布伦特 99.93,都差了一个量级。
 export const MACRO_SYMBOLS: Array<Record<string, any>> = [
-  { key: "^GSPC", label: "标普500", fmt: "price", live: "SPY" },
-  { key: "^NDX", label: "纳指100", fmt: "price", live: "QQQ" },
-  { key: "^VIX", label: "VIX", fmt: "plain", live: null }, // VIXY 会失真
-  { key: "^TNX", label: "美债10Y", fmt: "pct", live: null }, // TLT 方向相反
-  { key: "GC=F", label: "黄金", fmt: "price", live: "GLD" },
-  { key: "BZ=F", label: "布油", fmt: "price", live: "BNO" }, // 布伦特,不是 WTI
+  // 指数格显示指数本身,不是 SPY / QQQ —— 后者量级差 10 倍与 41 倍(2026-09-09 实测
+  // SPY 766 对 SPX 7673、QQQ 719 对 NDX 29507)。IBKR 上这两个指数盘前没有报价、
+  // NDX 还要额外的行情权限,取不到就落回 Cboe 的指数源(15 分钟延迟,量级一致)。
+  { key: "^GSPC", label: "标普500", fmt: "price", live: "IND:SPX@CBOE", liveLabel: "SPX" },
+  { key: "^NDX", label: "纳指100", fmt: "price", live: "IND:NDX@NASDAQ", liveLabel: "NDX" },
+  // VIXY 有 contango 损耗、会失真,但 Cboe 的 VIX 指数本身就在 IBKR 上(2026-09-09 实测
+  // 盘前也有报价)。取不到(没这档行情权限)时 streamQuotes 会跳过,自动落回公开源。
+  { key: "^VIX", label: "VIX", fmt: "plain", live: "IND:VIX@CBOE", liveLabel: "VIX" },
+  // 收益率没有不失真的可交易替身(TLT 与收益率反向),但 Cboe 的 TNX 指数就是收益率本身。
+  // 它按 10 倍口径报价:2026-09-09 IBKR 的 IND:TNX@CBOE 与 cboe.com 两路都是 48.06,
+  // 也就是 4.806%——48% 的十年期不可能存在,这个除以 10 是钉死的,不是猜的。
+  { key: "^TNX", label: "美债10Y", fmt: "pct", live: "IND:TNX@CBOE", liveLabel: "TNX", scale: 0.1 },
+  // 黄金看纽约金(COMEX 连续期货),不是 GLD;布油看布伦特连续期货,不是 BNO。
+  // 连续期货免去换月,宏观带只是看个价,不涉及下单。
+  { key: "GC=F", label: "纽约金", fmt: "price", live: "CONTFUT:GC@COMEX", liveLabel: "COMEX GC" },
+  { key: "BZ=F", label: "布油", fmt: "price", live: "CONTFUT:BZ@NYMEX", liveLabel: "布伦特 BZ" },
   // 比特币要的是币价本身(几万美元),IBIT 差一个量级,看着像行情崩了。
   // 连着 TWS 时读 PAXOS 现货(免订阅,真机实测);断开时公开源 BTC-USD 兜底。
   { key: "BTC-USD", label: "比特币", fmt: "price", live: "CRYPTO:BTC", liveLabel: "PAXOS" },
@@ -91,9 +107,12 @@ export async function macroBoard(
   for (const item of MACRO_SYMBOLS) {
     const quote = quotes[(item["live"] as string) ?? ""] ?? {};
     if (quote.last !== null && quote.last !== undefined) {
+      const scale = Number(item["scale"] ?? 1) || 1;
       rows.push({
         key: item["key"], label: item["label"], fmt: item["fmt"],
-        last: quote.last, change_pct: quote.change_pct ?? null,
+        // 涨跌幅是比值,不跟着 scale 变
+        last: scale === 1 ? quote.last : pyRound(quote.last * scale, 4),
+        change_pct: quote.change_pct ?? null,
         source: "tws", instrument: item["liveLabel"] ?? item["live"],
       });
     } else {
@@ -195,24 +214,30 @@ async function cachedFetch(
   return row;
 }
 
-// Yahoo 挂了还能救回来的格子:同一条指数、同一个量纲,Cboe 官方延迟接口就有。
+// Yahoo 挂了还能救回来的格子:同一条指数,Cboe 官方延迟接口就有。
 // (publicIndexPrice 早就在走这条路了,这里只是让行情带也用上。)
-// 不含 ^TNX:Cboe 的 _TNX 是另一路报价,量纲对不上 Yahoo 的百分数,而且实测 close
-// 与 current_price 相等、price_change 恒为 0——没法在本机交叉验证,宁可空着。
-const MACRO_CBOE: Record<string, string> = { "^GSPC": "SPX", "^NDX": "NDX", "^VIX": "VIX" };
+// TNX 与 MACRO_SYMBOLS 里那一格用同一个 10 倍口径,除以 10 才是收益率百分数。
+// 黄金 / 布油 / 比特币不在这里:它们不是 Cboe 指数,只能靠 TWS 那路。
+const MACRO_CBOE: Record<string, { sym: string; scale?: number }> = {
+  "^GSPC": { sym: "SPX" },
+  "^NDX": { sym: "NDX" },
+  "^VIX": { sym: "VIX" },
+  "^TNX": { sym: "TNX", scale: 0.1 },
+};
 
 async function fetchCboeRow(
   macroKey: string, timeout: number, fetcher: Fetcher,
 ): Promise<{ last: number; change_pct: number | null } | null> {
-  const sym = MACRO_CBOE[macroKey];
-  if (!sym) return null;
-  const payload: any = await fetcher(CBOE_ENDPOINT.replace("%s", sym), timeout * 1000);
+  const entry = MACRO_CBOE[macroKey];
+  if (!entry) return null;
+  const payload: any = await fetcher(CBOE_ENDPOINT.replace("%s", entry.sym), timeout * 1000);
   const last = cboeLast(payload);
   if (last === null) return null;
   const prev = num(payload?.data?.["close"]);
   const change = num(payload?.data?.["price_change"]);
   const changePct = prev && change !== null ? pyRound((change / prev) * 100.0, 2) : null;
-  return { last, change_pct: changePct };
+  const scale = entry.scale ?? 1;
+  return { last: scale === 1 ? last : pyRound(last * scale, 4), change_pct: changePct };
 }
 
 async function fetchOne(

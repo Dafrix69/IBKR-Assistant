@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   BrokerError, DEFAULT_COMBO_TICK, LegQuote, alignTickDown, alignTickUp, autoMidLimit,
   bagSignedLimit, barTimestamp, barsError, bookLiquidity,
-  comboMidPrice, pickTradingClass, priceConditionSpec, strikeWidth,
+  comboMidPrice, pickTradingClass, priceConditionSpec, streamContract, strikeWidth,
 } from "../src/broker.js";
 import {
   ORDER_STATUS, OPEN_STATUS, accId, barTime, durationDays, fieldOf, futuDate, impliedSpot,
@@ -154,5 +154,19 @@ describe("golden: broker 纯函数", () => {
     // 到期日不在任何一条链上时不能空手而归,退回全部候选里排序最靠前的
     expect(pickTradingClass("SPX", SPX_CFG, SPX_CHAIN, "20991231")).toBe("SPX");
     expect(pickTradingClass("AAPL", null, {}, "20260918")).toBe("");
+  });
+
+  it("流式标的记号 → 合约:裸代码是正股,三种前缀分别是现货/期货/指数", () => {
+    expect(streamContract("SPY")).toMatchObject({ secType: "STK", symbol: "SPY", exchange: "SMART" });
+    expect(streamContract("CRYPTO:BTC")).toMatchObject({ secType: "CRYPTO", symbol: "BTC", exchange: "PAXOS" });
+    // 商品这几格靠它才能取到标的本身的价:GLD 403 对黄金 4412,差一个量级
+    expect(streamContract("CONTFUT:GC@COMEX")).toMatchObject({
+      secType: "CONTFUT", symbol: "GC", exchange: "COMEX", currency: "USD",
+    });
+    expect(streamContract("CONTFUT:BZ@NYMEX")).toMatchObject({ secType: "CONTFUT", symbol: "BZ", exchange: "NYMEX" });
+    expect(streamContract("IND:TNX@CBOE")).toMatchObject({ secType: "IND", symbol: "TNX", exchange: "CBOE" });
+    // 形状不对的记号不能被当成正股代码闷头去 qualify
+    expect(streamContract("ind:tnx@cboe")).toMatchObject({ secType: "IND", symbol: "TNX" });
+    expect(streamContract("CONTFUT:GC")).toMatchObject({ secType: "STK" });
   });
 });

@@ -1017,8 +1017,7 @@ export class BrokerRouter {
     let fresh = false;
     for (const symbol of symbols) {
       if (this.streams.has(symbol)) continue;
-      const crypto = cryptoSymbol(symbol);
-      const target = crypto ? cryptoContract(crypto) : stockContract(symbol);
+      const target = streamContract(symbol);
       try {
         await this.qualifyOrRaise(session, target);
       } catch (exc) {
@@ -1847,6 +1846,27 @@ export function cryptoContract(symbol: string): IbContract {
 export function cryptoSymbol(symbol: string): string | null {
   const m = /^CRYPTO:([A-Z]{2,10})$/.exec((symbol ?? "").trim().toUpperCase());
   return m ? m[1]! : null;
+}
+
+/**
+ * 流式报价的标的记号 → 合约。除了裸代码(正股/ETF)之外还认三种前缀:
+ *
+ *   `CRYPTO:BTC`         PAXOS 现货
+ *   `CONTFUT:GC@COMEX`   连续期货(不用管换月;宏观带只是看个价)
+ *   `IND:TNX@CBOE`       指数
+ *
+ * 商品这几格必须能写期货:拿 ETF 当替身会差一个量级——GLD 403 对黄金 4412、
+ * BNO 58 对布伦特 99.9,用户看到的是个和标的毫无关系的数。
+ */
+export function streamContract(symbol: string): IbContract {
+  const raw = (symbol ?? "").trim().toUpperCase();
+  const crypto = cryptoSymbol(raw);
+  if (crypto) return cryptoContract(crypto);
+  const m = /^(CONTFUT|FUT|IND):([A-Z0-9]{1,12})@([A-Z]{2,12})$/.exec(raw);
+  if (m) {
+    return { secType: m[1]!, symbol: m[2]!, exchange: m[3]!, currency: "USD", conId: 0 };
+  }
+  return stockContract(raw);
 }
 
 /**
