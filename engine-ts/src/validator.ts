@@ -236,7 +236,7 @@ export class Validator {
     if (indexCfg && expiries.length) {
       for (const [slot, raw] of expirySlots(contract)) {
         const expiry = expiryToIso(raw);
-        const expected = isThirdFriday(expiry)
+        const expected = isIndexMonthlyExpiry(expiry, this.settings)
           ? indexCfg.monthly_trading_class
           : indexCfg.daily_trading_class;
         if (!expected) continue;
@@ -676,6 +676,39 @@ function isThirdFriday(dateIso: string): boolean {
   if (weekdayOfDate(dateIso) !== 4) return false;
   const day = Number(dateIso.slice(8, 10));
   return day >= 15 && day <= 21;
+}
+
+/**
+ * 指数月度期权(AM 结算)的最后交易日 = 第三个周五的**前一个交易日**,通常是周四。
+ *
+ * 这里曾按 "第三个周五本身" 判定,方向正好反了。2026-09-09 对着真实 TWS 核过:
+ * SPX 月度类记的是 20260917、20261015、20261119、20261217、20270114、20270218——
+ * 全是第三个周五的前一天;第三个周五当天(20260918)只存在于日到期类 SPXW。
+ * 判反的后果是双向的:第三个周五的单会被改写成不存在的月度合约,下单时 qualify 直接挂;
+ * 真正的月度那天(两条链都在)则被改成日到期类,把 AM 结算悄悄换成 PM 结算。
+ */
+function isIndexMonthlyExpiry(dateIso: string, settings: Settings): boolean {
+  const thirdFri = thirdFridayOfMonth(dateIso.slice(0, 7));
+  if (thirdFri === null) return false;
+  return prevTradingDay(thirdFri, settings) === dateIso;
+}
+
+function thirdFridayOfMonth(yearMonth: string): string | null {
+  for (let day = 15; day <= 21; day++) {
+    const iso = `${yearMonth}-${String(day).padStart(2, "0")}`;
+    if (isThirdFriday(iso)) return iso;
+  }
+  return null;
+}
+
+function prevTradingDay(dateIso: string, settings: Settings): string {
+  let ms = Date.parse(dateIso + "T00:00:00Z");
+  for (let i = 0; i < 10; i++) {
+    ms -= 86_400_000;
+    const iso = new Date(ms).toISOString().slice(0, 10);
+    if (settings.isTradingDay(iso)) return iso;
+  }
+  return dateIso;
 }
 
 function* expirySlots(

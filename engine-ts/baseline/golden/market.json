@@ -69,7 +69,9 @@
    "text": "IREN 41 块,步长 5",
    "default": ["IREN"],
    "no_default": ["IREN"]
-  }
+  },
+  {"text": "英伟达财报后跳空缺口未回补,关注 GB300 出货节奏", "default": ["NVDA"], "no_default": ["NVDA"]},
+  {"text": "RTX5090 缺货,买入 AMD 50 股", "default": ["AMD"], "no_default": ["AMD"]}
  ],
  "extra": ["AAPL", "QQQ"],
  "snapshot": {"AAPL": 229.4, "SPX": 7462.35, "NONE": 12.5}

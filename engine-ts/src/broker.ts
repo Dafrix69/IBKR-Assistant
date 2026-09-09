@@ -969,20 +969,22 @@ export class BrokerRouter {
     const target = cfg ? indexContract(symbol, cfg.exchange) : stockContract(symbol);
     await this.qualifyOrRaise(session, target);
 
+    // IBKR 不接受 ADJUSTED_LAST 配非空 endDateTime(错误 321 "End date not supported with
+    // adjusted last"),所以结束日在过去时不能靠 endDateTime 截断,只能一路拉到今天再本地切片。
+    // 换成 TRADES 倒是能带 endDateTime,但那是不复权价:区间里只要有一次拆股,回测就会
+    // 看到一根凭空的跳空。宁可多取几根也不能让价格失真。
+    // 今天用美东日期——引擎其它地方(rpc.dailyHistory 的 end)都是美东口径,这里若用 UTC,
+    // 美东 20:00 之后两者差一天,"拉到今天" 会被误判成 "结束日在过去"。
+    const todayIso = nowEt().date;
+    const fetchEnd = end >= todayIso ? end : todayIso;
     const startOrd = Date.parse(start + "T00:00:00Z");
-    const endOrd = Date.parse(end + "T00:00:00Z");
-    const days = Math.round((endOrd - startOrd) / 86_400_000);
+    const days = Math.round((Date.parse(fetchEnd + "T00:00:00Z") - startOrd) / 86_400_000);
     const duration = days <= 360 ? `${days + 5} D` : `${Math.trunc(days / 365) + 1} Y`;
-    const todayIso = new Date().toISOString().slice(0, 10);
-    const endDt =
-      end >= todayIso
-        ? ""
-        : new Date(endOrd + 86_400_000).toISOString().slice(0, 10).replace(/-/g, "") + " 00:00:00";
 
     let raw: RawBar[];
     try {
       raw = await session.historicalData(target, {
-        endDateTime: endDt,
+        endDateTime: "",
         durationStr: duration,
         barSizeSetting: "1 day",
         whatToShow: cfg ? "TRADES" : "ADJUSTED_LAST",
@@ -1131,10 +1133,25 @@ export class BrokerRouter {
     if (!chosen.length) chosen = [...params];
     const expiries = [...new Set(chosen.flatMap((p) => p.expirations ?? []))].sort();
     const strikes = [...new Set(chosen.flatMap((p) => (p.strikes ?? []).map(Number)))].sort((a, b) => a - b);
+    // 同一个标的会返回多条链,合并成一份会丢掉 "哪个到期日属于哪条链" 这个关键信息:
+    // AAPL 的调整期权类 '2AAPL' 只有一个到期日,SPX 的月度类 'SPX' 又只记第三个周五的前一天。
+    // 按交易类分开留一份,让 optionChain 能按到期日挑对链(见 pickTradingClass)。
+    const byClass: Record<string, { expiries: string[]; strikes: number[] }> = {};
+    for (const p of chosen) {
+      const tc = p.tradingClass ?? "";
+      const slot = (byClass[tc] ??= { expiries: [], strikes: [] });
+      slot.expiries.push(...(p.expirations ?? []));
+      slot.strikes.push(...(p.strikes ?? []).map(Number));
+    }
+    for (const slot of Object.values(byClass)) {
+      slot.expiries = [...new Set(slot.expiries)].sort();
+      slot.strikes = [...new Set(slot.strikes)].sort((a, b) => a - b);
+    }
     return {
       symbol,
       expiries,
       strikes,
+      by_class: byClass,
       trading_classes: [...new Set(chosen.map((p) => p.tradingClass ?? ""))].sort(),
       exchange: chosen.length ? chosen[0]!.exchange : cfg ? cfg.exchange : "SMART",
     };
@@ -1154,7 +1171,12 @@ export class BrokerRouter {
     const spot = await this.indexPrice(symbol);
     if (!spot) throw new BrokerError(`拿不到 ${symbol} 的现价,无法判断该取哪些行权价。`);
 
-    const grid: number[] = meta["strikes"];
+    const cfg = this.settings.indexConfig(symbol);
+    const tradingClass = pickTradingClass(symbol, cfg, meta["by_class"] ?? {}, targetExpiry);
+    // 行权价也按挑中的那条链取:两条链的网格粒度不同(SPXW 比 SPX 密),
+    // 用并集选出来的价位可能在这条链上根本不存在。
+    const grid: number[] =
+      (meta["by_class"]?.[tradingClass]?.strikes as number[] | undefined) ?? meta["strikes"];
     if (!grid.length) throw new BrokerError(`${symbol} 的行权价网格为空`);
     let nearest = 0;
     for (let i = 1; i < grid.length; i++) {
@@ -1163,8 +1185,6 @@ export class BrokerRouter {
     const band = grid.slice(Math.max(0, nearest - width), nearest + width + 1);
 
     const session = this.marketSession();
-    const cfg = this.settings.indexConfig(symbol);
-    const tradingClass = meta["trading_classes"][0] ?? "";
     const exchange = cfg ? cfg.exchange : "SMART";
 
     const contracts: IbContract[] = [];
@@ -1827,6 +1847,44 @@ export function cryptoContract(symbol: string): IbContract {
 export function cryptoSymbol(symbol: string): string | null {
   const m = /^CRYPTO:([A-Z]{2,10})$/.exec((symbol ?? "").trim().toUpperCase());
   return m ? m[1]! : null;
+}
+
+/**
+ * 从 secDefOptParams 返回的多条链里挑出该到期日真正所在的那条。
+ *
+ * 按字母序取第一个会两边都挑错,2026-09-09 对着真实 TWS 实测:
+ *   · AAPL 的交易类是 ['2AAPL', 'AAPL'],'2AAPL' 是调整期权(只有一个到期日),
+ *     用它建的合约整条链一个都确认不了;
+ *   · SPX 的是 ['SPX', 'SPXW'],但 IBKR 把月度(AM 结算)记在第三个周五的**前一天**
+ *     (20260917、20261015…),第三个周五当天只存在于 SPXW。
+ *
+ * 所以先按 "这个到期日在不在这条链上" 筛,再按 标的同名 → 配置里的月度/日到期类 →
+ * 到期日最多的一条 排序。同名优先是关键:20260917 两条链都有,同名的 'SPX' 才是
+ * 用户要的 AM 结算月度,挑 'SPXW' 会把结算方式悄悄换掉。
+ */
+export function pickTradingClass(
+  symbol: string,
+  cfg: { daily_trading_class: string; monthly_trading_class: string } | null,
+  byClass: Record<string, { expiries?: string[]; strikes?: number[] }>,
+  expiry: string,
+): string {
+  const names = Object.keys(byClass);
+  if (!names.length) return "";
+  const onExpiry = names.filter((n) => (byClass[n]!.expiries ?? []).includes(expiry));
+  const pool = onExpiry.length ? onExpiry : names;
+  const rank = (name: string): number => {
+    if (name === symbol.toUpperCase()) return 0;
+    if (cfg && name === cfg.monthly_trading_class) return 1;
+    if (cfg && name === cfg.daily_trading_class) return 2;
+    return 3;
+  };
+  return [...pool].sort((a, b) => {
+    const d = rank(a) - rank(b);
+    if (d !== 0) return d;
+    // 同档看谁的到期日多:标准链总比调整期权那种只有一个到期日的长
+    const n = (byClass[b]!.expiries ?? []).length - (byClass[a]!.expiries ?? []).length;
+    return n !== 0 ? n : a.localeCompare(b);
+  })[0]!;
 }
 
 export function optionContract(

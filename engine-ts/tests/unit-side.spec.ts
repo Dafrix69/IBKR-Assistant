@@ -123,6 +123,50 @@ describe("macro", () => {
     expect(board["live_count"]).toBe(2);
   });
 
+  it("公开源被挡时报的是原因,不是 SyntaxError", async () => {
+    // 2026-09-09 实测:Yahoo 的 chart 端点回 403 + HTML 错误页,原来直接 .json() 抛
+    // SyntaxError,再取 .name 记进 error —— 界面上七格全写着 "SyntaxError",
+    // 看不出是被限流、被地区封禁,还是端点改了。
+    const { defaultFetcherForTest } = await import("../src/macro.js");
+    const html = "<!DOCTYPE html>\n<html lang=\"zh\"><head><title>Yahoo</title>";
+    const original = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      new Response(html, { status: 403, statusText: "Forbidden" })) as typeof fetch;
+    try {
+      await expect(defaultFetcherForTest("https://example.invalid/x", 1000)).rejects.toThrow(
+        /HTTP 403/,
+      );
+      globalThis.fetch = (async () => new Response(html, { status: 200 })) as typeof fetch;
+      await expect(defaultFetcherForTest("https://example.invalid/x", 1000)).rejects.toThrow(
+        /不是 JSON/,
+      );
+    } finally {
+      globalThis.fetch = original;
+    }
+
+    // 走到整块看板上:主源全挂时,能走 Cboe 的那三格要救回来,其余格子如实报原因
+    const fetcher = async (url: string) => {
+      if (url.includes("cboe.com")) {
+        if (url.includes("_VIX")) return { data: { current_price: 15.69, close: 15.72, price_change: -0.03 } };
+        if (url.includes("_SPX")) return { data: { current_price: 7673.52, close: 7718.6, price_change: -45.08 } };
+        if (url.includes("_NDX")) return { data: { current_price: 29507.7, close: 29600.0, price_change: -92.3 } };
+        throw new Error("数据源返回 HTTP 404 Not Found");
+      }
+      throw new Error("数据源返回 HTTP 403 Forbidden");
+    };
+    const board = await macroBoard({ fetcher, now: () => 5000 });
+    const row = (key: string) => board["rows"].find((r: any) => r["key"] === key)!;
+    expect(row("^VIX")["last"]).toBe(15.69);
+    expect(row("^VIX")["instrument"]).toBe("Cboe");
+    expect(row("^VIX")["error"]).toBeUndefined();
+    expect(row("^GSPC")["last"]).toBe(7673.52);
+    expect(row("^GSPC")["change_pct"]).toBeCloseTo(-0.58, 6);
+    // 美债10Y 的 Cboe 报价量纲对不上,刻意不接:宁可空着也不能显示错的收益率
+    expect(row("^TNX")["last"]).toBeNull();
+    expect(row("^TNX")["error"]).toBe("数据源返回 HTTP 403 Forbidden");
+    expect(row("GC=F")["error"]).toBe("数据源返回 HTTP 403 Forbidden");
+  });
+
   it("公开源失败时保留上一次的值并标 stale", async () => {
     let fail = false;
     const fetcher = async () => {

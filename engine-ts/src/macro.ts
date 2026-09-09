@@ -100,7 +100,8 @@ export async function macroBoard(
       // 用户点了强制刷新才同步等;周期轮询一律"旧值先给、后台去取"
       const row = await cachedFetch(item, timeout, ttl, fetcher, now, !options.force);
       row["source"] = "public";
-      row["instrument"] = null;
+      // 主源挂掉、由 Cboe 兜回来的格子已经自报了 instrument,别在这里抹掉
+      row["instrument"] = row["instrument"] ?? null;
       rows.push(row);
     }
   }
@@ -194,6 +195,26 @@ async function cachedFetch(
   return row;
 }
 
+// Yahoo 挂了还能救回来的格子:同一条指数、同一个量纲,Cboe 官方延迟接口就有。
+// (publicIndexPrice 早就在走这条路了,这里只是让行情带也用上。)
+// 不含 ^TNX:Cboe 的 _TNX 是另一路报价,量纲对不上 Yahoo 的百分数,而且实测 close
+// 与 current_price 相等、price_change 恒为 0——没法在本机交叉验证,宁可空着。
+const MACRO_CBOE: Record<string, string> = { "^GSPC": "SPX", "^NDX": "NDX", "^VIX": "VIX" };
+
+async function fetchCboeRow(
+  macroKey: string, timeout: number, fetcher: Fetcher,
+): Promise<{ last: number; change_pct: number | null } | null> {
+  const sym = MACRO_CBOE[macroKey];
+  if (!sym) return null;
+  const payload: any = await fetcher(CBOE_ENDPOINT.replace("%s", sym), timeout * 1000);
+  const last = cboeLast(payload);
+  if (last === null) return null;
+  const prev = num(payload?.data?.["close"]);
+  const change = num(payload?.data?.["price_change"]);
+  const changePct = prev && change !== null ? pyRound((change / prev) * 100.0, 2) : null;
+  return { last, change_pct: changePct };
+}
+
 async function fetchOne(
   item: Record<string, any>, timeout: number, fetcher: Fetcher,
 ): Promise<Record<string, any>> {
@@ -204,7 +225,20 @@ async function fetchOne(
   try {
     payload = await fetcher(ENDPOINT.replace("%s", encodeURIComponent(item["key"])), timeout * 1000);
   } catch (exc) {
-    row["error"] = (exc as Error).name || "Error";
+    // 记消息不记 name:name 一律是 'Error' / 'SyntaxError',说不出到底为什么取不到
+    const e = exc as Error;
+    row["error"] = (e?.message || e?.name || "Error").slice(0, 120);
+    try {
+      const alt = await fetchCboeRow(item["key"], timeout, fetcher);
+      if (alt) {
+        row["last"] = alt.last;
+        row["change_pct"] = alt.change_pct;
+        row["instrument"] = "Cboe";
+        delete row["error"]; // 备用源救回来了,不必再往界面上报错
+      }
+    } catch {
+      /* 备用源也不通:保留上面那条主源的错误原因 */
+    }
     return row;
   }
   const meta = payload?.chart?.result?.[0]?.meta ?? {};
@@ -215,6 +249,9 @@ async function fetchOne(
   return row;
 }
 
+/** 测试用:直接拿默认取数器,核对被挡时的报错文字。 */
+export const defaultFetcherForTest: Fetcher = (url, timeoutMs) => defaultFetcher(url, timeoutMs);
+
 async function defaultFetcher(url: string, timeoutMs: number): Promise<unknown> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -223,7 +260,18 @@ async function defaultFetcher(url: string, timeoutMs: number): Promise<unknown> 
       headers: { "User-Agent": "dafri-trading/0.2 (macro board)" },
       signal: controller.signal,
     });
-    return await response.json();
+    // 数据源被挡时回的是 HTML 错误页,直接 .json() 只会抛 SyntaxError——界面上就成了
+    // 一行看不出所以然的 "SyntaxError",分不清是被限流、被地区封禁,还是端点改了。
+    // 先按状态码给一句人话。
+    if (!response.ok) {
+      throw new Error(`数据源返回 HTTP ${response.status}${response.statusText ? ` ${response.statusText}` : ""}`);
+    }
+    const text = await response.text();
+    try {
+      return JSON.parse(text);
+    } catch {
+      throw new Error(`数据源返回的不是 JSON(前 60 字:${text.slice(0, 60).replace(/\s+/g, " ")})`);
+    }
   } finally {
     clearTimeout(timer);
   }

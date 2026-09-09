@@ -25,6 +25,16 @@ function cjkAdjacent(text: string, start: number, end: number): boolean {
   return hit(before) || hit(after);
 }
 
+/**
+ * 字母紧跟 3 位以上数字 —— 'GB300'、'RTX5090'、'H200' 这类产品型号,不是 ticker。
+ * (cjkAdjacent 把 "紧邻数字" 也算作中文语境证据,于是 "GB300 出货节奏" 里的 GB 被
+ *  当成了代码。别名表里已有的代码走前一个分支,不受影响:"买AAPL100股" 仍然认得出。)
+ * 只掐 3 位以上:数量词一般写作 "10股""1张",两位以内不误伤。
+ */
+function modelNumber(text: string, end: number): boolean {
+  return /^\d{3}/.test(text.slice(end, end + 3));
+}
+
 /** 抽出指令里出现的候选标的:显式 ticker + 中文别名表命中 + 常驻指数。 */
 export function extractSymbols(
   text: string,
@@ -55,6 +65,8 @@ export function extractSymbols(
     if (STOPWORDS.has(token) && !cjkCtx) continue;
     if (token in settings.index_symbols || known.has(token)) {
       add(token);
+    } else if (modelNumber(text, end)) {
+      continue; // 'GB300'、'RTX5090' 这类型号,不是 ticker
     } else if (token.length >= 2 && (raw === raw.toUpperCase() || cjkCtx)) {
       add(token);
     }

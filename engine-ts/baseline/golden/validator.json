@@ -227,7 +227,8 @@
    }
   },
   {
-   "name": "tclass_monthly_fix",
+   "name": "tclass_third_friday_is_weekly",
+   "_comment": "第三个周五(20260918)属于日到期链 SPXW,不是月度 SPX——IBKR 把 AM 结算的月度记在前一天。",
    "payload": {
     "intent_summary": "卖出 2 张 SPX 7200/7250/7650/7700 铁鹰",
     "contract": {
@@ -261,7 +262,50 @@
     "approved": {
      "notional": 7600,
      "signature": "DEFAULT|SELL|BAG|SPX|BUY|1|20260918|7200|P|SELL|1|20260918|7250|P|SELL|1|20260918|7650|C|BUY|1|20260918|7700|C",
-     "warnings": ["SPX 20260918 到期的 tradingClass 由 'SPXW' 复核为 'SPX'(按到期日判定)"],
+     "warnings": ["SPX 20260918 到期的 tradingClass 由 'SPX' 复核为 'SPXW'(按到期日判定)", "SPX 20260918 到期的 tradingClass 由 'SPX' 复核为 'SPXW'(按到期日判定)", "SPX 20260918 到期的 tradingClass 由 'SPX' 复核为 'SPXW'(按到期日判定)"],
+     "account_id": "DU7654321"
+    },
+    "contract_trading_class": null,
+    "leg_trading_classes": ["SPXW", "SPXW", "SPXW", "SPXW"]
+   }
+  },
+  {
+   "name": "tclass_monthly_fix",
+   "_comment": "第三个周五的前一个交易日(20260917)才是月度 SPX(AM 结算);写成 SPXW 要被改回来。",
+   "payload": {
+    "intent_summary": "卖出 2 张 SPX 7200/7250/7650/7700 铁鹰(月度)",
+    "contract": {
+     "secType": "BAG",
+     "symbol": "SPX",
+     "exchange": "SMART",
+     "currency": "USD",
+     "combo_strategy": "IRON_CONDOR",
+     "legs": [
+      {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260917", "strike": 7200, "right": "P", "tradingClass": "SPXW"},
+      {"action": "SELL", "ratio": 1, "lastTradeDateOrContractMonth": "20260917", "strike": 7250, "right": "P", "tradingClass": "SPX"},
+      {"action": "SELL", "ratio": 1, "lastTradeDateOrContractMonth": "20260917", "strike": 7650, "right": "C", "tradingClass": "SPX"},
+      {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260917", "strike": 7700, "right": "C", "tradingClass": "SPX"}
+     ]
+    },
+    "execution_type": "IMMEDIATE",
+    "trigger": null,
+    "account": "DEFAULT",
+    "order": {"action": "SELL", "orderType": "LMT", "totalQuantity": 2, "price_mode": "EXPLICIT", "lmtPrice": 12, "tif": "GTC", "outsideRth": false},
+    "reason": "预计区间震荡",
+    "confidence": 0.96,
+    "warnings": []
+   },
+   "settings_over": null,
+   "now": "2026-08-14T10:32:00-04:00",
+   "snapshot": {"SPX": 7462.35, "AAPL": 229.4, "NVDA": 181.2},
+   "recents": null,
+   "expect": {
+    "issues": [],
+    "signature": "DEFAULT|SELL|BAG|SPX|BUY|1|20260917|7200|P|SELL|1|20260917|7250|P|SELL|1|20260917|7650|C|BUY|1|20260917|7700|C",
+    "approved": {
+     "notional": 7600,
+     "signature": "DEFAULT|SELL|BAG|SPX|BUY|1|20260917|7200|P|SELL|1|20260917|7250|P|SELL|1|20260917|7650|C|BUY|1|20260917|7700|C",
+     "warnings": ["SPX 20260917 到期的 tradingClass 由 'SPXW' 复核为 'SPX'(按到期日判定)"],
      "account_id": "DU7654321"
     },
     "contract_trading_class": null,
@@ -555,11 +599,11 @@
     "approved": {
      "notional": 7600,
      "signature": "DEFAULT|SELL|BAG|SPX|BUY|1|20260918|7200|P|SELL|1|20260918|7250|P|SELL|1|20260918|7650|C|BUY|1|20260918|7700|C",
-     "warnings": [],
+     "warnings": ["SPX 20260918 到期的 tradingClass 由 'SPX' 复核为 'SPXW'(按到期日判定)", "SPX 20260918 到期的 tradingClass 由 'SPX' 复核为 'SPXW'(按到期日判定)", "SPX 20260918 到期的 tradingClass 由 'SPX' 复核为 'SPXW'(按到期日判定)", "SPX 20260918 到期的 tradingClass 由 'SPX' 复核为 'SPXW'(按到期日判定)"],
      "account_id": "DU7654321"
     },
     "contract_trading_class": null,
-    "leg_trading_classes": ["SPX", "SPX", "SPX", "SPX"]
+    "leg_trading_classes": ["SPXW", "SPXW", "SPXW", "SPXW"]
    }
   },
   {

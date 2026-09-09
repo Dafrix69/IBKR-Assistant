@@ -7,6 +7,7 @@ import {
 } from "../src/broker.js";
 import { ParsedOrderSchema } from "../src/models.js";
 import type { ApprovedOrder } from "../src/validator.js";
+import { nowEt } from "../src/config.js";
 import { loadGolden, makeSettings } from "./util.js";
 
 const g = loadGolden("config");
@@ -67,8 +68,13 @@ class FakeIbSession implements IbSession {
       for (const cb of this.errorCbs) cb(7, code, msg);
     }
   }
-  async historicalData(): Promise<never[]> {
-    return [];
+  /** 记下每次历史数据请求的参数,给 historicalBars 的回归断言用。 */
+  histRequests: Array<Record<string, any>> = [];
+  /** 日期 → 收盘价;按请求的 durationStr 从今天倒推着给。 */
+  histBars: Array<Record<string, any>> = [];
+  async historicalData(_contract: IbContract, req: Record<string, any>): Promise<any[]> {
+    this.histRequests.push(req);
+    return this.histBars;
   }
   async secDefOptParams(): Promise<never[]> {
     return [];
@@ -409,5 +415,65 @@ describe("BrokerRouter.positions:只列别名表内账户的实际持仓", () =>
     expect(rows.filter((r) => r["sec_type"] === "OPT").map((r) => r["label"]).sort()).toEqual([
       "SPX 7600P 2026-09-01", "SPX 7615P 2026-09-01", "SPX 7630P 2026-09-01",
     ]);
+  });
+});
+
+describe("BrokerRouter: 日线历史", () => {
+  // IBKR 不接受 ADJUSTED_LAST 配非空 endDateTime(错误 321 "End date not supported with
+  // adjusted last")。原来结束日在过去时会带上 endDateTime,于是 2024-01-01~2025-12-31
+  // 这种正常回测区间直接取不到数;再叠上 todayIso 用 UTC 而 rpc 传的 end 是美东,
+  // 美东 20:00 之后连 "拉到今天" 都会被误判成过去。两处都在这里钉住。
+  const bar = (date: string, close: number) => ({ date, open: close, high: close, low: close, close });
+
+  function routerWithBars(bars: Array<Record<string, any>>) {
+    const [router, sessions] = makeRouter({
+      paper: new FakeIbSession(["DU7654321"]),
+      live: new FakeIbSession(["U1234567"]),
+    });
+    sessions["paper"]!.histBars = bars;
+    sessions["live"]!.histBars = bars;
+    return [router, sessions] as const;
+  }
+
+  it("正股的 endDateTime 永远为空,结束日在过去时本地切片", async () => {
+    const [router, sessions] = routerWithBars([
+      bar("2025-12-30", 10), bar("2025-12-31", 11), bar("2026-01-02", 12), bar("2026-06-01", 13),
+    ]);
+    await router.connect("paper");
+    const bars = await router.historicalBars("AAPL", "2025-12-30", "2025-12-31");
+
+    const req = sessions["paper"]!.histRequests.at(-1)!;
+    expect(req["endDateTime"], "ADJUSTED_LAST 不能带 endDateTime").toBe("");
+    expect(req["whatToShow"], "正股要前复权,不能为了带 endDateTime 退回 TRADES").toBe(
+      "ADJUSTED_LAST",
+    );
+    // 结束日在过去 → 时长要一路覆盖到今天,否则切片切不出那一段。
+    // 请求区间只有 2 天,拉取时长必须远大于它。
+    const spanToToday = Math.round(
+      (Date.parse(nowEt().date + "T00:00:00Z") - Date.parse("2025-12-30T00:00:00Z")) / 86_400_000,
+    );
+    expect(req["durationStr"]).toBe(`${spanToToday + 5} D`);
+    expect(spanToToday).toBeGreaterThan(2);
+    // 切片只留请求区间
+    expect(bars.map((b) => b["date"])).toEqual(["2025-12-30", "2025-12-31"]);
+  });
+
+  it("结束日就是今天时不多取", async () => {
+    const today = nowEt().date;
+    const [router, sessions] = routerWithBars([bar(today, 20)]);
+    await router.connect("paper");
+    await router.historicalBars("AAPL", today, today);
+    const req = sessions["paper"]!.histRequests.at(-1)!;
+    expect(req["endDateTime"]).toBe("");
+    expect(req["durationStr"]).toBe("5 D");
+  });
+
+  it("指数走 TRADES,同样不带 endDateTime", async () => {
+    const [router, sessions] = routerWithBars([bar("2025-12-31", 7000)]);
+    await router.connect("paper");
+    await router.historicalBars("SPX", "2025-12-01", "2025-12-31");
+    const req = sessions["paper"]!.histRequests.at(-1)!;
+    expect(req["whatToShow"]).toBe("TRADES");
+    expect(req["endDateTime"]).toBe("");
   });
 });

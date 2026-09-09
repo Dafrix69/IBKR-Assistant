@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   BrokerError, DEFAULT_COMBO_TICK, LegQuote, alignTickDown, alignTickUp, autoMidLimit,
   bagSignedLimit, barTimestamp, barsError, bookLiquidity,
-  comboMidPrice, priceConditionSpec, strikeWidth,
+  comboMidPrice, pickTradingClass, priceConditionSpec, strikeWidth,
 } from "../src/broker.js";
 import {
   ORDER_STATUS, OPEN_STATUS, accId, barTime, durationDays, fieldOf, futuDate, impliedSpot,
@@ -124,5 +124,35 @@ describe("golden: broker 纯函数", () => {
     expect(fieldOf({ option_open_interest: "nan", open_interest: 7 }, "option_open_interest", "open_interest")).toBe(7);
     expect(() => accId("DU7654321")).toThrowError(/富途账号必须是数字/);
     expect(accId("7654321")).toBe(7654321);
+  });
+
+  // 下面的链数据是 2026-09-09 从真实 TWS 的 secDefOptParams 抄下来的,不是编的。
+  // 曾经按字母序取第一个交易类,AAPL 拿到调整期权类 '2AAPL'、SPX 拿到月度类 'SPX',
+  // 两边都是"整条链一个合约都确认不了"。
+  const AAPL_CHAIN = {
+    "2AAPL": { expiries: ["20260918"] },
+    AAPL: { expiries: ["20260909", "20260911", "20260914", "20260916", "20260918", "20260921"] },
+  };
+  const SPX_CHAIN = {
+    SPX: { expiries: ["20260917", "20261015", "20261119", "20261217"] },
+    SPXW: { expiries: ["20260909", "20260910", "20260911", "20260917", "20260918"] },
+  };
+  const SPX_CFG = { daily_trading_class: "SPXW", monthly_trading_class: "SPX" };
+
+  it("挑期权交易类:按到期日在哪条链上,再按标的同名优先", () => {
+    // 正股:调整期权类只有一个到期日,那天两条链都在,得挑同名的那条
+    expect(pickTradingClass("AAPL", null, AAPL_CHAIN, "20260918")).toBe("AAPL");
+    // 只有标准链有的日子,自然只剩它
+    expect(pickTradingClass("AAPL", null, AAPL_CHAIN, "20260911")).toBe("AAPL");
+
+    // 第三个周五只存在于 SPXW——挑成 SPX 会建出不存在的合约
+    expect(pickTradingClass("SPX", SPX_CFG, SPX_CHAIN, "20260918")).toBe("SPXW");
+    // 月度那天两条链都在:同名的 SPX 才是 AM 结算,挑 SPXW 等于偷换结算方式
+    expect(pickTradingClass("SPX", SPX_CFG, SPX_CHAIN, "20260917")).toBe("SPX");
+    expect(pickTradingClass("SPX", SPX_CFG, SPX_CHAIN, "20261015")).toBe("SPX");
+
+    // 到期日不在任何一条链上时不能空手而归,退回全部候选里排序最靠前的
+    expect(pickTradingClass("SPX", SPX_CFG, SPX_CHAIN, "20991231")).toBe("SPX");
+    expect(pickTradingClass("AAPL", null, {}, "20260918")).toBe("");
   });
 });
