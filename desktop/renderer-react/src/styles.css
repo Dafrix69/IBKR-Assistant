@@ -1,0 +1,738 @@
+/*
+ * 参照 Apple Human Interface Guidelines 的 macOS 外观:设计 token 与页面布局。
+ *
+ * 几条照着 HIG 来的决定:
+ *   · 系统字体栈 + macOS 的字号层级(正文 13px / 说明 11px),不自造字号;
+ *   · 系统语义色(systemBlue/Red/Green/Orange),而不是随手挑的十六进制;
+ *   · 跟随系统深浅色——macOS 应用不该强制一种外观;
+ *   · 材质:窗口开了 vibrancy,这里用半透明底色让模糊透出来;
+ *   · 分隔线用 0.5px 发丝线,圆角 10px,阴影克制。
+ *
+ * 控件本身(按钮、开关、分段控件、输入框、分组列表、卡片、提示条、菜单)全部是 Ant Design 的组件,
+ * 由 theme/antd.ts 按这里的 token 配色;组件级的 macOS 微调在 shell.css。这个文件只剩 token、
+ * 壳层布局、各页的排版,以及 canvas / SVG 图表周边的语义类。
+ */
+
+:root {
+  /* --- 系统语义色(浅色)--- */
+  --blue: #007aff;
+  --green: #28cd41;
+  --orange: #ff9500;
+  --red: #ff3b30;
+  --yellow: #ffcc00;
+  --purple: #af52de;
+
+  /* 涨跌色成对做成 token:图表、列表、行情带统一从这里取色;
+     「涨跌配色」设置只改下面两行的映射(见 :root[data-updown]),不碰任何用色的地方。 */
+  --up: var(--green);
+  --down: var(--red);
+
+  /* 文字用的语义色。systemGreen / Red / Orange 是给圆点、开关、图表用的,直接当 11px 文字放在白底上
+     对比度只有 2–3:1;Apple 自己为此备了一套"可访问"变体(systemGreen #248A3D、systemRed #D70015、
+     systemOrange #C93400),深色下两套相同。规矩:凡是文字着色,一律用 *-text;基础色只用于面和图。 */
+  --green-text: #248a3d;
+  --red-text: #d70015;
+  --orange-text: #c93400;
+  --up-text: var(--green-text);
+  --down-text: var(--red-text);
+  /* 蜡烛与量能柱的配色:系统绿红是给圆点和开关用的饱和色,几百根挤在一起会发光;
+     这一对(青绿 / 珊瑚红)是图表业界的通用值,深浅色都能用。文字与圆点仍用系统色。 */
+  --chart-up: #26a69a;
+  --chart-down: #ef5350;
+  /* 图区底色:浅色下是白;深色下取近黑(iOS 股市、富途夜间的图区都比周围的面暗得多),蜡烛和网格都靠它衬 */
+  --chart-bg: #ffffff;
+
+  /* 焦点环只有一种:3.5px、强调色 30%——AppKit 的 focus ring。输入框、开关、按钮都用它。 */
+  --focus-ring: 0 0 0 3.5px color-mix(in srgb, var(--blue) 30%, transparent);
+  --focus-outline: 3.5px solid color-mix(in srgb, var(--blue) 30%, transparent);
+  --accent: var(--blue);
+
+  --label: #000000;
+  --label-secondary: rgba(60, 60, 67, 0.6);
+  --label-tertiary: rgba(60, 60, 67, 0.3);
+
+  --bg-window: rgba(246, 246, 248, 0.72);   /* 半透明:让 vibrancy 透出来 */
+  --bg-content: rgba(255, 255, 255, 0.62);
+  --bg-control: rgba(255, 255, 255, 0.9);
+  --bg-fill: rgba(120, 120, 128, 0.12);
+  --bg-fill-strong: rgba(120, 120, 128, 0.2);
+  /* 比页面底高一层的卡片面。和 --bg-content 分开,卡片才有"浮起来"的层次 */
+  --bg-elevated: rgba(255, 255, 255, 0.92);
+  --separator: rgba(60, 60, 67, 0.18);
+  --separator-opaque: rgba(0, 0, 0, 0.1);
+
+  --shadow-card: 0 0.5px 1px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-control: 0 0.5px 1px rgba(0, 0, 0, 0.1);
+
+  --radius-card: 10px;
+  --radius-control: 6px;
+
+  /* 每个平台都用它自己的系统字体。Segoe UI Variable 是 Win11 的系统字体,Segoe UI 是 Win10 的。 */
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text",
+          "Segoe UI Variable Text", "Segoe UI",
+          "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei",
+          "Helvetica Neue", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, "Cascadia Mono", Consolas, Menlo, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --blue: #0a84ff;
+    --green: #32d74b;
+    --orange: #ff9f0a;
+    --red: #ff453a;
+    --yellow: #ffd60a;
+    --purple: #bf5af2;
+    --green-text: var(--green);
+    --red-text: var(--red);
+    --orange-text: var(--orange);
+    --chart-bg: #0b0b0d;
+
+    --label: #ffffff;
+    --label-secondary: rgba(235, 235, 245, 0.6);
+    --label-tertiary: rgba(235, 235, 245, 0.3);
+
+    --bg-window: rgba(30, 30, 32, 0.6);
+    --bg-content: rgba(40, 40, 43, 0.55);
+    --bg-control: rgba(70, 70, 74, 0.65);
+    --bg-fill: rgba(120, 120, 128, 0.24);
+    --bg-fill-strong: rgba(120, 120, 128, 0.36);
+    --bg-elevated: rgba(58, 58, 62, 0.75);
+    --separator: rgba(84, 84, 88, 0.65);
+    --separator-opaque: rgba(255, 255, 255, 0.1);
+
+    --shadow-card: 0 0.5px 1px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-control: 0 0.5px 1px rgba(0, 0, 0, 0.35);
+  }
+}
+
+/* 「红涨绿跌」(富途中文版 / 港股 A 股习惯):只换映射,所有用 --up/--down 的地方自动跟着变 */
+:root[data-updown="red-up"] {
+  --up: var(--red);
+  --down: var(--green);
+  --up-text: var(--red-text);
+  --down-text: var(--green-text);
+  --chart-up: #ef5350;
+  --chart-down: #26a69a;
+}
+
+/*
+ * 半透明是装饰,不能是可读性的前提。没有 vibrancy 底材时(Windows,或 macOS 打开了「减弱透明度」),
+ * 半透明面板背后什么都没有,文字对比度会塌掉——这两种情况一律换成实底。HIG 明确要求尊重「减弱透明度」。
+ */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --bg-window: #f2f2f4;
+    --bg-content: #fbfbfd;
+    --bg-control: #ffffff;
+    --bg-elevated: #ffffff;
+  }
+}
+:root[data-vibrancy="off"] {
+  --bg-window: #f2f2f4;
+  --bg-content: #fbfbfd;
+  --bg-control: #ffffff;
+  --bg-elevated: #ffffff;
+}
+@media (prefers-color-scheme: dark) {
+  @media (prefers-reduced-transparency: reduce) {
+    :root {
+      --bg-window: #2b2b2e;      /* 侧栏、工具栏所在的窗口底:比内容区亮一档(Notes 深色:侧栏≈#2c2c2e、正文≈#1e1e1e) */
+      --bg-content: #1e1e20;
+      --bg-control: #38383c;
+      --bg-elevated: #2f2f33;    /* 卡片再浮起一档 */
+    }
+  }
+  :root[data-vibrancy="off"] {
+    --bg-window: #2b2b2e;
+    --bg-content: #1e1e20;
+    --bg-control: #38383c;
+    --bg-elevated: #2f2f33;
+  }
+}
+/* 实底时窗口自身也要有底色,否则透出来的是空。 */
+@media (prefers-reduced-transparency: reduce) {
+  html body { background: var(--bg-window); }
+}
+:root[data-vibrancy="off"] body { background: var(--bg-window); }
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  /* 竖向 flex:壳层用 flex:1 吃掉剩余高度,顶栏 + 行情带的高度由布局自己算 */
+  display: flex;
+  flex-direction: column;
+  background: transparent;    /* 让 NSVisualEffectView 的材质透上来 */
+  color: var(--label);
+  font: 13px/1.47 var(--font);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  cursor: default;
+  user-select: none;
+}
+
+input, textarea { user-select: text; }
+
+/* ================= 工具栏 ================= */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 52px;
+  flex-shrink: 0;
+  /* 给窗口按钮让位。macOS 的红绿灯在左上,Windows 的最小化/最大化/关闭在右上——两边留的位置正好相反 */
+  padding: 0 14px;
+  background: var(--bg-window);
+  border-bottom: 0.5px solid var(--separator);
+  -webkit-app-region: drag;
+  backdrop-filter: saturate(180%) blur(20px);
+}
+.topbar button, .topbar .chip, .topbar .brand { -webkit-app-region: no-drag; }
+
+:root[data-platform="darwin"] .topbar { padding-left: 88px; }
+/* Windows 用 titleBarOverlay 把系统按钮叠在我们自己的顶栏上,右侧要留出它们的宽度 */
+:root[data-platform="win32"] .topbar { padding-right: 148px; }
+
+#macro-strip { flex-shrink: 0; }
+
+.brand { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.brand strong { font-size: 13px; font-weight: 590; letter-spacing: -0.01em; }
+
+/* 不换行:栏高是写死的 52px,一换行第二行就被裁掉。宁可挤,不可断。
+   窄窗口下按重要性整颗丢弃:时间和模型可以没有,连接状态和模式不能没有。 */
+.status-chips {
+  display: flex; gap: 10px; flex: 1; min-width: 0;
+  flex-wrap: nowrap; overflow: hidden; align-items: center;
+}
+.chip { flex-shrink: 0; white-space: nowrap; font-size: 12px; font-variant-numeric: tabular-nums; }
+/* 配置类信息(模型名)在工具栏里退到背景:要看的时候看得见,不看的时候不抢戏 */
+.chip.subtle { color: var(--label-tertiary); }
+.chip.subtle:hover { color: var(--label-secondary); }
+@media (max-width: 1180px) { .chip-model { display: none; } }
+@media (max-width: 1020px) { .chip-clock { display: none; } }
+
+.topbar-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+/* ================= 布局:侧栏 + 内容(macOS UI Kit 应用模板) ================= */
+.shell {
+  display: flex;
+  flex: 1;
+  min-height: 0;      /* 不给 0 的话 flex 子项会被内容撑出容器 */
+}
+
+/* 源列表侧栏:透出窗口材质,内容区更实——经典 macOS 分界。项与组的样式见 shell.css(AntD Menu) */
+.sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  padding: 8px 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-right: 0.5px solid var(--separator);
+  display: flex;
+  flex-direction: column;
+}
+/* 窄窗口:侧栏收成 56px 的图标栏(Mail / Finder 的做法) */
+.sidebar.narrow { width: 56px; }
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 24px 40px;
+  background: var(--bg-content);
+}
+/* 数据页越宽越好用,表单和说明文字太宽反而难读——按页分开定 */
+.content > .tab-panel { max-width: 1180px; }
+#page-settings, #page-about, #page-access { max-width: 880px; }
+
+/* 大标题(macOS 11+ 内容区标题),吸顶:列表一长,标题和它旁边的操作不该滚没 */
+.page-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  position: sticky;
+  top: -18px;                 /* 抵消 .content 的上内边距,贴住真正的顶 */
+  z-index: 5;
+  margin: -18px -24px 14px;
+  padding: 18px 24px 10px;
+  background: var(--bg-content);
+  backdrop-filter: saturate(180%) blur(20px);
+}
+.page-head h1 {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+.page-head > :last-child:not(h1) { align-self: center; }
+
+.trade-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+.board-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+@media (max-width: 980px) {
+  .board-grid { grid-template-columns: 1fr; }
+}
+
+.pane-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; margin-bottom: 10px;
+}
+
+h2 { font-size: 15px; font-weight: 590; letter-spacing: -0.01em; margin: 0; }
+h3 { font-size: 13px; font-weight: 590; margin: 0; }
+.section-title {
+  display: flex; align-items: center; gap: 6px;
+  margin: 20px 0 7px;
+  color: var(--label-secondary);
+  font-size: 11px;
+  font-weight: 590;
+  letter-spacing: 0.02em;
+}
+.muted { color: var(--label-secondary); font-size: 11px; }
+/* 说明文字按行长收口:68 个汉字左右是上限 */
+.hint { color: var(--label-secondary); font-size: 11px; margin: 7px 0 0; line-height: 1.55; max-width: 760px; }
+.hint-list {
+  margin: 4px 0 0; padding-left: 16px;
+  color: var(--label-secondary); font-size: 11px; line-height: 1.6;
+}
+.hint-list li { margin: 2px 0; }
+.hint b, .hint-list b { color: var(--label); font-weight: 600; }
+/* 图表引擎没加载时的一句退路(Chart.tsx / Market.tsx 用 DOM 直接写) */
+.empty {
+  min-height: 72px; margin: 0; padding: 18px 12px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--label-tertiary); font-size: 12px; text-align: center;
+}
+code {
+  font-family: var(--font-mono); font-size: 11px;
+  padding: 1px 4px; border-radius: 4px; background: var(--bg-fill); color: var(--label-secondary);
+}
+
+/* ================= 行布局 ================= */
+.row { display: flex; gap: 8px; margin-top: 10px; align-items: center; }
+.row.tight { margin: 0 0 10px; }
+.row > .grow, .row > .ant-select.grow, .row > .ant-input.grow, .row > .ant-input-search.grow { flex: 1; min-width: 0; }
+/* 数字输入框放进 flex 行里会把 .grow 挤没,必须钉死宽度 */
+.row > .narrow { flex: 0 0 92px; max-width: 92px; }
+.m0, .row.tight.m0 { margin: 0; }
+.seg-row { margin-bottom: 14px; }
+.tab-panel { display: block; }
+.sub-panel { display: block; }
+.sub-head { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin: -4px 0 8px; min-height: 18px; }
+.sub-head:empty { display: none; }
+.hidden { display: none !important; }
+
+/* 发单账户勾选:复选框样式的胶囊,勾几个发几个 */
+.account-picker {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-top: 8px; font-size: 12px;
+}
+
+/* ================= 卡片周边 ================= */
+.cards { display: flex; flex-direction: column; gap: 8px; }
+.result > * + * { margin-top: 8px; }
+.card-title { font-weight: 590; margin: 6px 0 4px; font-size: 13px; }
+/* 元数据是一行二级色文字,不是一排灰色胶囊。Mail / Finder / Stocks 的列表里,时间、账户、金额都是直接写出来的字 */
+.card-meta {
+  display: flex; gap: 3px 14px; flex-wrap: wrap; margin-top: 6px;
+  color: var(--label-secondary); font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+.card-meta .strong { color: var(--label); font-weight: 510; }
+.reason { color: var(--label-secondary); font-size: 11.5px; margin-top: 4px; }
+
+/* 账户标签:纸面账户是常态,不该发绿光;实盘才是要一眼看见的那个 */
+.tag { display: inline-block; }
+.tag.paper { color: var(--label-secondary); }
+.tag.live { color: var(--orange-text); font-weight: 590; }
+
+/* 状态词:11px、中等字重,颜色按语义 */
+.record-sym { font-family: var(--font-mono); font-weight: 590; font-size: 12px; }
+.status { font-size: 11px; font-weight: 510; color: var(--label-secondary); white-space: nowrap; }
+.status.filled { color: var(--green-text); }
+.status.rejected { color: var(--red-text); }
+.status.pending { color: var(--orange-text); }
+
+/* 买卖方向要一眼分得出。交易软件里这是扫列表时最先看的一个字段。 */
+.side { margin-left: 7px; font-size: 10.5px; font-weight: 600; font-family: var(--font); }
+.side.buy { color: var(--up-text); }
+.side.sell { color: var(--down-text); }
+
+/* ---- 就绪检查表(交易指令页)---- */
+.readiness-sub { color: var(--label-secondary); font-size: 11.5px; margin-bottom: 6px; }
+.readiness-step { display: flex; align-items: center; gap: 10px; }
+.readiness-step > span:first-child { flex: 1; min-width: 0; }
+
+/* ---- 记录详情:记录是这个软件的核心产物,它的详情该像一份单据 ---- */
+.detail {
+  margin-top: 12px; padding: 11px; background: var(--bg-elevated);
+  border: 0.5px solid var(--separator); border-radius: var(--radius-card);
+}
+.detail-head {
+  display: flex; align-items: center; gap: 10px;
+  padding-bottom: 9px; margin-bottom: 4px;
+  border-bottom: 0.5px solid var(--separator);
+}
+.detail-head strong { font-size: 13px; }
+.detail-section { margin-top: 12px; }
+.detail-section h4 {
+  margin: 0 0 6px; font-size: 11px; font-weight: 590;
+  color: var(--label-tertiary); letter-spacing: 0.02em;
+}
+/* 原始 JSON 降级到折叠区:留得住,但不再是第一眼看到的东西 */
+.detail-raw { margin-top: 12px; }
+.detail-raw pre { margin-top: 6px; max-height: 260px; overflow: auto; }
+
+/* ================= 板块页 ================= */
+.sector-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(440px, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+.sector-stocks {
+  max-height: 300px;
+  overflow-y: auto;
+  overflow-x: hidden;   /* 行内按钮略宽,别为此冒出横向滚动条 */
+  margin: 6px 0;
+  padding-right: 2px;
+}
+.stock-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 0.5px solid var(--separator);
+  min-width: 0;
+}
+.stock-row:last-child { border-bottom: none; }
+.stock-sym { font-weight: 600; min-width: 52px; }
+.stock-sub {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--label-secondary);
+}
+.stock-price { font-variant-numeric: tabular-nums; }
+.stock-tag-input { width: 96px; }
+
+/* 板块页里的页内节(价位提醒):和页面其它部分之间留一段距离 */
+.page-section { margin-top: 22px; }
+
+/* 板块卡里一只股 = 行 + 价位条,是一个整体:块内不画线,价位条铺一层浅底,块之间一条整像素的线 */
+.stock-block { padding: 1px 0 6px; border-bottom: 1px solid var(--separator); }
+.stock-block:last-child { border-bottom: none; padding-bottom: 0; }
+.stock-block .stock-row { border-bottom: none; }
+.stock-levels { padding: 6px 4px 4px; margin: 0 -4px; background: var(--bg-fill); border-radius: 6px; }
+.stock-levels.muted { font-size: 11px; padding: 3px 6px 4px; }
+.lstrip { margin: 2px 0 0; }
+.lstrip-svg { display: block; overflow: visible; font-size: 10px; }
+.lstrip-axis { stroke: var(--separator); stroke-width: 1; }
+.lstrip-break { stroke: var(--label-tertiary); stroke-width: 1; fill: none; }
+.lstrip-tick { stroke: var(--label-tertiary); stroke-width: 2; stroke-linecap: round; }
+.lstrip-tick.resistance { stroke: var(--down); }
+.lstrip-tick.support { stroke: var(--up); }
+.lstrip-spot { fill: var(--blue); stroke: var(--bg-elevated); stroke-width: 1.5; }
+.lstrip-lead { stroke: var(--label-tertiary); stroke-width: 0.8; fill: none; opacity: 0.8; }
+.lstrip-lead.resistance { stroke: var(--down); }
+.lstrip-lead.support { stroke: var(--up); }
+.lstrip-lead.spot { stroke: var(--blue); }
+.lstrip-text { fill: var(--label-secondary); font-size: 10px; font-weight: 500; }
+.lstrip-text .lstrip-price { fill: var(--label); font-family: var(--font-mono); font-weight: 600; }
+.lstrip-text.resistance .lstrip-name { fill: var(--down-text); }
+.lstrip-text.support .lstrip-name { fill: var(--up-text); }
+.lstrip-text.spot .lstrip-name, .lstrip-text.spot .lstrip-price { fill: var(--blue); }
+
+/* 期权墙的价位梯子:一根竖轴,行按价格定位;支撑绿、阻力红、现价蓝点 */
+.ladder { position: relative; margin: 8px 0 2px; font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.ladder-axis { position: absolute; left: 96px; top: 0; bottom: 0; border-left: 1px solid var(--separator); }
+.ladder-row {
+  position: absolute; left: 0; right: 0; height: 22px;
+  display: flex; align-items: center; gap: 8px;
+  transform: translateY(-50%); color: var(--label-secondary);
+}
+.ladder-src { width: 86px; text-align: right; flex-shrink: 0; }
+.ladder-tick { width: 14px; height: 0; margin-left: 2px; border-top: 1.5px solid currentColor; flex-shrink: 0; }
+.ladder-price { font-family: var(--font-mono); font-weight: 590; color: var(--label); min-width: 58px; }
+.ladder-dist { color: var(--label-tertiary); }
+.ladder-row.support { color: var(--up-text); }
+.ladder-row.support .ladder-tick { border-color: var(--chart-up); }
+.ladder-row.resistance { color: var(--down-text); }
+.ladder-row.resistance .ladder-tick { border-color: var(--chart-down); }
+.ladder-row.spot { color: var(--blue); }
+.ladder-row.spot .ladder-src { font-weight: 590; }
+.ladder-row.spot .ladder-tick {
+  width: 8px; height: 8px; margin-left: -2px; border: none; border-radius: 50%; background: var(--blue);
+}
+
+/* ================= 回测:moomoo 风格的决策流程卡片 ================= */
+.flow {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  background: var(--bg-fill);
+  border-radius: var(--radius-card);
+  margin-bottom: 12px;
+  overflow-x: auto;
+}
+.flow-row { display: flex; align-items: center; gap: 6px; min-width: max-content; }
+.flow-card {
+  padding: 6px 10px;
+  background: var(--bg-elevated);
+  border: 0.5px solid var(--separator);
+  border-radius: 6px;
+  font-size: 12px;
+  max-width: 260px;
+}
+.flow-card .flow-title { font-weight: 600; margin-bottom: 2px; display: flex; align-items: center; gap: 6px; }
+.flow-card .flow-title::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--blue); flex-shrink: 0; }
+.flow-card .flow-body { color: var(--label-secondary); font-size: 11px; }
+.flow-card.cond .flow-title::before { background: var(--orange); }
+.flow-card.action .flow-title::before { background: var(--green); }
+.flow-card.start .flow-title::before { background: var(--blue); }
+.flow-arrow { color: var(--label-secondary); font-size: 11px; white-space: nowrap; }
+.rule-builder { width: 100%; }
+.rule-group { margin-top: 8px; padding: 8px 10px; background: var(--bg-fill); border-radius: 8px; }
+.rule-group .rule-row { margin: 6px 0; }
+.rule-group > .ant-btn { margin-top: 4px; }
+
+/* ================= 全局宏观行情带(仿富途顶部指数条) ================= */
+.macro-strip {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  padding: 5px 16px;
+  overflow-x: auto;
+  background: var(--bg-window);    /* 和工具栏同一块材质:chrome 是 chrome,内容区从发丝线以下开始 */
+  border-bottom: 0.5px solid var(--separator);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  scrollbar-width: none;
+}
+.macro-strip::-webkit-scrollbar { display: none; }
+.macro-item { display: flex; gap: 5px; align-items: baseline; }
+.macro-label { color: var(--label-secondary); }
+.macro-value { font-weight: 600; font-variant-numeric: tabular-nums; }
+.macro-value.live::after {
+  content: ""; display: inline-block; width: 4px; height: 4px; border-radius: 50%;
+  background: var(--green); margin-left: 4px; vertical-align: middle;
+}
+.macro-inst {
+  color: var(--label-tertiary); font-size: 9.5px; font-family: var(--font-mono);
+  margin-left: -2px;
+}
+.macro-chg.up { color: var(--up-text); }
+.macro-chg.down { color: var(--down-text); }
+.macro-chg.flat { color: var(--label-secondary); }
+.macro-stale { color: var(--label-secondary); font-style: italic; }
+
+/* ================= 订单簿深度梯子 ================= */
+.book-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 6px; }
+.book-row {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 6px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.book-bar {
+  position: absolute;
+  top: 1px; bottom: 1px; left: 0;
+  border-radius: 3px;
+  opacity: 0.18;
+}
+.book-bar.bid { background: var(--up); }
+.book-bar.ask { background: var(--down); }
+.book-price, .book-size { position: relative; }
+
+/* ================= K线 PA ================= */
+/* 图表容器:高度由布局给,画布按真实像素填满。三档高度:K线 PA 主图 440,交易分析的两张 320,回测净值曲线 220。
+   圆角底色由画布自己画:容器上加 overflow:hidden + border-radius 会把画布切成单独的合成层,截图工具就抓不到图了 */
+.pa-chart-wrap { position: relative; height: 440px; margin-top: 6px; }
+.chart-wrap { position: relative; margin-top: 6px; }
+.chart-wrap.mid { height: 320px; }
+.chart-wrap.short { height: 220px; }
+.pa-canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+@media (max-width: 1100px) { .pa-chart-wrap { height: 360px; } .chart-wrap.mid { height: 280px; } }
+
+.pa-score { font-family: var(--font-mono); font-weight: 700; font-size: 16px; letter-spacing: -0.02em; }
+.pa-score.up { color: var(--up-text); }
+.pa-score.down { color: var(--down-text); }
+.pa-score.flat { color: var(--label-secondary); }
+.pa-ev {
+  display: flex; align-items: baseline; gap: 8px; padding: 4px 0; font-size: 11.5px;
+  border-bottom: 0.5px solid var(--separator);
+}
+.pa-ev:last-of-type { border-bottom: none; }
+.pa-ev-label { min-width: 92px; flex-shrink: 0; color: var(--label-secondary); }
+.pa-ev-detail { flex: 1; }
+.pa-ev-w {
+  font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+  min-width: 46px; text-align: right; flex-shrink: 0;
+}
+.pa-ev-w.up { color: var(--up-text); }
+.pa-ev-w.down { color: var(--down-text); }
+.pa-ev-w.flat { color: var(--label-tertiary); }
+.pa-readout .reason { margin-top: 6px; }
+.pa-readout-grid { margin-top: 8px; }
+.pa-lv { display: flex; gap: 8px; align-items: baseline; font-size: 11.5px; padding: 3px 0; }
+.pa-lv-price {
+  font-family: var(--font-mono); font-weight: 590;
+  font-variant-numeric: tabular-nums; min-width: 66px;
+}
+
+/* ================= 接入页 ================= */
+/* 让人照抄的配置片段:等宽、可选中、宽了自己横向滚,不把卡片撑破 */
+.snippet {
+  margin: 6px 0 0; padding: 8px 10px;
+  background: var(--bg-content); border: 0.5px solid var(--separator);
+  border-radius: var(--radius-card);
+  font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--label);
+  white-space: pre; overflow-x: auto; user-select: text;
+}
+.port-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px; }
+.port-num { font-family: var(--font-mono); font-weight: 590; font-size: 13px; }
+.port-label { color: var(--label-secondary); font-size: 11px; }
+.port-state { font-size: 11px; margin-top: 3px; }
+.port-badge {
+  display: inline-block; margin-top: 4px; padding: 0 5px; border-radius: 4px;
+  background: var(--bg-fill); font-size: 10px; font-family: var(--font-mono);
+  color: var(--label-secondary);
+}
+
+/* ================= 关于 ================= */
+.about { font-size: 11.5px; }
+.log {
+  max-height: 210px; overflow-y: auto; margin: 0 0 8px; padding: 9px;
+  background: var(--bg-fill); border-radius: var(--radius-card);
+  font-family: var(--font-mono); font-size: 10.5px; color: var(--label-secondary);
+  white-space: pre-wrap; word-break: break-all; user-select: text;
+}
+.keycaps { display: inline-flex; gap: 4px; }
+kbd {
+  padding: 1px 6px; min-width: 20px; text-align: center;
+  background: var(--bg-fill); border: 0.5px solid var(--separator);
+  border-bottom-width: 1.5px; border-radius: 4px;
+  font: 11px/1.6 var(--font-mono); color: var(--label);
+}
+
+/* ================= 滚动条 ================= */
+::-webkit-scrollbar { width: 11px; height: 11px; }
+::-webkit-scrollbar-thumb {
+  background: rgba(120, 120, 128, 0.4);
+  border: 3px solid transparent; background-clip: content-box; border-radius: 6px;
+}
+::-webkit-scrollbar-thumb:hover { background-color: rgba(120, 120, 128, 0.6); background-clip: content-box; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* ================= 平台手感 ================= */
+/* 键盘可达性:全站只有这一种焦点环,3.5px、强调色 30%,AppKit 的样子 */
+:where(button, select, textarea, input, [tabindex]):focus-visible {
+  outline: var(--focus-outline);
+  outline-offset: 0;
+  border-radius: var(--radius-control);
+}
+/* cursor:default 是 macOS 的规矩;Windows 用户看到不变的箭头会以为点不动 */
+:root:not([data-platform="darwin"]) :where(button, .ant-menu-item, .ant-menu-submenu-title, .ant-segmented-item, .ant-tag-checkable, .ant-collapse-header, .ant-table-row, select) {
+  cursor: pointer;
+}
+/* 价格、数量、时间竖着排要能对上位;比例字宽会让小数点参差不齐 */
+.record-sym, .stock-price, .price, .num, td, .chip, .macro-value, .port-num, .book-price, .book-size { font-variant-numeric: tabular-nums; }
+::selection { background: color-mix(in srgb, var(--blue) 30%, transparent); }
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}
+
+/* ================= 持仓追踪 ================= */
+/* 盈亏跟着「涨跌配色」走 */
+.pnl-up { color: var(--up-text); font-variant-numeric: tabular-nums; font-weight: 590; }
+.pnl-down { color: var(--down-text); font-variant-numeric: tabular-nums; font-weight: 590; }
+.pnl-pct { opacity: 0.75; font-weight: 400; margin-left: 4px; }
+
+.track-form {
+  margin-top: 10px; padding-top: 10px;
+  border-top: 0.5px solid var(--separator);
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 10px;
+  align-items: end;
+}
+.track-toggle { margin-top: 8px; }
+.track-field { display: flex; flex-direction: column; gap: 3px; }
+.track-field > span { color: var(--label-secondary); font-size: 11px; }
+.track-form .ant-input-number, .track-form .ant-select { width: 100%; }
+/* 开关和按钮各占满一行:它们不是"又一个输入框" */
+.track-form > .switch-row { grid-column: 1 / -1; margin: 2px 0 0; padding: 4px 0; }
+.track-form > .ant-btn { grid-column: 1 / -1; justify-self: start; }
+.track-form > .combo-note { grid-column: 1 / -1; font-size: 11.5px; line-height: 1.5; }
+.track-form > .combo-note > div + div { margin-top: 4px; }
+@media (max-width: 900px) { .track-form { grid-template-columns: 1fr 1fr; } }
+
+/* 盯盘量表:离触发还有多远。条越满 = 越贴近触发价 */
+.track-gauge {
+  display: flex; flex-direction: column; gap: 4px;
+  margin-top: 8px; padding-top: 8px;
+  border-top: 0.5px solid var(--separator);
+}
+.gauge-row {
+  display: grid;
+  grid-template-columns: 92px 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.gauge-label { color: var(--label-secondary); white-space: nowrap; }
+.gauge-value { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* 刚建好的追踪:短暂高亮,让人知道"就是这一条" */
+@keyframes track-flash {
+  from { box-shadow: 0 0 0 2px var(--accent); }
+  to { box-shadow: 0 0 0 0 transparent; }
+}
+.just-added { animation: track-flash 1.6s ease-out; }
+
+/* ================= 交易分析 ================= */
+.review-notes { margin: 6px 0 0; padding-left: 16px; font-size: 11.5px; color: var(--orange-text); }
+.num.pos, .pos > .ant-statistic-content { color: var(--up-text); }
+.num.neg, .neg > .ant-statistic-content { color: var(--down-text); }
+
+/* ================= 扫描页 ================= */
+/* RS 热力格:正为绿、负为红,深浅按幅度 */
+.rs-cell { font-variant-numeric: tabular-nums; }
+.rs-cell.pos { background: color-mix(in srgb, var(--green) calc(var(--heat) * 1%), transparent); }
+.rs-cell.neg { background: color-mix(in srgb, var(--red) calc(var(--heat) * 1%), transparent); }
+.rs-tags { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; margin: 10px 0; }
+.rs-tag-card { padding: 8px 10px; border: 0.5px solid var(--separator); border-radius: var(--radius-card); background: var(--bg-elevated); }
+.rs-tag-card .rs-tag-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.rs-tag-card .rs-tag-name { font-weight: 590; }
+.rs-tag-card .rs-tag-score { font-family: var(--font-mono); font-size: 12px; }
+.rs-tag-card .rs-tag-row { display: flex; gap: 4px; margin-top: 6px; }
+.rs-tag-card .rs-tag-row span { flex: 1; text-align: center; font-size: 10px; padding: 2px 0; border-radius: 4px; font-variant-numeric: tabular-nums; }
+.rs-tag-card .rs-tag-syms { margin-top: 5px; font-size: 10px; color: var(--label-tertiary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 拐点格 */
+.sig { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 6px; font-weight: 510; }
+.sig.bull { background: color-mix(in srgb, var(--green) 16%, transparent); color: var(--green-text); }
+.sig.bear { background: color-mix(in srgb, var(--red) 16%, transparent); color: var(--red-text); }
+.sig.none { color: var(--label-tertiary); }
+.sig.err { color: var(--orange-text); }
+.sig .sub { font-weight: 400; opacity: 0.8; margin-left: 3px; }
+.sig-detail { font-size: 10px; color: var(--label-tertiary); display: block; }
+
+/* 极值偏离 */
+.dev-readout { margin: 8px 0 0; padding-left: 18px; font-size: 12px; line-height: 1.6; }
+.dev-readout li { margin: 2px 0; }

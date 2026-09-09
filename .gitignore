@@ -5,6 +5,8 @@ config/*.local.json
 # 桌面端:依赖、打包产物、预览与压测输出
 desktop/node_modules/
 desktop/dist/
+desktop/renderer-react/dist/
+desktop/renderer-react/dist-preview/
 desktop/build/engine-ts/
 .uipreview/
 

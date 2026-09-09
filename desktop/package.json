@@ -6,20 +6,32 @@
   "description": "IBKR 交易指令解析引擎的桌面界面(Electron 外壳 + TS 交易引擎子进程)",
   "main": "main.js",
   "scripts": {
-    "prestart": "node tools/ensure_engine_ts.js",
+    "prestart": "node tools/ensure_engine_ts.js && npm run ui:build",
     "start": "electron .",
-    "predev": "node tools/ensure_engine_ts.js",
+    "predev": "node tools/ensure_engine_ts.js && npm run ui:build",
     "dev": "DAFRI_DEV=1 electron .",
-    "dist:mac": "npm run stage:engine:mac && npm run smoke:engine && electron-builder --mac dmg --arm64 --publish never",
-    "dist:win": "npm run stage:engine:win && npm run smoke:engine && electron-builder --win nsis --x64 --publish never",
+    "ui:build": "vite build --config renderer-react/vite.config.ts",
+    "ui:watch": "vite build --watch --config renderer-react/vite.config.ts",
+    "ui:preview": "vite build --mode preview --config renderer-react/vite.config.ts",
+    "ui:typecheck": "tsc -p renderer-react/tsconfig.json",
+    "dist:mac": "npm run ui:build && npm run stage:engine:mac && npm run smoke:engine && electron-builder --mac dmg --arm64 --publish never",
+    "dist:win": "npm run ui:build && npm run stage:engine:win && npm run smoke:engine && electron-builder --win nsis --x64 --publish never",
     "dist": "npm run dist:mac && npm run dist:win",
     "stage:engine:win": "node tools/ensure_engine_ts.js && node tools/stage_engine_ts.js --platform win32 --arch x64",
     "stage:engine:mac": "node tools/ensure_engine_ts.js && node tools/stage_engine_ts.js --platform darwin --arch arm64",
     "smoke:engine": "node tools/smoke_engine_ts.js"
   },
   "devDependencies": {
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^4.7.0",
+    "antd": "^5.29.3",
     "electron": "^40.0.0",
-    "electron-builder": "^26.0.12"
+    "electron-builder": "^26.0.12",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "^5.9.3",
+    "vite": "^6.4.3"
   },
   "build": {
     "appId": "com.dafri.trading",
@@ -29,7 +41,7 @@
       "main.js",
       "preload.js",
       "rpc-client.js",
-      "renderer/**/*"
+      "renderer-react/dist/**/*"
     ],
     "extraResources": [
       {
