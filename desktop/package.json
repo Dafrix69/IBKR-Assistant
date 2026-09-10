@@ -1,7 +1,7 @@
 {
   "name": "dafri-desktop",
   "productName": "Dafri Trading",
-  "version": "0.2.0",
+  "version": "0.2.2",
   "private": true,
   "description": "IBKR 交易指令解析引擎的桌面界面(Electron 外壳 + TS 交易引擎子进程)",
   "main": "main.js",

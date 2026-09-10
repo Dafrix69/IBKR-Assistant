@@ -36,6 +36,30 @@ export interface TrackTargets {
   trail_pct?: number | null;
   profit_drawdown_pct?: number | null;
   profit_drawdown_tiers?: unknown;
+  /** 标的目标价:止盈价不是人填的,而是每轮按当前波动率现算出来的 */
+  spot_target?: number | null;
+}
+
+/** 引擎每轮算出来的「标的走到目标价 → 这份持仓值多少 / 赚多少」。 */
+export interface SpotTargetRow {
+  spot_target: number;
+  spot?: number | null;
+  /** 现价怎么来的:夜盘按期货推算时写明期货与基差 */
+  spot_note?: string;
+  price?: number | null;
+  pnl?: number | null;
+  pnl_pct?: number | null;
+  sigma?: number | null;
+  /** none 正股 / smile 每条腿各自反解 / net 自身报价反解 / leg 最近腿反解 / clock 模型默认波动率 */
+  sigma_source?: string;
+  /** smile 档每条腿各自的 σ_剩余(点),键是「行权价+C/P」 */
+  leg_sigmas?: Record<string, number>;
+  structure?: string;
+  reason?: string;
+  /** 引擎这一轮只守不挂:还没拿到过市场价 */
+  held?: boolean;
+  /** 试算时:这个价不比现价更有利,挂上去会立刻成交(设置时会被拒) */
+  warning?: string;
 }
 
 export interface Track {
@@ -66,12 +90,25 @@ export interface LiveRow {
   profit_peak?: number | null;
   profit_drawdown_threshold?: number | null;
   profit_trail_stop?: number | null;
+  spot_target?: SpotTargetRow | null;
   blocked?: string[];
 }
 
 export interface HostedOrder {
   kind: string;
   label: string;
+}
+
+/** 引擎里盯盘节拍器的心跳(TradingEngine.trackerHeartbeat)。 */
+export interface LoopHeartbeat {
+  running: boolean;
+  interval_ms: number;
+  ticks: number;
+  slow_ticks: number;
+  last_ms: number | null;
+  max_ms: number;
+  age_ms: number | null;
+  last_error: string;
 }
 
 export interface TrackerSnapshot {
@@ -81,10 +118,11 @@ export interface TrackerSnapshot {
   rows: Record<string, LiveRow>;
   hosted: Record<string, { orders: HostedOrder[] }>;
   delayed: boolean;
+  loop: LoopHeartbeat | null;
 }
 
 type Listener = () => void;
-let snap: TrackerSnapshot = { positions: [], positionsError: null, tracks: [], rows: {}, hosted: {}, delayed: false };
+let snap: TrackerSnapshot = { positions: [], positionsError: null, tracks: [], rows: {}, hosted: {}, delayed: false, loop: null };
 let pollBusy = false;
 let reconcileBusy = false;
 let rowsSig = '';
@@ -130,7 +168,15 @@ export async function loadTracker(refreshPositions = true): Promise<void> {
   set(part);
 }
 
-/** 盯盘一轮:引擎算,这里驱动。触发了就通知、刷新持仓与记录。 */
+/** 触发 / 被拦:引擎的节拍器当场推过来("tracker" 事件)。以前靠这里每秒读一次的返回值,
+ * 节拍器挪进引擎之后读的是快照,同一次触发可能读到两次、也可能被下一轮盖掉——所以改成听推送。 */
+async function onFired(fired: { symbol: string; reason: string }[]): Promise<void> {
+  if (!fired.length) return;
+  for (const f of fired) pushNotification(`自动平仓:${f.symbol}`, f.reason);
+  await Promise.all([loadTracker(true), loadRecords()]);
+}
+
+/** 读引擎节拍器最新一轮的盯盘结果(节拍器在引擎里,不靠这里驱动;这里只负责画)。 */
 export async function pollTrackers(): Promise<void> {
   if (pollBusy || !getStatus()?.broker_connected || !snap.tracks.length) return;
   pollBusy = true;
@@ -138,11 +184,12 @@ export async function pollTrackers(): Promise<void> {
     const result = await dafri.pollTrackers();
     const rows: Record<string, LiveRow> = {};
     for (const row of result?.rows || []) rows[row.id] = row;
+    const loop: LoopHeartbeat | null = result?.loop ?? null;
+    // 节拍器没在跑时(兜底路径)返回值里仍会带触发
     const fired: { symbol: string; reason: string }[] = result?.fired || [];
     if (fired.length) {
-      for (const f of fired) pushNotification(`自动平仓:${f.symbol}`, f.reason);
-      set({ rows });
-      await Promise.all([loadTracker(true), loadRecords()]);
+      set({ rows, loop });
+      await onFired(fired);
       return;
     }
     // 盘口不动的那些轮次不发通知,免得订阅者每秒重渲染一遍
@@ -150,11 +197,14 @@ export async function pollTrackers(): Promise<void> {
       (result?.rows || []).map((r: LiveRow) => [
         r.id, r.state, r.price, r.unrealized_pnl, r.profit_peak,
         r.profit_drawdown_threshold, r.profit_trail_stop, r.stop_effective, r.blocked,
+        r.spot_target?.price, r.spot_target?.pnl, r.spot_target?.sigma_source,
       ]),
     );
     if (sig !== rowsSig) {
       rowsSig = sig;
-      set({ rows });
+      set({ rows, loop });
+    } else if (loop && (loop.ticks !== snap.loop?.ticks || loop.last_error !== snap.loop?.last_error)) {
+      set({ loop }); // 心跳每轮都变;行没变时只刷心跳
     }
   } catch {
     /* 单轮失败不打断界面;下一轮再来 */
@@ -189,8 +239,12 @@ export function startTrackerLoops(): void {
   if (started) return;
   started = true;
   void loadTracker(false);
-  // 1 秒一轮:0DTE 蝶的价格几秒就能走完一个档位,8 秒的判断间隔会让"回撤 30% 就平"
-  // 变成"回撤到 45% 才发现"。有 busy 防重入、没有追踪时直接跳过,不会把 RPC 压垮。
+  dafri.on('engine-event', ({ event, data }) => {
+    if (event !== 'tracker') return;
+    void onFired(((data as { fired?: { symbol: string; reason: string }[] })?.fired) || []);
+  });
+  // 节拍器在引擎里(每秒一轮,判触发 + 托管调价),窗口最小化、切页都不影响执行。
+  // 这里一秒读一次它最新一轮的结果,只为把界面画出来——两个请求都在引擎的本地道,即答。
   setInterval(pollTrackers, 1_000);
   setInterval(reconcileHosted, 1_000);
 }

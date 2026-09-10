@@ -25,11 +25,49 @@ function emptyTicker(): TickerData {
   return {
     bid: NaN, ask: NaN, last: null, close: null, bidSize: null, askSize: null,
     marketPrice: null, callOpenInterest: null, putOpenInterest: null,
-    callVolume: null, putVolume: null, modelGreeks: null,
+    callVolume: null, putVolume: null, modelGreeks: null, error: null,
   };
 }
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+
+/** 持仓表的一行(账户 + 合约 + 数量 + 成本),按 `账户|conId` 索引。 */
+export interface HeldPosition { account: string; contract: any; pos: number; avgCost: number }
+
+/**
+ * 把 IBApiNext.getPositions() 的一次推送并进自己维护的持仓表。
+ *
+ * **不信库里那份 `all`。** @stoqey/ib 在持仓归零时这样删缓存:`accountPositions.splice(i)`——
+ * 少了第二个参数,把第 i 个之后的**全部**删掉。蝶的一条腿平掉,排在它后面的 BE 也跟着从 `all`
+ * 里消失,盯盘判「持仓已不存在」→ 停追踪、撤托管单(2026-09-10 真机:蝶止盈成交后一秒,
+ * BE 的追踪被自动停用)。但库发的增量(added / changed / removed)各自只带那一条,是对的。
+ * 所以:只有首次那份(positionEnd 之后、不带增量)用 `all` 建表,之后一律只按增量改。
+ */
+export function applyPositionUpdate(
+  table: Map<string, HeldPosition> | null, update: any,
+): Map<string, HeldPosition> {
+  const keyOf = (account: string, contract: any): string => `${account}|${contract?.conId ?? contract?.symbol ?? ""}`;
+  const each = (group: any, fn: (account: string, p: any) => void): void => {
+    group?.forEach?.((list: any[], account: string) => { for (const p of list ?? []) fn(account, p); });
+  };
+  const isDelta = Boolean(update?.added || update?.changed || update?.removed);
+  if (table === null || !isDelta) {
+    const fresh = new Map<string, HeldPosition>();
+    each(update?.all ?? update, (account, p) => {
+      if (Number(p?.pos ?? 0)) fresh.set(keyOf(account, p.contract), { account, contract: p.contract, pos: Number(p.pos), avgCost: Number(p.avgCost ?? 0) });
+    });
+    if (table === null || !isDelta) return fresh;
+  }
+  const upsert = (account: string, p: any): void => {
+    const k = keyOf(account, p?.contract);
+    if (Number(p?.pos ?? 0)) table.set(k, { account, contract: p.contract, pos: Number(p.pos), avgCost: Number(p.avgCost ?? 0) });
+    else table.delete(k); // 归零 = 平仓
+  };
+  each(update.added, upsert);
+  each(update.changed, upsert);
+  each(update.removed, (account, p) => table.delete(keyOf(account, p?.contract)));
+  return table;
+}
 
 /** 底层 IBApi 的 orderStatus 事件 → 引擎期望的 trade(ib_insync 同形:order / orderStatus / contract)。 */
 export function tradeFromOrderStatus(
@@ -144,6 +182,30 @@ export async function createIbApiNextSession(cfg: {
     });
   }
 
+  let mdBaseline = 1;
+  // 持仓常驻订阅:见 positions()
+  let positionsLatest: Map<string, HeldPosition> | null = null;
+  let positionsSub: Subscription | null = null;
+  const positionsWaiters: Array<() => void> = [];
+  const ensurePositions = (): void => {
+    if (positionsSub !== null) return;
+    try {
+      positionsSub = api.getPositions().subscribe({
+        next: (update: any) => {
+          // 自己按增量维护,不用库里那份会被截尾的 all(见 applyPositionUpdate)
+          positionsLatest = applyPositionUpdate(positionsLatest, update);
+          positionsWaiters.splice(0).forEach((f) => f());
+        },
+        // 订阅断了:清掉句柄,下一次读持仓重订;旧快照也作废,不拿断流前的数冒充现在
+        error: () => {
+          positionsSub = null;
+          positionsLatest = null;
+        },
+      });
+    } catch {
+      positionsSub = null;
+    }
+  };
   const keyOf = (c: IbContract): string =>
     `${c.secType}|${c.symbol}|${c.lastTradeDateOrContractMonth ?? ""}|${c.strike ?? ""}|${c.right ?? ""}`;
 
@@ -171,6 +233,9 @@ export async function createIbApiNextSession(cfg: {
       connected = false;
       for (const live of tickers.values()) live.sub?.unsubscribe();
       tickers.clear();
+      positionsSub?.unsubscribe();
+      positionsSub = null;
+      positionsLatest = null;
       try {
         api.disconnect();
       } catch {
@@ -228,6 +293,16 @@ export async function createIbApiNextSession(cfg: {
     },
 
     reqMarketDataType(type) {
+      // "切回实时"(1)一律回到基线:纸面会话的基线是 3,见 BrokerRouter.connect
+      try {
+        api.setMarketDataType(type === 1 ? mdBaseline : type);
+      } catch {
+        /* ignore */
+      }
+    },
+
+    setBaselineMarketDataType(type) {
+      mdBaseline = type;
       try {
         api.setMarketDataType(type);
       } catch {
@@ -243,9 +318,18 @@ export async function createIbApiNextSession(cfg: {
         tickers.set(key, live);
         try {
           const observable = api.getMarketData(toIbContract(contract), genericTicks, false, false);
+          const entry = live;
           live.sub = observable.subscribe({
-            next: (update: any) => applyTicks(mod, live!.data, update),
-            error: () => undefined,
+            next: (update: any) => applyTicks(mod, entry.data, update),
+            // 订阅被拒(10197 实盘会话占着实时行情、354 没订阅……)之后这条流就死了。以前把它原样
+            // 留在缓存里,同一个合约再订拿到的永远是这条死流——2026-09-10 真机:连接刚建好时第一条
+            // 行情请求吃了 10197,之后那只 ES 期货怎么订都是空的。现在出错就摘掉,下次重新订。
+            error: (err: any) => {
+              const code = err?.code ?? err?.error?.code ?? "";
+              const text = String(err?.error?.message ?? err?.message ?? "").slice(0, 120);
+              entry.data.error = `${code} ${text}`.trim() || "订阅被拒";
+              if (tickers.get(key) === entry) tickers.delete(key);
+            },
           });
         } catch {
           /* 订阅失败:句柄读到的是空盘口,守卫会拒 */
@@ -325,8 +409,23 @@ export async function createIbApiNextSession(cfg: {
 
     async placeOrder(contract, order): Promise<TradeLike> {
       const ibOrder = toIbOrder(mod, order);
+      // 带着原 orderId 就是**改单**:IBKR 的改单语义是同一个 id 重发。以前这里永远 placeNewOrder,
+      // modifyHosted 设了 orderId 也白设——每一次"改价"其实都新挂了一张单。托管单一秒一改价,
+      // 就是一秒多挂一张平仓单。
+      if (order.orderId) {
+        api.modifyOrder(order.orderId, toIbContract(contract), ibOrder);
+        return { orderId: Number(order.orderId), permId: null, status: "Submitted" };
+      }
       const orderId = await api.placeNewOrder(toIbContract(contract), ibOrder);
       return { orderId: Number(orderId), permId: null, status: "Submitted" };
+    },
+
+    /** 按 orderId 撤单(托管单用)。以前没实现:路由那边是 `session.cancelOrder?.(id)`,可选调用
+     * 撞上未实现就**静默什么都不做**——删追踪、持仓已平、授权收回、熔断时"撤掉"的托管单全都还挂在
+     * 券商那边;持仓平了之后那张卖单一成交就是反向开仓(2026-09-10 真机:认领时自愈撤重复单,
+     * 撤了个寂寞才暴露)。 */
+    cancelOrder(orderId: number) {
+      api.cancelOrder(Number(orderId));
     },
 
     async openTrades() {
@@ -343,6 +442,51 @@ export async function createIbApiNextSession(cfg: {
       }));
     },
 
+    /**
+     * 未成交单明细(托管单认领用)。以前没实现:listHostedOpen 见它不存在就跳过,永远认领不到,
+     * 应用每重启一次就把同一追踪的托管单再挂一张(2026-09-10 真机:重启三次,TWS 上四张同样的卖单)。
+     * getAllOpenOrders 拿的是所有 client 的单;认领按 orderRef 前缀过滤,不会认错别人的单。
+     */
+    async openTradesDetailed() {
+      const open = await api.getAllOpenOrders();
+      const num = (v: unknown): number | null => {
+        const n = Number(v);
+        return v === null || v === undefined || !Number.isFinite(n) || n >= 1.7e308 ? null : n;
+      };
+      return (open ?? []).map((o: any) => {
+        const order = o?.order ?? {};
+        const c = o?.contract ?? {};
+        return {
+          orderId: Number(o?.orderId ?? order.orderId ?? 0) || null,
+          permId: Number(order.permId ?? 0) || null,
+          orderRef: String(order.orderRef ?? ""),
+          account: String(order.account ?? ""),
+          action: String(order.action ?? ""),
+          orderType: String(order.orderType ?? ""),
+          totalQuantity: Number(order.totalQuantity ?? 0),
+          lmtPrice: num(order.lmtPrice),
+          auxPrice: num(order.auxPrice),
+          trailingPercent: num(order.trailingPercent),
+          status: String(o?.orderState?.status ?? ""),
+          ocaGroup: String(order.ocaGroup ?? ""),
+          ocaType: Number(order.ocaType ?? 0) || null,
+          tif: String(order.tif ?? "GTC"),
+          outsideRth: Boolean(order.outsideRth),
+          contract: {
+            secType: String(c.secType ?? ""), symbol: String(c.symbol ?? ""),
+            exchange: String(c.exchange ?? "SMART"), currency: String(c.currency ?? "USD"),
+            conId: Number(c.conId ?? 0),
+            ...(c.lastTradeDateOrContractMonth ? { lastTradeDateOrContractMonth: c.lastTradeDateOrContractMonth } : {}),
+            ...(c.strike ? { strike: Number(c.strike) } : {}),
+            ...(c.right ? { right: String(c.right) } : {}),
+            ...(c.multiplier ? { multiplier: String(c.multiplier) } : {}),
+            ...(c.tradingClass ? { tradingClass: String(c.tradingClass) } : {}),
+            ...(Array.isArray(c.comboLegs) && c.comboLegs.length ? { comboLegs: c.comboLegs } : {}),
+          } as IbContract,
+        };
+      });
+    },
+
     async portfolio(): Promise<PortfolioItemLike[]> {
       // IBApiNext 的 portfolio 走账户更新流;真机联调时再接。
       // 回空让 router 走 positions() 兜底——与 Python 版"portfolio 拿不到就退"同路径。
@@ -356,18 +500,33 @@ export async function createIbApiNextSession(cfg: {
     },
 
     async positions(): Promise<PositionItemLike[]> {
-      const updates = await firstFrom(api.getPositions());
-      const out: PositionItemLike[] = [];
-      const all = updates?.all ?? updates;
-      all?.forEach?.((positionsOfAccount: any, account: string) => {
-        for (const p of positionsOfAccount ?? []) {
-          out.push({
-            contract: { ...(p.contract ?? {}), account },
-            position: Number(p.pos ?? p.position ?? 0),
-            avgCost: Number(p.avgCost ?? 0),
+      // 常驻订阅,读最新快照。以前每次都现订阅、拿到一笔就退订:盯盘、托管对账、提醒、持仓页
+      // 四处并发读,IBApiNext 共享的那条持仓订阅在"退订/重订"的竞态里卡死,之后再也不推——
+      // 2026-09-10 夜盘真机:从 07:18 起每次读持仓都等满 8 秒拿到 null。
+      ensurePositions();
+      if (positionsLatest === null) {
+        await new Promise<void>((resolve) => {
+          const timer = setTimeout(resolve, 8000);
+          positionsWaiters.push(() => {
+            clearTimeout(timer);
+            resolve();
           });
-        }
-      });
+        });
+      }
+      if (positionsLatest === null) {
+        // 拿不到 ≠ 没有持仓。回空列表的话,盯盘会判"持仓已不存在"、停掉追踪、撤掉托管单
+        positionsSub?.unsubscribe();
+        positionsSub = null;
+        throw new Error("TWS 在 8 秒内没有推送持仓,本轮读不到持仓");
+      }
+      const out: PositionItemLike[] = [];
+      for (const p of positionsLatest.values()) {
+        out.push({
+          contract: { ...(p.contract ?? {}), account: p.account },
+          position: p.pos,
+          avgCost: p.avgCost,
+        });
+      }
       return out;
     },
 
@@ -454,6 +613,15 @@ function toIbOrder(mod: any, order: OrderIntent): Record<string, unknown> {
   if (order.lmtPrice !== null) out["lmtPrice"] = order.lmtPrice;
   if (order.auxPrice !== null) out["auxPrice"] = order.auxPrice;
   if (order.trailingPercent !== null) out["trailingPercent"] = order.trailingPercent;
+  // 托管单的 OCA 组与 TRAIL 初始停损。以前这三个字段在这里被丢掉:同一追踪的止盈/止损从来
+  // 不在一个 OCA 组里,一张成交另一张照挂——那就是反向开仓(2026-09-10 真机:TWS 上的托管单 oca 为空)。
+  if (order.ocaGroup) {
+    out["ocaGroup"] = order.ocaGroup;
+    out["ocaType"] = order.ocaType ?? 1;
+  }
+  if (order.trailStopPrice !== undefined && order.trailStopPrice !== null) {
+    out["trailStopPrice"] = order.trailStopPrice;
+  }
   if (order.conditions?.length) {
     out["conditions"] = order.conditions.map((c) =>
       new mod.PriceCondition(c["price"], mod.TriggerMethod?.Default ?? 0, c["conId"], c["exchange"], c["isMore"], mod.ConjunctionConnection?.And ?? "a"),

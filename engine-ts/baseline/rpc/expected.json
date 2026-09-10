@@ -49,6 +49,19 @@
    "broker_connected": false,
    "broker_upstream_ok": true,
    "pending_count": 0,
+   "index_spot": {},
+   "tracker_loop": {
+    "running": "<MACHINE>",
+    "interval_ms": 1000,
+    "ticks": 0,
+    "slow_ticks": 0,
+    "last_ms": null,
+    "max_ms": 0,
+    "age_ms": null,
+    "last_error": "",
+    "event_loop_last_ms": null,
+    "event_loop_worst_ms": null
+   },
    "accounts": [
     {
      "alias": "模拟",
@@ -1262,7 +1275,19 @@
   "result": {
    "hosted": [],
    "blocked": [],
-   "quote_maybe_delayed": false
+   "quote_maybe_delayed": false,
+   "loop": {
+    "running": "<MACHINE>",
+    "interval_ms": 1000,
+    "ticks": 0,
+    "slow_ticks": 0,
+    "last_ms": null,
+    "max_ms": 0,
+    "age_ms": null,
+    "last_error": "",
+    "event_loop_last_ms": null,
+    "event_loop_worst_ms": null
+   }
   }
  },
  {

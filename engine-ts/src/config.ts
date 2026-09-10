@@ -116,7 +116,15 @@ export interface IndexConfig {
   exchange: string;
   daily_trading_class: string;
   monthly_trading_class: string;
+  /** 指数只在常规时段计算,夜盘的"现价"是昨收、一动不动,期权却在照常波动。
+   * 填了期货代码(SPX → ES),常规时段之外就用"期货现价 − 基差"推算指数现价
+   * (见 broker.futuresSpot);空串 = 不推算,夜盘照旧拿到昨收。 */
+  futures: string;
+  futures_exchange: string;
 }
+
+/** 内置的期货映射:只放真机核对过的。别的指数(NDX→NQ、RUT→RTY)在配置里自己填。 */
+export const DEFAULT_INDEX_FUTURES: Record<string, [string, string]> = { SPX: ["ES", "CME"] };
 
 export interface LLMConfig {
   provider: string;
@@ -619,11 +627,15 @@ export function fromDict(raw: Raw, source: string | null = null): Settings {
 
   const indexes: Record<string, IndexConfig> = {};
   for (const [sym, c] of Object.entries((raw["index_symbols"] as Record<string, Raw>) ?? {})) {
+    const dflt = DEFAULT_INDEX_FUTURES[sym.toUpperCase()];
     indexes[sym.toUpperCase()] = {
       symbol: sym.toUpperCase(),
       exchange: String((c["exchange"] as string) ?? "CBOE"),
       daily_trading_class: String((c["daily_trading_class"] as string) ?? ""),
       monthly_trading_class: String((c["monthly_trading_class"] as string) ?? ""),
+      // 配置里显式写了(哪怕是空串)就听配置的;没写才用内置映射
+      futures: String((c["futures"] as string | undefined) ?? dflt?.[0] ?? ""),
+      futures_exchange: String((c["futures_exchange"] as string | undefined) ?? dflt?.[1] ?? "CME"),
     };
   }
 

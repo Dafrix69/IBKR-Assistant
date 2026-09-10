@@ -117,6 +117,7 @@ window.dafri = {
   addTracker: async () => ({}), updateTracker: async () => ({}),
   deleteTracker: async () => ({}), closePositionNow: async () => ({}),
   pollTrackers: async () => ({ rows: [], fired: [], blocked: [] }),
+  previewSpotTarget: async () => ({ spot_target: null, structure: null }),
   reconcileTrackers: async () => ({ hosted: [], blocked: [], quote_maybe_delayed: false }),
   setTheme: async () => ({}), pickExportPath: async () => null,
   confirm: async () => true, notify: async () => ({}),

@@ -24,8 +24,9 @@ import { TradeStore, redactAccount } from "./store.js";
 import * as tk from "./tracker.js";
 import type { ApprovedOrder, RejectedOrder } from "./validator.js";
 import { EXTENDED_STATUSES, Validator, primaryCode, rejectionMessage } from "./validator.js";
-import { fmtF, pyRound } from "./py.js";
+import { finiteOrNull, fmtF, pyRound } from "./py.js";
 import * as path from "node:path";
+import { monitorEventLoopDelay } from "node:perf_hooks";
 
 type Rec = Record<string, any>;
 
@@ -53,6 +54,8 @@ export interface RouterLike {
   SUPPORTS_NATIVE_CONDITIONS?: boolean;
   sessionHook?: unknown;
   indexPrice(symbol: string): Promise<number | null>;
+  /** 最近一次 indexPrice 的来源(官方指数 / 期货推算);没有就是 null。 */
+  spotInfo?(symbol: string): Rec | null;
   legQuotes(contract: any, account: AccountConfig): Promise<any[]>;
   place(recordId: string, approved: ApprovedOrder, limitOverride?: number | null): Promise<PlacementResult>;
   positions(): Promise<Rec[]>;
@@ -135,6 +138,17 @@ export class TradingEngine {
   private readonly hosted = new Map<string, Map<string, Rec>>();
   private readonly hostedIndex = new Map<number, [string, string]>();
   private hostedAdopted = false;
+  /** 「标的目标价」上一轮算出来的预计价位:track_id → 每股/每张/每组净价。
+   * 某一轮拿不到标的现价或蝶价时沿用它,而不是把目标价当成"没设"——那会让
+   * syncHosted 把已经挂在券商侧的限价单撤掉,一次行情抖动就丢掉保护。
+   * 不落库:重启后托管单本身由 adoptHosted 按 orderRef 认领回来,价格就在单子上。 */
+  private readonly flyMark = new Map<string, number>();
+  /** 被券商拒掉的托管单:track_id|kind → {到期时刻, 原因}。退避期内不重挂也不再改价,
+   * 免得每秒刷一张拒单;原因照实交给界面。 */
+  private readonly hostedRetryAt = new Map<string, { at: number; reason: string }>();
+  /** 比 placeOrder 返回还早到的订单错误:orderId → [错误码, 原文, 时刻]。挂单登记完再对上,
+   * 否则那条错误落不到任何人头上,缓存里就一直当这张单在站岗。 */
+  private readonly earlyOrderErrors = new Map<number, [number, string, number]>();
   /** 速记解析的公开源现价注入点(测试替身用;null = macro.publicIndexPrice)。 */
   publicPriceFn: ((symbol: string) => Promise<number | null>) | null = null;
   /** 最近一次解析预热的句柄(仅测试等待用;业务代码永不 await 它)。 */
@@ -191,6 +205,10 @@ export class TradingEngine {
     moment?: EtNow | null,
     snapshot?: Record<string, number> | null,
     accounts?: string[] | null,
+    /** 只解析、只校验,不发单。**不许**靠临时改 settings.policies.auto_execute 来实现:那是全引擎
+     * 共享的配置,盯盘节拍器同一时刻在读——解析那一两秒里它看到"自动执行已关闭",会把所有托管单
+     * 撤掉,解析完又重挂一遍(2026-09-10 真机,节拍器挪进引擎后才暴露)。 */
+    dryRun = false,
   ): Promise<EngineResult> {
     const result = emptyResult();
     const at = moment ?? nowEt();
@@ -221,12 +239,30 @@ export class TradingEngine {
         // 用宏观行情带同款公开源兜底(^GSPC 就是 SPX 本尊,分钟级延迟)。
         const fetchSpot = this.publicPriceFn ?? publicIndexPrice;
         for (const sym of shorthandSymbols(instruction)) {
+          // 「50蝴蝶」没写标的,上面的快照抽不到 SPX:先问券商(夜盘走期货推算),拿不到才退公开源。
+          // 以前直接退公开源——那也是指数本身,夜盘一样是昨收,拿它推断看涨看跌会翻转
+          // (2026-09-10 02:40 真机:昨收 7636.36 推成看涨,ES 推算的真实现价 7658 该是看跌)。
+          if ((snap[sym] === undefined || snap[sym] === null) && this.router !== null) {
+            try {
+              const price = await this.router.indexPrice(sym);
+              if (price !== null) snap[sym] = price;
+            } catch {
+              /* 券商取价失败:照旧退公开源 */
+            }
+          }
           if (snap[sym] === undefined || snap[sym] === null) {
             const price = await fetchSpot(sym);
             if (price !== null) {
               snap[sym] = price;
               shorthandNote = "现价来自公开数据源(可能延迟数分钟),请核对中心行权价与方向";
             }
+          }
+          // 现价不是官方指数实时价时要说出来:推算的写明怎么推的,昨收的明说是昨收
+          const info = this.router?.spotInfo?.(sym) ?? null;
+          if (!shorthandNote && info?.["source"] === "futures") {
+            shorthandNote = `现价 ${pyRound(Number(info["price"]), 2)}:${String(info["note"])}`;
+          } else if (!shorthandNote && info?.["source"] === "index_stale") {
+            shorthandNote = `${String(info["note"])}——请核对中心行权价与看涨看跌`;
           }
         }
       }
@@ -356,10 +392,12 @@ export class TradingEngine {
         notional: pyRound(approved.notional, 2),
       };
 
-      if (!this.settings.policies.auto_execute) {
+      if (dryRun || !this.settings.policies.auto_execute) {
         this.store.appendEvent(recordId, "status", { status: "ValidatedOnly" });
         this.notifier.warning(
-          `已通过校验但未发送(auto_execute=false):${approved.order.intent_summary}`,
+          dryRun
+            ? `已通过校验(只解析,未发送):${approved.order.intent_summary}`
+            : `已通过校验但未发送(auto_execute=false):${approved.order.intent_summary}`,
         );
         result.validated_only.push(summary);
         // 解析预热:后台把合约 qualify 一遍填 conId 缓存——用户下一步点
@@ -537,8 +575,222 @@ export class TradingEngine {
     );
   }
 
+  // ---- 盯盘调度:追踪止盈 / 标的目标价的节拍器 ------------------------------
+  //
+  // 以前节拍器在界面里(渲染进程的 setInterval,盯盘、托管对账各一个),而且两个请求在引擎的
+  // 交易道上排**低优先级**。三个问题:
+  //  · 窗口最小化或被遮住,Chromium 节流后台定时器(隐藏五分钟后最慢一分钟一次)——止损和
+  //    秒级调价跟着停摆;
+  //  · 和下单挤同一条严格顺序的道,一次慢请求(大模型解析几秒、真机上合约确认卡过 24 秒)
+  //    期间,止损与调价全部排队;
+  //  · 每秒读两遍持仓,两个循环各算各的。
+  // 现在节拍器在引擎进程里:每秒一轮、绝不重叠;一轮只读一次持仓,先判触发(可能发平仓单)再
+  // 对账托管单;和改追踪 / 立即平仓共用 trackerLock,绝不并发。界面只读结果。
+
+  /** 追踪相关的一切改动(每一轮盯盘、建 / 改 / 删追踪、立即平仓)排成一队,绝不并发——
+   * 一轮盯盘正要发平仓单时,「立即平仓」插进来就是双重平仓。 */
+  private trackerChain: Promise<unknown> = Promise.resolve();
+  /** RPC 层注入的共享锁:引擎实例会随连接 / 改配置重建,锁必须跨实例同一把,
+   * 否则重建那一瞬间旧实例还在跑的那一轮和新实例的第一轮会重叠。 */
+  sharedTrackerLock: (<T>(fn: () => Promise<T>) => Promise<T>) | null = null;
+
+  withTrackerLock<T>(fn: () => Promise<T>): Promise<T> {
+    if (this.sharedTrackerLock !== null) return this.sharedTrackerLock(fn);
+    const run = this.trackerChain.then(fn, fn);
+    this.trackerChain = run.then(() => undefined, () => undefined);
+    return run;
+  }
+
+  static readonly TRACKER_TICK_MS = 1000;
+  /** 一轮超过这个时长算"慢":比节拍还长,就意味着有一段时间没人盯。 */
+  static readonly TRACKER_SLOW_MS = 1500;
+  private tickTimer: ReturnType<typeof setTimeout> | null = null;
+  /** 节拍器的心跳:最近一轮的结果与计时。界面据此显示"盯盘每秒一轮、上一轮多少毫秒",
+   * 太久没跳就当场告警——静默停摆比慢更危险。 */
+  readonly trackerLoop: Rec = {
+    running: false, interval_ms: TradingEngine.TRACKER_TICK_MS, ticks: 0, slow_ticks: 0,
+    last_at: null, last_ms: null, max_ms: 0, last_error: "", poll: null, hosted: null,
+  };
+  /** 每轮结束的回调(RPC 层据此把触发 / 被拦推给界面)。 */
+  onTrackerTick: ((poll: Rec, hosted: Rec) => void) | null = null;
+
+  /** 引擎进程的事件循环延迟。节拍器是异步的,只有同步代码占住事件循环才会让它晚——
+   * 慢了要分得清是"这一轮自己慢"还是"整个进程被别的事卡住"。 */
+  private loopDelay: ReturnType<typeof monitorEventLoopDelay> | null = null;
+
+  startTrackerLoop(intervalMs: number = TradingEngine.TRACKER_TICK_MS): void {
+    if (this.tickTimer !== null) return;
+    if (this.loopDelay === null) {
+      try {
+        this.loopDelay = monitorEventLoopDelay({ resolution: 20 });
+        this.loopDelay.enable();
+      } catch {
+        this.loopDelay = null;
+      }
+    }
+    this.trackerLoop["running"] = true;
+    this.trackerLoop["interval_ms"] = intervalMs;
+    const loop = async (): Promise<void> => {
+      const t0 = Date.now();
+      await this.trackerTickOnce();
+      if (!this.trackerLoop["running"]) return;
+      // 下一轮在这一轮结束之后排:慢了就紧接着跑,不会叠两轮;快了就补足到一个节拍
+      this.tickTimer = setTimeout(() => void loop(), Math.max(0, intervalMs - (Date.now() - t0)));
+    };
+    this.tickTimer = setTimeout(() => void loop(), 0);
+  }
+
+  stopTrackerLoop(): void {
+    this.trackerLoop["running"] = false;
+    if (this.tickTimer !== null) clearTimeout(this.tickTimer);
+    this.tickTimer = null;
+    this.loopDelay?.disable();
+    this.loopDelay = null;
+  }
+
+  /** 一轮盯盘:读一次持仓 → 判触发 → 托管对账。任何异常都不许让节拍器停下。 */
+  async trackerTickOnce(moment?: EtNow | null): Promise<void> {
+    const state = this.trackerLoop;
+    const t0 = Date.now();
+    try {
+      await this.withTrackerLock(async () => {
+        if (this.router === null || !this.store.listTracks().length) {
+          state["poll"] = { rows: [], fired: [], blocked: [] };
+          state["hosted"] = { hosted: [], blocked: [], quote_maybe_delayed: false };
+          state["last_error"] = "";
+          return;
+        }
+        let rows: Rec[];
+        try {
+          rows = (await this.router.positions()) ?? [];
+        } catch (exc) {
+          // 读不到持仓:这一轮不判断、不对账——当成空仓会停掉追踪、撤掉托管单
+          state["last_error"] = `读不到持仓:${String((exc as Error).message).slice(0, 200)}`;
+          return;
+        }
+        const poll = await this.pollTrackers(moment ?? null, rows);
+        const hosted = await this.syncHosted(rows);
+        state["poll"] = poll;
+        state["hosted"] = hosted;
+        state["last_error"] = "";
+        if (this.onTrackerTick !== null) {
+          try {
+            this.onTrackerTick(poll, hosted);
+          } catch {
+            /* 推送失败不影响盯盘 */
+          }
+        }
+      });
+    } catch (exc) {
+      state["last_error"] = String((exc as Error).message).slice(0, 200);
+      this.store.audit("engine", "tracker_tick_failed", { error: state["last_error"] });
+    } finally {
+      const ms = Date.now() - t0;
+      // 事件循环延迟按"每一轮一个窗口"记:上一个节拍间隔里最长被占了多久。累计的最大值分不清是哪一下
+      if (this.loopDelay !== null) {
+        const lag = Number.isFinite(this.loopDelay.max) ? Math.round(this.loopDelay.max / 1e6) : 0;
+        state["lag_last_ms"] = lag;
+        state["lag_worst_ms"] = Math.max(Number(state["lag_worst_ms"] ?? 0), lag);
+        this.loopDelay.reset();
+      }
+      state["ticks"] = Number(state["ticks"]) + 1;
+      state["last_at"] = new Date().toISOString();
+      state["last_ms"] = ms;
+      state["max_ms"] = Math.max(Number(state["max_ms"]), ms);
+      if (ms > TradingEngine.TRACKER_SLOW_MS) state["slow_ticks"] = Number(state["slow_ticks"]) + 1;
+    }
+  }
+
+  /** 心跳摘要(不带每轮的明细),给 system.status 与界面用。 */
+  trackerHeartbeat(): Rec {
+    const s = this.trackerLoop;
+    const age = s["last_at"] ? Date.now() - Date.parse(String(s["last_at"])) : null;
+    return {
+      running: s["running"], interval_ms: s["interval_ms"], ticks: s["ticks"], slow_ticks: s["slow_ticks"],
+      last_ms: s["last_ms"], max_ms: s["max_ms"], age_ms: age, last_error: s["last_error"],
+      // 事件循环被同步代码占住的时长(毫秒):上一个节拍间隔里的最大值,与开机以来的最坏值。
+      // 它高、而 last_ms 不高,说明节拍器没慢,是进程里别的事卡住了它
+      event_loop_last_ms: s["lag_last_ms"] ?? null,
+      event_loop_worst_ms: s["lag_worst_ms"] ?? null,
+    };
+  }
+
+  // ---- 标的目标价 → 每轮重算的预计价位 -----------------------------------
+  /**
+   * 算这一轮的预计价位,并把它并进 targets.take_profit。正股、单腿期权、蝶式/价差
+   * 走同一条路(tk.structureOf 认结构,tk.spotTarget 定价)。
+   *
+   * **每一轮都重算**,不缓存结果:同一个标的目标价,上午和尾盘对应的期权价差着一倍
+   * (时间价值还剩多少)。盯盘和托管对账都是一秒一轮,所以这张限价单的价格也是一秒
+   * 一变——插针那一下扫过来时,单子必须已经站在当时的合理价上,慢一步就是没成交。
+   * (正股是例外:目标价就是价格,每轮算出来都一样,自然不会改单。)
+   *
+   * 标的现价走 indexPrice:第一次订阅之后是常驻流,每次调用读缓存(百毫秒内),
+   * 一秒一轮压得住。
+   */
+  private async applySpotTarget(
+    track: Rec, raw: Rec, position: tk.Position, targets: tk.Targets,
+    positions: Record<string, Rec>, at: EtNow,
+  ): Promise<[tk.Targets, tk.SpotTarget | null, boolean]> {
+    const target = finiteOrNull(targets.spot_target);
+    if (target === null) return [targets, null, false];
+    const structure = tk.structureOf(String(raw["sec_type"] ?? "STK"), raw["contract"] as Rec);
+    if (structure === null) return [targets, null, false];
+
+    let spot: number | null = null;
+    if (structure.kind === "stock") {
+      spot = (raw["market_price"] ?? null) as number | null; // 正股自己就是标的
+    } else {
+      try {
+        spot = await this.router!.indexPrice(String(raw["symbol"]));
+      } catch {
+        spot = null; // 行情失败不该炸掉轮询;下面会退到上一轮的价
+      }
+    }
+    // 组合各腿的报价:每条腿按自己的报价反解 σ(smile 档,翼内翼外都解得出);缺腿时退到净价/最近腿
+    const legPrices: Record<string, number | null> = {};
+    for (const legKey of (raw["legs"] ?? []) as string[]) {
+      const leg = positions[legKey];
+      if (leg === undefined) continue;
+      const c = (leg["contract"] ?? {}) as Rec;
+      const strike = finiteOrNull(c["strike"]);
+      const right = String(c["right"] ?? "").slice(0, 1).toUpperCase();
+      if (strike === null || !right) continue;
+      legPrices[tk.legPriceKey({ strike, right })] = (leg["market_price"] ?? null) as number | null;
+    }
+
+    const info = structure.kind === "stock" ? null : this.router!.spotInfo?.(String(raw["symbol"])) ?? null;
+    const spotNote = String(info?.["note"] ?? "");
+    // 夜盘推算失败时 indexPrice 退回的是**昨收**:它不会动,拿它反解 σ 算出来的价全是错的。
+    // 当作"没有现价"——宁可退到沿用上一次,也不拿一个十个小时前的数去挂单。
+    if (info?.["source"] === "index_stale") spot = null;
+    const st = tk.spotTarget({
+      structure, position, spotTarget: target, spot,
+      markPrice: (raw["market_price"] ?? null) as number | null,
+      legPrices, minute: at.minutes, spotNote,
+    });
+    const tid = String(track["id"]);
+    const last = this.flyMark.get(tid) ?? null;
+    // 只有市场价算出来的数能拿去挂单或改单。clock 档是写死的 EM 算的模型默认值,
+    // 拿它每秒推一张真单,等于按一个假数把止盈位往上抬;更不能拿它挂**第一张**单——
+    // 那张单的价格用户没同意过(2026-09-10 真机:期货行情首笔 tick 要三四秒,
+    // 冷启动那几轮只有 clock 可用)。
+    if (st.price !== null && tk.MARKET_SIGMA_SOURCES.has(st.sigma_source)) {
+      this.flyMark.set(tid, st.price);
+      return [{ ...targets, take_profit: st.price }, st, false];
+    }
+    if (last !== null) {
+      st.reason = st.reason || `这一轮没有市场价(${st.sigma_source === "clock" ? "只有模型默认波动率" : "算不出"}),停在最后一次市场价算出的 ${last}`;
+      return [{ ...targets, take_profit: last }, st, false];
+    }
+    // 从来没拿到过市场价:只守不挂。不挂新单,也不撤已经挂着的(重启后认领回来的那张)
+    st.held = true;
+    st.reason = st.reason || "还没拿到市场报价,先不挂单;行情一来就按市场价挂";
+    return [targets, st, true];
+  }
+
   // ---- 持仓追踪:到价自动平仓 -------------------------------------------
-  async pollTrackers(moment?: EtNow | null): Promise<Rec> {
+  async pollTrackers(moment?: EtNow | null, rows?: Rec[] | null): Promise<Rec> {
     const at = moment ?? nowEt();
     const out: Rec = { rows: [], fired: [], blocked: [] };
     const tracks = this.store.listTracks();
@@ -546,8 +798,9 @@ export class TradingEngine {
 
     let positions: Record<string, Rec>;
     try {
+      // 调度器一轮只读一次持仓,判触发和托管对账用同一份(见 trackerTickOnce)
       positions = Object.fromEntries(
-        tk.withCombos((await this.router.positions()) ?? []).map((p) => [p["key"], p]),
+        tk.withCombos(rows ?? (await this.router.positions()) ?? []).map((p) => [p["key"], p]),
       );
     } catch (exc) {
       // 读不到持仓不该炸掉轮询
@@ -591,7 +844,10 @@ export class TradingEngine {
         currency: raw["currency"], market_price: raw["market_price"],
         market_value: raw["market_value"], unrealized_pnl: raw["unrealized_pnl"],
       });
-      const targets = tk.makeTargets(track["targets"] ?? {});
+      // 标的目标价换算成这一轮的止盈价(每轮重算,见 applySpotTarget)
+      const [targets, spotTargetRow] = await this.applySpotTarget(
+        track, raw, position, tk.makeTargets(track["targets"] ?? {}), positions, at,
+      );
       const result = tk.evaluate(position, targets, raw["market_price"], track["peak"] ?? null,
         at.minutes);
 
@@ -601,6 +857,7 @@ export class TradingEngine {
       }
 
       const row = { ...track, ...result, position: raw };
+      if (spotTargetRow !== null) (row as Rec)["spot_target"] = spotTargetRow;
       out["rows"].push(row);
 
       if (!track["enabled"] || result.state === tk.STATE_HOLDING) continue;
@@ -862,7 +1119,7 @@ export class TradingEngine {
    *
    * 由界面按秒驱动。软件盯盘怕的三件事——轮询漏插针、软件必须开着、我们
    * 这头行情延迟——托管单都不怕:触发发生在券商服务器的实时行情上。 */
-  async syncHosted(): Promise<Rec> {
+  async syncHosted(rows?: Rec[] | null): Promise<Rec> {
     const out: Rec = { hosted: [], blocked: [], quote_maybe_delayed: false };
     const router = this.router;
     if (router === null || !router.SUPPORTS_HOSTED_CLOSE) return out;
@@ -874,7 +1131,7 @@ export class TradingEngine {
     let positions: Record<string, Rec>;
     try {
       positions = Object.fromEntries(
-        tk.withCombos((await router.positions()) ?? []).map((p) => [p["key"], p]),
+        tk.withCombos(rows ?? (await router.positions()) ?? []).map((p) => [p["key"], p]),
       );
     } catch (exc) {
       // 读不到持仓不该炸掉对账
@@ -921,6 +1178,7 @@ export class TradingEngine {
         breakerEngaged: breaker.engaged,
         marketStatus: "盘中",
         alreadyFired: Boolean(track["fired_at"]),
+        comboLiveOk: this.settings.policies.allow_combo_live,
       });
       if (blockers.length) {
         await this.cancelHostedTrack(tid, blockers.join("、"));
@@ -932,22 +1190,44 @@ export class TradingEngine {
       if (peak !== null && peak !== track["peak"]) {
         this.store.updateTrack(tid, { peak });
       }
-      const plan = tk.hostedPlan(position, tk.makeTargets(track["targets"] ?? {}), auto, peak);
+      // 标的目标价:这一轮的止盈价现算。托管单的价格因此**一秒一变**——
+      // 插针那一下扫过来时,挂着的限价必须已经是当时的合理价。
+      const [targets, , hold] = await this.applySpotTarget(
+        track, raw, position, tk.makeTargets(track["targets"] ?? {}), positions, nowEt(),
+      );
+      const plan = tk.hostedPlan(position, targets, auto, peak);
       alive.add(tid);
       if (!this.hosted.has(tid)) this.hosted.set(tid, new Map());
       const current = this.hosted.get(tid)!;
       const desired = new Set(plan.map((item) => item.kind));
+      // 只守不挂的这一轮,止盈单"不在计划里"不等于"该撤":撤掉一张站岗的单比停在旧价危险得多
+      if (hold) desired.add(tk.HOSTED_KIND_TP);
       for (const kind of [...current.keys()].filter((k) => !desired.has(k))) {
         await this.cancelHostedOne(tid, kind, "该目标已移除");
       }
       const oca = `dafri-trk-${tid.slice(0, 8)}`;
       for (const item of plan) {
         const cur = current.get(item.kind);
+        const retry = this.hostedRetryAt.get(`${tid}|${item.kind}`);
+        if (cur === undefined && retry !== undefined) {
+          if (retry.at > Date.now()) {
+            // 刚被券商拒过:退避期内不重挂,把原因交给界面
+            out["blocked"].push({ id: tid, symbol: track["symbol"], blockers: [`托管单被券商拒绝,没有挂上:${retry.reason}`] });
+            continue;
+          }
+          this.hostedRetryAt.delete(`${tid}|${item.kind}`);
+        }
         try {
           if (cur === undefined) {
             await this.placeHostedOne(track, item, oca);
           } else if (tk.hostedNeedsUpdate(cur, item)) {
-            await this.modifyHostedOne(track, cur, item);
+            if (retry !== undefined && retry.at > Date.now()) {
+              // 改价刚被拒:原单还在原价,退避期内不再改
+              out["blocked"].push({ id: tid, symbol: track["symbol"], blockers: [`托管单改价被券商拒绝,仍挂在 ${cur["lmt_price"] ?? cur["aux_price"]}:${retry.reason}`] });
+            } else {
+              if (retry !== undefined) this.hostedRetryAt.delete(`${tid}|${item.kind}`);
+              await this.modifyHostedOne(track, cur, item);
+            }
           }
         } catch (exc) {
           // 单张失败不拖垮整轮
@@ -978,6 +1258,37 @@ export class TradingEngine {
     return out;
   }
 
+  /**
+   * 托管单收到订单级错误:**在这一刻就定**,依据是我们刚对这张单做了什么——
+   *  · 202 已撤单:单子没了,摘掉;
+   *  · 刚挂的单被拒:券商那边根本没有这张单,摘掉、退避、报原因;
+   *  · 改价被拒:原单还在、还是原价,缓存恢复成上一次被接受的价,退避期内不再改。
+   * 2026-09-10 真机:托管止盈单吃了 10311 被拒,IBKR 没推 Cancelled,缓存却一直当它在站岗——
+   * 券商那边 0 张单,界面上照样显示「已托管」。
+   */
+  private hostedOnError(orderId: number, code: number, message: string): void {
+    const where = this.hostedIndex.get(orderId);
+    if (!where) return;
+    const [tid, kind] = where;
+    const entry = this.hosted.get(tid)?.get(kind);
+    if (entry === undefined) return;
+    const reason = `IBKR ${code}: ${message}`;
+    const track = this.store.getTrack(tid);
+    const symbol = track ? track["symbol"] : "?";
+    if (code !== 202 && entry["pending"] === "modify" && entry["accepted"]) {
+      Object.assign(entry, entry["accepted"] as Rec, { pending: null });
+      this.hostedRetryAt.set(`${tid}|${kind}`, { at: Date.now() + 60_000, reason });
+      this.notifier.warning(`${symbol} 的托管单改价被券商拒绝,仍挂在原价:${reason}`);
+      return;
+    }
+    this.dropHostedEntry(tid, kind);
+    if (code !== 202) {
+      this.hostedRetryAt.set(`${tid}|${kind}`, { at: Date.now() + 60_000, reason });
+      this.store.audit("engine", "hosted_rejected", { track: tid, kind, order_id: orderId, reason });
+      this.notifier.warning(`${symbol} 的托管单被券商拒绝,没有挂上:${reason}`);
+    }
+  }
+
   /** 重启后按 orderRef 认领券商侧还挂着的托管单——先认领再对账,
    * 否则同一追踪会被再挂一遍。 */
   private async adoptHosted(): Promise<void> {
@@ -996,7 +1307,36 @@ export class TradingEngine {
       });
       return;
     }
+    // 同一个"追踪 + 单型"在券商那边有多张:以前的 bug(重启认领落空、解析时临时改配置)
+    // 留下的重复单。只认单号最新的那一张,其余当场撤掉——两张止盈卖单挂在 3 股持仓上,
+    // 一起成交就是反向开仓(2026-09-10 真机:BE 同时挂着 #82 与 #86)。
+    const byRef = new Map<string, Rec[]>();
     for (const row of rows) {
+      const ref = String(row["order_ref"] ?? "");
+      if (!ref.startsWith("trk:")) continue;
+      if (!byRef.has(ref)) byRef.set(ref, []);
+      byRef.get(ref)!.push(row);
+    }
+    const keep = new Set<Rec>();
+    for (const [ref, group] of byRef) {
+      group.sort((a, b) => Number(b["order_id"] ?? 0) - Number(a["order_id"] ?? 0));
+      keep.add(group[0]!);
+      for (const dup of group.slice(1)) {
+        const orderId = Number(dup["order_id"] ?? 0);
+        if (!orderId) continue;
+        try {
+          await this.router!.cancelHosted!(orderId);
+          this.store.audit("engine", "hosted_duplicate_cancelled", { order_ref: ref, order_id: orderId, kept: group[0]!["order_id"] });
+          this.notifier.warning(`撤掉了一张重复的托管单 #${orderId}(同一追踪只留 #${group[0]!["order_id"]})`);
+        } catch (exc) {
+          this.store.audit("engine", "hosted_duplicate_cancel_failed", {
+            order_ref: ref, order_id: orderId, error: String((exc as Error).message).slice(0, 200),
+          });
+        }
+      }
+    }
+    for (const row of rows) {
+      if (!keep.has(row)) continue;
       const parts = String(row["order_ref"] ?? "").split(":");
       if (parts.length !== 3 || parts[0] !== "trk") continue;
       const [, tid, kind] = parts as [string, string, string];
@@ -1021,7 +1361,13 @@ export class TradingEngine {
   private async placeHostedOne(track: Rec, item: tk.HostedOrderPlan, oca: string): Promise<void> {
     const account = this.settings.accountByAlias(track["account"]);
     if (account === null) throw new BrokerError(`账户别名 ${track["account"]} 已不存在。`);
-    const contractSpec = ContractSpecSchema.parse(track["contract"] ?? {});
+    // 持仓行里的合约不能原样下单,和到价自动平仓走同一个 closeContract——两条路必须拼出
+    // 同一张单,否则"核对过的"就只是其中一条:
+    //  · 正股:TWS 报回来的是 exchange=NYSE/NASDAQ,原样发出去就是直连交易所,API 预防设置
+    //    回 10311「该委托单将直接传递至 NYSE」拒单(2026-09-10 真机:托管止盈单就这么没挂上);
+    //    closeContract 收敛成四要素走 SMART。
+    //  · 组合:每条腿方向全部反转(持仓 +1/−2/+1 → 平仓 SELL 1 / BUY 2 / SELL 1)。
+    const contractSpec = ContractSpecSchema.parse(tk.closeContract((track["contract"] ?? {}) as Rec));
     const ref = `trk:${track["id"]}:${item.kind}`;
     const record: Rec = {
       ...this.baseRecord(
@@ -1041,7 +1387,7 @@ export class TradingEngine {
     const recordId = this.store.createRecord(record);
 
     const result = await this.router!.placeHosted!(account, contractSpec, item, oca, ref);
-    const entry: Rec = { ...item, order_id: result.order_id, record_id: recordId };
+    const entry: Rec = { ...item, order_id: result.order_id, record_id: recordId, pending: "place" };
     if (!this.hosted.has(String(track["id"]))) this.hosted.set(String(track["id"]), new Map());
     this.hosted.get(String(track["id"]))!.set(item.kind, entry);
     if (result.order_id) {
@@ -1052,6 +1398,13 @@ export class TradingEngine {
     this.store.appendEvent(recordId, "status", {
       status: result.status, order_id: result.order_id,
     });
+    const early = result.order_id ? this.earlyOrderErrors.get(Number(result.order_id)) : undefined;
+    if (early !== undefined) {
+      // 错误比下单返回还早到:现在对上,和晚到的走同一条路
+      this.earlyOrderErrors.delete(Number(result.order_id));
+      this.onIbError(result.order_id, early[0], early[1]);
+      return;
+    }
     this.killswitch.recordSuccess("broker");
     this.notifier.notify("托管单已挂出", `${track["symbol"]}:${item.label}`);
   }
@@ -1059,6 +1412,12 @@ export class TradingEngine {
   private async modifyHostedOne(track: Rec, current: Rec, item: tk.HostedOrderPlan): Promise<void> {
     const orderId = current["order_id"];
     if (!orderId) return;
+    // 改价被拒时券商那边还是这一版:先记下来,拒了就恢复成它(见 hostedOnError)
+    current["accepted"] = {
+      quantity: current["quantity"], lmt_price: current["lmt_price"], aux_price: current["aux_price"],
+      trailing_percent: current["trailing_percent"], label: current["label"],
+    };
+    current["pending"] = "modify";
     const ok = await this.router!.modifyHosted!(Number(orderId), item);
     if (!ok) {
       // 券商侧已经不认识这张单(成交/撤销竞态):丢掉缓存,下一轮重挂
@@ -1150,6 +1509,10 @@ export class TradingEngine {
       }
     } else if (["Cancelled", "ApiCancelled", "Inactive"].includes(status)) {
       this.dropHostedEntry(tid, kind);
+    } else if (["Submitted", "PreSubmitted"].includes(status)) {
+      // 券商接受了这一版(新挂的或改过价的):之后再来的错误就不是"刚才那一下被拒"
+      const entry = this.hosted.get(tid)?.get(kind);
+      if (entry) entry["pending"] = null;
     }
   }
 
@@ -1287,16 +1650,26 @@ export class TradingEngine {
     const req = Math.trunc(Number(reqId));
     if (!Number.isFinite(code) || !Number.isFinite(req)) return;
     if (req <= 0) return; // 系统级消息,与具体订单无关
-    const recordId = this.orderIndex.get(req);
-    if (recordId === undefined) return;
     const message = String(errorString ?? "");
     const informational = code >= TradingEngine.IB_INFO_MIN && code < TradingEngine.IB_INFO_MAX;
+    const recordId = this.orderIndex.get(req);
+    if (recordId === undefined) {
+      // 错误比 placeOrder 返回还早:先记下,挂单登记完再对上(见 placeHostedOne)
+      if (!informational && !TradingEngine.IB_WARNING_CODES.has(code)) {
+        this.earlyOrderErrors.set(req, [code, message, Date.now()]);
+        for (const [id, [, , at]] of this.earlyOrderErrors) {
+          if (Date.now() - at > 60_000) this.earlyOrderErrors.delete(id);
+        }
+      }
+      return;
+    }
     if (informational || TradingEngine.IB_WARNING_CODES.has(code)) {
       this.store.appendEvent(recordId, "warning", { message: `IBKR ${code}: ${message}` });
       if (!informational) this.notifier.warning(`IBKR ${code}: ${message}`);
       return;
     }
     const final = code === 202 ? "cancelled" : "ibkr_error";
+    if (this.hostedIndex.has(req)) this.hostedOnError(req, code, message);
     this.store.appendEvent(recordId, "status", { status: "Error", code, message });
     if (!this.finalized.has(recordId)) {
       this.finalized.add(recordId);

@@ -176,6 +176,7 @@ export interface DafriBridge {
   updateTracker(spec: unknown): Rpc<any>;
   deleteTracker(id: string): Rpc<any>;
   pollTrackers(): Rpc<any>;
+  previewSpotTarget(key: string, spotTarget: number): Rpc<any>;
   reconcileTrackers(): Rpc<any>;
   closePositionNow(id: string): Rpc<any>;
 

@@ -6,8 +6,11 @@
  * 默认实现走 @stoqey/ib 的 IBApiNext(见 ibSession.ts)——现成的 reqId 配对
  * 与订阅管理都用库的,不自己写。
  */
+import * as fs from "node:fs";
+import * as path from "node:path";
+
 import { nowEt } from "./config.js";
-import type { AccountConfig, Settings } from "./config.js";
+import type { AccountConfig, EtNow, IndexConfig, Settings } from "./config.js";
 import type { ContractSpec, OrderSpec, ParsedOrder, TriggerSpec } from "./models.js";
 import type { HostedOrderPlan } from "./tracker.js";
 import { legOf, makeKey, positionLabel } from "./tracker.js";
@@ -15,7 +18,7 @@ import { MIN_BARS, TIMEFRAMES } from "./priceaction.js";
 import { utcIso } from "./tradereview.js";
 import type { ApprovedOrder } from "./validator.js";
 import { fmtF, pyRound } from "./py.js";
-import { ET, pad2, wallParts, wallToEpoch } from "./tz.js";
+import { ET, dateOrdinal, ordinalToDate, pad2, wallParts, wallToEpoch, weekdayOfDate } from "./tz.js";
 
 type Rec = Record<string, any>;
 
@@ -379,6 +382,8 @@ export interface TickerData {
   callVolume?: number | null;
   putVolume?: number | null;
   modelGreeks?: { gamma: number | null; impliedVol: number | null } | null;
+  /** 订阅被 TWS 拒掉时的错误码与原文(如 10197 实盘会话占着实时行情)。有它就说明这条流已经死了。 */
+  error?: string | null;
 }
 
 export interface TickerHandle {
@@ -433,6 +438,9 @@ export interface IbSession {
   /** 合约详情里的交易时段(tradingHours / liquidHours / timeZoneId)。拿不到回 null。 */
   contractHours?(contract: IbContract, timeoutMs: number): Promise<[string, string, string] | null>;
   reqMarketDataType(type: number): void;
+  /** 会话的行情类型基线:之后的 reqMarketDataType(1)("切回实时")都回到它。
+   * 只服务纸面账户的会话设成 3——见 BrokerRouter.connect。 */
+  setBaselineMarketDataType?(type: number): void;
   /** 订阅并保留;返回句柄按需读当前值。 */
   subscribeTicker(contract: IbContract, genericTicks?: string): TickerHandle;
   cancelTicker(contract: IbContract): void;
@@ -453,7 +461,7 @@ export interface IbSession {
   placeOrder(contract: IbContract, order: OrderIntent): Promise<TradeLike>;
   openTrades(): Promise<Array<{ orderId: number | null; cancel(): void }>>;
   /** 托管单撤单(按 orderId)。真机适配层实现;测试替身也要实现。 */
-  cancelOrder?(orderId: number): void | Promise<void>;
+  cancelOrder(orderId: number): void | Promise<void>;
   /** 托管单认领用:带 orderRef 与价格字段的未成交单明细。 */
   openTradesDetailed?(): Promise<Array<{
     orderId: number | null;
@@ -468,6 +476,10 @@ export interface IbSession {
     trailingPercent: number | null;
     status: string;
     contract: IbContract;
+    ocaGroup?: string;
+    ocaType?: number | null;
+    tif?: string;
+    outsideRth?: boolean;
   }>>;
   portfolio(): Promise<PortfolioItemLike[]>;
   positions(): Promise<PositionItemLike[]>;
@@ -573,6 +585,19 @@ export class BrokerRouter {
       else if (code === 1101 || code === 1102) this.upstreamOkFlag = true;
     });
     this.connectionsMap.set(connectionName, session);
+    // 只服务纸面账户的会话,行情类型基线定成 3(有实时权限照样是实时,没有才给延迟)。
+    // 行情类型是会话级的全局开关,各处取完价都"切回 1";而纸面会话在实盘 TWS 同时登录时按类型 1
+    // 必吃 10197——切回 1 只会制造竞态:连接刚建好时请求实际发出去晚一拍,正好撞上"已切回 1",
+    // 那条订阅就死了(2026-09-10 真机:ES 期货与期权腿价都是这样空掉的)。实盘会话不动,仍是 1:
+    // 实盘绝不拿延迟价定价。
+    const accounts = this.settings.accounts.filter((a) => a.connection === connectionName);
+    if (accounts.length && accounts.every((a) => a.is_paper)) {
+      try {
+        session.setBaselineMarketDataType?.(3);
+      } catch {
+        /* 设不上就照旧,每个取价点仍会自己切 */
+      }
+    }
     if (this.sessionHook !== null) {
       try {
         this.sessionHook(session);
@@ -581,6 +606,31 @@ export class BrokerRouter {
       }
     }
     return session;
+  }
+
+  /** 常规时段之外,连上就在后台把期货推算暖起来(订期货、取基差)。
+   * 不暖的话,连上后第一笔速记单用的是昨收——拿它推断蝶的看涨看跌、挑行权价都是错的。
+   * 不等它、也不让它的失败冒出去:暖不起来,第一次真用到时照样会再推一遍。 */
+  warmIndexFutures(): void {
+    if (this.settings.marketStatus(nowEt()) === "盘中") return;
+    const symbols = Object.values(this.settings.index_symbols).filter((c) => c.futures).map((c) => c.symbol);
+    if (!symbols.length) return;
+    void (async () => {
+      // 首笔 tick 常常赶不上第一次(期货农场慢、10197 时不时来一下):隔三秒再试,最多五次
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        let allWarm = true;
+        for (const symbol of symbols) {
+          try {
+            await this.indexPrice(symbol);
+          } catch {
+            /* 暖机失败不打扰任何人 */
+          }
+          if (this.spotInfo(symbol)?.["source"] !== "futures") allWarm = false;
+        }
+        if (allWarm || this.settings.marketStatus(nowEt()) === "盘中") return;
+        await new Promise((r) => setTimeout(r, 3000));
+      }
+    })();
   }
 
   get upstreamOk(): boolean {
@@ -621,6 +671,10 @@ export class BrokerRouter {
     }
     this.streams.clear();
     this.optionStreams.clear();
+    this.stockStreams.clear();
+    // 期货流挂在旧会话上,断开后句柄就死了;不清掉的话重连后会一直读一个不再更新的价
+    this.futStreams.clear();
+    this.futuresBackoff.clear();
   }
 
   /** 找到真正管理该账户的会话。路由永远以会话实况为准。 */
@@ -838,15 +892,37 @@ export class BrokerRouter {
           const t = h.read();
           return finiteQuote(t.bid) > 0 && finiteQuote(t.ask) > 0;
         });
+      // 某条腿的订阅被拒(实盘会话同时在线时 10197 时不时来一下),当场重订那一条,
+      // 而不是干等到超时报「盘口不可用」(2026-09-10 夜盘真机:开蝶就这么被拒过一次)
+      const resubscribed = opts.map(() => false);
       while (waited < BrokerRouter.QUOTE_WAIT_MS) {
         await session.settle(250);
         waited += 250;
         if (ready()) break;
+        handles.forEach((h, i) => {
+          if (!resubscribed[i] && h.read().error) {
+            resubscribed[i] = true;
+            try {
+              session.cancelTicker(opts[i]!);
+            } catch {
+              /* 撤不掉也要重订 */
+            }
+            handles[i] = session.subscribeTicker(opts[i]!);
+          }
+        });
       }
       quotes = legs.map((leg, i) => {
         const t = handles[i]!.read();
         return { action: leg.action, ratio: leg.ratio, bid: finiteQuote(t.bid), ask: finiteQuote(t.ask) };
       });
+      // 订阅被拒的腿:把 TWS 原文带出去。只报"盘口不可用"没法排查——是没权限、线路配额漏光(101)
+      // 还是实盘会话占着行情(10197),处理办法完全不同
+      const legErrors = handles
+        .map((h, i) => (h.read().error ? `${legs[i]!.strike}${legs[i]!.right}: ${h.read().error}` : ""))
+        .filter(Boolean);
+      if (legErrors.length && quotes.some((q) => !(q.bid > 0 && q.ask > 0))) {
+        throw new BrokerError(`取不到 ${contract.symbol} 组合盘口,TWS 拒了订阅:${legErrors.join(";")}`);
+      }
     } finally {
       for (const opt of opts.slice(0, subscribed)) {
         try {
@@ -868,23 +944,136 @@ export class BrokerRouter {
     return null;
   }
 
-  async indexPrice(symbol: string): Promise<number | null> {
-    const cfg = this.settings.indexConfig(symbol);
-    let session: IbSession | null = null;
+  /** 最近一次 indexPrice 是怎么得来的:官方指数,还是期货推算。界面要把来源说出来——
+   * 夜盘显示一个 7653 却不说是推算的,和显示一个一动不动的 7636 一样会误导人。 */
+  private readonly spotInfos = new Map<string, Record<string, unknown>>();
+  /** 基差:每个已收盘的常规时段算一次(键 = 期货月份|时段日期)。 */
+  private readonly basisCache = new Map<string, Record<string, unknown>>();
+  /** 期货常驻流。和指数流分开管:CME 行情首笔 tick 要三四秒(2026-09-10 真机实测),
+   * 等不到就撤、下次重订,会永远卡在"刚订上还没来"。所以订上就不撤,下一次调用直接读;
+   * 连续 30 秒一个价都没有才当它死了,撤掉重订。 */
+  private readonly futStreams = new Map<string, { handle: TickerHandle; target: IbContract; since: number; lastOk: number }>();
+  /** 推算失败的退避:盯盘一秒一轮,每轮都重新取 K 线会把交易道卡死。 */
+  private readonly futuresBackoff = new Map<string, number>();
+  /** 期货这一路最近一次失败的 TWS 原文(10197、101……)。只说"没报价"没法排查。 */
+  private lastFuturesError = "";
+
+  spotInfo(symbol: string): Record<string, unknown> | null {
+    return this.spotInfos.get(symbol.toUpperCase()) ?? null;
+  }
+
+  /**
+   * 基差落盘:一个夜盘只需要算一次,重启不该再去取历史 K 线。
+   *
+   * 历史数据恰恰是最先被挡的那一样:同一 IBKR 用户名在别处登录时,TWS 对历史请求直接回
+   * "Trading TWS session is connected from a different IP address",实时行情反而时有时无
+   * (2026-09-10 真机)。基差在内存里的话,每次重启都得重取,那一刻被挡住就只能退回昨收。
+   * 文件放在数据库旁边,只存最近几条;读写失败都不影响取价,顶多退回重取。
+   */
+  private basisFile(): string {
+    return path.join(path.dirname(this.settings.db_path), "index_basis.json");
+  }
+
+  private loadBasis(key: string): Record<string, unknown> | null {
+    const hit = this.basisCache.get(key);
+    if (hit) return hit;
+    try {
+      const all = JSON.parse(fs.readFileSync(this.basisFile(), "utf-8")) as Record<string, Record<string, unknown>>;
+      const row = all[key];
+      if (row && Number.isFinite(Number(row["basis"]))) {
+        this.basisCache.set(key, row);
+        return row;
+      }
+    } catch {
+      /* 没有文件或坏文件:当作没算过 */
+    }
+    return null;
+  }
+
+  private saveBasis(key: string, row: Record<string, unknown>): void {
+    this.basisCache.set(key, row);
+    try {
+      let all: Record<string, Record<string, unknown>> = {};
+      try {
+        all = JSON.parse(fs.readFileSync(this.basisFile(), "utf-8"));
+      } catch {
+        all = {};
+      }
+      all[key] = row;
+      const keep = Object.keys(all).sort().slice(-20); // 只留最近 20 条
+      const trimmed = Object.fromEntries(keep.map((k) => [k, all[k]]));
+      fs.mkdirSync(path.dirname(this.basisFile()), { recursive: true });
+      fs.writeFileSync(this.basisFile(), JSON.stringify(trimmed, null, 1), "utf-8");
+    } catch {
+      /* 写不下去不影响这一次取价 */
+    }
+  }
+
+  private async quoteSession(): Promise<IbSession | null> {
     const dflt = this.settings.defaultAccount();
     if (dflt !== null) {
       try {
-        session = await this.forAccount(dflt);
+        return await this.forAccount(dflt);
       } catch (exc) {
         if (!(exc instanceof BrokerError)) throw exc;
-        session = null;
       }
     }
-    if (session === null) {
-      const sessions = this.sessions();
-      session = sessions[0] ?? null;
-    }
+    return this.sessions()[0] ?? null;
+  }
+
+  /**
+   * 指数(或股票)现价。
+   *
+   * **指数只在常规时段计算。** 夜盘里 SPX 报的是昨收、一动不动,SPXW 期权却照常在跳——
+   * 拿昨收去反解波动率、推断蝶的看涨看跌、挑期权链的行权价,全都是错的(2026-09-10 美东
+   * 02:10 实测:指数 7636.36 不动,ESU6 推出来的真实现价是 7653.45,差 17 点,足够把
+   * 「中心 7650 高于现价 → 看涨蝶」翻成看跌蝶)。所以配了期货代理的指数,常规时段之外改用
+   * 「期货现价 − 基差」,见 futuresSpot();推不出来才退回官方指数,并在 spotInfo 里标明是旧价。
+   */
+  async indexPrice(symbol: string): Promise<number | null> {
+    const cfg = this.settings.indexConfig(symbol);
+    const session = await this.quoteSession();
     if (session === null) return null;
+    const key = symbol.toUpperCase();
+
+    if (cfg && cfg.futures) {
+      const now = nowEt();
+      if (this.settings.marketStatus(now) !== "盘中") {
+        let why = "期货还没报价";
+        const futErr = (): string => (this.lastFuturesError ? `期货还没报价:${this.lastFuturesError}` : "期货还没报价");
+        if ((this.futuresBackoff.get(key) ?? 0) <= Date.now()) {
+          try {
+            const derived = await this.futuresSpot(session, cfg, now);
+            if (derived !== null) {
+              this.spotInfos.set(key, derived);
+              return derived["price"] as number;
+            }
+            why = futErr();
+          } catch (exc) {
+            if (!(exc instanceof BrokerError)) throw exc;
+            why = exc.message;
+            this.futuresBackoff.set(key, Date.now() + 60_000); // 取不到基差:一分钟后再试
+          }
+        } else {
+          why = "上一次推算失败,稍后重试";
+        }
+        // 推不出来:照旧取官方指数,但要让界面知道这是一个不会动的旧价
+        const stale = await this.officialPrice(session, symbol, cfg);
+        this.spotInfos.set(key, {
+          price: stale, source: "index_stale",
+          note: `${key} 指数只在常规时段计算,这是上一个收盘价,不是现价(期货推算没成功:${why})`,
+        });
+        return stale;
+      }
+    }
+    const price = await this.officialPrice(session, symbol, cfg);
+    this.spotInfos.set(key, { price, source: "index", note: "" });
+    return price;
+  }
+
+  private async officialPrice(
+    session: IbSession, symbol: string, cfg: IndexConfig | null,
+  ): Promise<number | null> {
     const target = cfg ? indexContract(symbol, cfg.exchange) : stockContract(symbol);
     try {
       await this.qualifyOrRaise(session, target);
@@ -892,9 +1081,14 @@ export class BrokerRouter {
       if (exc instanceof BrokerError) return null;
       throw exc;
     }
-    // 常驻订阅:第一次要等首笔 tick,之后每次调用都是读缓存(百毫秒内)。
-    // 快照是"输入到下单"链路的第一段,不能每单都重新订阅再干等一秒。
-    const streamKey = `idx:${symbol}`;
+    return this.streamPrice(session, `idx:${symbol}`, target);
+  }
+
+  /**
+   * 常驻订阅取一个价:第一次要等首笔 tick,之后每次调用都是读缓存(百毫秒内)。
+   * 快照是"输入到下单"链路的第一段,盯盘又是一秒一轮,不能每次都重新订阅再干等一秒。
+   */
+  private async streamPrice(session: IbSession, streamKey: string, target: IbContract): Promise<number | null> {
     const existing = this.streams.get(streamKey);
     if (existing) {
       const cached = await pollTicker(session, existing, 250);
@@ -908,7 +1102,7 @@ export class BrokerRouter {
       this.streams.set(streamKey, handle);
       return price;
     }
-    // 没有实时订阅时退到 15 分钟延迟行情。只给方向复核的快照用。
+    // 没有实时订阅时退到延迟行情。只给方向复核的快照用。
     session.cancelTicker(target);
     try {
       session.reqMarketDataType(3);
@@ -919,6 +1113,121 @@ export class BrokerRouter {
       session.reqMarketDataType(1);
     }
     return price;
+  }
+
+  /** 期货现价:见 futStreams。按 reqMarketDataType(3) 订——有实时权限就是实时,
+   * 没有才给延迟;实时类型下没权限的账户什么都拿不到。 */
+  private async futuresPrice(session: IbSession, key: string, fut: IbContract): Promise<number | null> {
+    let stream = this.futStreams.get(key);
+    let price: number | null = null;
+    // 实盘 TWS 同时登录时,IBKR 在两个会话之间仲裁行情,纸面会话的订阅时不时吃一个 10197
+    // (2026-09-10 真机:同样的写法,有的进程第一下就到价,有的前两次都被拒)。被拒的流不会
+    // 自己活过来,所以同一次调用里当场重订,最多三次;只是没来 tick 就不重订,免得狂刷请求。
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      if (stream !== undefined && stream.handle.read().error) {
+        try {
+          session.cancelTicker(stream.target);
+        } catch {
+          /* 撤不掉也要重订 */
+        }
+        this.futStreams.delete(key);
+        stream = undefined;
+      }
+      if (stream === undefined) {
+        // 类型 3 保持到首笔报价到手再切回去:连接刚建好时请求实际发出去会晚一拍
+        try {
+          session.reqMarketDataType(3);
+          stream = { handle: session.subscribeTicker(fut), target: fut, since: Date.now(), lastOk: 0 };
+          this.futStreams.set(key, stream);
+          price = await pollTicker(session, stream.handle, 1500);
+        } finally {
+          session.reqMarketDataType(1);
+        }
+      } else {
+        price = await pollTicker(session, stream.handle, 250);
+      }
+      if (price !== null || !stream.handle.read().error) break;
+    }
+    if (price !== null) {
+      stream!.lastOk = Date.now();
+      this.lastFuturesError = "";
+      return price;
+    }
+    if (stream === undefined) return null;
+    this.lastFuturesError = stream.handle.read().error || "订上了但一直没有 tick";
+    if (Date.now() - Math.max(stream.since, stream.lastOk) > 30_000) {
+      // 半分钟一个价都没有:当它死了,下一次重订
+      try {
+        session.cancelTicker(stream.target);
+      } catch {
+        /* 撤不掉也要丢掉缓存 */
+      }
+      this.futStreams.delete(key);
+    }
+    return null;
+  }
+
+  /**
+   * 夜盘的指数现价 = 期货现价 − 基差。
+   *
+   * 期货取**到期日严格晚于今天的最近季月**(frontQuarterly):基差按月份算,离到期越近越小越稳
+   * (ESU6 离到期 8 天时基差 7 点,ESZ6 是 73 点)。基差用上一个常规时段**最后同一分钟**的两根
+   * K 线相减(contemporaneousBasis),而不是两个收盘价相减:ES 的收盘在 17:00,比指数晚一小时,
+   * 那一小时的行情会被当成基差(实测差 1.7 点)。基差一个时段只算一次,缓存到下一个收盘。
+   */
+  private async futuresSpot(
+    session: IbSession, cfg: IndexConfig, now: EtNow,
+  ): Promise<Record<string, unknown> | null> {
+    const month = frontQuarterly(now.date);
+    const fut: IbContract = {
+      secType: "FUT", symbol: cfg.futures, exchange: cfg.futures_exchange || "CME",
+      currency: "USD", lastTradeDateOrContractMonth: month, conId: 0,
+    };
+    await this.qualifyOrRaise(session, fut);
+
+    const [sessionDate, closeMin] = lastRthSession(now, this.settings);
+    const cacheKey = `${cfg.futures}${month}|${sessionDate}`;
+    let basis = this.loadBasis(cacheKey);
+    if (basis === null) {
+      const endEpoch = wallToEpoch({
+        year: Number(sessionDate.slice(0, 4)), month: Number(sessionDate.slice(5, 7)),
+        day: Number(sessionDate.slice(8, 10)), hour: Math.floor(closeMin / 60),
+        minute: (closeMin % 60) + 5, second: 0,
+      }, ET);
+      const endUtc = new Date(endEpoch).toISOString().slice(0, 19).replace(/-/g, "").replace("T", "-");
+      const opts = { endDateTime: endUtc, durationStr: "1800 S", barSizeSetting: "1 min", whatToShow: "TRADES" };
+      const idx = indexContract(cfg.symbol, cfg.exchange);
+      await this.qualifyOrRaise(session, idx);
+      let idxBars: RawBar[];
+      let futBars: RawBar[];
+      try {
+        idxBars = await session.historicalData(idx, { ...opts, useRTH: true });
+        futBars = await session.historicalData(fut, { ...opts, useRTH: false });
+      } catch (exc) {
+        throw new BrokerError(`取 ${cfg.symbol} / ${cfg.futures} 收盘分钟线失败:${(exc as Error).message}`);
+      }
+      const matched = contemporaneousBasis(
+        idxBars.map((b) => ({ time: barTimestamp(b.date), close: Number(b.close) })),
+        futBars.map((b) => ({ time: barTimestamp(b.date), close: Number(b.close) })),
+      );
+      if (matched === null) {
+        throw new BrokerError(`${sessionDate} 收盘前找不到 ${cfg.symbol} 与 ${cfg.futures} 同一分钟的 K 线,算不出基差`);
+      }
+      basis = { ...matched, session: sessionDate };
+      this.saveBasis(cacheKey, basis);
+    }
+
+    const futPrice = await this.futuresPrice(session, `${cfg.futures}${month}`, fut);
+    if (futPrice === null) return null;
+    const b = Number(basis["basis"]);
+    const price = pyRound(futPrice - b, 2);
+    const label = `${cfg.futures} ${month}`;
+    return {
+      price, source: "futures", futures: label, futures_price: futPrice, basis: b,
+      basis_time: basis["time"],
+      note: `${cfg.symbol} 夜盘不计算,按 ${label} ${pyRound(futPrice, 2)} − 基差 ${pyRound(b, 2)} 推算` +
+        `(基差取 ${String(basis["time"])} 同一分钟)`,
+    };
   }
 
   /** 批量拉股票/ETF 报价;绝不用于订单定价。 */
@@ -1471,11 +1780,14 @@ export class BrokerRouter {
         row["unrealized_pnl"] = finiteQuote(item.unrealizedPnL);
         out.set(row["key"] as string, row);
       }
-      let rawPositions: PositionItemLike[] = [];
+      // 读不到持仓要**报错**,不能当成空仓:空列表会让盯盘判"持仓已不存在",停掉追踪、撤掉托管单
+      // (2026-09-10 真机:持仓推送卡住,BE 的追踪就这么被自动停用了)。多个会话里只要有一个读不到,
+      // 整次都算读不到——只回一部分,读不到的那个账户照样会被误判。
+      let rawPositions: PositionItemLike[];
       try {
         rawPositions = await session.positions();
-      } catch {
-        rawPositions = [];
+      } catch (exc) {
+        throw new BrokerError(`读不到持仓:${(exc as Error).message}`);
       }
       for (const pos of rawPositions) {
         const row = this.positionRow(pos.contract, pos.position, aliasOf, pos.account ?? "");
@@ -1565,31 +1877,54 @@ export class BrokerRouter {
     const session = this.sessions()[0] ?? null;
     if (session === null) return;
     let fresh = false;
-    for (const row of legs) {
-      const key = `opt:${row["key"]}`;
-      if (this.optionStreams.has(key)) continue;
-      const spec = (row["contract"] ?? {}) as Record<string, any>;
-      const target = optionContract(
-        String(row["symbol"]), String(spec["lastTradeDateOrContractMonth"] ?? ""),
-        Number(spec["strike"] ?? 0) || 0, String(spec["right"] ?? ""),
-        String(spec["exchange"] || "SMART"), "USD", String(spec["multiplier"] || "100"),
-        spec["tradingClass"] ?? null,
-      );
-      try {
-        await this.qualifyOrRaise(session, target);
-      } catch (exc) {
-        if (exc instanceof BrokerError) {
-          this.optionStreams.set(key, { handle: null, contract: null }); // 认不出的合约不反复重试
+    // 纸面账户按类型 3 订(有实时就是实时,没有给延迟),和 legQuotes 同一条规矩;实盘绝不拿延迟价盯盘。
+    // 这台机器上实盘 TWS 占着实时行情,纸面会话按类型 1 订期权必吃 10197——腿价永远是空的,
+    // 组合净价跟着没有,追踪器只能退到模型默认波动率(2026-09-10 真机)。
+    const paper = legs.every((r) => this.settings.accountByAlias(String(r["account"]))?.is_paper ?? false);
+    if (paper) session.reqMarketDataType(3);
+    try {
+      for (const row of legs) {
+        const key = `opt:${row["key"]}`;
+        const existing = this.optionStreams.get(key);
+        // 被拒过的流不会自己活过来:摘掉重订(认不出的合约 handle 为 null,照旧不重试)
+        if (existing?.handle && existing.handle.read().error) {
+          if (existing.contract) {
+            try {
+              session.cancelTicker(existing.contract);
+            } catch {
+              /* 撤不掉也要重订 */
+            }
+          }
+          this.optionStreams.delete(key);
+        } else if (existing) {
           continue;
         }
-        throw exc;
+        const spec = (row["contract"] ?? {}) as Record<string, any>;
+        const target = optionContract(
+          String(row["symbol"]), String(spec["lastTradeDateOrContractMonth"] ?? ""),
+          Number(spec["strike"] ?? 0) || 0, String(spec["right"] ?? ""),
+          String(spec["exchange"] || "SMART"), "USD", String(spec["multiplier"] || "100"),
+          spec["tradingClass"] ?? null,
+        );
+        try {
+          await this.qualifyOrRaise(session, target);
+        } catch (exc) {
+          if (exc instanceof BrokerError) {
+            this.optionStreams.set(key, { handle: null, contract: null }); // 认不出的合约不反复重试
+            continue;
+          }
+          throw exc;
+        }
+        this.optionStreams.set(key, { handle: session.subscribeTicker(target), contract: target });
+        fresh = true;
       }
-      this.optionStreams.set(key, { handle: session.subscribeTicker(target), contract: target });
-      fresh = true;
+      // 首次订阅要等第一笔 tick 落地;之后每轮只是从常驻订阅的缓存里读,泵一下事件循环
+      // 就够。追踪轮询按秒跑,这里每多等 100ms 就是 10% 的占用,而 RPC 是单线程的。
+      // 类型 3 要保持到这一步结束:连接刚建好时请求实际发出去会晚一拍,切早了就按实时类型发。
+      await session.settle(fresh ? 1500 : 50);
+    } finally {
+      if (paper) session.reqMarketDataType(1);
     }
-    // 首次订阅要等第一笔 tick 落地;之后每轮只是从常驻订阅的缓存里读,泵一下事件循环
-    // 就够。追踪轮询按秒跑,这里每多等 100ms 就是 10% 的占用,而 RPC 是单线程的。
-    await session.settle(fresh ? 1500 : 50);
     for (const row of legs) {
       const entry = this.optionStreams.get(`opt:${row["key"]}`);
       if (!entry?.handle) continue;
@@ -1601,25 +1936,73 @@ export class BrokerRouter {
     }
   }
 
+  /**
+   * 持仓正股的现价兜底(账户推送里没有现价时):**常驻订阅**,第一次等首笔 tick,之后每轮读缓存。
+   *
+   * 以前每一轮都 stockQuotes 一次——订阅、干等 2.5 秒、撤掉。持仓读取在盯盘与托管对账两个
+   * 一秒一轮的循环里都要跑,而它们挤在同一条严格顺序的交易道上:2026-09-10 夜盘真机,
+   * BE 的账户推送没有现价,tracker.poll 与 tracker.reconcile 每轮各 2.5 秒,整条交易道被占满,
+   * 「秒级调价」变成五秒一次,下单也得排在后面。和期权腿价(fillOptionPrices)同一套写法。
+   */
+  private readonly stockStreams = new Map<string, { handle: TickerHandle | null; contract: IbContract | null }>();
+
   private async fillPositionPrices(rows: Array<Record<string, any>>): Promise<void> {
-    const need = rows
+    const need = [...new Set(rows
       .filter((r) => r["market_price"] === null && r["sec_type"] === "STK")
-      .map((r) => r["symbol"] as string);
-    if (!need.length) {
-      await this.fillOptionPrices(rows);
-      return;
-    }
-    let quotes: Record<string, Record<string, number | null>> = {};
-    try {
-      quotes = await this.stockQuotes([...new Set(need)].sort());
-    } catch (exc) {
-      if (!(exc instanceof BrokerError)) throw exc;
+      .map((r) => r["symbol"] as string))].sort();
+    if (need.length) {
+      const session = this.sessions()[0] ?? null;
+      if (session !== null) {
+        let fresh = false;
+        const paper = rows.filter((r) => r["sec_type"] === "STK")
+          .every((r) => this.settings.accountByAlias(String(r["account"]))?.is_paper ?? false);
+        if (paper) session.reqMarketDataType(3);
+        try {
+          for (const symbol of need) {
+            const existing = this.stockStreams.get(symbol);
+            if (existing?.handle && existing.handle.read().error) {
+              // 被拒过的流不会自己活过来:摘掉重订
+              try {
+                if (existing.contract) session.cancelTicker(existing.contract);
+              } catch {
+                /* 撤不掉也要重订 */
+              }
+              this.stockStreams.delete(symbol);
+            } else if (existing) {
+              continue;
+            }
+            const target = stockContract(symbol);
+            try {
+              await this.qualifyOrRaise(session, target);
+            } catch (exc) {
+              if (exc instanceof BrokerError) {
+                this.stockStreams.set(symbol, { handle: null, contract: null }); // 认不出的不反复重试
+                continue;
+              }
+              throw exc;
+            }
+            this.stockStreams.set(symbol, { handle: session.subscribeTicker(target), contract: target });
+            fresh = true;
+          }
+          await session.settle(fresh ? 1500 : 50);
+        } finally {
+          if (paper) session.reqMarketDataType(1);
+        }
+        for (const row of rows) {
+          if (row["market_price"] !== null || row["sec_type"] !== "STK") continue;
+          const entry = this.stockStreams.get(String(row["symbol"]));
+          if (!entry?.handle) continue;
+          const t = entry.handle.read();
+          const bid = cleanPrice(t.bid);
+          const ask = cleanPrice(t.ask);
+          row["market_price"] = cleanPrice(t.last)
+            ?? (bid !== null && ask !== null && ask >= bid ? pyRound((bid + ask) / 2.0, 4) : null)
+            ?? cleanPrice(t.close);
+          if (row["market_price"] !== null) row["price_source"] = "quote";
+        }
+      }
     }
     await this.fillOptionPrices(rows);
-    for (const row of rows) {
-      const quote = quotes[row["symbol"] as string] ?? {};
-      if (row["market_price"] === null && row["sec_type"] === "STK") row["market_price"] = quote["last"] ?? null;
-    }
   }
 
   // ---- 下单 -----------------------------------------------------------
@@ -1727,11 +2110,15 @@ export class BrokerRouter {
   ): Promise<{ order_id: number | null; perm_id: number | null; status: string }> {
     const session = await this.forAccount(account);
     const contract = await this.qualify(contractSpec, account);
+    // BAG 一律以 BUY 提交:IBKR 对 BAG 的 SELL 会把每条腿再反转一次,那就把保护翼卖了、
+    // 收权腿买了。带符号净价由 bagSignedLimit 换算——托管一张平掉借方蝶的限价单是**收**
+    // 权利金,发给 IBKR 的净价必须是负数。与 place() 同一套换算。
+    const isBag = (contractSpec as { secType?: string }).secType === "BAG";
     const order: OrderIntent = {
-      action: item.action,
+      action: isBag ? "BUY" : item.action,
       orderType: item.order_type,
       totalQuantity: item.quantity,
-      lmtPrice: item.lmt_price ?? null,
+      lmtPrice: isBag ? bagSignedLimit(item.action, item.lmt_price ?? null) : (item.lmt_price ?? null),
       auxPrice: item.aux_price ?? null,
       trailingPercent: item.trailing_percent ?? null,
       tif: "GTC",
@@ -1766,7 +2153,12 @@ export class BrokerRouter {
     if (entry === undefined) return false;
     entry.order.orderId = orderId;
     entry.order.totalQuantity = item.quantity;
-    if (item.lmt_price !== null) entry.order.lmtPrice = item.lmt_price;
+    // 组合改价同样要走带符号净价——挂单时签了、改单时忘了签,第一次调价就会把
+    // 一张"收 12.35"的单改成"付 12.35"。
+    const isBag = String(entry.contract.secType ?? "") === "BAG";
+    if (item.lmt_price !== null) {
+      entry.order.lmtPrice = isBag ? bagSignedLimit(item.action, item.lmt_price) : item.lmt_price;
+    }
     if (item.aux_price !== null) entry.order.auxPrice = item.aux_price;
     if (item.trailing_percent !== null) entry.order.trailingPercent = item.trailing_percent;
     await entry.session.placeOrder(entry.contract, entry.order);
@@ -1777,7 +2169,7 @@ export class BrokerRouter {
     const entry = this.hostedTrades.get(orderId);
     if (entry === undefined) return false;
     this.hostedTrades.delete(orderId);
-    await entry.session.cancelOrder?.(orderId);
+    await entry.session.cancelOrder(orderId);
     return true;
   }
 
@@ -1800,11 +2192,13 @@ export class BrokerRouter {
               lmtPrice: trade.lmtPrice,
               auxPrice: trade.auxPrice,
               trailingPercent: trade.trailingPercent,
-              tif: "GTC",
-              outsideRth: false,
+              tif: trade.tif || "GTC",
+              outsideRth: Boolean(trade.outsideRth),
               account: trade.account,
               transmit: true,
               orderRef: trade.orderRef,
+              // 改单要整张重发:不带上原来的 OCA 组,改一次价就可能把它踢出组
+              ...(trade.ocaGroup ? { ocaGroup: trade.ocaGroup, ocaType: trade.ocaType ?? 1 } : {}),
             },
           });
         }
@@ -1816,10 +2210,14 @@ export class BrokerRouter {
           action: trade.action,
           order_type: trade.orderType,
           quantity: trade.totalQuantity,
-          lmt_price: trade.lmtPrice,
+          // BAG 在券商侧存的是带符号净价(平借方蝶是负数),引擎这边一律用用户口径的正数比较。
+          // 不折回来的话,重启认领之后第一轮就会把 −12.35 和 12.35 当成"价变了"去改一次单。
+          lmt_price: String(trade.contract?.secType ?? "") === "BAG" && trade.lmtPrice !== null && trade.lmtPrice !== undefined
+            ? Math.abs(Number(trade.lmtPrice)) : trade.lmtPrice,
           aux_price: trade.auxPrice,
           trailing_percent: trade.trailingPercent,
           status: trade.status,
+          sec_type: String(trade.contract?.secType ?? ""),
         });
       }
     }
@@ -1830,6 +2228,71 @@ export class BrokerRouter {
 // ---------------------------------------------------------------- 合约构造
 export function stockContract(symbol: string, exchange = "SMART", currency = "USD"): IbContract {
   return { secType: "STK", symbol, exchange, currency, conId: 0 };
+}
+
+/** 某年某月的第三个星期五('YYYY-MM-DD')。股指期货与月度期权都在这天到期。 */
+export function thirdFriday(year: number, month: number): string {
+  const first = `${year}-${pad2(month)}-01`;
+  const wd = weekdayOfDate(first); // 0 = 周一 … 4 = 周五
+  const firstFriday = 1 + ((4 - wd + 7) % 7);
+  return `${year}-${pad2(month)}-${pad2(firstFriday + 14)}`;
+}
+
+/**
+ * 夜盘推算用哪一张季月期货('YYYYMM'):到期日(第三个星期五)**严格晚于**今天的最近季月。
+ * 到期日当天就换下一张——那张 09:30 按开盘价结算,之后就不再跳了。
+ */
+export function frontQuarterly(dateStr: string): string {
+  let year = Number(dateStr.slice(0, 4));
+  let month = Number(dateStr.slice(5, 7));
+  for (let i = 0; i < 8; i += 1) {
+    if (month % 3 === 0 && thirdFriday(year, month) > dateStr) return `${year}${pad2(month)}`;
+    month += 1;
+    if (month > 12) { month = 1; year += 1; }
+  }
+  throw new Error(`算不出 ${dateStr} 之后的季月合约`);
+}
+
+/**
+ * 上一个已经收盘的常规时段:[日期, 收盘分钟]。今天是交易日且已过收盘就是今天,
+ * 否则往回找最近的交易日。半日市收在 13:00,基差得取那一分钟,不是 16:00。
+ */
+export function lastRthSession(now: EtNow, settings: Settings): [string, number] {
+  const closeOf = (d: string): number => (settings.early_close_days.includes(d) ? 13 * 60 : 16 * 60);
+  if (settings.isTradingDay(now.date) && now.seconds >= closeOf(now.date) * 60) {
+    return [now.date, closeOf(now.date)];
+  }
+  let ordinal = dateOrdinal(now.date);
+  for (let i = 0; i < 14; i += 1) {
+    ordinal -= 1;
+    const d = ordinalToDate(ordinal);
+    if (settings.isTradingDay(d)) return [d, closeOf(d)];
+  }
+  throw new Error(`${now.date} 往前两周都找不到交易日`);
+}
+
+/**
+ * 指数与期货在**同一分钟**的收盘差,取两边都有的最后那一分钟。
+ * 对不上同一分钟就回 null:拿两个错开的价相减,等于把中间那段行情当成了基差。
+ */
+export function contemporaneousBasis(
+  indexBars: Array<{ time: string; close: number }>,
+  futuresBars: Array<{ time: string; close: number }>,
+): { basis: number; time: string; index_close: number; futures_close: number } | null {
+  const fut = new Map(
+    futuresBars.filter((b) => Number.isFinite(b.close) && b.close > 0).map((b) => [b.time, b.close]),
+  );
+  const idx = indexBars.filter((b) => Number.isFinite(b.close) && b.close > 0);
+  for (let i = idx.length - 1; i >= 0; i -= 1) {
+    const f = fut.get(idx[i]!.time);
+    if (f !== undefined) {
+      return {
+        basis: pyRound(f - idx[i]!.close, 4), time: idx[i]!.time,
+        index_close: idx[i]!.close, futures_close: f,
+      };
+    }
+  }
+  return null;
 }
 
 export function indexContract(symbol: string, exchange: string): IbContract {

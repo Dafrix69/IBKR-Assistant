@@ -120,6 +120,9 @@ const ALLOWED_RPC = new Set([
   // 券商托管对账:界面按秒驱动,动态停损价的秒级调整走这条路。漏了它,托管单永远挂不出去
   'tracker.reconcile',
   'tracker.close_now',
+  // 标的目标价的只读试算:「同意价格后发单」那个价就是它算的。漏了它,界面上的试算
+  // 永远报「不在白名单」,确认框里也就没有价可同意(2026-09-10 真机才暴露,mock 桥测不出来)
+  'tracker.target_preview',
   'keychain.set',
   'data.export',
 ]);

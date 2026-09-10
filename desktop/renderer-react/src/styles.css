@@ -680,6 +680,16 @@ kbd {
 .track-form > .ant-btn { grid-column: 1 / -1; justify-self: start; }
 .track-form > .combo-note { grid-column: 1 / -1; font-size: 11.5px; line-height: 1.5; }
 .track-form > .combo-note > div + div { margin-top: 4px; }
+/* 标的目标价的试算:这个数就是将要挂出去的限价,给它一块自己的地方,别混在输入框里 */
+.track-form > .track-field:has(.sub) { grid-column: 1 / -1; }
+.track-form > .track-field:has(.sub) > span { font-size: 12px; color: var(--label); }
+.track-form > .track-preview {
+  grid-column: 1 / -1;
+  margin: -2px 0 2px; padding: 7px 9px;
+  background: var(--bg-fill); border-radius: 6px;
+}
+.track-form > .track-preview .hint { margin-top: 4px; }
+.warn-text { color: var(--orange-text); }
 @media (max-width: 900px) { .track-form { grid-template-columns: 1fr 1fr; } }
 
 /* 盯盘量表:离触发还有多远。条越满 = 越贴近触发价 */

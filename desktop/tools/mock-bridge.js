@@ -291,10 +291,20 @@ window.dafri = {
      enabled:true, peak:225.0, fired_at:null, fired_state:'', fired_record:'', note:''}]}),
   addTracker: async()=>({}), updateTracker: async()=>({}),
   deleteTracker: async()=>({}), closePositionNow: async()=>({fired:{reason:'手动平仓'}}),
+  // 标的目标价试算:标的走到目标价时值多少、赚多少(只读,不建追踪也不发单)
+  previewSpotTarget: async (_key, spotTarget) => ({
+    spot_target: {
+      spot_target: spotTarget, spot: 219.74, price: spotTarget,
+      pnl: (spotTarget - 180) * 100, pnl_pct: ((spotTarget - 180) / 180) * 100,
+      sigma: null, sigma_source: 'none', structure: '正股', reason: '',
+    },
+    structure: { kind: 'stock', label: '正股' },
+  }),
   pollTrackers: async () => ({rows:[
     {id:'tk1', state:'holding', price:219.74, peak:225.0, trail_stop:213.75,
      unrealized_pnl:3974, unrealized_pct:22.08, reason:'', stop_effective:213.75}],
-    fired:[], blocked:[]}),
+    fired:[], blocked:[],
+    loop:{running:true, interval_ms:1000, ticks:1287, slow_ticks:0, last_ms:86, max_ms:240, age_ms:320, last_error:''}}),
   reconcileTrackers: async () => ({hosted:[
     {id:'tk1', symbol:'NVDA', orders:[
       {kind:'tp', label:'托管止盈 240.0', quantity:100, lmt_price:240.0, order_id:901},

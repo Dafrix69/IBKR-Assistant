@@ -112,6 +112,60 @@ function filledTrade(orderId: number): Rec {
 }
 
 // ----------------------------------------------------------------------
+describe("hosted: 托管单被券商拒绝(2026-09-10 真机:10311 被拒却一直显示已托管)", () => {
+  it("挂单被拒、券商那边没有这张单 → 摘掉缓存、退避期内不重挂、把原因报给界面", async () => {
+    const router = new FakeHostedRouter([positionRow()]);
+    const engine = hostedEngine(router);
+    addHostedTrack(engine, { targets: { take_profit: 250.0 } });
+
+    await engine.syncHosted();
+    expect(router.placed).toHaveLength(1);
+    const orderId = router.placed[0]!.order_id;
+
+    engine.onIbError(orderId, 10311, "该委托单将直接传递至NYSE");
+    router.openRows = []; // 券商侧:这张单根本没挂上
+    const out = await engine.syncHosted();
+    expect(out.hosted[0]?.orders ?? []).toEqual([]);            // 不再冒充"已托管"
+    expect(router.placed).toHaveLength(1);                      // 退避期内不重挂
+    expect(JSON.stringify(out.blocked)).toContain("10311");     // 原因交给界面
+  });
+
+  it("认领时同一追踪同一单型有两张(旧 bug 留下的重复)→ 留单号最新的,撤掉其余", async () => {
+    const router = new FakeHostedRouter([positionRow()]);
+    const engine = hostedEngine(router);
+    const track = addHostedTrack(engine, { targets: { take_profit: 250.0 } });
+    const ref = `trk:${track.id}:tp`;
+    router.openRows = [
+      { order_ref: ref, order_id: 82, quantity: 100, lmt_price: 250, aux_price: null, trailing_percent: null },
+      { order_ref: ref, order_id: 86, quantity: 100, lmt_price: 250, aux_price: null, trailing_percent: null },
+    ];
+    const out = await engine.syncHosted();
+    expect(router.cancelled).toEqual([82]);
+    expect(router.placed).toEqual([]);                          // 不再挂第三张
+    expect(out.hosted[0]!.orders.map((o: Rec) => o.order_id)).toEqual([86]);
+  });
+
+  it("改价被拒 → 原单还在原价:恢复缓存成上一版,退避期内不改也不重挂", async () => {
+    const router = new FakeHostedRouter([positionRow()]);
+    const engine = hostedEngine(router);
+    const track = addHostedTrack(engine, { targets: { take_profit: 250.0 } });
+
+    await engine.syncHosted();
+    const first = router.placed[0]!;
+    engine.store.updateTrack(track.id, { targets: { take_profit: 260.0 } });
+    await engine.syncHosted();                                   // 触发一次改价
+    expect(router.modified).toHaveLength(1);
+    engine.onIbError(first.order_id, 110, "价格不符合最小价格变动");
+
+    const out = await engine.syncHosted();
+    expect(router.placed).toHaveLength(1);                       // 没有第二张
+    expect(router.modified).toHaveLength(1);                     // 退避期内不再改
+    expect(out.hosted[0]!.orders[0]!.lmt_price).toBe(250.0);     // 缓存 = 券商那边真实的价
+    expect(JSON.stringify(out.blocked)).toContain("改价被券商拒绝");
+  });
+});
+
+// ----------------------------------------------------------------------
 describe("hosted: syncHosted 对账循环", () => {
   it("挂出的每一张托管单都带 orderRef 与 OCA 组,并各留一条记录", async () => {
     const router = new FakeHostedRouter([positionRow()]);

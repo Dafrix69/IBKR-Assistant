@@ -3,6 +3,10 @@
  * 三件事定死:方向决定上下;乘数只乘一次(IBKR 的 avgCost 对期权含乘数,
  * 成本侧不再乘、市值侧要乘);跟踪止损跟"最有利价"且峰值必须持久化。
  */
+import {
+  DEFAULTS as FLY_DEFAULTS, impliedSigmaFly, impliedSigmaLeg, legValue, modelPrice, sigmaRemaining,
+  structureValue,
+} from "./flyexit.js";
 import { finiteOrNull, fmtF, pyFloat, pyG, pyRound } from "./py.js";
 
 export const STATE_HOLDING = "holding";
@@ -315,6 +319,9 @@ export interface Targets {
   profit_drawdown_tiers: Array<Record<string, any>> | null;
   /** 尾盘收紧:{after: "15:00", factor: 0.5}。 */
   profit_drawdown_late: Record<string, any> | null;
+  /** **标的**的目标价。止盈价不由人填,而是每一轮按当前波动率算出「标的走到这里时
+   * 这份持仓该值多少」——正股、单腿期权、蝶式/价差都走这一条,见 spotTarget()。 */
+  spot_target: number | null;
 }
 
 export function makeTargets(raw: Partial<Targets> = {}): Targets {
@@ -325,14 +332,332 @@ export function makeTargets(raw: Partial<Targets> = {}): Targets {
     profit_drawdown_pct: raw.profit_drawdown_pct ?? null,
     profit_drawdown_tiers: raw.profit_drawdown_tiers ?? null,
     profit_drawdown_late: raw.profit_drawdown_late ?? null,
+    spot_target: raw.spot_target ?? null,
   };
 }
 
 export function targetsEmpty(t: Targets): boolean {
   return (
     t.take_profit === null && t.stop_loss === null && t.trail_pct === null &&
-    t.profit_drawdown_pct === null && !(t.profit_drawdown_tiers ?? []).length
+    t.profit_drawdown_pct === null && !(t.profit_drawdown_tiers ?? []).length &&
+    t.spot_target === null
   );
+}
+
+// ----------------------------------------------------------------------
+// 蝶式:标的目标价 → 预计止盈位
+// ----------------------------------------------------------------------
+// 「7720 开的 7750 25 点蝶,标的涨到 7740 该值多少」——人心里想的止盈位是**标的**的
+// 位置,不是蝶价。蝶价是它的影子:同一个 7740,上午和尾盘差着一倍的钱(时间价值还剩
+// 多少)。所以这个止盈位必须每一轮重算,不能设一次定死。
+
+export interface FlyProfile {
+  lower: number;
+  center: number;
+  upper: number;
+  width: number;
+  right: string;
+  action: string; // 持仓方向:BUY = 借方蝶(买翼卖中心)
+  [key: string]: unknown;
+}
+
+/**
+ * BAG 合约 → 蝶式几何(下翼/中心/上翼/翼宽/看涨看跌)。认不出来回 null。
+ *
+ * 只认标准的 1/−2/1(或 −1/2/−1)、同 right、等距三腿。比例或间距对不上宁可回 null:
+ * 这个 profile 会拿去算真金白银的止盈价,猜错的后果是挂一张凭空来的限价单。
+ */
+export function flyProfileOf(contract: Record<string, unknown> | null | undefined): FlyProfile | null {
+  const c = contract ?? {};
+  if (String(c["secType"] ?? "") !== "BAG") return null;
+  const legs = (c["legs"] ?? []) as Array<Record<string, unknown>>;
+  if (legs.length !== 3) return null;
+  const strikes = legs.map((l) => finiteOrNull(l["strike"]));
+  const ratios = legs.map((l) => finiteOrNull(l["ratio"]));
+  const rights = legs.map((l) => String(l["right"] ?? "").slice(0, 1).toUpperCase());
+  if (strikes.some((s) => s === null) || ratios.some((r) => r === null)) return null;
+  if (new Set(rights).size !== 1 || (rights[0] !== "C" && rights[0] !== "P")) return null;
+  const [k1, k2, k3] = strikes as [number, number, number];
+  const [r1, r2, r3] = ratios as [number, number, number];
+  if (!(k1 < k2 && k2 < k3) || !same(k2 - k1, k3 - k2)) return null;
+  if (!same(r1, r3) || !same(r2, -2 * r1) || r1 === 0) return null;
+  return {
+    lower: k1, center: k2, upper: k3, width: pyRound(k2 - k1, 4),
+    right: rights[0]!, action: r1 > 0 ? "BUY" : "SELL",
+  };
+}
+
+// ---------------------------------------------------------------- 通用结构
+// 蝴蝶只是「按比例加权的几条腿」里最难的那一个。正股、单腿期权、价差、铁鹰
+// 走的是同一条路:标的走到 spotTarget → 这份持仓值多少 → 预估收益 → 挂那张单。
+
+export interface StructureLeg {
+  strike: number;
+  right: string;
+  ratio: number; // 带符号:买入为正、卖出为负,已按"每组"折算
+}
+
+export interface TargetStructure {
+  /** stock = 正股(目标价就是它自己)、option = 单腿、combo = 多腿净价。 */
+  kind: string;
+  legs: StructureLeg[];
+  /** 蝶式几何;只有认得出蝴蝶时才有,用来走更准的净价反解。 */
+  fly: FlyProfile | null;
+  /** 给人看的一句话,进错误信息和界面。 */
+  label: string;
+}
+
+/**
+ * 持仓 → 可定价的结构。认不出来回 null(那就用不了标的目标价,老老实实填价格)。
+ *
+ * 正股没有腿:标的目标价就是它自己的价格,不需要任何模型。
+ * 期权腿的 ratio 已经按"每张/每组"折算过——BAG 行的 contract.legs 里存的就是它。
+ */
+export function structureOf(
+  secType: string, contract: Record<string, unknown> | null | undefined,
+): TargetStructure | null {
+  const c = contract ?? {};
+  const kind = String(secType || "STK");
+  if (kind === "STK") return { kind: "stock", legs: [], fly: null, label: "正股" };
+
+  const legOf = (raw: Record<string, unknown>, ratio: number): StructureLeg | null => {
+    const strike = finiteOrNull(raw["strike"]);
+    const right = String(raw["right"] ?? "").slice(0, 1).toUpperCase();
+    if (strike === null || (right !== "C" && right !== "P") || !Number.isFinite(ratio)) return null;
+    return { strike, right, ratio };
+  };
+
+  if (kind === "OPT" || kind === "FOP") {
+    // 单腿:数量的正负由持仓自己表达(closeSide 用的是 quantity),这里一律按"一张多头"
+    // 定价——报价本来就是每张的价格,追踪比的也是它。
+    const leg = legOf(c, 1);
+    return leg === null ? null : {
+      kind: "option", legs: [leg], fly: null,
+      label: `${pyG(leg.strike)}${leg.right} 单腿`,
+    };
+  }
+
+  if (kind !== "BAG") return null;
+  const rawLegs = (c["legs"] ?? []) as Array<Record<string, unknown>>;
+  if (!rawLegs.length) return null;
+  const legs: StructureLeg[] = [];
+  for (const raw of rawLegs) {
+    const leg = legOf(raw, finiteOrNull(raw["ratio"]) ?? NaN);
+    if (leg === null || leg.ratio === 0) return null;
+    legs.push(leg);
+  }
+  const fly = flyProfileOf(c);
+  return {
+    kind: "combo", legs, fly,
+    label: fly ? `${pyG(fly.lower)}/${pyG(fly.center)}/${pyG(fly.upper)} 蝴蝶` : `${legs.length} 腿组合`,
+  };
+}
+
+/** 按"离标的多近"排好的腿。反解退让时从最贴近平值的那条开始试——它的报价最实、
+ * 受波动率微笑的扭曲最小;那条没报价就依次往外挪,而不是直接放弃退到模型默认值。 */
+function legsByMoneyness(legs: StructureLeg[], spot: number): StructureLeg[] {
+  return [...legs].sort((a, b) => Math.abs(a.strike - spot) - Math.abs(b.strike - spot));
+}
+
+export interface SpotTarget {
+  /** 标的的目标价(照抄输入,方便界面一处取齐)。 */
+  spot_target: number;
+  /** 标的现价。 */
+  spot: number | null;
+  /** 现价是怎么来的(夜盘按期货推算时写明期货与基差);常规时段的官方价为空串。 */
+  spot_note: string;
+  /** 预计价位:标的走到 spot_target 时这份持仓的模型价(每股 / 每张 / 每组净价)。 */
+  price: number | null;
+  /** 预估收益(总额,已乘数量与乘数)。算不出成本或价格时为 null。 */
+  pnl: number | null;
+  /** 预估收益相对成本的百分比。 */
+  pnl_pct: number | null;
+  /** 算这个价用的 σ_剩余(点);正股没有 σ。smile 档报最贴近目标价那条腿的。 */
+  sigma: number | null;
+  /** σ 从哪来:none = 正股不需要、smile = 每条腿各自反解、net = 净价反解、leg = 最近腿反解、
+   * clock = EM×√剩余方差。 */
+  sigma_source: string;
+  /** smile 档每条腿各自的 σ(按 legPriceKey 索引);别的档没有这一项。 */
+  leg_sigmas?: Record<string, number>;
+  /** 这份持仓是什么结构,给错误信息和界面用。 */
+  structure: string;
+  /** 算不出来的时候说清楚为什么——静默回 null 会让界面显示成"还没到价"。 */
+  reason: string;
+  /** 引擎这一轮**只守不挂**:没有市场价可用,也没有上一次的市场价可沿用。
+   * 这时不挂新单、也不撤已经挂着的单(见 engine.applySpotTarget)。 */
+  held?: boolean;
+  /** 试算时:算得出价,但这个价不比现价更有利(挂上去会立刻成交)。设置时同一句话会当场拒。 */
+  warning?: string;
+}
+
+/** σ 来源里哪些算"市场价":只有这几种算出来的数才能拿去挂单或改单。
+ * clock 是写死的 EM 算出来的模型默认值——给人看可以,拿去发单不行。 */
+export const MARKET_SIGMA_SOURCES = new Set(["none", "smile", "net", "leg"]);
+
+export const SIGMA_SOURCE_LABEL: Record<string, string> = {
+  none: "正股按目标价本身,不用波动率",
+  smile: "每条腿按各自的报价反解,各用各的波动率",
+  net: "按这份持仓当前的净价反解",
+  leg: "按最贴近平值那条腿的报价反解",
+  clock: "模型默认波动率(EM×√剩余方差),不是市场价",
+};
+
+/**
+ * 预计价位与预估收益:标的走到 spotTarget 时,这份持仓按当前波动率该值多少。
+ *
+ * 正股不需要模型——目标价就是价格。期权要 σ,四个来源按可信度依次退让,
+ * 并把用了哪个如实报出来:
+ *
+ * | 来源 | 什么时候用 | 为什么 |
+ * |---|---|---|
+ * | `smile` | 组合,每条腿都有报价且解得出 | 每条腿用**自己的**报价反解、再各自重估(粘着行权价)。各腿报价加起来就是组合现价,所以在当前标的处正好还原现价;单腿 vega 恒正、根唯一,**翼内翼外一样能解**;标的穿过翼时来源不换,挂单价不跳 |
+ * | `net` | 单腿任何位置;蝴蝶在两翼之间(腿报价不全时) | 反解回去正好还原当前报价,目标价在标的逼近 spotTarget 时平滑收敛到实际报价,不跳 |
+ * | `leg` | 上面都解不动 | 组合净价对 σ 常常不单调(蝶在翼外是双根,见 impliedSigmaFly),解不得;拿最贴近平值那条腿的 σ 给所有腿用 |
+ * | `clock` | 都拿不到 | EM×√剩余方差。这是**模型默认值**不是市场价,界面必须标出来 |
+ *
+ * 蝶的目标价**可以在翼外**。"翼外一文不值"只在到期那一刻成立;离到期还有时间,翼外的蝶照样有
+ * 时间价值,而且标的往翼靠一步它就涨一截——蝶开在翼外、赌标的冲到翼边上,吃的正是这一段
+ * (7700 开 7720/7740/7760 的蝶,看 7715 的看涨墙会插针)。说不通的目标价由 validateSpotTarget
+ * 的"不比现价更有利"那条拦下,不需要另立翼外规则。
+ *
+ * σ 只取"此刻"的:问的是「现在这个波动率下,标的到了那儿值多少」,所以不预支时间衰减。
+ * 时间过去,σ 自己会缩,这个数自己会往上走——这正是它必须每轮重算的原因。
+ *
+ * 注意 `leg` 档的系统性偏差:远离平值的腿受波动率微笑影响最大,拿它反解出来的
+ * Bachelier σ 会偏(偏哪一边取决于当天的偏斜),所以界面上要把来源标出来,别让人
+ * 以为那是个和市场对得上的数。
+ */
+export function spotTarget(args: {
+  structure: TargetStructure;
+  position: Position;
+  spotTarget: number;
+  spot: number | null;
+  markPrice: number | null;
+  legPrices?: Record<string, number | null> | null;
+  minute: number | null;
+  em?: number | null;
+  spotNote?: string;
+}): SpotTarget {
+  const { structure, position } = args;
+  const target = args.spotTarget;
+  const spot = finiteOrNull(args.spot);
+  const out: SpotTarget = {
+    spot_target: target, spot, spot_note: args.spotNote ?? "", price: null, pnl: null, pnl_pct: null,
+    sigma: null, sigma_source: "", structure: structure.label, reason: "",
+  };
+  if (!(target > 0)) {
+    out.reason = "标的目标价要是正数。";
+    return out;
+  }
+
+  // ---- 正股:目标价就是价格,不需要任何模型 ----
+  if (structure.kind === "stock") {
+    out.sigma_source = "none";
+    out.price = pyRound(target, 4);
+    return withPnl(out, position);
+  }
+
+  // ---- 蝶式:只支持买入的蝶。目标价在不在翼内都照样算(见上面的说明) ----
+  const fly = structure.fly;
+  if (fly !== null && fly.action !== "BUY") {
+    out.reason = "预计止盈位只支持买入的蝶(借方);卖出的蝶盈利在中心之外,标的目标价说不清方向。";
+    return out;
+  }
+
+  let sigma: number | null = null;
+  let source = "";
+  let legSigmas: Record<string, number> | null = null;
+  const mark = finiteOrNull(args.markPrice);
+  // 组合先走 smile:每条腿按各自报价反解。缺一条就整档不用——缺腿的"微笑"还原不了现价
+  if (spot !== null && structure.kind === "combo") {
+    legSigmas = smileSigmas(structure.legs, spot, args.legPrices ?? {});
+    if (legSigmas !== null) source = "smile";
+  }
+  if (source === "" && spot !== null && mark !== null) {
+    // 净价反解:蝶只在翼内可解(翼外双根);单腿 vega 恒正,恒可解。
+    if (fly !== null) sigma = impliedSigmaFly(fly, spot, mark);
+    else if (structure.legs.length === 1) {
+      const leg = structure.legs[0]!;
+      sigma = impliedSigmaLeg(spot, leg.strike, mark, leg.right);
+    }
+    if (sigma !== null) source = "net";
+  }
+  if (source === "" && spot !== null) {
+    for (const leg of legsByMoneyness(structure.legs, spot)) {
+      const legPrice = finiteOrNull((args.legPrices ?? {})[legPriceKey(leg)]);
+      if (legPrice === null) continue;
+      sigma = impliedSigmaLeg(spot, leg.strike, legPrice, leg.right);
+      if (sigma !== null) {
+        source = "leg";
+        break;
+      }
+    }
+  }
+  if (source === "") {
+    const em = finiteOrNull(args.em ?? null) ?? Number(FLY_DEFAULTS["em"]);
+    if (args.minute === null) {
+      out.reason = "拿不到市场波动率,也没有当前时刻,算不出预计价位。";
+      return out;
+    }
+    sigma = sigmaRemaining(em, args.minute); // 收盘后是 0:那时模型价就是内在价值,仍然是对的
+    source = "clock";
+  }
+
+  out.sigma_source = source;
+  let price: number;
+  if (legSigmas !== null) {
+    let v = 0;
+    for (const leg of structure.legs) v += leg.ratio * legValue(leg.right, target, leg.strike, legSigmas[legPriceKey(leg)]!);
+    price = fly !== null ? Math.max(v, 0) : v; // 买入的蝶不可能倒贴钱,和 modelPrice 同一个下限
+    const nearest = legsByMoneyness(structure.legs, target)[0]!;
+    out.sigma = pyRound(legSigmas[legPriceKey(nearest)]!, 4);
+    out.leg_sigmas = Object.fromEntries(Object.entries(legSigmas).map(([k, v2]) => [k, pyRound(v2, 4)]));
+  } else {
+    out.sigma = pyRound(sigma!, 4);
+    // 蝶用 modelPrice(与黄金基线同一个写法),其余走通用的按比例加权
+    price = fly !== null ? modelPrice(fly, target, sigma!) : structureValue(structure.legs, target, sigma!);
+  }
+  // 组合行的现价按"每组净值的绝对值"记,方向在数量的正负上(见 comboRow)。腿比例带的是持仓自己的
+  // 符号,贷方组合按比例加权出来是负数;不翻过来,止盈价和现价就不在一个口径上(负的止盈价永远到不了)
+  if (structure.kind === "combo" && fly === null && !isLong(position)) price = -price;
+  out.price = pyRound(price, 4);
+  return withPnl(out, position);
+}
+
+/**
+ * 组合每条腿按自己的报价反解 σ(smile 档)。任何一条腿没报价或解不动就回 null——
+ * 缺了一条腿的"微笑"还原不了组合现价,那时退到下一档,而不是拿别的腿的 σ 去填。
+ */
+export function smileSigmas(
+  legs: StructureLeg[], spot: number, legPrices: Record<string, number | null>,
+): Record<string, number> | null {
+  if (!legs.length) return null;
+  const out: Record<string, number> = {};
+  for (const leg of legs) {
+    const key = legPriceKey(leg);
+    const price = finiteOrNull(legPrices[key]);
+    if (price === null) return null;
+    const sigma = impliedSigmaLeg(spot, leg.strike, price, leg.right);
+    if (sigma === null) return null;
+    out[key] = sigma;
+  }
+  return out;
+}
+
+/** 腿报价的索引键:行权价 + C/P。组合里同一个行权价可能同时有看涨看跌(铁鹰)。 */
+export function legPriceKey(leg: { strike: number; right: string }): string {
+  return `${pyG(leg.strike)}${leg.right}`;
+}
+
+/** 把预计价位换成钱:与 unrealized() 同一套口径(成本含乘数,市值一侧乘乘数)。 */
+function withPnl(out: SpotTarget, position: Position): SpotTarget {
+  if (out.price === null) return out;
+  const basis = costBasis(position);
+  const value = marketValue(position, out.price);
+  if (value === null) return out;
+  out.pnl = pyRound(value - basis, 2);
+  if (basis) out.pnl_pct = pyRound(((value - basis) / Math.abs(basis)) * 100.0, 3);
+  return out;
 }
 
 function minutesOfClock(hhmm: unknown): number | null {
@@ -440,7 +765,7 @@ export function unrealized(position: Position, price: number | null): Unrealized
 /** 设置时就把方向搞反的情况拦下来。 */
 export function validate(position: Position, targets: Targets, price: number | null): void {
   if (targetsEmpty(targets)) {
-    throw new TrackerError("至少要设一个:止盈价、止损价,或跟踪止损百分比。");
+    throw new TrackerError("至少要设一个:止盈价、止损价、跟踪止损百分比,或标的目标价。");
   }
   if (!position.quantity) {
     throw new TrackerError("这个持仓的数量是 0,没有可追踪的头寸。");
@@ -500,6 +825,58 @@ export function validate(position: Position, targets: Targets, price: number | n
       throw new TrackerError(`空头的止损价要高于现价(现价 ${fmtF(p, 4)},你填了 ${fmtF(sl, 4)})。`);
     }
   }
+}
+
+/**
+ * 设置「标的目标价」时的校验。和 validate() 分开是因为它要多两样东西:
+ * 合约(拿结构)和标的现价(拿波动率)。
+ *
+ * 算不出预计价位就当场拒绝,不建这条追踪:一条永远算不出目标价的追踪在界面上
+ * 和"还没到价"长得一模一样,用户会以为它在保护自己。
+ */
+export function validateSpotTarget(args: {
+  position: Position;
+  contract: Record<string, unknown> | null | undefined;
+  spotTarget: number;
+  spot: number | null;
+  markPrice: number | null;
+  legPrices?: Record<string, number | null> | null;
+  minute: number | null;
+  em?: number | null;
+}): SpotTarget {
+  const structure = structureOf(args.position.sec_type, args.contract);
+  if (structure === null) {
+    throw new TrackerError(
+      "这份持仓认不出结构,用不了标的目标价:正股、单腿期权,以及每条腿都带行权价与看涨/看跌的组合才行。",
+    );
+  }
+  const st = spotTarget({ ...args, structure });
+  if (st.reason) throw new TrackerError(st.reason);
+  if (st.price === null) {
+    throw new TrackerError("拿不到标的现价或持仓报价,这一刻算不出预计价位——等行情来了再设。");
+  }
+  const fillsNow = fillsNowMessage(args.position, structure, st, args.markPrice);
+  if (fillsNow) throw new TrackerError(fillsNow);
+  return st;
+}
+
+/**
+ * 算出来的预计价位不比现价更有利 → 挂上去会立刻成交。返回那句拒绝的话;没问题回空串。
+ * 设置时(validateSpotTarget)拿它拒,试算时(tracker.target_preview)拿它当场提醒——
+ * 同一句话两处用,别让人在预览里看着一个数、点确认才被拒。
+ */
+export function fillsNowMessage(
+  position: Position, structure: TargetStructure, st: SpotTarget, markPrice: number | null,
+): string {
+  const now = finiteOrNull(markPrice);
+  if (st.price === null || now === null) return "";
+  const long = isLong(position);
+  if (long ? st.price > now : st.price < now) return "";
+  return (
+    `标的到 ${pyG(st.spot_target)} 时这份持仓约值 ${fmtF(st.price, 2)},` +
+    `${long ? "不高于" : "不低于"}现价 ${fmtF(now, 2)}——挂上去会立刻成交。` +
+    (structure.fly ? `想止盈就把目标价再往中心 ${pyG(structure.fly.center)} 靠。` : "换个方向对的目标价。")
+  );
 }
 
 // ----------------------------------------------------------------------
@@ -914,6 +1291,18 @@ function hostedPrice(value: number | null | undefined): number | null {
   return pyRound(Math.max(v, 0.01), 2);
 }
 
+/** 组合托管限价:按合约最小跳动对齐,且**朝成交方向**取整(平多头向下、平空头向上)。
+ * 这张单挂着就是为了让插针那一下能扫到,取整只该让它更容易成交,不该更难。 */
+function hostedComboPrice(position: Position, value: number | null | undefined): number | null {
+  const v = finiteOrNull(value ?? null);
+  if (v === null) return null;
+  const tick = closeTick(position);
+  const steps = isLong(position)
+    ? Math.floor(v / tick + 1e-9)
+    : Math.ceil(v / tick - 1e-9);
+  return pyRound(Math.max(steps * tick, tick), 4);
+}
+
 /** 把"利润回撤 N%"换算成一个停损价。
  *
  * 利润对价格是线性的:profit(p) = qty·mult·(p − c),c 为每股成本。
@@ -949,6 +1338,22 @@ export function hostedPlan(
   const qty = closeQty(position, auto);
   const side = closeSide(position);
   const plan: HostedOrderPlan[] = [];
+
+  // 组合只托管**一张限价止盈单**。STP / TRAIL 对 BAG 在 IBKR 侧支持不明、更没核对过
+  // (docs/features/tracker.md);限价单是自动平仓那条路已经在纸面账户上跑通过的同一种单,
+  // 差别只是它挂着等成交而不是到价才发。所以只放开这一种,其余仍走引擎盯盘。
+  if (position.sec_type === "BAG") {
+    const flyTp = hostedComboPrice(position, targets.take_profit);
+    if (flyTp !== null) {
+      plan.push({
+        kind: HOSTED_KIND_TP, action: side, order_type: "LMT",
+        quantity: qty, lmt_price: flyTp, aux_price: null,
+        trailing_percent: null, trail_stop_seed: null,
+        label: `${HOSTED_LABELS[HOSTED_KIND_TP]} ${pyFloat(flyTp)}`,
+      });
+    }
+    return plan;
+  }
 
   const tp = hostedPrice(targets.take_profit);
   if (tp !== null) {

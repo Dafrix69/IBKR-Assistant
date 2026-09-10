@@ -7,7 +7,7 @@
  * DPAPI 通过 PowerShell 的 System.Security.Cryptography.ProtectedData 调用,
  * 不引入原生依赖。其余平台显式报错,不退化为明文。
  */
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFile, execFileSync, spawnSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -27,8 +27,60 @@ function requireSupported(): void {
   }
 }
 
+/**
+ * 解密结果的进程内缓存。Windows 上每次解密都要**同步**起一个 PowerShell(约 0.8 秒),期间整个
+ * 引擎进程的事件循环被占住——盯盘节拍器、所有 RPC、IB 的消息处理全停(2026-09-10 真机:每次大模型
+ * 解析都让节拍器晚一拍,事件循环被占 868 ms)。同一进程里只解一次;写入 / 删除时同步更新。
+ */
+const secretCache = new Map<string, string | null>();
+const cacheKey = (service: string, account: string): string => `${service}\x00${account}`;
+
 export function getSecret(service: string, account: string): string | null {
   requireSupported();
+  const key = cacheKey(service, account);
+  if (secretCache.has(key)) return secretCache.get(key)!;
+  const value = getSecretUncached(service, account);
+  secretCache.set(key, value);
+  return value;
+}
+
+/** 有没有保存过这条凭证——**不解密**。界面上的"已保存"只需要 true/false,不该为它起一次 PowerShell。 */
+export function hasSecret(service: string, account: string): boolean {
+  requireSupported();
+  const key = cacheKey(service, account);
+  if (secretCache.has(key)) return secretCache.get(key) !== null;
+  if (os.platform() === "win32") return dpapiKey(service, account) in dpapiLoad();
+  return getSecret(service, account) !== null;
+}
+
+/**
+ * 在后台(异步子进程)先把凭证解出来放进缓存,之后的 getSecret 直接命中、一次也不卡事件循环。
+ * 引擎启动时对当前大模型的 Key 调一次;失败就算了,真用到时同步路径照样能解。
+ */
+export async function primeSecret(service: string, account: string): Promise<void> {
+  if (!isSupported()) return;
+  const key = cacheKey(service, account);
+  if (secretCache.has(key)) return;
+  if (os.platform() !== "win32") return; // macOS 的 security 命令够快,不必预热
+  const blob = dpapiLoad()[dpapiKey(service, account)];
+  if (blob === undefined) {
+    secretCache.set(key, null);
+    return;
+  }
+  const script = dpapiScript(Buffer.from(blob, "base64"), entropy(service, account), true);
+  const out = await new Promise<string | null>((resolve) => {
+    execFile(
+      "powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", script],
+      { encoding: "utf-8", windowsHide: true, timeout: 15_000 },
+      (err, stdout) => resolve(err ? null : String(stdout ?? "").trim()),
+    );
+  });
+  if (out === null || secretCache.has(key)) return; // 失败,或同步路径抢先解完了
+  const secret = Buffer.from(out, "base64").toString("utf-8");
+  secretCache.set(key, secret || null);
+}
+
+function getSecretUncached(service: string, account: string): string | null {
   if (os.platform() === "win32") return dpapiGet(service, account);
   const proc = spawnSync(
     "security", ["find-generic-password", "-s", service, "-a", account, "-w"],
@@ -42,8 +94,10 @@ export function getSecret(service: string, account: string): string | null {
 export function setSecret(service: string, account: string, secret: string): void {
   requireSupported();
   if (!secret) throw new KeychainError("拒绝写入空密钥");
+  secretCache.delete(cacheKey(service, account));
   if (os.platform() === "win32") {
     dpapiSet(service, account, secret);
+    secretCache.set(cacheKey(service, account), secret);
     return;
   }
   const proc = spawnSync(
@@ -61,6 +115,7 @@ export function setSecret(service: string, account: string, secret: string): voi
 
 export function deleteSecret(service: string, account: string): boolean {
   requireSupported();
+  secretCache.delete(cacheKey(service, account));
   if (os.platform() === "win32") return dpapiDelete(service, account);
   const proc = spawnSync(
     "security", ["delete-generic-password", "-s", service, "-a", account],
@@ -85,15 +140,7 @@ function dpapiKey(service: string, account: string): string {
 
 /** DPAPI 加解密走 PowerShell 的 ProtectedData(按当前用户,禁 UI)。 */
 function dpapiCrypt(data: Buffer, ent: Buffer, decrypt: boolean): Buffer {
-  const method = decrypt ? "Unprotect" : "Protect";
-  const script =
-    "$ErrorActionPreference='Stop';" +
-    "Add-Type -AssemblyName System.Security;" +
-    `$d=[Convert]::FromBase64String('${data.toString("base64")}');` +
-    `$e=[Convert]::FromBase64String('${ent.toString("base64")}');` +
-    `$o=[System.Security.Cryptography.ProtectedData]::${method}($d,$e,` +
-    "[System.Security.Cryptography.DataProtectionScope]::CurrentUser);" +
-    "[Convert]::ToBase64String($o)";
+  const script = dpapiScript(data, ent, decrypt);
   const proc = spawnSync(
     "powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", script],
     { encoding: "utf-8", windowsHide: true },
@@ -104,6 +151,19 @@ function dpapiCrypt(data: Buffer, ent: Buffer, decrypt: boolean): Buffer {
     );
   }
   return Buffer.from((proc.stdout ?? "").trim(), "base64");
+}
+
+function dpapiScript(data: Buffer, ent: Buffer, decrypt: boolean): string {
+  const method = decrypt ? "Unprotect" : "Protect";
+  return (
+    "$ErrorActionPreference='Stop';" +
+    "Add-Type -AssemblyName System.Security;" +
+    `$d=[Convert]::FromBase64String('${data.toString("base64")}');` +
+    `$e=[Convert]::FromBase64String('${ent.toString("base64")}');` +
+    `$o=[System.Security.Cryptography.ProtectedData]::${method}($d,$e,` +
+    "[System.Security.Cryptography.DataProtectionScope]::CurrentUser);" +
+    "[Convert]::ToBase64String($o)"
+  );
 }
 
 function dpapiLoad(): Record<string, string> {

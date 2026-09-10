@@ -5,8 +5,17 @@ import { fmtMoney, fmtNum } from '../lib/format';
 import { showBanner } from '../store/banner';
 import { loadRecords } from '../store/records';
 import { gatewayName, pickableAccounts, useStatus } from '../store/status';
-import { loadTracker, useTracker, type LiveRow, type Position, type Track, type TrackTargets } from '../store/tracker';
+import { loadTracker, useTracker, type LiveRow, type Position, type SpotTargetRow, type Track, type TrackTargets } from '../store/tracker';
 import { EmptyState, Meta, Notice, PageHead, Primer, SectionTitle, StatusCard, type Tone } from '../ui/kit';
+
+/** σ 是从哪来的,用人话说一遍。clock 那一档必须显眼——它是模型默认值,不是市场价。 */
+const SIGMA_SOURCE_HINT: Record<string, string> = {
+  none: '正股:目标价就是价格,不用波动率',
+  smile: '每条腿按各自当前的报价反解波动率,在目标价处各自重估',
+  net: '按这份持仓当前的报价反解波动率',
+  leg: '有腿缺报价,按最贴近平值那条腿的波动率给所有腿用',
+  clock: '拿不到市场报价,用的是模型默认波动率(EM×√剩余方差)——不是市场价,只当个参考',
+};
 
 const TRACK_STATE_LABEL: Record<string, string> = {
   holding: '持有中',
@@ -140,6 +149,7 @@ export function TrackerPage() {
       </div>
 
       <SectionTitle innerRef={trackersHead}>正在追踪</SectionTitle>
+      {connected && snap.tracks.length ? <LoopPulse loop={snap.loop} /> : null}
       <div className="cards" id="trackers">
         {!snap.tracks.length ? (
           <EmptyState>还没有在追踪任何持仓。在上面的持仓卡片里设置止盈止损。</EmptyState>
@@ -151,6 +161,22 @@ export function TrackerPage() {
       </div>
     </section>
   );
+}
+
+/** 盯盘节拍器的心跳。它停了、慢了、报错了,都得在这里一眼看见——静默停摆比慢更危险。 */
+function LoopPulse({ loop }: { loop: import('../store/tracker').LoopHeartbeat | null }) {
+  if (!loop) return <div className="hint">盯盘节拍器:等第一轮结果…</div>;
+  const stale = loop.age_ms !== null && loop.age_ms > 3_000;
+  const bad = !loop.running || stale || Boolean(loop.last_error);
+  const text = !loop.running
+    ? '盯盘节拍器没在跑:追踪止盈与托管调价都停了'
+    : loop.last_error
+      ? `盯盘这一轮没做成:${loop.last_error}`
+      : stale
+        ? `盯盘节拍器已经 ${Math.round((loop.age_ms || 0) / 1000)} 秒没跳了`
+        : `盯盘:引擎每 ${Math.round(loop.interval_ms / 100) / 10} 秒一轮 · 上一轮 ${loop.last_ms ?? '—'} ms` +
+          (loop.slow_ticks ? ` · 慢过 ${loop.slow_ticks} 轮(最长 ${loop.max_ms} ms)` : '');
+  return <div className={bad ? 'hint warn-text' : 'hint'} id="tracker-loop-pulse">{text}</div>;
 }
 
 // ---- 一条持仓(正股、期权腿或组合)的卡片主体:数量、成本、现价、盈亏、追踪表单 ----------------
@@ -221,6 +247,11 @@ function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: string | nul
   const [trail, setTrail] = useState<number | null>(null);
   const [profitDd, setProfitDd] = useState<number | null>(null);
   const [tiers, setTiers] = useState(false);
+  const [spotTarget, setSpotTarget] = useState<number | null>(null);
+  // 试算结果和它算的那个目标价绑在一起:改了目标价、防抖还没跑完的那几百毫秒里,
+  // 旧结果必须立刻失效——否则用户同意的是上一个目标价的数,发出去的是新的。
+  const [preview, setPreview] = useState<{ target: number; row: SpotTargetRow } | null>(null);
+  const [previewErr, setPreviewErr] = useState<string | null>(null);
   const [fraction, setFraction] = useState<number | null>(null);
   const [auto, setAuto] = useState(false);
   const [orderType, setOrderType] = useState<'MKT' | 'LMT'>(isCombo ? 'LMT' : 'MKT');
@@ -229,16 +260,51 @@ function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: string | nul
 
   const acct = pickableAccounts(status).find((a) => a.alias === p.account);
   const isPaper = acct ? acct.is_paper : true;
+  const hasSpotTarget = spotTarget !== null && spotTarget > 0;
+  // 只认算的就是当前这个目标价的那一份;对不上就当没有
+  const priced = hasSpotTarget && preview?.target === spotTarget ? preview.row : null;
   const str = (v: number | null) => (v === null || v === undefined ? '' : String(v));
+
+  // 填标的目标价的时候就把「那时值多少、赚多少」摆出来:这个数就是将要挂出去的限价,
+  // 得让人在按下按钮之前看见它。防抖 400ms——每敲一个字符打一次行情请求没必要。
+  useEffect(() => {
+    if (spotTarget === null || !(spotTarget > 0)) {
+      setPreview(null);
+      setPreviewErr(null);
+      return;
+    }
+    let alive = true;
+    const target = spotTarget;
+    setPreview(null);          // 目标价一变,旧的数当场作废,不给"看着还在"的错觉
+    setPreviewErr(null);
+    const t = setTimeout(async () => {
+      try {
+        const res = await dafri.previewSpotTarget(p.key, target);
+        if (!alive) return;
+        const row = res?.spot_target || null;
+        setPreview(row?.price != null ? { target, row } : null);
+        setPreviewErr(row?.price != null ? null : row?.reason || '这一刻算不出这个点位的价格。');
+      } catch (err) {
+        if (!alive) return;
+        setPreview(null);
+        setPreviewErr(errorMessage(err));
+      }
+    }, 400);
+    return () => {
+      alive = false;
+      clearTimeout(t);
+    };
+  }, [p.key, spotTarget]);
 
   async function start() {
     const spec = {
       key: p.key,
-      take_profit: str(tp),
+      take_profit: hasSpotTarget ? '' : str(tp),
       stop_loss: str(sl),
       trail_pct: str(trail),
       profit_drawdown_pct: tiers ? '' : str(profitDd),
       profit_drawdown_preset: tiers ? 'fly' : undefined,
+      spot_target: str(spotTarget),
       close_fraction_pct: str(fraction) || undefined,
       auto_close: auto,
       order_type: orderType,
@@ -249,24 +315,67 @@ function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: string | nul
       showBanner('托管到券商需先打开「到价自动平仓」:挂托管单即发单授权。', false);
       return;
     }
+    // 「同意价格后发单」:同意的那一刻现取一次价,不拿几秒前那份凑数。
+    // 算不出来就不往下走——盲签一张会真发出去的单,比不发危险得多。
+    let quoted: SpotTargetRow | null = null;
+    if (hasSpotTarget && (spec.auto_close || spec.host_at_broker)) {
+      setSaving(true);
+      try {
+        const res = await dafri.previewSpotTarget(p.key, spotTarget!);
+        quoted = res?.spot_target || null;
+      } catch (err) {
+        showBanner(errorMessage(err), false);
+        setSaving(false);
+        return;
+      } finally {
+        setSaving(false);
+      }
+      if (quoted?.price == null) {
+        showBanner(quoted?.reason || `这一刻算不出 ${p.symbol} 到 ${spotTarget} 的价格,先别发单。`, false);
+        return;
+      }
+      if (quoted.sigma_source === 'clock') {
+        // 能同意的只有市场价算出来的数;模型默认波动率算的参考价没有人能替你担保
+        showBanner('现在拿不到市场报价,这个价是按模型默认波动率算的参考值,不能拿它发单。等行情来了再设。', false);
+        return;
+      }
+      if (quoted.warning) {
+        showBanner(quoted.warning, false);
+        return;
+      }
+    }
+    // 要同意的那句话:先说价,再说它之后会怎么动
+    const priceLine = quoted
+      ? (quoted.spot_note ? `现价 ${quoted.spot != null ? fmtNum(quoted.spot) : '—'}:${quoted.spot_note}\n` : '') +
+        `${p.symbol} 到 ${fmtNum(spotTarget)} → ${isCombo ? '组合净价' : '价格'}约 ${fmtMoney(quoted.price)}` +
+        `,预估收益 ${fmtMoney(quoted.pnl)}\n` +
+        `这个价按当前波动率算出来,软件开着时每秒重算并改单——标的真走到 ${fmtNum(spotTarget)} 时\n` +
+        `挂的就是那一刻的价,不是现在这个数。\n`
+      : '';
     if (spec.host_at_broker) {
       const ok = await dafri.confirm({
-        title: '托管到券商服务器',
-        message: `${p.symbol} 的止盈/止损将作为 GTC 单挂在券商服务器上。`,
+        title: quoted ? '确认这个止盈价位,并挂到券商' : '托管到券商服务器',
+        message: quoted
+          ? `${p.symbol} 到 ${fmtNum(spotTarget)} 就走,现在算下来约 ${fmtMoney(quoted.price)}。`
+          : `${p.symbol} 的止盈/止损将作为 GTC 单挂在券商服务器上。`,
         detail:
+          priceLine +
           `数量 ${Math.abs(p.quantity)} · 账户 ${p.account}\n` +
-          '软件关闭后托管单仍然有效;利润回撤停损停在最后一次调整的价位。\n' +
+          '这张 GTC 限价单会立刻挂到券商服务器上;软件关闭后它仍然有效,价格停在最后一次调整的位置。\n' +
           '触发由券商实时行情决定,一张成交其余自动撤销(OCA)。',
-        confirmLabel: '我确认',
+        confirmLabel: quoted ? '同意这个价,挂单' : '我确认',
       });
       if (!ok) return;
     } else if (spec.auto_close) {
       // 这一步是在授权软件替你发单,值得一次明确的确认
       const ok = await dafri.confirm({
-        title: '开启到价自动平仓',
-        message: `${p.symbol} 到价后会自动发出平仓单,不再询问。`,
-        detail: `数量 ${Math.abs(p.quantity)} · 账户 ${p.account} · ${orderType === 'MKT' ? '市价平仓' : '限价平仓'}\n软件关闭后不再盯盘。`,
-        confirmLabel: '我确认',
+        title: quoted ? '确认这个止盈价位,并开启自动平仓' : '开启到价自动平仓',
+        message: quoted
+          ? `${p.symbol} 到 ${fmtNum(spotTarget)} 就走,现在算下来约 ${fmtMoney(quoted.price)}。`
+          : `${p.symbol} 到价后会自动发出平仓单,不再询问。`,
+        detail: priceLine +
+          `数量 ${Math.abs(p.quantity)} · 账户 ${p.account} · ${orderType === 'MKT' ? '市价平仓' : '限价平仓'}\n软件关闭后不再盯盘。`,
+        confirmLabel: quoted ? '同意这个价,开始追踪' : '我确认',
       });
       if (!ok) return;
     }
@@ -300,7 +409,63 @@ function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: string | nul
 
   return (
     <div className="track-form">
-      {num({ label: '止盈价', hint: long ? '高于现价' : '低于现价', value: tp, onChange: setTp, autoFocus: true })}
+      {/* 标的目标价:人心里想的止盈位是**标的**走到哪儿,不是这份持仓值多少。
+          换算成价格由引擎每轮现算——同一个目标位,上午和尾盘对应的期权价差着一倍。 */}
+      <label className="track-field">
+        <span>
+          标的目标价({p.symbol})
+          <span className="sub">填标的走到哪儿就走;止盈价按当前波动率每秒现算,不用自己估</span>
+        </span>
+        <InputNumber
+          min={0}
+          step={1}
+          placeholder={`${p.symbol} 走到多少`}
+          value={spotTarget}
+          onChange={(v) => setSpotTarget(v === null || v === undefined ? null : Number(v))}
+        />
+      </label>
+      {spotTarget !== null && spotTarget > 0 ? (
+        <div className="track-preview">
+          {priced ? (
+            <>
+              <Meta
+                items={[
+                  `${p.symbol} 到 ${fmtNum(spotTarget)}`,
+                  <span className="strong">{`${isCombo ? '组合净价' : '约值'} ${fmtMoney(priced.price)}`}</span>,
+                  <span className={(priced.pnl ?? 0) >= 0 ? 'pnl-up' : 'pnl-down'}>
+                    {`预估收益 ${(priced.pnl ?? 0) >= 0 ? '+' : ''}${fmtMoney(priced.pnl)}`}
+                    {priced.pnl_pct != null ? ` (${Number(priced.pnl_pct).toFixed(1)}%)` : ''}
+                  </span>,
+                ]}
+              />
+              {priced.warning ? <div className="hint warn-text">{priced.warning}</div> : null}
+              <div className={priced.sigma_source === 'clock' ? 'hint warn-text' : 'hint'}>
+                {SIGMA_SOURCE_HINT[priced.sigma_source || ''] || ''}
+                {priced.leg_sigmas
+                  ? ` · σ_剩余 ${Object.entries(priced.leg_sigmas).map(([k, v]) => `${k} ${fmtNum(v)}`).join(' / ')} 点`
+                  : priced.sigma != null ? ` · σ_剩余 ${fmtNum(priced.sigma)} 点` : ''}
+              </div>
+              {priced.spot_note ? (
+                <div className="hint">{`${p.symbol} 现价 ${priced.spot != null ? fmtNum(priced.spot) : '—'}:${priced.spot_note}`}</div>
+              ) : null}
+              {priced.sigma_source === 'clock' ? (
+                <div className="hint warn-text">这个价只能参考:拿不到市场报价,不能拿它开自动平仓或挂单。</div>
+              ) : null}
+            </>
+          ) : (
+            <div className="hint">{previewErr || '正在按当前行情试算…'}</div>
+          )}
+        </div>
+      ) : null}
+      {/* 填了标的目标价,止盈价就由引擎每轮现算——把它禁掉,免得人以为自己填的那个数说了算 */}
+      {num({
+        label: '止盈价',
+        hint: hasSpotTarget ? '由上面的标的目标价现算' : long ? '高于现价' : '低于现价',
+        value: hasSpotTarget ? null : tp,
+        onChange: setTp,
+        disabled: hasSpotTarget,
+        autoFocus: true,
+      })}
       {num({ label: '止损价', hint: long ? '低于现价' : '高于现价', value: sl, onChange: setSl })}
       {/* 两个"追踪"是不同刻度,标签必须自解释:价格回撤 5% 在利润口径上会被成本杠杆放大 */}
       {num({ label: '跟踪止损 %(按价格)', hint: '价格从峰值回落 N%,全平', value: trail, onChange: setTrail })}
@@ -366,7 +531,15 @@ function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: string | nul
           </div>
         </div>
       ) : null}
-      <Button type="primary" size="small" loading={saving} onClick={() => void start()}>
+      {/* 设了目标价却算不出价钱,就不给点:那一步下去要么被引擎拒、要么是盲签一张真单 */}
+      <Button
+        type="primary"
+        size="small"
+        loading={saving}
+        disabled={hasSpotTarget && !priced}
+        title={hasSpotTarget && !priced ? '这个点位的价格还没算出来' : undefined}
+        onClick={() => void start()}
+      >
         开始追踪
       </Button>
     </div>
@@ -407,7 +580,24 @@ function Gauge({ live, targets }: { live: LiveRow; targets: TrackTargets }) {
         : '利润回撤已设,等第一次盈利后开始记峰值。',
     );
   }
-  if (targets.take_profit != null) rows.push({ label: '止盈', target: targets.take_profit, note: '', tone: 'ok' });
+  const st = live.spot_target;
+  if (st?.held) {
+    pending.push(st.reason || '还没拿到市场报价,先不挂单。');
+  } else if (st?.price != null) {
+    // 目标价每轮重算,所以这一行的 target 也每轮变;标签里带上标的位置,
+    // 否则界面上只剩一个孤零零的价格,看不出它是怎么来的
+    rows.push({
+      label: `标的到 ${fmtNum(st.spot_target)}`,
+      target: st.price,
+      note: st.pnl != null ? `预估收益 ${fmtMoney(st.pnl)}` : '',
+      tone: 'ok',
+    });
+  } else if (targets.spot_target != null) {
+    pending.push(st?.reason || `标的目标价 ${fmtNum(targets.spot_target)} 已设,但这一轮算不出对应的价位。`);
+  }
+  if (targets.take_profit != null && targets.spot_target == null) {
+    rows.push({ label: '止盈', target: targets.take_profit, note: '', tone: 'ok' });
+  }
   if (live.stop_effective != null) {
     rows.push({
       label: live.trail_stop != null && live.stop_effective === live.trail_stop ? '跟踪止损' : '止损',

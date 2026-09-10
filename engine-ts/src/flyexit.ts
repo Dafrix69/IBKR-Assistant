@@ -132,11 +132,100 @@ export function bachelierCall(s: number, k: number, sigma: number): number {
   return (s - k) * cdf(z) + sigma * pdf(z);
 }
 
+/** Bachelier 看跌:平价关系 P = C − (S − K)。 */
+export function bachelierPut(s: number, k: number, sigma: number): number {
+  return bachelierCall(s, k, sigma) - (s - k);
+}
+
 export function modelPrice(profile: Rec, s: number, sigma: number): number {
   const k1 = profile["lower"], k2 = profile["center"], k3 = profile["upper"];
   let calls = bachelierCall(s, k1, sigma) - 2 * bachelierCall(s, k2, sigma) + bachelierCall(s, k3, sigma);
   if (profile["right"] === "P") calls -= (s - k1) - 2 * (s - k2) + (s - k3);
   return pyRound(Math.max(calls, 0.0), 4);
+}
+
+/** 一条腿的模型价。 */
+export function legValue(right: string, s: number, k: number, sigma: number): number {
+  return String(right).slice(0, 1).toUpperCase() === "P"
+    ? bachelierPut(s, k, sigma)
+    : bachelierCall(s, k, sigma);
+}
+
+/**
+ * 任意期权结构的模型净价:每条腿按**带符号比例**加权求和。
+ *
+ * 蝴蝶(+1/−2/+1)、垂直价差(+1/−1)、铁鹰、单腿(+1)全是这一个式子的特例——
+ * modelPrice 那个蝶式专用写法留着是为了黄金基线逐字段对得上,值是同一个。
+ * 不夹 0:贷方结构的净价本来就是负的,夹了就把"收权利金"抹成 0。
+ */
+export function structureValue(
+  legs: Array<{ strike: number; right: string; ratio: number }>, s: number, sigma: number,
+): number {
+  let out = 0;
+  for (const leg of legs) out += leg.ratio * legValue(leg.right, s, leg.strike, sigma);
+  return pyRound(out, 4);
+}
+
+// ---------------------------------------------------------------- 反解 σ
+// 「当前波动率下这只蝶到 S 值多少」要先有个 σ。σ 有三个来源,精度递减,全部按同一个
+// Bachelier 口径,谁也不冒充谁——调用方拿到 source 要如实说出来。
+
+/** 反解的搜索区间(点)。上界取 400:SPX 一天的 EM 从没接近过这个数,
+ * 真解到边界上说明输入本身不对,那时宁可回 null。 */
+export const SIGMA_MIN = 0.05;
+export const SIGMA_MAX = 400.0;
+
+/** 单调函数上找根的二分。f 必须在 [lo, hi] 上单调,方向由 rising 指定。 */
+function bisect(
+  f: (x: number) => number, target: number, lo: number, hi: number, rising: boolean,
+): number | null {
+  const flo = f(lo), fhi = f(hi);
+  // 目标落在区间之外:没有根。夹到边界上再返回,等于拿一个假的 σ 去算钱。
+  if (rising ? target <= flo || target >= fhi : target >= flo || target <= fhi) return null;
+  let a = lo, b = hi;
+  for (let i = 0; i < 200; i += 1) {
+    const mid = (a + b) / 2;
+    const v = f(mid);
+    if (Math.abs(v - target) < 1e-9 || b - a < 1e-9) return mid;
+    if (rising ? v < target : v > target) a = mid;
+    else b = mid;
+  }
+  return (a + b) / 2;
+}
+
+/**
+ * 从**单腿**期权价反解 σ(点)。
+ *
+ * 单腿的 Bachelier 价对 σ 严格单调递增(vega 恒正),根唯一,任何标的位置都能解。
+ * 蝶价解不动的时候用它——它是市场报出来的真价,比时钟 σ 靠谱得多。
+ */
+export function impliedSigmaLeg(
+  s: number, k: number, price: number, right: string,
+): number | null {
+  if (!Number.isFinite(s) || !Number.isFinite(k) || !Number.isFinite(price) || price <= 0) return null;
+  const put = String(right).slice(0, 1).toUpperCase() === "P";
+  const f = (sigma: number): number => (put ? bachelierPut(s, k, sigma) : bachelierCall(s, k, sigma));
+  const sigma = bisect(f, price, SIGMA_MIN, SIGMA_MAX, true);
+  return sigma === null ? null : pyRound(sigma, 6);
+}
+
+/**
+ * 从**蝶价**反解 σ(点)。解得出来时它最好用:反解回去正好还原当前蝶价,
+ * 所以「标的到 X 时值多少」在 X → 当前标的时会平滑地收敛到现价,不会跳。
+ *
+ * 只在标的落在两翼之间(|S − K| < W,内在价值为正)才有效。那时蝶价对 σ 严格单调
+ * 递减,根唯一;标的一旦跑到翼外,内在价值是 0,蝶价对 σ **先升后降**——同一个价格
+ * 对应两个 σ,差出来的钱能到一倍(实测 7725/7750/7775 蝶、标的 7720、蝶价 4.50:
+ * σ≈19.5 与 σ≈42.6 都对得上,拿它们算 7740 分别是 10.20 和 5.54)。这种时候返回 null,
+ * 让调用方退到单腿反解,而不是从两个根里猜一个。
+ */
+export function impliedSigmaFly(profile: Rec, s: number, price: number): number | null {
+  const k = Number(profile["center"]), w = Number(profile["width"]);
+  if (!Number.isFinite(s) || !Number.isFinite(k) || !Number.isFinite(w) || w <= 0) return null;
+  if (!Number.isFinite(price) || price <= 0) return null;
+  if (Math.abs(s - k) >= w) return null; // 翼外:双根,不解
+  const sigma = bisect((x) => modelPrice(profile, s, x), price, SIGMA_MIN, SIGMA_MAX, false);
+  return sigma === null ? null : pyRound(sigma, 6);
 }
 
 // ---------------------------------------------------------------- 点位与区间

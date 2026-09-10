@@ -3289,7 +3289,7 @@
    "position": "long_stock",
    "targets": {},
    "price": 230,
-   "expect": {"ok": false, "error": "至少要设一个:止盈价、止损价,或跟踪止损百分比。"}
+   "expect": {"ok": false, "error": "至少要设一个:止盈价、止损价、跟踪止损百分比,或标的目标价。"}
   },
   {
    "position": "long_stock",

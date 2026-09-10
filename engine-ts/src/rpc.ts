@@ -18,7 +18,7 @@ import {
 } from "./config.js";
 import { TradingEngine, dumpExcludeNone, resolveFanoutAccounts } from "./engine.js";
 import { FutuRouter } from "./futuBroker.js";
-import { KeychainError, getSecret, setSecret } from "./keychain.js";
+import { KeychainError, hasSecret, primeSecret, setSecret } from "./keychain.js";
 import { KillSwitch } from "./killswitch.js";
 import { buildParser, loadSchemaAsset, providerCatalog, PROVIDERS } from "./providers.js";
 import { extractSymbols } from "./market.js";
@@ -79,6 +79,13 @@ export class RpcServer {
   settings: Settings;
   router: BrokerRouter | FutuRouter | null = null;
   private engineInstance: TradingEngine | null = null;
+  /** 追踪相关操作的共享锁(跨引擎实例同一把):每一轮盯盘、建 / 改 / 删追踪、立即平仓排成一队。 */
+  private trackerChain: Promise<unknown> = Promise.resolve();
+  private readonly trackerLock = <T>(fn: () => Promise<T>): Promise<T> => {
+    const run = this.trackerChain.then(fn, fn);
+    this.trackerChain = run.then(() => undefined, () => undefined);
+    return run;
+  };
   private readonly out: (line: string) => void;
   // (symbol|timeframe|rth) → [取回时刻, K 线]
   private readonly paCache = new Map<string, [number, Rec[]]>();
@@ -111,14 +118,27 @@ export class RpcServer {
         ),
         router: this.router,
       });
+      this.engineInstance.sharedTrackerLock = this.trackerLock;
+      // 触发了、或者到价却发不出去,当场推给界面——不能等界面下一次来读
+      this.engineInstance.onTrackerTick = (poll) => {
+        if ((poll["fired"] as Rec[]).length || (poll["blocked"] as Rec[]).length) this.emit("tracker", poll);
+      };
+      // 连着券商就起节拍器:建追踪、调价都靠它,不靠界面驱动
+      if (this.router !== null) this.engineInstance.startTrackerLoop();
     }
     return this.engineInstance;
+  }
+
+  /** 丢掉当前引擎(配置变了 / 连接变了):先停它的节拍器,否则旧实例会和新实例各跑一个循环。 */
+  private dropEngine(): void {
+    this.engineInstance?.stopTrackerLoop();
+    this.engineInstance = null;
   }
 
   /** 配置变了就整体重建:限额、别名表都会进提示词,必须一起换掉。 */
   private reload(): void {
     this.settings = loadSettings(this.settingsPath ?? undefined);
-    this.engineInstance = null;
+    this.dropEngine();
   }
 
   // ---- 协议 -----------------------------------------------------------
@@ -126,7 +146,7 @@ export class RpcServer {
   // 引擎仍是顺序执行,这里只做"插队":用户亲手发的请求先于轮询处理,
   // 否则「解析并校验」会排在 macro.board / tracker.reconcile 后面。
   static readonly LOW_PRIORITY_METHODS = new Set([
-    "system.status", "macro.board", "alerts.poll", "tracker.poll", "tracker.reconcile",
+    "system.status", "macro.board", "alerts.poll",
     "pending.poll", "positions.list", "sectors.quotes", "pa.analyze", "book.snapshot",
   ]);
   // 三条道(2026-09-08,用户反馈"移除板块成分股太慢"):
@@ -141,11 +161,15 @@ export class RpcServer {
     "ideas.list", "ideas.add", "ideas.update", "ideas.digests",
     "records.list", "records.get", "settings.get", "breaker.state", "alerts.list", "tracker.list",
     "llm.catalog", "broker.catalog",
+    // 盯盘与托管对账的节拍器在引擎里(TradingEngine.startTrackerLoop),这两个请求只是读它最新
+    // 一轮的结果——不该排在下单、大模型解析后面等。以前它们在交易道上排低优先级。
+    "tracker.poll", "tracker.reconcile",
   ]);
   static readonly READ_METHODS = new Set([
     "positions.list", "sectors.quotes", "pa.analyze", "book.snapshot", "options.wall", "macro.board",
     "screener.rs", "screener.inflection", "screener.deviation", "backtest.run", "backtest.strategies",
     "pa.timeframes", "tws.scan", "tws.diagnose", "futu.scan", "futu.diagnose",
+    "tracker.target_preview",
   ]);
   static readonly READ_CONCURRENCY = 4;
   static readonly SLOW_MS = 1000; // 超过这个时长的请求记到 stderr
@@ -158,6 +182,9 @@ export class RpcServer {
     const warmSpot = (): void => { publicIndexPrice("SPX").catch(() => null); };
     warmSpot();
     setInterval(warmSpot, 4 * 60 * 1000).unref();
+    // 大模型 API Key 在后台异步解密进缓存:Windows 上同步解密要起 PowerShell、占住事件循环约 0.8 秒,
+    // 以前每次大模型解析都这么卡一下,盯盘节拍器跟着晚一拍
+    this.primeLlmKey();
     const rl = readline.createInterface({ input, crlfDelay: Infinity });
     const BAD: Rec = { __bad_json__: true };
     const normal: Rec[] = [];
@@ -363,10 +390,22 @@ export class RpcServer {
       "tracker.poll": (p) => this.trackerPoll(p),
       "tracker.reconcile": (p) => this.trackerReconcile(p),
       "tracker.close_now": (p) => this.trackerCloseNow(p),
+      "tracker.target_preview": (p) => this.trackerTargetPreview(p),
     };
   }
 
   // ---- 系统 -----------------------------------------------------------
+  private indexSpots(): Rec {
+    const info = (this.router as { spotInfo?: (s: string) => Rec | null } | null)?.spotInfo;
+    if (typeof info !== "function") return {};
+    const out: Rec = {};
+    for (const symbol of Object.keys(this.settings.index_symbols)) {
+      const row = info.call(this.router, symbol);
+      if (row) out[symbol] = row;
+    }
+    return out;
+  }
+
   systemStatus(_params: Rec): Rec {
     const moment = nowEt();
     const breaker = this.engine.killswitch.state();
@@ -389,6 +428,11 @@ export class RpcServer {
       broker_connected: Boolean(this.router && this.router.sessions().length),
       broker_upstream_ok: Boolean(this.router === null || this.router.upstreamOk),
       pending_count: this.engine.pendingTriggers.length,
+      // 各指数最近一次现价是怎么来的:官方实时 / 夜盘期货推算 / 推算失败退回的昨收(带原因)。
+      // 只读缓存,不发请求——status 在本地道,来了就答。
+      index_spot: this.indexSpots(),
+      // 盯盘节拍器的心跳:没在跑、太久没跳、上一轮报错,界面都要能当场看见
+      tracker_loop: this.engineInstance ? this.engineInstance.trackerHeartbeat() : null,
       accounts: this.accounts(),
       limits: {
         max_order_notional: this.settings.limits.max_order_notional,
@@ -469,18 +513,8 @@ export class RpcServer {
     const engine = this.engine;
     const channel = String(params["channel"] ?? "manual");
     let result;
-    if (!execute) {
-      // 解析模式:临时把自动执行关掉,不管配置怎么写
-      const original = engine.settings.policies;
-      engine.settings.policies = { ...original, auto_execute: false };
-      try {
-        result = await engine.handleInstruction(text, channel, null, null, accounts);
-      } finally {
-        engine.settings.policies = original;
-      }
-    } else {
-      result = await engine.handleInstruction(text, channel, null, null, accounts);
-    }
+    // 解析模式(不执行)作为参数传进去,不临时改共享配置——盯盘节拍器同一时刻也在读它
+    result = await engine.handleInstruction(text, channel, null, null, accounts, !execute);
 
     const payload: Rec = { ...result, executed: execute };
     this.emit("result", payload);
@@ -553,13 +587,17 @@ export class RpcServer {
   async breakerHalt(params: Rec): Promise<Rec> {
     const reason = String(params["reason"] || "用户在界面上按下暂停");
     let outcome: Rec;
-    try {
-      outcome = await this.engine.halt(reason);
-    } catch (exc) {
-      if (!(exc instanceof BrokerError)) throw exc;
-      this.engine.killswitch.engage(reason);
-      outcome = { engaged: true, cancelled: 0, warning: exc.message };
-    }
+    // 熔断(撤全部单)和一轮盯盘互斥:否则那一轮可能在熔断前过了闸门、熔断撤完单之后才把托管单
+    // 挂出去,熔断后还留着一张活单
+    outcome = await this.trackerLock(async () => {
+      try {
+        return await this.engine.halt(reason);
+      } catch (exc) {
+        if (!(exc instanceof BrokerError)) throw exc;
+        this.engine.killswitch.engage(reason);
+        return { engaged: true, cancelled: 0, warning: exc.message } as Rec;
+      }
+    });
     this.emit("breaker", outcome);
     return outcome;
   }
@@ -1780,20 +1818,158 @@ export class RpcServer {
     return { tracks: this.engine.store.listTracks() };
   }
 
+  /**
+   * 算一次预计价位与预估收益:标的走到 spot_target 时,这份持仓按当前波动率该值多少。
+   * 正股、单腿期权、蝶式/价差走同一条路。只读,不建追踪也不发单——界面在用户填数的
+   * 时候就要把这个数摆出来。
+   */
+  async trackerTargetPreview(params: Rec): Promise<Rec> {
+    const key = String(params["key"] ?? "");
+    const target = optFloat(params["spot_target"]);
+    if (target === null) throw new RpcError(-32602, "要给一个标的目标价 spot_target。");
+    const rows = Object.fromEntries(tkMod.withCombos(await this.livePositions()).map((r) => [r["key"], r]));
+    const raw = rows[key];
+    if (raw === undefined) throw new RpcError(-32602, "找不到这个持仓,请刷新持仓列表。");
+    const structure = tkMod.structureOf(String(raw["sec_type"] ?? "STK"), raw["contract"] as Rec);
+    if (structure === null) {
+      throw new RpcError(-32602, "这份持仓认不出结构,用不了标的目标价:"
+        + "正股、单腿期权,以及每条腿都带行权价与看涨/看跌的组合才行。");
+    }
+    const position = this.positionOf(raw);
+    const inputs = await this.spotInputs(raw, rows, structure);
+    const st = tkMod.spotTarget({ structure, position, spotTarget: target, ...inputs });
+    // 设置时会拒的那句(挂上去会立刻成交),试算时就说出来
+    const warning = tkMod.fillsNowMessage(position, structure, st, inputs.markPrice);
+    if (warning) st.warning = warning;
+    return { spot_target: st, structure: { kind: structure.kind, label: structure.label } };
+  }
+
+  /**
+   * 追踪目标的校验,新建与修改共用一份——两处各写一份,日后必然走样。
+   *
+   *  · 方向(多头止盈在上、止损在下……)
+   *  · 止盈价与标的目标价二选一:都填的话,人以为自己定死了止盈价,实际每轮被覆盖
+   *  · 组合托管只放开一张按标的目标价的限价止盈单,且不能再设止损类目标(托管一开引擎就不再
+   *    自己发单,止损会没人盯)
+   *  · 标的目标价要当场算得出、比现价更有利;开了自动平仓或托管的,还得是市场价算出来的
+   */
+  private async checkTargets(
+    raw: Rec, rows: Record<string, Rec>, position: tkMod.Position, targets: tkMod.Targets, auto: tkMod.AutoClose,
+  ): Promise<void> {
+    const spot = targets.spot_target;
+    if (spot !== null && targets.take_profit !== null) {
+      throw new RpcError(-32602, "止盈价和标的目标价只能选一个:"
+        + "填了标的目标价,止盈价就由引擎按当前波动率每轮现算,不用也不该再自己填。");
+    }
+    if (raw["sec_type"] === "BAG" && auto.host_at_broker) {
+      if (spot === null) {
+        throw new RpcError(-32602, "组合的「托管到券商」只支持按标的目标价止盈:"
+          + "填一个标的目标价,引擎按当前波动率把它换算成组合净价,挂一张随行情秒级调价的 GTC 限价单。"
+          + "其余目标请关掉托管,走「到价自动平仓」由引擎盯盘。");
+      }
+      for (const [name, value] of [["止损价", targets.stop_loss], ["跟踪止损", targets.trail_pct],
+                                   ["利润回撤", targets.profit_drawdown_pct]] as const) {
+        if (value !== null) {
+          throw new RpcError(-32602, `开了托管的组合不能再设${name}:托管一开,引擎就不再自己发单,`
+            + `${name}会变成没人盯。要${name}就关掉「托管到券商」。`);
+        }
+      }
+      if ((targets.profit_drawdown_tiers ?? []).length) {
+        throw new RpcError(-32602, "开了托管的组合不能再设分档利润回撤:托管一开,引擎就不再自己发单。");
+      }
+    }
+    try {
+      tkMod.validate(position, targets, raw["market_price"]);
+      if (spot !== null) {
+        // 现在就算一次:算不出来的目标价不设。一条永远算不出止盈位的追踪在界面上
+        // 和"还没到价"长得一模一样,用户会以为它在保护自己。
+        const structure = tkMod.structureOf(String(raw["sec_type"] ?? "STK"), raw["contract"] as Rec);
+        if (structure === null) {
+          throw new tkMod.TrackerError(
+            "这份持仓认不出结构,用不了标的目标价:正股、单腿期权,"
+            + "以及每条腿都带行权价与看涨/看跌的组合才行。",
+          );
+        }
+        const st = tkMod.validateSpotTarget({
+          position, contract: raw["contract"] as Rec, spotTarget: spot,
+          ...(await this.spotInputs(raw, rows, structure)),
+        });
+        // 「同意价格后发单」:能拿去发单的只有市场价算出来的数
+        if ((auto.enabled || auto.host_at_broker) && !tkMod.MARKET_SIGMA_SOURCES.has(st.sigma_source)) {
+          throw new tkMod.TrackerError(
+            "现在拿不到市场报价,这个价是按模型默认波动率算的参考值,不能拿它发单。"
+            + (st.spot_note ? `(${st.spot_note})` : "") + "等行情来了再设。",
+          );
+        }
+      }
+    } catch (exc) {
+      if (exc instanceof tkMod.TrackerError) throw new RpcError(-32602, exc.message);
+      throw exc;
+    }
+  }
+
+  private positionOf(raw: Rec): tkMod.Position {
+    return tkMod.makePosition({
+      account: raw["account"], symbol: raw["symbol"], sec_type: raw["sec_type"],
+      quantity: raw["quantity"], avg_cost: raw["avg_cost"], multiplier: raw["multiplier"],
+      currency: raw["currency"], market_price: raw["market_price"],
+    });
+  }
+
+  /** 算预计价位要的三样行情:标的现价、持仓报价、各腿报价。拿不到就是 null,不编。 */
+  private async spotInputs(
+    raw: Rec, rows: Record<string, Rec>, structure: tkMod.TargetStructure,
+  ): Promise<{
+    spot: number | null; markPrice: number | null;
+    legPrices: Record<string, number | null>; minute: number; spotNote: string;
+  }> {
+    let spot: number | null = null;
+    if (structure.kind === "stock") {
+      spot = (raw["market_price"] ?? null) as number | null; // 正股自己就是标的
+    } else {
+      try {
+        spot = this.router === null ? null : await this.router.indexPrice(String(raw["symbol"]));
+      } catch {
+        spot = null;
+      }
+    }
+    const legPrices: Record<string, number | null> = {};
+    for (const legKey of (raw["legs"] ?? []) as string[]) {
+      const leg = rows[legKey];
+      if (leg === undefined) continue;
+      const c = (leg["contract"] ?? {}) as Rec;
+      const strike = Number(c["strike"]);
+      const right = String(c["right"] ?? "").slice(0, 1).toUpperCase();
+      if (!Number.isFinite(strike) || !right) continue;
+      legPrices[tkMod.legPriceKey({ strike, right })] = (leg["market_price"] ?? null) as number | null;
+    }
+    const info = structure.kind === "stock" || this.router === null
+      ? null
+      : (this.router as { spotInfo?: (s: string) => Rec | null }).spotInfo?.(String(raw["symbol"])) ?? null;
+    // 夜盘推算失败时拿到的是昨收:当作没有现价,和盯盘那一路同一条规矩
+    if (info?.["source"] === "index_stale") spot = null;
+    return {
+      spot,
+      markPrice: (raw["market_price"] ?? null) as number | null,
+      legPrices,
+      minute: nowEt().minutes,
+      spotNote: String(info?.["note"] ?? ""),
+    };
+  }
+
   /** 新建一个追踪。方向填反了在这里就拒——等触发了才发现已经晚了。 */
   async trackerAdd(params: Rec): Promise<Rec> {
+    return this.trackerLock(() => this.trackerAddLocked(params));
+  }
+
+  private async trackerAddLocked(params: Rec): Promise<Rec> {
     const key = String(params["key"] ?? "");
     const rows = Object.fromEntries(tkMod.withCombos(await this.livePositions()).map((r) => [r["key"], r]));
     const raw = rows[key];
     if (raw === undefined) {
       throw new RpcError(-32602, "找不到这个持仓(可能刚刚被平掉了),请刷新持仓列表。");
     }
-    if (raw["sec_type"] === "BAG" && params["host_at_broker"]) {
-      // 托管单要在券商侧挂 GTC+OCA,组合的 STP/TRAIL 在 IBKR 侧支持不明,更没核对过。
-      // 自动平仓(引擎侧算、到价发 BAG 限价单)已经打通,托管这条路还没有。
-      throw new RpcError(-32602, "组合追踪不支持「托管到券商」:组合的托管单没有核对过。"
-        + "「到价自动平仓」可以用——由引擎盯盘、到价发 BAG 限价单。");
-    }
+    const flySpot = optFloat(params["spot_target"]);
 
     const position = tkMod.makePosition({
       account: raw["account"], symbol: raw["symbol"], sec_type: raw["sec_type"],
@@ -1808,6 +1984,7 @@ export class RpcServer {
       profit_drawdown_pct: optFloat(params["profit_drawdown_pct"]),
       profit_drawdown_tiers: tiers,
       profit_drawdown_late: late,
+      spot_target: flySpot,
     });
     const auto = tkMod.makeAutoClose({
       enabled: Boolean(params["auto_close"]),
@@ -1817,12 +1994,7 @@ export class RpcServer {
       host_at_broker: Boolean(params["host_at_broker"]),
     });
     if (auto.host_at_broker) this.requireHostingSupported(String(raw["account"]));
-    try {
-      tkMod.validate(position, targets, raw["market_price"]);
-    } catch (exc) {
-      if (exc instanceof tkMod.TrackerError) throw new RpcError(-32602, exc.message);
-      throw exc;
-    }
+    await this.checkTargets(raw, rows, position, targets, auto);
 
     let track: Rec;
     try {
@@ -1841,7 +2013,11 @@ export class RpcServer {
     return { track };
   }
 
-  trackerUpdate(params: Rec): Rec {
+  async trackerUpdate(params: Rec): Promise<Rec> {
+    return this.trackerLock(() => this.trackerUpdateLocked(params));
+  }
+
+  private async trackerUpdateLocked(params: Rec): Promise<Rec> {
     const trackId = String(params["id"] ?? "");
     const track = this.engine.store.getTrack(trackId);
     if (track === null) throw new RpcError(-32602, "没有这个追踪");
@@ -1860,16 +2036,25 @@ export class RpcServer {
       }
     }
     if (["take_profit", "stop_loss", "trail_pct", "profit_drawdown_pct",
-         "profit_drawdown_tiers", "profit_drawdown_preset"].some((k) => k in params)) {
+         "profit_drawdown_tiers", "profit_drawdown_preset", "spot_target"].some((k) => k in params)) {
       const [tiers, late] = drawdownTiersOf(params);
-      fields["targets"] = {
+      const targets = tkMod.makeTargets({
         take_profit: optFloat(params["take_profit"]),
         stop_loss: optFloat(params["stop_loss"]),
         trail_pct: optFloat(params["trail_pct"]),
         profit_drawdown_pct: optFloat(params["profit_drawdown_pct"]),
         profit_drawdown_tiers: tiers,
         profit_drawdown_late: late,
-      };
+        spot_target: optFloat(params["spot_target"]),
+      });
+      // 改目标和新建走**同一套**校验:以前这里什么都不查,改一下目标价就能绕过
+      // 「算出来的价比现价还差、挂上去立刻成交」那道拦——等于绕过了「同意价格后发单」。
+      const rows = Object.fromEntries(tkMod.withCombos(await this.livePositions()).map((r) => [r["key"], r]));
+      const raw = rows[tkMod.trackKey(track)];
+      if (raw === undefined) throw new RpcError(-32602, "找不到这个持仓(可能已经平掉了),改不了目标。");
+      const auto = tkMod.makeAutoClose((fields["auto_close"] ?? track["auto_close"] ?? {}) as Rec);
+      await this.checkTargets(raw, rows, this.positionOf(raw), targets, auto);
+      fields["targets"] = targets;
     }
     if (!Object.keys(fields).length) throw new RpcError(-32602, "没有要改的字段");
     this.engine.store.updateTrack(trackId, fields);
@@ -1877,19 +2062,30 @@ export class RpcServer {
     return { track: this.engine.store.getTrack(trackId) };
   }
 
-  trackerDelete(params: Rec): Rec {
+  async trackerDelete(params: Rec): Promise<Rec> {
+    return this.trackerLock(async () => this.trackerDeleteLocked(params));
+  }
+
+  private trackerDeleteLocked(params: Rec): Rec {
     if (!this.engine.store.deleteTrack(String(params["id"] ?? ""))) {
       throw new RpcError(-32602, "没有这个追踪");
     }
     return { deleted: true };
   }
 
+  /** 盯盘结果。节拍器在跑就读它最新一轮(即答);没在跑(没连券商)才就地算一次。
+   * 触发 / 被拦由节拍器当场推送("tracker" 事件),这里的返回只给界面画行。 */
   async trackerPoll(_params: Rec): Promise<Rec> {
-    const result = await this.engine.pollTrackers();
+    const engine = this.engine;
+    const loop = engine.trackerLoop;
+    if (loop["running"] && loop["poll"]) {
+      return { ...(loop["poll"] as Rec), fired: [], blocked: [], loop: engine.trackerHeartbeat() };
+    }
+    const result = await this.trackerLock(() => engine.pollTrackers());
     if ((result["fired"] as Rec[]).length || (result["blocked"] as Rec[]).length) {
       this.emit("tracker", result);
     }
-    return result;
+    return { ...result, loop: engine.trackerHeartbeat() };
   }
 
   /** host_at_broker 只有 IBKR 账户能开——富途没有可同形托管的 GTC+OCA。
@@ -1910,14 +2106,19 @@ export class RpcServer {
    * 动态目标(利润回撤)的停损价在这里按秒棘轮调整;软件关掉,
    * 最后一次调整的托管单仍在券商侧站岗。 */
   async trackerReconcile(_params: Rec): Promise<Rec> {
-    if (this.engine.router === null) {
-      return { hosted: [], blocked: [], quote_maybe_delayed: false };
-    }
-    return this.engine.syncHosted();
+    const engine = this.engine;
+    const loop = engine.trackerLoop;
+    if (loop["running"] && loop["hosted"]) return { ...(loop["hosted"] as Rec), loop: engine.trackerHeartbeat() };
+    const result = await this.trackerLock(() => engine.syncHosted());
+    return { ...result, loop: engine.trackerHeartbeat() };
   }
 
   /** 手动一键平仓:走和自动平仓完全相同的那条路——包括同样的闸门。 */
   async trackerCloseNow(params: Rec): Promise<Rec> {
+    return this.trackerLock(() => this.trackerCloseNowLocked(params));
+  }
+
+  private async trackerCloseNowLocked(params: Rec): Promise<Rec> {
     const track = this.engine.store.getTrack(String(params["id"] ?? ""));
     if (track === null) throw new RpcError(-32602, "没有这个追踪");
     const rows = Object.fromEntries(tkMod.withCombos(await this.livePositions()).map((r) => [r["key"], r]));
@@ -1982,7 +2183,7 @@ export class RpcServer {
     const futuCfg = this.settings.broker.futu;
     let unlockSaved = false;
     try {
-      unlockSaved = Boolean(getSecret(futuCfg.keychain_service, futuCfg.keychain_account));
+      unlockSaved = hasSecret(futuCfg.keychain_service, futuCfg.keychain_account); // 只查有没有,不解密
     } catch (exc) {
       if (!(exc instanceof KeychainError)) throw exc;
     }
@@ -2044,7 +2245,7 @@ export class RpcServer {
       await this.router.disconnectAll();
       this.router = null;
     }
-    this.engineInstance = null;
+    this.dropEngine();
     this.engine.store.audit("ui", "broker_select", { provider });
     return {
       current: provider,
@@ -2073,7 +2274,11 @@ export class RpcServer {
         else throw exc;
       }
     }
-    this.engineInstance = null; // 让引擎带上 router 重建
+    // 夜盘:连上就在后台把期货推算暖起来,免得第一笔速记单拿昨收去推断看涨看跌
+    if (connected.length) (this.router as { warmIndexFutures?: () => void }).warmIndexFutures?.();
+    // 立刻把引擎建起来:节拍器随引擎一起起,盯盘不等界面来第一次请求
+    if (connected.length) void this.engine;
+    this.dropEngine(); // 让引擎带上 router 重建
     const attached = this.engine.attachListeners();
     this.engine.store.audit("ui", "broker_connect", {
       provider, connected, failed: Object.keys(failed),
@@ -2084,7 +2289,7 @@ export class RpcServer {
   async brokerDisconnect(_params: Rec): Promise<Rec> {
     if (this.router) await this.router.disconnectAll();
     this.router = null;
-    this.engineInstance = null;
+    this.dropEngine();
     return { connected: [] };
   }
 
@@ -2231,7 +2436,7 @@ export class RpcServer {
     const keys: Record<string, boolean> = {};
     for (const name of Object.keys(PROVIDERS)) {
       try {
-        keys[name] = Boolean(getSecret(cfg.keychain_service, name));
+        keys[name] = hasSecret(cfg.keychain_service, name); // 只查有没有,不解密(解密要起 PowerShell)
       } catch (exc) {
         if (!(exc instanceof KeychainError)) throw exc;
         keys[name] = false;
@@ -2255,6 +2460,11 @@ export class RpcServer {
   }
 
   /** 改模型配置。切供应商时 keychain_account 跟着切,避免用错那把 key。 */
+  private primeLlmKey(): void {
+    const cfg = this.settings.llm;
+    primeSecret(cfg.keychain_service, cfg.keychain_account).catch(() => undefined);
+  }
+
   llmPatch(params: Rec): Rec {
     const patch: Rec = { ...(params["llm"] ?? {}) };
     const allowed = new Set([
@@ -2270,6 +2480,7 @@ export class RpcServer {
     }
     this.engine.store.audit("ui", "llm_patch", { patch });
     this.reload();
+    this.primeLlmKey(); // 换了服务商:新的 Key 也先在后台解密进缓存
     this.emit("llm", this.llmCatalog({}));
     return this.llmCatalog({});
   }

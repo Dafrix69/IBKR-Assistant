@@ -86,6 +86,9 @@ class FakeIbSession implements IbSession {
     this.placed.push([contract, order]);
     return { orderId: 42, permId: 990042, status: "Submitted" };
   }
+  cancelOrder(orderId: number): void {
+    this.cancelledOrders.push(orderId);
+  }
   async openTrades() {
     return this.openOrderIds.map((id) => ({
       orderId: id,
@@ -281,6 +284,37 @@ describe("BrokerRouter: 下单", () => {
     await router.connect("paper");
     expect(await router.cancelAllOpen()).toBe(3);
     expect(fake.cancelledOrders).toEqual([7, 8, 9]);
+  });
+});
+
+describe("BrokerRouter: 托管单撤单(2026-09-10 真机:撤单从来没真的发出去过)", () => {
+  it("cancelHosted 真的调到会话的撤单,不是静默跳过", async () => {
+    const fake = new FakeIbSession(["DU7654321"]);
+    const [router] = makeRouter({ paper: fake, live: new FakeIbSession([]) });
+    const account = router.settings.accountByAlias("模拟") ?? router.settings.accounts[0]!;
+    const item = {
+      kind: "tp", action: "SELL", order_type: "LMT", quantity: 100, lmt_price: 250,
+      aux_price: null, trailing_percent: null, trail_stop_seed: null, label: "托管止盈 250",
+    };
+    const placed = await router.placeHosted(account, { secType: "STK", symbol: "AAPL", exchange: "SMART", currency: "USD" } as any, item, "oca-x", "trk:x:tp");
+    expect(await router.cancelHosted(Number(placed.order_id))).toBe(true);
+    expect(fake.cancelledOrders).toEqual([42]);
+  });
+
+  it("改价走同一个 orderId(改单),挂单的 OCA 组真的带出去", async () => {
+    const fake = new FakeIbSession(["DU7654321"]);
+    const [router] = makeRouter({ paper: fake, live: new FakeIbSession([]) });
+    const account = router.settings.accounts[0]!;
+    const item = {
+      kind: "tp", action: "SELL", order_type: "LMT", quantity: 100, lmt_price: 250,
+      aux_price: null, trailing_percent: null, trail_stop_seed: null, label: "托管止盈 250",
+    };
+    await router.placeHosted(account, { secType: "STK", symbol: "AAPL", exchange: "SMART", currency: "USD" } as any, item, "oca-x", "trk:x:tp");
+    expect(fake.placed[0]![1].ocaGroup).toBe("oca-x");
+    await router.modifyHosted(42, { ...item, lmt_price: 251 });
+    const [, modified] = fake.placed[1]!;
+    expect(modified.orderId).toBe(42);
+    expect(modified.lmtPrice).toBe(251);
   });
 });
 
