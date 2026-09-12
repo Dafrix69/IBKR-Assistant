@@ -52,7 +52,8 @@
 (合并页的子页在同一文件里,`pages/index.ts` 登记页面与子页清单),`src/store/` 是跨页共用的状态与循环
 (status 5 秒、tracker 与托管对账每秒、alerts 10 秒、macro 2 秒 / 60 秒、records / pending / notify 跟着引擎事件),
 `src/lib/` 是格式化、标签词表、canvas 图表与价位条的包装,`src/theme/` 是外观与 AntD 主题。
-图表引擎 `public/pa-chart.js` 仍是一个经典脚本(挂 `window.DafriChart` / `DafriPaChart`),React 只包容器。
+图表在 `src/lib/chart/`:框架是 `lightweight-charts`,业务叠加层用它的 primitives 画(见 [priceaction.md](priceaction.md));
+`lib/Chart.tsx` 挂一次、之后 spec 变了走 `update`,不再每次重建。
 `window.dafri`(preload)的契约没有动,类型在 `src/bridge.ts`。
 
 **视觉不变。** 壳层复用 `styles.css` 里的同名类(`.topbar` / `.sidebar` / `.nav-item` / `.content`),

@@ -48,7 +48,22 @@ npx electron tools/capture_pages.js renderer-react/dist-preview/index.html .uipr
 界面改动的验收方式是**截图对比**:改前改后各出一套,并排看,差异只允许出现在该次改动声明要改的地方。
 `.uipreview/` 已 gitignore,截图集不进仓库。
 
-## 隐藏窗口的三个坑
+## 图表交互核对
+
+```bash
+npm run ui:preview && npx electron tools/chart_interaction_check.js renderer-react/dist-preview/index.html
+```
+
+截图只看得出"画得对不对"。这个脚本在预览台的 K线 PA 图上真的发滚轮、拖动、双击,读图表库的视口与价格轴状态,
+核对写进界面说明里的几条承诺:打开时铺满;滚轮缩放后再点「分析」(与 20 秒自动刷新同一条路径)不刷掉缩放;
+平移到中间后换涨跌配色视图不动;双击时间轴回到铺满;拖过价格轴后换标的,价格轴恢复自动;全程控制台零报错。退出码 0/1。
+
+- 读状态靠预览构建挂在图表容器上的 `__chart`(`lib/chart/engine.ts`,`import.meta.env.MODE === 'preview'` 才挂,生产构建里被整个删掉)。
+- **隐藏窗口收不到 `sendInputEvent` 的鼠标事件**(滚轮、拖动全被丢掉,检查会"假通过"),所以在页面里对那个点下的元素派发 DOM 事件;
+  图表库听的就是 `mousedown / mousemove / mouseup / wheel / dblclick`,不检查 `isTrusted`。
+- 第 3 项做过变异测试:把"换色时重新 `applyOptions` 带 `rightOffset: 0`"放回去,它会失败(视图从 [20.7, 98.8] 被拽到 [61, 139])。
+
+## 隐藏窗口的几个坑
 
 这些都只在拍照用的隐藏窗口里出现,真机没有;脚本里都已处理,改脚本时别把它们改掉:
 
@@ -57,7 +72,12 @@ npx electron tools/capture_pages.js renderer-react/dist-preview/index.html .uipr
 * **CSS 过渡不推进**。AntD 的开关、主按钮从"未加载"翻到"可用"时会停在起始色,拍出来一排灰的。
   载入后注入 `transition: none; animation: none`,截图只要终态。
 * **窗口只在被截图时才合成一帧**。canvas 图的 `requestAnimationFrame` 绘制发生在那一帧之后,第一张里图是空的。
-  `shoot()` 发现还有没画的 canvas(仍是默认 300×150)会再截,最多三次。
+  `shoot()` 发现哪个图表容器(`.chart-host`)一块定了尺寸的画布都没有,会再截,最多三次。不能要求"每块画布都有尺寸":
+  图表库给隐藏的左侧价格轴留的画布本来就是 0 宽,那样会每页白等三轮。
+* **`capturePage` 拿到的是上一次合成的那一帧**,DOM 早变了也一样:页面在后台更新(点完「分析」结果回来)不会触发合成。
+  表现是 `--only pa` 拍出了「交易指令」(载入时那一帧),或者拍到点按钮那一刻的空页面。`shoot()` 每次先空拍一张触发合成,
+  等 150 毫秒再拍正式的。
+* **K线 PA 等结果出来再拍**(图画出来,或页面说明了为什么没有,最多 6 秒)。固定等 900 毫秒经常拍到「正在取 K 线…」。
 * **React 的受控输入框**。`--demo` 往输入框里填字要走原生 setter 再派发 `input` 事件,直接赋 `value` 状态不会变。
 
 ## 打包前置:引擎暂存与自检

@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Button, DatePicker, Input, InputNumber, List, Select, Space } from 'antd';
 import dayjs from 'dayjs';
 import { dafri, errorMessage } from '../bridge';
-import { CanvasChart } from '../lib/Chart';
+import { CanvasChart, type ChartSpec } from '../lib/Chart';
+import type { SpecMarker } from '../lib/chart/spec';
 import { fmtMoney } from '../lib/format';
 import { showBanner } from '../store/banner';
 import { Group, GroupRow, Meta, NumberRow, PageHead, SectionTitle, StatTile, StatusCard, Working } from '../ui/kit';
@@ -330,20 +331,24 @@ function OperandEditor({ operand, onChange }: { operand: Operand; onChange: (o: 
 function BacktestResult({ r, strategyLabel }: { r: any; strategyLabel?: string }) {
   const beat = r.total_return_pct - r.buy_hold_return_pct;
   const instLabel = r.instrument && r.instrument.type !== 'stock' ? ` · ${BT_INST_LABELS[r.instrument.type] || r.instrument.type}(DTE ${r.instrument.dte},投入 ${r.instrument.risk_pct}%)` : '';
-  const curve: { date: string; equity: number; bench: number }[] = r.curve || [];
-  const trades: any[] = r.trade_list || [];
+  // 兜底的空数组也要稳定:图表按 spec 的引用决定要不要重新灌数据
+  const curve = useMemo((): { date: string; equity: number; bench: number }[] => r.curve || [], [r.curve]);
+  const trades = useMemo((): any[] => r.trade_list || [], [r.trade_list]);
 
-  const chart = useMemo(() => {
+  // 换了标的 / 策略 / 品种再跑一次,视图重新铺满,不沿用上一次的缩放
+  const viewKey = `${r.symbol}|${r.strategy}|${r.instrument?.type ?? 'stock'}|${r.start}|${r.end}`;
+  const chart = useMemo((): ChartSpec | null => {
     if (curve.length < 2) return null;
     const times = curve.map((pt) => pt.date);
     const at = new Map(times.map((t, i) => [t, i]));
-    const markers: unknown[] = [];
+    const markers: SpecMarker[] = [];
     for (const t of trades) {
       if (at.has(t.entry_date)) markers.push({ time: t.entry_date, price: curve[at.get(t.entry_date)!].equity, shape: 'tri-up', color: 'up', fit: false });
       if (t.exit_date && at.has(t.exit_date)) markers.push({ time: t.exit_date, price: curve[at.get(t.exit_date)!].equity, shape: 'tri-down', color: 'down', fit: false });
     }
     return {
       ariaLabel: '净值曲线',
+      viewKey,
       times,
       lines: [
         { values: curve.map((pt) => pt.bench), color: 'label2', alpha: 0.6, label: '买入持有' },
@@ -354,7 +359,7 @@ function BacktestResult({ r, strategyLabel }: { r: any; strategyLabel?: string }
       legend: [['—', 'blue', '策略'], ['—', 'label2', '买入持有'], ['▲', 'up', '买入'], ['▼', 'down', '卖出'], ['╌', 'label2', '起点 1.0']],
       decimals: 3,
     };
-  }, [curve, trades]);
+  }, [curve, trades, viewKey]);
 
   const sign = (v: number) => (v > 0 ? 'pos' : v < 0 ? 'neg' : '');
 

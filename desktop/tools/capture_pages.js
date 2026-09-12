@@ -47,11 +47,16 @@ const NL = String.fromCharCode(10);
 
 async function shoot(win, name) {
   // 隐藏窗口只在被截图时才合成一帧,canvas 图的 requestAnimationFrame 绘制发生在那一帧之后:
-  // 第一张里图是空的。有还没画的 canvas(仍是默认 300×150)就再截,最多三次。
+  // 第一张里图是空的。有哪个图表容器一块定了尺寸的画布都没有,就再截,最多三次。
+  // (不能要求每块画布都有尺寸:图表库给隐藏的左侧价格轴留的画布本来就是 0 宽)
+  // capturePage 拿到的是**上一次合成**的那一帧:页面在后台更新(点完「分析」结果回来)不会触发合成,
+  // 直接拍会拍到点按钮那一刻。先空拍一张触发合成,等一拍再拍正式的
+  await win.webContents.capturePage();
+  await sleep(150);
   let img = await win.webContents.capturePage();
   for (let i = 0; i < 3; i++) {
     const undrawn = await win.webContents.executeJavaScript(
-      `Array.from(document.querySelectorAll('canvas.pa-canvas')).some((c) => c.width === 300 && c.height === 150)`,
+      `Array.from(document.querySelectorAll('.chart-host')).some((h) => !h.querySelector('.chart-empty') && !Array.from(h.querySelectorAll('canvas')).some((c) => c.width > 0 && c.height > 0))`,
     );
     if (!undrawn) break;
     await sleep(400);
@@ -110,7 +115,23 @@ async function run() {
           const b = document.getElementById('btn-pa-run');
           if (b) setTimeout(() => b.click(), 50);
         `);
-        await sleep(900);
+        // 等结果出来(图画出来,或页面说明了为什么没有),最多 6 秒;固定等 900 毫秒经常拍到「正在取 K 线…」。
+        // 初始提示「输入标的后点「分析」」和报错用的是同一个空状态组件,只能按文字区分,不然一进来就算"好了"
+        for (let waited = 0; waited < 6000; waited += 150) {
+          await sleep(150);
+          const ready = await win.webContents.executeJavaScript(
+            `(() => {
+              if (document.querySelector('.pa-chart-wrap canvas')) return true;
+              const box = document.getElementById('pa-result');
+              if (!box) return false;
+              const text = box.innerText || '';
+              if (text.includes('正在取 K 线') || text.includes('输入标的后点')) return false;
+              return !!box.querySelector('.empty, .empty-state, .ant-empty, .ant-alert');
+            })()`,
+          );
+          if (ready) break;
+        }
+        await sleep(400);
       }
       if (demo) {
         const DEMO = {
@@ -137,7 +158,7 @@ async function run() {
         // 那种情况下要求 canvas 等于要求它凭空画一张图
         const verdict = await win.webContents.executeJavaScript(
           `(() => {
-            const c = document.querySelector('.pa-canvas');
+            const c = document.querySelector('.pa-chart-wrap canvas');
             if (c && c.width > 0 && c.height > 0) return 'drawn';
             const box = document.getElementById('pa-result');
             return box && box.querySelector('.empty, .empty-state, .ant-empty, .ant-alert') ? 'no-data' : 'missing';

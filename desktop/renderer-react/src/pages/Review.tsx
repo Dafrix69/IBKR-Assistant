@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Descriptions, InputNumber, Select, Table, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { dafri, errorMessage } from '../bridge';
-import { CanvasChart } from '../lib/Chart';
+import { CanvasChart, type ChartSpec } from '../lib/Chart';
 import { fmtMoney, fmtTimeShort } from '../lib/format';
 import { FINAL_STATUS_LABEL } from '../lib/labels';
 import { showBanner } from '../store/banner';
@@ -270,7 +270,7 @@ function ReviewResult({ r }: { r: any }) {
 
 /** 标的走势:蜡烛 + 三条行权价 + 盈利区 + 止盈策略的临界线 + 开仓/平仓竖线。字段全部来自 r.series 与 r.exit_plan。 */
 function UnderlyingChart({ r }: { r: any }) {
-  const spec = useMemo(() => {
+  const spec = useMemo((): ChartSpec | null => {
     const bars = r.series.bars || [];
     if (bars.length < 2) return null;
     const levels: any[] = r.series.levels || [];
@@ -321,8 +321,8 @@ function UnderlyingChart({ r }: { r: any }) {
 
 /** 蝶价走势:组合分钟中间价的蜡烛 + 模型价虚线 + 止盈/止损水平线 + 回撤触发价阶梯 + 开仓/平仓/策略事件标记。 */
 function FlyChart({ r }: { r: any }) {
-  const fs = r.fly_series || {};
-  const spec = useMemo(() => {
+  const fs = useMemo(() => r.fly_series || {}, [r.fly_series]);
+  const spec = useMemo((): ChartSpec | null => {
     const plan = r.exit_plan || {};
     const sim = plan.simulation || {};
     const real: any[] = fs.bars || [];
@@ -364,7 +364,7 @@ function FlyChart({ r }: { r: any }) {
       const color = e.source === 'settle' ? 'purple' : e.pnl >= 0 ? 'up' : 'down';
       markers.push({ time: e.time, price: e.price, shape: 'tri-down', color, label: `策略 ${e.qty} 张 @ ${e.price}` });
     }
-    const legend = [
+    const legend: [string, string, string][] = [
       ['╌', 'up', '止盈档位'], ['╌', 'down', '止损'], ['╌', 'orange', '回撤激活 / 触发价'],
       ['·', 'blue', '开仓'], ['·', 'purple', '实际平仓'], ['╌', 'label2', '模型价'], ['▼', 'up', '策略出手点'],
     ];

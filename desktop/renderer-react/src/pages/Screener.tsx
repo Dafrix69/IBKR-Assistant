@@ -3,7 +3,7 @@ import { Button, Input, InputNumber, Segmented, Select, Table, Tag, Tooltip } fr
 import type { ColumnsType } from 'antd/es/table';
 import { LeftOutlined, RightOutlined } from '@ant-design/icons';
 import { dafri, errorMessage } from '../bridge';
-import { CanvasChart } from '../lib/Chart';
+import { CanvasChart, type ChartSpec } from '../lib/Chart';
 import { fmtTimeShort } from '../lib/format';
 import { showBanner } from '../store/banner';
 import { setSubtab, useSubtab } from '../store/nav';
@@ -450,12 +450,15 @@ function DeviationPanel({ sector, sectorOptions, onSector, symbol, onSymbol }: O
     void run(symbols[i]);
   }
 
-  const charts = useMemo(() => {
+  const charts = useMemo((): { dev: ChartSpec; pressure: ChartSpec } | null => {
     if (!result?.last) return null;
     const times = result.series.map((s: any) => s.time);
+    // 翻到下一只或改了参数,两张图重新铺满;不写的话标题和第一根日期都一样,会沿用上一只的缩放
+    const viewKey = `${result.symbol}|${result.timeframe}|${result.period}|${result.lookback}`;
     return {
       dev: {
         ariaLabel: '偏离 z 分数',
+        viewKey,
         times,
         lines: [{ values: result.series.map((s: any) => s.z), color: 'blue', width: 1.5, label: 'z' }],
         hlines: [
@@ -469,6 +472,7 @@ function DeviationPanel({ sector, sectorOptions, onSector, symbol, onSymbol }: O
       },
       pressure: {
         ariaLabel: '买卖压力',
+        viewKey,
         times,
         lines: [
           { values: result.series.map((s: any) => s.pressure), color: 'orange', width: 1.5, label: '压力' },

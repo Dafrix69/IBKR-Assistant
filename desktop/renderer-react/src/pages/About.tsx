@@ -71,6 +71,20 @@ export function AboutPage() {
               { key: 'pv', label: '提示词', children: `${info.self.prompt_version} · ${info.self.prompt_fingerprint}` },
               { key: 'sp', label: '系统提示词', children: `${info.self.system_prompt_chars} 字 / ${info.self.fewshot_pairs} 组少样本` },
               { key: 'a', label: '账户', children: accounts || '—' },
+              {
+                // lightweight-charts 是 Apache-2.0 + NOTICE:署名与指向 tradingview.com 的链接要放在用户看得到的地方。
+                // 图上的 TradingView 角标关掉了(每张图左下角一个外链),署名集中放在这里
+                key: 'lwc',
+                label: '图表',
+                children: (
+                  <>
+                    TradingView Lightweight Charts™ · Copyright (c) 2025 TradingView, Inc. ·{' '}
+                    <a href="https://www.tradingview.com/" target="_blank" rel="noreferrer">
+                      https://www.tradingview.com/
+                    </a>
+                  </>
+                ),
+              },
             ]}
           />
         )}

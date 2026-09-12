@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Card, Descriptions, Input, Segmented, Select, Space } from 'antd';
 import { dafri, errorMessage } from '../bridge';
+import { CanvasChart } from '../lib/Chart';
+import { paSpec } from '../lib/chart/paSpec';
 import { fmtMoney } from '../lib/format';
 import { showBanner } from '../store/banner';
 import { setSubtab, useSubtab } from '../store/nav';
@@ -59,25 +61,10 @@ function paFreshness(r: any): string {
   return parts.join(' · ');
 }
 
-/** K 线图:交给 pa-chart.js 的 canvas 实现。容器进了文档、有了尺寸,ResizeObserver 才会触发第一次绘制。 */
+/** K 线图。每 20 秒的自动刷新走 update 而不是重建,用户缩放 / 平移到的位置不会被刷掉;主图开滚轮缩放。 */
 function PaChart({ result }: { result: any }) {
-  const host = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const node = host.current;
-    if (!node) return;
-    while (node.firstChild) node.removeChild(node.firstChild);
-    if (window.DafriPaChart) window.DafriPaChart.mount(node, result);
-    else {
-      const p = document.createElement('p');
-      p.className = 'empty';
-      p.textContent = '图表模块未加载';
-      node.appendChild(p);
-    }
-    return () => {
-      while (node.firstChild) node.removeChild(node.firstChild);
-    };
-  }, [result]);
-  return <div ref={host} className="pa-chart-wrap" />;
+  const spec = useMemo(() => paSpec(result), [result]);
+  return <CanvasChart className="pa-chart-wrap" spec={spec} wheel />;
 }
 
 /**
@@ -350,6 +337,7 @@ function PaPanel() {
           <li>虚线是关键位:支撑用涨色、阻力用跌色;价格标签放在右侧价格轴上,挤在一起时会被推开并画引线回到真实价位。</li>
           <li>半透明色块是未回补的 FVG(缺口),灰色虚线框是订单块;它们从产生那根 K 线画到最后一根,不铺到轴上。</li>
           <li>点 + 小字是最近的摆动点(HH / HL / LH / LL);蓝色点线是现价。鼠标悬停显示十字光标与那一根的开高低收量。</li>
+          <li>滚轮缩放、按住拖动平移,拖价格轴或时间轴也能缩放;双击轴复位。每 20 秒的自动刷新不会把缩放到的位置刷掉。</li>
         </ul>
       </Primer>
     </section>

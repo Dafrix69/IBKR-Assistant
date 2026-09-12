@@ -347,10 +347,6 @@ declare global {
     __dafriNavigate?: (key: string) => void;
     /** React 已接管的叶子页清单,截图脚本据此逐页拍 */
     __dafriLeafTabs?: string[];
-    /** renderer/pa-chart.js 的 canvas 图表引擎(经典脚本,挂在 window 上) */
-    DafriChart?: { mount(container: HTMLElement, spec: unknown): void };
-    /** 同一引擎的 K线 PA 入口:把引擎的 pa.analyze 结果翻成 spec 再画 */
-    DafriPaChart?: { mount(container: HTMLElement, result: unknown): void };
   }
 }
 

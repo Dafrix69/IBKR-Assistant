@@ -19,6 +19,7 @@
 | `react` + `antd` + `vite` | desktop | 界面框架与组件库(见 [ui.md](ui.md)) |
 | `zustand` | desktop | 跨页状态容器。原来每个 store 各写一遍 `Set<Listener>` + `subscribe` + `emit`,16 处同样的样板;换成 `create()` 之后 store 只剩业务逻辑,对外的 `useXxx()` 契约一字未动 |
 | `dayjs` | desktop | 日期格式化与"是不是今天"。AntD 的 DatePicker 本来就带它,不额外增加体积 |
+| `lightweight-charts` | desktop | TradingView 的图表库,画框架:价格轴与刻度、时间轴、网格、蜡烛、量能子图、十字光标、高分屏,外加**缩放与平移**(自写的 659 行 canvas 引擎一直没有)。价格行为的叠加层用它的 primitives 自己画,规则与原来一致;为什么折线也自己画、叠加层为什么挂在看不见的载体序列上,见 [priceaction.md](priceaction.md#框架换成-lightweight-charts2026-09-13)。Apache-2.0,署名在「关于」页 |
 | `electron-log` | desktop | 日志落盘。Windows 上 Electron 是 GUI 子系统:**没有控制台,stderr 也重定向不出来**,出了问题只能靠用户描述。现在主进程、引擎 stderr、渲染层报错、未捕获异常都写进 `userData/logs/main.log`(单份 4 MB、留一份旧的),路径显示在「关于」页 |
 | `electron-builder` | desktop | 打包与安装器 |
 | `eslint` + `typescript-eslint` | 两边各一份 | 静态检查。规则只留"写错了会出事"的那一类,不做风格警察 —— 见下 |
@@ -40,7 +41,6 @@
 | 配置校验用 zod | `config.ts` 手写校验 | 每一条错误文案都逐字节进黄金基线,换成 zod 的报错就是换掉用户看到的话 |
 | JSON-RPC 库(`json-rpc-2.0` / `vscode-jsonrpc`) | `rpc.ts` 的三条道 + `rpc-client.js` | 调度语义是业务约束:**交易道严格顺序、读道并发 4、本地道即答、轮询请求给用户请求让路**(见 [engine-rpc.md](engine-rpc.md))。通用库表达不了这套优先级,而这套语义被 `tests/rpc-lanes.spec.ts` 钉着 |
 | 数据请求库(`@tanstack/react-query`) | `store/*.ts` 里的 `setInterval` 轮询 | 这些循环**不挂在当前页上**:持仓追踪一秒一轮会真的发平仓单,条件单轮询是引擎触发的唯一入口,切走了还得跑。react-query 的 `refetchInterval` 跟着组件生命周期走,语义正好相反 |
-| 图表库(`lightweight-charts`) | `public/pa-chart.js`(659 行 canvas) | 见下:最大的一块自造轮子,但换它是一次视觉改版 |
 
 ## lint 只抓真错,不排版
 
@@ -74,10 +74,3 @@
 但 lock 里 12 个都在。`tools/stage_engine_ts.js` 按 lock 条目的 `os` / `cpu` 只收目标平台那一个(win32-x64 约 1.8 MB),
 其余跳过;**目标平台那个不在磁盘上会直接报错**——少打一个原生包,要到用户机器上才会以 "Cannot find module" 暴露。
 
-## 还值得做,但要单独开一次
-
-**K 线图换 `lightweight-charts`。** `pa-chart.js` 自己实现了蜡烛、成交量归一化、均线、关键位标签避让、
-FVG/订单块色块、标记、十字光标与坐标轴刻度算法——其中约五百行是任何图表库都有的部分,而**缩放与平移至今没有**
-(库里是白送的)。但价格行为的叠加层(BOS/CHoCH、FVG、扫单标记)要用它的 primitives 重写,
-而且图是这个软件最显眼的界面,换等于一次视觉改版:得按 [tools/README.md](../../desktop/tools/README.md) 的做法
-改前改后各出一套截图并排比。
