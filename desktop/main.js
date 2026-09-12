@@ -12,8 +12,20 @@
 const { app, BrowserWindow, Menu, Notification, ipcMain, dialog, shell, session, nativeTheme } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
+const log = require('electron-log/main');
 const { EngineClient } = require('./rpc-client');
 const { PopupManager } = require('./popup-window');
+
+// 日志落盘(electron-log)。Windows 上 Electron 是 GUI 子系统:没有控制台,stderr 也重定向不出来——
+// 出了问题只能靠用户描述。现在主进程、引擎 stderr、渲染层报错、未捕获异常都写进一份滚动日志
+// (userData/logs/main.log,单份 4 MB、留一份旧的),「关于」页显示路径,用户把它发过来就有现场。
+// 交易数据不进日志:这里只记引擎自己打到 stderr 的运行信息与异常,记录本身在 append-only SQLite 里。
+log.initialize();
+log.transports.file.level = 'info';
+log.transports.file.maxSize = 4 * 1024 * 1024;
+log.transports.console.level = process.env.DAFRI_DEV === '1' ? 'debug' : false;
+log.errorHandler.startCatching({ showDialog: false });
+Object.assign(console, log.functions); // 主进程里已有的 console.* 一并落盘
 
 const DEV = process.env.DAFRI_DEV === '1';
 const PACKAGED = app.isPackaged;
@@ -248,13 +260,13 @@ function createWindow() {
   });
   mainWindow.webContents.on('will-attach-webview', (event) => event.preventDefault());
 
-  if (DEV) {
-    // 开发时把渲染进程的 console 转到终端,省得为看一条报错去开 DevTools
-    mainWindow.webContents.on('console-message', (event) => {
-      const level = event.level ?? 'log';
-      console.log(`[renderer:${level}] ${event.message} (${event.sourceId}:${event.lineNumber})`);
-    });
-  }
+  // 渲染层的报错落盘(开发时整条 console 都转出来,省得为看一条报错去开 DevTools)
+  mainWindow.webContents.on('console-message', (event) => {
+    const level = event.level ?? 'log';
+    const text = `[renderer:${level}] ${event.message} (${event.sourceId}:${event.lineNumber})`;
+    if (level === 'error' || level === 'warning') log.warn(text);
+    else if (DEV) log.debug(text);
+  });
 
   // 焦点状态转给渲染层:窗口失焦时侧栏选中项退灰,这是 AppKit 源列表的标准表现
   mainWindow.on('focus', () => {
@@ -343,8 +355,14 @@ function wireEngine() {
     tsEngineRoot: TS_ENGINE_ROOT,
   });
   engine.on('engine-event', (payload) => send('engine-event', payload));
-  engine.on('log', (line) => send('engine-log', { line }));
-  engine.on('exit', (info) => send('engine-exit', info));
+  engine.on('log', (line) => {
+    send('engine-log', { line });
+    log.info('[engine]', line); // 引擎 stderr 也落盘:界面只留最近 200 行,崩溃前那几行往往在更早
+  });
+  engine.on('exit', (info) => {
+    log.error('[engine] 已退出', info);
+    send('engine-exit', info);
+  });
   // 启动失败会以 engine-exit 事件呈现在界面上
   engine.start().catch(() => {});
 }
@@ -384,6 +402,7 @@ function registerIpc() {
       chrome: process.versions.chrome,
       configPath: CONFIG_PATH,
       repoRoot: REPO_ROOT,
+      logPath: log.transports.file.getFile().path,
       dev: DEV,
       engineRunning: Boolean(engine && engine.child),
     };

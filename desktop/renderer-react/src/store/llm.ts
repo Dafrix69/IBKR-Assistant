@@ -1,5 +1,5 @@
 /** 大模型目录与当前配置。启动就读一次:交易指令页的就绪清单要知道 Key 配没配。 */
-import { useSyncExternalStore } from 'react';
+import { create } from 'zustand';
 import { dafri, errorMessage } from '../bridge';
 import { showBanner } from './banner';
 
@@ -31,26 +31,16 @@ export interface LlmCatalog {
   key_configured?: Record<string, boolean>;
 }
 
-type Listener = () => void;
-let catalog: LlmCatalog | null = null;
+const useStore = create<{ catalog: LlmCatalog | null }>(() => ({ catalog: null }));
 let started = false;
-const listeners = new Set<Listener>();
-
-function subscribe(l: Listener) {
-  listeners.add(l);
-  return () => {
-    listeners.delete(l);
-  };
-}
 
 export async function loadLlmCatalog(): Promise<LlmCatalog | null> {
   try {
-    catalog = await dafri.llmCatalog();
-    listeners.forEach((l) => l());
+    useStore.setState({ catalog: await dafri.llmCatalog() });
   } catch (err) {
     showBanner(`读取模型配置失败:${errorMessage(err)}`, false);
   }
-  return catalog;
+  return useStore.getState().catalog;
 }
 
 export function startLlmFeed(): void {
@@ -63,5 +53,5 @@ export function startLlmFeed(): void {
 }
 
 export function useLlmCatalog(): LlmCatalog | null {
-  return useSyncExternalStore(subscribe, () => catalog);
+  return useStore((s) => s.catalog);
 }

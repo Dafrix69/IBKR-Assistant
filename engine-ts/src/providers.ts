@@ -304,19 +304,46 @@ function anthropicUsage(usage: any): Record<string, unknown> {
 }
 
 // ---------------------------------------------------------------- OpenAI 兼容
-/** 走 /chat/completions 的通用实现(fetch + 默认证书校验)。 */
+/** 走 /chat/completions 的通用实现(官方 openai SDK)。
+ *
+ * 用 SDK 而不是手写 fetch,拿的是三件现成的东西:429 / 5xx / 连接中断按指数退避重试
+ * (原来一次网络抖动就是一条指令白发)、超时与中止、带 `status` 的错误类型——
+ * 降级判断与界面文案从此看状态码,不再在错误文字里找 "400"。
+ * 底层仍是同一条 `/chat/completions`,请求体逐字段自己拼,SDK 只负责传输。 */
 export class OpenAICompatibleParser {
   readonly provider = "openai_compatible";
   readonly baseUrl: string;
 
   /** 端点拒过 json_schema(HTTP 400)就记住:后面直接走 json_object,不再每次先撞一遍 400。 */
   private schemaRejected = false;
+  private client: any = null;
 
   constructor(
     readonly config: LLMConfig,
     protected readonly apiKey: string | null = null,
   ) {
     this.baseUrl = validateBaseUrlLocal(config.base_url);
+  }
+
+  private async ensureClient(): Promise<any> {
+    if (this.client === null) {
+      let OpenAIMod: any;
+      try {
+        OpenAIMod = await import("openai");
+      } catch {
+        throw new LLMError("未安装 openai:npm install openai");
+      }
+      const OpenAI = OpenAIMod.default ?? OpenAIMod.OpenAI;
+      this.client = new OpenAI({
+        apiKey: resolveApiKey(this.config, this.apiKey),
+        baseURL: this.baseUrl,
+        timeout: this.config.timeout_s * 1000,
+        // 4xx(含降级要认的 400)不重试,只重试 408 / 409 / 429 / 5xx 与连接中断
+        maxRetries: 2,
+        defaultHeaders: { "User-Agent": "dafri-trading/0.2" },
+      });
+    }
+    return this.client;
   }
 
   async parse(bundle: PromptBundle, userMessage: string): Promise<LLMResponse> {
@@ -373,9 +400,7 @@ export class OpenAICompatibleParser {
       try {
         return [await this.post("/chat/completions", body), "json_schema"];
       } catch (exc) {
-        if (!(exc instanceof LLMError)) throw exc;
-        const msg = String(exc.message);
-        if (!msg.includes("400") && !msg.includes("response_format")) throw exc;
+        if (!(exc instanceof LLMError) || !rejectsJsonSchema(exc)) throw exc;
         // 端点不认 json_schema:这一进程里不再试。实测 DeepSeek 每次都 400,不记住就每条指令多一个往返。
         this.schemaRejected = true;
       }
@@ -399,33 +424,11 @@ export class OpenAICompatibleParser {
   }
 
   protected async post(pathName: string, body: Msg): Promise<Msg> {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), this.config.timeout_s * 1000);
-    let response: Response;
+    const client = await this.ensureClient();
     try {
-      response = await fetch(this.baseUrl + pathName, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${resolveApiKey(this.config, this.apiKey)}`,
-          "User-Agent": "dafri-trading/0.1",
-        },
-        body: JSON.stringify(body),
-        signal: controller.signal,
-      });
+      return await client.post(pathName, { body });
     } catch (exc) {
-      clearTimeout(timer);
-      throw new LLMError(`无法连接 ${this.baseUrl}:${(exc as Error).message}`);
-    }
-    clearTimeout(timer);
-    const raw = await response.text();
-    if (!response.ok) {
-      throw new LLMError(`HTTP ${response.status}:${raw.slice(0, 400)}`);
-    }
-    try {
-      return JSON.parse(raw);
-    } catch (exc) {
-      throw new LLMError(`端点返回的不是 JSON:${(exc as Error).message}`);
+      throw asLLMError(exc, this.baseUrl);
     }
   }
 
@@ -460,7 +463,14 @@ export class OpenAICompatibleParser {
       { role: "user", content: '回复 {"ok": true}' },
     ];
     const started = performance.now();
-    const [data, mode] = await probe.complete(messages, PING_SCHEMA);
+    let data: Msg;
+    let mode: string;
+    try {
+      [data, mode] = await probe.complete(messages, PING_SCHEMA);
+    } catch (exc) {
+      // 「测试连接」是给人看的:401 / 404 / 429 说人话,别把端点的原始报文甩到界面上
+      throw new LLMError(friendlyApiError(exc as Error), (exc as LLMError).status);
+    }
     const latencyMs = Math.trunc(performance.now() - started);
     const choice = (data["choices"] as Msg[] | undefined)?.[0] ?? {};
     return {
@@ -504,9 +514,36 @@ export const PING_SCHEMA: Record<string, unknown> = {
   additionalProperties: false,
 };
 
+/** SDK 抛出来的任何东西 → LLMError。有状态码就带上,没有就是连不上。
+ *  文字形状保持 "HTTP {code}:{正文}" 不变——没有 status 的调用方(测试里的假端点)还按它判断。 */
+function asLLMError(exc: any, baseUrl: string): LLMError {
+  if (exc instanceof LLMError) return exc;
+  const status = typeof exc?.status === "number" ? exc.status : undefined;
+  if (status !== undefined) {
+    const detail = exc?.error ? JSON.stringify(exc.error) : String(exc?.message ?? "");
+    return new LLMError(`HTTP ${status}:${detail.slice(0, 400)}`, status);
+  }
+  return new LLMError(`无法连接 ${baseUrl}:${String(exc?.message ?? exc)}`);
+}
+
+/** 这个错误是不是"端点不认 json_schema"?有状态码只认 400;
+ *  没有状态码(假端点 / 老路径)才退回看错误文字。 */
+function rejectsJsonSchema(exc: LLMError): boolean {
+  if (exc.status !== undefined) return exc.status === 400;
+  const msg = String(exc.message);
+  return msg.includes("400") || msg.includes("response_format");
+}
+
 export function friendlyApiError(exc: Error): string {
   const text = String(exc.message ?? exc);
   const name = exc.constructor.name;
+  const status = (exc as { status?: unknown }).status;
+  if (typeof status === "number") {
+    if (status === 401 || status === 403) return "API Key 无效或已失效(401)。请在「大模型」面板里重新填写。";
+    if (status === 404) return "模型名不存在(404):请核对模型标识。";
+    if (status === 429) return "触发限流(429),稍后再试。";
+    if (status >= 500) return `端点服务异常(${status}),重试两次仍失败,稍后再试。`;
+  }
   if (text.toLowerCase().includes("authentication") || text.includes("401") || name === "AuthenticationError") {
     return "API Key 无效或已失效(401)。请在「大模型」面板里重新填写。";
   }

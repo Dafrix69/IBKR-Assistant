@@ -229,7 +229,7 @@ window.dafri = {
       window:{dev_max:{time:last.time,dev_pct:7.16}, dev_min:{time:series[40].time,dev_pct:-5.02}, pressure_max:{time:series[70].time,pressure:0.88}, pressure_min:{time:series[12].time,pressure:-0.93}},
       readout:['收盘在 20 周期均线上方 7.16%,折近 120 根历史 z = +2.31(分位 98%)。','修正版买卖压力 -0.412(卖压占优),最近一根收盘位于真实区间 22% 处。','偏离已到上方极值:z ≥ 2.0,历史上这种拉伸幅度很少见。','拉得很高但买压转负——推升的力量在减弱,注意衰竭。','本段(120 根)偏离最大 +7.16%(2026-09-05),最小 -5.02%(2026-05-15)。']}; },
   appInfo: async () => ({version:'0.2.0', electron:'40.0.0', configPath:'config/settings.json',
-    enginePath:'src/ibkr_agent', engineRunning:true}),
+    logPath:'~/Library/Logs/Dafri Trading/main.log', enginePath:'src/ibkr_agent', engineRunning:true}),
   llmCatalog: async () => ({providers:[
     {key:'anthropic',label:'Anthropic(Claude)',default_model:'claude-opus-5',
      models:['claude-opus-5','claude-sonnet-5','claude-haiku-4-5'],supports_effort:true,

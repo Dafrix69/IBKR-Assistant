@@ -4,7 +4,7 @@
  * 两个每秒循环**不看当前在哪一页**——止损要保命,切走了还得盯着。
  * 引擎负责判断与发单,这里只是按秒驱动它并把结果摆出来。
  */
-import { useSyncExternalStore } from 'react';
+import { create } from 'zustand';
 import { dafri, errorMessage } from '../bridge';
 import { pushNotification } from './notify';
 import { loadRecords } from './records';
@@ -121,25 +121,20 @@ export interface TrackerSnapshot {
   loop: LoopHeartbeat | null;
 }
 
-type Listener = () => void;
-let snap: TrackerSnapshot = { positions: [], positionsError: null, tracks: [], rows: {}, hosted: {}, delayed: false, loop: null };
+const useStore = create<{ snap: TrackerSnapshot }>(() => ({
+  snap: { positions: [], positionsError: null, tracks: [], rows: {}, hosted: {}, delayed: false, loop: null },
+}));
+
 let pollBusy = false;
 let reconcileBusy = false;
 let rowsSig = '';
 let hostedSig = '';
 let started = false;
-const listeners = new Set<Listener>();
+
+const snapshot = (): TrackerSnapshot => useStore.getState().snap;
 
 function set(part: Partial<TrackerSnapshot>) {
-  snap = { ...snap, ...part };
-  listeners.forEach((l) => l());
-}
-
-function subscribe(l: Listener) {
-  listeners.add(l);
-  return () => {
-    listeners.delete(l);
-  };
+  useStore.setState((s) => ({ snap: { ...s.snap, ...part } }));
 }
 
 export async function loadTracker(refreshPositions = true): Promise<void> {
@@ -178,7 +173,7 @@ async function onFired(fired: { symbol: string; reason: string }[]): Promise<voi
 
 /** 读引擎节拍器最新一轮的盯盘结果(节拍器在引擎里,不靠这里驱动;这里只负责画)。 */
 export async function pollTrackers(): Promise<void> {
-  if (pollBusy || !getStatus()?.broker_connected || !snap.tracks.length) return;
+  if (pollBusy || !getStatus()?.broker_connected || !snapshot().tracks.length) return;
   pollBusy = true;
   try {
     const result = await dafri.pollTrackers();
@@ -203,7 +198,7 @@ export async function pollTrackers(): Promise<void> {
     if (sig !== rowsSig) {
       rowsSig = sig;
       set({ rows, loop });
-    } else if (loop && (loop.ticks !== snap.loop?.ticks || loop.last_error !== snap.loop?.last_error)) {
+    } else if (loop && (loop.ticks !== snapshot().loop?.ticks || loop.last_error !== snapshot().loop?.last_error)) {
       set({ loop }); // 心跳每轮都变;行没变时只刷心跳
     }
   } catch {
@@ -216,7 +211,7 @@ export async function pollTrackers(): Promise<void> {
 /** 券商托管对账,一秒一轮:该挂的挂上、动态停损随峰值棘轮上移、不该在的撤掉。 */
 export async function reconcileHosted(): Promise<void> {
   if (reconcileBusy || !getStatus()?.broker_connected) return;
-  if (!snap.tracks.some((t) => t.auto_close?.host_at_broker)) return;
+  if (!snapshot().tracks.some((t) => t.auto_close?.host_at_broker)) return;
   reconcileBusy = true;
   try {
     const result = await dafri.reconcileTrackers();
@@ -250,5 +245,5 @@ export function startTrackerLoops(): void {
 }
 
 export function useTracker(): TrackerSnapshot {
-  return useSyncExternalStore(subscribe, () => snap);
+  return useStore((s) => s.snap);
 }

@@ -1,4 +1,6 @@
-/** 数字与时间的显示格式。与旧 core.js 同一口径,迁页时逐个搬过来。 */
+/** 数字与时间的显示格式。与旧 core.js 同一口径,迁页时逐个搬过来。
+ *  日期用 dayjs(AntD 的 DatePicker 本来就用它,不额外增加体积),不自己做日历判断。 */
+import dayjs from 'dayjs';
 
 /** 定点小数,不带千分位——量表里要看清 0.0500 这种小数。 */
 export function fmtNum(value: unknown, digits = 2): string {
@@ -14,14 +16,9 @@ export function fmtMoney(value: unknown): string {
 /** 列表里的紧凑时间:今天只显示时分,其余显示月-日 时分。年份在这里没有信息量。 */
 export function fmtTimeShort(iso: unknown): string {
   if (!iso) return '—';
-  const d = new Date(String(iso));
-  if (Number.isNaN(d.getTime())) return String(iso);
-  const hm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-  const today = new Date();
-  const sameDay =
-    d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth() && d.getDate() === today.getDate();
-  if (sameDay) return hm;
-  return `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${hm}`;
+  const d = dayjs(String(iso));
+  if (!d.isValid()) return String(iso);
+  return d.isSame(dayjs(), 'day') ? d.format('HH:mm') : d.format('MM-DD HH:mm');
 }
 
 export function fmtTime(iso: unknown): string {

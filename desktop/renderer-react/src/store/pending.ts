@@ -5,7 +5,7 @@
  * `pending.poll` 是 firePending / expirePending / syncBrokerOrders 的唯一入口——
  * 不发这条 RPC,条件单永远不会触发、当日不会过期,已提交的单也不会回写成交状态。
  */
-import { useSyncExternalStore } from 'react';
+import { create } from 'zustand';
 import { dafri, errorMessage } from '../bridge';
 import { getStatus } from './status';
 
@@ -20,37 +20,25 @@ export interface PendingItem {
   [key: string]: unknown;
 }
 
-type Listener = () => void;
-let pending: PendingItem[] = [];
-let error: string | null = null;
+const useStore = create<{
+  pending: PendingItem[];
+  error: string | null;
+}>(() => ({ pending: [], error: null }));
+
 let inFlight = false;
 let polling = false;
 let started = false;
-const listeners = new Set<Listener>();
-
-function emit() {
-  listeners.forEach((l) => l());
-}
-
-function subscribe(l: Listener) {
-  listeners.add(l);
-  return () => {
-    listeners.delete(l);
-  };
-}
 
 export async function loadPending(): Promise<void> {
   if (inFlight) return;
   inFlight = true;
   try {
     const res = await dafri.listPending();
-    pending = Array.isArray(res?.pending) ? res.pending : [];
-    error = null;
+    useStore.setState({ pending: Array.isArray(res?.pending) ? res.pending : [], error: null });
   } catch (err) {
-    error = errorMessage(err);
+    useStore.setState({ error: errorMessage(err) });
   } finally {
     inFlight = false;
-    emit();
   }
 }
 
@@ -87,9 +75,9 @@ export function startPendingFeed(): void {
 }
 
 export function usePending(): PendingItem[] {
-  return useSyncExternalStore(subscribe, () => pending);
+  return useStore((s) => s.pending);
 }
 
 export function usePendingError(): string | null {
-  return useSyncExternalStore(subscribe, () => error);
+  return useStore((s) => s.error);
 }

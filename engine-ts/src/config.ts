@@ -144,7 +144,15 @@ export const PROVIDER_META: Record<string, { needs_base_url: boolean; default_mo
   openai_compatible: { needs_base_url: true, default_model: "" },
 };
 
-export class LLMError extends Error {}
+export class LLMError extends Error {
+  /** 端点回的 HTTP 状态码(有的话)。降级判断与界面文案按它走,不再猜错误文字里的数字。 */
+  readonly status: number | undefined;
+
+  constructor(message: string, status?: number) {
+    super(message);
+    this.status = status;
+  }
+}
 
 /** §9.4:强制 TLS。只给本机放行 http。 */
 export function validateBaseUrl(url: string): string {

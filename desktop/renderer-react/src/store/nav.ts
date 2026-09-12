@@ -2,7 +2,7 @@
  * 壳层路由:当前侧栏项 + 合并页(行情 / 扫描 / 接入)里上次看的子页。
  * localStorage 的键沿用旧界面(dafri-subtab-<parent>),迁移期间两边记的是同一份。
  */
-import { useSyncExternalStore } from 'react';
+import { create } from 'zustand';
 import { dafri } from '../bridge';
 import { NAV_ITEMS, navKeyFor } from '../shell/nav';
 
@@ -24,57 +24,45 @@ function write(key: string, value: string): void {
   }
 }
 
-type Listener = () => void;
-const listeners = new Set<Listener>();
-let tab: string = ((): string => {
-  const saved = read(TAB_KEY);
-  return saved && NAV_ITEMS.some((i) => i.key === saved) ? saved : 'trade';
-})();
-const subs: Record<string, string> = {};
-
-function emit() {
-  listeners.forEach((l) => l());
-}
-
-function subscribe(l: Listener) {
-  listeners.add(l);
-  return () => {
-    listeners.delete(l);
-  };
-}
+const useStore = create<{ tab: string; subs: Record<string, string>; focus: NavFocus | null }>(() => ({
+  tab: ((): string => {
+    const saved = read(TAB_KEY);
+    return saved && NAV_ITEMS.some((i) => i.key === saved) ? saved : 'trade';
+  })(),
+  subs: {},
+  focus: null,
+}));
 
 /** 切页。传子页名(pa / rs / tws…)会切到它的父页并记住子页。 */
 export function navigate(key: string): void {
   const parent = navKeyFor(key);
   if (key !== parent) setSubtab(parent, key);
-  if (parent !== tab) {
-    tab = parent;
+  if (parent !== useStore.getState().tab) {
     write(TAB_KEY, parent);
-    emit();
+    useStore.setState({ tab: parent });
   }
 }
 
 export function getTab(): string {
-  return tab;
+  return useStore.getState().tab;
 }
 
 export function useTab(): string {
-  return useSyncExternalStore(subscribe, () => tab);
+  return useStore((s) => s.tab);
 }
 
 export function getSubtab(parent: string, fallback: string): string {
-  return subs[parent] || read(`dafri-subtab-${parent}`) || fallback;
+  return useStore.getState().subs[parent] || read(`dafri-subtab-${parent}`) || fallback;
 }
 
 export function setSubtab(parent: string, key: string): void {
-  if (subs[parent] === key) return;
-  subs[parent] = key;
+  if (useStore.getState().subs[parent] === key) return;
   write(`dafri-subtab-${parent}`, key);
-  emit();
+  useStore.setState((s) => ({ subs: { ...s.subs, [parent]: key } }));
 }
 
 export function useSubtab(parent: string, fallback: string): string {
-  return useSyncExternalStore(subscribe, () => getSubtab(parent, fallback));
+  return useStore((s) => s.subs[parent] || read(`dafri-subtab-${parent}`) || fallback);
 }
 
 // ---- 带着标的跳页(弹窗的「查看」)--------------------------------------------------
@@ -95,44 +83,39 @@ export interface NavFocus {
  */
 const FOCUS_TTL_MS = 15_000;
 
-let focus: NavFocus | null = null;
 let focusSeq = 0;
+
+const liveFocus = (focus: NavFocus | null, page: string): NavFocus | null =>
+  focus && focus.page === page && Date.now() - focus.at <= FOCUS_TTL_MS ? focus : null;
 
 export function navigateTo(page: string, symbol?: string): void {
   const s = String(symbol || '').trim().toUpperCase();
   if (s) {
     focusSeq += 1;
-    focus = { page: navKeyFor(page), symbol: s, seq: focusSeq, at: Date.now() };
+    useStore.setState({ focus: { page: navKeyFor(page), symbol: s, seq: focusSeq, at: Date.now() } });
   }
   navigate(page);
-  emit();
 }
 
 /** 这一页的待指认标的;别的页的焦点、以及过了期的焦点,对这一页都是 null。 */
 export function useNavFocus(page: string): NavFocus | null {
-  return useSyncExternalStore(subscribe, () =>
-    focus && focus.page === page && Date.now() - focus.at <= FOCUS_TTL_MS ? focus : null,
-  );
+  return useStore((st) => liveFocus(st.focus, page));
 }
 
 export function clearNavFocus(seq: number): void {
-  if (focus && focus.seq === seq) {
-    focus = null;
-    emit();
-  }
+  const { focus } = useStore.getState();
+  if (focus && focus.seq === seq) useStore.setState({ focus: null });
 }
 
 /** 离开这一页时把它的焦点丢掉:没闪完就切走的那一次,不该在下次进来时补闪。 */
 export function clearNavFocusFor(page: string): void {
-  if (focus && focus.page === page) {
-    focus = null;
-    emit();
-  }
+  const { focus } = useStore.getState();
+  if (focus && focus.page === page) useStore.setState({ focus: null });
 }
 
 /** 刚跳过去、还没被页面消化掉的焦点(壳层据此决定要不要把内容区滚回顶部)。 */
 export function pendingNavFocus(page: string): boolean {
-  return Boolean(focus && focus.page === page && Date.now() - focus.at <= FOCUS_TTL_MS);
+  return liveFocus(useStore.getState().focus, page) !== null;
 }
 
 let menuStarted = false;

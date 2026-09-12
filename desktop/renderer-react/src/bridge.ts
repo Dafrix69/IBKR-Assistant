@@ -67,6 +67,8 @@ export interface AppInfo {
   chrome: string;
   node: string;
   configPath: string;
+  /** 滚动日志文件(主进程 + 引擎 stderr + 渲染层报错);出问题时把它发过来就有现场 */
+  logPath?: string;
   [key: string]: unknown;
 }
 

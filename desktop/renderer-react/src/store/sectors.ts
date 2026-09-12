@@ -8,7 +8,7 @@
  * 这两件事在引擎里跟着 sectors.* 一起做,回执带 `watch` / `skipped` / `dropped`——
  * 上限吃满、指数不能盯异动这些都要如实说出来(store/pool.ts),不能让人以为都开上了。
  */
-import { useSyncExternalStore } from 'react';
+import { create } from 'zustand';
 import { dafri, errorMessage } from '../bridge';
 import { loadAlerts } from './alerts';
 import { showBanner } from './banner';
@@ -37,31 +37,22 @@ export interface Quote {
   change_pct?: number | null;
 }
 
-type Listener = () => void;
-let sectors: Sector[] = [];
-let quotes: Record<string, Quote> = {};
-const listeners = new Set<Listener>();
+const useStore = create<{
+  sectors: Sector[];
+  quotes: Record<string, Quote>;
+}>(() => ({ sectors: [], quotes: {} }));
 
-function emit() {
-  listeners.forEach((l) => l());
-}
-
-function subscribe(l: Listener) {
-  listeners.add(l);
-  return () => {
-    listeners.delete(l);
-  };
-}
+const currentSectors = (): Sector[] => useStore.getState().sectors;
+const setSectors = (sectors: Sector[]): void => useStore.setState({ sectors });
 
 export async function loadSectors(): Promise<Sector[]> {
   try {
     const res = await dafri.listSectors();
-    sectors = Array.isArray(res?.sectors) ? res.sectors : [];
-    emit();
+    setSectors(Array.isArray(res?.sectors) ? res.sectors : []);
   } catch (err) {
     showBanner(`读取板块失败:${errorMessage(err)}`, false);
   }
-  return sectors;
+  return currentSectors();
 }
 
 function brokerPanel(): string {
@@ -71,9 +62,8 @@ function brokerPanel(): string {
 export async function refreshQuotes(): Promise<void> {
   try {
     const res = await dafri.sectorQuotes();
-    quotes = res?.quotes || {};
-    emit();
-    if (!res?.connected && sectors.some((s) => s.stocks.length)) {
+    useStore.setState({ quotes: res?.quotes || {} });
+    if (!res?.connected && currentSectors().some((s) => s.stocks.length)) {
       showBanner(`行情需要先在${brokerPanel()}面板连接引擎`, true);
     }
   } catch (err) {
@@ -87,9 +77,9 @@ async function replaceSector(fresh: Sector | undefined): Promise<void> {
     await loadSectors();
     return;
   }
-  const i = sectors.findIndex((s) => s.id === fresh.id);
-  sectors = i >= 0 ? sectors.map((s, k) => (k === i ? fresh : s)) : [...sectors, fresh];
-  emit();
+  const list = currentSectors();
+  const i = list.findIndex((s) => s.id === fresh.id);
+  setSectors(i >= 0 ? list.map((s, k) => (k === i ? fresh : s)) : [...list, fresh]);
 }
 
 export async function addSector(name: string): Promise<boolean> {
@@ -113,8 +103,7 @@ export async function deleteSector(id: string, name: string): Promise<void> {
   if (ok !== true) return;
   try {
     const res = await dafri.deleteSector(id);
-    sectors = sectors.filter((s) => s.id !== id);
-    emit();
+    setSectors(currentSectors().filter((s) => s.id !== id));
     reportDropped(res?.dropped);
     await Promise.all([loadAlerts(), loadQuality()]);
   } catch (err) {
@@ -138,17 +127,17 @@ export async function addStock(sectorId: string, symbol: string, tag: string): P
 }
 
 export async function removeStock(sectorId: string, symbol: string): Promise<void> {
-  const before = sectors;
-  sectors = sectors.map((s) => (s.id === sectorId ? { ...s, stocks: s.stocks.filter((x) => x.symbol !== symbol) } : s));
-  emit();
+  const before = currentSectors();
+  setSectors(before.map((s) => (
+    s.id === sectorId ? { ...s, stocks: s.stocks.filter((x) => x.symbol !== symbol) } : s
+  )));
   try {
     const res = await dafri.removeSectorStock(sectorId, symbol);
     await replaceSector(res?.sector);
     reportDropped(res?.dropped); // 它不在任何板块里了:两个开关连带撤掉,说一声
     await Promise.all([loadAlerts(), loadQuality()]);
   } catch (err) {
-    sectors = before;
-    emit();
+    setSectors(before);
     showBanner(`移除股票失败:${errorMessage(err)}`, false);
     await loadSectors(); // 以引擎为准
   }
@@ -179,9 +168,9 @@ export async function pickSector(id: string): Promise<void> {
 }
 
 export function useSectors(): Sector[] {
-  return useSyncExternalStore(subscribe, () => sectors);
+  return useStore((s) => s.sectors);
 }
 
 export function useQuotes(): Record<string, Quote> {
-  return useSyncExternalStore(subscribe, () => quotes);
+  return useStore((s) => s.quotes);
 }

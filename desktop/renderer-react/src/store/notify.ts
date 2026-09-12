@@ -2,7 +2,7 @@
  * 通知流(订单看板下方那条)。引擎的 notification 事件、连接 / 熔断 / 启动券商的动作都往这里写;
  * 旧脚本里的全局 pushNotification 被接管成这一份。
  */
-import { useSyncExternalStore } from 'react';
+import { create } from 'zustand';
 import { dafri } from '../bridge';
 
 export interface FeedItem {
@@ -10,22 +10,14 @@ export interface FeedItem {
   text: string;
 }
 
-type Listener = () => void;
-let feed: FeedItem[] = [];
+const useStore = create<{ feed: FeedItem[] }>(() => ({ feed: [] }));
 let started = false;
-const listeners = new Set<Listener>();
-
-function subscribe(l: Listener) {
-  listeners.add(l);
-  return () => {
-    listeners.delete(l);
-  };
-}
 
 export function pushNotification(title: string, body?: string): void {
   const at = new Date().toLocaleTimeString('zh-CN', { hour12: false });
-  feed = [{ at, text: body ? `${title} · ${body}` : title }, ...feed].slice(0, 60);
-  listeners.forEach((l) => l());
+  useStore.setState((s) => ({
+    feed: [{ at, text: body ? `${title} · ${body}` : title }, ...s.feed].slice(0, 60),
+  }));
 }
 
 /** 订阅引擎的通知事件。 */
@@ -38,5 +30,5 @@ export function startNotifyFeed(): void {
 }
 
 export function useFeed(): FeedItem[] {
-  return useSyncExternalStore(subscribe, () => feed);
+  return useStore((s) => s.feed);
 }

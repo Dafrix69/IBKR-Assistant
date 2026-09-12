@@ -2,7 +2,7 @@
  * 交易记录列表:记录页与订单看板共用一份。引擎的 pending 事件、旧页面发单后调 loadRecords,
  * 都会刷新这一份。
  */
-import { useSyncExternalStore } from 'react';
+import { create } from 'zustand';
 import { dafri, errorMessage } from '../bridge';
 
 export interface RecordSummary {
@@ -23,36 +23,24 @@ export interface RecordSummary {
   [key: string]: unknown;
 }
 
-type Listener = () => void;
-let records: RecordSummary[] = [];
-let error: string | null = null;
+const useStore = create<{
+  records: RecordSummary[];
+  error: string | null;
+}>(() => ({ records: [], error: null }));
+
 let inFlight = false;
 let started = false;
-const listeners = new Set<Listener>();
-
-function emit() {
-  listeners.forEach((l) => l());
-}
-
-function subscribe(l: Listener) {
-  listeners.add(l);
-  return () => {
-    listeners.delete(l);
-  };
-}
 
 export async function loadRecords(): Promise<void> {
   if (inFlight) return;
   inFlight = true;
   try {
     const res = await dafri.listRecords(60);
-    records = Array.isArray(res?.records) ? res.records : [];
-    error = null;
+    useStore.setState({ records: Array.isArray(res?.records) ? res.records : [], error: null });
   } catch (err) {
-    error = errorMessage(err);
+    useStore.setState({ error: errorMessage(err) });
   } finally {
     inFlight = false;
-    emit();
   }
 }
 
@@ -69,9 +57,9 @@ export function startRecordsFeed(): void {
 }
 
 export function useRecords(): RecordSummary[] {
-  return useSyncExternalStore(subscribe, () => records);
+  return useStore((s) => s.records);
 }
 
 export function useRecordsError(): string | null {
-  return useSyncExternalStore(subscribe, () => error);
+  return useStore((s) => s.error);
 }

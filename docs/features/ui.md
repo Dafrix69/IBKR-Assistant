@@ -43,6 +43,11 @@
 任何时刻应用都是完整可用的;最后一页迁完,寄宿池和旧 `renderer/` 整个删掉。没有引入微前端:这是一个人维护的
 桌面应用,状态天然全局(熔断、连接、持仓轮询),拆成子应用只会多一层总线。
 
+**跨页状态用 zustand。** `src/store/*` 原来每个文件各写一遍 `type Listener` + `Set<Listener>` + `subscribe` + `emit`
+再接 `useSyncExternalStore`,16 处同样的样板;现在统一用 `zustand` 的 `create()`,store 里只剩业务逻辑与循环。
+对页面的契约一字未动——各页仍然只 import `useStatus()` / `useTracker()` / `useComposer()` 这些同名 hook。
+剩下唯一一处 `useSyncExternalStore` 是 `useDark()`,它订阅的是浏览器的 `matchMedia`,本来就不是自造状态。
+
 **结构。** `src/shell/` 是壳(App / Topbar / Sidebar / Banner / MacroStrip / nav),`src/pages/` 每个侧栏项一个文件
 (合并页的子页在同一文件里,`pages/index.ts` 登记页面与子页清单),`src/store/` 是跨页共用的状态与循环
 (status 5 秒、tracker 与托管对账每秒、alerts 10 秒、macro 2 秒 / 60 秒、records / pending / notify 跟着引擎事件),

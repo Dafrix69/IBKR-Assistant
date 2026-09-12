@@ -67,6 +67,7 @@ export function AboutPage() {
               { key: 'c', label: 'Chromium', children: info.app.chrome },
               { key: 'n', label: 'Node', children: info.app.node },
               { key: 'p', label: '配置文件', children: info.app.configPath },
+              ...(info.app.logPath ? [{ key: 'lg', label: '日志文件', children: String(info.app.logPath) }] : []),
               { key: 'pv', label: '提示词', children: `${info.self.prompt_version} · ${info.self.prompt_fingerprint}` },
               { key: 'sp', label: '系统提示词', children: `${info.self.system_prompt_chars} 字 / ${info.self.fewshot_pairs} 组少样本` },
               { key: 'a', label: '账户', children: accounts || '—' },

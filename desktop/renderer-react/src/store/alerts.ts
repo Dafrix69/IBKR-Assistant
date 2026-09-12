@@ -2,7 +2,7 @@
  * 期权墙 · 价位警告。价位与状态机都在引擎侧,这里只负责显示和触发重算。
  * 唯一特别的地方:警告轮询**不挂在当前页上**——切走了还得报,不然就没用了。
  */
-import { useSyncExternalStore } from 'react';
+import { create } from 'zustand';
 import { dafri, errorMessage, type PopupItem } from '../bridge';
 import { toneDirection } from '../lib/alertRules';
 import { showBanner } from './banner';
@@ -68,36 +68,30 @@ export const ALERT_SOURCE_SHORT: Record<string, string> = {
   low_52w: '52周低', high_52w: '52周高',
 };
 
-type Listener = () => void;
-let snap: AlertsSnapshot = { watches: [], feed: [], busy: [], lastCheck: '—' };
+const useStore = create<{ snap: AlertsSnapshot; soundOn: boolean }>(() => ({
+  snap: { watches: [], feed: [], busy: [], lastCheck: '—' },
+  soundOn: ((): boolean => {
+    try {
+      return localStorage.getItem('dafri-alert-sound') !== '0';
+    } catch {
+      return true;
+    }
+  })(),
+}));
+
 const busySet = new Set<string>();
 let polling = false;
 let started = false;
-const listeners = new Set<Listener>();
+
+const snapshot = (): AlertsSnapshot => useStore.getState().snap;
 
 function set(part: Partial<AlertsSnapshot>) {
-  snap = { ...snap, ...part };
-  listeners.forEach((l) => l());
-}
-
-function subscribe(l: Listener) {
-  listeners.add(l);
-  return () => {
-    listeners.delete(l);
-  };
+  useStore.setState((s) => ({ snap: { ...s.snap, ...part } }));
 }
 
 // ---- 提示音:Web Audio 现场合成,不加载任何音频文件 -----------------------------
 // CSP 是 default-src 'none',连 data: 的 <audio> 都会被拦下;现场合成不涉及任何资源请求。
 let audioCtx: AudioContext | null = null;
-let soundOn = ((): boolean => {
-  try {
-    return localStorage.getItem('dafri-alert-sound') !== '0';
-  } catch {
-    return true;
-  }
-})();
-const soundListeners = new Set<Listener>();
 
 function audioContext(): AudioContext | null {
   if (!audioCtx) {
@@ -117,7 +111,7 @@ function audioContext(): AudioContext | null {
  * force:「试听」按钮用,不看开关。
  */
 export function playAlertTone(direction: 'up' | 'down' | null | undefined, force = false): void {
-  if (!soundOn && !force) return;
+  if (!useStore.getState().soundOn && !force) return;
   const ctx = audioContext();
   if (!ctx) return;
   const notes = direction === 'up' ? [587.33, 880.0] : direction === 'down' ? [880.0, 587.33] : [739.99, 739.99];
@@ -145,26 +139,17 @@ export function previewAlertTone(): void {
 }
 
 export function setSoundEnabled(on: boolean): void {
-  soundOn = on;
+  useStore.setState({ soundOn: on });
   try {
     localStorage.setItem('dafri-alert-sound', on ? '1' : '0');
   } catch {
     /* 同上 */
   }
-  soundListeners.forEach((l) => l());
   if (on) playAlertTone('up');   // 打开时响一声,确认真的能出声
 }
 
 export function useSoundEnabled(): boolean {
-  return useSyncExternalStore(
-    (l) => {
-      soundListeners.add(l);
-      return () => {
-        soundListeners.delete(l);
-      };
-    },
-    () => soundOn,
-  );
+  return useStore((s) => s.soundOn);
 }
 
 function alertTitle(event: AlertEvent): string {
@@ -267,14 +252,14 @@ export async function deleteWatch(id: string, symbol: string): Promise<void> {
 /** 全局轮询:不管在哪一页都要跑,否则切走就不报了。 */
 export async function pollAlerts(): Promise<void> {
   if (polling || !getStatus()?.broker_connected) return;
-  if (!snap.watches.some((w) => w.enabled && (w.levels || []).length)) return;
+  if (!snapshot().watches.some((w) => w.enabled && (w.levels || []).length)) return;
   polling = true;
   try {
     const result = await dafri.pollAlerts();
     const fired: AlertEvent[] = result?.fired || [];
     await announce(fired);
     if (fired.length) {
-      set({ feed: [...fired, ...snap.feed].slice(0, 50) });
+      set({ feed: [...fired, ...snapshot().feed].slice(0, 50) });
       await loadAlerts();
     }
     set({ lastCheck: `上次检查 ${new Date().toLocaleTimeString('zh-CN', { hour12: false })}` });
@@ -291,15 +276,15 @@ export function startAlertsLoop(): void {
   void loadAlerts();
   setInterval(pollAlerts, 10_000);
   dafri.on('engine-event', ({ event, data }) => {
-    if (event === 'alerts') set({ feed: [...(data?.events || []), ...snap.feed].slice(0, 50) });
+    if (event === 'alerts') set({ feed: [...(data?.events || []), ...snapshot().feed].slice(0, 50) });
   });
 }
 
 export function useAlerts(): AlertsSnapshot {
-  return useSyncExternalStore(subscribe, () => snap);
+  return useStore((s) => s.snap);
 }
 
 /** 侧栏徽标:已算出价位、真的在盯的标的数 */
 export function useAlertsArmed(): number {
-  return useSyncExternalStore(subscribe, () => snap.watches.reduce((n, w) => n + ((w.levels || []).length ? 1 : 0), 0));
+  return useStore((s) => s.snap.watches.reduce((n, w) => n + ((w.levels || []).length ? 1 : 0), 0));
 }

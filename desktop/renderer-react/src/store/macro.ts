@@ -3,7 +3,7 @@
  * 连了 TWS 才值得秒级:那时 6 格走常驻流式订阅,读一次几乎不花时间;
  * 没连时 8 格全走公开数据源,那个端点本身就不是秒级更新的,刷快了只是反复拿同一个值,还会把自己的 IP 打进限流。
  */
-import { useSyncExternalStore } from 'react';
+import { create } from 'zustand';
 import { dafri } from '../bridge';
 import { getStatus } from './status';
 
@@ -18,19 +18,10 @@ export interface MacroRow {
   stale?: boolean;
 }
 
-type Listener = () => void;
-let rows: MacroRow[] = [];
+const useStore = create<{ rows: MacroRow[] }>(() => ({ rows: [] }));
 let inFlight = false;
 let last = 0;
 let started = false;
-const listeners = new Set<Listener>();
-
-function subscribe(l: Listener) {
-  listeners.add(l);
-  return () => {
-    listeners.delete(l);
-  };
-}
 
 export async function loadMacroBoard(force = false): Promise<void> {
   // 引擎 sidecar 是串行的:上一轮没回来就再发,只会排队并把 PA 那边一起拖慢
@@ -38,8 +29,7 @@ export async function loadMacroBoard(force = false): Promise<void> {
   inFlight = true;
   try {
     const board = await dafri.macroBoard(force);
-    rows = board?.rows || [];
-    listeners.forEach((l) => l());
+    useStore.setState({ rows: board?.rows || [] });
   } catch (err) {
     console.warn('宏观行情读取失败', err);
   } finally {
@@ -59,5 +49,5 @@ export function startMacroLoop(): void {
 }
 
 export function useMacroRows(): MacroRow[] {
-  return useSyncExternalStore(subscribe, () => rows);
+  return useStore((s) => s.rows);
 }

@@ -26,12 +26,14 @@
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^4.7.0",
     "antd": "^5.29.3",
+    "dayjs": "^1.11.23",
     "electron": "^40.0.0",
     "electron-builder": "^26.0.12",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "typescript": "^5.9.3",
-    "vite": "^6.4.3"
+    "vite": "^6.4.3",
+    "zustand": "^5.0.15"
   },
   "build": {
     "appId": "com.dafri.trading",
@@ -100,5 +102,8 @@
       "zh-TW",
       "en-US"
     ]
+  },
+  "dependencies": {
+    "electron-log": "^5.4.4"
   }
 }
