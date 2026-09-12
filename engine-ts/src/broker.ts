@@ -9,6 +9,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 
+import type { VolumeSnapshot } from "./anomaly.js";
 import { nowEt } from "./config.js";
 import type { AccountConfig, EtNow, IndexConfig, Settings } from "./config.js";
 import type { ContractSpec, OrderSpec, ParsedOrder, TriggerSpec } from "./models.js";
@@ -232,6 +233,15 @@ export function cleanPrice(value: unknown): number | null {
   return v;
 }
 
+/** 量能流拿不到数时的空快照(字段齐全,全是 null)。 */
+function emptyVolumeSnapshot(): VolumeSnapshot {
+  return {
+    last: null, close: null, open: null, high: null, low: null,
+    volume: null, avg_volume: null, hist_vol: null, vol_3m: null, vol_5m: null, vol_10m: null,
+    delayed: false, last_trade_at: null,
+  };
+}
+
 /** 定价链路用:null/NaN/inf 一律归 0(无报价),交给 legMid 的守卫拦截。 */
 export function finiteQuote(value: unknown): number {
   const v = Number(value);
@@ -384,6 +394,24 @@ export interface TickerData {
   modelGreeks?: { gamma: number | null; impliedVol: number | null } | null;
   /** 订阅被 TWS 拒掉时的错误码与原文(如 10197 实盘会话占着实时行情)。有它就说明这条流已经死了。 */
   error?: string | null;
+  // 以下只有异动监控订的那条流(generic "165,104,595")才有;只用于研究与提醒,绝不进订单定价
+  open?: number | null;
+  high?: number | null;
+  low?: number | null;
+  /** 当日累计量(流里的口径,不能和历史 K 线的量混比) */
+  volume?: number | null;
+  /** 同一条流的 90 日日均量(tick 21) */
+  avgVolume?: number | null;
+  /** 30 日历史波动率,小数(tick 23) */
+  histVol?: number | null;
+  /** 近 3 / 5 / 10 分钟成交量(tick 63 / 64 / 65) */
+  vol3m?: number | null;
+  vol5m?: number | null;
+  vol10m?: number | null;
+  /** 最后成交时间(秒,tick 45 / 88) */
+  lastTradeAt?: number | null;
+  /** LAST 取自 DELAYED_LAST(延迟行情) */
+  delayed?: boolean;
 }
 
 export interface TickerHandle {
@@ -441,9 +469,10 @@ export interface IbSession {
   /** 会话的行情类型基线:之后的 reqMarketDataType(1)("切回实时")都回到它。
    * 只服务纸面账户的会话设成 3——见 BrokerRouter.connect。 */
   setBaselineMarketDataType?(type: number): void;
-  /** 订阅并保留;返回句柄按需读当前值。 */
+  /** 订阅并保留;返回句柄按需读当前值。同一合约带不同 generic ticks 是不同的流。 */
   subscribeTicker(contract: IbContract, genericTicks?: string): TickerHandle;
-  cancelTicker(contract: IbContract): void;
+  /** 传 genericTicks 只撤那一条流;不传撤这个合约的所有变体(期权链那处靠它不漏撤)。 */
+  cancelTicker(contract: IbContract, genericTicks?: string): void;
   /** 事件泵(对应 ib.sleep):等行情落地。 */
   settle(ms: number): Promise<void>;
   historicalData(contract: IbContract, opts: {
@@ -669,6 +698,8 @@ export class BrokerRouter {
         }
       }
     }
+    this.releaseVolumeStreams([]);
+    this.volumeRetry.clear();
     this.streams.clear();
     this.optionStreams.clear();
     this.stockStreams.clear();
@@ -1103,7 +1134,10 @@ export class BrokerRouter {
       return price;
     }
     // 没有实时订阅时退到延迟行情。只给方向复核的快照用。
-    session.cancelTicker(target);
+    // 只撤自己订的那条(不带 generic ticks):不传第二个参数是"撤掉这个合约的所有变体",
+    // 会把异动监控那条 #165,104,595 的量能流一起撤掉——句柄还在、读到的却是最后一帧,
+    // 而且不报错,volumeQuotes 不会重订,那只股的量价就此冻住(2026-09-12 审出)。
+    session.cancelTicker(target, "");
     try {
       session.reqMarketDataType(3);
       const delayed = session.subscribeTicker(target);
@@ -1355,6 +1389,133 @@ export class BrokerRouter {
     return out;
   }
 
+  // ---- 异动监控的常驻量能流 -------------------------------------------------
+  /** 异动监控订的 generic ticks:165 = 90 日均量(tick 21)、104 = 30 日历史波动率(tick 23)、
+   * 595 = 近 3 / 5 / 10 分钟量(tick 63/64/65)。2026-09-11 盘中真机:24 只股全部拿到。 */
+  static readonly VOLUME_TICKS = "165,104,595";
+  /** 被拒的流(10197 / 354……)或合约确认超时之后,多久再试一次:监控 5 秒一轮,不能每轮都去撞同一个拒绝。 */
+  static readonly VOLUME_RETRY_MS = 60_000;
+  /** 富途的 router 置 false(它的桥还没真机核对过)。 */
+  readonly SUPPORTS_VOLUME_QUOTES = true;
+  /** 标的 → 常驻流;qualify 认不出的记 null,不再反复重试。记下订它的会话:撤要撤在同一个会话上,
+   * 会话换了(断线重连)旧句柄就是死的。 */
+  private readonly volumeStreams = new Map<string, { target: IbContract; handle: TickerHandle; session: IbSession } | null>();
+  /** 标的 → [下次重试时刻, 上次失败原因] */
+  private readonly volumeRetry = new Map<string, [number, string]>();
+
+  /**
+   * 异动监控的行情:当日量 / 90 日均量 / 30 日历史波动率 / 近几分钟量,全部取自**同一条**常驻流。
+   * 第一次调用建订阅,之后每次只读当前值。
+   *
+   * 当日量只能和同一条流里的均量比:历史 TRADES K 线滤掉了部分成交类型,同一时刻比流里少
+   * 20%~36%(2026-09-11 真机)。**只用于研究与提醒,绝不用于订单定价。**
+   */
+  async volumeQuotes(symbols: string[]): Promise<Record<string, VolumeSnapshot & { error?: string }>> {
+    const session = this.sessions()[0] ?? null;
+    if (session === null) return {};
+    const now = Date.now();
+    let fresh = false;
+    let stalled = false;
+    for (const symbol of symbols) {
+      const existing = this.volumeStreams.get(symbol);
+      if (existing === null) continue;
+      if (existing !== undefined) {
+        const error = existing.handle.read().error;
+        const stale = existing.session !== session || !existing.session.isConnected();
+        if (!error && !stale) continue;
+        // 被拒的流不会自己活过来,会话换了的句柄也不会再更新:摘掉重订(被拒的按退避来)
+        try {
+          existing.session.cancelTicker(existing.target, BrokerRouter.VOLUME_TICKS);
+        } catch {
+          /* 撤不掉也要重订 */
+        }
+        this.volumeStreams.delete(symbol);
+        if (error) {
+          this.volumeRetry.set(symbol, [now + BrokerRouter.VOLUME_RETRY_MS, error]);
+          continue;
+        }
+      }
+      const retry = this.volumeRetry.get(symbol);
+      if (retry !== undefined && now < retry[0]) continue;
+      if (stalled) continue; // 这一轮 TWS 已经不回合约确认了,别的也不用排队干等
+      const target = stockContract(symbol);
+      try {
+        await this.qualifyOrRaise(session, target);
+      } catch (exc) {
+        if (!(exc instanceof BrokerError)) throw exc;
+        if (exc.message === this.stalledMessage()) {
+          // 超时 ≠ 认不出:TWS 卡住时记成"未知标的"就再也不会重试了
+          stalled = true;
+          this.volumeRetry.set(symbol, [now + BrokerRouter.VOLUME_RETRY_MS, "TWS 没有响应合约确认,稍后重试"]);
+        } else {
+          this.volumeStreams.set(symbol, null);
+        }
+        continue;
+      }
+      this.volumeStreams.set(symbol, {
+        target, handle: session.subscribeTicker(target, BrokerRouter.VOLUME_TICKS), session,
+      });
+      this.volumeRetry.delete(symbol);
+      fresh = true;
+    }
+    await session.settle(fresh ? 1500 : 100);
+
+    const out: Record<string, VolumeSnapshot & { error?: string }> = {};
+    for (const symbol of symbols) {
+      const entry = this.volumeStreams.get(symbol);
+      if (entry === null) {
+        out[symbol] = { ...emptyVolumeSnapshot(), error: "未知标的" };
+        continue;
+      }
+      if (entry === undefined) {
+        const retry = this.volumeRetry.get(symbol);
+        if (retry !== undefined) out[symbol] = { ...emptyVolumeSnapshot(), error: retry[1] };
+        continue;
+      }
+      const t = entry.handle.read();
+      const snap: VolumeSnapshot & { error?: string } = {
+        last: cleanPrice(t.last) ?? cleanPrice(t.marketPrice),
+        close: cleanPrice(t.close),
+        open: cleanPrice(t.open),
+        high: cleanPrice(t.high),
+        low: cleanPrice(t.low),
+        // 量和价一样:非有限 / 非正一律 null(开盘前的 0 量不是"零成交",是还没有数)
+        volume: cleanPrice(t.volume),
+        avg_volume: cleanPrice(t.avgVolume),
+        hist_vol: cleanPrice(t.histVol),
+        vol_3m: cleanPrice(t.vol3m),
+        vol_5m: cleanPrice(t.vol5m),
+        vol_10m: cleanPrice(t.vol10m),
+        delayed: Boolean(t.delayed),
+        last_trade_at: cleanPrice(t.lastTradeAt),
+      };
+      if (t.error) snap.error = String(t.error);
+      out[symbol] = snap;
+    }
+    return out;
+  }
+
+  /** 撤掉不在 keep 里的量能流,返回撤了几条。移出追踪 / 停用的股不能一直占着行情线路(约 100 条上限)。 */
+  releaseVolumeStreams(keep: string[]): number {
+    const keepSet = new Set(keep);
+    let released = 0;
+    for (const [symbol, entry] of [...this.volumeStreams.entries()]) {
+      if (keepSet.has(symbol)) continue;
+      this.volumeStreams.delete(symbol);
+      if (entry === null) continue;
+      try {
+        entry.session.cancelTicker(entry.target, BrokerRouter.VOLUME_TICKS);
+      } catch {
+        /* 撤不掉也不该拦住别的 */
+      }
+      released += 1;
+    }
+    for (const symbol of [...this.volumeRetry.keys()]) {
+      if (!keepSet.has(symbol)) this.volumeRetry.delete(symbol);
+    }
+    return released;
+  }
+
   /** 按周期拉 K 线(PA 分析用)。历史数据同样要行情权限;先切延迟再切回实时。 */
   async intradayBars(symbol: string, timeframe: string, rth = false): Promise<Array<Record<string, any>>> {
     const spec = TIMEFRAMES[timeframe];
@@ -1541,7 +1702,9 @@ export class BrokerRouter {
       session.reqMarketDataType(1);
       for (const [contract] of tickers) {
         try {
-          session.cancelTicker(contract); // 不撤会一直占着行情线路配额
+          // 只撤期权链自己这条带 greeks 的流:缓存键带上 generic ticks 之后,
+          // 同一条腿的普通流(持仓盯盘、追踪用的)是另一条,撤错了盯盘就没价了
+          session.cancelTicker(contract, "100,101,106"); // 不撤会一直占着行情线路配额
         } catch {
           /* ignore */
         }
@@ -1603,7 +1766,9 @@ export class BrokerRouter {
     } finally {
       session.reqMarketDataType(1);
       try {
-        session.cancelTicker(target); // 用完即撤,不撤会占行情线路配额
+        // 用完即撤,不撤会占行情线路配额。只撤自己订的那条(不带 generic ticks):不传会连同
+        // 异动监控挂在同一只股上的量能流一起撤掉,那条流就再也不更新了
+        session.cancelTicker(target, "");
       } catch {
         /* ignore */
       }
@@ -1961,9 +2126,9 @@ export class BrokerRouter {
           for (const symbol of need) {
             const existing = this.stockStreams.get(symbol);
             if (existing?.handle && existing.handle.read().error) {
-              // 被拒过的流不会自己活过来:摘掉重订
+              // 被拒过的流不会自己活过来:摘掉重订(只撤不带 generic 的这条,别误伤异动监控的量能流)
               try {
-                if (existing.contract) session.cancelTicker(existing.contract);
+                if (existing.contract) session.cancelTicker(existing.contract, "");
               } catch {
                 /* 撤不掉也要重订 */
               }

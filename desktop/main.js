@@ -13,6 +13,7 @@ const { app, BrowserWindow, Menu, Notification, ipcMain, dialog, shell, session,
 const path = require('node:path');
 const fs = require('node:fs');
 const { EngineClient } = require('./rpc-client');
+const { PopupManager } = require('./popup-window');
 
 const DEV = process.env.DAFRI_DEV === '1';
 const PACKAGED = app.isPackaged;
@@ -94,6 +95,9 @@ const ALLOWED_RPC = new Set([
   'sectors.add_stock',
   'sectors.remove_stock',
   'sectors.set_tag',
+  // 股票池开关:一只股身上的「盯价位 / 盯异动」。只增删本地监控清单的行,不动钱、不下单,
+  // 所以和 quality.* 一样不进 SENSITIVE_RPC
+  'pool.set_watch',
   'screener.rs',
   'screener.inflection',
   'screener.deviation',
@@ -123,6 +127,12 @@ const ALLOWED_RPC = new Set([
   // 标的目标价的只读试算:「同意价格后发单」那个价就是它算的。漏了它,界面上的试算
   // 永远报「不在白名单」,确认框里也就没有价可同意(2026-09-10 真机才暴露,mock 桥测不出来)
   'tracker.target_preview',
+  // 优质股追踪:读行情 + 存本地清单与阈值,只提醒、不下单,所以都不进 SENSITIVE_RPC
+  'quality.list',
+  'quality.add',
+  'quality.update',
+  'quality.remove',
+  'quality.set_config',
   'keychain.set',
   'data.export',
 ]);
@@ -146,6 +156,12 @@ const SENSITIVE_RPC = new Set([
 
 let mainWindow = null;
 let engine = null;
+// 异动 / 价位提醒的置顶弹窗。懒创建:第一条提醒来了才开窗,平时不占一个渲染进程
+const popup = new PopupManager({
+  dev: DEV,
+  getMainWindow: () => mainWindow,
+  sendToMain: (channel, payload) => send(channel, payload),
+});
 
 /**
  * Windows 标题栏叠加层的配色。必须跟着深浅色走:浅色主题下画白色的关闭按钮
@@ -171,7 +187,10 @@ function syncTitleBarOverlay() {
 }
 
 // 跟随系统外观时,是系统在变而不是用户在点,所以也得挂上这个事件
-nativeTheme.on('updated', syncTitleBarOverlay);
+nativeTheme.on('updated', () => {
+  syncTitleBarOverlay();
+  popup.syncTheme();
+});
 
 function ensureConfigExists() {
   if (fs.existsSync(CONFIG_PATH)) return { created: false };
@@ -238,11 +257,18 @@ function createWindow() {
   }
 
   // 焦点状态转给渲染层:窗口失焦时侧栏选中项退灰,这是 AppKit 源列表的标准表现
-  mainWindow.on('focus', () => send('window', { focused: true }));
+  mainWindow.on('focus', () => {
+    // 弹窗出来时主窗口不在前台会闪任务栏;人回来了就别再闪
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.flashFrame(false);
+    send('window', { focused: true });
+  });
   mainWindow.on('blur', () => send('window', { focused: false }));
 
   mainWindow.on('closed', () => {
     mainWindow = null;
+    // 弹窗是独立的顶层窗口,隐藏着也算一扇窗:不跟着关,window-all-closed 永远等不来,
+    // Windows 上应用就吊在后台退不掉
+    popup.destroy();
   });
 }
 
@@ -345,6 +371,7 @@ function registerIpc() {
     if (!['system', 'light', 'dark'].includes(mode)) throw new Error(`未知外观模式:${mode}`);
     nativeTheme.themeSource = mode;
     syncTitleBarOverlay();
+    popup.syncTheme();
     return { mode, dark: nativeTheme.shouldUseDarkColors };
   });
 
@@ -392,6 +419,20 @@ function registerIpc() {
     // 截断:通知内容来自行情与用户填的标的,不该由它决定弹窗多大
     new Notification({ title: title.slice(0, 120), body: body.slice(0, 300) }).show();
     return { shown: true };
+  });
+
+  // 异动 / 价位提醒的置顶弹窗(不抢焦点)。内容来自行情与用户填的标的,
+  // 由 popup-window.js 逐字段清洗后才交给弹窗页;调用方只能是主窗口
+  ipcMain.handle('popup-show', (event, payload) => {
+    if (!isTrustedSender(event)) throw new Error('调用来源不受信任');
+    return popup.push(payload);
+  });
+
+  // 弹窗页的按钮(关一条 / 全部关 / 查看)与高度上报:只认弹窗自己的主 frame。
+  // 「查看」会把主窗口叫到前台并跳页,来源不核对的话任何 frame 都能借道操纵主窗口
+  ipcMain.on('popup-action', (event, msg) => {
+    if (!popup.isPopupSender(event)) return;
+    popup.handleAction(msg);
   });
 
   ipcMain.handle('confirm', async (event, { title, message, detail, confirmLabel }) => {
@@ -538,11 +579,13 @@ if (!gotLock) {
   });
 
   app.on('window-all-closed', () => {
+    popup.destroy();
     if (engine) engine.stop();
     if (process.platform !== 'darwin') app.quit();
   });
 
   app.on('before-quit', () => {
+    popup.destroy();
     if (engine) engine.stop();
   });
 }

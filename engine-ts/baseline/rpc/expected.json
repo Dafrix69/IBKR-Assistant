@@ -926,6 +926,12 @@
       "tag": ""
      }
     ]
+   },
+   "watch": {
+    "symbol": "NVDA",
+    "price_on": true,
+    "anomaly_on": true,
+    "skipped": []
    }
   }
  },
@@ -937,7 +943,10 @@
     "updated_at": "<VAR>",
     "name": "AI 算力",
     "stocks": []
-   }
+   },
+   "dropped": [
+    "NVDA"
+   ]
   }
  },
  {
@@ -967,7 +976,9 @@
       "tag": "芯片"
      }
     ]
-   }
+   },
+   "skipped": [],
+   "dropped": []
   }
  },
  {
@@ -1029,6 +1040,12 @@
       "tag": "电力设备"
      }
     ]
+   },
+   "watch": {
+    "symbol": "VRT",
+    "price_on": true,
+    "anomaly_on": true,
+    "skipped": []
    }
   }
  },
@@ -1178,7 +1195,12 @@
  },
  {
   "result": {
-   "deleted": "<ID>"
+   "deleted": "<ID>",
+   "dropped": [
+    "NVDA",
+    "AMD",
+    "VRT"
+   ]
   }
  },
  {

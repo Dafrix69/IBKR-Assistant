@@ -59,6 +59,8 @@ const GLYPHS: Record<string, ReactNode> = {
       <rect x="8.7" y="8.7" width="4.9" height="4.9" rx="1.2" {...STROKE} />
     </>
   ),
+  // 心电折线(SF 的 waveform.path.ecg):优质股页盯的就是"突然跳一下"
+  'sf-pulse': <path d="M1.6 8.6h2.9l1.5-4.4 2.4 8.2 1.9-6.1 1.1 2.3h3" {...ROUND} />,
   'sf-ladder': (
     <>
       <line x1="2.6" y1="4" x2="7.2" y2="4" {...ROUND} strokeWidth={1.6} />

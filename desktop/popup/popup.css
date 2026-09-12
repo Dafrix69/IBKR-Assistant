@@ -1,0 +1,330 @@
+/*
+ * 提醒弹窗的样式(设计:优质股追踪 §C4)。和主界面同一套 macOS 语汇,但这里是实底:
+ * 置顶小窗没有 vibrancy 底材,半透明只会让背后的 TWS 透上来,字就看不清了。
+ *
+ *   · 系统字体栈、macOS 字号层级(正文 13 / 说明 12 / 注脚 11);
+ *   · 卡片:实底 + 0.5px 发丝边 + 克制的软投影,圆角 10;
+ *   · 涨跌色成对做成 token,「红涨绿跌」只翻 :root[data-updown] 的映射(与主界面 styles.css 一致);
+ *   · 深浅色跟 prefers-color-scheme(主进程的 nativeTheme 决定,和主窗口同步)。
+ */
+
+:root {
+  --blue: #007aff;
+  --green: #28cd41;
+  --orange: #ff9500;
+  --red: #ff3b30;
+  /* 文字着色用"可访问"变体:系统绿红当 11–12px 的字放在白底上对比度不够 */
+  --green-text: #248a3d;
+  --red-text: #d70015;
+  --blue-text: #0062d6;
+
+  --up: var(--green);
+  --down: var(--red);
+  --up-text: var(--green-text);
+  --down-text: var(--red-text);
+
+  --label: #1d1d1f;
+  --label-secondary: rgba(60, 60, 67, 0.74);
+  --label-tertiary: rgba(60, 60, 67, 0.5);
+
+  /* 与 popup-window.js 的 BG_LIGHT 一致:窗口先于页面画出来,两者不一致会闪一下 */
+  --bg-window: #f2f2f4;
+  --bg-card: #ffffff;
+  --bg-control: #ffffff;
+  --bg-control-hover: #f5f5f7;
+  --bg-fill: rgba(120, 120, 128, 0.12);
+  --bg-fill-strong: rgba(120, 120, 128, 0.2);
+  --separator: rgba(60, 60, 67, 0.18);
+  --card-edge: rgba(0, 0, 0, 0.08);
+
+  --shadow-card: 0 0.5px 1px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-control: 0 0.5px 1px rgba(0, 0, 0, 0.1);
+  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--blue) 35%, transparent);
+
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text",
+          "Segoe UI Variable Text", "Segoe UI",
+          "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei",
+          "Helvetica Neue", sans-serif;
+
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --blue: #0a84ff;
+    --green: #32d74b;
+    --orange: #ff9f0a;
+    --red: #ff453a;
+    --green-text: var(--green);
+    --red-text: var(--red);
+    --blue-text: #409cff;
+
+    --label: #f5f5f7;
+    --label-secondary: rgba(235, 235, 245, 0.7);
+    --label-tertiary: rgba(235, 235, 245, 0.45);
+
+    /* 与 popup-window.js 的 BG_DARK 一致 */
+    --bg-window: #232325;
+    --bg-card: #313134;
+    --bg-control: #48484c;
+    --bg-control-hover: #545458;
+    --bg-fill: rgba(120, 120, 128, 0.24);
+    --bg-fill-strong: rgba(120, 120, 128, 0.36);
+    --separator: rgba(84, 84, 88, 0.65);
+    --card-edge: rgba(255, 255, 255, 0.08);
+
+    --shadow-card: 0 0.5px 1px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-control: 0 0.5px 1px rgba(0, 0, 0, 0.35);
+  }
+}
+
+/* 「红涨绿跌」:只换映射,用 --up / --down 的地方自动跟着变 */
+:root[data-updown="red-up"] {
+  --up: var(--red);
+  --down: var(--green);
+  --up-text: var(--red-text);
+  --down-text: var(--green-text);
+}
+
+* { box-sizing: border-box; }
+
+html {
+  background: var(--bg-window);
+  /* 窗口高度封顶(工作区的 70%)之后由整页滚动,头部 sticky 留在顶上 */
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+body {
+  margin: 0;
+  color: var(--label);
+  font: 13px/1.4 var(--font);
+  -webkit-font-smoothing: antialiased;
+  cursor: default;
+  user-select: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: default;
+}
+button:focus { outline: none; }
+button:focus-visible { box-shadow: var(--focus-ring); }
+
+/* ================= 头部 ================= */
+.head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: 38px;
+  padding: 0 8px 0 14px;
+  background: var(--bg-window);
+  border-bottom: 0.5px solid var(--separator);
+}
+
+.head-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 590;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+}
+
+.head-dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--orange);
+}
+
+.head-count {
+  color: var(--label-secondary);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.head-clear {
+  flex: none;
+  height: 24px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--blue-text);
+  font-size: 12px;
+}
+.head-clear:hover { background: var(--bg-fill); }
+.head-clear:active { background: var(--bg-fill-strong); }
+
+/* ================= 列表 ================= */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 8px;
+  list-style: none;
+}
+
+.item {
+  --hl: var(--blue);
+  padding: 9px 8px 9px 12px;
+  background: var(--bg-card);
+  border: 0.5px solid var(--card-edge);
+  border-radius: 10px;
+  box-shadow: var(--shadow-card);
+}
+.item.tone-up { --hl: var(--up); }
+.item.tone-down { --hl: var(--down); }
+
+.item-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.sym {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+/* 类型胶囊:「放量 3.1×」「5分钟急涨 +2.90%」「上穿 5000」——按 tone 着色,淡底深字,不做实心彩条 */
+.tag {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 1px 7px;
+  border-radius: 5px;
+  font-size: 11.5px;
+  font-weight: 590;
+  font-variant-numeric: tabular-nums;
+  background: color-mix(in srgb, var(--blue) 12%, transparent);
+  color: var(--blue-text);
+}
+.tag.up {
+  background: color-mix(in srgb, var(--up) 15%, transparent);
+  color: var(--up-text);
+}
+.tag.down {
+  background: color-mix(in srgb, var(--down) 15%, transparent);
+  color: var(--down-text);
+}
+
+.spacer { flex: 1 1 0; min-width: 4px; }
+
+.time {
+  flex: none;
+  color: var(--label-tertiary);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.close {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--label-secondary);
+  font-size: 15px;
+  line-height: 1;
+}
+.close:hover { background: var(--bg-fill-strong); color: var(--label); }
+.close:active { background: var(--bg-fill-strong); }
+
+.item-bottom {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+  padding-right: 4px;
+}
+
+.body {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  color: var(--label-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+/* macOS 小号按钮:实底、发丝边、一丝投影 */
+.view {
+  flex: none;
+  height: 22px;
+  padding: 0 10px;
+  border: 0.5px solid var(--separator);
+  border-radius: 6px;
+  background: var(--bg-control);
+  box-shadow: var(--shadow-control);
+  font-size: 12px;
+}
+.view:hover { background: var(--bg-control-hover); }
+.view:active { background: var(--bg-fill-strong); }
+
+/* ================= 新条目:短暂高亮 ================= */
+/* 同一张列表里常常同时躺着好几条;刚进来的那几条闪一下,眼睛才知道该看哪 */
+.item.is-new { animation: arrive 1.8s ease-out both; }
+
+@keyframes arrive {
+  0% {
+    transform: translateY(-4px);
+    opacity: 0.4;
+    background: color-mix(in srgb, var(--hl) 18%, var(--bg-card));
+    border-color: color-mix(in srgb, var(--hl) 50%, transparent);
+  }
+  12% { transform: none; opacity: 1; }
+  40% {
+    background: color-mix(in srgb, var(--hl) 18%, var(--bg-card));
+    border-color: color-mix(in srgb, var(--hl) 50%, transparent);
+  }
+  100% { background: var(--bg-card); border-color: var(--card-edge); }
+}
+
+/* 减弱动态效果:不位移,只留颜色的淡出(颜色变化不算"动") */
+@keyframes arrive-still {
+  0%, 40% {
+    background: color-mix(in srgb, var(--hl) 18%, var(--bg-card));
+    border-color: color-mix(in srgb, var(--hl) 50%, transparent);
+  }
+  100% { background: var(--bg-card); border-color: var(--card-edge); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .item.is-new { animation-name: arrive-still; }
+}
+
+/* 滚动条:细、贴边,别在 360 宽的小窗里占一条轨道 */
+::-webkit-scrollbar { width: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--bg-fill-strong);
+  border: 3px solid transparent;
+  border-radius: 5px;
+  background-clip: content-box;
+}

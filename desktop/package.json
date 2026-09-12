@@ -41,6 +41,9 @@
       "main.js",
       "preload.js",
       "rpc-client.js",
+      "popup-window.js",
+      "popup-preload.js",
+      "popup/**/*",
       "renderer-react/dist/**/*"
     ],
     "extraResources": [

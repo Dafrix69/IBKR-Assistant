@@ -12,7 +12,7 @@
  *   Feed          通知流
  *   StatTile      数字瓦片
  */
-import { Children, type ReactNode, useState } from 'react';
+import { Children, type ReactNode, useId, useState } from 'react';
 import { Alert, Badge, Card, Collapse, Empty, InputNumber, List, Skeleton, Spin, Statistic, Switch } from 'antd';
 import { CheckCircleFilled, CloseCircleFilled, ExclamationCircleFilled, RightOutlined } from '@ant-design/icons';
 
@@ -172,17 +172,20 @@ export function SwitchRow({
   before?: ReactNode;
   className?: string;
 }) {
+  // label 必须用 htmlFor 指名开关:不指名时它绑的是**第一个**可标注的后代,
+  // 有 before 按钮的行里那就是「试听 / 试弹」——点一下文字,拨不动开关,反倒弹出一扇示例窗
+  const id = useId();
   return (
     <List.Item className={cx('group-row', className)}>
       {/* 整行是一个 label:点文字也能拨开关,和 System Settings 一样 */}
-      <label className="switch-row">
+      <label className="switch-row" htmlFor={id}>
         <span className="group-label">
           {label}
           {sub ? <span className="sub">{sub}</span> : null}
         </span>
         <span className="group-control">
           {before}
-          <Switch checked={checked} onChange={onChange} disabled={disabled} />
+          <Switch id={id} checked={checked} onChange={onChange} disabled={disabled} />
         </span>
       </label>
     </List.Item>

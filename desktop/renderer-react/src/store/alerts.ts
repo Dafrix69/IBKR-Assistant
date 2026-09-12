@@ -3,8 +3,10 @@
  * 唯一特别的地方:警告轮询**不挂在当前页上**——切走了还得报,不然就没用了。
  */
 import { useSyncExternalStore } from 'react';
-import { dafri, errorMessage } from '../bridge';
+import { dafri, errorMessage, type PopupItem } from '../bridge';
+import { toneDirection } from '../lib/alertRules';
 import { showBanner } from './banner';
+import { showAlertPopup } from './popup';
 import { getStatus } from './status';
 
 export interface AlertLevel {
@@ -108,26 +110,38 @@ function audioContext(): AudioContext | null {
   return audioCtx;
 }
 
-/** 上穿升调、下破降调——不用看屏幕就知道方向。 */
-export function playAlertTone(direction: 'up' | 'down' | undefined): void {
-  if (!soundOn) return;
+/**
+ * 上穿 / 急涨升调、下破 / 急跌降调——不用看屏幕就知道方向;没有方向(放量)是同一个音响两下。
+ * 用户原话"声音太小了":峰值从 0.22 提到 0.6,正弦换三角波(泛音多,同样音量听着更亮),
+ * 每个音拉长到 0.22 秒、音间 0.24 秒——原来 0.15 秒的短"嘀"在嘈杂环境里一晃就过去了。
+ * force:「试听」按钮用,不看开关。
+ */
+export function playAlertTone(direction: 'up' | 'down' | null | undefined, force = false): void {
+  if (!soundOn && !force) return;
   const ctx = audioContext();
   if (!ctx) return;
-  const notes = direction === 'up' ? [587.33, 880.0] : [880.0, 587.33];
+  const notes = direction === 'up' ? [587.33, 880.0] : direction === 'down' ? [880.0, 587.33] : [739.99, 739.99];
   notes.forEach((freq, i) => {
-    const at = ctx.currentTime + i * 0.16;
+    const at = ctx.currentTime + i * 0.24;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    osc.type = 'sine';
+    osc.type = 'triangle';
     osc.frequency.setValueAtTime(freq, at);
-    // 包络必须有:直接开关振荡器会有明显的咔哒声
+    // 包络必须有:直接开关振荡器会有明显的咔哒声。起音 20ms、顶住到 0.1 秒再收,响度主要靠这段平台
     gain.gain.setValueAtTime(0.0001, at);
-    gain.gain.exponentialRampToValueAtTime(0.22, at + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.15);
+    gain.gain.exponentialRampToValueAtTime(0.6, at + 0.02);
+    gain.gain.setValueAtTime(0.6, at + 0.1);
+    gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.22);
     osc.connect(gain).connect(ctx.destination);
     osc.start(at);
-    osc.stop(at + 0.18);
+    osc.stop(at + 0.23);
   });
+}
+
+/** 「试听」:降调、升调各一遍,不看开关。 */
+export function previewAlertTone(): void {
+  playAlertTone('down', true);
+  setTimeout(() => playAlertTone('up', true), 650);
 }
 
 export function setSoundEnabled(on: boolean): void {
@@ -153,11 +167,42 @@ export function useSoundEnabled(): boolean {
   );
 }
 
-/** 声音 + 系统通知。两条都走:声音提醒"有事",通知告诉你"什么事"。 */
-async function announce(event: AlertEvent): Promise<void> {
-  playAlertTone(event.direction);
+function alertTitle(event: AlertEvent): string {
+  return `${event.symbol || ''} ${event.direction === 'up' ? '上穿' : '下破'} ${event.price}`;
+}
+
+function toPopupItem(event: AlertEvent): PopupItem {
+  const symbol = event.symbol || '';
+  const at = event.at || Math.floor(Date.now() / 1000);
+  return {
+    id: `level:${symbol}:${event.price}:${at}`,
+    kind: 'level',
+    symbol,
+    title: alertTitle(event),
+    body: event.text || '',
+    tone: event.direction === 'up' ? 'up' : event.direction === 'down' ? 'down' : 'info',
+    at: at * 1000,
+    page: 'sectors',
+  };
+}
+
+/**
+ * 声音 + 弹窗。声音提醒"有事",弹窗告诉你"什么事"——置顶小窗、不抢焦点,和优质股的异动提醒是同一扇窗。
+ *
+ * 一轮里报出来的一**批**走一次:提示音一批只响一声(峰值提到 0.6 之后,两条提醒各响一遍会叠在一起削顶,
+ * 听起来是一声破音),弹窗也一次交过去。弹窗没收下的(关着、通道坏了、超了单次上限)合成一条系统通知。
+ */
+async function announce(events: AlertEvent[]): Promise<void> {
+  if (!events.length) return;
+  playAlertTone(toneDirection(events));
+  const { dropped } = await showAlertPopup(events.map(toPopupItem));
+  if (dropped <= 0) return;
+  const rest = events.slice(Math.max(0, events.length - dropped));
+  const one = rest.length === 1;
+  const title = one ? alertTitle(rest[0]) : `${rest.length} 条价位提醒:${[...new Set(rest.map((e) => e.symbol || ''))].join('、')}`;
+  const body = one ? rest[0].text || '' : rest.map(alertTitle).join(';');
   try {
-    await dafri.notify(`${event.symbol || ''} ${event.direction === 'up' ? '上穿' : '下破'} ${event.price}`, event.text || '');
+    await dafri.notify(title, body);
   } catch (err) {
     console.warn('系统通知失败', err);
   }
@@ -227,7 +272,7 @@ export async function pollAlerts(): Promise<void> {
   try {
     const result = await dafri.pollAlerts();
     const fired: AlertEvent[] = result?.fired || [];
-    for (const event of fired) await announce(event);
+    await announce(fired);
     if (fired.length) {
       set({ feed: [...fired, ...snap.feed].slice(0, 50) });
       await loadAlerts();

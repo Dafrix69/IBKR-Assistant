@@ -44,6 +44,79 @@ const MACRO = {rows:[
   {key:'gold', label:'黄金', instrument:'GLD', last:312.44, change_pct:0.55, source:'futu'},
 ], fetched_at:'2026-08-21T13:42:00Z'};
 
+// ---- 优质股追踪 ----------------------------------------------------------------
+// 形状照 rpc.ts 的 quality.list:库里的行 + 引擎内存里最近一轮的指标;事件的 at 是秒。
+// 时间按"现在"往回推:截图里"最近异动"显示的就是当天的时分秒,和真用时一样。
+const Q_NOW = Math.floor(Date.now() / 1000);
+const Q_CONFIG = {rvol_tiers:[2,3,5], burst_ratio:4, window_min:5, spike_sigma:4, spike_min_pct:1.0,
+  spike_fixed_pct:1.5, day_sigma_tiers:[2,3,4], day_fixed_tiers:[3,5,8], cooldown_min:10};
+const qEvent = (symbol, kind, direction, tier, ago, value, threshold, sigma, price, change_pct, basis, title, text) => ({
+  id: `${symbol}:${kind}:${direction || '-'}:${tier == null ? '-' : tier}:${Q_NOW - ago}`, at: Q_NOW - ago,
+  symbol, kind, direction, value, threshold, tier, sigma, price, change_pct, basis, title, text});
+// block_share:窗口里最大一步占窗口量的比例(只有样本窗口才有)。引擎判放量看的是去掉这一步之后还有几倍
+const qMetrics = (m) => Object.assign({last:null, change_pct:null, rvol:null, burst:null, block_share:0.1, ret_window_pct:null,
+  sigma_window_pct:null, sigma_day_pct:null, basis_volume:'avg_volume', basis_sigma:'hist_vol', window_ready:true, delayed:false}, m);
+// 价位提醒的盯单:开关(setPoolWatch)会真的往里加 / 删,所以是可变的模块级数组
+let WATCHES = [{id:'w1',symbol:'SPY',step:5,enabled:1,last_price:766.78,
+    expiry:'',wall:null,levels:[
+      {price:765,label:'整数关口',source:'round',kind:'support',state:{armed:true}},
+      {price:770,label:'整数关口',source:'round',kind:'resistance',state:{armed:true}}]},
+    // 有期权墙的一只:8 个价位,其中两个同价(215)——看梯子的避让
+    {id:'w2',symbol:'NVDA',step:5,enabled:1,last_price:219.74,expiry:'2026-09-11',
+     wall:{net_gex:1.2e9,regime:'positive',max_pain:{strike:215},pc_ratio_oi:0.86,days_to_expiry:5,spot_source:'quote'},
+     levels:[
+      {price:230,label:'看涨持仓墙',source:'call_wall',kind:'resistance',state:{armed:true}},
+      {price:225,label:'看涨成交墙',source:'call_vol_wall',kind:'resistance',state:{armed:true}},
+      {price:220,label:'整数关口',source:'round',kind:'resistance',state:{armed:true}},
+      {price:221.3,label:'20日均线',source:'ma20',kind:'resistance',state:{armed:true}},
+      {price:218.6,label:'Gamma 翻转',source:'gamma_flip',kind:'neutral',state:{armed:true}},
+      {price:215,label:'最大痛点',source:'max_pain',kind:'neutral',state:{armed:true}},
+      {price:215,label:'整数关口',source:'round',kind:'support',state:{armed:true}},
+      {price:210,label:'看跌持仓墙',source:'put_wall',kind:'support',state:{armed:true}},
+      {price:196.4,label:'60日线',source:'ma60',kind:'support',state:{armed:true}}]}];
+
+const QUALITY = {
+  max: 30,
+  config: Q_CONFIG,
+  monitor: {running:true, interval_ms:5000, ticks:812, last_at:null, last_ms:143, last_error:'',
+    session:'rth', connected:true, supported:true, note:''},
+  stocks: [
+    // 放量达档、急涨、大涨都报过的一只
+    {id:'q1', created_at:'2026-08-18T14:00:00Z', updated_at:'2026-08-21T13:41:00Z', symbol:'RKLB',
+     note:'火箭发射龙头,订单排到 2028 年', enabled:1, states:{},
+     events:[
+       qEvent('RKLB','day_move','up',1,1980,6.08,6.04,2.01,58.37,6.08,'hist_vol','RKLB 大涨 +6.08%','较昨收 +6.08%,约 2.0σ(第 1 档,阈值 6.04%),现价 58.37'),
+       qEvent('RKLB','rvol',null,3,1260,3.12,3,null,58.1,5.62,'avg_volume','RKLB 放量 3.1×','当日成交量已达同时段常态的 3.1×(第 3× 档),现价 58.1(+5.62%)'),
+       qEvent('RKLB','spike','up',null,420,2.91,1.44,8.1,58.42,6.12,'hist_vol','RKLB 5分钟急涨 +2.91%','5 分钟 +2.91%,约 8.1σ(阈值 1.44%),现价 58.42'),
+       qEvent('RKLB','burst','up',null,140,6.3,4,null,58.42,6.12,'avg_volume','RKLB 5分钟放量 6.3×','近 5 分钟成交量是同时段常态的 6.3×,5 分钟 +2.91%,现价 58.42'),
+     ],
+     metrics: qMetrics({last:58.42, change_pct:6.12, rvol:3.4, burst:6.3, block_share:0.12, ret_window_pct:2.91, sigma_window_pct:0.36, sigma_day_pct:3.02})},
+    // 平静的一只:所有数字都在,都没到档
+    {id:'q2', created_at:'2026-08-18T14:01:00Z', updated_at:'2026-08-21T13:41:00Z', symbol:'NVDA',
+     note:'AI 算力核心,数据中心收入占八成', enabled:1, states:{}, events:[],
+     metrics: qMetrics({last:219.74, change_pct:0.42, rvol:1.08, burst:0.92, ret_window_pct:0.08, sigma_window_pct:0.21, sigma_day_pct:2.2})},
+    // 大跌 + 放量;窗口量比看着 5.3× 却是一笔大宗撑起来的(去掉它只有 1.0×),引擎不会报,表里也不该橙
+    {id:'q3', created_at:'2026-08-19T15:00:00Z', updated_at:'2026-08-21T13:41:00Z', symbol:'UBER',
+     note:'出行平台,自由现金流转正', enabled:1, states:{},
+     events:[
+       qEvent('UBER','day_move','down',1,2400,-3.71,-3.66,-2.03,88.26,-3.71,'hist_vol','UBER 大跌 −3.71%','较昨收 −3.71%,约 2.0σ(第 1 档,阈值 3.66%),现价 88.26'),
+       qEvent('UBER','rvol',null,2,900,2.05,2,null,88.2,-3.76,'avg_volume','UBER 放量 2.1×','当日成交量已达同时段常态的 2.1×(第 2× 档),现价 88.2(−3.76%)'),
+     ],
+     metrics: qMetrics({last:88.15, change_pct:-3.82, rvol:2.31, burst:5.3, block_share:0.82, ret_window_pct:-0.64, sigma_window_pct:0.19, sigma_day_pct:1.83})},
+    // 停用的一只:不进循环,没有指标;事件是前一天的
+    {id:'q4', created_at:'2026-08-19T15:05:00Z', updated_at:'2026-08-20T19:00:00Z', symbol:'AAPL',
+     note:'', enabled:0, states:{},
+     events:[qEvent('AAPL','day_move','down',1,86400 + 3600,-2.31,-2.28,-2.02,226.4,-2.31,'hist_vol','AAPL 大跌 −2.31%','较昨收 −2.31%,约 2.0σ(第 1 档,阈值 2.28%),现价 226.4')],
+     metrics:null, metrics_at:null},
+    // 延迟行情、流里没有均量也没有历史波动率:窗口量比按当日节奏估,急涨急跌按固定阈值
+    {id:'q5', created_at:'2026-08-20T14:30:00Z', updated_at:'2026-08-21T13:41:00Z', symbol:'IREN',
+     note:'矿企转 AI 数据中心', enabled:1, states:{},
+     events:[qEvent('IREN','spike','up',null,600,1.62,1.5,null,14.27,2.35,'fixed','IREN 5分钟急涨 +1.62%','5 分钟 +1.62%(无历史波动率,按固定 1.5%),现价 14.27')],
+     // 窗口不是按样本差算的(刚加进来):block_share 没有,这一格只作参考
+     metrics: qMetrics({last:14.27, change_pct:2.35, rvol:null, burst:2.1, block_share:null, ret_window_pct:1.62, basis_volume:'session_pace', basis_sigma:'fixed', delayed:true})},
+  ],
+};
+
 window.dafri = {
   platform: 'win32',
   status: async () => ({
@@ -242,23 +315,7 @@ window.dafri = {
     note:'', liquidity:{spread_bps:0.1,spread_grade:'很好',bid_depth:4695,ask_depth:5070,
       levels:5,imbalance_pct:-3.8}}),
   optionWall: async () => { throw new Error('富途返回「没有美股期权行情权限」。这份权限和股票行情是分开的。'); },
-  listAlerts: async () => ({watches:[{id:'w1',symbol:'SPY',step:5,enabled:1,last_price:766.78,
-    expiry:'',wall:null,levels:[
-      {price:765,label:'整数关口',source:'round',kind:'support',state:{armed:true}},
-      {price:770,label:'整数关口',source:'round',kind:'resistance',state:{armed:true}}]},
-    // 有期权墙的一只:8 个价位,其中两个同价(215)——看梯子的避让
-    {id:'w2',symbol:'NVDA',step:5,enabled:1,last_price:219.74,expiry:'2026-09-11',
-     wall:{net_gex:1.2e9,regime:'positive',max_pain:{strike:215},pc_ratio_oi:0.86,days_to_expiry:5,spot_source:'quote'},
-     levels:[
-      {price:230,label:'看涨持仓墙',source:'call_wall',kind:'resistance',state:{armed:true}},
-      {price:225,label:'看涨成交墙',source:'call_vol_wall',kind:'resistance',state:{armed:true}},
-      {price:220,label:'整数关口',source:'round',kind:'resistance',state:{armed:true}},
-      {price:221.3,label:'20日均线',source:'ma20',kind:'resistance',state:{armed:true}},
-      {price:218.6,label:'Gamma 翻转',source:'gamma_flip',kind:'neutral',state:{armed:true}},
-      {price:215,label:'最大痛点',source:'max_pain',kind:'neutral',state:{armed:true}},
-      {price:215,label:'整数关口',source:'round',kind:'support',state:{armed:true}},
-      {price:210,label:'看跌持仓墙',source:'put_wall',kind:'support',state:{armed:true}},
-      {price:196.4,label:'60日线',source:'ma60',kind:'support',state:{armed:true}}]}]}),
+  listAlerts: async () => ({watches: WATCHES}),
   createAlert: async()=>({}), deleteAlert: async()=>({}), refreshAlert: async()=>({}),
   pollAlerts: async()=>({fired:[],checked:[]}),
   reviewCandidates: async () => ({"synced": 4, "ibkr_available": true, "fills_stored": 8, "candidates": [{"id": "demo-fly", "source": "ibkr", "created_at": "2026-08-12T14:35:00+00:00", "intent_summary": "买入 1 张 SPX 7600/7615/7630 看跌蝴蝶", "account": "模拟", "final_status": "filled", "status": "Filled", "filled": true, "symbol": "SPX", "expiry": "2026-08-12", "right": "看跌", "strikes": [7600, 7615, 7630], "width": 15, "action": "BUY", "qty": 1, "price": 1.75, "price_estimated": false}, {"id": "demo-fly-2", "source": "local", "created_at": "2026-08-11T15:02:00+00:00", "intent_summary": "买入 2 张 SPX 7550/7575/7600 看涨蝴蝶", "account": "主账户", "final_status": null, "status": "ValidatedOnly", "filled": false, "symbol": "SPX", "expiry": "2026-08-11", "right": "看涨", "strikes": [7550, 7575, 7600], "width": 25, "action": "BUY", "qty": 2, "price": 2.4, "price_estimated": true}]}),
@@ -311,8 +368,79 @@ window.dafri = {
       {kind:'sl', label:'托管止损 200.0', quantity:100, aux_price:200.0, order_id:902},
       {kind:'trail', label:'托管跟踪止损 5%', quantity:100, trailing_percent:5, order_id:903}]}],
     blocked:[], quote_maybe_delayed:true}),
+  // 优质股追踪:增删改就地改 QUALITY,预览台里点一点也有反应
+  listQuality: async () => {
+    const at = new Date(Date.now() - 2000).toISOString();
+    return {...QUALITY, monitor: {...QUALITY.monitor, last_at: at},
+      stocks: QUALITY.stocks.map((s) => ({...s, metrics_at: s.metrics ? at : null}))};
+  },
+  addQuality: async (symbol, note) => {
+    const sym = String(symbol || '').trim().toUpperCase();
+    if (QUALITY.stocks.some((s) => s.symbol === sym)) throw new Error(`已经在追踪 ${sym} 了`);
+    const now = new Date().toISOString();
+    const stock = {id:'q' + Date.now(), created_at:now, updated_at:now, symbol:sym, note:String(note || '').slice(0, 60),
+      enabled:1, states:{}, events:[], metrics:null, metrics_at:null};
+    QUALITY.stocks.push(stock);
+    return {stock};
+  },
+  updateQuality: async (spec) => {
+    const s = QUALITY.stocks.find((x) => x.id === spec.id);
+    if (!s) throw new Error('没有这条追踪');
+    if (spec.enabled !== undefined) s.enabled = spec.enabled ? 1 : 0;
+    if (spec.note !== undefined) s.note = String(spec.note).slice(0, 60);
+    return {stock: s};
+  },
+  removeQuality: async (id) => {
+    const n = QUALITY.stocks.length;
+    QUALITY.stocks = QUALITY.stocks.filter((x) => x.id !== id);
+    return {deleted: n - QUALITY.stocks.length};
+  },
+  // 股票池的两个开关:盯价位 = alert_watches 里有这一行,盯异动 = quality_stocks 里有。
+  // 上限(各 30 只)由引擎判,开不上的在 skipped 里说原因——预览台照同一套演一遍。
+  setPoolWatch: async (symbol, patch) => {
+    const sym = String(symbol || '').trim().toUpperCase();
+    const skipped = [];
+    if (patch && patch.anomaly !== undefined) {
+      if (patch.anomaly) {
+        if (QUALITY.stocks.length >= (QUALITY.max || 30)) skipped.push('异动已达 ' + (QUALITY.max || 30) + ' 只上限,' + sym + ' 没打开');
+        else if (!QUALITY.stocks.some((s) => s.symbol === sym)) {
+          const now = new Date().toISOString();
+          QUALITY.stocks.push({id:'q' + Date.now(), created_at:now, updated_at:now, symbol:sym, note:'', enabled:1, states:{}, events:[], metrics:null, metrics_at:null, levels_status:'pending'});
+        }
+      } else QUALITY.stocks = QUALITY.stocks.filter((s) => s.symbol !== sym);
+    }
+    if (patch && patch.price !== undefined) {
+      if (patch.price) {
+        if (!WATCHES.some((w) => w.symbol === sym)) WATCHES.push({id:'w' + Date.now(), symbol:sym, step:5, enabled:1, levels:[], events:[], last_price:null, wall:null});
+      } else WATCHES = WATCHES.filter((w) => w.symbol !== sym);
+    }
+    return {symbol: sym, price_on: WATCHES.some((w) => w.symbol === sym), anomaly_on: QUALITY.stocks.some((s) => s.symbol === sym), skipped};
+  },
+  setQualityConfig: async (config) => { QUALITY.config = {...QUALITY.config, ...config}; return {config: QUALITY.config}; },
+  // 置顶弹窗在主进程里,预览台没有:记下来就好(window.__dafriPopups 可在控制台里看)。
+  // 单次上限照主进程的 MAX_INCOMING:超出的如实报成 dropped,界面要把这几条退回系统通知
+  showPopup: async (items, updown) => {
+    (window.__dafriPopups = window.__dafriPopups || []).push({items, updown});
+    const n = Array.isArray(items) ? items.length : 0;
+    return {shown: Math.min(n, 20), dropped: Math.max(0, n - 20)};
+  },
   setTheme: async()=>({}), pickExportPath: async()=>null,
   confirm: async()=>true, notify: async()=>({}),
-  on: () => () => {},
+  // 预览台里也把事件通道接起来:主进程发来的跳页(弹窗的「查看」)、引擎事件都能在控制台里手动发一条,
+  //   window.__dafriEmit('menu', {action:'navigate', page:'quality', symbol:'UBER'})
+  // ——不然"从弹窗跳回某一行"这条路在预览台里根本走不到,只能等真机才发现它坏了。
+  on: (channel, handler) => {
+    const list = (MOCK_LISTENERS[channel] = MOCK_LISTENERS[channel] || []);
+    list.push(handler);
+    return () => {
+      const i = list.indexOf(handler);
+      if (i >= 0) list.splice(i, 1);
+    };
+  },
+};
+
+const MOCK_LISTENERS = {};
+window.__dafriEmit = (channel, payload) => {
+  (MOCK_LISTENERS[channel] || []).forEach((h) => h(payload));
 };
 

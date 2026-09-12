@@ -1,3 +1,4 @@
+const FULL_POOL = true;
 
 // 预览页可能以 data: URL 加载(opaque origin),那时 localStorage 会抛 SecurityError,
 // app.js 的顶层执行会就此中断。垫一个内存版,行为够用。
@@ -43,6 +44,63 @@ const MACRO = {rows:[
   {key:'dxy', label:'美元指数', instrument:'DXY', last:98.42, change_pct:0.08, source:'public'},
   {key:'gold', label:'黄金', instrument:'GLD', last:312.44, change_pct:0.55, source:'futu'},
 ], fetched_at:'2026-08-21T13:42:00Z'};
+
+// ---- 优质股追踪:塞满 30 只、备注顶到 60 字、数值取极端,看表格和心跳行扛不扛得住 ----------------
+const Q_NOW = Math.floor(Date.now() / 1000);
+const Q_SYMS = ['RKLB','NVDA','UBER','AAPL','IREN','TSLA','AMD','AVGO','CEG','VST','PLTR','SMCI','MSTR','COIN','HOOD',
+  'SOFI','NBIS','CRWV','OKLO','SMR','ASTS','LUNR','IONQ','RGTI','QBTS','APP','ARM','MU','BRK.B','GME'];
+const Q_LONG_NOTE = '备注写满六十个字:订单饱满、现金流转正、管理层执行力强、行业景气度高、估值仍在合理区间、机构持续加仓中,护城河也够深。';
+const QUALITY_STRESS = {
+  max: 30,
+  config: {rvol_tiers:[2,3,5], burst_ratio:4, window_min:10, spike_sigma:4, spike_min_pct:1.0,
+    spike_fixed_pct:1.5, day_sigma_tiers:[2,3,4], day_fixed_tiers:[3,5,8], cooldown_min:10},
+  monitor: {running:true, interval_ms:5000, ticks:98231, last_at:null, last_ms:4870,
+    last_error:'读不到行情:TWS 返回 10197(别处登录了同一账户,行情线路被抢走了——关掉另一台机器或手机上的 TWS / IBKR App 再连)',
+    session:'rth', connected:true, supported:true, note:'延迟行情:提醒会晚约 15 分钟'},
+  stocks: Q_SYMS.map((symbol, i) => {
+    const extreme = i % 5;
+    const last = [0.0042, 12345.67, 3.5, 987.654, 58.42][extreme];
+    const chg = [245.12, -18.33, 0, -0.01, 6.12][extreme];
+    const events = [];
+    const n = i < 3 ? 20 : i % 4;
+    for (let k = 0; k < n; k++) {
+      const ago = 60 * (k * 7 + i);
+      const up = (k + i) % 2 === 0;
+      const kind = ['rvol', 'burst', 'spike', 'day_move'][k % 4];
+      const title = kind === 'rvol' ? `${symbol} 放量 ${(48.7 - k).toFixed(1)}×`
+        : kind === 'burst' ? `${symbol} 10分钟放量 ${(120.4 - k).toFixed(1)}×`
+        : kind === 'spike' ? `${symbol} 10分钟${up ? '急涨 +' : '急跌 −'}${(18.33 - k * 0.1).toFixed(2)}%`
+        : `${symbol} ${up ? '大涨 +' : '大跌 −'}${(245.12 - k).toFixed(2)}%`;
+      events.push({id:`${symbol}:${kind}:${up ? 'up' : 'down'}:${k}:${Q_NOW - ago}`, at:Q_NOW - ago, symbol, kind,
+        direction: kind === 'rvol' ? null : (up ? 'up' : 'down'), value:48.7, threshold:5, tier:k % 3 + 1, sigma:null,
+        price:last, change_pct:chg, basis:'avg_volume', title,
+        text:`这是一条很长的详情文字,用来看表格悬停提示与通知流会不会被撑破:当日成交量已达同时段常态的 48.7×(第 5× 档),现价 ${last}(${chg >= 0 ? '+' : ''}${chg}%),近 10 分钟 +18.33%`});
+    }
+    events.reverse();
+    return {
+      id:`qs${i}`, created_at:'2026-08-18T14:00:00Z', updated_at:'2026-08-21T13:41:00Z', symbol,
+      note: i % 3 === 0 ? Q_LONG_NOTE.slice(0, 60) : (i % 3 === 1 ? '' : '短备注'), enabled: i % 7 === 6 ? 0 : 1, states:{},
+      events,
+      // BRK.B:代码写法 IB 不认,这一轮取不到行情——界面要说"取不到",不能是一行"—"
+      quote_error: symbol === 'BRK.B' ? '未知标的:IB 查不到 BRK.B 这个合约(IB 的写法是 BRK B)' : null,
+      metrics: i % 7 === 6 || symbol === 'BRK.B' ? null : {
+        last, change_pct: chg,
+        rvol: [48.7, null, 0.01, 12.5, 3.4][extreme],
+        burst: [120.4, 0, null, 999.9, 6.3][extreme],
+        // 一笔大单占窗口的比例:0.9 是"全靠一笔撑起来的",null 是窗口还不是按样本算的
+        block_share: [0.05, 0.9, null, 0.5, 0.12][extreme],
+        ret_window_pct: [18.33, -17.9, null, 0, 2.91][extreme],
+        sigma_window_pct: [0.05, 2.4, null, 0.3, 0.36][extreme],
+        sigma_day_pct: [0.31, 12.6, null, 1.8, 3.02][extreme],
+        basis_volume: ['avg_volume', 'session_pace', null, 'avg_volume', 'avg_volume'][extreme],
+        basis_sigma: extreme === 2 ? 'fixed' : 'hist_vol',
+        window_ready: extreme !== 2,
+        delayed: i % 2 === 1,
+      },
+      metrics_at: null,
+    };
+  }),
+};
 
 window.dafri = {
   platform: 'win32',
@@ -264,6 +322,32 @@ window.dafri = {
       {kind:'sl', label:'托管止损 200.0', quantity:100, aux_price:200.0, order_id:902},
       {kind:'trail', label:'托管跟踪止损 5%', quantity:100, trailing_percent:5, order_id:903}]}],
     blocked:[], quote_maybe_delayed:true}),
+  listQuality: async () => {
+    const at = new Date(Date.now() - 2000).toISOString();
+    return {...QUALITY_STRESS, monitor: {...QUALITY_STRESS.monitor, last_at: at}};
+  },
+  addQuality: async () => { throw new Error('最多追踪 30 只'); },
+  updateQuality: async (spec) => {
+    const s = QUALITY_STRESS.stocks.find((x) => x.id === spec.id);
+    if (!s) throw new Error('没有这条追踪');
+    if (spec.enabled !== undefined) s.enabled = spec.enabled ? 1 : 0;
+    return {stock: s};
+  },
+  removeQuality: async (id) => {
+    QUALITY_STRESS.stocks = QUALITY_STRESS.stocks.filter((x) => x.id !== id);
+    return {deleted: 1};
+  },
+  // 股票池的两个开关(预览台里只回执,不改假数据:空态就该一直空,压测那份就该一直满)
+  setPoolWatch: async (symbol, patch) => ({symbol: String(symbol||'').trim().toUpperCase(),
+    price_on: Boolean(patch && patch.price), anomaly_on: Boolean(patch && patch.anomaly),
+    skipped: patch && patch.anomaly && FULL_POOL ? ['异动已达 30 只上限,' + String(symbol).toUpperCase() + ' 没打开'] : []}),
+  setQualityConfig: async (config) => ({config: {...QUALITY_STRESS.config, ...config}}),
+  showPopup: async (items, updown) => {
+    (window.__dafriPopups = window.__dafriPopups || []).push({items, updown});
+    // 主进程单次只收前 20 条,剩下的如实报成 dropped:界面要把这几条退回系统通知
+    const n = Array.isArray(items) ? items.length : 0;
+    return {shown: Math.min(n, 20), dropped: Math.max(0, n - 20)};
+  },
   setTheme: async()=>({}), pickExportPath: async()=>null,
   confirm: async()=>true, notify: async()=>({}),
   on: () => () => {},

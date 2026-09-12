@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="zh-CN" data-updown="green-up">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'none'; form-action 'none'; base-uri 'none'">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>异动提醒</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main id="app">
+    <header class="head">
+      <h1 class="head-title"><span class="head-dot" aria-hidden="true"></span>异动提醒<span class="head-count"> · <span id="count">0 条</span></span></h1>
+      <button type="button" id="clear-all" class="head-clear">全部关闭</button>
+    </header>
+    <ol id="list" class="list" aria-live="polite"></ol>
+  </main>
+  <script src="popup.js"></script>
+</body>
+</html>

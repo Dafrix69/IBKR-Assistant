@@ -1643,6 +1643,17 @@ export class TradingEngine {
    *  2026-09-08 模拟盘实测:收到 399「为了不与相关挂单交叉,您的委托单被拒」的卖单照样成交了;
    *  当成拒单会让记录停在 ibkr_error、后面的成交回报接不上。 */
   private static readonly IB_WARNING_CODES: ReadonlySet<number> = new Set([399, 404]);
+  /**
+   * 行情订阅的错误码,永远不属于某一张订单。
+   *
+   * IB 的订单 id 与请求 id 共用一个计数器,而 `errorEvent` 只给 reqId。行情订阅被拒(没权限、
+   * 别处登录占着实时行情)时这里会收到一条 reqId > 0 的错误,配不上任何记录就被存进
+   * `earlyOrderErrors` 留 60 秒——这 60 秒里发出去的单只要 id 撞上,就会被判成 ibkr_error 终态。
+   * 异动监控每 60 秒重订一次被拒的流(最多 30 只),撞上的概率不再是理论值(2026-09-12 审出)。
+   */
+  private static readonly IB_MARKET_DATA_CODES: ReadonlySet<number> = new Set([
+    101, 300, 309, 316, 317, 322, 354, 10089, 10090, 10091, 10167, 10168, 10185, 10197,
+  ]);
 
   /** 订单级 errorEvent → 终态落库(110 价格档位、201 保证金、203 无权限只走这条路)。 */
   onIbError(reqId: unknown, errorCode: unknown, errorString: unknown): void {
@@ -1650,6 +1661,7 @@ export class TradingEngine {
     const req = Math.trunc(Number(reqId));
     if (!Number.isFinite(code) || !Number.isFinite(req)) return;
     if (req <= 0) return; // 系统级消息,与具体订单无关
+    if (TradingEngine.IB_MARKET_DATA_CODES.has(code)) return; // 行情订阅的错误,不是订单的
     const message = String(errorString ?? "");
     const informational = code >= TradingEngine.IB_INFO_MIN && code < TradingEngine.IB_INFO_MAX;
     const recordId = this.orderIndex.get(req);
