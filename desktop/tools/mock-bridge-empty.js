@@ -1,3 +1,4 @@
+const FULL_POOL = false;
 // 首次启动的样子:引擎在跑,但什么都还没配、什么都还没发生。
 //
 // 这是新用户唯一会看到的状态,却也是开发时最少看到的状态——手上有数据的时候
@@ -119,6 +120,26 @@ window.dafri = {
   pollTrackers: async () => ({ rows: [], fired: [], blocked: [] }),
   previewSpotTarget: async () => ({ spot_target: null, structure: null }),
   reconcileTrackers: async () => ({ hosted: [], blocked: [], quote_maybe_delayed: false }),
+  // 优质股追踪:一只都还没加;没连券商,监控心跳在跑但什么都不检测
+  listQuality: async () => ({ stocks: [], max: 30,
+    config: { rvol_tiers: [2, 3, 5], burst_ratio: 4, window_min: 5, spike_sigma: 4, spike_min_pct: 1.0,
+      spike_fixed_pct: 1.5, day_sigma_tiers: [2, 3, 4], day_fixed_tiers: [3, 5, 8], cooldown_min: 10 },
+    monitor: { running: true, interval_ms: 5000, ticks: 0, last_at: null, last_ms: null, last_error: '',
+      session: 'closed', connected: false, supported: true, note: '未连接券商' } }),
+  addQuality: async (symbol, note) => ({ stock: { id: 'q1', created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+    symbol: String(symbol || '').toUpperCase(), note: note || '', enabled: 1, states: {}, events: [], metrics: null, metrics_at: null } }),
+  updateQuality: async () => { throw new Error('没有这条追踪'); },
+  removeQuality: async () => ({ deleted: 0 }),
+  // 股票池的两个开关(预览台里只回执,不改假数据:空态就该一直空,压测那份就该一直满)
+  setPoolWatch: async (symbol, patch) => ({symbol: String(symbol||'').trim().toUpperCase(),
+    price_on: Boolean(patch && patch.price), anomaly_on: Boolean(patch && patch.anomaly),
+    skipped: patch && patch.anomaly && FULL_POOL ? ['异动已达 30 只上限,' + String(symbol).toUpperCase() + ' 没打开'] : []}),
+  setQualityConfig: async (config) => ({ config }),
+  showPopup: async (items, updown) => {
+    (window.__dafriPopups = window.__dafriPopups || []).push({ items, updown });
+    const n = Array.isArray(items) ? items.length : 0;
+    return { shown: Math.min(n, 20), dropped: Math.max(0, n - 20) };
+  },
   setTheme: async () => ({}), pickExportPath: async () => null,
   confirm: async () => true, notify: async () => ({}),
   on: () => () => {},

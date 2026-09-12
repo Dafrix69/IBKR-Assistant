@@ -16,9 +16,12 @@ export class Notifier {
     this.sinks = [...(extraSinks ?? [])];
   }
 
-  notify(title: string, body: string, subtitle = ""): void {
+  notify(title: string, body: string, subtitle = "", options?: { os?: boolean }): void {
     this.history.push([title, subtitle, body]);
     for (const sink of this.sinks) sink(title, subtitle, body);
+    // os:false —— 只进通知流,不走系统通知。价位提醒、异动提醒的"弹"由桌面端的置顶弹窗负责,
+    // 这里再弹一次系统通知(macOS 的 osascript)就是同一件事说两遍。
+    if (options?.os === false) return;
     if (!this.enabled) return;
     if (os.platform() !== "darwin") {
       // stdout 只跑 RPC 协议(§10.1),通知落到 stderr 的日志面板

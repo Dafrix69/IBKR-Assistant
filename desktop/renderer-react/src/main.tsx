@@ -12,8 +12,10 @@ import { startAlertsLoop } from './store/alerts';
 import { startEngineLog } from './store/engineLog';
 import { startLlmFeed } from './store/llm';
 import { startMacroLoop } from './store/macro';
+import { startMenuNavigation } from './store/nav';
 import { startNotifyFeed } from './store/notify';
 import { startPendingFeed } from './store/pending';
+import { startQualityFeed } from './store/quality';
 import { startRecordsFeed } from './store/records';
 import { startStatusPolling } from './store/status';
 import { startTrackerLoops } from './store/tracker';
@@ -51,4 +53,6 @@ startLlmFeed();
 startMacroLoop();
 startTrackerLoops();  // 每秒盯盘与托管对账,不看当前在哪一页——止损要保命
 startAlertsLoop();    // 价位警告 10 秒一轮,同样不看当前在哪一页
+startQualityFeed();   // 异动检测在引擎里 5 秒一轮;这里只订阅它的 anomaly 事件,弹窗 / 响铃同样不看当前在哪一页
+startMenuNavigation(); // 弹窗的「查看」经主进程的 menu 通道跳回对应页
 createRoot(document.getElementById('root')!).render(<App nonce={nonce} />);

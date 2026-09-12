@@ -227,8 +227,14 @@ export function LevelStrip({ levels, spot }: { levels: AlertLevel[]; spot: numbe
       const svg = buildLevelStripSvg(levels, spot, w);
       if (svg) box.appendChild(svg);
     };
-    const frame = requestAnimationFrame(draw);
-    const ro = new ResizeObserver(draw);
+    let frame = requestAnimationFrame(draw);
+    // 宽度变了推到下一帧再画:在 ResizeObserver 回调里直接重画,SVG 的高度当场跟着变,
+    // 同一个被观察的盒子又产生一次尺寸变化,浏览器就报 "ResizeObserver loop completed with undelivered notifications"
+    // (页面高度恰好卡在出不出滚动条的边上时必现:滚动条一出一收,宽度就变)
+    const ro = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(draw);
+    });
     ro.observe(box);
     return () => {
       cancelAnimationFrame(frame);

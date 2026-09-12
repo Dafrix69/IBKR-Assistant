@@ -240,6 +240,9 @@ export class FutuRouter {
   /** 同理,止盈/止损也没有可同形托管的 GTC+OCA/TRAIL 组合——富途账户的
    * 追踪只能走软件盯盘。engine 与 RPC 都按这个标记拒绝 host_at_broker。 */
   readonly SUPPORTS_HOSTED_CLOSE = false;
+  /** 异动监控(当日量 / 均量 / 历史波动率同一条流)暂不支持:富途桥还没真机核对过,
+   * 字段口径不能照 IBKR 的猜。RPC 据此给界面一句"当前券商暂不支持"。 */
+  readonly SUPPORTS_VOLUME_QUOTES = false;
 
   static readonly CHAIN_MAX_WIDTH = 15;
   static readonly SUB_SETTLE_MS = 600;
@@ -782,6 +785,15 @@ export class FutuRouter {
       out[symbol] = { last, close, change_pct: change };
     }
     return out;
+  }
+
+  /** 异动监控的量能流:见 SUPPORTS_VOLUME_QUOTES。不去"顺手完成"——没核对过的口径比没有更糟。 */
+  async volumeQuotes(): Promise<Record<string, never>> {
+    return {};
+  }
+
+  releaseVolumeStreams(): number {
+    return 0;
   }
 
   /** 组合各腿的盘口(AUTO_MID 定价用)。真正的拒绝发生在 place() 里。

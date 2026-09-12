@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { App as AntdApp, ConfigProvider } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import { Topbar } from './Topbar';
@@ -6,7 +6,7 @@ import { Sidebar } from './Sidebar';
 import { MacroStrip } from './MacroStrip';
 import { NAV_ITEMS } from './nav';
 import { LEAF_TABS, PAGES } from '../pages';
-import { navigate, useTab } from '../store/nav';
+import { navigate, pendingNavFocus, useTab } from '../store/nav';
 import { useStatus } from '../store/status';
 import { useAntdTheme } from '../theme/antd';
 import { Toasts } from '../ui/Toasts';
@@ -41,7 +41,11 @@ export function App({ nonce }: { nonce: string }) {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  useEffect(() => {
+  // 换页回到顶部。必须是 layout effect:子组件的"滚到那一行"是普通 effect,而 effect 是先子后父——
+  // 用 useEffect 的话顺序是「页面滚到那一行 → 壳把内容区拨回顶部」,弹窗「查看」跳过来就永远看不到那一行。
+  // 再加一道:这一跳带着待指认的标的时,顶部本来就不是要看的地方,干脆不拨。
+  useLayoutEffect(() => {
+    if (pendingNavFocus(tab)) return;
     if (contentRef.current) contentRef.current.scrollTop = 0;
   }, [tab]);
 

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Badge, Menu, type MenuProps } from 'antd';
 import { NAV_GROUPS, NAV_ITEMS, groupOf, type NavGroup } from './nav';
-import { useAlertsArmed } from '../store/alerts';
+import { useQualityUnread } from '../store/quality';
 import { SfIcon } from '../ui/Icons';
 
 interface Props {
@@ -38,12 +38,13 @@ function useNarrow(): boolean {
 
 /**
  * 源列表侧栏:AntD Menu(inline),三组按"多久用一次"分层,组标题可点击折叠(状态记在本地),
- * 「应用」组沉底。徽标:订单看板显示排队数,板块显示活跃的价位提醒数。
+ * 「应用」组沉底。徽标:订单看板显示排队数,板块(股票池)显示没看过的异动条数——
+ * "在盯价位几只"是个稳态计数、不是待办,它进页面里显示,不占徽标。
  * 键盘:方向键在项之间走动、Enter 选中(Menu 自带);Ctrl/⌘ + 1…9 在 App 里。
  */
 export function Sidebar({ active, onSelect, pendingCount }: Props) {
   const [collapsed, setCollapsed] = useState(readCollapsed);
-  const alertsCount = useAlertsArmed();
+  const anomalyUnread = useQualityUnread();
   const narrow = useNarrow();
 
   const setGroup = useCallback((key: string, open: boolean) => {
@@ -65,7 +66,7 @@ export function Sidebar({ active, onSelect, pendingCount }: Props) {
     if (g && collapsed[g.key]) setGroup(g.key, true);
   }, [active, collapsed, setGroup]);
 
-  const badgeOf = (badge?: 'pending' | 'alerts') => (badge === 'pending' ? pendingCount : badge === 'alerts' ? alertsCount : 0);
+  const badgeOf = (badge?: 'pending' | 'anomaly') => (badge === 'pending' ? pendingCount : badge === 'anomaly' ? anomalyUnread : 0);
 
   const buildItems = useCallback(
     (groups: NavGroup[]): MenuItem[] => {
@@ -93,7 +94,7 @@ export function Sidebar({ active, onSelect, pendingCount }: Props) {
       }));
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [narrow, pendingCount, alertsCount],
+    [narrow, pendingCount, anomalyUnread],
   );
 
   const top = useMemo(() => buildItems(NAV_GROUPS.filter((g) => !g.bottom)), [buildItems]);

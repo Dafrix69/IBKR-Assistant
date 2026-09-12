@@ -91,6 +91,11 @@ export function applyUpDown(mode: UpDown): void {
   // 已经画在屏幕上的图不用管:pa-chart.js 引擎自己盯着 :root 的 data-updown,变了就重画
 }
 
+/** 当前涨跌配色。弹窗是主进程里另一个窗口,读不到这里的 :root,只能随每批条目带过去。 */
+export function getUpDown(): UpDown {
+  return updown;
+}
+
 export function useUpDown(): UpDown {
   return useSyncExternalStore(
     (l) => {

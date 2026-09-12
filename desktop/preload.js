@@ -46,6 +46,10 @@ contextBridge.exposeInMainWorld('dafri', {
     ipcRenderer.invoke('rpc', { method: 'sectors.remove_stock', params: { id, symbol } }),
   setSectorTag: (id, symbol, tag) =>
     ipcRenderer.invoke('rpc', { method: 'sectors.set_tag', params: { id, symbol, tag } }),
+  // 股票池的两个开关:「盯价位」/「盯异动」。patch 只带要改的那个(price / anomaly),
+  // 开不开由引擎按上限说了算(回执里带 skipped),所以这里原样转发、不做本地判断
+  setPoolWatch: (symbol, patch) =>
+    ipcRenderer.invoke('rpc', { method: 'pool.set_watch', params: { symbol, ...patch } }),
 
   // ---- 扫描器:RS 强度 / 拐点筛选 / 极值偏离(纯计算,只读)-------------------
   screenerRs: (spec) => ipcRenderer.invoke('rpc', { method: 'screener.rs', params: spec }),
@@ -167,6 +171,18 @@ contextBridge.exposeInMainWorld('dafri', {
   reconcileTrackers: () => ipcRenderer.invoke('rpc', { method: 'tracker.reconcile', params: {} }),
   closePositionNow: (id) =>
     ipcRenderer.invoke('rpc', { method: 'tracker.close_now', params: { id, __confirmed: true } }),
+
+  // ---- 优质股追踪(读行情、存本地清单与阈值:只提醒,不下单)------------------
+  listQuality: () => ipcRenderer.invoke('rpc', { method: 'quality.list', params: {} }),
+  addQuality: (symbol, note) =>
+    ipcRenderer.invoke('rpc', { method: 'quality.add', params: { symbol, note: note || '' } }),
+  // spec:{ id, enabled?, note? }
+  updateQuality: (spec) => ipcRenderer.invoke('rpc', { method: 'quality.update', params: spec }),
+  removeQuality: (id) => ipcRenderer.invoke('rpc', { method: 'quality.remove', params: { id } }),
+  setQualityConfig: (config) =>
+    ipcRenderer.invoke('rpc', { method: 'quality.set_config', params: { config } }),
+  // 置顶弹窗(不抢焦点),异动与价位提醒共用;内容由主进程逐字段清洗
+  showPopup: (items, updown) => ipcRenderer.invoke('popup-show', { items, updown }),
 
   // ---- 外观 ------------------------------------------------------------
   setTheme: (mode) => ipcRenderer.invoke('set-theme', mode),

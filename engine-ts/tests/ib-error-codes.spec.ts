@@ -87,4 +87,25 @@ describe("IBKR 错误码分级", () => {
     engine.onIbError(1024, 2104, "Market data farm connection is OK");
     expect(engine.store.getRecord(id)!["final_status"]).toBeNull();
   });
+
+  // 2026-09-12 审出:订单 id 与请求 id 共用一个计数器,而 errorEvent 只给 reqId。
+  // 行情订阅被拒(没权限、别处登录占着实时行情)时,配不上记录的错误会被存进 earlyOrderErrors 留 60 秒,
+  // 这 60 秒里发出去的单只要 id 撞上就被判成 ibkr_error 终态——异动监控每 60 秒重订一次被拒的流
+  // (最多 30 只),撞上的概率不再是理论值。
+  it("行情订阅的错误码不算订单错误:不落终态,也不留给下一张同号的单", async () => {
+    for (const code of [354, 10197, 10089, 300, 322]) {
+      const { engine, id } = await submitted();
+      engine.onIbError(1024, code, "行情订阅被拒");
+      expect(engine.store.getRecord(id)!["final_status"], `${code} 不该落终态`).toBeNull();
+      // 早到的错误也不许留着:同号的下一张单不能被它判死
+      engine.onIbError(9999, code, "行情订阅被拒");
+      expect((engine as unknown as { earlyOrderErrors: Map<number, unknown> }).earlyOrderErrors.has(9999)).toBe(false);
+    }
+  });
+
+  it("真的订单错误照旧落终态(别把过滤写宽了)", async () => {
+    const { engine, id } = await submitted();
+    engine.onIbError(1024, 201, "Order rejected - insufficient margin");
+    expect(engine.store.getRecord(id)!["final_status"]).toBe("ibkr_error");
+  });
 });

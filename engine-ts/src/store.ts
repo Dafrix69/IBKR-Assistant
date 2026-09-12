@@ -2,7 +2,8 @@
  *
  * 审计要求"只增不改":没有 UPDATE 路径,数据库层用触发器把 UPDATE/DELETE
  * 直接 ABORT,状态变化一律 append 成事件,读取时折叠成 §6 的文档。
- * SCHEMA 与 Python 版逐字节相同——旧库文件直接打开是本模块的验收标准。
+ * SCHEMA 的前半部分与 Python 版逐字节相同——旧库文件直接打开仍是本模块的验收标准;
+ * 之后新增的表(quality_stocks、app_prefs)一律 CREATE TABLE IF NOT EXISTS,老库打开时补上即可。
  *
  * 注:静态加密需要 SQLCipher 构建;better-sqlite3 标准构建不带,与 Python 版
  * 相同地退化为 0600 文件权限(Windows 上是尽力而为)。
@@ -120,6 +121,25 @@ CREATE TABLE IF NOT EXISTS position_tracks (
     note       TEXT NOT NULL DEFAULT '',
     leg        TEXT NOT NULL DEFAULT '',
     UNIQUE(account, symbol, sec_type, leg)
+);
+
+-- 优质股追踪(异动检测的档位 / 滞回状态要跨重启保留,否则重启就把今天报过的再报一遍)
+CREATE TABLE IF NOT EXISTS quality_stocks (
+    id         TEXT PRIMARY KEY,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    symbol     TEXT NOT NULL UNIQUE,
+    note       TEXT NOT NULL DEFAULT '',
+    enabled    INTEGER NOT NULL DEFAULT 1,
+    states     TEXT NOT NULL DEFAULT '{}',
+    events     TEXT NOT NULL DEFAULT '[]'
+);
+
+-- 界面级偏好(小键值表,目前只存异动阈值)
+CREATE TABLE IF NOT EXISTS app_prefs (
+    key        TEXT PRIMARY KEY,
+    value      TEXT NOT NULL,
+    updated_at TEXT NOT NULL
 );
 
 -- append-only:任何修改历史的尝试都直接失败
@@ -457,6 +477,98 @@ export class TradeStore {
     return this.db.prepare("DELETE FROM position_tracks WHERE id=?").run(trackId).changes > 0;
   }
 
+  // ---- 优质股追踪 ------------------------------------------------------
+  /** 备注("为什么算优质")最多这么多字;事件只留最近这么多条。 */
+  static readonly QUALITY_NOTE_MAX = 60;
+  static readonly QUALITY_EVENTS_KEEP = 50;
+
+  addQualityStock(symbol: string, note = ""): Rec {
+    symbol = (symbol || "").replace(/\s+/g, "").toUpperCase();
+    if (!symbol) throw new Error("标的代码为空");
+    const row: Rec = {
+      id: crypto.randomUUID(),
+      created_at: nowIso(),
+      updated_at: nowIso(),
+      symbol,
+      note: clipNote(note),
+      enabled: 1,
+      states: {},
+      events: [],
+    };
+    try {
+      this.db
+        .prepare("INSERT INTO quality_stocks (id, created_at, updated_at, symbol, note) VALUES (?,?,?,?,?)")
+        .run(row["id"], row["created_at"], row["updated_at"], symbol, row["note"]);
+    } catch (exc) {
+      if (isUniqueViolation(exc)) throw new Error(`已经在追踪 ${symbol} 了`);
+      throw exc;
+    }
+    return row;
+  }
+
+  /** 按加入顺序(同一秒加的按插入先后)。 */
+  listQualityStocks(): Rec[] {
+    return (
+      this.db.prepare("SELECT * FROM quality_stocks ORDER BY created_at, rowid").all() as Rec[]
+    ).map(qualityRow);
+  }
+
+  getQualityStock(stockId: string): Rec | null {
+    const row = this.db.prepare("SELECT * FROM quality_stocks WHERE id=?").get(stockId) as
+      | Rec
+      | undefined;
+    return row ? qualityRow(row) : null;
+  }
+
+  /** 只允许改这几列:note / enabled 是用户写的,states / events 是异动监控写的。 */
+  updateQualityStock(stockId: string, fields: Rec): boolean {
+    const allowed = new Set(["note", "enabled", "states", "events"]);
+    const unknown = Object.keys(fields).filter((k) => !allowed.has(k)).sort();
+    if (unknown.length) throw new Error(`不允许修改的字段:${unknown.join(", ")}`);
+    if (!Object.keys(fields).length) return false;
+    const sets = ["updated_at=?"];
+    const values: unknown[] = [nowIso()];
+    for (const [key, value] of Object.entries(fields)) {
+      sets.push(`${key}=?`);
+      if (key === "note") values.push(clipNote(value));
+      else if (key === "enabled") values.push(value ? 1 : 0);
+      else if (key === "states") values.push(JSON.stringify(value ?? {}));
+      else values.push(JSON.stringify((Array.isArray(value) ? value : []).slice(-TradeStore.QUALITY_EVENTS_KEEP)));
+    }
+    values.push(stockId);
+    const cur = this.db
+      .prepare(`UPDATE quality_stocks SET ${sets.join(", ")} WHERE id=?`)
+      .run(...(values as never[]));
+    return cur.changes > 0;
+  }
+
+  deleteQualityStock(stockId: string): boolean {
+    return this.db.prepare("DELETE FROM quality_stocks WHERE id=?").run(stockId).changes > 0;
+  }
+
+  // ---- 界面级偏好(小键值表)--------------------------------------------
+  /** 没有这个键、或存的不是合法 JSON,都回 null——偏好坏了就当没设过,调用方用默认值。 */
+  getPref(key: string): unknown | null {
+    const row = this.db.prepare("SELECT value FROM app_prefs WHERE key=?").get(key) as
+      | { value: string }
+      | undefined;
+    if (!row) return null;
+    try {
+      return JSON.parse(row.value) ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  setPref(key: string, value: unknown): void {
+    this.db
+      .prepare(
+        "INSERT INTO app_prefs (key, value, updated_at) VALUES (?,?,?)" +
+        " ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at",
+      )
+      .run(key, JSON.stringify(value ?? null), nowIso());
+  }
+
   // ---- 自定义板块 ------------------------------------------------------
   addSector(name: string): Rec {
     name = (name || "").trim();
@@ -489,6 +601,19 @@ export class TradeStore {
     return (this.db.prepare("SELECT * FROM sectors ORDER BY created_at").all() as Rec[]).map(
       sectorRow,
     );
+  }
+
+  /** 所有板块成分股的并集(大写)。板块成分股就是"股票池",池子说了算谁能有盯价位 / 盯异动的行——
+   *  上层要判"这只股还在池子里吗"就查这里,不用自己把 listSectors 摊平一遍。 */
+  symbolsInSectors(): Set<string> {
+    const out = new Set<string>();
+    for (const sector of this.listSectors()) {
+      for (const stock of (sector["stocks"] as Rec[]) ?? []) {
+        const symbol = String(stock?.["symbol"] ?? "").trim().toUpperCase();
+        if (symbol) out.add(symbol);
+      }
+    }
+    return out;
   }
 
   setSectorStocks(sectorId: string, stocks: Rec[]): boolean {
@@ -777,10 +902,38 @@ function trackRow(row: Rec): Rec {
   return out;
 }
 
+function qualityRow(row: Rec): Rec {
+  const out: Rec = { ...row };
+  try {
+    const states = JSON.parse(out["states"] || "{}");
+    out["states"] = states !== null && typeof states === "object" && !Array.isArray(states) ? states : {};
+  } catch {
+    out["states"] = {};
+  }
+  try {
+    const events = JSON.parse(out["events"] || "[]");
+    out["events"] = Array.isArray(events) ? events : [];
+  } catch {
+    out["events"] = [];
+  }
+  out["enabled"] = out["enabled"] ? 1 : 0;
+  return out;
+}
+
+/** 备注按字符截(不按 UTF-16 码元,免得把一个表情截成半个);控制字符换成空格。 */
+function clipNote(note: unknown): string {
+  const text = String(note ?? "").replace(/[\u0000-\u001f\u007f]+/g, " ").trim();
+  return Array.from(text).slice(0, TradeStore.QUALITY_NOTE_MAX).join("");
+}
+
 function sectorRow(row: Rec): Rec {
   const sector: Rec = { ...row };
   try {
-    sector["stocks"] = JSON.parse(sector["stocks"] || "[]");
+    const parsed = JSON.parse(sector["stocks"] || "[]");
+    // 解析得出来但不是数组(`{}`、`"NVDA"`、`17`):也当空的。上层一律按数组摊开
+    // (symbolsInSectors / sectors.add_stock / set_tag),给个对象过去就是 "not iterable" ——
+    // 一行坏数据会把整个股票池连同迁移一起顶翻。
+    sector["stocks"] = Array.isArray(parsed) ? parsed : [];
   } catch {
     sector["stocks"] = [];
   }

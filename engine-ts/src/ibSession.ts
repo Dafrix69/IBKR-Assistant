@@ -26,7 +26,22 @@ function emptyTicker(): TickerData {
     bid: NaN, ask: NaN, last: null, close: null, bidSize: null, askSize: null,
     marketPrice: null, callOpenInterest: null, putOpenInterest: null,
     callVolume: null, putVolume: null, modelGreeks: null, error: null,
+    open: null, high: null, low: null, volume: null, avgVolume: null, histVol: null,
+    vol3m: null, vol5m: null, vol10m: null, lastTradeAt: null, delayed: false,
   };
+}
+
+/**
+ * 常驻行情流的缓存键:合约 + generic ticks。
+ *
+ * 必须带上 generic ticks:同一只股,顶栏宏观带先订了一条不带 generic 的流,异动监控再订
+ * "165,104,595"(均量 / 历史波动率 / 短时量)时,只按合约认的话拿回来的是宏观带那条——
+ * 里面永远没有均量,放量就永远判不出来。
+ */
+export function tickerKey(contract: IbContract, genericTicks = ""): string {
+  const base = `${contract.secType}|${contract.symbol}|${contract.lastTradeDateOrContractMonth ?? ""}|` +
+    `${contract.strike ?? ""}|${contract.right ?? ""}`;
+  return genericTicks ? `${base}#${genericTicks}` : base;
 }
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
@@ -206,9 +221,6 @@ export async function createIbApiNextSession(cfg: {
       positionsSub = null;
     }
   };
-  const keyOf = (c: IbContract): string =>
-    `${c.secType}|${c.symbol}|${c.lastTradeDateOrContractMonth ?? ""}|${c.strike ?? ""}|${c.right ?? ""}`;
-
   const toIbContract = (c: IbContract): Record<string, unknown> => ({
     secType: c.secType,
     symbol: c.symbol,
@@ -311,7 +323,7 @@ export async function createIbApiNextSession(cfg: {
     },
 
     subscribeTicker(contract, genericTicks = "") {
-      const key = keyOf(contract);
+      const key = tickerKey(contract, genericTicks);
       let live = tickers.get(key);
       if (!live) {
         live = { data: emptyTicker(), sub: null };
@@ -339,10 +351,16 @@ export async function createIbApiNextSession(cfg: {
       return handle;
     },
 
-    cancelTicker(contract) {
-      const key = keyOf(contract);
-      const live = tickers.get(key);
-      if (live) {
+    cancelTicker(contract, genericTicks?) {
+      // 传了 generic ticks 只撤那一条;不传就撤这个合约的**所有**变体——期权链用 "100,101,106"
+      // 订、用 cancelTicker(contract) 撤,漏撤一条就一直占着行情线路(约 100 条上限)。
+      const base = tickerKey(contract);
+      const keys = genericTicks !== undefined
+        ? [tickerKey(contract, genericTicks)]
+        : [...tickers.keys()].filter((k) => k === base || k.startsWith(`${base}#`));
+      for (const key of keys) {
+        const live = tickers.get(key);
+        if (!live) continue;
         live.sub?.unsubscribe();
         tickers.delete(key);
       }
@@ -553,7 +571,8 @@ export async function createIbApiNextSession(cfg: {
   return session;
 }
 
-function applyTicks(mod: any, data: TickerData, update: any): void {
+/** 一次行情推送 → TickerData(原地改)。导出只为离线测试(用假的 tick 枚举表)。 */
+export function applyTicks(mod: any, data: TickerData, update: any): void {
   const ticks = update?.all ?? update;
   // 两张枚举表都要查:BID/ASK/LAST/CLOSE 与 DELAYED_* 在 IBApiTickType(TWS 原生 tick 号),
   // 模型 greeks 等 IBApiNext 自己拆出来的 tick 在 IBApiNextTickType。以前只查后者,
@@ -577,6 +596,24 @@ function applyTicks(mod: any, data: TickerData, update: any): void {
   setIf(pick("ASK"), (v) => (data.ask = v));
   setIf(pick("LAST"), (v) => (data.last = v));
   setIf(pick("CLOSE"), (v) => (data.close = v));
+  // 延迟标记跟着 LAST 的出处走:异动提醒要告诉用户"会晚约 15 分钟",不能把延迟价当实时报
+  const liveLast = get("LAST");
+  if (liveLast !== undefined && !Number.isNaN(liveLast)) data.delayed = false;
+  else if (get("DELAYED_LAST") !== undefined) data.delayed = true;
+  setIf(pick("OPEN"), (v) => (data.open = v));
+  setIf(pick("HIGH"), (v) => (data.high = v));
+  setIf(pick("LOW"), (v) => (data.low = v));
+  // 当日量 / 90 日均量 / 30 日历史波动率 / 近 3·5·10 分钟量都来自同一条流(generic 165,104,595)。
+  // 当日量只能跟这条流里的均量比:历史 TRADES K 线滤掉了部分成交类型,同一时刻少 20%~36%
+  // (2026-09-11 真机:GOOG 流 7.93M 对 5 分钟线合计 5.81M)。
+  setIf(pick("VOLUME"), (v) => (data.volume = v));
+  setIf(get("AVG_VOLUME"), (v) => (data.avgVolume = v));
+  setIf(get("OPTION_HISTORICAL_VOL"), (v) => (data.histVol = v));
+  setIf(get("SHORT_TERM_VOLUME_3_MIN"), (v) => (data.vol3m = v));
+  setIf(get("SHORT_TERM_VOLUME_5_MIN"), (v) => (data.vol5m = v));
+  setIf(get("SHORT_TERM_VOLUME_10_MIN"), (v) => (data.vol10m = v));
+  // 最后成交时间(45 / 88)是 tickString,IBApiNext 已把秒数转成数字;转不成的是 undefined,上面 get 会给 NaN,setIf 拦掉
+  setIf(pick("LAST_TIMESTAMP"), (v) => (data.lastTradeAt = v));
   setIf(get("BID_SIZE"), (v) => (data.bidSize = v));
   setIf(get("ASK_SIZE"), (v) => (data.askSize = v));
   setIf(get("OPTION_CALL_OPEN_INTEREST"), (v) => (data.callOpenInterest = v));

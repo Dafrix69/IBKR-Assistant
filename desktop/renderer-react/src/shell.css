@@ -321,6 +321,57 @@
 .stock-tag.ant-tag:hover { filter: brightness(0.92); }
 .stock-tag-input.ant-input { font-size: 11px; padding: 1px 6px; height: 20px; }
 #section-alerts .group.ant-list { margin-bottom: 8px; }
+/* 股票池的一行(lib/PoolStock.tsx):代码 · 理由 · 标签 · 现价 · 涨跌 · 全天量比 · 窗口量比 · 价位 · 异动 · 移除。
+   数字各占一格定宽、右对齐,几十行上下对得齐,扫一眼就能比;窄窗口先收理由(stock-sub 本来就会省略) */
+.stock-row .pool-num { flex: none; text-align: right; font-variant-numeric: tabular-nums; font-size: 12px; white-space: nowrap; }
+.stock-row .pool-num.price { min-width: 76px; }
+.stock-row .pool-num.chg { min-width: 58px; }
+.stock-row .pool-num.rvol, .stock-row .pool-num.burst { min-width: 44px; font-size: 11.5px; }
+.stock-row .pool-switch { flex: none; width: 34px; display: inline-flex; align-items: center; justify-content: center; }
+.stock-row .pool-remove { flex: none; width: 40px; display: inline-flex; justify-content: flex-end; }
+.stock-sym .q-dot { display: inline-block; margin-left: 5px; vertical-align: middle; }
+/* 倍数到了第一档:橙色——放量不分涨跌,不该借涨跌色;涨跌幅到了阈值只加粗,颜色仍按涨跌配色。
+   橙色落在小字上,按 ui.md 的规矩用可访问的 --orange-text */
+.stock-row .num.hot { color: var(--orange-text); font-weight: 590; }
+.stock-row .num.hit { font-weight: 590; }
+/* 作不了准的数(窗口被一笔大单撑起来、或者窗口还不是按样本算的):压成三级色,别让它冒充信号 */
+.stock-row .num.soft { color: var(--label-tertiary); }
+.stock-row .q-ref { margin-left: 3px; font-size: 10px; font-style: normal; color: var(--label-tertiary); }
+.stock-row .q-delayed { margin-right: 5px; font-size: 10px; color: var(--label-tertiary); }
+/* 股票池的卡片是一张带列头的小表(现价 / 涨跌 / 两个量比 / 两个开关定宽),440px 一列时理由只剩一两个字。
+   这里单独把一列放宽到 720px:常见的 1360 窗口一行一张卡,超宽屏才并排两张 */
+#sectors-list.sector-grid { grid-template-columns: repeat(auto-fill, minmax(min(720px, 100%), 1fr)); }
+/* 卡片里的列头:和行同一套定宽类,靠会伸缩的占位把右半边顶齐;滚动时贴在顶上,底下的行透过毛玻璃看得见 */
+.stock-row.pool-head {
+  position: sticky; top: 0; z-index: 1; padding: 2px 0 4px; border-bottom: 0.5px solid var(--separator);
+  background: var(--bg-elevated); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  font-size: 10.5px; color: var(--label-tertiary); cursor: default;
+}
+.stock-row.pool-head .pool-num { font-size: 10.5px; }
+.pool-head-spacer { flex: 1; min-width: 0; }
+/* 价位条下面那行墙的摘要 + 「重算墙」 */
+.stock-levels .pool-wall.card-meta { margin: 4px 2px 0; }
+.stock-levels.muted .inline-link { margin-left: 8px; }
+.ant-btn.inline-link { padding: 0; height: auto; font-size: 11.5px; line-height: inherit; }
+@media (max-width: 1100px) {
+  .stock-row .pool-num.rvol, .stock-row .pool-num.burst { min-width: 38px; }
+}
+
+/* ================= 异动监控(板块页里) ================= */
+/* 监控心跳一行:圆点着色,文字仍是二级色 */
+.quality-monitor.card-meta { margin: 0 0 8px; align-items: center; }
+.quality-monitor .ant-badge-status-text { font-size: 11.5px; color: var(--label); margin-inline-start: 6px; }
+.quality-monitor .ant-badge-status-default { background: var(--label-tertiary); }
+.q-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; background: var(--orange); }
+.q-dot.up { background: var(--up); }
+.q-dot.down { background: var(--down); }
+/* 从弹窗「查看」跳过来的那一只:淡蓝底闪一下再退掉,和新建追踪卡片的高亮是同一种语气 */
+@keyframes row-flash {
+  from { background: color-mix(in srgb, var(--blue) 24%, transparent); }
+  to { background: transparent; }
+}
+#sectors-list .stock-block.focus { animation: row-flash 2s ease-out; border-radius: 6px; }
+.quality-conditions .ant-segmented { flex-shrink: 0; }
 
 /* ================= 行情页 ================= */
 .pa-readout-grid .ant-descriptions-item-label { color: var(--label-secondary); font-size: 12px; white-space: nowrap; }

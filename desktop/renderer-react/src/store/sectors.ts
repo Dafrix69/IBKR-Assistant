@@ -3,10 +3,17 @@
  *
  * 增删改在引擎侧都是本地库操作,走"本地道"即来即答;界面用回执里的板块直接覆盖本地那一份,
  * 不再多拉一次列表。移除先改本地再等回执:等回执的那几百毫秒里再点一次会得到"不在该板块中"。
+ *
+ * 成员身份 = 两个开关:进池子的股默认「盯价位」「盯异动」都开,出池子(且不在任何板块里了)就连带撤掉。
+ * 这两件事在引擎里跟着 sectors.* 一起做,回执带 `watch` / `skipped` / `dropped`——
+ * 上限吃满、指数不能盯异动这些都要如实说出来(store/pool.ts),不能让人以为都开上了。
  */
 import { useSyncExternalStore } from 'react';
 import { dafri, errorMessage } from '../bridge';
+import { loadAlerts } from './alerts';
 import { showBanner } from './banner';
+import { reportDropped, reportPoolWatch, reportSkipped } from './pool';
+import { loadQuality } from './quality';
 import { getStatus } from './status';
 
 export interface SectorStock {
@@ -100,14 +107,16 @@ export async function deleteSector(id: string, name: string): Promise<void> {
   const ok = await dafri.confirm({
     title: '删除板块',
     message: `删除板块「${name}」?`,
-    detail: '只删除这个板块及其 AI 选股结果,不影响任何交易数据。',
+    detail: '只删除这个板块及其 AI 选股结果,不影响任何交易数据。里面的股如果不在别的板块里,连带停止盯价位与盯异动。',
     confirmLabel: '删除',
   });
   if (ok !== true) return;
   try {
-    await dafri.deleteSector(id);
+    const res = await dafri.deleteSector(id);
     sectors = sectors.filter((s) => s.id !== id);
     emit();
+    reportDropped(res?.dropped);
+    await Promise.all([loadAlerts(), loadQuality()]);
   } catch (err) {
     showBanner(`删除板块失败:${errorMessage(err)}`, false);
     await loadSectors();
@@ -116,9 +125,11 @@ export async function deleteSector(id: string, name: string): Promise<void> {
 
 export async function addStock(sectorId: string, symbol: string, tag: string): Promise<boolean> {
   try {
-    const { sector } = await dafri.addSectorStock(sectorId, symbol, tag);
-    await replaceSector(sector);
+    const res = await dafri.addSectorStock(sectorId, symbol, tag);
+    await replaceSector(res?.sector);
+    reportPoolWatch(res?.watch); // 默认两个开关都开,开不上的照引擎的原话说
     void refreshQuotes(); // 新加那只的行情后台补
+    await Promise.all([loadAlerts(), loadQuality()]); // 新建的 watch / quality 行要出现在行上
     return true;
   } catch (err) {
     showBanner(`添加股票失败:${errorMessage(err)}`, false);
@@ -131,8 +142,10 @@ export async function removeStock(sectorId: string, symbol: string): Promise<voi
   sectors = sectors.map((s) => (s.id === sectorId ? { ...s, stocks: s.stocks.filter((x) => x.symbol !== symbol) } : s));
   emit();
   try {
-    const { sector } = await dafri.removeSectorStock(sectorId, symbol);
-    await replaceSector(sector);
+    const res = await dafri.removeSectorStock(sectorId, symbol);
+    await replaceSector(res?.sector);
+    reportDropped(res?.dropped); // 它不在任何板块里了:两个开关连带撤掉,说一声
+    await Promise.all([loadAlerts(), loadQuality()]);
   } catch (err) {
     sectors = before;
     emit();
@@ -154,9 +167,12 @@ export async function setTag(sectorId: string, symbol: string, tag: string): Pro
 
 export async function pickSector(id: string): Promise<void> {
   try {
-    await dafri.pickSector(id);
+    const res = await dafri.pickSector(id);
     await loadSectors();
     await refreshQuotes();
+    // 一次十几只很容易吃满 30 只上限:哪几只没开上,照原话说
+    reportSkipped('这一批里有几只没开上监控:', res?.skipped);
+    await Promise.all([loadAlerts(), loadQuality()]);
   } catch (err) {
     showBanner(`AI 选股失败:${errorMessage(err)}`, false);
   }

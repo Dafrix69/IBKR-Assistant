@@ -86,6 +86,135 @@ export interface ConfirmOptions {
   confirmLabel?: string;
 }
 
+// ---- 优质股追踪(形状以 engine-ts/src/anomaly.ts 与 rpc.ts 的 quality.* 为准)----------------
+
+export type AnomalyKind = 'rvol' | 'burst' | 'spike' | 'day_move';
+
+/** 异动阈值。引擎 normalizeAnomalyConfig 校验并合并,界面只管给数。 */
+export interface QualityConfig {
+  rvol_tiers: number[];
+  burst_ratio: number;
+  window_min: number;
+  spike_sigma: number;
+  spike_min_pct: number;
+  spike_fixed_pct: number;
+  day_sigma_tiers: number[];
+  day_fixed_tiers: number[];
+  cooldown_min: number;
+}
+
+/** 引擎每轮算出来的指标;不在时段内也有(只是不报)。 */
+export interface QualityMetrics {
+  last: number | null;
+  change_pct: number | null;
+  rvol: number | null;
+  burst: number | null;
+  /** 窗口里最大一步占窗口量的比例(只有样本窗口才有,否则 null):接近 1 就是一笔大宗补报,不是持续放量。
+   *  引擎判不判"放量"看的是去掉这一步之后还剩几倍(anomaly.ts 的 sustained),表里的着色要跟它同一道口径。 */
+  block_share: number | null;
+  ret_window_pct: number | null;
+  sigma_window_pct: number | null;
+  sigma_day_pct: number | null;
+  basis_volume: 'avg_volume' | 'session_pace' | null;
+  basis_sigma: 'hist_vol' | 'fixed';
+  window_ready: boolean;
+  delayed: boolean;
+}
+
+export interface AnomalyEvent {
+  id: string;
+  /** 秒 */
+  at: number;
+  symbol: string;
+  kind: AnomalyKind;
+  direction: 'up' | 'down' | null;
+  value: number;
+  threshold: number;
+  tier: number | null;
+  sigma: number | null;
+  price: number | null;
+  change_pct: number | null;
+  basis: string;
+  title: string;
+  text: string;
+}
+
+export interface QualityStock {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  symbol: string;
+  note: string;
+  /** 库里是 0 / 1 */
+  enabled: number | boolean;
+  states?: unknown;
+  events: AnomalyEvent[];
+  metrics: QualityMetrics | null;
+  metrics_at: string | null;
+  /** 这一轮取不到这只的行情时的原因("未知标的" 之类);取到了是 null */
+  quote_error?: string | null;
+  /**
+   * 价位(期权墙 / 均线 / 关口)算到哪一步了:'ok' = 有价位、当天的;'pending' = 排着等算(界面显示「正在算价位…」);
+   * 'error:<原因>' = 上一次没算成,退避中。引擎在异动循环里捎带算(每轮最多一只),形状见 A3。
+   * 老引擎不带这个字段(undefined):界面退回"有没有 levels"来判断。
+   */
+  levels_status?: string | null;
+}
+
+export interface QualityMonitor {
+  running: boolean;
+  interval_ms: number;
+  ticks: number;
+  /** 与盯盘心跳同风格:ISO 字符串;防御起见也认毫秒数 */
+  last_at: string | number | null;
+  last_ms: number | null;
+  last_error: string;
+  session: 'rth' | 'pre' | 'post' | 'closed';
+  connected: boolean;
+  supported: boolean;
+  /** 给人看的一句话("休市:开盘后开始检测" 之类),没有就是空串 */
+  note: string;
+}
+
+export interface QualityList {
+  stocks: QualityStock[];
+  config: QualityConfig;
+  monitor: QualityMonitor;
+  max: number;
+}
+
+// ---- 股票池的两个开关(pool.set_watch)------------------------------------------------
+
+/** 「价位」/「异动」开关只传要改的那个:没传的那一路原样不动。 */
+export interface PoolWatchPatch {
+  price?: boolean;
+  anomaly?: boolean;
+}
+
+/**
+ * 开关回执。`skipped` 是**没做成的那一路的原因**(如「异动已达 30 只上限」):
+ * 超上限、指数不能盯异动这些情况引擎不静默丢,如实回报,界面照原话说出来。
+ */
+export interface PoolWatch {
+  symbol: string;
+  price_on: boolean;
+  anomaly_on: boolean;
+  skipped: string[];
+}
+
+/** 交给主进程置顶弹窗的一条。主进程会逐字段清洗,这里照契约给。 */
+export interface PopupItem {
+  id: string;
+  kind: 'anomaly' | 'level';
+  symbol: string;
+  title: string;
+  body?: string;
+  tone?: 'up' | 'down' | 'info';
+  /** epoch 毫秒 */
+  at?: number;
+  page?: 'quality' | 'sectors';
+}
+
 export type EngineEvent = { event: string; data: any };
 export type EventChannel = 'engine-event' | 'engine-log' | 'engine-exit' | 'menu' | 'window';
 
@@ -180,6 +309,21 @@ export interface DafriBridge {
   reconcileTrackers(): Rpc<any>;
   closePositionNow(id: string): Rpc<any>;
 
+  /**
+   * 股票池的两个开关:板块成分股身上的「盯价位」/「盯异动」。开 = 建对应的行,关 = 删掉它。
+   * 受各自 30 只上限约束,没开成的那一路在回执的 skipped 里说原因。
+   */
+  setPoolWatch(symbol: string, patch: PoolWatchPatch): Rpc<PoolWatch>;
+
+  // 异动监控(全在引擎的本地道:同步 SQLite + 读内存)
+  listQuality(): Rpc<QualityList>;
+  addQuality(symbol: string, note?: string): Rpc<{ stock: QualityStock }>;
+  updateQuality(spec: { id: string; enabled?: boolean; note?: string }): Rpc<{ stock: QualityStock }>;
+  removeQuality(id: string): Rpc<{ deleted: unknown }>;
+  setQualityConfig(config: QualityConfig): Rpc<{ config: QualityConfig }>;
+  /** 置顶弹窗(主进程 popup-window.js):不抢焦点,列表式 */
+  showPopup(items: PopupItem[], updown: 'red-up' | 'green-up'): Promise<{ shown: number; dropped?: number }>;
+
   setTheme(mode: 'system' | 'light' | 'dark'): Rpc<{ mode: string; dark: boolean }>;
 
   pickExportPath(): Rpc<string | null>;
@@ -189,7 +333,8 @@ export interface DafriBridge {
   on(channel: 'engine-event', handler: (payload: EngineEvent) => void): () => void;
   on(channel: 'engine-log', handler: (payload: { line: string }) => void): () => void;
   on(channel: 'engine-exit', handler: (payload: { detail: string }) => void): () => void;
-  on(channel: 'menu', handler: (payload: { action: string }) => void): () => void;
+  /** 菜单与弹窗的「查看」:navigate 带着要去的页和标的 */
+  on(channel: 'menu', handler: (payload: { action: string; page?: string; symbol?: string }) => void): () => void;
   on(channel: 'window', handler: (payload: { focused: boolean }) => void): () => void;
 }
 
