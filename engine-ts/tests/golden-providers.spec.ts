@@ -3,7 +3,6 @@
 import { describe, expect, it } from "vitest";
 
 import type { LLMConfig } from "../src/config.js";
-import { deleteSecret, getSecret, isSupported, setSecret } from "../src/keychain.js";
 import { loadPromptBundle } from "../src/prompts.js";
 import * as providers from "../src/providers.js";
 import { loadGolden, makeSettings } from "./util.js";
@@ -233,17 +232,4 @@ describe("providers: schema 资产", () => {
   });
 });
 
-// ---- keychain(仅当前平台可测的部分)---------------------------------------
-describe("keychain: DPAPI 往返(Windows)", () => {
-  it.runIf(process.platform === "win32")("set → get → delete 往返,与 Python 同一份密文文件", () => {
-    expect(isSupported()).toBe(true);
-    const service = "dafri-ts-test";
-    const account = "roundtrip";
-    setSecret(service, account, "s3cret-值");
-    expect(getSecret(service, account)).toBe("s3cret-值");
-    expect(deleteSecret(service, account)).toBe(true);
-    expect(getSecret(service, account)).toBeNull();
-    expect(deleteSecret(service, account)).toBe(false);
-    expect(() => setSecret(service, account, "")).toThrowError("拒绝写入空密钥");
-  });
-});
+// keychain 的往返与旧存储迁移搬到 tests/keychain.spec.ts

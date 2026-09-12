@@ -110,12 +110,32 @@ fs.writeFileSync(path.join(OUT, 'package.json'), JSON.stringify({
 }, null, 2));
 
 // 2. 生产依赖闭包:package-lock v3 的 packages 表,dev:true 的一律不要
+//    按平台分包的可选依赖(@napi-rs/keyring-* 这种,一个平台一个原生二进制)只要目标平台那一个:
+//    别的平台 npm 本来就没装,装了也不该进这个包。
 const lock = JSON.parse(fs.readFileSync(path.join(TS_ROOT, 'package-lock.json'), 'utf8'));
+const listed = (arr, want) =>
+  !arr || !arr.length ||
+  (arr.some((v) => !v.startsWith('!')) ? arr.includes(want) : !arr.includes(`!${want}`));
+const forTarget = (meta) => listed(meta.os, platform) && listed(meta.cpu, arch);
 let copied = 0;
+let skippedForeign = 0;
 for (const [key, meta] of Object.entries(lock.packages)) {
   if (!key || meta.dev) continue;
+  if (!forTarget(meta)) {
+    skippedForeign += 1;   // 别的平台的原生包
+    continue;
+  }
   const src = path.join(TS_ROOT, key);
   if (!fs.existsSync(src)) {
+    if (meta.optional) {
+      // 目标平台的可选原生包不在磁盘上:多半是在别的平台上交叉打包。装不上就别硬装,
+      // 但也别悄悄少打一个包——到了用户机器上才报 "Cannot find module" 就晚了。
+      console.error(
+        `目标平台(${platform}-${arch})的原生包缺失:${key}\n` +
+        `  在目标平台上装,或:cd engine-ts && npm install --os=${platform} --cpu=${arch} --force`
+      );
+      process.exit(1);
+    }
     console.error('lock 里有但磁盘上没有:', key, '——先在 engine-ts 下 npm install');
     process.exit(1);
   }
@@ -128,7 +148,10 @@ for (const [key, meta] of Object.entries(lock.packages)) {
 const total = dirSize(OUT);
 const nm = dirSize(path.join(OUT, 'node_modules'));
 console.log(`engine-ts 暂存完成:${OUT}`);
-console.log(`  生产依赖 ${copied} 个包,node_modules ${mb(nm)},合计 ${mb(total)}(目标平台 ${platform}-${arch})`);
+console.log(
+  `  生产依赖 ${copied} 个包,node_modules ${mb(nm)},合计 ${mb(total)}(目标平台 ${platform}-${arch}` +
+  `${skippedForeign ? `,跳过 ${skippedForeign} 个别的平台的原生包` : ''})`
+);
 const sizes = fs.readdirSync(path.join(OUT, 'node_modules')).flatMap((e) => {
   const p = path.join(OUT, 'node_modules', e);
   if (e.startsWith('@')) return fs.readdirSync(p).map((s) => [`${e}/${s}`, dirSize(path.join(p, s))]);

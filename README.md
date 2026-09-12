@@ -61,7 +61,7 @@ Electron 桌面端 ──stdio JSON-RPC──▶ 交易引擎(Node 子进程,eng
 
 - 引擎与界面之间没有监听端口,只有 stdio。RPC 分三条道:本地读写即来即答,行情类读请求并发,下单类请求严格顺序。
 - 桌面端 `contextIsolation` / `sandbox` 全开,渲染层拿不到 Node;下单、改限额、连券商必须带界面确认标记。
-- API Key 与富途解锁密码存系统 Keychain / DPAPI,不落配置文件。
+- API Key 与富途解锁密码存系统凭证库(macOS Keychain / Windows 凭据管理器),不落配置文件。
 - 引擎行为由 `engine-ts/baseline/` 里的黄金基线钉住,`npx vitest run` 全部离线跑完。
 
 ## 安装

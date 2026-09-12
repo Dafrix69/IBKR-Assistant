@@ -22,7 +22,7 @@ import {
 } from "./config.js";
 import { TradingEngine, dumpExcludeNone, resolveFanoutAccounts } from "./engine.js";
 import { FutuRouter } from "./futuBroker.js";
-import { KeychainError, hasSecret, primeSecret, setSecret } from "./keychain.js";
+import { KeychainError, hasSecret, setSecret } from "./keychain.js";
 import { KillSwitch } from "./killswitch.js";
 import { buildParser, loadSchemaAsset, providerCatalog, PROVIDERS } from "./providers.js";
 import { extractSymbols } from "./market.js";
@@ -221,9 +221,6 @@ export class RpcServer {
     const warmSpot = (): void => { publicIndexPrice("SPX").catch(() => null); };
     warmSpot();
     setInterval(warmSpot, 4 * 60 * 1000).unref();
-    // 大模型 API Key 在后台异步解密进缓存:Windows 上同步解密要起 PowerShell、占住事件循环约 0.8 秒,
-    // 以前每次大模型解析都这么卡一下,盯盘节拍器跟着晚一拍
-    this.primeLlmKey();
     const rl = readline.createInterface({ input, crlfDelay: Infinity });
     const BAD: Rec = { __bad_json__: true };
     const normal: Rec[] = [];
@@ -3123,11 +3120,6 @@ export class RpcServer {
   }
 
   /** 改模型配置。切供应商时 keychain_account 跟着切,避免用错那把 key。 */
-  private primeLlmKey(): void {
-    const cfg = this.settings.llm;
-    primeSecret(cfg.keychain_service, cfg.keychain_account).catch(() => undefined);
-  }
-
   llmPatch(params: Rec): Rec {
     const patch: Rec = { ...(params["llm"] ?? {}) };
     const allowed = new Set([
@@ -3143,7 +3135,6 @@ export class RpcServer {
     }
     this.engine.store.audit("ui", "llm_patch", { patch });
     this.reload();
-    this.primeLlmKey(); // 换了服务商:新的 Key 也先在后台解密进缓存
     this.emit("llm", this.llmCatalog({}));
     return this.llmCatalog({});
   }

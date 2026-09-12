@@ -14,6 +14,7 @@
 | `@anthropic-ai/sdk` | engine-ts | Anthropic 官方 SDK:structured outputs、prompt caching、重试 |
 | `openai` | engine-ts | OpenAI 兼容端点(DeepSeek / 通义 / Kimi / 智谱)走官方 SDK:**429 / 5xx / 连接中断自动指数退避重试**、超时、带 `status` 的错误类型。原来是手写 fetch,一次网络抖动就是一条指令白发,降级判断还得在错误文字里找 "400" |
 | `zod` | engine-ts | 模型输出的复校验。schema 资产(`baseline/llm/*.json`)与 zod 模型一起改 |
+| `@napi-rs/keyring` | engine-ts | 系统凭证库(macOS Keychain / Windows 凭据管理器),原生 N-API,一次读写 3 毫秒内。原来 Windows 侧是 PowerShell 调 DPAPI:每次解密**同步**起一个进程约 0.8 秒,占住引擎事件循环、盯盘节拍器晚一拍——为此加过的进程内缓存与后台预热两层补丁一起删掉了 |
 | `@stdlib/math-base-special-erf` | engine-ts | 误差函数(Cody 有理逼近,double 精度)。黄金对拍容差 1e-9,教科书级近似过不了——数值轮子不自己造 |
 | `react` + `antd` + `vite` | desktop | 界面框架与组件库(见 [ui.md](ui.md)) |
 | `zustand` | desktop | 跨页状态容器。原来每个 store 各写一遍 `Set<Listener>` + `subscribe` + `emit`,16 处同样的样板;换成 `create()` 之后 store 只剩业务逻辑,对外的 `useXxx()` 契约一字未动 |
@@ -38,18 +39,25 @@
 | 配置校验用 zod | `config.ts` 手写校验 | 每一条错误文案都逐字节进黄金基线,换成 zod 的报错就是换掉用户看到的话 |
 | JSON-RPC 库(`json-rpc-2.0` / `vscode-jsonrpc`) | `rpc.ts` 的三条道 + `rpc-client.js` | 调度语义是业务约束:**交易道严格顺序、读道并发 4、本地道即答、轮询请求给用户请求让路**(见 [engine-rpc.md](engine-rpc.md))。通用库表达不了这套优先级,而这套语义被 `tests/rpc-lanes.spec.ts` 钉着 |
 | 数据请求库(`@tanstack/react-query`) | `store/*.ts` 里的 `setInterval` 轮询 | 这些循环**不挂在当前页上**:持仓追踪一秒一轮会真的发平仓单,条件单轮询是引擎触发的唯一入口,切走了还得跑。react-query 的 `refetchInterval` 跟着组件生命周期走,语义正好相反 |
-| 凭证库(`@napi-rs/keyring`) | `keychain.ts`(macOS `security` / Windows DPAPI) | 见下:值得换,但要迁移已存的密钥,单独做 |
 | 图表库(`lightweight-charts`) | `public/pa-chart.js`(659 行 canvas) | 见下:最大的一块自造轮子,但换它是一次视觉改版 |
+
+## 凭证怎么迁移过来的
+
+旧版把密钥写在两处:macOS 的 `security` 命令(系统 Keychain 里的 generic password)、Windows 的
+`%LOCALAPPDATA%/dafri/credentials.dpapi.json`(DPAPI 密文)。换成 `@napi-rs/keyring` 之后:
+
+- **第一次读到就搬家**:凭证库里没有、旧存储里有 → 解出来写进凭证库,再把值交出来。用户无感,不用重填 Key。
+- **旧的不删**:万一要回退到旧版本,那边还读得到。只有在用户**删除**这条凭证时,两边一起清掉——
+  否则删完再读又被迁回来。
+- `tests/keychain.spec.ts` 在 Windows 上真的造一份旧格式密文(临时 `LOCALAPPDATA`,不碰真实文件)走完这条路。
+
+**按平台分包的原生依赖**:`@napi-rs/keyring-<platform>` 一个平台一个二进制,npm 只装当前平台那一个,
+但 lock 里 12 个都在。`tools/stage_engine_ts.js` 按 lock 条目的 `os` / `cpu` 只收目标平台那一个(win32-x64 约 1.8 MB),
+其余跳过;**目标平台那个不在磁盘上会直接报错**——少打一个原生包,要到用户机器上才会以 "Cannot find module" 暴露。
 
 ## 还值得做,但要单独开一次
 
-**1. 凭证存储换 `@napi-rs/keyring`。** 现在 Windows 侧用 PowerShell 调 DPAPI:每次解密要**同步**起一个 PowerShell
-(实测约 0.8 秒),整个引擎的事件循环被占住——盯盘节拍器会晚一拍。代码里已经为此加了进程内缓存和后台预热两层补丁,
-本质上是在绕开"用错了工具"。`@napi-rs/keyring` 直接调 Windows Credential Manager / macOS Keychain,微秒级、无子进程。
-代价:①已存的密钥要一次性迁移(读旧的 `credentials.dpapi.json` 写进新库);②多一个原生依赖,`stage_engine_ts.js`
-要处理按平台分包的可选依赖;③跨平台打包时目标平台的二进制要在场。
-
-**2. K 线图换 `lightweight-charts`。** `pa-chart.js` 自己实现了蜡烛、成交量归一化、均线、关键位标签避让、
+**K 线图换 `lightweight-charts`。** `pa-chart.js` 自己实现了蜡烛、成交量归一化、均线、关键位标签避让、
 FVG/订单块色块、标记、十字光标与坐标轴刻度算法——其中约五百行是任何图表库都有的部分,而**缩放与平移至今没有**
 (库里是白送的)。但价格行为的叠加层(BOS/CHoCH、FVG、扫单标记)要用它的 primitives 重写,
 而且图是这个软件最显眼的界面,换等于一次视觉改版:得按 [tools/README.md](../../desktop/tools/README.md) 的做法

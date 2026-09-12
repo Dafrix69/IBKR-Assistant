@@ -7,7 +7,7 @@
 | 供应商 | **Anthropic(Claude)** 或 **OpenAI 兼容端点**(DeepSeek、通义、Kimi、智谱等都暴露这种端点) |
 | 模型 | 预设下拉 + 自定义输入,填任意模型标识 |
 | Base URL | 仅兼容端点需要;**强制 https**,只给 `127.0.0.1` 放行 http(§9.4) |
-| API Key | 写入 macOS Keychain,**按供应商分开存**,换供应商不会用错上一把;界面只显示"已配置/未配置",永不回读密钥 |
+| API Key | 写入系统凭证库(macOS Keychain / Windows 凭据管理器),**按供应商分开存**,换供应商不会用错上一把;界面只显示"已配置/未配置",永不回读密钥 |
 | 调用参数 | `effort`(仅 Anthropic)、`temperature`、`max_tokens`、超时 |
 | 测试连接 | 真打一次最小请求,报告延迟、token 用量、模型名,以及**结构化输出用的是哪种模式** |
 
