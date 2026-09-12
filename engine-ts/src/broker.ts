@@ -12,7 +12,7 @@ import * as path from "node:path";
 import type { VolumeSnapshot } from "./anomaly.js";
 import { nowEt } from "./config.js";
 import type { AccountConfig, EtNow, IndexConfig, Settings } from "./config.js";
-import type { ContractSpec, OrderSpec, ParsedOrder, TriggerSpec } from "./models.js";
+import type { ContractSpec, OrderSpec, TriggerSpec } from "./models.js";
 import type { HostedOrderPlan } from "./tracker.js";
 import { legOf, makeKey, positionLabel } from "./tracker.js";
 import { MIN_BARS, TIMEFRAMES } from "./priceaction.js";
@@ -2633,12 +2633,6 @@ async function pollTicker(
     await session.settle(Math.min(100, waitMs - waited));
     waited += 100;
   }
-}
-
-async function tickerPrice(
-  session: IbSession, target: IbContract, waitMs = 1000,
-): Promise<number | null> {
-  return pollTicker(session, session.subscribeTicker(target), waitMs);
 }
 
 function describeContract(contract: IbContract): string {

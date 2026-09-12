@@ -21,6 +21,7 @@
 | `dayjs` | desktop | 日期格式化与"是不是今天"。AntD 的 DatePicker 本来就带它,不额外增加体积 |
 | `electron-log` | desktop | 日志落盘。Windows 上 Electron 是 GUI 子系统:**没有控制台,stderr 也重定向不出来**,出了问题只能靠用户描述。现在主进程、引擎 stderr、渲染层报错、未捕获异常都写进 `userData/logs/main.log`(单份 4 MB、留一份旧的),路径显示在「关于」页 |
 | `electron-builder` | desktop | 打包与安装器 |
+| `eslint` + `typescript-eslint` | 两边各一份 | 静态检查。规则只留"写错了会出事"的那一类,不做风格警察 —— 见下 |
 
 引擎的生产依赖会按 `package-lock.json` 的闭包整包进安装包(`tools/stage_engine_ts.js` 会裁掉 `.d.ts` / `.map` /
 测试目录 / 非本平台的预编译二进制)。加一个运行时依赖之前先想清楚它会不会把安装包撑大:`openai` 裁完约 2.8 MB。
@@ -40,6 +41,24 @@
 | JSON-RPC 库(`json-rpc-2.0` / `vscode-jsonrpc`) | `rpc.ts` 的三条道 + `rpc-client.js` | 调度语义是业务约束:**交易道严格顺序、读道并发 4、本地道即答、轮询请求给用户请求让路**(见 [engine-rpc.md](engine-rpc.md))。通用库表达不了这套优先级,而这套语义被 `tests/rpc-lanes.spec.ts` 钉着 |
 | 数据请求库(`@tanstack/react-query`) | `store/*.ts` 里的 `setInterval` 轮询 | 这些循环**不挂在当前页上**:持仓追踪一秒一轮会真的发平仓单,条件单轮询是引擎触发的唯一入口,切走了还得跑。react-query 的 `refetchInterval` 跟着组件生命周期走,语义正好相反 |
 | 图表库(`lightweight-charts`) | `public/pa-chart.js`(659 行 canvas) | 见下:最大的一块自造轮子,但换它是一次视觉改版 |
+
+## lint 只抓真错,不排版
+
+`engine-ts/eslint.config.js` 与 `desktop/eslint.config.mjs` 各一份,`npm run lint`,两个 CI 任务里都是第一步。
+
+**没有 Prettier,也不打算有。** 这个仓库的排版是手调过的:`MACRO_SYMBOLS` 那样的表格式对齐、
+`rpc.ts` 里一行写完的短方法、成段中文注释的折行位置——交给格式化工具重排,一次提交就把这些可读性洗掉,
+而且会让 `git blame` 整体失真。所以只开**能抓到真错**的规则:未使用的变量与导入、`==`、
+常量条件、不可达循环、React 的 hooks 规则(K线 PA 那次定时器漂移就是依赖数组写错)。
+
+关掉了三条只会制造噪声的:`no-promise-executor-return`(`new Promise((r) => setTimeout(r, ms))` 是标准写法)、
+`require-atomic-updates`(误报出名)、`no-useless-assignment`(引擎里 `let x = 兜底值` 再在 try 里覆盖是刻意的防御写法)。
+`prefer-const` 用 `destructuring: "all"`——速记解析里 `[work, m] = take(work, …)` 这种流水线解构,
+拆开写反而更难读。全角空格在回测的流程图里是内容,不是笔误(`skipJSXText`)。
+
+第一次跑出 61 条,修掉的都是真的小毛病:没用到的导入与死函数(`tickerPrice`、`firstFrom`)、
+`let` 该是 `const`、正则里多余的转义、四处 `throw new Error(...)` 丢了 `cause`(现在带上原始异常,
+排查时看得见根因)。
 
 ## 凭证怎么迁移过来的
 

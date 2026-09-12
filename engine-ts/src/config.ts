@@ -510,7 +510,7 @@ function buildLlm(raw: Raw): LLMConfig {
     try {
       baseUrl = validateBaseUrl(baseUrl);
     } catch (exc) {
-      throw new Error(`llm.base_url:${(exc as Error).message}`);
+      throw new Error(`llm.base_url:${(exc as Error).message}`, { cause: exc });
     }
   }
   const model = String(raw["model"] ?? "") || PROVIDER_META[provider]!.default_model;

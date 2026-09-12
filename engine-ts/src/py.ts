@@ -73,7 +73,7 @@ export function pyFloat(v: number): string {
   const a = Math.abs(v);
   if (a >= 1e16 || (a > 0 && a < 1e-4)) {
     // Python repr 在这个区间转科学计数;JS 阈值不同(<1e-6 / >=1e21),补齐差异
-    let [m, eRaw] = v.toExponential().split("e") as [string, string];
+    const [m, eRaw] = v.toExponential().split("e") as [string, string];
     // 用最短表示:toExponential() 不带精度时即最短
     const e = parseInt(eRaw, 10);
     const sign = e < 0 ? "-" : "+";

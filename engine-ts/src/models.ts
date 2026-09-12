@@ -22,7 +22,7 @@ export const REJECTION_CODES = [
   "AMBIGUOUS_TRIGGER", "UNKNOWN_ACCOUNT", "EXCEEDS_LIMIT", "UNSUPPORTED", "UNCLEAR",
 ] as const;
 
-const SYMBOL_RE = /^[A-Z][A-Z0-9.\-]{0,11}$/;
+const SYMBOL_RE = /^[A-Z][A-Z0-9.-]{0,11}$/;
 
 // pydantic 的宽松数值:float 字段接受数字与数字字符串;int 字段接受整数值
 // 的 float 与整数字符串,拒绝 100.5。

@@ -421,7 +421,7 @@ async function defaultHandshake(): Promise<IbHandshake | null> {
         if (settled) return;
         settled = true;
         clearTimeout(timer);
-        let serverTime: string | null = null;
+        const serverTime: string | null = null;
         try {
           serverVersion = api.serverVersion ?? null;
         } catch {

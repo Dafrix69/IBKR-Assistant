@@ -3,7 +3,7 @@
 // app.js 的顶层执行会就此中断。垫一个内存版,行为够用。
 (function () {
   var mem = {};
-  try { window.localStorage.getItem('probe'); return; } catch (e) {}
+  try { window.localStorage.getItem('probe'); return; } catch { /* 预览台的 data: 页面没有 localStorage */ }
   Object.defineProperty(window, 'localStorage', {
     value: {
       getItem: function (k) { return k in mem ? mem[k] : null; },

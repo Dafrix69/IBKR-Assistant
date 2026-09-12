@@ -3,7 +3,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  BrokerError, BrokerRouter, IbContract, IbSession, OrderIntent, TickerData, buildOrderIntent,
+  BrokerRouter, IbContract, IbSession, OrderIntent, TickerData, buildOrderIntent,
 } from "../src/broker.js";
 import { ParsedOrderSchema } from "../src/models.js";
 import type { ApprovedOrder } from "../src/validator.js";

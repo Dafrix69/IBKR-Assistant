@@ -20,7 +20,7 @@ import { pyG, pyRound } from "./py.js";
 import {
   DEFAULT_BROKER_PORT, EtNow, LLMConfig, Settings, etNowFromEpoch, loadSettings, nowEt, patchConfigFile,
 } from "./config.js";
-import { TradingEngine, dumpExcludeNone, resolveFanoutAccounts } from "./engine.js";
+import { TradingEngine, resolveFanoutAccounts } from "./engine.js";
 import { FutuRouter } from "./futuBroker.js";
 import { KeychainError, hasSecret, setSecret } from "./keychain.js";
 import { KillSwitch } from "./killswitch.js";
@@ -53,7 +53,7 @@ export class RpcError extends Error {
   }
 }
 
-const SYMBOL_RE = /^[A-Z][A-Z0-9.\-]{0,11}$/;
+const SYMBOL_RE = /^[A-Z][A-Z0-9.-]{0,11}$/;
 
 /** 异动监控对 router 的全部要求。富途的 router 也有这三样,只是 SUPPORTS_VOLUME_QUOTES 为 false。 */
 interface VolumeQuoteSource {
@@ -555,9 +555,8 @@ export class RpcServer {
 
     const engine = this.engine;
     const channel = String(params["channel"] ?? "manual");
-    let result;
     // 解析模式(不执行)作为参数传进去,不临时改共享配置——盯盘节拍器同一时刻也在读它
-    result = await engine.handleInstruction(text, channel, null, null, accounts, !execute);
+    const result = await engine.handleInstruction(text, channel, null, null, accounts, !execute);
 
     const payload: Rec = { ...result, executed: execute };
     this.emit("result", payload);
@@ -629,10 +628,9 @@ export class RpcServer {
 
   async breakerHalt(params: Rec): Promise<Rec> {
     const reason = String(params["reason"] || "用户在界面上按下暂停");
-    let outcome: Rec;
     // 熔断(撤全部单)和一轮盯盘互斥:否则那一轮可能在熔断前过了闸门、熔断撤完单之后才把托管单
     // 挂出去,熔断后还留着一张活单
-    outcome = await this.trackerLock(async () => {
+    const outcome: Rec = await this.trackerLock(async () => {
       try {
         return await this.engine.halt(reason);
       } catch (exc) {

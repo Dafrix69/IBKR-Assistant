@@ -20,6 +20,7 @@ jobs:
           cache: npm
           cache-dependency-path: engine-ts/package-lock.json
       - run: npm ci
+      - run: npm run lint
       - run: npx tsc --noEmit
       # 失败时把输出末尾写成一条 annotation:公开仓库不用登录就能从 check-runs API 读到
       - run: |
@@ -46,5 +47,6 @@ jobs:
           cache: npm
           cache-dependency-path: desktop/package-lock.json
       - run: npm ci
+      - run: npm run lint
       - run: npm run ui:typecheck
       - run: npm run ui:build

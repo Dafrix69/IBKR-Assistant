@@ -11,7 +11,7 @@ import {
 } from "./broker.js";
 import { KillSwitch } from "./killswitch.js";
 import { LLMError, LLMResponse } from "./providers.js";
-import { buildSnapshot, extractSymbols } from "./market.js";
+import { extractSymbols } from "./market.js";
 import type { ParsedOrder, Rejection } from "./models.js";
 import { ContractSpecSchema, parseLlmPayload } from "./models.js";
 import { LOCAL_MODEL, looksLikeShorthand, shorthandSymbols, tryParseShorthand } from "./shorthand.js";
@@ -156,7 +156,9 @@ export class TradingEngine {
 
   /** 解析预热:validated-only 的合约后台 qualify 一遍,发单那一下零往返。 */
   private prewarm(approved: ApprovedOrder): void {
-    const router = this.router as (RouterLike & { qualify?: Function }) | null;
+    const router = this.router as
+      | (RouterLike & { qualify?: (contract: unknown, account: unknown) => Promise<unknown> })
+      | null;
     if (!router || typeof router.qualify !== "function") return;
     this.prewarmPromise = (async () => {
       try {

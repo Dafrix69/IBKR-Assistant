@@ -6,7 +6,7 @@ const FULL_POOL = false;
 // 停在"加载中"。用它跑一遍,比看十次有数据的界面有用。
 (function () {
   var mem = {};
-  try { window.localStorage.getItem('probe'); return; } catch (e) {}
+  try { window.localStorage.getItem('probe'); return; } catch { /* 预览台的 data: 页面没有 localStorage */ }
   Object.defineProperty(window, 'localStorage', {
     value: {
       getItem: function (k) { return k in mem ? mem[k] : null; },

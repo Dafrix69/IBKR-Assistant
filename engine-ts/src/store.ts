@@ -343,7 +343,7 @@ export class TradeStore {
         )
         .run(watch["id"], watch["created_at"], watch["updated_at"], symbol, step);
     } catch (exc) {
-      if (isUniqueViolation(exc)) throw new Error(`已经在盯 ${symbol} 了`);
+      if (isUniqueViolation(exc)) throw new Error(`已经在盯 ${symbol} 了`, { cause: exc });
       throw exc;
     }
     return watch;
@@ -430,7 +430,7 @@ export class TradeStore {
     } catch (exc) {
       if (isUniqueViolation(exc)) {
         const what = row["leg"] ? `${row["symbol"]} ${row["leg"]}` : row["symbol"];
-        throw new Error(`已经在追踪 ${row["account"]} 的 ${what} 了`);
+        throw new Error(`已经在追踪 ${row["account"]} 的 ${what} 了`, { cause: exc });
       }
       throw exc;
     }
@@ -586,7 +586,7 @@ export class TradeStore {
         .prepare("INSERT INTO sectors (id, created_at, updated_at, name, stocks) VALUES (?,?,?,?,?)")
         .run(sector["id"], sector["created_at"], sector["updated_at"], name, "[]");
     } catch (exc) {
-      if (isUniqueViolation(exc)) throw new Error(`板块已存在:${name}`);
+      if (isUniqueViolation(exc)) throw new Error(`板块已存在:${name}`, { cause: exc });
       throw exc;
     }
     return sector;

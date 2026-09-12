@@ -2,7 +2,6 @@
  * FakeFutu 桥注入,离线;真机三结论(指数闸门 / 模拟盘合成成交 / trd_env 核对)全覆盖。 */
 import { describe, expect, it } from "vitest";
 
-import { BrokerError } from "../src/broker.js";
 import type { FutuBridge, FutuQuoteCtx, FutuRet, FutuTradeCtx } from "../src/futuBridge.js";
 import { FUTU_ENUMS } from "../src/futuBridge.js";
 import { FutuRouter, ReportEvent } from "../src/futuBroker.js";

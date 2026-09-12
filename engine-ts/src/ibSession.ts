@@ -153,7 +153,8 @@ export async function createIbApiNextSession(cfg: {
       for (const cb of errorCbs) cb(reqId, code, message);
     }
   };
-  api.errorSubject?.subscribe?.(onApiError) ?? api.error$?.subscribe?.(onApiError);
+  // 库的版本差异:老的是 errorSubject,新的是 error$,哪个在就订哪个
+  void (api.errorSubject?.subscribe?.(onApiError) ?? api.error$?.subscribe?.(onApiError));
 
   api.connect(cfg.clientId);
   // 用库自带的 getManagedAccounts 做"连接完成"的信号
@@ -684,30 +685,3 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
   });
 }
 
-async function firstFrom(observable: any): Promise<any> {
-  return new Promise((resolve, reject) => {
-    let done = false;
-    const sub = observable.subscribe({
-      next: (v: any) => {
-        if (!done) {
-          done = true;
-          resolve(v);
-          setTimeout(() => sub?.unsubscribe?.(), 0);
-        }
-      },
-      error: (e: any) => {
-        if (!done) {
-          done = true;
-          reject(e);
-        }
-      },
-    });
-    setTimeout(() => {
-      if (!done) {
-        done = true;
-        resolve(null);
-        sub?.unsubscribe?.();
-      }
-    }, 8000);
-  });
-}

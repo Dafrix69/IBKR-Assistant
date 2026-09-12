@@ -10,7 +10,6 @@
 // 为什么要固定时钟:速记的默认到期是"当日",周末跑出来的数字全是"非交易日"的拒绝,量的不是解析。
 // 数据库一律指向临时目录,不碰真实的 trades.db(解析模式也会落拒绝记录)。大模型那部分是真调用,会花钱。
 'use strict';
-const { spawn } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');

@@ -50,6 +50,9 @@ export function TradePage() {
   const gateway = gatewayName(status);
   const broker = brokerShortName(status);
   const usable = useMemo(() => pickableAccounts(status), [status]);
+  // pickRevision 看着"没用到",它正是重算的信号:勾选存在 store 里,selectedAccounts 直接读 store,
+  // 不进依赖数组的话勾了新账户这里不会重算(eslint 看不出这层)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const picked = useMemo(() => selectedAccounts(usable), [usable, pickRevision]);
 
   // 开机 / 切回本页即可打字:每次都要用鼠标点一下才能打字是白白多出来的一步

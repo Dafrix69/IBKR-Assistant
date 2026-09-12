@@ -18,7 +18,7 @@ export function resolveAnchor(
   const todayOrd = dateOrdinal(todayIso);
   const todayWd = weekdayOfDate(todayIso);
 
-  let m = /上周([一二三四五])/.exec(text);
+  const m = /上周([一二三四五])/.exec(text);
   const thisWeek = /(?<!上)(?:本?周)([一二三四五])/.exec(text);
   if (m) {
     const wd = WEEKDAY_MAP[m[1]!]!;
