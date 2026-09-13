@@ -46,6 +46,7 @@ const UPDOWNS = new Set(['red-up', 'green-up']);
 
 // C0 / C1 控制字符(含换行、制表)换成空格;零宽与双向控制字符直接去掉——
 // 后者能把「下破」排成「破下」一类的视觉欺骗,弹窗里没有任何理由需要它们
+// eslint-disable-next-line no-control-regex -- 这里就是要匹配控制字符
 const CONTROL_CHARS = /[\x00-\x1f\x7f-\x9f]/g;
 const INVISIBLE_CHARS = /[\u200b-\u200f\u2028\u2029\u202a-\u202e\u2060-\u2069\ufeff]/g;
 
@@ -72,7 +73,7 @@ function cleanId(value) {
 
 function cleanSymbol(value) {
   if (typeof value !== 'string') return '';
-  return value.toUpperCase().replace(/[^A-Z0-9.\-]/g, '').slice(0, 16);
+  return value.toUpperCase().replace(/[^A-Z0-9.-]/g, '').slice(0, 16);
 }
 
 function sanitizeItem(raw) {

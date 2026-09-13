@@ -1022,6 +1022,8 @@ class FakeEl {
     this.listeners.set(type, list);
   }
   closest(sel: string): FakeEl | null {
+    // 从自己往上走父链,起点就是 this
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
     let node: FakeEl | null = this;
     while (node) {
       if (sel === "button[data-action]" && node.tag === "button" && typeof node.dataset.action === "string") return node;

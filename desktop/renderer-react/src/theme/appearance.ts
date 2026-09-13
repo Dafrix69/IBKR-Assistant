@@ -78,7 +78,7 @@ export function applyUpDown(mode: UpDown): void {
   document.documentElement.dataset.updown = updown;
   write('dafri-updown', updown);
   useStore.setState({ updown });
-  // 已经画在屏幕上的图不用管:pa-chart.js 引擎自己盯着 :root 的 data-updown,变了就重画
+  // 已经画在屏幕上的图不用管:图表(lib/chart/engine.ts)自己盯着 :root 的 data-updown,变了就换色、视口不动
 }
 
 /** 当前涨跌配色。弹窗是主进程里另一个窗口,读不到这里的 :root,只能随每批条目带过去。 */

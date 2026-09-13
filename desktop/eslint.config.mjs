@@ -51,8 +51,9 @@ export default tseslint.config(
   },
 
   // ---- 主进程与预加载:Node + Electron(CommonJS)----------------------------
+  // 新加主进程文件要记得列进来:不在任何一组里的文件 ESLint 照样"检查",但一条规则都不套,等于没查
   {
-    files: ['main.js', 'preload.js', 'rpc-client.js'],
+    files: ['main.js', 'preload.js', 'rpc-client.js', 'popup-window.js', 'popup-preload.js'],
     extends: [js.configs.recommended],
     languageOptions: {
       globals: { ...globals.node, ...globals.browser },  // preload 两边的全局都碰得到
@@ -75,9 +76,9 @@ export default tseslint.config(
     languageOptions: { globals: { ...globals.browser, module: 'writable' }, sourceType: 'script' },
   },
 
-  // ---- 图表引擎:经典脚本,挂在 window 上 -------------------------------------
+  // ---- 经典脚本页:提醒弹窗(独立窗口,纯 DOM)与 public 下直接用 <script> 引的文件 ----
   {
-    files: ['renderer-react/public/*.js'],
+    files: ['popup/**/*.js', 'renderer-react/public/*.js'],
     extends: [js.configs.recommended],
     languageOptions: { globals: globals.browser, sourceType: 'script' },
     rules: shared,

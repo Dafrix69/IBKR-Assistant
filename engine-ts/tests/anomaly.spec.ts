@@ -861,7 +861,7 @@ describe("综合:单位不变性、时段、事件格式、入参不动", () => 
       `RKLB:rvol:up:3:${s}`, `RKLB:burst:up:-:${s}`, `RKLB:spike:up:-:${s}`, `RKLB:day_move:up:1:${s}`,
     ]);
     for (const e of r.events) {
-      expect(e.id).toMatch(/^[A-Z0-9.\-]+:(rvol|burst|spike|day_move):(up|down|-):([\d.]+|-):\d+$/);
+      expect(e.id).toMatch(/^[A-Z0-9.-]+:(rvol|burst|spike|day_move):(up|down|-):([\d.]+|-):\d+$/);
       expect(e.at).toBe(s);
       expect(e.symbol).toBe("RKLB");
     }

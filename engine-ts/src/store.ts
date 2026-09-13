@@ -500,7 +500,7 @@ export class TradeStore {
         .prepare("INSERT INTO quality_stocks (id, created_at, updated_at, symbol, note) VALUES (?,?,?,?,?)")
         .run(row["id"], row["created_at"], row["updated_at"], symbol, row["note"]);
     } catch (exc) {
-      if (isUniqueViolation(exc)) throw new Error(`已经在追踪 ${symbol} 了`);
+      if (isUniqueViolation(exc)) throw new Error(`已经在追踪 ${symbol} 了`, { cause: exc });
       throw exc;
     }
     return row;
@@ -922,6 +922,8 @@ function qualityRow(row: Rec): Rec {
 
 /** 备注按字符截(不按 UTF-16 码元,免得把一个表情截成半个);控制字符换成空格。 */
 function clipNote(note: unknown): string {
+  // 这里就是要匹配控制字符,不是笔误
+  // eslint-disable-next-line no-control-regex
   const text = String(note ?? "").replace(/[\u0000-\u001f\u007f]+/g, " ").trim();
   return Array.from(text).slice(0, TradeStore.QUALITY_NOTE_MAX).join("");
 }
