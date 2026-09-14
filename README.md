@@ -66,9 +66,13 @@ Electron 桌面端 ──stdio JSON-RPC──▶ 交易引擎(Node 子进程,eng
 
 ## 安装
 
-**Windows**:到 [Releases](https://github.com/Dafrix69/trade/releases) 下载 `DafriTrading-<版本>-win-x64.exe` 安装。安装包未签名,SmartScreen 会拦,「更多信息 → 仍要运行」。机器上不需要装 Node 或 Python。
+**Windows**:到 [Releases](https://github.com/Dafrix69/IBKR-Assistant/releases) 下载 `DafriTrading-<版本>-win-x64.exe` 安装。安装包未签名,SmartScreen 会拦,「更多信息 → 仍要运行」。机器上不需要装 Node 或 Python。
 
-**macOS**:需要在 Mac 上自行打包(`cd desktop && npm run dist:mac`),首次打开右键 → 打开,或 `xattr -dr com.apple.quarantine`。
+**macOS(Apple Silicon)**:安装包由 GitHub Actions 的 `mac` 工作流在 macOS 机器上打(`.github/workflows/mac.yml`:
+手动 Run workflow、推 `v*` 标签都会触发),产物 `DafriTrading-<版本>-mac-arm64.dmg` 在那次运行的 Artifacts 里。
+工作流会核对主程序与原生模块都是 arm64、用包里的 Electron 拉起包里的引擎、并真启动应用 30 秒确认不闪退。
+在 Mac 上本地打也行:`cd desktop && npm run dist:mac`。安装包未签名、未公证,首次打开右键 → 打开,
+或 `xattr -dr com.apple.quarantine "/Applications/Dafri Trading.app"`。
 
 **运行前提**
 

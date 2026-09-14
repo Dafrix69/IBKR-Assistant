@@ -85,6 +85,8 @@ npm run ui:preview && npx electron tools/chart_interaction_check.js renderer-rea
 ```bash
 npm run stage:engine:win     # tools/stage_engine_ts.js → build/engine-ts/(按 package-lock 生产依赖闭包,只带本平台 better-sqlite3)
 npm run smoke:engine         # tools/smoke_engine_ts.js:Electron 自带 Node + 只有 System32 的 PATH,拉起暂存引擎发 system.status
+# 验打出来的安装包:--runner 给应用本体路径,DAFRI_PROMPT_DIR 指到包里的提示词(mac 工作流就是这么验的)
+#   DAFRI_PROMPT_DIR="<App>/Contents/Resources/engine/prompts" node tools/smoke_engine_ts.js "<App>/Contents/Resources/engine-ts" --runner "<App>/Contents/MacOS/Dafri Trading"
 ```
 
 `npm run dist:win` / `dist:mac` 会先构建界面(`ui:build`)再跑这两步。为什么不用 `npm ci --omit=dev`:better-sqlite3 没有 install 脚本,
