@@ -182,6 +182,12 @@ export class TradingEngine {
   /** 比 placeOrder 返回还早到的订单错误:orderId → [错误码, 原文, 时刻]。挂单登记完再对上,
    * 否则那条错误落不到任何人头上,缓存里就一直当这张单在站岗。 */
   private readonly earlyOrderErrors = new Map<number, [number, string, number]>();
+  /** 没开托管、到价自动平仓发出去的那张限价单,发出后照样追价(见 chaseCloseOrder):
+   * track_id → {order_id, record_id, action, quantity, label, rounds, limit};orderId → track_id。
+   * 成交 / 撤销 / 被拒都从这里摘掉。重启后按记录 id(= orderRef)认领回来(adoptCloseChase)。 */
+  private readonly closeChase = new Map<string, Rec>();
+  private readonly closeChaseIndex = new Map<number, string>();
+  private closeChaseAdopted = false;
   /** 速记解析的公开源现价注入点(测试替身用;null = macro.publicIndexPrice)。 */
   publicPriceFn: ((symbol: string) => Promise<number | null>) | null = null;
   /** 最近一次解析预热的句柄(仅测试等待用;业务代码永不 await 它)。 */
@@ -845,6 +851,7 @@ export class TradingEngine {
       return out;
     }
 
+    if (!this.closeChaseAdopted) await this.adoptCloseChase(tracks);
     const breaker = this.killswitch.state();
     for (const track of tracks) {
       const key = tk.trackKey(track);
@@ -906,9 +913,19 @@ export class TradingEngine {
       if (spotTargetRow !== null) (row as Rec)["spot_target"] = spotTargetRow;
       out["rows"].push(row);
 
+      const auto = tk.makeAutoClose(track["auto_close"] ?? {});
+      // 没开托管、平仓单已经发出去的:每轮按最新买卖价追那张单,直到成交(或持仓没了)。
+      // 追踪本身已经落闩、停用,不看 enabled——那张单是它发的,追完才算完
+      if (this.closeChase.has(String(track["id"]))) {
+        const info = await this.chaseCloseOrder(track, raw, position, positions, auto);
+        (row as Rec)["sweeping"] = true;
+        if (info !== null) (row as Rec)["chase"] = info;
+        else out["blocked"].push({ id: track["id"], symbol: track["symbol"], blockers: ["正在追价平仓,但这一轮拿不到腿的买卖价,没改价"] });
+        continue;
+      }
+
       if (!track["enabled"] || result.state === tk.STATE_HOLDING) continue;
 
-      const auto = tk.makeAutoClose(track["auto_close"] ?? {});
       if (auto.host_at_broker && this.router.SUPPORTS_HOSTED_CLOSE) {
         // 执行归券商托管单(syncHosted 那条路)。这里若再另发一张平仓单,就是托管单 + 软件单
         // 各平一次——双重平仓等于反向开仓。
@@ -930,7 +947,17 @@ export class TradingEngine {
           );
           out["fired"].push({ id: track["id"], symbol: track["symbol"], state, reason: result.reason });
         }
-        if (tk.sweepReason(this.store.getTrack(track["id"]) ?? track) !== null) (row as Rec)["sweeping"] = true;
+        if (tk.sweepReason(this.store.getTrack(track["id"]) ?? track) !== null) {
+          (row as Rec)["sweeping"] = true;
+          // 托管对账在盯盘之后跑,这里给界面的是上一轮追到的价
+          const tp = this.hosted.get(String(track["id"]))?.get(tk.HOSTED_KIND_TP);
+          if (tp && tp["chase_limit"] !== undefined) {
+            (row as Rec)["chase"] = {
+              rounds: tp["chase_rounds"] ?? 0, limit: tp["chase_limit"], natural: tp["chase_natural"] ?? null,
+              floor: tp["chase_floor"] ?? null,
+            };
+          }
+        }
         continue;
       }
       // 追踪止盈全时段有效:盘前/盘后照样平(平仓单会自动转盘外限价),只有休市才真的发不出去。
@@ -1206,15 +1233,178 @@ export class TradingEngine {
       status: placement.status, order_id: placement.order_id,
     });
     this.killswitch.recordSuccess("broker");
+    // 期权 / 组合的限价平仓单发出去只是开始:挂在自然价上未必立刻成交,之后每轮按最新买卖价
+    // 追那张单(chaseCloseOrder),成交后再把 fired_state 换回触发原因本身。改的始终是这一张,
+    // 不会另发第二张。正股与市价单不追:正股限价就是目标价,市价单本来就立刻成交。
+    const secType = String(order.contract.secType ?? "");
+    const orderSpec: Rec = order.order as Rec;
+    const chase = placement.order_id && orderSpec["orderType"] === "LMT"
+      && (secType === "BAG" || secType === "OPT" || secType === "FOP")
+      && typeof this.router?.modifyHosted === "function";
+    if (chase) {
+      const tid = String(track["id"]);
+      const orderId = Number(placement.order_id);
+      this.closeChase.set(tid, {
+        order_id: orderId, record_id: recordId, action: orderSpec["action"],
+        quantity: Number(orderSpec["totalQuantity"]), label: String(payload["intent_summary"] ?? "平仓"),
+        // 发单这一轮算第 0 轮(和托管单第一次挂出同义),下一轮盯盘从第 1 轮接着数
+        rounds: 1, limit: finiteOrNull(orderSpec["lmtPrice"]), natural: null, floor: null, warned: false,
+      });
+      this.closeChaseIndex.set(orderId, tid);
+      this.store.updateTrack(tid, { fired_state: `${tk.SWEEP_PREFIX}${result["state"]}` });
+    }
     this.notifier.notify(
       "自动平仓已发出",
-      `${track["symbol"]}:${result["reason"]}`,
+      `${track["symbol"]}:${result["reason"]}${chase ? "。限价挂在立刻成交的价上,没成交每秒再追" : ""}`,
       redactAccount(account.account_id),
     );
     return {
       id: track["id"], symbol: track["symbol"], state: result["state"],
       record_id: recordId, reason: result["reason"], order_id: placement.order_id,
     };
+  }
+
+  /**
+   * 追价平仓这一轮该挂的价:自然价(各腿买卖价合成)按 tk.chaseLimit 越等越让、只朝成交方向动。
+   * 拿不到任何一条腿的买卖价回 null——这一轮不动那张单。
+   */
+  private async chaseQuote(
+    raw: Rec, position: tk.Position, positions: Record<string, Rec>, auto: tk.AutoClose,
+    prev: number | null, rounds: number,
+  ): Promise<{ natural: number; limit: number; floor: number } | null> {
+    const natural = await this.naturalCloseFor(raw, position, positions);
+    if (natural === null) return null;
+    return {
+      natural,
+      limit: tk.chaseLimit(position, natural, prev, rounds, auto),
+      floor: tk.chaseFloor(position, natural, auto),
+    };
+  }
+
+  /** 追了太久还没成交,提醒一次(不刷屏):人得知道该不该自己出手。 */
+  private chaseWarnIfStuck(track: Rec, entry: Rec, limit: number, natural: number): void {
+    if (entry["warned"] || Number(entry["rounds"] ?? 0) < tk.CHASE_WARN_ROUNDS) return;
+    entry["warned"] = true;
+    this.notifier.warning(
+      `${track["symbol"]} 追价平仓 ${entry["rounds"]} 秒仍未成交:挂 ${pyG(limit)},此刻自然价 ${pyG(natural)}。`
+      + "请留意持仓,必要时手动处理。",
+    );
+  }
+
+  /** 没开托管的平仓单:每轮把它改到这一轮的追价(chaseQuote)。回这一轮的追价信息给界面;拿不到报价回 null。 */
+  private async chaseCloseOrder(
+    track: Rec, raw: Rec, position: tk.Position, positions: Record<string, Rec>, auto: tk.AutoClose,
+  ): Promise<Rec | null> {
+    const tid = String(track["id"]);
+    const entry = this.closeChase.get(tid);
+    if (entry === undefined) return null;
+    const q = await this.chaseQuote(raw, position, positions, auto, entry["limit"] ?? null, Number(entry["rounds"] ?? 0));
+    if (q === null) return null;
+    entry["natural"] = q.natural;
+    entry["floor"] = q.floor;
+    const prev = finiteOrNull(entry["limit"]);
+    if (prev === null || Math.round(prev * 100) !== Math.round(q.limit * 100)) {
+      const item: tk.HostedOrderPlan = {
+        kind: "close", action: String(entry["action"] ?? tk.closeSide(position)), order_type: "LMT",
+        quantity: Number(entry["quantity"]), lmt_price: q.limit, aux_price: null,
+        trailing_percent: null, trail_stop_seed: null, label: String(entry["label"]),
+      };
+      let ok = false;
+      try {
+        ok = await this.router!.modifyHosted!(Number(entry["order_id"]), item);
+      } catch (exc) {
+        this.store.audit("engine", "close_chase_failed", { track: tid, error: String((exc as Error).message).slice(0, 300) });
+        this.killswitch.recordFailure((exc as Error).message, "broker");
+        return { rounds: entry["rounds"], limit: prev, natural: q.natural, floor: q.floor };
+      }
+      if (!ok) {
+        // 券商侧已经不认识这张单(成交 / 撤销的回报还在路上):不再追,回报到了自然落闩
+        this.dropCloseChase(tid);
+        return null;
+      }
+      entry["limit"] = q.limit;
+      this.store.appendEvent(String(entry["record_id"]), "status", { status: "Adjusted", lmt_price: q.limit, quantity: item.quantity });
+    }
+    entry["rounds"] = Number(entry["rounds"] ?? 0) + 1;
+    this.chaseWarnIfStuck(track, entry, q.limit, q.natural);
+    return { rounds: entry["rounds"], limit: entry["limit"], natural: q.natural, floor: q.floor };
+  }
+
+  private dropCloseChase(tid: string): void {
+    const entry = this.closeChase.get(tid);
+    if (entry === undefined) return;
+    this.closeChaseIndex.delete(Number(entry["order_id"]));
+    this.closeChase.delete(tid);
+  }
+
+  /** 重启后认领还挂在券商侧的平仓单(orderRef = 记录 id),接着追。只做一次;认领不到就算了——
+   * 那张单停在最后的价上,和托管单"软件关掉停在最后一次"同一语义。 */
+  private async adoptCloseChase(tracks: Rec[]): Promise<void> {
+    this.closeChaseAdopted = true;
+    const lister = this.router?.listHostedOpen;
+    if (typeof lister !== "function") return;
+    for (const track of tracks) {
+      const tid = String(track["id"]);
+      const recordId = String(track["fired_record"] ?? "");
+      if (tk.sweepReason(track) === null || !recordId || this.closeChase.has(tid)) continue;
+      if (tk.makeAutoClose(track["auto_close"] ?? {}).host_at_broker) continue; // 托管的由 adoptHosted 认领
+      let rows: Rec[];
+      try {
+        rows = await lister.call(this.router, recordId);
+      } catch {
+        continue;
+      }
+      const row = rows.find((r) => String(r["order_ref"] ?? "") === recordId && r["order_id"]);
+      if (row === undefined) continue;
+      const orderId = Number(row["order_id"]);
+      this.closeChase.set(tid, {
+        // 方向不取券商回的 action:BAG 一律以 BUY 提交,真实方向是"平掉这份持仓的那一侧",
+        // 改单签净价要用它——追价那一轮按持仓现算(chaseCloseOrder)
+        order_id: orderId, record_id: recordId, action: null, quantity: Number(row["quantity"]),
+        label: `${track["symbol"]} 平仓(重启认领)`, rounds: 0, limit: finiteOrNull(row["lmt_price"]),
+        natural: null, floor: null, warned: false,
+      });
+      this.closeChaseIndex.set(orderId, tid);
+      this.orderIndex.set(orderId, recordId);
+      if (row["perm_id"]) this.orderIndex.set(Number(row["perm_id"]), recordId);
+      this.store.audit("engine", "close_chase_adopted", { track: tid, order_id: orderId });
+    }
+  }
+
+  /** 追价平仓单的终态:成交 → 落闩记真正的触发原因;撤销 / 失效 → 摘掉并提醒(持仓还在)。 */
+  private closeChaseOnStatus(trade: any): void {
+    const orderId = Number(trade?.order?.orderId ?? 0);
+    const tid = orderId ? this.closeChaseIndex.get(orderId) : undefined;
+    if (tid === undefined) return;
+    const status = String(trade?.orderStatus?.status ?? "");
+    const track = this.store.getTrack(tid);
+    const reason = track ? tk.sweepReason(track) : null;
+    if (status === "Filled") {
+      this.dropCloseChase(tid);
+      if (reason !== null) this.store.updateTrack(tid, { fired_state: reason });
+      this.notifier.notify("追价平仓已成交", `${track?.["symbol"] ?? "?"}:${TradingEngine.STATE_LABEL[reason ?? ""] ?? reason ?? ""}`);
+    } else if (["Cancelled", "ApiCancelled", "Inactive"].includes(status)) {
+      this.dropCloseChase(tid);
+      if (reason !== null) this.store.updateTrack(tid, { fired_state: reason });
+      this.notifier.warning(`${track?.["symbol"] ?? "?"} 的追价平仓单已${status === "Inactive" ? "失效" : "撤销"},持仓可能还在,请手动核对。`);
+    }
+  }
+
+  /**
+   * 手动「立即平仓」落在一条已经有单在券商侧的追踪上(托管单、或正在追价的平仓单):不另发一张,
+   * 把那张改成追价平仓——两张各平一次就是反向开仓。回 true 表示已经这么办了;false 表示没有现成的单,
+   * 调用方照常发平仓单。
+   */
+  async sweepExisting(track: Rec, reason: string): Promise<boolean> {
+    const tid = String(track["id"]);
+    const hasHosted = this.hosted.get(tid)?.has(tk.HOSTED_KIND_TP) ?? false;
+    if (!hasHosted && !this.closeChase.has(tid)) return false;
+    if (tk.sweepReason(track) === null) {
+      this.store.updateTrack(tid, { fired_at: nowIsoSecondsEt(), fired_state: `${tk.SWEEP_PREFIX}${tk.STATE_STOP_LOSS}` });
+      this.store.audit("engine", "hosted_sweep", { track: tid, state: tk.STATE_STOP_LOSS, reason });
+      this.notifier.notify("追价平仓", `${track["symbol"]}:${reason}。现有的那张单改到立刻成交的价,没成交就每秒再追`);
+    }
+    return true;
   }
 
   // ---- 券商托管的止盈/止损:对账循环 -----------------------------------
@@ -1303,19 +1493,33 @@ export class TradingEngine {
       alive.add(tid);
       if (!this.hosted.has(tid)) this.hosted.set(tid, new Map());
       const current = this.hosted.get(tid)!;
+      let chase: { natural: number; limit: number; floor: number } | null = null;
       if (sweeping) {
-        // 追价平仓:止盈单改到此刻立刻能成交的价,每轮按最新的买卖价再追一次
-        const natural = await this.naturalCloseFor(raw, position, positions);
-        if (natural === null) {
+        // 追价平仓:止盈单改到此刻立刻能成交的价,每轮按最新的买卖价再追一次,越等越让(tk.chaseLimit)
+        const tp = current.get(tk.HOSTED_KIND_TP);
+        chase = await this.chaseQuote(
+          raw, position, positions, auto, finiteOrNull(tp?.["chase_limit"] ?? null), Number(tp?.["chase_rounds"] ?? 0),
+        );
+        if (chase === null) {
           // 拿不到腿的买卖价:这一轮不动那张单(更不能把它改回模型价),下一轮再追
           out["blocked"].push({ id: tid, symbol: track["symbol"], blockers: ["正在追价平仓,但这一轮拿不到腿的买卖价,没改价"] });
           out["hosted"].push({ id: tid, symbol: track["symbol"], sweeping: true, orders: this.hostedRows(tid) });
           continue;
         }
-        targets = { ...targets, take_profit: natural };
+        targets = { ...targets, take_profit: chase.limit };
         hold = false;
       }
       const plan = tk.hostedPlan(position, targets, auto, peak);
+      // 已经部分成交的托管单:持仓缩了,按持仓算出的数量也跟着缩,可券商那边的总量含已成交的那部分——
+      // 把总量改成"剩余"等于把剩下的再砍一截(3 张成交 1 张、持仓剩 2,总量改 2 就只剩 1 张在挂)。
+      // 总量 = 剩余该平的 + 已成交的,且不超过原总量(用户在别处手动平了一部分才会更小)。
+      for (const item of plan) {
+        const cur = current.get(item.kind);
+        const filled = Math.trunc(Number(cur?.["filled"] ?? 0));
+        if (cur && filled > 0) {
+          item.quantity = Math.min(Math.trunc(Number(cur["quantity"] ?? 0)), item.quantity + filled);
+        }
+      }
       const desired = new Set(plan.map((item) => item.kind));
       // 只守不挂的这一轮,止盈单"不在计划里"不等于"该撤":撤掉一张站岗的单比停在旧价危险得多
       if (hold) desired.add(tk.HOSTED_KIND_TP);
@@ -1354,8 +1558,21 @@ export class TradingEngine {
           this.killswitch.recordFailure((exc as Error).message, "broker");
         }
       }
+      if (chase !== null) {
+        // 记下这一轮追到哪了:下一轮从这里接着让,界面也照它显示
+        const tp = current.get(tk.HOSTED_KIND_TP);
+        if (tp !== undefined) {
+          tp["chase_rounds"] = Number(tp["chase_rounds"] ?? 0) + 1;
+          tp["chase_limit"] = chase.limit;
+          tp["chase_natural"] = chase.natural;
+          tp["chase_floor"] = chase.floor;
+          tp["rounds"] = tp["chase_rounds"];
+          this.chaseWarnIfStuck(track, tp, chase.limit, chase.natural);
+        }
+      }
       out["hosted"].push({
         id: tid, symbol: track["symbol"], ...(sweeping ? { sweeping: true } : {}), orders: this.hostedRows(tid),
+        ...(chase !== null ? { chase: { rounds: current.get(tk.HOSTED_KIND_TP)?.["chase_rounds"] ?? 0, ...chase } } : {}),
       });
     }
 
@@ -1604,6 +1821,9 @@ export class TradingEngine {
   private static readonly HOSTED_FIRED_STATE: Record<string, string> = {
     tp: "take_profit", sl: "stop_loss", trail: "stop_loss", ptrail: "profit_trail",
   };
+  private static readonly STATE_LABEL: Record<string, string> = {
+    take_profit: "止盈", stop_loss: "止损", profit_trail: "利润回撤",
+  };
 
   /** 托管单的终态处理:成交 → 追踪落闩;撤销 → 丢缓存。
    * OCA 的兄弟单由券商自动撤,撤单回报走同一条路清理缓存。 */
@@ -1635,7 +1855,12 @@ export class TradingEngine {
     } else if (["Submitted", "PreSubmitted"].includes(status)) {
       // 券商接受了这一版(新挂的或改过价的):之后再来的错误就不是"刚才那一下被拒"
       const entry = this.hosted.get(tid)?.get(kind);
-      if (entry) entry["pending"] = null;
+      if (entry) {
+        entry["pending"] = null;
+        // 部分成交:记住已成交的数量,对账改总量时不把剩下的再砍一截(见 syncHosted)
+        const filled = finiteOrNull(trade?.orderStatus?.filled ?? null);
+        if (filled !== null && filled > 0) entry["filled"] = filled;
+      }
     }
   }
 
@@ -1805,6 +2030,10 @@ export class TradingEngine {
     }
     const final = code === 202 ? "cancelled" : "ibkr_error";
     if (this.hostedIndex.has(req)) this.hostedOnError(req, code, message);
+    if (this.closeChaseIndex.has(req)) {
+      // 追价中的平仓单被拒 / 被撤:不再追,持仓可能还在,和撤单回报走同一条路提醒
+      this.closeChaseOnStatus({ order: { orderId: req }, orderStatus: { status: code === 202 ? "Cancelled" : "Inactive" } });
+    }
     this.store.appendEvent(recordId, "status", { status: "Error", code, message });
     if (!this.finalized.has(recordId)) {
       this.finalized.add(recordId);
@@ -1824,6 +2053,7 @@ export class TradingEngine {
 
   onOrderStatus(trade: any): void {
     this.hostedOnStatus(trade);
+    this.closeChaseOnStatus(trade);
     const recordId = this.recordFor(trade);
     if (!recordId) {
       this.stashUnmatched("status", trade);

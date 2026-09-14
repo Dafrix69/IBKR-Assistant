@@ -48,8 +48,13 @@ function legRow(strike: number, qty: number, spot: number, avgCost: number): Rec
 }
 
 /** 以 4.50 买入的 7725/7750/7775 看涨蝶(每组成本 800 − 2×200 + 50 = 450),三条腿按标的 spot、σ=20 定价。 */
-function flyAt(spot: number): Rec[] {
-  return [legRow(7725, 1, spot, 800), legRow(7750, -2, spot, 200), legRow(7775, 1, spot, 50)];
+function flyAt(spot: number, lots = 1): Rec[] {
+  return [legRow(7725, lots, spot, 800), legRow(7750, -2 * lots, spot, 200), legRow(7775, lots, spot, 50)];
+}
+
+/** 多头按跳动向下取整 */
+function down(price: number, tick = 0.05): number {
+  return pyRound(Math.floor(price / tick + 1e-9) * tick, 4);
 }
 
 /** 每条腿的买卖价 = 中间价 ∓ min(0.2, 中间价/2)。 */
@@ -108,14 +113,14 @@ class SweepRouter {
   sessions(): unknown[] { return []; }
 }
 
-function build(opts: { targets: Rec; host?: boolean; peak?: number | null; spot?: number }) {
+function build(opts: { targets: Rec; host?: boolean; peak?: number | null; spot?: number; lots?: number }) {
   const spot = opts.spot ?? 7720;
   const dir = mkdtempSync(path.join(tmpdir(), "dafri-sweep-"));
   const settings = makeSettings(g.base_config, {
     policies: { auto_execute: true },
     storage: { db_path: path.join(dir, "sweep.db") },
   });
-  const router = new SweepRouter(flyAt(spot), spot);
+  const router = new SweepRouter(flyAt(spot, opts.lots ?? 1), spot);
   const engine = new TradingEngine({
     settings, parser: {} as any, store: new TradeStore(settings.db_path),
     notifier: new Notifier(false), router: router as any,
@@ -274,7 +279,74 @@ describe("没开托管:到价自动平仓的单子也挂在立刻成交价上", 
       account: "模拟", symbol: "SPX", sec_type: "BAG", quantity: 1, avg_cost: 450, multiplier: 100, market_price: 1,
     });
     expect(lmt).toBe(tk.closeLimitPrice(position, natural, 0.3));
+    // 发出去只是开始:追踪落闩成 sweep:<原因>,之后每轮追那张单
+    expect(engine.store.getTrack(track["id"])!["fired_state"]).toBe("sweep:take_profit");
+  });
+
+  it("发出去没成交:头两轮等在原价,之后每轮把同一张单再让一跳,成交后记回 take_profit", async () => {
+    const { engine, router, track } = build({ targets: { spot_target: 7740 }, host: false });
+    router.rows = flyAt(7741);
+    router.spot = 7741;
+    await engine.pollTrackers(NOON);                         // 发单(第 0 轮)
+    expect(router.sent).toHaveLength(1);
+    const placed = router.sent[0]!.order.order.lmtPrice as number;
+    const natural = naturalOf(router.rows);
+    await engine.pollTrackers(NOON);                         // 第 1 轮:自然价不比发单价更让,不改
+    await engine.pollTrackers(NOON);                         // 第 2 轮
+    expect(router.modified).toEqual([]);
+    await engine.pollTrackers(NOON);                         // 第 3 轮:再让一跳
+    expect(router.modified).toHaveLength(1);
+    expect(router.modified[0]!.order_id).toBe(990);          // 改的是发出去的那张
+    expect(router.modified[0]!.item.lmt_price).toBe(Math.min(placed, down(natural - 0.05)));
+    expect(router.modified[0]!.item.quantity).toBe(1);
+    await engine.pollTrackers(NOON);                         // 第 4 轮:再让一跳
+    expect(router.modified).toHaveLength(2);
+    expect(router.modified[1]!.item.lmt_price).toBeLessThan(router.modified[0]!.item.lmt_price);
+    expect(router.sent).toHaveLength(1);                     // 始终没有第二张平仓单
+    const poll = await engine.pollTrackers(NOON);
+    const row = (poll["rows"] as Rec[])[0]!;
+    expect(row["sweeping"]).toBe(true);
+    expect(row["chase"]["rounds"]).toBeGreaterThanOrEqual(5);
+
+    engine.onOrderStatus({ order: { orderId: 990, permId: null }, orderStatus: { status: "Filled", filled: 1, remaining: 0 }, contract: { symbol: "SPX" } });
     expect(engine.store.getTrack(track["id"])!["fired_state"]).toBe("take_profit");
+    const count = router.modified.length;
+    await engine.pollTrackers(NOON);
+    expect(router.modified).toHaveLength(count);             // 成交后不再追
+  });
+
+  it("平仓单被撤 / 被拒:不再追,提醒持仓可能还在", async () => {
+    const { engine, router, track } = build({ targets: { spot_target: 7740 }, host: false });
+    router.rows = flyAt(7741);
+    router.spot = 7741;
+    await engine.pollTrackers(NOON);
+    engine.onOrderStatus({ order: { orderId: 990, permId: null }, orderStatus: { status: "Cancelled", filled: 0, remaining: 1 }, contract: { symbol: "SPX" } });
+    expect(engine.store.getTrack(track["id"])!["fired_state"]).toBe("take_profit");
+    expect(engine.notifier.history.some(([, , body]) => body.includes("追价平仓单已撤销"))).toBe(true);
+    for (let i = 0; i < 5; i += 1) await engine.pollTrackers(NOON);
+    expect(router.modified).toEqual([]);
+    expect(router.sent).toHaveLength(1);                     // 不重发:重复发单就是反向开仓的风险
+  });
+
+  it("正股不追(限价就是目标价本身)", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "dafri-sweep-"));
+    const settings = makeSettings(g.base_config, { policies: { auto_execute: true }, storage: { db_path: path.join(dir, "s.db") } });
+    const row = {
+      key: tk.makeKey("模拟", "BE", "STK"), account: "模拟", symbol: "BE", sec_type: "STK", leg: "", quantity: 100,
+      avg_cost: 100, multiplier: 1, currency: "USD", market_price: 120, market_value: 12000, unrealized_pnl: 2000,
+      contract: { secType: "STK", symbol: "BE" },
+    };
+    const router = new SweepRouter([row], null);
+    const engine = new TradingEngine({ settings, parser: {} as any, store: new TradeStore(settings.db_path), notifier: new Notifier(false), router: router as any });
+    const track = engine.store.addTrack({
+      account: "模拟", symbol: "BE", sec_type: "STK", contract: row.contract, targets: { take_profit: 110 },
+      auto_close: { enabled: true, order_type: "LMT", close_fraction_pct: 100 },
+    });
+    await engine.pollTrackers(NOON);
+    expect(router.sent).toHaveLength(1);
+    expect(engine.store.getTrack(track["id"])!["fired_state"]).toBe("take_profit");
+    await engine.pollTrackers(NOON);
+    expect(router.modified).toEqual([]);
   });
 });
 
@@ -341,10 +413,67 @@ describe("naturalClosePrice:立刻能成交的价", () => {
     expect(tk.naturalClosePrice(mk(-1), leg, book)).toBe(5.9);
   });
 
-  it("任何一条腿没有有效买卖价(缺、非正、倒挂)→ null,不拿半边报价凑数", () => {
+  it("任何一条腿没有有效买卖价(缺、卖价非正、倒挂)→ null,不拿半边报价凑数", () => {
     expect(tk.naturalClosePrice(long, fly, { ...book, "7775C": { bid: null, ask: 0.1 } })).toBeNull();
-    expect(tk.naturalClosePrice(long, fly, { ...book, "7775C": { bid: 0, ask: 0.1 } })).toBeNull();
+    expect(tk.naturalClosePrice(long, fly, { ...book, "7750C": { bid: 0, ask: 0 } })).toBeNull();   // 要买回的中心没卖价
     expect(tk.naturalClosePrice(long, fly, { ...book, "7750C": { bid: 0.8, ask: 0.7 } })).toBeNull();
+  });
+
+  it("要卖掉的远翼买价为 0:按 0 卖(贡献 0),不算没报价——远翼归零的蝶照样追得了价", () => {
+    expect(tk.naturalClosePrice(long, fly, { ...book, "7775C": { bid: 0, ask: 0.1 } })).toBeCloseTo(5.5 - 2 * 0.7, 6);
+    // 单腿多头买价为 0 就是没人要,不算能成交
+    const leg = tk.structureOf("OPT", { secType: "OPT", strike: 7775, right: "C" })!;
+    const one = tk.makePosition({ account: "模拟", symbol: "SPX", sec_type: "OPT", quantity: 1, avg_cost: 50, multiplier: 100, market_price: 0.05 });
+    expect(tk.naturalClosePrice(one, leg, { ...book, "7775C": { bid: 0, ask: 0.1 } })).toBeNull();
+    // 平掉反而要付钱(两翼 0、中心还要买回)→ null
+    expect(tk.naturalClosePrice(long, fly, { ...book, "7725C": { bid: 0, ask: 0.1 }, "7775C": { bid: 0, ask: 0.1 } })).toBeNull();
+  });
+});
+
+describe("chaseLimit:越等越让、只朝成交方向动、让到上限为止", () => {
+  const long = tk.makePosition({ account: "模拟", symbol: "SPX", sec_type: "BAG", quantity: 1, avg_cost: 450, multiplier: 100, market_price: 4 });
+  const short = tk.makePosition({ account: "模拟", symbol: "SPX", sec_type: "BAG", quantity: -1, avg_cost: 300, multiplier: 100, market_price: 2 });
+  const auto = tk.makeAutoClose({ chase_max_pct: 10 });
+
+  it("头 2 轮挂在自然价(按跳动朝成交方向取整)", () => {
+    expect(tk.chaseLimit(long, 3.62, null, 0, auto)).toBe(3.6);
+    expect(tk.chaseLimit(long, 3.62, null, 2, auto)).toBe(3.6);
+    expect(tk.chaseLimit(short, 0.63, null, 1, auto)).toBe(0.65);
+  });
+
+  it("第 3 轮起每轮再让一跳", () => {
+    expect(tk.chaseLimit(long, 3.6, null, 3, auto)).toBe(3.55);
+    expect(tk.chaseLimit(long, 3.6, null, 5, auto)).toBe(3.45);
+    expect(tk.chaseLimit(short, 0.65, null, 4, auto)).toBe(0.75);
+  });
+
+  it("让到 chase_max_pct 为止(至少两跳);试算的 chaseFloor 就是这个价", () => {
+    // 3.60 的 10% = 0.36 → 7 跳 = 0.35
+    expect(tk.chaseMaxSteps(long, 3.6, auto)).toBe(7);
+    expect(tk.chaseLimit(long, 3.6, null, 100, auto)).toBe(3.25);
+    expect(tk.chaseFloor(long, 3.6, auto)).toBe(3.25);
+    // 便宜的组合按百分比不到一跳,也至少让两跳
+    expect(tk.chaseMaxSteps(long, 0.4, auto)).toBe(2);
+    expect(tk.chaseFloor(long, 0.4, auto)).toBe(0.3);
+    // 上限设 0 也一样至少两跳
+    expect(tk.chaseFloor(long, 3.6, tk.makeAutoClose({ chase_max_pct: 0 }))).toBe(3.5);
+  });
+
+  it("只朝成交方向动:买价抬上去了,不把挂着的卖单改回去;掉下去了顺着追", () => {
+    expect(tk.chaseLimit(long, 3.9, 3.55, 5, auto)).toBe(3.55);   // 自然价 3.90 让 3 跳 = 3.75 > 3.55,不动
+    expect(tk.chaseLimit(long, 3.3, 3.55, 5, auto)).toBe(3.15);   // 3.30 让 3 跳
+    expect(tk.chaseLimit(short, 0.6, 0.75, 5, auto)).toBe(0.75);
+    expect(tk.chaseLimit(short, 0.9, 0.75, 5, auto)).toBe(1.0);    // 0.90 的 10% 不到一跳 → 上限两跳
+  });
+
+  it("单腿期权 3 元以上按 0.10 跳", () => {
+    const one = tk.makePosition({ account: "模拟", symbol: "SPX", sec_type: "OPT", quantity: 1, avg_cost: 1200, multiplier: 100, market_price: 12 });
+    expect(tk.chaseLimit(one, 12.37, null, 0, auto)).toBe(12.3);
+    expect(tk.chaseLimit(one, 12.37, null, 4, auto)).toBe(12.1);
+  });
+
+  it("永远不低于一跳", () => {
+    expect(tk.chaseLimit(long, 0.05, null, 50, auto)).toBe(0.05);
   });
 });
 
@@ -475,5 +604,106 @@ describe("单腿期权的托管停损:按期权跳动对齐,朝离开市场的�
     const combo = tk.makePosition({ account: "模拟", symbol: "SPX", sec_type: "BAG", quantity: 1, avg_cost: 450, multiplier: 100, market_price: 4 });
     const plan = tk.hostedPlan(combo, tk.makeTargets({ take_profit: 12.37, stop_loss: 6.75, trail_pct: 10, profit_drawdown_pct: 40 }), auto, 15.13);
     expect(plan.map((p) => p.kind)).toEqual([tk.HOSTED_KIND_TP]);
+  });
+});
+
+describe("托管的组合追价:越等越让,只朝成交方向动,部分成交不缩量", () => {
+  it("头两轮挂在自然价,第 3 轮起每轮再让一跳,让到上限就停", async () => {
+    const { engine, router } = build({ targets: { spot_target: 7740, profit_drawdown_pct: 40 }, peak: 8.0 });
+    const natural = naturalOf(router.rows);
+    const position = tk.makePosition({ account: "模拟", symbol: "SPX", sec_type: "BAG", quantity: 1, avg_cost: 450, multiplier: 100, market_price: 4 });
+    const auto = tk.makeAutoClose({ chase_max_pct: 10 });
+    await tick(engine);                                   // 第 0 轮:挂在自然价
+    expect(router.placed[0]!.item.lmt_price).toBe(down(natural));
+    await tick(engine);                                   // 第 1、2 轮:不动
+    await tick(engine);
+    expect(router.modified).toEqual([]);
+    await tick(engine);                                   // 第 3 轮:让一跳
+    expect(router.modified).toHaveLength(1);
+    expect(router.modified[0]!.item.lmt_price).toBe(down(natural - 0.05));
+    await tick(engine);                                   // 第 4 轮:再让一跳
+    expect(router.modified[1]!.item.lmt_price).toBe(down(natural - 0.10));
+    for (let i = 0; i < 30; i += 1) await tick(engine);   // 让到上限
+    const floor = tk.chaseFloor(position, natural, auto);
+    const last = router.modified[router.modified.length - 1]!;
+    expect(last.item.lmt_price).toBe(floor);
+    expect(router.modified.length).toBe(tk.chaseMaxSteps(position, natural, auto)); // 到上限后不再改
+    expect(new Set(router.modified.map((m) => m.order_id)).size).toBe(1);
+    expect(router.placed).toHaveLength(1);
+  });
+
+  it("买价抬上去了,挂着的单不改回去;掉下去了顺着追", async () => {
+    const { engine, router } = build({ targets: { spot_target: 7740, profit_drawdown_pct: 40 }, peak: 8.0 });
+    for (let i = 0; i < 5; i += 1) await tick(engine);
+    const before = router.modified[router.modified.length - 1]!.item.lmt_price;
+    router.rows = flyAt(7735);                            // 蝶更值钱了
+    router.spot = 7735;
+    await tick(engine);
+    await tick(engine);
+    expect(router.modified[router.modified.length - 1]!.item.lmt_price).toBeLessThanOrEqual(before);
+    router.rows = flyAt(7705);                            // 掉下去
+    router.spot = 7705;
+    await tick(engine);
+    expect(router.modified[router.modified.length - 1]!.item.lmt_price).toBeLessThan(before);
+  });
+
+  it("追了 30 轮还没成交:提醒一次,不刷屏", async () => {
+    const { engine, router } = build({ targets: { spot_target: 7740, profit_drawdown_pct: 40 }, peak: 8.0 });
+    for (let i = 0; i < 29; i += 1) await tick(engine);
+    const stuck = () => engine.notifier.history.filter(([, , body]) => body.includes("仍未成交")).length;
+    expect(stuck()).toBe(0);
+    for (let i = 0; i < 5; i += 1) await tick(engine);
+    expect(stuck()).toBe(1);
+    expect(router.placed).toHaveLength(1);
+  });
+
+  it("界面拿到追到哪了:轮数、挂的价、自然价、最多让到", async () => {
+    const { engine } = build({ targets: { spot_target: 7740, profit_drawdown_pct: 40 }, peak: 8.0 });
+    for (let i = 0; i < 4; i += 1) await tick(engine);
+    const poll = await engine.pollTrackers(NOON);
+    const row = (poll["rows"] as Rec[])[0]!;
+    expect(row["sweeping"]).toBe(true);
+    expect(row["chase"]["rounds"]).toBe(4);
+    expect(row["chase"]["limit"]).toBeLessThan(row["chase"]["natural"]);
+    expect(row["chase"]["floor"]).toBeLessThanOrEqual(row["chase"]["limit"]);
+  });
+
+  it("3 张的托管单成交 1 张:持仓剩 2,改单时总量仍是 3(不把剩下的再砍一截)", async () => {
+    // 追价中(自然价随行情变,才会有改单)
+    const { engine, router } = build({ targets: { spot_target: 7740, profit_drawdown_pct: 40 }, peak: 8.0, lots: 3 });
+    await tick(engine);
+    expect(router.placed[0]!.item.quantity).toBe(3);
+    const orderId = router.placed[0]!.order_id;
+    engine.onOrderStatus({ order: { orderId, permId: null }, orderStatus: { status: "Submitted", filled: 1, remaining: 2 }, contract: { symbol: "SPX" } });
+    router.rows = flyAt(7712, 2);                         // 持仓剩 2 组,价也变了
+    router.spot = 7712;
+    await tick(engine);
+    expect(router.modified.length).toBeGreaterThan(0);
+    for (const m of router.modified) expect(m.item.quantity).toBe(3);
+    // 用户在别处又手动平了 1 组(持仓剩 1):总量改成 1 + 已成交 1 = 2
+    router.rows = flyAt(7712, 1);
+    await tick(engine);
+    expect(router.modified[router.modified.length - 1]!.item.quantity).toBe(2);
+  });
+});
+
+describe("手动「立即平仓」落在已有单的追踪上:改那张追价,不另发", () => {
+  it("托管中(还没触发):落闩成 sweep:stop_loss,下一轮把托管单改到自然价;没有第二张单", async () => {
+    const { engine, router, track } = build({ targets: { spot_target: 7740 } });
+    await tick(engine);
+    expect(router.placed).toHaveLength(1);
+    expect(await engine.sweepExisting(engine.store.getTrack(track["id"])!, "手动平仓")).toBe(true);
+    expect(engine.store.getTrack(track["id"])!["fired_state"]).toBe("sweep:stop_loss");
+    await tick(engine);
+    const last = router.modified[router.modified.length - 1]!;
+    expect(last.order_id).toBe(router.placed[0]!.order_id);
+    expect(last.item.lmt_price).toBe(down(naturalOf(router.rows)));
+    expect(router.sent).toEqual([]);
+  });
+
+  it("没有现成的单:回 false,照常发平仓单", async () => {
+    const { engine, track } = build({ targets: { spot_target: 7740 }, host: false });
+    expect(await engine.sweepExisting(track, "手动平仓")).toBe(false);
+    expect(engine.store.getTrack(track["id"])!["fired_state"] || null).toBeNull();
   });
 });

@@ -165,8 +165,11 @@ contextBridge.exposeInMainWorld('dafri', {
   deleteTracker: (id) => ipcRenderer.invoke('rpc', { method: 'tracker.delete', params: { id } }),
   pollTrackers: () => ipcRenderer.invoke('rpc', { method: 'tracker.poll', params: {} }),
   // 只读试算:标的走到目标价时这份持仓值多少、赚多少。不建追踪、不发单
-  previewSpotTarget: (key, spotTarget) =>
-    ipcRenderer.invoke('rpc', { method: 'tracker.target_preview', params: { key, spot_target: spotTarget } }),
+  previewSpotTarget: (key, spotTarget, chaseMaxPct) =>
+    ipcRenderer.invoke('rpc', {
+      method: 'tracker.target_preview',
+      params: { key, spot_target: spotTarget, ...(chaseMaxPct != null ? { chase_max_pct: chaseMaxPct } : {}) },
+    }),
   // 券商托管对账:界面按秒驱动,动态停损价的秒级调整走这条路
   reconcileTrackers: () => ipcRenderer.invoke('rpc', { method: 'tracker.reconcile', params: {} }),
   closePositionNow: (id) =>

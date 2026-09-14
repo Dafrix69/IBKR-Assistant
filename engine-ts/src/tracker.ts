@@ -494,6 +494,9 @@ export interface SpotTarget {
   reached?: boolean;
   /** 试算时:此刻立刻平掉能拿到(空头:要付)的价,按各腿买卖价合成;拿不到报价时没有这一项。 */
   natural?: number;
+  /** 追价平仓最多让到的价(自然价按 chase_max_pct 让满),以及那个百分比 */
+  chase_floor?: number;
+  chase_max_pct?: number;
 }
 
 /** σ 来源里哪些算"市场价":只有这几种算出来的数才能拿去挂单或改单。
@@ -655,6 +658,10 @@ export interface LegBook { bid: number | null; ask: number | null }
  * 要"到了就走",就得改到这个价。
  *
  * 任何一条腿没有有效的买卖价就回 null——拿半边报价算出来的"立刻成交价"是凭空的。
+ * 唯一的例外是**买价为 0**:0DTE 蝶的远翼临近收盘常常没人出价,买价就是 0。那条腿是要卖掉的,
+ * 按 0 卖等于送掉,组合净价里它就贡献 0——这是 IBKR 自己显示组合买价的算法,也是这只蝶此刻
+ * 真能成交的价。以前把它当"没报价"整轮不动,远翼归零的蝶就永远追不了价。卖价仍必须为正:
+ * 要买回的腿没有卖价,就真的没法立刻买回。算出来不是正数(平掉反而要付钱)也回 null。
  */
 export function naturalClosePrice(
   position: Position, structure: TargetStructure, book: Record<string, LegBook>,
@@ -664,14 +671,16 @@ export function naturalClosePrice(
     const q = book[legPriceKey(leg)];
     const bid = finiteOrNull(q?.bid ?? null);
     const ask = finiteOrNull(q?.ask ?? null);
-    if (bid === null || ask === null || !(bid > 0) || !(ask > 0) || ask < bid) return null;
+    if (bid === null || ask === null || !(bid >= 0) || !(ask > 0) || ask < bid) return null;
     return { bid, ask };
   };
   if (structure.kind === "option") {
-    // 单腿的结构一律按"一张多头"记,方向看持仓数量:多头卖在买价,空头买回在卖价
+    // 单腿的结构一律按"一张多头"记,方向看持仓数量:多头卖在买价,空头买回在卖价。
+    // 单腿多头买价为 0 就是没人要,不算"能成交"
     const q = quote(structure.legs[0]!);
     if (q === null) return null;
-    return isLong(position) ? q.bid : q.ask;
+    const price = isLong(position) ? q.bid : q.ask;
+    return price > 0 ? price : null;
   }
   let net = 0;
   for (const leg of structure.legs) {
@@ -679,7 +688,59 @@ export function naturalClosePrice(
     if (q === null) return null;
     net += leg.ratio * (leg.ratio > 0 ? q.bid : q.ask);
   }
-  return pyRound(isLong(position) ? net : -net, 4);
+  const out = pyRound(isLong(position) ? net : -net, 4);
+  return out > 0 ? out : null;
+}
+
+/** 追价平仓的让价节奏(见 chaseLimit)。轮 = 引擎节拍,一秒一轮。 */
+export const CHASE_GRACE_ROUNDS = 2; // 先在自然价上等这么多轮
+export const CHASE_STEP_TICKS = 1;   // 之后每轮再让一跳
+export const CHASE_WARN_ROUNDS = 30; // 追了这么多轮还没成交,提醒一次
+
+/** 追价最多让到哪(相对自然价的最大让价,已按跳动取整为整数跳)。
+ * 上限取 chase_max_pct 与「至少两跳」中的大者:很便宜的组合按百分比算连一跳都不到,等于不追。 */
+export function chaseMaxSteps(position: Position, natural: number, auto: AutoClose): number {
+  const tick = closeTick(position, natural);
+  const pct = Math.max(0, finiteOrNull(auto.chase_max_pct) ?? 0) / 100;
+  const cap = Math.max(2 * tick, natural * pct);
+  return Math.floor(cap / tick + 1e-9);
+}
+
+/**
+ * 追价平仓第 `rounds` 轮(从 0 起)该挂的限价。
+ *
+ * 自然价(各腿买卖价合成)是"此刻立刻能成交"的价,可挂上去未必立刻成交:组合单在 COB 上要等
+ * 做市商整包接、腿的报价可能只有一张的量、夜盘的报价又常是挂着不动的。要"到了就走",光跟着
+ * 自然价改还不够,得越等越让:
+ *
+ *  · 头 CHASE_GRACE_ROUNDS 轮挂在自然价上——多数时候这就成交了,没必要一上来就多让;
+ *  · 之后每轮再让 CHASE_STEP_TICKS 跳,让到 chaseMaxSteps 为止——上限是用户设的 chase_max_pct,
+ *    再往下就不是"及时成交"而是"贱卖";
+ *  · **只朝成交方向动,绝不退回来**(prev 是上一轮挂的价):买价抬上去了,挂在下面的卖单本来
+ *    就会按买价成交,改回去只是多一次改单、多一段在交易所排队的空档;买价掉下去了,新的自然价
+ *    减去同样的让价一定更低,顺着追。
+ *  · 按跳动朝成交方向取整,至少一跳。
+ */
+export function chaseLimit(
+  position: Position, natural: number, prev: number | null, rounds: number, auto: AutoClose,
+): number {
+  const tick = closeTick(position, natural);
+  const steps = Math.min(
+    Math.max(0, rounds - CHASE_GRACE_ROUNDS) * CHASE_STEP_TICKS,
+    chaseMaxSteps(position, natural, auto),
+  );
+  const long = isLong(position);
+  const raw = long ? natural - steps * tick : natural + steps * tick;
+  const aligned = long ? Math.floor(raw / tick + 1e-9) : Math.ceil(raw / tick - 1e-9);
+  let out = Math.max(aligned * tick, tick);
+  const p = finiteOrNull(prev);
+  if (p !== null) out = long ? Math.min(out, p) : Math.max(out, p);
+  return pyRound(out, 4);
+}
+
+/** 追价最多会让到的价(自然价让满上限):试算时摆出来,人才知道"最坏卖到哪"。 */
+export function chaseFloor(position: Position, natural: number, auto: AutoClose): number {
+  return chaseLimit(position, natural, null, Number.MAX_SAFE_INTEGER, auto);
 }
 
 /**
@@ -1098,6 +1159,8 @@ export interface AutoClose {
   /** 把止盈/止损挂到券商服务器(GTC + OCA):软件关掉也生效。软件开着时,
    * 利润回撤等动态目标由引擎按秒调整托管单价格;关掉则停在最后一次。 */
   host_at_broker: boolean;
+  /** 追价平仓最多让到自然价的百分之几(见 chaseLimit)。只管期权与组合;正股不追价。 */
+  chase_max_pct: number;
 }
 
 export function makeAutoClose(raw: Partial<AutoClose> = {}): AutoClose {
@@ -1107,6 +1170,7 @@ export function makeAutoClose(raw: Partial<AutoClose> = {}): AutoClose {
     slippage_pct: raw.slippage_pct ?? 0.3,
     close_fraction_pct: raw.close_fraction_pct ?? 100.0,
     host_at_broker: raw.host_at_broker ?? false,
+    chase_max_pct: raw.chase_max_pct ?? 10.0,
   };
 }
 

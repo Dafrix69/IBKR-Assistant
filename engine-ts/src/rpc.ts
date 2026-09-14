@@ -2502,7 +2502,13 @@ export class RpcServer {
     // 此刻立刻平掉能拿到多少:和"标的到了目标价挂的价"摆在一起,人才知道追价平仓大概落在哪
     if (structure.kind !== "stock" && this.router !== null) {
       const natural = await this.engine.naturalCloseFor(raw, position, rows);
-      if (natural !== null) st.natural = natural;
+      if (natural !== null) {
+        st.natural = natural;
+        // 追价最多让到哪:自然价按 chase_max_pct 让满(界面没传就按默认)
+        const auto = tkMod.makeAutoClose({ chase_max_pct: optFloat(params["chase_max_pct"]) ?? undefined });
+        st.chase_floor = tkMod.chaseFloor(position, natural, auto);
+        st.chase_max_pct = auto.chase_max_pct;
+      }
     }
     return { spot_target: st, structure: { kind: structure.kind, label: structure.label } };
   }
@@ -2645,6 +2651,8 @@ export class RpcServer {
       slippage_pct: Number(params["slippage_pct"] ?? 0.3) || 0.3,
       close_fraction_pct: Number(params["close_fraction_pct"] ?? 100) || 100,
       host_at_broker: Boolean(params["host_at_broker"]),
+      // 追价让价上限:0 也是合法值(至少两跳),所以不能用 || 兜底
+      chase_max_pct: optFloat(params["chase_max_pct"]) ?? undefined,
     });
     if (auto.host_at_broker) this.requireHostingSupported(String(raw["account"]));
     await this.checkTargets(raw, rows, position, targets, auto);
@@ -2799,9 +2807,18 @@ export class RpcServer {
     });
     if (blockers.length) throw new RpcError(-32019, `不能平仓:${blockers.join("、")}`);
 
-    const result = {
-      state: tkMod.STATE_STOP_LOSS, price: raw["market_price"], reason: "手动平仓",
-    };
+    // 券商那边已经有这条追踪的单(托管的止盈单、或正在追价的平仓单):改那张去追价,不另发一张——
+    // 两张各平一次就是反向开仓
+    if (await this.engine.sweepExisting(track, "手动平仓")) {
+      return { fired: { id: track["id"], symbol: track["symbol"], state: tkMod.STATE_STOP_LOSS, reason: "手动平仓:现有的单改到立刻成交的价追价" } };
+    }
+    // 期权 / 组合的限价按各腿买卖价合成的立刻成交价算(拿不到才退回现价让滑点),和到价自动平仓同一口径
+    let price = raw["market_price"];
+    if (raw["sec_type"] === "BAG" || raw["sec_type"] === "OPT" || raw["sec_type"] === "FOP") {
+      const natural = await this.engine.naturalCloseFor(raw, position, rows);
+      if (natural !== null) price = natural;
+    }
+    const result = { state: tkMod.STATE_STOP_LOSS, price, reason: "手动平仓" };
     const fired = await this.engine.closePosition(track, position, auto, result);
     if (!fired) throw new RpcError(-32019, "平仓单没有发出去,详见引擎日志与交易记录。");
     return { fired };

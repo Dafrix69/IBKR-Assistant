@@ -2230,6 +2230,9 @@ export class BrokerRouter {
     // 不再 settle(500):orderId 在 placeOrder 返回时已经确定,状态与成交
     // 由事件回报异步落库——为一个"也许能看到的早期状态"陪 500ms 不值得。
     const trade = await session.placeOrder(contract, order);
+    // 记住这张单的会话 / 合约 / 原样订单:追踪的平仓单发出后要按秒改价(modifyHosted),
+    // 改单是同 orderId 整张重发,得有原样的那一份
+    if (trade.orderId) this.hostedTrades.set(trade.orderId, { session, contract, order });
     return {
       record_id: recordId,
       order_id: trade.orderId ?? null,

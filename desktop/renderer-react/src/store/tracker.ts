@@ -62,8 +62,19 @@ export interface SpotTargetRow {
   warning?: string;
   /** 此刻立刻平掉能拿到(空头:要付)的价,按各腿买卖价合成 */
   natural?: number;
+  /** 追价平仓最多让到的价(自然价按 chase_max_pct 让满)与那个百分比 */
+  chase_floor?: number;
+  chase_max_pct?: number;
   /** 标的此刻已经到了(或越过)目标价 */
   reached?: boolean;
+}
+
+/** 追价平仓追到哪了(引擎每轮给):轮 = 秒;挂的价只朝成交方向动,让到 floor 为止 */
+export interface ChaseInfo {
+  rounds: number;
+  limit: number | null;
+  natural?: number | null;
+  floor?: number | null;
 }
 
 export interface Track {
@@ -73,7 +84,7 @@ export interface Track {
   sec_type: string;
   contract?: Record<string, unknown>;
   targets?: TrackTargets;
-  auto_close?: { enabled?: boolean; order_type?: string; host_at_broker?: boolean; close_fraction_pct?: number };
+  auto_close?: { enabled?: boolean; order_type?: string; host_at_broker?: boolean; close_fraction_pct?: number; chase_max_pct?: number };
   enabled: boolean;
   peak?: number | null;
   fired_at?: string | null;
@@ -96,6 +107,9 @@ export interface LiveRow {
   profit_trail_stop?: number | null;
   spot_target?: SpotTargetRow | null;
   blocked?: string[];
+  /** 正在追价平仓(触发了,那张单每秒改到立刻成交的价) */
+  sweeping?: boolean;
+  chase?: ChaseInfo;
 }
 
 export interface HostedOrder {
@@ -197,6 +211,7 @@ export async function pollTrackers(): Promise<void> {
         r.id, r.state, r.price, r.unrealized_pnl, r.profit_peak,
         r.profit_drawdown_threshold, r.profit_trail_stop, r.stop_effective, r.blocked,
         r.spot_target?.price, r.spot_target?.pnl, r.spot_target?.sigma_source,
+        r.sweeping, r.chase?.rounds, r.chase?.limit,
       ]),
     );
     if (sig !== rowsSig) {

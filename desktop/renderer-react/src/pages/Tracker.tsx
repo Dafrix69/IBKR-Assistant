@@ -277,6 +277,8 @@ function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: string | nul
   const [preview, setPreview] = useState<{ target: number; row: SpotTargetRow } | null>(null);
   const [previewErr, setPreviewErr] = useState<string | null>(null);
   const [fraction, setFraction] = useState<number | null>(null);
+  // 追价平仓最多让到自然价的百分之几(期权 / 组合);空 = 引擎默认 10%
+  const [chaseMax, setChaseMax] = useState<number | null>(null);
   const [auto, setAuto] = useState(false);
   const [orderType, setOrderType] = useState<'MKT' | 'LMT'>(isCombo ? 'LMT' : 'MKT');
   const [host, setHost] = useState(false);
@@ -308,7 +310,7 @@ function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: string | nul
     setPreviewErr(null);
     const t = setTimeout(async () => {
       try {
-        const res = await dafri.previewSpotTarget(p.key, target);
+        const res = await dafri.previewSpotTarget(p.key, target, chaseMax);
         if (!alive) return;
         const row = res?.spot_target || null;
         setPreview(row?.price != null ? { target, row } : null);
@@ -323,7 +325,7 @@ function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: string | nul
       alive = false;
       clearTimeout(t);
     };
-  }, [p.key, spotTarget]);
+  }, [p.key, spotTarget, chaseMax]);
 
   async function start() {
     const spec = {
@@ -335,6 +337,7 @@ function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: string | nul
       profit_drawdown_preset: tiers ? 'fly' : undefined,
       spot_target: str(spotTarget),
       close_fraction_pct: str(fraction) || undefined,
+      chase_max_pct: str(chaseMax) || undefined,
       auto_close: auto,
       order_type: orderType,
       host_at_broker: hostOn,
@@ -350,7 +353,7 @@ function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: string | nul
     if (hasSpotTarget && (spec.auto_close || spec.host_at_broker)) {
       setSaving(true);
       try {
-        const res = await dafri.previewSpotTarget(p.key, spotTarget!);
+        const res = await dafri.previewSpotTarget(p.key, spotTarget!, chaseMax);
         quoted = res?.spot_target || null;
       } catch (err) {
         showBanner(errorMessage(err), false);
@@ -474,7 +477,10 @@ function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: string | nul
               {priced.warning ? <div className="hint warn-text">{priced.warning}</div> : null}
               {priced.natural != null ? (
                 <div className="hint">
-                  {`现在立刻平掉约 ${fmtMoney(priced.natural)}(按各腿当前买卖价;标的到了目标价、或止损类目标触发时,托管单会改到这个口径的价追着平)`}
+                  {`现在立刻平掉约 ${fmtMoney(priced.natural)}(按各腿当前买卖价;标的到了目标价、或止损类目标触发时,平仓单会改到这个口径的价追着平)`}
+                  {priced.chase_floor != null
+                    ? `;追价先在这个价上等两秒,之后每秒再让一跳,最多让到 ${fmtMoney(priced.chase_floor)}(${priced.chase_max_pct ?? 10}%)`
+                    : ''}
                 </div>
               ) : null}
               <div className={priced.sigma_source === 'clock' ? 'hint warn-text' : 'hint'}>
@@ -523,6 +529,10 @@ function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: string | nul
       </label>
       {/* 触发后平掉多少仓位:100 = 全平,50 = 卖一半锁利。向下取整,绝不超过持仓 */}
       {num({ label: '触发后平仓比例 %', hint: '默认 100 全平,50=卖一半', value: fraction, onChange: setFraction })}
+      {/* 追价平仓的让价上限:触发后平仓单先挂在立刻成交价上等两秒,之后每秒再让一跳,让到这个比例为止 */}
+      {p.sec_type !== 'STK'
+        ? num({ label: '追价最多让价 %', hint: '默认 10;触发后先挂立刻成交价等两秒,之后每秒再让一跳,让到这里为止(至少两跳)', value: chaseMax, onChange: setChaseMax })
+        : null}
       <label className="switch-row">
         <span className="group-label">
           到价自动平仓
@@ -830,6 +840,14 @@ function TrackCard({
       {/* 盯盘条:离触发还有多远。分档回撤的触发价每轮都会跳,所以取引擎算好的那个 */}
       {!fired && t.enabled ? <Gauge live={live} targets={targets} /> : null}
       {live.reason ? <div className="reason">{live.reason}</div> : null}
+      {/* 追价平仓:追到哪了。轮 = 秒;挂的价只朝成交方向动,让到「最多让到」为止 */}
+      {sweeping && live.chase ? (
+        <div className="reason">
+          {`追价第 ${live.chase.rounds} 秒:挂 ${fmtMoney(live.chase.limit)}`}
+          {live.chase.natural != null ? `,此刻立刻成交价 ${fmtMoney(live.chase.natural)}` : ''}
+          {live.chase.floor != null ? `,最多让到 ${fmtMoney(live.chase.floor)}` : ''}
+        </div>
+      ) : null}
       {live.blocked?.length ? <Alert type="warning" showIcon message="到价了但没有平仓" description={live.blocked.join('、')} style={{ marginTop: 8 }} /> : null}
 
       <Space size={6} className="card-actions" wrap>
