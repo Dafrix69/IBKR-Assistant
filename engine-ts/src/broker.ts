@@ -19,7 +19,9 @@ import { MIN_BARS, TIMEFRAMES } from "./priceaction.js";
 import { utcIso } from "./tradereview.js";
 import type { ApprovedOrder } from "./validator.js";
 import { fmtF, pyRound } from "./py.js";
-import { ET, dateOrdinal, ordinalToDate, pad2, wallParts, wallToEpoch, weekdayOfDate } from "./tz.js";
+import {
+  ET, dateOrdinal, ibWallTime, ordinalToDate, pad2, wallParts, wallToEpoch, weekdayOfDate, zonedEpoch,
+} from "./tz.js";
 
 type Rec = Record<string, any>;
 
@@ -2572,30 +2574,18 @@ export function optionContract(
   };
 }
 
-const IB_TZ_ALIASES: Record<string, string> = {
-  "US/Eastern": "America/New_York", "US/Central": "America/Chicago",
-  "US/Mountain": "America/Denver", "US/Pacific": "America/Los_Angeles",
-};
-
-/** IBKR 成交时间字符串 → epoch 毫秒。四种形态:'yyyymmdd hh:mm:ss Zone'、'yyyymmdd  hh:mm:ss'(按美东)、
- * 纯数字(unix 秒)、ISO。解析不了回 null。 */
+/** IBKR 成交时间字符串 → epoch 毫秒。认:IB 成交时间的三种写法(实时推送的 'yyyymmdd-hh:mm:ss' 按 UTC、
+ * 'yyyymmdd hh:mm:ss Zone'、不带时区的 'yyyymmdd  hh:mm:ss' 按美东,见 tz.ibWallTime)、纯数字(unix 秒)、ISO。
+ * 解析不了回 null。 */
 export function parseIbTime(value: unknown): number | null {
   if (value === null || value === undefined) return null;
   if (typeof value === "number") return Number.isFinite(value) ? value : null;
   const s = String(value).trim();
   if (!s) return null;
   if (/^\d+$/.test(s) && s.length !== 8) return Number(s) * 1000;
-  let m = /^(\d{4})(\d{2})(\d{2})\s+(\d{2}):(\d{2}):(\d{2})(?:\s+(\S+))?$/.exec(s);
-  if (m) {
-    const zone = m[7] ? (IB_TZ_ALIASES[m[7]] ?? m[7]) : ET;
-    try {
-      return wallToEpoch({ year: Number(m[1]), month: Number(m[2]), day: Number(m[3]),
-        hour: Number(m[4]), minute: Number(m[5]), second: Number(m[6]) }, zone);
-    } catch {
-      return null;
-    }
-  }
-  m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?$/.exec(s);
+  const ib = ibWallTime(s);
+  if (ib) return zonedEpoch(ib.wall, ib.tz);
+  const m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?$/.exec(s);
   if (m) {
     return wallToEpoch({ year: Number(m[1]), month: Number(m[2]), day: Number(m[3]),
       hour: Number(m[4]), minute: Number(m[5]), second: Number(m[6]) }, ET);

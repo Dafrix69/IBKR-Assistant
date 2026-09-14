@@ -8,7 +8,7 @@
  * - 盈亏平衡与最大盈亏按成交均价算,没成交就用限价并标注"估算"。
  */
 import { fmtF, pyRound } from "./py.js";
-import { ET, wallParts, wallToEpoch } from "./tz.js";
+import { ET, ibWallTime, wallParts, wallToEpoch, zonedEpoch } from "./tz.js";
 
 type Rec = Record<string, any>;
 
@@ -134,24 +134,21 @@ export function zone(profile: Rec): Rec {
 // 时间(全部用 epoch 毫秒表示时刻)
 // ----------------------------------------------------------------------
 function etEpoch(y: number, mo: number, d: number, h: number, mi: number, se: number): number | null {
-  if (mo < 1 || mo > 12 || d < 1 || d > 31 || h > 23 || mi > 59 || se > 59) return null;
-  const epoch = wallToEpoch({ year: y, month: mo, day: d, hour: h, minute: mi, second: se }, ET);
-  const back = wallParts(epoch, ET);
-  // 无效日期(如 2 月 30 日)会被 Date 归一化到别的日子;Python 那边直接 ValueError → None
-  if (back.month !== mo || back.day !== d) return null;
-  return epoch;
+  return zonedEpoch({ year: y, month: mo, day: d, hour: h, minute: mi, second: se }, ET);
 }
 
+/** 记录里的时间 → epoch 毫秒。认:IB 成交时间(ibkr.fills[].time 存的是 execution.time 原文——
+ * 实时推送 '20260910-10:00:01' 是 UTC,reqExecutions 回的 '20260910 05:00:01 US/Central' 按所带时区,
+ * 不带时区的 '20260910 05:00:01' 按美东)、美东墙钟 'YYYY-MM-DD[ HH:MM[:SS]]'、带时区的 ISO。
+ * 认不出或日期不合法回 null。 */
 export function parseWhen(value: unknown): number | null {
   if (value === null || value === undefined) return null;
   if (typeof value === "number") return Number.isFinite(value) ? value : null;
   const s = String(value).trim();
   if (!s) return null;
-  let m = /^(\d{4})(\d{2})(\d{2})\s+(\d{2}):(\d{2}):(\d{2})$/.exec(s);
-  if (m) {
-    return etEpoch(Number(m[1]), Number(m[2]), Number(m[3]), Number(m[4]), Number(m[5]), Number(m[6]));
-  }
-  m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?$/.exec(s);
+  const ib = ibWallTime(s);
+  if (ib) return zonedEpoch(ib.wall, ib.tz);
+  const m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?$/.exec(s);
   if (m) {
     return etEpoch(Number(m[1]), Number(m[2]), Number(m[3]), Number(m[4] ?? 0), Number(m[5] ?? 0), Number(m[6] ?? 0));
   }

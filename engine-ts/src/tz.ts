@@ -65,6 +65,47 @@ export function wallToEpoch(p: WallParts, tz: string): number {
   return guess;
 }
 
+/** 带合法性检查的 wallToEpoch:越界的月日时分秒、不存在的日期(2 月 30 日会被 Date 顺延到 3 月)、
+ * Intl 不认识的时区名,一律回 null 而不是给个挪了位的时刻。 */
+export function zonedEpoch(p: WallParts, tz: string): number | null {
+  if (p.month < 1 || p.month > 12 || p.day < 1 || p.day > 31 || p.hour > 23 || p.minute > 59 || p.second > 59) {
+    return null;
+  }
+  try {
+    const epoch = wallToEpoch(p, tz);
+    const back = wallParts(epoch, tz);
+    return back.month === p.month && back.day === p.day ? epoch : null;
+  } catch {
+    return null; // 时区名不认识:Intl.DateTimeFormat 抛 RangeError
+  }
+}
+
+/** TWS 设置里的 US/xxx 老时区名 → IANA;其余名字按 IANA 原样用。 */
+const IB_TZ_ALIASES: Record<string, string> = {
+  "US/Eastern": "America/New_York", "US/Central": "America/Chicago",
+  "US/Mountain": "America/Denver", "US/Pacific": "America/Los_Angeles",
+};
+
+/** IBKR 成交时间(Execution.time)→ 墙钟 + 所在时区,换成时刻用 zonedEpoch。认三种写法:
+ * - '20260910-10:00:01':execDetails 实时推送,UTC;
+ * - '20260910 05:00:01 US/Central':reqExecutions 应答,TWS 本地时间 + 时区名;
+ * - '20260910 05:00:01'(可能两个空格):不带时区名,按美东。
+ * 不是这几种形态回 null,调用方接着试别的格式。 */
+export function ibWallTime(s: string): { wall: WallParts; tz: string } | null {
+  let m = /^(\d{4})(\d{2})(\d{2})-(\d{2}):(\d{2}):(\d{2})$/.exec(s);
+  let tz = "UTC";
+  if (!m) {
+    m = /^(\d{4})(\d{2})(\d{2})\s+(\d{2}):(\d{2}):(\d{2})(?:\s+(\S+))?$/.exec(s);
+    if (!m) return null;
+    tz = m[7] ? (IB_TZ_ALIASES[m[7]] ?? m[7]) : ET;
+  }
+  const wall = {
+    year: Number(m[1]), month: Number(m[2]), day: Number(m[3]),
+    hour: Number(m[4]), minute: Number(m[5]), second: Number(m[6]),
+  };
+  return { wall, tz };
+}
+
 /** 'YYYY-MM-DD' 的星期,Python 口径:周一=0 … 周日=6。 */
 export function weekdayOfDate(dateStr: string): number {
   const [y, m, d] = dateStr.split("-").map(Number) as [number, number, number];
