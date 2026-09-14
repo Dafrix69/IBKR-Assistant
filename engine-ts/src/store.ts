@@ -767,6 +767,13 @@ export class TradeStore {
     const timeline = ibkr["status_timeline"] as Rec[];
     const fills = ibkr["fills"] as Rec[];
 
+    // 同一 exec_id 只折一次:交易分析同步成交(reqExecutions)时 TWS 会把当天的 execDetails /
+    // commissionReport 整批重推一遍,引擎又照单落了一次库。2026-09-10 模拟盘 #89:4 条成交、
+    // 3 条佣金各落了 3 次,手续费(和已实现盈亏)跟着翻三倍。库是 append-only 改不了,只能读的时候去重;
+    // 先到的那条(实时回报)为准。没有 exec_id 的(老数据、手工夹具)认不出是不是同一笔,不去重。
+    const seenFills = execIdSet(fills);
+    const seenCommissions = execIdSet(record["commissions"]);
+
     const rows = this.db
       .prepare("SELECT at, kind, payload FROM record_events WHERE record_id=? ORDER BY seq")
       .all(recordId) as Array<{ at: string; kind: string; payload: string }>;
@@ -779,8 +786,9 @@ export class TradeStore {
           if (payload[key] !== null && payload[key] !== undefined) ibkr[key] = payload[key];
         }
       } else if (kind === "fill") {
-        fills.push({ ...payload, time: payload["time"] || row.at });
+        if (firstSeen(seenFills, payload["exec_id"])) fills.push({ ...payload, time: payload["time"] || row.at });
       } else if (kind === "commission") {
+        if (!firstSeen(seenCommissions, payload["exec_id"])) continue;
         if (!Array.isArray(record["commissions"])) record["commissions"] = [];
         (record["commissions"] as Rec[]).push({ ...payload, at: row.at });
       } else if (kind === "trigger") {
@@ -795,14 +803,27 @@ export class TradeStore {
       }
     }
 
-    if (fills.length) {
-      const totalQty = fills.reduce((acc, f) => acc + (Number(f["qty"]) || 0), 0) || 0;
-      if (totalQty) {
-        ibkr["avg_fill_price"] =
-          fills.reduce((acc, f) => acc + (Number(f["price"]) || 0) * (Number(f["qty"]) || 0), 0) /
-          totalQty;
-      }
+    // 均价。组合(BAG)单的 fills 是 1 条 BAG 行 + 每条腿各一行(腿留在 fills 里给界面看),
+    // 均价只能取 BAG 行:#89 买 7660/7680/7700 看涨蝶净价 3.55,四行按数量混算成了 5.02。
+    // BAG 一律以 BUY 提交(broker.bagSignedLimit),贷方组合的 BAG 成交价是负数;记录里的价格
+    // 与 lmtPrice 同口径(正数,方向看 order.action),所以与 ibtrades 一样取绝对值。
+    // 老记录的 fill 事件没有 sec_type:按 exec_id 到 broker_fills(交易分析同步下来的券商成交,带合约)
+    // 补查;仍认不出 BAG 行就不给均价——宁可空着(复盘会退回限价并标"估算"),也不拿腿价混出一个错数。
+    const combo =
+      (record["contract"] ?? {})["secType"] === "BAG" || fills.some((f) => f["sec_type"] === "BAG");
+    let priced = fills;
+    if (combo) {
+      const known = this.execSecTypes(fills.filter((f) => !f["sec_type"]).map((f) => f["exec_id"]));
+      priced = fills.filter((f) => (f["sec_type"] || known.get(String(f["exec_id"] ?? ""))) === "BAG");
     }
+    const totalQty = priced.reduce((acc, f) => acc + (Number(f["qty"]) || 0), 0) || 0;
+    if (totalQty) {
+      const avg =
+        priced.reduce((acc, f) => acc + (Number(f["price"]) || 0) * (Number(f["qty"]) || 0), 0) / totalQty;
+      ibkr["avg_fill_price"] = combo ? Math.abs(avg) : avg;
+    }
+    // 手续费不存在 BAG 与腿重复计的问题:IBKR 只给腿的成交发佣金回报,BAG 行没有
+    // (2026-09-10 模拟盘 #83/#89 实测),按 exec_id 去重后直接相加就是整张单的手续费。
     const commissions = (record["commissions"] as Rec[]) ?? [];
     if (fills.length || commissions.length) {
       ibkr["total_commission"] = [...fills, ...commissions].reduce(
@@ -815,6 +836,21 @@ export class TradeStore {
       .filter((v) => v !== null && v !== undefined) as number[];
     if (realized.length) ibkr["realized_pnl"] = realized.reduce((a, b) => a + b, 0);
     return record;
+  }
+
+  /** exec_id → 成交合约的 secType,查 broker_fills。只给缺 sec_type 的老 fill 事件补口径用。 */
+  private execSecTypes(execIds: unknown[]): Map<string, string> {
+    const out = new Map<string, string>();
+    if (!execIds.length) return out;
+    const stmt = this.db.prepare("SELECT fill_json FROM broker_fills WHERE exec_id=?");
+    for (const raw of execIds) {
+      const execId = String(raw ?? "");
+      if (!execId) continue;
+      const row = stmt.get(execId) as { fill_json: string } | undefined;
+      const secType = row ? String((JSON.parse(row.fill_json)["contract"] ?? {})["secType"] ?? "") : "";
+      if (secType) out.set(execId, secType);
+    }
+    return out;
   }
 
   /** 重复防抖候选集:只统计真正提交过或进过盯盘队列的记录(ValidatedOnly 不算)。
@@ -956,6 +992,25 @@ function ideaRow(row: Rec): Rec {
     idea["analysis"] = null;
   }
   return idea;
+}
+
+/** 已折进来的成交 / 佣金行的 exec_id(record_json 里自带的也算,免得和事件重复)。 */
+function execIdSet(rows: unknown): Set<string> {
+  const out = new Set<string>();
+  for (const row of Array.isArray(rows) ? (rows as Rec[]) : []) {
+    const execId = String(row?.["exec_id"] ?? "");
+    if (execId) out.add(execId);
+  }
+  return out;
+}
+
+/** exec_id 头一回出现就记下并返回 true;没有 exec_id 的一律当新的。 */
+function firstSeen(seen: Set<string>, execId: unknown): boolean {
+  const key = String(execId ?? "");
+  if (!key) return true;
+  if (seen.has(key)) return false;
+  seen.add(key);
+  return true;
 }
 
 /** §9.3 日志脱敏:DU1234567 → DU***567 */

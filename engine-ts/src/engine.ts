@@ -1826,12 +1826,18 @@ export class TradingEngine {
     // 重推;ibSession 那道闸会话一重建就是空的,拦不住,这里兜底。没有 exec_id 的认不出是不是同一笔,照旧。
     const execId = String(execution.execId ?? "");
     if (execId && this.seenFills.has(execId)) return;
+    // 这笔成交自己的合约:组合单 IBKR 会回 1 条 BAG 行 + 每条腿各一行,同一个 permId,
+    // 只能靠 secType 分开(store 折叠均价时只认 BAG 行)。只取 fill.contract——
+    // trade.contract 在 ib_insync 口径下是订单的合约,拿它兜底会把腿全标成 BAG。
+    const contract = fill?.contract ?? {};
     this.store.appendEvent(recordId, "fill", {
       exec_id: execution.execId ?? "",
       time: String(execution.time ?? ""),
       price: Number(execution.price ?? 0) || 0,
       qty: Number(execution.shares ?? 0) || 0,
       commission: 0.0,
+      sec_type: String(contract.secType ?? "") || null,
+      con_id: Math.trunc(Number(contract.conId ?? 0)) || null,
     });
     if (execId) this.seenFills.add(execId);
     // live=false:reqExecutions 补回来的(断线期间成交、实时回报没收到)。只补录不通知——点开交易分析
