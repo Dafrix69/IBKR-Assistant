@@ -1361,8 +1361,8 @@ export interface HostedOrderPlan {
   [key: string]: unknown;
 }
 
-/** 托管单的价格统一收敛到 2 位小数(美股最小报价单位),且不小于 0.01。
- * 4 位小数的停损价会被 IBKR 以 110(价格档位不合法)拒掉。 */
+/** 正股托管单的价格收敛到 2 位小数(美股最小报价单位),且不小于 0.01。
+ * 4 位小数的停损价会被 IBKR 以 110(价格档位不合法)拒掉。期权按期权跳动,见下面两个。 */
 function hostedPrice(value: number | null | undefined): number | null {
   const v = finiteOrNull(value ?? null);
   if (v === null) return null;
@@ -1372,6 +1372,30 @@ function hostedPrice(value: number | null | undefined): number | null {
 /** 组合 / 单腿期权的托管限价:按合约最小跳动对齐,且**朝成交方向**取整(平多头向下、平空头向上)。
  * 这张单挂着就是为了让插针那一下能扫到,取整只该让它更容易成交,不该更难。 */
 function hostedComboPrice(position: Position, value: number | null | undefined): number | null {
+  const v = finiteOrNull(value ?? null);
+  if (v === null) return null;
+  const tick = closeTick(position, v);
+  const steps = isLong(position)
+    ? Math.floor(v / tick + 1e-9)
+    : Math.ceil(v / tick - 1e-9);
+  return pyRound(Math.max(steps * tick, tick), 4);
+}
+
+/**
+ * 托管停损的触发价(STP 的 aux、利润回撤 STP 的 aux、TRAIL 的初始停损)。正股仍是 2 位小数;
+ * 单腿期权按期权跳动对齐(3 元以上 0.10)——6.75、9.88 这种停损价会被 IBKR 以 110 退单,
+ * 而单腿开了托管,止损类目标就只有券商侧这张停损单站岗,退了单就等于没有止损。
+ *
+ * 取整方向:**朝离开市场的一侧**——多头的卖出停损向下、空头的买入停损向上,绝不把停损往现价推。
+ * 只要引擎口径的触发价还在保护一侧(多头低于现价、空头高于现价),取整后一定也还在。
+ * 反过来朝"更早触发"取整是错的(审查时真机口径复现过):持仓刚转盈利时利润回撤停损离现价不到一跳,
+ * 向上取一跳就压在现价上或越过现价,IBKR 当场触发,把引擎认为该拿着的仓平掉;夜盘 SPX 期权
+ * 买卖价差大,中间价与买价之间那一截也会被一起跨过去。这里的代价是比引擎口径最多晚触发一跳。
+ * TRAIL 的初始停损价(trailStopPrice)IBKR 校不校跳动没核对过;对齐了一定合法,所以一起对齐。
+ * 组合不走这里:组合只托管止盈(见 hostedPlan)。
+ */
+function hostedStopPrice(position: Position, value: number | null | undefined): number | null {
+  if (position.sec_type === "STK") return hostedPrice(value);
   const v = finiteOrNull(value ?? null);
   if (v === null) return null;
   const tick = closeTick(position, v);
@@ -1445,7 +1469,8 @@ export function hostedPlan(
       label: `${HOSTED_LABELS[HOSTED_KIND_TP]} ${pyFloat(tp)}`,
     });
   }
-  const sl = hostedPrice(targets.stop_loss);
+  // 停损类的触发价按期权跳动对齐,朝离开市场的一侧取整(见 hostedStopPrice)
+  const sl = hostedStopPrice(position, targets.stop_loss);
   if (sl !== null) {
     plan.push({
       kind: HOSTED_KIND_SL, action: side, order_type: "STP",
@@ -1456,7 +1481,7 @@ export function hostedPlan(
   }
   const trail = finiteOrNull(targets.trail_pct);
   if (trail !== null && trail > 0 && trail < 100) {
-    const seed = hostedPrice(trailStopPrice(position, peak, trail));
+    const seed = hostedStopPrice(position, trailStopPrice(position, peak, trail));
     plan.push({
       kind: HOSTED_KIND_TRAIL, action: side, order_type: "TRAIL",
       quantity: qty, lmt_price: null, aux_price: null,
@@ -1464,8 +1489,8 @@ export function hostedPlan(
       label: `${HOSTED_LABELS[HOSTED_KIND_TRAIL]} ${pyG(trail)}%`,
     });
   }
-  const pstop = hostedPrice(
-    profitTrailStopPrice(position, peak, targets.profit_drawdown_pct),
+  const pstop = hostedStopPrice(
+    position, profitTrailStopPrice(position, peak, targets.profit_drawdown_pct),
   );
   if (pstop !== null) {
     plan.push({

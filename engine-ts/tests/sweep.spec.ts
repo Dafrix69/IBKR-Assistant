@@ -391,3 +391,89 @@ describe("单腿期权的限价跳动:3 元以上 0.10", () => {
     expect(tk.hostedPlan(combo, tk.makeTargets({ take_profit: 12.37 }), auto, null)[0]!.lmt_price).toBe(12.35);
   });
 });
+
+describe("单腿期权的托管停损:按期权跳动对齐,朝离开市场的一侧取整", () => {
+  const auto = tk.makeAutoClose({ enabled: true, host_at_broker: true, order_type: "LMT" });
+  // 每张成本 12;多头峰值 15.13、空头峰值 8.13,都在盈利一侧
+  const opt = (q: number, secType = "OPT", mark = 12) => tk.makePosition({
+    account: "模拟", symbol: "SPX", sec_type: secType, quantity: q, avg_cost: 1200, multiplier: 100, market_price: mark,
+  });
+  const stops = (position: ReturnType<typeof tk.makePosition>, targets: Rec, peak: number | null) => {
+    const plan = tk.hostedPlan(position, tk.makeTargets(targets), auto, peak);
+    const of = (kind: string) => plan.find((p) => p.kind === kind);
+    return {
+      sl: of(tk.HOSTED_KIND_SL)?.aux_price,
+      seed: of(tk.HOSTED_KIND_TRAIL)?.trail_stop_seed,
+      ptrail: of(tk.HOSTED_KIND_PTRAIL)?.aux_price,
+    };
+  };
+
+  it("多头的卖出停损向下取整:3 元以上 0.10、以下 0.05", () => {
+    // 止损 6.75 → 6.7;TRAIL 种子 15.13×0.9 = 13.617 → 13.6;利润回撤 12 + 3.13×0.6 = 13.878 → 13.8
+    expect(stops(opt(2), { stop_loss: 6.75, trail_pct: 10, profit_drawdown_pct: 40 }, 15.13))
+      .toEqual({ sl: 6.7, seed: 13.6, ptrail: 13.8 });
+    expect(stops(opt(2), { stop_loss: 2.37 }, null).sl).toBe(2.35);
+  });
+
+  it("空头的买入停损向上取整", () => {
+    // 止损 16.37 → 16.4;TRAIL 种子 8.13×1.1 = 8.943 → 9;利润回撤 12 − 3.87×0.6 = 9.678 → 9.7
+    expect(stops(opt(-2), { stop_loss: 16.37, trail_pct: 10, profit_drawdown_pct: 40 }, 8.13))
+      .toEqual({ sl: 16.4, seed: 9, ptrail: 9.7 });
+    expect(stops(opt(-2), { stop_loss: 2.37 }, null).sl).toBe(2.4);
+  });
+
+  it("已在跳动上的价原样不动;FOP 走同一条规矩", () => {
+    expect(stops(opt(1), { stop_loss: 6.8 }, null).sl).toBe(6.8);
+    expect(stops(opt(-1), { stop_loss: 6.8 }, null).sl).toBe(6.8);
+    expect(stops(opt(1, "FOP"), { stop_loss: 6.75 }, null).sl).toBe(6.7);
+    expect(stops(opt(-1, "FOP"), { stop_loss: 6.75 }, null).sl).toBe(6.8);
+  });
+
+  it("标签里显示的是对齐后的价", () => {
+    const plan = tk.hostedPlan(opt(1), tk.makeTargets({ stop_loss: 6.75 }), auto, null);
+    expect(plan[0]!.label).toBe("托管止损 6.7");
+  });
+
+  // 审查时复现过的:朝"更早触发"取整会把停损压到现价上,IBKR 当场触发、把该拿着的仓平掉
+  it("刚转盈利时的利润回撤停损不会被取整推到现价上", () => {
+    // 多头成本 12,现价 = 峰值 12.05,回撤 40%:原始 12.03 → 12.0(若向上取整就是 12.1,越过现价)
+    expect(stops(opt(1, "OPT", 12.05), { profit_drawdown_pct: 40 }, 12.05).ptrail).toBe(12);
+    // 现价 = 峰值 12.20:原始 12.12 → 12.1;回撤 10%、峰值 12.50:原始 12.45 → 12.4
+    expect(stops(opt(1, "OPT", 12.2), { profit_drawdown_pct: 40 }, 12.2).ptrail).toBe(12.1);
+    expect(stops(opt(1, "OPT", 12.5), { profit_drawdown_pct: 10 }, 12.5).ptrail).toBe(12.4);
+    // 空头成本 12,现价 = 峰值 11.95:原始 11.97 → 12.0(若向下取整就是 11.9,越过现价)
+    expect(stops(opt(-1, "OPT", 11.95), { profit_drawdown_pct: 40 }, 11.95).ptrail).toBe(12);
+  });
+
+  it("离现价不到一跳的止损、跟踪止损种子,取整后仍在保护一侧", () => {
+    expect(stops(opt(1, "OPT", 6.75), { stop_loss: 6.72 }, null).sl).toBe(6.7); // 多头 6.72 → 6.7 < 6.75
+    expect(stops(opt(-1, "OPT", 6.8), { stop_loss: 6.85 }, null).sl).toBe(6.9); // 空头 6.85 → 6.9 > 6.8
+    expect(stops(opt(1, "OPT", 6.8), { trail_pct: 1 }, 6.8).seed).toBe(6.7); // 6.80×0.99 = 6.732 → 6.7 < 6.8
+  });
+
+  it("性质:原始停损在保护一侧,取整后绝不压到或越过现价", () => {
+    let checked = 0;
+    for (let markCents = 20; markCents <= 2500; markCents += 7) {
+      const mark = markCents / 100;
+      for (let gapCents = 1; gapCents <= 30; gapCents += 1) {
+        const long = stops(opt(1, "OPT", mark), { stop_loss: mark - gapCents / 100 }, null).sl;
+        const short = stops(opt(-1, "OPT", mark), { stop_loss: mark + gapCents / 100 }, null).sl;
+        // 最低跳动以下(多头止损不到 0.05)没有合法价,那一段不在这条性质里
+        if (mark - gapCents / 100 >= 0.05) expect(long!, `多头 现价 ${mark} 止损 ${mark - gapCents / 100}`).toBeLessThan(mark);
+        expect(short!, `空头 现价 ${mark} 止损 ${mark + gapCents / 100}`).toBeGreaterThan(mark);
+        checked += 1;
+      }
+    }
+    expect(checked).toBeGreaterThan(10_000);
+  });
+
+  it("正股不变(仍是 2 位小数);组合仍只托管止盈", () => {
+    const stk = tk.makePosition({ account: "模拟", symbol: "BE", sec_type: "STK", quantity: 100, avg_cost: 10, multiplier: 1, market_price: 12 });
+    // 10 + 5.13×0.6 = 13.078 → 13.08;15.13×0.9 = 13.617 → 13.62
+    expect(stops(stk, { stop_loss: 6.75, trail_pct: 10, profit_drawdown_pct: 40 }, 15.13))
+      .toEqual({ sl: 6.75, seed: 13.62, ptrail: 13.08 });
+    const combo = tk.makePosition({ account: "模拟", symbol: "SPX", sec_type: "BAG", quantity: 1, avg_cost: 450, multiplier: 100, market_price: 4 });
+    const plan = tk.hostedPlan(combo, tk.makeTargets({ take_profit: 12.37, stop_loss: 6.75, trail_pct: 10, profit_drawdown_pct: 40 }), auto, 15.13);
+    expect(plan.map((p) => p.kind)).toEqual([tk.HOSTED_KIND_TP]);
+  });
+});
