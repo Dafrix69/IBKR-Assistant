@@ -23,6 +23,10 @@ const TRACK_STATE_LABEL: Record<string, string> = {
   profit_trail: '利润回撤已触发',
   stop_loss: '止损已触发',
   closed: '持仓已不在',
+  // 触发了、正在把托管单改到立刻成交的价往下追(见引擎 sweepReason)
+  'sweep:take_profit': '到了目标价,追价平仓中',
+  'sweep:stop_loss': '止损触发,追价平仓中',
+  'sweep:profit_trail': '利润回撤触发,追价平仓中',
 };
 
 /** 盈亏的颜色和符号。0 不着色——把 0 画成绿色会让人以为赚了。 */
@@ -263,6 +267,11 @@ function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: string | nul
   const hasSpotTarget = spotTarget !== null && spotTarget > 0;
   // 只认算的就是当前这个目标价的那一份;对不上就当没有
   const priced = hasSpotTarget && preview?.target === spotTarget ? preview.row : null;
+  // 组合在券商那边只托管一张限价止盈单,价由标的目标价现算——没填目标价就开不了(引擎 checkTargets
+  // 同一条规矩)。止损、利润回撤照样能设:软件盯着,触发时把那张托管单改到立刻成交的价
+  const hostAllowed = !isCombo || hasSpotTarget;
+  const hostOn = host && hostAllowed;
+  const derivative = isCombo || p.sec_type === 'OPT' || p.sec_type === 'FOP';
   const str = (v: number | null) => (v === null || v === undefined ? '' : String(v));
 
   // 填标的目标价的时候就把「那时值多少、赚多少」摆出来:这个数就是将要挂出去的限价,
@@ -308,7 +317,7 @@ function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: string | nul
       close_fraction_pct: str(fraction) || undefined,
       auto_close: auto,
       order_type: orderType,
-      host_at_broker: host,
+      host_at_broker: hostOn,
     };
     if (spec.host_at_broker && !spec.auto_close) {
       // 托管单就是授权发单——没有总开关的托管是自相矛盾的设置
@@ -350,7 +359,11 @@ function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: string | nul
         `${p.symbol} 到 ${fmtNum(spotTarget)} → ${isCombo ? '组合净价' : '价格'}约 ${fmtMoney(quoted.price)}` +
         `,预估收益 ${fmtMoney(quoted.pnl)}\n` +
         `这个价按当前波动率算出来,软件开着时每秒重算并改单——标的真走到 ${fmtNum(spotTarget)} 时\n` +
-        `挂的就是那一刻的价,不是现在这个数。\n`
+        `挂的就是那一刻的价,不是现在这个数。\n` +
+        (derivative
+          ? `标的真到了 ${fmtNum(spotTarget)}(软件开着时按秒盯),不等${isCombo ? '组合' : '期权'}价追上来,` +
+            '直接按各腿当时的买卖价挂立刻成交的价平掉,没成交就每秒再追。\n'
+          : '')
       : '';
     if (spec.host_at_broker) {
       const ok = await dafri.confirm({
@@ -439,6 +452,11 @@ function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: string | nul
                 ]}
               />
               {priced.warning ? <div className="hint warn-text">{priced.warning}</div> : null}
+              {priced.natural != null ? (
+                <div className="hint">
+                  {`现在立刻平掉约 ${fmtMoney(priced.natural)}(按各腿当前买卖价;标的到了目标价、或止损类目标触发时,托管单会改到这个口径的价追着平)`}
+                </div>
+              ) : null}
               <div className={priced.sigma_source === 'clock' ? 'hint warn-text' : 'hint'}>
                 {SIGMA_SOURCE_HINT[priced.sigma_source || ''] || ''}
                 {priced.leg_sigmas
@@ -508,14 +526,20 @@ function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: string | nul
       <label className="switch-row">
         <span className="group-label">
           止盈/止损托管到券商(IBKR)
-          <span className="sub">GTC 单挂在券商服务器,关机也触发,不受本机轮询与行情延迟影响。利润回撤为动态停损,软件开着时按秒调整,关掉则停在最后价位</span>
+          <span className="sub">
+            {isCombo
+              ? hasSpotTarget
+                ? '券商那边挂一张限价止盈单,价按上面的标的目标价每秒现算、原地改;GTC,关机也有效。止损、利润回撤由软件盯着——它们触发,或标的真到了目标价,软件把这张单改到立刻成交的价平掉(软件开着时)'
+                : '组合要先填上面的「标的目标价」才能托管:托管的就是按它算出来的那张限价止盈单'
+              : 'GTC 单挂在券商服务器,关机也触发,不受本机轮询与行情延迟影响。利润回撤为动态停损,软件开着时按秒调整,关掉则停在最后价位'}
+          </span>
         </span>
-        <Switch checked={host} disabled={isCombo} onChange={setHost} />
+        <Switch checked={hostOn} disabled={!hostAllowed} onChange={setHost} />
       </label>
       {isCombo ? (
         <div className="muted combo-note">
           <div>
-            组合按整组净价触发。平仓会发一张腿方向全部反转的 BAG 限价单(组合不发市价单:每条腿各吃一次价差)。托管到券商对组合仍不可用。
+            组合按整组净价触发。平仓会发一张腿方向全部反转的 BAG 限价单,价按各腿当前买卖价算的立刻成交价(组合不发市价单:每条腿各吃一次价差)。托管到券商:挂一张按标的目标价算出的限价止盈单,止损类目标由软件盯,触发时把这张单改到立刻成交的价。
           </div>
           <div>
             {isPaper ? (
@@ -656,7 +680,8 @@ function TrackCard({
   const status = useStatus();
   const [busy, setBusy] = useState<'toggle' | 'close' | 'delete' | null>(null);
   const fired = Boolean(t.fired_at);
-  const kind: Tone = fired ? (t.fired_state === 'take_profit' ? 'ok' : 'bad') : t.enabled ? 'info' : 'warn';
+  const sweeping = String(t.fired_state || '').startsWith('sweep:');
+  const kind: Tone = sweeping ? 'warn' : fired ? (t.fired_state === 'take_profit' ? 'ok' : 'bad') : t.enabled ? 'info' : 'warn';
   const targets = t.targets || {};
   const autoClose = t.auto_close || {};
   const ddTiers = targets.profit_drawdown_tiers || null;
@@ -720,7 +745,7 @@ function TrackCard({
       flash={flash}
       title={`${legLabel(t.symbol, t.sec_type, t.contract)} · ${t.account}`}
       extra={
-        <span className={`status ${fired ? (t.fired_state === 'take_profit' ? 'filled' : 'rejected') : 'pending'}`}>
+        <span className={`status ${sweeping ? 'pending' : fired ? (t.fired_state === 'take_profit' ? 'filled' : 'rejected') : 'pending'}`}>
           {fired ? TRACK_STATE_LABEL[t.fired_state || ''] || '已触发' : t.enabled ? TRACK_STATE_LABEL[live.state || ''] || '持有中' : '已暂停'}
         </span>
       }

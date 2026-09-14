@@ -2041,6 +2041,41 @@ export class BrokerRouter {
     if (!legs.length) return;
     const session = this.sessions()[0] ?? null;
     if (session === null) return;
+    await this.ensureOptionStreams(session, legs);
+    for (const row of legs) {
+      const entry = this.optionStreams.get(`opt:${row["key"]}`);
+      if (!entry?.handle) continue;
+      const t = entry.handle.read();
+      const bid = cleanPrice(t.bid);
+      const ask = cleanPrice(t.ask);
+      if (bid !== null && ask !== null && ask >= bid) row["market_price"] = pyRound((bid + ask) / 2.0, 4);
+      else row["market_price"] = cleanPrice(t.last) ?? cleanPrice(t.marketPrice);
+    }
+  }
+
+  /**
+   * 持仓期权腿此刻的买卖价(按持仓 key)。和 fillOptionPrices 共用同一批常驻订阅:第一次要等首笔 tick,
+   * 之后每轮只读缓存。追价平仓每秒要一次「立刻成交价」,legQuotes 那种现订现撤、一等四秒的办法跟不上。
+   * 拿不到的腿给 null,不编。
+   */
+  async optionQuotes(
+    rows: Array<Record<string, any>>,
+  ): Promise<Record<string, { bid: number | null; ask: number | null }>> {
+    const legs = rows.filter((r) => r["sec_type"] === "OPT" || r["sec_type"] === "FOP");
+    const out: Record<string, { bid: number | null; ask: number | null }> = {};
+    if (!legs.length) return out;
+    const session = this.sessions()[0] ?? null;
+    if (session === null) return out;
+    await this.ensureOptionStreams(session, legs);
+    for (const row of legs) {
+      const t = this.optionStreams.get(`opt:${row["key"]}`)?.handle?.read();
+      out[String(row["key"])] = { bid: t ? cleanPrice(t.bid) : null, ask: t ? cleanPrice(t.ask) : null };
+    }
+    return out;
+  }
+
+  /** 给这些期权腿备好常驻行情订阅(已有的跳过,被拒过的摘掉重订)。 */
+  private async ensureOptionStreams(session: IbSession, legs: Array<Record<string, any>>): Promise<void> {
     let fresh = false;
     // 纸面账户按类型 3 订(有实时就是实时,没有给延迟),和 legQuotes 同一条规矩;实盘绝不拿延迟价盯盘。
     // 这台机器上实盘 TWS 占着实时行情,纸面会话按类型 1 订期权必吃 10197——腿价永远是空的,
@@ -2089,15 +2124,6 @@ export class BrokerRouter {
       await session.settle(fresh ? 1500 : 50);
     } finally {
       if (paper) session.reqMarketDataType(1);
-    }
-    for (const row of legs) {
-      const entry = this.optionStreams.get(`opt:${row["key"]}`);
-      if (!entry?.handle) continue;
-      const t = entry.handle.read();
-      const bid = cleanPrice(t.bid);
-      const ask = cleanPrice(t.ask);
-      if (bid !== null && ask !== null && ask >= bid) row["market_price"] = pyRound((bid + ask) / 2.0, 4);
-      else row["market_price"] = cleanPrice(t.last) ?? cleanPrice(t.marketPrice);
     }
   }
 

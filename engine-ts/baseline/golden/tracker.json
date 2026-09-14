@@ -4140,7 +4140,7 @@
    "auto": {"enabled": true, "host_at_broker": true},
    "peak": 8,
    "expect": [
-    {"kind": "tp", "action": "SELL", "order_type": "LMT", "quantity": 2, "lmt_price": 9.88, "aux_price": null, "trailing_percent": null, "trail_stop_seed": null, "label": "托管止盈 9.88"},
+    {"kind": "tp", "action": "SELL", "order_type": "LMT", "quantity": 2, "lmt_price": 9.8, "aux_price": null, "trailing_percent": null, "trail_stop_seed": null, "label": "托管止盈 9.8"},
     {"kind": "ptrail", "action": "SELL", "order_type": "STP", "quantity": 2, "lmt_price": null, "aux_price": 6.75, "trailing_percent": null, "trail_stop_seed": null, "label": "利润回撤动态停损 6.75"}
    ]
   },

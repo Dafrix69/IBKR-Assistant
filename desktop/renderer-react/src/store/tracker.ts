@@ -60,6 +60,10 @@ export interface SpotTargetRow {
   held?: boolean;
   /** 试算时:这个价不比现价更有利,挂上去会立刻成交(设置时会被拒) */
   warning?: string;
+  /** 此刻立刻平掉能拿到(空头:要付)的价,按各腿买卖价合成 */
+  natural?: number;
+  /** 标的此刻已经到了(或越过)目标价 */
+  reached?: boolean;
 }
 
 export interface Track {

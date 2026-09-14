@@ -488,6 +488,12 @@ export interface SpotTarget {
   held?: boolean;
   /** 试算时:算得出价,但这个价不比现价更有利(挂上去会立刻成交)。设置时同一句话会当场拒。 */
   warning?: string;
+  /** 标的**此刻**已经到了(或越过)目标价:同一组 σ 下,持仓在现价处的价值不低于目标价处的价值。
+   * 单腿、价差是"越过目标价";蝶是"进了目标价与它关于中心的镜像之间"——那段里蝶只会更值钱。
+   * 拿不到标的现价时没有这一项。 */
+  reached?: boolean;
+  /** 试算时:此刻立刻平掉能拿到(空头:要付)的价,按各腿买卖价合成;拿不到报价时没有这一项。 */
+  natural?: number;
 }
 
 /** σ 来源里哪些算"市场价":只有这几种算出来的数才能拿去挂单或改单。
@@ -554,6 +560,7 @@ export function spotTarget(args: {
   if (structure.kind === "stock") {
     out.sigma_source = "none";
     out.price = pyRound(target, 4);
+    if (spot !== null) out.reached = reachedTarget(position, spot, out.price);
     return withPnl(out, position);
   }
 
@@ -604,24 +611,87 @@ export function spotTarget(args: {
   }
 
   out.sigma_source = source;
-  let price: number;
+  /** 同一组 σ 下,标的在 s 时这份持仓值多少。目标价与"标的到了没有"用的是同一个它。 */
+  const valueAt = (s: number): number => {
+    let v: number;
+    if (legSigmas !== null) {
+      v = 0;
+      for (const leg of structure.legs) v += leg.ratio * legValue(leg.right, s, leg.strike, legSigmas[legPriceKey(leg)]!);
+      if (fly !== null) v = Math.max(v, 0); // 买入的蝶不可能倒贴钱,和 modelPrice 同一个下限
+    } else {
+      // 蝶用 modelPrice(与黄金基线同一个写法),其余走通用的按比例加权
+      v = fly !== null ? modelPrice(fly, s, sigma!) : structureValue(structure.legs, s, sigma!);
+    }
+    // 组合行的现价按"每组净值的绝对值"记,方向在数量的正负上(见 comboRow)。腿比例带的是持仓自己的
+    // 符号,贷方组合按比例加权出来是负数;不翻过来,止盈价和现价就不在一个口径上(负的止盈价永远到不了)
+    return structure.kind === "combo" && fly === null && !isLong(position) ? -v : v;
+  };
   if (legSigmas !== null) {
-    let v = 0;
-    for (const leg of structure.legs) v += leg.ratio * legValue(leg.right, target, leg.strike, legSigmas[legPriceKey(leg)]!);
-    price = fly !== null ? Math.max(v, 0) : v; // 买入的蝶不可能倒贴钱,和 modelPrice 同一个下限
     const nearest = legsByMoneyness(structure.legs, target)[0]!;
     out.sigma = pyRound(legSigmas[legPriceKey(nearest)]!, 4);
     out.leg_sigmas = Object.fromEntries(Object.entries(legSigmas).map(([k, v2]) => [k, pyRound(v2, 4)]));
   } else {
     out.sigma = pyRound(sigma!, 4);
-    // 蝶用 modelPrice(与黄金基线同一个写法),其余走通用的按比例加权
-    price = fly !== null ? modelPrice(fly, target, sigma!) : structureValue(structure.legs, target, sigma!);
   }
-  // 组合行的现价按"每组净值的绝对值"记,方向在数量的正负上(见 comboRow)。腿比例带的是持仓自己的
-  // 符号,贷方组合按比例加权出来是负数;不翻过来,止盈价和现价就不在一个口径上(负的止盈价永远到不了)
-  if (structure.kind === "combo" && fly === null && !isLong(position)) price = -price;
-  out.price = pyRound(price, 4);
+  out.price = pyRound(valueAt(target), 4);
+  if (spot !== null) out.reached = reachedTarget(position, pyRound(valueAt(spot), 4), out.price);
   return withPnl(out, position);
+}
+
+/** 持仓在现价处的价值已经不比目标价处差(多头不低于、空头不高于)。 */
+function reachedTarget(position: Position, valueNow: number, valueAtTarget: number): boolean {
+  return isLong(position) ? valueNow >= valueAtTarget - 1e-6 : valueNow <= valueAtTarget + 1e-6;
+}
+
+/** 一条腿此刻的买卖价。 */
+export interface LegBook { bid: number | null; ask: number | null }
+
+/**
+ * 平掉这份持仓**立刻能成交**的价(组合行口径:每组净值的绝对值;单腿就是那一张的价)。
+ *
+ * 平仓要把每条腿反着做一遍:持有的买入腿按**买价**卖出、卖出腿按**卖价**买回——组合的"自然价",
+ * 挂在这个价上的平仓单不用等谁来接。止盈单挂的是模型价(中间价口径),夜盘蝶的买卖价差能有一块多:
+ * 标的真到了目标价,那张单也可能一直挂着不成交(2026-09-10 真机:组合 3.10 / 4.25,中间价 3.70)。
+ * 要"到了就走",就得改到这个价。
+ *
+ * 任何一条腿没有有效的买卖价就回 null——拿半边报价算出来的"立刻成交价"是凭空的。
+ */
+export function naturalClosePrice(
+  position: Position, structure: TargetStructure, book: Record<string, LegBook>,
+): number | null {
+  if (structure.kind === "stock" || !structure.legs.length) return null;
+  const quote = (leg: StructureLeg): { bid: number; ask: number } | null => {
+    const q = book[legPriceKey(leg)];
+    const bid = finiteOrNull(q?.bid ?? null);
+    const ask = finiteOrNull(q?.ask ?? null);
+    if (bid === null || ask === null || !(bid > 0) || !(ask > 0) || ask < bid) return null;
+    return { bid, ask };
+  };
+  if (structure.kind === "option") {
+    // 单腿的结构一律按"一张多头"记,方向看持仓数量:多头卖在买价,空头买回在卖价
+    const q = quote(structure.legs[0]!);
+    if (q === null) return null;
+    return isLong(position) ? q.bid : q.ask;
+  }
+  let net = 0;
+  for (const leg of structure.legs) {
+    const q = quote(leg);
+    if (q === null) return null;
+    net += leg.ratio * (leg.ratio > 0 ? q.bid : q.ask);
+  }
+  return pyRound(isLong(position) ? net : -net, 4);
+}
+
+/**
+ * 「追价平仓」:追踪触发后,把托管单改到立刻成交的价、没成交就每秒再追一次,直到持仓没了。
+ * fired_state 记成 `sweep:<触发原因>`,成交后再换回原因本身(止盈 / 止损 / 利润回撤)。
+ */
+export const SWEEP_PREFIX = "sweep:";
+
+/** 这条追踪正在追价平仓的话,回触发原因;否则 null。 */
+export function sweepReason(track: Record<string, unknown>): string | null {
+  const state = String(track["fired_state"] ?? "");
+  return state.startsWith(SWEEP_PREFIX) ? state.slice(SWEEP_PREFIX.length) : null;
 }
 
 /**
@@ -1106,7 +1176,7 @@ export function closeLimitPrice(
   let out = isLong(position) ? p * (1 - ratio) : p * (1 + ratio);
   // 对齐最小跳动:TWS 对不合跳动的限价直接拒单(错误 110),这张单就白发了。
   // 取整仍朝让价方向(卖向下、买向上),取整后只会更容易成交,不会更难。
-  const tick = closeTick(position);
+  const tick = closeTick(position, out);
   const steps = isLong(position) ? Math.floor(out / tick + 1e-9) : Math.ceil(out / tick - 1e-9);
   out = steps * tick;
   return pyRound(Math.max(out, tick), 4);
@@ -1178,9 +1248,17 @@ export function closeBagContract(contract: Record<string, unknown>): Record<stri
   return out;
 }
 
-/** 平仓限价的最小跳动:股票 0.01;期权/组合保守取 0.05(对所有美股期权都合法)。 */
-export function closeTick(position: Position): number {
-  return position.sec_type === "STK" ? 0.01 : 0.05;
+/**
+ * 平仓限价的最小跳动:股票 0.01;组合 0.05;单腿期权 3 元以下 0.05、3 元及以上 0.10。
+ *
+ * 单腿以前一律取 0.05,可 SPX 期权 3 元以上的跳动是 0.10——12.35 这种价会被 IBKR 以 110 退单。
+ * 0.10 的整数倍对一分钱档的个股期权同样合法,所以这条规矩对所有美股期权都不会被拒。
+ */
+export function closeTick(position: Position, price: number | null = null): number {
+  if (position.sec_type === "STK") return 0.01;
+  if (position.sec_type === "BAG") return 0.05;
+  const p = finiteOrNull(price);
+  return p !== null && p >= 3 ? 0.1 : 0.05;
 }
 
 /** 构造平仓单载荷。数量取持仓绝对值,一股不多。 */
@@ -1291,12 +1369,12 @@ function hostedPrice(value: number | null | undefined): number | null {
   return pyRound(Math.max(v, 0.01), 2);
 }
 
-/** 组合托管限价:按合约最小跳动对齐,且**朝成交方向**取整(平多头向下、平空头向上)。
+/** 组合 / 单腿期权的托管限价:按合约最小跳动对齐,且**朝成交方向**取整(平多头向下、平空头向上)。
  * 这张单挂着就是为了让插针那一下能扫到,取整只该让它更容易成交,不该更难。 */
 function hostedComboPrice(position: Position, value: number | null | undefined): number | null {
   const v = finiteOrNull(value ?? null);
   if (v === null) return null;
-  const tick = closeTick(position);
+  const tick = closeTick(position, v);
   const steps = isLong(position)
     ? Math.floor(v / tick + 1e-9)
     : Math.ceil(v / tick - 1e-9);
@@ -1355,7 +1433,10 @@ export function hostedPlan(
     return plan;
   }
 
-  const tp = hostedPrice(targets.take_profit);
+  // 单腿期权的止盈限价按期权跳动对齐(3 元以上 0.10),2 位小数的价会被 IBKR 以 110 退单
+  const tp = position.sec_type === "STK"
+    ? hostedPrice(targets.take_profit)
+    : hostedComboPrice(position, targets.take_profit);
   if (tp !== null) {
     plan.push({
       kind: HOSTED_KIND_TP, action: side, order_type: "LMT",

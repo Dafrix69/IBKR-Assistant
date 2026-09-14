@@ -2499,6 +2499,11 @@ export class RpcServer {
     // 设置时会拒的那句(挂上去会立刻成交),试算时就说出来
     const warning = tkMod.fillsNowMessage(position, structure, st, inputs.markPrice);
     if (warning) st.warning = warning;
+    // 此刻立刻平掉能拿到多少:和"标的到了目标价挂的价"摆在一起,人才知道追价平仓大概落在哪
+    if (structure.kind !== "stock" && this.router !== null) {
+      const natural = await this.engine.naturalCloseFor(raw, position, rows);
+      if (natural !== null) st.natural = natural;
+    }
     return { spot_target: st, structure: { kind: structure.kind, label: structure.label } };
   }
 
@@ -2519,22 +2524,12 @@ export class RpcServer {
       throw new RpcError(-32602, "止盈价和标的目标价只能选一个:"
         + "填了标的目标价,止盈价就由引擎按当前波动率每轮现算,不用也不该再自己填。");
     }
-    if (raw["sec_type"] === "BAG" && auto.host_at_broker) {
-      if (spot === null) {
-        throw new RpcError(-32602, "组合的「托管到券商」只支持按标的目标价止盈:"
-          + "填一个标的目标价,引擎按当前波动率把它换算成组合净价,挂一张随行情秒级调价的 GTC 限价单。"
-          + "其余目标请关掉托管,走「到价自动平仓」由引擎盯盘。");
-      }
-      for (const [name, value] of [["止损价", targets.stop_loss], ["跟踪止损", targets.trail_pct],
-                                   ["利润回撤", targets.profit_drawdown_pct]] as const) {
-        if (value !== null) {
-          throw new RpcError(-32602, `开了托管的组合不能再设${name}:托管一开,引擎就不再自己发单,`
-            + `${name}会变成没人盯。要${name}就关掉「托管到券商」。`);
-        }
-      }
-      if ((targets.profit_drawdown_tiers ?? []).length) {
-        throw new RpcError(-32602, "开了托管的组合不能再设分档利润回撤:托管一开,引擎就不再自己发单。");
-      }
+    // 组合在券商那边只托管一张限价止盈单,价由标的目标价现算——没有目标价就没有这张单。
+    // 止损 / 跟踪止损 / 利润回撤照样能设:由引擎盯,触发时把那张托管单改到立刻成交的价(追价平仓)
+    if (raw["sec_type"] === "BAG" && auto.host_at_broker && spot === null) {
+      throw new RpcError(-32602, "组合的「托管到券商」要先填标的目标价:"
+        + "引擎按当前波动率把它换算成组合净价,挂一张随行情秒级调价的 GTC 限价单。"
+        + "止损、利润回撤可以一起设,由引擎盯着,触发时把这张单改到立刻成交的价。");
     }
     try {
       tkMod.validate(position, targets, raw["market_price"]);

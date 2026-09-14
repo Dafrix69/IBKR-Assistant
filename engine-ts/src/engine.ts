@@ -24,7 +24,7 @@ import { TradeStore, redactAccount } from "./store.js";
 import * as tk from "./tracker.js";
 import type { ApprovedOrder, RejectedOrder } from "./validator.js";
 import { EXTENDED_STATUSES, Validator, primaryCode, rejectionMessage } from "./validator.js";
-import { finiteOrNull, fmtF, pyRound } from "./py.js";
+import { finiteOrNull, fmtF, pyG, pyRound } from "./py.js";
 import * as path from "node:path";
 import { monitorEventLoopDelay } from "node:perf_hooks";
 
@@ -72,6 +72,8 @@ export interface RouterLike {
   modifyHosted?(orderId: number, item: tk.HostedOrderPlan): Promise<boolean>;
   cancelHosted?(orderId: number): Promise<boolean>;
   listHostedOpen?(refPrefix?: string): Promise<Rec[]>;
+  /** 持仓期权腿此刻的买卖价(按持仓 key),算「立刻成交价」用;常驻订阅,每秒调得起。 */
+  optionQuotes?(rows: Rec[]): Promise<Record<string, { bid: number | null; ask: number | null }>>;
 }
 
 /**
@@ -850,8 +852,17 @@ export class TradingEngine {
       const [targets, spotTargetRow] = await this.applySpotTarget(
         track, raw, position, tk.makeTargets(track["targets"] ?? {}), positions, at,
       );
-      const result = tk.evaluate(position, targets, raw["market_price"], track["peak"] ?? null,
+      let result = tk.evaluate(position, targets, raw["market_price"], track["peak"] ?? null,
         at.minutes);
+      // 标的真到了目标价。同一组 σ 下它和"持仓价 ≥ 目标价对应的价"是一回事,可行情口径不一致时
+      // (退到最近腿 / 时钟 σ)两者会差一点——以标的本身为准:到了就是到了
+      if (result.state === tk.STATE_HOLDING && spotTargetRow?.reached) {
+        result = {
+          ...result,
+          state: tk.STATE_TAKE_PROFIT,
+          reason: `${track["symbol"]} 到了目标价 ${pyG(Number(targets.spot_target))}(现价 ${spotTargetRow.spot})`,
+        };
+      }
 
       // 峰值只在变了的时候写
       if (result.peak !== null && result.peak !== track["peak"]) {
@@ -866,9 +877,27 @@ export class TradingEngine {
 
       const auto = tk.makeAutoClose(track["auto_close"] ?? {});
       if (auto.host_at_broker && this.router.SUPPORTS_HOSTED_CLOSE) {
-        // 触发与执行都归券商托管单(syncHosted 那条路)。这里若再发一次
-        // 平仓,就是托管单 + 软件单各平一次——双重平仓等于反向开仓。
+        // 执行归券商托管单(syncHosted 那条路)。这里若再另发一张平仓单,就是托管单 + 软件单
+        // 各平一次——双重平仓等于反向开仓。
         (row as Rec)["hosted"] = true;
+        // 正股:止损 / 跟踪 / 利润回撤都有券商侧的单子站岗,止盈价就是目标价本身——全交给券商。
+        // 组合与单腿期权不一样:止盈单挂在模型价(中间价口径)上,标的真到了目标价,买价也未必够得着;
+        // 组合更是只有这一张单,止损类目标全靠引擎盯。这些情形引擎把**那张托管单**改到立刻成交的价、
+        // 没成交就每秒再追(syncHosted)。改的始终是同一张单,不会多出第二张平仓单。
+        const secType = String(raw["sec_type"] ?? "");
+        const derivative = secType === "BAG" || secType === "OPT" || secType === "FOP";
+        const stopLike = result.state !== tk.STATE_TAKE_PROFIT;
+        const sweep = derivative && (Boolean(spotTargetRow?.reached) || (secType === "BAG" && stopLike));
+        if (sweep && tk.sweepReason(track) === null && !track["fired_at"]) {
+          const state = `${tk.SWEEP_PREFIX}${result.state}`;
+          this.store.updateTrack(track["id"], { fired_at: nowIsoSecondsEt(), fired_state: state });
+          this.store.audit("engine", "hosted_sweep", { track: track["id"], state: result.state, reason: result.reason });
+          this.notifier.notify(
+            "追价平仓", `${track["symbol"]}:${result.reason}。托管单改到立刻成交的价,没成交就每秒再追`,
+          );
+          out["fired"].push({ id: track["id"], symbol: track["symbol"], state, reason: result.reason });
+        }
+        if (tk.sweepReason(this.store.getTrack(track["id"]) ?? track) !== null) (row as Rec)["sweeping"] = true;
         continue;
       }
       // 追踪止盈全时段有效:盘前/盘后照样平(平仓单会自动转盘外限价),只有休市才真的发不出去。
@@ -902,7 +931,15 @@ export class TradingEngine {
         continue;
       }
 
-      const fired = await this.closePosition(track, position, auto, result, marketStatus);
+      // 组合与期权的平仓单挂在各腿买卖价算出的立刻成交价上;拿不到才退回"现价让一点滑点"。
+      // 夜盘蝶的买卖价差能有一块多,按中间价让 0.3% 挂出去的平仓单常常就那么挂着
+      let closeResult: Rec = result;
+      const secType = String(raw["sec_type"] ?? "");
+      if (secType === "BAG" || secType === "OPT" || secType === "FOP") {
+        const natural = await this.naturalCloseFor(raw, position, positions);
+        if (natural !== null) closeResult = { ...result, price: natural };
+      }
+      const fired = await this.closePosition(track, position, auto, closeResult, marketStatus);
       if (fired) out["fired"].push(fired);
     }
     return out;
@@ -1024,6 +1061,37 @@ export class TradingEngine {
     if (!hours) return this.settings.marketStatus(at);
     const [trading, liquid, tzId] = hours;
     return hoursStatus(trading, tzId, at.epochMs, liquid) || this.settings.marketStatus(at);
+  }
+
+  /**
+   * 平掉这条持仓此刻「立刻能成交」的价(见 tk.naturalClosePrice)。组合取各腿的持仓行,单腿取它自己;
+   * router 没有常驻期权报价、或任何一条腿没有有效买卖价,回 null。
+   */
+  async naturalCloseFor(
+    raw: Rec, position: tk.Position, positions: Record<string, Rec>,
+  ): Promise<number | null> {
+    const quoter = this.router?.optionQuotes;
+    if (typeof quoter !== "function") return null;
+    const structure = tk.structureOf(String(raw["sec_type"] ?? "STK"), raw["contract"] as Rec);
+    if (structure === null || structure.kind === "stock") return null;
+    const legRows = structure.kind === "combo"
+      ? ((raw["legs"] ?? []) as string[]).map((k) => positions[k]).filter((r): r is Rec => r !== undefined)
+      : [raw];
+    let quotes: Record<string, { bid: number | null; ask: number | null }>;
+    try {
+      quotes = await quoter.call(this.router, legRows);
+    } catch {
+      return null;
+    }
+    const book: Record<string, tk.LegBook> = {};
+    for (const row of legRows) {
+      const c = (row["contract"] ?? {}) as Rec;
+      const strike = finiteOrNull(c["strike"]);
+      const right = String(c["right"] ?? "").slice(0, 1).toUpperCase();
+      if (strike === null || !right) continue;
+      book[tk.legPriceKey({ strike, right })] = quotes[String(row["key"])] ?? { bid: null, ask: null };
+    }
+    return tk.naturalClosePrice(position, structure, book);
   }
 
   accountIsPaper(alias: string): boolean {
@@ -1171,6 +1239,8 @@ export class TradingEngine {
       });
       // 托管单只是挂着,不是立刻成交——时段闸门不适用,其余闸门照过:
       // 挂单也是发单,授权(auto_execute/实盘开关)与熔断一个都不能少。
+      // 追价平仓中的追踪已经落了闩(fired_at),但它的托管单正是要继续改的那一张,不算"已触发过"
+      const sweeping = tk.sweepReason(track) !== null;
       const blockers = tk.closeBlockers({
         auto,
         position,
@@ -1179,7 +1249,7 @@ export class TradingEngine {
         allowLiveTrading: this.settings.policies.allow_live_trading,
         breakerEngaged: breaker.engaged,
         marketStatus: "盘中",
-        alreadyFired: Boolean(track["fired_at"]),
+        alreadyFired: Boolean(track["fired_at"]) && !sweeping,
         comboLiveOk: this.settings.policies.allow_combo_live,
       });
       if (blockers.length) {
@@ -1194,13 +1264,25 @@ export class TradingEngine {
       }
       // 标的目标价:这一轮的止盈价现算。托管单的价格因此**一秒一变**——
       // 插针那一下扫过来时,挂着的限价必须已经是当时的合理价。
-      const [targets, , hold] = await this.applySpotTarget(
+      let [targets, , hold] = await this.applySpotTarget(
         track, raw, position, tk.makeTargets(track["targets"] ?? {}), positions, nowEt(),
       );
-      const plan = tk.hostedPlan(position, targets, auto, peak);
       alive.add(tid);
       if (!this.hosted.has(tid)) this.hosted.set(tid, new Map());
       const current = this.hosted.get(tid)!;
+      if (sweeping) {
+        // 追价平仓:止盈单改到此刻立刻能成交的价,每轮按最新的买卖价再追一次
+        const natural = await this.naturalCloseFor(raw, position, positions);
+        if (natural === null) {
+          // 拿不到腿的买卖价:这一轮不动那张单(更不能把它改回模型价),下一轮再追
+          out["blocked"].push({ id: tid, symbol: track["symbol"], blockers: ["正在追价平仓,但这一轮拿不到腿的买卖价,没改价"] });
+          out["hosted"].push({ id: tid, symbol: track["symbol"], sweeping: true, orders: this.hostedRows(tid) });
+          continue;
+        }
+        targets = { ...targets, take_profit: natural };
+        hold = false;
+      }
+      const plan = tk.hostedPlan(position, targets, auto, peak);
       const desired = new Set(plan.map((item) => item.kind));
       // 只守不挂的这一轮,止盈单"不在计划里"不等于"该撤":撤掉一张站岗的单比停在旧价危险得多
       if (hold) desired.add(tk.HOSTED_KIND_TP);
@@ -1239,15 +1321,8 @@ export class TradingEngine {
           this.killswitch.recordFailure((exc as Error).message, "broker");
         }
       }
-      const entries = this.hosted.get(tid) ?? new Map<string, Rec>();
       out["hosted"].push({
-        id: tid,
-        symbol: track["symbol"],
-        orders: [...entries.values()].map((v) => ({
-          kind: v["kind"], label: v["label"], quantity: v["quantity"],
-          lmt_price: v["lmt_price"] ?? null, aux_price: v["aux_price"] ?? null,
-          trailing_percent: v["trailing_percent"] ?? null, order_id: v["order_id"] ?? null,
-        })),
+        id: tid, symbol: track["symbol"], ...(sweeping ? { sweeping: true } : {}), orders: this.hostedRows(tid),
       });
     }
 
@@ -1258,6 +1333,16 @@ export class TradingEngine {
       }
     }
     return out;
+  }
+
+  /** 这条追踪在券商那边挂着的托管单(给界面看的那几个字段)。 */
+  private hostedRows(tid: string): Rec[] {
+    const entries = this.hosted.get(tid) ?? new Map<string, Rec>();
+    return [...entries.values()].map((v) => ({
+      kind: v["kind"], label: v["label"], quantity: v["quantity"],
+      lmt_price: v["lmt_price"] ?? null, aux_price: v["aux_price"] ?? null,
+      trailing_percent: v["trailing_percent"] ?? null, order_id: v["order_id"] ?? null,
+    }));
   }
 
   /**
@@ -1496,9 +1581,12 @@ export class TradingEngine {
     const status = String(trade?.orderStatus?.status ?? "");
     if (status === "Filled") {
       const entry = this.hosted.get(tid)?.get(kind) ?? {};
+      const before = this.store.getTrack(tid);
+      // 追价平仓成交的:记当初触发的原因(止损 / 利润回撤 / 标的到了目标价),不是笼统的"托管止盈"
+      const sweep = before ? tk.sweepReason(before) : null;
       this.store.updateTrack(tid, {
         fired_at: nowIsoSecondsEt(),
-        fired_state: TradingEngine.HOSTED_FIRED_STATE[kind] ?? kind,
+        fired_state: sweep ?? TradingEngine.HOSTED_FIRED_STATE[kind] ?? kind,
         fired_record: entry["record_id"] ?? "",
         enabled: false,
       });
