@@ -1,0 +1,118 @@
+name: mac
+
+# macOS 安装包(DMG,Apple Silicon)。开发机是 Windows,electron-builder 只能在 Mac 上出 DMG,所以放到 GitHub 的 macOS 机器上打。
+#   - 手动:Actions → mac → Run workflow(或 gh workflow run mac.yml --ref main)
+#   - 推 v* 标签
+#   - 改到打包相关文件的 PR:先打一遍,确认还能出包
+# 产物在这次运行的 Artifacts 里(DafriTrading-mac-arm64),保留 30 天。安装包未签名、未公证:首次打开右键 → 打开,
+# 或 xattr -dr com.apple.quarantine "/Applications/Dafri Trading.app"。
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+  pull_request:
+    paths:
+      - '.github/workflows/mac.yml'
+      - 'desktop/package.json'
+      - 'desktop/build/**'
+      - 'desktop/tools/stage_engine_ts.js'
+      - 'desktop/tools/smoke_engine_ts.js'
+
+concurrency:
+  group: mac-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dmg:
+    # macos-latest 是 Apple Silicon,和 dist:mac 的 --arm64 一致;原生模块(better-sqlite3、@napi-rs/keyring)按本机平台装
+    runs-on: macos-latest
+    timeout-minutes: 45
+    env:
+      # package.json 里 mac.identity 为 null:不签名。别让 electron-builder 去钥匙串里自动找证书
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          # 与 ci.yml 一致:better-sqlite3 13 要 Node >= 22,Electron 40 内置的也是 Node 24
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            engine-ts/package-lock.json
+            desktop/package-lock.json
+
+      - name: 装引擎依赖
+        working-directory: engine-ts
+        run: npm ci
+
+      - name: 装桌面端依赖(含 Electron 二进制,冒烟要用)
+        working-directory: desktop
+        run: npm ci
+
+      - name: 打包 DMG(界面构建 → 暂存引擎 → 冒烟 → electron-builder)
+        working-directory: desktop
+        run: npm run dist:mac
+
+      - name: 核对安装包:DMG 完整、主程序与引擎原生模块都是 arm64
+        working-directory: desktop
+        run: |
+          set -euo pipefail
+          DMG=$(ls dist/*.dmg | head -1)
+          APP="dist/mac-arm64/Dafri Trading.app"
+          echo "DMG: $DMG($(du -h "$DMG" | cut -f1))"
+          hdiutil verify "$DMG"
+          # 架构判断不走 "| grep -q":开着 pipefail 时 grep 提前退出会让上游吃 SIGPIPE,被误判成失败
+          archs=$(lipo -archs "$APP/Contents/MacOS/Dafri Trading")
+          echo "主程序: $archs"
+          [[ " $archs " == *" arm64 "* ]] || { echo "::error::主程序不是 arm64:$archs"; exit 1; }
+          # 路径里有空格("Dafri Trading.app"),逐个读 find 的输出,不能 for f in $(find …)
+          count=0
+          while IFS= read -r -d '' f; do
+            archs=$(lipo -archs "$f")
+            echo "${f#"$APP/"}: $archs"
+            [[ " $archs " == *" arm64 "* ]] || { echo "::error::原生模块不是 arm64:$f"; exit 1; }
+            count=$((count + 1))
+          done < <(find "$APP/Contents/Resources/engine-ts/node_modules" -name '*.node' -print0)
+          [ "$count" -gt 0 ] || { echo "::error::安装包里一个原生模块都没有,暂存步骤可能漏了"; exit 1; }
+          codesign -dv "$APP" 2>&1 || true
+
+      - name: 用安装包里的 Electron 拉起安装包里的引擎
+        working-directory: desktop
+        run: |
+          APP="$PWD/dist/mac-arm64/Dafri Trading.app"
+          DAFRI_PROMPT_DIR="$APP/Contents/Resources/engine/prompts" \
+            node tools/smoke_engine_ts.js "$APP/Contents/Resources/engine-ts" --runner "$APP/Contents/MacOS/Dafri Trading"
+
+      - name: 启动应用 30 秒:不闪退,主进程拉起了引擎
+        working-directory: desktop
+        run: |
+          set -uo pipefail
+          APP="$PWD/dist/mac-arm64/Dafri Trading.app"
+          # DAFRI_SKIP_MOVE:不弹"移到应用程序"的对话框(那是从 DMG 里双击运行时才该有的)
+          DAFRI_SKIP_MOVE=1 "$APP/Contents/MacOS/Dafri Trading" > app.log 2>&1 &
+          pid=$!
+          engine=0
+          for i in $(seq 1 30); do
+            sleep 1
+            if ! kill -0 "$pid" 2>/dev/null; then
+              echo "::error::应用在第 ${i} 秒退出"
+              cat app.log
+              exit 1
+            fi
+            pgrep -f "engine-ts/dist/src/cli.js rpc" >/dev/null && engine=1
+          done
+          kill "$pid" 2>/dev/null || true
+          LOG="$HOME/Library/Application Support/Dafri Trading/logs/main.log"
+          if [ -f "$LOG" ]; then echo "--- main.log"; tail -40 "$LOG"; fi
+          if [ "$engine" != 1 ]; then echo "::error::30 秒内没看到引擎子进程"; exit 1; fi
+          echo "应用存活 30 秒,引擎子进程已起来"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DafriTrading-mac-arm64
+          path: |
+            desktop/dist/*.dmg
+            desktop/dist/*.dmg.blockmap
+          retention-days: 30
+          if-no-files-found: error
