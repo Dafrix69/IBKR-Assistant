@@ -135,6 +135,10 @@ export class TradingEngine {
   // 竞态缓冲:placeOrder 后、_index_placement 前,回报可能已经推过来。
   // 先攒着,建好映射再重放——直接丢就是"快速成交永远停在 Submitted"。
   private readonly unmatchedEvents: Array<[string, any, any, any]> = [];
+  /** 已落库的成交 / 佣金 exec_id(见 onExecDetails)。只放内存就够:orderIndex 也只在本进程里建,
+   * 重启后旧单的回报本来就对不上记录、不会落库。 */
+  private readonly seenFills = new Set<string>();
+  private readonly seenCommissions = new Set<string>();
   /** 券商托管单的对账缓存:track_id → {kind: 托管单信息};orderId → [track_id, kind]。
    * 真相永远在券商那边——重启后由 adoptHosted() 按 orderRef 认领重建。 */
   private readonly hosted = new Map<string, Map<string, Rec>>();
@@ -1818,6 +1822,10 @@ export class TradingEngine {
     }
     const execution = fill?.execution;
     if (!execution) return;
+    // 同一 exec_id 只落一次、只通知一次。交易分析同步成交(reqExecutions)时 TWS 会把当天的成交整批
+    // 重推;ibSession 那道闸会话一重建就是空的,拦不住,这里兜底。没有 exec_id 的认不出是不是同一笔,照旧。
+    const execId = String(execution.execId ?? "");
+    if (execId && this.seenFills.has(execId)) return;
     this.store.appendEvent(recordId, "fill", {
       exec_id: execution.execId ?? "",
       time: String(execution.time ?? ""),
@@ -1825,6 +1833,10 @@ export class TradingEngine {
       qty: Number(execution.shares ?? 0) || 0,
       commission: 0.0,
     });
+    if (execId) this.seenFills.add(execId);
+    // live=false:reqExecutions 补回来的(断线期间成交、实时回报没收到)。只补录不通知——点开交易分析
+    // 才冒出一条「成交回报」只会让人以为又成交了一笔;与 ib_insync 只给实时成交发 execDetailsEvent 同口径。
+    if (fill?.live === false) return;
     this.notifier.fill(
       trade?.contract?.symbol ?? "?",
       execution.side ?? "?",
@@ -1840,11 +1852,15 @@ export class TradingEngine {
       this.stashUnmatched("commission", trade, _fill, report);
       return;
     }
+    // 佣金回报跟着成交一起被重推,同样按 exec_id 只落第一条(手续费、已实现盈亏才不会翻倍)
+    const execId = String(report?.execId ?? "");
+    if (execId && this.seenCommissions.has(execId)) return;
     this.store.appendEvent(recordId, "commission", {
       exec_id: report?.execId ?? "",
       commission: Number(report?.commission ?? 0) || 0,
       realized_pnl: report?.realizedPNL ?? null,
     });
+    if (execId) this.seenCommissions.add(execId);
   }
 
   /** §9.7 全局熔断:停新单 + 撤未成交单。 */

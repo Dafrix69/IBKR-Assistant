@@ -101,10 +101,11 @@ export function tradeFromOrderStatus(
   };
 }
 
-/** 底层 IBApi 的 execDetails 事件 → 引擎期望的 [trade, fill]。 */
+/** 底层 IBApi 的 execDetails 事件 → 引擎期望的 [trade, fill]。
+ * reqId = −1 是 TWS 主动推的实时成交;别的值是 reqExecutions 的回应,fill.live 记成 false。 */
 export function fillFromExecDetails(
-  contract: Record<string, unknown> | undefined, execution: Record<string, any> | undefined,
-): [{ order: { orderId: number; permId: number | null }; contract: Record<string, unknown> }, { contract: Record<string, unknown>; execution: Record<string, unknown> }] {
+  contract: Record<string, unknown> | undefined, execution: Record<string, any> | undefined, reqId: unknown = -1,
+): [{ order: { orderId: number; permId: number | null }; contract: Record<string, unknown> }, { contract: Record<string, unknown>; execution: Record<string, unknown>; live: boolean }] {
   const e = execution ?? {};
   const c = contract ?? {};
   const orderId = Number(e["orderId"]) || 0;
@@ -118,8 +119,47 @@ export function fillFromExecDetails(
         side: e["side"] ?? "", acctNumber: e["acctNumber"] ?? "", orderId, permId,
         cumQty: e["cumQty"] ?? null, avgPrice: e["avgPrice"] ?? null,
       },
+      live: Number(reqId) === -1,
     },
   ];
+}
+
+/**
+ * 底层 execDetails / commissionReport → 引擎回调,同一个 execId 本会话只转一次。
+ *
+ * 交易分析同步成交走 reqExecutions,TWS 会把当天的 execDetails / commissionReport 在同样这两个事件上
+ * 整批重推一遍。以前照单全转,引擎当成新成交又落一次库、又弹一次「成交回报」——2026-09-10 模拟盘 #89:
+ * 4 条成交、3 条佣金,10:00 实时来一次,10:11 和 10:16 同步成交时又各来一次。
+ * 做法同 ib_insync(fills 按 execId 记账,只有新成交才发 execDetailsEvent):
+ * - 见过的 execId 直接丢;佣金同理,每个 execId 只转第一条。
+ * - 没见过、却来自 reqExecutions 的(断线期间成交、实时回报没收到):照样转给引擎补录,
+ *   但 fill.live = false,引擎只落库不通知。
+ * 会话重建后这里是空的,重推会再转一次——引擎自己也按 exec_id 去重(TradingEngine.onExecDetails)。
+ */
+export function execForwarder(
+  fillCbs: ReadonlyArray<(trade: any, fill: any) => void>,
+  commissionCbs: ReadonlyArray<(trade: any, fill: any, report: any) => void>,
+): { onExecDetails(reqId: unknown, contract: any, execution: any): void; onCommissionReport(report: any): void } {
+  const tradesByExec = new Map<string, any>();
+  const commissioned = new Set<string>();
+  return {
+    onExecDetails(reqId, contract, execution) {
+      const [trade, fill] = fillFromExecDetails(contract, execution, reqId);
+      const execId = String(fill.execution["execId"] ?? "");
+      if (execId) {
+        if (tradesByExec.has(execId)) return;
+        tradesByExec.set(execId, trade);
+      }
+      for (const cb of fillCbs) cb(trade, fill);
+    },
+    onCommissionReport(report) {
+      const execId = String(report?.execId ?? "");
+      const trade = tradesByExec.get(execId);
+      if (!trade || commissioned.has(execId)) return;
+      commissioned.add(execId);
+      for (const cb of commissionCbs) cb(trade, null, report);
+    },
+  };
 }
 
 export async function createIbApiNextSession(cfg: {
@@ -168,7 +208,7 @@ export async function createIbApiNextSession(cfg: {
   const raw: any = (api as any).api;
   const E: any = mod.EventName ?? {};
   const contractsByOrder = new Map<number, Record<string, unknown>>();
-  const tradesByExec = new Map<string, any>();
+  const execs = execForwarder(fillCbs, commissionCbs);
   if (raw && typeof raw.on === "function") {
     raw.on(E.openOrder ?? "openOrder", (orderId: unknown, contract: any) => {
       contractsByOrder.set(Number(orderId), contract ?? {});
@@ -181,16 +221,9 @@ export async function createIbApiNextSession(cfg: {
       );
       for (const cb of orderStatusCbs) cb(trade);
     });
-    raw.on(E.execDetails ?? "execDetails", (_reqId: unknown, contract: any, execution: any) => {
-      const [trade, fill] = fillFromExecDetails(contract, execution);
-      tradesByExec.set(String(fill.execution["execId"] ?? ""), trade);
-      for (const cb of fillCbs) cb(trade, fill);
-    });
-    raw.on(E.commissionReport ?? "commissionReport", (report: any) => {
-      const trade = tradesByExec.get(String(report?.execId ?? ""));
-      if (!trade) return;
-      for (const cb of commissionCbs) cb(trade, null, report);
-    });
+    // 实时成交与 reqExecutions 的回应走的是同一个事件,见 execForwarder
+    raw.on(E.execDetails ?? "execDetails", execs.onExecDetails);
+    raw.on(E.commissionReport ?? "commissionReport", execs.onCommissionReport);
   } else {
     // 拿不到底层事件源(库版本差异)就退回集合推流;engine 侧对账循环兜底
     api.getOpenOrders?.().subscribe?.((update: any) => {
