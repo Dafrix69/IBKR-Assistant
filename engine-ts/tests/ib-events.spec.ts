@@ -5,7 +5,7 @@
  * orderStatus / execDetails / commissionReport 三个事件上,这里钉住转换后的形状。 */
 import { describe, expect, it } from "vitest";
 
-import { fillFromExecDetails, tradeFromOrderStatus } from "../src/ibSession.js";
+import { execForwarder, fillFromExecDetails, tradeFromOrderStatus } from "../src/ibSession.js";
 
 describe("IBApi 事件转换", () => {
   it("orderStatus → trade.order.{orderId,permId} + trade.orderStatus.{status,filled,remaining,avgFillPrice}", () => {
@@ -33,5 +33,62 @@ describe("IBApi 事件转换", () => {
       execId: "0000e1a7.68bea7c8.01.01", time: "20260908 05:25:58", price: 318.6, shares: 3, side: "BOT",
       acctNumber: "DU1234567",
     });
+  });
+
+  it("reqId = −1 是实时推送(live);别的 reqId 是 reqExecutions 的回应", () => {
+    expect(fillFromExecDetails({}, { execId: "x" }, -1)[1].live).toBe(true);
+    expect(fillFromExecDetails({}, { execId: "x" })[1].live).toBe(true);
+    expect(fillFromExecDetails({}, { execId: "x" }, 7)[1].live).toBe(false);
+  });
+});
+
+describe("execForwarder:同一 execId 本会话只转一次", () => {
+  function wired() {
+    const fills: Array<[any, any]> = [];
+    const commissions: Array<[any, any]> = [];
+    const fwd = execForwarder([(t, f) => fills.push([t, f])], [(t, _f, r) => commissions.push([t, r])]);
+    return { fwd, fills, commissions };
+  }
+  const exec = (execId: string, time: string) => ({ execId, time, orderId: 89, permId: 5550089, shares: 1, price: 3.55 });
+
+  it("实时成交与佣金照转;reqExecutions 重推同一笔(换了时间格式)成交和佣金都丢掉", () => {
+    const { fwd, fills, commissions } = wired();
+    fwd.onExecDetails(-1, { secType: "BAG", symbol: "SPX" }, exec("00020057.6aa22ebf.01.01", "20260910-10:00:01"));
+    fwd.onCommissionReport({ execId: "00020057.6aa22ebf.01.01", commission: 1.1 });
+    expect(fills).toHaveLength(1);
+    expect(fills[0]![1].live).toBe(true);
+    expect(commissions).toHaveLength(1);
+    expect(commissions[0]![0].order).toEqual({ orderId: 89, permId: 5550089 });
+
+    for (const reqId of [7, 9]) {
+      fwd.onExecDetails(reqId, { secType: "BAG", symbol: "SPX" }, exec("00020057.6aa22ebf.01.01", "20260910 05:00:01 US/Central"));
+      fwd.onCommissionReport({ execId: "00020057.6aa22ebf.01.01", commission: 1.1 });
+    }
+    expect(fills).toHaveLength(1);
+    expect(commissions).toHaveLength(1);
+  });
+
+  it("没见过的 execId 从 reqExecutions 来(断线期间成交):照样转去补录,但标 live = false", () => {
+    const { fwd, fills, commissions } = wired();
+    fwd.onExecDetails(7, { secType: "OPT", symbol: "SPX" }, exec("00020057.6aa22ebf.02.01", "20260910 05:00:01 US/Central"));
+    fwd.onCommissionReport({ execId: "00020057.6aa22ebf.02.01", commission: 1.1 });
+    expect(fills).toHaveLength(1);
+    expect(fills[0]![1].live).toBe(false);
+    expect(commissions).toHaveLength(1);
+  });
+
+  it("佣金对不上本会话见过的成交就不转(不是这条连接的单)", () => {
+    const { fwd, commissions } = wired();
+    fwd.onCommissionReport({ execId: "别的客户端的成交", commission: 1.1 });
+    expect(commissions).toEqual([]);
+  });
+
+  it("挂回调晚于 execForwarder 创建也收得到(ibSession 先建闸、engine 后 wireSession)", () => {
+    const fillCbs: Array<(t: any, f: any) => void> = [];
+    const fwd = execForwarder(fillCbs, []);
+    const got: any[] = [];
+    fillCbs.push((_t, f) => got.push(f));
+    fwd.onExecDetails(-1, {}, exec("e-late", "20260910-10:00:01"));
+    expect(got).toHaveLength(1);
   });
 });

@@ -518,6 +518,7 @@ export interface IbSession {
   onConnectivity(cb: (code: number) => void): void;
   /** engine 挂订单回报监听用(推式)。 */
   onOrderStatus?(cb: (trade: any) => void): void;
+  /** fill.live === false:reqExecutions 补回来的成交,不是实时推送(引擎只落库不通知)。 */
   onFill?(cb: (trade: any, fill: any) => void): void;
   onCommission?(cb: (trade: any, fill: any, report: any) => void): void;
   /** 订单级错误(reqId = orderId):200 证券定义、110 跳动、201 拒单等 */
