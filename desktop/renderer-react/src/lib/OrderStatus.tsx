@@ -8,7 +8,7 @@
 import { Pill, StagePath, type Tint } from '../ui/graphics';
 import { ACTION_LABEL, statusLabel, type StatusLike } from './labels';
 
-export type StatusBucket = 'filled' | 'working' | 'failed' | 'closed' | 'halted' | 'draft';
+export type StatusBucket = 'filled' | 'working' | 'failed' | 'closed' | 'halted' | 'draft' | 'stale';
 
 export function statusBucket(r: StatusLike): StatusBucket {
   const f = String(r.final_status || '');
@@ -20,14 +20,16 @@ export function statusBucket(r: StatusLike): StatusBucket {
   const s = String(r.status || '');
   // 通过校验却没发出去的单不是"在途":把它算进蓝色会让人以为券商那边还挂着几十张单
   if (s === 'ValidatedOnly') return 'draft';
+  // 对账查不到的单也不是"在途":券商那边没有它,再显示成蓝色就是让人等一个不会来的回报
+  if (s === 'NotAtBroker') return 'stale';
   if (s === 'Filled') return 'filled';
   if (s === 'Inactive') return 'failed';
   if (s === 'Cancelled' || s === 'ApiCancelled') return 'closed';
   return 'working';
 }
 
-export const BUCKET_TINT: Record<StatusBucket, Tint> = { filled: 'green', working: 'blue', failed: 'red', closed: 'gray', halted: 'orange', draft: 'gray' };
-export const BUCKET_LABEL: Record<StatusBucket, string> = { filled: '已成交', working: '进行中', failed: '被拒 / 出错', closed: '已撤 / 未触发', halted: '熔断拦下', draft: '仅校验未发送' };
+export const BUCKET_TINT: Record<StatusBucket, Tint> = { filled: 'green', working: 'blue', failed: 'red', closed: 'gray', halted: 'orange', draft: 'gray', stale: 'yellow' };
+export const BUCKET_LABEL: Record<StatusBucket, string> = { filled: '已成交', working: '进行中', failed: '被拒 / 出错', closed: '已撤 / 未触发', halted: '熔断拦下', draft: '仅校验未发送', stale: '去向不明' };
 
 export function StatusPill({ record, fallback = '—' }: { record: StatusLike; fallback?: string }) {
   return (
@@ -57,6 +59,7 @@ export function OrderStages({ record }: { record: StatusLike }) {
   if (bucket === 'filled') current = 3;
   else if (f.startsWith('rejected')) current = 0;
   else if (bucket === 'draft') current = 1;
-  else if (bucket === 'working' && record.status) current = 2;
+  // 对账查不到的单确实提交过,路径停在"提交"那一步——它没成交,也没人再推它往前走
+  else if ((bucket === 'working' || bucket === 'stale') && record.status) current = 2;
   return <StagePath stages={STAGES} current={current} tone={BUCKET_TINT[bucket]} />;
 }

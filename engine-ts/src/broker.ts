@@ -2425,6 +2425,13 @@ export class BrokerRouter {
     }
     return rows;
   }
+
+  /** 券商侧全部未成交单(不按 orderRef 过滤)。执行对账用:普通单与条件单的 orderRef
+   * 就是记录 id,引擎据此重建 orderId → 记录的索引。
+   * 顺带把每张单登记进 hostedTrades(listHostedOpen 做的),改单 / 撤单才有原样订单可发。 */
+  async listOpenOrdersDetailed(): Promise<Array<Record<string, unknown>>> {
+    return this.listHostedOpen("");
+  }
 }
 
 // ---------------------------------------------------------------- 合约构造
