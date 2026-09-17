@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Badge, Menu, type MenuProps } from 'antd';
 import { NAV_GROUPS, NAV_ITEMS, groupOf, type NavGroup } from './nav';
 import { useQualityUnread } from '../store/quality';
-import { SfIcon } from '../ui/Icons';
+import { IconTile } from '../ui/graphics';
 
 interface Props {
   active: string;
@@ -74,7 +74,7 @@ export function Sidebar({ active, onSelect, pendingCount }: Props) {
         const n = badgeOf(it.badge);
         return {
           key: it.key,
-          icon: <SfIcon name={it.icon} />,
+          icon: <IconTile icon={it.icon} size={24} variant="plain" />,
           title: it.label,
           label: (
             <span className="nav-label">

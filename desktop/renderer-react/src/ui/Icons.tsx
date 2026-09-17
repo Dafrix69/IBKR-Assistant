@@ -123,6 +123,47 @@ const GLYPHS: Record<string, ReactNode> = {
       <path d="M8 7.4v3.8" {...ROUND} strokeWidth={1.5} />
     </>
   ),
+  'sf-sun': (
+    <>
+      <circle cx="8" cy="8" r="2.8" {...STROKE} />
+      <path d="M8 1.6v1.6M8 12.8v1.6M1.6 8h1.6M12.8 8h1.6M3.5 3.5l1.1 1.1M11.4 11.4l1.1 1.1M12.5 3.5l-1.1 1.1M4.6 11.4l-1.1 1.1" {...ROUND} />
+    </>
+  ),
+  'sf-updown': <path d="M5 13V3.2M5 3.2 2.6 5.6M5 3.2l2.4 2.4M11 3v9.8M11 12.8l-2.4-2.4M11 12.8l2.4-2.4" {...ROUND} />,
+  'sf-drop': <path d="M8 1.9c2.4 3 4.2 5.2 4.2 7.6a4.2 4.2 0 0 1-8.4 0C3.8 7.1 5.6 4.9 8 1.9Z" {...STROKE} strokeLinejoin="round" />,
+  'sf-bolt': <path d="M9 1.8 3.6 9h3.6L6.6 14.2 12.4 7H8.6L9 1.8Z" {...STROKE} strokeLinejoin="round" />,
+  'sf-shield': (
+    <>
+      <path d="M8 1.8 13 3.6v4.2c0 3-2 5.2-5 6.4-3-1.2-5-3.4-5-6.4V3.6L8 1.8Z" {...STROKE} strokeLinejoin="round" />
+      <path d="M5.8 8 7.4 9.6l3-3.4" {...ROUND} />
+    </>
+  ),
+  'sf-dollar': (
+    <>
+      <circle cx="8" cy="8" r="6.2" {...STROKE} />
+      <path d="M10 6.2c-.3-.8-1-1.2-2-1.2-1.2 0-2 .6-2 1.5 0 2 4.2 1 4.2 3.1 0 .9-.9 1.5-2.2 1.5-1.1 0-1.9-.5-2.2-1.3M8 3.8V5M8 11.1v1.2" {...ROUND} strokeWidth={1.2} />
+    </>
+  ),
+  'sf-layers': <path d="M8 2.2 14 5.4 8 8.6 2 5.4 8 2.2ZM2.6 8.4 8 11.2l5.4-2.8M2.6 11 8 13.8 13.4 11" {...ROUND} />,
+  'sf-gauge': (
+    <>
+      <path d="M2.4 11.6a6 6 0 1 1 11.2 0" {...ROUND} />
+      <path d="M8 9.6 10.8 5.6" {...ROUND} strokeWidth={1.6} />
+      <circle cx="8" cy="9.8" r="1.1" fill="currentColor" />
+    </>
+  ),
+  'sf-clock': (
+    <>
+      <circle cx="8" cy="8" r="6.2" {...STROKE} />
+      <path d="M8 4.4V8l2.4 1.6" {...ROUND} />
+    </>
+  ),
+  'sf-arrow-up': <path d="M8 13V3.4M8 3.4 4 7.4M8 3.4l4 4" {...ROUND} strokeWidth={1.8} />,
+  'sf-arrow-down': <path d="M8 3v9.6M8 12.6l-4-4M8 12.6l4-4" {...ROUND} strokeWidth={1.8} />,
+  'sf-check': <path d="M3.2 8.4 6.6 11.6 12.8 4.6" {...ROUND} strokeWidth={1.9} />,
+  'sf-xmark': <path d="M4 4l8 8M12 4l-8 8" {...ROUND} strokeWidth={1.9} />,
+  'sf-hourglass': <path d="M4 2.2h8M4 13.8h8M4.8 2.2c0 3 3.2 3.8 3.2 5.8s-3.2 2.8-3.2 5.8M11.2 2.2c0 3-3.2 3.8-3.2 5.8s3.2 2.8 3.2 5.8" {...ROUND} />,
+  'sf-paperplane': <path d="M14 2 7.2 8.8M14 2 9.6 14l-2.4-5.2L2 6.4 14 2Z" {...ROUND} />,
 };
 
 export function SfIcon({ name, size = 16, className, style }: { name: string; size?: number; className?: string; style?: CSSProperties }) {

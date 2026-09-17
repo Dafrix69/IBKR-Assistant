@@ -18,7 +18,20 @@ export interface MacroRow {
   stale?: boolean;
 }
 
-const useStore = create<{ rows: MacroRow[] }>(() => ({ rows: [] }));
+const useStore = create<{ rows: MacroRow[]; trails: Record<string, number[]> }>(() => ({ rows: [], trails: {} }));
+/** 每格留本次开机以来的最近 90 个不同读数,给行情带画迷你走势;只在内存里,不落盘。 */
+const TRAIL_MAX = 90;
+function extendTrails(prev: Record<string, number[]>, rows: MacroRow[]): Record<string, number[]> {
+  let next = prev;
+  for (const row of rows) {
+    if (row.last == null || !Number.isFinite(row.last) || row.stale) continue;
+    const trail = prev[row.key] || [];
+    if (trail[trail.length - 1] === row.last) continue;
+    if (next === prev) next = { ...prev };
+    next[row.key] = [...trail, row.last].slice(-TRAIL_MAX);
+  }
+  return next;
+}
 let inFlight = false;
 let last = 0;
 let started = false;
@@ -29,7 +42,8 @@ export async function loadMacroBoard(force = false): Promise<void> {
   inFlight = true;
   try {
     const board = await dafri.macroBoard(force);
-    useStore.setState({ rows: board?.rows || [] });
+    const rows = board?.rows || [];
+    useStore.setState((s) => ({ rows, trails: extendTrails(s.trails, rows) }));
   } catch (err) {
     console.warn('宏观行情读取失败', err);
   } finally {
@@ -50,4 +64,8 @@ export function startMacroLoop(): void {
 
 export function useMacroRows(): MacroRow[] {
   return useStore((s) => s.rows);
+}
+
+export function useMacroTrails(): Record<string, number[]> {
+  return useStore((s) => s.trails);
 }

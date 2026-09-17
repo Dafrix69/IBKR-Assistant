@@ -16,11 +16,16 @@
 :root {
   /* --- 系统语义色(浅色)--- */
   --blue: #007aff;
-  --green: #28cd41;
+  --green: #34c759;
   --orange: #ff9500;
   --red: #ff3b30;
   --yellow: #ffcc00;
   --purple: #af52de;
+  --teal: #30b0c7;
+  --indigo: #5856d6;
+  --pink: #ff2d55;
+  --mint: #00c7be;
+  --gray: #8e8e93;
 
   /* 涨跌色成对做成 token:图表、列表、行情带统一从这里取色;
      「涨跌配色」设置只改下面两行的映射(见 :root[data-updown]),不碰任何用色的地方。 */
@@ -42,67 +47,122 @@
   /* 图区底色:浅色下是白;深色下取近黑(iOS 股市、富途夜间的图区都比周围的面暗得多),蜡烛和网格都靠它衬 */
   --chart-bg: #ffffff;
 
-  /* 焦点环只有一种:3.5px、强调色 30%——AppKit 的 focus ring。输入框、开关、按钮都用它。 */
   --focus-ring: 0 0 0 3.5px color-mix(in srgb, var(--blue) 30%, transparent);
   --focus-outline: 3.5px solid color-mix(in srgb, var(--blue) 30%, transparent);
   --accent: var(--blue);
 
   --label: #000000;
-  --label-secondary: rgba(60, 60, 67, 0.6);
-  --label-tertiary: rgba(60, 60, 67, 0.3);
+  --label-secondary: rgba(60, 60, 67, 0.62);
+  --label-tertiary: rgba(60, 60, 67, 0.34);
 
-  --bg-window: rgba(246, 246, 248, 0.72);   /* 半透明:让 vibrancy 透出来 */
-  --bg-content: rgba(255, 255, 255, 0.62);
-  --bg-control: rgba(255, 255, 255, 0.9);
+  /*
+   * Liquid Glass(iOS 27 的口径):
+   *   · 玻璃 = 一层按 --glass-tint 着色的面 + 背后内容的漫射(模糊 + 提饱和)+ 一圈压暗的边 + 顶上一道更亮的高光;
+   *   · --glass-tint 就是 iOS 27「设置 › 显示 › Liquid Glass」那根滑杆:0 = 通透,1 = 完全着色(设置页里能拖);
+   *   · 只有"浮在内容上面"的那一层是玻璃:侧栏、工具栏、吸顶标题、弹层。卡片是内容,用着色的实面,不加模糊——
+   *     几十张卡片各自 backdrop-filter 会把滚动拖到掉帧;
+   *   · 圆角同心:窗口级面板 22 → 卡片 20 → 卡内瓦片 14 → 控件 12 / 胶囊。
+   */
+  --glass-tint: 0.72;
+  --glass-base: #ffffff;
+  --glass-bg: color-mix(in srgb, var(--glass-base) calc((0.30 + var(--glass-tint) * 0.62) * 100%), transparent);
+  --glass-bg-clear: color-mix(in srgb, var(--glass-base) calc((0.12 + var(--glass-tint) * 0.55) * 100%), transparent);
+  --glass-filter: blur(30px) saturate(190%);
+  --glass-edge:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.5),
+    0 0 0 0.5px rgba(0, 0, 0, 0.10),
+    0 8px 28px rgba(15, 23, 60, 0.10);
+  --glass-edge-small:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 0 0 0.5px rgba(0, 0, 0, 0.10),
+    0 2px 8px rgba(15, 23, 60, 0.08);
+
+  --bg-window: #f2f2f7;                      /* iOS systemGroupedBackground */
+  --bg-content: transparent;
+  --bg-control: color-mix(in srgb, #ffffff calc((0.55 + var(--glass-tint) * 0.42) * 100%), transparent);
   --bg-fill: rgba(120, 120, 128, 0.12);
   --bg-fill-strong: rgba(120, 120, 128, 0.2);
-  /* 比页面底高一层的卡片面。和 --bg-content 分开,卡片才有"浮起来"的层次 */
-  --bg-elevated: rgba(255, 255, 255, 0.92);
-  --separator: rgba(60, 60, 67, 0.18);
+  /* 卡片面:比页面底高一层 */
+  --bg-elevated: color-mix(in srgb, #ffffff calc((0.50 + var(--glass-tint) * 0.46) * 100%), transparent);
+  --bg-popup: #ffffff;
+  --separator: rgba(60, 60, 67, 0.14);
   --separator-opaque: rgba(0, 0, 0, 0.1);
 
-  --shadow-card: 0 0.5px 1px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.06);
-  --shadow-control: 0 0.5px 1px rgba(0, 0, 0, 0.1);
+  --shadow-card: 0 0 0 0.5px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(15, 23, 60, 0.04), 0 6px 20px rgba(15, 23, 60, 0.05);
+  --shadow-control: 0 0.5px 1px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05);
 
-  --radius-card: 10px;
-  --radius-control: 6px;
+  --radius-panel: 22px;
+  --radius-card: 20px;
+  --radius-tile: 14px;
+  --radius-control: 12px;
+
+  /* 窗口底:iOS 的分组灰上只留两抹几乎看不出的冷色,给玻璃一点可漫射的东西。
+     第一版四团彩色太艳(用户 09-17 指出):iOS 的底是中性的,颜色属于内容,不属于背景 */
+  --ambient:
+    radial-gradient(70% 55% at 10% 0%, rgba(0, 122, 255, 0.055), transparent 72%),
+    radial-gradient(60% 50% at 95% 100%, rgba(88, 86, 214, 0.04), transparent 72%);
 
   /* 每个平台都用它自己的系统字体。Segoe UI Variable 是 Win11 的系统字体,Segoe UI 是 Win10 的。 */
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text",
           "Segoe UI Variable Text", "Segoe UI",
           "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei",
           "Helvetica Neue", sans-serif;
+  /* 大标题与大数字:SF Pro Rounded 在 iOS 的健身 / 股市 / 天气里管"数";Windows 上退到 Display 字重 */
+  --font-display: "SF Pro Rounded", "SF Pro Display", -apple-system, BlinkMacSystemFont,
+          "Segoe UI Variable Display", "Segoe UI",
+          "PingFang SC", "Microsoft YaHei UI", sans-serif;
   --font-mono: ui-monospace, "SF Mono", SFMono-Regular, "Cascadia Mono", Consolas, Menlo, monospace;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --blue: #0a84ff;
-    --green: #32d74b;
+    --green: #30d158;
     --orange: #ff9f0a;
     --red: #ff453a;
     --yellow: #ffd60a;
     --purple: #bf5af2;
+    --teal: #40c8e0;
+    --indigo: #5e5ce6;
+    --pink: #ff375f;
+    --mint: #63e6e2;
+    --gray: #8e8e93;
     --green-text: var(--green);
     --red-text: var(--red);
     --orange-text: var(--orange);
     --chart-bg: #0b0b0d;
 
     --label: #ffffff;
-    --label-secondary: rgba(235, 235, 245, 0.6);
-    --label-tertiary: rgba(235, 235, 245, 0.3);
+    --label-secondary: rgba(235, 235, 245, 0.62);
+    --label-tertiary: rgba(235, 235, 245, 0.32);
 
-    --bg-window: rgba(30, 30, 32, 0.6);
-    --bg-content: rgba(40, 40, 43, 0.55);
-    --bg-control: rgba(70, 70, 74, 0.65);
+    --glass-base: #2a2a30;
+    --glass-edge:
+      inset 0 1px 0 rgba(255, 255, 255, 0.22),
+      inset 0 0 0 0.5px rgba(255, 255, 255, 0.10),
+      0 0 0 0.5px rgba(0, 0, 0, 0.6),
+      0 10px 32px rgba(0, 0, 0, 0.45);
+    --glass-edge-small:
+      inset 0 1px 0 rgba(255, 255, 255, 0.2),
+      0 0 0 0.5px rgba(0, 0, 0, 0.6),
+      0 2px 8px rgba(0, 0, 0, 0.35);
+
+    --bg-window: #000000;
+    --bg-control: color-mix(in srgb, #3a3a40 calc((0.50 + var(--glass-tint) * 0.45) * 100%), transparent);
     --bg-fill: rgba(120, 120, 128, 0.24);
     --bg-fill-strong: rgba(120, 120, 128, 0.36);
-    --bg-elevated: rgba(58, 58, 62, 0.75);
-    --separator: rgba(84, 84, 88, 0.65);
+    --bg-elevated: color-mix(in srgb, #1c1c1e calc((0.45 + var(--glass-tint) * 0.5) * 100%), transparent);
+    --bg-popup: #2a2a2e;
+    --separator: rgba(84, 84, 88, 0.55);
     --separator-opaque: rgba(255, 255, 255, 0.1);
 
-    --shadow-card: 0 0.5px 1px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-card: 0 0 0 0.5px rgba(255, 255, 255, 0.07), 0 6px 20px rgba(0, 0, 0, 0.35);
     --shadow-control: 0 0.5px 1px rgba(0, 0, 0, 0.35);
+
+    --ambient:
+      radial-gradient(70% 55% at 10% 0%, rgba(10, 132, 255, 0.09), transparent 72%),
+      radial-gradient(60% 50% at 95% 100%, rgba(94, 92, 230, 0.06), transparent 72%);
   }
 }
 
@@ -117,44 +177,12 @@
 }
 
 /*
- * 半透明是装饰,不能是可读性的前提。没有 vibrancy 底材时(Windows,或 macOS 打开了「减弱透明度」),
- * 半透明面板背后什么都没有,文字对比度会塌掉——这两种情况一律换成实底。HIG 明确要求尊重「减弱透明度」。
+ * 半透明是装饰,不能是可读性的前提。系统打开了「减弱透明度」时玻璃一律换成实底、不再模糊——
+ * 等价于把 Liquid Glass 滑杆推到"完全着色"。HIG 明确要求尊重这个开关。
  */
 @media (prefers-reduced-transparency: reduce) {
-  :root {
-    --bg-window: #f2f2f4;
-    --bg-content: #fbfbfd;
-    --bg-control: #ffffff;
-    --bg-elevated: #ffffff;
-  }
+  :root { --glass-tint: 1 !important; --glass-filter: none; --glass-bg: var(--bg-popup); --glass-bg-clear: var(--bg-popup); --ambient: none; }
 }
-:root[data-vibrancy="off"] {
-  --bg-window: #f2f2f4;
-  --bg-content: #fbfbfd;
-  --bg-control: #ffffff;
-  --bg-elevated: #ffffff;
-}
-@media (prefers-color-scheme: dark) {
-  @media (prefers-reduced-transparency: reduce) {
-    :root {
-      --bg-window: #2b2b2e;      /* 侧栏、工具栏所在的窗口底:比内容区亮一档(Notes 深色:侧栏≈#2c2c2e、正文≈#1e1e1e) */
-      --bg-content: #1e1e20;
-      --bg-control: #38383c;
-      --bg-elevated: #2f2f33;    /* 卡片再浮起一档 */
-    }
-  }
-  :root[data-vibrancy="off"] {
-    --bg-window: #2b2b2e;
-    --bg-content: #1e1e20;
-    --bg-control: #38383c;
-    --bg-elevated: #2f2f33;
-  }
-}
-/* 实底时窗口自身也要有底色,否则透出来的是空。 */
-@media (prefers-reduced-transparency: reduce) {
-  html body { background: var(--bg-window); }
-}
-:root[data-vibrancy="off"] body { background: var(--bg-window); }
 
 * { box-sizing: border-box; }
 
@@ -164,7 +192,7 @@ html, body {
   /* 竖向 flex:壳层用 flex:1 吃掉剩余高度,顶栏 + 行情带的高度由布局自己算 */
   display: flex;
   flex-direction: column;
-  background: transparent;    /* 让 NSVisualEffectView 的材质透上来 */
+  background: var(--ambient), var(--bg-window);    /* 窗口底:分组灰 + 几团淡环境色,给玻璃垫底 */
   color: var(--label);
   font: 13px/1.47 var(--font);
   -webkit-font-smoothing: antialiased;
@@ -179,33 +207,52 @@ input, textarea { user-select: text; }
 .topbar {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   height: 52px;
   flex-shrink: 0;
-  /* 给窗口按钮让位。macOS 的红绿灯在左上,Windows 的最小化/最大化/关闭在右上——两边留的位置正好相反 */
-  padding: 0 14px;
-  background: var(--bg-window);
-  border-bottom: 0.5px solid var(--separator);
+  /* 栏本身是透明的拖拽区,上面浮着几颗玻璃胶囊(iOS 26 起的工具栏就是"浮着的一组一组") */
+  padding: 0 12px;
+  background: transparent;
   -webkit-app-region: drag;
-  backdrop-filter: saturate(180%) blur(20px);
 }
-.topbar button, .topbar .chip, .topbar .brand { -webkit-app-region: no-drag; }
+.topbar button, .topbar .chip, .topbar .brand, .topbar .glass-capsule { -webkit-app-region: no-drag; }
 
 :root[data-platform="darwin"] .topbar { padding-left: 88px; }
 /* Windows 用 titleBarOverlay 把系统按钮叠在我们自己的顶栏上,右侧要留出它们的宽度 */
 :root[data-platform="win32"] .topbar { padding-right: 148px; }
 
+/* 玻璃胶囊:工具栏里的一组东西。压暗的边 + 顶上一道高光,是 iOS 27 调过之后的样子 */
+.glass-capsule {
+  display: inline-flex; align-items: center; gap: 12px;
+  height: 36px; padding: 0 14px;
+  border-radius: 999px;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-filter); -webkit-backdrop-filter: var(--glass-filter);
+  box-shadow: var(--glass-edge-small);
+  min-width: 0;
+}
+
 #macro-strip { flex-shrink: 0; }
 
-.brand { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
-.brand strong { font-size: 13px; font-weight: 590; letter-spacing: -0.01em; }
+.brand { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.brand strong { font-size: 13px; font-weight: 650; letter-spacing: -0.01em; }
+/* 应用标:一枚渐变的圆角方块,里面一根上行的折线;引擎状态是它右下角的小圆点 */
+.brand-mark {
+  position: relative; width: 24px; height: 24px; border-radius: 7px; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center; color: #fff;
+  background: var(--blue);
+}
+.brand-mark .engine-dot {
+  position: absolute; right: -2px; bottom: -2px; width: 9px; height: 9px; border-radius: 50%;
+  border: 2px solid var(--bg-window); background: var(--gray);
+}
+.brand-mark .engine-dot.success { background: var(--green); }
+.brand-mark .engine-dot.error { background: var(--red); }
 
 /* 不换行:栏高是写死的 52px,一换行第二行就被裁掉。宁可挤,不可断。
    窄窗口下按重要性整颗丢弃:时间和模型可以没有,连接状态和模式不能没有。 */
-.status-chips {
-  display: flex; gap: 10px; flex: 1; min-width: 0;
-  flex-wrap: nowrap; overflow: hidden; align-items: center;
-}
+.status-chips { flex: 0 1 auto; flex-wrap: nowrap; overflow: hidden; }
+.topbar-spacer { flex: 1; min-width: 0; }
 .chip { flex-shrink: 0; white-space: nowrap; font-size: 12px; font-variant-numeric: tabular-nums; }
 /* 配置类信息(模型名)在工具栏里退到背景:要看的时候看得见,不看的时候不抢戏 */
 .chip.subtle { color: var(--label-tertiary); }
@@ -222,48 +269,70 @@ input, textarea { user-select: text; }
   min-height: 0;      /* 不给 0 的话 flex 子项会被内容撑出容器 */
 }
 
-/* 源列表侧栏:透出窗口材质,内容区更实——经典 macOS 分界。项与组的样式见 shell.css(AntD Menu) */
+/* 侧栏是一块浮着的玻璃面板(iPadOS / macOS 26 起的样子):四周留 10px,22px 圆角,内容区在它旁边而不是被一条线隔开 */
 .sidebar {
-  width: 220px;
+  width: 228px;
   flex-shrink: 0;
+  margin: 0 0 10px 10px;
   padding: 8px 0;
   overflow-y: auto;
   overflow-x: hidden;
-  border-right: 0.5px solid var(--separator);
+  border-radius: var(--radius-panel);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-filter); -webkit-backdrop-filter: var(--glass-filter);
+  box-shadow: var(--glass-edge);
   display: flex;
   flex-direction: column;
+  scrollbar-width: none;
 }
-/* 窄窗口:侧栏收成 56px 的图标栏(Mail / Finder 的做法) */
-.sidebar.narrow { width: 56px; }
+.sidebar::-webkit-scrollbar { display: none; }
+/* 窄窗口:侧栏收成 60px 的图标栏 */
+.sidebar.narrow { width: 60px; }
 
 .content {
   flex: 1;
   overflow-y: auto;
-  padding: 18px 24px 40px;
+  overflow-x: hidden;
+  padding: 6px 28px 40px;
   background: var(--bg-content);
 }
 /* 数据页越宽越好用,表单和说明文字太宽反而难读——按页分开定 */
 .content > .tab-panel { max-width: 1180px; }
 #page-settings, #page-about, #page-access { max-width: 880px; }
 
-/* 大标题(macOS 11+ 内容区标题),吸顶:列表一长,标题和它旁边的操作不该滚没 */
+/* 大标题(iOS 的 Large Title),吸顶。内容从它下面滚过时,它是一条均匀的玻璃栏——
+   iOS 27 把"各自浮着的按钮 + 渐隐"改回了整条统一的工具栏,字才压得住 */
 .page-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
   position: sticky;
-  top: -18px;                 /* 抵消 .content 的上内边距,贴住真正的顶 */
+  top: -6px;
   z-index: 5;
-  margin: -18px -24px 14px;
-  padding: 18px 24px 10px;
-  background: var(--bg-content);
-  backdrop-filter: saturate(180%) blur(20px);
+  margin: -6px 0 14px;
+  padding: 14px 0 10px;
 }
+/* 玻璃栏是一层铺满内容区宽度的伪元素(页面本身有 max-width,栏不能跟着变窄);
+   停在顶上时完全透明,滚出 40px 之内渐显——滚动时间线驱动,不用监听 scroll */
+.page-head::before {
+  content: ''; position: absolute; z-index: -1; top: 0; bottom: -10px; left: -28px; width: 100vw;
+  background: var(--glass-bg-clear);
+  backdrop-filter: var(--glass-filter); -webkit-backdrop-filter: var(--glass-filter);
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 12px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 12px), transparent);
+  opacity: 0;
+  animation: head-glass linear both;
+  animation-timeline: scroll(nearest block);
+  animation-range: 0 40px;
+}
+@keyframes head-glass { to { opacity: 1; } }
 .page-head h1 {
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 750;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
   margin: 0;
 }
 .page-head > :last-child:not(h1) { align-self: center; }
@@ -291,11 +360,12 @@ h2 { font-size: 15px; font-weight: 590; letter-spacing: -0.01em; margin: 0; }
 h3 { font-size: 13px; font-weight: 590; margin: 0; }
 .section-title {
   display: flex; align-items: center; gap: 6px;
-  margin: 20px 0 7px;
-  color: var(--label-secondary);
-  font-size: 11px;
-  font-weight: 590;
-  letter-spacing: 0.02em;
+  margin: 24px 4px 9px;
+  color: var(--label);
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
 }
 .muted { color: var(--label-secondary); font-size: 11px; }
 /* 说明文字按行长收口:68 个汉字左右是上限 */
@@ -374,7 +444,7 @@ code {
 
 /* ---- 记录详情:记录是这个软件的核心产物,它的详情该像一份单据 ---- */
 .detail {
-  margin-top: 12px; padding: 11px; background: var(--bg-elevated);
+  margin-top: 14px; padding: 16px 18px; background: var(--bg-elevated); box-shadow: var(--shadow-card);
   border: 0.5px solid var(--separator); border-radius: var(--radius-card);
 }
 .detail-head {
@@ -512,33 +582,42 @@ code {
 /* ================= 全局宏观行情带(仿富途顶部指数条) ================= */
 .macro-strip {
   display: flex;
-  gap: 18px;
-  align-items: center;
-  padding: 5px 16px;
+  gap: 8px;
+  align-items: stretch;
+  padding: 2px 12px 10px;
   overflow-x: auto;
-  background: var(--bg-window);    /* 和工具栏同一块材质:chrome 是 chrome,内容区从发丝线以下开始 */
-  border-bottom: 0.5px solid var(--separator);
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
   white-space: nowrap;
   scrollbar-width: none;
 }
 .macro-strip::-webkit-scrollbar { display: none; }
-.macro-item { display: flex; gap: 5px; align-items: baseline; }
-.macro-label { color: var(--label-secondary); }
-.macro-value { font-weight: 600; font-variant-numeric: tabular-nums; }
+/* 每格一枚小玻璃瓦片:上面名字,下面读数 + 着色的涨跌胶囊;有了几个读数之后右边多一根迷你走势 */
+.macro-item {
+  display: grid; grid-template-columns: auto auto; grid-template-rows: auto auto; column-gap: 8px; align-items: center;
+  padding: 5px 11px 6px; border-radius: var(--radius-tile);
+  background: var(--glass-bg); box-shadow: var(--glass-edge-small);
+  font-size: 11px; font-variant-numeric: tabular-nums; flex-shrink: 0;
+}
+.macro-top { grid-column: 1; display: flex; gap: 4px; align-items: baseline; }
+.macro-bottom { grid-column: 1; display: flex; gap: 6px; align-items: center; }
+.macro-spark { grid-column: 2; grid-row: 1 / span 2; }
+.macro-label { color: var(--label-secondary); font-size: 10.5px; font-weight: 510; }
+.macro-value { font-family: var(--font-display); font-weight: 700; font-size: 13.5px; letter-spacing: -0.01em; }
 .macro-value.live::after {
   content: ""; display: inline-block; width: 4px; height: 4px; border-radius: 50%;
   background: var(--green); margin-left: 4px; vertical-align: middle;
 }
-.macro-inst {
-  color: var(--label-tertiary); font-size: 9.5px; font-family: var(--font-mono);
-  margin-left: -2px;
+.macro-inst { color: var(--label-tertiary); font-size: 9px; font-family: var(--font-mono); }
+.macro-chg {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 11px; font-weight: 590;
 }
+.macro-arrow { width: 0; height: 0; border-left: 3.5px solid transparent; border-right: 3.5px solid transparent; }
 .macro-chg.up { color: var(--up-text); }
+.macro-chg.up .macro-arrow { border-bottom: 5px solid currentColor; }
 .macro-chg.down { color: var(--down-text); }
+.macro-chg.down .macro-arrow { border-top: 5px solid currentColor; }
 .macro-chg.flat { color: var(--label-secondary); }
-.macro-stale { color: var(--label-secondary); font-style: italic; }
+.macro-stale { color: var(--label-secondary); font-style: italic; font-size: 9.5px; }
 
 /* ================= 订单簿深度梯子 ================= */
 .book-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 6px; }

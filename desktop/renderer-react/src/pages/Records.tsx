@@ -14,10 +14,12 @@ import {
   TIF_LABEL,
   say,
   statusLabel,
-  statusTone,
 } from '../lib/labels';
+import { OrderTicket, ticketFromRecord } from '../lib/OrderTicket';
+import { BUCKET_LABEL, OrderStages, BUCKET_TINT, SidePill, StatusPill, statusBucket, type StatusBucket } from '../lib/OrderStatus';
 import { showBanner } from '../store/banner';
 import { loadRecords, useRecords, useRecordsError, type RecordSummary } from '../store/records';
+import { SegBar, SymBadge } from '../ui/graphics';
 import { EmptyState, LoadingBlock, PageHead } from '../ui/kit';
 
 // 状态筛选的分档。刻意不按 final_status 的枚举一一列出——用户想的是
@@ -29,6 +31,8 @@ const FILTERS: { key: string; label: string; match: (r: RecordSummary) => boolea
   { key: 'rejected', label: '被拒', match: (r) => String(r.final_status || '').startsWith('rejected') },
   { key: 'failed', label: '出错', match: (r) => r.final_status === 'ibkr_error' || r.final_status === 'halted_by_breaker' },
 ];
+
+const BUCKETS: StatusBucket[] = ['filled', 'working', 'failed', 'halted', 'closed'];
 
 type Density = 'cozy' | 'compact';
 
@@ -79,6 +83,11 @@ export function RecordsPage() {
     );
   }, [records, keyword]);
   const counts = useMemo(() => Object.fromEntries(FILTERS.map((f) => [f.key, byKeyword.filter(f.match).length])), [byKeyword]);
+  const mix = useMemo(() => {
+    const out: Partial<Record<StatusBucket, number>> = {};
+    for (const r of byKeyword) out[statusBucket(r)] = (out[statusBucket(r)] || 0) + 1;
+    return out;
+  }, [byKeyword]);
   const active = FILTERS.find((f) => f.key === filter) || FILTERS[0];
   const rows = useMemo(() => byKeyword.filter(active.match), [byKeyword, active]);
 
@@ -114,12 +123,12 @@ export function RecordsPage() {
     {
       title: '标的',
       dataIndex: 'symbol',
-      width: 130,
+      width: 150,
       sorter: (a, b) => String(a.symbol || '').localeCompare(String(b.symbol || '')),
       render: (_: unknown, r) => (
-        <span className="record-sym">
-          {r.symbol || '—'}
-          {r.action ? <span className={`side ${r.action === 'BUY' ? 'buy' : 'sell'}`}>{ACTION_LABEL[r.action] || r.action}</span> : null}
+        <span className="record-sym-cell">
+          <SymBadge small symbol={r.symbol || '—'} tint={r.action === 'SELL' ? 'down' : r.action === 'BUY' ? 'up' : 'gray'} />
+          <SidePill action={r.action} />
         </span>
       ),
     },
@@ -155,9 +164,9 @@ export function RecordsPage() {
     {
       title: '状态',
       dataIndex: 'final_status',
-      width: 92,
+      width: 112,
       sorter: (a, b) => statusLabel(a, '进行中').localeCompare(statusLabel(b, '进行中')),
-      render: (_: unknown, r) => <span className={`status ${statusTone(r)}`}>{statusLabel(r, '进行中')}</span>,
+      render: (_: unknown, r) => <StatusPill record={r} fallback="进行中" />,
     },
   ];
 
@@ -182,6 +191,22 @@ export function RecordsPage() {
           </span>
         }
       />
+
+      {/* 这一批记录的去向:一根分段条 + 图例。数的是关键词过滤之后的集合,和下面筛选条的条数同一口径 */}
+      {byKeyword.length ? (
+        <div className="status-mix">
+          <SegBar parts={BUCKETS.map((b) => ({ key: b, value: mix[b] || 0, tint: BUCKET_TINT[b], label: BUCKET_LABEL[b] }))} />
+          <div className="status-mix-legend">
+            {BUCKETS.filter((b) => mix[b]).map((b) => (
+              <span key={b}>
+                <i style={{ background: `var(--${BUCKET_TINT[b]})` }} />
+                {BUCKET_LABEL[b]}
+                <b>{mix[b]}</b>
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div className="row tight">
         <Segmented
@@ -300,14 +325,13 @@ function DetailBody({ record, onClose }: { record: any; onClose: () => void }) {
   const llm = record.llm || {};
   const timeline: { status?: string; at?: string }[] = ib.status_timeline || [];
   const fills: { exec_id?: string; time?: string; qty?: number; price?: number; commission?: number }[] = ib.fills || [];
-  const tone = statusTone(record);
-  const status = record.final_status ? statusLabel(record, '进行中') : '进行中';
+  const ticket = ticketFromRecord(c, o, record.trigger);
 
   return (
     <>
       <div className="detail-head">
         <strong>{`${c.symbol || '—'} · ${ACTION_LABEL[o.action] || o.action || ''} ${o.totalQuantity ?? ''}`}</strong>
-        <span className={`status ${tone}`}>{status}</span>
+        <StatusPill record={record} fallback="进行中" />
         <span className="detail-actions">
           {c.combo_strategy === 'BUTTERFLY' ? (
             <Button size="small" onClick={() => openReviewFor(record.id)}>
@@ -319,6 +343,14 @@ function DetailBody({ record, onClose }: { record: any; onClose: () => void }) {
           </Button>
         </span>
       </div>
+
+      {/* 单据的上半张是画出来的:票据 + 走到哪一步;下面的逐项明细照旧留着,核对时要看的是字 */}
+      {ticket ? (
+        <div className="detail-ticket">
+          <OrderTicket ticket={ticket} />
+          <OrderStages record={record} />
+        </div>
+      ) : null}
 
       {record.error_detail ? <Alert type="error" showIcon message="失败原因" description={String(record.error_detail)} style={{ marginTop: 10 }} /> : null}
 

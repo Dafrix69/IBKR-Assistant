@@ -1,6 +1,6 @@
 {
   "name": "dafri-desktop",
-  "productName": "Dafri Trading",
+  "productName": "IBKR-Assistant",
   "version": "0.2.2",
   "private": true,
   "description": "IBKR 交易指令解析引擎的桌面界面(Electron 外壳 + TS 交易引擎子进程)",
@@ -44,7 +44,7 @@
   },
   "build": {
     "appId": "com.dafri.trading",
-    "productName": "Dafri Trading",
+    "productName": "IBKR-Assistant",
     "asar": true,
     "files": [
       "main.js",
@@ -88,21 +88,21 @@
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.plist",
       "notarize": false,
-      "artifactName": "DafriTrading-${version}-mac-${arch}.${ext}"
+      "artifactName": "IBKR-Assistant-${version}-mac-${arch}.${ext}"
     },
     "dmg": {
-      "title": "Dafri Trading",
+      "title": "IBKR-Assistant",
       "writeUpdateInfo": false
     },
     "win": {
       "target": "nsis",
-      "artifactName": "DafriTrading-${version}-win-${arch}.${ext}"
+      "artifactName": "IBKR-Assistant-${version}-win-${arch}.${ext}"
     },
     "nsis": {
       "include": "build/installer.nsh",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "shortcutName": "Dafri Trading"
+      "shortcutName": "IBKR-Assistant"
     },
     "electronLanguages": [
       "zh-CN",

@@ -362,3 +362,48 @@ Nielsen 那十条可用性启发式。另外配了一份**首次启动的数据�
 顺手修了两处老问题:`ui/kit.tsx` 的 SwitchRow 没有 `htmlFor`,点行标题会触发行里的按钮(「试听」)而不是开关;
 `lib/LevelStrip.tsx` 在 ResizeObserver 回调里同步重画,高窗口下偶发 "ResizeObserver loop" 报错,改为下一帧重画。
 (优质股 2026-09-12 并回板块页,侧栏与 Ctrl/⌘ + 1…9 的顺序回到原样。)
+
+## Liquid Glass 与图形化(2026-09-17)
+
+用户拍板:功能进一步图形化,设计参考 iOS 27。这一轮**取代**了「视觉底子:按 macOS HIG 来」里的几条(颜色只落在圆点上、卡片 10px 圆角、侧栏选中实心蓝);
+没被点名的规矩(文字着色用 `*-text`、0 不着色、尊重「减弱透明度」、不出水波纹)照旧。
+
+**设计语言(`styles.css` 的 token + `theme/antd.ts`)**
+
+- 玻璃只给"浮在内容上面的那一层":侧栏(四周留白的 22px 圆角面板)、工具栏里的胶囊、吸顶标题、行情带瓦片。卡片是内容,用着色的实面、不加
+  `backdrop-filter`——几十张卡各自模糊会把滚动拖到掉帧。
+- iOS 27 对 Liquid Glass 的三处修正都照做了:玻璃边压暗 + 顶上一道更亮的高光(`--glass-edge`);内容滚到标题下面时是**一整条均匀的玻璃栏**
+  (`.page-head::before`,用 `animation-timeline: scroll()` 渐显,不监听 scroll);透明度交给用户——设置 › 外观 › Liquid Glass 滑杆写
+  `--glass-tint`(0 通透 … 1 完全着色),所有面的透明度都从这一个变量算。系统开了「减弱透明度」= 强制 1、关模糊。
+- 窗口底是 iOS 分组灰 + 两抹极淡的冷色(`--ambient`),Windows 没有 vibrancy 也有东西可漫射;titleBarOverlay 改成透明。
+- 圆角同心:面板 22 → 卡片 20 → 卡内瓦片 14 → 控件 12 / 胶囊。按钮、分段控件、标签都是胶囊;开关 46×26。
+- 大标题 28px、分组标题 17px,数字用 `--font-display`(SF Pro Rounded,Windows 退到 Segoe UI Variable Display)。
+- 侧栏图标是一色的强调色线稿,选中项是一枚浮起的玻璃面;角标是灰色胶囊(排队数不是"未读")。
+- **用色收敛(同日第二版)**:第一版每个侧栏项一种彩色瓦片、四团环境色、实心彩色胶囊,用户评价"过于艳丽,不符合 iOS 的审美"。现在的规矩写在
+  `graphics.css` 头部:面是中性的,颜色只表达语义(涨跌 / 成败 / 警告);饱和实心色只留给主按钮和开关,其余是 ~11% 淡染;
+  代码徽章、小组件、事实瓦片都是灰底;实心图标瓦片只在设置页行首出现,平涂、不加渐变和彩色投影;窗口底只剩两抹几乎看不出的冷色。
+
+**图形构件(`src/ui/graphics.tsx` + `graphics.css`)**:IconTile / Pill / Ring / Sparkline / DeltaBar / MeterBar / SegBar / PriceRail /
+PayoffChart(+PayoffAxis)/ StagePath / SymBadge / Widget。全是内联 SVG 与纯 CSS,不引图表库;颜色只取 token,涨跌配色翻转自动跟着变。
+新页面要"画一个数"先到这里找,别再手写。
+
+**各页画了什么**
+
+| 页 | 原来是字 | 现在 |
+| --- | --- | --- |
+| 行情带 | 一行字 | 每格一枚瓦片:涨跌胶囊 + 三角;本次开机攒够 3 个读数后多一根迷你走势(`store/macro.ts` 的 trails,只在内存) |
+| 交易指令 | 一句 intent_summary | 订单票据 `lib/OrderTicket.tsx`:方向、数量 × 价、各腿胶囊、**到期损益图**(限价单计入权利金,市价 / 中间价只画形状) |
+| 订单看板 | 两列文字卡 | 四枚小组件(排队 / 在途 / 成交 / 被拒)+ 触发条件胶囊 + 阶段路径 |
+| 交易记录 | 状态一个词 | 顶上一根状态分段条 + 图例;行里代码徽章、买卖胶囊、状态胶囊;详情上半张是票据 + 阶段路径 |
+| 持仓追踪 | 三行元数据 | 大数字盈亏 + 事实瓦片;追踪卡上一根**价位轨**(止损 / 回撤线 / 现价 / 止盈同轴)+ **盯盘环**(环越满离触发越近) |
+| 板块 | 纯数字列 | 涨跌幅下面一根以 0 为中心的小条,量比下面一根量条 |
+| 扫描 RS | 五个染色数字 | 以 0 为基线的五根小柱 |
+| 设置 | 纯文字行 | 每行一枚图标瓦片(`GroupRow / SwitchRow / NumberRow` 的 `icon` `tint`)+ Liquid Glass 滑杆 |
+
+状态的颜色口径只有一份:`lib/OrderStatus.tsx`(成了绿 / 在途蓝 / 被拒红 / 撤了灰 / 熔断橙),看板与记录页共用。
+
+**引擎侧唯一的改动**:`submit` 返回的每笔摘要多一个只读的 `ticket`(`engine.ts` 的 `orderTicket`),界面靠它画票据和损益图;
+老引擎没有这个字段时界面退回一句话。RPC 基线已用 `npm run golden:update` 回写,diff 只有新增字段。
+
+**改名(2026-09-17)**:产品名 Dafri Trading → IBKR-Assistant(窗口标题、顶栏、安装包名、快捷方式)。`appId`、`window.dafri`、`DAFRI_*` 环境变量、
+localStorage 的 `dafri-*` 键都没动——改了就丢用户的偏好。userData 目录按产品名取,`main.js` 开头有一段:旧目录在、新目录里还没有 settings.json 就继续用旧目录。

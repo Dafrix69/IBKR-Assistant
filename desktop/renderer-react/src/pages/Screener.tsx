@@ -192,18 +192,20 @@ function RsPanel({ sector, sectorOptions, onSector, onSymbol }: PoolProps) {
                   <span className="rs-tag-name">{`${t.tag} · ${t.count} 只`}</span>
                   <span className="rs-tag-score">{t.score == null ? '—' : `${num(t.score, 1, true)}%`}</span>
                 </div>
-                <div className="rs-tag-row">
+                {/* 五个窗口画成一组以 0 为基线的小柱:向上绿、向下红,高度按幅度(±30% 封顶);数字留在柱子下面 */}
+                <div className="rs-bars">
                   {(result.windows || []).map((w: any) => {
                     const cell = t.rs?.[String(w.n)];
-                    if (!cell) return <span key={w.n}>{`${w.label} —`}</span>;
+                    const v = cell ? Number(cell.median_pct) : null;
+                    const h = v == null ? 0 : Math.max(2, Math.min(100, (Math.abs(v) / 30) * 100));
                     return (
-                      <span
-                        key={w.n}
-                        className={`rs-cell ${cell.median_pct >= 0 ? 'pos' : 'neg'}`}
-                        style={{ ['--heat' as string]: heat(cell.median_pct) }}
-                        title={`${w.label}:中位数 RS ${num(cell.median_pct, 2, true)}%,${cell.beats}/${cell.total} 只跑赢`}
-                      >
-                        {`${w.label} ${num(cell.median_pct, 0, true)}`}
+                      <span key={w.n} className="rs-bar-col" title={cell ? `${w.label}:中位数 RS ${num(cell.median_pct, 2, true)}%,${cell.beats}/${cell.total} 只跑赢` : undefined}>
+                        <span className="rs-bar-box">
+                          <i className="rs-bar-half top">{v != null && v >= 0 ? <b className="pos" style={{ height: `${h}%` }} /> : null}</i>
+                          <i className="rs-bar-half bottom">{v != null && v < 0 ? <b className="neg" style={{ height: `${h}%` }} /> : null}</i>
+                        </span>
+                        <em className={v == null ? '' : v >= 0 ? 'pos' : 'neg'}>{v == null ? '—' : num(v, 0, true)}</em>
+                        <small>{w.label}</small>
                       </span>
                     );
                   })}

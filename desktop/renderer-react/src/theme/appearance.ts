@@ -33,7 +33,15 @@ function write(key: string, value: string): void {
 }
 
 // ---- 深浅色 / 涨跌配色 ------------------------------------------------------
-const useStore = create<{ themeMode: ThemeMode; updown: UpDown }>(() => ({
+/** Liquid Glass 的着色程度:0 = 通透,1 = 完全着色。iOS 27 把这根滑杆交给了用户,这里也一样。 */
+const GLASS_DEFAULT = 0.72;
+function readGlass(): number {
+  const v = Number(read('dafri-glass'));
+  return read('dafri-glass') !== null && Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : GLASS_DEFAULT;
+}
+
+const useStore = create<{ themeMode: ThemeMode; updown: UpDown; glass: number }>(() => ({
+  glass: readGlass(),
   themeMode: ((): ThemeMode => {
     const v = read('dafri-theme');
     return v === 'light' || v === 'dark' ? v : 'system';
@@ -90,10 +98,24 @@ export function useUpDown(): UpDown {
   return useStore((s) => s.updown);
 }
 
+// ---- Liquid Glass ----------------------------------------------------------
+export function applyGlassTint(value: number): void {
+  const glass = Math.max(0, Math.min(1, value));
+  // 只改 :root 上一个变量:玻璃面、卡片面、控件面的透明度都是从它算出来的(styles.css)
+  document.documentElement.style.setProperty('--glass-tint', String(glass));
+  write('dafri-glass', String(glass));
+  useStore.setState({ glass });
+}
+
+export function useGlassTint(): number {
+  return useStore((s) => s.glass);
+}
+
 /** 启动时把记住的偏好落到 DOM 上。 */
 export function initAppearance(): void {
   document.documentElement.dataset.updown = useStore.getState().updown;
   document.documentElement.dataset.platform = dafri.platform;
+  document.documentElement.style.setProperty('--glass-tint', String(useStore.getState().glass));
   // macOS 之外没有 vibrancy 底材,半透明面板背后是空的——换成实底
   document.documentElement.dataset.vibrancy = dafri.platform === 'darwin' ? 'on' : 'off';
   void dafri.setTheme(getThemeMode()).catch(() => {});

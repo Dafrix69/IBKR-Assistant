@@ -229,7 +229,7 @@ window.dafri = {
       window:{dev_max:{time:last.time,dev_pct:7.16}, dev_min:{time:series[40].time,dev_pct:-5.02}, pressure_max:{time:series[70].time,pressure:0.88}, pressure_min:{time:series[12].time,pressure:-0.93}},
       readout:['收盘在 20 周期均线上方 7.16%,折近 120 根历史 z = +2.31(分位 98%)。','修正版买卖压力 -0.412(卖压占优),最近一根收盘位于真实区间 22% 处。','偏离已到上方极值:z ≥ 2.0,历史上这种拉伸幅度很少见。','拉得很高但买压转负——推升的力量在减弱,注意衰竭。','本段(120 根)偏离最大 +7.16%(2026-09-05),最小 -5.02%(2026-05-15)。']}; },
   appInfo: async () => ({version:'0.2.0', electron:'40.0.0', configPath:'config/settings.json',
-    logPath:'~/Library/Logs/Dafri Trading/main.log', enginePath:'src/ibkr_agent', engineRunning:true}),
+    logPath:'~/Library/Logs/IBKR-Assistant/main.log', enginePath:'src/ibkr_agent', engineRunning:true}),
   llmCatalog: async () => ({providers:[
     {key:'anthropic',label:'Anthropic(Claude)',default_model:'claude-opus-5',
      models:['claude-opus-5','claude-sonnet-5','claude-haiku-4-5'],supports_effort:true,
@@ -287,7 +287,8 @@ window.dafri = {
     unmapped_accounts:[],unlock_required:false,error:null,hint:null}]}),
   launchFutu: async()=>({launched:true}), setFutuPassword: async()=>({ok:true}),
   unlockFutu: async()=>({unlocked:['opend'],failed:{}}), installFutuSdk: async()=>({installed:[]}),
-  submit: async () => ({submitted:[],queued:[],validated_only:[{intent_summary:'限价 316 买入 100 股 AAPL',
+  submit: async () => ({submitted:[],queued:[],validated_only:[{intent_summary:'限价 1.8 买入 1 组 SPX 7600/7615/7630 看跌蝴蝶',account:'富途模拟',account_masked:'20***585',is_paper:true,notional:180,ticket:{sec_type:'BAG',symbol:'SPX',action:'BUY',quantity:1,order_type:'LMT',price_mode:'EXPLICIT',limit_price:1.8,aux_price:null,trailing_percent:null,tif:'DAY',expiry:'20260821',strike:null,right:null,multiplier:100,combo_strategy:'BUTTERFLY',legs:[{action:'BUY',ratio:1,strike:7600,right:'P'},{action:'SELL',ratio:2,strike:7615,right:'P'},{action:'BUY',ratio:1,strike:7630,right:'P'}],trigger:null},warnings:[]},
+    {intent_summary:'限价 316 买入 100 股 AAPL',ticket:{sec_type:'STK',symbol:'AAPL',action:'BUY',quantity:100,order_type:'LMT',price_mode:'EXPLICIT',limit_price:316,aux_price:null,trailing_percent:null,tif:'DAY',expiry:null,strike:null,right:null,multiplier:100,combo_strategy:null,legs:[],trigger:null},
     account:'富途模拟', account_masked:'20***585', is_paper:true,notional:31600,warnings:['敞口 31600 USD 超过单笔上限 5000 USD']}],
     rejections:[],warnings:[],llm:{model:'claude-opus-5',latency_ms:2410,
     usage:{input_tokens:3120,output_tokens:210}},executed:false}),

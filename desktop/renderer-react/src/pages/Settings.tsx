@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Button, Segmented } from 'antd';
+import { Button, Segmented, Slider } from 'antd';
 import { dafri, errorMessage, type Settings } from '../bridge';
 import { showBanner } from '../store/banner';
 import { brokerShortName, refreshStatus, useStatus } from '../store/status';
-import { applyTheme, applyUpDown, useThemeMode, useUpDown, type ThemeMode, type UpDown } from '../theme/appearance';
+import { applyGlassTint, applyTheme, applyUpDown, useGlassTint, useThemeMode, useUpDown, type ThemeMode, type UpDown } from '../theme/appearance';
 import { Group, GroupRow, LoadingBlock, NumberRow, PageHead, SectionTitle, SwitchRow } from '../ui/kit';
 
 interface Form {
@@ -46,6 +46,7 @@ const UPDOWN_OPTIONS: { label: string; value: UpDown }[] = [
 export function SettingsPage() {
   const themeMode = useThemeMode();
   const updown = useUpDown();
+  const glass = useGlassTint();
   const status = useStatus();
   const [saved, setSaved] = useState<Settings | null>(null);
   const [form, setForm] = useState<Form | null>(null);
@@ -119,11 +120,18 @@ export function SettingsPage() {
       <PageHead title="设置" />
 
       <SectionTitle>外观</SectionTitle>
-      <div className="seg-row">
-        <Segmented options={THEME_OPTIONS} value={themeMode} onChange={(v) => void applyTheme(v as ThemeMode)} />
-      </div>
       <Group>
-        <GroupRow label="涨跌配色" sub="K 线、行情带、盈亏数字统一跟随;默认美股习惯">
+        <GroupRow icon="sf-sun" tint="indigo" label="深浅色" sub="跟随系统,或固定一种">
+          <Segmented size="small" options={THEME_OPTIONS} value={themeMode} onChange={(v) => void applyTheme(v as ThemeMode)} />
+        </GroupRow>
+        <GroupRow icon="sf-drop" tint="teal" label="Liquid Glass" sub="侧栏、工具栏这些玻璃面有多透:左边通透,右边着色(更好读)">
+          <span className="glass-slider">
+            <span className="glass-swatch clear" aria-hidden="true" />
+            <Slider min={0} max={100} step={5} value={Math.round(glass * 100)} onChange={(v) => applyGlassTint(Number(v) / 100)} tooltip={{ open: false }} />
+            <span className="glass-swatch tinted" aria-hidden="true" />
+          </span>
+        </GroupRow>
+        <GroupRow icon="sf-updown" tint="green" label="涨跌配色" sub="K 线、行情带、盈亏数字统一跟随;默认美股习惯">
           <Segmented size="small" options={UPDOWN_OPTIONS} value={updown} onChange={(v) => applyUpDown(v as UpDown)} />
         </GroupRow>
       </Group>
@@ -135,18 +143,18 @@ export function SettingsPage() {
         <>
           <SectionTitle>执行闸门</SectionTitle>
           <Group>
-            <SwitchRow label="允许自动执行" sub="关闭时只解析校验,永不发单" checked={form.autoExecute} onChange={(v) => patch({ autoExecute: v })} />
-            <SwitchRow label="允许实盘账户下单" sub="默认关闭,纸面账户不受此限" checked={form.allowLive} onChange={(v) => patch({ allowLive: v })} />
-            <SwitchRow label="触发方向必须有现价" sub="拿不到现价就拒绝条件单" checked={form.triggerVerify} onChange={(v) => patch({ triggerVerify: v })} />
+            <SwitchRow icon="sf-bolt" tint="orange" label="允许自动执行" sub="关闭时只解析校验,永不发单" checked={form.autoExecute} onChange={(v) => patch({ autoExecute: v })} />
+            <SwitchRow icon="sf-dollar" tint="red" label="允许实盘账户下单" sub="默认关闭,纸面账户不受此限" checked={form.allowLive} onChange={(v) => patch({ allowLive: v })} />
+            <SwitchRow icon="sf-shield" tint="blue" label="触发方向必须有现价" sub="拿不到现价就拒绝条件单" checked={form.triggerVerify} onChange={(v) => patch({ triggerVerify: v })} />
           </Group>
 
           <SectionTitle>风控限额</SectionTitle>
           <Group>
-            <NumberRow label="单笔名义金额上限" sub="USD" min={0} step={100} value={form.notional} onChange={(v) => patch({ notional: v })} />
-            <NumberRow label="期权 / 价差单笔上限" sub="张" min={1} step={1} value={form.contracts} onChange={(v) => patch({ contracts: v })} />
-            <NumberRow label="市价单股数上限" sub="无法估价时" min={1} step={10} value={form.mktShares} onChange={(v) => patch({ mktShares: v })} />
-            <NumberRow label="AUTO_MID 滑点上限" sub="美元 / 张" min={0} step={0.01} value={form.slippage} onChange={(v) => patch({ slippage: v })} />
-            <NumberRow label="重复防抖窗口" sub="分钟" min={0} step={1} value={form.dupe} onChange={(v) => patch({ dupe: v })} />
+            <NumberRow icon="sf-dollar" tint="green" label="单笔名义金额上限" sub="USD" min={0} step={100} value={form.notional} onChange={(v) => patch({ notional: v })} />
+            <NumberRow icon="sf-layers" tint="purple" label="期权 / 价差单笔上限" sub="张" min={1} step={1} value={form.contracts} onChange={(v) => patch({ contracts: v })} />
+            <NumberRow icon="sf-gauge" tint="orange" label="市价单股数上限" sub="无法估价时" min={1} step={10} value={form.mktShares} onChange={(v) => patch({ mktShares: v })} />
+            <NumberRow icon="sf-scan" tint="teal" label="AUTO_MID 滑点上限" sub="美元 / 张" min={0} step={0.01} value={form.slippage} onChange={(v) => patch({ slippage: v })} />
+            <NumberRow icon="sf-clock" tint="gray" label="重复防抖窗口" sub="分钟" min={0} step={1} value={form.dupe} onChange={(v) => patch({ dupe: v })} />
           </Group>
 
           <Button type="primary" onClick={() => void save()} loading={saving}>

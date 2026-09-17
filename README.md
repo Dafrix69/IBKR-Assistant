@@ -1,8 +1,8 @@
-# Dafri Trading
+# IBKR-Assistant
 
 用自然语言下单到 Interactive Brokers 的桌面交易台。大模型只负责把"买入 AAPL 100 股 limit 230,理由:回调到位"这样的中英混合指令翻译成结构化订单;限额、方向、账户、价差结构、时段、重复单的校验全部由代码完成,再经三道执行闸门才会发到券商。围绕下单之外,还带持仓追踪自动平仓、K 线价格行为分析、期权墙价位提醒、板块扫描、回测与交易复盘。
 
-[![ci](https://github.com/Dafrix69/trade/actions/workflows/ci.yml/badge.svg)](https://github.com/Dafrix69/trade/actions/workflows/ci.yml)
+[![ci](https://github.com/Dafrix69/IBKR-Assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/Dafrix69/IBKR-Assistant/actions/workflows/ci.yml)
 
 > 本仓库是软件实现,不构成任何投资建议。自动执行意味着解析错误会真金白银成交,请先在模拟账户跑够回归再考虑实盘。
 
@@ -66,7 +66,7 @@ Electron 桌面端 ──stdio JSON-RPC──▶ 交易引擎(Node 子进程,eng
 
 ## 安装
 
-**Windows**:到 [Releases](https://github.com/Dafrix69/trade/releases) 下载 `DafriTrading-<版本>-win-x64.exe` 安装。安装包未签名,SmartScreen 会拦,「更多信息 → 仍要运行」。机器上不需要装 Node 或 Python。
+**Windows**:到 [Releases](https://github.com/Dafrix69/IBKR-Assistant/releases) 下载 `IBKR-Assistant-<版本>-win-x64.exe` 安装。安装包未签名,SmartScreen 会拦,「更多信息 → 仍要运行」。机器上不需要装 Node 或 Python。
 
 **macOS**:需要在 Mac 上自行打包(`cd desktop && npm run dist:mac`),首次打开右键 → 打开,或 `xattr -dr com.apple.quarantine`。
 
@@ -81,7 +81,7 @@ Electron 桌面端 ──stdio JSON-RPC──▶ 交易引擎(Node 子进程,eng
 ## 从源码运行
 
 ```bash
-git clone https://github.com/Dafrix69/trade.git dafritrade && cd dafritrade
+git clone https://github.com/Dafrix69/IBKR-Assistant.git dafritrade && cd dafritrade
 (cd engine-ts && npm install && npm run build)     # Node >= 22
 cd desktop && npm install && npm start             # 启动前会自动确认引擎已编译
 ```

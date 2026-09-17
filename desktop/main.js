@@ -16,6 +16,15 @@ const log = require('electron-log/main');
 const { EngineClient } = require('./rpc-client');
 const { PopupManager } = require('./popup-window');
 
+// 2026-09-17 产品改名 Dafri Trading → IBKR-Assistant。userData 目录是按产品名取的:不处理的话,老用户升级后
+// 配置、交易库、日志全都"不见了"(其实还躺在旧目录里)。旧目录在、新目录还没建过,就继续用旧的。
+if (app.isPackaged) {
+  const legacyUserData = path.join(app.getPath('appData'), 'Dafri Trading');
+  if (fs.existsSync(legacyUserData) && !fs.existsSync(path.join(app.getPath('userData'), 'settings.json'))) {
+    app.setPath('userData', legacyUserData);
+  }
+}
+
 // 日志落盘(electron-log)。Windows 上 Electron 是 GUI 子系统:没有控制台,stderr 也重定向不出来——
 // 出了问题只能靠用户描述。现在主进程、引擎 stderr、渲染层报错、未捕获异常都写进一份滚动日志
 // (userData/logs/main.log,单份 4 MB、留一份旧的),「关于」页显示路径,用户把它发过来就有现场。
@@ -182,7 +191,7 @@ const popup = new PopupManager({
 function titleBarOverlay() {
   const dark = nativeTheme.shouldUseDarkColors;
   return {
-    color: dark ? '#1e1e20' : '#f2f2f4',
+    color: '#00000000',    // 透明:顶栏是透明的拖拽区,系统按钮直接落在窗口底(环境色)上
     symbolColor: dark ? '#ffffff' : '#1d1d1f',
     height: 52,            // 和 .topbar 的高度对齐,否则按钮不在栏的正中
   };
@@ -221,7 +230,7 @@ function createWindow() {
     height: 900,
     minWidth: 900,             // 1000 以下侧栏收成图标栏,内容区仍有 840 以上
     minHeight: 700,
-    title: 'Dafri Trading',
+    title: 'IBKR-Assistant',
     // 透明底 + 材质:让 macOS 的模糊背景透出来(不透明背景会把 vibrancy 盖掉)
     backgroundColor: process.platform === 'darwin' ? '#00000000' : '#f5f5f7',
     vibrancy: process.platform === 'darwin' ? 'under-window' : undefined,
@@ -479,7 +488,7 @@ function registerIpc() {
 async function offerMoveToApplications() {
   if (process.platform !== 'darwin' || !PACKAGED) return false;
   if (process.env.DAFRI_SKIP_MOVE === '1') return false;
-  const bundle = path.resolve(process.execPath, '..', '..', '..'); // .../Dafri Trading.app
+  const bundle = path.resolve(process.execPath, '..', '..', '..'); // .../IBKR-Assistant.app
   // 判断"从 DMG 运行"不能只看 /Volumes/ 前缀(挂载点可以是任意路径)。
   // 可靠信号:应用包所在卷不可写(UDZO 镜像只读)或被 Gatekeeper 挪进了随机路径。
   const translocated = bundle.includes('/AppTranslocation/');
@@ -497,7 +506,7 @@ async function offerMoveToApplications() {
     buttons: ['移动到「应用程序」并打开', '暂不,直接运行'],
     defaultId: 0,
     cancelId: 1,
-    message: '要把 Dafri Trading 移到「应用程序」文件夹吗?',
+    message: '要把 IBKR-Assistant 移到「应用程序」文件夹吗?',
     detail: fs.existsSync(target)
       ? '检测到「应用程序」里已有一个版本,将用当前版本替换它。'
       : '从磁盘映像直接运行无法保存更新,建议移动后再使用。',
@@ -550,7 +559,7 @@ if (!gotLock) {
           buttons: ['退出此版本', '取消'],
           defaultId: 0,
           cancelId: 1,
-          message: '检测到另一个 Dafri Trading 正在尝试启动',
+          message: '检测到另一个 IBKR-Assistant 正在尝试启动',
           detail:
             '可能你正在安装/打开新版本。同一时间只能运行一个实例——' +
             '点「退出此版本」后再打开新版本即可完成替换。',

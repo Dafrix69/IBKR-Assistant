@@ -13,20 +13,20 @@
   min-height: 0;
 }
 
-/* ================= 源列表侧栏(Menu) ================= */
+/* ================= 侧栏(Menu) ================= */
 .sidebar-menu.ant-menu { border-inline-end: none !important; background: transparent; width: 100%; }
 .sidebar-menu.bottom { margin-top: auto; }
 .sidebar-menu .ant-menu-item,
 .sidebar-menu .ant-menu-submenu-title { display: flex; align-items: center; }
-/* 组标题:11px 三级色、可点击折叠,右侧一个会转的小箭头(Finder / Mail 的源列表组标题就是这么用的) */
+/* 组标题:11px 二级色、可点击折叠,右侧一个会转的小箭头 */
 .sidebar-menu .ant-menu-submenu > .ant-menu-submenu-title {
   height: 22px; line-height: 22px;
-  margin: 12px 10px 2px; padding-inline: 8px !important;
-  font-size: 11px; font-weight: 590; letter-spacing: 0.02em;
-  color: var(--label-tertiary);
+  margin: 14px 12px 4px; padding-inline: 8px !important;
+  font-size: 11px; font-weight: 650; letter-spacing: 0.02em;
+  color: var(--label-secondary);
 }
-.sidebar-menu .ant-menu-submenu:first-child > .ant-menu-submenu-title { margin-top: 2px; }
-.sidebar-menu .ant-menu-submenu > .ant-menu-submenu-title:hover { color: var(--label-secondary); background: none; }
+.sidebar-menu .ant-menu-submenu:first-child > .ant-menu-submenu-title { margin-top: 4px; }
+.sidebar-menu .ant-menu-submenu > .ant-menu-submenu-title:hover { color: var(--label); background: none; }
 .sidebar-menu .ant-menu-submenu-title .ant-menu-submenu-arrow { display: none; }
 .sidebar-menu .group-chevron {
   position: absolute; right: 8px; top: 50%;
@@ -37,37 +37,36 @@
 .sidebar-menu .ant-menu-submenu-title:hover .group-chevron { opacity: 1; }
 .sidebar-menu .group-chevron.open { transform: rotate(45deg); margin-top: -5px; }
 .sidebar-menu .ant-menu-submenu-title[aria-expanded="false"] .group-chevron { opacity: 1; }
-/* 项:28px 行高、10px 内缩、5px 圆角;图标是强调色的线稿,选中后随文字变白 */
-.sidebar-menu .ant-menu-item { padding-inline: 8px !important; margin-inline: 10px; width: calc(100% - 20px); }
+/* 项:38px 行高;选中项是一枚浮起来的玻璃面而不是一条实心蓝 */
+.sidebar-menu .ant-menu-item { padding-inline: 7px !important; margin-inline: 10px; width: calc(100% - 20px); transition: background 0.15s ease, box-shadow 0.15s ease; }
 .sidebar-menu .ant-menu-sub.ant-menu-inline { background: transparent !important; }
-.sidebar-menu .ant-menu-item .ant-menu-item-icon { color: var(--blue); display: inline-flex; }
-.sidebar-menu .ant-menu-item-selected .ant-menu-item-icon { color: inherit; }
-.sidebar-menu .ant-menu-item-selected { font-weight: 510; }
+.sidebar-menu .ant-menu-item .ant-menu-item-icon { display: inline-flex; }
+/* 图标一律是强调色的线稿(iPadOS / macOS 侧栏的做法);每项一种颜色的彩色瓦片试过,太艳 */
+.sidebar-menu .ant-menu-item .icon-tile.plain { color: var(--blue); }
+.sidebar-menu .ant-menu-item-selected { font-weight: 650; box-shadow: var(--glass-edge-small); }
 .sidebar-menu .ant-menu-title-content { flex: 1; min-width: 0; }
 .nav-label { display: flex; align-items: center; gap: 8px; }
 .nav-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-/* 徽标:灰色胶囊,不是红点——排队数不是"未读",不该喊 */
+/* 徽标:灰色胶囊——排队数不是"未读",不该喊 */
 .nav-badge .ant-badge-count {
   background: var(--bg-fill-strong); color: var(--label-secondary);
-  box-shadow: none; font-size: 10.5px; font-weight: 500; min-width: 16px; height: 16px; line-height: 16px; padding: 0 5px;
+  box-shadow: none; font-size: 10.5px; font-weight: 650; min-width: 18px; height: 18px; line-height: 18px; padding: 0 5px;
 }
 .nav-badge .ant-badge-count-sm { font-size: 10.5px; }
-.ant-menu-item-selected .nav-badge .ant-badge-count { background: rgba(255, 255, 255, 0.25); color: #fff; }
-/* 窗口失焦:选中项从强调色退成灰(Finder / Mail 的源列表都这样) */
-:root[data-window-blur] .sidebar-menu .ant-menu-item-selected { background: var(--bg-fill-strong) !important; color: var(--label) !important; }
-:root[data-window-blur] .sidebar-menu .ant-menu-item-selected .ant-menu-item-icon { color: var(--label-secondary); }
-:root[data-window-blur] .ant-menu-item-selected .nav-badge .ant-badge-count { background: var(--bg-fill-strong); color: var(--label-secondary); }
-/* 窄窗口:图标栏。Menu 折叠后把徽标缩成右上角一个点 */
-.sidebar.narrow .sidebar-menu .ant-menu-item { margin-inline: 8px; width: calc(100% - 16px); padding-inline: 12px !important; }
+/* 窗口失焦:瓦片褪色 */
+:root[data-window-blur] .sidebar-menu .icon-tile.plain { color: var(--label-secondary); }
+/* 窄窗口:图标栏 */
+.sidebar.narrow .sidebar-menu .ant-menu-item { margin-inline: 8px; width: calc(100% - 16px); padding-inline: 10px !important; }
 .sidebar.narrow .nav-dot { position: absolute; top: 4px; right: 4px; }
 .sidebar.narrow .nav-dot .ant-badge-dot { background: var(--blue); box-shadow: none; }
-.sidebar.narrow .ant-menu-item-selected .nav-dot .ant-badge-dot { background: #fff; }
-.sidebar.narrow .ant-menu-inline-collapsed > .ant-menu-item { padding-inline: calc(50% - 8px) !important; }
+.sidebar.narrow .ant-menu-inline-collapsed > .ant-menu-item { padding-inline: calc(50% - 12px) !important; }
 
 /* ================= 工具栏 ================= */
 .topbar .brand .ant-badge { display: inline-flex; }
 .topbar .chip .ant-badge-status-text { font-size: 12px; margin-inline-start: 6px; color: var(--label); }
 .topbar .chip .ant-badge-status-dot { width: 8px; height: 8px; }
+.topbar .ant-btn { height: 36px; padding-inline: 16px; background: var(--glass-bg); border-color: transparent; box-shadow: var(--glass-edge-small); backdrop-filter: var(--glass-filter); font-weight: 510; }
+.topbar .ant-btn.ant-btn-dangerous { background: var(--red); color: #fff; }
 .topbar .ant-badge-status-default { background: var(--label-tertiary); }
 /* 「暂停自动执行」常态下是普通按钮——红字会被读成"正在告警";只有已熔断(要解除)时才红 */
 .topbar .ant-btn.halt.engaged { font-weight: 510; }
@@ -86,7 +85,9 @@
 .ant-segmented .n { margin-left: 5px; opacity: 0.7; font-variant-numeric: tabular-nums; }
 .page-head .ant-segmented { margin-left: auto; }
 /* 按钮按下只是变暗一点、缩 1.5%——AppKit 的按下反馈,没有水波纹(wave 已在 ConfigProvider 关掉) */
-.ant-btn:not(:disabled):active { transform: scale(0.985); }
+.ant-btn:not(:disabled):active { transform: scale(0.97); }
+.ant-btn { transition: transform 0.18s cubic-bezier(0.3, 1.4, 0.5, 1), background 0.15s ease; }
+.ant-btn-primary:not(:disabled) { font-weight: 590; box-shadow: none; }
 .ant-btn.btn-warn:not(:disabled) { color: var(--orange-text); }
 .ant-btn.card-action { margin-top: 8px; }
 .ant-input-number-input, .ant-input[type="date"] { font-variant-numeric: tabular-nums; }
@@ -94,7 +95,7 @@
 .ant-tooltip { max-width: 320px; }
 .ant-tooltip-inner { padding: 4px 8px; min-height: 0; }
 /* 小圆标:卡片标题前、就绪清单里的 ✓ / ! / × */
-.tone-icon { font-size: 14px; margin-right: 6px; vertical-align: -1px; }
+.tone-icon { font-size: 16px; margin-right: 6px; vertical-align: -1px; }
 .tone-icon.ok { color: var(--green); }
 .tone-icon.warn { color: var(--orange); }
 .tone-icon.bad { color: var(--red); }
@@ -106,10 +107,10 @@
 
 /* ================= 卡片(StatusCard / Card) ================= */
 .ant-card { box-shadow: var(--shadow-card); }
-.ant-card-small > .ant-card-head { min-height: 0; border-bottom: none; padding: 10px 12px 0; }
-.ant-card-small > .ant-card-head .ant-card-head-title { font-size: 13px; font-weight: 590; padding: 0; line-height: 1.5; }
+.ant-card-small > .ant-card-head { min-height: 0; border-bottom: none; padding: 14px 16px 0; }
+.ant-card-small > .ant-card-head .ant-card-head-title { font-size: 14px; font-weight: 650; letter-spacing: -0.01em; padding: 0; line-height: 1.5; }
 .ant-card-small > .ant-card-head .ant-card-extra { padding: 0; font-size: 11.5px; }
-.ant-card-small > .ant-card-body { padding: 4px 12px 12px; }
+.ant-card-small > .ant-card-body { padding: 6px 16px 16px; }
 .ant-card-small > .ant-card-head + .ant-card-body:empty { padding-top: 0; }
 .status-card-title { display: inline-flex; align-items: center; min-width: 0; }
 .status-card-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
@@ -141,9 +142,9 @@
 
 /* ================= 内嵌分组列表(Group = List) ================= */
 .group.ant-list { background: var(--bg-elevated); box-shadow: var(--shadow-card); margin-bottom: 14px; border-color: var(--separator); }
-.group.ant-list .ant-list-item { padding: 8px 12px; gap: 12px; align-items: center; }
+.group.ant-list .ant-list-item { padding: 11px 16px; gap: 12px; align-items: center; }
 .group.ant-list .ant-list-item.stacked { flex-direction: column; align-items: stretch; gap: 6px; }
-.group.ant-list .ant-list-footer { padding: 6px 12px 8px; color: var(--label-secondary); font-size: 11px; line-height: 1.55; }
+.group.ant-list .ant-list-footer { padding: 8px 16px 10px; color: var(--label-secondary); font-size: 11px; line-height: 1.55; }
 .group.ant-list .ant-spin-nested-loading, .group.ant-list .ant-spin-container { width: 100%; }
 .group-label { flex: 1; min-width: 0; font-size: 13px; color: var(--label); }
 .group-label .sub, .switch-row .sub, .track-field .sub { display: block; color: var(--label-secondary); font-size: 11px; margin-top: 1px; }
@@ -232,10 +233,10 @@
 .trade-list.ant-list .ant-list-item.stock-row { padding: 5px 0; }
 
 /* ================= 数字瓦片(StatTile = Statistic) ================= */
-.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 6px; margin: 8px 0; }
-.stat-tile { background: var(--bg-fill); border-radius: 8px; padding: 7px 9px; min-width: 0; }
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin: 10px 0; }
+.stat-tile { background: var(--bg-fill); border-radius: var(--radius-tile); padding: 10px 12px; min-width: 0; }
 .stat-tile .ant-statistic-title { font-size: 10.5px; color: var(--label-secondary); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.stat-tile .ant-statistic-content { font-size: 14px; font-weight: 590; line-height: 1.3; color: var(--label); font-variant-numeric: tabular-nums; }
+.stat-tile .ant-statistic-content { font-family: var(--font-display); font-size: 17px; font-weight: 700; letter-spacing: -0.015em; line-height: 1.3; color: var(--label); font-variant-numeric: tabular-nums; }
 .stat-tile.mono .ant-statistic-content { font-family: var(--font-mono); font-size: 15px; font-weight: 500; }
 .stat-tile.pos .ant-statistic-content { color: var(--up-text); }
 .stat-tile.neg .ant-statistic-content { color: var(--down-text); }
@@ -391,3 +392,13 @@
 
 /* ================= 回测 ================= */
 .rule-builder .row.tight { margin-bottom: 6px; }
+
+/* ================= 行首图标瓦片 / Liquid Glass 滑杆 ================= */
+.group.ant-list .ant-list-item > .row-icon, .switch-row > .row-icon { margin-right: 2px; }
+.switch-row > .row-icon { margin-right: 4px; }
+.glass-slider { display: inline-flex; align-items: center; gap: 10px; width: 260px; }
+.glass-slider .ant-slider { flex: 1; margin: 0; }
+.glass-swatch { width: 20px; height: 20px; border-radius: 7px; flex-shrink: 0; box-shadow: var(--glass-edge-small); background: var(--gray); position: relative; overflow: hidden; }
+.glass-swatch::after { content: ''; position: absolute; inset: 0; background: var(--glass-base); }
+.glass-swatch.clear::after { opacity: 0.25; }
+.glass-swatch.tinted::after { opacity: 0.9; }

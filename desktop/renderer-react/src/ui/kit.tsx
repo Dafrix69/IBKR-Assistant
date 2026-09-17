@@ -14,6 +14,7 @@
  */
 import { Children, type ReactNode, useId, useState } from 'react';
 import { Alert, Badge, Card, Collapse, Empty, InputNumber, List, Skeleton, Spin, Statistic, Switch } from 'antd';
+import { IconTile, type Tint } from './graphics';
 import { CheckCircleFilled, CloseCircleFilled, ExclamationCircleFilled, RightOutlined } from '@ant-design/icons';
 
 export type Tone = 'ok' | 'warn' | 'bad' | 'info';
@@ -140,9 +141,15 @@ export function Group({ children, className, hint }: { children: ReactNode; clas
 }
 
 /** 一行:左边标签(可带一行小字),右边控件;stacked 时控件占满下一行(长输入框)。 */
-export function GroupRow({ label, sub, children, className, stacked }: { label?: ReactNode; sub?: ReactNode; children?: ReactNode; className?: string; stacked?: boolean }) {
+/** 行首的彩色图标瓦片(iOS 设置的每一行都有):icon 给了才画。 */
+function RowIcon({ icon, tint }: { icon?: string; tint?: Tint }) {
+  return icon ? <IconTile icon={icon} tint={tint} size={28} className="row-icon" /> : null;
+}
+
+export function GroupRow({ label, sub, children, className, stacked, icon, tint }: { label?: ReactNode; sub?: ReactNode; children?: ReactNode; className?: string; stacked?: boolean; icon?: string; tint?: Tint }) {
   return (
     <List.Item className={cx('group-row', stacked && 'stacked', className)}>
+      {!stacked ? <RowIcon icon={icon} tint={tint} /> : null}
       {label !== undefined ? (
         <div className="group-label">
           {label}
@@ -162,7 +169,11 @@ export function SwitchRow({
   disabled,
   before,
   className,
+  icon,
+  tint,
 }: {
+  icon?: string;
+  tint?: Tint;
   label: ReactNode;
   sub?: ReactNode;
   checked: boolean;
@@ -179,6 +190,7 @@ export function SwitchRow({
     <List.Item className={cx('group-row', className)}>
       {/* 整行是一个 label:点文字也能拨开关,和 System Settings 一样 */}
       <label className="switch-row" htmlFor={id}>
+        <RowIcon icon={icon} tint={tint} />
         <span className="group-label">
           {label}
           {sub ? <span className="sub">{sub}</span> : null}
@@ -203,7 +215,11 @@ export function NumberRow({
   placeholder,
   disabled,
   width = 190,
+  icon,
+  tint,
 }: {
+  icon?: string;
+  tint?: Tint;
   label: ReactNode;
   sub?: ReactNode;
   value: number | null;
@@ -216,7 +232,7 @@ export function NumberRow({
   width?: number;
 }) {
   return (
-    <GroupRow label={label} sub={sub}>
+    <GroupRow label={label} sub={sub} icon={icon} tint={tint}>
       <InputNumber
         min={min}
         max={max}

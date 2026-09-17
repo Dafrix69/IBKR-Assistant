@@ -7,6 +7,7 @@
 import { createRoot } from 'react-dom/client';
 import './styles.css';
 import './shell.css';
+import './graphics.css';
 import { App } from './shell/App';
 import { startAlertsLoop } from './store/alerts';
 import { startEngineLog } from './store/engineLog';

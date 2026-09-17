@@ -1,0 +1,207 @@
+/*
+ * 图形构件(ui/graphics.tsx)与各页"画出来的那一块"的样式。
+ * 约定:着色的东西都从 --tile 取色(构件用内联 CSS 变量给)。
+ *
+ * 用色的规矩(2026-09-17 用户指出第一版"过于艳丽,不符合 iOS 的审美"后定):
+ *   · 面是中性的。颜色只表达**语义**——涨跌、成败、警告——不拿来做装饰、不拿来区分"这是第几项";
+ *   · 同一屏里饱和的实心色块只留给主按钮和开关;其余着色一律是 10–12% 的淡染 + 压深一档的字;
+ *   · 图标默认是单色线稿(强调色或二级色);实心彩色瓦片只在设置页的行首出现(iOS 设置的做法),而且是平涂,不加渐变和彩色投影;
+ *   · 代码徽章、事实瓦片、小组件都是灰底,不跟着涨跌变色——涨跌已经由旁边那个数字说了。
+ */
+
+/* ================= 图标瓦片 ================= */
+.icon-tile {
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  color: #fff;
+  background: var(--tile);
+}
+/* 淡瓦片:灰底 + 着色线稿。小组件、卡片里用这一种,实心的只留给设置页 */
+.icon-tile.soft { color: var(--tile); background: var(--bg-fill); }
+/* 裸图标:侧栏用——iPadOS / macOS 的侧栏图标就是一色的强调色线稿 */
+.icon-tile.plain { color: var(--blue); background: none; }
+.icon-tile .sf-icon { display: block; }
+
+/* ================= 状态胶囊 ================= */
+.pill {
+  display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0;
+  height: 22px; padding: 0 9px; border-radius: 999px;
+  font-size: 11.5px; font-weight: 590; white-space: nowrap; line-height: 1;
+  color: color-mix(in srgb, var(--tile) 66%, var(--label));
+  background: color-mix(in srgb, var(--tile) 11%, transparent);
+  font-variant-numeric: tabular-nums;
+}
+.pill.solid { color: #fff; background: var(--tile); }
+.pill-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--tile); }
+.pill.solid .pill-dot { background: #fff; }
+.pill .sf-icon, .pill .anticon { font-size: 11px; }
+
+/* ================= 环 ================= */
+.ring { position: relative; display: inline-flex; flex-shrink: 0; }
+.ring svg { display: block; }
+.ring-center {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-weight: 700; font-size: 13px; line-height: 1.05; font-variant-numeric: tabular-nums;
+}
+.ring-center small { font-family: var(--font); font-size: 9.5px; font-weight: 500; color: var(--label-secondary); }
+
+.sparkline { display: block; flex-shrink: 0; }
+
+/* ================= 条 ================= */
+.delta-bar { position: relative; display: inline-block; height: 6px; border-radius: 3px; background: var(--bg-fill); flex-shrink: 0; vertical-align: middle; }
+.delta-bar::after { content: ''; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--label-tertiary); }
+.delta-bar i { position: absolute; top: 0; bottom: 0; }
+.delta-bar i.up { background: var(--up); border-radius: 0 3px 3px 0; }
+.delta-bar i.down { background: var(--down); border-radius: 3px 0 0 3px; }
+
+.meter-bar { display: inline-block; height: 6px; border-radius: 3px; background: var(--bg-fill-strong); overflow: hidden; flex-shrink: 0; vertical-align: middle; }
+.meter-bar i { display: block; height: 100%; border-radius: 3px; background: var(--tile); transition: width 0.3s ease; }
+
+.seg-bar { display: flex; gap: 2px; height: 8px; border-radius: 4px; overflow: hidden; }
+.seg-bar.empty { background: var(--bg-fill); }
+.seg-bar i { display: block; min-width: 4px; border-radius: 2px; }
+
+/* ================= 价位轨 ================= */
+.price-rail { display: block; width: 100%; max-width: 720px; height: auto; margin: 6px 0 2px; overflow: visible; }
+.price-rail-text { font-size: 11px; fill: var(--label); }
+.price-rail-num { font-family: var(--font-mono); font-weight: 600; font-size: 11px; }
+
+/* ================= 到期损益图 ================= */
+.payoff-wrap { position: relative; margin: 8px 0 2px; padding: 0; }
+.payoff { display: block; width: 100%; }
+.payoff-axis { position: absolute; inset: 0; pointer-events: none; font-size: 10.5px; font-variant-numeric: tabular-nums; color: var(--label-secondary); }
+.payoff-axis span { position: absolute; bottom: 0; transform: translateX(-50%); font-family: var(--font-mono); white-space: nowrap; }
+.payoff-axis span.spot {
+  bottom: auto; top: -4px; padding: 1px 7px; border-radius: 999px; font-family: var(--font); font-weight: 590;
+  color: #fff; background: var(--blue);
+}
+
+/* ================= 阶段路径 ================= */
+.stage-path { display: inline-flex; align-items: center; gap: 0; font-size: 11px; color: var(--label-tertiary); }
+.stage-path .stage { display: inline-flex; align-items: center; gap: 5px; }
+.stage-path .stage + .stage::before { content: ''; width: 18px; height: 2px; margin: 0 6px; border-radius: 1px; background: var(--bg-fill-strong); }
+.stage-path .stage.done + .stage::before, .stage-path .stage.done + .stage.now::before { background: var(--tile); }
+.stage-path .stage i { width: 8px; height: 8px; border-radius: 50%; background: var(--bg-fill-strong); }
+.stage-path .stage em { font-style: normal; }
+.stage-path .stage.done i { background: var(--tile); }
+.stage-path .stage.done { color: var(--label-secondary); }
+.stage-path .stage.now i { background: var(--tile); box-shadow: 0 0 0 3.5px color-mix(in srgb, var(--tile) 25%, transparent); }
+.stage-path .stage.now { color: var(--label); font-weight: 590; }
+
+/* ================= 大数字(Hero) ================= */
+.hero-num { font-family: var(--font-display); font-weight: 750; font-size: 26px; letter-spacing: -0.02em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.hero-num.sm { font-size: 20px; }
+.hero-num.up, .hero-num.pos { color: var(--up-text); }
+.hero-num.down, .hero-num.neg { color: var(--down-text); }
+.hero-sub { font-size: 11.5px; color: var(--label-secondary); font-variant-numeric: tabular-nums; }
+
+/* 代码徽章:标的首字母落在一枚着色圆角方块里——列表里一眼认出是哪只 */
+.sym-badge {
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  width: 38px; height: 38px; border-radius: 11px;
+  font-family: var(--font-display); font-weight: 750; font-size: 11.5px; letter-spacing: -0.02em;
+  color: var(--label-secondary);
+  background: var(--bg-fill);
+}
+.sym-badge.sm { width: 30px; height: 30px; border-radius: 9px; font-size: 10px; }
+.sym-badge.long { font-size: 10px; }
+
+/* 涨跌小三角(胶囊里用) */
+.tri { width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; }
+.tri.up { border-bottom: 6px solid currentColor; }
+.tri.down { border-top: 6px solid currentColor; }
+
+/* ================= 持仓卡:大数字 + 事实栏 ================= */
+.pos-hero { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 2px; }
+.pos-hero.compact { gap: 10px; }
+.pos-hero-main { min-width: 0; }
+.pos-hero .hero-num .pnl-up, .pos-hero .hero-num .pnl-down { font-weight: inherit; }
+.pos-facts { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+.pos-facts > span {
+  display: flex; flex-direction: column; align-items: flex-start; min-width: 74px;
+  padding: 6px 10px; border-radius: var(--radius-tile); background: var(--bg-fill);
+  font-size: 10.5px; color: var(--label-secondary);
+}
+.pos-facts em { font-style: normal; font-family: var(--font-display); font-weight: 700; font-size: 14px; color: var(--label); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.pos-facts em.txt { font-family: var(--font); font-weight: 590; font-size: 12.5px; }
+
+/* ================= 盯盘环 ================= */
+.gauge-rings { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+.gauge-ring { display: flex; align-items: center; gap: 10px; padding: 8px 14px 8px 10px; border-radius: var(--radius-tile); background: var(--bg-fill); }
+.gauge-ring-text { display: flex; flex-direction: column; line-height: 1.35; }
+.gauge-ring-text .gauge-label { font-size: 11px; }
+.gauge-ring-text .gauge-value { font-family: var(--font-display); font-weight: 700; font-size: 15px; }
+
+/* ================= 订单票据 ================= */
+.ticket { margin: 4px 0 8px; }
+.ticket-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.ticket-title { min-width: 0; }
+.ticket-sym { display: flex; align-items: center; gap: 8px; font-family: var(--font-display); font-weight: 750; font-size: 20px; letter-spacing: -0.02em; line-height: 1.15; }
+.ticket-nums { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.ticket-nums > span {
+  display: flex; flex-direction: column; align-items: flex-start; min-width: 70px;
+  padding: 6px 12px; border-radius: var(--radius-tile); background: var(--bg-fill);
+  font-size: 10.5px; color: var(--label-secondary);
+}
+.ticket-nums em { font-style: normal; font-family: var(--font-display); font-weight: 750; font-size: 17px; color: var(--label); font-variant-numeric: tabular-nums; letter-spacing: -0.015em; }
+.ticket-times { font-style: normal; color: var(--label-tertiary); font-size: 14px; }
+.ticket-trigger { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.ticket-legs { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+.ticket .payoff-wrap { margin-top: 18px; padding-bottom: 2px; }
+.ticket-card .card-meta { padding-top: 8px; border-top: 0.5px solid var(--separator); }
+
+/* ================= 小组件瓦片 ================= */
+.widget-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin: 2px 0 6px; }
+.widget {
+  padding: 14px 16px; border-radius: var(--radius-card); background: var(--bg-elevated); box-shadow: var(--shadow-card);
+  display: flex; flex-direction: column; gap: 2px; min-width: 0;
+}
+.widget.clickable { cursor: pointer; transition: transform 0.18s cubic-bezier(0.3, 1.4, 0.5, 1); }
+.widget.clickable:active { transform: scale(0.97); }
+.widget-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 8px; min-height: 30px; }
+
+/* ================= 订单卡(看板) ================= */
+.order-card-head { display: flex; align-items: center; gap: 12px; }
+.order-card-main { flex: 1; min-width: 0; }
+.order-card-title { font-weight: 650; font-size: 13.5px; letter-spacing: -0.01em; overflow: hidden; text-overflow: ellipsis; }
+.order-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 12px; padding-top: 10px; border-top: 0.5px solid var(--separator); }
+.trigger-chip {
+  display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 12px; border-radius: 999px;
+  background: var(--bg-fill); color: var(--label);
+  font-family: var(--font-display); font-weight: 700; font-size: 13px; font-variant-numeric: tabular-nums;
+}
+.trigger-chip b { font-weight: 750; font-size: 14px; }
+
+/* ================= 交易记录 ================= */
+.record-sym-cell { display: inline-flex; align-items: center; gap: 8px; }
+.status-mix { margin: 0 0 14px; padding: 14px 16px; border-radius: var(--radius-card); background: var(--bg-elevated); box-shadow: var(--shadow-card); }
+.status-mix .seg-bar { height: 10px; border-radius: 5px; }
+.status-mix-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 10px; font-size: 11.5px; color: var(--label-secondary); }
+.status-mix-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.status-mix-legend i { width: 8px; height: 8px; border-radius: 50%; }
+.status-mix-legend b { color: var(--label); font-family: var(--font-display); font-weight: 700; font-size: 13px; font-variant-numeric: tabular-nums; }
+.detail-ticket { margin: 12px 0 4px; padding: 14px 16px; border-radius: var(--radius-tile); background: var(--bg-fill); }
+.detail-ticket .ticket { margin: 0 0 12px; }
+.detail-ticket .ticket-nums > span { background: var(--bg-elevated); }
+
+/* ================= 股票池行里的小条 ================= */
+.stock-row .pool-num.chg { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.stock-row .pool-stack { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.stock-row .delta-bar, .stock-row .meter-bar { height: 4px; }
+
+/* ================= RS 标签卡的小柱 ================= */
+.rs-tags { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.rs-tag-card { padding: 14px 16px; box-shadow: var(--shadow-card); border: none; }
+.rs-tag-card .rs-tag-score { font-family: var(--font-display); font-weight: 750; font-size: 17px; }
+.rs-bars { display: flex; gap: 6px; margin-top: 10px; }
+.rs-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 1px; font-variant-numeric: tabular-nums; }
+.rs-bar-box { width: 100%; height: 52px; display: flex; flex-direction: column; }
+.rs-bar-half { flex: 1; display: flex; justify-content: center; }
+.rs-bar-half.top { align-items: flex-end; border-bottom: 1px solid var(--separator); }
+.rs-bar-half.bottom { align-items: flex-start; }
+.rs-bar-half b { display: block; width: 60%; max-width: 22px; }
+.rs-bar-half b.pos { background: var(--chart-up); border-radius: 4px 4px 0 0; }
+.rs-bar-half b.neg { background: var(--chart-down); border-radius: 0 0 4px 4px; }
+.rs-bar-col em { font-style: normal; font-size: 11px; font-weight: 650; color: var(--label-tertiary); }
+.rs-bar-col em.pos { color: var(--green-text); }
+.rs-bar-col em.neg { color: var(--red-text); }
+.rs-bar-col small { font-size: 9.5px; color: var(--label-tertiary); }

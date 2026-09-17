@@ -500,7 +500,26 @@
      "record_id": "<ID>",
      "intent_summary": "限价 230 买入 100 股 AAPL",
      "account": "模拟",
-     "notional": 23000
+     "notional": 23000,
+     "ticket": {
+      "sec_type": "STK",
+      "symbol": "AAPL",
+      "action": "BUY",
+      "quantity": 100,
+      "order_type": "LMT",
+      "price_mode": "EXPLICIT",
+      "limit_price": 230,
+      "aux_price": null,
+      "trailing_percent": null,
+      "tif": "DAY",
+      "expiry": null,
+      "strike": null,
+      "right": null,
+      "multiplier": 100,
+      "combo_strategy": null,
+      "legs": [],
+      "trigger": null
+     }
     }
    ],
    "rejections": [
@@ -534,7 +553,26 @@
      "record_id": "<ID>",
      "intent_summary": "限价 230 买入 100 股 AAPL",
      "account": "模拟",
-     "notional": 23000
+     "notional": 23000,
+     "ticket": {
+      "sec_type": "STK",
+      "symbol": "AAPL",
+      "action": "BUY",
+      "quantity": 100,
+      "order_type": "LMT",
+      "price_mode": "EXPLICIT",
+      "limit_price": 230,
+      "aux_price": null,
+      "trailing_percent": null,
+      "tif": "DAY",
+      "expiry": null,
+      "strike": null,
+      "right": null,
+      "multiplier": 100,
+      "combo_strategy": null,
+      "legs": [],
+      "trigger": null
+     }
     }
    ],
    "rejections": [

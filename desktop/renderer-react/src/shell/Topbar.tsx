@@ -61,11 +61,17 @@ export function Topbar() {
     <header className="topbar">
       <Tooltip title={engineOk === null ? '引擎启动中' : engineOk ? '交易引擎运行中' : '交易引擎无响应'} placement="bottomLeft">
         <div className="brand">
-          <Badge status={engineDot} />
-          <strong>Dafri Trading</strong>
+          <span className="brand-mark">
+            <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M2.5 11 6 7.2l2.6 2.2 4.9-5.6" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M10.4 3.6h3.2v3.2" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <i className={`engine-dot ${engineDot}`} />
+          </span>
+          <strong>IBKR-Assistant</strong>
         </div>
       </Tooltip>
-      <div className="status-chips">
+      <div className="status-chips glass-capsule">
         <Tooltip title={brokerTip} placement="bottom">
           <span className="chip">
             <Badge status={brokerDot} text={brokerText} />
@@ -85,12 +91,13 @@ export function Topbar() {
           <span className="chip subtle chip-model">{model}</span>
         </Tooltip>
       </div>
+      <div className="topbar-spacer" />
       <div className="topbar-actions">
-        <Button loading={busy} onClick={() => void connect()}>
+        <Button shape="round" loading={busy} onClick={() => void connect()}>
           {connected ? `断开 ${gateway}` : `连接 ${gateway}`}
         </Button>
         <Tooltip title={`${MOD_KEY}${SHIFT_KEY}H`} placement="bottom">
-          <Button className={`halt${engaged ? ' engaged' : ''}`} danger={engaged} onClick={() => void toggleBreaker()}>
+          <Button shape="round" className={`halt${engaged ? ' engaged' : ''}`} danger={engaged} onClick={() => void toggleBreaker()}>
             {engaged ? '解除熔断' : '暂停自动执行'}
           </Button>
         </Tooltip>

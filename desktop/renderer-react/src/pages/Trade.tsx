@@ -3,6 +3,7 @@ import { Button, Input, Space, Splitter, Steps, Tag } from 'antd';
 import { CheckCircleFilled, ExclamationCircleFilled } from '@ant-design/icons';
 import type { TextAreaRef } from 'antd/es/input/TextArea';
 import { fmtMoney } from '../lib/format';
+import { isTicket, OrderTicket } from '../lib/OrderTicket';
 import { useLlmCatalog } from '../store/llm';
 import { navigate } from '../store/nav';
 import { brokerShortName, gatewayName, pickableAccounts, useStatus } from '../store/status';
@@ -268,7 +269,9 @@ function ResultCards({ payload }: { payload: any }) {
       if (item.order_id) meta.push(`订单号 ${item.order_id}`);
       if (item.mode) meta.push(item.mode === 'software_watch' ? '软件盯盘(AUTO_MID)' : item.mode);
       cards.push(
-        <StatusCard key={`${label}-${i}`} tone={kind} title={`${label} · ${item.intent_summary || ''}`}>
+        <StatusCard key={`${label}-${i}`} tone={kind} title={`${label} · ${item.intent_summary || ''}`} className="ticket-card">
+          {/* 老引擎的摘要里没有 ticket:那就只剩标题那一句话,和从前一样 */}
+          {isTicket(item.ticket) ? <OrderTicket ticket={item.ticket} /> : null}
           <Meta items={meta} />
         </StatusCard>,
       );

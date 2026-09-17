@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Button, Collapse, InputNumber, Progress, Select, Space, Switch } from 'antd';
+import { Alert, Button, Collapse, InputNumber, Select, Space, Switch } from 'antd';
 import { dafri, errorMessage } from '../bridge';
 import { fmtMoney, fmtNum } from '../lib/format';
 import { showBanner } from '../store/banner';
 import { loadRecords } from '../store/records';
 import { gatewayName, pickableAccounts, useStatus } from '../store/status';
 import { loadTracker, useTracker, type LiveRow, type Position, type SpotTargetRow, type Track, type TrackTargets } from '../store/tracker';
+import { Pill, PriceRail, Ring, SymBadge, type Tint } from '../ui/graphics';
 import { EmptyState, Meta, Notice, PageHead, Primer, SectionTitle, StatusCard, type Tone } from '../ui/kit';
 
 /** σ 是从哪来的,用人话说一遍。clock 那一档必须显眼——它是模型默认值,不是市场价。 */
@@ -121,7 +122,7 @@ export function TrackerPage() {
                 <StatusCard
                   key={combo.key}
                   title={`${combo.symbol} · ${combo.label}`}
-                  extra={<span className={`side ${combo.quantity > 0 ? 'buy' : 'sell'}`}>{combo.net_side === 'credit' ? '贷方(收权利金)' : '借方(付权利金)'}</span>}
+                  extra={<Pill tint={combo.net_side === 'credit' ? 'orange' : 'indigo'}>{combo.net_side === 'credit' ? '贷方 · 收权利金' : '借方 · 付权利金'}</Pill>}
                 >
                   <PositionBody p={combo} compact={false} openKey={openKey} setOpenKey={setOpenKey} onCreated={reveal} />
                   <Collapse
@@ -133,7 +134,7 @@ export function TrackerPage() {
                         key: 'legs',
                         label: <span className="muted">{`腿明细(${legs.length})· 按腿追踪`}</span>,
                         children: legs.map((p) => (
-                          <StatusCard key={p.key} title={p.label || legLabel(p.symbol, p.sec_type, p.contract)} extra={<span className={`side ${p.quantity > 0 ? 'buy' : 'sell'}`}>{p.quantity > 0 ? '多头' : '空头'}</span>}>
+                          <StatusCard key={p.key} title={p.label || legLabel(p.symbol, p.sec_type, p.contract)} extra={<Pill tint={p.quantity > 0 ? 'up' : 'down'} icon={<i className={`tri ${p.quantity > 0 ? 'up' : 'down'}`} />}>{p.quantity > 0 ? '多头' : '空头'}</Pill>}>
                             <PositionBody p={p} compact openKey={openKey} setOpenKey={setOpenKey} onCreated={reveal} />
                           </StatusCard>
                         )),
@@ -144,7 +145,7 @@ export function TrackerPage() {
               );
             })}
             {singles.map((p) => (
-              <StatusCard key={p.key} title={p.label || legLabel(p.symbol, p.sec_type, p.contract)} extra={<span className={`side ${p.quantity > 0 ? 'buy' : 'sell'}`}>{p.quantity > 0 ? '多头' : '空头'}</span>}>
+              <StatusCard key={p.key} title={p.label || legLabel(p.symbol, p.sec_type, p.contract)} extra={<Pill tint={p.quantity > 0 ? 'up' : 'down'} icon={<i className={`tri ${p.quantity > 0 ? 'up' : 'down'}`} />}>{p.quantity > 0 ? '多头' : '空头'}</Pill>}>
                 <PositionBody p={p} compact={false} openKey={openKey} setOpenKey={setOpenKey} onCreated={reveal} />
               </StatusCard>
             ))}
@@ -203,27 +204,46 @@ function PositionBody({
   // 组合的成本/现价是"每组净价"(IBKR 口径含乘数的成本 → 按乘数折回每股价),借方/贷方要标出来
   const perUnit = (v: number | null | undefined) => (isCombo && v != null ? v / (p.multiplier || 100) : v);
   const open = openKey === p.key;
+  const cost = perUnit(p.avg_cost);
+  const pnl = p.unrealized_pnl;
+  const dir = pnl == null || pnl === 0 ? '' : pnl > 0 ? 'up' : 'down';
   return (
     <>
-      <Meta
-        items={[
-          `${Math.abs(p.quantity)} ${unit}`,
-          `${isCombo ? (p.net_side === 'credit' ? '净收' : '净付') : '成本'} ${fmtMoney(perUnit(p.avg_cost))}`,
-          <span className={isCombo ? 'strong' : undefined}>{`${isCombo ? '组合现价' : '现价'} ${p.market_price != null ? fmtMoney(p.market_price) : '—'}`}</span>,
-          !compact ? `账户 ${p.account}` : null,
-        ]}
-      />
-      <Meta
-        items={[
-          isCombo ? '组合未实现盈亏' : '未实现盈亏',
-          <Pnl value={p.unrealized_pnl} pct={p.unrealized_pct != null ? Number(p.unrealized_pct).toFixed(2) : null} />,
-          p.pnl_source === 'computed' ? (
-            <span className="muted" title="券商这条路没报盈亏(只给了成本),这里用与追踪器同一套口径算出来;对账以券商为准。">
-              本地按现价计算
+      <div className={compact ? 'pos-hero compact' : 'pos-hero'}>
+        {!compact ? <SymBadge symbol={p.symbol} tint={dir === 'down' ? 'down' : dir === 'up' ? 'up' : 'blue'} /> : null}
+        <div className="pos-hero-main">
+          <div className={`hero-num ${compact ? 'sm ' : ''}${dir}`}>{pnl == null ? '—' : `${pnl > 0 ? '+' : ''}${fmtMoney(pnl)}`}</div>
+          <div className="hero-sub">
+            {isCombo ? '组合未实现盈亏' : '未实现盈亏'}
+            {p.pnl_source === 'computed' ? (
+              <span title="券商这条路没报盈亏(只给了成本),这里用与追踪器同一套口径算出来;对账以券商为准。"> · 本地按现价计算</span>
+            ) : null}
+          </div>
+        </div>
+        {p.unrealized_pct != null && dir ? (
+          <Pill tint={dir === 'up' ? 'up' : 'down'} icon={<i className={`tri ${dir}`} />}>{`${Math.abs(Number(p.unrealized_pct)).toFixed(2)}%`}</Pill>
+        ) : null}
+        <div className="pos-facts">
+          <span>
+            <em>{`${Math.abs(p.quantity)}`}</em>
+            {unit}
+          </span>
+          <span>
+            <em>{fmtMoney(cost)}</em>
+            {isCombo ? (p.net_side === 'credit' ? '净收' : '净付') : '成本'}
+          </span>
+          <span>
+            <em>{p.market_price != null ? fmtMoney(p.market_price) : '—'}</em>
+            {isCombo ? '组合现价' : '现价'}
+          </span>
+          {!compact ? (
+            <span>
+              <em className="txt">{p.account}</em>
+              账户
             </span>
-          ) : null,
-        ]}
-      />
+          ) : null}
+        </div>
+      </div>
       {p.tracked ? (
         <div className="muted">已在追踪中,设置见下方。</div>
       ) : (
@@ -572,7 +592,7 @@ function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: string | nul
 
 // ---- 正在追踪的一条 ------------------------------------------------------------------------
 
-const GAUGE_COLOR: Record<'ok' | 'warn' | 'bad', string> = { ok: 'var(--green)', warn: 'var(--orange)', bad: 'var(--red)' };
+const GAUGE_TINT: Record<'ok' | 'warn' | 'bad', Tint> = { ok: 'green', warn: 'orange', bad: 'red' };
 
 /** 一条"离触发还有多远"的量表。没有现价就不画——画一条假的比不画更坏。 */
 function Gauge({ live, targets }: { live: LiveRow; targets: TrackTargets }) {
@@ -644,20 +664,29 @@ function Gauge({ live, targets }: { live: LiveRow; targets: TrackTargets }) {
           {text}
         </div>
       ))}
-      {rows.map((r) => {
-        const gap = r.target - price;
-        const pct = price ? Math.abs(gap / price) * 100 : 0;
-        // 距离越近条越满:20% 以外就算"还远",满格 = 已经贴着触发价
-        const width = Math.max(2, Math.min(100, 100 - Math.min(pct, 20) * 5));
-        return (
-          <div className="gauge-row" key={r.label}>
-            <span className="gauge-label">{r.label}</span>
-            <Progress percent={width} showInfo={false} size={['100%', 6]} strokeColor={GAUGE_COLOR[r.tone]} className="gauge-bar" />
-            <span className="gauge-value">{`${fmtMoney(r.target)} · ${gap >= 0 ? '还差 +' : '还差 '}${fmtNum(gap, 4)}(${fmtNum(pct, 1)}%)`}</span>
-            {r.note ? <span className="muted">{r.note}</span> : null}
-          </div>
-        );
-      })}
+      {rows.length ? (
+        <div className="gauge-rings">
+          {rows.map((r) => {
+            const gap = r.target - price;
+            const pct = price ? Math.abs(gap / price) * 100 : 0;
+            // 距离越近环越满:20% 以外就算"还远",满环 = 已经贴着触发价
+            const closeness = Math.max(0.02, Math.min(1, 1 - Math.min(pct, 20) / 20));
+            return (
+              <div className="gauge-ring" key={r.label}>
+                <Ring value={closeness} tint={GAUGE_TINT[r.tone]} size={58} title="环越满 = 离触发越近">
+                  {fmtNum(pct, 1)}
+                  <small>%</small>
+                </Ring>
+                <div className="gauge-ring-text">
+                  <span className="gauge-label">{r.label}</span>
+                  <span className="gauge-value">{fmtMoney(r.target)}</span>
+                  <span className="muted">{`还差 ${gap >= 0 ? '+' : ''}${fmtNum(gap, 4)}${r.note ? ` · ${r.note}` : ''}`}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -745,9 +774,9 @@ function TrackCard({
       flash={flash}
       title={`${legLabel(t.symbol, t.sec_type, t.contract)} · ${t.account}`}
       extra={
-        <span className={`status ${sweeping ? 'pending' : fired ? (t.fired_state === 'take_profit' ? 'filled' : 'rejected') : 'pending'}`}>
+        <Pill dot tint={sweeping ? 'orange' : fired ? (t.fired_state === 'take_profit' ? 'green' : 'red') : t.enabled ? 'blue' : 'gray'}>
           {fired ? TRACK_STATE_LABEL[t.fired_state || ''] || '已触发' : t.enabled ? TRACK_STATE_LABEL[live.state || ''] || '持有中' : '已暂停'}
-        </span>
+        </Pill>
       }
     >
       <Meta
@@ -778,7 +807,25 @@ function TrackCard({
       ) : null}
 
       {live.unrealized_pnl !== undefined ? (
-        <Meta items={['未实现盈亏', <Pnl value={live.unrealized_pnl} pct={live.unrealized_pct} />, live.price != null ? `现价 ${fmtMoney(live.price)}` : null]} />
+        <div className="pos-hero compact">
+          <div className="pos-hero-main">
+            <div className={`hero-num sm ${!live.unrealized_pnl ? '' : live.unrealized_pnl > 0 ? 'up' : 'down'}`}>
+              <Pnl value={live.unrealized_pnl} pct={live.unrealized_pct} />
+            </div>
+            <div className="hero-sub">未实现盈亏</div>
+          </div>
+        </div>
+      ) : null}
+      {/* 价位轨:止损 / 现价 / 止盈落在同一根轴上——"现在站在哪、两头各还有多远"一眼看完 */}
+      {!fired && live.price != null ? (
+        <PriceRail
+          marks={[
+            { key: 'stop', price: live.stop_effective ?? targets.stop_loss, label: live.trail_stop != null && live.stop_effective === live.trail_stop ? '跟踪止损' : '止损', kind: 'stop' },
+            { key: 'ptrail', price: live.profit_trail_stop, label: '回撤线', kind: 'other' },
+            { key: 'now', price: live.price, label: '现价', kind: 'now' },
+            { key: 'tp', price: live.spot_target?.held ? null : live.spot_target?.price ?? (targets.spot_target == null ? targets.take_profit : null), label: '止盈', kind: 'target' },
+          ]}
+        />
       ) : null}
       {/* 盯盘条:离触发还有多远。分档回撤的触发价每轮都会跳,所以取引擎算好的那个 */}
       {!fired && t.enabled ? <Gauge live={live} targets={targets} /> : null}

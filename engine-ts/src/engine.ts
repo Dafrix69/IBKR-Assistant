@@ -13,7 +13,7 @@ import { KillSwitch } from "./killswitch.js";
 import { LLMError, LLMResponse } from "./providers.js";
 import { extractSymbols } from "./market.js";
 import type { ParsedOrder, Rejection } from "./models.js";
-import { ContractSpecSchema, parseLlmPayload } from "./models.js";
+import { ContractSpecSchema, multiplierValue, parseLlmPayload } from "./models.js";
 import { LOCAL_MODEL, looksLikeShorthand, shorthandSymbols, tryParseShorthand } from "./shorthand.js";
 import { publicIndexPrice } from "./macro.js";
 import { fingerprint as promptFingerprint } from "./prompts.js";
@@ -118,6 +118,33 @@ export function fanOutOrders(
   const note =
     `已按勾选账户同时发单:${accounts.join("、")}(每笔订单各 ${accounts.length} 份,各自独立校验与记录)`;
   return [expanded, note];
+}
+
+/** 一笔已通过校验的订单压成界面能直接画的样子(方向 / 数量 / 价 / 合约要素 / 各腿 / 触发条件)。 */
+export function orderTicket(parsed: ParsedOrder): Rec {
+  const c = parsed.contract;
+  const o = parsed.order;
+  return {
+    sec_type: c.secType,
+    symbol: c.symbol,
+    action: o.action,
+    quantity: o.totalQuantity,
+    order_type: o.orderType,
+    price_mode: o.price_mode,
+    limit_price: o.lmtPrice,
+    aux_price: o.auxPrice,
+    trailing_percent: o.trailingPercent,
+    tif: o.tif,
+    expiry: c.lastTradeDateOrContractMonth ?? c.legs?.[0]?.lastTradeDateOrContractMonth ?? null,
+    strike: c.strike,
+    right: c.right,
+    multiplier: multiplierValue(c),
+    combo_strategy: c.combo_strategy,
+    legs: (c.legs ?? []).map((leg) => ({ action: leg.action, ratio: leg.ratio, strike: leg.strike, right: leg.right })),
+    trigger: parsed.trigger
+      ? { symbol: parsed.trigger.symbol, operator: parsed.trigger.operator, value: parsed.trigger.value }
+      : null,
+  };
 }
 
 export class TradingEngine {
@@ -398,6 +425,8 @@ export class TradingEngine {
         intent_summary: approved.order.intent_summary,
         account: approved.account.alias,
         notional: pyRound(approved.notional, 2),
+        // 界面画订单票据与到期损益图用的结构化摘要:只读展示,不回流到任何决策
+        ticket: orderTicket(approved.order),
       };
 
       if (dryRun || !this.settings.policies.auto_execute) {

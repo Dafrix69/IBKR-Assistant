@@ -9,6 +9,7 @@
  * 没有(异动没开、或这一轮没取到)才退回板块行情(30 秒一轮)。量比两列只有开着「异动」才有数——
  * 关着的时候引擎根本没在给这只算,显示「—」而不是留白。
  */
+import { DeltaBar, MeterBar } from '../ui/graphics';
 import { useRef, useState } from 'react';
 import { Button, Input, Switch, Tag, Tooltip } from 'antd';
 import type { QualityConfig, QualityMetrics, QualityStock } from '../bridge';
@@ -81,7 +82,11 @@ export function PoolStock({ sectorId, stock, quote, watch, quality, config, comp
         <PriceCell last={last} delayed={Boolean(metrics?.delayed)} error={quality?.quote_error} anomalyOn={anomalyOn} />
         <span className="pool-num chg">
           {changePct != null && Number.isFinite(changePct) ? (
-            <span className={cx('num', changePct > 0 && 'pos', changePct < 0 && 'neg')}>{fmtSigned(changePct)}</span>
+            <>
+              <span className={cx('num', changePct > 0 && 'pos', changePct < 0 && 'neg')}>{fmtSigned(changePct)}</span>
+              {/* 涨跌幅画成以 0 为中心的小条(±5% 封顶):几十行竖着扫,长短比数字快 */}
+              <DeltaBar value={changePct} scale={5} width={52} />
+            </>
           ) : (
             <span className="muted">—</span>
           )}
@@ -165,7 +170,10 @@ function RvolCell({ metrics, config, on }: { metrics: QualityMetrics | null; con
         <span className="muted">—</span>
       ) : (
         <Tooltip title="当日成交量 ÷ 同时段常态(90 日日均量 × 开盘到此刻的常态成交占比)">
-          <span className={cx('num', v >= thr && 'hot')}>{`${v.toFixed(1)}×`}</span>
+          <span className="pool-stack">
+            <span className={cx('num', v >= thr && 'hot')}>{`${v.toFixed(1)}×`}</span>
+            <MeterBar value={v} max={Math.max(thr * 2, 4)} tint={v >= thr ? 'orange' : 'gray'} width={36} />
+          </span>
         </Tooltip>
       )}
     </span>
