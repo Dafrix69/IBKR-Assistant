@@ -8,7 +8,7 @@
 import { Pill, StagePath, type Tint } from '../ui/graphics';
 import { ACTION_LABEL, statusLabel, type StatusLike } from './labels';
 
-export type StatusBucket = 'filled' | 'working' | 'failed' | 'closed' | 'halted';
+export type StatusBucket = 'filled' | 'working' | 'failed' | 'closed' | 'halted' | 'draft';
 
 export function statusBucket(r: StatusLike): StatusBucket {
   const f = String(r.final_status || '');
@@ -18,14 +18,16 @@ export function statusBucket(r: StatusLike): StatusBucket {
   if (f === 'cancelled' || f === 'expired_untriggered') return 'closed';
   if (f === 'partially_filled') return 'working';
   const s = String(r.status || '');
+  // 通过校验却没发出去的单不是"在途":把它算进蓝色会让人以为券商那边还挂着几十张单
+  if (s === 'ValidatedOnly') return 'draft';
   if (s === 'Filled') return 'filled';
   if (s === 'Inactive') return 'failed';
   if (s === 'Cancelled' || s === 'ApiCancelled') return 'closed';
   return 'working';
 }
 
-export const BUCKET_TINT: Record<StatusBucket, Tint> = { filled: 'green', working: 'blue', failed: 'red', closed: 'gray', halted: 'orange' };
-export const BUCKET_LABEL: Record<StatusBucket, string> = { filled: '已成交', working: '进行中', failed: '被拒 / 出错', closed: '已撤 / 未触发', halted: '熔断拦下' };
+export const BUCKET_TINT: Record<StatusBucket, Tint> = { filled: 'green', working: 'blue', failed: 'red', closed: 'gray', halted: 'orange', draft: 'gray' };
+export const BUCKET_LABEL: Record<StatusBucket, string> = { filled: '已成交', working: '进行中', failed: '被拒 / 出错', closed: '已撤 / 未触发', halted: '熔断拦下', draft: '仅校验未发送' };
 
 export function StatusPill({ record, fallback = '—' }: { record: StatusLike; fallback?: string }) {
   return (
@@ -54,6 +56,7 @@ export function OrderStages({ record }: { record: StatusLike }) {
   let current = 1;
   if (bucket === 'filled') current = 3;
   else if (f.startsWith('rejected')) current = 0;
+  else if (bucket === 'draft') current = 1;
   else if (bucket === 'working' && record.status) current = 2;
   return <StagePath stages={STAGES} current={current} tone={BUCKET_TINT[bucket]} />;
 }

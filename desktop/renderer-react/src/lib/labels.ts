@@ -18,6 +18,8 @@ export const FINAL_STATUS_LABEL: Record<string, string> = {
 // 在途状态来自券商,是英文枚举(Submitted / PreSubmitted / …)。终态翻了、在途没翻的话,
 // 同一列里会中英夹杂——而这一列恰恰是最常扫的一列。
 export const LIVE_STATUS_LABEL: Record<string, string> = {
+  // 引擎写的,不是券商的:只解析 / 自动执行没开时通过了校验,但这笔单从没发出去
+  ValidatedOnly: '仅校验未发送',
   PendingSubmit: '待发送',
   PreSubmitted: '已受理',
   Submitted: '已挂单',
