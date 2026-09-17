@@ -3,6 +3,7 @@
 用自然语言下单到 Interactive Brokers 的桌面交易台。大模型只负责把"买入 AAPL 100 股 limit 230,理由:回调到位"这样的中英混合指令翻译成结构化订单;限额、方向、账户、价差结构、时段、重复单的校验全部由代码完成,再经三道执行闸门才会发到券商。围绕下单之外,还带持仓追踪自动平仓、K 线价格行为分析、期权墙价位提醒、板块扫描、回测与交易复盘。
 
 [![ci](https://github.com/Dafrix69/IBKR-Assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/Dafrix69/IBKR-Assistant/actions/workflows/ci.yml)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 > 本仓库是软件实现,不构成任何投资建议。自动执行意味着解析错误会真金白银成交,请先在模拟账户跑够回归再考虑实盘。
 
@@ -129,3 +130,10 @@ cd desktop && npm run ui:preview \
 - 追价平仓(让价节奏、非托管平仓单改价、部分成交后改总量)目前只有离线测试,尚未在真机上核对。
 - 富途 OpenD 通道:检测与诊断可用,下单桥在真机核对前显式不可用。
 - 安装包未签名;macOS 公证需要自己的开发者证书。
+
+## 许可证
+
+[MIT](LICENSE)。可以自由使用、修改、再分发(包括商用),保留版权与许可声明即可。软件按"原样"提供,不附带任何担保;
+用它下单产生的盈亏与风险由使用者自己承担。
+
+依赖各自沿用原来的许可证,不因本项目改变。其中 TradingView Lightweight Charts 是 Apache-2.0,按它的要求在「关于」页保留了署名。

@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "IBKR 交易指令解析引擎(TypeScript)。",
+  "license": "MIT",
   "type": "module",
   "engines": {
     "node": ">=22"

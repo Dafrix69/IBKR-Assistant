@@ -2,6 +2,8 @@
   "name": "dafri-desktop",
   "productName": "IBKR-Assistant",
   "version": "0.3.0",
+  "license": "MIT",
+  "author": "Dafrix69",
   "private": true,
   "description": "IBKR 交易指令解析引擎的桌面界面(Electron 外壳 + TS 交易引擎子进程)",
   "main": "main.js",
