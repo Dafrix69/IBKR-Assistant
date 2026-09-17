@@ -92,6 +92,18 @@ function fillPnl(row: Rec): void {
   }
   if (row["market_price"] === null || row["market_price"] === undefined) {
     row["pnl_source"] = row["pnl_source"] ?? null;
+    // 休市没有现价:按昨收另算一份盈亏给界面(close_pnl),不写进 unrealized_pnl——那个字段是"此刻"的口径
+    const close = Number(row["close_price"]);
+    if (row["close_price"] !== null && row["close_price"] !== undefined && Number.isFinite(close)) {
+      const at = tkMod.unrealized(tkMod.makePosition({
+        account: String(row["account"]), symbol: String(row["symbol"]),
+        sec_type: String(row["sec_type"] ?? "STK"), quantity: Number(row["quantity"] ?? 0) || 0,
+        avg_cost: Number(row["avg_cost"] ?? 0) || 0, multiplier: Number(row["multiplier"] ?? 1) || 1,
+        currency: String(row["currency"] ?? "USD"), market_price: close,
+      }), close);
+      row["close_pnl"] = at["unrealized_pnl"] ?? null;
+      row["close_pct"] = at["unrealized_pct"] ?? null;
+    }
     return;
   }
   const position = tkMod.makePosition({

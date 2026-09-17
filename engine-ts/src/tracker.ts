@@ -124,6 +124,12 @@ export function comboRow(
     legs.length && prices.every((p) => p !== null && p !== undefined)
       ? legs.reduce((acc, _leg, i) => acc + ratios[i]! * Number(prices[i]), 0)
       : null;
+  // 昨收口径的每组净值:只给界面在休市时显示用(见 broker.fillOptionPrices),不参与任何判断
+  const closes = legs.map((leg) => finiteOrNull(leg["close_price"] ?? null));
+  const netClose =
+    legs.length && closes.every((p) => p !== null)
+      ? legs.reduce((acc, _leg, i) => acc + ratios[i]! * closes[i]!, 0)
+      : null;
   const long = netCost >= 0;
   const contract = (legs[0]?.["contract"] ?? {}) as Record<string, any>;
   const multiplier = legs.length ? Number(legs[0]!["multiplier"] ?? 100) || 100 : 100;
@@ -147,6 +153,8 @@ export function comboRow(
     currency: legs.length ? legs[0]!["currency"] : "USD",
     avg_cost: pyRound(Math.abs(netCost), 4),
     market_price: netPrice === null ? null : pyRound(Math.abs(netPrice), 4),
+    // 没有就不带这个键:黄金基线里的组合行逐字段比对,不该多出一个恒为 null 的字段
+    ...(netClose === null ? {} : { close_price: pyRound(Math.abs(netClose), 4) }),
     net_side: long ? "debit" : "credit",
     market_value: combo["market_value"] ?? null,
     unrealized_pnl: combo["unrealized_pnl"] ?? null,

@@ -205,7 +205,10 @@ function PositionBody({
   const perUnit = (v: number | null | undefined) => (isCombo && v != null ? v / (p.multiplier || 100) : v);
   const open = openKey === p.key;
   const cost = perUnit(p.avg_cost);
-  const pnl = p.unrealized_pnl;
+  // 休市没有现价(个股期权没有夜盘):退到昨收估一个数,并明说它是昨收
+  const stale = p.unrealized_pnl == null && p.market_price == null && p.close_price != null;
+  const pnl = stale ? p.close_pnl : p.unrealized_pnl;
+  const pct = stale ? p.close_pct : p.unrealized_pct;
   const dir = pnl == null || pnl === 0 ? '' : pnl > 0 ? 'up' : 'down';
   return (
     <>
@@ -215,13 +218,16 @@ function PositionBody({
           <div className={`hero-num ${compact ? 'sm ' : ''}${dir}`}>{pnl == null ? '—' : `${pnl > 0 ? '+' : ''}${fmtMoney(pnl)}`}</div>
           <div className="hero-sub">
             {isCombo ? '组合未实现盈亏' : '未实现盈亏'}
+            {stale ? (
+              <span title="这个合约此刻休市,券商不报买卖价也没有最新成交,只有昨收。这里按昨收估算,仅供参考;追踪的触发与挂单定价不用它,开盘有报价后自动换回现价。"> · 按昨收估算(休市无报价)</span>
+            ) : null}
             {p.pnl_source === 'computed' ? (
               <span title="券商这条路没报盈亏(只给了成本),这里用与追踪器同一套口径算出来;对账以券商为准。"> · 本地按现价计算</span>
             ) : null}
           </div>
         </div>
-        {p.unrealized_pct != null && dir ? (
-          <Pill tint={dir === 'up' ? 'up' : 'down'} icon={<i className={`tri ${dir}`} />}>{`${Math.abs(Number(p.unrealized_pct)).toFixed(2)}%`}</Pill>
+        {pct != null && dir ? (
+          <Pill tint={dir === 'up' ? 'up' : 'down'} icon={<i className={`tri ${dir}`} />}>{`${Math.abs(Number(pct)).toFixed(2)}%`}</Pill>
         ) : null}
         <div className="pos-facts">
           <span>
@@ -233,8 +239,8 @@ function PositionBody({
             {isCombo ? (p.net_side === 'credit' ? '净收' : '净付') : '成本'}
           </span>
           <span>
-            <em>{p.market_price != null ? fmtMoney(p.market_price) : '—'}</em>
-            {isCombo ? '组合现价' : '现价'}
+            <em>{p.market_price != null ? fmtMoney(p.market_price) : stale ? fmtMoney(p.close_price) : '—'}</em>
+            {stale ? (isCombo ? '组合昨收' : '昨收') : isCombo ? '组合现价' : '现价'}
           </span>
           {!compact ? (
             <span>

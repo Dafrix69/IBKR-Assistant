@@ -22,6 +22,10 @@ export interface Position {
   unrealized_pnl?: number | null;
   unrealized_pct?: number | null;
   pnl_source?: string;
+  /** 休市没有现价时的昨收,以及按昨收估的盈亏——只用来显示,引擎不拿它做任何判断 */
+  close_price?: number | null;
+  close_pnl?: number | null;
+  close_pct?: number | null;
   tracked?: boolean;
   contract?: Record<string, unknown>;
   label?: string;

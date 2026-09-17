@@ -2053,6 +2053,11 @@ export class BrokerRouter {
       const ask = cleanPrice(t.ask);
       if (bid !== null && ask !== null && ask >= bid) row["market_price"] = pyRound((bid + ask) / 2.0, 4);
       else row["market_price"] = cleanPrice(t.last) ?? cleanPrice(t.marketPrice);
+      // 休市时 TWS 只报昨收:个股期权没有夜盘,收盘后没有买卖价,当天没成交过的合约连最新价也没有
+      // (2026-09-17 真机:USO 115P / 120P 只有 close)。昨收**只给界面看**,单独放一个字段、绝不填进
+      // market_price——标的盘前已经在动,拿昨晚的期权价去判触发、反解波动率、推托管单的价都是错的。
+      const close = cleanPrice(t.close);
+      if (close !== null) row["close_price"] = close;
     }
   }
 
