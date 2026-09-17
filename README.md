@@ -106,11 +106,12 @@ cd desktop && npm run ui:preview \
 |---|---|
 | `limits` | 单笔名义金额、期权张数、市价单股数、最小置信度、价差滑点、重复单窗口 |
 | `policies` | `auto_execute`、`allow_live_trading`、`allow_combo_live`、触发价复核、休市市价单策略、连续失败熔断阈值 |
+| `protections` | 保护规则:止损护栏、回撤护栏、同标的冷却。默认全关,只挡新单、永不挡平仓,到点自己解除 |
 | `connections` / `accounts` | TWS 端口与 client id;账户别名 → 真实账号,`is_paper` 决定实盘闸门 |
 | `symbol_aliases` / `index_symbols` | 「苹果 → AAPL」这类别名;SPX 的交易所与交易类 |
 | `prompt_version` | 提示词版本,`prompts/` 下按版本号只增不改,一行回滚 |
 
-更细的设计决策与口径按模块放在 [docs/features](docs/features):[界面](docs/features/ui.md)、[引擎 RPC](docs/features/engine-rpc.md)、[持仓追踪](docs/features/tracker.md)、[执行对账](docs/features/reconcile.md)、[K 线 PA](docs/features/priceaction.md)、[期权墙与价位提醒](docs/features/optionwall-alerts.md)、[股票池:盯价位与盯异动](docs/features/quality-watch.md)、[交易分析](docs/features/tradereview.md)、[双账户发单](docs/features/dual-account.md)、[富途 OpenD](docs/features/futu-opend.md)、[依赖选型](docs/features/dependencies.md) 等。
+更细的设计决策与口径按模块放在 [docs/features](docs/features):[界面](docs/features/ui.md)、[引擎 RPC](docs/features/engine-rpc.md)、[持仓追踪](docs/features/tracker.md)、[执行对账](docs/features/reconcile.md)、[保护规则](docs/features/protections.md)、[K 线 PA](docs/features/priceaction.md)、[期权墙与价位提醒](docs/features/optionwall-alerts.md)、[股票池:盯价位与盯异动](docs/features/quality-watch.md)、[交易分析](docs/features/tradereview.md)、[双账户发单](docs/features/dual-account.md)、[富途 OpenD](docs/features/futu-opend.md)、[依赖选型](docs/features/dependencies.md) 等。
 
 出问题要现场:主进程、引擎 stderr、渲染层报错都写进 `userData/logs/main.log`(滚动,单份 4 MB),路径在「关于」页。
 

@@ -954,6 +954,62 @@ export class TradeStore {
     return out;
   }
 
+  /** 窗口内的平仓事件(保护规则用,见 protections.ts)。
+   * 取的是 audit_log 里 engine 写的 auto_close / hosted_sweep:两条平仓路径各一个,都是只增的。
+   * position_tracks 的 fired_state 不行——它一行一个持仓、就地更新,同一只标的平第二次就把第一次盖掉了。 */
+  recentCloses(sinceMs: number, nowMs: number): Array<{ atMs: number; symbol: string; state: string }> {
+    const rows = this.db
+      .prepare(
+        "SELECT at, detail FROM audit_log" +
+        " WHERE actor='engine' AND action IN ('auto_close','hosted_sweep')" +
+        " ORDER BY seq DESC LIMIT 2000",
+      )
+      .all() as Array<{ at: string; detail: string }>;
+    const out: Array<{ atMs: number; symbol: string; state: string }> = [];
+    for (const row of rows) {
+      const at = Date.parse(row.at);
+      if (Number.isNaN(at) || at <= sinceMs || at > nowMs) continue;
+      let detail: Rec;
+      try {
+        detail = JSON.parse(row.detail) as Rec;
+      } catch {
+        continue;
+      }
+      out.push({
+        atMs: at,
+        symbol: String(detail["symbol"] ?? ""),
+        state: String(detail["state"] ?? ""),
+      });
+    }
+    return out;
+  }
+
+  /** 窗口内的已实现盈亏(保护规则的回撤护栏用)。券商的佣金回报里带 realizedPNL,
+   * 平仓那一笔才有值——这是全仓库唯一"券商认的"盈亏口径(见 tracker.md 盈亏以券商报的为准)。 */
+  realizedPnlEvents(sinceMs: number, nowMs: number): Array<{ atMs: number; pnl: number }> {
+    const rows = this.db
+      .prepare(
+        "SELECT at, payload FROM record_events WHERE kind='commission' ORDER BY seq DESC LIMIT 2000",
+      )
+      .all() as Array<{ at: string; payload: string }>;
+    const out: Array<{ atMs: number; pnl: number }> = [];
+    for (const row of rows) {
+      const at = Date.parse(row.at);
+      if (Number.isNaN(at) || at <= sinceMs || at > nowMs) continue;
+      let payload: Rec;
+      try {
+        payload = JSON.parse(row.payload) as Rec;
+      } catch {
+        continue;
+      }
+      const pnl = Number(payload["realized_pnl"]);
+      // IBKR 对开仓的佣金回报给一个哨兵大数(1.7976931348623157e308),不是真盈亏
+      if (!Number.isFinite(pnl) || Math.abs(pnl) >= 1e307) continue;
+      out.push({ atMs: at, pnl });
+    }
+    return out;
+  }
+
   // ---- 导出 / 删除(§9.3 可携带权与删除权)------------------------------
   exportAll(): Rec {
     return {

@@ -19,6 +19,8 @@ export function Topbar() {
   const connected = Boolean(status?.broker_connected);
   const upstreamDown = connected && status?.broker_upstream_ok === false;
   const engaged = Boolean(status?.breaker.engaged);
+  // 保护规则的暂停:比熔断轻一档,到点自己解除(见 engine-ts/src/protections.ts)
+  const guarded = Boolean(status?.protections?.paused);
 
   const brokerText = upstreamDown ? `${gateway} 上游中断` : connected ? `${gateway} 已连接` : `${gateway} 未连接`;
   const brokerDot: Dot = upstreamDown ? 'warning' : connected ? 'success' : 'default';
@@ -35,6 +37,10 @@ export function Topbar() {
     modeText = '已熔断';
     modeDot = 'error';
     modeTip = '熔断中:所有自动执行暂停,解除后恢复';
+  } else if (guarded) {
+    modeText = '保护暂停';
+    modeDot = 'warning';
+    modeTip = `${status?.protections?.reason || '保护规则已触发'}。平仓不受影响。`;
   } else if (status?.auto_execute) {
     modeText = status.allow_live_trading ? '自动执行(含实盘)' : '自动执行(仅纸面)';
     modeDot = 'warning';

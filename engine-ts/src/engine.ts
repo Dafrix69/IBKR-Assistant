@@ -20,6 +20,8 @@ import { fingerprint as promptFingerprint } from "./prompts.js";
 import { Notifier } from "./notify.js";
 import type { PromptBundle } from "./prompts.js";
 import { fingerprint, loadPromptBundle, renderUser } from "./prompts.js";
+import { NO_PROTECTION, evaluateProtections, protectionBlock } from "./protections.js";
+import type { ProtectionState } from "./protections.js";
 import { TradeStore, redactAccount } from "./store.js";
 import type { WorkingRecord } from "./store.js";
 import * as tk from "./tracker.js";
@@ -465,6 +467,22 @@ export class TradingEngine {
         continue;
       }
 
+      // 保护规则:接连止损 / 回撤过大 / 同一标的刚平过仓。挡下的单停在"仅校验未发送",
+      // 不落终态——保护期过了原样再发一次就行,不像熔断那样判死。
+      const guard = protectionBlock(
+        this.protectionState(), String(approved.order.contract.symbol ?? ""), Date.now(),
+      );
+      if (guard !== null) {
+        this.store.appendEvent(recordId, "status", { status: "ValidatedOnly" });
+        this.store.appendEvent(recordId, "warning", { message: `保护规则拦下:${guard}` });
+        this.store.audit("engine", "protection_blocked", {
+          record: recordId, symbol: approved.order.contract.symbol ?? "", reason: guard,
+        });
+        this.notifier.warning(`保护规则拦下,已通过校验但未发送:${guard}`);
+        result.validated_only.push(summary);
+        continue;
+      }
+
       try {
         Object.assign(summary, await this.execute(recordId, approved));
       } catch (exc) {
@@ -555,8 +573,15 @@ export class TradingEngine {
     // 触发时刻的熔断复查:条件单可能在校验后数小时才触发
     const breaker = this.killswitch.state();
     if (breaker.engaged) return fired;
+    // 保护规则同理在触发这一刻复查。**排队的单不作废**:保护期内它继续排着,
+    // 到点自己就能发——作废一张等了一上午的条件单,比晚发几分钟难受得多。
+    const guard = this.protectionState();
     for (const pending of [...this.pendingTriggers]) {
       if (pending.fired) continue;
+      const blocked = protectionBlock(
+        guard, String(pending.approved.order.contract.symbol ?? ""), Date.now(),
+      );
+      if (blocked !== null) continue;
       const price = prices[pending.trigger.symbol];
       if (price === undefined || price === null || !shouldFire(pending, Number(price))) continue;
       pending.fired = true; // 先落闩
@@ -953,7 +978,7 @@ export class TradingEngine {
         if (sweep && tk.sweepReason(track) === null && !track["fired_at"]) {
           const state = `${tk.SWEEP_PREFIX}${result.state}`;
           this.store.updateTrack(track["id"], { fired_at: nowIsoSecondsEt(), fired_state: state });
-          this.store.audit("engine", "hosted_sweep", { track: track["id"], state: result.state, reason: result.reason });
+          this.store.audit("engine", "hosted_sweep", { track: track["id"], symbol: track["symbol"], state: result.state, reason: result.reason });
           this.notifier.notify(
             "追价平仓", `${track["symbol"]}:${result.reason}。托管单改到立刻成交的价,没成交就每秒再追`,
           );
@@ -1244,6 +1269,11 @@ export class TradingEngine {
     this.store.appendEvent(recordId, "status", {
       status: placement.status, order_id: placement.order_id,
     });
+    // 平仓留一条只增的痕:保护规则按它数"最近几次止损"、算同一只标的的冷却期(见 protections.ts)。
+    // 追踪表的 fired_state 顶不了这个用——它就地更新,平第二次就把第一次盖掉了。
+    this.store.audit("engine", "auto_close", {
+      track: track["id"], symbol: track["symbol"], state: result["state"], record: recordId,
+    });
     this.killswitch.recordSuccess("broker");
     // 期权 / 组合的限价平仓单发出去只是开始:挂在自然价上未必立刻成交,之后每轮按最新买卖价
     // 追那张单(chaseCloseOrder),成交后再把 fired_state 换回触发原因本身。改的始终是这一张,
@@ -1413,7 +1443,7 @@ export class TradingEngine {
     if (!hasHosted && !this.closeChase.has(tid)) return false;
     if (tk.sweepReason(track) === null) {
       this.store.updateTrack(tid, { fired_at: nowIsoSecondsEt(), fired_state: `${tk.SWEEP_PREFIX}${tk.STATE_STOP_LOSS}` });
-      this.store.audit("engine", "hosted_sweep", { track: tid, state: tk.STATE_STOP_LOSS, reason });
+      this.store.audit("engine", "hosted_sweep", { track: tid, symbol: track["symbol"], state: tk.STATE_STOP_LOSS, reason });
       this.notifier.notify("追价平仓", `${track["symbol"]}:${reason}。现有的那张单改到立刻成交的价,没成交就每秒再追`);
     }
     return true;
@@ -1890,6 +1920,42 @@ export class TradingEngine {
     }
     this.pendingTriggers = this.pendingTriggers.filter((p) => !p.fired);
     return count;
+  }
+
+  // ---- 保护规则:比熔断细一档的自动执行暂停 --------------------------------
+  //
+  // 熔断管"软件坏了"(连续失败),这里管"今天不顺"(接连止损、回撤过大、刚平掉又要进)。
+  // 规则从库里现算,到点自己过去,不写状态文件、不需要人工解除——见 protections.ts。
+  //
+  // **只挡新单,永不挡平仓**:持仓追踪发的平仓单走 closePosition,不经过这里;
+  // 被挡下的单停在"仅校验未发送",不落终态,保护期过了还能再发。
+
+  /** 现算一遍保护状态。窗口取三条规则里最长的那个,一次查库同时喂给三条。 */
+  protectionState(nowMs = Date.now()): ProtectionState {
+    const cfg = this.settings.protections;
+    if (!cfg.stoploss_guard.enabled && !cfg.max_drawdown.enabled && !cfg.cooldown.enabled) {
+      return NO_PROTECTION;
+    }
+    const lookbackMinutes = Math.max(
+      cfg.stoploss_guard.enabled ? cfg.stoploss_guard.lookback_minutes : 0,
+      cfg.max_drawdown.enabled ? cfg.max_drawdown.lookback_minutes : 0,
+      cfg.cooldown.enabled ? cfg.cooldown.minutes : 0,
+    );
+    const sinceMs = nowMs - lookbackMinutes * 60_000;
+    try {
+      return evaluateProtections(
+        cfg,
+        this.store.recentCloses(sinceMs, nowMs),
+        cfg.max_drawdown.enabled ? this.store.realizedPnlEvents(sinceMs, nowMs) : [],
+        nowMs,
+      );
+    } catch (exc) {
+      // 算不出来就放行:保护规则误拦是妨碍交易,而它本身避免不了任何已经发生的亏损
+      this.store.audit("engine", "protections_failed", {
+        error: String((exc as Error).message).slice(0, 300),
+      });
+      return NO_PROTECTION;
+    }
   }
 
   // ---- 执行对账:重启 / 重连之后把券商那边的真相搬回库里 --------------------

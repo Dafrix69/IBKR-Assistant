@@ -16,6 +16,7 @@ import {
 import type { AnomalyConfig, AnomalyEvent, AnomalyState, Metrics, Sample, VolumeSnapshot } from "./anomaly.js";
 import { BrokerError, BrokerRouter } from "./broker.js";
 import { drawdownLate as fxDrawdownLate, drawdownTiers as fxDrawdownTiers } from "./flyexit.js";
+import { protectionsSummary } from "./protections.js";
 import { pyG, pyRound } from "./py.js";
 import {
   DEFAULT_BROKER_PORT, EtNow, LLMConfig, Settings, etNowFromEpoch, loadSettings, nowEt, patchConfigFile,
@@ -479,6 +480,9 @@ export class RpcServer {
         reason: breaker.reason,
         consecutive_failures: breaker.consecutive_failures,
       },
+      // 保护规则(接连止损 / 回撤过大 / 同标的冷却):到点自己解除,所以带上解除时刻,
+      // 界面直接显示"还剩几分钟",不用再问一次
+      protections: protectionsSummary(this.engine.protectionState(moment.epochMs), moment.epochMs),
       broker_provider: this.settings.broker.provider,
       broker_connected: Boolean(this.router && this.router.sessions().length),
       broker_upstream_ok: Boolean(this.router === null || this.router.upstreamOk),
@@ -3197,6 +3201,11 @@ export class RpcServer {
       llm: { model: s.llm.model, effort: s.llm.effort, max_tokens: s.llm.max_tokens },
       limits: { ...s.limits },
       policies: { ...s.policies },
+      protections: {
+        stoploss_guard: { ...s.protections.stoploss_guard },
+        max_drawdown: { ...s.protections.max_drawdown },
+        cooldown: { ...s.protections.cooldown },
+      },
       symbol_aliases: s.symbol_aliases,
       accounts: this.accounts(),
       connections: Object.fromEntries(

@@ -26,6 +26,7 @@ export interface Status {
   broker_upstream_ok?: boolean;
   broker_provider?: 'ibkr' | 'futu' | string;
   breaker: BreakerState;
+  protections?: ProtectionsStatus;
   auto_execute: boolean;
   allow_live_trading: boolean;
   pending_count: number;
@@ -34,6 +35,21 @@ export interface Status {
   model?: string;
   limits: { max_order_notional: number; max_option_contracts: number; [key: string]: number };
   [key: string]: unknown;
+}
+
+/** 保护规则的当前状态(engine.protectionState → system.status)。到点自己解除,所以带解除时刻。 */
+export interface ProtectionsStatus {
+  paused: boolean;
+  rule: string;
+  reason: string;
+  until_ms: number | null;
+  cooldowns: { symbol: string; until_ms: number; reason: string }[];
+}
+
+export interface SettingsProtections {
+  stoploss_guard: { enabled: boolean; lookback_minutes: number; trigger_count: number; pause_minutes: number };
+  max_drawdown: { enabled: boolean; lookback_minutes: number; max_drawdown_usd: number; pause_minutes: number };
+  cooldown: { enabled: boolean; minutes: number };
 }
 
 export interface SettingsPolicies {
@@ -53,12 +69,14 @@ export interface SettingsLimits {
 export interface Settings {
   policies: Partial<SettingsPolicies>;
   limits: Partial<SettingsLimits>;
+  protections?: Partial<SettingsProtections>;
   [key: string]: unknown;
 }
 
 export interface SettingsPatch {
   policies?: Partial<SettingsPolicies>;
   limits?: Partial<SettingsLimits>;
+  protections?: Partial<SettingsProtections>;
 }
 
 export interface AppInfo {
