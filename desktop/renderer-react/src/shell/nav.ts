@@ -62,6 +62,7 @@ const PARENT_OF: Record<string, string> = {
   // 行情页原来分 K线 PA / 订单簿两个子页,现在是一页;旧页名(图表核对脚本、旧的跳转)照样落到行情
   pa: 'market',
   book: 'market',
+  // 扫描页原来分 RS 强度 / 拐点筛选 / 极值偏离三个子页,现在是一页;旧页名照样落到扫描
   rs: 'screener',
   inflection: 'screener',
   deviation: 'screener',

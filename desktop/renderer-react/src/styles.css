@@ -833,7 +833,18 @@ kbd {
 .sig.err { color: var(--orange-text); }
 .sig .sub { font-weight: 400; opacity: 0.8; margin-left: 3px; }
 .sig-detail { font-size: 10px; color: var(--label-tertiary); display: block; }
+/* 已过均线确认的那一格:第二行提到正文色,不另上颜色 */
+.sig-detail.ok { color: var(--label); }
 
-/* 极值偏离 */
+/* 工具条:股票池 + 基准 + 周期 + 均线挤在一行,窄窗口放不下就折行,股票池不被挤没 */
+.row.tight.scan-bar { flex-wrap: wrap; }
+.row.tight.scan-bar > .ant-select.grow { min-width: 180px; }
+
+/* 极值偏离:表下面的一节。点表里的行会滚到这儿,吸顶的大标题别把节标题盖住 */
+.scan-detail { scroll-margin-top: 64px; }
+.scan-detail-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.scan-detail-sym { margin-left: 4px; font-family: var(--font-mono); font-size: 14px; font-weight: 590; color: var(--label-secondary); }
+.scan-detail-step { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+.scan-detail-step .muted { margin-right: 4px; }
 .dev-readout { margin: 8px 0 0; padding-left: 18px; font-size: 12px; line-height: 1.6; }
 .dev-readout li { margin: 2px 0; }

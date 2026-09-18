@@ -302,6 +302,10 @@
 .screen-table .ant-table-tbody > tr > td.rs-cell.dim { color: var(--label-tertiary); }
 .screen-table .ant-btn.sym-btn { padding: 0; height: auto; font-family: var(--font-mono); font-weight: 590; font-size: 12px; }
 .screen-table .ant-btn.sym-btn:hover { text-decoration: underline; }
+/* 整行可点:点了就在表下面出这只的极值偏离,正在看的那一行留个底(和交易记录展开的行同一种蓝);热力格自己的底色不盖 */
+.screen-table .ant-table-tbody > tr.scan-row { cursor: pointer; }
+.screen-table .ant-table-tbody > tr.row-open > td:not(.rs-cell) { background: color-mix(in srgb, var(--blue) 10%, transparent); }
+.screen-table .th-sub { margin-left: 6px; font-weight: 400; color: var(--label-tertiary); }
 .row.tight .ant-select.grow { flex: 1; }
 .row.tight .ant-input-number.narrow, .row.tight .ant-input.narrow { flex: 0 0 92px; max-width: 92px; }
 /* 周期多选:可勾选的胶囊,放在一条分段控件样式的槽里 */

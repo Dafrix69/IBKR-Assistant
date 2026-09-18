@@ -35,7 +35,6 @@ export const PAGES: Record<string, ComponentType> = {
 
 /** 合并页的子页(页头分段控件里切)。截图脚本按叶子页逐页拍,这里是它的清单来源。 */
 export const PAGE_SUBTABS: Record<string, string[]> = {
-  screener: ['rs', 'inflection', 'deviation'],
   access: ['tws', 'futu', 'llm'],
 };
 

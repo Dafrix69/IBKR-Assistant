@@ -90,7 +90,7 @@ async function run() {
     // 隐藏窗口里 CSS 过渡不会推进:控件从"禁用"翻到"可用"时会停在起始色,拍出来全是灰的。
     // 截图只要终态,过渡与动画一律关掉(insertCSS 走调试通道,不受页面 CSP 约束)。
     await win.webContents.insertCSS('*, *::before, *::after { transition: none !important; animation: none !important; }');
-    // 叶子页:侧栏里不带 data-default 的项 + 合并页(扫描 / 接入)页头分段控件里的子页
+    // 叶子页:侧栏里不带 data-default 的项 + 合并页(接入)页头分段控件里的子页
     // 叶子页清单由 React 壳报出(window.__dafriLeafTabs:侧栏项 + 合并页的子页)
     const tabs = await win.webContents.executeJavaScript(`window.__dafriLeafTabs || []`);
     const wanted = only ? only.split(',') : tabs;
@@ -142,9 +142,8 @@ async function run() {
           // React 的受控输入框:直接赋 value 状态不会变,要走原生 setter 再派发 input 事件
           backtest: "(() => { const i = document.getElementById('bt-symbol'); if (i) { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(i, 'NVDA'); i.dispatchEvent(new Event('input', { bubbles: true })); } const b = document.getElementById('btn-bt-run'); if (b) setTimeout(() => b.click(), 50); })();",
           market: "(() => { const i = document.getElementById('book-symbol'); if (i) { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(i, 'SPY'); i.dispatchEvent(new Event('input', { bubbles: true })); } const b = document.getElementById('btn-book-load'); if (b) setTimeout(() => b.click(), 50); })();",
-          rs: "(() => { const b = document.getElementById('btn-rs-run'); if (b) b.click(); })();",
-          inflection: "(() => { const b = document.getElementById('btn-infl-run'); if (b) b.click(); })();",
-          deviation: "(() => { const b = document.getElementById('btn-dev-run'); if (b) b.click(); })();",
+          // 扫描是一页:点一次「扫描」,RS 与背离进同一张表,榜首那只的极值偏离跟着出来
+          screener: "(() => { const b = document.getElementById('btn-scan-run'); if (b) b.click(); })();",
         };
         if (DEMO[tab]) {
           await win.webContents.executeJavaScript(DEMO[tab]);
