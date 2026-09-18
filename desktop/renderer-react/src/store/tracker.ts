@@ -182,7 +182,45 @@ export async function loadTracker(refreshPositions = true): Promise<void> {
       part.positionsError = errorMessage(err);
     }
   }
+  if (refreshPositions) positionsSig = ''; // 这里换过持仓了,下一轮 refreshPositions 不能拿旧签名判"没变"
   set(part);
+}
+
+/**
+ * 持仓页停留期间的现价 / 盈亏刷新,只读持仓、不动追踪列表。
+ *
+ * IBKR 这条路读的全是引擎里常驻订阅的缓存(持仓快照 + 正股 / 期权腿行情流),走读道、约 100 ms,
+ * 一秒一次没有负担;富途每次是一笔真的持仓查询且有频率限制,持仓页按 5 秒一次调。
+ * 单轮读不到先留着上一份——一秒一轮时偶发的一次失败不该让整页闪成报错;连着 3 轮都读不到才报,
+ * 免得拿旧数冒充实时。
+ */
+const POSITIONS_FAIL_LIMIT = 3;
+let positionsBusy = false;
+let positionsFails = 0;
+let positionsSig = '';
+
+export async function refreshPositions(): Promise<void> {
+  if (positionsBusy || !getStatus()?.broker_connected) return;
+  positionsBusy = true;
+  try {
+    const res = await dafri.listPositions();
+    const positions: Position[] = Array.isArray(res?.positions) ? res.positions : [];
+    positionsFails = 0;
+    // 行情不动的那些轮次不发通知,免得整页每秒重渲染一遍
+    const sig = JSON.stringify(positions);
+    if (sig !== positionsSig || snapshot().positionsError !== null) {
+      positionsSig = sig;
+      set({ positions, positionsError: null });
+    }
+  } catch (err) {
+    positionsFails += 1;
+    if (positionsFails >= POSITIONS_FAIL_LIMIT) {
+      positionsSig = '';
+      set({ positions: [], positionsError: errorMessage(err) });
+    }
+  } finally {
+    positionsBusy = false;
+  }
 }
 
 /** 触发 / 被拦:引擎的节拍器当场推过来("tracker" 事件)。以前靠这里每秒读一次的返回值,

@@ -50,7 +50,8 @@
 
 **结构。** `src/shell/` 是壳(App / Topbar / Sidebar / Banner / MacroStrip / nav),`src/pages/` 每个侧栏项一个文件
 (合并页的子页在同一文件里,`pages/index.ts` 登记页面与子页清单),`src/store/` 是跨页共用的状态与循环
-(status 5 秒、tracker 与托管对账每秒、alerts 10 秒、macro 2 秒 / 60 秒、records / pending / notify 跟着引擎事件),
+(status 5 秒、tracker 与托管对账每秒、alerts 10 秒、macro 2 秒 / 60 秒、records / pending / notify 跟着引擎事件;
+「账户持仓」的现价与盈亏只在停留持仓页时刷:IBKR 每秒一次——读的是引擎常驻订阅的缓存,走读道——富途每次是真查询,5 秒一次),
 `src/lib/` 是格式化、标签词表、canvas 图表与价位条的包装,`src/theme/` 是外观与 AntD 主题。
 图表在 `src/lib/chart/`:框架是 `lightweight-charts`,业务叠加层用它的 primitives 画(见 [priceaction.md](priceaction.md));
 `lib/Chart.tsx` 挂一次、之后 spec 变了走 `update`,不再每次重建。
