@@ -22,6 +22,12 @@
    * 手已经按下去了才发现关错、看错的,只能怪这一下点得太快。300ms 大约是"眼睛看见了变化"的量级。
    */
   const CLICK_GUARD_MS = 300;
+  /**
+   * 只是少了几条(用户自己关的)引起的上移,护得短一些:只为吞掉手滑双击的第二下。
+   * 这里不能再用 300ms,更不能看 event.detail——一条条连点「×」清列表时,下一张卡的「×」正好滑到指针底下,
+   * 浏览器把同一位置的连点一路记成 detail = 2、3、4……按"第几下"拦,只要点得够快就一条也关不掉。
+   */
+  const DISMISS_GUARD_MS = 150;
   let guardUntil = 0;
   let lastOrder = '';
 
@@ -93,11 +99,13 @@
       return renderItem(item, !seen.has(id));
     });
     list.replaceChildren(...nodes);
+    const grew = order.some((id) => !seen.has(id));
     seen = next;
 
-    // 顺序或条数变了 = 指针底下的卡片可能已经不是刚才那张:护一小会儿
+    // 顺序或条数变了 = 指针底下的卡片可能已经不是刚才那张:护一小会儿。
+    // 有新卡片插进来的护足 300ms;只是少了几条的是用户自己刚关的,短护一下就放行(只延不缩)
     const key = order.join('\n');
-    if (key !== lastOrder) guardUntil = Date.now() + CLICK_GUARD_MS;
+    if (key !== lastOrder) guardUntil = Math.max(guardUntil, Date.now() + (grew ? CLICK_GUARD_MS : DISMISS_GUARD_MS));
     lastOrder = key;
 
     reportSize();
@@ -112,12 +120,13 @@
   }
 
   list.addEventListener('click', (event) => {
-    // 双击的第二下:第一下多半已经把这张卡关掉了,后面的卡片整体上移,第二下会落在别人身上
-    if (event.detail > 1) return;
     if (Date.now() < guardUntil) return; // 刚重排过,等这一眼看清了再说
     const target = event.target;
     const btn = target instanceof Element ? target.closest('button[data-action]') : null;
     if (!btn) return;
+    // 「查看」双击的第二下不认:第一下已经把这张卡关掉,后面的整体上移,第二下会把主窗口带到别的股票上。
+    // 「×」不看这个数:连点清列表是正经用法(见 DISMISS_GUARD_MS),手滑双击由那段短护窗吞掉
+    if (btn.dataset.action === 'open' && event.detail > 1) return;
     const li = btn.closest('li.item');
     const id = li ? li.dataset.id : '';
     if (!id) return;

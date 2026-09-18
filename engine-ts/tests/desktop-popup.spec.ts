@@ -1120,18 +1120,68 @@ describe("弹窗页的点击闸(列表会在指针底下重排)", () => {
     expect(p.calls.at(-1)!.arg).toBeGreaterThan(0);
   });
 
-  it("双击的第二下不认:第一下已经把卡片关掉,后面的整体上移", () => {
+  it("「查看」双击的第二下不认:第一下已经把卡片关掉,后面的整体上移", () => {
     const now = { value: 1_000_000 };
     const p = page(now);
     p.emit([card("a"), card("b")]);
     now.value += 400; // 过了重排后的护窗期
 
-    p.click("b", "dismiss", 1);
-    expect(p.calls.filter((c) => c.fn === "dismiss")).toHaveLength(1);
-    p.click("b", "dismiss", 2); // 同一次双击的第二下
-    p.click("b", "open", 3);
-    expect(p.calls.filter((c) => c.fn === "dismiss")).toHaveLength(1);
-    expect(p.calls.filter((c) => c.fn === "open")).toHaveLength(0);
+    p.click("a", "open", 1);
+    expect(p.calls.filter((c) => c.fn === "open")).toEqual([{ fn: "open", arg: "a" }]);
+    p.emit([card("b")]); // 主进程关掉 a、重发列表,b 滑到指针底下
+    now.value += 400; // 哪怕护窗期已过,同一次双击的第二下也不认
+    p.click("b", "open", 2);
+    expect(p.calls.filter((c) => c.fn === "open")).toHaveLength(1);
+  });
+
+  it("一条条连点「×」清列表:同一位置的连点 detail 一路涨,每一下都要认", () => {
+    const now = { value: 1_000_000 };
+    const p = page(now);
+    p.emit([card("a"), card("b"), card("c"), card("d")]);
+    now.value += 400;
+
+    // 真机上量过:每秒三四下地点,浏览器给的 detail 是 1、2、3、4……
+    const rest = ["a", "b", "c", "d"];
+    for (let n = 1; n <= 4; n++) {
+      const id = rest.shift()!;
+      p.click(id, "dismiss", n);
+      p.emit(rest.map((r) => card(r))); // 主进程重发,下一张卡的「×」滑到指针底下
+      now.value += 250;
+    }
+    expect(p.calls.filter((c) => c.fn === "dismiss").map((c) => c.arg)).toEqual(["a", "b", "c", "d"]);
+  });
+
+  it("手滑双击「×」:第二下落在自己关掉一条之后的 150ms 短护窗里,不连带关掉下一条", () => {
+    const now = { value: 1_000_000 };
+    const p = page(now);
+    p.emit([card("a"), card("b")]);
+    now.value += 400;
+
+    p.click("a", "dismiss", 1);
+    p.emit([card("b")]);
+    now.value += 149;
+    p.click("b", "dismiss", 2);
+    expect(p.calls.filter((c) => c.fn === "dismiss")).toEqual([{ fn: "dismiss", arg: "a" }]);
+    now.value += 2;
+    p.click("b", "dismiss", 3);
+    expect(p.calls.filter((c) => c.fn === "dismiss").map((c) => c.arg)).toEqual(["a", "b"]);
+  });
+
+  it("自己关一条引起的短护窗不会把新提醒的 300ms 缩短", () => {
+    const now = { value: 1_000_000 };
+    const p = page(now);
+    p.emit([card("a"), card("b")]);
+    now.value += 400;
+
+    p.emit([card("z", { at: 1_789_150_900_000 }), card("a"), card("b")]); // 新提醒:护 300ms
+    now.value += 100;
+    p.emit([card("z", { at: 1_789_150_900_000 }), card("b")]); // 紧跟着少了一条:只延不缩
+    now.value += 160; // 离新提醒 260ms,离少一条 160ms
+    p.click("z", "dismiss");
+    expect(p.calls.filter((c) => c.fn === "dismiss")).toHaveLength(0);
+    now.value += 41;
+    p.click("z", "dismiss");
+    expect(p.calls.filter((c) => c.fn === "dismiss")).toEqual([{ fn: "dismiss", arg: "z" }]);
   });
 
   it("刚重排过的 300ms 内不认点击:新提醒插在最前面,指针底下已经换了一只股票", () => {
@@ -1164,10 +1214,13 @@ describe("弹窗页的点击闸(列表会在指针底下重排)", () => {
     p.click("a", "open");
     expect(p.calls.filter((c) => c.fn === "open")).toEqual([{ fn: "open", arg: "a" }]);
 
-    // 条数变了(关掉一条之后主进程重发)照样设闸
+    // 条数变了(关掉一条之后主进程重发)照样设闸,只是短一些
     p.emit([card("b")]);
     p.click("b", "dismiss");
     expect(p.calls.filter((c) => c.fn === "dismiss")).toHaveLength(0);
+    now.value += 150;
+    p.click("b", "dismiss");
+    expect(p.calls.filter((c) => c.fn === "dismiss")).toHaveLength(1);
   });
 });
 
