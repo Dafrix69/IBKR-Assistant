@@ -210,11 +210,11 @@ export function expiryClose(profile: Rec): number {
 // ----------------------------------------------------------------------
 // K 线定位与统计
 // ----------------------------------------------------------------------
-function isDaily(bars: Rec[]): boolean {
+export function isDaily(bars: Rec[]): boolean {
   return bars.length > 0 && String(bars[0]!["time"] ?? bars[0]!["date"] ?? "").length <= 10;
 }
 
-function barTime(bar: Rec): string {
+export function barTime(bar: Rec): string {
   return String(bar["time"] ?? bar["date"] ?? "");
 }
 
@@ -239,7 +239,7 @@ function closest(profile: Rec, bars: Rec[], lo: number, hi: number): [number, nu
   return best;
 }
 
-function barSeconds(timeframe: string, daily: boolean): number {
+export function barSeconds(timeframe: string, daily: boolean): number {
   if (daily) return 86400;
   const m = /^(\d+)([mhd])$/.exec(String(timeframe ?? ""));
   if (!m) return 300;

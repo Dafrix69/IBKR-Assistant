@@ -2123,11 +2123,72 @@ export class RpcServer {
     return [ibt.groupButterflies(this.engine.store.listFills(), accounts), synced];
   }
 
+  static readonly REVIEW_HOLDINGS_TTL_S = 15.0; // 当前持仓多久重新向券商要一次(只为反推期初仓位)
+  private reviewHoldingsAt = -Infinity;
+  private reviewHoldings: Record<string, number> | null = null;
+
+  /**
+   * 股票成交 → 一笔笔交易(从空仓到空仓)。期初仓位靠当前持仓反推:库里的成交是一天天攒的,
+   * 最早那笔卖出多半卖的是更早买的货,不核对持仓就会把它认成做空。读不到持仓(没连、券商报错)就传 null,
+   * stockreview 那头会把每一笔标成 opening_assumed,界面上说明"方向可能认反"。
+   */
+  private async reviewStockTrips(): Promise<Rec[]> {
+    const sr = await import("./stockreview.js");
+    const accounts = this.settings.accounts.map((a) => ({ alias: a.alias, account_id: a.account_id, is_paper: a.is_paper }));
+    const router: any = this.router;
+    if (router !== null && typeof router.positions === "function" && router.sessions().length) {
+      const now = performance.now() / 1000;
+      if (now - this.reviewHoldingsAt >= RpcServer.REVIEW_HOLDINGS_TTL_S) {
+        try {
+          const idOf = new Map(accounts.map((a) => [a.alias, a.account_id]));
+          const holdings: Record<string, number> = {};
+          for (const row of await router.positions()) {
+            if (String(row["sec_type"] ?? "") !== "STK") continue;
+            const accountId = idOf.get(String(row["account"] ?? ""));
+            if (accountId === undefined) continue;
+            const key = sr.holdingKey(accountId, row["symbol"]);
+            holdings[key] = (holdings[key] ?? 0) + (Number(row["quantity"]) || 0);
+          }
+          this.reviewHoldings = holdings;
+        } catch (exc) {
+          if (!(exc instanceof BrokerError)) throw exc;
+          this.reviewHoldings = null; // 读不到 ≠ 空仓:宁可标"期初未核对",也不拿空表去反推
+        }
+        this.reviewHoldingsAt = now;
+      }
+    } else {
+      this.reviewHoldings = null;
+      this.reviewHoldingsAt = -Infinity;
+    }
+    return sr.groupStockTrips(this.engine.store.listFills(), accounts, this.reviewHoldings);
+  }
+
+  private static stockCandidate(trip: Rec): Rec {
+    return {
+      id: trip["id"],
+      kind: "stock",
+      source: "ibkr",
+      created_at: trip["created_at"] ?? null,
+      closed_at: trip["closed_at"] ?? null,
+      intent_summary: trip["summary"] ?? "",
+      account: (trip["account"] ?? {})["alias"] ?? "",
+      final_status: "filled",
+      status: trip["status"],
+      filled: true,
+      symbol: trip["symbol"], side: trip["side"], qty: trip["qty"], open_qty: trip["open_qty"],
+      entry_qty: trip["entry_qty"], exit_qty: trip["exit_qty"],
+      avg_entry: trip["avg_entry"], avg_exit: trip["avg_exit"],
+      pnl: trip["status"] === "closed" ? trip["realized_pnl"] : null,
+      carried: Boolean(trip["carried"]), opening_assumed: Boolean(trip["opening_assumed"]),
+    };
+  }
+
   private static reviewCandidate(record: Rec, profile: Rec, source: string): Rec {
     const ibkr = record["ibkr"] ?? {};
     const timeline: Rec[] = ibkr["status_timeline"] ?? [];
     return {
       id: record["id"] ?? null,
+      kind: "butterfly",
       source,
       created_at: record["created_at"] ?? null,
       intent_summary: (record["llm"] ?? {})["intent_summary"] ?? "",
@@ -2192,6 +2253,14 @@ export class RpcServer {
         out.push(row);
       }
     }
+    // 股票:一段持仓一行,和蝴蝶按时间混排(新的在前;时间认不出的沉底,同一时刻蝴蝶在前)
+    const stocks = (await this.reviewStockTrips()).map((trip) => RpcServer.stockCandidate(trip));
+    if (stocks.length) {
+      const keyed = [...out, ...stocks].map((row, i) => ({ row, i, when: tr.parseWhen(row["created_at"]) ?? -Infinity }));
+      keyed.sort((a, b) => b.when - a.when || a.i - b.i);
+      out.length = 0;
+      out.push(...keyed.map((k) => k.row));
+    }
     if (params["include_local"]) {
       for (const record of this.engine.store.listRecords(RpcServer.REVIEW_SCAN_LIMIT)) {
         const profile = tr.butterflyProfile(record);
@@ -2213,6 +2282,7 @@ export class RpcServer {
     const tr = await import("./tradereview.js");
     const { TIMEFRAMES } = await import("./priceaction.js");
     let rid = String(params["id"] ?? "");
+    if (rid.startsWith("stk:")) return this.reviewAnalyzeStock(rid, params);
     const [trades] = await this.reviewTrades();
     const link = (await RpcServer.reviewPairs(trades))[rid];
     if (link && link["role"] === "exit") rid = link["peer"]; // 选中平仓单 → 复盘它对应的开仓单
@@ -2228,32 +2298,8 @@ export class RpcServer {
       throw exc;
     }
     const moment = nowEt();
-    let timeframe = String(params["timeframe"] ?? "auto");
-    if (timeframe === "auto") timeframe = tr.pickTimeframe(entry.time, moment.epochMs);
-    if (!(timeframe in TIMEFRAMES)) {
-      throw new RpcError(-32602, `未知 K 线周期:${timeframe}(可选:auto、${Object.keys(TIMEFRAMES).join("、")})`);
-    }
-    if (this.router === null || !this.router.sessions().length) {
-      throw this.needConnection(-32015, "交易分析的 K 线");
-    }
-
     const symbol = profile["symbol"];
-    let bars: Rec[];
-    try {
-      if (timeframe === "1d") {
-        const start = tr.etKey(entry.time - 45 * 86_400_000, true);
-        const end = moment.date;
-        bars = (await this.router.historicalBars(symbol, start, end)).map((b) => ({
-          time: b["date"] ?? b["time"], open: b["open"], high: b["high"], low: b["low"], close: b["close"],
-          volume: b["volume"] ?? 0.0,
-        }));
-      } else {
-        [bars] = await this.paBars(symbol, timeframe, false);
-      }
-    } catch (exc) {
-      if (exc instanceof BrokerError) throw new RpcError(-32015, exc.message);
-      throw exc;
-    }
+    const { timeframe, bars } = await this.reviewBars(symbol, String(params["timeframe"] ?? "auto"), entry.time, moment);
 
     // 平仓单可能在券商成交里,也可能在本地记录里:两边都找
     const others = [...trades, ...this.engine.store.listRecords(RpcServer.REVIEW_SCAN_LIMIT)];
@@ -2269,6 +2315,62 @@ export class RpcServer {
     result["intent_summary"] = (record["llm"] ?? {})["intent_summary"] ?? "";
     result["timeframe_label"] = TIMEFRAMES[timeframe]!["label"];
     await this.attachExitPlan(result, record, profile, symbol, bars, timeframe, params);
+    return result;
+  }
+
+  /** 复盘用的标的 K 线:周期 auto 时按开仓离现在多远挑;日内走 K线 PA 那条缓存,日线走历史数据接口。 */
+  private async reviewBars(
+    symbol: string, requested: string, entryTime: number, moment: ReturnType<typeof nowEt>,
+  ): Promise<{ timeframe: string; bars: Rec[] }> {
+    const tr = await import("./tradereview.js");
+    const { TIMEFRAMES } = await import("./priceaction.js");
+    const timeframe = requested === "auto" ? tr.pickTimeframe(entryTime, moment.epochMs) : requested;
+    if (!(timeframe in TIMEFRAMES)) {
+      throw new RpcError(-32602, `未知 K 线周期:${timeframe}(可选:auto、${Object.keys(TIMEFRAMES).join("、")})`);
+    }
+    if (this.router === null || !this.router.sessions().length) {
+      throw this.needConnection(-32015, "交易分析的 K 线");
+    }
+    try {
+      if (timeframe === "1d") {
+        const start = tr.etKey(entryTime - 45 * 86_400_000, true);
+        const bars = (await this.router.historicalBars(symbol, start, moment.date)).map((b) => ({
+          time: b["date"] ?? b["time"], open: b["open"], high: b["high"], low: b["low"], close: b["close"],
+          volume: b["volume"] ?? 0.0,
+        }));
+        return { timeframe, bars };
+      }
+      const [bars] = await this.paBars(symbol, timeframe, false);
+      return { timeframe, bars };
+    } catch (exc) {
+      if (exc instanceof BrokerError) throw new RpcError(-32015, exc.message);
+      throw exc;
+    }
+  }
+
+  /** 一笔股票交易(一段持仓)+ 标的 K 线 → 复盘。id 是 review.candidates 给的 `stk:` 开头那个。 */
+  private async reviewAnalyzeStock(rid: string, params: Rec): Promise<Rec> {
+    const sr = await import("./stockreview.js");
+    const tr = await import("./tradereview.js");
+    const { TIMEFRAMES } = await import("./priceaction.js");
+    const trip = (await this.reviewStockTrips()).find((t) => t["id"] === rid);
+    if (trip === undefined) throw new RpcError(-32005, "这笔股票交易不在已同步的成交里(成交有更新,请重新选一笔)");
+    const moment = nowEt();
+    let result: Rec;
+    let timeframe: string;
+    try {
+      const fetched = await this.reviewBars(trip["symbol"], String(params["timeframe"] ?? "auto"), sr.tripStart(trip), moment);
+      timeframe = fetched.timeframe;
+      result = sr.reviewStock(trip, fetched.bars, timeframe, moment.epochMs);
+    } catch (exc) {
+      if (exc instanceof tr.ReviewError) throw new RpcError(-32602, exc.message);
+      throw exc;
+    }
+    result["record_id"] = trip["id"];
+    result["source"] = "ibkr";
+    result["account"] = (trip["account"] ?? {})["alias"] ?? "";
+    result["intent_summary"] = trip["summary"] ?? "";
+    result["timeframe_label"] = TIMEFRAMES[timeframe]!["label"];
     return result;
   }
 

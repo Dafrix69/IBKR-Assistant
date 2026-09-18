@@ -1,19 +1,24 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, Descriptions, InputNumber, Select, Table, Tag } from 'antd';
+import { Button, Descriptions, InputNumber, Segmented, Select, Table, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { dafri, errorMessage } from '../bridge';
 import { CanvasChart, type ChartSpec } from '../lib/Chart';
-import { fmtMoney, fmtTimeShort } from '../lib/format';
+import { fmtMoney, fmtNum, fmtTimeShort } from '../lib/format';
 import { FINAL_STATUS_LABEL } from '../lib/labels';
 import { showBanner } from '../store/banner';
 import { takeReviewRequest, useReviewRequest } from '../store/review';
 import { EmptyState, Group, PageHead, Primer, StatTile, StatusCard, SwitchRow, Working, type Tone } from '../ui/kit';
 
-// 交易分析(蝴蝶复盘)与止盈策略回放。数字全来自引擎的 review.analyze;这里只负责摆。
+// 交易分析:蝴蝶复盘(含止盈策略回放)与股票复盘。数字全来自引擎的 review.analyze;这里只负责摆。
 
 const REVIEW_TONE: Record<string, Tone> = { good: 'ok', warn: 'warn', bad: 'bad', info: 'info' };
 const REVIEW_KIND: Record<string, string> = { closed: '已平仓', expired: '已到期', open: '持仓中' };
 const PHASE_LABEL: Record<string, string> = { A: '阶段 A', B: '阶段 B', C: '阶段 C' };
+const KIND_OPTIONS = [
+  { value: 'all', label: '全部' },
+  { value: 'butterfly', label: '蝴蝶' },
+  { value: 'stock', label: '股票' },
+];
 const TF_OPTIONS = [
   { value: 'auto', label: '自动周期' },
   { value: '1m', label: '1 分钟' },
@@ -38,7 +43,26 @@ function write(key: string, value: string): void {
   }
 }
 
+/** 股票:一段持仓(从空仓到空仓)一行。没有建仓成交的(建仓早于已同步的成交)只写出场那一侧。 */
+function stockLabel(c: any): string {
+  const when = fmtTimeShort(c.created_at);
+  const long = c.side === 'LONG';
+  const acct = c.account ? ` · ${c.account}` : '';
+  const flag = c.opening_assumed ? ' · 期初持仓未核对' : '';
+  if (c.carried && !c.entry_qty) {
+    return `${when} · ${long ? '卖出' : '买回'} ${c.exit_qty} 股 ${c.symbol} @ ${c.avg_exit ?? '—'} · 建仓早于已同步的成交${acct} · IBKR 成交`;
+  }
+  const head = `${when} ${long ? '买' : '卖空'} ${c.qty} 股 ${c.symbol} @ ${c.avg_entry ?? '—'}`;
+  if (c.status === 'closed') {
+    const pnl = c.pnl == null ? '' : ` · 盈亏 ${c.pnl > 0 ? '+' : ''}${c.pnl}`;
+    return `${head} → ${fmtTimeShort(c.closed_at)} 平 @ ${c.avg_exit ?? '—'}${pnl}${acct} · IBKR 成交${flag}`;
+  }
+  const trimmed = c.exit_qty ? ` · 已减 ${c.exit_qty} 股 @ ${c.avg_exit ?? '—'}` : '';
+  return `${head}${trimmed}${acct} · IBKR 成交 · 持仓中 ${c.open_qty} 股${flag}`;
+}
+
 function candidateLabel(c: any): string {
+  if (c.kind === 'stock') return stockLabel(c);
   const when = fmtTimeShort(c.created_at);
   const strikes = (c.strikes || []).map((s: unknown) => String(s)).join('/');
   const state =
@@ -58,6 +82,7 @@ export function ReviewPage() {
   const [timeframe, setTimeframe] = useState(() => read('dafri-review-timeframe') || 'auto');
   const [em, setEm] = useState<number | null>(() => Number(read('dafri-review-em')) || 36);
   const [includeLocal, setIncludeLocal] = useState(false);
+  const [kind, setKind] = useState(() => read('dafri-review-kind') || 'all');
   const [freshness, setFreshness] = useState('—');
   const [available, setAvailable] = useState<boolean | null>(null);
   const [data, setData] = useState<any>(null);
@@ -91,7 +116,7 @@ export function ReviewPage() {
   const run = useCallback(
     async (id: string) => {
       if (!id) {
-        showBanner('先选一张蝴蝶', true);
+        showBanner('先选一笔交易', true);
         return;
       }
       write('dafri-review-record', id);
@@ -136,28 +161,46 @@ export function ReviewPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requestSeq]);
 
+  const shown = useMemo(() => (kind === 'all' ? candidates : candidates.filter((c) => (c.kind || 'butterfly') === kind)), [candidates, kind]);
+  const selectedKind = candidates.find((c) => c.id === selected)?.kind || 'butterfly';
+  // 换了筛选之后选中的那笔不在列表里了:退到列表第一笔,别让下拉框显示一个看不见的 id
+  useEffect(() => {
+    if (shown.length && !shown.some((c) => c.id === selected)) setSelected(shown[0].id);
+  }, [shown, selected]);
+
+  const what = kind === 'stock' ? '股票交易' : kind === 'butterfly' ? '蝴蝶' : '蝴蝶或股票交易';
   const emptyOption =
-    available === null ? '加载中…' : available ? '今天的成交里没有蝴蝶(TWS 只给当天的;更早的要在连着时同步过才有)' : '还没有同步到任何 IBKR 成交:先连接 TWS 再点「同步成交」';
+    available === null ? '加载中…' : available ? `今天的成交里没有${what}(TWS 只给当天的;更早的要在连着时同步过才有)` : '还没有同步到任何 IBKR 成交:先连接 TWS 再点「同步成交」';
 
   return (
     <section className="tab-panel active" id="page-review">
       <PageHead title="交易分析" extra={<span className="muted">{freshness}</span>} />
       <div className="row tight">
+        <Segmented
+          size="small"
+          options={KIND_OPTIONS}
+          value={kind}
+          onChange={(v) => {
+            setKind(String(v));
+            write('dafri-review-kind', String(v));
+          }}
+          aria-label="交易类型"
+        />
         <Select
           className="grow"
-          value={selected || undefined}
+          value={shown.some((c) => c.id === selected) ? selected : undefined}
           placeholder={emptyOption}
-          options={candidates.map((c) => ({ value: c.id, label: candidateLabel(c) }))}
+          options={shown.map((c) => ({ value: c.id, label: candidateLabel(c) }))}
           onChange={(v) => {
             setSelected(v);
             write('dafri-review-record', v);
           }}
-          aria-label="选择一张蝴蝶"
+          aria-label="选择一笔交易"
         />
         <Select value={timeframe} options={TF_OPTIONS} onChange={setTimeframe} style={{ width: 110 }} aria-label="K 线周期" />
-        <label className="row tight m0" title="当日 0DTE 隐含日内波动(点):策略文档要求每日从 ATM straddle 取,EM = straddle × 0.85;默认 36">
+        <label className="row tight m0" title="当日 0DTE 隐含日内波动(点):策略文档要求每日从 ATM straddle 取,EM = straddle × 0.85;默认 36。只用于蝴蝶的止盈策略回放,股票用不到">
           <span className="muted">EM</span>
-          <InputNumber min={1} max={500} step={0.5} value={em} onChange={(v) => setEm(v == null ? null : Number(v))} style={{ width: 72 }} aria-label="隐含日内波动 EM" />
+          <InputNumber min={1} max={500} step={0.5} value={em} disabled={selectedKind === 'stock'} onChange={(v) => setEm(v == null ? null : Number(v))} style={{ width: 72 }} aria-label="隐含日内波动 EM" />
         </label>
         <Button size="small" type="text" title="向 TWS 重新拉取成交明细并刷新列表" onClick={() => void loadCandidates(includeLocal)}>
           同步成交
@@ -172,7 +215,9 @@ export function ReviewPage() {
       <Primer id="intro-review" intro summary="数据来源、结论规则与止盈策略">
         <p className="hint">
           列表来自 <strong>IBKR 的成交明细</strong>:引擎从 TWS 拉取逐笔成交,按订单把三条腿合成一张蝴蝶,并存进本地库累积
-          (TWS 的接口只给当天的成交,所以历史靠每次连着时同步来的那些)。选一张后拉取标的在<strong>开仓前后到平仓 / 到期</strong>的 K 线,
+          (TWS 的接口只给当天的成交,所以历史靠每次连着时同步来的那些)。<strong>股票</strong>按"从空仓到空仓"的一段持仓算一笔:中途加仓、分批卖出都在这一笔里,
+          成本按移动平均;期初仓位用当前持仓反推,卖的是更早买的货就只复盘出场、不编成本。股票的结论看的是进场 / 出场落在持有期区间的什么位置、
+          最大浮盈浮亏与兑现了多少、卖出之后又走了多远。<strong>蝴蝶</strong>选一张后拉取标的在<strong>开仓前后到平仓 / 到期</strong>的 K 线,
           画出三条行权价与盈利区,并按规则给出结论:开仓位置、开仓前后走势、持有期间离中心多远、曾经的机会、结局与方向对错。
           理论价值按<strong>到期内在价值</strong>算(是下界,不是当时能卖到的价)。平仓按同一张蝴蝶的反向成交认定,没有就按到期结算。
           K 线走 TWS 历史数据,需连接引擎。<strong>止盈策略</strong>按《SPX 0DTE 蝶式止盈策略 v2.0》回放:蝶价走势取 IBKR 组合分钟中间价,
@@ -187,7 +232,9 @@ export function ReviewPage() {
             <div>{error}</div>
           </StatusCard>
         ) : !data ? (
-          <EmptyState>选一张蝴蝶后点「分析」。</EmptyState>
+          <EmptyState>选一笔交易后点「分析」。</EmptyState>
+        ) : data.kind === 'stock' ? (
+          <StockResult r={data} />
         ) : (
           <ReviewResult r={data} />
         )}
@@ -265,6 +312,104 @@ function ReviewResult({ r }: { r: any }) {
         </ul>
       ) : null}
     </>
+  );
+}
+
+// ---- 股票 ----------------------------------------------------------------
+
+const pctText = (v: number | null | undefined) => (v == null ? '' : ` (${v > 0 ? '+' : ''}${v}%)`);
+
+function StockResult({ r }: { r: any }) {
+  const p = r.profile;
+  const o = r.outcome;
+  const s = r.stats;
+  const long = p.side === 'LONG';
+  const open = o.kind === 'open';
+  const pnl = o.pnl;
+  const execs = (list: any[]) => list.map((e) => `${e.time_et || fmtTimeShort(e.time)} ${e.action === 'BUY' ? '买' : '卖'} ${e.qty} @ ${e.price}`).join(';');
+
+  const detailRows: [string, unknown][] = [
+    ['账户', r.account],
+    ['开始时间(美东)', r.entry.time_et],
+    ['结局', `${REVIEW_KIND[o.kind] || o.kind}${o.time_et ? ' · ' + o.time_et : ''}`],
+    [long ? '买入' : '卖空', p.entries.length ? execs(p.entries) : null],
+    [long ? '卖出' : '买回', p.exits.length ? execs(p.exits) : null],
+    ['持有 K 线数', s.hold_bars],
+    ['持有期间区间', s.hold_low == null ? null : `${s.hold_low} ~ ${s.hold_high}`],
+    ['最大浮盈', s.mfe ? `${fmtMoney(s.mfe.amount)}${pctText(s.mfe.pct)} · ${s.mfe.time} 到 ${s.mfe.price}` : null],
+    ['最大浮亏', s.mae ? `${fmtMoney(-s.mae.amount)}${pctText(s.mae.pct == null ? null : -s.mae.pct)} · ${s.mae.time} 到 ${s.mae.price}` : null],
+    ['兑现了最大浮盈的', s.capture_pct == null ? null : `${s.capture_pct}%`],
+    ['已实现 / 浮动盈亏', o.realized_pnl == null ? null : `${fmtMoney(o.realized_pnl)} / ${o.unrealized_pnl == null ? '—' : fmtMoney(o.unrealized_pnl)}`],
+    ['佣金(未扣)', o.commission ? fmtMoney(o.commission) : null],
+  ];
+  const liveRows = detailRows.filter(([, v]) => v !== null && v !== undefined && v !== '');
+  const position = (v: number | null | undefined) => (v == null ? '—' : `区间的 ${fmtNum(v * 100, 0)}%`);
+
+  return (
+    <>
+      <div className="stat-grid">
+        <StatTile label="交易" value={`${p.side_label} ${p.symbol} ${p.qty} 股`} />
+        <StatTile label={long ? '买入均价' : '卖空均价'} value={p.avg_entry == null ? '未知(建仓更早)' : String(p.avg_entry)} />
+        <StatTile label={open ? '最新价' : long ? '卖出均价' : '买回均价'} value={open ? String(o.underlying) : p.avg_exit == null ? '—' : String(p.avg_exit)} />
+        <StatTile label="进场位置" value={s.entry_position == null ? '—' : `${long ? '离最低' : '离最高'} ${fmtNum((1 - s.entry_position) * 100, 0)}%`} />
+        <StatTile label="出场位置" value={position(s.exit_position)} />
+        <StatTile label={open ? '盈亏(含浮动)' : '盈亏'} value={pnl == null ? '—' : `${fmtMoney(pnl)}${pctText(o.pnl_pct)}`} tone={pnl == null ? '' : pnl > 0 ? 'pos' : pnl < 0 ? 'neg' : ''} />
+      </div>
+      <StockChart r={r} />
+      {(r.findings || []).map((f: any, i: number) => (
+        <StatusCard key={i} tone={REVIEW_TONE[f.tone] || 'info'} title={f.title}>
+          <div>{f.text}</div>
+        </StatusCard>
+      ))}
+      {liveRows.length ? (
+        <div className="detail-section">
+          <h4>明细</h4>
+          <Descriptions size="small" column={1} colon={false} items={liveRows.map(([k, v]) => ({ key: k, label: k, children: String(v) }))} />
+        </div>
+      ) : null}
+      {(r.notes || []).length ? (
+        <ul className="review-notes">
+          {r.notes.map((n: string, i: number) => (
+            <li key={i}>{n}</li>
+          ))}
+        </ul>
+      ) : null}
+    </>
+  );
+}
+
+/** 股价走势:蜡烛 + 买入 / 卖出均价线 + 每次出手一个三角(买朝上、卖朝下,落在成交价上)。 */
+function StockChart({ r }: { r: any }) {
+  const spec = useMemo((): ChartSpec | null => {
+    const bars = r.series.bars || [];
+    if (bars.length < 2) return null;
+    const long = r.profile.side === 'LONG';
+    const LEVEL_STYLE: Record<string, any> = {
+      avg_entry: { color: 'blue', dash: [], alpha: 0.9, label: long ? '买入均价' : '卖空均价' },
+      avg_exit: { color: 'purple', dash: [4, 3], alpha: 0.9, label: long ? '卖出均价' : '买回均价' },
+    };
+    const hlines = (r.series.levels || []).filter((l: any) => LEVEL_STYLE[l.kind]).map((l: any) => ({ price: l.price, ...LEVEL_STYLE[l.kind] }));
+    const markers = (r.series.markers || []).map((m: any) => {
+      const buy = m.action === 'BUY';
+      return {
+        time: m.time,
+        price: m.price,
+        shape: buy ? ('tri-up' as const) : ('tri-down' as const),
+        color: buy ? 'blue' : 'purple',
+        label: `${buy ? '买' : '卖'} ${m.qty}`,
+        labelPos: buy ? ('below' as const) : ('above' as const),
+      };
+    });
+    const legend: [string, string, string][] = [
+      ['■', 'up', '阳线'], ['■', 'down', '阴线'], ['▲', 'blue', '买入'], ['▼', 'purple', '卖出'],
+      ['—', 'blue', long ? '买入均价' : '卖空均价'], ['╌', 'purple', long ? '卖出均价' : '买回均价'],
+    ];
+    return { ariaLabel: '股价走势', viewKey: `stock:${r.record_id}:${r.series.timeframe}`, bars, hlines, markers, legend, volume: true };
+  }, [r]);
+  return (
+    <StatusCard title={`${r.profile.symbol} 走势(${r.timeframe_label},开仓前后到${r.outcome.kind === 'open' ? '现在' : '平仓之后'})`}>
+      {spec ? <CanvasChart size="mid" spec={spec} /> : null}
+    </StatusCard>
   );
 }
 
