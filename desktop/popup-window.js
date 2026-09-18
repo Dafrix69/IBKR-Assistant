@@ -226,17 +226,15 @@ class PopupManager {
     const before = this.items.length;
     this.items = this.items.filter((it) => it.id !== key);
     if (this.items.length === before) return false;
-    // 关光了就收窗;两种情况都要把列表发下去,页面的 DOM 才跟状态对得上
-    // (隐藏着的窗还留着上一批卡片,下次露面前那一帧就可能是旧的)
+    // 关光了就收窗(窗口直接拆掉,见 #hide);还有剩的就把列表发下去,页面重排后会报新高度,窗口跟着缩
     if (this.items.length === 0) this.#hide();
-    this.#sendItems(); // 页面重排后会报新高度,窗口跟着缩
+    else this.#sendItems();
     return true;
   }
 
   clear() {
     this.items = [];
     this.#hide();
-    this.#sendItems(); // 同上:窗口藏起来了,页面里也别留着一列已经关掉的卡片
   }
 
   /** 「查看」:把主窗口叫到前台、跳到对应页,再关掉这一条。 */
@@ -303,13 +301,18 @@ class PopupManager {
 
   /** 应用退出 / 主窗口关闭时调用:弹窗哪怕隐藏着也算一扇窗,不关掉它应用就退不干净。 */
   destroy() {
+    this.#dropWindow();
+    this.#unwatchMainFocus();
+    this.flashing = false;
+  }
+
+  /** 只拆窗:定时器、显示器监听一起收;条目和任务栏闪烁的状态不动。 */
+  #dropWindow() {
     this.#clearRevealTimer();
     this.#clearReadyTimer();
     this.#unwatchDisplays();
-    this.#unwatchMainFocus();
     this.pendingReveal = false;
     this.anchor = null;
-    this.flashing = false;
     const win = this.win;
     this.win = null;
     this.ready = false;
@@ -602,11 +605,14 @@ class PopupManager {
     }
   }
 
+  /**
+   * 收窗 = 拆窗,不是 hide()。Windows 上这扇不可聚焦的窗 hide() 之后再 showInactive(),
+   * 鼠标按下就传不进页面了(页面只收得到抬起,没有 mousedown / click)——「×」「查看」「全部关闭」全都点不动,
+   * 提醒只能越攒越多;真机上每一轮都复现。新建的窗没有这个毛病。
+   * 下一条提醒来时 push 会重建(几百毫秒),条目在 items 里排队,不会丢。
+   */
   #hide() {
-    this.#clearRevealTimer();
-    this.pendingReveal = false;
-    this.anchor = null;
-    if (this.#visible()) this.win.hide();
+    this.#dropWindow();
     this.#flashMain(false); // 提醒都关掉了,任务栏也别再闪
   }
 

@@ -544,7 +544,7 @@ describe("PopupManager", () => {
     expect(ids(mgr)).not.toContain("a"); // 最早的挤掉
   });
 
-  it("关掉一条 → 重发列表;关掉最后一条 / 全部关闭 → 隐藏,任务栏也停闪", () => {
+  it("关掉一条 → 重发列表;关掉最后一条 / 全部关闭 → 拆窗(不是 hide),任务栏也停闪", () => {
     const { mgr, main } = setup();
     mgr.push({ items: [raw("a"), raw("b")] });
     pageShows(mgr);
@@ -554,50 +554,50 @@ describe("PopupManager", () => {
     expect(ids(mgr)).toEqual(["b"]);
     expect(win.webContents.lastItems().map((i) => i.id)).toEqual(["b"]);
     expect(win.visible).toBe(true);
+    expect(win.destroyed).toBe(false);
 
+    // 真机(Windows)上量过:这扇不可聚焦的窗 hide() 之后再 showInactive(),鼠标按下就传不进页面了,
+    // 「×」「查看」「全部关闭」全都点不动。所以收窗一律拆掉,绝不 hide 了留着复用
     mgr.handleAction({ type: "dismiss", id: "b" });
-    expect(win.visible).toBe(false);
-    expect(win.log.at(-1)).toBe("hide");
+    expect(win.destroyed).toBe(true);
+    expect(win.log).not.toContain("hide");
     expect(main.log.at(-1)).toBe("flash:false");
 
-    // 隐藏之后再来一条:照样按"先排版、后露面"再显示一次
+    // 拆掉之后再来一条:新建一扇窗,照样按"先排版、后露面"显示
     mgr.push({ items: [raw("c")] });
-    expect(win.visible).toBe(false);
-    mgr.handleAction({ type: "size", height: 140 });
-    expect(win.visible).toBe(true);
-    expect(win.log.filter((l) => l === "showInactive")).toHaveLength(2);
+    expect(FakeWindow.instances).toHaveLength(2);
+    const next = FakeWindow.instances[1]!;
+    expect(next).not.toBe(win);
+    expect(next.visible).toBe(false);
+    pageShows(mgr, 140);
+    expect(next.visible).toBe(true);
+    expect(next.webContents.lastItems().map((i) => i.id)).toEqual(["c"]);
+    expect(next.log.filter((l) => l === "showInactive")).toHaveLength(1);
 
     mgr.handleAction({ type: "clear" });
     expect(mgr.items).toEqual([]);
-    expect(win.visible).toBe(false);
-    expect(win.log).not.toContain("show");
-    expect(win.log).not.toContain("focus");
+    expect(next.destroyed).toBe(true);
+    for (const w of [win, next]) {
+      expect(w.log).not.toContain("hide");
+      expect(w.log).not.toContain("show");
+      expect(w.log).not.toContain("focus");
+    }
   });
 
-  it("关光了 / 全部关闭:空列表也要发下去,别在藏起来的页面里留着已经关掉的卡片", () => {
+  it("拆窗之后:迟到的页面消息、不存在的 id 都不抛,也不会把窗口又建出来", () => {
     const { mgr } = setup();
-    mgr.push({ items: [raw("a"), raw("b", { at: 2_000 })] });
+    mgr.push({ items: [raw("a")] });
     pageShows(mgr);
-    const win = FakeWindow.instances[0]!;
-
-    mgr.handleAction({ type: "dismiss", id: "a" });
-    expect(win.webContents.lastItems().map((i) => i.id)).toEqual(["b"]);
-    mgr.handleAction({ type: "dismiss", id: "b" }); // 关掉最后一条
-    expect(win.visible).toBe(false);
-    expect(win.webContents.lastItems()).toEqual([]);
-
-    mgr.push({ items: [raw("c"), raw("d", { at: 3_000 })] });
-    pageShows(mgr, 200);
-    expect(win.webContents.lastItems()).toHaveLength(2);
     mgr.handleAction({ type: "clear" });
-    expect(win.visible).toBe(false);
-    expect(win.webContents.lastItems()).toEqual([]); // 页面的 DOM 跟着清空
-    expect(mgr.items).toEqual([]);
+    expect(FakeWindow.instances[0]!.destroyed).toBe(true);
 
-    // 关掉一条不存在的 id:什么都不发
-    const sentBefore = win.webContents.sent.length;
+    // 窗口已经拆了,页面那头排着队的消息才到
+    mgr.handleAction({ type: "size", height: 120 });
+    mgr.handleAction({ type: "dismiss", id: "a" });
+    mgr.handleAction({ type: "clear" });
     expect(mgr.dismiss("没有这条")).toBe(false);
-    expect(win.webContents.sent).toHaveLength(sentBefore);
+    expect(FakeWindow.instances).toHaveLength(1);
+    expect(mgr.items).toEqual([]);
   });
 
   it("「查看」:主窗口 restore + focus,发 menu navigate(page 缺省 quality),再关掉这一条", () => {
