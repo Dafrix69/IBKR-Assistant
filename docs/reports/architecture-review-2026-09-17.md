@@ -322,6 +322,9 @@ CI 里排在 `lint` 之后。第一次跑会红,把现有 8 + 3 条修掉之后�
    `Targets` / `AutoClose` / `SpotTarget` 在 `tracker.ts` 里本来就是具体类型,照 `anomaly.ts` 的样板搬进契约。数值入参的契约类型写成
    `number | string`(`''` = 不设);schema 用 `.strict()`,不认识的键当场拒。判据:`tracker-rpc.spec` 不改一个断言。
    这一段把 `sensitive`(要界面确认)标记加进契约,并让 `desktop-whitelist.spec` 拿它对 `main.js` 的 `SENSITIVE_RPC`。
+   可行性试过了:`engine.ts` 里有 84 处用到追踪行,但把 store 的 `listTracks` / `getTrack` 临时收成具体类型后,类型错误只有 5 处,
+   而且全是同一个被调方——`tk.sweepReason` 的参数写成了 `Record<string, unknown>`(接口类型传不进去)。它在纯计算的 `tracker.ts` 里,
+   改它的签名就行,**`engine.ts` 一行不用动**。所以这一段不受第 3 段阻塞,可以先做。
 2. **`tracker.poll` / `reconcile` / `close_now` 的返回**:这三样是在 `engine.ts` 的下单路径里用 `Rec` 拼出来的。要从源头标类型就得
    动那个文件,而仓库自己的 lint 配置里写着"为类型去改下单路径,是拿真钱的风险换零收益"。所以排在第 3 段之后。
 3. **先拆 `engine.ts`**(本报告第二条的后半:托管单、IB 回调各搬一个文件)。搬完之后盯盘行在一个几百行的文件里,再给它标类型才是低风险的事。
