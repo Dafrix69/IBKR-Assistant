@@ -30,7 +30,6 @@ const LEGACY_METHODS = [
   "keychain.set",
   "llm.catalog", "llm.patch", "llm.test",
   "macro.board",
-  "options.wall",
   "pa.analyze", "pa.comment", "pa.timeframes",
   "pending.list", "pending.poll",
   "positions.list",
@@ -80,8 +79,8 @@ describe("契约:迁移只许往前走", () => {
     expect(LEGACY_METHODS.filter((m) => !names.includes(m)), "引擎里已经没有这个方法了").toEqual([]);
   });
 
-  it("名单只许变短:现在是 58 个,改这个数的时候只能往小里改", () => {
-    expect(LEGACY_METHODS.length).toBeLessThanOrEqual(58);
+  it("名单只许变短:现在是 57 个,改这个数的时候只能往小里改", () => {
+    expect(LEGACY_METHODS.length).toBeLessThanOrEqual(57);
     expect(new Set(LEGACY_METHODS).size).toBe(LEGACY_METHODS.length);
   });
 });

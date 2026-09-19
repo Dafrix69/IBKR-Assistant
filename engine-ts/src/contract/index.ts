@@ -10,6 +10,7 @@
 import type {
   AlertsCreateParams, AlertsDeleteParams, AlertsPollResult, AlertsRefreshParams, AlertsRefreshResult, Watch,
 } from "./alerts.js";
+import type { OptionWall, OptionsWallParams } from "./options.js";
 import type { PoolSetWatchParams, PoolWatch } from "./pool.js";
 import type {
   AnomalyConfig, QualityAddParams, QualityList, QualityRemoveParams, QualitySetConfigParams, QualityStock,
@@ -35,6 +36,8 @@ export interface RpcMethods {
   "alerts.delete": { params: AlertsDeleteParams; result: { deleted: string } };
   "alerts.refresh": { params: AlertsRefreshParams; result: AlertsRefreshResult };
   "alerts.poll": { params: NoParams; result: AlertsPollResult };
+
+  "options.wall": { params: OptionsWallParams; result: OptionWall };
 
   "pool.set_watch": { params: PoolSetWatchParams; result: PoolWatch };
 

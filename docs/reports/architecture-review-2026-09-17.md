@@ -298,3 +298,7 @@ CI 里排在 `lint` 之后。第一次跑会红,把现有 8 + 3 条修掉之后�
    回归用例在 `pool-watch.spec.ts`(先红后绿)。修完之后契约里 `sectors.pick` 的 `sector` 不再带 `null`。
 
 接下来:`options.wall`(形状已经在契约里)→ `tracker.*` / `positions.list`(第一个会发单的域,到时把 `sensitive` 标记加进契约)。
+
+**2026-09-20,`options.wall` 迁完(已迁 20 个,还剩 57 个)。** 形状上一批就在契约里了,这次只是登记方法、配 schema
+(`width` 老 handler 认数字串,schema 照认)。界面目前没有页面调它——墙是经 `alerts.refresh` 存在盯单上给界面的——但它在
+白名单和 preload 里,`bridge.ts` 的签名从 `(spec: unknown) => any` 收成了契约类型。`golden-rpc` 里它那条没动基线就是绿的。

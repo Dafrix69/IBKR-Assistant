@@ -54,6 +54,14 @@ export interface OptionWallCore {
   readout: string[];
 }
 
+export interface OptionsWallParams {
+  symbol: string;
+  /** 不给 = 最近的那个到期日 */
+  expiry?: string;
+  /** 现价上下各取多少个行权价,缺省 10;数字串也认 */
+  width?: number | string;
+}
+
 /** 取链的那一层(services/marketData 的 wallFor)再补两样。 */
 export interface OptionWall extends OptionWallCore {
   /** 这个标的可选的到期日 */

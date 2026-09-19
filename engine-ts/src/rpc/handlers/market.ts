@@ -1,6 +1,7 @@
 /** 行情页读的那几样:book.snapshot、options.wall、pa.*、macro.board。全部只读。 */
 import { BrokerError } from "../../broker.js";
 import { nowEt } from "../../config.js";
+import type { OptionWall, OptionsWallParams } from "../../contract/options.js";
 import { macroBoard } from "../../macro.js";
 import { PACommentSchema } from "../../models.js";
 import { loadSchemaAsset } from "../../providers.js";
@@ -8,17 +9,19 @@ import { RpcError } from "../../rpcError.js";
 import { MarketDataService } from "../../services/marketData.js";
 import { HandlerBase } from "../context.js";
 import type { MethodTable, Rec } from "../context.js";
+import { contractMethods } from "../contractMethods.js";
 import { SYMBOL_RE, symbolOrRaise } from "../params.js";
 
 export class MarketHandlers extends HandlerBase {
   methods(): MethodTable {
     return {
       "book.snapshot": (p) => this.bookSnapshot(p),
-      "options.wall": (p) => this.optionsWall(p),
       "pa.timeframes": (p) => this.paTimeframes(p),
       "pa.analyze": (p) => this.paAnalyze(p),
       "pa.comment": (p) => this.paComment(p),
       "macro.board": (p) => this.macroBoardMethod(p),
+      // 已经在契约里的(contract/options.ts):入参过了 schema 才到 handler
+      ...contractMethods({ "options.wall": (p) => this.optionsWall(p) }),
     };
   }
 
@@ -40,7 +43,7 @@ export class MarketHandlers extends HandlerBase {
   }
 
   // ---- 期权墙 ----------------------------------------------------------
-  async optionsWall(params: Rec): Promise<Rec> {
+  async optionsWall(params: OptionsWallParams): Promise<OptionWall> {
     const symbol = symbolOrRaise(params);
     const expiry = String(params["expiry"] ?? "").trim() || null;
     const width = Math.trunc(Number(params["width"] ?? 10));

@@ -11,6 +11,7 @@ import type { RpcMethodName, RpcParams } from "../index.js";
 import { AlertsCreateParamsSchema, AlertsDeleteParamsSchema, AlertsRefreshParamsSchema } from "./alerts.js";
 import { NoParamsSchema } from "./kit.js";
 import type { ParamsSchema } from "./kit.js";
+import { OptionsWallParamsSchema } from "./options.js";
 import { PoolSetWatchParamsSchema } from "./pool.js";
 import {
   QualityAddParamsSchema, QualityRemoveParamsSchema, QualitySetConfigParamsSchema, QualityUpdateParamsSchema,
@@ -28,6 +29,8 @@ export const PARAMS_SCHEMAS: { readonly [M in RpcMethodName]: ParamsSchema<RpcPa
   "alerts.delete": AlertsDeleteParamsSchema,
   "alerts.refresh": AlertsRefreshParamsSchema,
   "alerts.poll": NoParamsSchema,
+
+  "options.wall": OptionsWallParamsSchema,
 
   "pool.set_watch": PoolSetWatchParamsSchema,
 

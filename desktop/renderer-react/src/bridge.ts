@@ -207,7 +207,7 @@ export interface DafriBridge {
   parseBacktestRules(text: string): Rpc<any>;
   orderBook(symbol: string): Rpc<any>;
 
-  optionWall(spec: unknown): Rpc<any>;
+  optionWall(spec: RpcParams<'options.wall'>): Rpc<RpcResult<'options.wall'>>;
   listAlerts(): Rpc<RpcResult<'alerts.list'>>;
   createAlert(symbol: string, step: number): Rpc<RpcResult<'alerts.create'>>;
   deleteAlert(id: string): Rpc<RpcResult<'alerts.delete'>>;
