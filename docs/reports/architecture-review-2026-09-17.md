@@ -302,3 +302,26 @@ CI 里排在 `lint` 之后。第一次跑会红,把现有 8 + 3 条修掉之后�
 **2026-09-20,`options.wall` 迁完(已迁 20 个,还剩 57 个)。** 形状上一批就在契约里了,这次只是登记方法、配 schema
 (`width` 老 handler 认数字串,schema 照认)。界面目前没有页面调它——墙是经 `alerts.refresh` 存在盯单上给界面的——但它在
 白名单和 preload 里,`bridge.ts` 的签名从 `(spec: unknown) => any` 收成了契约类型。`golden-rpc` 里它那条没动基线就是绿的。
+
+**2026-09-20,`tracker.*` / `positions.list`:没有迁,先补了一张安全网。** 动手前核了一下这个域的保护,结论是不能照前几批的办法做:
+
+- 前几批敢迁,是因为 `golden-rpc` 钉着线上形状(alerts / sectors 22 条)、还有 `quality-rpc` / `pool-watch` 全程走 `s.handle`。
+  而这个域在 `golden-rpc` 里只有 5 条空转的请求(`list`、对不存在的 id 做 `update` / `delete`、`reconcile`、没连券商的
+  `positions.list`)。**没有任何测试经由 RPC 层调过 `tracker.add`、带真实目标的 `tracker.update`、`tracker.close_now`、
+  `tracker.target_preview`**——盯盘与托管的测试很细,但都是直接调引擎层,绕过了入参这一段。
+- 而这一段恰恰最容易在迁移里出事:界面发给 `tracker.add` 的数值**全是字符串**(`str(tp)`),`''` 表示不设。照"看起来自然"的写法配
+  `z.number().optional()`,真应用里每一次建追踪都会被拒;换成会强转的写法,`''` 可能变成 `0`。更隐蔽的是 `z.object` 会**静默丢掉**
+  没列进 schema 的键——对 `quality.add` 无所谓,对 `tracker.add` 就是"追踪建成了,那道保护却没设上"。引擎层的测试会一路绿灯。
+- 所以先写了 `tests/tracker-rpc.spec.ts`(32 条):输入照界面的原样,经 `s.handle` 走完整条路径,假券商只记下收到的单;
+  钉的是现在的行为。它自己也验过——把解析改坏成上面几种样子,6 个变异全部被抓住。细节与两处如实钉住的现状
+  (`tracker.add` 回执里 `enabled` 是数字 `1`;`tracker.update` 的 `auto_close` 是整份替换)写在 `docs/features/tracker.md`。
+
+这个域接下来分三段走,每一段单独提交:
+
+1. **入参 + 能从源头标类型的返回**:`tracker.list` / `add` / `update` / `delete` / `target_preview` 与 `positions.list`。
+   `Targets` / `AutoClose` / `SpotTarget` 在 `tracker.ts` 里本来就是具体类型,照 `anomaly.ts` 的样板搬进契约。数值入参的契约类型写成
+   `number | string`(`''` = 不设);schema 用 `.strict()`,不认识的键当场拒。判据:`tracker-rpc.spec` 不改一个断言。
+   这一段把 `sensitive`(要界面确认)标记加进契约,并让 `desktop-whitelist.spec` 拿它对 `main.js` 的 `SENSITIVE_RPC`。
+2. **`tracker.poll` / `reconcile` / `close_now` 的返回**:这三样是在 `engine.ts` 的下单路径里用 `Rec` 拼出来的。要从源头标类型就得
+   动那个文件,而仓库自己的 lint 配置里写着"为类型去改下单路径,是拿真钱的风险换零收益"。所以排在第 3 段之后。
+3. **先拆 `engine.ts`**(本报告第二条的后半:托管单、IB 回调各搬一个文件)。搬完之后盯盘行在一个几百行的文件里,再给它标类型才是低风险的事。
