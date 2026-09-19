@@ -50,7 +50,9 @@ function stockLabel(c: any): string {
   const acct = c.account ? ` · ${c.account}` : '';
   const flag = c.opening_assumed ? ' · 期初持仓未核对' : '';
   if (c.carried && !c.entry_qty) {
-    return `${when} · ${long ? '卖出' : '买回'} ${c.exit_qty} 股 ${c.symbol} @ ${c.avg_exit ?? '—'} · 建仓早于已同步的成交${acct} · IBKR 成交`;
+    // 没连券商时"卖的是老仓位"是推断(卖出不读成卖空),照样标出来;连上之后按真实持仓重算
+    const why = c.opening_assumed ? '按卖出更早买的货算' : '建仓早于已同步的成交';
+    return `${when} · ${long ? '卖出' : '买回'} ${c.exit_qty} 股 ${c.symbol} @ ${c.avg_exit ?? '—'} · ${why}${acct} · IBKR 成交${flag}`;
   }
   const head = `${when} ${long ? '买' : '卖空'} ${c.qty} 股 ${c.symbol} @ ${c.avg_entry ?? '—'}`;
   if (c.status === 'closed') {

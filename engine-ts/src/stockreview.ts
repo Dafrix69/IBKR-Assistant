@@ -8,7 +8,9 @@
  *   一笔成交把仓位打穿(多 100 卖 150)就拆开:100 平掉旧的一笔,50 另起一笔反向的。
  * - **期初仓位靠当前持仓反推**:TWS 只给当天的成交,库里的成交是一天天攒的,最早那笔卖出多半卖的是更早买的货。
  *   期初仓位 = 当前持仓 − 库内成交的净额;不为 0 的那一段没有建仓成交,标 carried(成本与盈亏未知,只复盘出场)。
- *   拿不到当前持仓(没连券商)就只能当期初空仓,并标 opening_assumed——这时方向可能认反,文字里要说。
+ *   拿不到当前持仓(没连券商)时标 opening_assumed,并且**不把"先卖"读成卖空**:卖出与平仓不是一回事,
+ *   期初按"刚好够卖"的多头算(卖的是更早买的货,carried,成本与盈亏不编)。真是卖空的,连上券商后按真实持仓
+ *   重算会改回来;反过来把平仓认成卖空,会凭空多出一笔"做空盈亏"和一个并不存在的空头持仓。
  * - 同一订单(permId)的几笔成交并成一次"出手",价格按数量加权、时间取最早:图上一个点,而不是一串。
  * - 标的价格用 K 线;浮盈浮亏按持有期内 K 线的最高 / 最低对**最终均价**算,数量按这一笔的最大持仓——
  *   加过仓的是估算(加仓之前的那段其实仓位更小),notes 里标明。
@@ -74,7 +76,7 @@ function pushExec(list: Exec[], fill: Rec, when: number, qty: number, price: num
 
 /**
  * 成交行(store.listFills() 的形状)→ 股票交易,按开始时间升序。
- * holdings:{`${account_id}|${SYMBOL}`: 当前持仓股数};null = 不知道(没连券商),期初一律当空仓。
+ * holdings:{`${account_id}|${SYMBOL}`: 当前持仓股数};null = 不知道(没连券商),期初按"刚好够卖"的多头算。
  */
 export function groupStockTrips(fills: Iterable<Rec>, accounts: Rec[] = [], holdings: Record<string, number> | null = null): Rec[] {
   const aliasOf = new Map<string, Rec>(accounts.map((a) => [String(a["account_id"] ?? ""), a]));
@@ -98,8 +100,10 @@ export function groupStockTrips(fills: Iterable<Rec>, accounts: Rec[] = [], hold
   const usedIds = new Set<string>();
   for (const [key, rows] of groups) {
     rows.sort((a, b) => a.when - b.when || a.seq - b.seq);
-    const net = rows.reduce((acc, r) => acc + r.signed, 0);
-    const opening = holdings === null ? 0 : (holdings[key] ?? 0) - net;
+    let net = 0;
+    let low = 0; // 从 0 起步累计到过的最低仓位:负多少,就是"至少有多少股是更早买的"
+    for (const r of rows) { net += r.signed; low = Math.min(low, net); }
+    const opening = holdings === null ? (low < 0 ? -low : 0) : (holdings[key] ?? 0) - net;
     let trip: Trip | null = null;
     const start = (fill: Rec, side: 1 | -1, remainder: boolean, carriedQty = 0): Trip => ({
       firstFill: fill, remainder, side, carried: carriedQty > 0, carriedQty,
@@ -191,7 +195,8 @@ function tripRecord(t: Trip, aliasOf: Map<string, Rec>, openingAssumed: boolean,
   const unit = `${trim(t.peak)} 股`;
   let summary: string;
   if (t.carried && !t.entries.length) {
-    summary = `${long ? "卖出" : "买回"} ${symbol} ${trim(exitQty)} 股 @ ${avgExit === null ? "—" : trim(avgExit)}(建仓早于已同步的成交)`;
+    const why = openingAssumed ? "期初持仓未核对,按卖出更早买的货算" : "建仓早于已同步的成交";
+    summary = `${long ? "卖出" : "买回"} ${symbol} ${trim(exitQty)} 股 @ ${avgExit === null ? "—" : trim(avgExit)}(${why})`;
   } else {
     summary = `${long ? "做多" : "做空"} ${symbol} ${unit} @ ${avgEntry === null ? "—" : trim(avgEntry)}`
       + (avgExit === null ? "" : ` → ${closed ? "平仓" : "已减仓"} @ ${trim(avgExit)}`);
@@ -276,11 +281,12 @@ export function reviewStock(trip: Rec, bars: Rec[], timeframe: string, now: numb
 
   if (trip["carried"]) {
     notes.push(hasEntry
-      ? `这段持仓里有 ${trim(trip["carried_qty"])} 股建仓早于已同步的成交,没有成本价:均价与盈亏算不出,只看走势与进出位置`
+      ? `这段持仓里有${trip["opening_assumed"] ? "至少" : ""} ${trim(trip["carried_qty"])} 股建仓早于已同步的成交,没有成本价:均价与盈亏算不出,只看走势与进出位置`
       : "建仓早于已同步的成交(TWS 只给当天的成交),没有买入价:成本与盈亏未知,只复盘出场");
   }
   if (trip["opening_assumed"]) {
-    notes.push("没连券商,核对不了期初持仓,这里当作从空仓开始;如果之前就有这只股票的仓位,方向可能认反");
+    notes.push("没连券商,核对不了期初持仓:先卖出的部分按“卖的是更早买的货”算(卖出不等于卖空),其余当作从空仓开始;"
+      + "之前要是有这只股票的空头仓位,方向可能认反。连上券商后按真实持仓重算");
   }
   if (entries.length > 1) notes.push("中途加过仓:浮盈浮亏按最终均价与最大持仓估算,加仓之前的那段实际仓位更小");
 

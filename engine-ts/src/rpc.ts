@@ -2134,7 +2134,7 @@ export class RpcServer {
   /**
    * 股票成交 → 一笔笔交易(从空仓到空仓)。期初仓位靠当前持仓反推:库里的成交是一天天攒的,
    * 最早那笔卖出多半卖的是更早买的货,不核对持仓就会把它认成做空。读不到持仓(没连、券商报错)就传 null,
-   * stockreview 那头会把每一笔标成 opening_assumed,界面上说明"方向可能认反"。
+   * stockreview 那头会把每一笔标成 opening_assumed,先卖的部分按卖出老仓位算(不读成卖空),界面上标"期初持仓未核对"。
    */
   private async reviewStockTrips(): Promise<Rec[]> {
     const sr = await import("./stockreview.js");

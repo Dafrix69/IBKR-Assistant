@@ -121,10 +121,34 @@ describe("groupStockTrips:成交 → 一段段持仓", () => {
     expect(flat[0]).toMatchObject({ side: "SHORT", status: "closed", carried: false, realized_pnl: 343 });
   });
 
-  it("拿不到当前持仓(没连券商):当期初空仓,但每一笔都标 opening_assumed", () => {
-    const trips = sr.groupStockTrips([fill("MSTY", "SLD", 200, 14.565, "12:35", 1)], ACCOUNTS, null);
-    expect(trips).toHaveLength(1);
-    expect(trips[0]).toMatchObject({ side: "SHORT", status: "open", opening_assumed: true, carried: false });
+  it("拿不到当前持仓(没连券商):每一笔都标 opening_assumed,先卖的按卖出老仓位算——卖出不等于卖空", () => {
+    // 真机上见过:没连 TWS 时这一笔被读成「卖空 200 股 · 持仓中 200 股」,其实是把手里的货卖了
+    const [msty, ...rest] = sr.groupStockTrips([fill("MSTY", "SLD", 200, 14.565, "12:35", 1)], ACCOUNTS, null);
+    expect(rest).toEqual([]);
+    expect(msty).toMatchObject({
+      side: "LONG", status: "closed", opening_assumed: true, carried: true, carried_qty: 200,
+      open_qty: 0, avg_entry: null, avg_exit: 14.565, realized_pnl: null,
+    });
+    expect(msty!["summary"]).toContain("卖出 MSTY 200 股");
+    expect(msty!["summary"]).toContain("期初持仓未核对");
+    expect(msty!["summary"]).not.toContain("做空");
+
+    // 先卖后买:不是"做空再买回赚 343",是卖掉老仓位、再新开一笔;那笔盈亏不编
+    const trips = sr.groupStockTrips([
+      fill("RKLB", "SLD", 100, 67.94, "12:35", 1),
+      fill("RKLB", "BOT", 100, 64.51, "15:40", 2),
+    ], ACCOUNTS, null);
+    expect(trips.map((t) => [t["side"], t["status"], t["carried"], t["avg_entry"], t["realized_pnl"], t["opening_assumed"]])).toEqual([
+      ["LONG", "closed", true, null, null, true],
+      ["LONG", "open", false, 64.51, 0, true],
+    ]);
+
+    // 卖得比买得多:多出来的那部分才是老仓位,只补"刚好够卖"的数量
+    const [mixed] = sr.groupStockTrips([
+      fill("AAPL", "BOT", 50, 230.0, "10:00", 1),
+      fill("AAPL", "SLD", 150, 235.0, "11:00", 2),
+    ], ACCOUNTS, null);
+    expect(mixed).toMatchObject({ side: "LONG", carried: true, carried_qty: 100, qty: 150, status: "closed", realized_pnl: null });
   });
 
   it("老仓位上加仓:carried 且均价未知;先平掉的部分算在这一段里", () => {
@@ -342,9 +366,10 @@ describe("review.candidates / review.analyze:股票和蝴蝶走同一对接口",
     const s = server(null);
     const out = await s.reviewCandidates({});
     const rows = out["candidates"] as Rec[];
-    expect(rows.map((c) => [c["symbol"], c["side"], c["opening_assumed"]])).toEqual([
-      ["NVO", "LONG", true],
-      ["RKLB", "SHORT", true], // 不知道手里还有 100 股,只能认成做空再买回
+    expect(rows.map((c) => [c["symbol"], c["side"], c["status"], c["carried"], c["opening_assumed"], c["pnl"]])).toEqual([
+      ["RKLB", "LONG", "open", false, true, null],
+      ["NVO", "LONG", "closed", false, true, 75],
+      ["RKLB", "LONG", "closed", true, true, null], // 不知道手里有多少,但先卖的不读成卖空:按卖出老仓位算,盈亏不编
     ]);
     await expect(s.reviewAnalyze({ id: rows[0]!["id"] })).rejects.toBeInstanceOf(RpcError);
   });
