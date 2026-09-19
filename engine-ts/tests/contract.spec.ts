@@ -19,7 +19,6 @@ const BRIDGE = path.resolve(__dirname, "..", "..", "desktop", "renderer-react", 
 
 /** 还没迁进契约的老方法(入参与返回仍是松散的 Rec)。迁一个,从这里划掉一个;**不许往里加**。 */
 const LEGACY_METHODS = [
-  "alerts.create", "alerts.delete", "alerts.list", "alerts.poll", "alerts.refresh",
   "backtest.parse_rules", "backtest.run", "backtest.strategies",
   "book.snapshot",
   "breaker.halt", "breaker.resume", "breaker.state",
@@ -38,8 +37,6 @@ const LEGACY_METHODS = [
   "records.get", "records.list",
   "review.analyze", "review.candidates",
   "screener.deviation", "screener.inflection", "screener.rs",
-  "sectors.add", "sectors.add_stock", "sectors.delete", "sectors.list", "sectors.pick", "sectors.quotes",
-  "sectors.remove_stock", "sectors.set_tag",
   "settings.get", "settings.patch",
   "system.selftest", "system.status",
   "tracker.add", "tracker.close_now", "tracker.delete", "tracker.list", "tracker.poll", "tracker.reconcile",
@@ -83,8 +80,8 @@ describe("契约:迁移只许往前走", () => {
     expect(LEGACY_METHODS.filter((m) => !names.includes(m)), "引擎里已经没有这个方法了").toEqual([]);
   });
 
-  it("名单只许变短:现在是 71 个,改这个数的时候只能往小里改", () => {
-    expect(LEGACY_METHODS.length).toBeLessThanOrEqual(71);
+  it("名单只许变短:现在是 58 个,改这个数的时候只能往小里改", () => {
+    expect(LEGACY_METHODS.length).toBeLessThanOrEqual(58);
     expect(new Set(LEGACY_METHODS).size).toBe(LEGACY_METHODS.length);
   });
 });
@@ -165,8 +162,40 @@ describe("契约:结构错由 schema 报,领域错由 handler 报", () => {
     expect(out["error"]).toEqual({ code: -32602, message: "price / anomaly 至少要传一个" });
   });
 
+  it("alerts / sectors:结构错归 schema,领域错还是原话", async () => {
+    expect(await errorOf("sectors.add", {})).toEqual({ code: -32602, message: "sectors.add 的参数不对:缺少 name" });
+    expect(await errorOf("sectors.add_stock", { id: 7, symbol: "NVDA" })).toEqual({
+      code: -32602, message: "sectors.add_stock 的参数不对:id 应为 string,收到 number",
+    });
+    expect(await errorOf("alerts.refresh", {})).toEqual({ code: -32602, message: "alerts.refresh 的参数不对:缺少 id" });
+    // 领域错:handler / store 自己那句
+    expect((await errorOf("sectors.add", { name: "" })).message).toBe("板块名称为空");
+    expect((await errorOf("sectors.delete", { id: "nope" })).message).toBe("板块不存在:nope");
+    expect((await errorOf("alerts.create", { symbol: "bad$" })).message).toBe("标的代码不合法:'bad$'");
+    expect((await errorOf("alerts.create", { symbol: "SPY", step: 5000 })).message).toBe("整数关口步长必须在 0~1000 之间");
+    expect((await errorOf("alerts.delete", { id: "nope" })).message).toBe("没有这个警告:nope");
+    expect((await errorOf("alerts.refresh", { id: "nope" })).message).toBe("没有这个警告");
+  });
+
+  it("schema 不比老 handler 严:步长给数字串照收;改标签不带 tag = 清掉", async () => {
+    const call = async (method: string, params: unknown): Promise<Record<string, any>> =>
+      s.handle({ jsonrpc: "2.0", id: 1, method, params });
+    const made = await call("alerts.create", { symbol: "iren", step: "2.5" });
+    expect(made["error"]).toBeUndefined();
+    expect(made["result"]["watch"]).toMatchObject({ symbol: "IREN", step: 2.5 });
+
+    const sector = (await call("sectors.add", { name: "契约测试" }))["result"]["sector"];
+    await call("sectors.add_stock", { id: sector["id"], symbol: "vrt", tag: " 电力 " });
+    const cleared = await call("sectors.set_tag", { id: sector["id"], symbol: "VRT" });
+    expect(cleared["error"]).toBeUndefined();
+    expect(cleared["result"]["sector"]["stocks"]).toEqual([{ symbol: "VRT", company: "", reason: "手动添加", tag: "" }]);
+  });
+
   it("不带参数的方法给什么都收;多余的键不看", async () => {
     const out = await s.handle({ jsonrpc: "2.0", id: 1, method: "quality.list", params: { whatever: 1 } });
-    expect(out["result"]).toMatchObject({ stocks: [], max: 30 });
+    expect(out["error"]).toBeUndefined();
+    // 这个 describe 共用一个 server,上面的用例可能已经往池子里加过股,所以不断言列表是空的
+    expect(out["result"]["max"]).toBe(30);
+    expect(Array.isArray(out["result"]["stocks"])).toBe(true);
   });
 });

@@ -13,7 +13,9 @@ import * as crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
+import type { Watch } from "./contract/alerts.js";
 import type { AnomalyEvent, QualityStockRow } from "./contract/quality.js";
+import type { Sector, SectorStock } from "./contract/sectors.js";
 import type { RecentOrder } from "./models.js";
 
 export const SCHEMA = `
@@ -191,6 +193,9 @@ export interface WorkingRecord {
 
 type Rec = Record<string, any>;
 
+/** alert_watches 里允许改的列(id / symbol / 两个时间戳不许动)。 */
+export type WatchPatch = Partial<Pick<Watch, "step" | "enabled" | "expiry" | "levels" | "states" | "last_price" | "wall" | "events">>;
+
 /** quality_stocks 里允许改的列:note / enabled 是用户写的,states / events 是异动监控写的。 */
 export interface QualityStockPatch {
   note?: string;
@@ -352,11 +357,11 @@ export class TradeStore {
   }
 
   // ---- 价位警告 --------------------------------------------------------
-  addWatch(symbol: string, step = 5.0): Rec {
+  addWatch(symbol: string, step = 5.0): Watch {
     symbol = (symbol || "").trim().toUpperCase();
     if (!symbol) throw new Error("标的代码为空");
     if (!(step > 0 && step <= 1000)) throw new Error("整数关口步长必须在 0~1000 之间");
-    const watch: Rec = {
+    const watch: Watch = {
       id: crypto.randomUUID(),
       created_at: nowIso(),
       updated_at: nowIso(),
@@ -383,13 +388,13 @@ export class TradeStore {
     return watch;
   }
 
-  listWatches(): Rec[] {
+  listWatches(): Watch[] {
     return (this.db.prepare("SELECT * FROM alert_watches ORDER BY created_at").all() as Rec[]).map(
       watchRow,
     );
   }
 
-  getWatch(watchId: string): Rec | null {
+  getWatch(watchId: string): Watch | null {
     const row = this.db.prepare("SELECT * FROM alert_watches WHERE id=?").get(watchId) as
       | Rec
       | undefined;
@@ -397,7 +402,7 @@ export class TradeStore {
   }
 
   /** 只允许改这几列。列名是白名单,不接受任意字段拼 SQL。 */
-  updateWatch(watchId: string, fields: Rec): boolean {
+  updateWatch(watchId: string, fields: WatchPatch): boolean {
     const allowed = new Set([
       "step", "enabled", "expiry", "levels", "states", "last_price", "wall", "events",
     ]);
@@ -604,11 +609,11 @@ export class TradeStore {
   }
 
   // ---- 自定义板块 ------------------------------------------------------
-  addSector(name: string): Rec {
+  addSector(name: string): Sector {
     name = (name || "").trim();
     if (!name) throw new Error("板块名称为空");
     if (name.length > 50) throw new Error("板块名称太长(超过 50 字)");
-    const sector: Rec = {
+    const sector: Sector = {
       id: crypto.randomUUID(),
       created_at: nowIso(),
       updated_at: nowIso(),
@@ -626,12 +631,12 @@ export class TradeStore {
     return sector;
   }
 
-  getSector(sectorId: string): Rec | null {
+  getSector(sectorId: string): Sector | null {
     const row = this.db.prepare("SELECT * FROM sectors WHERE id=?").get(sectorId) as Rec | undefined;
     return row ? sectorRow(row) : null;
   }
 
-  listSectors(): Rec[] {
+  listSectors(): Sector[] {
     return (this.db.prepare("SELECT * FROM sectors ORDER BY created_at").all() as Rec[]).map(
       sectorRow,
     );
@@ -650,7 +655,7 @@ export class TradeStore {
     return out;
   }
 
-  setSectorStocks(sectorId: string, stocks: Rec[]): boolean {
+  setSectorStocks(sectorId: string, stocks: SectorStock[]): boolean {
     return (
       this.db
         .prepare("UPDATE sectors SET stocks=?, updated_at=? WHERE id=?")
@@ -1046,7 +1051,7 @@ export class TradeStore {
   }
 }
 
-function watchRow(row: Rec): Rec {
+function watchRow(row: Rec): Watch {
   const watch: Rec = { ...row };
   for (const [key, empty] of [
     ["levels", []], ["states", {}], ["events", []], ["wall", null],
@@ -1059,7 +1064,8 @@ function watchRow(row: Rec): Rec {
     }
   }
   watch["enabled"] = Boolean(watch["enabled"]);
-  return watch;
+  // 库的边界:列是建表语句定死的,JSON 四列上面已经解开,这里认成行类型
+  return watch as Watch;
 }
 
 function trackRow(row: Rec): Rec {
@@ -1102,7 +1108,7 @@ function clipNote(note: unknown): string {
   return Array.from(text).slice(0, TradeStore.QUALITY_NOTE_MAX).join("");
 }
 
-function sectorRow(row: Rec): Rec {
+function sectorRow(row: Rec): Sector {
   const sector: Rec = { ...row };
   try {
     const parsed = JSON.parse(sector["stocks"] || "[]");
@@ -1113,7 +1119,7 @@ function sectorRow(row: Rec): Rec {
   } catch {
     sector["stocks"] = [];
   }
-  return sector;
+  return sector as Sector; // 库的边界,同 watchRow
 }
 
 function ideaRow(row: Rec): Rec {

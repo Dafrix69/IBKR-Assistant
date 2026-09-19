@@ -3,6 +3,7 @@
  * 三个口径含义完全不同,界面上分开摆;GEX 的符号约定是假设不是事实。
  * 纯计算,离线可对拍。
  */
+import type { MaxPain, OptionWallCore, OptionWallStrike, WallSide } from "./contract/options.js";
 import { ET, wallToEpoch } from "./tz.js";
 import { fmtF, fmtSF, pyFloat, pyRound } from "./py.js";
 
@@ -108,7 +109,7 @@ function byStrike(rows: OptionRow[]): Map<number, Cell> {
 
 function wall(
   grid: Map<number, Cell>, field: keyof Cell, spot: number, side: "above" | "below",
-): Record<string, unknown> | null {
+): WallSide | null {
   const candidates: Array<[number, number]> = [];
   for (const [strike, cell] of grid) {
     if ((side === "above" ? strike >= spot : strike <= spot) && cell[field] > 0) {
@@ -129,7 +130,7 @@ function wall(
 /** 所有未平仓期权内在价值之和最小的行权价。统计量,不是预言。 */
 export function maxPain(
   grid: Map<number, Cell>, multiplier = MULTIPLIER,
-): Record<string, unknown> | null {
+): MaxPain | null {
   const strikes = [...grid.keys()].sort((a, b) => a - b);
   if (strikes.length < MIN_STRIKES) return null;
   let best: [number, number] | null = null;
@@ -192,7 +193,7 @@ export function analyze(
   symbol = "",
   multiplier = MULTIPLIER,
   nowEpochMs: number | null = null,
-): Record<string, any> {
+): OptionWallCore {
   const rows = toRows(raw);
   if (spot <= 0) throw new OptionWallError("缺少标的现价,无法判断墙在现价上方还是下方。");
   const grid = byStrike(rows);
@@ -206,7 +207,7 @@ export function analyze(
   const t = yearsToExpiry(expiry, nowEpochMs);
   const strikes = [...grid.keys()].sort((a, b) => a - b);
 
-  const perStrike: Array<Record<string, unknown>> = strikes.map((strike) => {
+  const perStrike: OptionWallStrike[] = strikes.map((strike) => {
     const cell = grid.get(strike)!;
     const atStrike = rows.filter((r) => r.strike === strike);
     return {
@@ -231,7 +232,7 @@ export function analyze(
   }
   const netGex = netGexAt(rows, spot, t, multiplier, true);
 
-  const result: Record<string, any> = {
+  const result: Omit<OptionWallCore, "warnings" | "readout"> = {
     symbol,
     expiry,
     spot: pyRound(spot, 4),
@@ -253,9 +254,7 @@ export function analyze(
     pc_ratio_volume: totalCallVol ? pyRound(totalPutVol / totalCallVol, 3) : null,
     has_greeks: rows.some((r) => r.iv),
   };
-  result["warnings"] = makeWarnings(result);
-  result["readout"] = makeReadout(result);
-  return result;
+  return { ...result, warnings: makeWarnings(result), readout: makeReadout(result) };
 }
 
 function makeWarnings(result: Record<string, any>): string[] {

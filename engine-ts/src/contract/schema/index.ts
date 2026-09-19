@@ -8,22 +8,43 @@
  * 都是编译错。
  */
 import type { RpcMethodName, RpcParams } from "../index.js";
+import { AlertsCreateParamsSchema, AlertsDeleteParamsSchema, AlertsRefreshParamsSchema } from "./alerts.js";
 import { NoParamsSchema } from "./kit.js";
 import type { ParamsSchema } from "./kit.js";
 import { PoolSetWatchParamsSchema } from "./pool.js";
 import {
   QualityAddParamsSchema, QualityRemoveParamsSchema, QualitySetConfigParamsSchema, QualityUpdateParamsSchema,
 } from "./quality.js";
+import {
+  SectorsAddParamsSchema, SectorsAddStockParamsSchema, SectorsIdParamsSchema, SectorsRemoveStockParamsSchema,
+  SectorsSetTagParamsSchema,
+} from "./sectors.js";
 
 export { describeIssue } from "./kit.js";
 
 export const PARAMS_SCHEMAS: { readonly [M in RpcMethodName]: ParamsSchema<RpcParams<M>> } = {
+  "alerts.list": NoParamsSchema,
+  "alerts.create": AlertsCreateParamsSchema,
+  "alerts.delete": AlertsDeleteParamsSchema,
+  "alerts.refresh": AlertsRefreshParamsSchema,
+  "alerts.poll": NoParamsSchema,
+
+  "pool.set_watch": PoolSetWatchParamsSchema,
+
   "quality.list": NoParamsSchema,
   "quality.add": QualityAddParamsSchema,
   "quality.update": QualityUpdateParamsSchema,
   "quality.remove": QualityRemoveParamsSchema,
   "quality.set_config": QualitySetConfigParamsSchema,
-  "pool.set_watch": PoolSetWatchParamsSchema,
+
+  "sectors.list": NoParamsSchema,
+  "sectors.add": SectorsAddParamsSchema,
+  "sectors.delete": SectorsIdParamsSchema,
+  "sectors.pick": SectorsIdParamsSchema,
+  "sectors.quotes": NoParamsSchema,
+  "sectors.add_stock": SectorsAddStockParamsSchema,
+  "sectors.remove_stock": SectorsRemoveStockParamsSchema,
+  "sectors.set_tag": SectorsSetTagParamsSchema,
 };
 
 /** 契约里登记了的方法名(排好序)。 */

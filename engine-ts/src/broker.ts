@@ -15,6 +15,7 @@ import type { ContractSpec, OrderSpec, TriggerSpec } from "./models.js";
 import type { HostedOrderPlan } from "./positions.js";
 import { legOf, makeKey, positionLabel } from "./positions.js";
 import { MIN_BARS, TIMEFRAMES } from "./marketdata.js";
+import type { StockQuote } from "./contract/sectors.js";
 import type { VolumeSnapshot } from "./marketdata.js";
 import type { ApprovedOrder } from "./validator.js";
 import { fmtF, pyRound } from "./py.js";
@@ -1084,11 +1085,11 @@ export class BrokerRouter {
   }
 
   /** 批量拉股票/ETF 报价;绝不用于订单定价。 */
-  async stockQuotes(symbols: string[]): Promise<Record<string, Record<string, number | null>>> {
+  async stockQuotes(symbols: string[]): Promise<Record<string, StockQuote>> {
     const sessions = this.sessions();
     const session = sessions[0] ?? null;
     if (session === null) return {};
-    const out: Record<string, Record<string, number | null>> = {};
+    const out: Record<string, StockQuote> = {};
     try {
       session.reqMarketDataType(3);
       const tickers = new Map<string, [IbContract, TickerHandle]>();

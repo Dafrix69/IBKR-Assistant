@@ -3,48 +3,19 @@
  * 唯一特别的地方:警告轮询**不挂在当前页上**——切走了还得报,不然就没用了。
  */
 import { create } from 'zustand';
-import { dafri, errorMessage, type PopupItem } from '../bridge';
+import { dafri, errorMessage, type OptionWall, type PopupItem, type Watch, type WatchEvent, type WatchLevel } from '../bridge';
 import { toneDirection } from '../lib/alertRules';
 import { showBanner } from './banner';
 import { showAlertPopup } from './popup';
 import { getStatus } from './status';
 
-export interface AlertLevel {
-  price: number;
-  label?: string;
-  source: string;
-  kind: 'support' | 'resistance' | 'neutral' | string;
-  state?: unknown;
-}
-
-export interface AlertWall {
-  net_gex: number;
-  regime: string;
-  max_pain?: { strike: number } | null;
-  pc_ratio_oi?: number | null;
-  days_to_expiry?: number;
-  spot_source?: string;
-}
-
-export interface AlertEvent {
-  at?: number;
-  symbol?: string;
-  text?: string;
-  direction?: 'up' | 'down';
-  price?: number;
-}
-
-export interface Watch {
-  id: string;
-  symbol: string;
-  step: number;
-  enabled: number | boolean;
-  last_price?: number | null;
-  expiry?: string;
-  wall?: AlertWall | null;
-  levels?: AlertLevel[];
-  events?: AlertEvent[];
-}
+// 形状在引擎契约里(engine-ts/src/contract/alerts.ts、options.ts),这里只转出——页面一直从这个文件 import 这几个名字。
+// 以前这里手写过一份,猜错了两处:价位的 kind 写成了 'support' | 'resistance' | 'neutral'(引擎给的是 pivot,
+// 从来没有 neutral),字段全标成可选(引擎其实每个都给)。
+export type { Watch };
+export type AlertLevel = WatchLevel;
+export type AlertWall = OptionWall;
+export type AlertEvent = WatchEvent;
 
 export interface AlertsSnapshot {
   watches: Watch[];

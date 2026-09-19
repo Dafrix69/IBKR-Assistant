@@ -2,7 +2,12 @@
  *
  * 状态机与价位算法在 alerts.ts(纯计算);这里是它的编排:取行情、落库、推事件、按标的退避。
  */
+import type { AlertLevel } from "../alerts.js";
 import { etNowFromEpoch } from "../config.js";
+import type {
+  AlertsPollResult, AlertsRefreshParams, AlertsRefreshResult, LevelState, Watch, WatchEvent,
+} from "../contract/alerts.js";
+import type { OptionWall } from "../contract/options.js";
 import { RpcError, errText } from "../rpcError.js";
 import { ServiceBase } from "./host.js";
 import type { Rec, ServiceHost } from "./host.js";
@@ -14,28 +19,29 @@ export class AlertsService extends ServiceBase {
   }
 
   /** 重算某个标的的期权墙、趋势位与价位。两者都是加分项——降级可以,不能悄悄降级。 */
-  async refresh(params: Rec): Promise<Rec> {
+  async refresh(params: AlertsRefreshParams): Promise<AlertsRefreshResult> {
     const { buildLevels, levelDict, trendSnapshot } = await import("../alerts.js");
 
     const watch = this.engine.store.getWatch(String(params["id"] ?? ""));
     if (watch === null) throw new RpcError(-32602, "没有这个警告");
     const expiry = String(params["expiry"] ?? watch["expiry"] ?? "").trim() || null;
 
-    let wall: Rec | null = null;
+    let wall: OptionWall | null = null;
     let wallError: string | null = null;
-    let spot: number | null;
+    let spot: number;
     try {
       wall = await this.market.wallFor(watch["symbol"], expiry);
       spot = wall["spot"];
     } catch (exc) {
       wallError =
         exc instanceof RpcError ? exc.message : String((exc as Error).message).slice(0, 300);
-      spot = await this.market.spotOf(watch["symbol"]);
-      if (!spot) {
+      const fallback = await this.market.spotOf(watch["symbol"]);
+      if (!fallback) {
         throw new RpcError(
           -32017, `拿不到 ${watch["symbol"]} 的现价,警告无法设置。${wallError}`,
         );
       }
+      spot = fallback;
     }
 
     // 趋势位(均线/52周高低点):历史 K 线拿不到时按老规矩降级继续,原因带回界面
@@ -48,18 +54,18 @@ export class AlertsService extends ServiceBase {
         exc instanceof RpcError ? exc.message : String((exc as Error).message).slice(0, 300);
     }
 
-    const levels = buildLevels(spot!, wall, Number(watch["step"]), undefined, undefined, history);
+    const levels = buildLevels(spot, wall, Number(watch["step"]), undefined, undefined, history);
     this.engine.store.updateWatch(watch["id"], {
       levels: levels.map(levelDict),
       wall,
-      expiry: (wall ?? {})["expiry"] ?? "",
+      expiry: wall?.expiry ?? "",
       last_price: spot,
     });
     return {
       watch: this.engine.store.getWatch(watch["id"]),
       wall_error: wallError,
       history_error: historyError,
-      trend: history ? trendSnapshot(history, spot!) : null,
+      trend: history ? trendSnapshot(history, spot) : null,
     };
   }
 
@@ -75,11 +81,11 @@ export class AlertsService extends ServiceBase {
   private readonly levelNotes = new Map<string, string>();
 
   /** 这只股的价位该算了吗:没算过、或还是今天开盘前算的(均线、52 周位会隔夜变旧)。刚试过的先退避。 */
-  private needsLevels(watch: Rec, nowMs: number, openMs: number): boolean {
+  private needsLevels(watch: Watch, nowMs: number, openMs: number): boolean {
     if (!watch["enabled"]) return false;
     const tried = this.levelTried.get(String(watch["symbol"]));
     if (tried !== undefined && nowMs - tried < AlertsService.LEVELS_BACKOFF_MS) return false;
-    if (!((watch["levels"] as Rec[]) ?? []).length) return true;
+    if (!(watch["levels"] ?? []).length) return true;
     const at = Date.parse(String(watch["updated_at"] ?? ""));
     return !Number.isFinite(at) || at < openMs;
   }
@@ -113,43 +119,44 @@ export class AlertsService extends ServiceBase {
     if (watch === undefined) return null;
     const note = this.levelNotes.get(symbol);
     if (note) return `error:${note}`;
-    return ((watch["levels"] as Rec[]) ?? []).length ? "ok" : "pending";
+    return (watch["levels"] ?? []).length ? "ok" : "pending";
   }
 
   /** 把每个在盯的标的走一遍状态机,触发的价位推成通知。 */
-  async poll(): Promise<Rec> {
+  async poll(): Promise<AlertsPollResult> {
     const { evaluate } = await import("../alerts.js");
 
-    const fired: Rec[] = [];
-    const checked: Rec[] = [];
+    const fired: WatchEvent[] = [];
+    const checked: AlertsPollResult["checked"] = [];
     for (const watch of this.engine.store.listWatches()) {
-      if (!watch["enabled"] || !(watch["levels"] as Rec[]).length) continue;
+      if (!watch["enabled"] || !watch["levels"].length) continue;
       const price = await this.market.spotOf(watch["symbol"]);
       if (!price) {
         checked.push({ symbol: watch["symbol"], price: null });
         continue;
       }
 
-      const levels = (watch["levels"] as Rec[]).map((l) => ({
+      // 价位与状态是库里读回来的 JSON:类型上是 WatchLevel,运行时照旧逐项兜底(老库、手改过的行)
+      const levels: AlertLevel[] = watch["levels"].map((l) => ({
         price: Number(l["price"]),
         label: String(l["label"] ?? ""),
         source: String(l["source"] ?? "round"),
-        kind: String(l["kind"] ?? "pivot"),
+        kind: l["kind"] === "resistance" || l["kind"] === "support" ? l["kind"] : "pivot",
         priority: 0,
       }));
-      const states: Record<string, { armed: boolean; last_fired_at: number | null }> = {};
-      for (const [k, v] of Object.entries((watch["states"] as Rec) ?? {})) {
+      const states: Record<string, LevelState> = {};
+      for (const [k, v] of Object.entries(watch["states"] ?? {})) {
         states[k] = {
-          armed: Boolean((v as Rec)["armed"] ?? true),
-          last_fired_at: ((v as Rec)["last_fired_at"] as number | null) ?? null,
+          armed: Boolean(v["armed"] ?? true),
+          last_fired_at: v["last_fired_at"] ?? null,
         };
       }
-      const [events, nextStates] = evaluate(
+      const [crossings, nextStates] = evaluate(
         levels, states, watch["last_price"] ?? null, price, Date.now() / 1000,
       );
-      const history: Rec[] = (watch["events"] as Rec[]) ?? [];
+      const history: WatchEvent[] = watch["events"] ?? [];
+      const events: WatchEvent[] = crossings.map((c) => ({ ...c, symbol: watch["symbol"] }));
       for (const event of events) {
-        event["symbol"] = watch["symbol"];
         // 只进通知流(订单看板下面那条),不走系统通知:穿越的"弹"由桌面端的置顶弹窗负责,
         // 两边都弹就是同一件事说两遍(macOS 上尤其明显)
         this.engine.notifier.notify(

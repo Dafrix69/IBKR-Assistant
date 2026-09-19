@@ -9,33 +9,16 @@
  * 上限吃满、指数不能盯异动这些都要如实说出来(store/pool.ts),不能让人以为都开上了。
  */
 import { create } from 'zustand';
-import { dafri, errorMessage } from '../bridge';
+import { dafri, errorMessage, type Sector, type SectorStock, type StockQuote } from '../bridge';
 import { loadAlerts } from './alerts';
 import { showBanner } from './banner';
 import { reportDropped, reportPoolWatch, reportSkipped } from './pool';
 import { loadQuality } from './quality';
 import { getStatus } from './status';
 
-export interface SectorStock {
-  symbol: string;
-  company?: string;
-  reason?: string;
-  tag?: string;
-}
-
-export interface Sector {
-  id: string;
-  name: string;
-  stocks: SectorStock[];
-  updated_at?: string;
-  [key: string]: unknown;
-}
-
-export interface Quote {
-  last?: number | null;
-  close?: number | null;
-  change_pct?: number | null;
-}
+// 形状在引擎契约里(engine-ts/src/contract/sectors.ts),这里只转出——页面一直从这个文件 import 这几个名字。
+export type { Sector, SectorStock };
+export type Quote = StockQuote;
 
 const useStore = create<{
   sectors: Sector[];

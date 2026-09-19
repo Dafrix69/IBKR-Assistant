@@ -106,16 +106,20 @@ export interface ConfirmOptions {
   confirmLabel?: string;
 }
 
-// ---- 引擎契约(engine-ts/src/contract/):优质股追踪与股票池开关 ------------------------------
-// 这两个域的形状**不在这里定义**:引擎的 handler 与这里用的是同一份类型,返回结构改一个字段名,
+// ---- 引擎契约(engine-ts/src/contract/):优质股追踪、股票池开关、板块、价位提醒 ----------------
+// 这几个域的形状**不在这里定义**:引擎的 handler 与这里用的是同一份类型,返回结构改一个字段名,
 // 两头一起编译不过。只许 `import type`,只许进 contract/ 顶层的类型文件(它们不 import 任何东西,
 // 界面的 tsc 不装引擎依赖也解析得了);contract/schema/ 是引擎自己的运行时校验,这里不碰。
 import type {
-  AnomalyConfig, AnomalyEvent, AnomalyKind, AnomalyMetrics, PoolWatch, PoolWatchPatch, QualityList, QualityMonitor,
-  QualityStock, RpcParams, RpcResult,
+  AnomalyConfig, AnomalyEvent, AnomalyKind, AnomalyMetrics, LevelKind, OptionWall, PoolWatch, PoolWatchPatch,
+  QualityList, QualityMonitor, QualityStock, RpcParams, RpcResult, Sector, SectorStock, StockQuote, Watch,
+  WatchEvent, WatchLevel,
 } from '../../../engine-ts/src/contract/index';
 
-export type { AnomalyEvent, AnomalyKind, PoolWatch, PoolWatchPatch, QualityList, QualityMonitor, QualityStock };
+export type {
+  AnomalyEvent, AnomalyKind, LevelKind, OptionWall, PoolWatch, PoolWatchPatch, QualityList, QualityMonitor,
+  QualityStock, Sector, SectorStock, StockQuote, Watch, WatchEvent, WatchLevel,
+};
 /** 界面这边一直叫 QualityConfig / QualityMetrics;引擎叫 AnomalyConfig / AnomalyMetrics,是同一个东西。 */
 export type QualityConfig = AnomalyConfig;
 export type QualityMetrics = AnomalyMetrics;
@@ -157,14 +161,14 @@ export interface DafriBridge {
   digestIdeas(scope?: string): Rpc<any>;
   listIdeaDigests(): Rpc<any>;
 
-  listSectors(): Rpc<any>;
-  addSector(name: string): Rpc<any>;
-  deleteSector(id: string): Rpc<any>;
-  pickSector(id: string): Rpc<any>;
-  sectorQuotes(): Rpc<any>;
-  addSectorStock(id: string, symbol: string, tag?: string): Rpc<any>;
-  removeSectorStock(id: string, symbol: string): Rpc<any>;
-  setSectorTag(id: string, symbol: string, tag: string): Rpc<any>;
+  listSectors(): Rpc<RpcResult<'sectors.list'>>;
+  addSector(name: string): Rpc<RpcResult<'sectors.add'>>;
+  deleteSector(id: string): Rpc<RpcResult<'sectors.delete'>>;
+  pickSector(id: string): Rpc<RpcResult<'sectors.pick'>>;
+  sectorQuotes(): Rpc<RpcResult<'sectors.quotes'>>;
+  addSectorStock(id: string, symbol: string, tag?: string): Rpc<RpcResult<'sectors.add_stock'>>;
+  removeSectorStock(id: string, symbol: string): Rpc<RpcResult<'sectors.remove_stock'>>;
+  setSectorTag(id: string, symbol: string, tag: string): Rpc<RpcResult<'sectors.set_tag'>>;
 
   screenerRs(spec: unknown): Rpc<any>;
   screenerInflection(spec: unknown): Rpc<any>;
@@ -204,11 +208,11 @@ export interface DafriBridge {
   orderBook(symbol: string): Rpc<any>;
 
   optionWall(spec: unknown): Rpc<any>;
-  listAlerts(): Rpc<any>;
-  createAlert(symbol: string, step: number): Rpc<any>;
-  deleteAlert(id: string): Rpc<any>;
-  refreshAlert(id: string, expiry?: string): Rpc<any>;
-  pollAlerts(): Rpc<any>;
+  listAlerts(): Rpc<RpcResult<'alerts.list'>>;
+  createAlert(symbol: string, step: number): Rpc<RpcResult<'alerts.create'>>;
+  deleteAlert(id: string): Rpc<RpcResult<'alerts.delete'>>;
+  refreshAlert(id: string, expiry?: string): Rpc<RpcResult<'alerts.refresh'>>;
+  pollAlerts(): Rpc<RpcResult<'alerts.poll'>>;
 
   paTimeframes(): Rpc<any>;
   paAnalyze(spec: unknown): Rpc<any>;

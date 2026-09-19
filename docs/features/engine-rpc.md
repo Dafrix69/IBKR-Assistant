@@ -70,13 +70,23 @@
   代码形状、上限、阈值范围是用户填错了,还是 handler 那句给人看的话(「price / anomaly 至少要传一个」),界面原样显示。
   schema 不许比老 handler 严:异动阈值一直认数字串(表单里敲出来的就是字符串),所以 `config` 在契约里是
   "键同 `AnomalyConfig`、值 `unknown`",由 `normalizeAnomalyConfig` 校验;可选字段带 `null` 和不带是一回事。
-- **库的行也写成接口。** `QualityStockRow` 是 `quality_stocks` 的一行,`QualityStock` 在它上面加内存里的四样;
-  store 的这几个方法不再回 `Rec`。类型断言只留在库的边界(`qualityRow`)一处。
-- **迁移渐进,只许往前。** 还没迁的 71 个老方法钉在 `tests/contract.spec.ts` 的 `LEGACY_METHODS`,那张表只许变短;
-  引擎里出现一个既不在契约、也不在名单里的方法,测试就红。先迁的是 `quality.*` 与 `pool.set_watch`——
-  界面那头本来就有具体接口,两边对得上,最便宜。
+- **库的行也写成接口。** `QualityStockRow`、`Watch`、`Sector` 分别是 `quality_stocks` / `alert_watches` / `sectors` 的一行,
+  store 的这些方法不再回 `Rec`;允许改哪几列写成 `WatchPatch` / `QualityStockPatch`。类型断言只留在库的边界
+  (`qualityRow` / `watchRow` / `sectorRow`)。运行时那道"不允许修改的字段"白名单照留——它是给绕过类型的调用方准备的。
+- **契约一直通到产出数据的地方。** 返回类型不是在 handler 里断言出来的,是从源头一路标过来的:`StockQuote` 标在两家
+  券商适配层的 `stockQuotes` 上,`OptionWallCore` 标在 `optionwall.analyze` 上,`WatchLevel` / `WatchEvent` 标在 `alerts.ts` 上。
+  验过:把行情的 `change_pct` 改名,`broker.ts`、`futuBroker.ts` 和界面的 `PoolStock.tsx` 同时报错。
+- **契约如实写,不顺手"修"。** 迁的过程会照出线上形状里的毛病,写进契约的注释、留给人定夺,不在迁移里改——迁移的
+  判据是 `golden-rpc` 不更新基线还绿。现在记着的一处:`alerts.create` 的回执里 `enabled` 是数字 `1`(回的是刚插入的那一行,
+  没过读库的转换),`alerts.list` 里同一条是 `true`;基线钉着,所以 `Watch.enabled` 写成了 `boolean | 0 | 1`。
+  可空也如实写:`alerts.refresh` 与 `sectors.pick` 中间有 `await`,回执里重读的那一行可能已经被删,类型是 `… | null`;
+  同步的那几个(中间没有 `await`)重读不可能落空,类型不带 `null`。
+- **迁移渐进,只许往前。** 还没迁的 58 个老方法钉在 `tests/contract.spec.ts` 的 `LEGACY_METHODS`,那张表只许变短;
+  引擎里出现一个既不在契约、也不在名单里的方法,测试就红。已迁 19 个:`quality.*`、`pool.set_watch`(界面那头本来就有
+  具体接口,最便宜)、`alerts.*`、`sectors.*`(界面的 store 里各手写了一份猜的:价位的 `kind` 写成了 `… | 'neutral'`,
+  引擎给的其实是 `pivot`;字段全标成可选,引擎其实每个都给)。
 
-没做的:`sensitive`(要界面确认)与走哪条道还登记在 `main.js` 和 `server.ts`,没有进契约——现在迁进来的六个方法
+没做的:`sensitive`(要界面确认)与走哪条道还登记在 `main.js` 和 `server.ts`,没有进契约——现在迁进来的 19 个方法
 都不发单,等第一个会发单的方法迁的时候再加,不提前造。
 
 ## 解析链路时延:量过一遍之后改了四处

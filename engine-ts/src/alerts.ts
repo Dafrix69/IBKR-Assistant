@@ -3,7 +3,11 @@
  * 最难的不是"设警报",是"不要刷屏":每个价位独立状态机,
  * 穿过 → 报一次 → 落防 → 离开 band 之外且过冷却 → 重新上膛。
  */
+import type { LevelKind, LevelState, TrendSnapshot, WatchEvent, WatchLevel } from "./contract/alerts.js";
 import { fmtF, fmtSF, pyRound } from "./py.js";
+
+// 价位的报警状态定义在 contract/alerts.ts(盯单上存的就是它);这里转出,老的 import 不用改。
+export type { LevelState } from "./contract/alerts.js";
 
 export const DEFAULT_STEP = 5.0;
 export const DEFAULT_MERGE_PCT = 0.15;
@@ -17,21 +21,13 @@ export const MIN_EXTREME_BARS = 20; // 历史太短时高低点没意义,干脆�
 
 export class AlertError extends Error {}
 
-export interface AlertLevel {
-  price: number;
-  label: string;
-  source: string;
-  kind: string; // resistance / support / pivot
+/** 计算过程里的价位:盯单上存的那四样(WatchLevel)+ 合并时用的可信度,priority 不上线、不落库。 */
+export interface AlertLevel extends WatchLevel {
   priority: number;
 }
 
-export function levelDict(l: AlertLevel): Record<string, unknown> {
+export function levelDict(l: AlertLevel): WatchLevel {
   return { price: l.price, label: l.label, source: l.source, kind: l.kind };
-}
-
-export interface LevelState {
-  armed: boolean;
-  last_fired_at: number | null;
 }
 
 // ---------------------------------------------------------------- 价位生成
@@ -63,7 +59,7 @@ function wallLevels(wall: Record<string, any> | null | undefined): AlertLevel[] 
   const add = (key: string, label: string, rank: number): void => {
     const entry = wall[key];
     if (entry && entry["strike"]) {
-      const kind = key.includes("call") ? "resistance" : "support";
+      const kind: LevelKind = key.includes("call") ? "resistance" : "support";
       out.push({ price: Number(entry["strike"]), label, source: key, kind, priority: rank });
     }
   };
@@ -88,7 +84,7 @@ function wallLevels(wall: Record<string, any> | null | undefined): AlertLevel[] 
   return out;
 }
 
-function trendKind(price: number, spot: number): string {
+function trendKind(price: number, spot: number): LevelKind {
   if (price < spot) return "support";
   if (price > spot) return "resistance";
   return "pivot";
@@ -150,13 +146,13 @@ export function trendSnapshot(
   spot: number,
   maPeriods: readonly number[] = DEFAULT_MA_PERIODS,
   extremeWindow = EXTREME_WINDOW,
-): Record<string, unknown> | null {
+): TrendSnapshot | null {
   const levels = trendLevels(bars, spot, maPeriods, extremeWindow);
   if (!levels.length) return null;
-  const out: Record<string, unknown> = {};
+  const out: TrendSnapshot = {};
   for (const level of levels) out[level.source] = level.price;
-  const low = out["low_52w"] as number | undefined;
-  const high = out["high_52w"] as number | undefined;
+  const low = out["low_52w"];
+  const high = out["high_52w"];
   if (low !== undefined && high !== undefined && high > low) {
     out["range_pos_pct"] = pyRound(((spot - low) / (high - low)) * 100.0, 1);
   }
@@ -218,6 +214,9 @@ function band(price: number, bandPct: number): number {
   return (Math.abs(price) * bandPct) / 100.0;
 }
 
+/** 一次穿越,还不知道是哪只股的(symbol 由调用方按盯单补上,补完就是 WatchEvent)。 */
+export type CrossingEvent = Omit<WatchEvent, "symbol">;
+
 /** 价格从 prevPrice 走到 price,哪些价位该报警。第一次调用只登记不报警。 */
 export function evaluate(
   levels: AlertLevel[],
@@ -227,8 +226,8 @@ export function evaluate(
   nowTs: number,
   bandPct = DEFAULT_BAND_PCT,
   cooldown = DEFAULT_COOLDOWN,
-): [Array<Record<string, unknown>>, Record<string, LevelState>] {
-  const events: Array<Record<string, unknown>> = [];
+): [CrossingEvent[], Record<string, LevelState>] {
+  const events: CrossingEvent[] = [];
   const out: Record<string, LevelState> = { ...states };
 
   for (const level of levels) {
@@ -246,7 +245,7 @@ export function evaluate(
       const low = Math.min(prevPrice, price);
       const high = Math.max(prevPrice, price);
       if (low <= level.price && level.price <= high) {
-        const direction = price >= prevPrice ? "up" : "down";
+        const direction: "up" | "down" = price >= prevPrice ? "up" : "down";
         events.push({
           price: level.price,
           label: level.label,

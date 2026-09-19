@@ -155,7 +155,8 @@ describe("store: TS 写入路径行为", () => {
 
   it("白名单更新:未知字段拒绝、合法字段生效", () => {
     const w = store.addWatch("SPY");
-    expect(() => store.updateWatch(w["id"], { symbol: "QQQ" })).toThrowError(
+    // 类型已经不让这么传了;运行时那道白名单是给绕过类型的调用方留的,所以这里故意绕
+    expect(() => store.updateWatch(w["id"], { symbol: "QQQ" } as never)).toThrowError(
       "不允许修改的字段:symbol",
     );
     expect(store.updateWatch(w["id"], { last_price: 450.1, enabled: false })).toBe(true);

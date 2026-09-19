@@ -10,7 +10,7 @@ import { errText } from "../rpcError.js";
 import type { AlertsService } from "./alerts.js";
 import { AnomalyService } from "./anomaly.js";
 import { ServiceBase } from "./host.js";
-import type { Rec, ServiceHost } from "./host.js";
+import type { ServiceHost } from "./host.js";
 
 export class PoolService extends ServiceBase {
   constructor(
@@ -98,7 +98,7 @@ export class PoolService extends ServiceBase {
       store.listSectors().find((s) => String(s["name"]) === PoolService.POOL_DEFAULT_SECTOR) ??
       store.addSector(PoolService.POOL_DEFAULT_SECTOR);
     const stocks = [
-      ...((sector["stocks"] as Rec[]) ?? []),
+      ...(sector["stocks"] ?? []),
       { symbol, company: company.slice(0, 60), reason: "手动加入", tag: "" },
     ];
     store.setSectorStocks(String(sector["id"]), stocks);
@@ -151,7 +151,7 @@ export class PoolService extends ServiceBase {
         // 这里不按"单个板块最多 30 只"截断:截掉的那几只会留着两张表的行却不在池子里,
         // 反而成了新的孤儿——迁移的本分是一只不落地搬过来。
         store.setSectorStocks(String(sector["id"]), [
-          ...((sector["stocks"] as Rec[]) ?? []),
+          ...(sector["stocks"] ?? []),
           ...orphans.map((symbol) => ({ symbol, company: "", reason: "迁移并入", tag: "" })),
         ]);
       }

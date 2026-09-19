@@ -267,3 +267,32 @@ CI 里排在 `lint` 之后。第一次跑会红,把现有 8 + 3 条修掉之后�
 
 接下来按域迁:`alerts.*` 与 `sectors.*`(和 pool 同一片,store 行类型可以一起收)→ `tracker.*` / `positions.list`
 (第一个会发单的域,到时把 `sensitive` 标记加进契约)。
+
+**2026-09-20,第 3 步第二批:`alerts.*`(5 个)与 `sectors.*`(8 个)迁完,77 个里已迁 19 个、还剩 58 个。**
+
+- 判据是 `golden-rpc`:它回放的 96 条请求里有 22 条打的是这两个域,**没更新基线就是绿的**——线上形状一个字节没变。
+- 这一批的手抄藏得更深:`bridge.ts` 回的是 `any`,而界面的 `store/alerts.ts` / `store/sectors.ts` 里各自手写了一套接口,
+  两者之间没有任何检查。对出来猜错的:价位的 `kind` 写成 `'support' | 'resistance' | 'neutral'`(引擎给的是 `pivot`,
+  从来没有 `neutral`;`LevelStrip` 只比前两个、其余走默认,所以没出过事);字段全标成可选;`Sector` 上还挂着一个
+  `[key: string]: unknown`。现在这两个文件只做转出,页面的 import 一行没改,界面一次编译通过。
+- 类型从源头标起,不在 handler 里断言:`StockQuote` 标到两家券商适配层的 `stockQuotes` 上,`OptionWallCore` 标到
+  `optionwall.analyze` 上(`golden-analysis` 的数值基线没动),`WatchLevel` / `WatchEvent` 标到 `alerts.ts` 上。验证:
+  把 `change_pct` 改名,`broker.ts`、`futuBroker.ts` 与 `PoolStock.tsx` 同时报错;把 `last_price` 改名,`store.ts`、
+  `services/alerts.ts` 与 `PoolStock.tsx` 同时报错。期权墙的形状(`contract/options.ts`)因为盯单上存着整份,先进了契约,
+  `options.wall` 下一批顺带就能迁。
+- 第四条(`Rec`)又收了一块:`alert_watches` / `sectors` 的 store 方法回 `Watch` / `Sector`,`handlers/alerts.ts`、
+  `handlers/sectors.ts`、`services/pool.ts` 里已经没有 `Rec`;`services/alerts.ts` 的 `refresh` 里两个 `!` 断言也顺手消掉了
+  (改成先取到再赋值,逻辑不变)。
+- "迁一个划一个"那条棘轮验过会拦:13 个方法迁完、名单还没改的时候,`contract.spec` 是红的。
+
+**照出来、但没有改的两处**(都需要你定夺,所以只写进了契约的注释):
+
+1. `alerts.create` 的回执里 `enabled` 是数字 `1`,`alerts.list` 里同一条盯单是 `true`——`addWatch` 回的是刚插入的那一行,
+   没过读库那道转换。真进程里核过确实如此,而且被 `golden-rpc` 钉着。要统一就得 `golden:update` 并在提交里说明改了口径;
+   界面只按真假用,现在不碍事,所以契约里先如实写成 `boolean | 0 | 1`。
+2. `sectors.pick` 等大模型的那几秒里如果板块被删了:`setSectorStocks` 静默改 0 行,但新选出来的股照样被打开两个开关,
+   成了"有开关却不在任何板块"的孤儿(一次性迁移不会再跑,没有别的东西清它们)。写契约时发现回执里的 `sector` 可能是 `null`,
+   顺着查出来的;用一次性用例复现过:回执 `sector: null`,NVDA 不在任何板块,却同时有盯价位与盯异动两行。
+   窗口很窄,是老行为,不混进这笔"线上形状不变"的迁移——紧跟着单独一笔提交修。
+
+接下来:`options.wall`(形状已经在契约里)→ `tracker.*` / `positions.list`(第一个会发单的域,到时把 `sensitive` 标记加进契约)。

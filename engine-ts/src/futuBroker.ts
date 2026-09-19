@@ -6,6 +6,7 @@
  * (pollOrderUpdates);实盘要先交易解锁(密码 md5 只走 Keychain / DPAPI)。
  * 真机联调三结论全部保留:指数闸门、模拟盘合成成交、is_paper 与 trd_env 核对。
  */
+import type { StockQuote } from "./contract/sectors.js";
 import type { AccountConfig, Settings } from "./config.js";
 import {
   BrokerError, LegQuote, PlacementResult, bookLiquidity, cleanPrice, finiteQuote,
@@ -699,7 +700,7 @@ export class FutuRouter {
   }
 
   /** 批量报价,「板块关注」页用;绝不用于订单定价。 */
-  async stockQuotes(symbols: string[]): Promise<Record<string, Record<string, number | null>>> {
+  async stockQuotes(symbols: string[]): Promise<Record<string, StockQuote>> {
     if (!symbols.length || !this.sessions().length) return {};
     const codes: Record<string, string> = {};
     for (const symbol of symbols) {
@@ -716,13 +717,13 @@ export class FutuRouter {
       rows = await this.snapshot(Object.values(codes));
     } catch (exc) {
       if (exc instanceof BrokerError) {
-        const out: Record<string, Record<string, number | null>> = {};
+        const out: Record<string, StockQuote> = {};
         for (const s of Object.keys(codes)) out[s] = { last: null, close: null, change_pct: null };
         return out;
       }
       throw exc;
     }
-    const out: Record<string, Record<string, number | null>> = {};
+    const out: Record<string, StockQuote> = {};
     for (const symbol of symbols) {
       if (!(symbol in codes)) continue; // 指数干脆不出现,而不是给一行全 null
       const row = rows[codes[symbol]!] ?? {};
