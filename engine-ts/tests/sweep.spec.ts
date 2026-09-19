@@ -371,7 +371,7 @@ describe("设置时:组合托管可以和止损、利润回撤一起设", () => 
     });
     const auto = tk.makeAutoClose({ enabled: true, host_at_broker: true, order_type: "LMT" });
     const s = server(router);
-    return { call: () => (s as any).checkTargets(raw, rows, position, tk.makeTargets(targets), auto) };
+    return { call: () => (s.domains.tracker as any).checkTargets(raw, rows, position, tk.makeTargets(targets), auto) };
   }
 
   it("标的目标价 + 利润回撤 + 止损 + 分档:放行", async () => {

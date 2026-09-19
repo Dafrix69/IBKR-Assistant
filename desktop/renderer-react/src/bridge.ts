@@ -106,7 +106,7 @@ export interface ConfirmOptions {
   confirmLabel?: string;
 }
 
-// ---- 优质股追踪(形状以 engine-ts/src/anomaly.ts 与 rpc.ts 的 quality.* 为准)----------------
+// ---- 优质股追踪(形状以 engine-ts/src/anomaly.ts 与 rpc/handlers/quality.ts 为准)----------------
 
 export type AnomalyKind = 'rvol' | 'burst' | 'spike' | 'day_move';
 

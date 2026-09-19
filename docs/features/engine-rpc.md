@@ -10,13 +10,39 @@
 | 交易道 | 其余:`instruction.submit`、`pending.poll`、`tracker.poll`、熔断、连接切换、`settings.patch` | 严格顺序,用户请求插到周期轮询前面 |
 
 只有交易道需要顺序:下单、熔断、连接切换共享引擎状态,并发会把"批内熔断""重复单"这些闸门变成竞态。
-方法表在 `rpc.ts` 的 `LOCAL_METHODS` / `READ_METHODS`,`tests/rpc-lanes.spec.ts` 钉住调度行为。交易道内两条纪律:
+道表在 `rpc/server.ts` 的 `LOCAL_METHODS` / `READ_METHODS`,`tests/rpc-lanes.spec.ts` 钉住调度行为。交易道内两条纪律:
 
 - **轮询类方法低优先级**:读 stdin 的线程把请求按优先级排队,用户请求先执行。执行仍是
   单线程,只是插队。
 - **公开数据源永不阻塞主循环**:过期但没老到没用(10 分钟内)的旧值先给、后台去取新值;
   只有从没取到过的格子才同步等。用户点强制刷新才同步等。
 - 超过 1 秒的请求记到 stderr(`[rpc] 慢请求 …`),别让下一个拖慢主循环的方法躲起来。
+
+## 代码怎么摆:传输、各域的 handler、带状态的 service
+
+`rpc.ts` 曾经是一个 3,500 行的类:350 行传输,其余是 13 个业务域和四块带状态的编排。2026-09-19 按域搬开
+(函数体逐字搬,`golden-rpc` 回放的 stdio 契约一个字节没变),`rpc.ts` 只剩一个转出的壳:
+
+| 位置 | 管什么 | 不管什么 |
+|---|---|---|
+| `rpc/server.ts` | 传输(读行、三条道、回执与事件)、生命周期(配置 / router / 引擎的建与丢)、装配(把各域的表合成一张) | 任何一个方法的业务 |
+| `rpc/handlers/<域>.ts` | 一个域一张方法表:`system` `trading` `ideas` `sectors` `screener` `backtest` `market` `alerts` `quality` `review` `tracker` `connection` `settings` | 别的域——handler 之间不互相 import |
+| `rpc/context.ts` | handler 看到的上下文接口(`RpcContext`)与基类 | — |
+| `rpc/params.ts` | 入参小工具:`optFloat` / `optInt` / `symbolOrRaise` / `drawdownTiersOf` | — |
+| `services/*.ts` | 带状态的编排:`marketData`(K 线 / 日线 / 期权墙缓存)、`alerts`(算价位、盯穿越、自动补价位)、`anomaly`(5 秒一轮的异动循环)、`pool`(股票池两个开关与一次性迁移) | RPC——它们只认 `ServiceHost`(settings / router / engine / emit),离线测试可以塞假的 |
+
+几条设计决策:
+
+- **两个域都要的东西往下沉,不横着借。** K 线缓存被 K线 PA、扫描器、价位提醒、交易分析四处用,所以它是 service
+  而不是某个 handler 的私有字段;缓存是节流(IBKR 15 秒内相同历史请求算超频),各处各缓一份等于没缓。
+  `depcruise` 的 `handlers-are-leaves` 把这条钉成了机器检查。
+- **service 拿的是宿主,不是值。** 配置会重载、券商会重连、引擎会重建;service 每次用到都从宿主现取
+  `settings` / `router` / `engine`,不在构造时存一份会过期的拷贝。
+- **错误码在最底层。** `RpcError` 放在 `rpcError.ts`(util 层):service 也要抛带码的错(-32017「需要先连券商」),
+  不该为一个错误类去 import 传输层。
+- **方法表是无原型对象。** 请求里的 `method` 是外来字符串,`"constructor"` 不该从 `Object.prototype` 上捞到东西。
+- **加方法**:写进所属域的 `methods()`;新域就在 `server.ts` 的 `domains` 里加一行。同名方法重复登记,构造时直接抛。
+  `tests/desktop-whitelist.spec.ts` 双向核对引擎方法表 ↔ `main.js` 的 `ALLOWED_RPC`,并核对三张道表里的名字都是真方法。
 
 ## 解析链路时延:量过一遍之后改了四处
 

@@ -344,14 +344,14 @@ describe("review.candidates / review.analyze:股票和蝴蝶走同一对接口",
     ]);
     if (positions !== null) {
       (s as any).router = { sessions: () => [{}], executions: async () => [], positions: async () => positions };
-      (s as any).paBars = async () => [BARS];
+      (s.market as any).paBars = async () => [BARS];
     }
     return s;
   }
   const held = [{ account: "主账户", symbol: "RKLB", sec_type: "STK", quantity: 100 }, { account: "主账户", symbol: "RKLB", sec_type: "OPT", quantity: 3 }];
 
   it("候选列表:一段持仓一行,新的在前;期初仓位按当前持仓反推(期权持仓不算数)", async () => {
-    const out = await server(held).reviewCandidates({});
+    const out = await server(held).domains.review.reviewCandidates({});
     const rows = (out["candidates"] as Rec[]).filter((c) => c["kind"] === "stock");
     expect(rows.map((c) => [c["symbol"], c["side"], c["status"], c["carried"], c["opening_assumed"], c["pnl"]])).toEqual([
       ["RKLB", "LONG", "open", false, false, null],
@@ -364,34 +364,34 @@ describe("review.candidates / review.analyze:股票和蝴蝶走同一对接口",
 
   it("没连券商:照样列(库里攒的成交),但每一笔都标期初持仓未核对;分析要 K 线,得先连", async () => {
     const s = server(null);
-    const out = await s.reviewCandidates({});
+    const out = await s.domains.review.reviewCandidates({});
     const rows = out["candidates"] as Rec[];
     expect(rows.map((c) => [c["symbol"], c["side"], c["status"], c["carried"], c["opening_assumed"], c["pnl"]])).toEqual([
       ["RKLB", "LONG", "open", false, true, null],
       ["NVO", "LONG", "closed", false, true, 75],
       ["RKLB", "LONG", "closed", true, true, null], // 不知道手里有多少,但先卖的不读成卖空:按卖出老仓位算,盈亏不编
     ]);
-    await expect(s.reviewAnalyze({ id: rows[0]!["id"] })).rejects.toBeInstanceOf(RpcError);
+    await expect(s.domains.review.reviewAnalyze({ id: rows[0]!["id"] })).rejects.toBeInstanceOf(RpcError);
   });
 
   it("读不到持仓(券商报错)≠ 空仓:退到期初未核对,不拿空表去反推", async () => {
     const s = server(held);
     const { BrokerError } = await import("../src/broker.js");
     (s as any).router.positions = async () => { throw new BrokerError("读不到持仓:超时"); };
-    const rows = (await s.reviewCandidates({}))["candidates"] as Rec[];
+    const rows = (await s.domains.review.reviewCandidates({}))["candidates"] as Rec[];
     expect(rows.every((c) => c["opening_assumed"] === true)).toBe(true);
   });
 
   it("分析:stk: 开头的 id 走股票复盘;id 对不上给明白话", async () => {
     const s = server(held);
-    const rows = (await s.reviewCandidates({}))["candidates"] as Rec[];
+    const rows = (await s.domains.review.reviewCandidates({}))["candidates"] as Rec[];
     const nvo = rows.find((c) => c["symbol"] === "NVO")!;
-    const r = await s.reviewAnalyze({ id: nvo["id"], timeframe: "1m" });
+    const r = await s.domains.review.reviewAnalyze({ id: nvo["id"], timeframe: "1m" });
     expect(r).toMatchObject({ kind: "stock", record_id: nvo["id"], source: "ibkr", account: "主账户", timeframe_label: "1 分钟" });
     expect(r["outcome"]).toMatchObject({ kind: "closed", realized_pnl: 75 });
     expect(r["series"]["markers"]).toHaveLength(2);
     expect("exit_plan" in r).toBe(false); // 止盈策略回放是蝴蝶的事
-    await expect(s.reviewAnalyze({ id: "stk:p999" })).rejects.toThrowError("不在已同步的成交里");
-    await expect(s.reviewAnalyze({ id: nvo["id"], timeframe: "7m" })).rejects.toThrowError("未知 K 线周期");
+    await expect(s.domains.review.reviewAnalyze({ id: "stk:p999" })).rejects.toThrowError("不在已同步的成交里");
+    await expect(s.domains.review.reviewAnalyze({ id: nvo["id"], timeframe: "7m" })).rejects.toThrowError("未知 K 线周期");
   });
 });

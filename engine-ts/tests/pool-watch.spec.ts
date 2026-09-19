@@ -15,6 +15,8 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { setClock } from "../src/config.js";
 import { RpcServer } from "../src/rpc.js";
+import { AlertsService } from "../src/services/alerts.js";
+import { PoolService } from "../src/services/pool.js";
 
 type Rec = Record<string, any>;
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -111,7 +113,7 @@ const capSymbol = (i: number): string =>
 afterEach(() => {
   setClock(null);
   for (const s of servers.splice(0)) {
-    s.stopAnomalyLoop();
+    s.anomaly.stop();
     s.engine.stopTrackerLoop();
   }
   for (const d of dirs.splice(0)) {
@@ -202,7 +204,7 @@ describe("pool.set_watch:一只股身上的两个开关", () => {
     expect(out).toMatchObject({ symbol: "ZZZA", price_on: false, anomaly_on: true });
     expect(out["skipped"]).toEqual(["价位已达 30 只上限,ZZZA 没打开"]);
     expect(s.engine.store.listQualityStocks()).toHaveLength(30);
-    expect(RpcServer.MAX_WATCH).toBe(30);
+    expect(PoolService.MAX_WATCH).toBe(30);
   });
 
   it("开关的每一次变化都写审计:pool_watch_on / pool_watch_off", async () => {
@@ -317,7 +319,7 @@ describe("旧库第一条请求就是改池子:迁移要排在前面", () => {
       store.addWatch(symbol, 5);
       store.addQualityStock(symbol);
     }
-    expect(store.getPref(RpcServer.POOL_MIGRATED_PREF)).toBeNull();
+    expect(store.getPref(PoolService.POOL_MIGRATED_PREF)).toBeNull();
     return { s, sectorId: String(sector["id"]) };
   }
 
@@ -370,7 +372,7 @@ describe("一次性迁移:三张表各记一份的旧库并成一个池子", () 
     expect(watched(s)).toEqual(["AAPL", "MSFT", "NVDA"]);
     expect(anomalied(s)).toEqual(["AAPL", "MSFT", "NVDA"]);
     expect(poolAudit(s, "pool_migrate_v1")).toHaveLength(1);
-    expect(store.getPref(RpcServer.POOL_MIGRATED_PREF)).not.toBeNull();
+    expect(store.getPref(PoolService.POOL_MIGRATED_PREF)).not.toBeNull();
   });
 
   it("只跑一次:用户手动关掉的开关,重启(新 RpcServer 开同一个库)之后仍然是关的", async () => {
@@ -409,11 +411,11 @@ describe("价位自动算:盯上了就该有价位", () => {
     (s as any).router = router;
     await sectorWith(s, "科技", ["NVDA", "AMD"]);
 
-    const first = await s.anomalyTickOnce(ET_1100);
-    const second = await s.anomalyTickOnce(ET_1100 + 5000);
+    const first = await s.anomaly.tickOnce(ET_1100);
+    const second = await s.anomaly.tickOnce(ET_1100 + 5000);
     expect([String(first["levels"]), String(second["levels"])].sort()).toEqual(["AMD", "NVDA"]);
     expect(router.chainCalls).toHaveLength(2); // 一轮一只,没有一轮连算两只
-    const third = await s.anomalyTickOnce(ET_1100 + 10_000);
+    const third = await s.anomaly.tickOnce(ET_1100 + 10_000);
     expect(third["levels"]).toBeNull();
     expect(router.chainCalls).toHaveLength(2);
     for (const watch of s.engine.store.listWatches()) {
@@ -426,17 +428,17 @@ describe("价位自动算:盯上了就该有价位", () => {
     const router = new FakeLevelsRouter();
     (s as any).router = router;
     await sectorWith(s, "科技", ["NVDA"]);
-    await s.anomalyTickOnce(ET_1100);
+    await s.anomaly.tickOnce(ET_1100);
     expect(router.chainCalls).toEqual(["NVDA"]);
     const id = s.engine.store.listWatches()[0]!["id"];
 
     // 把这一行改成"上一个交易日收盘时算的"(updateWatch 自己会盖 updated_at,只能直接改库)
     s.engine.store.rawExec("UPDATE alert_watches SET updated_at=? WHERE id=?", ["2026-09-10T20:00:00+00:00", id]);
-    const next = await s.anomalyTickOnce(ET_1100 + RpcServer.LEVELS_BACKOFF_MS + 1000);
+    const next = await s.anomaly.tickOnce(ET_1100 + AlertsService.LEVELS_BACKOFF_MS + 1000);
     expect(next["levels"]).toBe("NVDA");
     expect(router.chainCalls).toEqual(["NVDA", "NVDA"]);
     // 重算完就是今天的了,再往后几轮不再打期权链
-    expect((await s.anomalyTickOnce(ET_1100 + 2 * RpcServer.LEVELS_BACKOFF_MS + 2000))["levels"]).toBeNull();
+    expect((await s.anomaly.tickOnce(ET_1100 + 2 * AlertsService.LEVELS_BACKOFF_MS + 2000))["levels"]).toBeNull();
     expect(router.chainCalls).toHaveLength(2);
   });
 
@@ -445,15 +447,15 @@ describe("价位自动算:盯上了就该有价位", () => {
     await sectorWith(s, "科技", ["NVDA"]);
 
     // 没连券商
-    expect((await s.anomalyTickOnce(ET_1100))["levels"]).toBeNull();
+    expect((await s.anomaly.tickOnce(ET_1100))["levels"]).toBeNull();
 
     const router = new FakeLevelsRouter();
     (s as any).router = router;
     // 连上了,但是收盘一小时之后
-    expect((await s.anomalyTickOnce(ET_POST))["levels"]).toBeNull();
+    expect((await s.anomaly.tickOnce(ET_POST))["levels"]).toBeNull();
     expect(router.chainCalls).toEqual([]);
     // 盘中就算
-    expect((await s.anomalyTickOnce(ET_1100))["levels"]).toBe("NVDA");
+    expect((await s.anomaly.tickOnce(ET_1100))["levels"]).toBe("NVDA");
     expect(router.chainCalls).toEqual(["NVDA"]);
   });
 
@@ -464,16 +466,16 @@ describe("价位自动算:盯上了就该有价位", () => {
     (s as any).router = router;
     await sectorWith(s, "科技", ["NVDA"]);
 
-    expect((await s.anomalyTickOnce(ET_1100))["levels"]).toBe("NVDA");
+    expect((await s.anomaly.tickOnce(ET_1100))["levels"]).toBe("NVDA");
     expect(router.chainCalls).toEqual(["NVDA"]);
     // 退避期内一轮都不再打
-    for (const dt of [5_000, 60_000, RpcServer.LEVELS_BACKOFF_MS - 1000]) {
-      expect((await s.anomalyTickOnce(ET_1100 + dt))["levels"], String(dt)).toBeNull();
+    for (const dt of [5_000, 60_000, AlertsService.LEVELS_BACKOFF_MS - 1000]) {
+      expect((await s.anomaly.tickOnce(ET_1100 + dt))["levels"], String(dt)).toBeNull();
     }
     expect(router.chainCalls).toEqual(["NVDA"]);
     // 退避过了再试一次
     router.failChain.clear();
-    expect((await s.anomalyTickOnce(ET_1100 + RpcServer.LEVELS_BACKOFF_MS + 1000))["levels"]).toBe("NVDA");
+    expect((await s.anomaly.tickOnce(ET_1100 + AlertsService.LEVELS_BACKOFF_MS + 1000))["levels"]).toBe("NVDA");
     expect(router.chainCalls).toEqual(["NVDA", "NVDA"]);
   });
 
@@ -489,11 +491,11 @@ describe("价位自动算:盯上了就该有价位", () => {
       ((await call(s, "quality.list"))["result"]["stocks"] as Rec[])[0]!["levels_status"];
 
     expect(await statusOf()).toBe("pending"); // 还没算:界面显示「正在算价位…」
-    await s.anomalyTickOnce(ET_1100);
+    await s.anomaly.tickOnce(ET_1100);
     expect(await statusOf()).toMatch(/^error:.*期权链取不到/);
 
     router.failChain.clear();
-    await s.anomalyTickOnce(ET_1100 + RpcServer.LEVELS_BACKOFF_MS + 1000);
+    await s.anomaly.tickOnce(ET_1100 + AlertsService.LEVELS_BACKOFF_MS + 1000);
     expect(await statusOf()).toBe("ok");
 
     // 把「盯价位」关掉:这只股没有价位这一说

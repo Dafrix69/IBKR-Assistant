@@ -1,16 +1,16 @@
 /** 引擎的模块边界。规则跟 eslint 一个口径:只写"违反了会出事"的那几条。
  *  依赖只能单向往下流:
- *    transport(rpc/cli) → orchestration(engine/tracker) → execution(broker、futuBroker、ibSession、tws、futu)
+ *    transport(rpc.ts、rpc/、cli) → orchestration(engine/tracker、services/) → execution(broker、futuBroker、ibSession、tws、futu)
  *    → validation/parsing(validator/providers/prompts/shorthand) → analysis(纯计算) → domain(config/models/store) → util
  */
 const L = {
-  util:        "^src/(py|pyjson|tz|schemaOut|notify|keychain|killswitch|protections)\\.ts$",
+  util:        "^src/(py|pyjson|tz|schemaOut|notify|keychain|killswitch|protections|rpcError)\\.ts$",
   domain:      "^src/(config|models|store|positions|marketdata)\\.ts$",
   analysis:    "^src/(backtest|priceaction|screener|research|optionwall|anomaly|flyexit|tradereview|ibtrades|macro|market|alerts)\\.ts$",
   parsing:     "^src/(validator|providers|prompts|shorthand|llm)\\.ts$",
   execution:   "^src/(broker|futuBroker|ibSession|ibTypes|tws|futu|futuBridge)\\.ts$",
-  orchestrate: "^src/(engine|tracker)\\.ts$",
-  transport:   "^src/(rpc|cli)\\.ts$",
+  orchestrate: "^src/((engine|tracker)\\.ts|services/[^/]+\\.ts)$",
+  transport:   "^src/((rpc|cli)\\.ts|rpc/.+\\.ts)$",
 };
 module.exports = {
   forbidden: [
@@ -27,8 +27,15 @@ module.exports = {
       from: { path: L.domain }, to: { path: [L.analysis, L.parsing, L.execution, L.orchestrate, L.transport] } },
     { name: "util-bottom", severity: "error", comment: "util 不依赖任何业务模块",
       from: { path: L.util }, to: { path: "^src/", pathNot: L.util } },
-    { name: "only-cli-imports-rpc", severity: "error", comment: "rpc.ts 是最外层,只有 cli 和测试能 import 它",
-      from: { path: "^src/", pathNot: "^src/cli\\.ts$" }, to: { path: "^src/rpc\\.ts$" } },
+    { name: "rpc-outermost", severity: "error",
+      comment: "传输层是最外层:rpc.ts / rpc/ / cli.ts 之外谁也不 import 它们——services/ 不认识 RPC,离线能单跑",
+      from: { path: "^src/", pathNot: L.transport }, to: { path: L.transport } },
+    { name: "rpc-facade-one-way", severity: "error",
+      comment: "rpc.ts 只是转出的壳:rpc/ 里的实现不回头 import 它,也不 import cli",
+      from: { path: "^src/rpc/" }, to: { path: "^src/(rpc|cli)\\.ts$" } },
+    { name: "handlers-are-leaves", severity: "error",
+      comment: "handler 之间不互相 import,也不 import server:两个域都要的东西下沉到 services/(带状态)或 rpc/params.ts(纯函数)",
+      from: { path: "^src/rpc/handlers/" }, to: { path: ["^src/rpc/handlers/", "^src/rpc/server\\.ts$"] } },
     { name: "no-orphans", severity: "warn", from: { orphan: true, pathNot: "\\.d\\.ts$" }, to: {} },
   ],
   options: {

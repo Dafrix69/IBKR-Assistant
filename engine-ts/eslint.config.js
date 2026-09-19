@@ -51,6 +51,26 @@ export default tseslint.config(
     },
   },
   {
+    // `type Rec = Record<string, any>` 的禁区(CLAUDE.md「类型」):一个 Rec 就把整条链路的类型检查关掉。
+    // 对外的四个文件(券商与模型回包的结构由对方定)可以有;下面其余几个是存量,碰到时收成接口、
+    // 从这张表里划掉。**这张表只许变短**——新文件要松散记录类型,说明它缺一个接口。
+    files: ["src/**"],
+    ignores: [
+      "src/broker.ts", "src/ibSession.ts", "src/futuBroker.ts", "src/providers.ts",
+      // 存量
+      "src/engine.ts", "src/store.ts", "src/shorthand.ts", "src/flyexit.ts", "src/ibtrades.ts",
+      "src/screener.ts", "src/stockreview.ts", "src/tradereview.ts",
+      // 从 rpc.ts 搬家带过来的那一份:rpc/ 与 services/ 共用这一处,不再各声明各的
+      "src/services/host.ts",
+    ],
+    rules: {
+      "no-restricted-syntax": ["error", {
+        selector: "TSTypeAliasDeclaration[id.name='Rec']",
+        message: "这个文件不许声明 `type Rec`:把用到的字段写成接口(见 CLAUDE.md「类型」)。",
+      }],
+    },
+  },
+  {
     // 测试:断言里常有故意的"怪写法"
     files: ["tests/**", "scripts/**"],
     rules: { "@typescript-eslint/no-unused-expressions": "off" },

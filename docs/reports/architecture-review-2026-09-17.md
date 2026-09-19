@@ -201,4 +201,41 @@ CI 里排在 `lint` 之后。第一次跑会红,把现有 8 + 3 条修掉之后�
 `providers.ts` 走的是 SDK 自带的 structured outputs,这个 Python 版的 schema 清洗大概率已经用不上了,
 留给你决定删不删。
 
-下一步是第 2 步:`rpc.ts` 按域拆 handlers。
+**2026-09-19,第 2 步做完。** `rpc.ts` 从 3,500 行的一个类搬成 22 个文件,最大的 448 行
+(`handlers/tracker.ts`),`rpc.ts` 自己剩 15 行转出的壳(cli、`latency_bench.js` 与测试的 import 一行没改)。
+
+| 去了哪 | 内容 |
+|---|---|
+| `rpc/server.ts`(360 行) | 传输与三条道、配置 / router / 引擎的生命周期、把各域的表合成一张 |
+| `rpc/handlers/*.ts`(13 个) | `system` `trading` `ideas` `sectors` `screener` `backtest` `market` `alerts` `quality` `review` `tracker` `connection` `settings` |
+| `rpc/context.ts` `rpc/params.ts` | handler 的上下文接口与基类;入参小工具 |
+| `services/marketData.ts` | `paBars` / `dailyHistory` / `wallFor` / `spotOf` 与三个缓存 |
+| `services/alerts.ts` | 算价位、盯穿越、盯上了自动补价位(连同按标的退避的两张表) |
+| `services/anomaly.ts` | 异动循环、样本、指标、心跳 |
+| `services/pool.ts` | 股票池的两个开关与一次性迁移 |
+| `rpcError.ts`(util 层) | `RpcError`:service 也要抛带码的错,不该为它去 import 传输层 |
+
+怎么保证是搬家不是重写:用脚本按行号从 HEAD 切片拼文件,函数体逐字搬,只有接线处做字符串替换且每条替换断言
+命中次数;搬完做了一次逐行对账——旧文件 3,278 个非空行里在新文件中找不到的 250 行,全部是 import、
+`RpcServer.X` 改归属、`this.x(` 改成 `this.ctx.<service>.x(`、`private` 改公开这四类,没有一行业务逻辑。
+`golden-rpc` 的 stdio 契约回放没动基线就是绿的;另外用 `dist/src/cli.js rpc` 起真进程打了 14 条请求
+(含 `futu.scan`——它按 `import.meta.url` 往上找 `node_modules`,搬了两级目录后层数要跟着改)。
+
+测试只改了"从哪儿调"(`s.qualityAdd(` → `s.domains.quality.qualityAdd(`、`s.anomalyTickOnce(` →
+`s.anomaly.tickOnce(` 这一类,7 个文件),断言一个字没动。
+
+顺手补的三道护栏:
+
+- `depcruise` 多三条:`rpc-outermost`(传输层之外谁也不 import 它,services 因此不认识 RPC)、
+  `rpc-facade-one-way`、`handlers-are-leaves`(handler 之间不互相 import)。各放了一个故意违规的探针文件验过会红。
+- `desktop-whitelist.spec.ts` 以前只对 preload ↔ `ALLOWED_RPC`,现在加上引擎方法表 ↔ `ALLOWED_RPC` 双向,
+  以及三张道表里的名字都得是真方法。拆成 13 张表之后,漏接一张表和漏登记白名单是同一种事故。
+- 第四条里建议的 lint 落地了:`type Rec` 只许出现在一张豁免表里的文件(`eslint.config.js`),那张表只许变短。
+
+唯一一处不是纯搬家的改动:方法表改成无原型对象、`handler` 判 `typeof === "function"`。以前
+`{"method":"constructor"}` 会从 `Object.prototype` 上捞到 `Object` 当 handler 调;主进程有白名单挡着,
+界面打不到,但引擎自己不该靠别人挡。
+
+**没做、留给下一步的**:handler 的入参与返回还是 `Rec`。这是第一条(契约)的活,不该混在搬家里——
+搬家的价值就在于 diff 里没有逻辑。下一步是第 3 步:建 `contract/`,从 `quality.*` 与 `pool.set_watch` 开始
+(`bridge.ts` 那头这几个已经有具体接口,两边对得上,是最便宜的起点)。

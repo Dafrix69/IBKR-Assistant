@@ -40,7 +40,7 @@
 | 期权定价库 | `bsPrice` / `bsGamma` / `bachelierCall` | 本来就只有十几行,且 erf 已经用的是 `@stdlib` |
 | 时区库(`luxon` / `date-fns-tz` / Temporal) | `tz.ts`(94 行,Intl 查表 + 墙钟迭代校正) | 只做两件事:墙钟↔时刻、交易日历。已按 DST 边界写清楚并有测试,换库只是多一个依赖 |
 | 配置校验用 zod | `config.ts` 手写校验 | 每一条错误文案都逐字节进黄金基线,换成 zod 的报错就是换掉用户看到的话 |
-| JSON-RPC 库(`json-rpc-2.0` / `vscode-jsonrpc`) | `rpc.ts` 的三条道 + `rpc-client.js` | 调度语义是业务约束:**交易道严格顺序、读道并发 4、本地道即答、轮询请求给用户请求让路**(见 [engine-rpc.md](engine-rpc.md))。通用库表达不了这套优先级,而这套语义被 `tests/rpc-lanes.spec.ts` 钉着 |
+| JSON-RPC 库(`json-rpc-2.0` / `vscode-jsonrpc`) | `rpc/server.ts` 的三条道 + `rpc-client.js` | 调度语义是业务约束:**交易道严格顺序、读道并发 4、本地道即答、轮询请求给用户请求让路**(见 [engine-rpc.md](engine-rpc.md))。通用库表达不了这套优先级,而这套语义被 `tests/rpc-lanes.spec.ts` 钉着 |
 | 数据请求库(`@tanstack/react-query`) | `store/*.ts` 里的 `setInterval` 轮询 | 这些循环**不挂在当前页上**:持仓追踪一秒一轮会真的发平仓单,条件单轮询是引擎触发的唯一入口,切走了还得跑。react-query 的 `refetchInterval` 跟着组件生命周期走,语义正好相反 |
 
 ## lint 只抓真错,不排版
@@ -48,7 +48,7 @@
 `engine-ts/eslint.config.js` 与 `desktop/eslint.config.mjs` 各一份,`npm run lint`,两个 CI 任务里都是第一步。
 
 **没有 Prettier,也不打算有。** 这个仓库的排版是手调过的:`MACRO_SYMBOLS` 那样的表格式对齐、
-`rpc.ts` 里一行写完的短方法、成段中文注释的折行位置——交给格式化工具重排,一次提交就把这些可读性洗掉,
+`rpc/handlers/` 里一行写完的短方法、成段中文注释的折行位置——交给格式化工具重排,一次提交就把这些可读性洗掉,
 而且会让 `git blame` 整体失真。所以只开**能抓到真错**的规则:未使用的变量与导入、`==`、
 常量条件、不可达循环、React 的 hooks 规则(K线 PA 那次定时器漂移就是依赖数组写错)。
 

@@ -115,7 +115,7 @@ async function call(s: RpcServer, method: string, params: Rec = {}): Promise<Rec
 afterEach(() => {
   setClock(null);
   for (const s of servers.splice(0)) {
-    s.stopAnomalyLoop();
+    s.anomaly.stop();
     s.engine.stopTrackerLoop();
   }
   for (const d of dirs.splice(0)) {
@@ -177,7 +177,7 @@ describe("quality.*:本地道与增删改", () => {
   it("quality.add:不在任何板块的股先并进「自选」,再开「盯异动」这一个开关", async () => {
     const { s } = makeServer();
     const store = s.engine.store;
-    s.qualityAdd({ symbol: "rklb", note: "小火箭" });
+    s.domains.quality.qualityAdd({ symbol: "rklb", note: "小火箭" });
     const mine = store.listSectors().find((x) => String(x["name"]) === "自选")!;
     expect((mine["stocks"] as Rec[]).map((x) => x["symbol"])).toEqual(["RKLB"]);
     expect(store.listQualityStocks().map((q) => q["symbol"])).toEqual(["RKLB"]);
@@ -187,8 +187,8 @@ describe("quality.*:本地道与增删改", () => {
     // 已经在别的板块里的股:不再建「自选」,也不重复登记
     const tech = (await call(s, "sectors.add", { name: "科技" }))["result"]["sector"];
     store.setSectorStocks(String(tech["id"]), [{ symbol: "NVDA", company: "", reason: "", tag: "" }]);
-    s.qualityRemove({ id: String(store.listQualityStocks()[0]!["id"]) });
-    s.qualityAdd({ symbol: "NVDA" });
+    s.domains.quality.qualityRemove({ id: String(store.listQualityStocks()[0]!["id"]) });
+    s.domains.quality.qualityAdd({ symbol: "NVDA" });
     expect(store.listSectors().map((x) => x["name"])).toEqual(["自选", "科技"]);
     expect((store.listSectors().find((x) => x["name"] === "科技")!["stocks"] as Rec[]).map((x) => x["symbol"]))
       .toEqual(["NVDA"]);
@@ -201,7 +201,7 @@ describe("quality.*:本地道与增删改", () => {
     const added = (await call(s, "sectors.add_stock", { id: sector["id"], symbol: "NVDA" }))["result"];
     expect(added["watch"]).toMatchObject({ price_on: true, anomaly_on: true });
 
-    s.qualityRemove({ id: String(store.listQualityStocks()[0]!["id"]) });
+    s.domains.quality.qualityRemove({ id: String(store.listQualityStocks()[0]!["id"]) });
     expect(store.listQualityStocks()).toEqual([]);
     expect(store.listWatches().map((w) => w["symbol"])).toEqual(["NVDA"]); // 价位还开着
     expect([...store.symbolsInSectors()]).toEqual(["NVDA"]); // 人还在池子里
@@ -231,11 +231,11 @@ describe("quality.*:本地道与增删改", () => {
 describe("异动监控:一轮 anomalyTickOnce", () => {
   it("盘中放量 + 大涨:推 anomaly 事件、档位与事件落库;不走 notifier", async () => {
     const { s, chunks, router } = withRouter();
-    const id = s.qualityAdd({ symbol: "RKLB" })["stock"]["id"];
+    const id = s.domains.quality.qualityAdd({ symbol: "RKLB" })["stock"]["id"];
     router.quotes["RKLB"] = quote();
     // 刚订上的流第一轮只算指标(tick 23 历史波动率常常第二轮才到),第二轮才判
-    expect((await s.anomalyTickOnce(ET_1100 - 5000))["events"]).toEqual([]);
-    const out = await s.anomalyTickOnce(ET_1100);
+    expect((await s.anomaly.tickOnce(ET_1100 - 5000))["events"]).toEqual([]);
+    const out = await s.anomaly.tickOnce(ET_1100);
     const kinds = (out["events"] as Rec[]).map((e) => `${e["kind"]}:${e["tier"]}`).sort();
     expect(kinds).toEqual(["day_move:3", "rvol:3"]);
     const emits = anomalyEmits(chunks);
@@ -260,12 +260,12 @@ describe("异动监控:一轮 anomalyTickOnce", () => {
 
   it("同档不重报:下一轮还是 3 倍、还是 +9%,不推事件、不白写库", async () => {
     const { s, chunks, router } = withRouter();
-    s.qualityAdd({ symbol: "RKLB" });
+    s.domains.quality.qualityAdd({ symbol: "RKLB" });
     router.quotes["RKLB"] = quote();
-    await s.anomalyTickOnce(ET_1100 - 5000); // 热身轮
-    await s.anomalyTickOnce(ET_1100);
+    await s.anomaly.tickOnce(ET_1100 - 5000); // 热身轮
+    await s.anomaly.tickOnce(ET_1100);
     const spy = vi.spyOn(s.engine.store, "updateQualityStock");
-    const again = await s.anomalyTickOnce(ET_1100 + 5000);
+    const again = await s.anomaly.tickOnce(ET_1100 + 5000);
     expect(again["events"]).toEqual([]);
     expect(anomalyEmits(chunks)).toHaveLength(1);
     expect(spy).not.toHaveBeenCalled();
@@ -274,23 +274,23 @@ describe("异动监控:一轮 anomalyTickOnce", () => {
   it("重启(新 RpcServer 开同一个库)不把今天报过的再报一遍;换到下一个交易日重新起报", async () => {
     const first = withRouter();
     first.router.quotes["RKLB"] = quote();
-    first.s.qualityAdd({ symbol: "RKLB" });
-    await first.s.anomalyTickOnce(ET_1100 - 5000); // 热身轮
-    await first.s.anomalyTickOnce(ET_1100);
+    first.s.domains.quality.qualityAdd({ symbol: "RKLB" });
+    await first.s.anomaly.tickOnce(ET_1100 - 5000); // 热身轮
+    await first.s.anomaly.tickOnce(ET_1100);
     expect(anomalyEmits(first.chunks)).toHaveLength(1);
 
     const { s, chunks } = makeServer(first.dir);
     const router = new FakeVolumeRouter();
     router.quotes["RKLB"] = quote();
     (s as any).router = router;
-    await s.anomalyTickOnce(ET_1100 + 55_000); // 新进程的热身轮
-    const after = await s.anomalyTickOnce(ET_1100 + 60_000);
+    await s.anomaly.tickOnce(ET_1100 + 55_000); // 新进程的热身轮
+    const after = await s.anomaly.tickOnce(ET_1100 + 60_000);
     expect(after["events"]).toEqual([]);
     expect(anomalyEmits(chunks)).toEqual([]);
 
     // 隔了一个周末,内存里的样本早过期了(只留 20 分钟):周一第一轮又是热身轮
-    await s.anomalyTickOnce(MON_1100 - 5000);
-    const monday = await s.anomalyTickOnce(MON_1100);
+    await s.anomaly.tickOnce(MON_1100 - 5000);
+    const monday = await s.anomaly.tickOnce(MON_1100);
     expect((monday["events"] as Rec[]).map((e) => e["kind"]).sort()).toEqual(["day_move", "rvol"]);
     const row = s.engine.store.listQualityStocks()[0]!;
     expect(row["states"]["date"]).toBe("2026-09-14");
@@ -299,14 +299,14 @@ describe("异动监控:一轮 anomalyTickOnce", () => {
 
   it("窗口放量:样本在轮与轮之间留在内存里,5 分钟前那一轮的当日量就是窗口起点", async () => {
     const { s, chunks, router } = withRouter();
-    s.qualityAdd({ symbol: "RKLB" });
+    s.domains.quality.qualityAdd({ symbol: "RKLB" });
     // 10:55 → 11:00 每 30 秒一轮,量与价线性走:窗口里 10 步,不会被当成一笔大单
     for (let i = 0; i < 10; i += 1) {
       router.quotes["RKLB"] = quote({ last: 44 + 0.03 * i, close: 44, volume: 3_000_000 + 100_000 * i });
-      expect((await s.anomalyTickOnce(ET_1055 + i * 30_000))["events"]).toEqual([]);
+      expect((await s.anomaly.tickOnce(ET_1055 + i * 30_000))["events"]).toEqual([]);
     }
     router.quotes["RKLB"] = quote({ last: 44.3, close: 44, volume: 4_000_000 });
-    const out = await s.anomalyTickOnce(ET_1100);
+    const out = await s.anomaly.tickOnce(ET_1100);
     expect((out["events"] as Rec[]).map((e) => e["kind"])).toEqual(["burst"]);
     expect(out["events"][0]["title"]).toMatch(/^RKLB 5分钟放量 7\.6×$/);
     expect(out["events"][0]["direction"]).toBe("up");
@@ -315,10 +315,10 @@ describe("异动监控:一轮 anomalyTickOnce", () => {
 
   it("休市(周六 11:00)与盘前:只算指标不报;监控状态给出时段说明", async () => {
     const { s, chunks, router } = withRouter();
-    s.qualityAdd({ symbol: "RKLB" });
+    s.domains.quality.qualityAdd({ symbol: "RKLB" });
     router.quotes["RKLB"] = quote();
 
-    const sat = await s.anomalyTickOnce(SAT_1100);
+    const sat = await s.anomaly.tickOnce(SAT_1100);
     expect(sat["events"]).toEqual([]);
     setClock(SAT_1100);
     let listed = (await call(s, "quality.list"))["result"];
@@ -326,7 +326,7 @@ describe("异动监控:一轮 anomalyTickOnce", () => {
     expect(listed["stocks"][0]["metrics"]["rvol"]).toBeCloseTo(1.2, 6);
     expect(listed["monitor"]).toMatchObject({ session: "closed", note: "休市:开盘后开始检测" });
 
-    const pre = await s.anomalyTickOnce(ET_PRE);
+    const pre = await s.anomaly.tickOnce(ET_PRE);
     expect(pre["events"]).toEqual([]);
     setClock(ET_PRE);
     listed = (await call(s, "quality.list"))["result"];
@@ -342,18 +342,18 @@ describe("异动监控:一轮 anomalyTickOnce", () => {
 
   it("延迟行情:盘中照报,监控状态提示会晚约 15 分钟", async () => {
     const { s, router } = withRouter();
-    s.qualityAdd({ symbol: "RKLB" });
+    s.domains.quality.qualityAdd({ symbol: "RKLB" });
     router.quotes["RKLB"] = quote({ delayed: true });
-    await s.anomalyTickOnce(ET_1100);
+    await s.anomaly.tickOnce(ET_1100);
     setClock(ET_1100);
     expect((await call(s, "quality.list"))["result"]["monitor"]["note"]).toBe("延迟行情:提醒会晚约 15 分钟");
   });
 
   it("行情带错误(认不出 / 流被拒):不判异动,原因带给界面", async () => {
     const { s, chunks, router } = withRouter();
-    s.qualityAdd({ symbol: "ZZZZ" });
+    s.domains.quality.qualityAdd({ symbol: "ZZZZ" });
     router.quotes["ZZZZ"] = { ...quote({ last: null, close: null, volume: null, avg_volume: null }), error: "未知标的" };
-    const out = await s.anomalyTickOnce(ET_1100);
+    const out = await s.anomaly.tickOnce(ET_1100);
     expect(out["events"]).toEqual([]);
     const row = (await call(s, "quality.list"))["result"]["stocks"][0];
     expect(row).toMatchObject({ metrics: null, quote_error: "未知标的" });
@@ -363,10 +363,10 @@ describe("异动监控:一轮 anomalyTickOnce", () => {
   // 2026-09-12 审出的三道"宁可少报"的闸
   it("行情停更 15 分钟(流被撤 / 临时休市):只算指标不报,原因带给界面", async () => {
     const { s, chunks, router } = withRouter();
-    s.qualityAdd({ symbol: "RKLB" });
+    s.domains.quality.qualityAdd({ symbol: "RKLB" });
     router.quotes["RKLB"] = quote({ last_trade_at: (ET_1100 - 16 * 60_000) / 1000 });
-    await s.anomalyTickOnce(ET_1100 - 5000);
-    const out = await s.anomalyTickOnce(ET_1100);
+    await s.anomaly.tickOnce(ET_1100 - 5000);
+    const out = await s.anomaly.tickOnce(ET_1100);
     expect(out["events"]).toEqual([]);
     expect(anomalyEmits(chunks)).toEqual([]);
     setClock(ET_1100);
@@ -375,52 +375,52 @@ describe("异动监控:一轮 anomalyTickOnce", () => {
     expect(row["metrics"]["rvol"]).toBeCloseTo(3.17, 1); // 指标照给
     // 恢复成新鲜的成交时间:下一轮照常报
     router.quotes["RKLB"] = quote({ last_trade_at: (ET_1100 + 5000) / 1000 });
-    const ok = await s.anomalyTickOnce(ET_1100 + 10_000);
+    const ok = await s.anomaly.tickOnce(ET_1100 + 10_000);
     expect((ok["events"] as Rec[]).length).toBeGreaterThan(0);
   });
 
   it("延迟行情:时钟往回拨 15 分钟再判(开盘那格不会被当成十点的常态)", async () => {
     const { s, router } = withRouter();
-    s.qualityAdd({ symbol: "RKLB" });
+    s.domains.quality.qualityAdd({ symbol: "RKLB" });
     // 钟点 09:52,延迟行情看到的是 09:37 的量:第 7 分钟,全天量比那道闸(09:45)还没开
     const et0952 = Date.parse("2026-09-11T09:52:00-04:00");
     router.quotes["RKLB"] = quote({ delayed: true });
-    await s.anomalyTickOnce(et0952 - 5000);
-    const late = (await s.anomalyTickOnce(et0952))["events"] as Rec[];
+    await s.anomaly.tickOnce(et0952 - 5000);
+    const late = (await s.anomaly.tickOnce(et0952))["events"] as Rec[];
     expect(late.map((e) => e["kind"])).toEqual(["day_move"]); // 大涨照报,全天量比还没到开判的时刻
     // 同样的钟点、实时行情:第 22 分钟,量比那道闸已经开了
     const live = withRouter();
-    live.s.qualityAdd({ symbol: "RKLB" });
+    live.s.domains.quality.qualityAdd({ symbol: "RKLB" });
     live.router.quotes["RKLB"] = quote();
-    await live.s.anomalyTickOnce(et0952 - 5000);
-    const now = (await live.s.anomalyTickOnce(et0952))["events"] as Rec[];
+    await live.s.anomaly.tickOnce(et0952 - 5000);
+    const now = (await live.s.anomaly.tickOnce(et0952))["events"] as Rec[];
     expect(now.map((e) => e["kind"]).sort()).toEqual(["day_move", "rvol"]);
   });
 
   it("收盘之后 / 开盘之前:一轮也不取行情,量能流全撤——30 条线路不整夜占着", async () => {
     const { s, router } = withRouter();
-    s.qualityAdd({ symbol: "RKLB" });
+    s.domains.quality.qualityAdd({ symbol: "RKLB" });
     router.quotes["RKLB"] = quote();
-    const post = await s.anomalyTickOnce(Date.parse("2026-09-11T16:25:00-04:00"));
+    const post = await s.anomaly.tickOnce(Date.parse("2026-09-11T16:25:00-04:00"));
     expect(post["skipped"]).toBe("不在交易时段");
     expect(router.calls).toEqual([]);
     expect(router.released).toEqual([[]]);
     // 开盘前 10 分钟之内就开始订,样本先热起来
-    const warm = await s.anomalyTickOnce(Date.parse("2026-09-11T09:25:00-04:00"));
+    const warm = await s.anomaly.tickOnce(Date.parse("2026-09-11T09:25:00-04:00"));
     expect(warm["skipped"]).toBe("");
     expect(router.calls).toEqual([["RKLB"]]);
   });
 
   it("停用的股不取行情;全停了就把量能流全撤掉", async () => {
     const { s, router } = withRouter();
-    const a = s.qualityAdd({ symbol: "RKLB" })["stock"];
-    s.qualityAdd({ symbol: "UBER" });
-    s.qualityUpdate({ id: a["id"], enabled: false });
-    await s.anomalyTickOnce(ET_1100);
+    const a = s.domains.quality.qualityAdd({ symbol: "RKLB" })["stock"];
+    s.domains.quality.qualityAdd({ symbol: "UBER" });
+    s.domains.quality.qualityUpdate({ id: a["id"], enabled: false });
+    await s.anomaly.tickOnce(ET_1100);
     expect(router.calls).toEqual([["UBER"]]);
     expect(router.released).toEqual([["UBER"]]);
-    for (const row of s.engine.store.listQualityStocks()) s.qualityUpdate({ id: row["id"], enabled: false });
-    const out = await s.anomalyTickOnce(ET_1100 + 5000);
+    for (const row of s.engine.store.listQualityStocks()) s.domains.quality.qualityUpdate({ id: row["id"], enabled: false });
+    const out = await s.anomaly.tickOnce(ET_1100 + 5000);
     expect(router.calls).toHaveLength(1);
     expect(router.released).toEqual([["UBER"], []]);
     expect(out["skipped"]).toBeTruthy();
@@ -428,12 +428,12 @@ describe("异动监控:一轮 anomalyTickOnce", () => {
 
   it("等行情那会儿界面删了这只股:不给已删的股报异动", async () => {
     const { s, chunks, router } = withRouter();
-    const id = s.qualityAdd({ symbol: "RKLB" })["stock"]["id"];
+    const id = s.domains.quality.qualityAdd({ symbol: "RKLB" })["stock"]["id"];
     router.quotes["RKLB"] = quote();
     router.delayMs = 80;
-    const pending = s.anomalyTickOnce(ET_1100);
+    const pending = s.anomaly.tickOnce(ET_1100);
     await sleep(20);
-    s.qualityRemove({ id });
+    s.domains.quality.qualityRemove({ id });
     const out = await pending;
     expect(out["events"]).toEqual([]);
     expect(anomalyEmits(chunks)).toEqual([]);
@@ -442,8 +442,8 @@ describe("异动监控:一轮 anomalyTickOnce", () => {
 
   it("没连券商 / 富途:不取行情,给一句人话", async () => {
     const { s } = makeServer();
-    s.qualityAdd({ symbol: "RKLB" });
-    const out = await s.anomalyTickOnce(ET_1100);
+    s.domains.quality.qualityAdd({ symbol: "RKLB" });
+    const out = await s.anomaly.tickOnce(ET_1100);
     expect(out["events"]).toEqual([]);
     let monitor = (await call(s, "quality.list"))["result"]["monitor"];
     expect(monitor).toMatchObject({ connected: false, note: "未连接券商", ticks: 1, last_error: "" });
@@ -452,7 +452,7 @@ describe("异动监控:一轮 anomalyTickOnce", () => {
     futu.BROKER = "futu";
     futu.SUPPORTS_VOLUME_QUOTES = false;
     (s as any).router = futu;
-    await s.anomalyTickOnce(ET_1100);
+    await s.anomaly.tickOnce(ET_1100);
     expect(futu.calls).toEqual([]);
     monitor = (await call(s, "quality.list"))["result"]["monitor"];
     expect(monitor).toMatchObject({ connected: true, supported: false, note: "当前券商(富途)暂不支持异动监控" });
@@ -460,16 +460,16 @@ describe("异动监控:一轮 anomalyTickOnce", () => {
 
   it("取行情抛异常:记进 last_error,下一轮照跑、好了就清掉", async () => {
     const { s, router } = withRouter();
-    s.qualityAdd({ symbol: "RKLB" });
+    s.domains.quality.qualityAdd({ symbol: "RKLB" });
     router.quotes["RKLB"] = quote();
     router.fail = new Error("TWS 在 12 秒内没有响应");
-    await s.anomalyTickOnce(ET_1100);
+    await s.anomaly.tickOnce(ET_1100);
     let monitor = (await call(s, "quality.list"))["result"]["monitor"];
     expect(monitor["last_error"]).toMatch(/取行情失败/);
     expect(monitor["ticks"]).toBe(1);
     router.fail = null;
-    await s.anomalyTickOnce(ET_1100 + 5000); // 取到行情的第一轮是热身轮
-    const ok = await s.anomalyTickOnce(ET_1100 + 10_000);
+    await s.anomaly.tickOnce(ET_1100 + 5000); // 取到行情的第一轮是热身轮
+    const ok = await s.anomaly.tickOnce(ET_1100 + 10_000);
     expect(ok["events"]).toHaveLength(2);
     monitor = (await call(s, "quality.list"))["result"]["monitor"];
     expect(monitor).toMatchObject({ last_error: "", ticks: 3 });
@@ -480,14 +480,14 @@ describe("异动监控:一轮 anomalyTickOnce", () => {
 describe("异动监控:循环调度", () => {
   it("一轮比节拍还慢:紧接着跑下一轮,但绝不两轮叠在一起;停了就不再跑", async () => {
     const { s, router } = withRouter();
-    s.qualityAdd({ symbol: "RKLB" });
+    s.domains.quality.qualityAdd({ symbol: "RKLB" });
     router.quotes["RKLB"] = quote();
     router.delayMs = 120;
     setClock(ET_1100); // 循环按引擎时钟判时段:收盘后本来就不取行情
-    s.startAnomalyLoop(40);
-    s.startAnomalyLoop(40); // 重复启动不起第二条循环
+    s.anomaly.start(40);
+    s.anomaly.start(40); // 重复启动不起第二条循环
     await sleep(700);
-    s.stopAnomalyLoop();
+    s.anomaly.stop();
     expect(router.maxInFlight).toBe(1);
     expect(router.calls.length).toBeGreaterThanOrEqual(3);
     await sleep(200);
@@ -498,12 +498,12 @@ describe("异动监控:循环调度", () => {
 
   it("取行情一直抛异常,循环照样一轮一轮跑", async () => {
     const { s, router } = withRouter();
-    s.qualityAdd({ symbol: "RKLB" });
+    s.domains.quality.qualityAdd({ symbol: "RKLB" });
     router.fail = new Error("boom");
     setClock(ET_1100);
-    s.startAnomalyLoop(20);
+    s.anomaly.start(20);
     await sleep(300);
-    s.stopAnomalyLoop();
+    s.anomaly.stop();
     const monitor = (await call(s, "quality.list"))["result"]["monitor"];
     expect(monitor["ticks"]).toBeGreaterThanOrEqual(3);
     expect(monitor["running"]).toBe(false);
@@ -512,11 +512,11 @@ describe("异动监控:循环调度", () => {
 
   it("定时器 unref:引擎进程该退就退,不被异动循环吊着", () => {
     const { s } = makeServer();
-    s.startAnomalyLoop(60_000);
-    const timer = (s as any).anomalyTimer as { hasRef(): boolean } | null;
+    s.anomaly.start(60_000);
+    const timer = (s.anomaly as any).anomalyTimer as { hasRef(): boolean } | null;
     expect(timer).not.toBeNull();
     expect(timer!.hasRef()).toBe(false);
-    s.stopAnomalyLoop();
+    s.anomaly.stop();
   });
 
   it("serve():ready 之后起循环,stdin 断了(EOF)就停", async () => {

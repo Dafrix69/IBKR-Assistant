@@ -23,19 +23,23 @@ cd desktop   && npm run lint && npm run ui:typecheck
 ## 引擎分层(依赖只能往下)
 
 ```
-transport     rpc.ts  cli.ts
-orchestrate   engine.ts  tracker.ts
+transport     rpc.ts(转出的壳)  rpc/server.ts  rpc/context.ts  rpc/params.ts  rpc/handlers/*.ts  cli.ts
+orchestrate   engine.ts  tracker.ts  services/*.ts
 execution     broker.ts  futuBroker.ts  ibSession.ts  ibTypes.ts  tws.ts  futu.ts  futuBridge.ts
 parsing       validator.ts  providers.ts  prompts.ts  shorthand.ts  llm.ts
 analysis      backtest priceaction screener research optionwall anomaly flyexit tradereview ibtrades macro market alerts
 domain        config.ts  models.ts  store.ts  positions.ts  marketdata.ts
-util          py.ts  pyjson.ts  tz.ts  notify.ts  keychain.ts  killswitch.ts  protections.ts  schemaOut.ts
+util          py.ts  pyjson.ts  tz.ts  notify.ts  keychain.ts  killswitch.ts  protections.ts  schemaOut.ts  rpcError.ts
 ```
 
 - 下层不 import 上层。`analysis` 这一层是纯计算,不认识券商、引擎、RPC,必须能离线单跑。
 - 执行层只认合约、订单、行情。它需要的领域概念已经有家:持仓身份与托管单计划在 `positions.ts`,
   K 线周期表与量价快照在 `marketdata.ts`,IB 会话接口在 `ibTypes.ts`。不从 `tracker` / `priceaction` / `anomaly` 拿。
 - 不许循环 import,类型环也不许(`import type` 的环说明接口放错了文件)。
+- `rpc/server.ts` 只管传输、生命周期、装配,**不写业务**。一个方法属于哪个域就进 `rpc/handlers/<域>.ts`;
+  handler 之间不互相 import,也不 import server——两个域都要的东西下沉:带状态的(缓存、循环、迁移标记)进
+  `services/`,纯函数进 `rpc/params.ts`。`services/` 不认识 RPC,只认 `ServiceHost`;settings / router / engine
+  每次从宿主现取,不在构造时存一份(配置会重载、券商会重连、引擎会重建)。
 - 规则在 `engine-ts/.dependency-cruiser.cjs`,`npm run depcruise` 必须零 error(CI 里排在 lint 之后)。
   新建文件时把它归进上面某一层,并加到那条正则里。
 
@@ -47,8 +51,9 @@ util          py.ts  pyjson.ts  tz.ts  notify.ts  keychain.ts  killswitch.ts  pr
 
 ## 引擎 ↔ 界面契约
 
-- 加一个 RPC 方法要同时改四处:`rpc.ts` 的 `methods()`、`main.js` 的 `ALLOWED_RPC`(会发单的还要进
-  `SENSITIVE_RPC`)、`preload.js`、`bridge.ts` 的 `DafriBridge`。少一处 `tests/desktop-whitelist.spec.ts` 会红。
+- 加一个 RPC 方法要同时改四处:所属域 `rpc/handlers/<域>.ts` 的 `methods()`、`main.js` 的 `ALLOWED_RPC`
+  (会发单的还要进 `SENSITIVE_RPC`)、`preload.js`、`bridge.ts` 的 `DafriBridge`。`tests/desktop-whitelist.spec.ts`
+  双向核对引擎方法表 ↔ `ALLOWED_RPC` ↔ preload,少一处会红;方法要走本地道 / 读道,还要进 `server.ts` 的道表。
 - 契约收口(待做,见 `docs/reports/architecture-review-2026-09-17.md` 第一条):方法的入参 schema 与返回类型统一放
   `engine-ts/src/contract/`,`bridge.ts` 用 `import type` 引用。目录建起来之后,**新方法只能从 contract 加**;碰到老方法顺手迁一个。
 - 返回结构改字段名 = 破坏契约。改之前 grep `renderer-react/src` 里所有用到该字段的地方。
@@ -57,15 +62,16 @@ util          py.ts  pyjson.ts  tz.ts  notify.ts  keychain.ts  killswitch.ts  pr
 
 - `type Rec = Record<string, any>` 只允许出现在对外的四个文件:`broker.ts` `ibSession.ts` `futuBroker.ts`
   `providers.ts`(券商与模型回包的结构由对方定)。其它文件不新声明 `Rec`,新代码不用 `any`;
-  SQLite 行、追踪器行、RPC 入参都有固定字段,写成接口。
+  SQLite 行、追踪器行、RPC 入参都有固定字段,写成接口。eslint 有一张存量豁免表(`eslint.config.js`),
+  **那张表只许变短**;`rpc/` 与 `services/` 里搬家带过来的老代码共用 `services/host.ts` 的那一处声明,新 handler 不用它。
 - `strict` + `noUncheckedIndexedAccess` 开着,不要用 `!` 断言绕过,用 `?? 兜底值`。
 
 ## 体积预算
 
 引擎单文件 1,500 行、函数 150 行、页面组件 400 行。超线不是不能提交,是提交前先回答"它是不是两个东西"。
-已知超线且待拆的:`rpc.ts`(按域拆 `rpc/handlers/*.ts`,带状态的循环进 `services/`)、`engine.ts`
-(托管单、IB 回调各自成文件)、`broker.ts`(IB 合约工具函数成 `ibContracts.ts`)。**往这三个文件里加新功能之前,
-先看它是不是该去一个新文件。**
+已知超线且待拆的:`engine.ts`(托管单、IB 回调各自成文件)、`broker.ts`(IB 合约工具函数成 `ibContracts.ts`)。
+**往这两个文件里加新功能之前,先看它是不是该去一个新文件。**(`rpc.ts` 已于 2026-09-19 按域拆完,
+最大的一个 handler 不到 450 行。)
 
 ## 加东西之前
 
