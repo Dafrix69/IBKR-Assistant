@@ -11,13 +11,15 @@ import * as path from "node:path";
 import type { Settings } from "./config.js";
 import type { FutuBridge } from "./futuBridge.js";
 import { loadFutuBridge } from "./futuBridge.js";
+// FutuUnavailable 住在 futuBridge.ts(桥自己抛它);这里转出,老的 import 路径不变。
+export { FutuUnavailable } from "./futuBridge.js";
+import { FutuUnavailable } from "./futuBridge.js";
 import { redactAccount } from "./store.js";
 import {
   Endpoint, PortProber, checkAliasMapping, expandGlob, probePort, processRunning, scanEndpoints,
 } from "./tws.js";
 
 /** SDK 缺失/未接线。单独一个类型:它的处理方式和"连不上"完全不同。 */
-export class FutuUnavailable extends Error {}
 
 // OpenD 的两个默认端口。telnet 口只做展示:它是控制台,不是 API 通道。
 export const KNOWN_ENDPOINTS: Endpoint[] = [

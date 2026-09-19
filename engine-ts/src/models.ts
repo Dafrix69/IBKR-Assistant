@@ -407,3 +407,10 @@ function excerpt(item: unknown): string {
     return String(item).slice(0, 200);
   }
 }
+
+/** 重复单防抖看的"最近一笔"(store 存、validator 查)。 */
+export interface RecentOrder {
+  signature: string;
+  quantity: number;
+  createdAtMs: number;
+}

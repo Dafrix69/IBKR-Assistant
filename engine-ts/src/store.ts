@@ -13,7 +13,7 @@ import * as crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import type { RecentOrder } from "./validator.js";
+import type { RecentOrder } from "./models.js";
 
 export const SCHEMA = `
 CREATE TABLE IF NOT EXISTS trade_records (

@@ -12,7 +12,7 @@
 import type {
   IbContract, IbSession, OptChainParam, OrderIntent, PortfolioItemLike, PositionItemLike,
   RawBar, TickerData, TickerHandle, TradeLike,
-} from "./broker.js";
+} from "./ibTypes.js";
 
 type Subscription = { unsubscribe(): void };
 

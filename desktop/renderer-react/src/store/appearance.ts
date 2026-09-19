@@ -6,7 +6,7 @@
 import { useSyncExternalStore } from 'react';
 import { create } from 'zustand';
 import { dafri } from '../bridge';
-import { showBanner } from '../store/banner';
+import { showBanner } from './banner';
 
 export type ThemeMode = 'system' | 'light' | 'dark';
 export type UpDown = 'green-up' | 'red-up';

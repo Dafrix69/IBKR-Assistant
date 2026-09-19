@@ -24,6 +24,7 @@ export default tseslint.config(
     ignores: [
       'node_modules/**', 'build/**', 'dist/**',
       'renderer-react/dist/**', 'renderer-react/dist-preview/**', '.uipreview/**',
+      '.dependency-cruiser.cjs',
     ],
   },
 

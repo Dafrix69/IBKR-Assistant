@@ -9,17 +9,9 @@ import { fmtF, fmtSF, pyFloat, pyRound } from "./py.js";
 
 export class PriceActionError extends Error {}
 
-export const TIMEFRAMES: Record<string, Record<string, unknown>> = {
-  "1m": { bar_size: "1 min", duration: "2 D", fallback: "4 D", seconds: 60, label: "1 分钟", htf: "15m" },
-  "2m": { bar_size: "2 mins", duration: "3 D", fallback: "6 D", seconds: 120, label: "2 分钟", htf: "30m" },
-  "5m": { bar_size: "5 mins", duration: "5 D", fallback: "10 D", seconds: 300, label: "5 分钟", htf: "1h" },
-  "15m": { bar_size: "15 mins", duration: "10 D", fallback: "20 D", seconds: 900, label: "15 分钟", htf: "1h" },
-  "30m": { bar_size: "30 mins", duration: "15 D", fallback: "30 D", seconds: 1800, label: "30 分钟", htf: "1d" },
-  "1h": { bar_size: "1 hour", duration: "30 D", fallback: "60 D", seconds: 3600, label: "1 小时", htf: "1d" },
-  "1d": { bar_size: "1 day", duration: "1 Y", fallback: "2 Y", seconds: 86400, label: "日线", htf: null },
-};
-
-export const MIN_BARS = 30;
+// K 线周期表与最少根数搬到了 marketdata.ts(下单层也要用);这里转出,老的 import 路径不变。
+export { MIN_BARS, TIMEFRAMES } from "./marketdata.js";
+import { MIN_BARS, TIMEFRAMES } from "./marketdata.js";
 export const SWING_STRENGTH = 2;
 export const CHART_BARS = 140;
 /** 图上叠的均线周期(富途默认那三条);只作图,不进打分。 */

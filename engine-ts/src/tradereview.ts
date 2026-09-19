@@ -8,7 +8,9 @@
  * - 盈亏平衡与最大盈亏按成交均价算,没成交就用限价并标注"估算"。
  */
 import { fmtF, pyRound } from "./py.js";
-import { ET, ibWallTime, wallParts, wallToEpoch, zonedEpoch } from "./tz.js";
+import { ET, ibWallTime, utcIso, wallParts, wallToEpoch, zonedEpoch } from "./tz.js";
+// utcIso 搬到了 tz.ts;这里转出,老的 import 路径不变。
+export { utcIso } from "./tz.js";
 
 type Rec = Record<string, any>;
 
@@ -166,13 +168,6 @@ export function etKey(epochMs: number, daily: boolean): string {
   return daily ? date : `${date} ${pad2(p.hour)}:${pad2(p.minute)}`;
 }
 
-/** Python `datetime.astimezone(utc).isoformat()` 同形:秒精度,+00:00 后缀。 */
-export function utcIso(epochMs: number): string {
-  const d = new Date(epochMs);
-  const base = d.toISOString().slice(0, 19);
-  const ms = d.getUTCMilliseconds();
-  return ms ? `${base}.${String(ms).padStart(3, "0")}000+00:00` : `${base}+00:00`;
-}
 
 export function entryOf(record: Rec): { time: number; estimated: boolean } {
   const fills: Rec[] = (record["ibkr"] ?? {})["fills"] ?? [];

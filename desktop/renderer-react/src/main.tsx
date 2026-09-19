@@ -20,7 +20,7 @@ import { startQualityFeed } from './store/quality';
 import { startRecordsFeed } from './store/records';
 import { startStatusPolling } from './store/status';
 import { startTrackerLoops } from './store/tracker';
-import { initAppearance } from './theme/appearance';
+import { initAppearance } from './store/appearance';
 
 function cspNonce(): string {
   const meta = document.querySelector<HTMLMetaElement>('meta[name="csp-nonce"]');

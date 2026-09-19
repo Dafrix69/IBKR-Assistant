@@ -8,6 +8,8 @@ import type { ContractSpec, Leg, OrderSpec, ParsedOrder } from "./models.js";
 import { multiplierValue } from "./models.js";
 import { fmtF, pyG } from "./py.js";
 import { weekdayOfDate } from "./tz.js";
+export type { RecentOrder } from "./models.js";
+import type { RecentOrder } from "./models.js";
 
 export const VALIDATOR_CODES = new Set([
   "LOW_CONFIDENCE", "UNKNOWN_ACCOUNT", "LIVE_TRADING_DISABLED", "EXCEEDS_LIMIT",
@@ -20,11 +22,6 @@ export interface ValidationIssue {
   message: string;
 }
 
-export interface RecentOrder {
-  signature: string;
-  quantity: number;
-  createdAtMs: number;
-}
 
 export interface ApprovedOrder {
   order: ParsedOrder;

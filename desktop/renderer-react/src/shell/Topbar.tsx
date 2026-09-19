@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Badge, Button, Tooltip } from 'antd';
 import { toggleBreaker, toggleBrokerConnection } from '../store/broker';
 import { gatewayName, useEngineOk, useStatus } from '../store/status';
-import { MOD_KEY, SHIFT_KEY } from '../theme/appearance';
+import { MOD_KEY, SHIFT_KEY } from '../store/appearance';
 
 type Dot = 'success' | 'warning' | 'error' | 'default';
 

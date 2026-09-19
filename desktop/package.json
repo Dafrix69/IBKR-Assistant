@@ -17,6 +17,7 @@
     "ui:preview": "vite build --mode preview --config renderer-react/vite.config.ts",
     "ui:typecheck": "tsc -p renderer-react/tsconfig.json",
     "lint": "eslint .",
+    "depcruise": "depcruise renderer-react/src --config .dependency-cruiser.cjs",
     "dist:mac": "npm run ui:build && npm run stage:engine:mac && npm run smoke:engine && electron-builder --mac dmg --arm64 --publish never",
     "dist:win": "npm run ui:build && npm run stage:engine:win && npm run smoke:engine && electron-builder --win nsis --x64 --publish never",
     "dist": "npm run dist:mac && npm run dist:win",
@@ -25,6 +26,7 @@
     "smoke:engine": "node tools/smoke_engine_ts.js"
   },
   "devDependencies": {
+    "dependency-cruiser": "^18.3.1",
     "@eslint/js": "^10.0.1",
     "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7",

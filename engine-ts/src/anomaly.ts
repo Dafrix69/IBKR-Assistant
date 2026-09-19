@@ -10,6 +10,9 @@
  *  · 窗口放量、急涨急跌走滞回 + 冷却:报一次 → 落防 → 回落到阈值一半以下且过了冷却 → 重新上膛。
  */
 import { fmtF, fmtSF, pyRound } from "./py.js";
+// 量价快照的形状搬到了 marketdata.ts(券商适配层填它,这里读它);转出以保持老的 import 路径。
+export type { VolumeSnapshot } from "./marketdata.js";
+import type { VolumeSnapshot } from "./marketdata.js";
 
 export type AnomalyKind = "rvol" | "burst" | "spike" | "day_move";
 
@@ -208,26 +211,6 @@ export function cumVolumeFraction(minute: number, sessionMinutes: number = RTH_M
 }
 
 // ---------------------------------------------------------------- 快照与样本
-export interface VolumeSnapshot {
-  last: number | null;
-  /** 昨收 */
-  close: number | null;
-  open?: number | null;
-  high?: number | null;
-  low?: number | null;
-  /** 当日累计量(流里的口径) */
-  volume: number | null;
-  /** 同一条流的 90 日日均量 */
-  avg_volume: number | null;
-  /** 年化历史波动率,小数(0.32);> 5 视为百分数 /100 */
-  hist_vol: number | null;
-  vol_3m?: number | null;
-  vol_5m?: number | null;
-  vol_10m?: number | null;
-  delayed?: boolean;
-  /** 秒 */
-  last_trade_at?: number | null;
-}
 
 /** t = epoch ms */
 export interface Sample {

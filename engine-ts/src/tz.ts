@@ -146,3 +146,11 @@ export function isValidYmd(year: number, month: number, day: number): boolean {
   const dt = new Date(Date.UTC(year, month - 1, day));
   return dt.getUTCFullYear() === year && dt.getUTCMonth() === month - 1 && dt.getUTCDate() === day;
 }
+
+/** Python `datetime.astimezone(utc).isoformat()` 同形:秒精度,+00:00 后缀。 */
+export function utcIso(epochMs: number): string {
+  const d = new Date(epochMs);
+  const base = d.toISOString().slice(0, 19);
+  const ms = d.getUTCMilliseconds();
+  return ms ? `${base}.${String(ms).padStart(3, "0")}000+00:00` : `${base}+00:00`;
+}

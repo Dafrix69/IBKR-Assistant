@@ -15,7 +15,7 @@ import type { FutuBridge, FutuQuoteCtx, FutuTradeCtx } from "./futuBridge.js";
 import { loadFutuBridge } from "./futuBridge.js";
 import { KeychainError, getSecret } from "./keychain.js";
 import type { ContractSpec } from "./models.js";
-import { MIN_BARS, TIMEFRAMES } from "./priceaction.js";
+import { MIN_BARS, TIMEFRAMES } from "./marketdata.js";
 import { fmtF, pyRound } from "./py.js";
 import { probePort, PortProber } from "./tws.js";
 import type { ApprovedOrder } from "./validator.js";

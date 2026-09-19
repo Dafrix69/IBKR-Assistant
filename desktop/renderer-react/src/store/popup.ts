@@ -8,7 +8,7 @@
 import { useSyncExternalStore } from 'react';
 import { dafri, type PopupItem } from '../bridge';
 import { popupCounts, type PopupCounts } from '../lib/alertRules';
-import { getUpDown } from '../theme/appearance';
+import { getUpDown } from './appearance';
 
 const KEY = 'dafri-alert-popup';
 

@@ -52,7 +52,7 @@
 **结构。** `src/shell/` 是壳(App / Topbar / Sidebar / Banner / MacroStrip / nav),`src/pages/` 每个侧栏项一个文件
 (合并页的子页在同一文件里,`pages/index.ts` 登记页面与子页清单),`src/store/` 是跨页共用的状态与循环
 (status 5 秒、tracker 与托管对账每秒、alerts 10 秒、macro 2 秒 / 60 秒、records / pending / notify 跟着引擎事件),
-`src/lib/` 是格式化、标签词表、canvas 图表与价位条的包装,`src/theme/` 是外观与 AntD 主题。
+`src/lib/` 是格式化、标签词表、canvas 图表与价位条的包装,`src/theme/` 只有 AntD 主题(深浅色由 App 传进来),外观偏好本身是个 store(`store/appearance.ts`)。分层是机器检查的:`npm run depcruise`,规则在 `desktop/.dependency-cruiser.cjs`(页面不互相 import、store 不 import 组件、ui / theme 不认识业务)。
 图表在 `src/lib/chart/`:框架是 `lightweight-charts`,业务叠加层用它的 primitives 画(见 [priceaction.md](priceaction.md));
 `lib/Chart.tsx` 挂一次、之后 spec 变了走 `update`,不再每次重建。
 `window.dafri`(preload)的契约没有动,类型在 `src/bridge.ts`。
@@ -100,7 +100,7 @@ nonce 写进页面 meta 与 `dist/csp-nonce.txt`,主进程把它拼进响应头�
   `Working / LoadingBlock`(Spin / Skeleton)、`SectionTitle`(可带 Badge 条数)。各页只组装,不再各自手写 InfoCard / Primer。
 - **壳层**:侧栏是 AntD `Menu`(inline,组可折叠、状态记在本地,窄窗口 `inlineCollapsed` 成 56px 图标栏并自带悬停提示),
   图标改成 React 组件 `src/ui/Icons.tsx`(SF Symbols 几何的线稿,不再依赖页面里的 `<defs>`);顶栏状态是 `Badge status` 的
-  8px 圆点 + 文字,说明进 `Tooltip`;横幅换成从窗口顶部中央落下的 `notification`(`src/ui/Toasts.tsx`,`showBanner` 契约不变:
+  8px 圆点 + 文字,说明进 `Tooltip`;横幅换成从窗口顶部中央落下的 `notification`(`src/shell/Toasts.tsx`,`showBanner` 契约不变:
   提示 6 秒自己走、错误留着等人看,都可关)。
 - **页面**:交易指令的输入 / 结果两栏是可拖的 `Splitter`(窄于 980px 时上下叠放),就绪清单是 `Steps`,发单账户是
   `Tag.CheckableTag`;持仓追踪的盯盘量表是 `Progress`;交易分析 / 回测 / 极值偏离的数字瓦片是 `Statistic`,止盈策略三张表是 `Table`,回测区间是带预设的 `RangePicker`;

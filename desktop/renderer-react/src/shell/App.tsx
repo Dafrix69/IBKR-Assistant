@@ -8,14 +8,16 @@ import { NAV_ITEMS } from './nav';
 import { LEAF_TABS, PAGES } from '../pages';
 import { navigate, pendingNavFocus, useTab } from '../store/nav';
 import { useStatus } from '../store/status';
+import { useDark } from '../store/appearance';
 import { useAntdTheme } from '../theme/antd';
-import { Toasts } from '../ui/Toasts';
+import { Toasts } from './Toasts';
 
 /** 壳:统一工具栏 + 源列表侧栏 + 内容区(macOS UI Kit 的应用模板结构),Ant Design 按 styles.css 的 token 配色。 */
 export function App({ nonce }: { nonce: string }) {
   const tab = useTab();
   const status = useStatus();
-  const theme = useAntdTheme();
+  const dark = useDark();
+  const theme = useAntdTheme(dark);
   const contentRef = useRef<HTMLElement>(null);
 
   // 截图脚本(tools/capture_pages.js)靠这两个全局逐页拍

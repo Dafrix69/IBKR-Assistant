@@ -23,6 +23,7 @@
 | `electron-log` | desktop | 日志落盘。Windows 上 Electron 是 GUI 子系统:**没有控制台,stderr 也重定向不出来**,出了问题只能靠用户描述。现在主进程、引擎 stderr、渲染层报错、未捕获异常都写进 `userData/logs/main.log`(单份 4 MB、留一份旧的),路径显示在「关于」页 |
 | `electron-builder` | desktop | 打包与安装器 |
 | `eslint` + `typescript-eslint` | 两边各一份 | 静态检查。规则只留"写错了会出事"的那一类,不做风格警察 —— 见下 |
+| `dependency-cruiser` | 两边各一份(devDependency) | 模块边界检查:依赖只能往下流(引擎 transport → orchestrate → execution → parsing → analysis → domain → util;界面 shell → pages → lib → store → bridge),不许循环。规则在各自的 `.dependency-cruiser.cjs`,`npm run depcruise`,CI 里排在 lint 之后。2026-09-17 第一次跑出引擎 8 条、界面 3 条,全是"一个小东西放错了文件"(见 `docs/reports/architecture-review-2026-09-17.md`),修完归零;此后反向依赖在 CI 就被拦住 |
 
 引擎的生产依赖会按 `package-lock.json` 的闭包整包进安装包(`tools/stage_engine_ts.js` 会裁掉 `.d.ts` / `.map` /
 测试目录 / 非本平台的预编译二进制)。加一个运行时依赖之前先想清楚它会不会把安装包撑大:`openai` 裁完约 2.8 MB。

@@ -8,6 +8,12 @@ import {
   structureValue,
 } from "./flyexit.js";
 import { finiteOrNull, fmtF, pyFloat, pyG, pyRound } from "./py.js";
+import { fmtStrike, makeKey } from "./positions.js";
+import type { HostedOrderPlan } from "./positions.js";
+
+// 持仓身份搬到了 positions.ts;这里转出,老的 import 路径不变。
+export { legOf, makeKey, positionLabel } from "./positions.js";
+export type { HostedOrderPlan } from "./positions.js";
 
 export const STATE_HOLDING = "holding";
 export const STATE_TAKE_PROFIT = "take_profit";
@@ -50,44 +56,8 @@ export function isLong(position: Position): boolean {
   return position.quantity > 0;
 }
 
-/** 持仓/追踪的身份(对应 Python position_key)。
- * 正股:账户|代码|类型;期权再带腿身份——一只蝴蝶三条腿都是 SPX 的 OPT,
- * 不带腿身份会在聚合时互相覆盖,追踪与自动平仓也会认错腿。 */
-export function makeKey(account: string, symbol: string, secType: string, leg = ""): string {
-  const base = `${account}|${symbol}|${secType}`;
-  return leg ? `${base}|${leg}` : base;
-}
-
 export function positionKey(position: Position): string {
   return makeKey(position.account, position.symbol, position.sec_type, position.leg ?? "");
-}
-
-function fmtStrike(strike: unknown): string {
-  const value = Number(strike);
-  if (strike === null || strike === undefined || strike === "" || Number.isNaN(value)) return "";
-  return fmtF(value, 4).replace(/0+$/, "").replace(/\.$/, "");
-}
-
-/** 从合约里抽出腿身份:期权为 '到期|行权价|C/P',其余为空串。 */
-export function legOf(contract: Record<string, any> | null | undefined): string {
-  const c = contract ?? {};
-  const secType = String(c["secType"] ?? "STK") || "STK";
-  if (secType !== "OPT" && secType !== "FOP") return "";
-  const expiry = String(c["lastTradeDateOrContractMonth"] ?? "").slice(0, 8);
-  const right = String(c["right"] ?? "").slice(0, 1).toUpperCase();
-  return `${expiry}|${fmtStrike(c["strike"])}|${right}`;
-}
-
-/** 给人看的一行名字:正股就是代码;期权 'SPX 7615P 2026-09-01'。 */
-export function positionLabel(
-  symbol: string, secType: string, contract: Record<string, any> | null | undefined,
-): string {
-  const c = contract ?? {};
-  if (secType !== "OPT" && secType !== "FOP") return symbol;
-  let expiry = String(c["lastTradeDateOrContractMonth"] ?? "").slice(0, 8);
-  if (expiry.length === 8) expiry = `${expiry.slice(0, 4)}-${expiry.slice(4, 6)}-${expiry.slice(6)}`;
-  const right = String(c["right"] ?? "").slice(0, 1).toUpperCase();
-  return [symbol, fmtStrike(c["strike"]) + right, expiry].filter((p) => p.trim()).join(" ");
 }
 
 /** 追踪记录 → 它盯的那条持仓的 key(老记录没有 leg 列时按正股处理)。 */
@@ -1420,18 +1390,6 @@ export const HOSTED_LABELS: Record<string, string> = {
   [HOSTED_KIND_PTRAIL]: "利润回撤动态停损",
 };
 
-export interface HostedOrderPlan {
-  kind: string;
-  action: string;
-  order_type: string;
-  quantity: number;
-  lmt_price: number | null;
-  aux_price: number | null;
-  trailing_percent: number | null;
-  trail_stop_seed: number | null;
-  label: string;
-  [key: string]: unknown;
-}
 
 /** 正股托管单的价格收敛到 2 位小数(美股最小报价单位),且不小于 0.01。
  * 4 位小数的停损价会被 IBKR 以 110(价格档位不合法)拒掉。期权按期权跳动,见下面两个。 */

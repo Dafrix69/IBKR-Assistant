@@ -10,7 +10,6 @@
  */
 import { useMemo } from 'react';
 import { theme, type ThemeConfig } from 'antd';
-import { useDark } from './appearance';
 
 function cssVar(name: string, fallback: string): string {
   const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -334,7 +333,7 @@ export function buildAntdTheme(dark: boolean): ThemeConfig {
   };
 }
 
-export function useAntdTheme(): ThemeConfig {
-  const dark = useDark();
+/** 深浅色由调用方(App)从外观 store 读来传进来:theme/ 只做视觉,不认识 store。 */
+export function useAntdTheme(dark: boolean): ThemeConfig {
   return useMemo(() => buildAntdTheme(dark), [dark]);
 }

@@ -3,7 +3,7 @@ import { Button, Descriptions } from 'antd';
 import { dafri, errorMessage, type AppInfo, type Selftest } from '../bridge';
 import { useEngineLog } from '../store/engineLog';
 import { refreshStatus } from '../store/status';
-import { isMac } from '../theme/appearance';
+import { isMac } from '../store/appearance';
 import { EmptyState, LoadingBlock, PageHead, SectionTitle } from '../ui/kit';
 
 // 注册在案的快捷键。别在这里编不存在的——列表本身就是承诺。

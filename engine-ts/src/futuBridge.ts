@@ -7,6 +7,9 @@
  * FutuUnavailable 并说明怎么接,绝不给一个没验证过的实现假装能用。
  */
 
+/** 富途通道不可用(桥未验证 / SDK 缺失 / OpenD 没起来)。桥自己抛,futu.ts 转出。 */
+export class FutuUnavailable extends Error {}
+
 export type FutuRet = number | string;
 export type FutuTuple<T = unknown> = [FutuRet, T] | Promise<[FutuRet, T]>;
 
@@ -111,7 +114,6 @@ export const FUTU_ENUMS = {
 
 /** 默认桥:npm futu-api 的适配。真机联调前显式不可用——绝不假装。 */
 export async function loadFutuBridge(): Promise<FutuBridge> {
-  const { FutuUnavailable } = await import("./futu.js");
   try {
     await import("futu-api");
   } catch (exc) {

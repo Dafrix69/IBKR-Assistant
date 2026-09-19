@@ -8,7 +8,7 @@ import { useLlmCatalog } from '../store/llm';
 import { navigate } from '../store/nav';
 import { brokerShortName, gatewayName, pickableAccounts, useStatus } from '../store/status';
 import { clearResult, savePickedAccounts, selectedAccounts, setInstruction, submitInstruction, useComposer, usePickedRevision } from '../store/trade';
-import { ENTER_KEY, MOD_KEY, SHIFT_KEY } from '../theme/appearance';
+import { ENTER_KEY, MOD_KEY, SHIFT_KEY } from '../store/appearance';
 import { EmptyState, Meta, PageHead, Primer, StatusCard, Working, type Tone } from '../ui/kit';
 
 // 交易指令:输入框(⌘Enter 解析)与解析结果并排(可拖分栏);「解析并校验(不下单)」/「发送到 IBKR / 富途」两个按钮。

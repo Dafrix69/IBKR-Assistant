@@ -1,0 +1,204 @@
+# 架构体检(2026-09-17)
+
+对 `engine-ts/src`(38 个文件,23,854 行)与 `desktop/renderer-react/src`(63 个文件,12,470 行)跑了一遍
+import 图、圈复杂度粗筛、函数长度与 `any` 分布,再对着源码逐条核过。结论先说:
+
+**这个仓库离屎山很远。** 黄金基线、42 个 spec、lint + typecheck 进 CI、每个功能一份 `docs/features/*.md`、
+`dependencies.md` 把"为什么不引入"写清楚——这些是大多数项目到死都没有的东西。界面这一侧的依赖图干净得
+不像 AI 写的:零循环、`shell → pages → lib → store → bridge` 分层没有一处反向。
+
+真正会让它在半年后变难改的,是下面五件事。按"再不管就会扩散"的顺序排,前两条是结构性的,后三条是体积。
+
+## 一、引擎 ↔ 界面的契约没有单一事实来源
+
+同一个 RPC 方法名现在写在四个地方,彼此之间靠正则测试缝着:
+
+| 位置 | 形态 | 类型 |
+|---|---|---|
+| `engine-ts/src/rpc.ts` `methods()` | 77 个 `"tracker.add": (p) => this.trackerAdd(p)` | 入参 `Rec`(= `Record<string, any>`),出参 `Rec` |
+| `desktop/main.js` `ALLOWED_RPC` / `SENSITIVE_RPC` | 字符串 Set | 无 |
+| `desktop/preload.js` | 78 个 `method: 'tracker.add'` | 无(JS) |
+| `desktop/renderer-react/src/bridge.ts` `DafriBridge` | 78 个方法签名 | 约 60 个返回 `Rpc<any>`,入参多为 `unknown` |
+
+`tests/desktop-whitelist.spec.ts` 用正则把 preload 与 main.js 对一遍——这是对的,而且它抓到过真事故
+(2026-09-10 `tracker.target_preview` 漏登记)。但它只能对**方法名**,对不了**字段**。引擎把 `positions.list`
+返回里的 `avg_cost` 改名成 `avg_price`,四个地方没有一个会报错,只有 `Tracker.tsx` 上的数字变成 `NaN`。
+`bridge.ts` 文件头自己也写着"迁到哪一页就把那一页用到的结构收紧成具体接口"——收紧了 `Status` / `Settings` /
+`PoolWatch` 三个,剩下的还是 `any`。
+
+这是最值得先修的一条,因为它决定了以后**每一个**跨引擎与界面的改动的成本。
+
+**建议做法**:在 `engine-ts/src/` 下建一个 `contract/` 目录(或单文件 `contract.ts`),每个 RPC 方法一条
+`{ params: zod schema, result: TypeScript interface }`。引擎已经用 zod 校验模型输出,同一套工具:
+
+- `rpc.ts` 的 `methods()` 表从 `contract` 生成,入参在 `handleInner` 里统一 `schema.parse`,handler 拿到的就是
+  具体类型,`Rec` 自然消失;
+- `bridge.ts` 的 `DafriBridge` 用 `import type` 从 `engine-ts/src/contract` 引类型(Vite 只取类型,不会把引擎
+  打进渲染层;tsconfig 加一个 `paths` 就行);
+- `main.js` 的 `ALLOWED_RPC` / `SENSITIVE_RPC` 由构建脚本从 `contract` 里的 `sensitive: true` 标记生成,或者
+  `desktop-whitelist.spec.ts` 改成对着 `contract` 核而不是对着 preload 的正则。
+
+不用一次做完。**每碰一个方法就把它迁进 contract**,新方法一律只能从 contract 加——这条写进 CLAUDE.md,
+半年后自然就全了。
+
+## 二、`rpc.ts`:传输层里长出了一个业务层
+
+`rpc.ts` 3,360 行,import 了 37 个模块里的 28 个(见 `engine-deps-2026-09-17.svg`,左下角那个扇出)。它的
+名字说自己是 RPC,但里面有:
+
+- 传输:`serve` / `handle` / 三条道的调度 / `emit`——这部分约 350 行,是它该有的;
+- **业务编排**:股票池的两个开关与迁移(`setPoolWatch` / `ensurePoolMigrated`,约 180 行)、价位提醒的整套轮询
+  (`alertsPoll` / `tickWatchLevels` / `dailyHistory`,约 250 行)、异动循环(`startAnomalyLoop` / `anomalyTickInner`
+  154 行,是全文件最长的函数)、扫描器编排(`screenMembers` / `screenBars`);
+- **状态**:`paCache` / `wallCache` / `histCache` 三个缓存、`trackerChain` 锁、异动循环的计时器。
+
+`TradingEngine`(`engine.ts`,2,059 行)是同样的故事的另一半:指令处理、执行、追踪循环、托管单、IB 事件回调
+四种职责在一个类里,`handleInstruction` 239 行。
+
+两个文件加起来 5,400 行,是引擎的 23%。它们是所有"改一个功能要读半天"的根源,也是 Claude Code 生成代码时
+最容易"顺手加在这里"的地方——因为什么都在这里。
+
+**建议做法**:不重写,只搬家。`rpc.ts` 拆成 `rpc/server.ts`(传输 + 三条道,不动)+ `rpc/handlers/<域>.ts`
+(`tracker.ts` / `alerts.ts` / `pool.ts` / `screener.ts` …,每个导出一张 `{ "tracker.add": fn }` 的表,
+`server.ts` 把它们 `Object.assign` 起来)。`alertsPoll` 与 `anomalyTick` 这种带状态的循环,连同它们的缓存一起
+搬进 `services/alerts.ts` / `services/anomaly.ts`,handler 只剩一行转调。`golden-rpc.spec.ts` 回放的是
+stdio 契约,不看内部结构,拆完它照样绿。
+
+`engine.ts` 同理:托管单(`syncHosted` / `adoptHosted` / `placeHostedOne` … 约 400 行)和 IB 事件回调
+(`onOrderStatus` / `onExecDetails` / `onCommission` / `stashUnmatched` / `replayUnmatched` 约 250 行)各自是一个
+清晰的边界,可以先搬这两块。
+
+## 三、下单层反向依赖了分析层
+
+用 `dependency-cruiser` 按"依赖只能往下流"跑了一遍(规则在 `engine-ts/.dependency-cruiser.cjs`),8 条违规,
+全部集中在执行层:
+
+```
+broker.ts     → tracker.ts      取 legOf / makeKey / positionLabel + HostedOrderPlan 类型
+broker.ts     → priceaction.ts  取 MIN_BARS / TIMEFRAMES
+futuBroker.ts → priceaction.ts  同上
+broker.ts     → tradereview.ts  取 utcIso(一个时间格式化函数)
+broker.ts     → anomaly.ts      取 VolumeSnapshot 类型
+store.ts      → validator.ts    取 RecentOrder 类型
+broker.ts    ↔ ibSession.ts     ibSession 从 broker 拿 IbSession 等接口定义(纯类型环)
+futu.ts      ↔ futuBridge.ts    futuBridge 动态 import futu 取 FutuUnavailable
+```
+
+没有一条是真的业务耦合,每一条都是**一个小东西放错了文件**:持仓的 key / leg 是领域概念不是追踪器的;
+K 线周期表是行情的不是价格行为的;`utcIso` 是 `tz.ts` 的;`IbSession` 接口应该和 `ibSession.ts` 在一起或者
+单独一个 `ibTypes.ts`。总共大概搬 6 个函数、4 个类型,半天的活,搬完 8 条全绿,然后把这条检查放进 CI,
+反向依赖就再也进不来了。
+
+界面那边同样的规则跑出 3 条,都在 `theme/appearance.ts`——它读 settings、写 banner,其实是个 store,
+挪到 `store/appearance.ts` 就完了。
+
+## 四、`Rec = Record<string, any>` 在九个文件里各声明了一次
+
+`rpc.ts` 220 处、`store.ts` 75 处、`engine.ts` 60 处。`eslint` 关掉 `no-explicit-any` 的理由(券商与模型回包
+的结构由对方定)是成立的,但 `Rec` 已经从 `broker.ts`(2 处)漏到了内部领域:交易记录、追踪器行、
+RPC 入参。`tsconfig` 开着 `strict` + `noUncheckedIndexedAccess`,可是一个 `Rec` 就把整条链路的类型检查关掉了。
+
+这一条不单独修,它会随着第一条自然收窄:契约有了具体类型,`rpc.ts` 里的 `Rec` 自动没了;`store.ts` 的
+`Rec` 换成 `RecordRow` / `TrackerRow` 接口(字段就是 SQLite 表的列,已经是固定的)。可以先加一条 lint:
+**新文件禁止声明 `type Rec`**,`Rec` 只允许出现在 `broker.ts` / `ibSession.ts` / `futuBroker.ts` /
+`providers.ts` 这四个"对外"文件里。
+
+## 五、界面上的大组件
+
+| 组件 | 行数 | 位置 |
+|---|---|---|
+| `buildAntdTheme` | 313 | `theme/antd.ts` |
+| `PaPanel` | 252 | `pages/Market.tsx` |
+| `FutuPanel` / `LlmPanel` / `TwsPanel` | 231 / 196 / 93 | `pages/Access.tsx`(725 行) |
+| `TradePage` | 218 | `pages/Trade.tsx` |
+| `RecordsPage` | 215 | `pages/Records.tsx` |
+| `TrackerPage` 整页 | 848 | `pages/Tracker.tsx` |
+
+比引擎那边轻得多,而且不影响正确性,只影响改起来顺不顺手。`buildAntdTheme` 是一张大配置表,不算问题。
+`Access.tsx` 三个 panel 各自独立,拆成 `pages/access/{Tws,Futu,Llm}Panel.tsx` 是纯搬家。`Tracker.tsx`
+848 行里表格、表单、试算弹窗三块可以各自成文件。原则:**一个页面文件超过 400 行,先想它是不是三个东西**。
+
+## 引擎各文件的体量与扇入扇出
+
+| 文件 | 行数 | import 了 | 被 import | 备注 |
+|---|---|---|---|---|
+| `rpc.ts` | 3,360 | 28 | 1(cli) | 见第二条 |
+| `broker.ts` | 2,673 | 10 | 5 | `BrokerRouter` 53 个方法;IB 合约工具函数(`stockContract` … `optionContract`,约 200 行)可以单独成 `ibContracts.ts` |
+| `engine.ts` | 2,059 | 14 | 2 | 见第二条 |
+| `futuBroker.ts` | 1,732 | 9 | 2 | 与 `broker.ts` 平行的富途实现 |
+| `tracker.ts` | 1,522 | 2 | 3 | 纯计算为主,健康 |
+| `priceaction.ts` | 1,064 | 3 | 4 | 纯计算,健康 |
+| `store.ts` | 1,051 | 1 | 5 | 见第四条 |
+| `py.ts` | 137 | 0 | **21** | Python 语义兼容工具,扇入最高,正确 |
+| `tz.ts` | 148 | 0 | 13 | 同上 |
+| `config.ts` | 715 | 2 | 12 | 正确 |
+
+1,376 个函数里超过 100 行的 25 个,超过 300 行的 1 个(`buildAntdTheme`)。这个比例是健康的。
+
+## 机制:让它保持住
+
+上面五条修完,半年后会不会长回来,取决于下面三件事有没有变成机器检查。
+
+**1. 依赖方向进 CI。** 两份 `.dependency-cruiser.cjs` 已经写好并跑过(引擎 8 条、界面 3 条,都是上面列的那些)。
+加到两个 package.json:
+
+```json
+"depcruise": "depcruise src --config .dependency-cruiser.cjs"
+```
+
+CI 里排在 `lint` 之后。第一次跑会红,把现有 8 + 3 条修掉之后就绿了;之后 Claude Code 再往 `broker.ts`
+里 import `priceaction` 会直接被 CI 拦住。`npm i -D dependency-cruiser`,开发依赖,不进安装包。
+
+**2. CLAUDE.md。** 仓库根目录现在没有这个文件。README 与 `docs/features/*.md` 写得很好,但 Claude Code
+每次开工只会自动读 CLAUDE.md,不会主动去翻 `docs/`。所以要把**约束**(不是说明)提炼到那里:分层、
+契约只能从 `contract` 加、`Rec` 的禁区、文件体积预算、改黄金基线的流程。草稿已放在根目录,是从这份报告
+和现有文档里抽出来的规则,不重复 README 的内容。
+
+**3. 体积预算。** 不需要工具,写在 CLAUDE.md 里就够:引擎单文件 1,500 行、函数 150 行、页面组件 400 行。
+超过的不是不能提交,是提交前要先问一句"它是不是两个东西"。现在超线的就是 `rpc.ts` / `broker.ts` /
+`engine.ts` / `futuBroker.ts` / `tracker.ts` 五个,其中 `tracker.ts` 是纯计算,不用动。
+
+## 顺序
+
+1. 半天:搬第三条的 6 个函数 4 个类型,`depcruise` 全绿,进 CI。
+2. 一天:`rpc.ts` 按域拆 handlers,带状态的循环进 `services/`。`golden-rpc` 不动。
+3. 持续:`contract/` 建起来,新方法只走这里,老方法碰到一个迁一个。
+4. 顺手:`engine.ts` 的托管单与 IB 回调各搬一个文件;`Access.tsx` / `Tracker.tsx` 拆页;
+   `theme/appearance.ts` → `store/`。
+
+第 1 步做完就有了护栏,后面的可以慢慢来。不建议开一个"大重构"分支——这个仓库的 `docs/briefs/` 里已经有
+`ts-rewrite` 和 `type-safety-refactor` 两份,说明你知道大重构的代价。这次全部是搬家式的改动,每一步单独
+可提交、测试照跑。
+
+---
+
+工具:import 图与环检测用 Tarjan SCC 自写脚本核对了 `dependency-cruiser` 的结果,两者一致;函数长度用
+括号配对粗算,对箭头函数与类方法都覆盖,误差在 ±3 行。`.git` 未纳入(没跑 churn 热点),如果想看
+"改得最勤的文件是不是最大的文件",`git log --format= --name-only | sort | uniq -c | sort -rn | head`
+一行就够。
+
+## 进展
+
+**2026-09-17,第 1 步做完。** 引擎 8 条、界面 3 条违规全部归零,`depcruise` 进了两边的 `npm run` 与 CI(排在 lint 之后)。
+改动全是搬家,没有一行逻辑变化;`tsc`、`eslint`、42 个 spec / 917 个用例(含全部黄金基线)、`ui:typecheck`、
+`ui:build` 都绿。具体:
+
+| 搬了什么 | 从 | 到 | 老路径 |
+|---|---|---|---|
+| `IbContract` `IbSession` `IbSessionFactory` `OrderIntent` `TickerData` `TickerHandle` `RawBar` `OptChainParam` `PortfolioItemLike` `PositionItemLike` `TradeLike` | `broker.ts` | 新 `ibTypes.ts` | `broker.ts` 继续 `export type` 转出 |
+| `makeKey` `legOf` `positionLabel` `fmtStrike` `HostedOrderPlan` | `tracker.ts` | 新 `positions.ts` | `tracker.ts` 转出 |
+| `TIMEFRAMES` `MIN_BARS` | `priceaction.ts` | 新 `marketdata.ts` | `priceaction.ts` 转出 |
+| `VolumeSnapshot` | `anomaly.ts` | `marketdata.ts` | `anomaly.ts` 转出 |
+| `RecentOrder` | `validator.ts` | `models.ts` | `validator.ts` 转出 |
+| `utcIso` | `tradereview.ts` | `tz.ts` | `tradereview.ts` 转出 |
+| `FutuUnavailable` | `futu.ts` | `futuBridge.ts`(桥自己抛,不再动态 import 回去) | `futu.ts` 转出 |
+| `appearance.ts` | `theme/` | `store/`(它读 settings、写 banner,本来就是 store) | 7 处 import 已改 |
+| `Toasts.tsx` | `ui/` | `shell/`(它读 banner store) | `App.tsx` 已改 |
+| `useAntdTheme()` | 自己读 store | 改为 `useAntdTheme(dark)`,由 `App` 传入 | — |
+
+"老路径转出"意味着测试与其它模块的 import 一行没改;等下一次碰到这些文件时再把 import 指到新家,
+转出行就可以删。`schemaOut.ts` 被 `depcruise` 标为孤儿(只有 `unit-side.spec.ts` 用它,生产代码没有):
+`providers.ts` 走的是 SDK 自带的 structured outputs,这个 Python 版的 schema 清洗大概率已经用不上了,
+留给你决定删不删。
+
+下一步是第 2 步:`rpc.ts` 按域拆 handlers。

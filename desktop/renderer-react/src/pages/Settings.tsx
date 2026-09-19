@@ -3,7 +3,7 @@ import { Button, Segmented, Slider } from 'antd';
 import { dafri, errorMessage, type Settings } from '../bridge';
 import { showBanner } from '../store/banner';
 import { brokerShortName, refreshStatus, useStatus } from '../store/status';
-import { applyGlassTint, applyTheme, applyUpDown, useGlassTint, useThemeMode, useUpDown, type ThemeMode, type UpDown } from '../theme/appearance';
+import { applyGlassTint, applyTheme, applyUpDown, useGlassTint, useThemeMode, useUpDown, type ThemeMode, type UpDown } from '../store/appearance';
 import { Group, GroupRow, LoadingBlock, NumberRow, PageHead, SectionTitle, SwitchRow } from '../ui/kit';
 
 interface Form {
