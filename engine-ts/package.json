@@ -14,7 +14,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "golden": "vitest run golden-",
-    "golden:update": "node scripts/update-golden.mjs"
+    "golden:update": "node scripts/update-golden.mjs",
+    "probe": "node scripts/tws-probe.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
