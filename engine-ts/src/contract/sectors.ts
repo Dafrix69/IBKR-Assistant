@@ -61,8 +61,8 @@ export interface SectorsDeleteResult {
 }
 
 export interface SectorsPickResult {
-  /** 选完之后的板块。null = 等大模型的那几秒里板块被删了。 */
-  sector: Sector | null;
+  /** 选完之后的板块。等大模型的那几秒里板块被删了的话,整个调用报「板块不存在」,不会回一个空的。 */
+  sector: Sector;
   /** 新进池子却没开成开关的原因(上限吃满之类),原话 */
   skipped: string[];
   /** 重选换下去、且不在别的板块里的股 */

@@ -28,7 +28,7 @@ export class SectorsHandlers extends HandlerBase {
     });
   }
 
-  /** 改完再读一遍当回执。用它的几个方法都是同步的(本地道,读和写之间没有 await),刚改过的行一定在。 */
+  /** 改完再读一遍当回执。调用它的地方,从确认板块还在到这里之间都没有 await(不会被别的请求插队),刚改过的行一定在。 */
   private reread(sectorId: string): Sector {
     const sector = this.engine.store.getSector(sectorId);
     if (sector === null) throw new RpcError(-32602, `板块不存在:${sectorId}`);
@@ -98,6 +98,13 @@ export class SectorsHandlers extends HandlerBase {
       throw new RpcError(-32010, `AI 选股失败:${(exc as Error).message}`);
     }
 
+    // 上面等了大模型几秒,而 sectors.delete 在本地道、来了就答——板块可能就在这几秒里被删了。
+    // 不查就往下走的话:setSectorStocks 静默改 0 行,新选的股却照样被打开两个开关,成了不在任何板块里的孤儿
+    //(一次性迁移不会再跑,没有别的东西清它们)。从这里到返回没有 await,之后不会再被插队。
+    if (this.engine.store.getSector(sectorId) === null) {
+      throw new RpcError(-32602, `板块不存在:${sectorId}(选股期间被删了,这次的结果没有保存)`);
+    }
+
     const seen = new Set<string>();
     const stocks: SectorStock[] = [];
     for (const pick of picks.stocks) {
@@ -118,8 +125,7 @@ export class SectorsHandlers extends HandlerBase {
     this.engine.store.audit("ui", "sector_pick", {
       id: sectorId, name: sector["name"], count: stocks.length,
     });
-    // 这里不用 reread:上面等了大模型几秒,板块可能就在这几秒里被删了——契约里这个 sector 是可空的
-    return { sector: this.engine.store.getSector(sectorId), skipped, dropped };
+    return { sector: this.reread(sectorId), skipped, dropped };
   }
 
   sectorsAddStock(params: SectorsAddStockParams): RpcResult<"sectors.add_stock"> {

@@ -270,6 +270,24 @@ describe("进池子的默认:两个开关都开", () => {
 
 // ---------------------------------------------------------------- 出池子的连带清理
 describe("出了池子:两张表的行跟着收掉", () => {
+  it("sectors.pick:等大模型的那几秒里板块被删了——报错,一个开关都不开(否则新选的股成了不在任何板块里的孤儿)", async () => {
+    const { s } = makeServer();
+    const sector = (await call(s, "sectors.add", { name: "AI 算力" }))["result"]["sector"];
+    s.parserFactory = () => ({
+      completeJson: async () => {
+        // sectors.delete 在本地道,来了就答,不排在等大模型的 sectors.pick 后面——所以真会插进来
+        expect((await call(s, "sectors.delete", { id: sector["id"] }))["error"]).toBeUndefined();
+        return { stocks: [{ symbol: "NVDA", company: "英伟达", reason: "算力", tag: "芯片" }] };
+      },
+    }) as any;
+
+    const out = await call(s, "sectors.pick", { id: sector["id"] });
+    expect(out["error"]).toEqual({ code: -32602, message: `板块不存在:${sector["id"]}(选股期间被删了,这次的结果没有保存)` });
+    expect(watched(s)).toEqual([]);
+    expect(anomalied(s)).toEqual([]);
+    expect(poolAudit(s, "pool_watch_on")).toEqual([]);
+  });
+
   it("sectors.remove_stock:不在任何板块了才清;还在别的板块里的一行不动", async () => {
     const { s } = makeServer();
     const tech = await sectorWith(s, "科技", ["NVDA", "AMD"]);
