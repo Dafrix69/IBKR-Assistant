@@ -15,6 +15,9 @@ import { deleteSecret, getSecret, hasSecret, isSupported, setSecret } from "../s
 const win = process.platform === "win32";
 const SERVICE = "dafri-ts-test";
 const MIGRATE_SERVICE = "dafri-ts-test-migrate";
+// 造 / 解旧密文都要同步起一个 PowerShell:单跑 1–2 秒,整套并行跑时冷启动会被拖到 5–6 秒,
+// 正好压在 vitest 默认的 5 秒线上,时过时不过。只给这两条放宽时限,断言不动。
+const POWERSHELL_TIMEOUT_MS = 20_000;
 
 let tmpLocalAppData = "";
 let savedLocalAppData: string | undefined;
@@ -94,7 +97,7 @@ describe("keychain", () => {
     // 旧文件整个删掉:值已经在系统凭证库里,照样读得到
     fs.rmSync(legacyFile(), { force: true });
     expect(getSecret(MIGRATE_SERVICE, "legacy")).toBe("旧钥匙-sk-ant-123");
-  });
+  }, POWERSHELL_TIMEOUT_MS);
 
   it.runIf(win)("删除会把旧存储里那份一起清掉(否则删完再读又被迁回来)", () => {
     writeLegacyBlob(MIGRATE_SERVICE, "legacy", "旧钥匙-sk-ant-123");
@@ -104,7 +107,7 @@ describe("keychain", () => {
     expect(getSecret(MIGRATE_SERVICE, "legacy")).toBeNull();
     const store = JSON.parse(fs.readFileSync(legacyFile(), "utf-8"));
     expect(`${MIGRATE_SERVICE}\x00legacy` in store).toBe(false);
-  });
+  }, POWERSHELL_TIMEOUT_MS);
 
   it.runIf(!isSupported())("不支持的平台显式报错,不退化为明文", () => {
     expect(() => getSecret("x", "y")).toThrowError(/没有可用的系统凭证存储/);
