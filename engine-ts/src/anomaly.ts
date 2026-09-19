@@ -14,31 +14,13 @@ import { fmtF, fmtSF, pyRound } from "./py.js";
 export type { VolumeSnapshot } from "./marketdata.js";
 import type { VolumeSnapshot } from "./marketdata.js";
 
-export type AnomalyKind = "rvol" | "burst" | "spike" | "day_move";
+// 对外的四个形状(触发条件、指标、事件)定义在 contract/quality.ts——引擎与界面共用一份;这里转出,老的 import 不用改。
+export type { AnomalyConfig, AnomalyEvent, AnomalyKind, AnomalyMetrics as Metrics } from "./contract/quality.js";
+import type { AnomalyConfig, AnomalyEvent, AnomalyMetrics as Metrics } from "./contract/quality.js";
 
 export class AnomalyError extends Error {}
 
 // ---------------------------------------------------------------- 配置
-export interface AnomalyConfig {
-  /** 全天量比(对同时段常态)达到这些倍数各报一次/天 */
-  rvol_tiers: number[];
-  /** 近 window_min 分钟量比 */
-  burst_ratio: number;
-  /** 3 / 5 / 10:流里正好有对应的近 3/5/10 分钟量,样本不够时拿来兜底 */
-  window_min: number;
-  /** 窗口内涨跌幅 ≥ spike_sigma × 窗口 σ 算急涨急跌 */
-  spike_sigma: number;
-  /** 急涨急跌的最低幅度(%):σ 很小的股不因 0.3% 就报 */
-  spike_min_pct: number;
-  /** 没有历史波动率时的固定阈值(%) */
-  spike_fixed_pct: number;
-  /** 较昨收涨跌幅达到 k × 日 σ 各报一次/天/方向 */
-  day_sigma_tiers: number[];
-  /** 没有历史波动率时的固定档(%) */
-  day_fixed_tiers: number[];
-  /** burst / spike 报过之后的冷却(分钟) */
-  cooldown_min: number;
-}
 
 export const DEFAULT_ANOMALY_CONFIG: AnomalyConfig = {
   rvol_tiers: [2, 3, 5],
@@ -315,50 +297,7 @@ export function coerceState(raw: unknown, date: string): AnomalyState {
 }
 
 // ---------------------------------------------------------------- 判定
-export interface Metrics {
-  last: number | null;
-  /** 较昨收 % */
-  change_pct: number | null;
-  /** 全天量比 */
-  rvol: number | null;
-  /** 窗口量比 */
-  burst: number | null;
-  /** 窗口里最大一步占窗口量的比例(只有样本窗口才有):接近 1 说明是一笔大宗补报,不是持续放量 */
-  block_share: number | null;
-  /** 窗口涨跌幅 % */
-  ret_window_pct: number | null;
-  sigma_window_pct: number | null;
-  sigma_day_pct: number | null;
-  /** 窗口量比的基准 */
-  basis_volume: "avg_volume" | "session_pace" | null;
-  basis_sigma: "hist_vol" | "fixed";
-  window_ready: boolean;
-  delayed: boolean;
-}
 
-export interface AnomalyEvent {
-  /** `${symbol}:${kind}:${direction ?? "-"}:${tier ?? "-"}:${Math.round(nowMs/1000)}` */
-  id: string;
-  /** 秒 */
-  at: number;
-  symbol: string;
-  kind: AnomalyKind;
-  direction: "up" | "down" | null;
-  /** rvol / burst 的倍数;spike / day_move 的涨跌幅 %(带符号) */
-  value: number;
-  /** 触发时的阈值(倍数或 %,% 取幅度、不带符号) */
-  threshold: number;
-  /** rvol 档(倍数)或 day_move 档序号;其它 null */
-  tier: number | null;
-  /** spike / day_move 折成几个 σ(幅度,basis=hist_vol 时),否则 null */
-  sigma: number | null;
-  price: number | null;
-  change_pct: number | null;
-  /** "avg_volume" | "session_pace" | "hist_vol" | "fixed" */
-  basis: string;
-  title: string;
-  text: string;
-}
 
 /** 年化历史波动率统一成小数。IB 给的是 0.319 这种小数;> 5(500%)只可能是有人按百分数传了。 */
 function annualized(v: unknown): number | null {

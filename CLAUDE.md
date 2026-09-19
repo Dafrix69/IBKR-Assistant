@@ -23,13 +23,14 @@ cd desktop   && npm run lint && npm run ui:typecheck
 ## 引擎分层(依赖只能往下)
 
 ```
-transport     rpc.ts(转出的壳)  rpc/server.ts  rpc/context.ts  rpc/params.ts  rpc/handlers/*.ts  cli.ts
+transport     rpc.ts(转出的壳)  rpc/server.ts  rpc/context.ts  rpc/contractMethods.ts  rpc/params.ts  rpc/handlers/*.ts  cli.ts
 orchestrate   engine.ts  tracker.ts  services/*.ts
 execution     broker.ts  futuBroker.ts  ibSession.ts  ibTypes.ts  tws.ts  futu.ts  futuBridge.ts
 parsing       validator.ts  providers.ts  prompts.ts  shorthand.ts  llm.ts
 analysis      backtest priceaction screener research optionwall anomaly flyexit tradereview ibtrades macro market alerts
 domain        config.ts  models.ts  store.ts  positions.ts  marketdata.ts
 util          py.ts  pyjson.ts  tz.ts  notify.ts  keychain.ts  killswitch.ts  protections.ts  schemaOut.ts  rpcError.ts
+contract      contract/*.ts(纯类型,零 import,谁都能引)  contract/schema/*.ts(入参的 zod 校验,只给 rpc/ 用)
 ```
 
 - 下层不 import 上层。`analysis` 这一层是纯计算,不认识券商、引擎、RPC,必须能离线单跑。
@@ -51,12 +52,17 @@ util          py.ts  pyjson.ts  tz.ts  notify.ts  keychain.ts  killswitch.ts  pr
 
 ## 引擎 ↔ 界面契约
 
-- 加一个 RPC 方法要同时改四处:所属域 `rpc/handlers/<域>.ts` 的 `methods()`、`main.js` 的 `ALLOWED_RPC`
-  (会发单的还要进 `SENSITIVE_RPC`)、`preload.js`、`bridge.ts` 的 `DafriBridge`。`tests/desktop-whitelist.spec.ts`
-  双向核对引擎方法表 ↔ `ALLOWED_RPC` ↔ preload,少一处会红;方法要走本地道 / 读道,还要进 `server.ts` 的道表。
-- 契约收口(待做,见 `docs/reports/architecture-review-2026-09-17.md` 第一条):方法的入参 schema 与返回类型统一放
-  `engine-ts/src/contract/`,`bridge.ts` 用 `import type` 引用。目录建起来之后,**新方法只能从 contract 加**;碰到老方法顺手迁一个。
-- 返回结构改字段名 = 破坏契约。改之前 grep `renderer-react/src` 里所有用到该字段的地方。
+- **新方法只能从契约加**,顺序是:`contract/<域>.ts` 写入参与返回的类型 → `contract/index.ts` 的 `RpcMethods` 登记 →
+  `contract/schema/` 配入参 schema(漏了是编译错)→ 所属域 handler 用 `contractMethods({...})` 实现 → `main.js` 的
+  `ALLOWED_RPC`(会发单的还要进 `SENSITIVE_RPC`)→ `preload.js` → `bridge.ts` 的 `DafriBridge` 用 `RpcParams` / `RpcResult` 写签名。
+  方法要走本地道 / 读道,还要进 `server.ts` 的道表。`tests/desktop-whitelist.spec.ts` 与 `tests/contract.spec.ts` 少一处会红。
+- 老方法(入参与返回还是 `Rec`)钉在 `tests/contract.spec.ts` 的 `LEGACY_METHODS`:**那张表只许变短**,碰到一个迁一个。
+  迁的时候类型搬进 contract、原文件改成转出(`anomaly.ts` 是样板),不要两边各留一份。
+- 契约的类型文件(`contract/` 顶层)**不 import 任何东西**:界面的 tsc 会顺着 `bridge.ts` 走进来,而 CI 里界面那一路
+  不装引擎的依赖。界面只有 `bridge.ts` 能跨进引擎目录,只许 `import type`,只许进 `contract/` 顶层。
+- schema 只管**结构**(有哪些字段、什么 JSON 类型);领域校验(代码形状、上限、阈值范围)留在 handler,报 handler 自己那句人话。
+  不要让 schema 比老 handler 严——那是改行为(例:异动阈值一直认数字串,schema 就不能写成 `z.number()`)。
+- 老方法的返回结构改字段名 = 破坏契约,而且编译器看不见。改之前 grep `renderer-react/src` 里所有用到该字段的地方。
 
 ## 类型
 

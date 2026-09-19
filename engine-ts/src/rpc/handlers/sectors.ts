@@ -1,10 +1,12 @@
 /** sectors.* 与 pool.set_watch:自定义板块(= 股票池)、AI 选股、成分股身上的两个开关。 */
+import type { PoolSetWatchParams, PoolWatch, PoolWatchPatch } from "../../contract/pool.js";
 import { MAX_TAG_LEN, SectorPicksSchema, StockPickSchema } from "../../models.js";
 import { loadSchemaAsset } from "../../providers.js";
 import { RpcError } from "../../rpcError.js";
 import { PoolService } from "../../services/pool.js";
 import { HandlerBase } from "../context.js";
 import type { MethodTable, Rec } from "../context.js";
+import { contractMethods } from "../contractMethods.js";
 import { symbolOrRaise } from "../params.js";
 
 export class SectorsHandlers extends HandlerBase {
@@ -18,7 +20,8 @@ export class SectorsHandlers extends HandlerBase {
       "sectors.add_stock": (p) => this.sectorsAddStock(p),
       "sectors.remove_stock": (p) => this.sectorsRemoveStock(p),
       "sectors.set_tag": (p) => this.sectorsSetTag(p),
-      "pool.set_watch": (p) => this.poolSetWatch(p),
+      // 已经在契约里的方法(contract/pool.ts):入参过了 schema 才到 handler
+      ...contractMethods({ "pool.set_watch": (p) => this.poolSetWatch(p) }),
     };
   }
 
@@ -182,9 +185,9 @@ export class SectorsHandlers extends HandlerBase {
    * pool.set_watch:股票池里一只股的两个开关。price / anomaly 只传要改的那个。
    * 回执带 skipped:超上限 / 指数不能盯异动这种"没给你开"的事,界面要如实说出来。
    */
-  poolSetWatch(params: Rec): Rec {
+  poolSetWatch(params: PoolSetWatchParams): PoolWatch {
     const symbol = symbolOrRaise(params);
-    const patch: { price?: boolean; anomaly?: boolean } = {};
+    const patch: PoolWatchPatch = {};
     if (params["price"] !== undefined && params["price"] !== null) patch.price = Boolean(params["price"]);
     if (params["anomaly"] !== undefined && params["anomaly"] !== null) patch.anomaly = Boolean(params["anomaly"]);
     if (patch.price === undefined && patch.anomaly === undefined) {

@@ -8,6 +8,7 @@ import {
 } from "../anomaly.js";
 import type { AnomalyConfig, AnomalyEvent, AnomalyState, Metrics, Sample } from "../anomaly.js";
 import { etNowFromEpoch, nowEt } from "../config.js";
+import type { QualityMonitor } from "../contract/quality.js";
 import type { VolumeSnapshot } from "../marketdata.js";
 import type { AlertsService } from "./alerts.js";
 import { ServiceBase } from "./host.js";
@@ -45,6 +46,11 @@ function stableJson(value: unknown): string {
 /** 内存里最近一轮的指标(给界面画表);取不到行情时记原因。 */
 export interface QualityMetricsHit { metrics: Metrics | null; at: string; error: string | null }
 
+/** 循环的心跳:monitor() 把前六样原样交给界面(QualityMonitor),delayed 只用来拼那句 note。 */
+interface LoopState extends Pick<QualityMonitor, "running" | "interval_ms" | "ticks" | "last_at" | "last_ms" | "last_error"> {
+  delayed: boolean;
+}
+
 export class AnomalyService extends ServiceBase {
   constructor(host: ServiceHost, private readonly alerts: AlertsService) {
     super(host);
@@ -69,7 +75,7 @@ export class AnomalyService extends ServiceBase {
   /** 所有轮次排成一队:循环自己不会叠,测试 / 手动调 tickOnce 也不会和循环叠。 */
   private anomalyChain: Promise<unknown> = Promise.resolve();
   /** 心跳(与盯盘节拍器同一个口径):没在跑、太久没跳、上一轮报错,界面都要能看见。 */
-  private readonly anomalyLoop: Rec = {
+  private readonly anomalyLoop: LoopState = {
     running: false, interval_ms: AnomalyService.ANOMALY_TICK_MS, ticks: 0,
     last_at: null, last_ms: null, last_error: "", delayed: false,
   };
@@ -240,7 +246,7 @@ export class AnomalyService extends ServiceBase {
           if (result.events.length || stableJson(result.state) !== stableJson(stock["states"])) {
             store.updateQualityStock(String(stock["id"]), {
               states: result.state,
-              events: [...((stock["events"] as Rec[]) ?? []), ...result.events].slice(-50),
+              events: [...(stock["events"] ?? []), ...result.events].slice(-50),
             });
           }
           (out["events"] as AnomalyEvent[]).push(...result.events);
@@ -291,7 +297,7 @@ export class AnomalyService extends ServiceBase {
   }
 
   /** 监控状态:连接 / 支持 / 时段现算(本地道,便宜),节拍与报错取循环最近一轮。 */
-  monitor(): Rec {
+  monitor(): QualityMonitor {
     const s = this.anomalyLoop;
     const router = this.router;
     const connected = Boolean(router && router.sessions().length);

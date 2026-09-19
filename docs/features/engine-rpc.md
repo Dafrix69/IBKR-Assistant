@@ -41,8 +41,43 @@
 - **错误码在最底层。** `RpcError` 放在 `rpcError.ts`(util 层):service 也要抛带码的错(-32017「需要先连券商」),
   不该为一个错误类去 import 传输层。
 - **方法表是无原型对象。** 请求里的 `method` 是外来字符串,`"constructor"` 不该从 `Object.prototype` 上捞到东西。
-- **加方法**:写进所属域的 `methods()`;新域就在 `server.ts` 的 `domains` 里加一行。同名方法重复登记,构造时直接抛。
+- **加方法**:先进契约(见下一节),再在所属域的 `methods()` 里用 `contractMethods` 实现;新域就在 `server.ts` 的
+  `domains` 里加一行。同名方法重复登记,构造时直接抛。
   `tests/desktop-whitelist.spec.ts` 双向核对引擎方法表 ↔ `main.js` 的 `ALLOWED_RPC`,并核对三张道表里的名字都是真方法。
+
+## 契约:入参与返回只写一处(`src/contract/`)
+
+同一个形状以前写两遍:引擎的 `anomaly.ts` 一份,界面的 `bridge.ts` 手抄一份,中间靠一条正则测试逐字段对——
+`block_share` 就是手抄时漏掉的,`enabled` 库里是 `0 | 1`、界面那份写成了 `number | boolean`。引擎改一个返回字段名,
+四个登记处没有一个报错,只有界面上出一个 `NaN`。2026-09-20 起,形状只在 `contract/` 定义一处:
+
+| 位置 | 内容 |
+|---|---|
+| `contract/<域>.ts` | 这个域的入参与返回类型(纯 TS,零 import) |
+| `contract/index.ts` | `RpcMethods`:方法名 → `{ params, result }`;`RpcParams<M>` / `RpcResult<M>` |
+| `contract/schema/` | 入参的 zod schema 与总表 `PARAMS_SCHEMAS`(对着 `RpcMethods` 的映射类型:缺一个、形状对不上都是编译错) |
+| `rpc/contractMethods.ts` | handler 登记契约方法的入口:入参先过 schema,再调 handler;方法名、入参、返回三样对着契约检查 |
+
+`bridge.ts` 用 `import type` 引同一份,所以契约里改一个字段名,引擎在**产出**它的地方、界面在**消费**它的地方同时编译不过
+(拿 `block_share` 验过:`anomaly.ts` 与 `PoolStock.tsx` 一起红)。几条设计决策:
+
+- **类型文件零 import,schema 另放一个子目录。** 体检报告原本建议"每个方法一条 `{ zod schema, result 类型 }`"放在一起。
+  做不到:界面的 tsc 会顺着 `import type` 把整个文件纳入检查,而 CI 的 `desktop-ui` 不装引擎的依赖,一个 `import "zod"`
+  就解析不了。所以类型是源头,schema 写成 `ParamsSchema<契约类型>` 去对它,而不是反过来 `z.infer`。
+- **定义搬进 contract,原处改成转出。** `anomaly.ts` 的 `AnomalyConfig` / `Metrics` / `AnomalyEvent` 现在是从契约转出的,
+  十几处 import 不用改。契约在依赖分层的最底下,分析层、store、service 都可以引它。
+- **schema 只管结构,领域校验留在 handler。** 缺字段、类型不对是调用方写错了,报「`quality.add` 的参数不对:缺少 symbol」;
+  代码形状、上限、阈值范围是用户填错了,还是 handler 那句给人看的话(「price / anomaly 至少要传一个」),界面原样显示。
+  schema 不许比老 handler 严:异动阈值一直认数字串(表单里敲出来的就是字符串),所以 `config` 在契约里是
+  "键同 `AnomalyConfig`、值 `unknown`",由 `normalizeAnomalyConfig` 校验;可选字段带 `null` 和不带是一回事。
+- **库的行也写成接口。** `QualityStockRow` 是 `quality_stocks` 的一行,`QualityStock` 在它上面加内存里的四样;
+  store 的这几个方法不再回 `Rec`。类型断言只留在库的边界(`qualityRow`)一处。
+- **迁移渐进,只许往前。** 还没迁的 71 个老方法钉在 `tests/contract.spec.ts` 的 `LEGACY_METHODS`,那张表只许变短;
+  引擎里出现一个既不在契约、也不在名单里的方法,测试就红。先迁的是 `quality.*` 与 `pool.set_watch`——
+  界面那头本来就有具体接口,两边对得上,最便宜。
+
+没做的:`sensitive`(要界面确认)与走哪条道还登记在 `main.js` 和 `server.ts`,没有进契约——现在迁进来的六个方法
+都不发单,等第一个会发单的方法迁的时候再加,不提前造。
 
 ## 解析链路时延:量过一遍之后改了四处
 

@@ -123,6 +123,7 @@ IB 会把大宗 / 暗池成交整笔补报进当日量。2026-09-11 真机:GOOG 
 
 | 位置 | 内容 |
 |---|---|
+| `engine-ts/src/contract/quality.ts` | 引擎与界面共用的形状:触发条件、指标、事件、一只股、监控心跳、`quality.*` 的入参(`bridge.ts` 从这里转出,不另抄) |
 | `engine-ts/src/anomaly.ts` | 纯计算:曲线、四类信号、滞回 / 档位状态、文案 |
 | `engine-ts/src/rpc/handlers/quality.ts` | `quality.*`(本地道):增删改与触发条件 |
 | `engine-ts/src/services/anomaly.ts` | 5 秒一轮的监控循环(`AnomalyService.tickOnce`,serve 里启动,unref),连同样本、指标与心跳 |

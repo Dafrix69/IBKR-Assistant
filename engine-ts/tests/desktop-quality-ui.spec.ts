@@ -122,18 +122,34 @@ describe("界面:窗口量比的着色和引擎的判定同一道口径", () => 
 });
 
 describe("界面:metrics 的字段跟着引擎走", () => {
+  // 以前两边各手抄一份接口,这里用正则逐字段对(block_share 就是手抄时漏掉的)。现在形状只在
+  // contract/quality.ts 定义一处,引擎与界面都从那里转出——"一字不差"靠的是只有一份,编译器替我们对。
+  // 这里守的是:谁也别再抄一份回来。
   function ifaceKeys(src: string, name: string): string[] {
     const start = src.indexOf(`interface ${name} {`);
     expect(start, `找不到 ${name}`).toBeGreaterThan(-1);
     const body = src.slice(start, src.indexOf("\n}", start));
     return [...body.matchAll(/^ {2}([a-z_]+)\??:/gm)].map((m) => m[1]!);
   }
+  const declares = (src: string, name: string): boolean => new RegExp(`\\b(interface|type)\\s+${name}\\b\\s*[={]`).test(src);
 
-  it("bridge.ts 的 QualityMetrics 和引擎的 Metrics 一字不差(block_share 就是这么漏掉的)", () => {
-    const engine = ifaceKeys(readFileSync(path.resolve(__dirname, "..", "src", "anomaly.ts"), "utf-8"), "Metrics");
-    const ui = ifaceKeys(read("bridge.ts"), "QualityMetrics");
-    expect(engine).toContain("block_share");
-    expect(ui).toEqual(engine);
+  it("契约里的 AnomalyMetrics 带着 block_share(当年漏掉的那个字段)", () => {
+    expect(ifaceKeys(readEngine("src", "contract", "quality.ts"), "AnomalyMetrics")).toContain("block_share");
+  });
+
+  it("引擎的 anomaly.ts 不自己定义 Metrics / AnomalyConfig / AnomalyEvent,从契约转出", () => {
+    const engine = readEngine("src", "anomaly.ts");
+    for (const name of ["Metrics", "AnomalyConfig", "AnomalyEvent", "AnomalyKind"]) expect(declares(engine, name), name).toBe(false);
+    expect(engine).toContain('from "./contract/quality.js"');
+  });
+
+  it("bridge.ts 不自己定义这两个域的形状:QualityMetrics / QualityConfig 只是契约类型的别名", () => {
+    const ui = read("bridge.ts");
+    for (const name of ["QualityStock", "QualityMonitor", "QualityList", "AnomalyEvent", "PoolWatch", "PoolWatchPatch"]) {
+      expect(declares(ui, name), name).toBe(false);
+    }
+    expect(ui).toContain("export type QualityMetrics = AnomalyMetrics;");
+    expect(ui).toContain("export type QualityConfig = AnomalyConfig;");
   });
 });
 

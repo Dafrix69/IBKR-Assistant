@@ -2,8 +2,10 @@
  *  依赖只能单向往下流:
  *    transport(rpc.ts、rpc/、cli) → orchestration(engine/tracker、services/) → execution(broker、futuBroker、ibSession、tws、futu)
  *    → validation/parsing(validator/providers/prompts/shorthand) → analysis(纯计算) → domain(config/models/store) → util
+ *    → contract(引擎 ↔ 界面的契约:顶层是纯类型、零依赖,谁都能引;contract/schema/ 是入参的运行时校验,只给 rpc/ 用)
  */
 const L = {
+  contractTypes: "^src/contract/[^/]+\\.ts$",
   util:        "^src/(py|pyjson|tz|schemaOut|notify|keychain|killswitch|protections|rpcError)\\.ts$",
   domain:      "^src/(config|models|store|positions|marketdata)\\.ts$",
   analysis:    "^src/(backtest|priceaction|screener|research|optionwall|anomaly|flyexit|tradereview|ibtrades|macro|market|alerts)\\.ts$",
@@ -27,6 +29,15 @@ module.exports = {
       from: { path: L.domain }, to: { path: [L.analysis, L.parsing, L.execution, L.orchestrate, L.transport] } },
     { name: "util-bottom", severity: "error", comment: "util 不依赖任何业务模块",
       from: { path: L.util }, to: { path: "^src/", pathNot: L.util } },
+    { name: "contract-types-import-nothing", severity: "error",
+      comment: "契约的类型文件只许互相引用:界面的 tsc 会顺着 bridge.ts 的 import type 走进来,而 CI 里界面那一路不装引擎的依赖、也没有 node 的类型",
+      from: { path: L.contractTypes }, to: { pathNot: L.contractTypes } },
+    { name: "contract-is-bottom", severity: "error",
+      comment: "契约在最底下:contract/(含 schema/)不依赖引擎的任何模块,schema 只认 zod 和同目录的类型",
+      from: { path: "^src/contract/" }, to: { path: "^src/", pathNot: "^src/contract/" } },
+    { name: "schema-is-for-rpc", severity: "error",
+      comment: "入参的运行时校验是传输层的事:contract/schema/ 只给 rpc/ 用,别的层要形状就引上一层的类型文件",
+      from: { path: "^src/", pathNot: "^src/(rpc/|contract/schema/)" }, to: { path: "^src/contract/schema/" } },
     { name: "rpc-outermost", severity: "error",
       comment: "传输层是最外层:rpc.ts / rpc/ / cli.ts 之外谁也不 import 它们——services/ 不认识 RPC,离线能单跑",
       from: { path: "^src/", pathNot: L.transport }, to: { path: L.transport } },

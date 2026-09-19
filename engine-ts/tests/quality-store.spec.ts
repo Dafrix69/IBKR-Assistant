@@ -7,6 +7,7 @@ import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import type { AnomalyEvent } from "../src/contract/quality.js";
 import { TradeStore } from "../src/store.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -73,7 +74,8 @@ describe("store: 优质股追踪", () => {
   it("白名单更新:note / enabled / states / events;事件只留最近 50 条;别的字段拒绝", () => {
     const row = store.addQualityStock("UBER");
     const id = String(row["id"]);
-    const events = Array.from({ length: 60 }, (_, i) => ({ id: `e${i}`, title: `UBER 放量 ${i}` }));
+    // 夹具只带这条用例要看的两个字段;store 不看事件的形状,原样进出
+    const events = Array.from({ length: 60 }, (_, i) => ({ id: `e${i}`, title: `UBER 放量 ${i}` })) as unknown as AnomalyEvent[];
     expect(store.updateQualityStock(id, {
       enabled: false, note: "网约车龙头", states: { date: "2026-09-11", rvol_fired: 3 }, events,
     })).toBe(true);
@@ -82,10 +84,11 @@ describe("store: 优质股追踪", () => {
     expect(got["note"]).toBe("网约车龙头");
     expect(got["states"]).toEqual({ date: "2026-09-11", rvol_fired: 3 });
     expect((got["events"] as Array<{ id: string }>).map((e) => e.id)).toEqual(events.slice(-50).map((e) => e.id));
-    expect(() => store.updateQualityStock(id, { symbol: "LYFT" })).toThrowError(/不允许修改的字段/);
+    // 类型已经不让这么传了;运行时那道白名单是给绕过类型的调用方留的,所以这里故意绕
+    expect(() => store.updateQualityStock(id, { symbol: "LYFT" } as never)).toThrowError(/不允许修改的字段/);
     expect(store.updateQualityStock(id, {})).toBe(false);
     expect(store.updateQualityStock("no-such-id", { enabled: true })).toBe(false);
-    store.updateQualityStock(id, { enabled: 1 });
+    store.updateQualityStock(id, { enabled: 1 } as never); // 同上:库按真假收,1 也认
     expect(store.getQualityStock(id)!["enabled"]).toBe(1);
   });
 

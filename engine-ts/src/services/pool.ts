@@ -5,6 +5,7 @@
  * quality_stocks 有这一行 ⟺「盯异动」开。两张表继续存各自的状态(价位/墙/触发;档位/滞回/异动),
  * 但成员身份只由池子说了算——池子里没有的股不该在这两张表里留行。
  */
+import type { PoolWatch, PoolWatchPatch } from "../contract/pool.js";
 import { errText } from "../rpcError.js";
 import type { AlertsService } from "./alerts.js";
 import { AnomalyService } from "./anomaly.js";
@@ -34,7 +35,7 @@ export class PoolService extends ServiceBase {
    * 开 / 关一只股身上的价位与异动。只动传进来的那个;已经是那个状态就当没事(幂等)。
    * 上限、指数这类"没给你开"的原因一律进 skipped 如实回报——不静默丢,界面要能说人话。
    */
-  setWatch(symbol: string, patch: { price?: boolean; anomaly?: boolean }, note = ""): Rec {
+  setWatch(symbol: string, patch: PoolWatchPatch, note = ""): PoolWatch {
     // 迁移必须排在任何一次开关变化之前:否则用户刚关掉的开关,会被随后才跑的迁移又打开
     // (迁移自己也走这里,靠 poolMigrated 标记直接返回,不会递归)
     this.ensureMigrated();

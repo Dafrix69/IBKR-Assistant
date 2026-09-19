@@ -13,6 +13,7 @@ import * as crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
+import type { AnomalyEvent, QualityStockRow } from "./contract/quality.js";
 import type { RecentOrder } from "./models.js";
 
 export const SCHEMA = `
@@ -189,6 +190,14 @@ export interface WorkingRecord {
 }
 
 type Rec = Record<string, any>;
+
+/** quality_stocks 里允许改的列:note / enabled 是用户写的,states / events 是异动监控写的。 */
+export interface QualityStockPatch {
+  note?: string;
+  enabled?: boolean;
+  states?: object;
+  events?: AnomalyEvent[];
+}
 
 export class TradeStore {
   readonly dbPath: string;
@@ -507,10 +516,10 @@ export class TradeStore {
   static readonly QUALITY_NOTE_MAX = 60;
   static readonly QUALITY_EVENTS_KEEP = 50;
 
-  addQualityStock(symbol: string, note = ""): Rec {
+  addQualityStock(symbol: string, note = ""): QualityStockRow {
     symbol = (symbol || "").replace(/\s+/g, "").toUpperCase();
     if (!symbol) throw new Error("标的代码为空");
-    const row: Rec = {
+    const row: QualityStockRow = {
       id: crypto.randomUUID(),
       created_at: nowIso(),
       updated_at: nowIso(),
@@ -523,7 +532,7 @@ export class TradeStore {
     try {
       this.db
         .prepare("INSERT INTO quality_stocks (id, created_at, updated_at, symbol, note) VALUES (?,?,?,?,?)")
-        .run(row["id"], row["created_at"], row["updated_at"], symbol, row["note"]);
+        .run(row.id, row.created_at, row.updated_at, symbol, row.note);
     } catch (exc) {
       if (isUniqueViolation(exc)) throw new Error(`已经在追踪 ${symbol} 了`, { cause: exc });
       throw exc;
@@ -532,13 +541,13 @@ export class TradeStore {
   }
 
   /** 按加入顺序(同一秒加的按插入先后)。 */
-  listQualityStocks(): Rec[] {
+  listQualityStocks(): QualityStockRow[] {
     return (
       this.db.prepare("SELECT * FROM quality_stocks ORDER BY created_at, rowid").all() as Rec[]
     ).map(qualityRow);
   }
 
-  getQualityStock(stockId: string): Rec | null {
+  getQualityStock(stockId: string): QualityStockRow | null {
     const row = this.db.prepare("SELECT * FROM quality_stocks WHERE id=?").get(stockId) as
       | Rec
       | undefined;
@@ -546,7 +555,7 @@ export class TradeStore {
   }
 
   /** 只允许改这几列:note / enabled 是用户写的,states / events 是异动监控写的。 */
-  updateQualityStock(stockId: string, fields: Rec): boolean {
+  updateQualityStock(stockId: string, fields: QualityStockPatch): boolean {
     const allowed = new Set(["note", "enabled", "states", "events"]);
     const unknown = Object.keys(fields).filter((k) => !allowed.has(k)).sort();
     if (unknown.length) throw new Error(`不允许修改的字段:${unknown.join(", ")}`);
@@ -1066,7 +1075,7 @@ function trackRow(row: Rec): Rec {
   return out;
 }
 
-function qualityRow(row: Rec): Rec {
+function qualityRow(row: Rec): QualityStockRow {
   const out: Rec = { ...row };
   try {
     const states = JSON.parse(out["states"] || "{}");
@@ -1081,7 +1090,8 @@ function qualityRow(row: Rec): Rec {
     out["events"] = [];
   }
   out["enabled"] = out["enabled"] ? 1 : 0;
-  return out;
+  // 库的边界:列是建表语句定死的,JSON 两列上面已经收拾成对象 / 数组,这里认成行类型
+  return out as QualityStockRow;
 }
 
 /** 备注按字符截(不按 UTF-16 码元,免得把一个表情截成半个);控制字符换成空格。 */

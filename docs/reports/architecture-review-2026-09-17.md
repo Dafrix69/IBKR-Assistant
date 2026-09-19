@@ -239,3 +239,31 @@ CI 里排在 `lint` 之后。第一次跑会红,把现有 8 + 3 条修掉之后�
 **没做、留给下一步的**:handler 的入参与返回还是 `Rec`。这是第一条(契约)的活,不该混在搬家里——
 搬家的价值就在于 diff 里没有逻辑。下一步是第 3 步:建 `contract/`,从 `quality.*` 与 `pool.set_watch` 开始
 (`bridge.ts` 那头这几个已经有具体接口,两边对得上,是最便宜的起点)。
+
+**2026-09-20,第 3 步开了头:`contract/` 建起来,先迁 6 个方法(`quality.*` 五个 + `pool.set_watch`),77 个里还剩 71 个。**
+机制与设计决策写在 `docs/features/engine-rpc.md` 的「契约」一节,这里只记和本报告第一条的建议**不一样**的地方,以及验证:
+
+- 报告建议"每个方法一条 `{ params: zod schema, result: 接口 }`"放在一起、`bridge.ts` 用 `import type` 引。落地时发现做不到:
+  界面的 tsc 会顺着 `import type` 把整个文件纳入检查,而 CI 的 `desktop-ui` 不装引擎的依赖,文件里有一个 `import "zod"` 就解析不了。
+  所以拆成两层:`contract/*.ts` 是零 import 的纯类型(源头),`contract/schema/*.ts` 是 zod,写成 `ParamsSchema<契约类型>`
+  反过来对类型。两条 depcruise 规则加一条测试守着"类型文件不 import 任何东西"。
+- 报告建议 `ALLOWED_RPC` / `SENSITIVE_RPC` 由契约里的标记生成。没做:迁进来的 6 个方法都不发单,`sensitive` 标记现在没有
+  消费者;等第一个会发单的方法迁的时候再加。
+- 类型不是新写的,是**搬**的:`anomaly.ts` 的 `AnomalyConfig` / `Metrics` / `AnomalyEvent` 搬进契约、原处转出;`bridge.ts`
+  手抄的 121 行接口删掉、改成转出。搬的时候对出两处已经漂了的:`enabled` 库里是 `0 | 1`,界面那份写的是 `number | boolean`;
+  `quality.remove` 的 `deleted` 界面那份是 `unknown`,实际是 `string`。
+- 第四条(`Rec`)跟着收窄了一块:`quality_stocks` 的 store 方法回 `QualityStockRow`,`PoolService.setWatch` 回 `PoolWatch`,
+  `AnomalyService.monitor()` 回 `QualityMonitor`,`handlers/quality.ts` 里已经没有 `Rec`。
+
+验证:把契约里的 `block_share` 临时改名,引擎的 tsc 在 `anomaly.ts`(产出它的地方)报错、界面的 tsc 在 `PoolStock.tsx`
+(消费它的地方)报错——这就是第一条开头那个 `avg_cost → avg_price` 的场景,现在两头一起红。五道护栏(类型文件引包、
+`bridge.ts` 不带 type 的 import、绕开契约加方法、分析层引 schema、页面直接引引擎目录)各放探针验过会红。
+`dist/src/cli.js rpc` 真进程 19 条请求全过,其中 5 条专门核契约路径:缺字段 / 类型不对由 schema 报,领域错还是 handler
+那句人话,小写带空格的代码、`null` 当没传、阈值给数字串——老 handler 认的,现在照认。
+
+一处有意的文案变化:结构错(调用方写错了)的报错从各 handler 自己的说法统一成「`<方法>` 的参数不对:<字段> …」,
+错误码不变(-32602)。例:`quality.set_config` 的 `config` 传了数组,以前是「触发条件格式不对:config 应是一个对象」。
+界面走类型化的 bridge,打不出这种请求;给用户看的领域文案一句没动,测试钉着。
+
+接下来按域迁:`alerts.*` 与 `sectors.*`(和 pool 同一片,store 行类型可以一起收)→ `tracker.*` / `positions.list`
+(第一个会发单的域,到时把 `sensitive` 标记加进契约)。
