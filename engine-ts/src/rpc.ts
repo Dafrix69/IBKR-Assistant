@@ -551,7 +551,7 @@ export class RpcServer {
     if (!text) throw new RpcError(-32602, "指令为空");
     const execute = Boolean(params["execute"]);
     if (execute && !this.settings.policies.auto_execute) {
-      throw new RpcError(-32003, "配置里 auto_execute=false,拒绝执行。请先在设置里打开。");
+      throw new RpcError(-32003, "自动执行没有打开,拒绝执行。请先在「设置」里打开「允许自动执行」。");
     }
     if (execute && this.router === null) {
       throw new RpcError(-32004, `尚未连接${this.gateway()},拒绝执行。`);

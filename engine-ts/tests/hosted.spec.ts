@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest";
 
 import { TradingEngine } from "../src/engine.js";
 import { Notifier } from "../src/notify.js";
+import { BLOCK_AUTO_EXECUTE } from "../src/tracker.js";
 import { TradeStore } from "../src/store.js";
 import { loadGolden, makeSettings } from "./util.js";
 
@@ -231,7 +232,8 @@ describe("hosted: syncHosted 对账循环", () => {
     const out = await engine2.syncHosted();
     expect([...router.cancelled].sort()).toEqual(router.placed.map((p) => p.order_id).sort());
     expect(out.blocked.length).toBeGreaterThan(0);
-    expect(String(out.blocked[0].blockers[0])).toContain("auto_execute");
+    // 对着常量比,不对着文案比:这句话是给用户看的,改了措辞不该让这条断言失效
+    expect(String(out.blocked[0].blockers[0])).toBe(BLOCK_AUTO_EXECUTE);
   });
 
   it("托管单成交 → 追踪落闩,缓存清空", async () => {

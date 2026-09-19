@@ -443,7 +443,7 @@ export class TradingEngine {
         this.notifier.warning(
           dryRun
             ? `已通过校验(只解析,未发送):${approved.order.intent_summary}`
-            : `已通过校验但未发送(auto_execute=false):${approved.order.intent_summary}`,
+            : `已通过校验但未发送(自动执行未打开):${approved.order.intent_summary}`,
         );
         result.validated_only.push(summary);
         // 解析预热:后台把合约 qualify 一遍填 conId 缓存——用户下一步点

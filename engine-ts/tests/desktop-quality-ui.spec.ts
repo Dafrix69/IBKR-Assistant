@@ -16,9 +16,13 @@ import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import * as an from "../src/anomaly.js";
+import { REJECTION_CODES } from "../src/models.js";
+import { BLOCK_AUTO_EXECUTE, BLOCK_LIVE } from "../src/tracker.js";
+import { VALIDATOR_CODES } from "../src/validator.js";
 
 const SRC = path.resolve(__dirname, "..", "..", "desktop", "renderer-react", "src");
 const read = (...p: string[]): string => readFileSync(path.join(SRC, ...p), "utf-8");
+const readEngine = (...p: string[]): string => readFileSync(path.resolve(__dirname, "..", ...p), "utf-8");
 
 type BurstLevel = "none" | "hot" | "muted" | "reference" | "plain";
 interface Rules {
@@ -30,6 +34,11 @@ interface Rules {
 const rules = (await import(
   /* @vite-ignore */ pathToFileURL(path.join(SRC, "lib", "alertRules.ts")).href
 )) as unknown as Rules;
+
+// 词表同样不 import 任何东西,直接跑
+const labels = (await import(
+  /* @vite-ignore */ pathToFileURL(path.join(SRC, "lib", "labels.ts")).href
+)) as unknown as { REJECT_CODE_LABEL: Record<string, string>; REJECT_SOURCE_LABEL: Record<string, string> };
 
 const CFG = an.DEFAULT_ANOMALY_CONFIG;
 const DAY = "2026-09-11";
@@ -254,5 +263,63 @@ describe("界面:文字着色用可访问变体(docs/features/ui.md)", () => {
     expect(css).not.toMatch(/\.num\.hot \{ color: var\(--orange\)/);
     expect(css).not.toContain(".star-btn");
     expect(css).not.toContain(".quality-table");
+  });
+});
+
+// 拒绝卡片是用户读得最仔细的一张卡——单子没发出去,他正等着这张卡告诉他为什么。
+// 它原来的第一行是 `校验拒绝 · LIVE_TRADING_DISABLED`,正文里写着 allow_live_trading=false:
+// 两样都是引擎内部的说法,一样也不该出现在这里(docs/features/ui.md §第三轮)。
+describe("界面:拒绝卡片摆人话,不摆引擎枚举(docs/features/ui.md)", () => {
+  // 两道执行闸门在「设置」里各有一个开关,用户读得到的只该是那个开关的名字。
+  // 不在名单里的:allow_combo_live 没有设置项、只能手改配置文件,limits.* 的校验错误说的
+  // 就是配置本身写错了哪一行——这两种情况下说出键名才是帮忙(见 docs/features/tracker.md)
+  const CONFIG_KEYS = ["allow_live_trading", "auto_execute"];
+
+  /** 引擎与券商自己报的码(模型的在 REJECTION_CODES,硬校验的在 VALIDATOR_CODES)。 */
+  function engineCodes(): string[] {
+    const src = readEngine("src", "engine.ts");
+    const codes = [...src.matchAll(/code: "([A-Z_]+)"/g)].map((m) => m[1]!);
+    const broker = src.match(/BROKER === "futu" \? "([A-Z_]+)" : "([A-Z_]+)"/);
+    expect(broker, "找不到 brokerCode 的两个券商码").not.toBeNull();
+    return [...codes, broker![1]!, broker![2]!];
+  }
+
+  it("引擎能报出的每一个拒绝码都有中文", () => {
+    const all = [...REJECTION_CODES, ...VALIDATOR_CODES, ...engineCodes()];
+    const missing = all.filter((code) => !labels.REJECT_CODE_LABEL[code]);
+    expect(missing, "labels.ts 的 REJECT_CODE_LABEL 漏了这些码").toEqual([]);
+    // 四个来源(engine.ts 里 source 那个字段)也都得有说法
+    for (const source of ["llm", "validator", "engine", "broker"]) {
+      expect(labels.REJECT_SOURCE_LABEL[source], source).toBeTruthy();
+    }
+  });
+
+  it("卡片标题走词表,不再把 code 直接拼进去", () => {
+    const page = read("pages", "Trade.tsx");
+    expect(page).toContain("REJECT_CODE_LABEL");
+    expect(page).not.toMatch(/title=\{`\$\{[A-Za-z_.[\]]+\} · \$\{r\.code\}`\}/);
+  });
+
+  it("拒绝信息与闸门原因里不出现配置键名(黄金基线就是真实文案)", () => {
+    const baselines = ["baseline/golden/validator.json", "baseline/rpc/expected.json"];
+    for (const file of baselines) {
+      // 基线里既有请求里的配置(policies.allow_live_trading: false,那是配置本身,该留),
+      // 也有回给界面的文案;只看 message 字段
+      const messages = [...readEngine(file).matchAll(/"message": "([^"]*)"/g)].map((m) => m[1]!);
+      expect(messages.length, file).toBeGreaterThan(0);
+      for (const message of messages) {
+        for (const key of CONFIG_KEYS) expect(message, `${file}: ${message}`).not.toContain(key);
+      }
+    }
+    for (const blocker of [BLOCK_AUTO_EXECUTE, BLOCK_LIVE]) {
+      for (const key of CONFIG_KEYS) expect(blocker).not.toContain(key);
+    }
+  });
+
+  it("勾了实盘却没允许实盘下单:按下解析之前就说,不花一次模型调用换一张拒绝卡片", () => {
+    const page = read("pages", "Trade.tsx");
+    expect(page).toMatch(/status && !status\.allow_live_trading/);
+    expect(page).toContain("liveBlocked");
+    expect(page).toContain("没有允许实盘下单");
   });
 });

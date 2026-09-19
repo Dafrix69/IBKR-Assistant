@@ -165,8 +165,8 @@ export class Validator {
       issues.push({
         code: "LIVE_TRADING_DISABLED",
         message:
-          `订单指向实盘账户 ${account.alias},但当前 allow_live_trading=false(默认关闭)。` +
-          "请先在纸面账户跑够回归测试,再显式开启实盘。",
+          `订单指向实盘账户 ${account.alias},但当前没有允许实盘下单(默认关闭)。` +
+          "请先在纸面账户跑够回归测试,再到「设置」里打开「允许实盘账户下单」。",
       });
     }
 

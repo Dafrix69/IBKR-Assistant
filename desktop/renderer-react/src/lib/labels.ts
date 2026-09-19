@@ -34,6 +34,44 @@ export const LIVE_STATUS_LABEL: Record<string, string> = {
   NotAtBroker: '券商侧查无此单',
 };
 
+// 拒绝码。三个来源各有一套词表:模型自己拒的(prompts 里的 rejections.code)、
+// 硬校验拒的(validator.ts 的 VALIDATOR_CODES)、引擎与券商报的。摆在同一张表里是因为
+// 界面只认一个 code 字段,来源另有 REJECT_SOURCE_LABEL 说明。
+export const REJECT_SOURCE_LABEL: Record<string, string> = {
+  llm: '模型拒绝',
+  validator: '校验拒绝',
+  engine: '引擎拦下',
+  broker: '券商错误',
+};
+
+export const REJECT_CODE_LABEL: Record<string, string> = {
+  // 模型拒绝:指令本身没写清楚
+  MISSING_QUANTITY: '没写数量',
+  MISSING_PRICE: '没写价格',
+  AMBIGUOUS_SYMBOL: '标的不明确',
+  INCOMPLETE_OPTION: '期权要素不全',
+  UNCLEAR: '指令读不清',
+  // 硬校验拒绝:指令读懂了,但过不了这一道
+  LOW_CONFIDENCE: '解析把握不够',
+  UNKNOWN_ACCOUNT: '账户别名不认识',
+  LIVE_TRADING_DISABLED: '未允许实盘下单',
+  EXCEEDS_LIMIT: '超出风控限额',
+  BAD_SPREAD: '价差结构不对',
+  TRIGGER_MISMATCH: '触发方向不对',
+  AMBIGUOUS_TRIGGER: '触发条件有歧义',
+  EXPIRED_CONTRACT: '合约已过期',
+  MARKET_CLOSED: '当前时段不能交易',
+  DUPLICATE_ORDER: '疑似重复下单',
+  UNSUPPORTED: '暂不支持这种单',
+  UNPRICEABLE: '这笔单估不出价',
+  // 引擎与券商
+  LLM_ERROR: '模型调用失败',
+  BAD_PAYLOAD: '模型返回不合规',
+  BREAKER_ENGAGED: '已熔断',
+  IBKR_ERROR: 'IBKR 报错',
+  FUTU_ERROR: '富途报错',
+};
+
 export const SEC_TYPE_LABEL: Record<string, string> = { STK: '股票', OPT: '期权', BAG: '组合(多腿)', IND: '指数' };
 export const ACTION_LABEL: Record<string, string> = { BUY: '买入', SELL: '卖出' };
 export const TRIGGER_OP_LABEL: Record<string, string> = { '>=': '≥', '<=': '≤', '>': '>', '<': '<', '==': '=' };

@@ -3,6 +3,7 @@ import { Button, Input, Space, Splitter, Steps, Tag } from 'antd';
 import { CheckCircleFilled, ExclamationCircleFilled } from '@ant-design/icons';
 import type { TextAreaRef } from 'antd/es/input/TextArea';
 import { fmtMoney } from '../lib/format';
+import { REJECT_CODE_LABEL, REJECT_SOURCE_LABEL, say } from '../lib/labels';
 import { isTicket, OrderTicket } from '../lib/OrderTicket';
 import { useLlmCatalog } from '../store/llm';
 import { navigate } from '../store/nav';
@@ -71,6 +72,9 @@ export function TradePage() {
 
   // 「发送」按钮只在真的会发到实盘账户时才橙字——常态是普通次要按钮,常橙会被读成"一直在警告"
   const liveOn = usable.length < 2 ? usable.some((a) => !a.is_paper) : usable.some((a) => !a.is_paper && picked.includes(a.alias));
+  // 会发到实盘、但实盘闸门还关着的账户:这一份一定会被硬校验拦下(LIVE_TRADING_DISABLED),
+  // 而这件事本地就知道——不该等花掉一次模型调用之后才由结果卡片告诉用户
+  const liveBlocked = status && !status.allow_live_trading ? usable.filter((a) => !a.is_paper && picked.includes(a.alias)).map((a) => a.alias) : [];
   const blockers: string[] = [];
   if (!status?.auto_execute) blockers.push('自动执行未打开');
   if (!connected) blockers.push(`未连接 ${gateway}`);
@@ -162,6 +166,16 @@ export function TradePage() {
             })}
           </Space>
           <span className="muted">{picked.length > 1 ? `每笔订单各发 ${picked.length} 份,各自独立校验与记录` : picked.length === 1 ? '' : '未勾选账户,无法发单'}</span>
+        </div>
+      ) : null}
+      {/* 实盘闸门是纯本地判断,不必等模型解析完再由校验层告诉用户"这一份发不出去"。
+          这里只提醒,不替用户改勾选:改到哪个账户发单是他自己的决定 */}
+      {liveBlocked.length ? (
+        <div className="live-gate">
+          <span>{`「${liveBlocked.join('」「')}」是实盘账户,当前没有允许实盘下单,${liveBlocked.length === picked.length ? '这条指令会被校验拦下' : '发到这个账户的那一份会被拦下'}。`}</span>
+          <Button size="small" onClick={() => navigate('settings')}>
+            去设置
+          </Button>
         </div>
       ) : null}
       {/* 速记片段是"可点的词",不是胶囊按钮:填充底、无边框,和 Mail 收件人 token 同一族 */}
@@ -278,10 +292,12 @@ function ResultCards({ payload }: { payload: any }) {
       );
     });
   }
-  const SOURCE: Record<string, string> = { llm: '模型拒绝', validator: '校验拒绝', broker: '券商错误' };
   (payload.rejections || []).forEach((r: any, i: number) => {
+    // 拒绝码翻成人话:LIVE_TRADING_DISABLED 这种是引擎内部的枚举,不该是用户读到的第一行。
+    // 词表里没有的照旧露英文——见 labels.ts:露一个英文好过编一个错的中文
+    const why = say(REJECT_CODE_LABEL, r.code) || '未说明原因';
     cards.push(
-      <StatusCard key={`rej-${i}`} tone="bad" title={`${SOURCE[r.source] || '拒绝'} · ${r.code}`}>
+      <StatusCard key={`rej-${i}`} tone="bad" title={`${REJECT_SOURCE_LABEL[r.source] || '拒绝'} · ${why}`}>
         <div>{r.message}</div>
         {r.original_text || r.intent_summary ? <div className="reason">{r.original_text || r.intent_summary}</div> : null}
       </StatusCard>,

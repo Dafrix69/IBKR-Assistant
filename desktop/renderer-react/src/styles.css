@@ -407,6 +407,13 @@ code {
   margin-top: 8px; font-size: 12px;
 }
 
+/* 实盘闸门还关着的提醒:说的是"这一份发不出去",不是告警——用二级色文字,
+   只有「实盘」这件会动真钱的事在账户胶囊上用橙色 */
+.live-gate {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-top: 6px; color: var(--label-secondary); font-size: 11px;
+}
+
 /* ================= 卡片周边 ================= */
 .cards { display: flex; flex-direction: column; gap: 8px; }
 .result > * + * { margin-top: 8px; }

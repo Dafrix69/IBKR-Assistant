@@ -1153,8 +1153,8 @@ export function makeAutoClose(raw: Partial<AutoClose> = {}): AutoClose {
 }
 
 export const BLOCK_DISABLED = "该持仓没有开启自动平仓";
-export const BLOCK_AUTO_EXECUTE = "全局 auto_execute 未打开";
-export const BLOCK_LIVE = "实盘账户需要先打开 allow_live_trading";
+export const BLOCK_AUTO_EXECUTE = "全局自动执行未打开";
+export const BLOCK_LIVE = "实盘账户需要先在「设置」里允许实盘下单";
 export const BLOCK_BREAKER = "已熔断,不再发出任何新单";
 export const BLOCK_MARKET = "当前时段不能交易";
 export const BLOCK_ALREADY = "这个追踪已经触发过一次,不重复发单";

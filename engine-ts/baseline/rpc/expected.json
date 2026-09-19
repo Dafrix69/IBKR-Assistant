@@ -531,7 +531,7 @@
  {
   "error": {
    "code": -32003,
-   "message": "配置里 auto_execute=false,拒绝执行。请先在设置里打开。"
+   "message": "自动执行没有打开,拒绝执行。请先在「设置」里打开「允许自动执行」。"
   }
  },
  {
@@ -628,7 +628,7 @@
     {
      "source": "validator",
      "code": "LIVE_TRADING_DISABLED",
-     "message": "订单指向实盘账户 主账户,但当前 allow_live_trading=false(默认关闭)。请先在纸面账户跑够回归测试,再显式开启实盘。",
+     "message": "订单指向实盘账户 主账户,但当前没有允许实盘下单(默认关闭)。请先在纸面账户跑够回归测试,再到「设置」里打开「允许实盘账户下单」。",
      "intent_summary": "限价 230 买入 100 股 AAPL"
     }
    ],
@@ -709,10 +709,10 @@
       "issues": [
        {
         "code": "LIVE_TRADING_DISABLED",
-        "message": "订单指向实盘账户 主账户,但当前 allow_live_trading=false(默认关闭)。请先在纸面账户跑够回归测试,再显式开启实盘。"
+        "message": "订单指向实盘账户 主账户,但当前没有允许实盘下单(默认关闭)。请先在纸面账户跑够回归测试,再到「设置」里打开「允许实盘账户下单」。"
        }
       ],
-      "message": "订单指向实盘账户 主账户,但当前 allow_live_trading=false(默认关闭)。请先在纸面账户跑够回归测试,再显式开启实盘。"
+      "message": "订单指向实盘账户 主账户,但当前没有允许实盘下单(默认关闭)。请先在纸面账户跑够回归测试,再到「设置」里打开「允许实盘账户下单」。"
      },
      "notional_estimate": null
     },
