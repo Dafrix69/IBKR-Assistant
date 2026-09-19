@@ -5,7 +5,7 @@ import { fmtMoney, fmtNum } from '../lib/format';
 import { showBanner } from '../store/banner';
 import { loadRecords } from '../store/records';
 import { gatewayName, pickableAccounts, useStatus } from '../store/status';
-import { loadTracker, useTracker, type LiveRow, type Position, type SpotTargetRow, type Track, type TrackTargets } from '../store/tracker';
+import { loadTracker, refreshPositions, useTracker, type LiveRow, type Position, type SpotTargetRow, type Track, type TrackTargets } from '../store/tracker';
 import { Pill, PriceRail, Ring, SymBadge, type Tint } from '../ui/graphics';
 import { EmptyState, Meta, Notice, PageHead, Primer, SectionTitle, StatusCard, type Tone } from '../ui/kit';
 
@@ -64,14 +64,15 @@ export function TrackerPage() {
   const [flashId, setFlashId] = useState<string | null>(null);
   const trackersHead = useRef<HTMLHeadingElement>(null);
 
-  // 进页即刷;停留期间持仓的现价与盈亏要跟着行情走,每 5 秒重读一次(引擎侧是低优先级请求)
+  // 进页即刷;停留期间持仓的现价与盈亏跟着行情走:IBKR 每秒读一次(读的是引擎里常驻订阅的缓存),
+  // 富途每次是真的查询,5 秒一次。只读持仓,追踪列表不用跟着每秒重取
+  const refreshMs = status?.broker_provider === 'futu' ? 5_000 : 1_000;
   useEffect(() => {
     void loadTracker(true);
-    const t = setInterval(() => {
-      if (connected) void loadTracker(true);
-    }, 5_000);
+    if (!connected) return;
+    const t = setInterval(() => void refreshPositions(), refreshMs);
     return () => clearInterval(t);
-  }, [connected]);
+  }, [connected, refreshMs]);
 
   /** 建完追踪后把视线带过去:滚到「正在追踪」,并把那张新卡片闪一下。 */
   function reveal(trackId: string | null) {
