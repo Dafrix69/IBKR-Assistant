@@ -25,6 +25,7 @@ window.dafri = {
     prompt_version: 'v1.8.0', prompt_fingerprint: '', model: 'claude-opus-5',
     auto_execute: false, allow_live_trading: false,
     breaker: { engaged: false, reason: '', consecutive_failures: 0 },
+    protections: { paused: false, rule: '', reason: '', until_ms: null, cooldowns: [] },
     broker_provider: 'ibkr', broker_connected: false, broker_upstream_ok: true,
     pending_count: 0, accounts: [],
     limits: { max_order_notional: 5000, max_option_contracts: 5, max_mkt_shares: 200,

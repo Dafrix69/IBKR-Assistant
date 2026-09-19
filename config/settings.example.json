@@ -43,6 +43,12 @@
     "consecutive_failure_breaker": 3,
     "review_feature_enabled": false
   },
+  "_protections_comment": "保护规则:比熔断细一档的自动执行暂停,只挡新单、永不挡平仓,到点自己解除。默认全关。",
+  "protections": {
+    "stoploss_guard": { "enabled": false, "lookback_minutes": 120, "trigger_count": 3, "pause_minutes": 60 },
+    "max_drawdown": { "enabled": false, "lookback_minutes": 1440, "max_drawdown_usd": 500.0, "pause_minutes": 120 },
+    "cooldown": { "enabled": false, "minutes": 30 }
+  },
   "connections": {
     "paper": {
       "broker": "ibkr",

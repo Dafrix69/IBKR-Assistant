@@ -27,13 +27,14 @@ import { EmptyState, LoadingBlock, PageHead } from '../ui/kit';
 const FILTERS: { key: string; label: string; match: (r: RecordSummary) => boolean }[] = [
   { key: 'all', label: '全部', match: () => true },
   { key: 'filled', label: '已成交', match: (r) => r.final_status === 'filled' || r.final_status === 'partially_filled' },
-  { key: 'live', label: '进行中', match: (r) => !r.final_status && r.status !== 'ValidatedOnly' },
+  { key: 'live', label: '进行中', match: (r) => !r.final_status && r.status !== 'ValidatedOnly' && r.status !== 'NotAtBroker' },
+  { key: 'stale', label: '去向不明', match: (r) => !r.final_status && r.status === 'NotAtBroker' },
   { key: 'draft', label: '未发送', match: (r) => !r.final_status && r.status === 'ValidatedOnly' },
   { key: 'rejected', label: '被拒', match: (r) => String(r.final_status || '').startsWith('rejected') },
   { key: 'failed', label: '出错', match: (r) => r.final_status === 'ibkr_error' || r.final_status === 'halted_by_breaker' },
 ];
 
-const BUCKETS: StatusBucket[] = ['filled', 'working', 'draft', 'failed', 'halted', 'closed'];
+const BUCKETS: StatusBucket[] = ['filled', 'working', 'draft', 'failed', 'halted', 'stale', 'closed'];
 
 type Density = 'cozy' | 'compact';
 

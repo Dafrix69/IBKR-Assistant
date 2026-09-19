@@ -75,6 +75,7 @@ export function TradePage() {
   if (!status?.auto_execute) blockers.push('自动执行未打开');
   if (!connected) blockers.push(`未连接 ${gateway}`);
   if (engaged) blockers.push('已熔断');
+  if (status?.protections?.paused) blockers.push('保护规则暂停中');
   const canExecute = !blockers.length;
 
   function insertSnippet(snippet: string) {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Button, Segmented, Slider } from 'antd';
-import { dafri, errorMessage, type Settings } from '../bridge';
+import { dafri, errorMessage, type Settings, type SettingsProtections } from '../bridge';
 import { showBanner } from '../store/banner';
 import { brokerShortName, refreshStatus, useStatus } from '../store/status';
 import { applyGlassTint, applyTheme, applyUpDown, useGlassTint, useThemeMode, useUpDown, type ThemeMode, type UpDown } from '../store/appearance';
@@ -15,12 +15,27 @@ interface Form {
   mktShares: number | null;
   slippage: number | null;
   dupe: number | null;
+  // 保护规则(见 engine-ts/src/protections.ts)。默认全关,老配置升级上来行为不变。
+  slGuard: boolean;
+  slLookback: number | null;
+  slCount: number | null;
+  slPause: number | null;
+  ddGuard: boolean;
+  ddLookback: number | null;
+  ddUsd: number | null;
+  ddPause: number | null;
+  coolOn: boolean;
+  coolMinutes: number | null;
 }
 
 function toForm(s: Settings): Form {
   // 少一个字段就整页崩掉、只留一句 JS 报错,不是可交付的失败方式:缺什么就空着那一格,其余照常可用
   const p = s.policies || {};
   const l = s.limits || {};
+  const pr: Partial<SettingsProtections> = s.protections || {};
+  const sg: Partial<SettingsProtections['stoploss_guard']> = pr.stoploss_guard || {};
+  const dd: Partial<SettingsProtections['max_drawdown']> = pr.max_drawdown || {};
+  const cd: Partial<SettingsProtections['cooldown']> = pr.cooldown || {};
   return {
     autoExecute: Boolean(p.auto_execute),
     allowLive: Boolean(p.allow_live_trading),
@@ -30,6 +45,16 @@ function toForm(s: Settings): Form {
     mktShares: l.max_mkt_shares ?? null,
     slippage: l.max_spread_slippage ?? null,
     dupe: l.duplicate_window_minutes ?? null,
+    slGuard: Boolean(sg.enabled),
+    slLookback: sg.lookback_minutes ?? null,
+    slCount: sg.trigger_count ?? null,
+    slPause: sg.pause_minutes ?? null,
+    ddGuard: Boolean(dd.enabled),
+    ddLookback: dd.lookback_minutes ?? null,
+    ddUsd: dd.max_drawdown_usd ?? null,
+    ddPause: dd.pause_minutes ?? null,
+    coolOn: Boolean(cd.enabled),
+    coolMinutes: cd.minutes ?? null,
   };
 }
 
@@ -105,6 +130,17 @@ export function SettingsPage() {
           max_spread_slippage: Number(form.slippage),
           duplicate_window_minutes: Number(form.dupe),
         },
+        protections: {
+          stoploss_guard: {
+            enabled: form.slGuard, lookback_minutes: Number(form.slLookback),
+            trigger_count: Number(form.slCount), pause_minutes: Number(form.slPause),
+          },
+          max_drawdown: {
+            enabled: form.ddGuard, lookback_minutes: Number(form.ddLookback),
+            max_drawdown_usd: Number(form.ddUsd), pause_minutes: Number(form.ddPause),
+          },
+          cooldown: { enabled: form.coolOn, minutes: Number(form.coolMinutes) },
+        },
       });
       showBanner('设置已保存,提示词与限额已同步更新。', true);
       await Promise.all([load(), refreshStatus()]);
@@ -155,6 +191,34 @@ export function SettingsPage() {
             <NumberRow icon="sf-gauge" tint="orange" label="市价单股数上限" sub="无法估价时" min={1} step={10} value={form.mktShares} onChange={(v) => patch({ mktShares: v })} />
             <NumberRow icon="sf-scan" tint="teal" label="AUTO_MID 滑点上限" sub="美元 / 张" min={0} step={0.01} value={form.slippage} onChange={(v) => patch({ slippage: v })} />
             <NumberRow icon="sf-clock" tint="gray" label="重复防抖窗口" sub="分钟" min={0} step={1} value={form.dupe} onChange={(v) => patch({ dupe: v })} />
+          </Group>
+
+          <SectionTitle>保护规则</SectionTitle>
+          <p className="hint">
+            比熔断细一档:接连止损、盈亏回撤过大、同一只刚平过仓,就先停一会儿自动执行。到点自己解除,不用人工。
+            <b>只挡新单,永远不挡平仓。</b>被挡下的单停在「仅校验未发送」,保护期过了还能再发。
+          </p>
+          <Group>
+            <SwitchRow icon="sf-shield" tint="orange" label="止损护栏" sub="窗口内止损够次数就暂停自动执行" checked={form.slGuard} onChange={(v) => patch({ slGuard: v })} />
+            {form.slGuard ? (
+              <>
+                <NumberRow icon="sf-clock" tint="gray" label="往回看" sub="分钟" min={1} step={10} value={form.slLookback} onChange={(v) => patch({ slLookback: v })} />
+                <NumberRow icon="sf-xmark" tint="red" label="几次止损算数" sub="次" min={1} step={1} value={form.slCount} onChange={(v) => patch({ slCount: v })} />
+                <NumberRow icon="sf-hourglass" tint="orange" label="暂停多久" sub="分钟,从最后一次止损算起" min={1} step={10} value={form.slPause} onChange={(v) => patch({ slPause: v })} />
+              </>
+            ) : null}
+            <SwitchRow icon="sf-arrow-down" tint="red" label="回撤护栏" sub="已实现盈亏从峰值回落够多就暂停" checked={form.ddGuard} onChange={(v) => patch({ ddGuard: v })} />
+            {form.ddGuard ? (
+              <>
+                <NumberRow icon="sf-clock" tint="gray" label="往回看" sub="分钟" min={1} step={60} value={form.ddLookback} onChange={(v) => patch({ ddLookback: v })} />
+                <NumberRow icon="sf-dollar" tint="red" label="回撤阈值" sub="USD,盈亏以券商报的为准" min={0} step={100} value={form.ddUsd} onChange={(v) => patch({ ddUsd: v })} />
+                <NumberRow icon="sf-hourglass" tint="orange" label="暂停多久" sub="分钟,从最低点算起" min={1} step={10} value={form.ddPause} onChange={(v) => patch({ ddPause: v })} />
+              </>
+            ) : null}
+            <SwitchRow icon="sf-pulse" tint="teal" label="同标的冷却" sub="刚平过仓的标的,一段时间内不再下新单" checked={form.coolOn} onChange={(v) => patch({ coolOn: v })} />
+            {form.coolOn ? (
+              <NumberRow icon="sf-clock" tint="gray" label="冷却多久" sub="分钟" min={1} step={5} value={form.coolMinutes} onChange={(v) => patch({ coolMinutes: v })} />
+            ) : null}
           </Group>
 
           <Button type="primary" onClick={() => void save()} loading={saving}>

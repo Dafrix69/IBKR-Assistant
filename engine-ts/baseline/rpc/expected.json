@@ -45,6 +45,13 @@
     "reason": "",
     "consecutive_failures": 0
    },
+   "protections": {
+    "paused": false,
+    "rule": "",
+    "reason": "",
+    "until_ms": null,
+    "cooldowns": []
+   },
    "broker_provider": "ibkr",
    "broker_connected": false,
    "broker_upstream_ok": true,
@@ -229,6 +236,24 @@
     "consecutive_failure_breaker": 3,
     "review_feature_enabled": false
    },
+   "protections": {
+    "stoploss_guard": {
+     "enabled": false,
+     "lookback_minutes": 120,
+     "trigger_count": 3,
+     "pause_minutes": 60
+    },
+    "max_drawdown": {
+     "enabled": false,
+     "lookback_minutes": 1440,
+     "max_drawdown_usd": 500,
+     "pause_minutes": 120
+    },
+    "cooldown": {
+     "enabled": false,
+     "minutes": 30
+    }
+   },
    "symbol_aliases": {
     "苹果": "AAPL",
     "英伟达": "NVDA",
@@ -304,6 +329,24 @@
     "closed_market_policy": "reject_market_orders",
     "consecutive_failure_breaker": 3,
     "review_feature_enabled": false
+   },
+   "protections": {
+    "stoploss_guard": {
+     "enabled": false,
+     "lookback_minutes": 120,
+     "trigger_count": 3,
+     "pause_minutes": 60
+    },
+    "max_drawdown": {
+     "enabled": false,
+     "lookback_minutes": 1440,
+     "max_drawdown_usd": 500,
+     "pause_minutes": 120
+    },
+    "cooldown": {
+     "enabled": false,
+     "minutes": 30
+    }
    },
    "symbol_aliases": {
     "苹果": "AAPL",

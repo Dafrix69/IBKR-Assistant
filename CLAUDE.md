@@ -29,7 +29,7 @@ execution     broker.ts  futuBroker.ts  ibSession.ts  ibTypes.ts  tws.ts  futu.t
 parsing       validator.ts  providers.ts  prompts.ts  shorthand.ts  llm.ts
 analysis      backtest priceaction screener research optionwall anomaly flyexit tradereview ibtrades macro market alerts
 domain        config.ts  models.ts  store.ts  positions.ts  marketdata.ts
-util          py.ts  pyjson.ts  tz.ts  notify.ts  keychain.ts  killswitch.ts  schemaOut.ts
+util          py.ts  pyjson.ts  tz.ts  notify.ts  keychain.ts  killswitch.ts  protections.ts  schemaOut.ts
 ```
 
 - 下层不 import 上层。`analysis` 这一层是纯计算,不认识券商、引擎、RPC,必须能离线单跑。

@@ -10,6 +10,7 @@ import * as os from "node:os";
 import { fileURLToPath } from "node:url";
 
 import { pyFloat, pyRepr, truthy } from "./py.js";
+import type { ProtectionsConfig } from "./protections.js";
 import { BJ, ET, wallParts, weekdayOfDate } from "./tz.js";
 
 export { ET, BJ };
@@ -213,6 +214,7 @@ export class Settings {
   broker!: BrokerConfig;
   limits!: Limits;
   policies!: Policies;
+  protections!: ProtectionsConfig;
   accounts: AccountConfig[] = [];
   connections: Record<string, ConnectionConfig> = {};
   symbol_aliases: Record<string, string> = {};
@@ -436,6 +438,42 @@ function flag(raw: Raw, key: string, dflt: boolean, label: string): boolean {
   return value;
 }
 
+// 保护规则(见 protections.ts):三条各自一个小节,全部默认关闭。
+// 这里的错误文案与 limits / policies 同格式——它们逐字节进黄金基线。
+const PROTECTION_KEYS = ["stoploss_guard", "max_drawdown", "cooldown"];
+const STOPLOSS_GUARD_KEYS = ["enabled", "lookback_minutes", "trigger_count", "pause_minutes"];
+const MAX_DRAWDOWN_KEYS = ["enabled", "lookback_minutes", "max_drawdown_usd", "pause_minutes"];
+const COOLDOWN_KEYS = ["enabled", "minutes"];
+
+function buildProtections(raw: Raw): ProtectionsConfig {
+  rejectUnknown(PROTECTION_KEYS, raw, "protections");
+  const guard = (raw["stoploss_guard"] as Raw) ?? {};
+  const dd = (raw["max_drawdown"] as Raw) ?? {};
+  const cool = (raw["cooldown"] as Raw) ?? {};
+  rejectUnknown(STOPLOSS_GUARD_KEYS, guard, "protections.stoploss_guard");
+  rejectUnknown(MAX_DRAWDOWN_KEYS, dd, "protections.max_drawdown");
+  rejectUnknown(COOLDOWN_KEYS, cool, "protections.cooldown");
+  const one = 1;
+  return {
+    stoploss_guard: {
+      enabled: flag(guard, "enabled", false, "protections.stoploss_guard"),
+      lookback_minutes: num(guard, "lookback_minutes", "int", 120, "protections.stoploss_guard", { min: one, minStr: "1" })!,
+      trigger_count: num(guard, "trigger_count", "int", 3, "protections.stoploss_guard", { min: one, minStr: "1" })!,
+      pause_minutes: num(guard, "pause_minutes", "int", 60, "protections.stoploss_guard", { min: one, minStr: "1" })!,
+    },
+    max_drawdown: {
+      enabled: flag(dd, "enabled", false, "protections.max_drawdown"),
+      lookback_minutes: num(dd, "lookback_minutes", "int", 1440, "protections.max_drawdown", { min: one, minStr: "1" })!,
+      max_drawdown_usd: num(dd, "max_drawdown_usd", "float", 500.0, "protections.max_drawdown", { min: 0.0, minStr: "0.0" })!,
+      pause_minutes: num(dd, "pause_minutes", "int", 120, "protections.max_drawdown", { min: one, minStr: "1" })!,
+    },
+    cooldown: {
+      enabled: flag(cool, "enabled", false, "protections.cooldown"),
+      minutes: num(cool, "minutes", "int", 30, "protections.cooldown", { min: one, minStr: "1" })!,
+    },
+  };
+}
+
 const LIMIT_KEYS = [
   "max_order_notional", "max_option_contracts", "max_mkt_shares", "min_confidence",
   "max_spread_slippage", "max_orders_per_input", "duplicate_window_minutes",
@@ -656,6 +694,7 @@ export function fromDict(raw: Raw, source: string | null = null): Settings {
   settings.broker = buildBroker((raw["broker"] as Raw) ?? {});
   settings.limits = buildLimits((raw["limits"] as Raw) ?? {});
   settings.policies = buildPolicies((raw["policies"] as Raw) ?? {});
+  settings.protections = buildProtections((raw["protections"] as Raw) ?? {});
   settings.accounts = accounts;
   settings.connections = connections;
   const aliases: Record<string, string> = {};

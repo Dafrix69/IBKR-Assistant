@@ -176,6 +176,18 @@ export const TERMINAL_STATUSES = new Set([
 
 export const IDEA_STATUSES = ["active", "done", "archived"] as const;
 
+/** 一条还没有终态的记录(listWorkingRecords 的行)。 */
+export interface WorkingRecord {
+  id: string;
+  symbol: string;
+  accountId: string;
+  /** 下单数量(股 / 张 / 组)。对账判"成交填满了没有"要拿它比。 */
+  quantity: number;
+  createdAtMs: number;
+  /** 最后一条状态回报的 status 字段(PendingTrigger / Submitted / PreSubmitted…)。 */
+  lastStatus: string;
+}
+
 type Rec = Record<string, any>;
 
 export class TradeStore {
@@ -309,6 +321,19 @@ export class TradeStore {
   listFills(limit = 5000): Rec[] {
     return (this.db.prepare("SELECT fill_json FROM broker_fills ORDER BY time ASC, exec_id ASC LIMIT ?").all(limit) as Rec[])
       .map((r) => JSON.parse(String(r["fill_json"])));
+  }
+
+  /** 某张单(orderRef = 记录 id)在券商成交表里的成交行。执行对账判"它是不是已经成交了"用。
+   * LIKE 只当预筛(fill_json 是键排序的 JSON,order_ref 一定逐字出现),真正认还是逐行比字段——
+   * 记录 id 里若有 LIKE 通配符也只会多筛出来,不会漏。 */
+  fillsByOrderRef(orderRef: string, limit = 500): Rec[] {
+    if (!orderRef) return [];
+    const rows = this.db
+      .prepare("SELECT fill_json FROM broker_fills WHERE fill_json LIKE ? ORDER BY time ASC LIMIT ?")
+      .all(`%"order_ref":"${orderRef}"%`, limit) as Rec[];
+    return rows
+      .map((r) => JSON.parse(String(r["fill_json"])) as Rec)
+      .filter((f) => String(f["order_ref"] ?? "") === orderRef);
   }
 
   audit(actor: string, action: string, detail: Rec | null = null): void {
@@ -878,6 +903,109 @@ export class TradeStore {
       const delta = nowMs - created;
       if (delta > windowMs || delta < -windowMs) continue;
       out.push({ signature: row.signature, quantity: row.quantity, createdAtMs: created });
+    }
+    return out;
+  }
+
+  /** 在途记录:回报过状态、还没有终态的那些。对账用(见 engine.reconcileOrders)——
+   * 引擎重启后 orderIndex 是空的,券商后来推的状态与成交认不出记录,这些单会永远停在旧状态。
+   * 只校验未发送(ValidatedOnly)不算在途:它从没提交过。
+   * 时间过滤与 recentOrders 同理,在代码里做,不在 SQL 里比字符串。 */
+  listWorkingRecords(maxAgeDays = 7, nowMs = Date.now(), limit = 200): WorkingRecord[] {
+    const maxAgeMs = maxAgeDays * 86_400_000;
+    const rows = this.db
+      .prepare(
+        "SELECT t.id, t.symbol, t.account_id, t.quantity, t.created_at," +
+        " (SELECT e2.payload FROM record_events e2" +
+        "   WHERE e2.record_id = t.id AND e2.kind = 'status'" +
+        "   ORDER BY e2.seq DESC LIMIT 1) AS last_status" +
+        " FROM trade_records t" +
+        " WHERE EXISTS (" +
+        "   SELECT 1 FROM record_events e" +
+        "   WHERE e.record_id = t.id AND e.kind = 'status'" +
+        "   AND e.payload NOT LIKE '%ValidatedOnly%'" +
+        " )" +
+        " AND NOT EXISTS (" +
+        "   SELECT 1 FROM record_events f WHERE f.record_id = t.id AND f.kind = 'final'" +
+        " )" +
+        " ORDER BY t.rowid DESC LIMIT 1000",
+      )
+      .all() as Array<{
+        id: string; symbol: string; account_id: string; quantity: number; created_at: string;
+        last_status: string | null;
+      }>;
+    const out: WorkingRecord[] = [];
+    for (const row of rows) {
+      const created = Date.parse(row.created_at);
+      if (Number.isNaN(created)) continue;
+      if (nowMs - created > maxAgeMs) continue;
+      let status = "";
+      try {
+        status = String((JSON.parse(row.last_status ?? "{}") as Rec)["status"] ?? "");
+      } catch {
+        /* payload 坏了就当没有状态,对账那边按"认不出"处理 */
+      }
+      out.push({
+        id: row.id, symbol: row.symbol, accountId: row.account_id,
+        quantity: Number(row.quantity) || 0, createdAtMs: created, lastStatus: status,
+      });
+      if (out.length >= limit) break;
+    }
+    return out;
+  }
+
+  /** 窗口内的平仓事件(保护规则用,见 protections.ts)。
+   * 取的是 audit_log 里 engine 写的 auto_close / hosted_sweep:两条平仓路径各一个,都是只增的。
+   * position_tracks 的 fired_state 不行——它一行一个持仓、就地更新,同一只标的平第二次就把第一次盖掉了。 */
+  recentCloses(sinceMs: number, nowMs: number): Array<{ atMs: number; symbol: string; state: string }> {
+    const rows = this.db
+      .prepare(
+        "SELECT at, detail FROM audit_log" +
+        " WHERE actor='engine' AND action IN ('auto_close','hosted_sweep')" +
+        " ORDER BY seq DESC LIMIT 2000",
+      )
+      .all() as Array<{ at: string; detail: string }>;
+    const out: Array<{ atMs: number; symbol: string; state: string }> = [];
+    for (const row of rows) {
+      const at = Date.parse(row.at);
+      if (Number.isNaN(at) || at <= sinceMs || at > nowMs) continue;
+      let detail: Rec;
+      try {
+        detail = JSON.parse(row.detail) as Rec;
+      } catch {
+        continue;
+      }
+      out.push({
+        atMs: at,
+        symbol: String(detail["symbol"] ?? ""),
+        state: String(detail["state"] ?? ""),
+      });
+    }
+    return out;
+  }
+
+  /** 窗口内的已实现盈亏(保护规则的回撤护栏用)。券商的佣金回报里带 realizedPNL,
+   * 平仓那一笔才有值——这是全仓库唯一"券商认的"盈亏口径(见 tracker.md 盈亏以券商报的为准)。 */
+  realizedPnlEvents(sinceMs: number, nowMs: number): Array<{ atMs: number; pnl: number }> {
+    const rows = this.db
+      .prepare(
+        "SELECT at, payload FROM record_events WHERE kind='commission' ORDER BY seq DESC LIMIT 2000",
+      )
+      .all() as Array<{ at: string; payload: string }>;
+    const out: Array<{ atMs: number; pnl: number }> = [];
+    for (const row of rows) {
+      const at = Date.parse(row.at);
+      if (Number.isNaN(at) || at <= sinceMs || at > nowMs) continue;
+      let payload: Rec;
+      try {
+        payload = JSON.parse(row.payload) as Rec;
+      } catch {
+        continue;
+      }
+      const pnl = Number(payload["realized_pnl"]);
+      // IBKR 对开仓的佣金回报给一个哨兵大数(1.7976931348623157e308),不是真盈亏
+      if (!Number.isFinite(pnl) || Math.abs(pnl) >= 1e307) continue;
+      out.push({ atMs: at, pnl });
     }
     return out;
   }

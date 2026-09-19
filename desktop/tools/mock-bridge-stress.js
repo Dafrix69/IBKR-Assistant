@@ -109,6 +109,7 @@ window.dafri = {
     prompt_version:'v1.8.0', prompt_fingerprint:'a3f9', model:'claude-opus-5',
     auto_execute:true, allow_live_trading:false,
     breaker:{engaged:false, reason:'', consecutive_failures:0},
+    protections:{paused:false, rule:'', reason:'', until_ms:null, cooldowns:[]},
     broker_provider:'futu', broker_connected:true, broker_upstream_ok:true,
     pending_count:1,
     accounts:[{alias:'模拟',account_masked:'DU***321',is_paper:true,connection:'paper',default:true},
@@ -153,6 +154,7 @@ window.dafri = {
     policies:{auto_execute:true,allow_live_trading:false,require_trigger_price_verification:true,
       trigger_min_gap_bps:5,closed_market_policy:'reject_market_orders',
       consecutive_failure_breaker:3,review_feature_enabled:false},
+    protections:{stoploss_guard:{enabled:false,lookback_minutes:120,trigger_count:3,pause_minutes:60},max_drawdown:{enabled:false,lookback_minutes:1440,max_drawdown_usd:500,pause_minutes:120},cooldown:{enabled:false,minutes:30}},
     symbol_aliases:{苹果:'AAPL',英伟达:'NVDA'}, accounts:[], connections:{}}),
   breakerState: async () => ({engaged:false, reason:'', consecutive_failures:0}),
   listIdeas: async () => ({ideas:[

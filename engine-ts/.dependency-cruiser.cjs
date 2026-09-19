@@ -4,7 +4,7 @@
  *    → validation/parsing(validator/providers/prompts/shorthand) → analysis(纯计算) → domain(config/models/store) → util
  */
 const L = {
-  util:        "^src/(py|pyjson|tz|schemaOut|notify|keychain|killswitch)\\.ts$",
+  util:        "^src/(py|pyjson|tz|schemaOut|notify|keychain|killswitch|protections)\\.ts$",
   domain:      "^src/(config|models|store|positions|marketdata)\\.ts$",
   analysis:    "^src/(backtest|priceaction|screener|research|optionwall|anomaly|flyexit|tradereview|ibtrades|macro|market|alerts)\\.ts$",
   parsing:     "^src/(validator|providers|prompts|shorthand|llm)\\.ts$",

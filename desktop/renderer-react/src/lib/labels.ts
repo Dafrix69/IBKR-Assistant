@@ -30,6 +30,8 @@ export const LIVE_STATUS_LABEL: Record<string, string> = {
   ApiCancelled: '已撤单',
   Inactive: '券商报错',
   Unknown: '状态未知',
+  // 引擎写的：对账时券商侧既没有这张单、也查不到它的成交（见 engine.reconcileOrders）
+  NotAtBroker: '券商侧查无此单',
 };
 
 export const SEC_TYPE_LABEL: Record<string, string> = { STK: '股票', OPT: '期权', BAG: '组合(多腿)', IND: '指数' };
