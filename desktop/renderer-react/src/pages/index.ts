@@ -37,7 +37,6 @@ export const PAGES: Record<string, ComponentType> = {
 export const PAGE_SUBTABS: Record<string, string[]> = {
   screener: ['rs', 'inflection', 'deviation'],
   access: ['tws', 'futu', 'llm'],
-  market: ['pa', 'book'],
 };
 
 export const LEAF_TABS: string[] = Object.keys(PAGES).flatMap((key) => PAGE_SUBTABS[key] || [key]);

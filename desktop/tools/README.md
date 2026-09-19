@@ -32,17 +32,17 @@ npx electron tools/capture_pages.js renderer-react/dist-preview/index.html .uipr
 ```bash
 npx electron tools/capture_pages.js renderer-react/dist-preview/index.html .uipreview/dark --theme dark --scale 1 --widths 1360
 npx electron tools/capture_pages.js renderer-react/dist-preview/index.html .uipreview/dark15 --theme dark --scale 1.5 --widths 1360
-npx electron tools/capture_pages.js renderer-react/dist-preview/index.html .uipreview/pa --theme dark --widths 1080,1900 --only pa
+npx electron tools/capture_pages.js renderer-react/dist-preview/index.html .uipreview/pa --theme dark --widths 1080,1900 --only market
 npx electron tools/capture_pages.js renderer-react/dist-preview/index.html .uipreview/demo --theme light --check --demo
 ```
 
 每一页一个 PNG(`<theme>-<scale>x-<width>-<tab>.png`)。叶子页清单由 React 壳报出(`window.__dafriLeafTabs`:
-侧栏项 + 合并页的子页),切页走 `window.__dafriNavigate`。K线 PA 页会先填标的、点「分析」再拍;
+侧栏项 + 合并页的子页),切页走 `window.__dafriNavigate`。行情页会先填标的、点「分析」再拍;
 `--demo` 让各页先点一遍主按钮(解析 / 分析 / 回测 / 扫描 / 打开记录详情 / 展开追踪表单),拍出有内容的样子。
 为什么不用浏览器:窄窗口丢弃顶栏胶囊、`titleBarOverlay` 留白、系统字体栈,这些只在 Electron 里才是真实的。
 `--scale 1.5` 对应 Windows 150% 显示缩放——用户的问题截图就是在那个缩放下拍的,100% 下看不出同样的问题。
 
-加 `--check` 就是渲染层的 smoke:每页各点一遍,渲染进程有任何 error 级控制台消息、或 K线 PA 页没画出 canvas,
+加 `--check` 就是渲染层的 smoke:每页各点一遍,渲染进程有任何 error 级控制台消息、或行情页没画出 K 线的 canvas,
 就 FAIL;结论写在 `<outDir>/check.txt`,退出码 0/1。
 
 界面改动的验收方式是**截图对比**:改前改后各出一套,并排看,差异只允许出现在该次改动声明要改的地方。
@@ -75,7 +75,7 @@ npm run ui:preview && npx electron tools/chart_interaction_check.js renderer-rea
   `shoot()` 发现哪个图表容器(`.chart-host`)一块定了尺寸的画布都没有,会再截,最多三次。不能要求"每块画布都有尺寸":
   图表库给隐藏的左侧价格轴留的画布本来就是 0 宽,那样会每页白等三轮。
 * **`capturePage` 拿到的是上一次合成的那一帧**,DOM 早变了也一样:页面在后台更新(点完「分析」结果回来)不会触发合成。
-  表现是 `--only pa` 拍出了「交易指令」(载入时那一帧),或者拍到点按钮那一刻的空页面。`shoot()` 每次先空拍一张触发合成,
+  表现是 `--only market` 拍出了「交易指令」(载入时那一帧),或者拍到点按钮那一刻的空页面。`shoot()` 每次先空拍一张触发合成,
   等 150 毫秒再拍正式的。
 * **K线 PA 等结果出来再拍**(图画出来,或页面说明了为什么没有,最多 6 秒)。固定等 900 毫秒经常拍到「正在取 K 线…」。
 * **React 的受控输入框**。`--demo` 往输入框里填字要走原生 setter 再派发 `input` 事件,直接赋 `value` 状态不会变。

@@ -1,20 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Card, Descriptions, Input, Segmented, Select, Space } from 'antd';
+import { Button, Card, Descriptions, Input, Select, Space } from 'antd';
 import { dafri, errorMessage } from '../bridge';
 import { CanvasChart } from '../lib/Chart';
 import { paSpec } from '../lib/chart/paSpec';
 import { fmtMoney } from '../lib/format';
 import { showBanner } from '../store/banner';
-import { setSubtab, useSubtab } from '../store/nav';
 import { useStatus } from '../store/status';
-import { EmptyState, Group, Meta, PageHead, Primer, StatusCard, SwitchRow, Working, type Tone } from '../ui/kit';
+import { EmptyState, Group, Meta, PageHead, Primer, SectionTitle, StatusCard, SwitchRow, Working, type Tone } from '../ui/kit';
 
-// 行情:K线 PA(实时 K 线 + 价格行为读盘,判断由引擎算、权重公开)与订单簿(深度梯子,只读)。
-
-const SUBTABS = [
-  { value: 'pa', label: 'K线 PA' },
-  { value: 'book', label: '订单簿' },
-];
+// 行情:一页看一个标的——K 线 + 价格行为读盘(判断由引擎算、权重公开),图下面就是它的盘口(深度梯子,只读);
+// 页面下半是「关注的盘口」,同时盯几个标的的价差与深度,点代码就把它换成上面正在看的那个。
+// 原来是「K线 PA / 订单簿」两个子页、各填各的标的;看图的人下一眼要看的就是这只票的盘口,分两页等于同一个代码敲两遍。
 
 function read(key: string): string | null {
   try {
@@ -32,12 +28,14 @@ function write(key: string, value: string): void {
 }
 
 export function MarketPage() {
-  const sub = useSubtab('market', 'pa');
+  const books = useBooks();
+  // 盘口墙上点了哪个代码:带序号,同一个代码连点两次也算两次
+  const [pick, setPick] = useState<{ symbol: string; seq: number } | null>(null);
   return (
     <section className="tab-panel active" id="page-market">
-      <PageHead title="行情" extra={<Segmented options={SUBTABS} value={sub} onChange={(v) => setSubtab('market', String(v))} />} />
-      {sub === 'pa' ? <PaPanel /> : null}
-      {sub === 'book' ? <BookPanel /> : null}
+      <PageHead title="行情" />
+      <PaPanel books={books} pick={pick} />
+      <BookWall books={books} onAnalyze={(symbol) => setPick((p) => ({ symbol, seq: (p?.seq || 0) + 1 }))} />
     </section>
   );
 }
@@ -91,7 +89,7 @@ function Readout({ lines }: { lines: string[] }) {
   );
 }
 
-function PaPanel() {
+function PaPanel({ books, pick }: { books: Books; pick: { symbol: string; seq: number } | null }) {
   const status = useStatus();
   const connected = Boolean(status?.broker_connected);
   const [timeframes, setTimeframes] = useState<{ key: string; label: string }[]>([]);
@@ -141,8 +139,8 @@ function PaPanel() {
   }, []);
 
   // 手动触发:先把输入同步进 spec,再走同一条取数路径
-  async function run(next?: { timeframe?: string; rth?: boolean }) {
-    const sym = symbol.trim().toUpperCase();
+  async function run(next?: { symbol?: string; timeframe?: string; rth?: boolean }) {
+    const sym = (next?.symbol ?? symbol).trim().toUpperCase();
     if (!sym) {
       showBanner('先填一个标的代码', true);
       return;
@@ -166,6 +164,23 @@ function PaPanel() {
     return () => clearInterval(t);
   }, [connected, fetchPa]);
 
+  // 盘口墙上点了代码:换成它来分析,并回到页面上方看图
+  const runRef = useRef(run);
+  runRef.current = run;
+  const head = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!pick) return;
+    void runRef.current({ symbol: pick.symbol });
+    // 滚内容区而不是 scrollIntoView:页头是贴顶的,对齐到面板顶会把输入行压在页头底下
+    const content = head.current?.closest('.content');
+    if (content) content.scrollTop = 0;
+  }, [pick]);
+
+  // 图出来了就跟着读它的盘口;之后的 20 秒刷新由盘口那边的定时器一起带
+  const shown = data?.symbol ? String(data.symbol) : '';
+  const { focus } = books;
+  useEffect(() => focus(shown), [focus, shown]);
+
   async function doComment() {
     if (!spec.current.symbol) return;
     setCommenting(true);
@@ -182,7 +197,7 @@ function PaPanel() {
 
   const r = data;
   return (
-    <section className="sub-panel active" id="panel-pa">
+    <section className="sub-panel active" id="panel-pa" ref={head}>
       <div className="sub-head">
         <span className="muted">{loading ? '读取中…' : paFreshness(data)}</span>
       </div>
@@ -217,7 +232,8 @@ function PaPanel() {
         <p className="hint">
           K 线走 TWS 历史数据接口,需行情权限;仅延迟权限也能出图,最后一根约落后 15 分钟,
           新鲜度见标题右侧,超 30 分钟会告警。方向判断<strong>全部由规则计算</strong>,权重公开在「判断依据」里;
-          「AI 解读」只叙述这些事实,不看图。已连网关时每 20 秒自动刷新。
+          「AI 解读」只叙述这些事实,不看图。图下面是同一标的的盘口,只读展示、不参与定价与下单,
+          无 Level 2 订阅时只有一档;指数没有盘口,看对应 ETF。已连网关时 K 线与盘口每 20 秒自动刷新。
           <strong>仅供研究参考,不接下单链路。</strong>
         </p>
       </Primer>
@@ -240,6 +256,26 @@ function PaPanel() {
               <Readout lines={r.readout || []} />
             </StatusCard>
             <StatusCard title={`K 线(${r.timeframe_label})`}>{(r.bars || []).length ? <PaChart result={r} /> : null}</StatusCard>
+            <StatusCard
+              id="pa-book"
+              title={`盘口 · ${shown}`}
+              extra={
+                <Space size={4}>
+                  <Button size="small" loading={books.loading.has(shown)} onClick={() => void books.load(shown)}>
+                    刷新
+                  </Button>
+                  {books.symbols.includes(shown) ? (
+                    <span className="muted">已关注</span>
+                  ) : (
+                    <Button size="small" type="text" onClick={() => void books.add(shown)}>
+                      加入关注
+                    </Button>
+                  )}
+                </Space>
+              }
+            >
+              <BookBody snapshot={books.data[shown]} loading={books.loading.has(shown)} />
+            </StatusCard>
             <StatusCard title="判断依据(加权求和,正=看涨)">
               {(r.evidence || []).map((item: any, i: number) => (
                 <div className="pa-ev" key={i}>
@@ -361,7 +397,9 @@ function FlowCard({ r }: { r: any }) {
   );
 }
 
-// ---- 订单簿(多卡片盘口墙,只读展示)------------------------------------------------
+
+// ---- 盘口(只读展示)--------------------------------------------------------------
+// 一份状态两处用:上面那张「盘口 · 标的」和下面的盘口墙读的是同一个快照表,同一个标的不会取两遍。
 
 function readSymbols(): string[] {
   try {
@@ -372,15 +410,27 @@ function readSymbols(): string[] {
   }
 }
 
-function BookPanel() {
+interface Books {
+  symbols: string[];
+  data: Record<string, any>;
+  loading: Set<string>;
+  load: (symbol: string) => Promise<void>;
+  refreshAll: () => Promise<void>;
+  add: (raw: string) => Promise<boolean>;
+  remove: (symbol: string) => void;
+  /** 上面正在看的标的:不在关注里也跟着一起刷新;传空串就是不看了 */
+  focus: (symbol: string) => void;
+}
+
+function useBooks(): Books {
   const status = useStatus();
   const connected = Boolean(status?.broker_connected);
   const [symbols, setSymbols] = useState<string[]>(readSymbols);
-  const [input, setInput] = useState('');
   const [data, setData] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState<Set<string>>(new Set());
   const symbolsRef = useRef(symbols);
   symbolsRef.current = symbols;
+  const focused = useRef('');
 
   const load = useCallback(async (symbol: string) => {
     setLoading((s) => new Set(s).add(symbol));
@@ -398,9 +448,10 @@ function BookPanel() {
     }
   }, []);
 
-  // 逐个刷:引擎 sidecar 是串行处理的,并发只是排队 + 界面假象
+  // 逐个刷:十几个盘口同时压给引擎只会在读通道里排队;正在看的那个排最前
   const refreshAll = useCallback(async () => {
-    for (const symbol of [...symbolsRef.current]) await load(symbol);
+    const all = [focused.current, ...symbolsRef.current].filter(Boolean);
+    for (const symbol of [...new Set(all)]) await load(symbol);
   }, [load]);
 
   // 已连 TWS 时每 20 秒自动刷新
@@ -411,29 +462,38 @@ function BookPanel() {
     return () => clearInterval(t);
   }, [connected, refreshAll]);
 
+  const focus = useCallback(
+    (symbol: string) => {
+      if (focused.current === symbol) return;
+      focused.current = symbol;
+      if (symbol) void load(symbol);
+    },
+    [load],
+  );
+
   function persist(next: string[]) {
     setSymbols(next);
     write('dafri-book-symbols', JSON.stringify(next));
   }
 
-  async function add() {
-    const symbol = input.trim().toUpperCase();
-    if (!symbol) return;
-    if (symbols.includes(symbol)) {
-      setInput('');
-      return;
-    }
+  async function add(raw: string): Promise<boolean> {
+    const symbol = raw.trim().toUpperCase();
+    if (!symbol) return false;
+    if (symbols.includes(symbol)) return true;
     if (symbols.length >= 12) {
-      showBanner('订单簿最多同时关注 12 个标的', true);
-      return;
+      showBanner('盘口最多同时关注 12 个标的', true);
+      return false;
     }
     persist([...symbols, symbol]);
-    setInput('');
-    await load(symbol);
+    // 上面正在看的就是它:快照已经有了,不用再取一遍
+    if (!data[symbol] || data[symbol].error) await load(symbol);
+    return true;
   }
 
   function remove(symbol: string) {
     persist(symbols.filter((s) => s !== symbol));
+    // 上面那张盘口还在用这份快照
+    if (symbol === focused.current) return;
     setData((d) => {
       const n = { ...d };
       delete n[symbol];
@@ -441,25 +501,44 @@ function BookPanel() {
     });
   }
 
+  return { symbols, data, loading, load, refreshAll, add, remove, focus };
+}
+
+function BookWall({ books, onAnalyze }: { books: Books; onAnalyze: (symbol: string) => void }) {
+  const { symbols } = books;
+  const [input, setInput] = useState('');
+
+  async function add() {
+    if (await books.add(input)) setInput('');
+  }
+
   return (
     <section className="sub-panel active" id="panel-book">
-      <div className="sub-head">
-        <Button size="small" type="text" onClick={() => void refreshAll()}>
+      <SectionTitle count={symbols.length}>关注的盘口</SectionTitle>
+      <div className="row tight">
+        <Input id="book-symbol" className="grow" placeholder="再盯一个盘口,如 SPY、NVDA(指数请用对应 ETF)" maxLength={12} value={input} onChange={(e) => setInput(e.target.value)} onPressEnter={() => void add()} />
+        <Button id="btn-book-load" onClick={() => void add()}>
+          添加
+        </Button>
+        <Button type="text" disabled={!symbols.length} onClick={() => void books.refreshAll()}>
           全部刷新
         </Button>
       </div>
-      <div className="row tight">
-        <Input id="book-symbol" className="grow" placeholder="标的,如 NVDA、SPY(指数请用对应 ETF)" maxLength={12} value={input} onChange={(e) => setInput(e.target.value)} onPressEnter={() => void add()} />
-        <Button type="primary" id="btn-book-load" onClick={() => void add()}>
-          添加
-        </Button>
-      </div>
-      <p className="hint">只读展示,不参与定价与下单。无 Level 2 订阅时只显示一档;已连 TWS 时每 20 秒自动刷新。</p>
       <div className="sector-grid">
         {!symbols.length ? (
-          <EmptyState>还没有关注的标的。上面加一个,比如 SPY 或 NVDA。</EmptyState>
+          <EmptyState>还没有关注的盘口。上面加一个,或在正在看的那张盘口上点「加入关注」。</EmptyState>
         ) : (
-          symbols.map((symbol) => <BookCard key={symbol} symbol={symbol} snapshot={data[symbol]} loading={loading.has(symbol)} onRefresh={() => void load(symbol)} onRemove={() => remove(symbol)} />)
+          symbols.map((symbol) => (
+            <BookCard
+              key={symbol}
+              symbol={symbol}
+              snapshot={books.data[symbol]}
+              loading={books.loading.has(symbol)}
+              onAnalyze={() => onAnalyze(symbol)}
+              onRefresh={() => void books.load(symbol)}
+              onRemove={() => books.remove(symbol)}
+            />
+          ))
         )}
       </div>
       {/* 还没关注任何标的时,读盘常识正是这一刻要看的东西;加了标的它就该让路 */}
@@ -484,15 +563,16 @@ function BookPanel() {
   );
 }
 
-function BookCard({ symbol, snapshot, loading, onRefresh, onRemove }: { symbol: string; snapshot: any; loading: boolean; onRefresh: () => void; onRemove: () => void }) {
-  const l1 = snapshot?.l1 || {};
-  const liq = snapshot?.liquidity || {};
-  const hasDepth = (snapshot?.bids && snapshot.bids.length) || (snapshot?.asks && snapshot.asks.length);
+function BookCard({ symbol, snapshot, loading, onAnalyze, onRefresh, onRemove }: { symbol: string; snapshot: any; loading: boolean; onAnalyze: () => void; onRefresh: () => void; onRemove: () => void }) {
   return (
     <Card
       size="small"
       className="sector-card"
-      title={<span className="record-sym">{symbol}</span>}
+      title={
+        <button type="button" className="record-sym book-sym" title="看它的 K 线" onClick={onAnalyze}>
+          {symbol}
+        </button>
+      }
       extra={
         <Space size={4}>
           <Button size="small" loading={loading} onClick={onRefresh}>
@@ -504,35 +584,41 @@ function BookCard({ symbol, snapshot, loading, onRefresh, onRemove }: { symbol: 
         </Space>
       }
     >
-      {!snapshot ? (
-        <p className="muted">{loading ? '正在读取盘口…' : '点「刷新」读取盘口。'}</p>
-      ) : snapshot.error ? (
-        <EmptyState compact>{snapshot.error}</EmptyState>
-      ) : (
-        <>
-          <Meta
-            items={[
-              l1.last != null ? `最新 ${fmtMoney(l1.last)}` : null,
-              l1.spread != null ? `价差 ${l1.spread}(${l1.spread_bps} bps)` : null,
-              liq.spread_grade ? `流动性 ${liq.spread_grade}` : null,
-              liq.bid_depth != null ? `深度 买${liq.bid_depth} / 卖${liq.ask_depth}` : null,
-              liq.imbalance_pct != null ? `失衡 ${liq.imbalance_pct >= 0 ? '买盘厚' : '卖盘厚'} ${Math.abs(liq.imbalance_pct)}%${liq.l1_only ? '(仅一档)' : ''}` : null,
-            ]}
-          />
-          <div className="row tight">
-            <span className="status filled">{`买一 ${l1.bid != null ? fmtMoney(l1.bid) : '—'}${l1.bid_size ? ` ×${l1.bid_size}` : ''}`}</span>
-            <span className="status rejected">{`卖一 ${l1.ask != null ? fmtMoney(l1.ask) : '—'}${l1.ask_size ? ` ×${l1.ask_size}` : ''}`}</span>
-          </div>
-          {hasDepth ? (
-            <div className="book-grid">
-              <BookSide title="买盘" levels={(snapshot.bids || []).slice(0, 5)} side="bid" />
-              <BookSide title="卖盘" levels={(snapshot.asks || []).slice(0, 5)} side="ask" />
-            </div>
-          ) : null}
-          {snapshot.note ? <div className="stock-sub">{snapshot.note}</div> : null}
-        </>
-      )}
+      <BookBody snapshot={snapshot} loading={loading} />
     </Card>
+  );
+}
+
+/** 一个标的的盘口:一档摘要 + 买卖各五档的深度梯子。上面的「盘口 · 标的」与盘口墙的卡片共用。 */
+function BookBody({ snapshot, loading }: { snapshot: any; loading: boolean }) {
+  if (!snapshot) return <p className="muted">{loading ? '正在读取盘口…' : '点「刷新」读取盘口。'}</p>;
+  if (snapshot.error) return <EmptyState compact>{snapshot.error}</EmptyState>;
+  const l1 = snapshot.l1 || {};
+  const liq = snapshot.liquidity || {};
+  const hasDepth = (snapshot.bids && snapshot.bids.length) || (snapshot.asks && snapshot.asks.length);
+  return (
+    <>
+      <Meta
+        items={[
+          l1.last != null ? `最新 ${fmtMoney(l1.last)}` : null,
+          l1.spread != null ? `价差 ${l1.spread}(${l1.spread_bps} bps)` : null,
+          liq.spread_grade ? `流动性 ${liq.spread_grade}` : null,
+          liq.bid_depth != null ? `深度 买${liq.bid_depth} / 卖${liq.ask_depth}` : null,
+          liq.imbalance_pct != null ? `失衡 ${liq.imbalance_pct >= 0 ? '买盘厚' : '卖盘厚'} ${Math.abs(liq.imbalance_pct)}%${liq.l1_only ? '(仅一档)' : ''}` : null,
+        ]}
+      />
+      <div className="row tight book-l1">
+        <span className="status filled">{`买一 ${l1.bid != null ? fmtMoney(l1.bid) : '—'}${l1.bid_size ? ` ×${l1.bid_size}` : ''}`}</span>
+        <span className="status rejected">{`卖一 ${l1.ask != null ? fmtMoney(l1.ask) : '—'}${l1.ask_size ? ` ×${l1.ask_size}` : ''}`}</span>
+      </div>
+      {hasDepth ? (
+        <div className="book-grid">
+          <BookSide title="买盘" levels={(snapshot.bids || []).slice(0, 5)} side="bid" />
+          <BookSide title="卖盘" levels={(snapshot.asks || []).slice(0, 5)} side="ask" />
+        </div>
+      ) : null}
+      {snapshot.note ? <div className="stock-sub">{snapshot.note}</div> : null}
+    </>
   );
 }
 

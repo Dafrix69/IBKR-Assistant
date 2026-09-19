@@ -638,6 +638,13 @@ code {
 .book-bar.bid { background: var(--up); }
 .book-bar.ask { background: var(--down); }
 .book-price, .book-size { position: relative; }
+.row.tight.book-l1 { margin: 8px 0 0; }
+/* K 线下面那张盘口是整页宽的:梯子不跟着拉满,不然价格在最左、数量在最右,一行读不到一起 */
+#pa-book .book-grid { max-width: 720px; }
+/* 盘口墙卡片上的代码:点了就换成上面正在看的标的。长得还是代码,悬停才露出可点 */
+.book-sym { padding: 0; border: 0; background: none; color: inherit; cursor: pointer; }
+.book-sym:hover { color: var(--blue); }
+.book-sym:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; border-radius: 3px; }
 
 /* ================= K线 PA ================= */
 /* 图表容器:高度由布局给,库按真实像素填满。三档高度:K线 PA 主图 440,交易分析的两张 320,回测净值曲线 220。

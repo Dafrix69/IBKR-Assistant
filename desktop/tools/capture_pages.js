@@ -1,15 +1,15 @@
 // 截图集生成器:用 Electron 自己把预览台的每一页拍成 PNG。
 //
-//   npx electron tools/capture_pages.js <preview.html> <outDir> [--theme dark|light] [--scale 1|1.5] [--widths 1360,1900] [--only pa,trade] [--check] [--demo]
+//   npx electron tools/capture_pages.js <preview.html> <outDir> [--theme dark|light] [--scale 1|1.5] [--widths 1360,1900] [--only market,trade] [--check] [--demo]
 //
 // 为什么用 Electron 而不是浏览器:窄窗口丢弃顶栏胶囊、titleBarOverlay 留白、系统字体栈,
 // 这些都只在 Electron 里才是真实的。为什么要 --scale:用户的问题截图是在 Windows 150% 缩放下
 // 拍的,100% 下看不出同样的问题。
 //
-// 每一页对应一个 PNG:<theme>-<scale>x-<width>-<tab>.png。K线 PA 页会先填标的、点「分析」再拍。
+// 每一页对应一个 PNG:<theme>-<scale>x-<width>-<tab>.png。行情页会先填标的、点「分析」再拍。
 //
 // --check:不只是拍照,还收集渲染进程的控制台错误。任何 error 级消息都算失败(CSP 违规也在内:
-// 动态注入的 <style> 都该带 nonce),K线 PA 页必须画出 canvas——这是渲染层唯一的自动化 smoke:每页各点一遍,控制台零报错。
+// 动态注入的 <style> 都该带 nonce),行情页必须画出 K 线的 canvas——这是渲染层唯一的自动化 smoke:每页各点一遍,控制台零报错。
 'use strict';
 const { app, BrowserWindow, nativeTheme } = require('electron');
 const fs = require('fs');
@@ -90,7 +90,7 @@ async function run() {
     // 隐藏窗口里 CSS 过渡不会推进:控件从"禁用"翻到"可用"时会停在起始色,拍出来全是灰的。
     // 截图只要终态,过渡与动画一律关掉(insertCSS 走调试通道,不受页面 CSP 约束)。
     await win.webContents.insertCSS('*, *::before, *::after { transition: none !important; animation: none !important; }');
-    // 叶子页:侧栏里不带 data-default 的项 + 合并页(行情 / 接入)页头分段控件里的子页
+    // 叶子页:侧栏里不带 data-default 的项 + 合并页(扫描 / 接入)页头分段控件里的子页
     // 叶子页清单由 React 壳报出(window.__dafriLeafTabs:侧栏项 + 合并页的子页)
     const tabs = await win.webContents.executeJavaScript(`window.__dafriLeafTabs || []`);
     const wanted = only ? only.split(',') : tabs;
@@ -104,7 +104,7 @@ async function run() {
         })()`,
       );
       await sleep(350);
-      if (tab === 'pa') {
+      if (tab === 'market') {
         // React 的受控输入框:直接赋 value 状态不会变,要走原生 setter 再派发 input 事件
         await win.webContents.executeJavaScript(`
           const s = document.getElementById('pa-symbol');
@@ -141,7 +141,7 @@ async function run() {
           tracker: "(() => { const b = [...document.querySelectorAll('#page-tracker button')].find((x) => x.textContent.trim() === '设置追踪'); if (b) b.click(); setTimeout(() => { const f = document.querySelector('.track-form > .track-field:has(.sub) input'); if (f) { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(f, '450'); f.dispatchEvent(new Event('input', { bubbles: true })); } }, 120); })();",
           // React 的受控输入框:直接赋 value 状态不会变,要走原生 setter 再派发 input 事件
           backtest: "(() => { const i = document.getElementById('bt-symbol'); if (i) { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(i, 'NVDA'); i.dispatchEvent(new Event('input', { bubbles: true })); } const b = document.getElementById('btn-bt-run'); if (b) setTimeout(() => b.click(), 50); })();",
-          book: "(() => { const i = document.getElementById('book-symbol'); if (i) { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(i, 'SPY'); i.dispatchEvent(new Event('input', { bubbles: true })); } const b = document.getElementById('btn-book-load'); if (b) setTimeout(() => b.click(), 50); })();",
+          market: "(() => { const i = document.getElementById('book-symbol'); if (i) { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(i, 'SPY'); i.dispatchEvent(new Event('input', { bubbles: true })); } const b = document.getElementById('btn-book-load'); if (b) setTimeout(() => b.click(), 50); })();",
           rs: "(() => { const b = document.getElementById('btn-rs-run'); if (b) b.click(); })();",
           inflection: "(() => { const b = document.getElementById('btn-infl-run'); if (b) b.click(); })();",
           deviation: "(() => { const b = document.getElementById('btn-dev-run'); if (b) b.click(); })();",
@@ -153,7 +153,7 @@ async function run() {
         }
       }
       const name = `${theme}-${scale}x-${width}-${tab}`;
-      if (check && tab === 'pa') {
+      if (check && tab === 'market') {
         // 只在真出了结果时要求画布:首次启动那份数据源里 paAnalyze 是拒绝的,页面本就该显示"还没数据",
         // 那种情况下要求 canvas 等于要求它凭空画一张图
         const verdict = await win.webContents.executeJavaScript(
@@ -164,7 +164,7 @@ async function run() {
             return box && box.querySelector('.empty, .empty-state, .ant-empty, .ant-alert') ? 'no-data' : 'missing';
           })()`,
         );
-        if (verdict === 'missing') consoleErrors.push('K线 PA 页既没画出 canvas,也没说明为什么没有');
+        if (verdict === 'missing') consoleErrors.push('行情页既没画出 K 线的 canvas,也没说明为什么没有');
       }
       await shoot(win, name);
       manifest.push(name);

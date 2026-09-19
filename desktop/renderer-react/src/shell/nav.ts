@@ -59,6 +59,7 @@ export const NAV_ITEMS: NavItem[] = NAV_GROUPS.flatMap((g) => g.items);
 
 /** 旧页面里的跳转目标(子页 / 页内一节)→ 侧栏项。React 壳只认侧栏项,子页由旧逻辑自己记。 */
 const PARENT_OF: Record<string, string> = {
+  // 行情页原来分 K线 PA / 订单簿两个子页,现在是一页;旧页名(图表核对脚本、旧的跳转)照样落到行情
   pa: 'market',
   book: 'market',
   rs: 'screener',

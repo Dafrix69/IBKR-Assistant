@@ -1,5 +1,5 @@
 /**
- * 壳层路由:当前侧栏项 + 合并页(行情 / 扫描 / 接入)里上次看的子页。
+ * 壳层路由:当前侧栏项 + 合并页(扫描 / 接入)里上次看的子页。
  * localStorage 的键沿用旧界面(dafri-subtab-<parent>),迁移期间两边记的是同一份。
  */
 import { create } from 'zustand';
