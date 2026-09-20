@@ -7,18 +7,10 @@
  */
 import { create } from 'zustand';
 import { dafri, errorMessage } from '../bridge';
+import type { PendingItem } from '../bridge';
 import { getStatus } from './status';
 
-export interface PendingItem {
-  record_id: string;
-  intent_summary?: string;
-  symbol?: string;
-  operator?: string;
-  value?: number | string;
-  account?: string;
-  created_at?: string;
-  [key: string]: unknown;
-}
+export type { PendingItem };
 
 const useStore = create<{
   pending: PendingItem[];

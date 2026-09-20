@@ -28,6 +28,7 @@ import { PoolSetWatchParamsSchema } from "./pool.js";
 import {
   QualityAddParamsSchema, QualityRemoveParamsSchema, QualitySetConfigParamsSchema, QualityUpdateParamsSchema,
 } from "./quality.js";
+import { RecordsGetParamsSchema, RecordsListParamsSchema } from "./records.js";
 import { ReviewAnalyzeParamsSchema, ReviewCandidatesParamsSchema } from "./review.js";
 import {
   ScreenerDeviationParamsSchema, ScreenerInflectionParamsSchema, ScreenerRsParamsSchema,
@@ -121,6 +122,12 @@ export const PARAMS_SCHEMAS: { readonly [M in RpcMethodName]: ParamsSchema<RpcPa
   "settings.patch": SettingsPatchParamsSchema,
   "keychain.set": KeychainSetParamsSchema,
   "data.export": DataExportParamsSchema,
+
+  "records.list": RecordsListParamsSchema,
+  "records.get": RecordsGetParamsSchema,
+
+  "pending.list": NoParamsSchema,
+  "pending.poll": NoParamsSchema,
 
   "system.status": NoParamsSchema,
   "system.selftest": NoParamsSchema,

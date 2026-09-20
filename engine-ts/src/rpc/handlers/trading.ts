@@ -1,7 +1,8 @@
 /** 下单这条线:instruction.submit、交易记录、条件单队列、熔断。
- *  熔断那三样已经在契约里(contract/system.ts);另外四样还是老形状,钉在 contract.spec 的 LEGACY 名单上。 */
+ *  除 instruction.submit 外都在契约里(contract/system.ts、contract/records.ts);
+ *  instruction.submit 的返回是 engine.handleInstruction 在下单路径里拼的,等那一块拆开再标类型。 */
 import { BrokerError } from "../../broker.js";
-import type { BreakerHaltParams, RpcResult } from "../../contract/index.js";
+import type { BreakerHaltParams, RecordsGetParams, RecordsListParams, RpcResult, TradeRecord, TradeRecordSummary } from "../../contract/index.js";
 import { resolveFanoutAccounts } from "../../engine.js";
 import { redactAccount } from "../../store.js";
 import { RpcError } from "../../rpcError.js";
@@ -13,11 +14,11 @@ export class TradingHandlers extends HandlerBase {
   methods(): MethodTable {
     return {
       "instruction.submit": (p) => this.instructionSubmit(p),
-      "records.list": (p) => this.recordsList(p),
-      "records.get": (p) => this.recordsGet(p),
-      "pending.list": (p) => this.pendingList(p),
-      "pending.poll": (p) => this.pendingPoll(p),
       ...contractMethods({
+        "records.list": (p) => this.recordsList(p),
+        "records.get": (p) => this.recordsGet(p),
+        "pending.list": () => this.pendingList(),
+        "pending.poll": () => this.pendingPoll(),
         "breaker.state": () => this.breakerState(),
         "breaker.halt": (p) => this.breakerHalt(p),
         "breaker.resume": () => this.breakerResume(),
@@ -60,19 +61,20 @@ export class TradingHandlers extends HandlerBase {
   }
 
   // ---- 记录 -----------------------------------------------------------
-  recordsList(params: Rec): Rec {
+  recordsList(params: RecordsListParams): RpcResult<"records.list"> {
     const limit = Math.trunc(Number(params["limit"] ?? 30));
     const records = this.engine.store.listRecords(limit);
     return { records: records.map(summarize) };
   }
 
-  recordsGet(params: Rec): Rec {
+  recordsGet(params: RecordsGetParams): RpcResult<"records.get"> {
     const record = this.engine.store.getRecord(String(params["id"] ?? ""));
     if (record === null) throw new RpcError(-32005, "记录不存在");
-    const out = { ...record };
+    // 改的是转出的这份拷贝,不回写库:库里那条永远留着真账号
+    const out: TradeRecord = { ...record };
     const account = { ...(out["account"] ?? {}) };
     if (account["account_id"]) {
-      account["account_masked"] = redactAccount(account["account_id"]);
+      account["account_masked"] = redactAccount(String(account["account_id"]));
       delete account["account_id"];
     }
     out["account"] = account;
@@ -80,7 +82,7 @@ export class TradingHandlers extends HandlerBase {
   }
 
   // ---- 条件单队列 ------------------------------------------------------
-  pendingList(_params: Rec): Rec {
+  pendingList(): RpcResult<"pending.list"> {
     return {
       pending: this.engine.pendingTriggers.map((p) => ({
         record_id: p.record_id,
@@ -95,7 +97,7 @@ export class TradingHandlers extends HandlerBase {
   }
 
   /** UI 定时调用:盯盘 + 顺手同步券商回报(富途没有事件流)。 */
-  async pendingPoll(_params: Rec): Promise<Rec> {
+  async pendingPoll(): Promise<RpcResult<"pending.poll">> {
     const synced = await this.engine.syncBrokerOrders();
     if (this.router === null || !this.engine.pendingTriggers.length) {
       return { fired: [], prices: {}, synced };
@@ -148,7 +150,7 @@ export class TradingHandlers extends HandlerBase {
   }
 }
 
-export function summarize(record: Rec): Rec {
+export function summarize(record: Rec): TradeRecordSummary {
   const account = record["account"] ?? {};
   const contract = record["contract"] ?? {};
   const order = record["order"] ?? {};

@@ -50,6 +50,8 @@ import type {
   SectorStock, SettingsPatch, SettingsView, SpotTarget, StockQuote, Targets, Track, Watch, WatchEvent, WatchLevel,
   BreakerBrief, BreakerState, IndexSpot, ProtectionCooldown, ProtectionsSummary, SystemSelftest, SystemStatus,
   TrackerHeartbeat,
+  PendingItem, PendingPollResult, RecordAccount, RecordFill, RecordIbkr, RecordInput, RecordLlm, RecordStatusEvent,
+  TradeRecord, TradeRecordSummary,
 } from '../../../engine-ts/src/contract/index';
 
 export type {
@@ -66,6 +68,8 @@ export type {
   AnomalyEvent, AnomalyKind, LevelKind, OptionWall, PoolWatch, PoolWatchPatch, PositionRow, QualityList, QualityMonitor,
   QualityStock, Sector, SectorStock, SettingsPatch, SpotTarget, StockQuote, Targets, Track, Watch, WatchEvent, WatchLevel,
   BreakerBrief, BreakerState, IndexSpot, ProtectionCooldown, SystemSelftest, SystemStatus, TrackerHeartbeat,
+  PendingItem, PendingPollResult, RecordAccount, RecordFill, RecordIbkr, RecordInput, RecordLlm, RecordStatusEvent,
+  TradeRecord, TradeRecordSummary,
 };
 /** 界面这边一直用的名字;引擎契约里分别叫 AccountView / SettingsView / Policies / Limits / ProtectionsConfig。 */
 export type Account = AccountView;
@@ -110,10 +114,10 @@ export interface DafriBridge {
 
   status(): Rpc<RpcResult<'system.status'>>;
   selftest(): Rpc<RpcResult<'system.selftest'>>;
-  listRecords(limit?: number): Rpc<any>;
-  getRecord(id: string): Rpc<any>;
-  listPending(): Rpc<any>;
-  pollPending(): Rpc<any>;
+  listRecords(limit?: number): Rpc<RpcResult<'records.list'>>;
+  getRecord(id: string): Rpc<RpcResult<'records.get'>>;
+  listPending(): Rpc<RpcResult<'pending.list'>>;
+  pollPending(): Rpc<RpcResult<'pending.poll'>>;
   getSettings(): Rpc<RpcResult<'settings.get'>>;
   breakerState(): Rpc<RpcResult<'breaker.state'>>;
 

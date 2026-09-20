@@ -4,24 +4,11 @@
  */
 import { create } from 'zustand';
 import { dafri, errorMessage } from '../bridge';
+import type { TradeRecordSummary } from '../bridge';
 
-export interface RecordSummary {
-  id: string;
-  symbol?: string;
-  action?: string;
-  quantity?: number;
-  account?: string;
-  account_masked?: string;
-  is_paper?: boolean;
-  status?: string | null;
-  final_status?: string | null;
-  created_at?: string;
-  intent_summary?: string;
-  reason?: string;
-  raw_instruction?: string;
-  notional_estimate?: number;
-  [key: string]: unknown;
-}
+/** 以前这里手抄了一份(带着 [key: string]: unknown 的口子,字段名写错编译期查不出来)。
+ *  现在就是引擎契约里的那 20 项(engine-ts/src/contract/records.ts)。 */
+export type RecordSummary = TradeRecordSummary;
 
 const useStore = create<{
   records: RecordSummary[];

@@ -36,6 +36,9 @@ import type {
 } from "./screener.js";
 import type { PositionRow } from "./positions.js";
 import type {
+  PendingItem, PendingPollResult, RecordsGetParams, RecordsListParams, TradeRecord, TradeRecordSummary,
+} from "./records.js";
+import type {
   BreakerHaltParams, BreakerHaltResult, BreakerResumeResult, BreakerState, SystemSelftest, SystemStatus,
 } from "./system.js";
 import type {
@@ -66,6 +69,7 @@ export type * from "./pool.js";
 export type * from "./positions.js";
 export type * from "./priceaction.js";
 export type * from "./quality.js";
+export type * from "./records.js";
 export type * from "./review.js";
 export type * from "./screener.js";
 export type * from "./sectors.js";
@@ -159,6 +163,14 @@ export interface RpcMethods {
   "settings.patch": { params: SettingsPatchParams; result: SettingsView };
   "keychain.set": { params: KeychainSetParams; result: { ok: true } };
   "data.export": { params: DataExportParams; result: DataExportResult };
+
+  /** 摘要,20 项。整条记录要走 records.get */
+  "records.list": { params: RecordsListParams; result: { records: TradeRecordSummary[] } };
+  "records.get": { params: RecordsGetParams; result: { record: TradeRecord } };
+
+  "pending.list": { params: NoParams; result: { pending: PendingItem[] } };
+  /** 界面驱动的那口气:不发它,条件单永远不触发、当日不过期、成交也不回写 */
+  "pending.poll": { params: NoParams; result: PendingPollResult };
 
   "system.status": { params: NoParams; result: SystemStatus };
   "system.selftest": { params: NoParams; result: SystemSelftest };
