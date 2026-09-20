@@ -14,6 +14,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 import type { Watch } from "./contract/alerts.js";
+import type { Idea, IdeaAnalysis, IdeaDigest, IdeaDigestRow } from "./contract/ideas.js";
 import type { AnomalyEvent, QualityStockRow } from "./contract/quality.js";
 import type { Sector, SectorStock } from "./contract/sectors.js";
 import type { Track } from "./contract/tracker.js";
@@ -675,10 +676,10 @@ export class TradeStore {
   }
 
   // ---- 想法备忘 --------------------------------------------------------
-  addIdea(text: string, symbols?: string[] | null): Rec {
+  addIdea(text: string, symbols?: string[] | null): Idea {
     text = (text || "").trim();
     if (!text) throw new Error("想法内容为空");
-    const idea: Rec = {
+    const idea: Idea = {
       id: crypto.randomUUID(),
       created_at: nowIso(),
       updated_at: nowIso(),
@@ -698,7 +699,7 @@ export class TradeStore {
     return idea;
   }
 
-  listIdeas(status: string | null = null, limit = 200): Rec[] {
+  listIdeas(status: string | null = null, limit = 200): Idea[] {
     if (status !== null && !(IDEA_STATUSES as readonly string[]).includes(status)) {
       throw new Error(`未知想法状态:${status}`);
     }
@@ -712,7 +713,7 @@ export class TradeStore {
     return rows.map(ideaRow);
   }
 
-  getIdea(ideaId: string): Rec | null {
+  getIdea(ideaId: string): Idea | null {
     const row = this.db.prepare("SELECT * FROM ideas WHERE id=?").get(ideaId) as Rec | undefined;
     return row ? ideaRow(row) : null;
   }
@@ -725,7 +726,7 @@ export class TradeStore {
     );
   }
 
-  setIdeaAnalysis(ideaId: string, analysis: Rec): boolean {
+  setIdeaAnalysis(ideaId: string, analysis: IdeaAnalysis): boolean {
     return (
       this.db
         .prepare("UPDATE ideas SET analysis=?, updated_at=? WHERE id=?")
@@ -745,8 +746,8 @@ export class TradeStore {
   }
 
   // ---- 想法知识总结 ----------------------------------------------------
-  addIdeaDigest(scope: string, ideaIds: string[], digest: Rec): Rec {
-    const row = {
+  addIdeaDigest(scope: string, ideaIds: string[], digest: IdeaDigest): IdeaDigestRow {
+    const row: IdeaDigestRow = {
       id: crypto.randomUUID(),
       created_at: nowIso(),
       scope,
@@ -766,7 +767,7 @@ export class TradeStore {
     return row;
   }
 
-  listIdeaDigests(limit = 20): Rec[] {
+  listIdeaDigests(limit = 20): IdeaDigestRow[] {
     const rows = this.db
       .prepare("SELECT * FROM idea_digests ORDER BY created_at DESC LIMIT ?")
       .all(limit) as Rec[];
@@ -779,7 +780,7 @@ export class TradeStore {
           digest[key] = empty;
         }
       }
-      return digest;
+      return digest as IdeaDigestRow; // 库的边界,同 watchRow
     });
   }
 
@@ -1129,7 +1130,7 @@ function sectorRow(row: Rec): Sector {
   return sector as Sector; // 库的边界,同 watchRow
 }
 
-function ideaRow(row: Rec): Rec {
+function ideaRow(row: Rec): Idea {
   const idea: Rec = { ...row };
   try {
     idea["symbols"] = JSON.parse(idea["symbols"] || "[]");
@@ -1142,7 +1143,7 @@ function ideaRow(row: Rec): Rec {
   } catch {
     idea["analysis"] = null;
   }
-  return idea;
+  return idea as Idea; // 库的边界,同 watchRow
 }
 
 /** 已折进来的成交 / 佣金行的 exec_id(record_json 里自带的也算,免得和事件重复)。 */

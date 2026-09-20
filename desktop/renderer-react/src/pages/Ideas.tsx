@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Button, Card, Input, Segmented, Space } from 'antd';
 import { dafri, errorMessage } from '../bridge';
+import type { Idea, IdeaAnalysis, IdeaBriefMetric, IdeaDigest, IdeaDigestRow } from '../bridge';
 import { fmtTime, fmtTimeShort } from '../lib/format';
 import { showBanner } from '../store/banner';
 import { navigate } from '../store/nav';
@@ -8,37 +9,12 @@ import { setTradeDraft } from '../store/trade';
 import { EmptyState, Meta, PageHead, Primer, StatusCard } from '../ui/kit';
 
 // 想法备忘:随手记,不解析、不下单。归档不是丢弃,攒起来的想法能一键提炼成知识,总结历史落库可回看。
-
-interface IdeaAnalysis {
-  summary?: string;
-  symbol?: string;
-  brief?: Record<string, any> | null;
-  thesis?: string;
-  checks?: string[];
-  risks?: string[];
-  suggestion?: string;
-  model?: string;
-  analyzed_at?: string;
-}
-
-interface Idea {
-  id: string;
-  text: string;
-  status: 'active' | 'done' | 'archived' | string;
-  symbols?: string[];
-  created_at?: string;
-  analysis?: IdeaAnalysis | null;
-}
-
-interface Digest {
-  idea_count?: number;
-  created_at?: string;
-  digest?: { summary?: string; themes?: string[]; lessons?: string[]; patterns?: string[]; actions?: string[]; model?: string };
-}
+// 想法、分析、总结的形状在引擎契约里(engine-ts/src/contract/ideas.ts),从 bridge 拿;analysis 与 digest 是库里的两列 JSON,
+// 契约把它们标成 Partial——老版本写进去的可能缺键,所以下面每一项都按"可能没有"来画。
 
 const IDEA_STATUS_LABEL: Record<string, string> = { active: '进行中', done: '已完成', archived: '已归档' };
 
-const BRIEF_LABELS: [string, string, string][] = [
+const BRIEF_LABELS: [IdeaBriefMetric, string, string][] = [
   ['last', '现价', ''],
   ['chg_1d_pct', '1日', '%'],
   ['chg_20d_pct', '20日', '%'],
@@ -68,7 +44,7 @@ export function IdeasPage() {
   const [filter, setFilter] = useState<'active' | 'all'>('active');
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [digests, setDigests] = useState<Digest[]>([]);
+  const [digests, setDigests] = useState<IdeaDigestRow[]>([]);
   const [text, setText] = useState('');
   const [digesting, setDigesting] = useState(false);
 
@@ -140,7 +116,7 @@ export function IdeasPage() {
   }
 
   const latest = digests[0];
-  const d = latest?.digest || {};
+  const d: Partial<IdeaDigest> = latest?.digest || {};
 
   return (
     <section className="tab-panel active" id="page-ideas">
@@ -266,7 +242,7 @@ function IdeaCard({
   );
 }
 
-function Analysis({ analysis }: { analysis: IdeaAnalysis }) {
+function Analysis({ analysis }: { analysis: Partial<IdeaAnalysis> }) {
   const brief = analysis.brief;
   // 行情事实(代码计算)与 AI 叙事分开标注,别混为一谈
   let facts: ReactNode = null;

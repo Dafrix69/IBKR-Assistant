@@ -114,6 +114,15 @@
 - **持仓行从三处攒起来,类型在每一处都说真话。** 券商适配层给基础字段,`withCombos` 另外合成组合行(多 `kind` / `net_side` / `legs` / `ratios`),
   `positions.list` 最后补 `tracked` 与盈亏口径——所以后两段加的字段在 `PositionRow` 里是可选的,而不是拆成两三个类型再靠断言过渡。
   `withCombos` 是泛型的:引擎和测试还在传松散的行,传什么回什么、外加组合行,不用为了标类型去改它们。
+- **golden-rpc 钉着原话的"缺字段",还让 handler 说。** 按上面的分工,缺必填字段是结构错、归 schema 报。但基线里钉了几句 handler 对
+  "没给"的原话(`ideas.update` 不带 id →「缺少想法 id」),换成 schema 那句就是为了迁移去改基线。这种字段用 `schema/kit.ts` 的
+  `requiredButReportedByHandler()`:类型上仍是必填(调用方不许不给),schema 把"没给"解成空串交给 handler——和老 handler 的
+  `String(x ?? "")` 一个结果;给了却不是字符串,照样当场拒。**只给基线钉着的字段用**,同一个方法里没被钉的字段(`status`)仍归 schema。
+  还没迁的方法里基线钉着同类原话的有:`instruction.submit` 的「指令为空」「accounts 必须是账户别名数组」、`screener.inflection` 的
+  「timeframes 要是非空数组」「整数参数不合法」、`backtest.parse_rules` 的「策略描述为空」——迁到它们时照此办。
+- **库里的 JSON 列,读的一方按"可能缺"来标。** `ideas.analysis`、`idea_digests.digest` 是整份存进去的 JSON:写的时候是全的
+  (`setIdeaAnalysis(id, analysis: IdeaAnalysis)`,少一段编译不过),读出来的是 `Partial<…>`——老版本写进去的可能缺后来才加的键,
+  读不出来时 store 给的是 `null` / 空对象。界面原来那份手抄恰好也是全可选的,这回是契约如实这么写,不是界面自己留的余地。同 `Track.targets`。
 
 没做的:走哪条道还登记在 `server.ts` 的道表里,没有进契约。`tracker.poll` / `reconcile` / `close_now` 还是老方法:它们的返回是 `engine.ts`
 在下单路径里拼出来的,等它拆开(体检报告第二条的后半)再标类型。

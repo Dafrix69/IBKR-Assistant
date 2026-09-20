@@ -24,7 +24,6 @@ const LEGACY_METHODS = [
   "breaker.halt", "breaker.resume", "breaker.state",
   "broker.catalog", "broker.connect", "broker.disconnect", "broker.select",
   "futu.diagnose", "futu.launch", "futu.scan", "futu.set_password", "futu.unlock",
-  "ideas.add", "ideas.analyze", "ideas.digest", "ideas.digests", "ideas.list", "ideas.update",
   "instruction.submit",
   "llm.catalog", "llm.patch", "llm.test",
   "macro.board",
@@ -75,8 +74,8 @@ describe("契约:迁移只许往前走", () => {
     expect(LEGACY_METHODS.filter((m) => !names.includes(m)), "引擎里已经没有这个方法了").toEqual([]);
   });
 
-  it("名单只许变短:现在是 47 个,改这个数的时候只能往小里改", () => {
-    expect(LEGACY_METHODS.length).toBeLessThanOrEqual(47);
+  it("名单只许变短:现在是 41 个,改这个数的时候只能往小里改", () => {
+    expect(LEGACY_METHODS.length).toBeLessThanOrEqual(41);
     expect(new Set(LEGACY_METHODS).size).toBe(LEGACY_METHODS.length);
   });
 });
@@ -170,6 +169,22 @@ describe("契约:结构错由 schema 报,领域错由 handler 报", () => {
     expect((await errorOf("alerts.create", { symbol: "SPY", step: 5000 })).message).toBe("整数关口步长必须在 0~1000 之间");
     expect((await errorOf("alerts.delete", { id: "nope" })).message).toBe("没有这个警告:nope");
     expect((await errorOf("alerts.refresh", { id: "nope" })).message).toBe("没有这个警告");
+  });
+
+  it("ideas:结构错归 schema;唯独 ideas.update 不带 id 还是 handler 那句——golden-rpc 钉着它,换一句就是改基线", async () => {
+    expect(await errorOf("ideas.add", {})).toEqual({ code: -32602, message: "ideas.add 的参数不对:缺少 text" });
+    expect(await errorOf("ideas.add", { text: 123 })).toEqual({ code: -32602, message: "ideas.add 的参数不对:text 应为 string,收到 number" });
+    expect(await errorOf("ideas.analyze", {})).toEqual({ code: -32602, message: "ideas.analyze 的参数不对:缺少 id" });
+    expect(await errorOf("ideas.list", { limit: true })).toEqual({ code: -32602, message: "ideas.list 的参数不对:limit 应为 number 或 string,收到 boolean" });
+    expect(await errorOf("ideas.update", { id: "x" })).toEqual({ code: -32602, message: "ideas.update 的参数不对:缺少 status" });
+    // 例外只有"没给":给了却不是字符串,照样是结构错
+    expect(await errorOf("ideas.update", { status: "done" })).toEqual({ code: -32602, message: "缺少想法 id" });
+    expect(await errorOf("ideas.update", { id: null, status: "done" })).toEqual({ code: -32602, message: "缺少想法 id" });
+    expect(await errorOf("ideas.update", { id: 7, status: "done" })).toEqual({ code: -32602, message: "ideas.update 的参数不对:id 应为 string,收到 number" });
+    // 领域错:handler / store 自己那句
+    expect((await errorOf("ideas.add", { text: "  " })).message).toBe("想法内容为空");
+    expect((await errorOf("ideas.list", { status: "nope" })).message).toBe("未知想法状态:nope");
+    expect((await errorOf("ideas.digest", { scope: "nope" })).message).toBe("未知总结范围:nope(可选:archived、done、all)");
   });
 
   it("schema 不比老 handler 严:步长给数字串照收;改标签不带 tag = 清掉", async () => {

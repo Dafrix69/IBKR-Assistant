@@ -67,17 +67,19 @@ export interface ConfirmOptions {
   confirmLabel?: string;
 }
 
-// ---- 引擎契约(engine-ts/src/contract/):优质股追踪、股票池开关、板块、价位提醒、持仓追踪的设置 ------
+// ---- 引擎契约(engine-ts/src/contract/):优质股追踪、股票池开关、板块、价位提醒、持仓追踪、设置、想法 ------
 // 这几个域的形状**不在这里定义**:引擎的 handler 与这里用的是同一份类型,返回结构改一个字段名,
 // 两头一起编译不过。只许 `import type`,只许进 contract/ 顶层的类型文件(它们不 import 任何东西,
 // 界面的 tsc 不装引擎依赖也解析得了);contract/schema/ 是引擎自己的运行时校验,这里不碰。
 import type {
+  Idea, IdeaAnalysis, IdeaBrief, IdeaBriefMetric, IdeaDigest, IdeaDigestRow,
   AnomalyConfig, AnomalyEvent, AnomalyKind, AnomalyMetrics, LevelKind, OptionWall, PoolWatch, PoolWatchPatch, PositionRow,
   AccountView, Limits, Policies, ProtectionsConfig, QualityList, QualityMonitor, QualityStock, RpcParams, RpcResult, Sector,
   SectorStock, SettingsPatch, SettingsView, SpotTarget, StockQuote, Targets, Track, Watch, WatchEvent, WatchLevel,
 } from '../../../engine-ts/src/contract/index';
 
 export type {
+  Idea, IdeaAnalysis, IdeaBrief, IdeaBriefMetric, IdeaDigest, IdeaDigestRow,
   AnomalyEvent, AnomalyKind, LevelKind, OptionWall, PoolWatch, PoolWatchPatch, PositionRow, QualityList, QualityMonitor,
   QualityStock, Sector, SectorStock, SettingsPatch, SpotTarget, StockQuote, Targets, Track, Watch, WatchEvent, WatchLevel,
 };
@@ -127,12 +129,12 @@ export interface DafriBridge {
   getSettings(): Rpc<RpcResult<'settings.get'>>;
   breakerState(): Rpc<BreakerState>;
 
-  addIdea(text: string): Rpc<any>;
-  listIdeas(status?: string): Rpc<any>;
-  updateIdea(id: string, status: string): Rpc<any>;
-  analyzeIdea(id: string): Rpc<any>;
-  digestIdeas(scope?: string): Rpc<any>;
-  listIdeaDigests(): Rpc<any>;
+  addIdea(text: string): Rpc<RpcResult<'ideas.add'>>;
+  listIdeas(status?: string): Rpc<RpcResult<'ideas.list'>>;
+  updateIdea(id: string, status: string): Rpc<RpcResult<'ideas.update'>>;
+  analyzeIdea(id: string): Rpc<RpcResult<'ideas.analyze'>>;
+  digestIdeas(scope?: string): Rpc<RpcResult<'ideas.digest'>>;
+  listIdeaDigests(): Rpc<RpcResult<'ideas.digests'>>;
 
   listSectors(): Rpc<RpcResult<'sectors.list'>>;
   addSector(name: string): Rpc<RpcResult<'sectors.add'>>;

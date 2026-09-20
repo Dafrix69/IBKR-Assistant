@@ -1,5 +1,6 @@
 /** 标的情报采集(对应 Python research.py)。数字由代码算,叙事才交给 LLM。 */
 import { macdHist, realizedVol, rsi, sma } from "./backtest.js";
+import type { IdeaAnchor, IdeaBrief, IdeaBriefMetric } from "./contract/ideas.js";
 import { fmtSF, pyFloat, pyRound } from "./py.js";
 import { dateOrdinal, ordinalToDate, weekdayOfDate } from "./tz.js";
 
@@ -10,7 +11,7 @@ const WEEKDAY_MAP: Record<string, number> = {
 /** 把想法里的相对时间解析成具体的价格锚点。解析不出就 null,绝不瞎猜。 */
 export function resolveAnchor(
   text: string, bars: Array<Record<string, any>>, todayIso: string,
-): Record<string, unknown> | null {
+): IdeaAnchor | null {
   if (!bars.length) return null;
 
   let targetOrdinal: number | null = null;
@@ -60,18 +61,18 @@ export function resolveAnchor(
 }
 
 /** 从日线(升序 OHLC)计算标的情报。数据不足的项直接省略。 */
-export function symbolBrief(bars: Array<Record<string, any>>): Record<string, unknown> {
+export function symbolBrief(bars: Array<Record<string, any>>): IdeaBrief {
   const closes = bars.map((b) => Number(b["close"]));
   const highs = bars.map((b) => Number(b["high"]));
   const lows = bars.map((b) => Number(b["low"]));
   if (closes.length < 2) return {};
 
   const last = closes[closes.length - 1]!;
-  const out: Record<string, unknown> = { last: pyRound(last, 2), bars: bars.length };
+  const out: IdeaBrief = { last: pyRound(last, 2), bars: bars.length };
 
   for (const [n, key] of [
     [1, "chg_1d_pct"], [5, "chg_5d_pct"], [20, "chg_20d_pct"], [60, "chg_60d_pct"],
-  ] as Array<[number, string]>) {
+  ] as Array<[number, IdeaBriefMetric]>) {
     if (closes.length > n) {
       out[key] = pyRound((last / closes[closes.length - 1 - n]! - 1.0) * 100.0, 2);
     }
@@ -82,7 +83,7 @@ export function symbolBrief(bars: Array<Record<string, any>>): Record<string, un
   const rsiLast = closes.length > 15 ? rsi(closes, 14)[closes.length - 1] : null;
   if (rsiLast !== null) out["rsi14"] = pyRound(rsiLast!, 1);
 
-  for (const [window, key] of [[50, "vs_sma50_pct"], [200, "vs_sma200_pct"]] as Array<[number, string]>) {
+  for (const [window, key] of [[50, "vs_sma50_pct"], [200, "vs_sma200_pct"]] as Array<[number, IdeaBriefMetric]>) {
     const smaLast = closes.length >= window ? sma(closes, window)[closes.length - 1] : null;
     if (smaLast) out[key] = pyRound((last / smaLast - 1.0) * 100.0, 2);
   }
@@ -100,7 +101,7 @@ export function symbolBrief(bars: Array<Record<string, any>>): Record<string, un
 
 /** 把情报拼成给模型看的中文块。没有数据时明说。 */
 export function briefText(
-  symbol: string | null, brief: Record<string, unknown> | null,
+  symbol: string | null, brief: IdeaBrief | null,
 ): string {
   if (!symbol) return "标的行情情报:(想法中未识别出标的,无行情数据)";
   if (!brief || !Object.keys(brief).length) {
@@ -109,7 +110,7 @@ export function briefText(
   if (brief["error"]) return `标的行情情报:(获取 ${symbol} 行情失败:${brief["error"]})`;
 
   const lines = [`标的行情情报(${symbol},软件按日线计算,最新价可能有 15 分钟延迟):`];
-  const labelMap: Array<[string, string, string]> = [
+  const labelMap: Array<[IdeaBriefMetric, string, string]> = [
     ["last", "现价", ""],
     ["chg_1d_pct", "1日涨跌", "%"],
     ["chg_5d_pct", "5日涨跌", "%"],
@@ -131,11 +132,11 @@ export function briefText(
     });
   lines.push(parts.join(";"));
 
-  const anchor = brief["anchor"] as Record<string, unknown> | undefined;
+  const anchor = brief["anchor"];
   if (anchor) {
     lines.push(
-      `价格锚点(按想法里的时间引用解析):${anchor["label"]} = ${pyFloat(anchor["price"] as number)};` +
-      `现价较锚点 ${fmtSF((anchor["chg_from_anchor_pct"] as number) || 0.0, 2)}%。` +
+      `价格锚点(按想法里的时间引用解析):${anchor["label"]} = ${pyFloat(anchor["price"])};` +
+      `现价较锚点 ${fmtSF(anchor["chg_from_anchor_pct"] || 0.0, 2)}%。` +
       "想法中的买入价指的是这个锚点价位,不是现价——请围绕锚点评估:" +
       "按锚点算浮盈浮亏多少、现在追与等回调到锚点各意味着什么。",
     );

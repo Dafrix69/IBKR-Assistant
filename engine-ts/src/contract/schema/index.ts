@@ -9,6 +9,10 @@
  */
 import type { RpcMethodName, RpcParams } from "../index.js";
 import { AlertsCreateParamsSchema, AlertsDeleteParamsSchema, AlertsRefreshParamsSchema } from "./alerts.js";
+import {
+  IdeasAddParamsSchema, IdeasAnalyzeParamsSchema, IdeasDigestParamsSchema, IdeasDigestsParamsSchema, IdeasListParamsSchema,
+  IdeasUpdateParamsSchema,
+} from "./ideas.js";
 import { NoParamsSchema } from "./kit.js";
 import type { ParamsSchema } from "./kit.js";
 import { OptionsWallParamsSchema } from "./options.js";
@@ -33,6 +37,13 @@ export const PARAMS_SCHEMAS: { readonly [M in RpcMethodName]: ParamsSchema<RpcPa
   "alerts.delete": AlertsDeleteParamsSchema,
   "alerts.refresh": AlertsRefreshParamsSchema,
   "alerts.poll": NoParamsSchema,
+
+  "ideas.add": IdeasAddParamsSchema,
+  "ideas.list": IdeasListParamsSchema,
+  "ideas.update": IdeasUpdateParamsSchema,
+  "ideas.analyze": IdeasAnalyzeParamsSchema,
+  "ideas.digest": IdeasDigestParamsSchema,
+  "ideas.digests": IdeasDigestsParamsSchema,
 
   "options.wall": OptionsWallParamsSchema,
 

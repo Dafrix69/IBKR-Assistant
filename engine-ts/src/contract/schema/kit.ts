@@ -14,6 +14,15 @@ export function optional<S extends z.ZodTypeAny>(schema: S) {
   return schema.nullish().transform((v): z.output<S> | undefined => v ?? undefined);
 }
 
+/**
+ * 类型上必填、缺了却不在这里拒的字符串:解成空串,交给 handler 说它自己那句话——和老 handler 的 String(x ?? "") 一个结果。
+ * **只给 golden-rpc 钉着那句原话的字段用**(ideas.update 不带 id →「缺少想法 id」);换成 schema 的「缺少 id」就是改了基线。
+ * 新方法不要用:缺必填字段是结构错,该由 schema 报。类型不对(给了个数字)照样在这里拒。
+ */
+export function requiredButReportedByHandler() {
+  return z.string().nullish().transform((v): string => v ?? "");
+}
+
 /** 不带参数的方法:给什么都收,解出来一律是空对象(多余的键不看,也不传给 handler)。 */
 export const NoParamsSchema: ParamsSchema<NoParams> = z.unknown().transform((): NoParams => ({}));
 

@@ -405,3 +405,23 @@ killswitch + 上面那 6 个方法),用基类 getter 把它们摊成 `this.store
   "util 可以引契约的类型文件"(`protections.ts` 在 util 层)。
 - 顺带看到、没有动的一处:`settings.patch` 对**顶层**不认识的段不报错(`{patch: {foo: {a: 1}}}` 会成功,`foo` 被原样写进配置文件)。
   不影响任何行为,只是配置文件里会留垃圾;要堵得先把 `fromDict` 认的顶层键列全,单独一件事。
+
+**2026-09-20,想法域:`ideas.*` 六个方法迁完(已迁 36 个,还剩 41 个)。** 同样不碰 `engine.ts`、不在下单路径上。
+
+- 先补特征测试,再迁。golden-rpc 钉了这个域 10 条请求,但都是没连券商的——`analysis.brief` 恒为 `null`,界面「想法」卡片上
+  「行情(代码计算)」「价格锚点」那两行读的键一个都没被钉住。`tests/ideas-rpc.spec.ts`(13 个)用假券商、假模型补上:380 天日线的
+  取数区间、情报与锚点的完整形状、标的自愈、行情取不到时的 `{error}`、模型失败不写库、总结的范围 / 顺序 / 喂给模型的原文。
+  先在旧代码上跑绿,迁完一个断言没改;变异 12 处(兜底 SPX、锚点取错价、顺序反了、失败也写库、schema 写严了……)12 处全红,
+  每一处都断言了"改上了"。
+- 形状从源头标过来:`research.symbolBrief` / `resolveAnchor` / `briefText`、`store` 的想法与总结那几个方法、`ideaRow`(库的边界)。
+  `store.js` / `research.js` 的编译产物去掉注释逐字节一致。界面 `Ideas.tsx` 里手抄的三个接口删了,从 `bridge.ts` 拿契约类型。
+- **基线钉着的"缺字段"原话怎么办**——这一批定下来的做法,后面还会用到。`ideas.update` 不带 id,golden-rpc 钉的是 handler 那句
+  「缺少想法 id」;照前几批的分工它该由 schema 报「缺少 id」,但那就是为了迁移去改基线。做法:`schema/kit.ts` 加了
+  `requiredButReportedByHandler()`——类型上必填,"没给"解成空串交给 handler 说原话(和老 handler 的 `String(x ?? "")` 同一个结果),
+  类型不对照样当场拒;只给基线钉着的字段用。把还没迁的方法过了一遍,基线钉着同类原话的还有:`instruction.submit`(「指令为空」
+  「accounts 必须是账户别名数组」)、`screener.inflection`(「timeframes 要是非空数组」「整数参数不合法」)、
+  `backtest.parse_rules`(「策略描述为空」)。
+- `analysis` / `digest` 是库里的两列 JSON:写的一方要全(少一段编译不过),读的一方标成 `Partial<…>`。
+- 验证:契约里改四个字段名(`symbols` / `themes` / `vs_sma200_pct` / `chg_from_anchor_pct`),引擎这头 `research.ts`、`store.ts`、
+  handler 共 8 处报错,界面 `Ideas.tsx` 4 处报错(含那张「键 → 中文名」的表)。真进程 stdio 冒烟加了 5 条,36 / 36。
+- 这个功能原来没有 feature 文档,补了 `docs/features/ideas.md`:只写被测试钉住的口径,没有另外发挥。

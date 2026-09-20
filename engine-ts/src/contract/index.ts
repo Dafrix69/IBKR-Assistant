@@ -10,6 +10,10 @@
 import type {
   AlertsCreateParams, AlertsDeleteParams, AlertsPollResult, AlertsRefreshParams, AlertsRefreshResult, Watch,
 } from "./alerts.js";
+import type {
+  Idea, IdeaDigestRow, IdeasAddParams, IdeasAnalyzeParams, IdeasDigestParams, IdeasDigestsParams, IdeasListParams,
+  IdeasUpdateParams,
+} from "./ideas.js";
 import type { OptionWall, OptionsWallParams } from "./options.js";
 import type { PoolSetWatchParams, PoolWatch } from "./pool.js";
 import type { PositionRow } from "./positions.js";
@@ -30,6 +34,7 @@ import type {
 } from "./tracker.js";
 
 export type * from "./alerts.js";
+export type * from "./ideas.js";
 export type * from "./options.js";
 export type * from "./pool.js";
 export type * from "./positions.js";
@@ -47,6 +52,14 @@ export interface RpcMethods {
   "alerts.delete": { params: AlertsDeleteParams; result: { deleted: string } };
   "alerts.refresh": { params: AlertsRefreshParams; result: AlertsRefreshResult };
   "alerts.poll": { params: NoParams; result: AlertsPollResult };
+
+  "ideas.add": { params: IdeasAddParams; result: { idea: Idea } };
+  "ideas.list": { params: IdeasListParams; result: { ideas: Idea[] } };
+  "ideas.update": { params: IdeasUpdateParams; result: { id: string; status: string } };
+  /** 回执是分析写回之后的那一行 */
+  "ideas.analyze": { params: IdeasAnalyzeParams; result: { idea: Idea } };
+  "ideas.digest": { params: IdeasDigestParams; result: { digest: IdeaDigestRow } };
+  "ideas.digests": { params: IdeasDigestsParams; result: { digests: IdeaDigestRow[] } };
 
   "options.wall": { params: OptionsWallParams; result: OptionWall };
 
