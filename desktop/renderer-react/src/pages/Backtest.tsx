@@ -2,6 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { Button, DatePicker, Input, InputNumber, List, Select, Space } from 'antd';
 import dayjs from 'dayjs';
 import { dafri, errorMessage } from '../bridge';
+import type {
+  BacktestCurvePoint, BacktestRunResult, BacktestRunSpec, BacktestStrategy, BacktestTrade, CustomRulesInput, RuleConditionInput,
+  RuleOperandInput,
+} from '../bridge';
 import { CanvasChart, type ChartSpec } from '../lib/Chart';
 import type { SpecMarker } from '../lib/chart/spec';
 import { fmtMoney } from '../lib/format';
@@ -10,28 +14,12 @@ import { Group, GroupRow, Meta, NumberRow, PageHead, SectionTitle, StatTile, Sta
 
 // 策略回测:纯计算展示,历史数据来自 TWS。含自定义条件搭建器与随表单实时生成的流程图。
 
-interface Operand {
-  kind: 'indicator' | 'const';
-  name?: string;
-  period?: number;
-  value?: number;
-}
-interface Condition {
-  left: Operand;
-  op: string;
-  right: Operand;
-}
-interface Rules {
-  entry: Condition[];
-  exit: Condition[];
-}
-interface Strategy {
-  key: string;
-  label: string;
-  desc?: string;
-  params?: Record<string, number>;
-  param_labels?: Record<string, string>;
-}
+// 形状在引擎契约里(engine-ts/src/contract/backtest.ts),从 bridge 拿。搭建器里的条件用的是「发过去的样子」(用不上的键可以不带);
+// 引擎回来的(一句话生成的、回执里的)是补齐成 null 之后的样子,能直接放进搭建器。
+type Operand = RuleOperandInput;
+type Condition = RuleConditionInput;
+type Rules = Required<CustomRulesInput>;
+type Strategy = BacktestStrategy;
 
 const BT_INDICATORS: [string, string][] = [
   ['close', '收盘价'], ['open', '开盘价'], ['high', '最高价'], ['low', '最低价'],
@@ -74,7 +62,7 @@ export function BacktestPage() {
   const [rules, setRules] = useState<Rules>(DEFAULT_RULES);
   const [instType, setInstType] = useState('stock');
   const [inst, setInst] = useState({ dte: 30 as number | null, offset: 0 as number | null, width: 2 as number | null, risk: 10 as number | null });
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<BacktestRunResult | null>(null);
   const [running, setRunning] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
 
@@ -103,12 +91,12 @@ export function BacktestPage() {
       showBanner('请填写标的与起止日期', true);
       return;
     }
-    const spec: Record<string, unknown> = {
+    const spec: BacktestRunSpec = {
       symbol: sym,
       start,
       end,
       strategy: strategyKey,
-      params: Object.fromEntries(Object.entries(params).filter(([, v]) => v !== null && v !== undefined)),
+      params: Object.fromEntries(Object.entries(params).filter((e): e is [string, number] => e[1] !== null && e[1] !== undefined)),
     };
     if (strategyKey === 'custom') spec.rules = rules;
     spec.instrument = !isOption
@@ -328,12 +316,12 @@ function OperandEditor({ operand, onChange }: { operand: Operand; onChange: (o: 
 
 // ---- 结果 ----------------------------------------------------------------
 
-function BacktestResult({ r, strategyLabel }: { r: any; strategyLabel?: string }) {
+function BacktestResult({ r, strategyLabel }: { r: BacktestRunResult; strategyLabel?: string }) {
   const beat = r.total_return_pct - r.buy_hold_return_pct;
   const instLabel = r.instrument && r.instrument.type !== 'stock' ? ` · ${BT_INST_LABELS[r.instrument.type] || r.instrument.type}(DTE ${r.instrument.dte},投入 ${r.instrument.risk_pct}%)` : '';
   // 兜底的空数组也要稳定:图表按 spec 的引用决定要不要重新灌数据
-  const curve = useMemo((): { date: string; equity: number; bench: number }[] => r.curve || [], [r.curve]);
-  const trades = useMemo((): any[] => r.trade_list || [], [r.trade_list]);
+  const curve = useMemo((): BacktestCurvePoint[] => r.curve || [], [r.curve]);
+  const trades = useMemo((): BacktestTrade[] => r.trade_list || [], [r.trade_list]);
 
   // 换了标的 / 策略 / 品种再跑一次,视图重新铺满,不沿用上一次的缩放
   const viewKey = `${r.symbol}|${r.strategy}|${r.instrument?.type ?? 'stock'}|${r.start}|${r.end}`;

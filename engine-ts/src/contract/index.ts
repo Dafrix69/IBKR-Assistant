@@ -11,6 +11,9 @@ import type {
   AlertsCreateParams, AlertsDeleteParams, AlertsPollResult, AlertsRefreshParams, AlertsRefreshResult, Watch,
 } from "./alerts.js";
 import type {
+  BacktestParseRulesParams, BacktestRunParams, BacktestRunResult, BacktestStrategy, CustomRules,
+} from "./backtest.js";
+import type {
   Idea, IdeaDigestRow, IdeasAddParams, IdeasAnalyzeParams, IdeasDigestParams, IdeasDigestsParams, IdeasListParams,
   IdeasUpdateParams,
 } from "./ideas.js";
@@ -34,6 +37,7 @@ import type {
 } from "./tracker.js";
 
 export type * from "./alerts.js";
+export type * from "./backtest.js";
 export type * from "./ideas.js";
 export type * from "./options.js";
 export type * from "./pool.js";
@@ -52,6 +56,11 @@ export interface RpcMethods {
   "alerts.delete": { params: AlertsDeleteParams; result: { deleted: string } };
   "alerts.refresh": { params: AlertsRefreshParams; result: AlertsRefreshResult };
   "alerts.poll": { params: NoParams; result: AlertsPollResult };
+
+  "backtest.strategies": { params: NoParams; result: { strategies: BacktestStrategy[] } };
+  "backtest.run": { params: BacktestRunParams; result: BacktestRunResult };
+  /** 一句话 → 条件:模型的回答过了 CustomRulesSchema 复验才回来 */
+  "backtest.parse_rules": { params: BacktestParseRulesParams; result: { rules: CustomRules } };
 
   "ideas.add": { params: IdeasAddParams; result: { idea: Idea } };
   "ideas.list": { params: IdeasListParams; result: { ideas: Idea[] } };

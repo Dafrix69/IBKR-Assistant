@@ -9,6 +9,7 @@
  */
 import type { RpcMethodName, RpcParams } from "../index.js";
 import { AlertsCreateParamsSchema, AlertsDeleteParamsSchema, AlertsRefreshParamsSchema } from "./alerts.js";
+import { BacktestParseRulesParamsSchema, BacktestRunParamsSchema } from "./backtest.js";
 import {
   IdeasAddParamsSchema, IdeasAnalyzeParamsSchema, IdeasDigestParamsSchema, IdeasDigestsParamsSchema, IdeasListParamsSchema,
   IdeasUpdateParamsSchema,
@@ -37,6 +38,10 @@ export const PARAMS_SCHEMAS: { readonly [M in RpcMethodName]: ParamsSchema<RpcPa
   "alerts.delete": AlertsDeleteParamsSchema,
   "alerts.refresh": AlertsRefreshParamsSchema,
   "alerts.poll": NoParamsSchema,
+
+  "backtest.strategies": NoParamsSchema,
+  "backtest.run": BacktestRunParamsSchema,
+  "backtest.parse_rules": BacktestParseRulesParamsSchema,
 
   "ideas.add": IdeasAddParamsSchema,
   "ideas.list": IdeasListParamsSchema,

@@ -118,11 +118,17 @@
   "没给"的原话(`ideas.update` 不带 id →「缺少想法 id」),换成 schema 那句就是为了迁移去改基线。这种字段用 `schema/kit.ts` 的
   `requiredButReportedByHandler()`:类型上仍是必填(调用方不许不给),schema 把"没给"解成空串交给 handler——和老 handler 的
   `String(x ?? "")` 一个结果;给了却不是字符串,照样当场拒。**只给基线钉着的字段用**,同一个方法里没被钉的字段(`status`)仍归 schema。
+  被钉住的不一定是这个字段自己那句:基线里 `backtest.run` 有一条只带一个坏代码的请求,期望「股票代码不合法」——handler 是先查代码、
+  再查日期的,`start` / `end` / `strategy` 要是在 schema 里必填,这一条就先变成「缺少 start」了。检查的先后次序也是被钉住的行为。
   还没迁的方法里基线钉着同类原话的有:`instruction.submit` 的「指令为空」「accounts 必须是账户别名数组」、`screener.inflection` 的
-  「timeframes 要是非空数组」「整数参数不合法」、`backtest.parse_rules` 的「策略描述为空」——迁到它们时照此办。
+  「timeframes 要是非空数组」「整数参数不合法」——迁到它们时照此办。
 - **库里的 JSON 列,读的一方按"可能缺"来标。** `ideas.analysis`、`idea_digests.digest` 是整份存进去的 JSON:写的时候是全的
   (`setIdeaAnalysis(id, analysis: IdeaAnalysis)`,少一段编译不过),读出来的是 `Partial<…>`——老版本写进去的可能缺后来才加的键,
   读不出来时 store 给的是 `null` / 空对象。界面原来那份手抄恰好也是全可选的,这回是契约如实这么写,不是界面自己留的余地。同 `Track.targets`。
+- **发过去的样子和回来的样子是两个类型。** 回测的自定义条件,界面搭建器拼的操作数用不上的键可以不带、数字可以是数字串
+  (`RuleOperandInput`);引擎这头过了 `models.ts` 的 `CustomRulesSchema`,回来的是补齐成 `null`、收成数字之后的(`RuleOperand`)。
+  后者能赋给前者,所以「一句话生成」的结果可以直接放进搭建器。入参里这类"另有校验者"的字段(`rules` / `instrument`)在 handler 眼里是
+  `unknown`(`BacktestRunParams`),界面用的是写全了形状的 `BacktestRunSpec`——同 `settings.patch` 的 `SettingsPatch` / `SettingsPatchInput`。
 
 没做的:走哪条道还登记在 `server.ts` 的道表里,没有进契约。`tracker.poll` / `reconcile` / `close_now` 还是老方法:它们的返回是 `engine.ts`
 在下单路径里拼出来的,等它拆开(体检报告第二条的后半)再标类型。

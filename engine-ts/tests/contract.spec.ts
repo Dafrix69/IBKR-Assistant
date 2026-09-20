@@ -19,7 +19,6 @@ const BRIDGE = path.resolve(__dirname, "..", "..", "desktop", "renderer-react", 
 
 /** 还没迁进契约的老方法(入参与返回仍是松散的 Rec)。迁一个,从这里划掉一个;**不许往里加**。 */
 const LEGACY_METHODS = [
-  "backtest.parse_rules", "backtest.run", "backtest.strategies",
   "book.snapshot",
   "breaker.halt", "breaker.resume", "breaker.state",
   "broker.catalog", "broker.connect", "broker.disconnect", "broker.select",
@@ -74,8 +73,8 @@ describe("契约:迁移只许往前走", () => {
     expect(LEGACY_METHODS.filter((m) => !names.includes(m)), "引擎里已经没有这个方法了").toEqual([]);
   });
 
-  it("名单只许变短:现在是 41 个,改这个数的时候只能往小里改", () => {
-    expect(LEGACY_METHODS.length).toBeLessThanOrEqual(41);
+  it("名单只许变短:现在是 38 个,改这个数的时候只能往小里改", () => {
+    expect(LEGACY_METHODS.length).toBeLessThanOrEqual(38);
     expect(new Set(LEGACY_METHODS).size).toBe(LEGACY_METHODS.length);
   });
 });
@@ -185,6 +184,21 @@ describe("契约:结构错由 schema 报,领域错由 handler 报", () => {
     expect((await errorOf("ideas.add", { text: "  " })).message).toBe("想法内容为空");
     expect((await errorOf("ideas.list", { status: "nope" })).message).toBe("未知想法状态:nope");
     expect((await errorOf("ideas.digest", { scope: "nope" })).message).toBe("未知总结范围:nope(可选:archived、done、all)");
+  });
+
+  it("backtest:结构错归 schema;基线里没带的那几项(start / end / strategy / text)不在 schema 拒,检查的先后次序不变", async () => {
+    expect(await errorOf("backtest.run", {})).toEqual({ code: -32602, message: "backtest.run 的参数不对:缺少 symbol" });
+    expect(await errorOf("backtest.run", { symbol: "AAPL", start: 20250101 })).toEqual({ code: -32602, message: "backtest.run 的参数不对:start 应为 string,收到 number" });
+    expect(await errorOf("backtest.run", { symbol: "AAPL", start: "2025-01-01", end: "2026-01-01", strategy: "rsi", params: [14] }))
+      .toEqual({ code: -32602, message: "backtest.run 的参数不对:params 应为 object,收到 array" });
+    expect(await errorOf("backtest.parse_rules", { text: 5 })).toEqual({ code: -32602, message: "backtest.parse_rules 的参数不对:text 应为 string,收到 number" });
+    // 领域错:代码先查、再查日期——只给一个坏代码时报的是代码,不是"缺少 start"(golden-rpc 钉着)
+    expect((await errorOf("backtest.run", { symbol: "bad$" })).message).toBe("股票代码不合法:'bad$'");
+    expect((await errorOf("backtest.run", { symbol: "AAPL" })).message).toBe("日期必须是 YYYY-MM-DD");
+    expect((await errorOf("backtest.parse_rules", {})).message).toBe("策略描述为空");
+    // rules / instrument 的形状由 models.ts 的 schema 说,不是这一层
+    expect((await errorOf("backtest.run", { symbol: "AAPL", start: "2025-01-01", end: "2026-01-01", strategy: "custom", rules: "金叉" })).message).toMatch(/^自定义条件不合法:/);
+    expect((await errorOf("backtest.run", { symbol: "AAPL", start: "2025-01-01", end: "2026-01-01", strategy: "rsi", instrument: [1] })).message).toMatch(/^交易品种配置不合法:/);
   });
 
   it("schema 不比老 handler 严:步长给数字串照收;改标签不带 tag = 清掉", async () => {

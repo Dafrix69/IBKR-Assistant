@@ -4,6 +4,7 @@
  * 期权模拟用 Black-Scholes 理论价(r=0,无偏度),erf 用 Cody 有理逼近实现到
  * double 精度——黄金对拍的净值曲线容差是 1e-9,教科书级的 1e-7 近似过不了。
  */
+import type { BacktestCurvePoint, BacktestReport, BacktestTrade, CustomRules } from "./contract/backtest.js";
 import { dateOrdinal, ordinalToDate } from "./tz.js";
 import { pyFloat, pyRepr, pyRound } from "./py.js";
 
@@ -69,9 +70,9 @@ export function runBacktest(
   bars: Bar[],
   strategy: string,
   params?: Record<string, unknown> | null,
-  rules?: Rules | null,
+  rules?: CustomRules | null,
   instrument?: Instrument | null,
-): Record<string, any> {
+): BacktestReport {
   if (!(strategy in STRATEGIES)) {
     throw new BacktestError(`未知策略:${strategy}(可选:${Object.keys(STRATEGIES).join("、")})`);
   }
@@ -364,7 +365,7 @@ type LegSpec = [number, string, number]; // ratio, right, strike
 function evaluateOptions(
   bars: Bar[], positions: number[], strategy: string,
   params: Record<string, number>, inst: Instrument,
-): Record<string, any> {
+): BacktestReport {
   if (!(inst["type"] in OPTION_TYPES)) {
     throw new BacktestError(`未知交易品种:${inst["type"]}`);
   }
@@ -398,10 +399,10 @@ function evaluateOptions(
   }
   // 用容器对象而不是裸 let:闭包里的赋值会让 TS 的流分析把裸变量窄化成 never
   const pos: { h: Holding | null } = { h: null };
-  const trades: Array<Record<string, any>> = [];
+  const trades: BacktestTrade[] = [];
   let heldBars = 0;
 
-  const closePosition = (i: number, proceeds: number, why: string): void => {
+  const closePosition = (i: number, proceeds: number, why: "expiry" | "signal"): void => {
     const h = pos.h!;
     const ret = proceeds / h.cost - 1.0;
     cash *= 1.0 + risk * ret;
@@ -538,7 +539,7 @@ export function realizedVol(closes: number[], window = 20): number {
 // ---------------------------------------------------------------- 结算
 function evaluateStock(
   bars: Bar[], positions: number[], strategy: string, params: Record<string, number>,
-): Record<string, any> {
+): BacktestReport {
   const n = bars.length;
   const equity = [1.0];
   const bench = [1.0];
@@ -548,7 +549,7 @@ function evaluateStock(
     bench.push(bench[i - 1]! * ret);
   }
 
-  const trades: Array<Record<string, any>> = [];
+  const trades: BacktestTrade[] = [];
   let entryIdx: number | null = null;
   for (let i = 0; i < n; i++) {
     if (positions[i] === 1 && entryIdx === null) {
@@ -586,7 +587,7 @@ function evaluateStock(
   };
 }
 
-function makeTrade(bars: Bar[], entry: number, exit: number, closed: boolean): Record<string, any> {
+function makeTrade(bars: Bar[], entry: number, exit: number, closed: boolean): BacktestTrade {
   const entryPx = bars[entry]!.close;
   const exitPx = bars[exit]!.close;
   return {
@@ -611,7 +612,7 @@ function maxDrawdown(equity: number[]): number {
 
 function sampleCurve(
   bars: Bar[], equity: number[], bench: number[], maxPoints = 300,
-): Array<Record<string, any>> {
+): BacktestCurvePoint[] {
   const n = bars.length;
   const step = Math.max(1, Math.ceil(n / maxPoints));
   const idx: number[] = [];

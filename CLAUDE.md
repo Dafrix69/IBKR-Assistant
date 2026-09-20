@@ -62,8 +62,9 @@ contract      contract/*.ts(纯类型,零 import,谁都能引)  contract/schema/
   不装引擎的依赖。界面只有 `bridge.ts` 能跨进引擎目录,只许 `import type`,只许进 `contract/` 顶层。
 - schema 只管**结构**(有哪些字段、什么 JSON 类型);领域校验(代码形状、上限、阈值范围)留在 handler,报 handler 自己那句人话。
   不要让 schema 比老 handler 严——那是改行为(例:异动阈值一直认数字串,schema 就不能写成 `z.number()`)。
-  缺必填字段归 schema 报;唯一的例外是 golden-rpc 钉着 handler 原话的字段(`ideas.update` 不带 id →「缺少想法 id」),
-  用 `schema/kit.ts` 的 `requiredButReportedByHandler()`,不要为了迁移去 `golden:update`。
+  缺必填字段归 schema 报;唯一的例外是 golden-rpc 里有请求没带它、期望的却是 handler 某句原话的字段(`ideas.update` 不带 id →
+  「缺少想法 id」;`backtest.run` 只给一个坏代码 →「股票代码不合法」,检查的先后次序也算行为),用 `schema/kit.ts` 的
+  `requiredButReportedByHandler()`,不要为了迁移去 `golden:update`。
 - **会发单 / 授权发单的方法(`tracker.*`,以后的 `instruction.submit`)反过来,schema 必须 `.strict()`**:不认识的键当场拒。
   zod 默认把没列的键静默丢掉——对别的域无所谓,对 `tracker.add` 就是"追踪建成了,那道保护没设上"。这类方法还要登记进
   `contract/index.ts` 的 `SENSITIVE_METHODS`(`desktop-whitelist.spec` 拿它和 `main.js` 的 `SENSITIVE_RPC` 双向对)。

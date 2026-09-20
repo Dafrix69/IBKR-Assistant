@@ -425,3 +425,25 @@ killswitch + 上面那 6 个方法),用基类 getter 把它们摊成 `this.store
 - 验证:契约里改四个字段名(`symbols` / `themes` / `vs_sma200_pct` / `chg_from_anchor_pct`),引擎这头 `research.ts`、`store.ts`、
   handler 共 8 处报错,界面 `Ideas.tsx` 4 处报错(含那张「键 → 中文名」的表)。真进程 stdio 冒烟加了 5 条,36 / 36。
 - 这个功能原来没有 feature 文档,补了 `docs/features/ideas.md`:只写被测试钉住的口径,没有另外发挥。
+
+**2026-09-20,回测域:`backtest.strategies` / `run` / `parse_rules` 迁完(已迁 39 个,还剩 38 个)。** 纯计算,不接下单链路。
+
+- 同样先补特征测试:`tests/backtest-rpc.spec.ts`(11 个,假券商 + 假模型)。回测的数值 golden-backtest 钉着,入参报错 golden-rpc 钉着,
+  但 `backtest.run` **跑成功**要连券商取日线,基线走不到——回执的完整形状、`instrument` / `rules` 被 `models.ts` 的 schema 补齐之后的样子、
+  期权品种每笔多出来的 `exit_reason`、几种失败各报哪个码,原来都没人钉。先在旧代码上跑绿(10 个),迁完断言没改。
+- 变异第一轮 11 个漏了 2 个,都看了:一个是变异本身打偏了(回执里的 `instrument` 现在由 handler 显式给,改传给 `runBacktest` 的那份
+  不影响回执),换成"回执里放原始入参"后抓住;另一个是**真的缺口**——300 根日线时抽样步长是 1,"曲线最后一个点必在"那条断言恒真。
+  补了一条 650 根日线的用例(每 3 根取 1、共 218 个点、首尾必在),第二轮 11 / 11。这一条是迁完之后才加的:它断言的 `bars` 与 `curve`
+  都出自 `backtest.ts`,而 `backtest.js` 的编译产物去掉注释与迁移前逐字节一致,所以它在旧代码上同样成立。
+- `requiredButReportedByHandler()` 第二次用上,而且多了一种情形:基线里 `backtest.run` 有一条**只带一个坏代码**的请求,期望「股票代码不合法」。
+  handler 先查代码、再查日期;`start` / `end` / `strategy` 要是在 schema 里必填,这一条就成了「缺少 start」。检查的先后次序也是被钉住的行为。
+  `kit.ts` 的注释、CLAUDE.md、`engine-rpc.md` 都按这个改了。
+- 发过去的样子和回来的样子是两个类型:`RuleOperandInput`(搭建器拼的,用不上的键不带、数字可以是数字串)与 `RuleOperand`
+  (过了 `CustomRulesSchema`,补齐成 `null`);后者能赋给前者,「一句话生成」的结果可以直接放进搭建器。`rules` / `instrument` 另有校验者,
+  在 handler 眼里是 `unknown`(`BacktestRunParams`),界面用写全了形状的 `BacktestRunSpec`,那个载荷字面量直接标了类型。
+- `runBacktest` 的产出里 `rules` / `instrument` / `symbol` 是一层层补上去的,在 `BacktestReport` 里可选;RPC 的回执 `BacktestRunResult`
+  把后两样收成必有。handler 末尾从"往结果上写一个 `symbol`"改成了 `{ ...report, instrument, symbol }`(键的顺序不变、内容相同)——
+  这是本批唯一一处运行时代码的改写。券商适配层的日线进 `runBacktest` 时仍有一处边界断言(`historicalBars` 的返回类型还是松的)。
+- 界面 `Backtest.tsx` 的结果原来是 `useState<any>`、交易表是 `any[]`;现在对着契约。反向验证:契约里改五个字段名,引擎 7 处
+  (`backtest.ts` 5、handler 2)、界面 7 处(含拼载荷的那一行)编译不过。真进程 stdio 冒烟加了 4 条,40 / 40。
+- 没做:回测没有 feature 文档(口径在 `backtest.ts` 的文件头与 golden-backtest 里),这次没有补。
