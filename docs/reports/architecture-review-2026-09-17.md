@@ -483,3 +483,9 @@ killswitch + 上面那 6 个方法),用基类 getter 把它们摊成 `this.store
 - 新建回执里的 `enabled`:`alerts.create` / `tracker.add` 从数字 `1` 统一成 `true`(和列表、和读库那道转换一个口径),契约类型从 `boolean | 0 | 1` 收成 `boolean`。全量测试里只红了 golden-rpc 第 63 步这一条,`golden:update` 的 diff 恰好一行;`tracker-rpc.spec` 那条断言随之改了并写明缘由。引擎与界面里没有任何地方拿它和 `1` 做比较(grep 过)。优质股那张表没动:它两头一直都是 `0 | 1`,自洽。
 - `tracker.update` 的 `auto_close`:从整份替换改成合并。落实时把隐患看具体了:只改一个 `close_fraction_pct`,库里那份就只剩这一个键,读的那一头补默认值——限价平仓悄悄变回市价、托管被关掉。界面只用 `update` 切启停,所以真应用里行为不变;`tracker-rpc.spec` 里那条写着"谁要改这个行为,得是有意的"的用例改成钉新行为。我自己在测试里先假设了"给 `null` = 这一项不动",跑出来不是:strict schema 对 `auto_close` 里面的键不收 `null`,当场拒——注释和用例都按实际改了。
 - **顺延的一处**:分批平仓记录的名义金额按整仓算(`engine.ts` 的 `closePosition`)。它只影响记录里的 `notional_estimate`、不影响发出去的单,而 `engine.ts` 在真机核对之前不动,所以留到拆 `engine.ts` 的那个分支一起改。
+- **合进 main 了**:`main` 从 `38adb2d` 快进到 `1649e31`(本分支 + `claude/gifted-mcclintock-850a7f` 的 keychain 测试时限修复,后者用真合并,
+  免得它一直显示"未合并")。合之前两头全量检查、真进程冒烟 43 / 43。**没有推送。**
+- **只读探针还没跑成**:2026-09-20(周日)15:25 本机 7496 / 7497 都没在听;4001 在听,但它不在配置的连接里,没有去连。
+  等 TWS 开着:`cd engine-ts && npm run probe`;然后在**模拟账户**里从真界面建一条追踪、切一次启停、点一次立即平仓
+  (走过 `tracker.add` / `update` / `close_now` 与 `__confirmed` 那条承重的耦合)。这一步要人来点——会发单的操作不由助手代做,模拟账户也一样。
+  都对了,再开分支拆 `engine.ts`。
