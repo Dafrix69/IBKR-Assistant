@@ -592,3 +592,22 @@ killswitch + 上面那 6 个方法),用基类 getter 把它们摊成 `this.store
 - 五个会动配置 / 动密钥 / 拉外部程序的方法(`broker.connect` / `broker.select` / `tws.launch` / `futu.launch` /
   `futu.unlock` / `futu.set_password`)登记进 `SENSITIVE_METHODS`,与 `main.js` 双向对账过。
 - 反向验证:契约改四个字段名,引擎 7 处、界面 11 处编译不过。真进程 stdio 冒烟加了 5 条,62 / 62。
+
+**2026-09-20,拆 `engine.ts` 第一步:托管单整块搬进 `engine/hosted.ts`。** 2,527 行 → 2,072 行。
+
+- 之前写着"先真机核对再拆"。那是我自己的稳妥判断(别在没核对过的改动上再叠一层下单路径的重构),**不是硬阻塞**:
+  拆分本身可以离线验证。用户说继续,于是在单独分支 `claude/split-engine-hosted-orders` 上动手。
+- 办法同 2026-09-19 拆 `rpc.ts`:按行号切片、**函数体逐字搬**、每处替换断言命中次数、搬完逐行对账。
+  对账结果:**456 行里 452 行逐字未动,4 行只改了名**(两个入口改成公开名、一张静态表的引用改成本类),零处其他差异。
+- `HostedOrders` 自己管四样状态(hosted / hostedIndex / hostedRetryAt / hostedAdopted),别的一律从宿主现取
+  (store / router / notifier / settings / killswitch / orderIndex / earlyOrderErrors + 6 个方法)——同 `services/` 的规矩。
+  引擎那头留下的接口只有四个小窗口:`syncHosted`、`onStatus`、`handleError`、`tpEntry`,外加熔断时的 `clear`。
+- 判据(编译产物这次不可能逐字节一致,代码换了文件):逐行对账 + `hosted`(11)/ `sweep`(45)/ `tracker-loop` /
+  `reconcile` / `combo-close` / `tracker-rpc` / `spot-target` 七套 200 个用例全绿,再跑全量 1,156 个全绿,真进程冒烟 62 / 62。
+- 两处顺带的处理:
+  · `nowIsoSecondsEt` 两边都要用,提成 `engine/clock.ts`(函数体一字未改)。
+  · 新文件要那份松散的 `Rec`。**没有**往 eslint 的豁免表里加名字(那张表只许变短)——改成从 `store.ts` 转出它已有的那一份。
+    先试过从 `services/host.ts` 引,depcruise 当场报环(它反过来引 `engine.ts`),换成 `store.ts` 才干净。
+- `engine/*.ts` 归进 depcruise 的 orchestrate 层,CLAUDE.md 的分层表与体积预算同步。
+- **仍然没在真机上走过**:这一步和前面那些一样,合并前要跑 `npm run probe`,并在模拟账户里从真界面走一遍追踪的建 / 改 / 平。
+  托管单这一块尤其要看:它挂的是券商侧的真单。

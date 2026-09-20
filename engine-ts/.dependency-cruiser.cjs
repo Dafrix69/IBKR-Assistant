@@ -11,7 +11,7 @@ const L = {
   analysis:    "^src/(backtest|priceaction|screener|research|optionwall|anomaly|flyexit|tradereview|ibtrades|macro|market|alerts)\\.ts$",
   parsing:     "^src/(validator|providers|prompts|shorthand|llm)\\.ts$",
   execution:   "^src/(broker|futuBroker|ibSession|ibTypes|tws|futu|futuBridge)\\.ts$",
-  orchestrate: "^src/((engine|tracker)\\.ts|services/[^/]+\\.ts)$",
+  orchestrate: "^src/((engine|tracker)\\.ts|(engine|services)/[^/]+\\.ts)$",
   transport:   "^src/((rpc|cli)\\.ts|rpc/.+\\.ts)$",
 };
 module.exports = {

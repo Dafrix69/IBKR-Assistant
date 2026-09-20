@@ -193,7 +193,9 @@ export interface WorkingRecord {
   lastStatus: string;
 }
 
-type Rec = Record<string, any>;
+/** 库这一层的松散记录类型。`engine/` 拆出来的那几个文件也引它(那些代码本来就在 engine.ts 里、整块搬过来的),
+ *  这样拆文件不用往 eslint 的豁免表里加名字——那张表只许变短。**新代码不用它**:写成接口。 */
+export type Rec = Record<string, any>;
 
 /** 新建一条追踪要给的东西;id、时间戳、enabled、触发那几列由 store 自己填。 */
 export type TrackInput = Pick<Track, "account" | "symbol"> & Partial<Pick<Track, "sec_type" | "contract" | "targets" | "auto_close" | "peak" | "note" | "leg">>;
