@@ -754,5 +754,17 @@ killswitch + 上面那 6 个方法),用基类 getter 把它们摊成 `this.store
   每次都是几秒钟的事——手写行号一定会错,把它写成断言就行。
 - 对账:300 行搬走一字未改;两头各自只动 import,四个签名多一个 `export`。
 
-**还欠的**:`Access.tsx` 716、`Screener.tsx` 709、`Market.tsx` 648、`Review.tsx` 607、`Records.tsx` 461、
-`Backtest.tsx` 403 —— 都超 400。办法已经跑通两遍,剩下的按同样的路子一个个来。
+**2026-09-21,第三刀:`Access.tsx` 的大模型那一节搬进 `lib/LlmPanel.tsx`。** 716 → 509 行。
+
+- 这一页本来就按 TWS / 富途 OpenD / 大模型分了三节,分节注释就是现成的缝。大模型那一节和另两节
+  **没有共享状态**,只共用一个 `InfoCard` —— 把它下沉到 `lib/connectBits.tsx`,页面与各节都从那儿拿。
+- 搬完顺手修了一处这一刀才暴露出来的类型错:`switchTo(provider: LlmProvider | any)`——**换券商**的函数
+  标着大模型的类型,而且 `| any` 把整个类型化掉了。唯一的调用方传的就是券商目录里的一项,
+  按实际改成 `BrokerProviderEntry`。这种错正是"一个文件装三件事"养出来的。
+- 对账:197 行搬走一字未改;两头各自只动 import,两个签名多一个 `export`。
+
+**还欠的**:`Access.tsx` 509(TWS / 富途两节还在一起)、`Screener.tsx` 709、`Market.tsx` 648、
+`Review.tsx` 607、`Records.tsx` 461、`Backtest.tsx` 403 —— 都超 400。
+
+> 跑全量时 `tests/rpc-lanes.spec.ts` 也偶发红过一次(单独跑、再跑全量都绿),和 `provider-http.spec.ts`
+> 同一类:对时序 / 负载敏感,而不是被测代码坏了。两件一起另开任务修,判据别改成放宽阈值。
