@@ -25,6 +25,7 @@ import type { ProtectionState } from "./protections.js";
 import { TradeStore, redactAccount } from "./store.js";
 import { nowIsoSecondsEt } from "./engine/clock.js";
 import { HostedOrders } from "./engine/hosted.js";
+import { IbCallbacks } from "./engine/callbacks.js";
 import { Reconciler } from "./engine/reconcile.js";
 import * as tk from "./tracker.js";
 import type { ApprovedOrder, RejectedOrder } from "./validator.js";
@@ -168,17 +169,21 @@ export class TradingEngine {
   readonly finalized = new Set<string>();
   // 竞态缓冲:placeOrder 后、_index_placement 前,回报可能已经推过来。
   // 先攒着,建好映射再重放——直接丢就是"快速成交永远停在 Submitted"。
-  private readonly unmatchedEvents: Array<[string, any, any, any]> = [];
+  // 不加 private:回报落库整块在 engine/callbacks.ts,这几样是它和引擎共用的账(CallbackHost)。
+  readonly unmatchedEvents: Array<[string, any, any, any]> = [];
   /** 已落库的成交 / 佣金 exec_id(见 onExecDetails)。只放内存就够:orderIndex 也只在本进程里建,
    * 重启后旧单的回报本来就对不上记录、不会落库。 */
   readonly seenFills = new Set<string>();
-  private readonly seenCommissions = new Set<string>();
+  readonly seenCommissions = new Set<string>();
   /** 券商托管单的对账缓存:track_id → {kind: 托管单信息};orderId → [track_id, kind]。
    * 真相永远在券商那边——重启后由 adoptHosted() 按 orderRef 认领重建。 */
-  /** 券商托管的止盈/止损单(整块在 engine/hosted.ts);它自己管 hosted / hostedIndex 那几样状态 */
-  private readonly hostedOrders = new HostedOrders(this);
+  /** 券商托管的止盈/止损单(整块在 engine/hosted.ts);它自己管 hosted / hostedIndex 那几样状态。
+   *  不加 private:engine/callbacks.ts 落库前要先让它过一手(CallbackHost)。 */
+  readonly hostedOrders = new HostedOrders(this);
   /** 执行对账(整块在 engine/reconcile.ts) */
   private readonly reconciler = new Reconciler(this);
+  /** 券商回报 → 落库(整块在 engine/callbacks.ts) */
+  private readonly callbacks = new IbCallbacks(this);
   /** 「标的目标价」上一轮算出来的预计价位:track_id → 每股/每张/每组净价。
    * 某一轮拿不到标的现价或蝶价时沿用它,而不是把目标价当成"没设"——那会让
    * syncHosted 把已经挂在券商侧的限价单撤掉,一次行情抖动就丢掉保护。
@@ -192,7 +197,8 @@ export class TradingEngine {
    * track_id → {order_id, record_id, action, quantity, label, rounds, limit};orderId → track_id。
    * 成交 / 撤销 / 被拒都从这里摘掉。重启后按记录 id(= orderRef)认领回来(adoptCloseChase)。 */
   private readonly closeChase = new Map<string, Rec>();
-  private readonly closeChaseIndex = new Map<number, string>();
+  /** 不加 private:engine/callbacks.ts 要看一眼被拒的单在不在追价中(CallbackHost) */
+  readonly closeChaseIndex = new Map<number, string>();
   private closeChaseAdopted = false;
   /** 速记解析的公开源现价注入点(测试替身用;null = macro.publicIndexPrice)。 */
   publicPriceFn: ((symbol: string) => Promise<number | null>) | null = null;
@@ -1419,8 +1425,9 @@ export class TradingEngine {
     }
   }
 
-  /** 追价平仓单的终态:成交 → 落闩记真正的触发原因;撤销 / 失效 → 摘掉并提醒(持仓还在)。 */
-  private closeChaseOnStatus(trade: any): void {
+  /** 追价平仓单的终态:成交 → 落闩记真正的触发原因;撤销 / 失效 → 摘掉并提醒(持仓还在)。
+   *  不加 private:engine/callbacks.ts 的状态 / 错误回报都要先过这一手(CallbackHost)。 */
+  closeChaseOnStatus(trade: any): void {
     const orderId = Number(trade?.order?.orderId ?? 0);
     const tid = orderId ? this.closeChaseIndex.get(orderId) : undefined;
     if (tid === undefined) return;
@@ -1537,20 +1544,7 @@ export class TradingEngine {
 
   /** 同上:对账重建 orderIndex 之后要把攒着的回报重放一遍 */
   replayUnmatched(): void {
-    if (!this.unmatchedEvents.length) return;
-    const stashed = [...this.unmatchedEvents];
-    this.unmatchedEvents.length = 0;
-    for (const [kind, trade, fill, report] of stashed) {
-      if (this.recordFor(trade) === null) {
-        this.unmatchedEvents.push([kind, trade, fill, report]);
-        continue;
-      }
-      if (kind === "status") this.onOrderStatus(trade);
-      else if (kind === "exec") this.onExecDetails(trade, fill);
-      else if (kind === "commission") this.onCommission(trade, fill, report);
-    }
-    // 缓冲上限(与 Python deque(maxlen=200) 同语义)
-    while (this.unmatchedEvents.length > 200) this.unmatchedEvents.shift();
+    this.callbacks.replayUnmatched();
   }
 
   /** 给一条会话挂上全部回报监听(幂等)。富途会话没有事件流 → 直接放行。 */
@@ -1617,165 +1611,21 @@ export class TradingEngine {
     return count;
   }
 
-  private static readonly TERMINAL_IB_STATUS: Record<string, string> = {
-    Filled: "filled",
-    Cancelled: "cancelled",
-    ApiCancelled: "cancelled",
-    Inactive: "ibkr_error",
-  };
-
-  private stashUnmatched(kind: string, trade: any, fill: any = null, report: any = null): void {
-    // 只攒带 orderId/permId 的回报——完全无主的没必要留
-    const order = trade?.order;
-    if (!order) return;
-    if (order.permId || order.orderId) {
-      this.unmatchedEvents.push([kind, trade, fill, report]);
-      while (this.unmatchedEvents.length > 200) this.unmatchedEvents.shift();
-    }
-  }
-
-  // IBKR 信息类代码:行情农场连接状态等,与订单成败无关
-  private static readonly IB_INFO_MIN = 2100;
-  private static readonly IB_INFO_MAX = 2200;
-  /** 订单级"警告"码:IBKR 只是附一句话,订单仍然有效——399 委托单消息、404 股票待借入(订单挂起)。
-   *  2026-09-08 模拟盘实测:收到 399「为了不与相关挂单交叉,您的委托单被拒」的卖单照样成交了;
-   *  当成拒单会让记录停在 ibkr_error、后面的成交回报接不上。 */
-  private static readonly IB_WARNING_CODES: ReadonlySet<number> = new Set([399, 404]);
-  /**
-   * 行情订阅的错误码,永远不属于某一张订单。
-   *
-   * IB 的订单 id 与请求 id 共用一个计数器,而 `errorEvent` 只给 reqId。行情订阅被拒(没权限、
-   * 别处登录占着实时行情)时这里会收到一条 reqId > 0 的错误,配不上任何记录就被存进
-   * `earlyOrderErrors` 留 60 秒——这 60 秒里发出去的单只要 id 撞上,就会被判成 ibkr_error 终态。
-   * 异动监控每 60 秒重订一次被拒的流(最多 30 只),撞上的概率不再是理论值(2026-09-12 审出)。
-   */
-  private static readonly IB_MARKET_DATA_CODES: ReadonlySet<number> = new Set([
-    101, 300, 309, 316, 317, 322, 354, 10089, 10090, 10091, 10167, 10168, 10185, 10197,
-  ]);
-
-  /** 订单级 errorEvent → 终态落库(110 价格档位、201 保证金、203 无权限只走这条路)。 */
+  // ---- 回报落库的那几只手都在 engine/callbacks.ts;这里只留挂回调时要用的转调 ----
   onIbError(reqId: unknown, errorCode: unknown, errorString: unknown): void {
-    const code = Math.trunc(Number(errorCode));
-    const req = Math.trunc(Number(reqId));
-    if (!Number.isFinite(code) || !Number.isFinite(req)) return;
-    if (req <= 0) return; // 系统级消息,与具体订单无关
-    if (TradingEngine.IB_MARKET_DATA_CODES.has(code)) return; // 行情订阅的错误,不是订单的
-    const message = String(errorString ?? "");
-    const informational = code >= TradingEngine.IB_INFO_MIN && code < TradingEngine.IB_INFO_MAX;
-    const recordId = this.orderIndex.get(req);
-    if (recordId === undefined) {
-      // 错误比 placeOrder 返回还早:先记下,挂单登记完再对上(见 placeHostedOne)
-      if (!informational && !TradingEngine.IB_WARNING_CODES.has(code)) {
-        this.earlyOrderErrors.set(req, [code, message, Date.now()]);
-        for (const [id, [, , at]] of this.earlyOrderErrors) {
-          if (Date.now() - at > 60_000) this.earlyOrderErrors.delete(id);
-        }
-      }
-      return;
-    }
-    if (informational || TradingEngine.IB_WARNING_CODES.has(code)) {
-      this.store.appendEvent(recordId, "warning", { message: `IBKR ${code}: ${message}` });
-      if (!informational) this.notifier.warning(`IBKR ${code}: ${message}`);
-      return;
-    }
-    const final = code === 202 ? "cancelled" : "ibkr_error";
-    this.hostedOrders.handleError(req, code, message);
-    if (this.closeChaseIndex.has(req)) {
-      // 追价中的平仓单被拒 / 被撤:不再追,持仓可能还在,和撤单回报走同一条路提醒
-      this.closeChaseOnStatus({ order: { orderId: req }, orderStatus: { status: code === 202 ? "Cancelled" : "Inactive" } });
-    }
-    this.store.appendEvent(recordId, "status", { status: "Error", code, message });
-    if (!this.finalized.has(recordId)) {
-      this.finalized.add(recordId);
-      this.store.setFinalStatus(recordId, final, `IBKR ${code}: ${message}`);
-    }
-    if (final === "ibkr_error") {
-      this.notifier.rejection("IBKR_ERROR", `IBKR ${code}: ${message}`);
-    }
-  }
-
-  private recordFor(trade: any): string | null {
-    for (const key of [trade?.order?.permId, trade?.order?.orderId]) {
-      if (key && this.orderIndex.has(Number(key))) return this.orderIndex.get(Number(key))!;
-    }
-    return null;
+    this.callbacks.onIbError(reqId, errorCode, errorString);
   }
 
   onOrderStatus(trade: any): void {
-    this.hostedOrders.onStatus(trade);
-    this.closeChaseOnStatus(trade);
-    const recordId = this.recordFor(trade);
-    if (!recordId) {
-      this.stashUnmatched("status", trade);
-      return;
-    }
-    const status = String(trade?.orderStatus?.status ?? "");
-    this.store.appendEvent(recordId, "status", {
-      status,
-      filled: trade?.orderStatus?.filled ?? null,
-      remaining: trade?.orderStatus?.remaining ?? null,
-    });
-    let final = TradingEngine.TERMINAL_IB_STATUS[status];
-    if (final === "filled" && trade?.orderStatus?.remaining) final = "partially_filled";
-    if (final && !this.finalized.has(recordId)) {
-      this.finalized.add(recordId);
-      this.store.setFinalStatus(recordId, final);
-    }
+    this.callbacks.onOrderStatus(trade);
   }
 
   onExecDetails(trade: any, fill: any): void {
-    const recordId = this.recordFor(trade);
-    if (!recordId) {
-      this.stashUnmatched("exec", trade, fill);
-      return;
-    }
-    const execution = fill?.execution;
-    if (!execution) return;
-    // 同一 exec_id 只落一次、只通知一次。交易分析同步成交(reqExecutions)时 TWS 会把当天的成交整批
-    // 重推;ibSession 那道闸会话一重建就是空的,拦不住,这里兜底。没有 exec_id 的认不出是不是同一笔,照旧。
-    const execId = String(execution.execId ?? "");
-    if (execId && this.seenFills.has(execId)) return;
-    // 这笔成交自己的合约:组合单 IBKR 会回 1 条 BAG 行 + 每条腿各一行,同一个 permId,
-    // 只能靠 secType 分开(store 折叠均价时只认 BAG 行)。只取 fill.contract——
-    // trade.contract 在 ib_insync 口径下是订单的合约,拿它兜底会把腿全标成 BAG。
-    const contract = fill?.contract ?? {};
-    this.store.appendEvent(recordId, "fill", {
-      exec_id: execution.execId ?? "",
-      time: String(execution.time ?? ""),
-      price: Number(execution.price ?? 0) || 0,
-      qty: Number(execution.shares ?? 0) || 0,
-      commission: 0.0,
-      sec_type: String(contract.secType ?? "") || null,
-      con_id: Math.trunc(Number(contract.conId ?? 0)) || null,
-    });
-    if (execId) this.seenFills.add(execId);
-    // live=false:reqExecutions 补回来的(断线期间成交、实时回报没收到)。只补录不通知——点开交易分析
-    // 才冒出一条「成交回报」只会让人以为又成交了一笔;与 ib_insync 只给实时成交发 execDetailsEvent 同口径。
-    if (fill?.live === false) return;
-    this.notifier.fill(
-      trade?.contract?.symbol ?? "?",
-      execution.side ?? "?",
-      Number(execution.shares ?? 0) || 0,
-      Number(execution.price ?? 0) || 0,
-      redactAccount(execution.acctNumber ?? ""),
-    );
+    this.callbacks.onExecDetails(trade, fill);
   }
 
-  onCommission(trade: any, _fill: any, report: any): void {
-    const recordId = this.recordFor(trade);
-    if (!recordId) {
-      this.stashUnmatched("commission", trade, _fill, report);
-      return;
-    }
-    // 佣金回报跟着成交一起被重推,同样按 exec_id 只落第一条(手续费、已实现盈亏才不会翻倍)
-    const execId = String(report?.execId ?? "");
-    if (execId && this.seenCommissions.has(execId)) return;
-    this.store.appendEvent(recordId, "commission", {
-      exec_id: report?.execId ?? "",
-      commission: Number(report?.commission ?? 0) || 0,
-      realized_pnl: report?.realizedPNL ?? null,
-    });
-    if (execId) this.seenCommissions.add(execId);
+  onCommission(trade: any, fill: any, report: any): void {
+    this.callbacks.onCommission(trade, fill, report);
   }
 
   /** §9.7 全局熔断:停新单 + 撤未成交单。 */

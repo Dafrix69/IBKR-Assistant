@@ -618,3 +618,24 @@ killswitch + 上面那 6 个方法),用基类 getter 把它们摊成 `this.store
 - `Reconciler` 自己只管一样状态(上次对账的时刻);store / notifier / router / orderIndex / finalized / seenFills /
   pendingTriggers 与 `replayUnmatched` 从宿主现取。引擎那头留三个转调:`reconcileSoon` / `reconcileDue` / `reconcileOrders`。
 - 全量 1,156 个用例全绿,冒烟 62 / 62。
+
+**2026-09-20,拆 `engine.ts` 第三步:券商回报落库搬进 `engine/callbacks.ts`。** 1,932 行 → 1,782 行(自 2,527 行起,少了 745 行 / 29%)。
+
+- 三块里最纠缠的一块,所以放在最后:它和引擎共用五本账(`orderIndex` / `finalized` / `seenFills` /
+  `seenCommissions` / `unmatchedEvents`),前两块没有这个问题。
+- **缝划在"回报进来之后怎么落库"**:`onIbError` / `onOrderStatus` / `onExecDetails` / `onCommission` /
+  `replayUnmatched` / `stashUnmatched` 与那四张码表(终态映射、信息码区间、订单级警告码、行情订阅错误码)搬走;
+  **怎么把回调挂上去**(`wireSession` / `attachListeners`)、以及下单侧的 `indexPlacement` / `brokerCode` /
+  `syncBrokerOrders` 留在 `engine.ts`——挂回调是会话生命周期的事,不是落库的事。
+- 对账结果:**177 行里 172 行逐字未动,5 行只改了静态成员的引用**(`TradingEngine.TERMINAL_IB_STATUS` 等
+  → `IbCallbacks.*`)。engine.ts 那头另有 7 行只去掉了 `private`(见下),零处其他差异。
+- 账共用,所以宿主接口比前两块宽:五本账 + `earlyOrderErrors` + `store` / `notifier`,外加托管单与追价平仓
+  那两路的入口(`hostedOrders` 的 `handleError` / `onStatus`、`closeChaseIndex`、`closeChaseOnStatus`)。
+  托管单那一路**没有**直接引 `HostedOrders`:本地写一个只有两只手的 `CallbackHostedOrders`,两块互不认识。
+  `closeChaseIndex` 在接口里声明成 `ReadonlyMap`——回报只看一眼在不在,改是下单侧的事。
+- 为此 `engine.ts` 有 7 处去掉了 `private`(`unmatchedEvents` / `seenCommissions` / `hostedOrders` /
+  `closeChaseIndex` / `closeChaseOnStatus`,都写明了"给谁看")。`private` 只在编译期存在,发出来的 JS 一字不变。
+- 全量 1,156 个用例全绿(含 `ib-events` / `ib-exec-time` / `combo-close` 这几套专门钉回报落库的),冒烟 62 / 62,
+  depcruise 零 error。
+- **`engine.ts` 仍有 1,782 行,超 1,500 的预算。** 剩下的是三块:下单与审批、追踪循环、IB 会话装配。
+  下一刀该切哪儿要另外判断——这三块和"钱路径"贴得更紧,不该顺手做。
