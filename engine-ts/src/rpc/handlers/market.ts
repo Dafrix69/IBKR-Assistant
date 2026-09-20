@@ -4,7 +4,7 @@ import { nowEt } from "../../config.js";
 import type {
   BookSnapshot, BookSnapshotParams, MacroBoard, MacroBoardParams, OptionWall, OptionsWallParams,
 } from "../../contract/index.js";
-import { macroBoard } from "../../macro.js";
+import { liveTickers, macroBoard } from "../../macro.js";
 import { PACommentSchema } from "../../models.js";
 import { loadSchemaAsset } from "../../providers.js";
 import { RpcError } from "../../rpcError.js";
@@ -159,18 +159,18 @@ export class MarketHandlers extends HandlerBase {
 
   // ---- 宏观行情带(公开数据,只读展示,不参与定价)-----------------------
   async macroBoardMethod(params: MacroBoardParams): Promise<MacroBoard> {
+    const force = Boolean(params["force"]);
     const routerLive = this.router && this.router.sessions().length ? this.router : null;
-    const router = routerLive
-      ? { streamQuotes: (tickers: string[]) => routerLive.streamQuotes(tickers) as any }
-      : null;
-    // macro.macroBoard 的 router 面是同步的;这里把异步 streamQuotes 摊平
-    if (router) {
-      const quotes = await routerLive!.streamQuotes((await import("../../macro.js")).liveTickers());
-      return macroBoard({
-        force: Boolean(params["force"]),
-        router: { streamQuotes: () => quotes as any },
-      });
+    if (routerLive === null) return macroBoard({ force });
+    // macro.macroBoard 的 router 面是同步的,所以异步的 streamQuotes 在这里先取好再交给它。
+    // 取的这一次也要有护栏:macroBoard 自己对 router 包了 try/catch("行情带永远不该把界面搞崩"),但 2026-09-20 之前
+    // 这次 await 在它外面——券商的行情线路一抛,整条 macro.board 就报错,而不是这一轮降级到公开源。
+    let quotes: Record<string, { last?: number | null; change_pct?: number | null }> = {};
+    try {
+      quotes = await routerLive.streamQuotes(liveTickers());
+    } catch {
+      quotes = {}; // 当成"这一轮没有流式报价":七格走公开源,下一轮再试
     }
-    return macroBoard({ force: Boolean(params["force"]) });
+    return macroBoard({ force, router: { streamQuotes: () => quotes } });
   }
 }

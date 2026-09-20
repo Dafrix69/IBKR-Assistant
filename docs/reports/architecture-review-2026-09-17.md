@@ -474,3 +474,8 @@ killswitch + 上面那 6 个方法),用基类 getter 把它们摊成 `this.store
 - `book.snapshot` 不带 symbol 这一句改了:原来是 handler 的「股票代码不合法:'undefined'」,golden-rpc 没钉它,按"缺必填字段归
   schema 报"的规矩换成了「book.snapshot 的参数不对:缺少 symbol」(同域已迁的 quality.add / alerts.create 都是这样)。
   界面的 preload 永远带 symbol,走不到这条。**这是本批唯一一处刻意改掉的文案。**
+
+**2026-09-20,用户定了:"按你的意见办"——前面各批记下、留待定夺的现状逐条落实。** 每一处单独一笔提交、带测试;`engine.ts` 仍然不动
+(真机核对之前不在下单路径上叠改动,这一条也是意见之一),所以"分批平仓记录的名义金额按整仓算"那一处顺延到拆 `engine.ts` 的分支。
+
+- `macro.board`:券商的流式报价抛异常时,这一轮降级到公开源,不再整条报错。handler 里那次没有护栏的 `await` 包上了。

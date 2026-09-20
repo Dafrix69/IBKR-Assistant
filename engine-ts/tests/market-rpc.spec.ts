@@ -170,18 +170,20 @@ describe("macro.board", () => {
   });
 
   /**
-   * 现状,不是设计:券商的流式报价抛异常时,**整条 macro.board 报错**,而不是这一轮降级到公开源。
-   * macroBoard 自己是防住了的(它对 router.streamQuotes 包了 try/catch,注释写着"行情带永远不该把界面搞崩"),
-   * 但 handler 为了把异步的 streamQuotes 摊平成 macroBoard 要的同步面,在外面先 await 了一次,那一次没有护栏。
-   * 界面这头 loadMacroBoard 会 catch 掉、只 console.warn,所以看到的是"行情带不再更新",不是白屏。
-   * 迁移不顺手改行为:这里钉住现状,把它记进体检报告留给人定夺。
+   * 2026-09-20 之前这里钉的是另一个结果:整条 macro.board 报 -32000。macroBoard 自己防住了 router 抛异常,但 handler 为了
+   * 把异步的 streamQuotes 摊平,在它外面先 await 了一次,那一次没有护栏——界面上的表现是行情带不再更新。
+   * 迁契约时照出来、先钉住现状,用户定了之后才改:现在这一轮当成"没有流式报价",七格降级到公开源。
    */
-  it("现状:券商的流式报价抛异常时,整条 macro.board 报错(没有降级到公开源)", async () => {
+  it("券商的流式报价抛异常:这一轮降级到公开源,不是整条 RPC 报错", async () => {
     const { call, router } = makeServer();
     router.streamQuotes = async () => { throw new Error("行情线路满了"); };
+    publicQuotes = { "^GSPC": 7673, "^NDX": 29507, "^VIX": 15.2, "^TNX": 4.806, "GC=F": 4412, "BZ=F": 99.93, "BTC-USD": 64000 };
     const out = await call("macro.board");
-    expect(out["result"]).toBeUndefined();
-    expect(out["error"]).toEqual({ code: -32000, message: "Error: 行情线路满了" });
+    expect(out["error"]).toBeUndefined();
+    expect(out["result"]["live_count"]).toBe(0);
+    expect(out["result"]["rows"]).toHaveLength(7);
+    for (const row of out["result"]["rows"]) expect(row).toMatchObject({ source: "public", instrument: null });
+    expect(out["result"]["rows"][0]["last"]).toBe(7673);
   });
 
   it("没连券商:不问券商,直接走公开源;公开源那一路的 instrument 是 null(界面据此不标绿点)", async () => {
