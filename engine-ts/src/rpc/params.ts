@@ -1,4 +1,5 @@
 /** 入参的小工具:各域 handler 共用的取数与校验。 */
+import type { DrawdownLate, DrawdownTier } from "../contract/tracker.js";
 import { drawdownLate as fxDrawdownLate, drawdownTiers as fxDrawdownTiers } from "../flyexit.js";
 import { pyG } from "../py.js";
 import { RpcError } from "../rpcError.js";
@@ -40,7 +41,7 @@ export function optInt(value: unknown): number | null {
  * 自列的档位只收 {above, pct} 两个数,pct 必须落在 (0, 100]——0 等于一有回撤就平,
  * 100 等于永不触发,两个都不是用户想要的,当场拒比事后困惑好。
  */
-export function drawdownTiersOf(params: Rec): [Array<Rec> | null, Rec | null] {
+export function drawdownTiersOf(params: Rec): [DrawdownTier[] | null, DrawdownLate | null] {
   if (String(params["profit_drawdown_preset"] ?? "").toLowerCase() === "fly") {
     return [fxDrawdownTiers(null), fxDrawdownLate(null)];
   }
@@ -49,7 +50,7 @@ export function drawdownTiersOf(params: Rec): [Array<Rec> | null, Rec | null] {
   if (!Array.isArray(raw) || !raw.length) {
     throw new RpcError(-32602, "profit_drawdown_tiers 要是一个非空数组");
   }
-  const tiers: Array<Rec> = [];
+  const tiers: DrawdownTier[] = [];
   for (const item of raw) {
     if (typeof item !== "object" || item === null || Array.isArray(item)) {
       throw new RpcError(-32602, "分档的每一项要是 {above, pct} 对象");
@@ -64,7 +65,7 @@ export function drawdownTiersOf(params: Rec): [Array<Rec> | null, Rec | null] {
     tiers.push({ above, pct });
   }
   const lateRaw = params["profit_drawdown_late"];
-  let late: Rec | null = null;
+  let late: DrawdownLate | null = null;
   if (typeof lateRaw === "object" && lateRaw !== null && (lateRaw as Rec)["after"]) {
     const factor = optFloat((lateRaw as Rec)["factor"]);
     if (factor === null || !(factor > 0 && factor <= 1)) {

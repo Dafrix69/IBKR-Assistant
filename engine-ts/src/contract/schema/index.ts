@@ -20,6 +20,9 @@ import {
   SectorsAddParamsSchema, SectorsAddStockParamsSchema, SectorsIdParamsSchema, SectorsRemoveStockParamsSchema,
   SectorsSetTagParamsSchema,
 } from "./sectors.js";
+import {
+  TrackerAddParamsSchema, TrackerDeleteParamsSchema, TrackerTargetPreviewParamsSchema, TrackerUpdateParamsSchema,
+} from "./tracker.js";
 
 export { describeIssue } from "./kit.js";
 
@@ -48,6 +51,12 @@ export const PARAMS_SCHEMAS: { readonly [M in RpcMethodName]: ParamsSchema<RpcPa
   "sectors.add_stock": SectorsAddStockParamsSchema,
   "sectors.remove_stock": SectorsRemoveStockParamsSchema,
   "sectors.set_tag": SectorsSetTagParamsSchema,
+
+  "tracker.list": NoParamsSchema,
+  "tracker.add": TrackerAddParamsSchema,
+  "tracker.update": TrackerUpdateParamsSchema,
+  "tracker.delete": TrackerDeleteParamsSchema,
+  "tracker.target_preview": TrackerTargetPreviewParamsSchema,
 };
 
 /** 契约里登记了的方法名(排好序)。 */

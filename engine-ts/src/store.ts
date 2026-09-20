@@ -16,6 +16,7 @@ import * as path from "node:path";
 import type { Watch } from "./contract/alerts.js";
 import type { AnomalyEvent, QualityStockRow } from "./contract/quality.js";
 import type { Sector, SectorStock } from "./contract/sectors.js";
+import type { Track } from "./contract/tracker.js";
 import type { RecentOrder } from "./models.js";
 
 export const SCHEMA = `
@@ -192,6 +193,12 @@ export interface WorkingRecord {
 }
 
 type Rec = Record<string, any>;
+
+/** 新建一条追踪要给的东西;id、时间戳、enabled、触发那几列由 store 自己填。 */
+export type TrackInput = Pick<Track, "account" | "symbol"> & Partial<Pick<Track, "sec_type" | "contract" | "targets" | "auto_close" | "peak" | "note" | "leg">>;
+
+/** position_tracks 里允许改的列。 */
+export type TrackPatch = Partial<Pick<Track, "targets" | "auto_close" | "enabled" | "peak" | "fired_at" | "fired_state" | "fired_record" | "note">>;
 
 /** alert_watches 里允许改的列(id / symbol / 两个时间戳不许动)。 */
 export type WatchPatch = Partial<Pick<Watch, "step" | "enabled" | "expiry" | "levels" | "states" | "last_price" | "wall" | "events">>;
@@ -434,8 +441,8 @@ export class TradeStore {
 
   // ---- 持仓追踪 -------------------------------------------------------
   /** 同一个账户的同一个合约只能有一条追踪。 */
-  addTrack(track: Rec): Rec {
-    const row: Rec = {
+  addTrack(track: TrackInput): Track {
+    const row: Track = {
       id: crypto.randomUUID(),
       created_at: nowIso(),
       updated_at: nowIso(),
@@ -476,13 +483,13 @@ export class TradeStore {
     return row;
   }
 
-  listTracks(): Rec[] {
+  listTracks(): Track[] {
     return (
       this.db.prepare("SELECT * FROM position_tracks ORDER BY created_at DESC").all() as Rec[]
     ).map(trackRow);
   }
 
-  getTrack(trackId: string): Rec | null {
+  getTrack(trackId: string): Track | null {
     const row = this.db.prepare("SELECT * FROM position_tracks WHERE id=?").get(trackId) as
       | Rec
       | undefined;
@@ -490,7 +497,7 @@ export class TradeStore {
   }
 
   /** 只允许改这几列。peak / fired_* 是引擎写的,targets / enabled 是用户写的。 */
-  updateTrack(trackId: string, fields: Rec): boolean {
+  updateTrack(trackId: string, fields: TrackPatch): boolean {
     const allowed = new Set([
       "targets", "auto_close", "enabled", "peak", "fired_at", "fired_state", "fired_record", "note",
     ]);
@@ -1068,7 +1075,7 @@ function watchRow(row: Rec): Watch {
   return watch as Watch;
 }
 
-function trackRow(row: Rec): Rec {
+function trackRow(row: Rec): Track {
   const out: Rec = { ...row };
   for (const key of ["contract", "targets", "auto_close"]) {
     try {
@@ -1078,7 +1085,7 @@ function trackRow(row: Rec): Rec {
     }
   }
   out["enabled"] = Boolean(out["enabled"]);
-  return out;
+  return out as Track; // 库的边界,同 watchRow
 }
 
 function qualityRow(row: Rec): QualityStockRow {

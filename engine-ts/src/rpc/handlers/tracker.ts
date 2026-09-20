@@ -1,10 +1,17 @@
-/** positions.list 与 tracker.*:持仓、追踪目标的建 / 改 / 删、试算、立即平仓。 */
+/** positions.list 与 tracker.*:持仓、追踪目标的建 / 改 / 删、试算、立即平仓。
+ *  tracker.list / add / update / delete / target_preview 已经在契约里(contract/tracker.ts,入参 schema 是 strict 的);
+ *  positions.list 与 tracker.poll / reconcile / close_now 还是老方法——后三样的返回是 engine.ts 拼的,等它拆开再标类型。 */
 import { BrokerError } from "../../broker.js";
 import { nowEt } from "../../config.js";
+import type {
+  RpcResult, Track, TrackerAddParams, TrackerDeleteParams, TrackerTargetPreviewParams, TrackerUpdateParams,
+} from "../../contract/index.js";
 import { RpcError } from "../../rpcError.js";
 import * as tkMod from "../../tracker.js";
+import type { TrackPatch } from "../../store.js";
 import { HandlerBase } from "../context.js";
 import type { MethodTable, Rec } from "../context.js";
+import { contractMethods } from "../contractMethods.js";
 import { drawdownTiersOf, optFloat } from "../params.js";
 
 /** 券商没报盈亏(positions() 兜底路径只有成本)时,用追踪器同一套口径本地算(对应 Python _fill_pnl)。 */
@@ -46,14 +53,16 @@ export class TrackerHandlers extends HandlerBase {
   methods(): MethodTable {
     return {
       "positions.list": (p) => this.positionsList(p),
-      "tracker.list": (p) => this.trackerList(p),
-      "tracker.add": (p) => this.trackerAdd(p),
-      "tracker.update": (p) => this.trackerUpdate(p),
-      "tracker.delete": (p) => this.trackerDelete(p),
       "tracker.poll": (p) => this.trackerPoll(p),
       "tracker.reconcile": (p) => this.trackerReconcile(p),
       "tracker.close_now": (p) => this.trackerCloseNow(p),
-      "tracker.target_preview": (p) => this.trackerTargetPreview(p),
+      ...contractMethods({
+        "tracker.list": () => this.trackerList(),
+        "tracker.add": (p) => this.trackerAdd(p),
+        "tracker.update": (p) => this.trackerUpdate(p),
+        "tracker.delete": (p) => this.trackerDelete(p),
+        "tracker.target_preview": (p) => this.trackerTargetPreview(p),
+      }),
     };
   }
 
@@ -82,7 +91,7 @@ export class TrackerHandlers extends HandlerBase {
     return { positions: rows };
   }
 
-  trackerList(_params: Rec): Rec {
+  trackerList(): RpcResult<"tracker.list"> {
     return { tracks: this.engine.store.listTracks() };
   }
 
@@ -91,7 +100,7 @@ export class TrackerHandlers extends HandlerBase {
    * 正股、单腿期权、蝶式/价差走同一条路。只读,不建追踪也不发单——界面在用户填数的
    * 时候就要把这个数摆出来。
    */
-  async trackerTargetPreview(params: Rec): Promise<Rec> {
+  async trackerTargetPreview(params: TrackerTargetPreviewParams): Promise<RpcResult<"tracker.target_preview">> {
     const key = String(params["key"] ?? "");
     const target = optFloat(params["spot_target"]);
     if (target === null) throw new RpcError(-32602, "要给一个标的目标价 spot_target。");
@@ -227,11 +236,11 @@ export class TrackerHandlers extends HandlerBase {
   }
 
   /** 新建一个追踪。方向填反了在这里就拒——等触发了才发现已经晚了。 */
-  async trackerAdd(params: Rec): Promise<Rec> {
+  async trackerAdd(params: TrackerAddParams): Promise<RpcResult<"tracker.add">> {
     return this.ctx.trackerLock(() => this.trackerAddLocked(params));
   }
 
-  private async trackerAddLocked(params: Rec): Promise<Rec> {
+  private async trackerAddLocked(params: TrackerAddParams): Promise<RpcResult<"tracker.add">> {
     const key = String(params["key"] ?? "");
     const rows = Object.fromEntries(tkMod.withCombos(await this.livePositions()).map((r) => [r["key"], r]));
     const raw = rows[key];
@@ -267,7 +276,7 @@ export class TrackerHandlers extends HandlerBase {
     if (auto.host_at_broker) this.requireHostingSupported(String(raw["account"]));
     await this.checkTargets(raw, rows, position, targets, auto);
 
-    let track: Rec;
+    let track: Track;
     try {
       track = this.engine.store.addTrack({
         account: raw["account"], symbol: raw["symbol"], sec_type: raw["sec_type"],
@@ -284,15 +293,15 @@ export class TrackerHandlers extends HandlerBase {
     return { track };
   }
 
-  async trackerUpdate(params: Rec): Promise<Rec> {
+  async trackerUpdate(params: TrackerUpdateParams): Promise<RpcResult<"tracker.update">> {
     return this.ctx.trackerLock(() => this.trackerUpdateLocked(params));
   }
 
-  private async trackerUpdateLocked(params: Rec): Promise<Rec> {
+  private async trackerUpdateLocked(params: TrackerUpdateParams): Promise<RpcResult<"tracker.update">> {
     const trackId = String(params["id"] ?? "");
     const track = this.engine.store.getTrack(trackId);
     if (track === null) throw new RpcError(-32602, "没有这个追踪");
-    const fields: Rec = {};
+    const fields: TrackPatch = {};
     if ("enabled" in params) {
       fields["enabled"] = Boolean(params["enabled"]);
       // 重新启用等于"再给一次机会":把上一次触发的闩解开
@@ -330,14 +339,17 @@ export class TrackerHandlers extends HandlerBase {
     if (!Object.keys(fields).length) throw new RpcError(-32602, "没有要改的字段");
     this.engine.store.updateTrack(trackId, fields);
     this.engine.store.audit("ui", "tracker_update", { id: trackId, fields: Object.keys(fields) });
-    return { track: this.engine.store.getTrack(trackId) };
+    // 整段都在追踪锁里,tracker.delete 也走同一把锁,刚改过的行一定在;真读不回来就是库被别处动了,如实报
+    const updated = this.engine.store.getTrack(trackId);
+    if (updated === null) throw new RpcError(-32000, "追踪改完了,但库里读不回这一行");
+    return { track: updated };
   }
 
-  async trackerDelete(params: Rec): Promise<Rec> {
+  async trackerDelete(params: TrackerDeleteParams): Promise<RpcResult<"tracker.delete">> {
     return this.ctx.trackerLock(async () => this.trackerDeleteLocked(params));
   }
 
-  private trackerDeleteLocked(params: Rec): Rec {
+  private trackerDeleteLocked(params: TrackerDeleteParams): RpcResult<"tracker.delete"> {
     if (!this.engine.store.deleteTrack(String(params["id"] ?? ""))) {
       throw new RpcError(-32602, "没有这个追踪");
     }

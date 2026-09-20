@@ -5,7 +5,7 @@
  * 引擎负责判断与发单,这里只是按秒驱动它并把结果摆出来。
  */
 import { create } from 'zustand';
-import { dafri, errorMessage } from '../bridge';
+import { dafri, errorMessage, type SpotTarget, type Targets, type Track } from '../bridge';
 import { pushNotification } from './notify';
 import { loadRecords } from './records';
 import { getStatus } from './status';
@@ -34,44 +34,15 @@ export interface Position {
   [key: string]: unknown;
 }
 
-export interface TrackTargets {
-  take_profit?: number | null;
-  stop_loss?: number | null;
-  trail_pct?: number | null;
-  profit_drawdown_pct?: number | null;
-  profit_drawdown_tiers?: unknown;
-  /** 标的目标价:止盈价不是人填的,而是每轮按当前波动率现算出来的 */
-  spot_target?: number | null;
-}
 
+
+// 追踪行、目标、标的目标价的试算结果:形状在引擎契约里(engine-ts/src/contract/tracker.ts),这里只转出——
+// 页面一直从这个文件 import 这几个名字。以前这里手写过一份,enabled 写成了 boolean(tracker.add 的回执里其实是数字 1)。
+export type { Track };
+/** 库里存的是当时写进去的那份 JSON,老行没有后来才加的键 */
+export type TrackTargets = Partial<Targets>;
 /** 引擎每轮算出来的「标的走到目标价 → 这份持仓值多少 / 赚多少」。 */
-export interface SpotTargetRow {
-  spot_target: number;
-  spot?: number | null;
-  /** 现价怎么来的:夜盘按期货推算时写明期货与基差 */
-  spot_note?: string;
-  price?: number | null;
-  pnl?: number | null;
-  pnl_pct?: number | null;
-  sigma?: number | null;
-  /** none 正股 / smile 每条腿各自反解 / net 自身报价反解 / leg 最近腿反解 / clock 模型默认波动率 */
-  sigma_source?: string;
-  /** smile 档每条腿各自的 σ_剩余(点),键是「行权价+C/P」 */
-  leg_sigmas?: Record<string, number>;
-  structure?: string;
-  reason?: string;
-  /** 引擎这一轮只守不挂:还没拿到过市场价 */
-  held?: boolean;
-  /** 试算时:这个价不比现价更有利,挂上去会立刻成交(设置时会被拒) */
-  warning?: string;
-  /** 此刻立刻平掉能拿到(空头:要付)的价,按各腿买卖价合成 */
-  natural?: number;
-  /** 追价平仓最多让到的价(自然价按 chase_max_pct 让满)与那个百分比 */
-  chase_floor?: number;
-  chase_max_pct?: number;
-  /** 标的此刻已经到了(或越过)目标价 */
-  reached?: boolean;
-}
+export type SpotTargetRow = SpotTarget;
 
 /** 追价平仓追到哪了(引擎每轮给):轮 = 秒;挂的价只朝成交方向动,让到 floor 为止 */
 export interface ChaseInfo {
@@ -81,20 +52,6 @@ export interface ChaseInfo {
   floor?: number | null;
 }
 
-export interface Track {
-  id: string;
-  account: string;
-  symbol: string;
-  sec_type: string;
-  contract?: Record<string, unknown>;
-  targets?: TrackTargets;
-  auto_close?: { enabled?: boolean; order_type?: string; host_at_broker?: boolean; close_fraction_pct?: number; chase_max_pct?: number };
-  enabled: boolean;
-  peak?: number | null;
-  fired_at?: string | null;
-  fired_state?: string;
-  [key: string]: unknown;
-}
 
 export interface LiveRow {
   id: string;

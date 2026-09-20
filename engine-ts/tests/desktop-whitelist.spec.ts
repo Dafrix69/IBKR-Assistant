@@ -12,6 +12,8 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
+import { SENSITIVE_METHODS } from "../src/contract/index.js";
+import { contractMethodNames } from "../src/contract/schema/index.js";
 import { RpcServer } from "../src/rpc.js";
 
 const DESKTOP = path.resolve(__dirname, "..", "..", "desktop");
@@ -44,6 +46,21 @@ describe("桌面端 RPC 白名单", () => {
   it("只读试算不该要求确认——它就是确认之前给人看的那个价", () => {
     expect(allowed.has("tracker.target_preview")).toBe(true);
     expect(sensitive.has("tracker.target_preview")).toBe(false);
+  });
+
+  it("契约里登记了的方法:敏感不敏感,契约的 SENSITIVE_METHODS 和 main.js 的 SENSITIVE_RPC 说的是一回事", () => {
+    const inContract: string[] = contractMethodNames();
+    const marked: readonly string[] = SENSITIVE_METHODS;
+    expect(marked.filter((m) => !sensitive.has(m)), "契约标了敏感,main.js 没要求确认").toEqual([]);
+    expect([...sensitive].filter((m) => inContract.includes(m) && !marked.includes(m)), "main.js 要求确认,契约没标").toEqual([]);
+  });
+
+  it("界面确认标记在转给引擎之前摘掉——tracker.* 的入参 schema 是 strict 的,漏过去就是每次建追踪都被拒", () => {
+    const handler = main.slice(main.indexOf("ipcMain.handle('rpc'"));
+    const strip = handler.indexOf("delete clean.__confirmed");
+    const forward = handler.indexOf("engine.call(method, clean)");
+    expect(strip, "main.js 里找不到 delete clean.__confirmed").toBeGreaterThan(-1);
+    expect(forward, "main.js 里找不到 engine.call(method, clean)").toBeGreaterThan(strip);
   });
 
   it("SENSITIVE_RPC 是 ALLOWED_RPC 的子集(要求确认的方法得先是允许调的)", () => {

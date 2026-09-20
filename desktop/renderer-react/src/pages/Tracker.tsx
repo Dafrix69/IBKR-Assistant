@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Button, Collapse, InputNumber, Select, Space, Switch } from 'antd';
-import { dafri, errorMessage } from '../bridge';
+import { dafri, errorMessage, type TrackerAddSpec } from '../bridge';
 import { fmtMoney, fmtNum } from '../lib/format';
 import { showBanner } from '../store/banner';
 import { loadRecords } from '../store/records';
@@ -335,7 +335,8 @@ function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: string | nul
   }, [p.key, spotTarget, chaseMax]);
 
   async function start() {
-    const spec = {
+    // 标上契约类型:这个字面量里写错一个键名(或引擎契约改了键名)就编译不过,而不是追踪建成了、那道保护没设上
+    const spec: TrackerAddSpec = {
       key: p.key,
       take_profit: hasSpotTarget ? '' : str(tp),
       stop_loss: str(sl),

@@ -3,6 +3,7 @@
  * 行为规格 = ../engine-python 的 flyexit.py,逐字段对拍(baseline/golden/flyexit.json)。
  */
 import erfStdlib from "@stdlib/math-base-special-erf";
+import type { DrawdownLate, DrawdownTier } from "./contract/tracker.js";
 
 import { fmtF, pyG, pyRound } from "./py.js";
 
@@ -97,7 +98,7 @@ export function trailStop(profitPeak: number, d: number, minute: number, params:
  * 浮盈 = (现价 − D) × 数量 × 乘数、成本 = D × 数量 × 乘数,两边同乘的部分约掉了。
  * 所以档位可以逐字搬过去,不必再传 D。这里是**唯一事实源**,实盘别另写一份。
  */
-export function drawdownTiers(raw?: Rec | null): Array<Rec> {
+export function drawdownTiers(raw?: Rec | null): DrawdownTier[] {
   const p = paramsFrom(raw ?? null);
   return [
     { above: 0.0, pct: pyRound(p["trail_loose"] * 100, 4) },
@@ -107,7 +108,7 @@ export function drawdownTiers(raw?: Rec | null): Array<Rec> {
 }
 
 /** 尾盘收紧,导出成 tracker.Targets.profit_drawdown_late 的形状。 */
-export function drawdownLate(raw?: Rec | null): Rec {
+export function drawdownLate(raw?: Rec | null): DrawdownLate {
   const p = paramsFrom(raw ?? null);
   return { after: p["trail_late"], factor: Number(p["trail_late_factor"]) };
 }

@@ -106,20 +106,26 @@ export interface ConfirmOptions {
   confirmLabel?: string;
 }
 
-// ---- 引擎契约(engine-ts/src/contract/):优质股追踪、股票池开关、板块、价位提醒 ----------------
+// ---- 引擎契约(engine-ts/src/contract/):优质股追踪、股票池开关、板块、价位提醒、持仓追踪的设置 ------
 // 这几个域的形状**不在这里定义**:引擎的 handler 与这里用的是同一份类型,返回结构改一个字段名,
 // 两头一起编译不过。只许 `import type`,只许进 contract/ 顶层的类型文件(它们不 import 任何东西,
 // 界面的 tsc 不装引擎依赖也解析得了);contract/schema/ 是引擎自己的运行时校验,这里不碰。
 import type {
   AnomalyConfig, AnomalyEvent, AnomalyKind, AnomalyMetrics, LevelKind, OptionWall, PoolWatch, PoolWatchPatch,
-  QualityList, QualityMonitor, QualityStock, RpcParams, RpcResult, Sector, SectorStock, StockQuote, Watch,
-  WatchEvent, WatchLevel,
+  QualityList, QualityMonitor, QualityStock, RpcParams, RpcResult, Sector, SectorStock, SpotTarget, StockQuote,
+  Targets, Track, Watch, WatchEvent, WatchLevel,
 } from '../../../engine-ts/src/contract/index';
 
 export type {
   AnomalyEvent, AnomalyKind, LevelKind, OptionWall, PoolWatch, PoolWatchPatch, QualityList, QualityMonitor,
-  QualityStock, Sector, SectorStock, StockQuote, Watch, WatchEvent, WatchLevel,
+  QualityStock, Sector, SectorStock, SpotTarget, StockQuote, Targets, Track, Watch, WatchEvent, WatchLevel,
 };
+/**
+ * tracker.add 的载荷。**拼载荷的那个对象字面量要直接标成这个类型**(`const spec: TrackerAddSpec = {…}`):
+ * TypeScript 只对"直接标了类型的字面量"查多余的键;先拼成一个没标类型的变量再传给 addTracker,写错的键名是查不出来的
+ * (运行时引擎的 strict schema 会当场拒,但那已经是用户点了按钮之后的事)。
+ */
+export type TrackerAddSpec = RpcParams<'tracker.add'>;
 /** 界面这边一直叫 QualityConfig / QualityMetrics;引擎叫 AnomalyConfig / AnomalyMetrics,是同一个东西。 */
 export type QualityConfig = AnomalyConfig;
 export type QualityMetrics = AnomalyMetrics;
@@ -222,12 +228,13 @@ export interface DafriBridge {
   macroBoard(force?: boolean): Rpc<any>;
 
   listPositions(): Rpc<any>;
-  listTrackers(): Rpc<any>;
-  addTracker(spec: unknown): Rpc<any>;
-  updateTracker(spec: unknown): Rpc<any>;
-  deleteTracker(id: string): Rpc<any>;
+  listTrackers(): Rpc<RpcResult<'tracker.list'>>;
+  /** 授权软件自动发单。载荷的键名要靠 TrackerAddSpec 在拼的地方查(见它的注释),这里的参数类型查不了多余的键。 */
+  addTracker(spec: TrackerAddSpec): Rpc<RpcResult<'tracker.add'>>;
+  updateTracker(spec: RpcParams<'tracker.update'>): Rpc<RpcResult<'tracker.update'>>;
+  deleteTracker(id: string): Rpc<RpcResult<'tracker.delete'>>;
   pollTrackers(): Rpc<any>;
-  previewSpotTarget(key: string, spotTarget: number, chaseMaxPct?: number | null): Rpc<any>;
+  previewSpotTarget(key: string, spotTarget: number, chaseMaxPct?: number | null): Rpc<RpcResult<'tracker.target_preview'>>;
   reconcileTrackers(): Rpc<any>;
   closePositionNow(id: string): Rpc<any>;
 

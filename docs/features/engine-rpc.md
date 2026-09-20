@@ -90,8 +90,25 @@
   各手写了一份猜的:价位的 `kind` 写成了 `… | 'neutral'`,引擎给的其实是 `pivot`;字段全标成可选,引擎其实每个都给)。
   每一批的经过记在 `docs/reports/architecture-review-2026-09-17.md` 的「进展」里。
 
-没做的:`sensitive`(要界面确认)与走哪条道还登记在 `main.js` 和 `server.ts`,没有进契约——已经迁进来的方法
-都不发单,等第一个会发单的方法迁的时候再加,不提前造。
+- **授权发单的域,schema 反过来要严。** `tracker.add` / `update` 是在授权软件自动发单。zod 的 `z.object` 默认把没列的键
+  静默丢掉:键名写错一个字母(`stoploss`)、或者 schema 漏列一个键,结果是追踪照建、那道保护悄悄没设上。所以这个域的 schema
+  是 `.strict()` 的,不认识的键当场拒(「有不认识的键:stoploss」);两个授权开关只收布尔——`Boolean("false")` 是 `true`,
+  老 handler 会把它当成"打开"。数值字段照界面的真实载荷来:`Tracker.tsx` 发的全是字符串,`''` 表示不设,所以契约类型是
+  `number | string | null`,"是不是一个数"由 handler 的 `optFloat` 判。这一段先有 `tests/tracker-rpc.spec.ts`(界面原样的载荷、
+  走完整条 RPC 路径)才动的手,迁移没改它一个断言;schema 自己又做了一轮变异(只收数字、强转、漏列键且去掉 strict…),6 个全被抓住。
+- **敏感标记进了契约。** `contract/index.ts` 的 `SENSITIVE_METHODS` 是这个目录里唯一的运行时值;`desktop-whitelist.spec` 拿它和
+  `main.js` 的 `SENSITIVE_RPC` 双向对(只对已经进契约的方法)。同一份测试还钉着一个因为 strict 而变得承重的耦合:preload 给
+  敏感方法加的 `__confirmed: true` 由主进程在转给引擎**之前**摘掉——漏过去的话,真应用里每次建追踪都会被拒。
+- **类型查不了变量里多出来的键。** 第一版只把 `addTracker(spec)` 的参数标成了契约类型,反向验证时发现界面**不红**:
+  `Tracker.tsx` 是先拼一个没标类型的 `const spec = {…}` 再传进去,而 TypeScript 只对标了类型的对象字面量查多余的键。
+  现在那个字面量直接标成 `TrackerAddSpec`,契约里改一个键名,界面正好红在拼载荷的那一行。
+- **动钱路径上的文件,拿编译产物说话。** 这一批要动 `tracker.ts`(类型搬进契约、`drawdownThreshold` 里两个局部变量加标注)、
+  `store.ts`、`flyexit.ts`。改动前后各编译一次,去掉注释逐字节比对:`tracker` / `flyexit` / `store` / `engine` / `broker` /
+  `futuBroker` / `positions` 七个文件的产物一致;`handlers/tracker.js` 的差异正好是方法表与一处非空检查。`engine.ts` 一行没动——
+  它调 `tk.sweepReason` 的地方靠改被调方的参数类型(只读一个可选的 `fired_state`)解决。
+
+没做的:走哪条道还登记在 `server.ts` 的道表里,没有进契约。`tracker.poll` / `reconcile` / `close_now` 与 `positions.list` 还是老方法:
+前三样的返回是 `engine.ts` 在下单路径里拼出来的,等它拆开(体检报告第二条的后半)再标类型;`positions.list` 的行要从两家券商适配层标起,单独一批。
 
 ## 解析链路时延:量过一遍之后改了四处
 

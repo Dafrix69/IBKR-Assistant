@@ -38,8 +38,8 @@ const LEGACY_METHODS = [
   "screener.deviation", "screener.inflection", "screener.rs",
   "settings.get", "settings.patch",
   "system.selftest", "system.status",
-  "tracker.add", "tracker.close_now", "tracker.delete", "tracker.list", "tracker.poll", "tracker.reconcile",
-  "tracker.target_preview", "tracker.update",
+  // tracker 域迁了一半:这三样的返回是 engine.ts 在下单路径里拼的,等它拆开再标类型
+  "tracker.close_now", "tracker.poll", "tracker.reconcile",
   "tws.diagnose", "tws.launch", "tws.scan",
 ];
 
@@ -79,8 +79,8 @@ describe("契约:迁移只许往前走", () => {
     expect(LEGACY_METHODS.filter((m) => !names.includes(m)), "引擎里已经没有这个方法了").toEqual([]);
   });
 
-  it("名单只许变短:现在是 57 个,改这个数的时候只能往小里改", () => {
-    expect(LEGACY_METHODS.length).toBeLessThanOrEqual(57);
+  it("名单只许变短:现在是 52 个,改这个数的时候只能往小里改", () => {
+    expect(LEGACY_METHODS.length).toBeLessThanOrEqual(52);
     expect(new Set(LEGACY_METHODS).size).toBe(LEGACY_METHODS.length);
   });
 });
@@ -188,6 +188,27 @@ describe("契约:结构错由 schema 报,领域错由 handler 报", () => {
     const cleared = await call("sectors.set_tag", { id: sector["id"], symbol: "VRT" });
     expect(cleared["error"]).toBeUndefined();
     expect(cleared["result"]["sector"]["stocks"]).toEqual([{ symbol: "VRT", company: "", reason: "手动添加", tag: "" }]);
+  });
+
+  it("tracker.*(授权自动发单的域)是 strict 的:不认识的键当场拒,不静默丢掉", async () => {
+    // 键名写错一个字母:别的域会把它丢掉、照常往下走;这里不行——追踪照建、止损却没设上,比报错危险得多
+    expect(await errorOf("tracker.add", { key: "k", stoploss: "95" })).toEqual({
+      code: -32602, message: "tracker.add 的参数不对:有不认识的键:stoploss(这个方法不收没登记的键,没有照单全收)",
+    });
+    expect((await errorOf("tracker.update", { id: "x", auto_close: { enabled: true, hostAtBroker: true } })).message)
+      .toBe("tracker.update 的参数不对:auto_close 里有不认识的键:hostAtBroker(这个方法不收没登记的键,没有照单全收)");
+    expect((await errorOf("tracker.target_preview", { key: "k", spot_target: "130", extra: 1 })).message).toMatch(/有不认识的键:extra/);
+    // 授权发单的开关只收布尔:Boolean("false") 是 true,老 handler 会把它当成"打开"
+    expect(await errorOf("tracker.add", { key: "k", stop_loss: "95", auto_close: "false" })).toEqual({
+      code: -32602, message: "tracker.add 的参数不对:auto_close 应为 boolean,收到 string",
+    });
+    // "数字或字符串"这种字段不对的时候,说清楚要什么、给了什么;数组里某一档缺了东西,指到那一档
+    expect((await errorOf("tracker.add", { key: "k", stop_loss: true })).message).toBe("tracker.add 的参数不对:stop_loss 应为 number 或 string,收到 boolean");
+    expect((await errorOf("tracker.add", { key: "k", profit_drawdown_tiers: "坏的" })).message).toBe("tracker.add 的参数不对:profit_drawdown_tiers 应为 array,收到 string");
+    expect((await errorOf("tracker.add", { key: "k", profit_drawdown_tiers: [{ above: 0 }] })).message).toBe("tracker.add 的参数不对:缺少 profit_drawdown_tiers.0.pct");
+    // 界面确认标记由桌面端主进程在转给引擎之前摘掉(main.js 的 delete clean.__confirmed,desktop-whitelist.spec 钉着);
+    // 真漏过来了,这里是拒,不是悄悄收下
+    expect((await errorOf("tracker.add", { key: "k", stop_loss: "95", __confirmed: true })).message).toMatch(/有不认识的键:__confirmed/);
   });
 
   it("不带参数的方法给什么都收;多余的键不看", async () => {

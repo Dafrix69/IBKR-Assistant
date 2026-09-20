@@ -20,12 +20,17 @@ import type {
   Sector, SectorsAddParams, SectorsAddStockParams, SectorsAddStockResult, SectorsDeleteResult, SectorsIdParams,
   SectorsPickResult, SectorsQuotesResult, SectorsRemoveStockParams, SectorsRemoveStockResult, SectorsSetTagParams,
 } from "./sectors.js";
+import type {
+  Track, TrackerAddParams, TrackerDeleteParams, TrackerTargetPreviewParams, TrackerTargetPreviewResult,
+  TrackerUpdateParams,
+} from "./tracker.js";
 
 export type * from "./alerts.js";
 export type * from "./options.js";
 export type * from "./pool.js";
 export type * from "./quality.js";
 export type * from "./sectors.js";
+export type * from "./tracker.js";
 
 /** 不带参数的方法。界面传 `{}`,多余的键引擎不看。 */
 export type NoParams = Record<string, never>;
@@ -55,8 +60,21 @@ export interface RpcMethods {
   "sectors.add_stock": { params: SectorsAddStockParams; result: SectorsAddStockResult };
   "sectors.remove_stock": { params: SectorsRemoveStockParams; result: SectorsRemoveStockResult };
   "sectors.set_tag": { params: SectorsSetTagParams; result: { sector: Sector } };
+
+  "tracker.list": { params: NoParams; result: { tracks: Track[] } };
+  "tracker.add": { params: TrackerAddParams; result: { track: Track } };
+  "tracker.update": { params: TrackerUpdateParams; result: { track: Track } };
+  "tracker.delete": { params: TrackerDeleteParams; result: { deleted: true } };
+  "tracker.target_preview": { params: TrackerTargetPreviewParams; result: TrackerTargetPreviewResult };
 }
 
 export type RpcMethodName = keyof RpcMethods;
+
+/**
+ * 会真的动钱或动配置的方法:桌面端主进程要求界面已经确认过一次才放行(main.js 的 SENSITIVE_RPC)。
+ * 契约里登记了的方法,敏感不敏感以这张表为准,tests/desktop-whitelist.spec.ts 拿它和 main.js 双向对。
+ * 这是本目录里唯一一个运行时的值——界面只 import type,碰不到它。
+ */
+export const SENSITIVE_METHODS = ["tracker.add", "tracker.update"] as const satisfies readonly RpcMethodName[];
 export type RpcParams<M extends RpcMethodName> = RpcMethods[M]["params"];
 export type RpcResult<M extends RpcMethodName> = RpcMethods[M]["result"];

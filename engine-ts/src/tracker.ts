@@ -14,6 +14,9 @@ import type { HostedOrderPlan } from "./positions.js";
 // 持仓身份搬到了 positions.ts;这里转出,老的 import 路径不变。
 export { legOf, makeKey, positionLabel } from "./positions.js";
 export type { HostedOrderPlan } from "./positions.js";
+// 目标、自动平仓设置、标的目标价的试算结果——这三个形状界面也要用,定义在 contract/tracker.ts;这里转出,老的 import 不用改。
+export type { AutoClose, SpotTarget, Targets } from "./contract/tracker.js";
+import type { AutoClose, SpotTarget, Targets } from "./contract/tracker.js";
 
 export const STATE_HOLDING = "holding";
 export const STATE_TAKE_PROFIT = "take_profit";
@@ -283,24 +286,6 @@ export function groupLegs(rows: Array<Record<string, any>>): Array<Record<string
   return combos;
 }
 
-export interface Targets {
-  take_profit: number | null;
-  stop_loss: number | null;
-  trail_pct: number | null;
-  /** 利润回撤:当前利润比历史峰值利润低这么多个百分点时触发。
-   * 峰值利润不用单独存:利润对价格单调,由已持久化的峰值价格换算,重启不丢。 */
-  profit_drawdown_pct: number | null;
-  /** 分档回撤:按**浮盈相对成本的倍数**换档位。`profit_peak / |costBasis|` 对期权组合
-   * 恰好就是 flyexit 的"浮盈 / D"——两边同乘 数量×乘数 就约掉了,不必另传 D。
-   * 形如 [{above: 0, pct: 40}, {above: 1, pct: 30}, {above: 3, pct: 20}]:
-   * 取所有 above ≤ 当前倍数 里最高的那一档。不填就全程用 profit_drawdown_pct。 */
-  profit_drawdown_tiers: Array<Record<string, any>> | null;
-  /** 尾盘收紧:{after: "15:00", factor: 0.5}。 */
-  profit_drawdown_late: Record<string, any> | null;
-  /** **标的**的目标价。止盈价不由人填,而是每一轮按当前波动率算出「标的走到这里时
-   * 这份持仓该值多少」——正股、单腿期权、蝶式/价差都走这一条,见 spotTarget()。 */
-  spot_target: number | null;
-}
 
 export function makeTargets(raw: Partial<Targets> = {}): Targets {
   return {
@@ -437,45 +422,6 @@ function legsByMoneyness(legs: StructureLeg[], spot: number): StructureLeg[] {
   return [...legs].sort((a, b) => Math.abs(a.strike - spot) - Math.abs(b.strike - spot));
 }
 
-export interface SpotTarget {
-  /** 标的的目标价(照抄输入,方便界面一处取齐)。 */
-  spot_target: number;
-  /** 标的现价。 */
-  spot: number | null;
-  /** 现价是怎么来的(夜盘按期货推算时写明期货与基差);常规时段的官方价为空串。 */
-  spot_note: string;
-  /** 预计价位:标的走到 spot_target 时这份持仓的模型价(每股 / 每张 / 每组净价)。 */
-  price: number | null;
-  /** 预估收益(总额,已乘数量与乘数)。算不出成本或价格时为 null。 */
-  pnl: number | null;
-  /** 预估收益相对成本的百分比。 */
-  pnl_pct: number | null;
-  /** 算这个价用的 σ_剩余(点);正股没有 σ。smile 档报最贴近目标价那条腿的。 */
-  sigma: number | null;
-  /** σ 从哪来:none = 正股不需要、smile = 每条腿各自反解、net = 净价反解、leg = 最近腿反解、
-   * clock = EM×√剩余方差。 */
-  sigma_source: string;
-  /** smile 档每条腿各自的 σ(按 legPriceKey 索引);别的档没有这一项。 */
-  leg_sigmas?: Record<string, number>;
-  /** 这份持仓是什么结构,给错误信息和界面用。 */
-  structure: string;
-  /** 算不出来的时候说清楚为什么——静默回 null 会让界面显示成"还没到价"。 */
-  reason: string;
-  /** 引擎这一轮**只守不挂**:没有市场价可用,也没有上一次的市场价可沿用。
-   * 这时不挂新单、也不撤已经挂着的单(见 engine.applySpotTarget)。 */
-  held?: boolean;
-  /** 试算时:算得出价,但这个价不比现价更有利(挂上去会立刻成交)。设置时同一句话会当场拒。 */
-  warning?: string;
-  /** 标的**此刻**已经到了(或越过)目标价:同一组 σ 下,持仓在现价处的价值不低于目标价处的价值。
-   * 单腿、价差是"越过目标价";蝶是"进了目标价与它关于中心的镜像之间"——那段里蝶只会更值钱。
-   * 拿不到标的现价时没有这一项。 */
-  reached?: boolean;
-  /** 试算时:此刻立刻平掉能拿到(空头:要付)的价,按各腿买卖价合成;拿不到报价时没有这一项。 */
-  natural?: number;
-  /** 追价平仓最多让到的价(自然价按 chase_max_pct 让满),以及那个百分比 */
-  chase_floor?: number;
-  chase_max_pct?: number;
-}
 
 /** σ 来源里哪些算"市场价":只有这几种算出来的数才能拿去挂单或改单。
  * clock 是写死的 EM 算出来的模型默认值——给人看可以,拿去发单不行。 */
@@ -728,7 +674,7 @@ export function chaseFloor(position: Position, natural: number, auto: AutoClose)
 export const SWEEP_PREFIX = "sweep:";
 
 /** 这条追踪正在追价平仓的话,回触发原因;否则 null。 */
-export function sweepReason(track: Record<string, unknown>): string | null {
+export function sweepReason(track: { fired_state?: unknown }): string | null {
   const state = String(track["fired_state"] ?? "");
   return state.startsWith(SWEEP_PREFIX) ? state.slice(SWEEP_PREFIX.length) : null;
 }
@@ -788,7 +734,7 @@ export function drawdownThreshold(
   targets: Targets, profitPeak: number | null, basis: number | null, minute: number | null = null,
 ): number | null {
   let pct = finiteOrNull(targets.profit_drawdown_pct);
-  const tiers = targets.profit_drawdown_tiers ?? [];
+  const tiers: Array<Record<string, any>> = targets.profit_drawdown_tiers ?? [];
   const peak = finiteOrNull(profitPeak);
   const base = finiteOrNull(basis);
   if (tiers.length && peak !== null && base) {
@@ -805,7 +751,7 @@ export function drawdownThreshold(
     }
   }
   if (pct === null) return null;
-  const late = targets.profit_drawdown_late ?? {};
+  const late: Record<string, any> = targets.profit_drawdown_late ?? {};
   const after = late["after"] ? minutesOfClock(late["after"]) : null;
   const factor = finiteOrNull(late["factor"]);
   if (after !== null && factor !== null && minute !== null && minute >= after) pct *= factor;
@@ -1128,18 +1074,6 @@ export function closeSide(position: Position): string {
 // ----------------------------------------------------------------------
 // 到价自动平仓
 // ----------------------------------------------------------------------
-export interface AutoClose {
-  enabled: boolean;
-  order_type: string; // MKT 一定成交;LMT 控价但可能不成交
-  slippage_pct: number;
-  /** 触发后平掉持仓的百分之多少。默认全平;设 50 即卖出一半锁利。 */
-  close_fraction_pct: number;
-  /** 把止盈/止损挂到券商服务器(GTC + OCA):软件关掉也生效。软件开着时,
-   * 利润回撤等动态目标由引擎按秒调整托管单价格;关掉则停在最后一次。 */
-  host_at_broker: boolean;
-  /** 追价平仓最多让到自然价的百分之几(见 chaseLimit)。只管期权与组合;正股不追价。 */
-  chase_max_pct: number;
-}
 
 export function makeAutoClose(raw: Partial<AutoClose> = {}): AutoClose {
   return {

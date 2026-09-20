@@ -328,3 +328,27 @@ CI 里排在 `lint` 之后。第一次跑会红,把现有 8 + 3 条修掉之后�
 2. **`tracker.poll` / `reconcile` / `close_now` 的返回**:这三样是在 `engine.ts` 的下单路径里用 `Rec` 拼出来的。要从源头标类型就得
    动那个文件,而仓库自己的 lint 配置里写着"为类型去改下单路径,是拿真钱的风险换零收益"。所以排在第 3 段之后。
 3. **先拆 `engine.ts`**(本报告第二条的后半:托管单、IB 回调各搬一个文件)。搬完之后盯盘行在一个几百行的文件里,再给它标类型才是低风险的事。
+
+**2026-09-20,`tracker` 域第 1a 段:`tracker.list` / `add` / `update` / `delete` / `target_preview` 迁完(已迁 25 个,还剩 52 个)。**
+判据如前所定:`tests/tracker-rpc.spec.ts` 一个断言没改,32 条全绿;`golden-rpc` 没动基线。
+
+- **入参 schema 是 strict 的**,数值字段照界面的真实载荷收 `number | string`(`''` = 不设),两个授权开关只收布尔。对 schema 又做了一轮变异
+  (只收数字、用强转、漏列追价上限、漏列键且去掉 strict、漏列尾盘收紧、`update` 漏列 `enabled`),6 个全被特征测试抓住。
+- **钱路径上的文件拿编译产物说话**:`Targets` / `AutoClose` / `SpotTarget` 搬进契约、`tracker.ts` 只剩转出;`drawdownThreshold` 对库里读回来的
+  JSON 逐项兜底的写法没碰,只给两个局部变量加了类型标注;store 的追踪行收成 `Track` / `TrackInput` / `TrackPatch`。改动前后各编译一次,
+  去掉注释逐字节比对,`tracker` / `flyexit` / `store` / `engine` / `broker` / `futuBroker` / `positions` 七个文件一致;`handlers/tracker.js`
+  的差异正好是方法表与一处非空检查。`engine.ts` 一行没动。
+- **反向验证抓到我自己的一个错。** 第一版只把 `addTracker(spec)` 的参数标成契约类型,还在注释里写了"写错一个键名这里就编译不过"。
+  改掉契约里一个键名去验,引擎红了,**界面没红**:`Tracker.tsx` 先拼一个没标类型的变量再传进去,TypeScript 不对变量查多余的键。
+  现在那个字面量直接标成 `TrackerAddSpec`,再验一次,界面正好红在拼载荷的那一行。这条写进了 CLAUDE.md。
+- **`sensitive` 标记进了契约**(`SENSITIVE_METHODS`),`desktop-whitelist.spec` 拿它和 `main.js` 的 `SENSITIVE_RPC` 双向对;同一份测试钉住了
+  一个因为 strict 才变得承重的耦合——`__confirmed` 由主进程在转给引擎之前摘掉。三条新护栏各放探针验过会红。
+- 一处顺序上的变化:畸形的入参(比如 `profit_drawdown_tiers` 传了个字符串)以前要先过"连没连券商"那一关,现在在 schema 这一步就被拒,
+  码同样是 -32602。联合类型字段的报错补成了人话(「stop_loss 应为 number 或 string,收到 boolean」「缺少 profit_drawdown_tiers.0.pct」)。
+- 契约如实记下的现状没变:`tracker.add` 回执里 `enabled` 是数字 `1`;`tracker.update` 的 `auto_close` 是整份替换。
+- 顺带看到、没有动的一处:平一半(`close_fraction_pct: 50`)时,那张平仓单的 `notional` 仍按整份持仓算(100 股 × 120 = 12000),
+  不是实际平掉的那一半。查过 `engine.ts` 的 `closePosition`:它取的是 `|position.quantity| × 现价 × 乘数`,没看平仓比例;这个数只写进
+  交易记录的 `notional_estimate`(给人看的名义金额)——平仓单不过开仓那套限额,所以**不会拦单**,只是分批平仓的记录上名义金额偏大。
+  改它要动下单路径上的一个表达式,没有混进这一批。
+
+还没迁的:`positions.list`(第 1b 段,行要从两家券商适配层标起)、`tracker.poll` / `reconcile` / `close_now`(等 `engine.ts` 拆开)。

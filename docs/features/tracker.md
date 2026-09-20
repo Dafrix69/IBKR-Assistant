@@ -474,6 +474,10 @@ RPC 里传 `profit_drawdown_preset: "fly"` 等价。
 全部被抓住。**给这个域的入参加 schema、迁进 `contract/` 的时候,这份测试不许改一个断言**;而且那个 schema 要用
 `.strict()`——不认识的键当场拒,不能像别的域那样静默丢掉。
 
+2026-09-20 `tracker.list` / `add` / `update` / `delete` / `target_preview` 就是这么迁的(契约与 schema 的设计见
+`engine-rpc.md` 的「契约」一节):这份测试一个断言没改;`Targets` / `AutoClose` / `SpotTarget` 的定义搬进了
+`contract/tracker.ts`,`tracker.ts` 里只剩转出,触发判定的函数体没动——改动前后的编译产物去掉注释逐字节一致。
+
 ## 盈亏以券商报的为准
 
 IBKR 优先用 `ib.portfolio()`、富途用 `position_list_query` 的 `pl_val`——那是和你在券商

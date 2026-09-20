@@ -165,7 +165,7 @@ describe("store: TS 写入路径行为", () => {
     expect(back["enabled"]).toBe(false);
 
     const t = store.addTrack({ account: "模拟", symbol: "NVDA" });
-    expect(() => store.updateTrack(t["id"], { account: "别的" })).toThrowError(
+    expect(() => store.updateTrack(t["id"], { account: "别的" } as never)).toThrowError( // 同上:故意绕过类型
       "不允许修改的字段:account",
     );
     expect(store.updateTrack(t["id"], { peak: 181.5, fired_at: "2026-08-14T10:00:00+00:00" })).toBe(

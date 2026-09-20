@@ -62,6 +62,14 @@ contract      contract/*.ts(纯类型,零 import,谁都能引)  contract/schema/
   不装引擎的依赖。界面只有 `bridge.ts` 能跨进引擎目录,只许 `import type`,只许进 `contract/` 顶层。
 - schema 只管**结构**(有哪些字段、什么 JSON 类型);领域校验(代码形状、上限、阈值范围)留在 handler,报 handler 自己那句人话。
   不要让 schema 比老 handler 严——那是改行为(例:异动阈值一直认数字串,schema 就不能写成 `z.number()`)。
+- **会发单 / 授权发单的方法(`tracker.*`,以后的 `instruction.submit`)反过来,schema 必须 `.strict()`**:不认识的键当场拒。
+  zod 默认把没列的键静默丢掉——对别的域无所谓,对 `tracker.add` 就是"追踪建成了,那道保护没设上"。这类方法还要登记进
+  `contract/index.ts` 的 `SENSITIVE_METHODS`(`desktop-whitelist.spec` 拿它和 `main.js` 的 `SENSITIVE_RPC` 双向对)。
+  动它们的入参之前先看 `tests/tracker-rpc.spec.ts`:输入是界面真实的载荷形状(数值全是字符串,`''` = 不设),迁移不许改它的断言。
+- 界面拼 RPC 载荷的对象字面量要**直接标上契约类型**(`const spec: TrackerAddSpec = {…}`)。TypeScript 只对标了类型的字面量查多余的键;
+  先拼成没标类型的变量再传进去,写错的键名编译期查不出来。
+- 改钱路径上的文件(`tracker.ts` `engine.ts` `store.ts` `broker.ts` `flyexit.ts`)时如果本意只是动类型:改动前后各编译一次,
+  去掉注释比对 `dist/src/<文件>.js`,必须逐字节一致。这比"我只改了类型"这句话可靠。
 - 老方法的返回结构改字段名 = 破坏契约,而且编译器看不见。改之前 grep `renderer-react/src` 里所有用到该字段的地方。
 
 ## 类型
