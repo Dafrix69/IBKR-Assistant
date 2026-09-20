@@ -6,18 +6,22 @@
  * 提交也在这里跑,页面中途卸载不影响结果落地。
  */
 import { create } from 'zustand';
-import { dafri, errorMessage, type Account } from '../bridge';
+import { dafri, errorMessage, type Account, type InstructionSubmitResult } from '../bridge';
 import { showBanner } from './banner';
 import { loadPending } from './pending';
 import { loadRecords } from './records';
 import { brokerShortName, refreshStatus } from './status';
+
+/** 引擎那份回执,外加这里自己量的耗时。`__elapsedMs` **不是引擎给的**,所以不在契约里:
+ *  它是从点下按钮到回执到手的墙钟时间(含界面这一侧),给用户看"这次等了多久"。 */
+export type SubmitPayload = InstructionSubmitResult & { __elapsedMs?: number };
 
 export interface ComposerState {
   text: string;
   /** 正在跑的是哪一个按钮;null = 空闲 */
   busy: 'parse' | 'execute' | null;
   working: string | null;
-  payload: any;
+  payload: SubmitPayload | null;
   failure: string | null;
 }
 
@@ -68,7 +72,7 @@ export async function submitInstruction(execute: boolean, accounts: string[]): P
   set({ busy: execute ? 'execute' : 'parse', working: execute ? '正在解析并发送…' : '正在解析…(最长约 1 分钟)', failure: null });
   const t0 = performance.now();
   try {
-    const result = await dafri.submit(body, execute, accounts);
+    const result: SubmitPayload = await dafri.submit(body, execute, accounts);
     result.__elapsedMs = Math.round(performance.now() - t0);
     set({ payload: result });
     await Promise.all([refreshStatus(), loadRecords(), loadPending()]);

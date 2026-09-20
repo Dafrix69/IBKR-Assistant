@@ -8,7 +8,8 @@ import { isTicket, OrderTicket } from '../lib/OrderTicket';
 import { useLlmCatalog } from '../store/llm';
 import { navigate } from '../store/nav';
 import { brokerShortName, gatewayName, pickableAccounts, useStatus } from '../store/status';
-import { clearResult, savePickedAccounts, selectedAccounts, setInstruction, submitInstruction, useComposer, usePickedRevision } from '../store/trade';
+import { clearResult, savePickedAccounts, selectedAccounts, setInstruction, submitInstruction, useComposer, usePickedRevision, type SubmitPayload } from '../store/trade';
+import type { InstructionOrder } from '../bridge';
 import { ENTER_KEY, MOD_KEY, SHIFT_KEY } from '../store/appearance';
 import { EmptyState, Meta, PageHead, Primer, StatusCard, Working, type Tone } from '../ui/kit';
 
@@ -270,8 +271,8 @@ export function TradePage() {
   );
 }
 
-function ResultCards({ payload }: { payload: any }) {
-  const groups: [Tone, string, any[]][] = [
+function ResultCards({ payload }: { payload: SubmitPayload }) {
+  const groups: [Tone, string, InstructionOrder[]][] = [
     ['ok', '已提交', payload.submitted || []],
     ['info', '排队等待触发', payload.queued || []],
     ['warn', '已通过校验(未发送)', payload.validated_only || []],
@@ -292,7 +293,7 @@ function ResultCards({ payload }: { payload: any }) {
       );
     });
   }
-  (payload.rejections || []).forEach((r: any, i: number) => {
+  (payload.rejections || []).forEach((r, i) => {
     // 拒绝码翻成人话:LIVE_TRADING_DISABLED 这种是引擎内部的枚举,不该是用户读到的第一行。
     // 词表里没有的照旧露英文——见 labels.ts:露一个英文好过编一个错的中文
     const why = say(REJECT_CODE_LABEL, r.code) || '未说明原因';
@@ -307,7 +308,7 @@ function ResultCards({ payload }: { payload: any }) {
     cards.push(
       <StatusCard key="warn" tone="warn" title="提示">
         <ul>
-          {payload.warnings.map((w: string, i: number) => (
+          {payload.warnings.map((w, i) => (
             <li key={i}>{w}</li>
           ))}
         </ul>

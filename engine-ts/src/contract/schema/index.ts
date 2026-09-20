@@ -18,6 +18,7 @@ import {
   IdeasAddParamsSchema, IdeasAnalyzeParamsSchema, IdeasDigestParamsSchema, IdeasDigestsParamsSchema, IdeasListParamsSchema,
   IdeasUpdateParamsSchema,
 } from "./ideas.js";
+import { InstructionSubmitParamsSchema } from "./instruction.js";
 import { NoParamsSchema } from "./kit.js";
 import type { ParamsSchema } from "./kit.js";
 import { LlmPatchParamsSchema, LlmTestParamsSchema } from "./llm.js";
@@ -123,6 +124,8 @@ export const PARAMS_SCHEMAS: { readonly [M in RpcMethodName]: ParamsSchema<RpcPa
   "settings.patch": SettingsPatchParamsSchema,
   "keychain.set": KeychainSetParamsSchema,
   "data.export": DataExportParamsSchema,
+
+  "instruction.submit": InstructionSubmitParamsSchema,
 
   "records.list": RecordsListParamsSchema,
   "records.get": RecordsGetParamsSchema,

@@ -17,11 +17,10 @@ import { RpcServer } from "../src/rpc.js";
 const ENGINE_SRC = path.resolve(__dirname, "..", "src");
 const BRIDGE = path.resolve(__dirname, "..", "..", "desktop", "renderer-react", "src", "bridge.ts");
 
-/** 还没迁进契约的老方法(入参与返回仍是松散的 Rec)。迁一个,从这里划掉一个;**不许往里加**。 */
-const LEGACY_METHODS = [
-  // 最后一个:返回是 engine.handleInstruction 在下单路径里拼的,等那一块拆开再标类型
-  "instruction.submit",
-];
+/** 还没迁进契约的老方法(入参与返回仍是松散的 Rec)。
+ *  2026-09-20 起**这张表是空的**:77 个方法全在契约里。它留着是那道闸门——新方法只能从契约加,
+ *  谁想绕过契约就得先往这里加一行,而下面那条用例不让。 */
+const LEGACY_METHODS: string[] = [];
 
 const dirs: string[] = [];
 function makeServer(): RpcServer {
@@ -59,8 +58,8 @@ describe("契约:迁移只许往前走", () => {
     expect(LEGACY_METHODS.filter((m) => !names.includes(m)), "引擎里已经没有这个方法了").toEqual([]);
   });
 
-  it("名单只许变短:现在是 1 个,改这个数的时候只能往小里改", () => {
-    expect(LEGACY_METHODS.length).toBeLessThanOrEqual(1);
+  it("名单已经空了:一个方法都不许再加进来(新方法只能从契约加)", () => {
+    expect(LEGACY_METHODS.length).toBeLessThanOrEqual(0);
     expect(new Set(LEGACY_METHODS).size).toBe(LEGACY_METHODS.length);
   });
 });

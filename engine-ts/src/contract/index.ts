@@ -34,6 +34,7 @@ import type {
 import type {
   DeviationResult, InflectionResult, RsResult, ScreenerDeviationParams, ScreenerInflectionParams, ScreenerRsParams,
 } from "./screener.js";
+import type { InstructionSubmitParams, InstructionSubmitResult } from "./instruction.js";
 import type { PositionRow } from "./positions.js";
 import type {
   PendingItem, PendingPollResult, RecordsGetParams, RecordsListParams, TradeRecord, TradeRecordSummary,
@@ -66,6 +67,7 @@ export type * from "./book.js";
 export type * from "./connection.js";
 export type * from "./macro.js";
 export type * from "./ideas.js";
+export type * from "./instruction.js";
 export type * from "./llm.js";
 export type * from "./options.js";
 export type * from "./pool.js";
@@ -168,6 +170,9 @@ export interface RpcMethods {
   "keychain.set": { params: KeychainSetParams; result: { ok: true } };
   "data.export": { params: DataExportParams; result: DataExportResult };
 
+  /** 一句话 → 解析 → 校验 →(execute 为真时)发单。回执分四个桶:发了的 / 排队的 / 只校验的 / 被拒的 */
+  "instruction.submit": { params: InstructionSubmitParams; result: InstructionSubmitResult };
+
   /** 摘要,20 项。整条记录要走 records.get */
   "records.list": { params: RecordsListParams; result: { records: TradeRecordSummary[] } };
   "records.get": { params: RecordsGetParams; result: { record: TradeRecord } };
@@ -205,7 +210,8 @@ export type RpcMethodName = keyof RpcMethods;
  * 这是本目录里唯一一个运行时的值——界面只 import type,碰不到它。
  */
 export const SENSITIVE_METHODS = [
-  "broker.connect", "broker.select", "futu.launch", "futu.set_password", "futu.unlock", "keychain.set", "llm.patch",
+  "broker.connect", "broker.select", "futu.launch", "futu.set_password", "futu.unlock", "instruction.submit",
+  "keychain.set", "llm.patch",
   "settings.patch", "tracker.add", "tracker.close_now", "tracker.update", "tws.launch",
 ] as const satisfies readonly RpcMethodName[];
 export type RpcParams<M extends RpcMethodName> = RpcMethods[M]["params"];

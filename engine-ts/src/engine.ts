@@ -6,6 +6,9 @@
 import type { AccountConfig, EtNow, Settings } from "./config.js";
 import { hoursStatus, nowEt } from "./config.js";
 import type { PositionRow } from "./contract/positions.js";
+import type {
+  InstructionLlm, InstructionOrder, InstructionRejection, OrderTicket,
+} from "./contract/instruction.js";
 import type { TrackerHeartbeat } from "./contract/system.js";
 import type { TrackFired, TrackerPollTick, TrackerSyncHostedTick } from "./contract/trackerloop.js";
 import {
@@ -40,12 +43,12 @@ import { monitorEventLoopDelay } from "node:perf_hooks";
 type Rec = Record<string, any>;
 
 export interface EngineResult {
-  submitted: Rec[];
-  queued: Rec[];
-  validated_only: Rec[];
-  rejections: Rec[];
+  submitted: InstructionOrder[];
+  queued: InstructionOrder[];
+  validated_only: InstructionOrder[];
+  rejections: InstructionRejection[];
   warnings: string[];
-  llm: Rec | null;
+  llm: InstructionLlm | null;
 }
 
 const emptyResult = (): EngineResult => ({
@@ -130,7 +133,7 @@ export function fanOutOrders(
 }
 
 /** 一笔已通过校验的订单压成界面能直接画的样子(方向 / 数量 / 价 / 合约要素 / 各腿 / 触发条件)。 */
-export function orderTicket(parsed: ParsedOrder): Rec {
+export function orderTicket(parsed: ParsedOrder): OrderTicket {
   const c = parsed.contract;
   const o = parsed.order;
   return {
@@ -441,7 +444,7 @@ export class TradingEngine {
       }
       result.warnings.push(...approved.warnings);
 
-      const summary: Rec = {
+      const summary: InstructionOrder = {
         record_id: recordId,
         intent_summary: approved.order.intent_summary,
         account: approved.account.alias,

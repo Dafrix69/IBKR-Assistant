@@ -56,8 +56,8 @@ contract      contract/*.ts(纯类型,零 import,谁都能引)  contract/schema/
   `contract/schema/` 配入参 schema(漏了是编译错)→ 所属域 handler 用 `contractMethods({...})` 实现 → `main.js` 的
   `ALLOWED_RPC`(会发单的还要进 `SENSITIVE_RPC`)→ `preload.js` → `bridge.ts` 的 `DafriBridge` 用 `RpcParams` / `RpcResult` 写签名。
   方法要走本地道 / 读道,还要进 `server.ts` 的道表。`tests/desktop-whitelist.spec.ts` 与 `tests/contract.spec.ts` 少一处会红。
-- 老方法(入参与返回还是 `Rec`)钉在 `tests/contract.spec.ts` 的 `LEGACY_METHODS`:**那张表只许变短**,碰到一个迁一个。
-  迁的时候类型搬进 contract、原文件改成转出(`anomaly.ts` 是样板),不要两边各留一份。
+- `tests/contract.spec.ts` 的 `LEGACY_METHODS` **已于 2026-09-20 空掉**(77 个方法全在契约里)。那张表留着是闸门:
+  想绕过契约就得先往里加一行,而那条用例不让。**只许变短,不许加。**
 - 契约的类型文件(`contract/` 顶层)**不 import 任何东西**:界面的 tsc 会顺着 `bridge.ts` 走进来,而 CI 里界面那一路
   不装引擎的依赖。界面只有 `bridge.ts` 能跨进引擎目录,只许 `import type`,只许进 `contract/` 顶层。
 - schema 只管**结构**(有哪些字段、什么 JSON 类型);领域校验(代码形状、上限、阈值范围)留在 handler,报 handler 自己那句人话。
@@ -65,7 +65,7 @@ contract      contract/*.ts(纯类型,零 import,谁都能引)  contract/schema/
   缺必填字段归 schema 报;唯一的例外是 golden-rpc 里有请求没带它、期望的却是 handler 某句原话的字段(`ideas.update` 不带 id →
   「缺少想法 id」;`backtest.run` 只给一个坏代码 →「股票代码不合法」,检查的先后次序也算行为),用 `schema/kit.ts` 的
   `requiredButReportedByHandler()`,不要为了迁移去 `golden:update`。
-- **会发单 / 授权发单的方法(`tracker.*`,以后的 `instruction.submit`)反过来,schema 必须 `.strict()`**:不认识的键当场拒。
+- **会发单 / 授权发单的方法(`tracker.add` / `update` / `close_now`、`instruction.submit`)反过来,schema 必须 `.strict()`**:不认识的键当场拒。
   zod 默认把没列的键静默丢掉——对别的域无所谓,对 `tracker.add` 就是"追踪建成了,那道保护没设上"。这类方法还要登记进
   `contract/index.ts` 的 `SENSITIVE_METHODS`(`desktop-whitelist.spec` 拿它和 `main.js` 的 `SENSITIVE_RPC` 双向对)。
   动它们的入参之前先看 `tests/tracker-rpc.spec.ts`:输入是界面真实的载荷形状(数值全是字符串,`''` = 不设),迁移不许改它的断言。

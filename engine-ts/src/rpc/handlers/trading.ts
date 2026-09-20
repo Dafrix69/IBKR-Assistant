@@ -1,8 +1,11 @@
 /** 下单这条线:instruction.submit、交易记录、条件单队列、熔断。
- *  除 instruction.submit 外都在契约里(contract/system.ts、contract/records.ts);
- *  instruction.submit 的返回是 engine.handleInstruction 在下单路径里拼的,等那一块拆开再标类型。 */
+ *  整条线都在契约里(contract/instruction.ts、contract/records.ts、contract/system.ts)。
+ *  instruction.submit 会真发单:入参 schema 顶层 strict,并登记在 SENSITIVE_METHODS 里。 */
 import { BrokerError } from "../../broker.js";
-import type { BreakerHaltParams, RecordsGetParams, RecordsListParams, RpcResult, TradeRecord, TradeRecordSummary } from "../../contract/index.js";
+import type {
+  BreakerHaltParams, InstructionSubmitParams, RecordsGetParams, RecordsListParams, RpcResult, TradeRecord,
+  TradeRecordSummary,
+} from "../../contract/index.js";
 import { resolveFanoutAccounts } from "../../engine.js";
 import { redactAccount } from "../../store.js";
 import { RpcError } from "../../rpcError.js";
@@ -13,8 +16,8 @@ import { contractMethods } from "../contractMethods.js";
 export class TradingHandlers extends HandlerBase {
   methods(): MethodTable {
     return {
-      "instruction.submit": (p) => this.instructionSubmit(p),
       ...contractMethods({
+        "instruction.submit": (p) => this.instructionSubmit(p),
         "records.list": (p) => this.recordsList(p),
         "records.get": (p) => this.recordsGet(p),
         "pending.list": () => this.pendingList(),
@@ -27,7 +30,7 @@ export class TradingHandlers extends HandlerBase {
   }
 
   // ---- 指令 -----------------------------------------------------------
-  async instructionSubmit(params: Rec): Promise<Rec> {
+  async instructionSubmit(params: InstructionSubmitParams): Promise<RpcResult<"instruction.submit">> {
     const text = String(params["text"] ?? "").trim();
     if (!text) throw new RpcError(-32602, "指令为空");
     const execute = Boolean(params["execute"]);
@@ -55,7 +58,7 @@ export class TradingHandlers extends HandlerBase {
     // 解析模式(不执行)作为参数传进去,不临时改共享配置——盯盘节拍器同一时刻也在读它
     const result = await engine.handleInstruction(text, channel, null, null, accounts, !execute);
 
-    const payload: Rec = { ...result, executed: execute };
+    const payload: RpcResult<"instruction.submit"> = { ...result, executed: execute };
     this.emit("result", payload);
     return payload;
   }

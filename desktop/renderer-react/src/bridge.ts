@@ -54,6 +54,8 @@ import type {
   TradeRecord, TradeRecordSummary,
   ChaseInfo, HostedOrderRow, HostedTrack, TrackBlocked, TrackEvaluation, TrackFired, TrackPollRow,
   TrackerCloseNowResult, TrackerPollResult, TrackerReconcileResult,
+  InstructionLlm, InstructionOrder, InstructionRejection, InstructionSubmitResult, OrderTicket, OrderTicketLeg,
+  OrderTrigger,
 } from '../../../engine-ts/src/contract/index';
 
 export type {
@@ -74,6 +76,8 @@ export type {
   TradeRecord, TradeRecordSummary,
   ChaseInfo, HostedOrderRow, HostedTrack, TrackBlocked, TrackEvaluation, TrackFired, TrackPollRow,
   TrackerCloseNowResult, TrackerPollResult, TrackerReconcileResult,
+  InstructionLlm, InstructionOrder, InstructionRejection, InstructionSubmitResult, OrderTicket, OrderTicketLeg,
+  OrderTrigger,
 };
 /** 界面这边一直用的名字;引擎契约里分别叫 AccountView / SettingsView / Policies / Limits / ProtectionsConfig。 */
 export type Account = AccountView;
@@ -164,7 +168,8 @@ export interface DafriBridge {
   setFutuPassword(password: string, alreadyMd5?: boolean): Rpc<RpcResult<'futu.set_password'>>;
   unlockFutu(connection?: string): Rpc<RpcResult<'futu.unlock'>>;
 
-  submit(text: string, execute: boolean, accounts: string[]): Rpc<any>;
+  /** 一句话 → 解析 → 校验 →(execute 为真时)发单。主进程要求界面已经确认过一次(SENSITIVE_RPC) */
+  submit(text: string, execute: boolean, accounts: string[]): Rpc<RpcResult<'instruction.submit'>>;
   /** 回执就是改完之后的那份设置。键名写错引擎会当场拒、不写盘(config 对每一段都查未知键)。 */
   patchSettings(patch: SettingsPatch): Rpc<RpcResult<'settings.patch'>>;
   setApiKey(secret: string): Rpc<RpcResult<'keychain.set'>>;
