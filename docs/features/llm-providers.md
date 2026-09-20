@@ -34,3 +34,6 @@ Anthropic 走 `@anthropic-ai/sdk`,OpenAI 兼容端点走 `openai`(底层仍是�
 
 `tests/provider-http.spec.ts` 起一个本机 http 端点把这条路真的走一遍(URL 拼接、Authorization、
 按状态码降级、5xx 重试后成功、端点关着时的报错),全程离线。
+
+**形状在引擎契约里**(`engine-ts/src/contract/llm.ts`):目录、当前配置、测试回执,界面从 `bridge.ts` 拿同一份。`llm.test` 测不通
+不是 RPC 报错,是 `ok: false` 的回执;带一把没保存的 key 先试时用的就是那一把,试一下不等于保存(`tests/llm-rpc.spec.ts` 用本机假端点钉着)。

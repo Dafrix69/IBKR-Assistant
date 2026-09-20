@@ -489,3 +489,23 @@ killswitch + 上面那 6 个方法),用基类 getter 把它们摊成 `this.store
   等 TWS 开着:`cd engine-ts && npm run probe`;然后在**模拟账户**里从真界面建一条追踪、切一次启停、点一次立即平仓
   (走过 `tracker.add` / `update` / `close_now` 与 `__confirmed` 那条承重的耦合)。这一步要人来点——会发单的操作不由助手代做,模拟账户也一样。
   都对了,再开分支拆 `engine.ts`。
+
+**2026-09-20,大模型接入:`llm.catalog` / `llm.patch` / `llm.test` 迁完(已迁 44 个,还剩 33 个)。** 设置域到此全部在契约里。
+之前把它往后放,理由是"返回来自 `providers.ts`,形状由对方定"——看下来不对:由对方定的只有 `usage` 里的数值,目录、当前配置、
+测试回执的形状都是我们自己的。
+
+- 特征测试 `tests/llm-rpc.spec.ts`(8 个)。`llm.test` 从来没被钉过,因为它要真打一次请求;这里起一个本机 http 服务当端点
+  (127.0.0.1,同 `provider-http.spec` 的办法),连通 / 401 / 端点关着三条路都走:带一把没保存的 key 先试时用的就是那一把、
+  试一下不等于保存、测不通是 `ok: false` 的回执而不是 RPC 报错、报错里不回显 key。不读也不写系统凭证库里的任何密钥。
+  我自己先写错了两处(事件回调收的是整行 JSON 而不是 `(event, payload)`;假 key 里放了中文,HTTP 头不收),都是测试的错,不是引擎的。
+- 变异 9 处 9 处全红。最值得留意的一条:**schema 漏列 `api_key`**——`llm.test` 不是 strict 的,zod 会把没列的键静默丢掉,
+  那把没保存的 key 就被无声忽略、改用凭证库里的旧 key 去测,界面上看到的是"连通",测的却不是用户刚填的那一把。特征测试抓得住。
+- `LLMConfig` 的定义搬进 `contract/llm.ts`,`config.ts` 转出(同 `Limits` / `Policies`);`PROVIDERS` / `providerCatalog` / 两个解析器的
+  `test()` 标成契约类型。测试回执写成按 `ok` 区分的联合;`usage` 的数值在"对方回包"的边界上认成 `LlmUsage`(两处断言,都在
+  `providers.ts`——那本来就是允许回包结构松的四个文件之一)。`config.js` / `providers.js` 编译产物去掉注释逐字节一致。
+- `llm.patch` 顶层 strict、登记进 `SENSITIVE_METHODS`(`main.js` 那头本来就有,双向对账过了);`llm` **里面**不在 schema 校验——
+  哪几项能改由 handler 的白名单说(「不允许修改的字段:bogus」,golden-rpc 钉着),同 `settings.patch` 的处理。
+- 界面:`store/llm.ts` 手抄的三个接口换成契约转出(手抄那份字段全标成可选,还少了 `key_hint` 与 `keychain_*`);`Access.tsx` 的
+  `collect()` 直接标成 `LlmPatch`,测试结果的 state 从 `any` 收成"回执 | 正在测"的联合、渲染处按 `'pending' in` / `ok` 收窄。
+  测试失败时界面自己拼的那张卡补上了 `provider` / `model` 两项(联合类型要求的)。
+- 反向验证:契约改四个字段名,引擎 14 处、界面 7 处(含交易页就绪清单读 `key_configured` 的那一处)编译不过。真进程冒烟 46 / 46。

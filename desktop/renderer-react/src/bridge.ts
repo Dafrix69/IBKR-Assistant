@@ -72,6 +72,7 @@ export interface ConfirmOptions {
 // 两头一起编译不过。只许 `import type`,只许进 contract/ 顶层的类型文件(它们不 import 任何东西,
 // 界面的 tsc 不装引擎依赖也解析得了);contract/schema/ 是引擎自己的运行时校验,这里不碰。
 import type {
+  LLMConfig, LlmCatalog, LlmPatch, LlmProvider, LlmTestResult,
   BookL1, BookLevel, BookLiquidity, BookSnapshot, MacroBoard, MacroRow,
   BacktestCurvePoint, BacktestRunResult, BacktestRunSpec, BacktestStrategy, BacktestTrade, CustomRules, CustomRulesInput,
   RuleConditionInput, RuleOperandInput,
@@ -82,6 +83,7 @@ import type {
 } from '../../../engine-ts/src/contract/index';
 
 export type {
+  LLMConfig, LlmCatalog, LlmPatch, LlmProvider, LlmTestResult,
   BookL1, BookLevel, BookLiquidity, BookSnapshot, MacroBoard, MacroRow,
   BacktestCurvePoint, BacktestRunResult, BacktestRunSpec, BacktestStrategy, BacktestTrade, CustomRules, CustomRulesInput,
   RuleConditionInput, RuleOperandInput,
@@ -156,9 +158,10 @@ export interface DafriBridge {
   screenerDeviation(spec: unknown): Rpc<any>;
   appInfo(): Rpc<AppInfo>;
 
-  llmCatalog(): Rpc<any>;
-  llmPatch(llm: unknown): Rpc<any>;
-  llmTest(llm: unknown, apiKey?: string): Rpc<any>;
+  llmCatalog(): Rpc<RpcResult<'llm.catalog'>>;
+  /** llm 的对象字面量要直接标成 LlmPatch(同 TrackerAddSpec):写错的键名编译期就查得出来 */
+  llmPatch(llm: LlmPatch): Rpc<RpcResult<'llm.patch'>>;
+  llmTest(llm: LlmPatch, apiKey?: string): Rpc<RpcResult<'llm.test'>>;
   setApiKeyFor(secret: string, provider: string): Rpc<any>;
 
   scanTws(): Rpc<any>;

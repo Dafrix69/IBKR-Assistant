@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Badge, Button, Card, Input, InputNumber, List, Segmented, Select, Space, Steps } from 'antd';
 import { dafri, errorMessage } from '../bridge';
+import type { LlmPatch, LlmTestResult } from '../bridge';
 import { showBanner } from '../store/banner';
 import { toggleBrokerConnection } from '../store/broker';
 import { loadLlmCatalog, useLlmCatalog, type LlmProvider } from '../store/llm';
@@ -538,7 +539,8 @@ function LlmPanel() {
   const [maxTokens, setMaxTokens] = useState<number | null>(null);
   const [timeout, setTimeoutS] = useState<number | null>(null);
   const [apiKey, setApiKey] = useState('');
-  const [test, setTest] = useState<any>(null);
+  // 引擎的回执按 ok 分两支(契约的 LlmTestResult);界面自己另有一个"正在测"的占位
+  const [test, setTest] = useState<LlmTestResult | { pending: true } | null>(null);
   const [testing, setTesting] = useState(false);
 
   useEffect(() => {
@@ -575,8 +577,8 @@ function LlmPanel() {
   if (sameProvider && current?.model && !models.includes(current.model)) models.unshift(current.model);
   const configured = Boolean(catalog?.key_configured?.[provider]);
 
-  function collect() {
-    const patch: Record<string, unknown> = {
+  function collect(): LlmPatch {
+    const patch: LlmPatch = {
       provider,
       model: customModel.trim() || model,
       max_tokens: Number(maxTokens),
@@ -604,7 +606,7 @@ function LlmPanel() {
       // 允许带一把还没保存的 key 先试,试通了再保存
       setTest(await dafri.llmTest(collect(), apiKey.trim() || undefined));
     } catch (err) {
-      setTest({ ok: false, error: errorMessage(err) });
+      setTest({ ok: false, error: errorMessage(err), provider, model: customModel.trim() || model });
     } finally {
       setTesting(false);
     }
@@ -709,15 +711,15 @@ function LlmPanel() {
         </Button>
       </div>
       <div className="cards">
-        {test?.pending ? (
+        {test === null ? null : 'pending' in test ? (
           <Working>正在测试…会真打一次最小请求</Working>
-        ) : test && test.ok ? (
+        ) : test.ok ? (
           <InfoCard tone="ok" title={`连通 · ${test.model}`} meta={[`${test.latency_ms} ms`, `结构化输出:${test.structured_mode}`, `in ${test.usage?.input_tokens ?? '—'} / out ${test.usage?.output_tokens ?? '—'}`]}>
             {test.structured_mode === 'json_object' ? <div className="reason">端点不支持 json_schema,已降级为 json_object + 提示词内嵌 schema,拒绝率可能升高。</div> : null}
           </InfoCard>
-        ) : test ? (
+        ) : (
           <InfoCard tone="bad" title="测试失败" body={test.error} />
-        ) : null}
+        )}
       </div>
       {meta.docs ? <p className="hint">{meta.docs}</p> : null}
     </section>

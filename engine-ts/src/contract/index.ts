@@ -11,6 +11,7 @@ import type {
   AlertsCreateParams, AlertsDeleteParams, AlertsPollResult, AlertsRefreshParams, AlertsRefreshResult, Watch,
 } from "./alerts.js";
 import type { BookSnapshot, BookSnapshotParams } from "./book.js";
+import type { LlmCatalog, LlmPatchParams, LlmTestParams, LlmTestResult } from "./llm.js";
 import type { MacroBoard, MacroBoardParams } from "./macro.js";
 import type {
   BacktestParseRulesParams, BacktestRunParams, BacktestRunResult, BacktestStrategy, CustomRules,
@@ -43,6 +44,7 @@ export type * from "./backtest.js";
 export type * from "./book.js";
 export type * from "./macro.js";
 export type * from "./ideas.js";
+export type * from "./llm.js";
 export type * from "./options.js";
 export type * from "./pool.js";
 export type * from "./positions.js";
@@ -62,6 +64,12 @@ export interface RpcMethods {
   "alerts.poll": { params: NoParams; result: AlertsPollResult };
 
   "book.snapshot": { params: BookSnapshotParams; result: BookSnapshot };
+
+  "llm.catalog": { params: NoParams; result: LlmCatalog };
+  /** 回执就是改完之后的 llm.catalog */
+  "llm.patch": { params: LlmPatchParams; result: LlmCatalog };
+  /** 测不通不是 RPC 报错,是 ok: false 的回执 */
+  "llm.test": { params: LlmTestParams; result: LlmTestResult };
 
   "macro.board": { params: MacroBoardParams; result: MacroBoard };
 
@@ -120,7 +128,7 @@ export type RpcMethodName = keyof RpcMethods;
  * 这是本目录里唯一一个运行时的值——界面只 import type,碰不到它。
  */
 export const SENSITIVE_METHODS = [
-  "keychain.set", "settings.patch", "tracker.add", "tracker.update",
+  "keychain.set", "llm.patch", "settings.patch", "tracker.add", "tracker.update",
 ] as const satisfies readonly RpcMethodName[];
 export type RpcParams<M extends RpcMethodName> = RpcMethods[M]["params"];
 export type RpcResult<M extends RpcMethodName> = RpcMethods[M]["result"];

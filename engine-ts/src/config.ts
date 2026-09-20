@@ -7,6 +7,7 @@
 import * as fsModule from "node:fs";
 // 限额与策略开关的形状界面也要用,定义在 contract/settings.ts;这里转出,老的 import 不用改。
 export type { Limits, Policies } from "./contract/settings.js";
+import type { LLMConfig } from "./contract/llm.js";
 import type { Limits, Policies } from "./contract/settings.js";
 import * as path from "node:path";
 import * as os from "node:os";
@@ -103,17 +104,8 @@ export interface IndexConfig {
 /** 内置的期货映射:只放真机核对过的。别的指数(NDX→NQ、RUT→RTY)在配置里自己填。 */
 export const DEFAULT_INDEX_FUTURES: Record<string, [string, string]> = { SPX: ["ES", "CME"] };
 
-export interface LLMConfig {
-  provider: string;
-  model: string;
-  effort: string;
-  temperature: number | null;
-  base_url: string;
-  max_tokens: number;
-  timeout_s: number;
-  keychain_service: string;
-  keychain_account: string;
-}
+// LLMConfig 的定义在契约里(contract/llm.ts):llm.catalog 把它原样交给界面
+export type { LLMConfig } from "./contract/llm.js";
 
 /** 供应商目录里 config 校验需要的最小面(完整目录在 providers.ts)。 */
 export const PROVIDER_META: Record<string, { needs_base_url: boolean; default_model: string }> = {

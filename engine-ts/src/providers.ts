@@ -10,6 +10,7 @@ import { fileURLToPath } from "node:url";
 
 import type { LLMConfig } from "./config.js";
 import { LLMError } from "./config.js";
+import type { LlmProvider, LlmTestProbe, LlmUsage } from "./contract/llm.js";
 import { getSecret } from "./keychain.js";
 import type { FewShotPair, PromptBundle } from "./prompts.js";
 import { fingerprint } from "./prompts.js";
@@ -18,7 +19,7 @@ export { LLMError };
 export { validateBaseUrl } from "./config.js";
 
 // 界面上的供应商目录。models 只是预设,用户可以填任意模型名。
-export const PROVIDERS: Record<string, Record<string, unknown>> = {
+export const PROVIDERS: Record<string, Omit<LlmProvider, "key">> = {
   anthropic: {
     label: "Anthropic(Claude)",
     default_model: "claude-opus-5",
@@ -65,7 +66,7 @@ export class LLMResponse {
   }
 }
 
-export function providerCatalog(): Array<Record<string, unknown>> {
+export function providerCatalog(): LlmProvider[] {
   return Object.entries(PROVIDERS).map(([key, meta]) => ({ key, ...meta }));
 }
 
@@ -259,7 +260,7 @@ export class AnthropicParser {
     }
   }
 
-  async test(apiKey?: string | null): Promise<Record<string, unknown>> {
+  async test(apiKey?: string | null): Promise<LlmTestProbe> {
     const probe = new AnthropicParser(
       { ...this.config, max_tokens: 1024 }, apiKey ?? this.apiKey,
     );
@@ -286,7 +287,7 @@ export class AnthropicParser {
       model: response?.model ?? probe.config.model,
       latency_ms: latencyMs,
       structured_mode: "json_schema",
-      usage: anthropicUsage(response?.usage),
+      usage: anthropicUsage(response?.usage) as LlmUsage, // 数值是对方回包里的,键是上面挑的
       sample: text.slice(0, 200),
     };
   }
@@ -456,7 +457,7 @@ export class OpenAICompatibleParser {
     }
   }
 
-  async test(apiKey?: string | null): Promise<Record<string, unknown>> {
+  async test(apiKey?: string | null): Promise<LlmTestProbe> {
     const probe = new OpenAICompatibleParser(this.config, apiKey ?? this.apiKey);
     const messages: Msg[] = [
       { role: "system", content: "你只输出 JSON。" },
@@ -478,7 +479,7 @@ export class OpenAICompatibleParser {
       model: (data["model"] as string) ?? this.config.model,
       latency_ms: latencyMs,
       structured_mode: mode,
-      usage: openaiUsage(data["usage"]),
+      usage: openaiUsage(data["usage"]) as LlmUsage, // 同上
       sample: String(((choice["message"] as Msg) ?? {})["content"] ?? "").slice(0, 200),
     };
   }

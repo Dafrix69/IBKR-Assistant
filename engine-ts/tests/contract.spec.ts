@@ -23,7 +23,6 @@ const LEGACY_METHODS = [
   "broker.catalog", "broker.connect", "broker.disconnect", "broker.select",
   "futu.diagnose", "futu.launch", "futu.scan", "futu.set_password", "futu.unlock",
   "instruction.submit",
-  "llm.catalog", "llm.patch", "llm.test",
   "pa.analyze", "pa.comment", "pa.timeframes",
   "pending.list", "pending.poll",
   "records.get", "records.list",
@@ -71,8 +70,8 @@ describe("契约:迁移只许往前走", () => {
     expect(LEGACY_METHODS.filter((m) => !names.includes(m)), "引擎里已经没有这个方法了").toEqual([]);
   });
 
-  it("名单只许变短:现在是 36 个,改这个数的时候只能往小里改", () => {
-    expect(LEGACY_METHODS.length).toBeLessThanOrEqual(36);
+  it("名单只许变短:现在是 33 个,改这个数的时候只能往小里改", () => {
+    expect(LEGACY_METHODS.length).toBeLessThanOrEqual(33);
     expect(new Set(LEGACY_METHODS).size).toBe(LEGACY_METHODS.length);
   });
 });
@@ -207,6 +206,16 @@ describe("契约:结构错由 schema 报,领域错由 handler 报", () => {
     // macro.board 不挑参数:给什么都不该把行情带挡在外面(直接看 schema——真跑一次会去打公开数据源,测试不出网)
     expect(PARAMS_SCHEMAS["macro.board"].safeParse({ force: "yes", 多余的键: 1 })).toMatchObject({ success: true, data: { force: true } });
     expect(PARAMS_SCHEMAS["macro.board"].safeParse({})).toMatchObject({ success: true, data: {} });
+  });
+
+  it("llm.patch 顶层是 strict 的(会动配置);里面哪几项能改还是 handler 的白名单说;报错不回显密钥", async () => {
+    expect((await errorOf("llm.patch", { llm: {}, extra: 1 })).message).toBe("llm.patch 的参数不对:有不认识的键:extra(这个方法不收没登记的键,没有照单全收)");
+    expect((await errorOf("llm.patch", { llm: {}, __confirmed: true })).message).toMatch(/有不认识的键:__confirmed/);
+    expect(await errorOf("llm.patch", { llm: [1] })).toEqual({ code: -32602, message: "llm.patch 的参数不对:llm 应为 object,收到 array" });
+    expect((await errorOf("llm.patch", { llm: { bogus: 1 } })).message).toBe("不允许修改的字段:bogus"); // golden-rpc 钉着
+    // api_key 类型不对:说的是"哪个字段、要什么、收到什么类型",值本身不出现在报错里
+    const leaked = await errorOf("llm.test", { api_key: ["sk-should-not-appear"] });
+    expect(leaked).toEqual({ code: -32602, message: "llm.test 的参数不对:api_key 应为 string,收到 array" });
   });
 
   it("schema 不比老 handler 严:步长给数字串照收;改标签不带 tag = 清掉", async () => {

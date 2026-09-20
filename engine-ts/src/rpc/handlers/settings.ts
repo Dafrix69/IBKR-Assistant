@@ -1,5 +1,5 @@
 /** llm.* / settings.* / keychain.set / data.export:大模型接入与设置。
- *  settings.get / settings.patch / keychain.set / data.export 已经在契约里(contract/settings.ts);llm.* 还是老方法。 */
+ *  整个域已经在契约里(contract/settings.ts、contract/llm.ts):入参过了 schema 才到这里,返回对着契约类型检查。 */
 import * as fs from "node:fs";
 
 import { patchConfigFile } from "../../config.js";
@@ -7,7 +7,8 @@ import type { LLMConfig } from "../../config.js";
 import { KeychainError, hasSecret, setSecret } from "../../keychain.js";
 import { PROVIDERS, buildParser, providerCatalog } from "../../providers.js";
 import type {
-  DataExportParams, KeychainSetParams, RpcResult, SettingsPatchParams, SettingsView,
+  DataExportParams, KeychainSetParams, LlmCatalog, LlmPatchParams, LlmTestParams, LlmTestProbe, LlmTestResult, RpcResult,
+  SettingsPatchParams, SettingsView,
 } from "../../contract/index.js";
 import { RpcError } from "../../rpcError.js";
 import { HandlerBase } from "../context.js";
@@ -16,21 +17,19 @@ import { contractMethods } from "../contractMethods.js";
 
 export class SettingsHandlers extends HandlerBase {
   methods(): MethodTable {
-    return {
-      "llm.catalog": (p) => this.llmCatalog(p),
+    return contractMethods({
+      "llm.catalog": () => this.llmCatalog(),
       "llm.patch": (p) => this.llmPatch(p),
       "llm.test": (p) => this.llmTest(p),
-      ...contractMethods({
-        "settings.get": () => this.settingsGet(),
-        "settings.patch": (p) => this.settingsPatch(p),
-        "keychain.set": (p) => this.keychainSet(p),
-        "data.export": (p) => this.dataExport(p),
-      }),
-    };
+      "settings.get": () => this.settingsGet(),
+      "settings.patch": (p) => this.settingsPatch(p),
+      "keychain.set": (p) => this.keychainSet(p),
+      "data.export": (p) => this.dataExport(p),
+    });
   }
 
   // ---- 大模型接入 ------------------------------------------------------
-  llmCatalog(_params: Rec): Rec {
+  llmCatalog(): LlmCatalog {
     const cfg = this.settings.llm;
     const keys: Record<string, boolean> = {};
     for (const name of Object.keys(PROVIDERS)) {
@@ -59,7 +58,7 @@ export class SettingsHandlers extends HandlerBase {
   }
 
   /** 改模型配置。切供应商时 keychain_account 跟着切,避免用错那把 key。 */
-  llmPatch(params: Rec): Rec {
+  llmPatch(params: LlmPatchParams): LlmCatalog {
     const patch: Rec = { ...(params["llm"] ?? {}) };
     const allowed = new Set([
       "provider", "model", "base_url", "effort", "temperature", "max_tokens", "timeout_s",
@@ -74,12 +73,12 @@ export class SettingsHandlers extends HandlerBase {
     }
     this.engine.store.audit("ui", "llm_patch", { patch });
     this.ctx.reload();
-    this.emit("llm", this.llmCatalog({}));
-    return this.llmCatalog({});
+    this.emit("llm", this.llmCatalog());
+    return this.llmCatalog();
   }
 
   /** 真打一次最小请求。允许带一把未保存的 key 先试。 */
-  async llmTest(params: Rec): Promise<Rec> {
+  async llmTest(params: LlmTestParams): Promise<LlmTestResult> {
     let cfg = this.settings.llm;
     const overrides: Rec = params["llm"] ?? {};
     if (Object.keys(overrides).length) {
@@ -90,9 +89,8 @@ export class SettingsHandlers extends HandlerBase {
     }
     try {
       const parser = buildParser(cfg, params["api_key"] || null);
-      const result = await parser.test();
-      result["provider"] = cfg.provider;
-      return result;
+      const result: LlmTestProbe = await parser.test();
+      return { ...result, provider: cfg.provider };
     } catch (exc) {
       return {
         ok: false,

@@ -1,35 +1,12 @@
 /** 大模型目录与当前配置。启动就读一次:交易指令页的就绪清单要知道 Key 配没配。 */
 import { create } from 'zustand';
 import { dafri, errorMessage } from '../bridge';
+import type { LLMConfig, LlmCatalog, LlmProvider } from '../bridge';
 import { showBanner } from './banner';
 
-export interface LlmProvider {
-  key: string;
-  label: string;
-  default_model?: string;
-  models?: string[];
-  needs_base_url?: boolean;
-  default_base_url?: string;
-  supports_effort?: boolean;
-  supports_temperature?: boolean;
-  docs?: string;
-}
-
-export interface LlmCurrent {
-  provider: string;
-  model?: string;
-  base_url?: string;
-  effort?: string;
-  temperature?: number | null;
-  max_tokens?: number;
-  timeout_s?: number;
-}
-
-export interface LlmCatalog {
-  providers: LlmProvider[];
-  current: LlmCurrent;
-  key_configured?: Record<string, boolean>;
-}
+// 形状在引擎契约里(engine-ts/src/contract/llm.ts),从 bridge 拿;以前这里手抄过一份(字段全标成了可选,还少了 key_hint 与 keychain_*)
+export type { LlmCatalog, LlmProvider };
+export type LlmCurrent = LLMConfig;
 
 const useStore = create<{ catalog: LlmCatalog | null }>(() => ({ catalog: null }));
 let started = false;
