@@ -52,6 +52,8 @@ import type {
   TrackerHeartbeat,
   PendingItem, PendingPollResult, RecordAccount, RecordFill, RecordIbkr, RecordInput, RecordLlm, RecordStatusEvent,
   TradeRecord, TradeRecordSummary,
+  ChaseInfo, HostedOrderRow, HostedTrack, TrackBlocked, TrackEvaluation, TrackFired, TrackPollRow,
+  TrackerCloseNowResult, TrackerPollResult, TrackerReconcileResult,
 } from '../../../engine-ts/src/contract/index';
 
 export type {
@@ -70,6 +72,8 @@ export type {
   BreakerBrief, BreakerState, IndexSpot, ProtectionCooldown, SystemSelftest, SystemStatus, TrackerHeartbeat,
   PendingItem, PendingPollResult, RecordAccount, RecordFill, RecordIbkr, RecordInput, RecordLlm, RecordStatusEvent,
   TradeRecord, TradeRecordSummary,
+  ChaseInfo, HostedOrderRow, HostedTrack, TrackBlocked, TrackEvaluation, TrackFired, TrackPollRow,
+  TrackerCloseNowResult, TrackerPollResult, TrackerReconcileResult,
 };
 /** 界面这边一直用的名字;引擎契约里分别叫 AccountView / SettingsView / Policies / Limits / ProtectionsConfig。 */
 export type Account = AccountView;
@@ -197,10 +201,11 @@ export interface DafriBridge {
   addTracker(spec: TrackerAddSpec): Rpc<RpcResult<'tracker.add'>>;
   updateTracker(spec: RpcParams<'tracker.update'>): Rpc<RpcResult<'tracker.update'>>;
   deleteTracker(id: string): Rpc<RpcResult<'tracker.delete'>>;
-  pollTrackers(): Rpc<any>;
+  pollTrackers(): Rpc<RpcResult<'tracker.poll'>>;
   previewSpotTarget(key: string, spotTarget: number, chaseMaxPct?: number | null): Rpc<RpcResult<'tracker.target_preview'>>;
-  reconcileTrackers(): Rpc<any>;
-  closePositionNow(id: string): Rpc<any>;
+  reconcileTrackers(): Rpc<RpcResult<'tracker.reconcile'>>;
+  /** 直接发一张平仓单:主进程要求界面已经确认过一次(SENSITIVE_RPC) */
+  closePositionNow(id: string): Rpc<RpcResult<'tracker.close_now'>>;
 
   /**
    * 股票池的两个开关:板块成分股身上的「盯价位」/「盯异动」。开 = 建对应的行,关 = 删掉它。

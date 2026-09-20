@@ -56,6 +56,9 @@ import type {
   Track, TrackerAddParams, TrackerDeleteParams, TrackerTargetPreviewParams, TrackerTargetPreviewResult,
   TrackerUpdateParams,
 } from "./tracker.js";
+import type {
+  TrackerCloseNowParams, TrackerCloseNowResult, TrackerPollResult, TrackerReconcileResult,
+} from "./trackerloop.js";
 
 export type * from "./alerts.js";
 export type * from "./backtest.js";
@@ -76,6 +79,7 @@ export type * from "./sectors.js";
 export type * from "./settings.js";
 export type * from "./system.js";
 export type * from "./tracker.js";
+export type * from "./trackerloop.js";
 
 /** 不带参数的方法。界面传 `{}`,多余的键引擎不看。 */
 export type NoParams = Record<string, never>;
@@ -185,6 +189,12 @@ export interface RpcMethods {
   "tracker.update": { params: TrackerUpdateParams; result: { track: Track } };
   "tracker.delete": { params: TrackerDeleteParams; result: { deleted: true } };
   "tracker.target_preview": { params: TrackerTargetPreviewParams; result: TrackerTargetPreviewResult };
+  /** 判触发、该平就平。节拍器在引擎里跑时回的是上一轮的结果——两处同时判就是两张平仓单 */
+  "tracker.poll": { params: NoParams; result: TrackerPollResult };
+  /** 和券商侧的托管单对齐:挂 / 改价 / 撤。动态目标的停损价在这里按秒棘轮调整 */
+  "tracker.reconcile": { params: NoParams; result: TrackerReconcileResult };
+  /** 手动一键平仓:直接发一张平仓单,走和自动平仓同一条路、同一套闸门 */
+  "tracker.close_now": { params: TrackerCloseNowParams; result: TrackerCloseNowResult };
 }
 
 export type RpcMethodName = keyof RpcMethods;
@@ -196,7 +206,7 @@ export type RpcMethodName = keyof RpcMethods;
  */
 export const SENSITIVE_METHODS = [
   "broker.connect", "broker.select", "futu.launch", "futu.set_password", "futu.unlock", "keychain.set", "llm.patch",
-  "settings.patch", "tracker.add", "tracker.update", "tws.launch",
+  "settings.patch", "tracker.add", "tracker.close_now", "tracker.update", "tws.launch",
 ] as const satisfies readonly RpcMethodName[];
 export type RpcParams<M extends RpcMethodName> = RpcMethods[M]["params"];
 export type RpcResult<M extends RpcMethodName> = RpcMethods[M]["result"];

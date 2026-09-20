@@ -5,7 +5,11 @@
  * 引擎负责判断与发单,这里只是按秒驱动它并把结果摆出来。
  */
 import { create } from 'zustand';
-import { dafri, errorMessage, type PositionRow, type SpotTarget, type Targets, type Track } from '../bridge';
+import {
+  dafri, errorMessage,
+  type ChaseInfo, type HostedOrderRow, type PositionRow, type SpotTarget, type Targets, type Track,
+  type TrackPollRow, type TrackerHeartbeat,
+} from '../bridge';
 import { pushNotification } from './notify';
 import { loadRecords } from './records';
 import { getStatus } from './status';
@@ -24,50 +28,17 @@ export type TrackTargets = Partial<Targets>;
 export type SpotTargetRow = SpotTarget;
 
 /** 追价平仓追到哪了(引擎每轮给):轮 = 秒;挂的价只朝成交方向动,让到 floor 为止 */
-export interface ChaseInfo {
-  rounds: number;
-  limit: number | null;
-  natural?: number | null;
-  floor?: number | null;
-}
+export type { ChaseInfo };
 
+/** 盯盘一行:引擎给的那一行(契约里的 TrackPollRow),外加这个 store 自己并进去的 `blocked`
+ *  ——引擎把被拦下的那几条单列在 blocked 数组里,界面要按行显示,所以在这里合到行上。 */
+export type LiveRow = TrackPollRow & { blocked?: string[] };
 
-export interface LiveRow {
-  id: string;
-  state?: string;
-  price?: number | null;
-  peak?: number | null;
-  trail_stop?: number | null;
-  unrealized_pnl?: number | null;
-  unrealized_pct?: number | null;
-  reason?: string;
-  stop_effective?: number | null;
-  profit_peak?: number | null;
-  profit_drawdown_threshold?: number | null;
-  profit_trail_stop?: number | null;
-  spot_target?: SpotTargetRow | null;
-  blocked?: string[];
-  /** 正在追价平仓(触发了,那张单每秒改到立刻成交的价) */
-  sweeping?: boolean;
-  chase?: ChaseInfo;
-}
-
-export interface HostedOrder {
-  kind: string;
-  label: string;
-}
+/** 挂在券商侧的一张托管单 */
+export type HostedOrder = HostedOrderRow;
 
 /** 引擎里盯盘节拍器的心跳(TradingEngine.trackerHeartbeat)。 */
-export interface LoopHeartbeat {
-  running: boolean;
-  interval_ms: number;
-  ticks: number;
-  slow_ticks: number;
-  last_ms: number | null;
-  max_ms: number;
-  age_ms: number | null;
-  last_error: string;
-}
+export type LoopHeartbeat = TrackerHeartbeat;
 
 export interface TrackerSnapshot {
   positions: Position[];

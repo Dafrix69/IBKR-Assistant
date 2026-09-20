@@ -228,7 +228,7 @@ describe("RPC 层:节拍器跟着引擎实例走", () => {
 
   it("没连券商就不起节拍器,tracker.poll 就地算一次", async () => {
     const s = server();
-    const out = await s.domains.tracker.trackerPoll({});
+    const out = await s.domains.tracker.trackerPoll();
     expect(s.engine.trackerLoop["running"]).toBe(false);
     expect(out["rows"]).toEqual([]);
   });

@@ -141,8 +141,8 @@ describe("组合平仓:从轮询到发单", () => {
 
     const out = await engine.pollTrackers(NOON);
     expect(out["fired"], JSON.stringify(out)).toHaveLength(1);
-    expect(out["fired"][0].state).toBe(tk.STATE_PROFIT_TRAIL);
-    expect(out["fired"][0].reason).toContain("阈值 30%");
+    expect(out["fired"][0]!.state).toBe(tk.STATE_PROFIT_TRAIL);
+    expect(out["fired"][0]!.reason).toContain("阈值 30%");
     expect(router.placed).toHaveLength(1);
   });
 
@@ -162,7 +162,7 @@ describe("组合平仓:从轮询到发单", () => {
     b.engine.store.updateTrack(t2["id"], { peak: 8.0 });
     const out = await b.engine.pollTrackers(LATE);                     // 7.00 < 7.1375
     expect(out["fired"], JSON.stringify(out)).toHaveLength(1);
-    expect(out["fired"][0].reason).toContain("阈值 15%");
+    expect(out["fired"][0]!.reason).toContain("阈值 15%");
   });
 
   it("实盘账户没开 allow_combo_live 就发不出去", async () => {
@@ -172,7 +172,7 @@ describe("组合平仓:从轮询到发单", () => {
     const out = await a.engine.pollTrackers(NOON);
     expect(out["fired"]).toEqual([]);
     expect(a.router.placed).toEqual([]);
-    expect(out["blocked"][0].blockers).toContain(tk.BLOCK_COMBO_LIVE);
+    expect(out["blocked"][0]!.blockers).toContain(tk.BLOCK_COMBO_LIVE);
 
     const b = buildEngine(rows, { allow_live_trading: true, allow_combo_live: true });
     addComboTrack(b.engine, rows, { take_profit: 0.05 }, "主账户");
@@ -195,7 +195,7 @@ describe("组合平仓:从轮询到发单", () => {
     const out = await engine.pollTrackers(NOON);
     expect(out["fired"]).toEqual([]);
     expect(router.placed).toEqual([]);
-    expect(out["rows"][0].state).toBe(tk.STATE_HOLDING);
+    expect(out["rows"][0]!.state).toBe(tk.STATE_HOLDING);
   });
 
   it("隔夜:正股表说休市,但 SPX 期权在隔夜段里,照样能平", async () => {
@@ -219,7 +219,7 @@ describe("组合平仓:从轮询到发单", () => {
     const out = await engine.pollTrackers(OVERNIGHT);
     expect(out["fired"]).toEqual([]);
     expect(router.placed).toEqual([]);
-    expect(out["blocked"][0].blockers[0]).toContain("当前时段不能交易");
+    expect(out["blocked"][0]!.blockers[0]).toContain("当前时段不能交易");
   });
 
   it("查不到时段就退回正股表", async () => {
@@ -257,8 +257,8 @@ describe("组合平仓:成交之后的收尾", () => {
 
     const fired = (await engine.pollTrackers(NOON))["fired"];
     expect(fired).toHaveLength(1);
-    const recordId = fired[0].record_id;
-    const orderId = fired[0].order_id;
+    const recordId = fired[0]!.record_id!;
+    const orderId = fired[0]!.order_id!;
 
     // 追踪已落闩:即使还没收到回报,也绝不会再发第二枪
     const afterFire = engine.store.getTrack(track["id"])!;
@@ -286,7 +286,7 @@ describe("组合平仓:成交之后的收尾", () => {
     const out = await engine.pollTrackers(NOON);
     expect(out["fired"]).toEqual([]);
     expect(router.placed).toHaveLength(1);
-    expect(out["rows"][0].state).toBe("closed");
+    expect(out["rows"][0]!.state).toBe("closed");
     expect(engine.store.getTrack(track["id"])!["enabled"]).toBe(false);
   });
 
@@ -294,19 +294,19 @@ describe("组合平仓:成交之后的收尾", () => {
     const rows = butterflyLegs([1.20, 0.90, 0.70]);
     const { engine } = buildEngine(rows);
     addComboTrack(engine, rows, { take_profit: 0.05 });
-    const fired = (await engine.pollTrackers(NOON))["fired"][0];
+    const fired = (await engine.pollTrackers(NOON))["fired"][0]!;
 
     const trade = {
       order: { permId: 9001, orderId: fired.order_id },
       orderStatus: { status: "Filled", filled: 1, remaining: 1 },   // 还剩一组没成
       contract: { symbol: "SPX" },
     };
-    (engine as any).indexPlacement(fired.record_id, {
-      record_id: fired.record_id, order_id: fired.order_id, perm_id: 9001,
+    (engine as any).indexPlacement(fired.record_id!, {
+      record_id: fired.record_id!, order_id: fired.order_id, perm_id: 9001,
       status: "Submitted", limit_price: null, detail: {},
     });
     engine.onOrderStatus(trade);
-    expect(engine.store.getRecord(fired.record_id)!["final_status"]).toBe("partially_filled");
+    expect(engine.store.getRecord(fired.record_id!)!["final_status"]).toBe("partially_filled");
   });
 });
 

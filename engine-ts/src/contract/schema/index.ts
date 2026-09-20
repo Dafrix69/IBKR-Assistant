@@ -40,7 +40,8 @@ import {
 import { DataExportParamsSchema, KeychainSetParamsSchema, SettingsPatchParamsSchema } from "./settings.js";
 import { BreakerHaltParamsSchema } from "./system.js";
 import {
-  TrackerAddParamsSchema, TrackerDeleteParamsSchema, TrackerTargetPreviewParamsSchema, TrackerUpdateParamsSchema,
+  TrackerAddParamsSchema, TrackerCloseNowParamsSchema, TrackerDeleteParamsSchema, TrackerTargetPreviewParamsSchema,
+  TrackerUpdateParamsSchema,
 } from "./tracker.js";
 
 export { describeIssue } from "./kit.js";
@@ -141,6 +142,9 @@ export const PARAMS_SCHEMAS: { readonly [M in RpcMethodName]: ParamsSchema<RpcPa
   "tracker.update": TrackerUpdateParamsSchema,
   "tracker.delete": TrackerDeleteParamsSchema,
   "tracker.target_preview": TrackerTargetPreviewParamsSchema,
+  "tracker.poll": NoParamsSchema,
+  "tracker.reconcile": NoParamsSchema,
+  "tracker.close_now": TrackerCloseNowParamsSchema,
 };
 
 /** 契约里登记了的方法名(排好序)。 */

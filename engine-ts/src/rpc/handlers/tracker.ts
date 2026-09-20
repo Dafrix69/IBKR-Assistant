@@ -1,10 +1,11 @@
 /** positions.list 与 tracker.*:持仓、追踪目标的建 / 改 / 删、试算、立即平仓。
- *  positions.list 与 tracker.list / add / update / delete / target_preview 已经在契约里(contract/positions.ts、contract/tracker.ts,
- *  tracker.* 的入参 schema 是 strict 的);tracker.poll / reconcile / close_now 还是老方法——它们的返回是 engine.ts 拼的,等它拆开再标类型。 */
+ *  整个域都在契约里(contract/positions.ts、contract/tracker.ts、contract/trackerloop.ts),
+ *  **入参 schema 全是 strict 的**:这个域在授权软件自动发单,不认识的键当场拒,不静默丢。 */
 import { BrokerError } from "../../broker.js";
 import { nowEt } from "../../config.js";
 import type {
-  PositionRow, RpcResult, Track, TrackerAddParams, TrackerDeleteParams, TrackerTargetPreviewParams, TrackerUpdateParams,
+  PositionRow, RpcResult, Track, TrackerAddParams, TrackerCloseNowParams, TrackerDeleteParams,
+  TrackerPollTick, TrackerSyncHostedTick, TrackerTargetPreviewParams, TrackerUpdateParams,
 } from "../../contract/index.js";
 import { RpcError } from "../../rpcError.js";
 import * as tkMod from "../../tracker.js";
@@ -52,10 +53,10 @@ function fillPnl(row: PositionRow): void {
 export class TrackerHandlers extends HandlerBase {
   methods(): MethodTable {
     return {
-      "tracker.poll": (p) => this.trackerPoll(p),
-      "tracker.reconcile": (p) => this.trackerReconcile(p),
-      "tracker.close_now": (p) => this.trackerCloseNow(p),
       ...contractMethods({
+        "tracker.poll": () => this.trackerPoll(),
+        "tracker.reconcile": () => this.trackerReconcile(),
+        "tracker.close_now": (p) => this.trackerCloseNow(p),
         "positions.list": () => this.positionsList(),
         "tracker.list": () => this.trackerList(),
         "tracker.add": (p) => this.trackerAdd(p),
@@ -363,14 +364,16 @@ export class TrackerHandlers extends HandlerBase {
 
   /** 盯盘结果。节拍器在跑就读它最新一轮(即答);没在跑(没连券商)才就地算一次。
    * 触发 / 被拦由节拍器当场推送("tracker" 事件),这里的返回只给界面画行。 */
-  async trackerPoll(_params: Rec): Promise<Rec> {
+  async trackerPoll(): Promise<RpcResult<"tracker.poll">> {
     const engine = this.engine;
     const loop = engine.trackerLoop;
     if (loop["running"] && loop["poll"]) {
-      return { ...(loop["poll"] as Rec), fired: [], blocked: [], loop: engine.trackerHeartbeat() };
+      // 节拍器在引擎里跑:回上一轮的行,**fired / blocked 清空**——那一轮已经发过通知了,
+      // 界面再显示一次就是同一件事报两遍
+      return { ...(loop["poll"] as TrackerPollTick), fired: [], blocked: [], loop: engine.trackerHeartbeat() };
     }
     const result = await this.ctx.trackerLock(() => engine.pollTrackers());
-    if ((result["fired"] as Rec[]).length || (result["blocked"] as Rec[]).length) {
+    if (result.fired.length || result.blocked.length) {
       this.emit("tracker", result);
     }
     return { ...result, loop: engine.trackerHeartbeat() };
@@ -393,20 +396,23 @@ export class TrackerHandlers extends HandlerBase {
   /** 界面按秒驱动:把券商侧托管单和追踪设置对齐。
    * 动态目标(利润回撤)的停损价在这里按秒棘轮调整;软件关掉,
    * 最后一次调整的托管单仍在券商侧站岗。 */
-  async trackerReconcile(_params: Rec): Promise<Rec> {
+  async trackerReconcile(): Promise<RpcResult<"tracker.reconcile">> {
     const engine = this.engine;
     const loop = engine.trackerLoop;
-    if (loop["running"] && loop["hosted"]) return { ...(loop["hosted"] as Rec), loop: engine.trackerHeartbeat() };
+    // trackerLoop 那两格是引擎自己塞的上一轮结果,类型上只能在这里认回来
+    if (loop["running"] && loop["hosted"]) {
+      return { ...(loop["hosted"] as TrackerSyncHostedTick), loop: engine.trackerHeartbeat() };
+    }
     const result = await this.ctx.trackerLock(() => engine.syncHosted());
     return { ...result, loop: engine.trackerHeartbeat() };
   }
 
   /** 手动一键平仓:走和自动平仓完全相同的那条路——包括同样的闸门。 */
-  async trackerCloseNow(params: Rec): Promise<Rec> {
+  async trackerCloseNow(params: TrackerCloseNowParams): Promise<RpcResult<"tracker.close_now">> {
     return this.ctx.trackerLock(() => this.trackerCloseNowLocked(params));
   }
 
-  private async trackerCloseNowLocked(params: Rec): Promise<Rec> {
+  private async trackerCloseNowLocked(params: TrackerCloseNowParams): Promise<RpcResult<"tracker.close_now">> {
     const track = this.engine.store.getTrack(String(params["id"] ?? ""));
     if (track === null) throw new RpcError(-32602, "没有这个追踪");
     const rows = Object.fromEntries(tkMod.withCombos(await this.livePositions()).map((r) => [r["key"], r]));
@@ -437,7 +443,7 @@ export class TrackerHandlers extends HandlerBase {
     // 券商那边已经有这条追踪的单(托管的止盈单、或正在追价的平仓单):改那张去追价,不另发一张——
     // 两张各平一次就是反向开仓
     if (await this.engine.sweepExisting(track, "手动平仓")) {
-      return { fired: { id: track["id"], symbol: track["symbol"], state: tkMod.STATE_STOP_LOSS, reason: "手动平仓:现有的单改到立刻成交的价追价" } };
+      return { fired: { id: String(track["id"]), symbol: String(track["symbol"]), state: tkMod.STATE_STOP_LOSS, reason: "手动平仓:现有的单改到立刻成交的价追价" } };
     }
     // 期权 / 组合的限价按各腿买卖价合成的立刻成交价算(拿不到才退回现价让滑点),和到价自动平仓同一口径
     let price = raw["market_price"];

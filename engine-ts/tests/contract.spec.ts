@@ -19,9 +19,8 @@ const BRIDGE = path.resolve(__dirname, "..", "..", "desktop", "renderer-react", 
 
 /** 还没迁进契约的老方法(入参与返回仍是松散的 Rec)。迁一个,从这里划掉一个;**不许往里加**。 */
 const LEGACY_METHODS = [
+  // 最后一个:返回是 engine.handleInstruction 在下单路径里拼的,等那一块拆开再标类型
   "instruction.submit",
-  // tracker 域迁了一半:这三样的返回是 engine.ts 在下单路径里拼的,等它拆开再标类型
-  "tracker.close_now", "tracker.poll", "tracker.reconcile",
 ];
 
 const dirs: string[] = [];
@@ -60,8 +59,8 @@ describe("契约:迁移只许往前走", () => {
     expect(LEGACY_METHODS.filter((m) => !names.includes(m)), "引擎里已经没有这个方法了").toEqual([]);
   });
 
-  it("名单只许变短:现在是 4 个,改这个数的时候只能往小里改", () => {
-    expect(LEGACY_METHODS.length).toBeLessThanOrEqual(4);
+  it("名单只许变短:现在是 1 个,改这个数的时候只能往小里改", () => {
+    expect(LEGACY_METHODS.length).toBeLessThanOrEqual(1);
     expect(new Set(LEGACY_METHODS).size).toBe(LEGACY_METHODS.length);
   });
 });

@@ -64,11 +64,14 @@ export interface TrackerHeartbeat {
   ticks: number;
   /** 超过一个节拍才跑完的轮数 */
   slow_ticks: number;
+  /** 上一轮耗时;一轮都还没跑过时 null */
   last_ms: number | null;
-  max_ms: number | null;
+  /** 开机以来最慢的一轮。从 0 起只增,**不是可空的** */
+  max_ms: number;
   /** 距上一轮多久(毫秒);一轮都还没跑过时 null */
   age_ms: number | null;
-  last_error: string | null;
+  /** 上一轮的报错;没出错是空串,**不是 null** */
+  last_error: string;
   /** 事件循环被同步代码占住的时长(毫秒):上一个节拍间隔里的最大值,与开机以来的最坏值。
    *  它高、而 last_ms 不高,说明节拍器没慢,是进程里别的事卡住了它。 */
   event_loop_last_ms: number | null;

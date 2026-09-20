@@ -5,7 +5,9 @@
  */
 import type { AccountConfig, EtNow, Settings } from "./config.js";
 import { hoursStatus, nowEt } from "./config.js";
+import type { PositionRow } from "./contract/positions.js";
 import type { TrackerHeartbeat } from "./contract/system.js";
+import type { TrackFired, TrackerPollTick, TrackerSyncHostedTick } from "./contract/trackerloop.js";
 import {
   BrokerError, PendingTrigger, PlacementResult, autoMidLimit, comboMidPrice, shouldFire,
   strikeWidth,
@@ -881,9 +883,9 @@ export class TradingEngine {
   }
 
   // ---- 持仓追踪:到价自动平仓 -------------------------------------------
-  async pollTrackers(moment?: EtNow | null, rows?: Rec[] | null): Promise<Rec> {
+  async pollTrackers(moment?: EtNow | null, rows?: Rec[] | null): Promise<TrackerPollTick> {
     const at = moment ?? nowEt();
-    const out: Rec = { rows: [], fired: [], blocked: [] };
+    const out: TrackerPollTick = { rows: [], fired: [], blocked: [] };
     const tracks = this.store.listTracks();
     if (!tracks.length || this.router === null) return out;
 
@@ -957,7 +959,8 @@ export class TradingEngine {
         this.store.updateTrack(track["id"], { peak: result.peak });
       }
 
-      const row = { ...track, ...result, position: raw };
+      // raw 来自券商适配层(那一层的行是松散的 Rec);到了这里它就是界面读的那一行
+      const row = { ...track, ...result, position: raw as PositionRow };
       if (spotTargetRow !== null) (row as Rec)["spot_target"] = spotTargetRow;
       out["rows"].push(row);
 
@@ -1210,7 +1213,7 @@ export class TradingEngine {
   /** 真的把平仓单发出去,并且先落闩再发。 */
   async closePosition(
     track: Rec, position: tk.Position, auto: tk.AutoClose, result: Rec, marketStatus?: string | null,
-  ): Promise<Rec | null> {
+  ): Promise<TrackFired | null> {
     let payload: Rec;
     try {
       payload = tk.buildCloseOrder(
@@ -1465,7 +1468,7 @@ export class TradingEngine {
 
   // ---- 券商托管的止盈/止损:整块在 engine/hosted.ts ---------------------
   /** 把「追踪设置」和「券商侧挂着的托管单」对齐(挂缺的、改变了的、撤多余的)。由界面按秒驱动。 */
-  async syncHosted(rows?: Rec[] | null): Promise<Rec> {
+  async syncHosted(rows?: Rec[] | null): Promise<TrackerSyncHostedTick> {
     return this.hostedOrders.syncHosted(rows);
   }
 

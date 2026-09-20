@@ -11,7 +11,8 @@ import { z } from "zod";
 import type {
   TrackerAddParams, TrackerDeleteParams, TrackerTargetPreviewParams, TrackerUpdateParams,
 } from "../tracker.js";
-import { optional } from "./kit.js";
+import type { TrackerCloseNowParams } from "../trackerloop.js";
+import { optional, requiredButReportedByHandler } from "./kit.js";
 import type { ParamsSchema } from "./kit.js";
 
 /** 表单里的一个数:数字或字符串,原样交给 handler 的 optFloat('' → 不设,"abc" → 「不是有效数字」)。 */
@@ -66,4 +67,11 @@ export const TrackerTargetPreviewParamsSchema: ParamsSchema<TrackerTargetPreview
   key: z.string(),
   spot_target: numberField,
   chase_max_pct: numberField,
+}).strict();
+
+/** 手动平仓:直接发一张平仓单,所以顶层 strict——不认识的键当场拒,不静默丢。
+ *  老 handler 是 String(params["id"] ?? ""),不给 id 由它自己报「没有这个追踪」,
+ *  所以这里收成必填但不替它报(缺了也走到 handler,由那句人话拒)。 */
+export const TrackerCloseNowParamsSchema: ParamsSchema<TrackerCloseNowParams> = z.object({
+  id: requiredButReportedByHandler(),
 }).strict();

@@ -11,6 +11,7 @@ import { nowEt } from "../config.js";
 import { BrokerError } from "../broker.js";
 import type { KillSwitch } from "../killswitch.js";
 import { ContractSpecSchema } from "../models.js";
+import type { HostedOrderRow, TrackerSyncHostedTick } from "../contract/trackerloop.js";
 import type { Notifier } from "../notify.js";
 import { finiteOrNull } from "../py.js";
 import type { TradeStore } from "../store.js";
@@ -106,8 +107,8 @@ export class HostedOrders {
    *
    * 由界面按秒驱动。软件盯盘怕的三件事——轮询漏插针、软件必须开着、我们
    * 这头行情延迟——托管单都不怕:触发发生在券商服务器的实时行情上。 */
-  async syncHosted(rows?: Rec[] | null): Promise<Rec> {
-    const out: Rec = { hosted: [], blocked: [], quote_maybe_delayed: false };
+  async syncHosted(rows?: Rec[] | null): Promise<TrackerSyncHostedTick> {
+    const out: TrackerSyncHostedTick = { hosted: [], blocked: [], quote_maybe_delayed: false };
     const router = this.router;
     if (router === null || !router.SUPPORTS_HOSTED_CLOSE) return out;
     const tracks = this.store.listTracks();
@@ -280,7 +281,7 @@ export class HostedOrders {
   }
 
   /** 这条追踪在券商那边挂着的托管单(给界面看的那几个字段)。 */
-  private hostedRows(tid: string): Rec[] {
+  private hostedRows(tid: string): HostedOrderRow[] {
     const entries = this.hosted.get(tid) ?? new Map<string, Rec>();
     return [...entries.values()].map((v) => ({
       kind: v["kind"], label: v["label"], quantity: v["quantity"],

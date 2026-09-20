@@ -233,7 +233,7 @@ describe("hosted: syncHosted 对账循环", () => {
     expect([...router.cancelled].sort()).toEqual(router.placed.map((p) => p.order_id).sort());
     expect(out.blocked.length).toBeGreaterThan(0);
     // 对着常量比,不对着文案比:这句话是给用户看的,改了措辞不该让这条断言失效
-    expect(String(out.blocked[0].blockers[0])).toBe(BLOCK_AUTO_EXECUTE);
+    expect(String(out.blocked[0]!.blockers[0])).toBe(BLOCK_AUTO_EXECUTE);
   });
 
   it("托管单成交 → 追踪落闩,缓存清空", async () => {
@@ -268,7 +268,7 @@ describe("hosted: syncHosted 对账循环", () => {
     const out = await engine.syncHosted();
     expect(router.placed).toEqual([]);
     expect(router.modified).toEqual([]);
-    expect(new Set(out.hosted[0].orders.map((o: Rec) => o.order_id))).toEqual(new Set([901, 902]));
+    expect(new Set(out.hosted[0]!.orders.map((o) => o.order_id))).toEqual(new Set([901, 902]));
   });
 
   it("持仓消失 → 撤掉全部托管单", async () => {
@@ -289,8 +289,8 @@ describe("hosted: syncHosted 对账循环", () => {
 
     const out = await engine.pollTrackers();
     expect(out.fired).toEqual([]);
-    expect(out.rows[0].hosted).toBe(true);
-    expect(out.rows[0].state).toBe("take_profit"); // 算还是要算,给界面看
+    expect(out.rows[0]!.hosted).toBe(true);
+    expect(out.rows[0]!.state).toBe("take_profit"); // 算还是要算,给界面看
   });
 
   it("router 不支持托管 → 整体空转", async () => {

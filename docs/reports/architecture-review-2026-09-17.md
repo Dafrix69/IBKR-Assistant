@@ -681,3 +681,23 @@ killswitch + 上面那 6 个方法),用基类 getter 把它们摊成 `this.store
 - 反向验证:契约改一个字段名,引擎 1 处、界面 1 处编译不过。真进程冒烟加了 7 条,77 / 77。
 - 跑全量时 `tests/provider-http.spec.ts` 偶发红过一次(起真 HTTP 服务 + SDK 自带重试,全量并发下对时序敏感),
   之后单独跑 5 次、全量跑 2 次都绿。与本次改动无关(这条路一个字没动),另开一件事去修。
+
+**2026-09-20,盯盘三样 `tracker.poll` / `reconcile` / `close_now` 迁进契约(已迁 76 个,还剩 1 个)。**
+这三样都在**钱路径**上:poll 会发平仓单、reconcile 会挂/改/撤券商侧的真单、close_now 直接发一张平仓单。
+
+- 上一轮写"等 `engine.ts` 拆开再标类型",现在拆开了:`pollTrackers` 与 `syncHosted` 的返回各自成型
+  (`TrackerPollTick` / `TrackerSyncHostedTick`),RPC 再给它们加一份心跳。
+- `tracker.close_now` 的入参 schema 是 **strict** 的,并登记进 `SENSITIVE_METHODS`(和 `main.js` 的
+  `SENSITIVE_RPC` 双向对过)。`tests/tracker-rpc.spec.ts` 拿界面原样载荷钉着这个域,**一个断言都没改**就绿了
+  ——这是判据本身:strict schema 没有把界面真实发的东西拒掉。
+- **中途发现一件要紧的事:一开始我在 handler 里写了 `as unknown as …` 把返回强转成契约类型。
+  反向验证当场露馅——契约改一个字段名,只有界面编译不过,引擎这头照过。** 强转等于把契约在引擎那一侧关掉了。
+  改成从源头标类型(`engine.pollTrackers` / `engine.syncHosted` / `engine.closePosition` 的返回),
+  再验一次:引擎 2 处、界面 1 处一起红。**迁移里出现 `as unknown as` 就该当成信号:那一侧没被契约管住。**
+- 有四处是**界面手抄的那份比我写的准**,按界面改了契约:`max_ms` 从 0 起只增、不是可空;`last_error` 没出错是空串、
+  不是 null;追价的 `limit` 可以是 null;盯盘那一行**整条追踪一定在**(两条路径都是 `{ ...track, … }`),
+  写成 `Partial<Track>` 是我想当然。真进程冒烟把前两样也当场印了出来(`max_ms: 0`、`last_error: ""`)。
+- 另有两处是**我漏了字段**,按引擎实际产出补上:被拦下的那条带 `reason`,发出去的那条带 `record_id` / `order_id`。
+- `engine.ts` / `engine/hosted.ts` 在钱路径上:改动前后各编译一次,`hosted.js` 逐字节一致,
+  `engine.js` 只多了一行注释(**去掉注释后逐字节一致**)。
+- 引擎 1,192 个用例全绿,真进程冒烟加了 4 条,81 / 81。
