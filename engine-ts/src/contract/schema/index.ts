@@ -20,6 +20,7 @@ import {
   SectorsAddParamsSchema, SectorsAddStockParamsSchema, SectorsIdParamsSchema, SectorsRemoveStockParamsSchema,
   SectorsSetTagParamsSchema,
 } from "./sectors.js";
+import { DataExportParamsSchema, KeychainSetParamsSchema, SettingsPatchParamsSchema } from "./settings.js";
 import {
   TrackerAddParamsSchema, TrackerDeleteParamsSchema, TrackerTargetPreviewParamsSchema, TrackerUpdateParamsSchema,
 } from "./tracker.js";
@@ -53,6 +54,11 @@ export const PARAMS_SCHEMAS: { readonly [M in RpcMethodName]: ParamsSchema<RpcPa
   "sectors.add_stock": SectorsAddStockParamsSchema,
   "sectors.remove_stock": SectorsRemoveStockParamsSchema,
   "sectors.set_tag": SectorsSetTagParamsSchema,
+
+  "settings.get": NoParamsSchema,
+  "settings.patch": SettingsPatchParamsSchema,
+  "keychain.set": KeychainSetParamsSchema,
+  "data.export": DataExportParamsSchema,
 
   "tracker.list": NoParamsSchema,
   "tracker.add": TrackerAddParamsSchema,

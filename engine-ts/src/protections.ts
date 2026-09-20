@@ -11,37 +11,13 @@
  *  · **算不出来就放行**。库里读不到数据、配置关着,一律不拦——保护规则误拦是妨碍交易,
  *    而它本身并不能避免任何一笔已经发生的亏损。
  */
+// 三条规则的配置形状界面也要用,定义在 contract/settings.ts;这里转出,老的 import 不用改。
+export type { CooldownConfig, MaxDrawdownConfig, ProtectionsConfig, StoplossGuardConfig } from "./contract/settings.js";
+import type { ProtectionsConfig } from "./contract/settings.js";
 
-/** 单条规则的开关与参数。全部默认关闭:老用户升级后行为一字不变。 */
-export interface StoplossGuardConfig {
-  enabled: boolean;
-  /** 往回看多少分钟。 */
-  lookback_minutes: number;
-  /** 窗口内几次止损算数。 */
-  trigger_count: number;
-  /** 触发后暂停多久(从最后一次止损算起)。 */
-  pause_minutes: number;
-}
 
-export interface MaxDrawdownConfig {
-  enabled: boolean;
-  lookback_minutes: number;
-  /** 已实现盈亏从窗口内峰值回撤多少美元算触发。 */
-  max_drawdown_usd: number;
-  pause_minutes: number;
-}
 
-export interface CooldownConfig {
-  enabled: boolean;
-  /** 一只标的平仓后,多少分钟内不再对它下新单。 */
-  minutes: number;
-}
 
-export interface ProtectionsConfig {
-  stoploss_guard: StoplossGuardConfig;
-  max_drawdown: MaxDrawdownConfig;
-  cooldown: CooldownConfig;
-}
 
 /** 一次平仓(来自 audit_log 的 auto_close / hosted_sweep)。 */
 export interface CloseEvent {

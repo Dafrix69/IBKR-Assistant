@@ -5,6 +5,9 @@
  * 一致——黄金对拍直接比字符串。
  */
 import * as fsModule from "node:fs";
+// 限额与策略开关的形状界面也要用,定义在 contract/settings.ts;这里转出,老的 import 不用改。
+export type { Limits, Policies } from "./contract/settings.js";
+import type { Limits, Policies } from "./contract/settings.js";
 import * as path from "node:path";
 import * as os from "node:os";
 import { fileURLToPath } from "node:url";
@@ -53,34 +56,7 @@ function require_fs(): typeof import("node:fs") {
 
 export const DEFAULT_PROMPT_DIR = findPromptDir();
 
-export interface Limits {
-  max_order_notional: number;
-  max_option_contracts: number;
-  max_mkt_shares: number;
-  min_confidence: number;
-  max_spread_slippage: number;
-  max_orders_per_input: number;
-  duplicate_window_minutes: number;
-  duplicate_qty_tolerance: number;
-}
 
-export interface Policies {
-  auto_execute: boolean;
-  allow_live_trading: boolean;
-  /** 组合(BAG)自动平仓:纸面账户不受此开关约束,实盘账户必须显式打开。
-   * 平组合要反转每条腿再发 BAG 单,这条路还没在真机上核对过——在核对通过之前,
-   * "允许碰实盘"和"信任这条新路径"是两件事,分开授权。 */
-  allow_combo_live: boolean;
-  /** 合约此刻在盘外时段能交易时,自动给订单打上 outsideRth。
-   * 不打这个标志的后果是单子挂着不动——IBKR 会等到常规时段才送交易所。
-   * 默认开;盘外流动性薄、点差宽,不想在那个时段成交就关掉它。 */
-  auto_outside_rth: boolean;
-  require_trigger_price_verification: boolean;
-  trigger_min_gap_bps: number;
-  closed_market_policy: string;
-  consecutive_failure_breaker: number;
-  review_feature_enabled: boolean;
-}
 
 export interface AccountConfig {
   alias: string;

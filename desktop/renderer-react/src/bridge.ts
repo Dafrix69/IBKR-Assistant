@@ -11,14 +11,8 @@ export interface BreakerState {
   reason?: string | null;
 }
 
-export interface Account {
-  alias: string;
-  account_masked?: string;
-  is_paper: boolean;
-  connection?: string;
-  broker?: string;
-  default?: boolean;
-}
+// 账户、限额、策略开关、保护规则的配置:形状在引擎契约里(engine-ts/src/contract/settings.ts),下面「引擎契约」一节统一转出。
+// 以前这里手抄过一份,只抄了一半:引擎的 Policies 有 9 个字段、这里 3 个,Limits 8 个、这里 5 个。
 
 export interface Status {
   accounts?: Account[];
@@ -44,39 +38,6 @@ export interface ProtectionsStatus {
   reason: string;
   until_ms: number | null;
   cooldowns: { symbol: string; until_ms: number; reason: string }[];
-}
-
-export interface SettingsProtections {
-  stoploss_guard: { enabled: boolean; lookback_minutes: number; trigger_count: number; pause_minutes: number };
-  max_drawdown: { enabled: boolean; lookback_minutes: number; max_drawdown_usd: number; pause_minutes: number };
-  cooldown: { enabled: boolean; minutes: number };
-}
-
-export interface SettingsPolicies {
-  auto_execute: boolean;
-  allow_live_trading: boolean;
-  require_trigger_price_verification: boolean;
-}
-
-export interface SettingsLimits {
-  max_order_notional: number;
-  max_option_contracts: number;
-  max_mkt_shares: number;
-  max_spread_slippage: number;
-  duplicate_window_minutes: number;
-}
-
-export interface Settings {
-  policies: Partial<SettingsPolicies>;
-  limits: Partial<SettingsLimits>;
-  protections?: Partial<SettingsProtections>;
-  [key: string]: unknown;
-}
-
-export interface SettingsPatch {
-  policies?: Partial<SettingsPolicies>;
-  limits?: Partial<SettingsLimits>;
-  protections?: Partial<SettingsProtections>;
 }
 
 export interface AppInfo {
@@ -112,14 +73,20 @@ export interface ConfirmOptions {
 // 界面的 tsc 不装引擎依赖也解析得了);contract/schema/ 是引擎自己的运行时校验,这里不碰。
 import type {
   AnomalyConfig, AnomalyEvent, AnomalyKind, AnomalyMetrics, LevelKind, OptionWall, PoolWatch, PoolWatchPatch, PositionRow,
-  QualityList, QualityMonitor, QualityStock, RpcParams, RpcResult, Sector, SectorStock, SpotTarget, StockQuote,
-  Targets, Track, Watch, WatchEvent, WatchLevel,
+  AccountView, Limits, Policies, ProtectionsConfig, QualityList, QualityMonitor, QualityStock, RpcParams, RpcResult, Sector,
+  SectorStock, SettingsPatch, SettingsView, SpotTarget, StockQuote, Targets, Track, Watch, WatchEvent, WatchLevel,
 } from '../../../engine-ts/src/contract/index';
 
 export type {
   AnomalyEvent, AnomalyKind, LevelKind, OptionWall, PoolWatch, PoolWatchPatch, PositionRow, QualityList, QualityMonitor,
-  QualityStock, Sector, SectorStock, SpotTarget, StockQuote, Targets, Track, Watch, WatchEvent, WatchLevel,
+  QualityStock, Sector, SectorStock, SettingsPatch, SpotTarget, StockQuote, Targets, Track, Watch, WatchEvent, WatchLevel,
 };
+/** 界面这边一直用的名字;引擎契约里分别叫 AccountView / SettingsView / Policies / Limits / ProtectionsConfig。 */
+export type Account = AccountView;
+export type Settings = SettingsView;
+export type SettingsPolicies = Policies;
+export type SettingsLimits = Limits;
+export type SettingsProtections = ProtectionsConfig;
 /**
  * tracker.add 的载荷。**拼载荷的那个对象字面量要直接标成这个类型**(`const spec: TrackerAddSpec = {…}`):
  * TypeScript 只对"直接标了类型的字面量"查多余的键;先拼成一个没标类型的变量再传给 addTracker,写错的键名是查不出来的
@@ -157,7 +124,7 @@ export interface DafriBridge {
   getRecord(id: string): Rpc<any>;
   listPending(): Rpc<any>;
   pollPending(): Rpc<any>;
-  getSettings(): Rpc<Settings>;
+  getSettings(): Rpc<RpcResult<'settings.get'>>;
   breakerState(): Rpc<BreakerState>;
 
   addIdea(text: string): Rpc<any>;
@@ -199,13 +166,14 @@ export interface DafriBridge {
   unlockFutu(connection?: unknown): Rpc<any>;
 
   submit(text: string, execute: boolean, accounts: string[]): Rpc<any>;
-  patchSettings(patch: SettingsPatch): Rpc<any>;
-  setApiKey(secret: string): Rpc<any>;
+  /** 回执就是改完之后的那份设置。键名写错引擎会当场拒、不写盘(config 对每一段都查未知键)。 */
+  patchSettings(patch: SettingsPatch): Rpc<RpcResult<'settings.patch'>>;
+  setApiKey(secret: string): Rpc<RpcResult<'keychain.set'>>;
   connectBroker(connections?: unknown): Rpc<{ connected: string[]; failed?: Record<string, string> }>;
   disconnectBroker(): Rpc<any>;
   halt(reason: string): Rpc<{ cancelled?: number }>;
   resume(): Rpc<any>;
-  exportData(path: string): Rpc<{ records: number; path: string }>;
+  exportData(path: string): Rpc<RpcResult<'data.export'>>;
   restartEngine(): Rpc<any>;
 
   backtestStrategies(): Rpc<any>;

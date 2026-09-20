@@ -22,6 +22,9 @@ import type {
   SectorsPickResult, SectorsQuotesResult, SectorsRemoveStockParams, SectorsRemoveStockResult, SectorsSetTagParams,
 } from "./sectors.js";
 import type {
+  DataExportParams, DataExportResult, KeychainSetParams, SettingsPatchParams, SettingsView,
+} from "./settings.js";
+import type {
   Track, TrackerAddParams, TrackerDeleteParams, TrackerTargetPreviewParams, TrackerTargetPreviewResult,
   TrackerUpdateParams,
 } from "./tracker.js";
@@ -32,6 +35,7 @@ export type * from "./pool.js";
 export type * from "./positions.js";
 export type * from "./quality.js";
 export type * from "./sectors.js";
+export type * from "./settings.js";
 export type * from "./tracker.js";
 
 /** 不带参数的方法。界面传 `{}`,多余的键引擎不看。 */
@@ -65,6 +69,12 @@ export interface RpcMethods {
   "sectors.remove_stock": { params: SectorsRemoveStockParams; result: SectorsRemoveStockResult };
   "sectors.set_tag": { params: SectorsSetTagParams; result: { sector: Sector } };
 
+  "settings.get": { params: NoParams; result: SettingsView };
+  /** 回执就是改完之后的 settings.get */
+  "settings.patch": { params: SettingsPatchParams; result: SettingsView };
+  "keychain.set": { params: KeychainSetParams; result: { ok: true } };
+  "data.export": { params: DataExportParams; result: DataExportResult };
+
   "tracker.list": { params: NoParams; result: { tracks: Track[] } };
   "tracker.add": { params: TrackerAddParams; result: { track: Track } };
   "tracker.update": { params: TrackerUpdateParams; result: { track: Track } };
@@ -79,6 +89,8 @@ export type RpcMethodName = keyof RpcMethods;
  * 契约里登记了的方法,敏感不敏感以这张表为准,tests/desktop-whitelist.spec.ts 拿它和 main.js 双向对。
  * 这是本目录里唯一一个运行时的值——界面只 import type,碰不到它。
  */
-export const SENSITIVE_METHODS = ["tracker.add", "tracker.update"] as const satisfies readonly RpcMethodName[];
+export const SENSITIVE_METHODS = [
+  "keychain.set", "settings.patch", "tracker.add", "tracker.update",
+] as const satisfies readonly RpcMethodName[];
 export type RpcParams<M extends RpcMethodName> = RpcMethods[M]["params"];
 export type RpcResult<M extends RpcMethodName> = RpcMethods[M]["result"];

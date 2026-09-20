@@ -4,6 +4,7 @@
  * handler 之间也不互相 import:两个域都要的东西下沉到 services/(带状态)或 params.ts(纯函数)。
  */
 import type { LLMConfig, Settings } from "../config.js";
+import type { AccountView } from "../contract/settings.js";
 import type { TradingEngine } from "../engine.js";
 import type { RpcError } from "../rpcError.js";
 import type { AlertsService } from "../services/alerts.js";
@@ -78,7 +79,7 @@ export abstract class HandlerBase {
     return needConnection(this.settings, code, what);
   }
 
-  protected accounts(): Rec[] {
+  protected accounts(): AccountView[] {
     return this.settings.accounts.map((a) => ({
       alias: a.alias,
       account_masked: redactAccount(a.account_id),

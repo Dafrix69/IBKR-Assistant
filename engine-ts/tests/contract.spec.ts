@@ -23,11 +23,9 @@ const LEGACY_METHODS = [
   "book.snapshot",
   "breaker.halt", "breaker.resume", "breaker.state",
   "broker.catalog", "broker.connect", "broker.disconnect", "broker.select",
-  "data.export",
   "futu.diagnose", "futu.launch", "futu.scan", "futu.set_password", "futu.unlock",
   "ideas.add", "ideas.analyze", "ideas.digest", "ideas.digests", "ideas.list", "ideas.update",
   "instruction.submit",
-  "keychain.set",
   "llm.catalog", "llm.patch", "llm.test",
   "macro.board",
   "pa.analyze", "pa.comment", "pa.timeframes",
@@ -35,7 +33,6 @@ const LEGACY_METHODS = [
   "records.get", "records.list",
   "review.analyze", "review.candidates",
   "screener.deviation", "screener.inflection", "screener.rs",
-  "settings.get", "settings.patch",
   "system.selftest", "system.status",
   // tracker 域迁了一半:这三样的返回是 engine.ts 在下单路径里拼的,等它拆开再标类型
   "tracker.close_now", "tracker.poll", "tracker.reconcile",
@@ -78,8 +75,8 @@ describe("契约:迁移只许往前走", () => {
     expect(LEGACY_METHODS.filter((m) => !names.includes(m)), "引擎里已经没有这个方法了").toEqual([]);
   });
 
-  it("名单只许变短:现在是 51 个,改这个数的时候只能往小里改", () => {
-    expect(LEGACY_METHODS.length).toBeLessThanOrEqual(51);
+  it("名单只许变短:现在是 47 个,改这个数的时候只能往小里改", () => {
+    expect(LEGACY_METHODS.length).toBeLessThanOrEqual(47);
     expect(new Set(LEGACY_METHODS).size).toBe(LEGACY_METHODS.length);
   });
 });
@@ -208,6 +205,60 @@ describe("契约:结构错由 schema 报,领域错由 handler 报", () => {
     // 界面确认标记由桌面端主进程在转给引擎之前摘掉(main.js 的 delete clean.__confirmed,desktop-whitelist.spec 钉着);
     // 真漏过来了,这里是拒,不是悄悄收下
     expect((await errorOf("tracker.add", { key: "k", stop_loss: "95", __confirmed: true })).message).toMatch(/有不认识的键:__confirmed/);
+  });
+
+  it("settings.patch:界面「设置」页的原样载荷(三段,布尔与数字)——改完的就是回执里的,也是写进配置文件的", async () => {
+    const fresh = makeServer();
+    const file = (): Record<string, any> => JSON.parse(readFileSync(String(fresh.settings.source_path), "utf-8"));
+    const out = await fresh.handle({ jsonrpc: "2.0", id: 1, method: "settings.patch", params: { patch: {
+      policies: { auto_execute: true, allow_live_trading: false, require_trigger_price_verification: true },
+      limits: { max_order_notional: 20000, max_option_contracts: 5, max_mkt_shares: 100, max_spread_slippage: 0.5, duplicate_window_minutes: 3 },
+      protections: {
+        stoploss_guard: { enabled: true, lookback_minutes: 60, trigger_count: 3, pause_minutes: 30 },
+        max_drawdown: { enabled: false, lookback_minutes: 120, max_drawdown_usd: 500, pause_minutes: 60 },
+        cooldown: { enabled: true, minutes: 10 },
+      },
+    } } });
+    expect(out["error"]).toBeUndefined();
+    expect(out["result"]["policies"]).toMatchObject({ auto_execute: true, allow_live_trading: false, require_trigger_price_verification: true });
+    expect(out["result"]["limits"]).toMatchObject({ max_order_notional: 20000, max_option_contracts: 5, max_mkt_shares: 100, max_spread_slippage: 0.5, duplicate_window_minutes: 3 });
+    expect(out["result"]["protections"]).toEqual({
+      stoploss_guard: { enabled: true, lookback_minutes: 60, trigger_count: 3, pause_minutes: 30 },
+      max_drawdown: { enabled: false, lookback_minutes: 120, max_drawdown_usd: 500, pause_minutes: 60 },
+      cooldown: { enabled: true, minutes: 10 },
+    });
+    // 引擎这头立刻生效(不是只改了文件),文件里也是这份
+    expect(fresh.settings.policies.auto_execute).toBe(true);
+    expect(file()["policies"]["auto_execute"]).toBe(true);
+    expect((await fresh.handle({ jsonrpc: "2.0", id: 2, method: "settings.get", params: {} }))["result"]).toEqual(out["result"]);
+    fresh.anomaly.stop();
+    fresh.engineBuilt?.stopTrackerLoop();
+  });
+
+  it("settings.patch:段里的键名写错、类型不对——config 自己那句原话,而且一个字都不写盘", async () => {
+    const fresh = makeServer();
+    const before = readFileSync(String(fresh.settings.source_path), "utf-8");
+    const err = async (patch: unknown): Promise<{ code: number; message: string }> =>
+      (await fresh.handle({ jsonrpc: "2.0", id: 1, method: "settings.patch", params: { patch } }))["error"];
+    // "我关了自动执行"悄悄没生效,是这个方法最不能出的事:键名写错必须当场报
+    expect(await err({ policies: { auto_excute: false } })).toEqual({ code: -32007, message: "配置校验失败,已回滚:policies 里有未知配置项:auto_excute" });
+    expect(await err({ protections: { cooldown: { enabld: false } } })).toEqual({ code: -32007, message: "配置校验失败,已回滚:protections.cooldown 里有未知配置项:enabld" });
+    expect(await err({ policies: { auto_execute: "false" } })).toEqual({ code: -32007, message: "配置校验失败,已回滚:policies.auto_execute 必须是 true/false,收到 'false'" });
+    expect((await err({ limits: { max_order_notional: -1 } })).message).toMatch(/^配置校验失败,已回滚:limits.max_order_notional 不能小于/);
+    expect(await err({ accounts: [] })).toEqual({ code: -32006, message: "账户与连接配置不允许从界面修改:accounts" });
+    expect(readFileSync(String(fresh.settings.source_path), "utf-8")).toBe(before);
+    expect(fresh.settings.policies.auto_execute).toBe(false);
+    fresh.anomaly.stop();
+    fresh.engineBuilt?.stopTrackerLoop();
+  });
+
+  it("settings.patch / keychain.set 顶层是 strict 的(会动配置与密钥);结构错在碰到凭证库之前就拒了", async () => {
+    expect((await errorOf("settings.patch", { patch: {}, extra: 1 })).message).toBe("settings.patch 的参数不对:有不认识的键:extra(这个方法不收没登记的键,没有照单全收)");
+    expect((await errorOf("settings.patch", { patch: [1] })).message).toBe("settings.patch 的参数不对:patch 应为 object,收到 array");
+    expect((await errorOf("settings.patch", { patch: {}, __confirmed: true })).message).toMatch(/有不认识的键:__confirmed/);
+    expect(await errorOf("keychain.set", {})).toEqual({ code: -32602, message: "keychain.set 的参数不对:缺少 secret" });
+    expect((await errorOf("keychain.set", { secret: "x", providr: "anthropic" })).message).toMatch(/有不认识的键:providr/);
+    expect(await errorOf("data.export", {})).toEqual({ code: -32602, message: "data.export 的参数不对:缺少 path" });
   });
 
   it("不带参数的方法给什么都收;多余的键不看", async () => {

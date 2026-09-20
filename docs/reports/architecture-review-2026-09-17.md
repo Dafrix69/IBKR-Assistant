@@ -387,3 +387,21 @@ killswitch + 上面那 6 个方法),用基类 getter 把它们摊成 `this.store
 在没核对过的改动上再叠一层下单路径的重构,以后真机上出了问题,就得在"契约 / 类型"和"引擎重构"两批里二分。顺序应当是:
 先合并、在真机上跑一遍 `npm run probe`(只读),再在模拟账户里从真界面建一条追踪、切一次启停、点一次立即平仓——这三下正好走过
 `tracker.add` / `update` / `close_now` 与 `__confirmed` 那条承重的耦合;都对,再拆 `engine.ts`,而且单独一个分支。
+
+**2026-09-20,设置域:`settings.get` / `settings.patch` / `keychain.set` / `data.export` 迁完(已迁 30 个,还剩 47 个)。** 不碰 `engine.ts`,
+所以不受"先真机核对"那一条阻塞。`llm.*` 留着——它的返回来自 `providers.ts`(模型供应商那一侧,形状由对方定)。
+
+- 界面手抄的那份只抄了一半:引擎的 `Policies` 有 9 个字段、`bridge.ts` 里 3 个;`Limits` 8 个、那边 5 个。现在 `Limits` / `Policies` /
+  三条保护规则的配置定义在 `contract/settings.ts`,`config.ts` 与 `protections.ts` 转出,`bridge.ts` 转出(导出名不变)。
+- 动手前先探了 `settings.patch` 的现状,因为它改的是「允许自动执行」「允许实盘下单」:担心的是"键名写错 → 我关了自动执行悄悄没生效"。
+  结果这个洞引擎自己早就堵了——`config.fromDict` 对每一段都拒绝不认识的键、查类型与范围、给中文原因,校验不过不写盘。所以契约的 schema
+  对 `patch` **里面**只确认"是个对象",不再抄一遍校验(两边抄就会走样);顶层照敏感方法的规矩用 strict。这几句原话与"不写盘"钉进了
+  `contract.spec`,连同界面原样的三段载荷。
+- 判据同前:`config` / `protections` / `engine` / `validator` / `store` 的编译产物去掉注释逐字节一致;`golden-rpc` 没动基线
+  (它钉着 `settings.get` 的完整形状与 `settings.patch` 的三种情况)。
+- 验证:把契约里的 `auto_execute` 改名,引擎这头 `config.ts`、`engine.ts`、`cli.ts`、三个 handler 同时报错;界面「设置」页读它的两处、
+  以及**发补丁的那个对象字面量**都报错。
+- `SENSITIVE_METHODS` 加了 `settings.patch` 与 `keychain.set`,和 `main.js` 的双向对账照过。`depcruise` 的 `util-bottom` 放开了
+  "util 可以引契约的类型文件"(`protections.ts` 在 util 层)。
+- 顺带看到、没有动的一处:`settings.patch` 对**顶层**不认识的段不报错(`{patch: {foo: {a: 1}}}` 会成功,`foo` 被原样写进配置文件)。
+  不影响任何行为,只是配置文件里会留垃圾;要堵得先把 `fromDict` 认的顶层键列全,单独一件事。

@@ -1,13 +1,18 @@
-/** llm.* / settings.* / keychain.set / data.export:大模型接入与设置。 */
+/** llm.* / settings.* / keychain.set / data.export:大模型接入与设置。
+ *  settings.get / settings.patch / keychain.set / data.export 已经在契约里(contract/settings.ts);llm.* 还是老方法。 */
 import * as fs from "node:fs";
 
 import { patchConfigFile } from "../../config.js";
 import type { LLMConfig } from "../../config.js";
 import { KeychainError, hasSecret, setSecret } from "../../keychain.js";
 import { PROVIDERS, buildParser, providerCatalog } from "../../providers.js";
+import type {
+  DataExportParams, KeychainSetParams, RpcResult, SettingsPatchParams, SettingsView,
+} from "../../contract/index.js";
 import { RpcError } from "../../rpcError.js";
 import { HandlerBase } from "../context.js";
 import type { MethodTable, Rec } from "../context.js";
+import { contractMethods } from "../contractMethods.js";
 
 export class SettingsHandlers extends HandlerBase {
   methods(): MethodTable {
@@ -15,10 +20,12 @@ export class SettingsHandlers extends HandlerBase {
       "llm.catalog": (p) => this.llmCatalog(p),
       "llm.patch": (p) => this.llmPatch(p),
       "llm.test": (p) => this.llmTest(p),
-      "settings.get": (p) => this.settingsGet(p),
-      "settings.patch": (p) => this.settingsPatch(p),
-      "keychain.set": (p) => this.keychainSet(p),
-      "data.export": (p) => this.dataExport(p),
+      ...contractMethods({
+        "settings.get": () => this.settingsGet(),
+        "settings.patch": (p) => this.settingsPatch(p),
+        "keychain.set": (p) => this.keychainSet(p),
+        "data.export": (p) => this.dataExport(p),
+      }),
     };
   }
 
@@ -100,7 +107,7 @@ export class SettingsHandlers extends HandlerBase {
   }
 
   // ---- 设置 -----------------------------------------------------------
-  settingsGet(_params: Rec): Rec {
+  settingsGet(): SettingsView {
     const s = this.settings;
     return {
       path: String(s.source_path),
@@ -120,7 +127,7 @@ export class SettingsHandlers extends HandlerBase {
     };
   }
 
-  settingsPatch(params: Rec): Rec {
+  settingsPatch(params: SettingsPatchParams): RpcResult<"settings.patch"> {
     const patch = params["patch"] ?? {};
     if (patch === null || typeof patch !== "object" || Array.isArray(patch)) {
       throw new RpcError(-32602, "patch 必须是对象");
@@ -137,11 +144,11 @@ export class SettingsHandlers extends HandlerBase {
     }
     this.engine.store.audit("ui", "settings_patch", { patch });
     this.ctx.reload();
-    this.emit("settings", this.settingsGet({}));
-    return this.settingsGet({});
+    this.emit("settings", this.settingsGet());
+    return this.settingsGet();
   }
 
-  keychainSet(params: Rec): Rec {
+  keychainSet(params: KeychainSetParams): RpcResult<"keychain.set"> {
     const secret = String(params["secret"] ?? "");
     try {
       const account = params["provider"] || this.settings.llm.keychain_account;
@@ -154,7 +161,7 @@ export class SettingsHandlers extends HandlerBase {
     return { ok: true };
   }
 
-  dataExport(params: Rec): Rec {
+  dataExport(params: DataExportParams): RpcResult<"data.export"> {
     const target = String(params["path"] ?? "");
     if (!target) throw new RpcError(-32602, "缺少导出路径");
     const data = this.engine.store.exportAll();
