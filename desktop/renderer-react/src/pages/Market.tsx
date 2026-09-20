@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Card, Descriptions, Input, Select, Space } from 'antd';
 import { dafri, errorMessage } from '../bridge';
 import type { BookLevel, BookSnapshot } from '../bridge';
+import type { PaAnalyzeResult, PaComment, PaEvent, PaEvidence, PaLevel, PaPattern, PaSwing } from '../bridge';
 
 /** 盘口墙上的一格:要么是引擎给的那份盘口,要么是这一次读取失败留下的一句话。 */
 type BookCell = BookSnapshot | { error: string };
@@ -50,7 +51,7 @@ export function MarketPage() {
 const PA_BIAS_KIND: Record<string, Tone> = { bullish: 'ok', lean_bull: 'ok', bearish: 'bad', lean_bear: 'bad', neutral: 'warn' };
 const PA_SIDE_LABEL: Record<string, string> = { bull: '看涨', bear: '看跌', neutral: '中性' };
 
-function paFreshness(r: any): string {
+function paFreshness(r: PaAnalyzeResult): string {
   if (!r) return '—';
   const parts = [`最后一根 ${r.last_bar}`];
   if (r.age_seconds != null) {
@@ -64,7 +65,7 @@ function paFreshness(r: any): string {
 }
 
 /** K 线图。每 20 秒的自动刷新走 update 而不是重建,用户缩放 / 平移到的位置不会被刷掉;主图开滚轮缩放。 */
-function PaChart({ result }: { result: any }) {
+function PaChart({ result }: { result: PaAnalyzeResult }) {
   const spec = useMemo(() => paSpec(result), [result]);
   return <CanvasChart className="pa-chart-wrap" spec={spec} wheel />;
 }
@@ -100,8 +101,9 @@ function PaPanel({ books, pick }: { books: Books; pick: { symbol: string; seq: n
   const [symbol, setSymbol] = useState(() => read('dafri-pa-symbol') || '');
   const [timeframe, setTimeframe] = useState(() => read('dafri-pa-timeframe') || '5m');
   const [rth, setRth] = useState(() => read('dafri-pa-rth') === '1');
-  const [data, setData] = useState<any>(null);
-  const [comment, setComment] = useState<any>(null);
+  const [data, setData] = useState<PaAnalyzeResult | null>(null);
+  // 模型的解读 + 是哪个模型给的(界面自己拼的一项)
+  const [comment, setComment] = useState<(PaComment & { model: string }) | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [commenting, setCommenting] = useState(false);
@@ -127,7 +129,7 @@ function PaPanel({ books, pick }: { books: Books; pick: { symbol: string; seq: n
     try {
       const next = await dafri.paAnalyze({ ...s, force });
       // 换了标的或周期就丢掉上一次的 AI 解读,免得张冠李戴
-      setData((prev: any) => {
+      setData((prev) => {
         if (!prev || prev.symbol !== next.symbol || prev.timeframe !== next.timeframe) setComment(null);
         return next;
       });
@@ -203,7 +205,7 @@ function PaPanel({ books, pick }: { books: Books; pick: { symbol: string; seq: n
   return (
     <section className="sub-panel active" id="panel-pa" ref={head}>
       <div className="sub-head">
-        <span className="muted">{loading ? '读取中…' : paFreshness(data)}</span>
+        <span className="muted">{loading ? '读取中…' : data ? paFreshness(data) : ''}</span>
       </div>
       <div className="row tight">
         <Input id="pa-symbol" className="grow" placeholder="标的,如 NVDA、SPY、SPX" maxLength={12} value={symbol} onChange={(e) => setSymbol(e.target.value)} onPressEnter={() => void run()} />
@@ -281,7 +283,7 @@ function PaPanel({ books, pick }: { books: Books; pick: { symbol: string; seq: n
               <BookBody snapshot={books.data[shown]} loading={books.loading.has(shown)} />
             </StatusCard>
             <StatusCard title="判断依据(加权求和,正=看涨)">
-              {(r.evidence || []).map((item: any, i: number) => (
+              {(r.evidence || []).map((item: PaEvidence, i: number) => (
                 <div className="pa-ev" key={i}>
                   <span className="pa-ev-label">{item.label}</span>
                   <span className="pa-ev-detail">{item.detail}</span>
@@ -291,11 +293,11 @@ function PaPanel({ books, pick }: { books: Books; pick: { symbol: string; seq: n
               <div className="reason">权重固定在引擎里,不随行情浮动;不认同某条,可从总分中减去再看结论。</div>
             </StatusCard>
             <StatusCard title={`结构:${r.trend_label}`}>
-              {(r.swings || []).length ? <div className="reason">{`摆动序列(旧→新):${r.swings.map((s: any) => `${s.label}@${s.price}`).join(' → ')}`}</div> : null}
-              {(r.events || []).slice(-3).map((ev: any, i: number) => (
+              {(r.swings || []).length ? <div className="reason">{`摆动序列(旧→新):${r.swings.map((s: PaSwing) => `${s.label}@${s.price}`).join(' → ')}`}</div> : null}
+              {(r.events || []).slice(-3).map((ev: PaEvent, i: number) => (
                 <div className="reason" key={i}>{`${ev.kind === 'CHoCH' ? '⚠ ' : ''}${ev.text}`}</div>
               ))}
-              {(r.levels || []).map((level: any, i: number) => (
+              {(r.levels || []).map((level: PaLevel, i: number) => (
                 <div className="pa-lv" key={i}>
                   <span className={`status ${level.side === 'resistance' ? 'rejected' : 'filled'}`}>{level.side === 'resistance' ? '阻力' : '支撑'}</span>
                   <span className="pa-lv-price">{String(level.price)}</span>
@@ -384,7 +386,7 @@ function PaPanel({ books, pick }: { books: Books; pick: { symbol: string; seq: n
   );
 }
 
-function FlowCard({ r }: { r: any }) {
+function FlowCard({ r }: { r: PaAnalyzeResult }) {
   const rows: string[] = [];
   for (const gap of r.fvgs || []) rows.push(`未回补 FVG(${PA_SIDE_LABEL[gap.side]})${gap.bottom} ~ ${gap.top},${gap.time} 留下,已回补 ${gap.filled_pct}%`);
   if (r.order_block) {
@@ -393,7 +395,7 @@ function FlowCard({ r }: { r: any }) {
   }
   for (const sweep of r.sweeps || []) rows.push(sweep.text);
   for (const eq of r.equal_levels || []) rows.push(eq.text);
-  for (const p of (r.patterns || []).filter((p: any) => p.bars_ago <= 2)) rows.push(`${p.name}(${p.bars_ago} 根前):${p.note}`);
+  for (const p of (r.patterns || []).filter((p: PaPattern) => p.bars_ago <= 2)) rows.push(`${p.name}(${p.bars_ago} 根前):${p.note}`);
   return (
     <StatusCard title="流动性与形态">
       {rows.length ? rows.map((t, i) => <div className="reason" key={i}>{t}</div>) : <div className="reason">这一段没有留下未回补缺口、扫单或明显形态。</div>}

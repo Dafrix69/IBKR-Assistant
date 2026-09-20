@@ -23,7 +23,6 @@ const LEGACY_METHODS = [
   "broker.catalog", "broker.connect", "broker.disconnect", "broker.select",
   "futu.diagnose", "futu.launch", "futu.scan", "futu.set_password", "futu.unlock",
   "instruction.submit",
-  "pa.analyze", "pa.comment", "pa.timeframes",
   "pending.list", "pending.poll",
   "records.get", "records.list",
   "review.analyze", "review.candidates",
@@ -69,8 +68,8 @@ describe("契约:迁移只许往前走", () => {
     expect(LEGACY_METHODS.filter((m) => !names.includes(m)), "引擎里已经没有这个方法了").toEqual([]);
   });
 
-  it("名单只许变短:现在是 30 个,改这个数的时候只能往小里改", () => {
-    expect(LEGACY_METHODS.length).toBeLessThanOrEqual(30);
+  it("名单只许变短:现在是 27 个,改这个数的时候只能往小里改", () => {
+    expect(LEGACY_METHODS.length).toBeLessThanOrEqual(27);
     expect(new Set(LEGACY_METHODS).size).toBe(LEGACY_METHODS.length);
   });
 });
@@ -232,6 +231,14 @@ describe("契约:结构错由 schema 报,领域错由 handler 报", () => {
     expect((await errorOf("screener.deviation", { symbol: "NVDA", period: "abc" })).message).toBe("整数参数不合法:'abc'");
   });
 
+  it("pa:结构错归 schema;代码形状与周期那两句仍是 handler 的(golden-rpc 钉着)", async () => {
+    expect(await errorOf("pa.analyze", {})).toEqual({ code: -32602, message: "pa.analyze 的参数不对:缺少 symbol" });
+    expect(await errorOf("pa.comment", { symbol: 7 })).toEqual({ code: -32602, message: "pa.comment 的参数不对:symbol 应为 string,收到 number" });
+    expect((await errorOf("pa.analyze", { symbol: "bad$" })).message).toBe("标的代码不合法:'bad$'");
+    expect((await errorOf("pa.analyze", { symbol: "SPY", timeframe: "7m" })).message).toBe("未知 K 线周期:7m(可选:1m、2m、5m、15m、30m、1h、1d)");
+    // rth / force 老 handler 都是 Boolean(x) / 三值判断:给什么都收,不比它严
+    expect(PARAMS_SCHEMAS["pa.analyze"].safeParse({ symbol: "SPY", rth: "yes", force: 1 })).toMatchObject({ success: true });
+  });
   it("schema 不比老 handler 严:步长给数字串照收;改标签不带 tag = 清掉", async () => {
     const call = async (method: string, params: unknown): Promise<Record<string, any>> =>
       s.handle({ jsonrpc: "2.0", id: 1, method, params });

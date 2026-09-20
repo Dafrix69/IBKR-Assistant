@@ -7,6 +7,11 @@
 import { ema } from "./backtest.js";
 import { fmtF, fmtSF, pyFloat, pyRound } from "./py.js";
 
+import type {
+  PaAgreement, PaAnalysis, PaEqualLevel, PaEvent, PaFvg, PaHtfSummary, PaLevel, PaOrderBlock, PaPattern, PaPlan,
+    PaAnalyzeResult, PaContext, PaEvidence, PaSweep, PaSwing,
+} from "./contract/priceaction.js";
+
 export class PriceActionError extends Error {}
 
 // K 线周期表与最少根数搬到了 marketdata.ts(下单层也要用);这里转出,老的 import 路径不变。
@@ -52,7 +57,7 @@ export interface Swing {
   label: string;
 }
 
-function swingDict(s: Swing): Record<string, unknown> {
+function swingDict(s: Swing): PaSwing {
   return { index: s.index, time: s.time, price: pyRound(s.price, 4), kind: s.kind, label: s.label };
 }
 
@@ -160,7 +165,7 @@ export function readTrend(points: Swing[]): { trend: string; label: string } {
   return { trend: "range", label: "震荡(高点与低点没有同向移动)" };
 }
 
-export type PAEvent = Record<string, unknown>;
+export type PAEvent = PaEvent;
 
 /** 顺时间推进找收盘突破:同向记 BOS,反向记 CHoCH。 */
 export function breakEvents(
@@ -200,7 +205,7 @@ export function breakEvents(
   return events.slice(-keep);
 }
 
-function makeEvent(kind: string, direction: string, index: number, bar: PABar, swing: Swing): PAEvent {
+function makeEvent(kind: string, direction: string, index: number, bar: PABar, swing: Swing): PaEvent {
   return {
     kind,
     direction,
@@ -219,7 +224,7 @@ function makeEvent(kind: string, direction: string, index: number, bar: PABar, s
 // ---------------------------------------------------------------- 关键位
 export function clusterLevels(
   bars: PABar[], points: Swing[], tol: number, last: number, perSide = 3,
-): Array<Record<string, unknown>> {
+): PaLevel[] {
   const prices = points.map((s) => s.price).sort((a, b) => a - b);
   if (!prices.length || tol <= 0 || !last) return [];
 
@@ -230,7 +235,7 @@ export function clusterLevels(
     else clusters.push([price]);
   }
 
-  const levels: Array<Record<string, unknown>> = [];
+  const levels: PaLevel[] = [];
   for (const group of clusters) {
     const price = group.reduce((a, b) => a + b, 0) / group.length;
     let touches = 0;
@@ -257,8 +262,8 @@ export function clusterLevels(
 }
 
 /** 未回补的 FVG。窄于 tol 的当噪音丢掉,已被走完的不再列。 */
-export function findFvgs(bars: PABar[], tol: number, keep = 4): Array<Record<string, unknown>> {
-  const out: Array<Record<string, unknown>> = [];
+export function findFvgs(bars: PABar[], tol: number, keep = 4): PaFvg[] {
+  const out: PaFvg[] = [];
   for (let i = 1; i < bars.length - 1; i++) {
     const prev = bars[i - 1]!;
     const nxt = bars[i + 1]!;
@@ -304,7 +309,7 @@ export function findFvgs(bars: PABar[], tol: number, keep = 4): Array<Record<str
 /** 推动最近一次突破之前的最后一根反向 K 线,以及它是否已被回踩。 */
 export function orderBlock(
   bars: PABar[], event: PAEvent | null, lookback = 25,
-): Record<string, unknown> | null {
+): PaOrderBlock | null {
   if (!event) return null;
   const end = event["index"] as number;
   const wantBullish = event["direction"] === "down"; // 下破之前找最后一根阳线
@@ -329,8 +334,8 @@ export function orderBlock(
 export function findSweeps(
   bars: PABar[], points: Swing[], tol: number,
   strength = SWING_STRENGTH, window = 40, keep = 3,
-): Array<Record<string, unknown>> {
-  const out: Array<Record<string, unknown>> = [];
+): PaSweep[] {
+  const out: PaSweep[] = [];
   for (let j = Math.max(0, bars.length - window); j < bars.length; j++) {
     const bar = bars[j]!;
     for (const swing of points) {
@@ -348,7 +353,7 @@ export function findSweeps(
   return out.slice(-keep);
 }
 
-function makeSweep(direction: string, bar: PABar, index: number, swing: Swing): Record<string, unknown> {
+function makeSweep(direction: string, bar: PABar, index: number, swing: Swing): PaSweep {
   return {
     direction,
     time: bar.time,
@@ -363,8 +368,8 @@ function makeSweep(direction: string, bar: PABar, index: number, swing: Swing): 
 }
 
 /** 等高 / 等低:两个几乎同价的摆动点。 */
-export function equalLevels(points: Swing[], tol: number): Array<Record<string, unknown>> {
-  const out: Array<Record<string, unknown>> = [];
+export function equalLevels(points: Swing[], tol: number): PaEqualLevel[] {
+  const out: PaEqualLevel[] = [];
   for (const kind of ["high", "low"] as const) {
     const same = points.filter((s) => s.kind === kind);
     for (let i = 0; i + 1 < same.length; i++) {
@@ -390,8 +395,8 @@ export function equalLevels(points: Swing[], tol: number): Array<Record<string, 
 /** 只看最后几根:形态是即时信息。 */
 export function detectPatterns(
   bars: PABar[], atrValue: number, count = 4,
-): Array<Record<string, unknown>> {
-  const out: Array<Record<string, unknown>> = [];
+): PaPattern[] {
+  const out: PaPattern[] = [];
   for (let i = Math.max(1, bars.length - count); i < bars.length; i++) {
     const bar = bars[i]!;
     const prev = bars[i - 1]!;
@@ -434,9 +439,10 @@ export function detectPatterns(
 }
 
 // ---------------------------------------------------------------- 环境
-export function marketContext(bars: PABar[], atrValue: number): Record<string, unknown> {
+export function marketContext(bars: PABar[], atrValue: number): PaContext {
   const closes = bars.map((b) => b.close);
   const last = closes[closes.length - 1]!;
+  // 一路往上加:ema / 区间 / 量能 / 当日各自够数据才给,所以内部保持松,返回处认成契约类型
   const out: Record<string, unknown> = {
     last: pyRound(last, 4),
     atr: pyRound(atrValue, 4),
@@ -482,21 +488,21 @@ export function marketContext(bars: PABar[], atrValue: number): Record<string, u
       low: pyRound(Math.min(...todays.map((b) => b.low)), 4),
     };
   }
-  return out;
+  return out as unknown as PaContext;
 }
 
 // ---------------------------------------------------------------- 打分
 function score(
   trend: { trend: string; label: string },
   events: PAEvent[],
-  ctx: Record<string, unknown>,
-  sweeps: Array<Record<string, unknown>>,
-  patterns: Array<Record<string, unknown>>,
-  levels: Array<Record<string, unknown>>,
+  ctx: PaContext,
+  sweeps: PaSweep[],
+  patterns: PaPattern[],
+  levels: PaLevel[],
   atrValue: number,
   last: number,
-): [number, Array<Record<string, unknown>>] {
-  const evidence: Array<Record<string, unknown>> = [];
+): [number, PaEvidence[]] {
+  const evidence: PaEvidence[] = [];
   const add = (label: string, detail: string, weight: number) =>
     evidence.push({ label, detail, weight: pyRound(weight, 1) });
 
@@ -627,7 +633,7 @@ export function analyze(
   strength = SWING_STRENGTH,
   now: { epochMs: number; etWallMinutes?: number } | number | null = null,
   extendedHours = false,
-): Record<string, any> {
+): PaAnalysis {
   const bars = toBars(rows);
   if (bars.length < MIN_BARS) {
     throw new PriceActionError(
@@ -654,6 +660,7 @@ export function analyze(
   const [scoreValue, evidence] = score(trend, events, ctx, sweeps, patterns, levels, atrValue, last);
   const bias = biasOf(scoreValue);
 
+  // 最后四项(age_seconds / extended_hours / warnings / readout)要等前面都算完才能填,所以这里先松着,返回处认成契约类型
   const result: Record<string, any> = {
     symbol,
     timeframe,
@@ -689,18 +696,18 @@ export function analyze(
   result["extended_hours"] = extendedHours;
   result["warnings"] = makeWarnings(result, typeof now === "number" ? now : now?.epochMs ?? null, extendedHours);
   result["readout"] = makeReadout(result);
-  return result;
+  return result as PaAnalysis;
 }
 
 function makePlan(
   bias: string,
   points: Swing[],
-  levels: Array<Record<string, unknown>>,
-  gaps: Array<Record<string, unknown>>,
-  block: Record<string, unknown> | null,
+  levels: PaLevel[],
+  gaps: PaFvg[],
+  block: PaOrderBlock | null,
   atrValue: number,
-  ctx: Record<string, unknown>,
-): Record<string, any> {
+  ctx: PaContext,
+): PaPlan {
   const resistance = levels.find((l) => l["side"] === "resistance") ?? null;
   const support = [...levels].reverse().find((l) => l["side"] === "support") ?? null;
   const lastLow = [...points].reverse().find((s) => s.kind === "low") ?? null;
@@ -709,6 +716,7 @@ function makePlan(
   const isBull = bias === "bullish" || bias === "lean_bull";
   const isBear = bias === "bearish" || bias === "lean_bear";
 
+  // 一路往上加(确认 / 失效 / ATR 备注各自看情况给),内部保持松,返回处认成契约类型
   const plan: Record<string, any> = { resistance, support, watch: [] };
 
   if (isBull && resistance) {
@@ -790,7 +798,7 @@ function makePlan(
     plan["atr_note"] =
       `当前 ATR ${pyFloat(pyRound(atrValue, 4))}:小于这个幅度的价差属于日常噪音,别当成突破`;
   }
-  return plan;
+  return plan as PaPlan;
 }
 
 function makeWarnings(
@@ -904,7 +912,8 @@ function makeReadout(result: Record<string, any>): string[] {
 }
 
 /** 把分析结果拼成给模型看的事实块。只放算好的数字与结论,不放原始 K 线。 */
-export function factsText(result: Record<string, any>): string {
+/** 事实块给模型看。会读 htf / agreement,但那两项是 handler 补的:单独拿一份分析来拼也行(黄金对拍就是这么用的)。 */
+export function factsText(result: PaAnalysis & Partial<Pick<PaAnalyzeResult, "htf" | "agreement">>): string {
   const ctx = result["context"] ?? {};
   const plan = result["plan"] ?? {};
   const lines: string[] = [
@@ -1004,7 +1013,7 @@ export function factsText(result: Record<string, any>): string {
 }
 
 /** 高周期只取方向与关键位。 */
-export function htfSummary(result: Record<string, any>): Record<string, unknown> {
+export function htfSummary(result: PaAnalysis): PaHtfSummary {
   const plan = result["plan"] ?? {};
   return {
     timeframe: result["timeframe"],
@@ -1014,7 +1023,7 @@ export function htfSummary(result: Record<string, any>): Record<string, unknown>
     score: result["score"],
     trend_label: result["trend_label"],
     last_event: (result["events"]?.length
-      ? result["events"][result["events"].length - 1]["text"]
+      ? result["events"][result["events"].length - 1]!["text"]
       : null) ?? null,
     resistance: plan["resistance"]?.["price"] ?? null,
     support: plan["support"]?.["price"] ?? null,
@@ -1023,8 +1032,8 @@ export function htfSummary(result: Record<string, any>): Record<string, unknown>
 
 /** 低周期与高周期是否同向。 */
 export function agreement(
-  primary: Record<string, any>, higher: Record<string, any> | null,
-): Record<string, string> {
+  primary: PaAnalysis, higher: PaHtfSummary | null,
+): PaAgreement {
   if (!higher) return { state: "unknown", text: "没有高周期数据可对照。" };
 
   const sign = (bias: string): number => {

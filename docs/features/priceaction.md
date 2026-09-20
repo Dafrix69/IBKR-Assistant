@@ -128,3 +128,7 @@ spec 的契约(`times / bars / lines / hlines / bands / vlines / markers / last 
 
 期权墙页的价位从一列文字改成**一把梯子**:一根竖轴,墙、关口、现价按价格定位,支撑绿、阻力红、现价蓝点,
 右侧写距现价的百分比。离得远近一眼可见——一列数字要一个个读,位置不用读;挤在一起的行按和轴上标签同一套逻辑推开。
+
+**形状在引擎契约里**(`engine-ts/src/contract/priceaction.ts`),界面从 `bridge.ts` 拿同一份。两条容易记错的口径:
+`force` 只把 K 线缓存的 TTL 降到**最小重取间隔**(15 秒,IBKR 判超频的线),压不过它;高周期背景拿不到时 `htf` 是 null、
+`agreement` 照给——背景缺了不该毁掉整次分析(`tests/pa-rpc.spec.ts` 钉着)。

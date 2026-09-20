@@ -72,6 +72,7 @@ export interface ConfirmOptions {
 // 两头一起编译不过。只许 `import type`,只许进 contract/ 顶层的类型文件(它们不 import 任何东西,
 // 界面的 tsc 不装引擎依赖也解析得了);contract/schema/ 是引擎自己的运行时校验,这里不碰。
 import type {
+  PaAnalyzeResult, PaComment, PaEvent, PaEvidence, PaLevel, PaPattern, PaSwing, PaTimeframe,
   CdSignal, CdSignalError, DeviationPoint, DeviationResult, InflectionResult, InflectionRow, RsResult, RsRow, RsTagRow,
   LLMConfig, LlmCatalog, LlmPatch, LlmProvider, LlmTestResult,
   BookL1, BookLevel, BookLiquidity, BookSnapshot, MacroBoard, MacroRow,
@@ -84,6 +85,7 @@ import type {
 } from '../../../engine-ts/src/contract/index';
 
 export type {
+  PaAnalyzeResult, PaComment, PaEvent, PaEvidence, PaLevel, PaPattern, PaSwing, PaTimeframe,
   CdSignal, CdSignalError, DeviationPoint, DeviationResult, InflectionResult, InflectionRow, RsResult, RsRow, RsTagRow,
   LLMConfig, LlmCatalog, LlmPatch, LlmProvider, LlmTestResult,
   BookL1, BookLevel, BookLiquidity, BookSnapshot, MacroBoard, MacroRow,
@@ -202,9 +204,9 @@ export interface DafriBridge {
   refreshAlert(id: string, expiry?: string): Rpc<RpcResult<'alerts.refresh'>>;
   pollAlerts(): Rpc<RpcResult<'alerts.poll'>>;
 
-  paTimeframes(): Rpc<any>;
-  paAnalyze(spec: unknown): Rpc<any>;
-  paComment(spec: unknown): Rpc<any>;
+  paTimeframes(): Rpc<RpcResult<'pa.timeframes'>>;
+  paAnalyze(spec: RpcParams<'pa.analyze'>): Rpc<RpcResult<'pa.analyze'>>;
+  paComment(spec: RpcParams<'pa.comment'>): Rpc<RpcResult<'pa.comment'>>;
   reviewCandidates(limit?: number, includeLocal?: boolean): Rpc<any>;
   reviewAnalyze(spec: unknown): Rpc<any>;
   macroBoard(force?: boolean): Rpc<RpcResult<'macro.board'>>;

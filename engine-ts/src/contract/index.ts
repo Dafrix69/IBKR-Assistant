@@ -21,6 +21,7 @@ import type {
   IdeasUpdateParams,
 } from "./ideas.js";
 import type { OptionWall, OptionsWallParams } from "./options.js";
+import type { PaAnalyzeParams, PaAnalyzeResult, PaCommentResult, PaTimeframesResult } from "./priceaction.js";
 import type { PoolSetWatchParams, PoolWatch } from "./pool.js";
 import type {
   DeviationResult, InflectionResult, RsResult, ScreenerDeviationParams, ScreenerInflectionParams, ScreenerRsParams,
@@ -51,6 +52,7 @@ export type * from "./llm.js";
 export type * from "./options.js";
 export type * from "./pool.js";
 export type * from "./positions.js";
+export type * from "./priceaction.js";
 export type * from "./quality.js";
 export type * from "./screener.js";
 export type * from "./sectors.js";
@@ -91,6 +93,11 @@ export interface RpcMethods {
   "ideas.digests": { params: IdeasDigestsParams; result: { digests: IdeaDigestRow[] } };
 
   "options.wall": { params: OptionsWallParams; result: OptionWall };
+
+  "pa.timeframes": { params: NoParams; result: PaTimeframesResult };
+  "pa.analyze": { params: PaAnalyzeParams; result: PaAnalyzeResult };
+  /** 同 pa.analyze,外加模型的一份解读 */
+  "pa.comment": { params: PaAnalyzeParams; result: PaCommentResult };
 
   "pool.set_watch": { params: PoolSetWatchParams; result: PoolWatch };
 

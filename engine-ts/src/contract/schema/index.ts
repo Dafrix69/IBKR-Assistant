@@ -19,6 +19,7 @@ import type { ParamsSchema } from "./kit.js";
 import { LlmPatchParamsSchema, LlmTestParamsSchema } from "./llm.js";
 import { BookSnapshotParamsSchema, MacroBoardParamsSchema } from "./market.js";
 import { OptionsWallParamsSchema } from "./options.js";
+import { PaAnalyzeParamsSchema } from "./priceaction.js";
 import { PoolSetWatchParamsSchema } from "./pool.js";
 import {
   QualityAddParamsSchema, QualityRemoveParamsSchema, QualitySetConfigParamsSchema, QualityUpdateParamsSchema,
@@ -64,6 +65,10 @@ export const PARAMS_SCHEMAS: { readonly [M in RpcMethodName]: ParamsSchema<RpcPa
   "ideas.digests": IdeasDigestsParamsSchema,
 
   "options.wall": OptionsWallParamsSchema,
+
+  "pa.timeframes": NoParamsSchema,
+  "pa.analyze": PaAnalyzeParamsSchema,
+  "pa.comment": PaAnalyzeParamsSchema,
 
   "pool.set_watch": PoolSetWatchParamsSchema,
 

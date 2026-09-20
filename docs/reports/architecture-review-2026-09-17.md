@@ -530,3 +530,22 @@ killswitch + 上面那 6 个方法),用基类 getter 把它们摊成 `this.store
 - 界面:`Screener.tsx` 的 `rs` / `infl` / `result` 三个 state 从 `any` 收成契约类型;`ScanRow` 改成 `Omit<RsRow, "company"> & { infl?: InflectionRow }`;
   背离还没回来时的占位写成联合(`InflPending`,同 `llm.test` 的做法),判断从 `infl.pending` 改成一个 `isPending` 守卫。
 - 反向验证:契约改四个字段名,引擎 6 处、界面 6 处编译不过。真进程 stdio 冒烟加了 4 条,50 / 50。
+
+**2026-09-20,K 线 PA:`pa.timeframes` / `pa.analyze` / `pa.comment` 迁完(已迁 50 个,还剩 27 个)。** 行情页那一整块到此都在契约里。
+这是迄今形状最大的一批:一次分析的回执有 37 个键、十几个子结构。
+
+- 特征测试 `tests/pa-rpc.spec.ts`(11 个)。算法那半 golden-analysis 钉着,但跑成功要连券商;这里钉的是从 RPC 进来这一段:
+  回执的完整键集、高周期背景拿不到时 `htf` 置空而不毁掉整次分析、K 线缓存的 `cached` 标记、`pa.comment` 把哪些事实交给模型。
+  我先写错了两处预期(漏了 `age_seconds` / `sweeps`,htf 摘要的键也记少了),跑出来按实际改准——**预期是读代码猜的,就得让测试来纠**。
+- 照出一条以前没写下来的口径:**`force` 压不过 15 秒的最小重取间隔**(那是 IBKR 判超频的线,不是性能优化)。
+  我原本以为 force 会立刻重拉,测出来不是;钉住了现状并写进契约注释。
+- 变异 11 处:第一轮漏 2 个。一个是我的断言太松(`rth` 在 RPC 层没走过非布尔值),补上;另一个 `if (htfKey || true)` 追下去是
+  **等价变异**——1d 时 `htfKey` 是 null,多走的那一次会在 `paBars` 里抛掉、被 catch 吞了,外部看不出差别,换成"给日线硬安一个高周期"才有观察点。
+  第二轮 11 / 11。**漏网要先分清是测试弱、还是那个变异根本改不出行为。**
+- 类型从源头标过来:`analyze` / `marketContext` / `makePlan` 都是"一路往上加"的(最后几项要等前面算完),所以内部保持松、
+  返回处认一次——同 `MacroRowData` 那一批的处理。`priceaction.js` 编译产物去掉注释逐字节一致。
+- 两处契约写错、被编译器纠回来的:`evidence` 是"哪一项、什么情况、加减多少分"的条目,不是一句话;`plan.watch` 是一串中文句子,
+  不是对象数组。`factsText` 会读 `htf` / `agreement`(handler 补的),但黄金对拍直接拿一份分析调它,所以入参写成
+  `PaAnalysis & Partial<Pick<PaAnalyzeResult, "htf" | "agreement">>`。
+- 界面:`Market.tsx` 的 `data` / `comment` 两个 state 与六处 `: any` 回调参数收成契约类型。
+- 反向验证:契约改四个字段名,引擎 12 处、界面 6 处编译不过。真进程 stdio 冒烟加了 4 条,54 / 54。
