@@ -742,6 +742,17 @@ killswitch + 上面那 6 个方法),用基类 getter 把它们摊成 `this.store
 - 办法同拆引擎:按行号切片、函数体逐字搬、断言边界、搬完逐行对账。**边界断言又抓到一次 off-by-one**
   (610 是空行、611 是下一半的分节注释),和拆 `engine.ts` 那两次一样——这个断言每次都值回票价。
 - 对账:338 行搬走,一行未改;两头各自只动了 import,以及函数签名多一个 `export`。
-- `theme/appearance.ts → store/` 这一项之前已经做掉了。**还欠的**:`Tracker.tsx` 仍有 530 行、
-  `Access.tsx` 716、`Screener.tsx` 709、`Market.tsx` 648、`Review.tsx` 607 —— 都超 400 的预算。
-  这一刀证明了办法可用,剩下的按同样的路子一个个来。
+- `theme/appearance.ts → store/` 这一项之前已经做掉了。
+
+**2026-09-20,第二刀:`Tracker.tsx` 的展示那一半搬进 `lib/TrackCard.tsx`。875 → 227 行,整页进预算。**
+
+- 这一页现在是三件事三个文件:页面只管「取数 + 列出来」(227),新建表单 `lib/TrackForm.tsx`(361),
+  已有追踪怎么显示 `lib/TrackCard.tsx`(306)。三个都在 400 以内。
+- 两个小助手(`Pnl` / `legLabel`)两边都要用:跟着组件走、从 `lib/` 转出,页面反过来引——`page → lib`
+  是允许的方向,不必为它们再开一个文件。词表 `TRACK_STATE_LABEL` 归 `lib/labels.ts`(那里已经住着同类的几张)。
+- 边界断言**这一刀又抓到两次**(分节注释的措辞记岔了、文件末尾那个空行)。三刀下来它抓到四次,
+  每次都是几秒钟的事——手写行号一定会错,把它写成断言就行。
+- 对账:300 行搬走一字未改;两头各自只动 import,四个签名多一个 `export`。
+
+**还欠的**:`Access.tsx` 716、`Screener.tsx` 709、`Market.tsx` 648、`Review.tsx` 607、`Records.tsx` 461、
+`Backtest.tsx` 403 —— 都超 400。办法已经跑通两遍,剩下的按同样的路子一个个来。
