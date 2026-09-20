@@ -6,39 +6,11 @@
  * 迁到哪一页就把那一页用到的结构收紧成具体接口(见 Status / Settings)。
  */
 
-export interface BreakerState {
-  engaged: boolean;
-  reason?: string | null;
-}
-
 // 账户、限额、策略开关、保护规则的配置:形状在引擎契约里(engine-ts/src/contract/settings.ts),下面「引擎契约」一节统一转出。
 // 以前这里手抄过一份,只抄了一半:引擎的 Policies 有 9 个字段、这里 3 个,Limits 8 个、这里 5 个。
 
-export interface Status {
-  accounts?: Account[];
-  broker_connected: boolean;
-  broker_upstream_ok?: boolean;
-  broker_provider?: 'ibkr' | 'futu' | string;
-  breaker: BreakerState;
-  protections?: ProtectionsStatus;
-  auto_execute: boolean;
-  allow_live_trading: boolean;
-  pending_count: number;
-  market_status: string;
-  now_et: string;
-  model?: string;
-  limits: { max_order_notional: number; max_option_contracts: number; [key: string]: number };
-  [key: string]: unknown;
-}
-
-/** 保护规则的当前状态(engine.protectionState → system.status)。到点自己解除,所以带解除时刻。 */
-export interface ProtectionsStatus {
-  paused: boolean;
-  rule: string;
-  reason: string;
-  until_ms: number | null;
-  cooldowns: { symbol: string; until_ms: number; reason: string }[];
-}
+// Status / Selftest / BreakerState / ProtectionsStatus 以前在这里手抄了一份(还抄漏过字段)。
+// 现在这五个方法都在引擎契约里(engine-ts/src/contract/system.ts),下面「引擎契约」一节统一转出。
 
 export interface AppInfo {
   version: string;
@@ -48,15 +20,6 @@ export interface AppInfo {
   configPath: string;
   /** 滚动日志文件(主进程 + 引擎 stderr + 渲染层报错);出问题时把它发过来就有现场 */
   logPath?: string;
-  [key: string]: unknown;
-}
-
-export interface Selftest {
-  prompt_version: string;
-  prompt_fingerprint: string;
-  system_prompt_chars: number;
-  fewshot_pairs: number;
-  accounts: Array<{ alias: string; account_masked: string; is_paper: boolean }>;
   [key: string]: unknown;
 }
 
@@ -85,6 +48,8 @@ import type {
   AnomalyConfig, AnomalyEvent, AnomalyKind, AnomalyMetrics, LevelKind, OptionWall, PoolWatch, PoolWatchPatch, PositionRow,
   AccountView, Limits, Policies, ProtectionsConfig, QualityList, QualityMonitor, QualityStock, RpcParams, RpcResult, Sector,
   SectorStock, SettingsPatch, SettingsView, SpotTarget, StockQuote, Targets, Track, Watch, WatchEvent, WatchLevel,
+  BreakerBrief, BreakerState, IndexSpot, ProtectionCooldown, ProtectionsSummary, SystemSelftest, SystemStatus,
+  TrackerHeartbeat,
 } from '../../../engine-ts/src/contract/index';
 
 export type {
@@ -100,6 +65,7 @@ export type {
   Idea, IdeaAnalysis, IdeaBrief, IdeaBriefMetric, IdeaDigest, IdeaDigestRow,
   AnomalyEvent, AnomalyKind, LevelKind, OptionWall, PoolWatch, PoolWatchPatch, PositionRow, QualityList, QualityMonitor,
   QualityStock, Sector, SectorStock, SettingsPatch, SpotTarget, StockQuote, Targets, Track, Watch, WatchEvent, WatchLevel,
+  BreakerBrief, BreakerState, IndexSpot, ProtectionCooldown, SystemSelftest, SystemStatus, TrackerHeartbeat,
 };
 /** 界面这边一直用的名字;引擎契约里分别叫 AccountView / SettingsView / Policies / Limits / ProtectionsConfig。 */
 export type Account = AccountView;
@@ -107,6 +73,10 @@ export type Settings = SettingsView;
 export type SettingsPolicies = Policies;
 export type SettingsLimits = Limits;
 export type SettingsProtections = ProtectionsConfig;
+/** 状态条与自检读的那两份;保护规则的现状引擎那边叫 ProtectionsSummary(配置叫 ProtectionsConfig,别混)。 */
+export type Status = SystemStatus;
+export type Selftest = SystemSelftest;
+export type ProtectionsStatus = ProtectionsSummary;
 /**
  * tracker.add 的载荷。**拼载荷的那个对象字面量要直接标成这个类型**(`const spec: TrackerAddSpec = {…}`):
  * TypeScript 只对"直接标了类型的字面量"查多余的键;先拼成一个没标类型的变量再传给 addTracker,写错的键名是查不出来的
@@ -138,14 +108,14 @@ type Rpc<T = unknown> = Promise<T>;
 export interface DafriBridge {
   platform: string;
 
-  status(): Rpc<Status>;
-  selftest(): Rpc<Selftest>;
+  status(): Rpc<RpcResult<'system.status'>>;
+  selftest(): Rpc<RpcResult<'system.selftest'>>;
   listRecords(limit?: number): Rpc<any>;
   getRecord(id: string): Rpc<any>;
   listPending(): Rpc<any>;
   pollPending(): Rpc<any>;
   getSettings(): Rpc<RpcResult<'settings.get'>>;
-  breakerState(): Rpc<BreakerState>;
+  breakerState(): Rpc<RpcResult<'breaker.state'>>;
 
   addIdea(text: string): Rpc<RpcResult<'ideas.add'>>;
   listIdeas(status?: string): Rpc<RpcResult<'ideas.list'>>;
@@ -192,8 +162,8 @@ export interface DafriBridge {
   setApiKey(secret: string): Rpc<RpcResult<'keychain.set'>>;
   connectBroker(connections?: string[]): Rpc<RpcResult<'broker.connect'>>;
   disconnectBroker(): Rpc<RpcResult<'broker.disconnect'>>;
-  halt(reason: string): Rpc<{ cancelled?: number }>;
-  resume(): Rpc<any>;
+  halt(reason: string): Rpc<RpcResult<'breaker.halt'>>;
+  resume(): Rpc<RpcResult<'breaker.resume'>>;
   exportData(path: string): Rpc<RpcResult<'data.export'>>;
   restartEngine(): Rpc<any>;
 

@@ -639,3 +639,24 @@ killswitch + 上面那 6 个方法),用基类 getter 把它们摊成 `this.store
   depcruise 零 error。
 - **`engine.ts` 仍有 1,782 行,超 1,500 的预算。** 剩下的是三块:下单与审批、追踪循环、IB 会话装配。
   下一刀该切哪儿要另外判断——这三块和"钱路径"贴得更紧,不该顺手做。
+
+**2026-09-20,`system.*` 与 `breaker.*` 五个方法迁进契约(已迁 69 个,还剩 8 个)。** 状态条和那颗红按钮。
+
+- 这五样一直钉在 LEGACY 名单上,却是界面刷得最勤的一份(状态条每隔几秒问一次 `system.status`)。
+  特征测试 `tests/system-rpc.spec.ts`(17 个)先于迁移写成、在**老代码上跑绿**,迁的时候不改断言。
+- 写的时候有三处我"照着代码猜"猜错了,跑出来才知道:`protocol` 是串不是数字;没合闸时 `reason` / `at` 是
+  **空串不是 null**;撤单的方法叫 `cancelAllOpen`。三处都按真实行为改了测试,没去改代码迁就测试。
+- **变异验证 8 个种子,抓住 7 个。** 逃掉的那个要写清楚:把 `[...text].length` 换成 `text.length`——
+  两者只在代理对(emoji、扩展 B 区)上分家,而现有九版提示词一个代理对都没有(逐版数过:UTF-16 长度与码点数
+  完全相等),所以它是个**等价变异**,不是断言太松。这一条写进了测试的注释里。
+  另外两个一开始也逃了,但那是真问题:锁那条断言写成了"两件事都跑完了"(顺序没钉住),`index_spot`
+  那条的测试配置只挂了一个指数(空值分支根本走不到)。改成断言调用顺序、配置里加第二个指数,两个都抓住了。
+- 上游两处返回类型太松,顺手从源头收紧:`protectionsSummary` 的 `Record<string, unknown>` → `ProtectionsSummary`,
+  `engine.trackerHeartbeat` 的 `Rec` → `TrackerHeartbeat`。`engine.ts` 在钱路径上,按规矩前后各编译一次,
+  `dist/src/engine.js` 与 `protections.js` **逐字节一致**。
+- 界面那边手抄的 `Status` / `Selftest` / `BreakerState` / `ProtectionsStatus` 换成契约转出。手抄那份带着
+  `[key: string]: unknown` 的口子(写错字段名编译期查不出来),换完口子就没了,而且**一处都没改坏**——
+  说明契约把界面实际读的字段都覆盖到了。
+- `breaker.halt` **不进** `SENSITIVE_METHODS`:它是撤全部单的安全动作,菜单和快捷键都能直接按,
+  要求界面先确认一次反而不对。这是原来就有的决定,迁移不改它(与 `main.js` 的 `SENSITIVE_RPC` 一致)。
+- 反向验证:契约改一个字段名,引擎与界面各自编译不过。真进程 stdio 冒烟加了 8 条,70 / 70。

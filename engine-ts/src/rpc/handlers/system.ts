@@ -1,23 +1,26 @@
-/** system.*:状态条读的那一份快照,与提示词自检。 */
+/** system.*:状态条读的那一份快照,与提示词自检。
+ *  两样都在契约里(contract/system.ts):不收参数,返回对着契约类型检查。 */
 import { ET, nowEt } from "../../config.js";
+import type { IndexSpot, RpcResult } from "../../contract/index.js";
 import { fingerprint, loadPromptBundle } from "../../prompts.js";
 import { protectionsSummary } from "../../protections.js";
 import { pad2, wallParts } from "../../tz.js";
 import { HandlerBase, PROTOCOL_VERSION } from "../context.js";
-import type { MethodTable, Rec } from "../context.js";
+import type { MethodTable } from "../context.js";
+import { contractMethods } from "../contractMethods.js";
 
 export class SystemHandlers extends HandlerBase {
   methods(): MethodTable {
-    return {
-      "system.status": (p) => this.systemStatus(p),
-      "system.selftest": (p) => this.systemSelftest(p),
-    };
+    return contractMethods({
+      "system.status": () => this.systemStatus(),
+      "system.selftest": () => this.systemSelftest(),
+    });
   }
 
-  private indexSpots(): Rec {
-    const info = (this.router as { spotInfo?: (s: string) => Rec | null } | null)?.spotInfo;
+  private indexSpots(): Record<string, IndexSpot> {
+    const info = (this.router as { spotInfo?: (s: string) => IndexSpot | null } | null)?.spotInfo;
     if (typeof info !== "function") return {};
-    const out: Rec = {};
+    const out: Record<string, IndexSpot> = {};
     for (const symbol of Object.keys(this.settings.index_symbols)) {
       const row = info.call(this.router, symbol);
       if (row) out[symbol] = row;
@@ -25,7 +28,7 @@ export class SystemHandlers extends HandlerBase {
     return out;
   }
 
-  systemStatus(_params: Rec): Rec {
+  systemStatus(): RpcResult<"system.status"> {
     const moment = nowEt();
     const breaker = this.engine.killswitch.state();
     const p = wallParts(moment.epochMs, ET);
@@ -67,7 +70,7 @@ export class SystemHandlers extends HandlerBase {
     };
   }
 
-  systemSelftest(_params: Rec): Rec {
+  systemSelftest(): RpcResult<"system.selftest"> {
     const bundle = loadPromptBundle(this.settings);
     return {
       prompt_version: bundle.version,

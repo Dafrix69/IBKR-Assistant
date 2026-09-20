@@ -37,6 +37,7 @@ import {
   SectorsSetTagParamsSchema,
 } from "./sectors.js";
 import { DataExportParamsSchema, KeychainSetParamsSchema, SettingsPatchParamsSchema } from "./settings.js";
+import { BreakerHaltParamsSchema } from "./system.js";
 import {
   TrackerAddParamsSchema, TrackerDeleteParamsSchema, TrackerTargetPreviewParamsSchema, TrackerUpdateParamsSchema,
 } from "./tracker.js";
@@ -120,6 +121,13 @@ export const PARAMS_SCHEMAS: { readonly [M in RpcMethodName]: ParamsSchema<RpcPa
   "settings.patch": SettingsPatchParamsSchema,
   "keychain.set": KeychainSetParamsSchema,
   "data.export": DataExportParamsSchema,
+
+  "system.status": NoParamsSchema,
+  "system.selftest": NoParamsSchema,
+
+  "breaker.state": NoParamsSchema,
+  "breaker.halt": BreakerHaltParamsSchema,
+  "breaker.resume": NoParamsSchema,
 
   "tracker.list": NoParamsSchema,
   "tracker.add": TrackerAddParamsSchema,

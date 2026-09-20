@@ -5,6 +5,7 @@
  */
 import type { AccountConfig, EtNow, Settings } from "./config.js";
 import { hoursStatus, nowEt } from "./config.js";
+import type { TrackerHeartbeat } from "./contract/system.js";
 import {
   BrokerError, PendingTrigger, PlacementResult, autoMidLimit, comboMidPrice, shouldFire,
   strikeWidth,
@@ -791,7 +792,7 @@ export class TradingEngine {
   }
 
   /** 心跳摘要(不带每轮的明细),给 system.status 与界面用。 */
-  trackerHeartbeat(): Rec {
+  trackerHeartbeat(): TrackerHeartbeat {
     const s = this.trackerLoop;
     const age = s["last_at"] ? Date.now() - Date.parse(String(s["last_at"])) : null;
     return {

@@ -36,6 +36,9 @@ import type {
 } from "./screener.js";
 import type { PositionRow } from "./positions.js";
 import type {
+  BreakerHaltParams, BreakerHaltResult, BreakerResumeResult, BreakerState, SystemSelftest, SystemStatus,
+} from "./system.js";
+import type {
   AnomalyConfig, QualityAddParams, QualityList, QualityRemoveParams, QualitySetConfigParams, QualityStock,
   QualityUpdateParams,
 } from "./quality.js";
@@ -67,6 +70,7 @@ export type * from "./review.js";
 export type * from "./screener.js";
 export type * from "./sectors.js";
 export type * from "./settings.js";
+export type * from "./system.js";
 export type * from "./tracker.js";
 
 /** 不带参数的方法。界面传 `{}`,多余的键引擎不看。 */
@@ -155,6 +159,14 @@ export interface RpcMethods {
   "settings.patch": { params: SettingsPatchParams; result: SettingsView };
   "keychain.set": { params: KeychainSetParams; result: { ok: true } };
   "data.export": { params: DataExportParams; result: DataExportResult };
+
+  "system.status": { params: NoParams; result: SystemStatus };
+  "system.selftest": { params: NoParams; result: SystemSelftest };
+
+  "breaker.state": { params: NoParams; result: BreakerState };
+  /** 合闸 + 撤全部未成交单。撤单炸了闸照样合上,回执里多一句 warning */
+  "breaker.halt": { params: BreakerHaltParams; result: BreakerHaltResult };
+  "breaker.resume": { params: NoParams; result: BreakerResumeResult };
 
   "tracker.list": { params: NoParams; result: { tracks: Track[] } };
   "tracker.add": { params: TrackerAddParams; result: { track: Track } };

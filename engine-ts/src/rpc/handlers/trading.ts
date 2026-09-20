@@ -1,10 +1,13 @@
-/** 下单这条线:instruction.submit、交易记录、条件单队列、熔断。 */
+/** 下单这条线:instruction.submit、交易记录、条件单队列、熔断。
+ *  熔断那三样已经在契约里(contract/system.ts);另外四样还是老形状,钉在 contract.spec 的 LEGACY 名单上。 */
 import { BrokerError } from "../../broker.js";
+import type { BreakerHaltParams, RpcResult } from "../../contract/index.js";
 import { resolveFanoutAccounts } from "../../engine.js";
 import { redactAccount } from "../../store.js";
 import { RpcError } from "../../rpcError.js";
 import { HandlerBase } from "../context.js";
 import type { MethodTable, Rec } from "../context.js";
+import { contractMethods } from "../contractMethods.js";
 
 export class TradingHandlers extends HandlerBase {
   methods(): MethodTable {
@@ -14,9 +17,11 @@ export class TradingHandlers extends HandlerBase {
       "records.get": (p) => this.recordsGet(p),
       "pending.list": (p) => this.pendingList(p),
       "pending.poll": (p) => this.pendingPoll(p),
-      "breaker.state": (p) => this.breakerState(p),
-      "breaker.halt": (p) => this.breakerHalt(p),
-      "breaker.resume": (p) => this.breakerResume(p),
+      ...contractMethods({
+        "breaker.state": () => this.breakerState(),
+        "breaker.halt": (p) => this.breakerHalt(p),
+        "breaker.resume": () => this.breakerResume(),
+      }),
     };
   }
 
@@ -109,7 +114,7 @@ export class TradingHandlers extends HandlerBase {
   }
 
   // ---- 熔断 -----------------------------------------------------------
-  breakerState(_params: Rec): Rec {
+  breakerState(): RpcResult<"breaker.state"> {
     const state = this.engine.killswitch.state();
     return {
       engaged: state.engaged, reason: state.reason, at: state.at,
@@ -117,24 +122,25 @@ export class TradingHandlers extends HandlerBase {
     };
   }
 
-  async breakerHalt(params: Rec): Promise<Rec> {
+  async breakerHalt(params: BreakerHaltParams): Promise<RpcResult<"breaker.halt">> {
     const reason = String(params["reason"] || "用户在界面上按下暂停");
     // 熔断(撤全部单)和一轮盯盘互斥:否则那一轮可能在熔断前过了闸门、熔断撤完单之后才把托管单
     // 挂出去,熔断后还留着一张活单
-    const outcome: Rec = await this.ctx.trackerLock(async () => {
+    const outcome = await this.ctx.trackerLock(async (): Promise<RpcResult<"breaker.halt">> => {
       try {
-        return await this.engine.halt(reason);
+        return await this.engine.halt(reason) as RpcResult<"breaker.halt">;
       } catch (exc) {
         if (!(exc instanceof BrokerError)) throw exc;
+        // 撤单炸了:闸照样合上,回执里多一句 warning。这是安全兜底,不是失败
         this.engine.killswitch.engage(reason);
-        return { engaged: true, cancelled: 0, warning: exc.message } as Rec;
+        return { engaged: true, cancelled: 0, warning: exc.message };
       }
     });
     this.emit("breaker", outcome);
     return outcome;
   }
 
-  breakerResume(_params: Rec): Rec {
+  breakerResume(): RpcResult<"breaker.resume"> {
     this.engine.killswitch.release("ui");
     this.engine.store.audit("ui", "resume", {});
     this.emit("breaker", { engaged: false });

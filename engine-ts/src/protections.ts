@@ -14,6 +14,7 @@
 // 三条规则的配置形状界面也要用,定义在 contract/settings.ts;这里转出,老的 import 不用改。
 export type { CooldownConfig, MaxDrawdownConfig, ProtectionsConfig, StoplossGuardConfig } from "./contract/settings.js";
 import type { ProtectionsConfig } from "./contract/settings.js";
+import type { ProtectionsSummary } from "./contract/system.js";
 
 
 
@@ -158,7 +159,7 @@ function remaining(untilMs: number, nowMs: number): string {
 }
 
 /** 给界面的摘要(system.status 里带出去)。 */
-export function protectionsSummary(state: ProtectionState, nowMs: number): Record<string, unknown> {
+export function protectionsSummary(state: ProtectionState, nowMs: number): ProtectionsSummary {
   const cooling = Object.entries(state.cooldowns)
     .filter(([, p]) => p.untilMs > nowMs)
     .map(([symbol, p]) => ({ symbol, until_ms: p.untilMs, reason: p.reason }))
