@@ -23,9 +23,9 @@ import { fingerprint, loadPromptBundle, renderUser } from "./prompts.js";
 import { NO_PROTECTION, evaluateProtections, protectionBlock } from "./protections.js";
 import type { ProtectionState } from "./protections.js";
 import { TradeStore, redactAccount } from "./store.js";
-import type { WorkingRecord } from "./store.js";
 import { nowIsoSecondsEt } from "./engine/clock.js";
 import { HostedOrders } from "./engine/hosted.js";
+import { Reconciler } from "./engine/reconcile.js";
 import * as tk from "./tracker.js";
 import type { ApprovedOrder, RejectedOrder } from "./validator.js";
 import { EXTENDED_STATUSES, Validator, primaryCode, rejectionMessage } from "./validator.js";
@@ -164,18 +164,21 @@ export class TradingEngine {
   // 券商 orderId / permId → 记录 id,回报进来才知道该往哪条记录上追加
   /** 券商 orderId / permId → 记录 id。托管单那一块也要读它(见 engine/hosted.ts 的 HostedHost) */
   readonly orderIndex = new Map<number, string>();
-  private readonly finalized = new Set<string>();
+  /** 已经落过终态的记录 id。对账那一块也要读它(见 engine/reconcile.ts 的 ReconcileHost) */
+  readonly finalized = new Set<string>();
   // 竞态缓冲:placeOrder 后、_index_placement 前,回报可能已经推过来。
   // 先攒着,建好映射再重放——直接丢就是"快速成交永远停在 Submitted"。
   private readonly unmatchedEvents: Array<[string, any, any, any]> = [];
   /** 已落库的成交 / 佣金 exec_id(见 onExecDetails)。只放内存就够:orderIndex 也只在本进程里建,
    * 重启后旧单的回报本来就对不上记录、不会落库。 */
-  private readonly seenFills = new Set<string>();
+  readonly seenFills = new Set<string>();
   private readonly seenCommissions = new Set<string>();
   /** 券商托管单的对账缓存:track_id → {kind: 托管单信息};orderId → [track_id, kind]。
    * 真相永远在券商那边——重启后由 adoptHosted() 按 orderRef 认领重建。 */
   /** 券商托管的止盈/止损单(整块在 engine/hosted.ts);它自己管 hosted / hostedIndex 那几样状态 */
   private readonly hostedOrders = new HostedOrders(this);
+  /** 执行对账(整块在 engine/reconcile.ts) */
+  private readonly reconciler = new Reconciler(this);
   /** 「标的目标价」上一轮算出来的预计价位:track_id → 每股/每张/每组净价。
    * 某一轮拿不到标的现价或蝶价时沿用它,而不是把目标价当成"没设"——那会让
    * syncHosted 把已经挂在券商侧的限价单撤掉,一次行情抖动就丢掉保护。
@@ -1510,163 +1513,19 @@ export class TradingEngine {
     }
   }
 
-  // ---- 执行对账:重启 / 重连之后把券商那边的真相搬回库里 --------------------
-  //
-  // orderIndex 只在内存里(见 §"券商回报 → 落库"),引擎一重建就是空的:券商随后推的状态与成交
-  // recordFor() 认不出记录,只能进 unmatchedEvents,那 200 条缓冲又只有下一次下单才重放。
-  // 托管单有 adoptHosted、追价平仓单有 adoptCloseChase,**普通单与条件单没有**——记录会永远
-  // 停在 Submitted,库里没有终态,界面一直显示"进行中"。
-  //
-  // 对账只认证据,不做推断:
-  //  ① 券商侧还挂着、orderRef 是记录 id 的 → 重建 orderIndex,重放缓冲里的事件;
-  //  ② 券商侧没有、但成交表里按 orderRef 找得到成交且数量填满 → 补录成交事件 + 落 filled;
-  //  ③ 其余去向不明的 → 只追加一条状态事件并提醒一次,**不落终态**。
-  //     重启后没人盯的条件单就属于这一类:它确实已经没人管了,但终态不可逆,由用户决定。
-  static readonly RECONCILE_EVERY_MS = 60_000;
-  /** 刚发出去的单不对账:券商侧的未成交单列表有几百毫秒的滞后,新单会被当成"券商侧没有"。 */
-  static readonly RECONCILE_GRACE_MS = 120_000;
-  static readonly RECONCILE_MAX_AGE_DAYS = 7;
-  private reconcileAt = 0;
-
+  // ---- 执行对账:整块在 engine/reconcile.ts -----------------------------
   /** 下一轮盯盘就重新对账(接上新会话时调用:券商可能在断线期间成交或撤了单)。 */
   reconcileSoon(): void {
-    this.reconcileAt = 0;
+    this.reconciler.reconcileSoon();
   }
 
   reconcileDue(nowMs = Date.now()): boolean {
-    return nowMs - this.reconcileAt >= TradingEngine.RECONCILE_EVERY_MS;
+    return this.reconciler.reconcileDue(nowMs);
   }
 
   async reconcileOrders(nowMs = Date.now()): Promise<Rec> {
-    const out: Rec = { adopted: 0, filled: 0, unknown: 0 };
-    const lister = (this.router as unknown as Rec)?.["listOpenOrdersDetailed"];
-    if (typeof lister !== "function") return out;
-    this.reconcileAt = nowMs;
-    let rows: Rec[];
-    try {
-      rows = (await lister.call(this.router)) ?? [];
-    } catch (exc) {
-      // 下一轮再试;这里失败不该影响盯盘
-      this.store.audit("engine", "reconcile_failed", {
-        error: String((exc as Error).message).slice(0, 300),
-      });
-      return out;
-    }
-    const openByRef = new Map<string, Rec>();
-    for (const row of rows) {
-      const ref = String(row["order_ref"] ?? "");
-      if (!ref || ref.startsWith("trk:")) continue; // 托管单由 adoptHosted 认领
-      openByRef.set(ref, row);
-    }
-    const working = this.store.listWorkingRecords(TradingEngine.RECONCILE_MAX_AGE_DAYS, nowMs);
-    for (const rec of working) {
-      const open = openByRef.get(rec.id);
-      if (open !== undefined) {
-        if (this.adoptOpenOrder(rec.id, open)) out["adopted"] = Number(out["adopted"]) + 1;
-        continue;
-      }
-      // 本进程还在盯的条件单没发到券商,不算失联;刚发出去的单也给券商一点滞后余量
-      if (this.pendingTriggers.some((p) => p.record_id === rec.id)) continue;
-      if (nowMs - rec.createdAtMs < TradingEngine.RECONCILE_GRACE_MS) continue;
-      if (this.settleFromFills(rec)) out["filled"] = Number(out["filled"]) + 1;
-      else if (this.flagUnreconciled(rec)) out["unknown"] = Number(out["unknown"]) + 1;
-    }
-    this.replayUnmatched();
-    if (out["adopted"] || out["filled"] || out["unknown"]) {
-      this.store.audit("engine", "reconciled", { ...out });
-    }
-    return out;
+    return this.reconciler.reconcileOrders(nowMs);
   }
-
-  /** ① 券商侧还挂着这张单:orderId / permId 都指回记录,后续回报就认得出了。
-   * 返回"这次才认领到"(已经在索引里的不重复记事件——对账每分钟一轮)。 */
-  private adoptOpenOrder(recordId: string, open: Rec): boolean {
-    const orderId = Math.trunc(Number(open["order_id"] ?? 0)) || null;
-    const permId = Math.trunc(Number(open["perm_id"] ?? 0)) || null;
-    const known =
-      (orderId !== null && this.orderIndex.has(orderId)) ||
-      (permId !== null && this.orderIndex.has(permId));
-    if (orderId !== null) this.orderIndex.set(orderId, recordId);
-    if (permId !== null) this.orderIndex.set(permId, recordId);
-    if (known) return false;
-    this.store.appendEvent(recordId, "status", {
-      status: String(open["status"] ?? "") || "Submitted",
-      source: "reconcile",
-      order_id: orderId,
-      perm_id: permId,
-    });
-    this.store.audit("engine", "reconcile_adopted", {
-      record: recordId, order_id: orderId, status: open["status"] ?? "",
-    });
-    return true;
-  }
-
-  /** ② 券商侧没有这张单,但成交表里有它的成交:补录成交事件,数量填满才落 filled。
-   * 组合单 IBKR 回 1 条 BAG 行 + 每条腿各一行,只认 BAG 行——腿加起来是数量的好几倍。 */
-  private settleFromFills(rec: WorkingRecord): boolean {
-    const fills = this.store.fillsByOrderRef(rec.id);
-    if (!fills.length) return false;
-    const isBag = fills.some((f) => String((f["contract"] ?? {})["secType"] ?? "") === "BAG");
-    const counted = isBag
-      ? fills.filter((f) => String((f["contract"] ?? {})["secType"] ?? "") === "BAG")
-      : fills;
-    const filledQty = counted.reduce((acc, f) => acc + (Number(f["shares"]) || 0), 0);
-    // 回报认不出记录时被丢掉的成交,这里按 exec_id 补录(读侧还会再去一次重,见 foldEvents)
-    const known = new Set(
-      ((this.store.getRecord(rec.id)?.["ibkr"]?.["fills"] ?? []) as Rec[])
-        .map((f) => String(f["exec_id"] ?? "")),
-    );
-    for (const fill of fills) {
-      const execId = String(fill["exec_id"] ?? "");
-      if (!execId || known.has(execId)) continue;
-      this.store.appendEvent(rec.id, "fill", {
-        exec_id: execId,
-        time: String(fill["time"] ?? ""),
-        price: Number(fill["price"]) || 0,
-        qty: Number(fill["shares"]) || 0,
-        commission: Number(fill["commission"]) || 0,
-        sec_type: String((fill["contract"] ?? {})["secType"] ?? "") || null,
-        con_id: Math.trunc(Number((fill["contract"] ?? {})["conId"] ?? 0)) || null,
-      });
-      this.seenFills.add(execId);
-      for (const key of [fill["perm_id"], fill["order_id"]]) {
-        const id = Math.trunc(Number(key ?? 0)) || null;
-        if (id !== null) this.orderIndex.set(id, rec.id);
-      }
-    }
-    // 差一点点算填满:数量是浮点,组合单的份数与腿数在券商侧也可能有舍入
-    if (rec.quantity > 0 && filledQty + 1e-9 < rec.quantity) return false;
-    if (this.finalized.has(rec.id)) return false;
-    this.finalized.add(rec.id);
-    this.store.setFinalStatus(rec.id, "filled");
-    this.store.audit("engine", "reconcile_filled", {
-      record: rec.id, quantity: rec.quantity, filled: filledQty,
-    });
-    this.notifier.warning(
-      `对账:${rec.symbol} 的单子在断线期间已经成交(${filledQty}),记录已补上成交与终态。`,
-    );
-    return true;
-  }
-
-  /** ③ 去向不明:券商侧没有、成交表里也没有。只留痕 + 提醒一次,不落终态。 */
-  private flagUnreconciled(rec: WorkingRecord): boolean {
-    if (rec.lastStatus === TradingEngine.STATUS_NOT_AT_BROKER) return false;
-    this.store.appendEvent(rec.id, "status", {
-      status: TradingEngine.STATUS_NOT_AT_BROKER,
-      source: "reconcile",
-      was: rec.lastStatus,
-    });
-    this.store.audit("engine", "reconcile_missing", { record: rec.id, was: rec.lastStatus });
-    const why =
-      rec.lastStatus === "PendingTrigger"
-        ? "软件重启后条件单不再被盯,要继续请重新提交"
-        : "券商侧已经没有这张单,也没查到它的成交";
-    this.notifier.warning(`对账:${rec.symbol} 的单子去向不明——${why}。`);
-    return true;
-  }
-
-  /** 对账给"券商侧查不到"的记录打的状态。不是 IBKR 的状态词,也不是终态。 */
-  static readonly STATUS_NOT_AT_BROKER = "NotAtBroker";
 
   // ---- 券商回报 → 落库(§6 status_timeline / fills)----------------------
   private indexPlacement(recordId: string, placement: PlacementResult): void {
@@ -1676,7 +1535,8 @@ export class TradingEngine {
     this.replayUnmatched();
   }
 
-  private replayUnmatched(): void {
+  /** 同上:对账重建 orderIndex 之后要把攒着的回报重放一遍 */
+  replayUnmatched(): void {
     if (!this.unmatchedEvents.length) return;
     const stashed = [...this.unmatchedEvents];
     this.unmatchedEvents.length = 0;

@@ -611,3 +611,10 @@ killswitch + 上面那 6 个方法),用基类 getter 把它们摊成 `this.store
 - `engine/*.ts` 归进 depcruise 的 orchestrate 层,CLAUDE.md 的分层表与体积预算同步。
 - **仍然没在真机上走过**:这一步和前面那些一样,合并前要跑 `npm run probe`,并在模拟账户里从真界面走一遍追踪的建 / 改 / 平。
   托管单这一块尤其要看:它挂的是券商侧的真单。
+
+**2026-09-20,拆 `engine.ts` 第二步:执行对账搬进 `engine/reconcile.ts`。** 2,072 行 → 1,932 行。
+
+- 同一套办法。对账结果:**157 行里 152 行逐字未动,5 行只改了静态成员的引用**(`TradingEngine.RECONCILE_*` → `Reconciler.*`),零处其他差异。
+- `Reconciler` 自己只管一样状态(上次对账的时刻);store / notifier / router / orderIndex / finalized / seenFills /
+  pendingTriggers 与 `replayUnmatched` 从宿主现取。引擎那头留三个转调:`reconcileSoon` / `reconcileDue` / `reconcileOrders`。
+- 全量 1,156 个用例全绿,冒烟 62 / 62。
