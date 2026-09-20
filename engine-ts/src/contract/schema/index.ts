@@ -24,6 +24,9 @@ import {
   QualityAddParamsSchema, QualityRemoveParamsSchema, QualitySetConfigParamsSchema, QualityUpdateParamsSchema,
 } from "./quality.js";
 import {
+  ScreenerDeviationParamsSchema, ScreenerInflectionParamsSchema, ScreenerRsParamsSchema,
+} from "./screener.js";
+import {
   SectorsAddParamsSchema, SectorsAddStockParamsSchema, SectorsIdParamsSchema, SectorsRemoveStockParamsSchema,
   SectorsSetTagParamsSchema,
 } from "./sectors.js";
@@ -71,6 +74,10 @@ export const PARAMS_SCHEMAS: { readonly [M in RpcMethodName]: ParamsSchema<RpcPa
   "quality.update": QualityUpdateParamsSchema,
   "quality.remove": QualityRemoveParamsSchema,
   "quality.set_config": QualitySetConfigParamsSchema,
+
+  "screener.rs": ScreenerRsParamsSchema,
+  "screener.inflection": ScreenerInflectionParamsSchema,
+  "screener.deviation": ScreenerDeviationParamsSchema,
 
   "sectors.list": NoParamsSchema,
   "sectors.add": SectorsAddParamsSchema,

@@ -27,7 +27,6 @@ const LEGACY_METHODS = [
   "pending.list", "pending.poll",
   "records.get", "records.list",
   "review.analyze", "review.candidates",
-  "screener.deviation", "screener.inflection", "screener.rs",
   "system.selftest", "system.status",
   // tracker 域迁了一半:这三样的返回是 engine.ts 在下单路径里拼的,等它拆开再标类型
   "tracker.close_now", "tracker.poll", "tracker.reconcile",
@@ -70,8 +69,8 @@ describe("契约:迁移只许往前走", () => {
     expect(LEGACY_METHODS.filter((m) => !names.includes(m)), "引擎里已经没有这个方法了").toEqual([]);
   });
 
-  it("名单只许变短:现在是 33 个,改这个数的时候只能往小里改", () => {
-    expect(LEGACY_METHODS.length).toBeLessThanOrEqual(33);
+  it("名单只许变短:现在是 30 个,改这个数的时候只能往小里改", () => {
+    expect(LEGACY_METHODS.length).toBeLessThanOrEqual(30);
     expect(new Set(LEGACY_METHODS).size).toBe(LEGACY_METHODS.length);
   });
 });
@@ -216,6 +215,21 @@ describe("契约:结构错由 schema 报,领域错由 handler 报", () => {
     // api_key 类型不对:说的是"哪个字段、要什么、收到什么类型",值本身不出现在报错里
     const leaked = await errorOf("llm.test", { api_key: ["sk-should-not-appear"] });
     expect(leaked).toEqual({ code: -32602, message: "llm.test 的参数不对:api_key 应为 string,收到 array" });
+  });
+
+  it("screener:结构错归 schema;timeframes 的两句、参数越界那几句仍是 handler 的(golden-rpc 钉着,连先后次序)", async () => {
+    expect(await errorOf("screener.deviation", {})).toEqual({ code: -32602, message: "screener.deviation 的参数不对:缺少 symbol" });
+    expect(await errorOf("screener.rs", { sector: 7 })).toEqual({ code: -32602, message: "screener.rs 的参数不对:sector 应为 string,收到 number" });
+    expect(await errorOf("screener.deviation", { symbol: "NVDA", period: true })).toEqual({
+      code: -32602, message: "screener.deviation 的参数不对:period 应为 number 或 string,收到 boolean",
+    });
+    // timeframes 收 unknown:不是数组、空数组都由 handler 说那一句
+    expect((await errorOf("screener.inflection", { timeframes: "1d" })).message).toBe("timeframes 要是非空数组");
+    expect((await errorOf("screener.inflection", { timeframes: [] })).message).toBe("timeframes 要是非空数组");
+    // 领域错原话
+    expect((await errorOf("screener.rs", { benchmark: "IWM" })).message).toBe("基准只能是 SPY / QQQ");
+    expect((await errorOf("screener.deviation", { symbol: "bad$" })).message).toBe("标的代码不合法:'bad$'");
+    expect((await errorOf("screener.deviation", { symbol: "NVDA", period: "abc" })).message).toBe("整数参数不合法:'abc'");
   });
 
   it("schema 不比老 handler 严:步长给数字串照收;改标签不带 tag = 清掉", async () => {

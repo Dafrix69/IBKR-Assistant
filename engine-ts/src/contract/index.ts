@@ -22,6 +22,9 @@ import type {
 } from "./ideas.js";
 import type { OptionWall, OptionsWallParams } from "./options.js";
 import type { PoolSetWatchParams, PoolWatch } from "./pool.js";
+import type {
+  DeviationResult, InflectionResult, RsResult, ScreenerDeviationParams, ScreenerInflectionParams, ScreenerRsParams,
+} from "./screener.js";
 import type { PositionRow } from "./positions.js";
 import type {
   AnomalyConfig, QualityAddParams, QualityList, QualityRemoveParams, QualitySetConfigParams, QualityStock,
@@ -49,6 +52,7 @@ export type * from "./options.js";
 export type * from "./pool.js";
 export type * from "./positions.js";
 export type * from "./quality.js";
+export type * from "./screener.js";
 export type * from "./sectors.js";
 export type * from "./settings.js";
 export type * from "./tracker.js";
@@ -97,6 +101,10 @@ export interface RpcMethods {
   "quality.update": { params: QualityUpdateParams; result: { stock: QualityStock } };
   "quality.remove": { params: QualityRemoveParams; result: { deleted: string } };
   "quality.set_config": { params: QualitySetConfigParams; result: { config: AnomalyConfig } };
+
+  "screener.rs": { params: ScreenerRsParams; result: RsResult };
+  "screener.inflection": { params: ScreenerInflectionParams; result: InflectionResult };
+  "screener.deviation": { params: ScreenerDeviationParams; result: DeviationResult };
 
   "sectors.list": { params: NoParams; result: { sectors: Sector[] } };
   "sectors.add": { params: SectorsAddParams; result: { sector: Sector } };

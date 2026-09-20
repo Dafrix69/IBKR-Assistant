@@ -1,17 +1,22 @@
-/** screener.*:RS 强度 / 拐点筛选 / 极值偏离。 */
+/** screener.*:RS 强度 / 拐点筛选 / 极值偏离。
+ *  整个域已经在契约里(contract/screener.ts):入参过了 schema 才到这里,返回对着契约类型检查。 */
 import { nowEt } from "../../config.js";
+import type {
+  RpcResult, ScreenerDeviationParams, ScreenerInflectionParams, ScreenerRsParams,
+} from "../../contract/index.js";
 import { RpcError, errText } from "../../rpcError.js";
 import { HandlerBase } from "../context.js";
 import type { MethodTable, Rec } from "../context.js";
+import { contractMethods } from "../contractMethods.js";
 import { optFloat, optInt, symbolOrRaise } from "../params.js";
 
 export class ScreenerHandlers extends HandlerBase {
   methods(): MethodTable {
-    return {
+    return contractMethods({
       "screener.rs": (p) => this.screenerRs(p),
       "screener.inflection": (p) => this.screenerInflection(p),
       "screener.deviation": (p) => this.screenerDeviation(p),
-    };
+    });
   }
 
   // ---- 扫描器:RS 强度 / 拐点筛选 / 极值偏离(纯代码计算,只读)------------
@@ -21,7 +26,7 @@ export class ScreenerHandlers extends HandlerBase {
   static readonly SCREEN_INTRADAY_CAP = 40; // 日内周期一次最多拉这么多个 (标的×周期)
 
   /** 按板块 id 取成分股;"all" / 空 = 所有板块并集(同一只股以先出现的板块为准)。 */
-  private screenMembers(params: Rec): [string, Rec[]] {
+  private screenMembers(params: { sector?: string }): [string, Rec[]] {
     const sectorId = String(params["sector"] ?? "").trim();
     let sectors = this.engine.store.listSectors();
     if (sectorId && sectorId !== "all") {
@@ -51,7 +56,7 @@ export class ScreenerHandlers extends HandlerBase {
     return bars;
   }
 
-  async screenerRs(params: Rec): Promise<Rec> {
+  async screenerRs(params: ScreenerRsParams): Promise<RpcResult<"screener.rs">> {
     const { RS_BENCHMARKS, RS_WINDOWS, rsStrength } = await import("../../screener.js");
     const benchmark = String(params["benchmark"] ?? "SPY").trim().toUpperCase();
     if (!RS_BENCHMARKS.includes(benchmark)) {
@@ -75,13 +80,14 @@ export class ScreenerHandlers extends HandlerBase {
         member["error"] = errText(exc);
       }
     }
-    const result = rsStrength(members, bench, benchmark, RS_WINDOWS);
-    result["sector"] = label;
-    result["fetched_at"] = new Date(nowEt().epochMs).toISOString();
-    return result;
+    return {
+      ...rsStrength(members, bench, benchmark, RS_WINDOWS),
+      sector: label,
+      fetched_at: new Date(nowEt().epochMs).toISOString(),
+    };
   }
 
-  async screenerInflection(params: Rec): Promise<Rec> {
+  async screenerInflection(params: ScreenerInflectionParams): Promise<RpcResult<"screener.inflection">> {
     const { screenInflections } = await import("../../screener.js");
     const rawTfs = params["timeframes"] || ["1d", "1w"];
     if (!Array.isArray(rawTfs) || !rawTfs.length) throw new RpcError(-32602, "timeframes 要是非空数组");
@@ -122,13 +128,14 @@ export class ScreenerHandlers extends HandlerBase {
         }
       }
     }
-    const result = screenInflections(members, timeframes, maPeriod);
-    result["sector"] = label;
-    result["fetched_at"] = new Date(nowEt().epochMs).toISOString();
-    return result;
+    return {
+      ...screenInflections(members, timeframes, maPeriod),
+      sector: label,
+      fetched_at: new Date(nowEt().epochMs).toISOString(),
+    };
   }
 
-  async screenerDeviation(params: Rec): Promise<Rec> {
+  async screenerDeviation(params: ScreenerDeviationParams): Promise<RpcResult<"screener.deviation">> {
     const sc = await import("../../screener.js");
     const symbol = symbolOrRaise(params);
     const timeframe = String(params["timeframe"] ?? "1d");
@@ -152,10 +159,11 @@ export class ScreenerHandlers extends HandlerBase {
     } catch (exc) {
       throw new RpcError(-32018, `拿不到 ${symbol} 的 ${timeframe} K 线:${errText(exc)}`);
     }
-    const result = sc.deviationReview(bars, period, lookback, smooth, zExtreme);
-    result["symbol"] = symbol;
-    result["timeframe"] = timeframe;
-    result["fetched_at"] = new Date(nowEt().epochMs).toISOString();
-    return result;
+    return {
+      ...sc.deviationReview(bars, period, lookback, smooth, zExtreme),
+      symbol,
+      timeframe,
+      fetched_at: new Date(nowEt().epochMs).toISOString(),
+    };
   }
 }

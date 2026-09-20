@@ -509,3 +509,24 @@ killswitch + 上面那 6 个方法),用基类 getter 把它们摊成 `this.store
   `collect()` 直接标成 `LlmPatch`,测试结果的 state 从 `any` 收成"回执 | 正在测"的联合、渲染处按 `'pending' in` / `ok` 收窄。
   测试失败时界面自己拼的那张卡补上了 `provider` / `model` 两项(联合类型要求的)。
 - 反向验证:契约改四个字段名,引擎 14 处、界面 7 处(含交易页就绪清单读 `key_configured` 的那一处)编译不过。真进程冒烟 46 / 46。
+
+**2026-09-20,扫描器:`screener.rs` / `inflection` / `deviation` 迁完(已迁 47 个,还剩 30 个)。** 纯计算,只读,不碰 `engine.ts`。
+
+- 特征测试 `tests/screener-rpc.spec.ts`(14 个)。算法那一半 golden-screener 钉着,但**跑成功**那条路要连券商拉 K 线,
+  基线走不到:池子怎么取(单个板块 / 全部并集 / 同一只去重)、某只拉不到 K 线时那一行降级而不是整次失败、日内 40 个的上限、
+  以及回执里界面读的每一个键,原来都没人钉。
+- **变异第一轮 12 个漏了 2 个,两个都是我的测试太松**,不是引擎的问题:
+  · "不给 ma_period 也编一个确认状态"没抓住——我的假数据**根本没产出背离信号**,那条 `confirm 是 null` 的断言是空过的。
+  · "极值判定反了"没抓住——我只断言了 `extreme` 在三个取值之内。
+  补了两组确定性的数据:一组价格创新低而 DIF 抬高(稳定出底背离,且站回 20 日线 → confirmed),一组尾部急涨 6 根(z 冲到 3.97 → 超买),
+  再断言 `extreme_label` 与 `extreme` 的对应。第二轮 12 / 12。**"变异全红"只有在假数据真的走到那条分支时才说明问题。**
+- 类型从源头标过来:`rsStrength` / `screenInflections` / `deviationReview` 的返回标成 `Omit<…, "sector" | "fetched_at">`
+  ——handler 最后补的那两项(`deviation` 是三项)在算的时候还不知道,同 `MacroRowData` / `BacktestReport` 的分层。
+  handler 里三处 `result["x"] = …` 改成了展开新对象(这是本批仅有的运行时改写,键序与内容不变)。`screener.js` 编译产物去掉注释逐字节一致。
+- 照出一处两段形状:`confirmation()` 内部给的 `at` 是**下标**,`cdDivergence` 再把它换成那一根的时间才交出去。
+  契约里 `CdConfirm.at` 是时间字符串,内部那一段单起一个 `ConfirmByIndex`,交界处认一次。
+- 枚举型的字段就写成联合:`signal: "bull" | "bear" | null`、`dif_side`、`extreme`。`per_timeframe` 的键和 `signal` 同名,
+  计数时直接拿它当键(`Record<"bull" | "bear" | "confirmed", number>`)。
+- 界面:`Screener.tsx` 的 `rs` / `infl` / `result` 三个 state 从 `any` 收成契约类型;`ScanRow` 改成 `Omit<RsRow, "company"> & { infl?: InflectionRow }`;
+  背离还没回来时的占位写成联合(`InflPending`,同 `llm.test` 的做法),判断从 `infl.pending` 改成一个 `isPending` 守卫。
+- 反向验证:契约改四个字段名,引擎 6 处、界面 6 处编译不过。真进程 stdio 冒烟加了 4 条,50 / 50。

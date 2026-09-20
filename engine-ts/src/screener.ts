@@ -7,6 +7,10 @@ import { ema, sma } from "./backtest.js";
 import { fmtF, fmtSF, pyRound } from "./py.js";
 import { dateOrdinal, isValidYmd, weekdayOfDate } from "./tz.js";
 
+import type {
+  CdConfirm, CdSignal, DeviationPoint, DeviationResult, InflectionResult, InflectionRow, RsResult, RsRow, RsTagRow,
+} from "./contract/screener.js";
+
 type Rec = Record<string, any>;
 
 export const RS_WINDOWS: readonly number[] = [5, 20, 60, 120, 250];
@@ -123,19 +127,19 @@ function closeAtOrBefore(times: string[], closes: number[], when: string): numbe
 export function rsStrength(
   members: Rec[], benchBars: Rec[] | null | undefined, benchmark = "SPY",
   windows: readonly number[] = RS_WINDOWS,
-): Rec {
+): Omit<RsResult, "sector" | "fetched_at"> {
   const bench = clean(benchBars);
   const benchTimes = bench.map((b) => b.time.slice(0, 10));
   const benchCloses = bench.map((b) => b.close);
 
-  const rows: Rec[] = [];
+  const rows: RsRow[] = [];
   for (const member of members) {
     const symbol = String(member["symbol"] ?? "").toUpperCase();
     const tag = String(member["tag"] ?? "").trim() || UNTAGGED;
     const bars = clean(member["bars"]);
     const closes = bars.map((b) => b.close);
     const times = bars.map((b) => b.time.slice(0, 10));
-    const row: Rec = {
+    const row: RsRow = {
       symbol, tag, company: String(member["company"] ?? ""),
       last: closes.length ? pyRound(closes[closes.length - 1]!, 2) : null,
       bars: closes.length, rs: {}, score: null, rank: null,
@@ -186,20 +190,20 @@ export function rsStrength(
   };
 }
 
-function rsByTag(rows: Rec[], windows: readonly number[]): Rec[] {
-  const groups = new Map<string, Rec[]>();
+function rsByTag(rows: RsRow[], windows: readonly number[]): RsTagRow[] {
+  const groups = new Map<string, RsRow[]>();
   for (const row of rows) {
     if (!groups.has(row["tag"])) groups.set(row["tag"], []);
     groups.get(row["tag"])!.push(row);
   }
-  const out: Rec[] = [];
+  const out: RsTagRow[] = [];
   for (const [tag, members] of groups) {
-    const entry: Rec = {
+    const entry: RsTagRow = {
       tag, count: members.length, rs: {}, score: null, symbols: members.map((m) => m["symbol"]),
     };
     for (const n of windows) {
       const key = String(n);
-      const vals = members.filter((m) => key in m["rs"]).map((m) => m["rs"][key]["rs_pct"] as number);
+      const vals = members.filter((m) => key in m["rs"]).map((m) => m["rs"][key]!["rs_pct"]);
       if (!vals.length) continue;
       entry["rs"][key] = {
         median_pct: pyRound(median(vals)!, 2),
@@ -264,9 +268,12 @@ function divergence(
   return null;
 }
 
+/** confirmation() 这一段的 at 还是**下标**;cdDivergence 把它换成那一根的时间,才是契约里的 CdConfirm。 */
+type ConfirmByIndex = Omit<CdConfirm, "at"> & { at: number | null };
+
 function confirmation(
   closes: number[], ma: Array<number | null>, p2: number, bull: boolean, period: number,
-): Rec {
+): ConfirmByIndex {
   const lastMa = ma[ma.length - 1];
   if (lastMa === null || lastMa === undefined) return { ma: period, status: "n/a", at: null, age: null };
   let crossed: number | null = null;
@@ -289,10 +296,10 @@ function confirmation(
 export function cdDivergence(
   bars: Rec[] | null | undefined, maPeriod: number | null = null,
   strength = DEFAULT_PIVOT_STRENGTH, maxSpan = DEFAULT_MAX_SPAN, maxAge = DEFAULT_MAX_AGE,
-): Rec {
+): CdSignal {
   const rows = clean(bars);
   const closes = rows.map((b) => b.close);
-  const out: Rec = {
+  const out: CdSignal = {
     signal: null, label: "无", bars: rows.length,
     last: closes.length ? pyRound(closes[closes.length - 1]!, 4) : null,
     dif_last: null, dif_side: null, pivots: [], age: null,
@@ -330,7 +337,7 @@ export function cdDivergence(
   const prices = isBull ? lows : highs;
   const { p1, p2 } = pick;
   out["signal"] = isBull ? "bull" : "bear";
-  out["label"] = SIGNAL_LABEL[out["signal"]];
+  out["label"] = SIGNAL_LABEL[out["signal"]!]!;
   out["pivots"] = [p1, p2].map((p) => ({
     index: p, time: rows[p]!.time, price: pyRound(prices[p]!, 4), dif: pyRound(difs[p]!, 4),
   }));
@@ -340,8 +347,8 @@ export function cdDivergence(
   if (maPeriod) {
     const period = Math.trunc(maPeriod);
     const ma = sma(closes, period);
-    const confirm = confirmation(closes, ma, p2, isBull, period);
-    if (confirm["at"] !== null) confirm["at"] = rows[confirm["at"] as number]!.time;
+    const confirm = confirmation(closes, ma, p2, isBull, period) as unknown as CdConfirm;
+    if (confirm["at"] !== null) confirm["at"] = rows[confirm["at"] as unknown as number]!.time;
     out["confirm"] = confirm;
   }
   return out;
@@ -351,14 +358,14 @@ export function cdDivergence(
 export function screenInflections(
   members: Rec[], timeframes: string[], maPeriod: number | null = null,
   strength = DEFAULT_PIVOT_STRENGTH,
-): Rec {
-  const rows: Rec[] = [];
-  const perTf: Record<string, Rec> = {};
+): Omit<InflectionResult, "sector" | "fetched_at"> {
+  const rows: InflectionRow[] = [];
+  const perTf: InflectionResult["per_timeframe"] = {};
   for (const tf of timeframes) perTf[tf] = { bull: 0, bear: 0, confirmed: 0 };
   for (const member of members) {
     const frames: Rec = member["frames"] ?? {};
     const errors: Rec = member["errors"] ?? {};
-    const row: Rec = {
+    const row: InflectionRow = {
       symbol: String(member["symbol"] ?? "").toUpperCase(),
       tag: String(member["tag"] ?? "").trim() || UNTAGGED,
       company: String(member["company"] ?? ""),
@@ -412,13 +419,13 @@ function stdev(values: number[]): number | null {
 export function deviationReview(
   bars: Rec[] | null | undefined, period = DEFAULT_DEV_PERIOD, lookback = DEFAULT_DEV_LOOKBACK,
   smooth = DEFAULT_PRESSURE_SMOOTH, zExtreme = DEFAULT_Z_EXTREME, keep = DEFAULT_KEEP,
-): Rec {
+): Omit<DeviationResult, "symbol" | "timeframe" | "fetched_at"> {
   const rows = clean(bars);
   const n = rows.length;
   period = Math.max(2, Math.trunc(period));
   lookback = Math.max(MIN_Z_SAMPLES, Math.trunc(lookback));
   smooth = Math.max(1, Math.trunc(smooth));
-  const out: Rec = {
+  const out: Omit<DeviationResult, "symbol" | "timeframe" | "fetched_at"> = {
     period, lookback, smooth, z_extreme: zExtreme,
     bars: n, series: [], last: null, extreme: null, extreme_label: "—",
     window: null, readout: [],
@@ -455,7 +462,7 @@ export function deviationReview(
   });
 
   const start = Math.max(0, n - Math.trunc(keep));
-  const series: Rec[] = [];
+  const series: DeviationPoint[] = [];
   for (let i = start; i < n; i++) {
     let z: number | null = null;
     let rank: number | null = null;

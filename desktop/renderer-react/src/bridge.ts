@@ -67,11 +67,12 @@ export interface ConfirmOptions {
   confirmLabel?: string;
 }
 
-// ---- 引擎契约(engine-ts/src/contract/):优质股追踪、股票池开关、板块、价位提醒、持仓追踪、设置、想法、回测、盘口、行情带 ------
+// ---- 引擎契约(engine-ts/src/contract/):优质股追踪、股票池开关、板块、价位提醒、持仓追踪、设置、想法、回测、盘口、行情带、扫描器 ------
 // 这几个域的形状**不在这里定义**:引擎的 handler 与这里用的是同一份类型,返回结构改一个字段名,
 // 两头一起编译不过。只许 `import type`,只许进 contract/ 顶层的类型文件(它们不 import 任何东西,
 // 界面的 tsc 不装引擎依赖也解析得了);contract/schema/ 是引擎自己的运行时校验,这里不碰。
 import type {
+  CdSignal, CdSignalError, DeviationPoint, DeviationResult, InflectionResult, InflectionRow, RsResult, RsRow, RsTagRow,
   LLMConfig, LlmCatalog, LlmPatch, LlmProvider, LlmTestResult,
   BookL1, BookLevel, BookLiquidity, BookSnapshot, MacroBoard, MacroRow,
   BacktestCurvePoint, BacktestRunResult, BacktestRunSpec, BacktestStrategy, BacktestTrade, CustomRules, CustomRulesInput,
@@ -83,6 +84,7 @@ import type {
 } from '../../../engine-ts/src/contract/index';
 
 export type {
+  CdSignal, CdSignalError, DeviationPoint, DeviationResult, InflectionResult, InflectionRow, RsResult, RsRow, RsTagRow,
   LLMConfig, LlmCatalog, LlmPatch, LlmProvider, LlmTestResult,
   BookL1, BookLevel, BookLiquidity, BookSnapshot, MacroBoard, MacroRow,
   BacktestCurvePoint, BacktestRunResult, BacktestRunSpec, BacktestStrategy, BacktestTrade, CustomRules, CustomRulesInput,
@@ -153,9 +155,9 @@ export interface DafriBridge {
   removeSectorStock(id: string, symbol: string): Rpc<RpcResult<'sectors.remove_stock'>>;
   setSectorTag(id: string, symbol: string, tag: string): Rpc<RpcResult<'sectors.set_tag'>>;
 
-  screenerRs(spec: unknown): Rpc<any>;
-  screenerInflection(spec: unknown): Rpc<any>;
-  screenerDeviation(spec: unknown): Rpc<any>;
+  screenerRs(spec: RpcParams<'screener.rs'>): Rpc<RpcResult<'screener.rs'>>;
+  screenerInflection(spec: RpcParams<'screener.inflection'>): Rpc<RpcResult<'screener.inflection'>>;
+  screenerDeviation(spec: RpcParams<'screener.deviation'>): Rpc<RpcResult<'screener.deviation'>>;
   appInfo(): Rpc<AppInfo>;
 
   llmCatalog(): Rpc<RpcResult<'llm.catalog'>>;

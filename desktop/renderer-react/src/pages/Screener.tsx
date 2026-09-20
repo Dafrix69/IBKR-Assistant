@@ -3,6 +3,9 @@ import { Button, Input, InputNumber, Segmented, Select, Table, Tag, Tooltip } fr
 import type { ColumnsType } from 'antd/es/table';
 import { LeftOutlined, RightOutlined } from '@ant-design/icons';
 import { dafri, errorMessage } from '../bridge';
+import type {
+  CdSignal, CdSignalError, DeviationResult, InflectionResult, InflectionRow, RsResult, RsRow, RsTagRow,
+} from '../bridge';
 import { CanvasChart, type ChartSpec } from '../lib/Chart';
 import { fmtTimeShort } from '../lib/format';
 import { showBanner } from '../store/banner';
@@ -181,14 +184,14 @@ function useScan(sector: string, onFirstRow: (symbol: string) => void) {
   const [ma, setMa] = useState<number | null>(20);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState('');
-  const [rs, setRs] = useState<any>(null);
-  const [infl, setInfl] = useState<any>(null);
+  const [rs, setRs] = useState<RsResult | null>(null);
+  const [infl, setInfl] = useState<InflState>(null);
 
   async function run() {
     if (busy) return;
     const tfs = TF_OPTIONS.map((o) => o.value).filter((tf) => timeframes.includes(tf));
     // 背离结果没回来之前,表里先把这几列占住(格子里是「…」),免得 RS 出来后表再跳一次宽度
-    const pending = tfs.length ? { pending: true, timeframes: tfs, rows: [] } : null;
+    const pending: InflState = tfs.length ? { pending: true, timeframes: tfs } : null;
     setBusy(true);
     setProgress('正在拉日线算 RS…(一个 30 只的板块约 10~30 秒)');
     let first = '';
@@ -228,11 +231,11 @@ function useScan(sector: string, onFirstRow: (symbol: string) => void) {
   const summary = useMemo(() => {
     const bits: string[] = [];
     if (rs) bits.push(rs.sector, `对 ${rs.benchmark}(${num(rs.bench_last)})`, `${rs.counted}/${rs.total} 只有分`);
-    if (infl && !infl.pending) {
+    if (infl && !isPending(infl)) {
       if (!rs) bits.push(infl.sector);
       bits.push(`${infl.hit_count}/${infl.total} 只有背离`);
     }
-    const at = (infl && !infl.pending && infl.fetched_at) || rs?.fetched_at;
+    const at = (infl && !isPending(infl) && infl.fetched_at) || rs?.fetched_at;
     if (at) bits.push(fmtTimeShort(at));
     return bits.join(' · ') || '—';
   }, [rs, infl]);
@@ -242,17 +245,16 @@ function useScan(sector: string, onFirstRow: (symbol: string) => void) {
 
 // ---- 合并的表 --------------------------------------------------------------
 
-interface ScanRow {
-  symbol: string;
-  tag: string;
-  last: number | null;
-  error: string | null;
-  rank: number | null;
-  score: number | null;
-  rs: Record<string, any>;
+/** 背离那边还没回来时的占位:表里先把这几列占住(格子里是「…」),免得 RS 出来后表再跳一次宽度。 */
+type InflPending = { pending: true; timeframes: string[] };
+type InflState = InflectionResult | InflPending | null;
+const isPending = (x: InflState): x is InflPending => x !== null && "pending" in x;
+
+/** 表格里的一行:RS 那一行打底(契约的 RsRow),拐点筛选里同一只的那一行并进来。 */
+type ScanRow = Omit<RsRow, "company"> & {
   /** 拐点筛选里这只股的那一行;没扫背离(或还没回来)就没有 */
-  infl?: any;
-}
+  infl?: InflectionRow;
+};
 
 interface SortState {
   key: string;
@@ -260,13 +262,13 @@ interface SortState {
 }
 
 /** RS 的行打底(引擎已按综合分排好),背离按标的并进来;只有背离那边有的股接在后面。 */
-function mergeRows(rs: any, infl: any): ScanRow[] {
+function mergeRows(rs: RsResult | null, infl: InflState): ScanRow[] {
   const bySymbol = new Map<string, ScanRow>();
   for (const r of rs?.rows || []) bySymbol.set(r.symbol, { ...r });
-  for (const r of infl?.rows || []) {
+  for (const r of (isPending(infl) ? [] : infl?.rows) || []) {
     const base = bySymbol.get(r.symbol);
     if (base) base.infl = r;
-    else bySymbol.set(r.symbol, { symbol: r.symbol, tag: r.tag, last: null, error: null, rank: null, score: null, rs: {}, infl: r });
+    else bySymbol.set(r.symbol, { symbol: r.symbol, tag: r.tag, last: null, bars: 0, error: null, rank: null, score: null, rs: {}, infl: r });
   }
   return [...bySymbol.values()];
 }
@@ -293,10 +295,10 @@ function sortRows(rows: ScanRow[], sort: SortState | null): ScanRow[] {
 
 const CONFIRM_LABEL: Record<string, string> = { confirmed: '已确认', waiting: '等确认', failed: '作废', 'n/a': '无均线' };
 
-function SignalCell({ sig, pending }: { sig: any; pending?: boolean }) {
+function SignalCell({ sig, pending }: { sig: CdSignal | CdSignalError | undefined; pending?: boolean }) {
   if (pending) return <span className="sig none">…</span>;
   if (!sig) return <span className="sig none">—</span>;
-  if (sig.error) {
+  if ('error' in sig) {
     return (
       <span className="sig err" title={sig.error}>
         拿不到
@@ -338,8 +340,8 @@ function ScanTable({
   picked,
   onSymbol,
 }: {
-  rs: any;
-  infl: any;
+  rs: RsResult | null;
+  infl: InflState;
   rows: ScanRow[];
   sort: SortState | null;
   onSort: (s: SortState | null) => void;
@@ -349,6 +351,7 @@ function ScanTable({
   const columns = useMemo<ColumnsType<ScanRow>>(() => {
     const windows: { n: number; label: string }[] = rs?.windows || [];
     const tfs: string[] = infl?.timeframes || [];
+    const perTf = isPending(infl) ? undefined : infl?.per_timeframe;
     const sortable = (key: string) => ({ key, sorter: true, sortOrder: sort?.key === key ? sort.order : null, sortDirections: ['descend', 'ascend'] as ('descend' | 'ascend')[] });
     return [
       ...(rs ? [{ title: '#', dataIndex: 'rank', width: 36, className: 'rank', render: (v: number | null) => (v == null ? '' : String(v)) }] : []),
@@ -420,17 +423,17 @@ function ScanTable({
           ]
         : []),
       ...tfs.map((tf) => {
-        const c = infl.per_timeframe?.[tf];
+        const c = perTf?.[tf];
         return {
           title: (
-            <span title={c ? `底背离 ${c.bull} 只 · 顶背离 ${c.bear} 只${infl.ma_period ? ` · 已过 MA${infl.ma_period} 确认 ${c.confirmed} 只` : ''}` : undefined}>
+            <span title={c ? `底背离 ${c.bull} 只 · 顶背离 ${c.bear} 只${!isPending(infl) && infl?.ma_period ? ` · 已过 MA${infl.ma_period} 确认 ${c.confirmed} 只` : ''}` : undefined}>
               {TF_LABEL[tf] || tf}
               {c ? <span className="th-sub">{`底 ${c.bull} · 顶 ${c.bear}`}</span> : null}
             </span>
           ),
           key: tf,
           className: 'text',
-          render: (_: unknown, row: ScanRow) => <SignalCell sig={row.infl?.signals?.[tf]} pending={infl.pending} />,
+          render: (_: unknown, row: ScanRow) => <SignalCell sig={row.infl?.signals?.[tf]} pending={isPending(infl)} />,
         };
       }),
       ...(tfs.length
@@ -471,8 +474,8 @@ function ScanTable({
 }
 
 /** 按业务标签汇总的 RS:五个窗口画成一组以 0 为基线的小柱 */
-function TagCards({ result }: { result: any }) {
-  const tags: any[] = result.tags || [];
+function TagCards({ result }: { result: RsResult }) {
+  const tags: RsTagRow[] = result.tags || [];
   if (!(tags.length > 1 || (tags[0] && tags[0].tag !== '未分类'))) {
     return <p className="hint">成分股还没有业务标签,按标签汇总要先到「板块」页给股票加标签(AI 选股会自动给)。</p>;
   }
@@ -518,7 +521,7 @@ function useDeviation() {
   const [period, setPeriod] = useState<number | null>(20);
   const [lookback, setLookback] = useState<number | null>(120);
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<DeviationResult | null>(null);
   const [status, setStatus] = useState('');
   // 连着点几行时只认最后一次:前面的回包到了也不落地
   const seq = useRef(0);
@@ -670,7 +673,7 @@ function DeviationSection({ dev, pool, order, innerRef }: { dev: ReturnType<type
             <StatTile mono label={`偏离 MA${result.period}`} value={`${num(last.dev_pct, 2, true)}%`} tone={tone} />
             <StatTile mono label={`z 分数(近 ${result.lookback} 根)`} value={last.z == null ? '—' : num(last.z, 2, true)} tone={tone} />
             <StatTile mono label="历史分位" value={last.rank_pct == null ? '—' : `${num(last.rank_pct, 0)}%`} />
-            <StatTile mono label="修正版买卖压力" value={num(last.pressure, 3, true)} tone={last.pressure > 0.3 ? 'cold' : last.pressure < -0.3 ? 'hot' : ''} />
+            <StatTile mono label="修正版买卖压力" value={num(last.pressure, 3, true)} tone={(last.pressure ?? 0) > 0.3 ? 'cold' : (last.pressure ?? 0) < -0.3 ? 'hot' : ''} />
             <StatTile mono label="收盘在真实区间" value={`${num(last.buy_pct, 0)}%`} />
             <StatTile mono label="相对量" value={last.volume_ratio == null ? '—' : `${num(last.volume_ratio, 2)}×`} />
           </div>
