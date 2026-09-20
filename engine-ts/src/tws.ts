@@ -9,6 +9,7 @@ import * as net from "node:net";
 import * as os from "node:os";
 import * as path from "node:path";
 
+import type { AppStatus, DiagnoseAccount, GuideStep, LaunchResult, PortStatus } from "./contract/connection.js";
 import type { Settings } from "./config.js";
 import { redactAccount } from "./store.js";
 
@@ -103,7 +104,7 @@ export function probePort(host = "127.0.0.1", port = 7497, timeoutMs = 600): Pro
 /** 扫标准端口 + 配置里出现的端口,标出每个端口对应哪条连接。 */
 export async function scanPorts(
   settings: Settings, host = "127.0.0.1", prober: PortProber = probePort,
-): Promise<Array<Record<string, unknown>>> {
+): Promise<PortStatus[]> {
   const configured: Record<number, string> = {};
   for (const [name, c] of Object.entries(settings.connectionsFor("ibkr"))) {
     configured[c.port] = name;
@@ -113,7 +114,7 @@ export async function scanPorts(
 
 export async function scanEndpoints(
   known: Endpoint[], configured: Record<number, string>, host: string, prober: PortProber,
-): Promise<Array<Record<string, unknown>>> {
+): Promise<PortStatus[]> {
   const entries: Endpoint[] = known.map((e) => ({ ...e }));
   const knownPorts = new Set(entries.map((e) => e.port));
   for (const port of Object.keys(configured).map(Number).sort((a, b) => a - b)) {
@@ -123,7 +124,7 @@ export async function scanEndpoints(
       });
     }
   }
-  const results: Array<Record<string, unknown>> = [];
+  const results: PortStatus[] = [];
   for (const entry of entries) {
     const probe = await prober(host, entry.port);
     results.push({
@@ -178,8 +179,8 @@ export function processRunning(pattern: string): boolean {
 export function detectApps(
   candidates: Record<string, string[]> = APP_CANDIDATES,
   patterns: Record<string, string> = PROCESS_PATTERNS,
-): Array<Record<string, unknown>> {
-  const apps: Array<Record<string, unknown>> = [];
+): AppStatus[] {
+  const apps: AppStatus[] = [];
   for (const [key, globs] of Object.entries(candidates)) {
     const found: string[] = [];
     for (const pattern of globs) {
@@ -197,7 +198,7 @@ export function detectApps(
 }
 
 /** 拉起 TWS / Gateway。只接受固定键,路径在这一侧解析——绝不让界面传路径。 */
-export function launchApp(key: string): Record<string, unknown> {
+export function launchApp(key: string): LaunchResult {
   if (!(key in APP_CANDIDATES)) {
     throw new Error(`只支持拉起 tws 或 gateway,收到:'${key}'`);
   }
@@ -280,7 +281,7 @@ export function explainConnectError(
 /** 核对别名表和这个会话真正能管的账号。 */
 export function checkAliasMapping(
   settings: Settings, managedAccounts: string[],
-): [Array<Record<string, unknown>>, string[]] {
+): [DiagnoseAccount[], string[]] {
   const managed = new Set(managedAccounts.filter(Boolean));
   const rows = settings.accounts.map((account) => ({
     alias: account.alias,
@@ -457,7 +458,7 @@ async function defaultHandshake(): Promise<IbHandshake | null> {
 }
 
 /** 给界面用的分步指引。刻意写死步骤文案,保证和 TWS 的菜单路径一致。 */
-export function connectionGuide(settings: Settings): Array<Record<string, unknown>> {
+export function connectionGuide(settings: Settings): GuideStep[] {
   const ports =
     Object.values(settings.connectionsFor("ibkr"))
       .map((c) => String(c.port))

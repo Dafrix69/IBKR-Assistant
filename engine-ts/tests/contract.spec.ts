@@ -20,15 +20,12 @@ const BRIDGE = path.resolve(__dirname, "..", "..", "desktop", "renderer-react", 
 /** 还没迁进契约的老方法(入参与返回仍是松散的 Rec)。迁一个,从这里划掉一个;**不许往里加**。 */
 const LEGACY_METHODS = [
   "breaker.halt", "breaker.resume", "breaker.state",
-  "broker.catalog", "broker.connect", "broker.disconnect", "broker.select",
-  "futu.diagnose", "futu.launch", "futu.scan", "futu.set_password", "futu.unlock",
   "instruction.submit",
   "pending.list", "pending.poll",
   "records.get", "records.list",
   "system.selftest", "system.status",
   // tracker 域迁了一半:这三样的返回是 engine.ts 在下单路径里拼的,等它拆开再标类型
   "tracker.close_now", "tracker.poll", "tracker.reconcile",
-  "tws.diagnose", "tws.launch", "tws.scan",
 ];
 
 const dirs: string[] = [];
@@ -67,8 +64,8 @@ describe("契约:迁移只许往前走", () => {
     expect(LEGACY_METHODS.filter((m) => !names.includes(m)), "引擎里已经没有这个方法了").toEqual([]);
   });
 
-  it("名单只许变短:现在是 25 个,改这个数的时候只能往小里改", () => {
-    expect(LEGACY_METHODS.length).toBeLessThanOrEqual(25);
+  it("名单只许变短:现在是 13 个,改这个数的时候只能往小里改", () => {
+    expect(LEGACY_METHODS.length).toBeLessThanOrEqual(13);
     expect(new Set(LEGACY_METHODS).size).toBe(LEGACY_METHODS.length);
   });
 });
@@ -247,6 +244,18 @@ describe("契约:结构错由 schema 报,领域错由 handler 报", () => {
     // include_local / exit 老 handler 只看真假 / 是不是对象:给什么都收
     expect(PARAMS_SCHEMAS["review.candidates"].safeParse({ include_local: 1, limit: "50" })).toMatchObject({ success: true });
     expect(PARAMS_SCHEMAS["review.analyze"].safeParse({ id: "x", exit: "不是对象" })).toMatchObject({ success: true });
+  });
+  it("连接域:结构错归 schema;那几句领域话(golden-rpc 钉着)与「不回显密码」都不变", async () => {
+    expect(await errorOf("tws.diagnose", { connections: "paper" })).toEqual({ code: -32602, message: "tws.diagnose 的参数不对:connections 应为 array,收到 string" });
+    expect(await errorOf("broker.connect", { connections: [1] })).toEqual({ code: -32602, message: "broker.connect 的参数不对:connections.0 应为 string,收到 number" });
+    // 领域错:handler 那几句
+    expect((await errorOf("broker.select", { provider: "schwab" })).message).toBe("只支持 ibkr、futu");
+    expect((await errorOf("tws.diagnose", { connections: ["nope"] })).message).toBe("未定义的连接:nope");
+    expect((await errorOf("futu.set_password", {})).message).toBe("交易解锁密码为空");
+    // 会动配置 / 动密钥 / 拉外部程序的,顶层 strict;报错里不回显密码
+    expect((await errorOf("futu.set_password", { password: "x", 多余的: 1 })).message).toMatch(/有不认识的键:多余的/);
+    const leaked = await errorOf("futu.set_password", { password: ["我的真密码"] });
+    expect(leaked.message).toBe("futu.set_password 的参数不对:password 应为 string,收到 array");
   });
   it("schema 不比老 handler 严:步长给数字串照收;改标签不带 tag = 清掉", async () => {
     const call = async (method: string, params: unknown): Promise<Record<string, any>> =>

@@ -72,6 +72,7 @@ export interface ConfirmOptions {
 // 两头一起编译不过。只许 `import type`,只许进 contract/ 顶层的类型文件(它们不 import 任何东西,
 // 界面的 tsc 不装引擎依赖也解析得了);contract/schema/ 是引擎自己的运行时校验,这里不碰。
 import type {
+  AppStatus, BrokerCatalog, BrokerProviderEntry, DiagnoseAccount, DiagnoseResult, FutuScanResult, GuideStep, PortStatus, TwsScanResult,
   ButterflyCandidate, ButterflyReviewResult, ReviewAnalyzeResult, ReviewCandidate, ReviewFinding, StockCandidate,
   StockReviewResult,
   PaAnalyzeResult, PaComment, PaEvent, PaEvidence, PaLevel, PaPattern, PaSwing, PaTimeframe,
@@ -87,6 +88,7 @@ import type {
 } from '../../../engine-ts/src/contract/index';
 
 export type {
+  AppStatus, BrokerCatalog, BrokerProviderEntry, DiagnoseAccount, DiagnoseResult, FutuScanResult, GuideStep, PortStatus, TwsScanResult,
   ButterflyCandidate, ButterflyReviewResult, ReviewAnalyzeResult, ReviewCandidate, ReviewFinding, StockCandidate,
   StockReviewResult,
   PaAnalyzeResult, PaComment, PaEvent, PaEvidence, PaLevel, PaPattern, PaSwing, PaTimeframe,
@@ -172,24 +174,24 @@ export interface DafriBridge {
   llmTest(llm: LlmPatch, apiKey?: string): Rpc<RpcResult<'llm.test'>>;
   setApiKeyFor(secret: string, provider: string): Rpc<any>;
 
-  scanTws(): Rpc<any>;
-  diagnoseTws(connections?: unknown): Rpc<any>;
-  launchTws(app: string): Rpc<any>;
+  scanTws(): Rpc<RpcResult<'tws.scan'>>;
+  diagnoseTws(connections?: string[]): Rpc<RpcResult<'tws.diagnose'>>;
+  launchTws(app: string): Rpc<RpcResult<'tws.launch'>>;
 
-  brokerCatalog(): Rpc<any>;
-  selectBroker(provider: string): Rpc<any>;
-  scanFutu(): Rpc<any>;
-  diagnoseFutu(connections?: unknown): Rpc<any>;
-  launchFutu(): Rpc<any>;
-  setFutuPassword(password: string, alreadyMd5?: boolean): Rpc<any>;
-  unlockFutu(connection?: unknown): Rpc<any>;
+  brokerCatalog(): Rpc<RpcResult<'broker.catalog'>>;
+  selectBroker(provider: string): Rpc<RpcResult<'broker.select'>>;
+  scanFutu(): Rpc<RpcResult<'futu.scan'>>;
+  diagnoseFutu(connections?: string[]): Rpc<RpcResult<'futu.diagnose'>>;
+  launchFutu(): Rpc<RpcResult<'futu.launch'>>;
+  setFutuPassword(password: string, alreadyMd5?: boolean): Rpc<RpcResult<'futu.set_password'>>;
+  unlockFutu(connection?: string): Rpc<RpcResult<'futu.unlock'>>;
 
   submit(text: string, execute: boolean, accounts: string[]): Rpc<any>;
   /** 回执就是改完之后的那份设置。键名写错引擎会当场拒、不写盘(config 对每一段都查未知键)。 */
   patchSettings(patch: SettingsPatch): Rpc<RpcResult<'settings.patch'>>;
   setApiKey(secret: string): Rpc<RpcResult<'keychain.set'>>;
-  connectBroker(connections?: unknown): Rpc<{ connected: string[]; failed?: Record<string, string> }>;
-  disconnectBroker(): Rpc<any>;
+  connectBroker(connections?: string[]): Rpc<RpcResult<'broker.connect'>>;
+  disconnectBroker(): Rpc<RpcResult<'broker.disconnect'>>;
   halt(reason: string): Rpc<{ cancelled?: number }>;
   resume(): Rpc<any>;
   exportData(path: string): Rpc<RpcResult<'data.export'>>;

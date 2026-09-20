@@ -9,6 +9,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 
 import type { Settings } from "./config.js";
+import type { AppStatus, GuideStep, LaunchResult, PortStatus } from "./contract/connection.js";
 import type { FutuBridge } from "./futuBridge.js";
 import { loadFutuBridge } from "./futuBridge.js";
 // FutuUnavailable 住在 futuBridge.ts(桥自己抛它);这里转出,老的 import 路径不变。
@@ -71,7 +72,7 @@ export const APP_NAME = "富途 OpenD";
 // ----------------------------------------------------------------------
 export async function scanPorts(
   settings: Settings, host = "127.0.0.1", prober: PortProber = probePort,
-): Promise<Array<Record<string, unknown>>> {
+): Promise<PortStatus[]> {
   const configured: Record<number, string> = {};
   for (const [name, c] of Object.entries(settings.connectionsFor("futu"))) {
     configured[c.port] = name;
@@ -79,8 +80,8 @@ export async function scanPorts(
   return scanEndpoints(KNOWN_ENDPOINTS, configured, host, prober);
 }
 
-export function detectApps(): Array<Record<string, unknown>> {
-  const apps: Array<Record<string, unknown>> = [];
+export function detectApps(): AppStatus[] {
+  const apps: AppStatus[] = [];
   for (const [key, globs] of Object.entries(APP_CANDIDATES)) {
     const found: string[] = [];
     for (const pattern of globs) if (pattern) found.push(...expandGlob(pattern));
@@ -92,7 +93,7 @@ export function detectApps(): Array<Record<string, unknown>> {
 }
 
 /** 拉起 OpenD。只接受固定键,路径在这一侧解析。 */
-export function launchApp(key: string): Record<string, unknown> {
+export function launchApp(key: string): LaunchResult {
   if (!(key in APP_CANDIDATES)) throw new Error(`只支持拉起 opend,收到:'${key}'`);
   if (os.platform() !== "darwin" && !WIN) {
     throw new Error(`当前平台不支持一键拉起,请手动启动 ${APP_NAME}。`);
@@ -396,7 +397,7 @@ export async function closeCtx(ctx: { close(): void | Promise<void> } | null): P
 // ----------------------------------------------------------------------
 // 指引
 // ----------------------------------------------------------------------
-export function connectionGuide(settings: Settings): Array<Record<string, unknown>> {
+export function connectionGuide(settings: Settings): GuideStep[] {
   const ports =
     Object.values(settings.connectionsFor("futu"))
       .map((c) => String(c.port))

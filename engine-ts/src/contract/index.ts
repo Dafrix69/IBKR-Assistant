@@ -11,6 +11,11 @@ import type {
   AlertsCreateParams, AlertsDeleteParams, AlertsPollResult, AlertsRefreshParams, AlertsRefreshResult, Watch,
 } from "./alerts.js";
 import type { BookSnapshot, BookSnapshotParams } from "./book.js";
+import type {
+  BrokerCatalog, BrokerConnectParams, BrokerConnectResult, BrokerDisconnectResult, BrokerSelectParams,
+  BrokerSelectResult, DiagnoseParams, DiagnoseResults, FutuScanResult, FutuSetPasswordParams, FutuUnlockParams,
+  FutuUnlockResult, LaunchParams, LaunchResult, TwsScanResult,
+} from "./connection.js";
 import type { LlmCatalog, LlmPatchParams, LlmTestParams, LlmTestResult } from "./llm.js";
 import type { MacroBoard, MacroBoardParams } from "./macro.js";
 import type {
@@ -49,6 +54,7 @@ import type {
 export type * from "./alerts.js";
 export type * from "./backtest.js";
 export type * from "./book.js";
+export type * from "./connection.js";
 export type * from "./macro.js";
 export type * from "./ideas.js";
 export type * from "./llm.js";
@@ -87,6 +93,21 @@ export interface RpcMethods {
   "backtest.run": { params: BacktestRunParams; result: BacktestRunResult };
   /** 一句话 → 条件:模型的回答过了 CustomRulesSchema 复验才回来 */
   "backtest.parse_rules": { params: BacktestParseRulesParams; result: { rules: CustomRules } };
+
+  "broker.catalog": { params: NoParams; result: BrokerCatalog };
+  "broker.select": { params: BrokerSelectParams; result: BrokerSelectResult };
+  "broker.connect": { params: BrokerConnectParams; result: BrokerConnectResult };
+  "broker.disconnect": { params: NoParams; result: BrokerDisconnectResult };
+
+  "tws.scan": { params: NoParams; result: TwsScanResult };
+  "tws.diagnose": { params: DiagnoseParams; result: DiagnoseResults };
+  "tws.launch": { params: LaunchParams; result: LaunchResult };
+
+  "futu.scan": { params: NoParams; result: FutuScanResult };
+  "futu.diagnose": { params: DiagnoseParams; result: DiagnoseResults };
+  "futu.launch": { params: LaunchParams; result: LaunchResult };
+  "futu.unlock": { params: FutuUnlockParams; result: FutuUnlockResult };
+  "futu.set_password": { params: FutuSetPasswordParams; result: { ok: true } };
 
   "ideas.add": { params: IdeasAddParams; result: { idea: Idea } };
   "ideas.list": { params: IdeasListParams; result: { ideas: Idea[] } };
@@ -150,7 +171,8 @@ export type RpcMethodName = keyof RpcMethods;
  * 这是本目录里唯一一个运行时的值——界面只 import type,碰不到它。
  */
 export const SENSITIVE_METHODS = [
-  "keychain.set", "llm.patch", "settings.patch", "tracker.add", "tracker.update",
+  "broker.connect", "broker.select", "futu.launch", "futu.set_password", "futu.unlock", "keychain.set", "llm.patch",
+  "settings.patch", "tracker.add", "tracker.update", "tws.launch",
 ] as const satisfies readonly RpcMethodName[];
 export type RpcParams<M extends RpcMethodName> = RpcMethods[M]["params"];
 export type RpcResult<M extends RpcMethodName> = RpcMethods[M]["result"];

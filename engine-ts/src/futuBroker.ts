@@ -7,6 +7,7 @@
  * 真机联调三结论全部保留:指数闸门、模拟盘合成成交、is_paper 与 trd_env 核对。
  */
 import type { BookL1, BookSnapshot } from "./contract/book.js";
+import type { FutuUnlockResult } from "./contract/connection.js";
 import type { StockQuote } from "./contract/sectors.js";
 import type { PositionRow } from "./contract/positions.js";
 import type { AccountConfig, Settings } from "./config.js";
@@ -1169,7 +1170,7 @@ export class FutuRouter {
 
   // ---- 交易解锁 --------------------------------------------------------
   /** 实盘交易解锁。密码(的 md5)只从 Keychain / DPAPI 读,不落任何日志。 */
-  async unlock(connectionName: string | null = null): Promise<Record<string, unknown>> {
+  async unlock(connectionName: string | null = null): Promise<FutuUnlockResult> {
     const futuCfg = this.settings.broker.futu;
     const names = connectionName ? [connectionName] : Object.keys(this.connections);
     let secret: string | null;

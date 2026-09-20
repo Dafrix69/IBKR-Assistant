@@ -1,10 +1,16 @@
-/** broker.* / tws.* / futu.*:券商接入的选择、连接,与本机网关的探测。 */
+/** broker.* / tws.* / futu.*:券商接入的选择、连接,与本机网关的探测。
+ *  整个域已经在契约里(contract/connection.ts):入参过了 schema 才到这里,返回对着契约类型检查。 */
 import * as crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { BrokerError, BrokerRouter } from "../../broker.js";
+import type {
+  BrokerCatalog, BrokerConnectParams, BrokerConnectResult, BrokerDisconnectResult, BrokerSelectParams,
+  BrokerSelectResult, DiagnoseParams, DiagnoseResult, DiagnoseResults, FutuScanResult,
+  FutuSetPasswordParams, FutuUnlockParams, FutuUnlockResult, LaunchParams, LaunchResult, TwsScanResult,
+} from "../../contract/index.js";
 import { DEFAULT_BROKER_PORT, patchConfigFile } from "../../config.js";
 import * as futu from "../../futu.js";
 import { FutuRouter } from "../../futuBroker.js";
@@ -13,24 +19,25 @@ import { RpcError } from "../../rpcError.js";
 import { redactAccount } from "../../store.js";
 import * as twsMod from "../../tws.js";
 import { HandlerBase } from "../context.js";
-import type { MethodTable, Rec } from "../context.js";
+import type { MethodTable } from "../context.js";
+import { contractMethods } from "../contractMethods.js";
 
 export class ConnectionHandlers extends HandlerBase {
   methods(): MethodTable {
-    return {
-      "broker.catalog": (p) => this.brokerCatalog(p),
+    return contractMethods({
+      "broker.catalog": () => this.brokerCatalog(),
       "broker.select": (p) => this.brokerSelect(p),
       "broker.connect": (p) => this.brokerConnect(p),
-      "broker.disconnect": (p) => this.brokerDisconnect(p),
-      "tws.scan": (p) => this.twsScan(p),
+      "broker.disconnect": () => this.brokerDisconnect(),
+      "tws.scan": () => this.twsScan(),
       "tws.diagnose": (p) => this.twsDiagnose(p),
       "tws.launch": (p) => this.twsLaunch(p),
-      "futu.scan": (p) => this.futuScan(p),
+      "futu.scan": () => this.futuScan(),
       "futu.diagnose": (p) => this.futuDiagnose(p),
       "futu.launch": (p) => this.futuLaunch(p),
       "futu.unlock": (p) => this.futuUnlock(p),
       "futu.set_password": (p) => this.futuSetPassword(p),
-    };
+    });
   }
 
   // ---- 券商连接 --------------------------------------------------------
@@ -45,7 +52,7 @@ export class ConnectionHandlers extends HandlerBase {
     return new BrokerRouter(this.settings);
   }
 
-  brokerCatalog(_params: Rec): Rec {
+  brokerCatalog(): BrokerCatalog {
     const provider = this.settings.broker.provider;
     const futuCfg = this.settings.broker.futu;
     let unlockSaved = false;
@@ -90,8 +97,8 @@ export class ConnectionHandlers extends HandlerBase {
   }
 
   /** 切换生效的券商接入。切之前先把旧连接断干净。 */
-  async brokerSelect(params: Rec): Promise<Rec> {
-    const provider = params["provider"];
+  async brokerSelect(params: BrokerSelectParams): Promise<BrokerSelectResult> {
+    const provider = String(params["provider"] ?? "");
     if (!(provider in ConnectionHandlers.BROKER_LABELS)) {
       throw new RpcError(-32602, `只支持 ${Object.keys(ConnectionHandlers.BROKER_LABELS).join("、")}`);
     }
@@ -120,7 +127,7 @@ export class ConnectionHandlers extends HandlerBase {
     };
   }
 
-  async brokerConnect(params: Rec): Promise<Rec> {
+  async brokerConnect(params: BrokerConnectParams): Promise<BrokerConnectResult> {
     const provider = this.settings.broker.provider;
     if (this.ctx.router !== null && this.ctx.router.BROKER !== provider) {
       // 配置里换过券商:旧 router 说的是另一家的协议,先断干净再重建
@@ -153,7 +160,7 @@ export class ConnectionHandlers extends HandlerBase {
     return { provider, connected, failed, listeners: attached };
   }
 
-  async brokerDisconnect(_params: Rec): Promise<Rec> {
+  async brokerDisconnect(): Promise<BrokerDisconnectResult> {
     if (this.ctx.router) await this.ctx.router.disconnectAll();
     this.ctx.router = null;
     this.ctx.dropEngine();
@@ -161,7 +168,7 @@ export class ConnectionHandlers extends HandlerBase {
   }
 
   // ---- TWS 检测(§9.1:本模块不接触任何 IBKR 凭证)------------------------
-  async twsScan(_params: Rec): Promise<Rec> {
+  async twsScan(): Promise<TwsScanResult> {
     return {
       ports: await twsMod.scanPorts(this.settings),
       apps: twsMod.detectApps(),
@@ -175,14 +182,14 @@ export class ConnectionHandlers extends HandlerBase {
     };
   }
 
-  async twsDiagnose(params: Rec): Promise<Rec> {
+  async twsDiagnose(params: DiagnoseParams): Promise<DiagnoseResults> {
     const names: string[] = params["connections"] ?? Object.keys(this.settings.connections).sort();
     const unknown = names.filter((n) => !(n in this.settings.connections));
     if (unknown.length) throw new RpcError(-32602, `未定义的连接:${unknown.join("、")}`);
-    const results: Rec[] = [];
+    const results: DiagnoseResult[] = [];
     for (const name of names) {
       try {
-        results.push(await twsMod.diagnose(this.settings, name));
+        results.push(await twsMod.diagnose(this.settings, name) as DiagnoseResult);
       } catch (exc) {
         // 诊断失败本身就是要展示的结果
         results.push({ connection: name, connected: false, error: (exc as Error).message, hint: null });
@@ -192,9 +199,9 @@ export class ConnectionHandlers extends HandlerBase {
     return { results };
   }
 
-  twsLaunch(params: Rec): Rec {
-    const key = params["app"];
-    let result: Rec;
+  twsLaunch(params: LaunchParams): LaunchResult {
+    const key = String(params["app"] ?? "");
+    let result: LaunchResult;
     try {
       result = twsMod.launchApp(key);
     } catch (exc) {
@@ -205,7 +212,7 @@ export class ConnectionHandlers extends HandlerBase {
   }
 
   // ---- 富途 OpenD 检测(§9.1:本模块不接触任何富途凭证)-------------------
-  async futuScan(_params: Rec): Promise<Rec> {
+  async futuScan(): Promise<FutuScanResult> {
     return {
       ports: await futu.scanPorts(this.settings),
       apps: futu.detectApps(),
@@ -221,7 +228,7 @@ export class ConnectionHandlers extends HandlerBase {
     };
   }
 
-  async futuDiagnose(params: Rec): Promise<Rec> {
+  async futuDiagnose(params: DiagnoseParams): Promise<DiagnoseResults> {
     const futuConns = this.settings.connectionsFor("futu");
     const names: string[] = params["connections"] ?? Object.keys(futuConns).sort();
     if (!names.length) {
@@ -229,10 +236,10 @@ export class ConnectionHandlers extends HandlerBase {
     }
     const unknown = names.filter((n) => !(n in futuConns));
     if (unknown.length) throw new RpcError(-32602, `未定义的连接:${unknown.join("、")}`);
-    const results: Rec[] = [];
+    const results: DiagnoseResult[] = [];
     for (const name of names) {
       try {
-        results.push(await futu.diagnose(this.settings, name));
+        results.push(await futu.diagnose(this.settings, name) as DiagnoseResult);
       } catch (exc) {
         results.push({
           connection: name, broker: "futu", connected: false,
@@ -244,9 +251,9 @@ export class ConnectionHandlers extends HandlerBase {
     return { results };
   }
 
-  futuLaunch(params: Rec): Rec {
-    const key = params["app"] || "opend";
-    let result: Rec;
+  futuLaunch(params: LaunchParams): LaunchResult {
+    const key = String(params["app"] || "opend");
+    let result: LaunchResult;
     try {
       result = futu.launchApp(key);
     } catch (exc) {
@@ -257,7 +264,7 @@ export class ConnectionHandlers extends HandlerBase {
   }
 
   /** 存交易解锁密码。只存 md5,绝不存明文,也绝不回显任何一段。 */
-  futuSetPassword(params: Rec): Rec {
+  futuSetPassword(params: FutuSetPasswordParams): { ok: true } {
     let secret = String(params["password"] ?? "");
     if (!secret) throw new RpcError(-32602, "交易解锁密码为空");
     if (!params["already_md5"]) {
@@ -279,14 +286,14 @@ export class ConnectionHandlers extends HandlerBase {
   }
 
   /** 实盘交易解锁。密码从 Keychain / DPAPI 读,不经过界面。 */
-  async futuUnlock(params: Rec): Promise<Rec> {
+  async futuUnlock(params: FutuUnlockParams): Promise<FutuUnlockResult> {
     if (this.settings.broker.provider !== "futu") {
       throw new RpcError(-32010, "当前券商接入不是富途,无需解锁。");
     }
     if (this.router === null || !("unlock" in this.router)) {
       throw new RpcError(-32004, "尚未连接富途 OpenD,请先在下面点「连接 / 断开交易引擎」。");
     }
-    let result: Rec;
+    let result: FutuUnlockResult;
     try {
       result = await (this.router as FutuRouter).unlock(params["connection"] ?? null);
     } catch (exc) {

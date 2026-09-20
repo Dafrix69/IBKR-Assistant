@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Badge, Button, Card, Input, InputNumber, List, Segmented, Select, Space, Steps } from 'antd';
 import { dafri, errorMessage } from '../bridge';
-import type { LlmPatch, LlmTestResult } from '../bridge';
+import type {
+  AppStatus, BrokerCatalog, BrokerProviderEntry, DiagnoseAccount, DiagnoseResult, FutuScanResult, GuideStep, LlmPatch,
+  LlmTestResult,
+  PortStatus, TwsScanResult,
+} from '../bridge';
 import { showBanner } from '../store/banner';
 import { toggleBrokerConnection } from '../store/broker';
 import { loadLlmCatalog, useLlmCatalog, type LlmProvider } from '../store/llm';
@@ -19,25 +23,10 @@ const SUBTABS = [
   { value: 'llm', label: '大模型' },
 ];
 
-interface App {
-  key: string;
-  name: string;
-  installed: boolean;
-  running: boolean;
-  paths: string[];
-}
-interface Port {
-  port: number;
-  label: string;
-  open: boolean;
-  latency_ms?: number | null;
-  error?: string;
-  configured_as?: string;
-}
-interface GuideStep {
-  title: string;
-  detail: string;
-}
+// 程序、端口、指引这三样的形状在引擎契约里(engine-ts/src/contract/connection.ts),从 bridge 拿。
+// 以前这里手抄过一份:Port 的 error / configured_as 抄成了可选,引擎给的其实是「有值或 null」。
+type App = AppStatus;
+type Port = PortStatus;
 
 function InfoCard({ tone, title, body, meta, children }: { tone: Tone; title: string; body?: string | null; meta?: string[]; children?: ReactNode }) {
   return (
@@ -115,7 +104,7 @@ function Guide({ id, steps, connected }: { id: string; steps: GuideStep[]; conne
   );
 }
 
-function AccountRows({ accounts, connection }: { accounts: any[]; connection: string }) {
+function AccountRows({ accounts, connection }: { accounts: DiagnoseAccount[]; connection: string }) {
   const rows = accounts.filter((a) => a.connection === connection);
   if (!rows.length) return null;
   return (
@@ -176,10 +165,10 @@ export function AccessPage() {
 function TwsPanel() {
   const status = useStatus();
   const connected = Boolean(status?.broker_connected);
-  const [scan, setScan] = useState<any>(null);
+  const [scan, setScan] = useState<TwsScanResult | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
   const [current, setCurrent] = useState<string | null>(null);
-  const [diag, setDiag] = useState<any[] | null>(null);
+  const [diag, setDiag] = useState<DiagnoseResult[] | null>(null);
   const [diagState, setDiagState] = useState<'idle' | 'working' | 'error'>('idle');
   const [diagError, setDiagError] = useState('');
 
@@ -267,7 +256,7 @@ function TwsPanel() {
   );
 }
 
-function Diagnosis({ result, versionLabel, extraMeta }: { result: any; versionLabel: string; extraMeta: string[] }) {
+function Diagnosis({ result, versionLabel, extraMeta }: { result: DiagnoseResult; versionLabel: string; extraMeta: string[] }) {
   const tone: Tone = result.connected && !result.error ? 'ok' : result.connected ? 'warn' : 'bad';
   const meta = result.connected
     ? [`${versionLabel} ${result.server_version ?? '—'}`, ...extraMeta, ...(result.port_latency_ms != null ? [`${result.port_latency_ms} ms`] : [])]
@@ -297,11 +286,11 @@ function loginText(v: unknown): string {
 function FutuPanel() {
   const status = useStatus();
   const connected = Boolean(status?.broker_connected);
-  const [catalog, setCatalog] = useState<any>(null);
+  const [catalog, setCatalog] = useState<BrokerCatalog | null>(null);
   const [catalogError, setCatalogError] = useState<string | null>(null);
-  const [scan, setScan] = useState<any>(null);
+  const [scan, setScan] = useState<FutuScanResult | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
-  const [diag, setDiag] = useState<any[] | null>(null);
+  const [diag, setDiag] = useState<DiagnoseResult[] | null>(null);
   const [diagState, setDiagState] = useState<'idle' | 'working' | 'error'>('idle');
   const [diagError, setDiagError] = useState('');
   const [switching, setSwitching] = useState<string | null>(null);
@@ -427,7 +416,7 @@ function FutuPanel() {
         ) : !catalog ? (
           <LoadingBlock rows={2} />
         ) : (
-          (catalog.providers || []).map((provider: any) => {
+          (catalog.providers || []).map((provider: BrokerProviderEntry) => {
             const conns = Object.entries(provider.connections || {}) as [string, any][];
             return (
               <InfoCard

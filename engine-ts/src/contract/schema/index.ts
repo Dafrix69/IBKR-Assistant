@@ -11,6 +11,10 @@ import type { RpcMethodName, RpcParams } from "../index.js";
 import { AlertsCreateParamsSchema, AlertsDeleteParamsSchema, AlertsRefreshParamsSchema } from "./alerts.js";
 import { BacktestParseRulesParamsSchema, BacktestRunParamsSchema } from "./backtest.js";
 import {
+  BrokerConnectParamsSchema, BrokerSelectParamsSchema, DiagnoseParamsSchema, FutuSetPasswordParamsSchema,
+  FutuUnlockParamsSchema, LaunchParamsSchema,
+} from "./connection.js";
+import {
   IdeasAddParamsSchema, IdeasAnalyzeParamsSchema, IdeasDigestParamsSchema, IdeasDigestsParamsSchema, IdeasListParamsSchema,
   IdeasUpdateParamsSchema,
 } from "./ideas.js";
@@ -57,6 +61,21 @@ export const PARAMS_SCHEMAS: { readonly [M in RpcMethodName]: ParamsSchema<RpcPa
   "backtest.strategies": NoParamsSchema,
   "backtest.run": BacktestRunParamsSchema,
   "backtest.parse_rules": BacktestParseRulesParamsSchema,
+
+  "broker.catalog": NoParamsSchema,
+  "broker.select": BrokerSelectParamsSchema,
+  "broker.connect": BrokerConnectParamsSchema,
+  "broker.disconnect": NoParamsSchema,
+
+  "tws.scan": NoParamsSchema,
+  "tws.diagnose": DiagnoseParamsSchema,
+  "tws.launch": LaunchParamsSchema,
+
+  "futu.scan": NoParamsSchema,
+  "futu.diagnose": DiagnoseParamsSchema,
+  "futu.launch": LaunchParamsSchema,
+  "futu.unlock": FutuUnlockParamsSchema,
+  "futu.set_password": FutuSetPasswordParamsSchema,
 
   "ideas.add": IdeasAddParamsSchema,
   "ideas.list": IdeasListParamsSchema,
