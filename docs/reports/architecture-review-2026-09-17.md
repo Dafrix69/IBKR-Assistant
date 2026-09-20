@@ -364,3 +364,26 @@ CI 里排在 `lint` 之后。第一次跑会红,把现有 8 + 3 条修掉之后�
 同时报错,界面那头 `Tracker.tsx` 报错——当初写的是"四个地方没有一个会报错,只有 `Tracker.tsx` 上的数字变成 NaN"。
 
 `tracker` 域只剩 `tracker.poll` / `reconcile` / `close_now`,等 `engine.ts` 拆开。
+
+**2026-09-20,拆 `engine.ts`:量了耦合、定了方案,没有动手。** `TradingEngine` 是一个共享 `this` 状态的类(2,527 行),按 `this.xxx` 的
+双向引用把四块候选量了一遍:
+
+| 块 | 行数 | 类的其余部分怎么用它 | 它用到块外的方法 | 判断 |
+|---|---|---|---|---|
+| 托管单(`syncHosted` … `hostedOnStatus`) | 457 | 只有 3 个入口:`syncHosted` / `hostedOnError` / `hostedOnStatus` | 6 个:`accountIsPaper` `applySpotTarget` `chaseQuote` `chaseWarnIfStuck` `baseRecord` `onIbError` | **最干净,先搬它**。它的状态(`hosted` / `hostedIndex` / `hostedRetryAt` / `hostedAdopted`)几乎只有它自己用,块外只有 `sweepExisting` 读一次 `hosted`、IB 回调读一次 `hostedIndex` |
+| 执行对账(`reconcileOrders` …) | 157 | 3 个入口:`reconcileSoon` / `reconcileDue` / `reconcileOrders` | 1 个:`replayUnmatched` | 第二个搬。和别处共用 `orderIndex` / `finalized` / `seenFills` |
+| IB 回调与落库索引 | 250 | `brokerCode` `indexPlacement` `onIbError` `replayUnmatched` | 4 个,其中 2 个是托管单的入口 | 去重表、订单索引和所有人共用,**放到最后**;报告原文说它"边界清晰",量下来不是 |
+| 追价平仓 | 138 | 5 个入口,和 `closePosition` / 托管单互相调 | 1 个 | 不单独搬,它是平仓逻辑的一部分 |
+
+测试直接摸的引擎私有成员只有 `indexPlacement` / `autoOutsideRth` / `parser` 三个,搬托管单和执行对账都碰不到它们。
+
+方案(照拆 `rpc.ts` 的办法):`engine/hosted.ts` 里一个 `HostedOrders` 类,构造时拿一个宿主接口(store / router / notifier / settings /
+killswitch + 上面那 6 个方法),用基类 getter 把它们摊成 `this.store` 这样的写法,**函数体逐字搬**;引擎保留三个入口做转调。
+用脚本按行号切片、每条替换断言命中次数、搬完逐行对账。这一步编译产物不可能逐字节一致(代码换了文件),判据换成:逐行对账 +
+`hosted`(11)/ `sweep`(45)/ `tracker-loop` / `reconcile` / `combo-close` / `tracker-rpc` 全绿。
+
+**为什么现在不动手**:到今天为止的 11 笔提交**还没有一笔在真机上走过**——测试按规矩全是离线的,而改动已经落在真应用会走的路径上
+(`tracker.add` 前面加了 strict 的 schema、持仓行换了类型、`rpc.ts` 整个拆了)。今天(周日)本机 7496 / 7497 都没开,只读探针连不上。
+在没核对过的改动上再叠一层下单路径的重构,以后真机上出了问题,就得在"契约 / 类型"和"引擎重构"两批里二分。顺序应当是:
+先合并、在真机上跑一遍 `npm run probe`(只读),再在模拟账户里从真界面建一条追踪、切一次启停、点一次立即平仓——这三下正好走过
+`tracker.add` / `update` / `close_now` 与 `__confirmed` 那条承重的耦合;都对,再拆 `engine.ts`,而且单独一个分支。
