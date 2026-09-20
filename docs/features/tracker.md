@@ -464,11 +464,12 @@ RPC 里传 `profit_drawdown_preset: "fly"` 等价。
 `tests/tracker-rpc.spec.ts` 钉的就是这一段:32 条,输入照界面的原样(字符串、`''`、`undefined` 的键过一遍 JSON 就没了),
 经 `s.handle` 走完整条 RPC 路径,假券商只记下收到的单。它是特征测试——钉的是**现在的行为**,包括两处不那么好看的现状:
 
-- `tracker.add` 的回执里 `enabled` 是数字 `1`,`tracker.list` 里同一条是 `true`(回执回的是刚拼的那一行,没过读库的转换;
-  `alerts.create` 是同一个毛病)。界面按真假用。
-- `tracker.update` 传 `auto_close` 对象是**整份替换**不是合并:没带的键就没了,读的时候靠 `makeAutoClose` 补默认值——
-  只传 `{enabled, close_fraction_pct}` 的话,`order_type` 会从 LMT 回到 MKT、托管会被关掉。界面现在只用 `update` 切启停,
-  不传 `auto_close`,所以是潜伏的。谁要让界面开始传它,先把这里改成合并。
+- `tracker.add` 的回执里 `enabled` 曾经是数字 `1`,`tracker.list` 里同一条是 `true`(回执回的是刚拼的那一行,没过读库的转换;
+  `alerts.create` 是同一个毛病)。**2026-09-20 统一成布尔**,单独一笔,`golden:update` 的 diff 恰好一行。
+- `tracker.update` 传 `auto_close` 曾经是**整份替换**:没带的键就没了,读的时候靠 `makeAutoClose` 补默认值——只传
+  `{close_fraction_pct}` 的话,`order_type` 会从 LMT 悄悄回到 MKT、托管会被关掉。界面只用 `update` 切启停、不传 `auto_close`,
+  所以一直是潜伏的。**2026-09-20 改成合并**(只给要改的键,没带的保持原样):在授权自动发单的路径上,部分更新不该悄悄换掉
+  下单方式。里面的键不收 `null`——每一项都有默认值,没有"清掉"这个说法,给 `null` 是当场拒。
 
 这份测试自己也验过:把解析分别改坏成上面三种样子(外加逐个丢掉追价上限、尾盘收紧、平仓比例、跟踪止损),6 个变异
 全部被抓住。**给这个域的入参加 schema、迁进 `contract/` 的时候,这份测试不许改一个断言**;而且那个 schema 要用

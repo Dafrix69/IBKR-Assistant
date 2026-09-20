@@ -310,7 +310,12 @@ export class TrackerHandlers extends HandlerBase {
       }
     }
     if ("auto_close" in params) {
-      fields["auto_close"] = { ...(params["auto_close"] ?? {}) };
+      // **合并**,不是整份替换:没带的键保持原样。2026-09-20 之前是替换——只改一个 close_fraction_pct,库里那份就只剩这一个键,
+      // 读的那一头 makeAutoClose 补默认值:order_type 从 LMT 悄悄回到 MKT、分批比例回到 100%。在授权自动发单的路径上,
+      // "悄悄换了下单方式"比报错危险。过了 schema 的入参里不会有值是 undefined 的键(里面的键不收 null,没带的键 zod 不产出);
+      // 这道过滤是给绕过 schema 直接调 handler 的人留的:undefined 盖上去,JSON 落库时那个键就没了,等于又回到"替换"。
+      const given = Object.entries(params["auto_close"] ?? {}).filter(([, value]) => value !== undefined);
+      fields["auto_close"] = { ...(track["auto_close"] ?? {}), ...Object.fromEntries(given) };
       if ((fields["auto_close"] as Rec)["host_at_broker"]) {
         this.requireHostingSupported(String(track["account"]));
       }

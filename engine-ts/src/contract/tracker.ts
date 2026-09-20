@@ -64,7 +64,7 @@ export interface Track {
   contract: Record<string, unknown>;
   /** 库里存的是当时写进去的那份 JSON:老行没有后来才加的键,所以是 Partial——读的时候过一遍 makeTargets 补默认值 */
   targets: Partial<Targets>;
-  /** 同上;而且 tracker.update 传 auto_close 是**整份替换**(没带的键就没了),读的时候过 makeAutoClose */
+  /** 同上,读的时候过 makeAutoClose 补默认值。tracker.update 传 auto_close 是合并(2026-09-20 之前是整份替换,没带的键就没了) */
   auto_close: Partial<AutoClose>;
   /** 回执与列表一个口径(2026-09-20 之前 tracker.add 的回执里是数字 1,和 alerts.create 同一个毛病,一起改掉的)。 */
   enabled: boolean;
@@ -164,7 +164,7 @@ export interface TrackerAddParams extends TargetsInput {
 }
 
 /**
- * 三种改法,可以一起给:enabled(重新启用会把上一次触发的闩解开)、auto_close(**整份替换**,不是合并)、
+ * 三种改法,可以一起给:enabled(重新启用会把上一次触发的闩解开)、auto_close(**合并**:只给要改的键,没带的保持原样)、
  * 目标字段(给了任何一个,就按"五个一起给"算——没给的那几个等于被清掉)。
  */
 export interface TrackerUpdateParams extends TargetsInput {

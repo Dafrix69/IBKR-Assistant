@@ -481,3 +481,5 @@ killswitch + 上面那 6 个方法),用基类 getter 把它们摊成 `this.store
 - `macro.board`:券商的流式报价抛异常时,这一轮降级到公开源,不再整条报错。handler 里那次没有护栏的 `await` 包上了。
 - `settings.patch`:顶层只认契约里写着的三段(`policies` / `limits` / `protections`)。原来 `{foo: {…}}` 会成功并被原样写进配置文件;落实时又看到更要紧的一面——`{llm: {…}}` 能绕过 `llm.patch` 的字段白名单(改 `keychain_service`),`{storage: {db_path}}` 能从界面通道换库。现在都当场拒,一个字不写盘。调用方只有「设置」页,发的就是这三段;golden-rpc 钉的三条不受影响。
 - 新建回执里的 `enabled`:`alerts.create` / `tracker.add` 从数字 `1` 统一成 `true`(和列表、和读库那道转换一个口径),契约类型从 `boolean | 0 | 1` 收成 `boolean`。全量测试里只红了 golden-rpc 第 63 步这一条,`golden:update` 的 diff 恰好一行;`tracker-rpc.spec` 那条断言随之改了并写明缘由。引擎与界面里没有任何地方拿它和 `1` 做比较(grep 过)。优质股那张表没动:它两头一直都是 `0 | 1`,自洽。
+- `tracker.update` 的 `auto_close`:从整份替换改成合并。落实时把隐患看具体了:只改一个 `close_fraction_pct`,库里那份就只剩这一个键,读的那一头补默认值——限价平仓悄悄变回市价、托管被关掉。界面只用 `update` 切启停,所以真应用里行为不变;`tracker-rpc.spec` 里那条写着"谁要改这个行为,得是有意的"的用例改成钉新行为。我自己在测试里先假设了"给 `null` = 这一项不动",跑出来不是:strict schema 对 `auto_close` 里面的键不收 `null`,当场拒——注释和用例都按实际改了。
+- **顺延的一处**:分批平仓记录的名义金额按整仓算(`engine.ts` 的 `closePosition`)。它只影响记录里的 `notional_estimate`、不影响发出去的单,而 `engine.ts` 在真机核对之前不动,所以留到拆 `engine.ts` 的那个分支一起改。

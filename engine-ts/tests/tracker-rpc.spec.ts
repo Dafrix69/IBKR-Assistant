@@ -286,13 +286,26 @@ describe("tracker.update", () => {
     expect(s.engine.store.getTrack(id)!["targets"]["stop_loss"]).toBe(95);
   });
 
-  it("现状(界面目前不这么用):auto_close 是整份替换,不是合并——没带的键就没了,读的时候靠默认值补", async () => {
+  /**
+   * 2026-09-20 之前这里钉的是另一个结果:整份替换——只给 close_fraction_pct,库里就只剩 { enabled, close_fraction_pct },
+   * 读的那一头 makeAutoClose 补默认值,order_type 从 LMT 悄悄回到了 MKT。当时写的是"谁要改这个行为,得是有意的";
+   * 这一次就是有意的(用户定了按意见办,单独一笔):授权自动发单的路径上,部分更新不该悄悄换掉下单方式。
+   */
+  it("auto_close 是合并:只给要改的键,没带的保持原样(限价单不会因为改了个比例就变回市价单)", async () => {
     const { call, id, s } = await tracked();
-    expect(s.engine.store.getTrack(id)!["auto_close"]).toMatchObject({ enabled: true, order_type: "LMT", slippage_pct: 0.3 });
-    const out = await call("tracker.update", { id, auto_close: { enabled: true, close_fraction_pct: 50 } });
-    expect(out["result"]["track"]["auto_close"]).toEqual({ enabled: true, close_fraction_pct: 50 });
-    // 读的那一头:makeAutoClose 补默认——order_type 从 LMT 回到了 MKT。谁要改这个行为,得是有意的
-    expect(tk.makeAutoClose(out["result"]["track"]["auto_close"])).toMatchObject({ order_type: "MKT", slippage_pct: 0.3, host_at_broker: false });
+    const before = s.engine.store.getTrack(id)!["auto_close"];
+    expect(before).toMatchObject({ enabled: true, order_type: "LMT", slippage_pct: 0.3 });
+    const out = await call("tracker.update", { id, auto_close: { close_fraction_pct: 50 } });
+    expect(out["result"]["track"]["auto_close"]).toEqual({ ...before, close_fraction_pct: 50 });
+    expect(tk.makeAutoClose(out["result"]["track"]["auto_close"])).toMatchObject({ enabled: true, order_type: "LMT", close_fraction_pct: 50 });
+    // 再改一项:前一次改的也还在
+    const again = await call("tracker.update", { id, auto_close: { enabled: false } });
+    expect(again["result"]["track"]["auto_close"]).toEqual({ ...before, close_fraction_pct: 50, enabled: false });
+    // 里面的键不收 null:想"清掉"一项没有这个说法(每一项都有默认值),给 null 是当场拒,不是悄悄清成默认
+    expect((await call("tracker.update", { id, auto_close: { order_type: null } }))["error"]).toEqual({
+      code: -32602, message: "tracker.update 的参数不对:auto_close.order_type 应为 string,收到 null",
+    });
+    expect(s.engine.store.getTrack(id)!["auto_close"]).toEqual({ ...before, close_fraction_pct: 50, enabled: false });
   });
 
   it("没有要改的字段 / 没有这个追踪", async () => {
