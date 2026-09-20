@@ -1,17 +1,23 @@
-/** review.*:交易分析——蝴蝶复盘、股票复盘、止盈策略回放。 */
+/** review.*:交易分析——蝴蝶复盘、股票复盘、止盈策略回放。
+ *  整个域已经在契约里(contract/review.ts):入参过了 schema 才到这里,返回对着契约类型检查。 */
 import { BrokerError } from "../../broker.js";
 import { nowEt } from "../../config.js";
 import { pyRound } from "../../py.js";
+import type {
+  ButterflyCandidate, ReviewAnalyzeParams, ReviewAnalyzeResult, ReviewCandidate, ReviewCandidatesParams,
+  ReviewCandidatesResult, StockCandidate,
+} from "../../contract/index.js";
 import { RpcError } from "../../rpcError.js";
 import { HandlerBase } from "../context.js";
 import type { MethodTable, Rec } from "../context.js";
+import { contractMethods } from "../contractMethods.js";
 
 export class ReviewHandlers extends HandlerBase {
   methods(): MethodTable {
-    return {
+    return contractMethods({
       "review.candidates": (p) => this.reviewCandidates(p),
       "review.analyze": (p) => this.reviewAnalyze(p),
-    };
+    });
   }
 
   // ---- 交易分析:蝴蝶复盘 ------------------------------------------------
@@ -85,7 +91,7 @@ export class ReviewHandlers extends HandlerBase {
     return sr.groupStockTrips(this.engine.store.listFills(), accounts, this.reviewHoldings);
   }
 
-  private static stockCandidate(trip: Rec): Rec {
+  private static stockCandidate(trip: Rec): StockCandidate {
     return {
       id: trip["id"],
       kind: "stock",
@@ -105,7 +111,7 @@ export class ReviewHandlers extends HandlerBase {
     };
   }
 
-  private static reviewCandidate(record: Rec, profile: Rec, source: string): Rec {
+  private static reviewCandidate(record: Rec, profile: Rec, source: string): ButterflyCandidate {
     const ibkr = record["ibkr"] ?? {};
     const timeline: Rec[] = ibkr["status_timeline"] ?? [];
     return {
@@ -150,12 +156,12 @@ export class ReviewHandlers extends HandlerBase {
 
   /** 可复盘的蝴蝶:默认只列券商真实成交的(最新在前);include_local 时再附上本地没成交的。
    * 同一张蝴蝶的开仓与平仓成交配成一对:平仓那条标 role=exit,分析它等于分析开仓那条。 */
-  async reviewCandidates(params: Rec): Promise<Rec> {
+  async reviewCandidates(params: ReviewCandidatesParams): Promise<ReviewCandidatesResult> {
     const tr = await import("../../tradereview.js");
     const limit = Math.trunc(Number(params["limit"] ?? 200)) || 200;
     const [trades, synced] = await this.reviewTrades();
     const pairs = await ReviewHandlers.reviewPairs(trades);
-    const out: Rec[] = [];
+    const out: ReviewCandidate[] = [];
     for (const record of [...trades].reverse()) {
       const profile = tr.butterflyProfile(record);
       if (profile !== null) {
@@ -200,11 +206,12 @@ export class ReviewHandlers extends HandlerBase {
   }
 
   /** 一张蝴蝶 + 标的 K 线 → 复盘。K 线走和 K线 PA 同一条缓存,日线走历史数据接口。 */
-  async reviewAnalyze(params: Rec): Promise<Rec> {
+  async reviewAnalyze(params: ReviewAnalyzeParams): Promise<ReviewAnalyzeResult> {
     const tr = await import("../../tradereview.js");
     const { TIMEFRAMES } = await import("../../priceaction.js");
     let rid = String(params["id"] ?? "");
     if (rid.startsWith("stk:")) return this.reviewAnalyzeStock(rid, params);
+    // 下面这一段的 result 来自 tradereview.review(还是松的),交出去时认成契约类型
     const [trades] = await this.reviewTrades();
     const link = (await ReviewHandlers.reviewPairs(trades))[rid];
     if (link && link["role"] === "exit") rid = link["peer"]; // 选中平仓单 → 复盘它对应的开仓单
@@ -237,7 +244,7 @@ export class ReviewHandlers extends HandlerBase {
     result["intent_summary"] = (record["llm"] ?? {})["intent_summary"] ?? "";
     result["timeframe_label"] = TIMEFRAMES[timeframe]!["label"];
     await this.attachExitPlan(result, record, profile, symbol, bars, timeframe, params);
-    return result;
+    return result as unknown as ReviewAnalyzeResult;
   }
 
   /** 复盘用的标的 K 线:周期 auto 时按开仓离现在多远挑;日内走 K线 PA 那条缓存,日线走历史数据接口。 */
@@ -271,7 +278,7 @@ export class ReviewHandlers extends HandlerBase {
   }
 
   /** 一笔股票交易(一段持仓)+ 标的 K 线 → 复盘。id 是 review.candidates 给的 `stk:` 开头那个。 */
-  private async reviewAnalyzeStock(rid: string, params: Rec): Promise<Rec> {
+  private async reviewAnalyzeStock(rid: string, params: ReviewAnalyzeParams): Promise<ReviewAnalyzeResult> {
     const sr = await import("../../stockreview.js");
     const tr = await import("../../tradereview.js");
     const { TIMEFRAMES } = await import("../../priceaction.js");
@@ -293,7 +300,8 @@ export class ReviewHandlers extends HandlerBase {
     result["account"] = (trip["account"] ?? {})["alias"] ?? "";
     result["intent_summary"] = trip["summary"] ?? "";
     result["timeframe_label"] = TIMEFRAMES[timeframe]!["label"];
-    return result;
+    // result 来自 stockreview.reviewStock(还是松的),交出去时认成契约类型
+    return result as unknown as ReviewAnalyzeResult;
   }
 
   /** 止盈策略回放:蝶价分钟线(IBKR 组合 MIDPOINT)+ 标的 1 分钟线 → 点位、预计盈利、逐分钟事件。

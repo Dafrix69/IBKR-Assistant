@@ -549,3 +549,20 @@ killswitch + 上面那 6 个方法),用基类 getter 把它们摊成 `this.store
   `PaAnalysis & Partial<Pick<PaAnalyzeResult, "htf" | "agreement">>`。
 - 界面:`Market.tsx` 的 `data` / `comment` 两个 state 与六处 `: any` 回调参数收成契约类型。
 - 反向验证:契约改四个字段名,引擎 12 处、界面 6 处编译不过。真进程 stdio 冒烟加了 4 条,54 / 54。
+
+**2026-09-20,交易分析:`review.candidates` / `review.analyze` 迁完(已迁 52 个,还剩 25 个)。** 只依赖分析层与 store,不碰 `engine.ts`。
+
+- 这个域原本就有测试(`stockreview.spec`),但那一份调的是 `domains.review.*`,**绕过了入参这一段**。新的 `tests/review-rpc.spec.ts`(6 个)
+  走完整的 `handle()`:候选行的完整键集、没连券商时的降级(`synced` 是 null 而不是 0)、`limit` 截断、几句报错的码与原话。
+- 我先写错了三处预期(回执的键以为是 `connected`,其实是 `synced` / `ibkr_available` / `fills_stored`;股票复盘的回执里没有 `timeframe`
+  只有 `timeframe_label`),跑出来按实际改准。
+- 变异 10 处:第一轮漏 3 个。一个是变异点写错了行(没命中,脚本当场抛——这正是"命中次数要断言"的用处);
+  另外两个是断言太松(候选行的 `carried` 没断言、`exit` 在 RPC 层没走过非对象值)。补齐后 10 / 10。
+- **这一批的类型比前几批深**:界面读到了分析块里的具体字段,所以 `profile` / `entry` / `outcome` / `stats` / `zone` / `series` /
+  `exit_plan` 都按实际逐项写了出来,没有留成 `Record<string, unknown>`——留成松的,界面那头就得继续 `any`,等于白迁。
+  两类复盘写成按 `kind` 分的联合(蝴蝶那支 `kind?: undefined`,界面按它分流)。
+- 照出两处形状:`mae` / `mfe` 不是数字而是"每股多少、占成本几个点、一共多少钱、当时的价与时刻"五项;
+  `fly_series`(蝴蝶自己那条价的分钟线)是 handler 补的,不在 `tradereview.review` 的返回里。
+- 界面 `Review.tsx` 的 `data` 与七个 `: any` 组件参数收成契约类型;`r.exit_plan || {}` 这种"兜成空对象"的写法改成可选链——
+  兜空对象会把类型冲成 `{}`,等于把刚标好的类型又丢掉。
+- 反向验证:契约改四个字段名,引擎 2 处、界面 8 处编译不过。真进程 stdio 冒烟加了 3 条,57 / 57。

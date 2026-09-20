@@ -24,6 +24,9 @@ import type { OptionWall, OptionsWallParams } from "./options.js";
 import type { PaAnalyzeParams, PaAnalyzeResult, PaCommentResult, PaTimeframesResult } from "./priceaction.js";
 import type { PoolSetWatchParams, PoolWatch } from "./pool.js";
 import type {
+  ReviewAnalyzeParams, ReviewAnalyzeResult, ReviewCandidatesParams, ReviewCandidatesResult,
+} from "./review.js";
+import type {
   DeviationResult, InflectionResult, RsResult, ScreenerDeviationParams, ScreenerInflectionParams, ScreenerRsParams,
 } from "./screener.js";
 import type { PositionRow } from "./positions.js";
@@ -54,6 +57,7 @@ export type * from "./pool.js";
 export type * from "./positions.js";
 export type * from "./priceaction.js";
 export type * from "./quality.js";
+export type * from "./review.js";
 export type * from "./screener.js";
 export type * from "./sectors.js";
 export type * from "./settings.js";
@@ -108,6 +112,9 @@ export interface RpcMethods {
   "quality.update": { params: QualityUpdateParams; result: { stock: QualityStock } };
   "quality.remove": { params: QualityRemoveParams; result: { deleted: string } };
   "quality.set_config": { params: QualitySetConfigParams; result: { config: AnomalyConfig } };
+
+  "review.candidates": { params: ReviewCandidatesParams; result: ReviewCandidatesResult };
+  "review.analyze": { params: ReviewAnalyzeParams; result: ReviewAnalyzeResult };
 
   "screener.rs": { params: ScreenerRsParams; result: RsResult };
   "screener.inflection": { params: ScreenerInflectionParams; result: InflectionResult };

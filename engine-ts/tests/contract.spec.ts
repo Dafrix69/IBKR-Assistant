@@ -25,7 +25,6 @@ const LEGACY_METHODS = [
   "instruction.submit",
   "pending.list", "pending.poll",
   "records.get", "records.list",
-  "review.analyze", "review.candidates",
   "system.selftest", "system.status",
   // tracker 域迁了一半:这三样的返回是 engine.ts 在下单路径里拼的,等它拆开再标类型
   "tracker.close_now", "tracker.poll", "tracker.reconcile",
@@ -68,8 +67,8 @@ describe("契约:迁移只许往前走", () => {
     expect(LEGACY_METHODS.filter((m) => !names.includes(m)), "引擎里已经没有这个方法了").toEqual([]);
   });
 
-  it("名单只许变短:现在是 27 个,改这个数的时候只能往小里改", () => {
-    expect(LEGACY_METHODS.length).toBeLessThanOrEqual(27);
+  it("名单只许变短:现在是 25 个,改这个数的时候只能往小里改", () => {
+    expect(LEGACY_METHODS.length).toBeLessThanOrEqual(25);
     expect(new Set(LEGACY_METHODS).size).toBe(LEGACY_METHODS.length);
   });
 });
@@ -238,6 +237,16 @@ describe("契约:结构错由 schema 报,领域错由 handler 报", () => {
     expect((await errorOf("pa.analyze", { symbol: "SPY", timeframe: "7m" })).message).toBe("未知 K 线周期:7m(可选:1m、2m、5m、15m、30m、1h、1d)");
     // rth / force 老 handler 都是 Boolean(x) / 三值判断:给什么都收,不比它严
     expect(PARAMS_SCHEMAS["pa.analyze"].safeParse({ symbol: "SPY", rth: "yes", force: 1 })).toMatchObject({ success: true });
+  });
+  it("review:结构错归 schema(golden-rpc 没有 review.* 的请求,-32005 钉的是 records.get)", async () => {
+    expect(await errorOf("review.analyze", {})).toEqual({ code: -32602, message: "review.analyze 的参数不对:缺少 id" });
+    expect(await errorOf("review.analyze", { id: 7 })).toEqual({ code: -32602, message: "review.analyze 的参数不对:id 应为 string,收到 number" });
+    expect(await errorOf("review.candidates", { limit: true })).toEqual({ code: -32602, message: "review.candidates 的参数不对:limit 应为 number 或 string,收到 boolean" });
+    // 领域错:id 对不上还是 handler 那句
+    expect((await errorOf("review.analyze", { id: "nope" })).message).toBe("记录不存在");
+    // include_local / exit 老 handler 只看真假 / 是不是对象:给什么都收
+    expect(PARAMS_SCHEMAS["review.candidates"].safeParse({ include_local: 1, limit: "50" })).toMatchObject({ success: true });
+    expect(PARAMS_SCHEMAS["review.analyze"].safeParse({ id: "x", exit: "不是对象" })).toMatchObject({ success: true });
   });
   it("schema 不比老 handler 严:步长给数字串照收;改标签不带 tag = 清掉", async () => {
     const call = async (method: string, params: unknown): Promise<Record<string, any>> =>

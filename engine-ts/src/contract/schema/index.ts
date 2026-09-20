@@ -24,6 +24,7 @@ import { PoolSetWatchParamsSchema } from "./pool.js";
 import {
   QualityAddParamsSchema, QualityRemoveParamsSchema, QualitySetConfigParamsSchema, QualityUpdateParamsSchema,
 } from "./quality.js";
+import { ReviewAnalyzeParamsSchema, ReviewCandidatesParamsSchema } from "./review.js";
 import {
   ScreenerDeviationParamsSchema, ScreenerInflectionParamsSchema, ScreenerRsParamsSchema,
 } from "./screener.js";
@@ -79,6 +80,9 @@ export const PARAMS_SCHEMAS: { readonly [M in RpcMethodName]: ParamsSchema<RpcPa
   "quality.update": QualityUpdateParamsSchema,
   "quality.remove": QualityRemoveParamsSchema,
   "quality.set_config": QualitySetConfigParamsSchema,
+
+  "review.candidates": ReviewCandidatesParamsSchema,
+  "review.analyze": ReviewAnalyzeParamsSchema,
 
   "screener.rs": ScreenerRsParamsSchema,
   "screener.inflection": ScreenerInflectionParamsSchema,

@@ -2,6 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Descriptions, InputNumber, Segmented, Select, Table, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { dafri, errorMessage } from '../bridge';
+import type {
+  ButterflyReviewResult, ReviewAnalyzeResult, ReviewCandidate, ReviewFinding, StockCandidate, StockReviewResult,
+} from '../bridge';
 import { CanvasChart, type ChartSpec } from '../lib/Chart';
 import { fmtMoney, fmtNum, fmtTimeShort } from '../lib/format';
 import { FINAL_STATUS_LABEL } from '../lib/labels';
@@ -44,7 +47,7 @@ function write(key: string, value: string): void {
 }
 
 /** 股票:一段持仓(从空仓到空仓)一行。没有建仓成交的(建仓早于已同步的成交)只写出场那一侧。 */
-function stockLabel(c: any): string {
+function stockLabel(c: StockCandidate): string {
   const when = fmtTimeShort(c.created_at);
   const long = c.side === 'LONG';
   const acct = c.account ? ` · ${c.account}` : '';
@@ -63,7 +66,7 @@ function stockLabel(c: any): string {
   return `${head}${trimmed}${acct} · IBKR 成交 · 持仓中 ${c.open_qty} 股${flag}`;
 }
 
-function candidateLabel(c: any): string {
+function candidateLabel(c: ReviewCandidate): string {
   if (c.kind === 'stock') return stockLabel(c);
   const when = fmtTimeShort(c.created_at);
   const strikes = (c.strikes || []).map((s: unknown) => String(s)).join('/');
@@ -87,7 +90,7 @@ export function ReviewPage() {
   const [kind, setKind] = useState(() => read('dafri-review-kind') || 'all');
   const [freshness, setFreshness] = useState('—');
   const [available, setAvailable] = useState<boolean | null>(null);
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<ReviewAnalyzeResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const requestSeq = useReviewRequest();
@@ -96,7 +99,7 @@ export function ReviewPage() {
   const loadCandidates = useCallback(async (local: boolean, keep?: string) => {
     try {
       const result = await dafri.reviewCandidates(200, local);
-      const list: any[] = result?.candidates || [];
+      const list: ReviewCandidate[] = result?.candidates || [];
       setCandidates(list);
       setAvailable(Boolean(result?.ibkr_available));
       const bits: string[] = [];
@@ -251,7 +254,7 @@ function signed(v: number | null | undefined) {
   return <span className={`num${v != null && v > 0 ? ' pos' : v != null && v < 0 ? ' neg' : ''}`}>{v == null ? '—' : fmtMoney(v)}</span>;
 }
 
-function ReviewResult({ r }: { r: any }) {
+function ReviewResult({ r }: { r: ButterflyReviewResult }) {
   const p = r.profile;
   const z = r.zone;
   const o = r.outcome;
@@ -284,8 +287,8 @@ function ReviewResult({ r }: { r: any }) {
         <StatTile label="结构" value={`${p.symbol} ${p.lower}/${p.center}/${p.upper} ${p.right_label}`} />
         <StatTile label={`权利金${p.price_estimated ? '(估算)' : ''}`} value={p.debit == null ? '—' : String(p.debit)} />
         <StatTile label="盈利区" value={z.known ? `${z.lower_be} ~ ${z.upper_be}` : '—'} />
-        <StatTile label="开仓时标的" value={`${s.entry_underlying}(距中心 ${s.dist_entry > 0 ? '+' : ''}${s.dist_entry})`} />
-        <StatTile label={o.kind === 'open' ? '最新标的' : '结局时标的'} value={`${s.exit_underlying}(距中心 ${s.dist_exit > 0 ? '+' : ''}${s.dist_exit})`} />
+        <StatTile label="开仓时标的" value={`${s.entry_underlying}(距中心 ${(s.dist_entry ?? 0) > 0 ? '+' : ''}${s.dist_entry})`} />
+        <StatTile label={o.kind === 'open' ? '最新标的' : '结局时标的'} value={`${s.exit_underlying}(距中心 ${(s.dist_exit ?? 0) > 0 ? '+' : ''}${s.dist_exit})`} />
         <StatTile label={pnlLabel} value={pnl == null ? '—' : `${fmtMoney(pnl)}${o.pnl_pct != null ? ` (${o.pnl_pct}%)` : ''}`} tone={pnl == null ? '' : pnl > 0 ? 'pos' : pnl < 0 ? 'neg' : ''} />
       </div>
       <UnderlyingChart r={r} />
@@ -295,7 +298,7 @@ function ReviewResult({ r }: { r: any }) {
           <ExitPlan r={r} />
         </>
       ) : null}
-      {(r.findings || []).map((f: any, i: number) => (
+      {(r.findings || []).map((f: ReviewFinding, i: number) => (
         <StatusCard key={i} tone={REVIEW_TONE[f.tone] || 'info'} title={f.title}>
           <div>{f.text}</div>
         </StatusCard>
@@ -321,7 +324,7 @@ function ReviewResult({ r }: { r: any }) {
 
 const pctText = (v: number | null | undefined) => (v == null ? '' : ` (${v > 0 ? '+' : ''}${v}%)`);
 
-function StockResult({ r }: { r: any }) {
+function StockResult({ r }: { r: StockReviewResult }) {
   const p = r.profile;
   const o = r.outcome;
   const s = r.stats;
@@ -358,7 +361,7 @@ function StockResult({ r }: { r: any }) {
         <StatTile label={open ? '盈亏(含浮动)' : '盈亏'} value={pnl == null ? '—' : `${fmtMoney(pnl)}${pctText(o.pnl_pct)}`} tone={pnl == null ? '' : pnl > 0 ? 'pos' : pnl < 0 ? 'neg' : ''} />
       </div>
       <StockChart r={r} />
-      {(r.findings || []).map((f: any, i: number) => (
+      {(r.findings || []).map((f: ReviewFinding, i: number) => (
         <StatusCard key={i} tone={REVIEW_TONE[f.tone] || 'info'} title={f.title}>
           <div>{f.text}</div>
         </StatusCard>
@@ -381,7 +384,7 @@ function StockResult({ r }: { r: any }) {
 }
 
 /** 股价走势:蜡烛 + 买入 / 卖出均价线 + 每次出手一个三角(买朝上、卖朝下,落在成交价上)。 */
-function StockChart({ r }: { r: any }) {
+function StockChart({ r }: { r: StockReviewResult }) {
   const spec = useMemo((): ChartSpec | null => {
     const bars = r.series.bars || [];
     if (bars.length < 2) return null;
@@ -416,7 +419,7 @@ function StockChart({ r }: { r: any }) {
 }
 
 /** 标的走势:蜡烛 + 三条行权价 + 盈利区 + 止盈策略的临界线 + 开仓/平仓竖线。字段全部来自 r.series 与 r.exit_plan。 */
-function UnderlyingChart({ r }: { r: any }) {
+function UnderlyingChart({ r }: { r: ButterflyReviewResult }) {
   const spec = useMemo((): ChartSpec | null => {
     const bars = r.series.bars || [];
     if (bars.length < 2) return null;
@@ -467,13 +470,13 @@ function UnderlyingChart({ r }: { r: any }) {
 }
 
 /** 蝶价走势:组合分钟中间价的蜡烛 + 模型价虚线 + 止盈/止损水平线 + 回撤触发价阶梯 + 开仓/平仓/策略事件标记。 */
-function FlyChart({ r }: { r: any }) {
-  const fs = useMemo(() => r.fly_series || {}, [r.fly_series]);
+function FlyChart({ r }: { r: ButterflyReviewResult }) {
+  const fs = r.fly_series;
   const spec = useMemo((): ChartSpec | null => {
-    const plan = r.exit_plan || {};
-    const sim = plan.simulation || {};
-    const real: any[] = fs.bars || [];
-    const path: any[] = sim.series || [];
+    const plan = r.exit_plan;
+    const sim = plan?.simulation;
+    const real = fs?.bars || [];
+    const path = sim?.series || [];
     const times = Array.from(new Set([...real.map((b) => b.time), ...path.map((pt) => pt.time)])).sort();
     if (times.length < 2) return null;
     const pathAt = new Map(path.map((pt) => [pt.time, pt]));
@@ -493,7 +496,7 @@ function FlyChart({ r }: { r: any }) {
     }
     const bands = phases.filter((b) => b.phase !== 'A').map((b) => ({ v: true, from: b.from, to: b.to, color: b.phase === 'B' ? 'orange' : 'purple', fill: 0.06, label: PHASE_LABEL[b.phase] }));
     const EXIT: Record<string, [string, string]> = { tp1: ['up', '第一档'], tp2: ['up', '第二档'], trail_arm: ['orange', '回撤追踪激活'], stop: ['down', '止损'] };
-    const hlines = (plan.levels || [])
+    const hlines = (plan?.levels || [])
       .filter((l: any) => EXIT[l.kind] && l.price != null)
       .map((l: any) => ({ price: l.price, color: EXIT[l.kind][0], dash: l.kind === 'trail_arm' ? [2, 2] : [5, 3], alpha: 0.8, label: EXIT[l.kind][1] }));
     const lines = [
@@ -502,14 +505,14 @@ function FlyChart({ r }: { r: any }) {
     ];
     const MARK: Record<string, [string, string]> = { entry: ['blue', '开仓'], exit: ['purple', '实际平仓'] };
     const markers: any[] = [];
-    for (const m of fs.markers || []) {
+    for (const m of fs?.markers || []) {
       if (m.price == null) continue;
       const st = MARK[m.kind] || MARK.entry;
       markers.push({ time: m.time, price: m.price, shape: 'dot', color: st[0], label: `${st[1]} ${m.price}` });
     }
-    for (const e of sim.events || []) {
-      const color = e.source === 'settle' ? 'purple' : e.pnl >= 0 ? 'up' : 'down';
-      markers.push({ time: e.time, price: e.price, shape: 'tri-down', color, label: `策略 ${e.qty} 张 @ ${e.price}` });
+    for (const e of sim?.events || []) {
+      const color = e['source'] === 'settle' ? 'purple' : Number(e['pnl']) >= 0 ? 'up' : 'down';
+      markers.push({ time: e['time'], price: e['price'], shape: 'tri-down', color, label: `策略 ${e['qty']} 张 @ ${e['price']}` });
     }
     const legend: [string, string, string][] = [
       ['╌', 'up', '止盈档位'], ['╌', 'down', '止损'], ['╌', 'orange', '回撤激活 / 触发价'],
@@ -518,7 +521,7 @@ function FlyChart({ r }: { r: any }) {
     return { ariaLabel: '蝶价走势', times, bars: real, lines, hlines, bands, markers, legend, volume: false, yMin: 0, padPct: 0.08 };
   }, [r, fs]);
   return (
-    <StatusCard title={`蝶价走势(组合中间价 · 1 分钟 · ${fs.source === 'ibkr' ? 'IBKR 真实数据' : '模型价'})`}>
+    <StatusCard title={`蝶价走势(组合中间价 · 1 分钟 · ${fs?.source === 'ibkr' ? 'IBKR 真实数据' : '模型价'})`}>
       {spec ? <CanvasChart size="mid" spec={spec} /> : <EmptyState compact>没有蝶价数据:引擎未连 TWS,或 IBKR 没有这张组合的历史分钟线。</EmptyState>}
     </StatusCard>
   );
