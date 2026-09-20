@@ -479,3 +479,4 @@ killswitch + 上面那 6 个方法),用基类 getter 把它们摊成 `this.store
 (真机核对之前不在下单路径上叠改动,这一条也是意见之一),所以"分批平仓记录的名义金额按整仓算"那一处顺延到拆 `engine.ts` 的分支。
 
 - `macro.board`:券商的流式报价抛异常时,这一轮降级到公开源,不再整条报错。handler 里那次没有护栏的 `await` 包上了。
+- `settings.patch`:顶层只认契约里写着的三段(`policies` / `limits` / `protections`)。原来 `{foo: {…}}` 会成功并被原样写进配置文件;落实时又看到更要紧的一面——`{llm: {…}}` 能绕过 `llm.patch` 的字段白名单(改 `keychain_service`),`{storage: {db_path}}` 能从界面通道换库。现在都当场拒,一个字不写盘。调用方只有「设置」页,发的就是这三段;golden-rpc 钉的三条不受影响。

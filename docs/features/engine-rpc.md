@@ -110,7 +110,8 @@
 - **已经有校验者的地方,schema 不再抄一遍。** `settings.patch` 的 `patch` 由 `config.fromDict` 校验:每一段都拒绝不认识的键
   (「policies 里有未知配置项:auto_excute」)、查类型与范围、校验不过不写盘。契约的 schema 对它只确认"是个对象",契约类型里它的值是
   `unknown`——和异动阈值的 `config` 同一个处理。顶层照敏感方法的规矩用 strict。动手前先探过现状才敢这么定:担心的那个洞
-  (键名写错,"我关了自动执行"悄悄没生效)引擎自己早就堵上了。
+  (键名写错,"我关了自动执行"悄悄没生效)引擎自己早就堵上了。`fromDict` 不看的是**顶层**:不认识的段原来会成功、被原样写进
+  配置文件,`llm` 段还能绕过 `llm.patch` 的字段白名单。2026-09-20 起 handler 只认契约里写着的三段(`policies` / `limits` / `protections`)。
 - **持仓行从三处攒起来,类型在每一处都说真话。** 券商适配层给基础字段,`withCombos` 另外合成组合行(多 `kind` / `net_side` / `legs` / `ratios`),
   `positions.list` 最后补 `tracked` 与盈亏口径——所以后两段加的字段在 `PositionRow` 里是可选的,而不是拆成两三个类型再靠断言过渡。
   `withCombos` 是泛型的:引擎和测试还在传松散的行,传什么回什么、外加组合行,不用为了标类型去改它们。

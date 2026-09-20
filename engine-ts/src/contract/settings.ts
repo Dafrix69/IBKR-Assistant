@@ -92,7 +92,8 @@ export interface SettingsView {
 }
 
 // ---------------------------------------------------------------- settings.patch
-/** 界面「设置」页能改的三段,每段只给要改的键。 */
+/** 界面「设置」页能改的三段,每段只给要改的键。**只有这三段**:别的顶层段 handler 当场拒(不认识的不再被写进配置文件;
+ *  模型配置走 llm.patch——它有自己的字段白名单,券商切换走 broker.select,账户 / 连接 / 库路径只能手改配置文件)。 */
 export interface SettingsPatch {
   policies?: Partial<Policies>;
   limits?: Partial<Limits>;

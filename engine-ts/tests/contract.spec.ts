@@ -283,6 +283,13 @@ describe("契约:结构错由 schema 报,领域错由 handler 报", () => {
     expect(await err({ policies: { auto_execute: "false" } })).toEqual({ code: -32007, message: "配置校验失败,已回滚:policies.auto_execute 必须是 true/false,收到 'false'" });
     expect((await err({ limits: { max_order_notional: -1 } })).message).toMatch(/^配置校验失败,已回滚:limits.max_order_notional 不能小于/);
     expect(await err({ accounts: [] })).toEqual({ code: -32006, message: "账户与连接配置不允许从界面修改:accounts" });
+    // 顶层只认三段。2026-09-20 之前:不认识的段会成功并被原样写进配置文件;llm 段则绕过了 llm.patch 的字段白名单
+    expect(await err({ foo: { a: 1 } })).toEqual({
+      code: -32602,
+      message: "settings.patch 只能改 policies / limits / protections,收到:foo(模型配置走 llm.patch,券商切换走 broker.select,其余只能手改配置文件)",
+    });
+    expect((await err({ llm: { keychain_service: "别人的" }, limits: { max_mkt_shares: 1 } })).message).toContain("收到:llm(");
+    expect((await err({ storage: { db_path: "C:/elsewhere.db" } })).message).toContain("收到:storage(");
     expect(readFileSync(String(fresh.settings.source_path), "utf-8")).toBe(before);
     expect(fresh.settings.policies.auto_execute).toBe(false);
     fresh.anomaly.stop();
