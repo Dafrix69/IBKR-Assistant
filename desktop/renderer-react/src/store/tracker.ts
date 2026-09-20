@@ -5,34 +5,13 @@
  * 引擎负责判断与发单,这里只是按秒驱动它并把结果摆出来。
  */
 import { create } from 'zustand';
-import { dafri, errorMessage, type SpotTarget, type Targets, type Track } from '../bridge';
+import { dafri, errorMessage, type PositionRow, type SpotTarget, type Targets, type Track } from '../bridge';
 import { pushNotification } from './notify';
 import { loadRecords } from './records';
 import { getStatus } from './status';
 
-export interface Position {
-  key: string;
-  account: string;
-  symbol: string;
-  sec_type: string;
-  quantity: number;
-  avg_cost: number;
-  multiplier?: number;
-  market_price?: number | null;
-  unrealized_pnl?: number | null;
-  unrealized_pct?: number | null;
-  pnl_source?: string;
-  /** 休市没有现价时的昨收,以及按昨收估的盈亏——只用来显示,引擎不拿它做任何判断 */
-  close_price?: number | null;
-  close_pnl?: number | null;
-  close_pct?: number | null;
-  tracked?: boolean;
-  contract?: Record<string, unknown>;
-  label?: string;
-  legs?: string[];
-  net_side?: 'credit' | 'debit';
-  [key: string]: unknown;
-}
+/** 账户里的一份持仓。形状在引擎契约里(engine-ts/src/contract/positions.ts),这里只转出——页面一直叫它 Position。 */
+export type Position = PositionRow;
 
 
 

@@ -16,6 +16,7 @@ import type { HostedOrderPlan } from "./positions.js";
 import { legOf, makeKey, positionLabel } from "./positions.js";
 import { MIN_BARS, TIMEFRAMES } from "./marketdata.js";
 import type { StockQuote } from "./contract/sectors.js";
+import type { PositionRow } from "./contract/positions.js";
 import type { VolumeSnapshot } from "./marketdata.js";
 import type { ApprovedOrder } from "./validator.js";
 import { fmtF, pyRound } from "./py.js";
@@ -1744,8 +1745,8 @@ export class BrokerRouter {
     return out;
   }
 
-  async positions(): Promise<Array<Record<string, any>>> {
-    const out = new Map<string, Record<string, any>>();
+  async positions(): Promise<PositionRow[]> {
+    const out = new Map<string, PositionRow>();
     const aliasOf = new Map(this.settings.accounts.map((a) => [a.account_id, a.alias]));
 
     for (const session of this.sessions()) {
@@ -1795,7 +1796,7 @@ export class BrokerRouter {
   private positionRow(
     contract: Record<string, any>, quantity: number, aliasOf: Map<string, string>,
     accountHint = "",
-  ): Record<string, any> | null {
+  ): PositionRow | null {
     const account = String(accountHint || contract["account"] || "");
     let alias = aliasOf.get(account);
     if (alias === undefined) {

@@ -1,10 +1,10 @@
 /** positions.list 与 tracker.*:持仓、追踪目标的建 / 改 / 删、试算、立即平仓。
- *  tracker.list / add / update / delete / target_preview 已经在契约里(contract/tracker.ts,入参 schema 是 strict 的);
- *  positions.list 与 tracker.poll / reconcile / close_now 还是老方法——后三样的返回是 engine.ts 拼的,等它拆开再标类型。 */
+ *  positions.list 与 tracker.list / add / update / delete / target_preview 已经在契约里(contract/positions.ts、contract/tracker.ts,
+ *  tracker.* 的入参 schema 是 strict 的);tracker.poll / reconcile / close_now 还是老方法——它们的返回是 engine.ts 拼的,等它拆开再标类型。 */
 import { BrokerError } from "../../broker.js";
 import { nowEt } from "../../config.js";
 import type {
-  RpcResult, Track, TrackerAddParams, TrackerDeleteParams, TrackerTargetPreviewParams, TrackerUpdateParams,
+  PositionRow, RpcResult, Track, TrackerAddParams, TrackerDeleteParams, TrackerTargetPreviewParams, TrackerUpdateParams,
 } from "../../contract/index.js";
 import { RpcError } from "../../rpcError.js";
 import * as tkMod from "../../tracker.js";
@@ -15,7 +15,7 @@ import { contractMethods } from "../contractMethods.js";
 import { drawdownTiersOf, optFloat } from "../params.js";
 
 /** 券商没报盈亏(positions() 兜底路径只有成本)时,用追踪器同一套口径本地算(对应 Python _fill_pnl)。 */
-function fillPnl(row: Rec): void {
+function fillPnl(row: PositionRow): void {
   if (row["unrealized_pnl"] !== null && row["unrealized_pnl"] !== undefined) {
     row["pnl_source"] = row["pnl_source"] ?? "broker";
     return;
@@ -52,11 +52,11 @@ function fillPnl(row: Rec): void {
 export class TrackerHandlers extends HandlerBase {
   methods(): MethodTable {
     return {
-      "positions.list": (p) => this.positionsList(p),
       "tracker.poll": (p) => this.trackerPoll(p),
       "tracker.reconcile": (p) => this.trackerReconcile(p),
       "tracker.close_now": (p) => this.trackerCloseNow(p),
       ...contractMethods({
+        "positions.list": () => this.positionsList(),
         "tracker.list": () => this.trackerList(),
         "tracker.add": (p) => this.trackerAdd(p),
         "tracker.update": (p) => this.trackerUpdate(p),
@@ -67,11 +67,11 @@ export class TrackerHandlers extends HandlerBase {
   }
 
   // ---- 持仓追踪 --------------------------------------------------------
-  async positionsList(_params: Rec): Promise<Rec> {
+  async positionsList(): Promise<RpcResult<"positions.list">> {
     if (this.router === null || !this.router.sessions().length) {
       throw this.needConnection(-32018, "读取持仓");
     }
-    let rows: Rec[];
+    let rows: PositionRow[];
     try {
       rows = await this.router.positions();
     } catch (exc) {

@@ -111,13 +111,13 @@ export interface ConfirmOptions {
 // 两头一起编译不过。只许 `import type`,只许进 contract/ 顶层的类型文件(它们不 import 任何东西,
 // 界面的 tsc 不装引擎依赖也解析得了);contract/schema/ 是引擎自己的运行时校验,这里不碰。
 import type {
-  AnomalyConfig, AnomalyEvent, AnomalyKind, AnomalyMetrics, LevelKind, OptionWall, PoolWatch, PoolWatchPatch,
+  AnomalyConfig, AnomalyEvent, AnomalyKind, AnomalyMetrics, LevelKind, OptionWall, PoolWatch, PoolWatchPatch, PositionRow,
   QualityList, QualityMonitor, QualityStock, RpcParams, RpcResult, Sector, SectorStock, SpotTarget, StockQuote,
   Targets, Track, Watch, WatchEvent, WatchLevel,
 } from '../../../engine-ts/src/contract/index';
 
 export type {
-  AnomalyEvent, AnomalyKind, LevelKind, OptionWall, PoolWatch, PoolWatchPatch, QualityList, QualityMonitor,
+  AnomalyEvent, AnomalyKind, LevelKind, OptionWall, PoolWatch, PoolWatchPatch, PositionRow, QualityList, QualityMonitor,
   QualityStock, Sector, SectorStock, SpotTarget, StockQuote, Targets, Track, Watch, WatchEvent, WatchLevel,
 };
 /**
@@ -227,7 +227,7 @@ export interface DafriBridge {
   reviewAnalyze(spec: unknown): Rpc<any>;
   macroBoard(force?: boolean): Rpc<any>;
 
-  listPositions(): Rpc<any>;
+  listPositions(): Rpc<RpcResult<'positions.list'>>;
   listTrackers(): Rpc<RpcResult<'tracker.list'>>;
   /** 授权软件自动发单。载荷的键名要靠 TrackerAddSpec 在拼的地方查(见它的注释),这里的参数类型查不了多余的键。 */
   addTracker(spec: TrackerAddSpec): Rpc<RpcResult<'tracker.add'>>;

@@ -352,3 +352,15 @@ CI 里排在 `lint` 之后。第一次跑会红,把现有 8 + 3 条修掉之后�
   改它要动下单路径上的一个表达式,没有混进这一批。
 
 还没迁的:`positions.list`(第 1b 段,行要从两家券商适配层标起)、`tracker.poll` / `reconcile` / `close_now`(等 `engine.ts` 拆开)。
+
+**2026-09-20,`tracker` 域第 1b 段:`positions.list` 迁完(已迁 26 个,还剩 51 个)。** 持仓行(`contract/positions.ts` 的 `PositionRow`)是从
+产出它的三处一路标过来的:两家券商适配层的 `positions()` / `positionRow()`、`tracker.ts` 的 `comboRow` / `withCombos`、handler 里补
+`tracked` 与盈亏口径的 `fillPnl`——全是返回值与局部变量的类型标注。判据同 1a:改动前后编译产物去掉注释逐字节比对,`tracker` / `flyexit` /
+`store` / `engine` / `broker` / `futuBroker` / `positions` 七个文件一致,`handlers/tracker.js` 只差登记方式和一个没用的参数;`engine.ts`
+一行没动;`tracker-rpc.spec` 没改断言。`withCombos` 写成了泛型(`<T>(rows: T[]) => Array<T | PositionRow>`):引擎和测试还在传
+松散的行,不用为了这一批去改它们。
+
+验证用的就是本报告第一条开头举的那个例子:把契约里的 `avg_cost` 改名,引擎这头 `broker.ts`、`futuBroker.ts`、`tracker.ts`、handler 与两份测试
+同时报错,界面那头 `Tracker.tsx` 报错——当初写的是"四个地方没有一个会报错,只有 `Tracker.tsx` 上的数字变成 NaN"。
+
+`tracker` 域只剩 `tracker.poll` / `reconcile` / `close_now`,等 `engine.ts` 拆开。

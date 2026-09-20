@@ -70,7 +70,7 @@ describe("tracker.positions:按昨收另算一份盈亏给界面", () => {
   }
 
   it("休市:close_pnl ≈ (0.16 − 0.2638) × 5 × 100,unrealized_pnl 仍为空", async () => {
-    const out = await server(closed()).domains.tracker.positionsList({});
+    const out = await server(closed()).domains.tracker.positionsList();
     const combo = (out["positions"] as Rec[]).find((r) => r["sec_type"] === "BAG")!;
     expect(combo["unrealized_pnl"] ?? null).toBeNull();
     expect(combo["market_price"]).toBeNull();
@@ -85,7 +85,7 @@ describe("tracker.positions:按昨收另算一份盈亏给界面", () => {
     const rows = closed();
     rows[0]!["market_price"] = 0.45;
     rows[1]!["market_price"] = 0.7;
-    const out = await server(rows).domains.tracker.positionsList({});
+    const out = await server(rows).domains.tracker.positionsList();
     const combo = (out["positions"] as Rec[]).find((r) => r["sec_type"] === "BAG")!;
     expect(combo["market_price"]).toBe(0.25);
     expect(combo["pnl_source"]).toBe("computed");

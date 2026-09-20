@@ -17,6 +17,7 @@ export type { HostedOrderPlan } from "./positions.js";
 // 目标、自动平仓设置、标的目标价的试算结果——这三个形状界面也要用,定义在 contract/tracker.ts;这里转出,老的 import 不用改。
 export type { AutoClose, SpotTarget, Targets } from "./contract/tracker.js";
 import type { AutoClose, SpotTarget, Targets } from "./contract/tracker.js";
+import type { PositionRow } from "./contract/positions.js";
 
 export const STATE_HOLDING = "holding";
 export const STATE_TAKE_PROFIT = "take_profit";
@@ -84,7 +85,7 @@ const COMBO_STRATEGY: Record<string, string> = {
  * 任何一条腿没现价就是 null。sec_type=BAG,只提醒、不自动平仓。 */
 export function comboRow(
   combo: Record<string, any>, rows: Array<Record<string, any>>,
-): Record<string, any> {
+): PositionRow {
   const byKey = new Map(rows.map((r) => [r["key"] as string, r]));
   const legs = (combo["legs"] as string[]).map((k) => byKey.get(k)).filter(Boolean) as Array<Record<string, any>>;
   const qtys = legs.map((r) => Number(r["quantity"] ?? 0) || 0);
@@ -155,8 +156,8 @@ export function comboRow(
 }
 
 /** 券商持仓行 + 组合虚拟行。所有按 key 找持仓的地方都该用这个,组合才追踪得到。 */
-export function withCombos(rows: Array<Record<string, any>>): Array<Record<string, any>> {
-  const list = [...rows];
+export function withCombos<T extends Record<string, any>>(rows: T[]): Array<T | PositionRow> {
+  const list: Array<T | PositionRow> = [...rows];
   return list.concat(groupLegs(list).map((c) => comboRow(c, list)));
 }
 

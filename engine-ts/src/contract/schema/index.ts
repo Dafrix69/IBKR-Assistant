@@ -37,6 +37,8 @@ export const PARAMS_SCHEMAS: { readonly [M in RpcMethodName]: ParamsSchema<RpcPa
 
   "pool.set_watch": PoolSetWatchParamsSchema,
 
+  "positions.list": NoParamsSchema,
+
   "quality.list": NoParamsSchema,
   "quality.add": QualityAddParamsSchema,
   "quality.update": QualityUpdateParamsSchema,

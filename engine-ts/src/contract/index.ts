@@ -12,6 +12,7 @@ import type {
 } from "./alerts.js";
 import type { OptionWall, OptionsWallParams } from "./options.js";
 import type { PoolSetWatchParams, PoolWatch } from "./pool.js";
+import type { PositionRow } from "./positions.js";
 import type {
   AnomalyConfig, QualityAddParams, QualityList, QualityRemoveParams, QualitySetConfigParams, QualityStock,
   QualityUpdateParams,
@@ -28,6 +29,7 @@ import type {
 export type * from "./alerts.js";
 export type * from "./options.js";
 export type * from "./pool.js";
+export type * from "./positions.js";
 export type * from "./quality.js";
 export type * from "./sectors.js";
 export type * from "./tracker.js";
@@ -45,6 +47,8 @@ export interface RpcMethods {
   "options.wall": { params: OptionsWallParams; result: OptionWall };
 
   "pool.set_watch": { params: PoolSetWatchParams; result: PoolWatch };
+
+  "positions.list": { params: NoParams; result: { positions: PositionRow[] } };
 
   "quality.list": { params: NoParams; result: QualityList };
   "quality.add": { params: QualityAddParams; result: { stock: QualityStock } };

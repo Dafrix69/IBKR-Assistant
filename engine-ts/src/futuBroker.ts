@@ -7,6 +7,7 @@
  * 真机联调三结论全部保留:指数闸门、模拟盘合成成交、is_paper 与 trd_env 核对。
  */
 import type { StockQuote } from "./contract/sectors.js";
+import type { PositionRow } from "./contract/positions.js";
 import type { AccountConfig, Settings } from "./config.js";
 import {
   BrokerError, LegQuote, PlacementResult, bookLiquidity, cleanPrice, finiteQuote,
@@ -1217,9 +1218,9 @@ export class FutuRouter {
 
   // ---- 持仓 -----------------------------------------------------------
   /** 富途的 position_list_query 直接给市值和盈亏(pl_val)——对账以券商报的为准。 */
-  async positions(): Promise<Array<Record<string, any>>> {
+  async positions(): Promise<PositionRow[]> {
     const mod = await this.bridge();
-    const rows: Array<Record<string, any>> = [];
+    const rows: PositionRow[] = [];
     for (const session of this.sessions()) {
       for (const account of this.settings.accounts) {
         if (!session.accounts.includes(account.account_id)) continue;
@@ -1691,7 +1692,7 @@ export function quoteError(text: string): string {
   return `富途取数失败:${text.slice(0, 300)}`;
 }
 
-function positionRow(row: Row, alias: string): Record<string, any> | null {
+function positionRow(row: Row, alias: string): PositionRow | null {
   const code = String(fieldOf(row, "code") ?? "");
   const symbol = code.split(".").pop() ?? "";
   let qty = toFloat(fieldOf(row, "qty")) ?? 0.0;

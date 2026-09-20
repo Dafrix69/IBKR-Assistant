@@ -107,8 +107,12 @@
   `futuBroker` / `positions` 七个文件的产物一致;`handlers/tracker.js` 的差异正好是方法表与一处非空检查。`engine.ts` 一行没动——
   它调 `tk.sweepReason` 的地方靠改被调方的参数类型(只读一个可选的 `fired_state`)解决。
 
-没做的:走哪条道还登记在 `server.ts` 的道表里,没有进契约。`tracker.poll` / `reconcile` / `close_now` 与 `positions.list` 还是老方法:
-前三样的返回是 `engine.ts` 在下单路径里拼出来的,等它拆开(体检报告第二条的后半)再标类型;`positions.list` 的行要从两家券商适配层标起,单独一批。
+- **持仓行从三处攒起来,类型在每一处都说真话。** 券商适配层给基础字段,`withCombos` 另外合成组合行(多 `kind` / `net_side` / `legs` / `ratios`),
+  `positions.list` 最后补 `tracked` 与盈亏口径——所以后两段加的字段在 `PositionRow` 里是可选的,而不是拆成两三个类型再靠断言过渡。
+  `withCombos` 是泛型的:引擎和测试还在传松散的行,传什么回什么、外加组合行,不用为了标类型去改它们。
+
+没做的:走哪条道还登记在 `server.ts` 的道表里,没有进契约。`tracker.poll` / `reconcile` / `close_now` 还是老方法:它们的返回是 `engine.ts`
+在下单路径里拼出来的,等它拆开(体检报告第二条的后半)再标类型。
 
 ## 解析链路时延:量过一遍之后改了四处
 
