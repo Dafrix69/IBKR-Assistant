@@ -77,8 +77,9 @@
   券商适配层的 `stockQuotes` 上,`OptionWallCore` 标在 `optionwall.analyze` 上,`WatchLevel` / `WatchEvent` 标在 `alerts.ts` 上。
   验过:把行情的 `change_pct` 改名,`broker.ts`、`futuBroker.ts` 和界面的 `PoolStock.tsx` 同时报错。
 - **契约如实写,不顺手"修"。** 迁的过程会照出线上形状里的毛病,写进契约的注释、留给人定夺,不在迁移里改——迁移的
-  判据是 `golden-rpc` 不更新基线还绿。现在记着的一处:`alerts.create` 的回执里 `enabled` 是数字 `1`(回的是刚插入的那一行,
-  没过读库的转换),`alerts.list` 里同一条是 `true`;基线钉着,所以 `Watch.enabled` 写成了 `boolean | 0 | 1`。
+  判据是 `golden-rpc` 不更新基线还绿。例:`alerts.create` / `tracker.add` 的回执里 `enabled` 曾经是数字 `1`(回的是刚插入的
+  那一行,没过读库的转换),列表里同一条是 `true`;基线钉着,所以迁的时候 `enabled` 如实写成了 `boolean | 0 | 1`。
+  用户定了之后才**单独一笔**统一成布尔(2026-09-20,`golden:update` 的 diff 恰好一行),契约类型随之收成 `boolean`。
   可空也如实写:`alerts.refresh` 中间有 `await`(而且自动补价位跑在异动循环里,会和用户的删除交错),回执里重读的那一行
   可能已经被删,类型是 `Watch | null`;中间没有 `await` 的那几个重读不可能落空,类型不带 `null`。
   一个类型上的 `| null` 值得追一下它是怎么来的:`sectors.pick` 的可空就是这样查出一个老 bug 的——等大模型的那几秒里

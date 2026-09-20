@@ -46,11 +46,8 @@ export interface Watch {
   symbol: string;
   /** 整数关口的步长 */
   step: number;
-  /**
-   * 读出来(list / refresh)是 true / false;**alerts.create 的回执里是数字 1**——它回的是刚插入的那一行,
-   * 没过读库那道转换。这个不一致被 golden-rpc 钉着,先如实写在这里。界面按真假用,不要和 true 做 ===。
-   */
-  enabled: boolean | 0 | 1;
+  /** 回执与列表一个口径(2026-09-20 之前 alerts.create 的回执里是数字 1:回的是刚插入的那一行,没过读库的转换)。 */
+  enabled: boolean;
   /** 期权墙用的到期日;还没算过是空串 */
   expiry: string;
   levels: WatchLevel[];

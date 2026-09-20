@@ -480,3 +480,4 @@ killswitch + 上面那 6 个方法),用基类 getter 把它们摊成 `this.store
 
 - `macro.board`:券商的流式报价抛异常时,这一轮降级到公开源,不再整条报错。handler 里那次没有护栏的 `await` 包上了。
 - `settings.patch`:顶层只认契约里写着的三段(`policies` / `limits` / `protections`)。原来 `{foo: {…}}` 会成功并被原样写进配置文件;落实时又看到更要紧的一面——`{llm: {…}}` 能绕过 `llm.patch` 的字段白名单(改 `keychain_service`),`{storage: {db_path}}` 能从界面通道换库。现在都当场拒,一个字不写盘。调用方只有「设置」页,发的就是这三段;golden-rpc 钉的三条不受影响。
+- 新建回执里的 `enabled`:`alerts.create` / `tracker.add` 从数字 `1` 统一成 `true`(和列表、和读库那道转换一个口径),契约类型从 `boolean | 0 | 1` 收成 `boolean`。全量测试里只红了 golden-rpc 第 63 步这一条,`golden:update` 的 diff 恰好一行;`tracker-rpc.spec` 那条断言随之改了并写明缘由。引擎与界面里没有任何地方拿它和 `1` 做比较(grep 过)。优质股那张表没动:它两头一直都是 `0 | 1`,自洽。

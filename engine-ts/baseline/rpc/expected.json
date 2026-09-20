@@ -1304,7 +1304,7 @@
     "updated_at": "<VAR>",
     "symbol": "IREN",
     "step": 5,
-    "enabled": 1,
+    "enabled": true,
     "expiry": "",
     "levels": [],
     "states": {},

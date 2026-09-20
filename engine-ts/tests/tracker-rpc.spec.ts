@@ -112,9 +112,9 @@ describe("tracker.add:界面发来的数值是字符串,'' 是不设", () => {
     const out = await call("tracker.add", ui({ stop_loss: "95" }));
     expect(out["error"]).toBeUndefined();
     const track = out["result"]["track"];
-    // 现状:新建的回执里 enabled 是数字 1(回的是刚拼的那一行,没过读库的转换),tracker.list 里同一条是 true——
-    // 和 alerts.create 同一个毛病。界面按真假用;要统一得连 golden 一起动,所以这里如实钉住。
-    expect(track).toMatchObject({ account: "模拟", symbol: "BE", sec_type: "STK", enabled: 1, peak: 120 });
+    // 2026-09-20 之前这里钉的是 enabled: 1(回执回的是刚拼的那一行,没过读库的转换,而 tracker.list 里同一条是 true)。
+    // 这不是迁移顺手改的:用户定了之后单独一笔统一成布尔,alerts.create 同改,golden 用 golden:update 重生成。
+    expect(track).toMatchObject({ account: "模拟", symbol: "BE", sec_type: "STK", enabled: true, peak: 120 });
     expect(s.engine.store.getTrack(track["id"])!["enabled"]).toBe(true);
     expect(track["targets"]).toEqual({
       take_profit: null, stop_loss: 95, trail_pct: null, profit_drawdown_pct: null,

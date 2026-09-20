@@ -375,7 +375,7 @@ export class TradeStore {
       updated_at: nowIso(),
       symbol,
       step,
-      enabled: 1,
+      enabled: true, // 和读库那道转换(watchRow)一个口径:2026-09-20 之前回执里是数字 1、列表里是 true
       expiry: "",
       levels: [],
       states: {},
@@ -453,7 +453,7 @@ export class TradeStore {
       contract: track["contract"] ?? {},
       targets: track["targets"] ?? {},
       auto_close: track["auto_close"] ?? {},
-      enabled: 1,
+      enabled: true, // 同 addWatch:回执与 trackRow 读出来的一个口径
       peak: track["peak"] ?? null,
       fired_at: null,
       fired_state: "",

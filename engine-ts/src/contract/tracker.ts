@@ -66,11 +66,8 @@ export interface Track {
   targets: Partial<Targets>;
   /** 同上;而且 tracker.update 传 auto_close 是**整份替换**(没带的键就没了),读的时候过 makeAutoClose */
   auto_close: Partial<AutoClose>;
-  /**
-   * 读出来(list / update)是 true / false;**tracker.add 的回执里是数字 1**——回的是刚拼的那一行,没过读库的转换
-   * (alerts.create 是同一个毛病,tracker-rpc.spec 如实钉着)。界面按真假用,不要和 true 做 ===。
-   */
-  enabled: boolean | 0 | 1;
+  /** 回执与列表一个口径(2026-09-20 之前 tracker.add 的回执里是数字 1,和 alerts.create 同一个毛病,一起改掉的)。 */
+  enabled: boolean;
   /** 跟踪止损跟的"最有利价",只朝有利方向走;落库是为了重启不丢 */
   peak: number | null;
   fired_at: string | null;
