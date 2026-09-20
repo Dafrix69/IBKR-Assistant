@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Card, Descriptions, Input, Select, Space } from 'antd';
 import { dafri, errorMessage } from '../bridge';
+import type { BookLevel, BookSnapshot } from '../bridge';
+
+/** 盘口墙上的一格:要么是引擎给的那份盘口,要么是这一次读取失败留下的一句话。 */
+type BookCell = BookSnapshot | { error: string };
 import { CanvasChart } from '../lib/Chart';
 import { paSpec } from '../lib/chart/paSpec';
 import { fmtMoney } from '../lib/format';
@@ -426,7 +430,7 @@ function useBooks(): Books {
   const status = useStatus();
   const connected = Boolean(status?.broker_connected);
   const [symbols, setSymbols] = useState<string[]>(readSymbols);
-  const [data, setData] = useState<Record<string, any>>({});
+  const [data, setData] = useState<Record<string, BookCell | undefined>>({});
   const [loading, setLoading] = useState<Set<string>>(new Set());
   const symbolsRef = useRef(symbols);
   symbolsRef.current = symbols;
@@ -486,7 +490,8 @@ function useBooks(): Books {
     }
     persist([...symbols, symbol]);
     // 上面正在看的就是它:快照已经有了,不用再取一遍
-    if (!data[symbol] || data[symbol].error) await load(symbol);
+    const cell = data[symbol];
+    if (!cell || 'error' in cell) await load(symbol);
     return true;
   }
 
@@ -589,13 +594,15 @@ function BookCard({ symbol, snapshot, loading, onAnalyze, onRefresh, onRemove }:
   );
 }
 
-/** 一个标的的盘口:一档摘要 + 买卖各五档的深度梯子。上面的「盘口 · 标的」与盘口墙的卡片共用。 */
-function BookBody({ snapshot, loading }: { snapshot: any; loading: boolean }) {
+/** 一个标的的盘口:一档摘要 + 买卖各五档的深度梯子。上面的「盘口 · 标的」与盘口墙的卡片共用。
+ *  形状在引擎契约里(engine-ts/src/contract/book.ts);读取失败时这一格存的是 { error },所以多带一个 error。 */
+function BookBody({ snapshot, loading }: { snapshot: BookCell | null; loading: boolean }) {
   if (!snapshot) return <p className="muted">{loading ? '正在读取盘口…' : '点「刷新」读取盘口。'}</p>;
-  if (snapshot.error) return <EmptyState compact>{snapshot.error}</EmptyState>;
-  const l1 = snapshot.l1 || {};
-  const liq = snapshot.liquidity || {};
-  const hasDepth = (snapshot.bids && snapshot.bids.length) || (snapshot.asks && snapshot.asks.length);
+  if ('error' in snapshot) return <EmptyState compact>{snapshot.error}</EmptyState>;
+  // l1 / liquidity 契约保证有(引擎那头两家适配层都是先摆好这两项再往里填),不再 `|| {}` 兜一层
+  const l1 = snapshot.l1;
+  const liq = snapshot.liquidity;
+  const hasDepth = snapshot.bids.length || snapshot.asks.length;
   return (
     <>
       <Meta
@@ -622,7 +629,7 @@ function BookBody({ snapshot, loading }: { snapshot: any; loading: boolean }) {
   );
 }
 
-function BookSide({ title, levels, side }: { title: string; levels: { price: number; size: number }[]; side: 'bid' | 'ask' }) {
+function BookSide({ title, levels, side }: { title: string; levels: BookLevel[]; side: 'bid' | 'ask' }) {
   const maxSize = Math.max(...levels.map((l) => l.size), 1);
   return (
     <div>

@@ -67,11 +67,12 @@ export interface ConfirmOptions {
   confirmLabel?: string;
 }
 
-// ---- 引擎契约(engine-ts/src/contract/):优质股追踪、股票池开关、板块、价位提醒、持仓追踪、设置、想法、回测 ------
+// ---- 引擎契约(engine-ts/src/contract/):优质股追踪、股票池开关、板块、价位提醒、持仓追踪、设置、想法、回测、盘口、行情带 ------
 // 这几个域的形状**不在这里定义**:引擎的 handler 与这里用的是同一份类型,返回结构改一个字段名,
 // 两头一起编译不过。只许 `import type`,只许进 contract/ 顶层的类型文件(它们不 import 任何东西,
 // 界面的 tsc 不装引擎依赖也解析得了);contract/schema/ 是引擎自己的运行时校验,这里不碰。
 import type {
+  BookL1, BookLevel, BookLiquidity, BookSnapshot, MacroBoard, MacroRow,
   BacktestCurvePoint, BacktestRunResult, BacktestRunSpec, BacktestStrategy, BacktestTrade, CustomRules, CustomRulesInput,
   RuleConditionInput, RuleOperandInput,
   Idea, IdeaAnalysis, IdeaBrief, IdeaBriefMetric, IdeaDigest, IdeaDigestRow,
@@ -81,6 +82,7 @@ import type {
 } from '../../../engine-ts/src/contract/index';
 
 export type {
+  BookL1, BookLevel, BookLiquidity, BookSnapshot, MacroBoard, MacroRow,
   BacktestCurvePoint, BacktestRunResult, BacktestRunSpec, BacktestStrategy, BacktestTrade, CustomRules, CustomRulesInput,
   RuleConditionInput, RuleOperandInput,
   Idea, IdeaAnalysis, IdeaBrief, IdeaBriefMetric, IdeaDigest, IdeaDigestRow,
@@ -186,7 +188,7 @@ export interface DafriBridge {
   /** spec 的对象字面量要直接标成 BacktestRunSpec(同 TrackerAddSpec):这样写错的键名编译期就查得出来 */
   runBacktest(spec: BacktestRunSpec): Rpc<RpcResult<'backtest.run'>>;
   parseBacktestRules(text: string): Rpc<RpcResult<'backtest.parse_rules'>>;
-  orderBook(symbol: string): Rpc<any>;
+  orderBook(symbol: string): Rpc<RpcResult<'book.snapshot'>>;
 
   optionWall(spec: RpcParams<'options.wall'>): Rpc<RpcResult<'options.wall'>>;
   listAlerts(): Rpc<RpcResult<'alerts.list'>>;
@@ -200,7 +202,7 @@ export interface DafriBridge {
   paComment(spec: unknown): Rpc<any>;
   reviewCandidates(limit?: number, includeLocal?: boolean): Rpc<any>;
   reviewAnalyze(spec: unknown): Rpc<any>;
-  macroBoard(force?: boolean): Rpc<any>;
+  macroBoard(force?: boolean): Rpc<RpcResult<'macro.board'>>;
 
   listPositions(): Rpc<RpcResult<'positions.list'>>;
   listTrackers(): Rpc<RpcResult<'tracker.list'>>;

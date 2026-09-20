@@ -447,3 +447,30 @@ killswitch + 上面那 6 个方法),用基类 getter 把它们摊成 `this.store
 - 界面 `Backtest.tsx` 的结果原来是 `useState<any>`、交易表是 `any[]`;现在对着契约。反向验证:契约里改五个字段名,引擎 7 处
   (`backtest.ts` 5、handler 2)、界面 7 处(含拼载荷的那一行)编译不过。真进程 stdio 冒烟加了 4 条,40 / 40。
 - 没做:回测没有 feature 文档(口径在 `backtest.ts` 的文件头与 golden-backtest 里),这次没有补。
+
+**2026-09-20,盘口与行情带:`book.snapshot` / `macro.board` 迁完(已迁 41 个,还剩 36 个)。** 两样都只读,不碰 `engine.ts`。
+
+- 特征测试 `tests/market-rpc.spec.ts`(9 个)。这一份和前几批不同的地方:**它把全局 `fetch` 换成了假的**。宏观行情带在没连券商时
+  会去打公开数据源,而 `tests/` 必须离线;假 fetch 只认登记过的 URL,别的一律抛——谁把网络打开了,红的是"这个 URL 没登记",
+  而不是变成一条看天气的用例。行情带自己的双来源与降级仍由 `unit-side.spec` 用注入的 fetcher 钉着,这里钉的是**从 RPC 进来这一段**。
+- 变异 11 处:第一轮漏了"schema 把 force 收紧成只认布尔"——`contract.spec` 里有纯 schema 的断言,但 RPC 这一层没走过它。
+  补了一条能看见 force 效果的用例(不给 force 吃缓存、给了重取,而且故意给个真值字符串),第二轮 11 / 11。
+- 类型从源头标过来:`BookSnapshot` 标在两家适配层的 `orderBook` 与共用的 `bookLiquidity` 上,`MacroRow` 标在 `macro.ts` 上。
+  `broker` / `futuBroker` / `macro` / `engine` / `tracker` / `store` / `flyexit` 七个文件的编译产物去掉注释逐字节一致。
+- `MacroRow` 分成两层:取数阶段的 `MacroRowData` 没有 `source`(取数的人不知道自己被哪条路调用),`macroBoard` 最后填。
+  同 `PositionRow` / `BacktestReport`。另外照出一件事:`macro.ts` 的那张缓存表是**两种形状共用**的——行情带存整格,
+  `publicIndexPrice`(速记解析要现价时走的那条)只存一个价,靠 `"cboe:"` 前缀分开键。类型如实写成联合,取整格的地方一处断言。
+- `futuBroker.orderBook` 里有四处 `out["bids"][0]["price"]` 这样的下标访问,同一行的 `.length` 就是守卫,但编译器看不穿。
+  用了 `!`——`?? 兜底` 会改掉编译产物,而这一批要的就是逐字节一致。CLAUDE.md 的"不要用 `!` 绕过"针对的是没有守卫的情况。
+- 界面:`store/macro.ts` 手抄的 `MacroRow` 换成契约的转出(手抄那份的 `instrument` 少了 `| null` 那一半);`Market.tsx` 的盘口
+  从 `any` 收成 `BookSnapshot`。盘口墙每格要么是盘口、要么是读取失败那一句,类型写成联合,两处判断从 `.error` 改成 `'error' in cell`;
+  `BookBody` 里 `snapshot.l1 || {}` 的兜底去掉了(契约保证有)——这是界面这头唯一两处运行时改动。
+- 反向验证:契约里改五个字段名,引擎 18 处、界面 9 处(含顶栏 `MacroStrip.tsx`)编译不过。真进程 stdio 冒烟加了 3 条,43 / 43。
+- **一处现状,钉住了没改**:券商的流式报价抛异常时,**整条 `macro.board` 报错**,而不是这一轮降级到公开源。`macroBoard` 自己是
+  防住了的(它对 `router.streamQuotes` 包了 try/catch,注释写着"行情带永远不该把界面搞崩"),但 handler 为了把异步的
+  `streamQuotes` 摊平成 `macroBoard` 要的同步面,在外面先 `await` 了一次,那一次没有护栏。界面这头 `loadMacroBoard` 会 catch 掉、
+  只 `console.warn`,所以看到的是"行情带不再更新",不是白屏。要堵就是把 handler 那次 await 包起来、失败时按"没有流式报价"往下走
+  ——一行的事,但它是改行为,留给人定夺。
+- `book.snapshot` 不带 symbol 这一句改了:原来是 handler 的「股票代码不合法:'undefined'」,golden-rpc 没钉它,按"缺必填字段归
+  schema 报"的规矩换成了「book.snapshot 的参数不对:缺少 symbol」(同域已迁的 quality.add / alerts.create 都是这样)。
+  界面的 preload 永远带 symbol,走不到这条。**这是本批唯一一处刻意改掉的文案。**

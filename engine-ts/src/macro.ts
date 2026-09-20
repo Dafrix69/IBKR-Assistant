@@ -5,6 +5,7 @@
  * TLT 与收益率反向、GLD 与 IBIT 差一个量级)。TWS 那路取不到就落回公开源。
  * 固定清单写死在代码里,界面不可注入任意符号。
  */
+import type { MacroBoard, MacroRow, MacroRowData } from "./contract/macro.js";
 import { pyRound } from "./py.js";
 
 const ENDPOINT = "https://query1.finance.yahoo.com/v8/finance/chart/%s?interval=1d&range=5d";
@@ -37,9 +38,10 @@ export const MACRO_SYMBOLS: Array<Record<string, any>> = [
   { key: "BTC-USD", label: "比特币", fmt: "price", live: "CRYPTO:BTC", liveLabel: "PAXOS" },
 ];
 
+/** 行情带的整格,和 publicIndexPrice 那边只存了个价的快照,共用这张表——键不会撞:后者一律带 "cboe:" 前缀。 */
 interface CacheHit {
   at: number;
-  row: Record<string, any>;
+  row: MacroRowData | { last: number | null };
 }
 
 const CACHE = new Map<string, CacheHit>();
@@ -55,7 +57,7 @@ const MAX_STALE = 600.0;
 const INFLIGHT = new Set<string>();
 
 function refreshInBackground(
-  key: string, fetchRow: () => Promise<Record<string, any> | null>, now: () => number,
+  key: string, fetchRow: () => Promise<MacroRowData | { last: number | null } | null>, now: () => number,
 ): void {
   if (INFLIGHT.has(key)) return; // 单飞:同一键同一时刻只允许一个后台请求
   INFLIGHT.add(key);
@@ -88,7 +90,7 @@ export async function macroBoard(
     fetcher?: Fetcher;
     now?: () => number;
   } = {},
-): Promise<Record<string, any>> {
+): Promise<MacroBoard> {
   const timeout = options.timeout ?? 6.0;
   const now = options.now ?? (() => Date.now() / 1000);
   const fetcher = options.fetcher ?? defaultFetcher;
@@ -103,7 +105,7 @@ export async function macroBoard(
   }
 
   const ttl = options.force ? 0.0 : Object.keys(quotes).length ? TTL_LIVE : TTL_IDLE;
-  const rows: Array<Record<string, any>> = [];
+  const rows: MacroRow[] = [];
   for (const item of MACRO_SYMBOLS) {
     const quote = quotes[(item["live"] as string) ?? ""] ?? {};
     if (quote.last !== null && quote.last !== undefined) {
@@ -117,7 +119,8 @@ export async function macroBoard(
       });
     } else {
       // 用户点了强制刷新才同步等;周期轮询一律"旧值先给、后台去取"
-      const row = await cachedFetch(item, timeout, ttl, fetcher, now, !options.force);
+      // 这个键上存的一定是整格(只存了个价的那种带 "cboe:" 前缀,只在 publicIndexPrice 里用)
+      const row = await cachedFetch(item, timeout, ttl, fetcher, now, !options.force) as MacroRow;
       row["source"] = "public";
       // 主源挂掉、由 Cboe 兜回来的格子已经自报了 instrument,别在这里抹掉
       row["instrument"] = row["instrument"] ?? null;
@@ -160,7 +163,7 @@ export async function publicIndexPrice(
     const cacheKey = `cboe:${sym}`;
     const hit = CACHE.get(cacheKey);
     if (hit && now - hit.at < 30.0) return num(hit.row["last"]);
-    const fetchCboe = async (): Promise<Record<string, any> | null> => {
+    const fetchCboe = async (): Promise<{ last: number | null } | null> => {
       try {
         const payload = await fetcher(CBOE_ENDPOINT.replace("%s", sym), timeout * 1000);
         const price = cboeLast(payload);
@@ -196,9 +199,9 @@ export async function publicIndexPrice(
 async function cachedFetch(
   item: Record<string, any>, timeout: number, ttl: number, fetcher: Fetcher, now: () => number,
   background = true,
-): Promise<Record<string, any>> {
+): Promise<MacroRowData> {
   const ts = now();
-  const hit = CACHE.get(item["key"]);
+  const hit = CACHE.get(item["key"]) as { at: number; row: MacroRowData } | undefined;
   if (hit && ts - hit.at < ttl) return { ...hit.row, cached: true };
   if (background && hit && ts - hit.at < MAX_STALE) {
     refreshInBackground(item["key"], () => fetchOne(item, timeout, fetcher), now);
@@ -242,8 +245,8 @@ async function fetchCboeRow(
 
 async function fetchOne(
   item: Record<string, any>, timeout: number, fetcher: Fetcher,
-): Promise<Record<string, any>> {
-  const row: Record<string, any> = {
+): Promise<MacroRowData> {
+  const row: MacroRowData = {
     key: item["key"], label: item["label"], fmt: item["fmt"], last: null, change_pct: null,
   };
   let payload: any;

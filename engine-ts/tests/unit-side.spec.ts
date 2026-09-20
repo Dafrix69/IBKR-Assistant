@@ -136,22 +136,22 @@ describe("macro", () => {
       }),
     };
     const board = await macroBoard({ router, fetcher, now: () => 1000 });
-    const spy = board["rows"].find((r: any) => r["key"] === "^GSPC");
-    expect(spy["source"]).toBe("tws");
-    expect(spy["instrument"]).toBe("SPX");
-    expect(spy["last"]).toBe(7673.52);
+    const spy = board["rows"].find((r) => r["key"] === "^GSPC");
+    expect(spy!["source"]).toBe("tws");
+    expect(spy!["instrument"]).toBe("SPX");
+    expect(spy!["last"]).toBe(7673.52);
     // 比特币格:流里的键是加密标记,界面上标的是 PAXOS,数值是币价本身
-    const btc = board["rows"].find((r: any) => r["key"] === "BTC-USD");
-    expect(btc["source"]).toBe("tws");
-    expect(btc["instrument"]).toBe("PAXOS");
-    expect(btc["last"]).toBe(78609.25);
-    const vix = board["rows"].find((r: any) => r["key"] === "^VIX");
-    expect(vix["source"]).toBe("public");
-    expect(vix["last"]).toBeNull();
-    expect(vix["error"]).toBeDefined();
-    const gold = board["rows"].find((r: any) => r["key"] === "GC=F");
-    expect(gold["last"]).toBe(100.0);
-    expect(gold["change_pct"]).toBeCloseTo(1.01, 6);
+    const btc = board["rows"].find((r) => r["key"] === "BTC-USD");
+    expect(btc!["source"]).toBe("tws");
+    expect(btc!["instrument"]).toBe("PAXOS");
+    expect(btc!["last"]).toBe(78609.25);
+    const vix = board["rows"].find((r) => r["key"] === "^VIX");
+    expect(vix!["source"]).toBe("public");
+    expect(vix!["last"]).toBeNull();
+    expect(vix!["error"]).toBeDefined();
+    const gold = board["rows"].find((r) => r["key"] === "GC=F");
+    expect(gold!["last"]).toBe(100.0);
+    expect(gold!["change_pct"]).toBeCloseTo(1.01, 6);
     expect(board["live_count"]).toBe(2);
   });
 
@@ -207,12 +207,12 @@ describe("macro", () => {
     };
     let t = 1000;
     const first = await macroBoard({ fetcher, now: () => t });
-    expect(first["rows"][0]["last"]).toBe(42.0);
+    expect(first["rows"][0]!["last"]).toBe(42.0);
     fail = true;
     t += 120; // 超过 TTL;force 才同步重取(对应 Python 测试的 force=True)
     const second = await macroBoard({ fetcher, now: () => t, force: true });
-    expect(second["rows"][0]["last"]).toBe(42.0);
-    expect(second["rows"][0]["stale"]).toBe(true);
+    expect(second["rows"][0]!["last"]).toBe(42.0);
+    expect(second["rows"][0]!["stale"]).toBe(true);
   });
 
   it("周期轮询过期时旧值先给、后台刷新,不挡主循环(stale-while-revalidate)", async () => {
@@ -234,15 +234,15 @@ describe("macro", () => {
     await macroBoard({ fetcher, now: () => t });
     t += 120; // 超过 TTL,但没超过 MAX_STALE
     const second = await macroBoard({ fetcher, now: () => t });
-    expect(second["rows"][0]["last"]).toBe(42.0); // 旧值立刻返回
-    expect(second["rows"][0]["refreshing"]).toBe(true);
+    expect(second["rows"][0]!["last"]).toBe(42.0); // 旧值立刻返回
+    expect(second["rows"][0]!["refreshing"]).toBe(true);
     // 单飞:再打一次不会再起第二批后台请求
     await macroBoard({ fetcher, now: () => t });
     expect(calls).toBe(n * 2);
     for (const release of waiters) release();
     await new Promise((resolve) => setTimeout(resolve, 0));
     const third = await macroBoard({ fetcher, now: () => t + 1 });
-    expect(third["rows"][0]["last"]).toBe(43.0); // 后台取回的新值落到缓存
+    expect(third["rows"][0]!["last"]).toBe(43.0); // 后台取回的新值落到缓存
   });
 });
 

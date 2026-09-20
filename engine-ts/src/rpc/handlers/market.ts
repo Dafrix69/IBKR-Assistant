@@ -1,7 +1,9 @@
 /** 行情页读的那几样:book.snapshot、options.wall、pa.*、macro.board。全部只读。 */
 import { BrokerError } from "../../broker.js";
 import { nowEt } from "../../config.js";
-import type { OptionWall, OptionsWallParams } from "../../contract/options.js";
+import type {
+  BookSnapshot, BookSnapshotParams, MacroBoard, MacroBoardParams, OptionWall, OptionsWallParams,
+} from "../../contract/index.js";
 import { macroBoard } from "../../macro.js";
 import { PACommentSchema } from "../../models.js";
 import { loadSchemaAsset } from "../../providers.js";
@@ -15,18 +17,20 @@ import { SYMBOL_RE, symbolOrRaise } from "../params.js";
 export class MarketHandlers extends HandlerBase {
   methods(): MethodTable {
     return {
-      "book.snapshot": (p) => this.bookSnapshot(p),
       "pa.timeframes": (p) => this.paTimeframes(p),
       "pa.analyze": (p) => this.paAnalyze(p),
       "pa.comment": (p) => this.paComment(p),
-      "macro.board": (p) => this.macroBoardMethod(p),
-      // 已经在契约里的(contract/options.ts):入参过了 schema 才到 handler
-      ...contractMethods({ "options.wall": (p) => this.optionsWall(p) }),
+      // 已经在契约里的:入参过了 schema 才到 handler
+      ...contractMethods({
+        "book.snapshot": (p) => this.bookSnapshot(p),
+        "options.wall": (p) => this.optionsWall(p),
+        "macro.board": (p) => this.macroBoardMethod(p),
+      }),
     };
   }
 
   // ---- 订单簿 ----------------------------------------------------------
-  async bookSnapshot(params: Rec): Promise<Rec> {
+  async bookSnapshot(params: BookSnapshotParams): Promise<BookSnapshot> {
     const symbol = String(params["symbol"] ?? "").trim().toUpperCase();
     if (!SYMBOL_RE.test(symbol)) {
       throw new RpcError(-32602, `股票代码不合法:'${params["symbol"]}'`);
@@ -154,7 +158,7 @@ export class MarketHandlers extends HandlerBase {
   }
 
   // ---- 宏观行情带(公开数据,只读展示,不参与定价)-----------------------
-  async macroBoardMethod(params: Rec): Promise<Rec> {
+  async macroBoardMethod(params: MacroBoardParams): Promise<MacroBoard> {
     const routerLive = this.router && this.router.sessions().length ? this.router : null;
     const router = routerLive
       ? { streamQuotes: (tickers: string[]) => routerLive.streamQuotes(tickers) as any }

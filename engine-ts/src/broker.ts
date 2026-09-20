@@ -15,6 +15,7 @@ import type { ContractSpec, OrderSpec, TriggerSpec } from "./models.js";
 import type { HostedOrderPlan } from "./positions.js";
 import { legOf, makeKey, positionLabel } from "./positions.js";
 import { MIN_BARS, TIMEFRAMES } from "./marketdata.js";
+import type { BookL1, BookLevel, BookLiquidity, BookSnapshot } from "./contract/book.js";
 import type { StockQuote } from "./contract/sectors.js";
 import type { PositionRow } from "./contract/positions.js";
 import type { VolumeSnapshot } from "./marketdata.js";
@@ -142,11 +143,11 @@ export function bagSignedLimit(action: string, userLimit: number | null): number
 }
 
 /** 从盘口算流动性指标。挂单可撤,失衡只是即时快照,不是方向预测。 */
-export function bookLiquidity(book: Record<string, any>): Record<string, any> {
-  const l1 = book["l1"] ?? {};
-  const bids: Array<Record<string, any>> = book["bids"] ?? [];
-  const asks: Array<Record<string, any>> = book["asks"] ?? [];
-  const out: Record<string, any> = {};
+export function bookLiquidity(book: Partial<BookSnapshot>): BookLiquidity {
+  const l1: Partial<BookL1> = book["l1"] ?? {};
+  const bids: BookLevel[] = book["bids"] ?? [];
+  const asks: BookLevel[] = book["asks"] ?? [];
+  const out: BookLiquidity = {};
 
   const spreadBps = l1["spread_bps"];
   if (spreadBps !== null && spreadBps !== undefined) {
@@ -1551,7 +1552,7 @@ export class BrokerRouter {
   }
 
   /** 一档盘口 + Level 2 深度(若账户有订阅)。只读展示。 */
-  async orderBook(symbol: string, rows = 10): Promise<Record<string, any>> {
+  async orderBook(symbol: string, rows = 10): Promise<BookSnapshot> {
     const sessions = this.sessions();
     const session = sessions[0] ?? null;
     if (session === null) {
@@ -1563,7 +1564,8 @@ export class BrokerRouter {
     const target = stockContract(symbol);
     await this.qualifyOrRaise(session, target);
 
-    const out: Record<string, any> = { symbol, l1: {}, bids: [], asks: [], note: "" };
+    // liquidity 在最后一行补上(它要算完深度才知道);中途这份就是"还没算流动性"的样子
+    const out = { symbol, l1: {}, bids: [], asks: [], note: "" } as unknown as BookSnapshot;
     try {
       session.reqMarketDataType(3);
       const ticker = session.subscribeTicker(target);
@@ -1571,7 +1573,7 @@ export class BrokerRouter {
       const t = ticker.read();
       const bid = cleanPrice(t.bid);
       const ask = cleanPrice(t.ask);
-      const l1: Record<string, any> = {
+      const l1: BookL1 = {
         bid,
         ask,
         bid_size: t.bidSize !== null && !Number.isNaN(t.bidSize) ? cleanPrice(t.bidSize) : null,

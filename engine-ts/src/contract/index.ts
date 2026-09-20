@@ -10,6 +10,8 @@
 import type {
   AlertsCreateParams, AlertsDeleteParams, AlertsPollResult, AlertsRefreshParams, AlertsRefreshResult, Watch,
 } from "./alerts.js";
+import type { BookSnapshot, BookSnapshotParams } from "./book.js";
+import type { MacroBoard, MacroBoardParams } from "./macro.js";
 import type {
   BacktestParseRulesParams, BacktestRunParams, BacktestRunResult, BacktestStrategy, CustomRules,
 } from "./backtest.js";
@@ -38,6 +40,8 @@ import type {
 
 export type * from "./alerts.js";
 export type * from "./backtest.js";
+export type * from "./book.js";
+export type * from "./macro.js";
 export type * from "./ideas.js";
 export type * from "./options.js";
 export type * from "./pool.js";
@@ -56,6 +60,10 @@ export interface RpcMethods {
   "alerts.delete": { params: AlertsDeleteParams; result: { deleted: string } };
   "alerts.refresh": { params: AlertsRefreshParams; result: AlertsRefreshResult };
   "alerts.poll": { params: NoParams; result: AlertsPollResult };
+
+  "book.snapshot": { params: BookSnapshotParams; result: BookSnapshot };
+
+  "macro.board": { params: MacroBoardParams; result: MacroBoard };
 
   "backtest.strategies": { params: NoParams; result: { strategies: BacktestStrategy[] } };
   "backtest.run": { params: BacktestRunParams; result: BacktestRunResult };

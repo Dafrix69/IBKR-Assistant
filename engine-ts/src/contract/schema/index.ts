@@ -16,6 +16,7 @@ import {
 } from "./ideas.js";
 import { NoParamsSchema } from "./kit.js";
 import type { ParamsSchema } from "./kit.js";
+import { BookSnapshotParamsSchema, MacroBoardParamsSchema } from "./market.js";
 import { OptionsWallParamsSchema } from "./options.js";
 import { PoolSetWatchParamsSchema } from "./pool.js";
 import {
@@ -38,6 +39,10 @@ export const PARAMS_SCHEMAS: { readonly [M in RpcMethodName]: ParamsSchema<RpcPa
   "alerts.delete": AlertsDeleteParamsSchema,
   "alerts.refresh": AlertsRefreshParamsSchema,
   "alerts.poll": NoParamsSchema,
+
+  "book.snapshot": BookSnapshotParamsSchema,
+
+  "macro.board": MacroBoardParamsSchema,
 
   "backtest.strategies": NoParamsSchema,
   "backtest.run": BacktestRunParamsSchema,

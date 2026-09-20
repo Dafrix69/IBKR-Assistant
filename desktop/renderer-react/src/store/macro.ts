@@ -5,18 +5,11 @@
  */
 import { create } from 'zustand';
 import { dafri } from '../bridge';
+import type { MacroRow } from '../bridge';
 import { getStatus } from './status';
 
-export interface MacroRow {
-  key: string;
-  label: string;
-  instrument?: string;
-  last?: number | null;
-  change_pct?: number | null;
-  source?: string;
-  fmt?: 'pct' | 'plain' | string;
-  stale?: boolean;
-}
+// 形状在引擎契约里(engine-ts/src/contract/macro.ts),从 bridge 拿;以前这里手抄过一份(instrument 少了 null 那一半)
+export type { MacroRow };
 
 const useStore = create<{ rows: MacroRow[]; trails: Record<string, number[]> }>(() => ({ rows: [], trails: {} }));
 /** 每格留本次开机以来的最近 90 个不同读数,给行情带画迷你走势;只在内存里,不落盘。 */

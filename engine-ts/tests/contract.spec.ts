@@ -11,7 +11,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
-import { contractMethodNames } from "../src/contract/schema/index.js";
+import { PARAMS_SCHEMAS, contractMethodNames } from "../src/contract/schema/index.js";
 import { RpcServer } from "../src/rpc.js";
 
 const ENGINE_SRC = path.resolve(__dirname, "..", "src");
@@ -19,13 +19,11 @@ const BRIDGE = path.resolve(__dirname, "..", "..", "desktop", "renderer-react", 
 
 /** 还没迁进契约的老方法(入参与返回仍是松散的 Rec)。迁一个,从这里划掉一个;**不许往里加**。 */
 const LEGACY_METHODS = [
-  "book.snapshot",
   "breaker.halt", "breaker.resume", "breaker.state",
   "broker.catalog", "broker.connect", "broker.disconnect", "broker.select",
   "futu.diagnose", "futu.launch", "futu.scan", "futu.set_password", "futu.unlock",
   "instruction.submit",
   "llm.catalog", "llm.patch", "llm.test",
-  "macro.board",
   "pa.analyze", "pa.comment", "pa.timeframes",
   "pending.list", "pending.poll",
   "records.get", "records.list",
@@ -73,8 +71,8 @@ describe("契约:迁移只许往前走", () => {
     expect(LEGACY_METHODS.filter((m) => !names.includes(m)), "引擎里已经没有这个方法了").toEqual([]);
   });
 
-  it("名单只许变短:现在是 38 个,改这个数的时候只能往小里改", () => {
-    expect(LEGACY_METHODS.length).toBeLessThanOrEqual(38);
+  it("名单只许变短:现在是 36 个,改这个数的时候只能往小里改", () => {
+    expect(LEGACY_METHODS.length).toBeLessThanOrEqual(36);
     expect(new Set(LEGACY_METHODS).size).toBe(LEGACY_METHODS.length);
   });
 });
@@ -199,6 +197,16 @@ describe("契约:结构错由 schema 报,领域错由 handler 报", () => {
     // rules / instrument 的形状由 models.ts 的 schema 说,不是这一层
     expect((await errorOf("backtest.run", { symbol: "AAPL", start: "2025-01-01", end: "2026-01-01", strategy: "custom", rules: "金叉" })).message).toMatch(/^自定义条件不合法:/);
     expect((await errorOf("backtest.run", { symbol: "AAPL", start: "2025-01-01", end: "2026-01-01", strategy: "rsi", instrument: [1] })).message).toMatch(/^交易品种配置不合法:/);
+  });
+
+  it("book.snapshot / macro.board:结构错归 schema;force 给什么都收(老 handler 是 Boolean(x))", async () => {
+    expect(await errorOf("book.snapshot", {})).toEqual({ code: -32602, message: "book.snapshot 的参数不对:缺少 symbol" });
+    expect(await errorOf("book.snapshot", { symbol: 7 })).toEqual({ code: -32602, message: "book.snapshot 的参数不对:symbol 应为 string,收到 number" });
+    // 领域错:代码形状还是 handler 那句(golden-rpc 钉着)
+    expect((await errorOf("book.snapshot", { symbol: "bad$" })).message).toBe("股票代码不合法:'bad$'");
+    // macro.board 不挑参数:给什么都不该把行情带挡在外面(直接看 schema——真跑一次会去打公开数据源,测试不出网)
+    expect(PARAMS_SCHEMAS["macro.board"].safeParse({ force: "yes", 多余的键: 1 })).toMatchObject({ success: true, data: { force: true } });
+    expect(PARAMS_SCHEMAS["macro.board"].safeParse({})).toMatchObject({ success: true, data: {} });
   });
 
   it("schema 不比老 handler 严:步长给数字串照收;改标签不带 tag = 清掉", async () => {

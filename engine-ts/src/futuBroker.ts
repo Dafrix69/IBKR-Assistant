@@ -6,6 +6,7 @@
  * (pollOrderUpdates);实盘要先交易解锁(密码 md5 只走 Keychain / DPAPI)。
  * 真机联调三结论全部保留:指数闸门、模拟盘合成成交、is_paper 与 trd_env 核对。
  */
+import type { BookL1, BookSnapshot } from "./contract/book.js";
 import type { StockQuote } from "./contract/sectors.js";
 import type { PositionRow } from "./contract/positions.js";
 import type { AccountConfig, Settings } from "./config.js";
@@ -844,14 +845,15 @@ export class FutuRouter {
   }
 
   /** 一档盘口 + 深度(取决于行情等级)。只读展示。 */
-  async orderBook(symbol: string, rows = 10): Promise<Record<string, any>> {
+  async orderBook(symbol: string, rows = 10): Promise<BookSnapshot> {
     const session = this.marketSession();
     const mod = await this.bridge();
     if (this.settings.indexConfig(symbol) !== null) {
       throw new BrokerError("指数本身没有订单簿(不是可交易合约),请查对应 ETF(如 SPY)或成分股。");
     }
     const code = await this.code(symbol);
-    const out: Record<string, any> = { symbol, l1: {}, bids: [], asks: [], note: "" };
+    // liquidity 在最后一行补上(它要算完深度才知道);中途这份就是"还没算流动性"的样子
+    const out = { symbol, l1: {}, bids: [], asks: [], note: "" } as unknown as BookSnapshot;
     try {
       await this.subscribe(session, [code], "ORDER_BOOK");
       const [ret, data] = await session.quoteCtx!.get_order_book(
@@ -865,13 +867,15 @@ export class FutuRouter {
       await this.unsubscribe(session, [code], "ORDER_BOOK");
     }
 
-    const bid = out["bids"].length ? out["bids"][0]["price"] : null;
-    const ask = out["asks"].length ? out["asks"][0]["price"] : null;
-    const l1: Record<string, any> = {
+    // 下面四处的 `!`:同一行里的 .length 就是守卫,编译器只是看不穿下标访问。用 `?? 兜底` 会改掉编译产物,
+    // 而这个文件要和改动前逐字节一致(本次只动类型)
+    const bid = out["bids"].length ? out["bids"][0]!["price"] : null;
+    const ask = out["asks"].length ? out["asks"][0]!["price"] : null;
+    const l1: BookL1 = {
       bid,
       ask,
-      bid_size: out["bids"].length ? out["bids"][0]["size"] : null,
-      ask_size: out["asks"].length ? out["asks"][0]["size"] : null,
+      bid_size: out["bids"].length ? out["bids"][0]!["size"] : null,
+      ask_size: out["asks"].length ? out["asks"][0]!["size"] : null,
       last: null,
     };
     try {
