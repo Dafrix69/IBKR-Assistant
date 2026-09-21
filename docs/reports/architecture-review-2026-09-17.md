@@ -1050,3 +1050,24 @@ TWS 起来之后跑了 `npm run probe`(只读:临时配置 / 临时库、三道�
 **到此三个超线的引擎文件都有量过的方案**:`BrokerRouter`(按状态簇,先切指数与期货推算)、
 `TradingEngine`(按四簇,先切追踪节拍器,且要顺带切开两个超 150 行的方法)、
 `FutuRouter`(按面切,但排最后)。三者的共同约束都是同一条:**先做真机核对,再动它们。**
+
+### 两个图表文件也量了:`OVER_BUDGET` 名单到此没有"未量过"的条目(2026-09-21)
+
+- **`lib/chart/engine.ts`(535 行)**:问题不在文件,在**一个函数**——`mountChart` 68–534 = **467 行**,
+  远超 150 的函数预算。它内部已经自己分了二十来个闭包(`priceRange` / `autoscale` / `tickMark` /
+  `renderLegend` / `chartOptions` / `createTheChart` / `teardownChart` / `syncSeries` / `layout` / `render` …),
+  所以拆法是现成的:**把不依赖闭包捕获的那几块提成模块级纯函数**(`chartOptions` / `tickMark` /
+  `priceRange` / `renderLegend` 是首批候选),依赖 `chart`/`series` 句柄的(`syncSeries` / `layout` /
+  `render` / `teardownChart`)留在里面或改成显式传参。
+- **`lib/chart/overlays.ts`(483 行)**:三个类——`View`(小)、`AxisTag`(小)、`SpecOverlay` 138–445
+  (**约 308 行**)、`VolumeCapLabel` 446–483。`SpecOverlay` 是大头;`VolumeCapLabel` 可以整块搬出去,
+  但只搬它还剩 445 行,**不够进预算**,得同时把 `SpecOverlay` 的绘制逻辑按"画什么"分出去。
+
+**但这两刀我这一轮刻意没做**,理由和技术无关:**图表是纯 canvas 绘制,仓库里没有任何渲染测试**。
+搬家式的改动靠"逐行对账 + typecheck"能保证不改行为,但一旦要动 `mountChart` 那 467 行的结构
+(把闭包提成纯函数就是在动结构),对账就不再是充分判据了。而此刻这个分支**正等着一次真机核对**,
+往里塞一笔没有验证手段的结构改动,只会把那次核对要覆盖的面撑大。
+
+**结论:先做真机核对,再动图表。** 在那之前 `size-budget.spec.ts` 已经拦住它们继续长。
+
+至此 `OVER_BUDGET` 里 5 个条目**全部量过、都有方案**,名单注释里不再有"待量"。

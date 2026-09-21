@@ -27,8 +27,10 @@ const SCOPES = [
 /**
  * 现在还超线的文件,以及它此刻的行数。**这张表只许变短,数字只许变小。**
  *
- * 三个引擎文件的拆法都量过、方案写在体检报告里(`BrokerRouter` 按状态簇、`TradingEngine` 按四簇、
- * `FutuRouter` 按面切但排最后——它技术上最好拆,却最没有验证手段)。两个图表文件还没量过。
+ * 名单里 5 个条目**都量过、都有方案**(写在体检报告末尾):`BrokerRouter` 按状态簇、
+ * `TradingEngine` 按四簇(另有两个方法超 150 行)、`FutuRouter` 按面切但排最后、
+ * `chart/engine.ts` 是一个 467 行的 `mountChart`、`chart/overlays.ts` 是 308 行的 `SpecOverlay`。
+ * **五个的共同约束是同一条:先做真机核对,再动它们。**
  */
 const OVER_BUDGET: Record<string, number> = {
   "engine-ts/src/broker.ts": 2400,
