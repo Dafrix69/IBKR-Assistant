@@ -812,8 +812,19 @@ killswitch + 上面那 6 个方法),用基类 getter 把它们摊成 `this.store
 - 对账:19 行"丢掉"全说得清(8 行 import、2 张词表搬家、1 行分节注释、8 个声明加 `export`),
   **函数体一行没少**。
 
-**还欠的**:`Records.tsx` 461、`Backtest.tsx` 403 —— 都超 400。
-还有一件从这一刀掉出来的:把 `ExitPlan.phases` / `simulation` 收紧,再把那个 `any` 去掉。
+**2026-09-21,第八刀:`Records.tsx` 的详情搬进 `lib/RecordDetail.tsx`。** 461 → 253 行。
+
+- 页面只剩「列一张表 + 点开谁」(253),详情那一份单据 219 行。
+- 逐行对账这一次**抓到脚本自己的一个错**:批量加 `export` 时把 `export` 贴到了文档注释前面
+  (`export /** TODO … */ function …`)。TS 居然认(注释在 `export` 与声明之间是合法的),
+  lint 也不报——只有对账看得出来。顺手把 `Row` / `Section` / `DetailBody` 的 `export` 去掉:
+  页面只用 `RecordDetail`,别的是这个文件自己的。
+- 对账:12 行"丢掉"全说得清(8 行 import、1 行分节注释、3 个声明加 `export`),**函数体一行没少**。
+
+**还欠的**:`Backtest.tsx` 403。
+还有一件从第七、第八刀一起掉出来的:三处 `any`(`ExitPlan` / `DetailBody`)都卡在同一个形状上——
+`record.X || {}` / `plan.simulation || {}` 兜完之后编译器只认得 `{}`。要给这些局部标上 `Partial<…>`,
+那是改函数体,**单独一轮做**,顺带把契约里 `ExitPlan.phases`(`Record<string, unknown>`)收紧。
 
 > `tests/rpc-lanes.spec.ts` 这一轮又偶发红了一次(重跑即绿)。频率变高有个直接原因:修它的那个会话
 > 正在同一台机器上跑,负载更高——这本身就是"它测的是墙钟而不是顺序"的旁证。
