@@ -121,3 +121,9 @@ export const TRACK_STATE_LABEL: Record<string, string> = {
   'sweep:stop_loss': '止损触发,追价平仓中',
   'sweep:profit_trail': '利润回撤触发,追价平仓中',
 };
+
+/** 蝶式复盘里那三个阶段(引擎 flyexit.ts 分的)。图上的色带与表里的标签用同一份。 */
+export const PHASE_LABEL: Record<string, string> = { A: '阶段 A', B: '阶段 B', C: '阶段 C' };
+
+/** 复盘那一笔当时是什么下场。页面的状态行与结果卡用同一份。 */
+export const REVIEW_KIND: Record<string, string> = { closed: '已平仓', expired: '已到期', open: '持仓中' };

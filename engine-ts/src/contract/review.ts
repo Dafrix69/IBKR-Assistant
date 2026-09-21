@@ -383,6 +383,9 @@ export interface ExitPlan {
   simulation: ExitSimulation;
   /** 这次回放的前提与保留(EM 是默认值、哪几分钟用的模型价这一类) */
   notes: string[];
+  /** 实际平掉的那一笔相当于入场净价的几倍。**只在真的平了仓、且入场净价不为 0 时才有**
+   *  (见 flyexit.ts:实际 kind 必须是 closed);没平仓 / 到期结算的那一路没有这一项。 */
+  actual_exit_mult?: number | null;
 }
 
 export interface StockReviewResult extends ReviewBase {

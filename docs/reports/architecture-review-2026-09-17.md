@@ -797,7 +797,23 @@ killswitch + 上面那 6 个方法),用基类 getter 把它们摊成 `this.store
   两个类型一起归 `lib/marketBits.tsx`(89)。两节画的是同一份快照,不该各画各的。
 - 对账:26 行"丢掉"全是 import、分节注释、或加了 `export` 的声明,**函数体一行没少**。
 
-**还欠的**:`Review.tsx` 607、`Records.tsx` 461、`Backtest.tsx` 403 —— 都超 400。
+**2026-09-21,第七刀:`Review.tsx` 拆成三块。** 607 → 244 行。
+
+- `lib/ReviewResult.tsx`(231,结论怎么摆)、`lib/reviewCharts.tsx`(154,三张图),页面只剩
+  「挑一笔 + 跑一次 + 把结果摆出来」(244)。两张词表(`PHASE_LABEL` / `REVIEW_KIND`)两边都要用,
+  归 `lib/labels.ts`;只有结果卡用的 `REVIEW_TONE` 跟着它走。
+- **顺手补了契约的一个真缺口**:`ExitPlan` 少了 `actual_exit_mult`——引擎确实产出它
+  (`flyexit.ts`:实际那一笔相当于入场净价的几倍,只在真平了仓时才有),界面也一直在读。补进了
+  `contract/review.ts` 并标成可选。
+- **有一处 `any` 刻意留着**:`ExitPlan({ r }: { r: any })`。试着收成 `ButterflyReviewResult` 之后
+  发现真正卡住的是契约里 `ExitPlan.phases` 是 `Record<string, unknown>`、`simulation` 兜底成 `{}`
+  之后也还原不回来。**收紧它是一轮单独的活**(要配特征测试 + 反向验证),不该夹在一次搬家里做;
+  代码里留了 TODO 说清原因。
+- 对账:19 行"丢掉"全说得清(8 行 import、2 张词表搬家、1 行分节注释、8 个声明加 `export`),
+  **函数体一行没少**。
+
+**还欠的**:`Records.tsx` 461、`Backtest.tsx` 403 —— 都超 400。
+还有一件从这一刀掉出来的:把 `ExitPlan.phases` / `simulation` 收紧,再把那个 `any` 去掉。
 
 > `tests/rpc-lanes.spec.ts` 这一轮又偶发红了一次(重跑即绿)。频率变高有个直接原因:修它的那个会话
 > 正在同一台机器上跑,负载更高——这本身就是"它测的是墙钟而不是顺序"的旁证。
