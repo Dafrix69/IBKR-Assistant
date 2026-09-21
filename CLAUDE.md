@@ -86,6 +86,9 @@ contract      contract/*.ts(纯类型,零 import,谁都能引)  contract/schema/
 ## 体积预算
 
 引擎单文件 1,500 行、函数 150 行、页面组件 400 行。超线不是不能提交,是提交前先回答"它是不是两个东西"。
+**文件行数这一条有闸门**:`tests/size-budget.spec.ts`——已超线的文件钉在 `OVER_BUDGET` 里,
+**那张表只许变短、数字只许变小**;没超线的文件新超线也会红(同 `LEGACY_METHODS` 的规矩)。
+真要让某个文件变长,就得去改那个数字——改的那一刻正好回答上面那句话。
 已知超线且待拆的:`engine.ts`(2026-09-20 托管单 → `engine/hosted.ts`、执行对账 → `engine/reconcile.ts`、
 回报落库 → `engine/callbacks.ts`,还剩 1,782 行。**另有两个方法超了 150 行的函数预算:
 `handleInstruction` 265 行、`pollTrackers` 172 行** —— 拆它时要顺带切开,不能只搬不动。
