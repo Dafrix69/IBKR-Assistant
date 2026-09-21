@@ -775,8 +775,20 @@ killswitch + 上面那 6 个方法),用基类 getter 把它们摊成 `this.store
 - 搬家时照原样没动的一处:「0 · 当前券商接入」(换下单出口)长在富途那一节里。它该不该在那儿是另一件事,
   写进了 `FutuPanel.tsx` 的头注释,没顺手挪——挪它是改行为。
 
-**还欠的**:`Screener.tsx` 709、`Market.tsx` 648、`Review.tsx` 607、`Records.tsx` 461、
-`Backtest.tsx` 403 —— 都超 400。
+**2026-09-21,第五刀:`Screener.tsx` 拆成四块。** 709 → 226 行。
+
+- 这一页缠在一起的是三件事:**行怎么拼**(把 RS 与背离合成一行、排序、着色)、**表怎么画**、
+  **单只的极值偏离**。按这三件切:`lib/screenerRows.ts`(82,不认识 React 的纯逻辑)、
+  `lib/ScanTable.tsx`(230)、`lib/DeviationSection.tsx`(208),页面只剩「扫一次 + 摆出来」(226)。
+- 切完才看清有四样是**三处共用**的:`num`(自己的数字格式,和 `fmtNum` 不是一回事)、`TF_LABEL` /
+  `TF_OPTIONS`(周期中文名)、`rsCellProps` + `heat`(单元格着色)、以及 `PoolStock` / `SortState` 两个
+  本地接口。全部下沉进 `screenerRows.ts`——它们本来就该有一个家,挤在页面里只是因为没人拆过。
+- 脚本里给函数批量加 `export` 时用了正则,**heredoc 把 `\(` 折掉了**,当场报 "Unterminated group"。
+  这正是 memory 里 `env-bash-tool-escapes` 记的那个坑;改成纯字符串匹配就好了。
+- 对账:27 行"丢掉"全说得清(6 行 import 重写、2 行分节注释被文件头取代、19 个声明加 `export`),
+  **函数体一行没少**。
+
+**还欠的**:`Market.tsx` 648、`Review.tsx` 607、`Records.tsx` 461、`Backtest.tsx` 403 —— 都超 400。
 
 > 跑全量时 `tests/rpc-lanes.spec.ts` 也偶发红过一次(单独跑、再跑全量都绿),和 `provider-http.spec.ts`
 > 同一类:对时序 / 负载敏感,而不是被测代码坏了。两件一起另开任务修,判据别改成放宽阈值。
