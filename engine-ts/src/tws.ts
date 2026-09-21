@@ -279,11 +279,25 @@ export function explainConnectError(
 }
 
 /** 核对别名表和这个会话真正能管的账号。 */
+/**
+ * 别名表与这个会话能管到的账号对不对得上。
+ *
+ * `connectionName` 给了就**只核那条连接上的别名**:2026-09-21 真机联调时,诊断 live(7496)把配在
+ * paper(7497)上的「模拟」也标成了对不上,并报「发到它们的单会被拒」——那是误报,那条别名的单
+ * 根本不从这条连接出去。不分连接地核,等于让用户去修一个没坏的配置。
+ * 不给(旧调用方)就照旧全核。
+ *
+ * `unmapped` 始终对着**全部**配置账号算:「这个会话还能管到一个别名表里完全没有的账号」是真信号,
+ * 和它挂在哪条连接上无关(同一账户实盘/模拟共用端口时更要这样)。
+ */
 export function checkAliasMapping(
-  settings: Settings, managedAccounts: string[],
+  settings: Settings, managedAccounts: string[], connectionName?: string,
 ): [DiagnoseAccount[], string[]] {
   const managed = new Set(managedAccounts.filter(Boolean));
-  const rows = settings.accounts.map((account) => ({
+  const mine = connectionName === undefined
+    ? settings.accounts
+    : settings.accounts.filter((a) => a.connection === connectionName);
+  const rows = mine.map((account) => ({
     alias: account.alias,
     account_masked: redactAccount(account.account_id),
     is_paper: account.is_paper,
@@ -375,7 +389,7 @@ export async function diagnose(
   result["server_time"] = info.serverTime;
   const accounts = info.managedAccounts;
   result["managed_accounts"] = accounts.map(redactAccount);
-  const [rows, unmapped] = checkAliasMapping(settings, accounts);
+  const [rows, unmapped] = checkAliasMapping(settings, accounts, connectionName);
   result["accounts"] = rows;
   result["unmapped_accounts"] = unmapped;
   if (unmapped.length) {

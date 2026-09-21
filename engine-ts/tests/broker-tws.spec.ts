@@ -110,6 +110,30 @@ describe("tws: 别名核对 / 拉起 / 指引", () => {
     expect(unmapped).toEqual(["U9***999"]); // 会话里多出的账号(掩码)
   });
 
+  it("给了连接名就只核那条连接上的别名:诊断 live 不该把配在 paper 上的「模拟」说成对不上", () => {
+    const settings = makeSettings(g.base_config);
+    // 这台 TWS 是 live 那一路,只管得到 U1234567;模拟(DU7654321)是 paper 那一路的
+    const [rows, unmapped] = checkAliasMapping(settings, ["U1234567", "U9999999"], "live");
+    expect(rows.map((r) => r["alias"])).toEqual(["主账户"]); // 模拟那一行不该出现在 live 的诊断里
+    expect(rows[0]!["resolved"]).toBe(true);
+    // 会话里多出的账号照旧报:它在别名表里完全没有,和挂哪条连接无关
+    expect(unmapped).toEqual(["U9***999"]);
+  });
+
+  it("同一个会话换成 paper 来核,轮到「模拟」这一行,主账户不出现", () => {
+    const settings = makeSettings(g.base_config);
+    const [rows, unmapped] = checkAliasMapping(settings, ["DU7654321"], "paper");
+    expect(rows.map((r) => r["alias"])).toEqual(["模拟"]);
+    expect(rows[0]!["resolved"]).toBe(true);
+    expect(unmapped).toEqual([]);
+  });
+
+  it("不给连接名(老调用方)还是全核:这条保证改动是可选的,没动既有行为", () => {
+    const settings = makeSettings(g.base_config);
+    const [rows] = checkAliasMapping(settings, ["DU7654321", "U9999999"]);
+    expect(rows.map((r) => r["alias"])).toEqual(["模拟", "主账户"]);
+  });
+
   it("launch 只接受固定键", () => {
     expect(() => launchApp("evil.exe")).toThrowError(/只支持拉起 tws 或 gateway/);
   });

@@ -292,22 +292,25 @@ async function probeAccounts(
 
   const [accounts, envs] = accRows(data);
   result["managed_accounts"] = accounts.map(redactAccount);
-  const [rows, unmapped] = checkAliasMapping(settings, accounts);
+  // 只核这条连接上的别名(见 checkAliasMapping 的注释:不分连接地核会把别的连接上的别名误报成对不上)
+  const [rows, unmapped] = checkAliasMapping(settings, accounts, String(result["connection"]));
   // is_paper 写反不会报错,只会让实盘闸门失效——必须在连接阶段就摆出来
   const envMismatch: string[] = [];
-  settings.accounts.forEach((account, i) => {
-    const row = rows[i]!;
+  for (const row of rows) {
+    // rows 已经按连接筛过,所以按别名回查(不再靠下标和 settings.accounts 对齐)
+    const account = settings.accounts.find((a) => a.alias === row["alias"]);
+    if (account === undefined) continue;
     const actual = envs[account.account_id] ?? "";
     row["trd_env"] = actual || null;
     const wanted = account.is_paper ? "SIMULATE" : "REAL";
     row["env_matches"] = !actual ? null : actual === wanted;
-    if (actual && actual !== wanted && account.connection === result["connection"]) {
+    if (actual && actual !== wanted) {
       envMismatch.push(
         `${account.alias}(配置写「${account.is_paper ? "模拟盘" : "实盘"}」,` +
         `富途报「${actual === "SIMULATE" ? "模拟盘" : "实盘"}」)`,
       );
     }
-  });
+  }
   result["accounts"] = rows;
   result["unmapped_accounts"] = unmapped;
   result["unlock_required"] = settings.accounts.some(
