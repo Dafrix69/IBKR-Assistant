@@ -127,3 +127,9 @@ export const PHASE_LABEL: Record<string, string> = { A: '阶段 A', B: '阶段 B
 
 /** 复盘那一笔当时是什么下场。页面的状态行与结果卡用同一份。 */
 export const REVIEW_KIND: Record<string, string> = { closed: '已平仓', expired: '已到期', open: '持仓中' };
+
+/** 回测里那六种下法。页面的说明行与结果卡用同一份。 */
+export const BT_INST_LABELS: Record<string, string> = {
+  stock: '正股', call: '买入看涨期权', put: '买入看跌期权',
+  call_spread: '看涨借方价差', put_spread: '看跌借方价差', butterfly: '买入蝴蝶',
+};

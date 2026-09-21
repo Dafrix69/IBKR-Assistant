@@ -1,57 +1,32 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Button, DatePicker, Input, InputNumber, List, Select, Space } from 'antd';
+import { useEffect, useState } from 'react';
+import { Button, DatePicker, Input, Select } from 'antd';
 import dayjs from 'dayjs';
 import { dafri, errorMessage } from '../bridge';
-import type {
-  BacktestCurvePoint, BacktestRunResult, BacktestRunSpec, BacktestStrategy, BacktestTrade, CustomRulesInput, RuleConditionInput,
-  RuleOperandInput,
-} from '../bridge';
-import { CanvasChart, type ChartSpec } from '../lib/Chart';
-import type { SpecMarker } from '../lib/chart/spec';
-import { fmtMoney } from '../lib/format';
+import type { BacktestRunResult, BacktestRunSpec, BacktestStrategy } from '../bridge';
+import { BacktestResult } from '../lib/BacktestResult';
+import { BT_INST_LABELS } from '../lib/labels';
+import { fmtCond, RuleBuilder, type Rules } from '../lib/RuleBuilder';
 import { showBanner } from '../store/banner';
-import { Group, GroupRow, Meta, NumberRow, PageHead, SectionTitle, StatTile, StatusCard, Working } from '../ui/kit';
+import { Group, GroupRow, NumberRow, PageHead, SectionTitle, StatusCard, Working } from '../ui/kit';
 
 // 策略回测:纯计算展示,历史数据来自 TWS。含自定义条件搭建器与随表单实时生成的流程图。
 
 // 形状在引擎契约里(engine-ts/src/contract/backtest.ts),从 bridge 拿。搭建器里的条件用的是「发过去的样子」(用不上的键可以不带);
 // 引擎回来的(一句话生成的、回执里的)是补齐成 null 之后的样子,能直接放进搭建器。
-type Operand = RuleOperandInput;
-type Condition = RuleConditionInput;
-type Rules = Required<CustomRulesInput>;
 type Strategy = BacktestStrategy;
 
-const BT_INDICATORS: [string, string][] = [
-  ['close', '收盘价'], ['open', '开盘价'], ['high', '最高价'], ['low', '最低价'],
-  ['sma', 'SMA均线'], ['ema', 'EMA均线'], ['rsi', 'RSI'],
-  ['highest', '前N日最高'], ['lowest', '前N日最低'], ['change_pct', 'N日涨跌幅%'],
-  ['const', '常数'],
-];
-const BT_NEEDS_PERIOD = new Set(['sma', 'ema', 'rsi', 'highest', 'lowest', 'change_pct']);
-const BT_OPS: [string, string][] = [['>', '>'], ['<', '<'], ['>=', '≥'], ['<=', '≤'], ['cross_up', '上穿'], ['cross_down', '下穿']];
-const BT_INST_LABELS: Record<string, string> = {
-  stock: '正股', call: '买入看涨期权', put: '买入看跌期权',
-  call_spread: '看涨借方价差', put_spread: '看跌借方价差', butterfly: '买入蝴蝶',
-};
 // 默认给一组 RSI 超卖示例,进页面就能看懂结构
 const DEFAULT_RULES: Rules = {
   entry: [{ left: { kind: 'indicator', name: 'rsi', period: 14 }, op: '<', right: { kind: 'const', value: 30 } }],
   exit: [{ left: { kind: 'indicator', name: 'rsi', period: 14 }, op: '>', right: { kind: 'const', value: 70 } }],
 };
 
-function fmtOperand(o: Operand): string {
-  return o.kind === 'const'
-    ? String(o.value)
-    : `${(BT_INDICATORS.find(([k]) => k === o.name) || [o.name, o.name])[1]}${o.period ? `(${o.period})` : ''}`;
-}
-function fmtCond(c: Condition): string {
-  return `${fmtOperand(c.left)} ${(BT_OPS.find(([k]) => k === c.op) || [c.op, c.op])[1]} ${fmtOperand(c.right)}`;
-}
 
 function isoDate(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
+// 三块各自一个文件:条件搭建器 lib/RuleBuilder、结果 lib/BacktestResult。这一页只剩选参数 + 跑一次。
 export function BacktestPage() {
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [symbol, setSymbol] = useState('');
@@ -230,174 +205,4 @@ function FlowCard({ kind, title, body }: { kind: string; title: string; body?: s
   );
 }
 
-// ---- 自定义策略:图形化条件搭建器 + 文字生成 ----------------------------
 
-function RuleBuilder({ rules, onChange }: { rules: Rules; onChange: (r: Rules) => void }) {
-  const [text, setText] = useState('');
-  const [generating, setGenerating] = useState(false);
-
-  // 文字输入:自然语言 → 条件(由外接大模型转换,结构再过软件层校验)
-  async function generate() {
-    const t = text.trim();
-    if (!t) return;
-    setGenerating(true);
-    try {
-      const { rules: next } = await dafri.parseBacktestRules(t);
-      onChange(next);
-    } catch (err) {
-      showBanner(`条件生成失败:${errorMessage(err)}`, false);
-    } finally {
-      setGenerating(false);
-    }
-  }
-
-  const update = (kind: 'entry' | 'exit', list: Condition[]) => onChange({ ...rules, [kind]: list });
-
-  return (
-    <div className="rule-builder">
-      <div className="row tight">
-        <Input className="grow" placeholder="用文字描述,如:RSI跌破30且收盘价高于200日均线时买入,RSI回到70卖出" maxLength={1000} value={text} onChange={(e) => setText(e.target.value)} onPressEnter={() => void generate()} />
-        <Button size="small" type="primary" loading={generating} onClick={() => void generate()}>
-          {generating ? '生成中…' : 'AI 生成条件'}
-        </Button>
-      </div>
-      <RuleSection title="入场条件(全部满足才买入)" conditions={rules.entry} onChange={(l) => update('entry', l)} />
-      <RuleSection title="出场条件(全部满足才卖出;留空 = 持有到区间结束)" conditions={rules.exit} onChange={(l) => update('exit', l)} />
-    </div>
-  );
-}
-
-function RuleSection({ title, conditions, onChange }: { title: string; conditions: Condition[]; onChange: (list: Condition[]) => void }) {
-  const setAt = (i: number, cond: Condition) => onChange(conditions.map((c, k) => (k === i ? cond : c)));
-  return (
-    <div className="rule-group">
-      <div className="muted">{title}</div>
-      {conditions.map((cond, i) => (
-        <Space size={6} wrap className="rule-row" key={i}>
-          <OperandEditor operand={cond.left} onChange={(o) => setAt(i, { ...cond, left: o })} />
-          <Select value={cond.op} options={BT_OPS.map(([value, label]) => ({ value, label }))} onChange={(op) => setAt(i, { ...cond, op })} style={{ width: 90 }} />
-          <OperandEditor operand={cond.right} onChange={(o) => setAt(i, { ...cond, right: o })} />
-          <Button size="small" type="text" onClick={() => onChange(conditions.filter((_, k) => k !== i))}>
-            ✕
-          </Button>
-        </Space>
-      ))}
-      <Button size="small" onClick={() => onChange([...conditions, { left: { kind: 'indicator', name: 'close' }, op: '>', right: { kind: 'indicator', name: 'sma', period: 50 } }])}>
-        + 添加条件
-      </Button>
-    </div>
-  );
-}
-
-function OperandEditor({ operand, onChange }: { operand: Operand; onChange: (o: Operand) => void }) {
-  const choice = operand.kind === 'const' ? 'const' : operand.name || 'close';
-  const needsNum = choice === 'const' || BT_NEEDS_PERIOD.has(choice);
-  function pick(next: string) {
-    if (next === 'const') onChange({ kind: 'const', value: operand.value });
-    else onChange({ kind: 'indicator', name: next, ...(BT_NEEDS_PERIOD.has(next) ? { period: operand.period || 20 } : {}) });
-  }
-  return (
-    <Space size={6}>
-      <Select value={choice} options={BT_INDICATORS.map(([value, label]) => ({ value, label }))} onChange={pick} style={{ width: 130 }} />
-      {needsNum ? (
-        <InputNumber
-          placeholder={choice === 'const' ? '数值' : '周期'}
-          value={choice === 'const' ? operand.value ?? null : operand.period ?? null}
-          onChange={(v) => {
-            const n = v == null ? undefined : Number(v);
-            onChange(choice === 'const' ? { ...operand, value: n } : { ...operand, period: n });
-          }}
-          style={{ width: 76 }}
-        />
-      ) : null}
-    </Space>
-  );
-}
-
-// ---- 结果 ----------------------------------------------------------------
-
-function BacktestResult({ r, strategyLabel }: { r: BacktestRunResult; strategyLabel?: string }) {
-  const beat = r.total_return_pct - r.buy_hold_return_pct;
-  const instLabel = r.instrument && r.instrument.type !== 'stock' ? ` · ${BT_INST_LABELS[r.instrument.type] || r.instrument.type}(DTE ${r.instrument.dte},投入 ${r.instrument.risk_pct}%)` : '';
-  // 兜底的空数组也要稳定:图表按 spec 的引用决定要不要重新灌数据
-  const curve = useMemo((): BacktestCurvePoint[] => r.curve || [], [r.curve]);
-  const trades = useMemo((): BacktestTrade[] => r.trade_list || [], [r.trade_list]);
-
-  // 换了标的 / 策略 / 品种再跑一次,视图重新铺满,不沿用上一次的缩放
-  const viewKey = `${r.symbol}|${r.strategy}|${r.instrument?.type ?? 'stock'}|${r.start}|${r.end}`;
-  const chart = useMemo((): ChartSpec | null => {
-    if (curve.length < 2) return null;
-    const times = curve.map((pt) => pt.date);
-    const at = new Map(times.map((t, i) => [t, i]));
-    const markers: SpecMarker[] = [];
-    for (const t of trades) {
-      if (at.has(t.entry_date)) markers.push({ time: t.entry_date, price: curve[at.get(t.entry_date)!].equity, shape: 'tri-up', color: 'up', fit: false });
-      if (t.exit_date && at.has(t.exit_date)) markers.push({ time: t.exit_date, price: curve[at.get(t.exit_date)!].equity, shape: 'tri-down', color: 'down', fit: false });
-    }
-    return {
-      ariaLabel: '净值曲线',
-      viewKey,
-      times,
-      lines: [
-        { values: curve.map((pt) => pt.bench), color: 'label2', alpha: 0.6, label: '买入持有' },
-        { values: curve.map((pt) => pt.equity), color: 'blue', width: 1.5, label: '策略' },
-      ],
-      hlines: [{ price: 1, color: 'label', dash: [3, 3], alpha: 0.25, tag: false }],
-      markers,
-      legend: [['—', 'blue', '策略'], ['—', 'label2', '买入持有'], ['▲', 'up', '买入'], ['▼', 'down', '卖出'], ['╌', 'label2', '起点 1.0']],
-      decimals: 3,
-    };
-  }, [curve, trades, viewKey]);
-
-  const sign = (v: number) => (v > 0 ? 'pos' : v < 0 ? 'neg' : '');
-
-  return (
-    <>
-      <StatusCard tone={beat >= 0 ? 'ok' : 'warn'} title={`${r.symbol} · ${strategyLabel || r.strategy}${instLabel} · ${r.start} ~ ${r.end}(${r.bars} 根日线)`}>
-        <div className="stat-grid">
-          <StatTile label="策略收益" value={`${r.total_return_pct}%`} tone={sign(r.total_return_pct)} />
-          <StatTile label="买入持有" value={`${r.buy_hold_return_pct}%`} tone={sign(r.buy_hold_return_pct)} />
-          <StatTile label="超额" value={`${beat >= 0 ? '+' : ''}${beat.toFixed(2)}%`} tone={sign(beat)} />
-          <StatTile label="年化" value={`${r.annualized_pct}%`} />
-          <StatTile label="最大回撤" value={`${r.max_drawdown_pct}%`} tone="neg" />
-          <StatTile label="交易次数" value={String(r.trades)} />
-          {r.win_rate_pct != null ? <StatTile label="胜率" value={`${r.win_rate_pct}%`} /> : null}
-          <StatTile label="持仓时间占比" value={`${r.exposure_pct}%`} />
-        </div>
-      </StatusCard>
-      {r.rules ? (
-        <StatusCard title="本次使用的条件">
-          <div>{`入场:${r.rules.entry.map(fmtCond).join(' 且 ')}`}</div>
-          <div>{r.rules.exit.length ? `出场:${r.rules.exit.map(fmtCond).join(' 且 ')}` : '出场:持有到区间结束'}</div>
-        </StatusCard>
-      ) : null}
-      <StatusCard title="净值曲线(起点 = 1.0)">
-        {chart ? (
-          <>
-            <CanvasChart size="short" spec={chart} />
-            <Meta items={[`${curve[0].date} → ${curve[curve.length - 1].date} · 期末净值 策略 ${curve[curve.length - 1].equity} / 基准 ${curve[curve.length - 1].bench}`]} />
-          </>
-        ) : null}
-      </StatusCard>
-      {trades.length && r.strategy !== 'buy_hold' ? (
-        <StatusCard title={`交易明细(${trades.length})`}>
-          <List
-            size="small"
-            className="trade-list"
-            dataSource={trades}
-            renderItem={(t, i) => (
-              <List.Item key={i} className="stock-row">
-                <span className="stock-sub">{`${t.entry_date} → ${t.exit_date || '持有中'}`}</span>
-                <span className="stock-price">{`${fmtMoney(t.entry_price)} → ${fmtMoney(t.exit_price)}`}</span>
-                <span className={`status ${t.return_pct >= 0 ? 'filled' : 'rejected'}`}>{`${t.return_pct >= 0 ? '+' : ''}${t.return_pct}%`}</span>
-              </List.Item>
-            )}
-          />
-        </StatusCard>
-      ) : null}
-      <StatusCard tone="warn" title="注意">
-        <div>收盘价成交、未计滑点与成本、单标的全仓。历史收益不代表未来;参数越漂亮越要怀疑过拟合。</div>
-      </StatusCard>
-    </>
-  );
-}
