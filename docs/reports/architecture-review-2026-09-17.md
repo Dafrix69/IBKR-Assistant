@@ -1021,3 +1021,32 @@ TWS 起来之后跑了 `npm run probe`(只读:临时配置 / 临时库、三道�
 
 **教训**:"写在文档里就够"这种判断,半年后要拿数据回头看一眼。这个仓库本来就有两张"只许变短"的表
 (`LEGACY_METHODS`、eslint 豁免表),体积预算早该是第三张。
+
+### `futuBroker.ts` 也量了:三个超线的引擎文件到此都有方案(2026-09-21)
+
+`size-budget.spec.ts` 的名单里我写过「`futuBroker.ts` 同理待量」,补上。
+
+- `FutuRouter` 239–1737 = **1,499 行,54 个方法,28 个字段**(文件 1,739,类之外约 240 行)。
+- **没有方法超 150 行**(最大 `optionChain` 84)——和 `BrokerRouter` 一样,和 `engine.ts` 不一样。
+- **最意外的一点**:这个类**几乎没有跨方法共享的可变状态**。最常被碰的字段是 `settings`(8 个方法),
+  其次 `sessionsMap`(4)、`orders`(3),**其余 20 多个字段全是只被 1–2 个方法碰**。
+  也就是说它不是"状态缠在一起",而是"54 个各管各的适配方法挤在一个文件里"。
+
+因此它的拆法和 `BrokerRouter` **不同**:那边按状态簇切,这边状态根本不成簇,应该**按面切**——
+
+| 面 | 方法 | 跟着走的字段 |
+|---|---|---|
+| 连接与会话 | connect(62) / sessions / connectedNames / disconnectAll / forAccount(47) / upstreamOk | `sessionsMap` `accountRoute` `sessionHook` `prober` `bridgePromise` `bridgeCache` |
+| 行情 | orderBook(53) / streamQuotes(51) / intradayBars(50) / optionChain(84) / indexPrice / quoteCapability | `streams` `unquotable` |
+| 下单与回报 | place(82) / cancelAllOpen(52) / pollOrders / pollDeals(54) / pollOrderUpdates / trackedByAccount | `orders` `nextHandle` `seenDeals` `noDealQuery` |
+| 解锁 | unlock(50) | `secretReader` |
+| 代码映射 | code / optionCode / indexCode | `optionCodes` `indexCodes` |
+
+**但排在最后做,理由不是难,是验不了**:按 `docs/features` 与 memory 的口径,**富途这条路真机没核对过**
+(只剩 TS 桥,要专门的只读联调)。三个文件里它**技术上最好拆**(状态几乎不共享),却**最没有验证手段**——
+`golden-*` 那几套盖不到它,探针也只走 IBKR。所以:**要么等一次富途只读联调时连着做,要么先给它补特征测试再动。**
+在那之前,`size-budget.spec.ts` 已经拦住它继续长,这就够了。
+
+**到此三个超线的引擎文件都有量过的方案**:`BrokerRouter`(按状态簇,先切指数与期货推算)、
+`TradingEngine`(按四簇,先切追踪节拍器,且要顺带切开两个超 150 行的方法)、
+`FutuRouter`(按面切,但排最后)。三者的共同约束都是同一条:**先做真机核对,再动它们。**

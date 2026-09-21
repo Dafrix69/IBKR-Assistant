@@ -27,8 +27,8 @@ const SCOPES = [
 /**
  * 现在还超线的文件,以及它此刻的行数。**这张表只许变短,数字只许变小。**
  *
- * 三个引擎文件的拆法都量过、方案写在体检报告里(`BrokerRouter` 五簇、`TradingEngine` 四簇);
- * 两个图表文件还没量过。`futuBroker.ts` 同理待量。
+ * 三个引擎文件的拆法都量过、方案写在体检报告里(`BrokerRouter` 按状态簇、`TradingEngine` 按四簇、
+ * `FutuRouter` 按面切但排最后——它技术上最好拆,却最没有验证手段)。两个图表文件还没量过。
  */
 const OVER_BUDGET: Record<string, number> = {
   "engine-ts/src/broker.ts": 2400,
