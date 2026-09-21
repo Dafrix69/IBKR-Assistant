@@ -87,7 +87,9 @@ contract      contract/*.ts(纯类型,零 import,谁都能引)  contract/schema/
 
 引擎单文件 1,500 行、函数 150 行、页面组件 400 行。超线不是不能提交,是提交前先回答"它是不是两个东西"。
 已知超线且待拆的:`engine.ts`(2026-09-20 托管单 → `engine/hosted.ts`、执行对账 → `engine/reconcile.ts`、
-回报落库 → `engine/callbacks.ts`,还剩 1,782 行;剩下的是下单与审批、追踪循环、IB 会话装配)、
+回报落库 → `engine/callbacks.ts`,还剩 1,782 行。**另有两个方法超了 150 行的函数预算:
+`handleInstruction` 265 行、`pollTrackers` 172 行** —— 拆它时要顺带切开,不能只搬不动。
+四簇与建议顺序量在体检报告里)、
 `broker.ts`(2026-09-21 合约工具函数已搬进 `ibContracts.ts`,还剩 2,400 行 —— **大头是 `BrokerRouter`
 这个类本身:2,006 行,占 84%**。再往下拆要拆类:按"连接与会话 / 行情与订阅 / 下单与撤单 / 持仓与回报"
 四件事分,那是一件要单独判断的事,别顺手做)。

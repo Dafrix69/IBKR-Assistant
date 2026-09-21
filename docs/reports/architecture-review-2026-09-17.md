@@ -967,3 +967,33 @@ TWS 起来之后跑了 `npm run probe`(只读:临时配置 / 临时库、三道�
 **更要紧的是顺序**:`indexPrice` 正是「标的目标价 → 每轮换算止盈价」那条路的取价入口,而模拟账户的
 真机核对(建追踪 / 切启停 / 立即平仓)**还没做**。在那次核对之前动它,等于把待验证的代码换掉,
 核对就白做了。**所以这一刀排在真机核对之后**,不是因为难,是因为顺序不对。
+
+### `engine.ts` 剩下那三块怎么拆:量过之后的方案(2026-09-21,同样只出方案)
+
+`BrokerRouter` 量了,`engine.ts` 这边之前只写了"要另外判断"没真去判断。补上:
+
+- `TradingEngine` 162–1787 = **1,626 行,50 个方法,32 个字段**。
+- **和 `BrokerRouter` 不一样的一点,值得单独记**:这里**有两个方法超了 150 行的函数预算**——
+  `handleInstruction` **265 行**、`pollTrackers` **172 行**。`BrokerRouter` 一个都没超(最大 94)。
+  也就是说 `broker.ts` 是"一个类装太多件事",而 `engine.ts` **除了文件大,还有两个方法本身写胖了**。
+  拆它的时候这两个要顺带切开,不能只搬不动。
+- 环境字段照旧从宿主现取:`router`(20 个方法)、`store`(18)、`settings`(12)、`notifier`(11)、`killswitch`(7)。
+- 三块之外还量出了**第四簇**(追价平仓),之前没单独点过名。
+
+| 簇 | 字段 | 方法 |
+|---|---|---|
+| 下单与审批 | `parser` `bundle` `pendingTriggers` `publicPriceFn` | handleInstruction(265) / execute(56) / firePending(64) / expirePending / priceAutoMid |
+| 追踪节拍器 | `tickTimer` `trackerLoop` `onTrackerTick` `loopDelay` `trackerChain` `sharedTrackerLock` | startTrackerLoop / stopTrackerLoop / trackerTickOnce(62) / trackerHeartbeat / withTrackerLock |
+| 追价平仓 | `closeChase` `closeChaseIndex` `closeChaseAdopted` | closePosition(108) / chaseCloseOrder / dropCloseChase / adoptCloseChase / sweepExisting / closeChaseOnStatus |
+| 已经搬走的 | `hostedOrders` `reconciler` `callbacks` | 各自转调(engine/hosted、engine/reconcile、engine/callbacks) |
+
+**建议顺序**:
+
+1. **先切「追踪节拍器」**——6 个字段、5 个方法,是四簇里最自成一体的:它管的是*起停 / 节拍 / 心跳 /
+   事件循环延迟 / 那把锁*,和"一轮里做什么"可以完全分开(`TrackerLoop` 回调宿主跑一轮就行)。
+   顺带能解释清一件事:节拍在引擎里、界面按秒调的那三个方法回的是上一轮的结果(见契约迁移那一节)。
+2. **再切「追价平仓」**——3 个字段、6–7 个方法,边界清楚。
+3. **「下单与审批」放最后**,因为它同时是最大的一块、且必须顺带把 `handleInstruction`(265 行)切开——
+   那已经不是搬家,是重构。
+
+**同一条排期约束**:这三块(尤其是节拍器与追价平仓)正是模拟账户真机核对要走的路。**先核对,再动它们。**
