@@ -3,7 +3,7 @@
  * 行为规格 = ../engine-python 的 flyexit.py,逐字段对拍(baseline/golden/flyexit.json)。
  */
 import erfStdlib from "@stdlib/math-base-special-erf";
-import type { ExitPlan, ExitSimulation, ExitZone, ReviewLevel } from "./contract/review.js";
+import type { ExitPlan, ExitSimPoint, ExitSimulation, ExitZone, ReviewLevel } from "./contract/review.js";
 import type { DrawdownLate, DrawdownTier } from "./contract/tracker.js";
 
 import { fmtF, pyG, pyRound } from "./py.js";
@@ -294,11 +294,7 @@ function intrinsic(profile: Rec, s: number): number {
 
 export function simulate(
   profile: Rec, entryBarTime: string, spxBars: Rec[], flyBars: Rec[], params: Rec, actual: Rec | null = null,
-  // TODO(2026-09-21):这里本该是 ExitSimulation。标上之后 `sim["totals"]["model_minutes"]` 这几处要改成
-  // 可选链——那是改函数体(而且这个文件在钱路径上)。正确的收法是把 ExitSimulation 改成按 applicable
-  // 判别的联合类型(不适用那一支只有 reason,适用那一支 totals / series 必有),那样这几处不用改就能收窄。
-  // 单独一轮做。
-): Rec {
+): ExitSimulation {
   const d = profile["debit"];
   if (profile["action"] !== "BUY") {
     return { applicable: false, reason: "该止盈策略只适用于多头蝶(买翼卖中心);这是一张卖出的蝶。" };
@@ -327,7 +323,7 @@ export function simulate(
   let profitPeak = 0.0;
   let armed = false;
   const events: Rec[] = [];
-  const series: Rec[] = [];
+  const series: ExitSimPoint[] = [];
   let enteredB = false;
   let settled = false;
 
@@ -512,8 +508,7 @@ export function plan(
     out["notes"].push(`固定倍数档位已关闭(蝶价上限就是翼宽 ${pyG(w)},用 D 的倍数封顶会在 D 小的时候锁死出场);要恢复 v2.0 的分批止盈,传 tp1 / tp2 即可`);
   }
   const sim = simulate(profile, entryBarTime, spxBars, flyBars, params, actual);
-  // 断言在这里,原因见 simulate 签名上那条 TODO(收成联合类型之后就能去掉)
-  out["simulation"] = sim as ExitSimulation;
+  out["simulation"] = sim;
   if (sim["applicable"] && sim["totals"]["model_minutes"]) {
     out["notes"].push(`有 ${sim["totals"]["model_minutes"]} 分钟没有真实蝶价,用 Bachelier 模型价(σ_剩余)补上,图上以虚线区分`);
   }

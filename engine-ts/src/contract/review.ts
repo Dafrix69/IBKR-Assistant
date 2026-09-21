@@ -346,34 +346,44 @@ export interface ExitSimPoint {
   trail_stop: number | null;
 }
 
-/** 按策略走一遍的结果。K 线不够时 applicable 是 false。 */
-export interface ExitSimulation {
-  applicable: boolean;
-  /** applicable 为 false 时说明为什么不能回放(卖出的蝶、没有入场净权利金、开仓当天没有 K 线) */
-  reason?: string;
-  /** 开仓时标的已经在止损带之外(远端 OTM 蝶) */
-  entry_outside?: boolean;
-  entry_dist?: number;
-  /** 策略触发的每一次卖出 */
-  events?: Array<Record<string, unknown>>;
-  series?: ExitSimPoint[];
-  totals?: {
-    /** 照策略走能拿到多少 */
-    strategy: number;
-    /** 实际拿到多少(没平仓是 null) */
-    actual: number | null;
-    /** 一直拿到结算是多少 */
-    hold_to_settle: number | null;
-    best_mid: number | null;
-    best_mid_pnl: number | null;
-    profit_peak: number;
-    /** 有几分钟用的是模型价、几分钟是真实蝶价 */
-    model_minutes: number;
-    real_minutes: number;
-  };
+/** 按策略走一遍的结果。**按 `applicable` 判别的联合**:
+ *  不适用那一支只有 reason(卖出的蝶、没有入场净权利金、开仓当天没有 K 线);
+ *  适用那一支 totals / series / events 一定都在。这样 `if (sim.applicable)` 之后就能直接取,
+ *  不用每处再兜一次底。 */
+export type ExitSimulation = ExitSimulationSkipped | ExitSimulationRun;
+
+export interface ExitSimulationSkipped {
+  applicable: false;
+  /** 为什么不能回放,一句中文 */
+  reason: string;
 }
 
-/** 止盈策略回放:当初按这套规则走会是什么结果。 */
+export interface ExitSimulationRun {
+  applicable: true;
+  /** 开仓时标的已经在止损带之外(远端 OTM 蝶) */
+  entry_outside: boolean;
+  entry_dist: number;
+  /** 策略触发的每一次卖出 */
+  events: Array<Record<string, unknown>>;
+  series: ExitSimPoint[];
+  totals: ExitTotals;
+}
+
+export interface ExitTotals {
+  /** 照策略走能拿到多少 */
+  strategy: number;
+  /** 实际拿到多少(没平仓是 null) */
+  actual: number | null;
+  /** 一直拿到结算是多少 */
+  hold_to_settle: number | null;
+  best_mid: number | null;
+  best_mid_pnl: number | null;
+  profit_peak: number;
+  /** 有几分钟用的是模型价、几分钟是真实蝶价 */
+  model_minutes: number;
+  real_minutes: number;
+}
+
 /** 阶段切换的时刻与阈值(flyexit.ts 算的)。时刻是 `HH:MM` 的墙钟串,不是 ISO。 */
 export interface ExitPhases {
   /** 阶段 A 到这一刻为止 */
@@ -389,6 +399,7 @@ export interface ExitPhases {
   wing_in_sigma: number | null;
 }
 
+/** 止盈策略回放:当初按这套规则走会是什么结果。 */
 export interface ExitPlan {
   /** 这次回放用的参数(EM、几档临界比例这一类) */
   params: Record<string, unknown>;

@@ -863,10 +863,22 @@ killswitch + 上面那 6 个方法),用基类 getter 把它们摊成 `this.store
 - **字节比对当场抓到一个真问题**:我把 `import type` 放在了所有 import 的最前面,文件头那块 JSDoc
   就挂到了一个会被擦除的语句上,**编译产物里整块注释消失了**。挪到值 import 之后才一致。
   这条值得记:`import type` 不要插在文件头注释与第一个值 import 之间。
-- `simulate()` 的返回**刻意还是 `Rec`**:标成 `ExitSimulation` 之后 `sim["totals"]["model_minutes"]`
-  这几处要改成可选链——那是改函数体。正确的收法是把 `ExitSimulation` 改成**按 `applicable` 判别的
-  联合类型**(不适用那支只有 reason,适用那支 totals / series 必有),那样这几处不用改就能收窄。
-  签名上留了 TODO。**这是这条线上还欠的最后一件。**
+**2026-09-21,把上面留的最后一件做完:`ExitSimulation` 改成按 `applicable` 判别的联合。**
+
+- `ExitSimulation = ExitSimulationSkipped | ExitSimulationRun`:不适用那一支只有 `reason`;
+  适用那一支 `totals` / `series` / `events` **必有**(不再是一串可选字段)。`totals` 拆出 `ExitTotals`。
+- **预测成立了**:`flyexit.ts` 里 `if (sim["applicable"] && sim["totals"]["model_minutes"])` 这几处
+  **一个字都没改**就收窄通过了——原来那串可选字段才是逼人写可选链的根源,联合类型一上去问题自己没了。
+  于是 `simulate()` 的返回也从 `Rec` 收成了契约类型,`series` 局部收成 `ExitSimPoint[]`。
+  `flyexit.ts` 在钱路径上:**去掉注释后编译产物仍然逐字节一致**。
+- 界面两处顺着联合改:先认出「跑过的那一支」(`const run = sim && sim.applicable ? sim : null`),
+  下面就不必每处再兜底。值和从前一样。
+- **反向验证这次两头一起红**:改 `ExitTotals.strategy` 的字段名,`flyexit.ts` 与 `ReviewResult.tsx`
+  同时编译不过。改 `real_minutes`(界面不读的那个)只有引擎红——这恰好说明检查是真在两侧生效,
+  而不是碰巧。
+
+**这条线做完了。** 契约 `review` 这一域现在引擎与界面双向管住:引擎那头 `plan()` / `simulate()` /
+`levels()` / `zones()` 的返回都对着契约检查,界面那头没有 `any`。
 
 > `tests/rpc-lanes.spec.ts` 这一轮又偶发红了一次(重跑即绿)。频率变高有个直接原因:修它的那个会话
 > 正在同一台机器上跑,负载更高——这本身就是"它测的是墙钟而不是顺序"的旁证。

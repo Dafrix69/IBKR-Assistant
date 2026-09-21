@@ -101,8 +101,10 @@ export function FlyChart({ r }: { r: ButterflyReviewResult }) {
   const spec = useMemo((): ChartSpec | null => {
     const plan = r.exit_plan;
     const sim = plan?.simulation;
+    // ExitSimulation 是按 applicable 判别的联合:先认出「跑过的那一支」,series / events 才在
+    const run = sim && sim.applicable ? sim : null;
     const real = fs?.bars || [];
-    const path = sim?.series || [];
+    const path = run?.series || [];
     const times = Array.from(new Set([...real.map((b) => b.time), ...path.map((pt) => pt.time)])).sort();
     if (times.length < 2) return null;
     const pathAt = new Map(path.map((pt) => [pt.time, pt]));
@@ -136,7 +138,7 @@ export function FlyChart({ r }: { r: ButterflyReviewResult }) {
       const st = MARK[m.kind] || MARK.entry;
       markers.push({ time: m.time, price: m.price, shape: 'dot', color: st[0], label: `${st[1]} ${m.price}` });
     }
-    for (const e of sim?.events || []) {
+    for (const e of run?.events || []) {
       const color = e['source'] === 'settle' ? 'purple' : Number(e['pnl']) >= 0 ? 'up' : 'down';
       markers.push({ time: e['time'], price: e['price'], shape: 'tri-down', color, label: `策略 ${e['qty']} 张 @ ${e['price']}` });
     }

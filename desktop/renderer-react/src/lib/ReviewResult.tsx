@@ -7,7 +7,7 @@ import { Descriptions, Table, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { PHASE_LABEL, REVIEW_KIND } from './labels';
 import type {
-  ButterflyReviewResult, ExitPhases, ExitPlan as ExitPlanData, ExitSimulation, ReviewFinding, StockReviewResult,
+  ButterflyReviewResult, ExitPhases, ExitPlan as ExitPlanData, ExitTotals, ReviewFinding, StockReviewResult,
 } from '../bridge';
 import { fmtMoney, fmtNum, fmtTimeShort } from './format';
 import { FlyChart, StockChart, UnderlyingChart } from './reviewCharts';
@@ -153,12 +153,15 @@ export function StockResult({ r }: { r: StockReviewResult }) {
 export function ExitPlan({ r }: { r: ButterflyReviewResult }) {
   // 兜底成空对象之后编译器就只认得 `{}` 了,所以这三处标上类型(值一个字没动)
   const plan: Partial<ExitPlanData> = r.exit_plan || {};
-  const sim: Partial<ExitSimulation> = plan.simulation || {};
+  const sim = plan.simulation;
+  // ExitSimulation 是按 applicable 判别的联合:适用那一支 totals / events / series 一定都在,
+  // 不适用那一支只有 reason。先认出"跑过的那一支",下面就不必每处再兜一次底(值和从前一样)。
+  const run = sim && sim.applicable ? sim : null;
   const p = r.profile || {};
   const ph: Partial<ExitPhases> = plan.phases || {};
-  const t: Partial<NonNullable<ExitSimulation['totals']>> = sim.totals || {};
+  const t: Partial<ExitTotals> = run?.totals || {};
   const notes = plan.notes || [];
-  const events: any[] = sim.events || [];
+  const events: Array<Record<string, unknown>> = run?.events || [];
 
   const levelCols: ColumnsType<any> = [
     { title: '点位', dataIndex: 'label' },
@@ -202,7 +205,7 @@ export function ExitPlan({ r }: { r: ButterflyReviewResult }) {
           (plan.actual_exit_mult != null ? ` 实际平仓价 = ${plan.actual_exit_mult}×D。` : '')}
       </p>
       <Table className="review-table" size="small" pagination={false} rowKey={(_, i) => String(i)} columns={levelCols} dataSource={plan.levels || []} />
-      {sim.applicable === false ? (
+      {sim && sim.applicable === false ? (
         <StatusCard tone="warn" title="不能回放">
           <div>{sim.reason || ''}</div>
         </StatusCard>
