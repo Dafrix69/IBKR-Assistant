@@ -958,3 +958,12 @@ TWS 起来之后跑了 `npm run probe`(只读:临时配置 / 临时库、三道�
 办法照旧:宿主接口只放它真用得着的那几样(`settings` / `router` 的会话 / `store`),函数体逐字搬,
 边界用大括号匹配自动找,搬完逐行对账;`broker.ts` 在钱路径上,改完跑
 `golden-brokerpure` / `futures-spot` / `volume-stream` 那几套 + 全量,再用探针在真机上复核一次夜盘推算。
+
+**补一条排期约束(量完才发现的,值得写下来)**:`indexPrice` 与 `spotInfo` 不是内部方法,是**路由器的公开面**——
+`engine.ts`、`futuBroker.ts`、`rpc/handlers/tracker`、`rpc/handlers/trading`、`services/marketData` 与两个
+测试共 7 处在用。所以这一刀不是"整块搬走",而要先设计委托边界(内部类 + 路由器留薄薄的转调,
+同 `engine/hosted.ts` 那一刀)。
+
+**更要紧的是顺序**:`indexPrice` 正是「标的目标价 → 每轮换算止盈价」那条路的取价入口,而模拟账户的
+真机核对(建追踪 / 切启停 / 立即平仓)**还没做**。在那次核对之前动它,等于把待验证的代码换掉,
+核对就白做了。**所以这一刀排在真机核对之后**,不是因为难,是因为顺序不对。
