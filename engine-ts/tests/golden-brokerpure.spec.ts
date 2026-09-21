@@ -4,8 +4,9 @@ import { describe, expect, it } from "vitest";
 import {
   BrokerError, DEFAULT_COMBO_TICK, LegQuote, alignTickDown, alignTickUp, autoMidLimit,
   bagSignedLimit, barTimestamp, barsError, bookLiquidity,
-  comboMidPrice, pickTradingClass, priceConditionSpec, streamContract, strikeWidth,
+  comboMidPrice, priceConditionSpec, strikeWidth,
 } from "../src/broker.js";
+import { pickTradingClass, streamContract } from "../src/ibContracts.js";
 import {
   ORDER_STATUS, OPEN_STATUS, accId, barTime, durationDays, fieldOf, futuDate, impliedSpot,
   ivOf, plainDate, quoteError,

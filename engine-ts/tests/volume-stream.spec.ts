@@ -47,7 +47,8 @@ vi.mock("@stoqey/ib", async (importOriginal) => ({
 
 import { IBApiTickType } from "@stoqey/ib";
 
-import { BrokerRouter, stockContract } from "../src/broker.js";
+import { BrokerRouter } from "../src/broker.js";
+import { stockContract } from "../src/ibContracts.js";
 import type { IbContract, IbSession, TickerData, TickerHandle } from "../src/broker.js";
 import { FutuRouter } from "../src/futuBroker.js";
 import { applyTicks, createIbApiNextSession, tickerKey } from "../src/ibSession.js";

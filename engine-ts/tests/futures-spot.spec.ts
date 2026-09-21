@@ -8,7 +8,8 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { contemporaneousBasis, frontQuarterly, lastRthSession, thirdFriday } from "../src/broker.js";
+import { contemporaneousBasis, lastRthSession } from "../src/broker.js";
+import { frontQuarterly, thirdFriday } from "../src/ibContracts.js";
 import { etNowFromEpoch } from "../src/config.js";
 import { loadGolden, makeSettings } from "./util.js";
 

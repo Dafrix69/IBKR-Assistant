@@ -908,3 +908,21 @@ TWS 起来之后跑了 `npm run probe`(只读:临时配置 / 临时库、三道�
 
 > 跑全量时 `tests/rpc-lanes.spec.ts` 也偶发红过一次(单独跑、再跑全量都绿),和 `provider-http.spec.ts`
 > 同一类:对时序 / 负载敏感,而不是被测代码坏了。两件一起另开任务修,判据别改成放宽阈值。
+
+**2026-09-21,`broker.ts` → `ibContracts.ts`:CLAUDE.md 点名待拆的那一件做了。** 2,509 → 2,400 行。
+
+- 缝按 CLAUDE.md 的字面划:**只搬「怎么拼一张 IB 合约」的那 10 个纯函数**(正股 / 指数 / 加密 /
+  期权 / 常驻流的合约、第三个周五、当季合约、交易类选择、合约描述),112 行。
+  **刻意留下的**:`lastRthSession` / `contemporaneousBasis`(时段与基差,是行情逻辑)、
+  `parseIbTime` / `fillRow`(回报解析;而且 `fillRow` 要用 `broker.ts` 的 `finiteQuote`,搬走就成环)、
+  `readPriceFrom`、`isTimeout`。新文件只依赖 `pad2` / `weekdayOfDate` 与 `IbContract` 类型,零成环。
+- 这一刀的行号是**大括号匹配自动找的**,不是手数的:每个名字必须只出现一次、块必须以顶格 `}` 收尾,
+  还检查了块之间不重叠。比前九刀的"手写行号 + 断言"又稳一档。
+- 对账:**2 行"丢掉"**(一行 import 重写、`describeContract` 加了 `export`),112 行函数体逐字未动。
+  三个测试文件的 import 改了指向(断言一个没动)。`ibContracts` 归进 depcruise 的 execution 层。
+- 判据:`golden-brokerpure` / `futures-spot` / `volume-stream` / `combo-fills` / `ib-exec-time` /
+  `reconcile` / `hosted` 七套 91 个用例全绿,全量 1,195 个全绿。
+- **说清楚:`broker.ts` 还有 2,400 行,远超 1,500。** 这一刀只是把 CLAUDE.md 点名的那部分挪走了;
+  **真正的大头是 `BrokerRouter` 这个类本身:2,006 行,占 84%**(类之前只有 387 行纯函数、类之后 7 行)。
+  再往下拆等于拆类——按「连接与会话 / 行情与订阅 / 下单与撤单 / 持仓与回报」四件事分,
+  和 `engine.ts` 剩下那三块一样贴着钱路径,要单独判断,不该顺手做。

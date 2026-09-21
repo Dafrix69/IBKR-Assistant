@@ -25,7 +25,7 @@ cd desktop   && npm run lint && npm run ui:typecheck
 ```
 transport     rpc.ts(转出的壳)  rpc/server.ts  rpc/context.ts  rpc/contractMethods.ts  rpc/params.ts  rpc/handlers/*.ts  cli.ts
 orchestrate   engine.ts  engine/*.ts(hosted 托管单、reconcile 执行对账、callbacks 回报落库、clock)  tracker.ts  services/*.ts
-execution     broker.ts  futuBroker.ts  ibSession.ts  ibTypes.ts  tws.ts  futu.ts  futuBridge.ts
+execution     broker.ts  ibContracts.ts(怎么拼一张 IB 合约)  futuBroker.ts  ibSession.ts  ibTypes.ts  tws.ts  futu.ts  futuBridge.ts
 parsing       validator.ts  providers.ts  prompts.ts  shorthand.ts  llm.ts
 analysis      backtest priceaction screener research optionwall anomaly flyexit tradereview ibtrades macro market alerts
 domain        config.ts  models.ts  store.ts  positions.ts  marketdata.ts
@@ -88,7 +88,9 @@ contract      contract/*.ts(纯类型,零 import,谁都能引)  contract/schema/
 引擎单文件 1,500 行、函数 150 行、页面组件 400 行。超线不是不能提交,是提交前先回答"它是不是两个东西"。
 已知超线且待拆的:`engine.ts`(2026-09-20 托管单 → `engine/hosted.ts`、执行对账 → `engine/reconcile.ts`、
 回报落库 → `engine/callbacks.ts`,还剩 1,782 行;剩下的是下单与审批、追踪循环、IB 会话装配)、
-`broker.ts`(IB 合约工具函数成 `ibContracts.ts`)。
+`broker.ts`(2026-09-21 合约工具函数已搬进 `ibContracts.ts`,还剩 2,400 行 —— **大头是 `BrokerRouter`
+这个类本身:2,006 行,占 84%**。再往下拆要拆类:按"连接与会话 / 行情与订阅 / 下单与撤单 / 持仓与回报"
+四件事分,那是一件要单独判断的事,别顺手做)。
 **往这两个文件里加新功能之前,先看它是不是该去一个新文件。**(`rpc.ts` 已于 2026-09-19 按域拆完,
 最大的一个 handler 不到 450 行。)
 
