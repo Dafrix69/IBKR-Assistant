@@ -24,6 +24,57 @@ import {
 
 type Rec = Record<string, any>;
 
+/**
+ * 股票复盘图的窗口,**按交易日算,不按根数**。
+ *
+ * 2026-09-21 改的口径。原来和蝴蝶共用 `LOOKBACK_BARS`(40)/ `LOOKAHEAD_BARS`(20),
+ * 对 0DTE 蝶是对的——它本来就活在日内;对股票就不对了:**15 分钟下 60 根只有 15 小时**,
+ * 而股票是跨天持有的,只给你看成交那一天,等于没有上下文。
+ * 而且 K 线**早就取到了**(15 分钟那条一次取 10 个交易日),是窗口把它扔掉了,不是数据不够。
+ *
+ * 现在的规则:装下整段持仓,**前后各多给一个交易日**;总跨度不足 `MIN_SESSIONS` 个交易日就继续往前补。
+ * 同时**不比原来的 40 / 20 根窄**——日线那条路上 40 根就是 40 个交易日,按交易日算反而会缩,
+ * 所以两者取更宽的那个。
+ */
+export const MIN_SESSIONS = 5;
+export const PAD_SESSIONS = 1;
+
+/** 每根 K 线属于哪个交易日(intraday 的 time 是 "YYYY-MM-DD HH:MM",日线就是 "YYYY-MM-DD")。 */
+function sessionOf(bar: Rec): string {
+  return barTime(bar).slice(0, 10);
+}
+
+export function stockWindow(bars: Rec[], startIdx: number, endIdx: number): [number, number] {
+  const lastIdx = bars.length - 1;
+  // 原来的根数窗口:作为下限,保证不比从前窄
+  let loI = Math.max(startIdx - LOOKBACK_BARS, 0);
+  let hiI = Math.min(endIdx + LOOKAHEAD_BARS, lastIdx);
+
+  // 交易日 → 它的第一根 / 最后一根
+  const days: string[] = [];
+  const first = new Map<string, number>();
+  const last = new Map<string, number>();
+  for (let i = 0; i <= lastIdx; i += 1) {
+    const d = sessionOf(bars[i]!);
+    if (!first.has(d)) { first.set(d, i); days.push(d); }
+    last.set(d, i);
+  }
+  const ds = days.indexOf(sessionOf(bars[startIdx]!));
+  const de = days.indexOf(sessionOf(bars[endIdx]!));
+  if (ds < 0 || de < 0) return [loI, hiI];
+
+  let lo = Math.max(ds - PAD_SESSIONS, 0);
+  let hi = Math.min(de + PAD_SESSIONS, days.length - 1);
+  // 不足 MIN_SESSIONS 个交易日:先往前补(历史是有的),前面没了再往后
+  while (hi - lo + 1 < MIN_SESSIONS && (lo > 0 || hi < days.length - 1)) {
+    if (lo > 0) lo -= 1;
+    else hi += 1;
+  }
+  loI = Math.min(loI, first.get(days[lo]!)!);
+  hiI = Math.max(hiI, last.get(days[hi]!)!);
+  return [loI, hiI];
+}
+
 export const TRIP_PREFIX = "stk:";
 export const KIND_CLOSED = "closed";
 export const KIND_OPEN = "open";
@@ -444,8 +495,7 @@ export function reviewStock(trip: Rec, bars: Rec[], timeframe: string, now: numb
   };
 
   // ---- 图:窗口 + 每次出手一个标记 + 均价线
-  const loI = Math.max(startIdx - LOOKBACK_BARS, 0);
-  const hiI = Math.min(endIdx + LOOKAHEAD_BARS, lastIdx);
+  const [loI, hiI] = stockWindow(bars, startIdx, endIdx);
   let window = bars.slice(loI, hiI + 1);
   const markers: Rec[] = [];
   const mustKeep: number[] = [startIdx - loI, endIdx - loI];

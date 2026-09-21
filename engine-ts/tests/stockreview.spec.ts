@@ -229,8 +229,9 @@ describe("reviewStock:一段持仓 + K 线 → 复盘", () => {
       { kind: "exit", action: "SELL", time: "2026-09-17 10:30", price: 104, qty: 100 },
     ]);
     expect(r["series"]["levels"]).toEqual([{ kind: "avg_entry", price: 98.5 }, { kind: "avg_exit", price: 104 }]);
-    expect(r["series"]["bars"][0]["time"]).toBe("2026-09-17 09:30"); // 开仓前最多回看 40 根,这里只有 25 根
-    expect(r["series"]["bars"].at(-1)["time"]).toBe("2026-09-17 10:50"); // 平仓后再看 20 根
+    // 窗口按交易日算(2026-09-21 起):这个夹具只有 2026-09-17 一天,所以整天都在窗口里
+    expect(r["series"]["bars"][0]["time"]).toBe("2026-09-17 09:30");
+    expect(r["series"]["bars"].at(-1)["time"]).toBe("2026-09-17 11:29"); // 那一天的最后一根,不再是"平仓后 20 根"
     expect(r["notes"]).toEqual([]);
   });
 
@@ -393,5 +394,78 @@ describe("review.candidates / review.analyze:股票和蝴蝶走同一对接口",
     expect("exit_plan" in r).toBe(false); // 止盈策略回放是蝴蝶的事
     await expect(s.domains.review.reviewAnalyze({ id: "stk:p999" })).rejects.toThrowError("不在已同步的成交里");
     await expect(s.domains.review.reviewAnalyze({ id: nvo["id"], timeframe: "7m" })).rejects.toThrowError("未知 K 线周期");
+  });
+});
+
+describe("stockWindow:图窗口按交易日算,不按根数", () => {
+  /** 连续 n 个交易日、每天 perDay 根的 15 分钟线(日期只取工作日,不含周末)。 */
+  function multiDay(days: string[], perDay: number): Rec[] {
+    const out: Rec[] = [];
+    for (const d of days) {
+      for (let i = 0; i < perDay; i += 1) {
+        const m = 9 * 60 + 30 + i * 15;
+        out.push({
+          time: `${d} ${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`,
+          open: 100, high: 100.5, low: 99.5, close: 100, volume: 1000,
+        });
+      }
+    }
+    return out;
+  }
+  const DAYS = ["2026-09-08", "2026-09-09", "2026-09-10", "2026-09-11", "2026-09-14",
+                "2026-09-15", "2026-09-16", "2026-09-17"];
+  const PER_DAY = 26;
+  const dayOf = (b: Rec): string => String(b["time"]).slice(0, 10);
+
+  it("当天进出:窗口横跨 5 个交易日,而不是 40+20 根(那只有 15 小时)", () => {
+    const bars = multiDay(DAYS, PER_DAY);
+    // 在最后一天(09-17)当天买卖
+    const start = DAYS.indexOf("2026-09-17") * PER_DAY + 4;
+    const end = start + 6;
+    const [lo, hi] = sr.stockWindow(bars, start, end);
+    const shown = new Set(bars.slice(lo, hi + 1).map(dayOf));
+    expect(shown.size).toBe(sr.MIN_SESSIONS);
+    // 最后一天在窗口里,而且后面没有更多数据了
+    expect(shown.has("2026-09-17")).toBe(true);
+    expect(hi).toBe(bars.length - 1);
+    // 比原来的 60 根宽得多
+    expect(hi - lo + 1).toBeGreaterThan(100);
+  });
+
+  it("持仓跨 4 天:整段都在,前后各至少一个交易日,且不比 40/20 根窄", () => {
+    const bars = multiDay(DAYS, PER_DAY);
+    const start = DAYS.indexOf("2026-09-10") * PER_DAY + 2;
+    const end = DAYS.indexOf("2026-09-15") * PER_DAY + 8; // 09-10 → 09-15,含 4 个交易日
+    const [lo, hi] = sr.stockWindow(bars, start, end);
+    const shown = [...new Set(bars.slice(lo, hi + 1).map(dayOf))];
+    // 整段持仓一天不落
+    for (const d of ["2026-09-10", "2026-09-11", "2026-09-14", "2026-09-15"]) expect(shown).toContain(d);
+    // 前后各至少一个交易日的上下文
+    expect(shown.indexOf("2026-09-10")).toBeGreaterThan(0);
+    expect(shown).toContain("2026-09-16");
+    expect(shown.length).toBeGreaterThanOrEqual(sr.MIN_SESSIONS);
+    // 下限:仍然不比原来的 40 / 20 根窄(这里 40 根 ≈ 1.5 天,所以还多带了 09-08)
+    expect(lo).toBeLessThanOrEqual(start - 40);
+    expect(hi).toBeGreaterThanOrEqual(end + 20);
+  });
+
+  it("交易在数据最前面:前面补不动就往后补,总天数还是够", () => {
+    const bars = multiDay(DAYS, PER_DAY);
+    const start = 1; // 第一天
+    const end = 3;
+    const [lo, hi] = sr.stockWindow(bars, start, end);
+    expect(lo).toBe(0);
+    expect(new Set(bars.slice(lo, hi + 1).map(dayOf)).size).toBe(sr.MIN_SESSIONS);
+  });
+
+  it("日线不许变窄:40 / 20 根仍是下限(按交易日算反而会缩)", () => {
+    const daily: Rec[] = DAYS.concat(
+      Array.from({ length: 80 }, (_, i) => `2026-05-${String((i % 28) + 1).padStart(2, "0")}`),
+    ).map((d, i) => ({ time: d, open: 100, high: 101, low: 99, close: 100 + i, volume: 10 }));
+    // 取中间一根当进出场,前后都有足够的历史
+    const mid = 60;
+    const [lo, hi] = sr.stockWindow(daily, mid, mid);
+    expect(mid - lo).toBeGreaterThanOrEqual(40); // 仍然回看 40 根
+    expect(hi - mid).toBeGreaterThanOrEqual(20); // 仍然前看 20 根
   });
 });
