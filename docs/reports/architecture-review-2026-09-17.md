@@ -788,7 +788,19 @@ killswitch + 上面那 6 个方法),用基类 getter 把它们摊成 `this.store
 - 对账:27 行"丢掉"全说得清(6 行 import 重写、2 行分节注释被文件头取代、19 个声明加 `export`),
   **函数体一行没少**。
 
-**还欠的**:`Market.tsx` 648、`Review.tsx` 607、`Records.tsx` 461、`Backtest.tsx` 403 —— 都超 400。
+**2026-09-21,第六刀:`Market.tsx` 拆成三块。** 648 → 23 行。
+
+- 按它自己那两条分节线切:`lib/PaPanel.tsx`(371,K线 PA)、`lib/BookWall.tsx`(189,盘口墙),
+  页面只剩「两节摆一起」(23)。
+- 切的时候发现一件不显然的事:**K线 PA 那一节里也嵌着一块盘口**(`<BookBody>`),所以
+  `BookBody` / `BookSide` 不能跟着盘口墙走,和 `read` / `write`(本地记住选择)、`BookCell` / `Books`
+  两个类型一起归 `lib/marketBits.tsx`(89)。两节画的是同一份快照,不该各画各的。
+- 对账:26 行"丢掉"全是 import、分节注释、或加了 `export` 的声明,**函数体一行没少**。
+
+**还欠的**:`Review.tsx` 607、`Records.tsx` 461、`Backtest.tsx` 403 —— 都超 400。
+
+> `tests/rpc-lanes.spec.ts` 这一轮又偶发红了一次(重跑即绿)。频率变高有个直接原因:修它的那个会话
+> 正在同一台机器上跑,负载更高——这本身就是"它测的是墙钟而不是顺序"的旁证。
 
 > 跑全量时 `tests/rpc-lanes.spec.ts` 也偶发红过一次(单独跑、再跑全量都绿),和 `provider-http.spec.ts`
 > 同一类:对时序 / 负载敏感,而不是被测代码坏了。两件一起另开任务修,判据别改成放宽阈值。
