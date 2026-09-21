@@ -6,7 +6,7 @@ import { useMemo, useRef, useState } from 'react';
 import { Button, Input, InputNumber, Select, Tooltip } from 'antd';
 import { LeftOutlined, RightOutlined } from '@ant-design/icons';
 import { dafri, errorMessage } from '../bridge';
-import type { DeviationResult } from '../bridge';
+import type { DeviationPoint, DeviationResult } from '../bridge';
 import { CanvasChart, type ChartSpec } from './Chart';
 import { fmtTimeShort } from './format';
 import { num, TF_LABEL, TF_OPTIONS, type PoolStock } from './screenerRows';
@@ -78,7 +78,7 @@ export function DeviationSection({ dev, pool, order, innerRef }: { dev: ReturnTy
 
   const charts = useMemo((): { dev: ChartSpec; pressure: ChartSpec } | null => {
     if (!result?.last) return null;
-    const times = result.series.map((s: any) => s.time);
+    const times = result.series.map((s: DeviationPoint) => s.time);
     // 翻到下一只或改了参数,两张图重新铺满;不写的话标题和第一根日期都一样,会沿用上一只的缩放
     const viewKey = `${result.symbol}|${result.timeframe}|${result.period}|${result.lookback}`;
     return {
@@ -86,7 +86,7 @@ export function DeviationSection({ dev, pool, order, innerRef }: { dev: ReturnTy
         ariaLabel: '偏离 z 分数',
         viewKey,
         times,
-        lines: [{ values: result.series.map((s: any) => s.z), color: 'blue', width: 1.5, label: 'z' }],
+        lines: [{ values: result.series.map((s: DeviationPoint) => s.z), color: 'blue', width: 1.5, label: 'z' }],
         hlines: [
           { price: 0, color: 'label', dash: [3, 3], alpha: 0.3, tag: false },
           { price: result.z_extreme, color: 'down', dash: [2, 3], alpha: 0.6, label: `+${result.z_extreme}σ 上方极值` },
@@ -101,8 +101,8 @@ export function DeviationSection({ dev, pool, order, innerRef }: { dev: ReturnTy
         viewKey,
         times,
         lines: [
-          { values: result.series.map((s: any) => s.pressure), color: 'orange', width: 1.5, label: '压力' },
-          { values: result.series.map((s: any) => (s.buy_pct == null ? null : s.buy_pct / 50 - 1)), color: 'label2', alpha: 0.4, label: '单根原始' },
+          { values: result.series.map((s: DeviationPoint) => s.pressure), color: 'orange', width: 1.5, label: '压力' },
+          { values: result.series.map((s: DeviationPoint) => (s.buy_pct == null ? null : s.buy_pct / 50 - 1)), color: 'label2', alpha: 0.4, label: '单根原始' },
         ],
         hlines: [{ price: 0, color: 'label', dash: [3, 3], alpha: 0.3, tag: false }],
         legend: [['—', 'orange', '修正版压力'], ['—', 'label2', '单根原始位置']],

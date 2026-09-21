@@ -3,6 +3,7 @@
  * 行为规格 = ../engine-python 的 flyexit.py,逐字段对拍(baseline/golden/flyexit.json)。
  */
 import erfStdlib from "@stdlib/math-base-special-erf";
+import type { ExitPlan, ExitSimulation, ExitZone, ReviewLevel } from "./contract/review.js";
 import type { DrawdownLate, DrawdownTier } from "./contract/tracker.js";
 
 import { fmtF, pyG, pyRound } from "./py.js";
@@ -235,7 +236,7 @@ export function trancheSizes(qty: number): [number, number] {
   return [Math.min(third, qty), Math.min(third, Math.max(qty - third, 0))];
 }
 
-export function levels(profile: Rec, params: Rec): Rec[] {
+export function levels(profile: Rec, params: Rec): ReviewLevel[] {
   const d = profile["debit"];
   if (d === null || d === undefined) return [];
   const mult = profile["multiplier"], qty = profile["qty"];
@@ -258,9 +259,9 @@ export function levels(profile: Rec, params: Rec): Rec[] {
   });
 }
 
-export function zones(profile: Rec, params: Rec): Rec[] {
+export function zones(profile: Rec, params: Rec): ExitZone[] {
   const k = profile["center"], w = profile["width"];
-  const row = (kind: string, ratio: number, label: string): Rec => ({
+  const row = (kind: string, ratio: number, label: string): ExitZone => ({
     kind, half_width: pyRound(ratio * w, 4), low: pyRound(k - ratio * w, 4), high: pyRound(k + ratio * w, 4), label,
   });
   return [
@@ -293,6 +294,10 @@ function intrinsic(profile: Rec, s: number): number {
 
 export function simulate(
   profile: Rec, entryBarTime: string, spxBars: Rec[], flyBars: Rec[], params: Rec, actual: Rec | null = null,
+  // TODO(2026-09-21):这里本该是 ExitSimulation。标上之后 `sim["totals"]["model_minutes"]` 这几处要改成
+  // 可选链——那是改函数体(而且这个文件在钱路径上)。正确的收法是把 ExitSimulation 改成按 applicable
+  // 判别的联合类型(不适用那一支只有 reason,适用那一支 totals / series 必有),那样这几处不用改就能收窄。
+  // 单独一轮做。
 ): Rec {
   const d = profile["debit"];
   if (profile["action"] !== "BUY") {
@@ -484,7 +489,8 @@ export function plan(
   const w = profile["width"];
   const sw = switchMinute(w, params);
   const cutoff = minutesOf(params["cutoff_a"]);
-  const out: Rec = {
+  // simulation 要先算 sim 才有,所以局部用「还差 simulation 的那一份」;别为了类型去挪代码顺序
+  const out: Omit<ExitPlan, "simulation"> & { simulation?: ExitSimulation } = {
     params,
     levels: levels(profile, params),
     zones: zones(profile, params),
@@ -506,7 +512,8 @@ export function plan(
     out["notes"].push(`固定倍数档位已关闭(蝶价上限就是翼宽 ${pyG(w)},用 D 的倍数封顶会在 D 小的时候锁死出场);要恢复 v2.0 的分批止盈,传 tp1 / tp2 即可`);
   }
   const sim = simulate(profile, entryBarTime, spxBars, flyBars, params, actual);
-  out["simulation"] = sim;
+  // 断言在这里,原因见 simulate 签名上那条 TODO(收成联合类型之后就能去掉)
+  out["simulation"] = sim as ExitSimulation;
   if (sim["applicable"] && sim["totals"]["model_minutes"]) {
     out["notes"].push(`有 ${sim["totals"]["model_minutes"]} 分钟没有真实蝶价,用 Bachelier 模型价(σ_剩余)补上,图上以虚线区分`);
   }

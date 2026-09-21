@@ -349,6 +349,8 @@ export interface ExitSimPoint {
 /** 按策略走一遍的结果。K 线不够时 applicable 是 false。 */
 export interface ExitSimulation {
   applicable: boolean;
+  /** applicable 为 false 时说明为什么不能回放(卖出的蝶、没有入场净权利金、开仓当天没有 K 线) */
+  reason?: string;
   /** 开仓时标的已经在止损带之外(远端 OTM 蝶) */
   entry_outside?: boolean;
   entry_dist?: number;
@@ -372,6 +374,21 @@ export interface ExitSimulation {
 }
 
 /** 止盈策略回放:当初按这套规则走会是什么结果。 */
+/** 阶段切换的时刻与阈值(flyexit.ts 算的)。时刻是 `HH:MM` 的墙钟串,不是 ISO。 */
+export interface ExitPhases {
+  /** 阶段 A 到这一刻为止 */
+  a_until: string;
+  /** 阶段 C 从这一刻起 */
+  c_from: string;
+  /** 切换那一刻的剩余波动率 */
+  sigma_at_switch: number;
+  /** 切换阈值 = 翼宽 / switch_k */
+  threshold: number;
+  em_at_open: number;
+  /** 翼宽相当于几个 EM;EM 为 0 时是 null */
+  wing_in_sigma: number | null;
+}
+
 export interface ExitPlan {
   /** 这次回放用的参数(EM、几档临界比例这一类) */
   params: Record<string, unknown>;
@@ -379,7 +396,7 @@ export interface ExitPlan {
   levels: ReviewLevel[];
   zones: ExitZone[];
   /** 阶段切换的时刻与阈值 */
-  phases: Record<string, unknown>;
+  phases: ExitPhases;
   simulation: ExitSimulation;
   /** 这次回放的前提与保留(EM 是默认值、哪几分钟用的模型价这一类) */
   notes: string[];

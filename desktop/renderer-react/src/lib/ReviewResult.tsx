@@ -6,7 +6,9 @@
 import { Descriptions, Table, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { PHASE_LABEL, REVIEW_KIND } from './labels';
-import type { ButterflyReviewResult, ReviewFinding, StockReviewResult } from '../bridge';
+import type {
+  ButterflyReviewResult, ExitPhases, ExitPlan as ExitPlanData, ExitSimulation, ReviewFinding, StockReviewResult,
+} from '../bridge';
 import { fmtMoney, fmtNum, fmtTimeShort } from './format';
 import { FlyChart, StockChart, UnderlyingChart } from './reviewCharts';
 import { EmptyState, StatTile, StatusCard, type Tone } from '../ui/kit';
@@ -148,16 +150,14 @@ export function StockResult({ r }: { r: StockReviewResult }) {
 }
 
 /** 止盈点位与预计盈利 + 策略回放事件 + 三种结局对比。 */
-/** TODO(2026-09-21):这里的 `any` **暂时留着**。唯一的调用方是 ReviewResult(蝶式那一路),
- *  本该收成 `ButterflyReviewResult`;试过之后发现真正卡住的是契约里 `ExitPlan.phases` 是
- *  `Record<string, unknown>`、`simulation` 兜底成 `{}` 之后也还原不回来——那是一轮单独的收紧,
- *  要配特征测试与反向验证,不该夹在一次搬家里做。这一刀只搬,不改类型。 */
-export function ExitPlan({ r }: { r: any }) {
-  const plan = r.exit_plan || {};
-  const sim = plan.simulation || {};
+export function ExitPlan({ r }: { r: ButterflyReviewResult }) {
+  // 兜底成空对象之后编译器就只认得 `{}` 了,所以这三处标上类型(值一个字没动)
+  const plan: Partial<ExitPlanData> = r.exit_plan || {};
+  const sim: Partial<ExitSimulation> = plan.simulation || {};
   const p = r.profile || {};
-  const ph = plan.phases || {};
-  const t = sim.totals || {};
+  const ph: Partial<ExitPhases> = plan.phases || {};
+  const t: Partial<NonNullable<ExitSimulation['totals']>> = sim.totals || {};
+  const notes = plan.notes || [];
   const events: any[] = sim.events || [];
 
   const levelCols: ColumnsType<any> = [
@@ -168,7 +168,8 @@ export function ExitPlan({ r }: { r: any }) {
     { title: '每张盈亏', dataIndex: 'pnl_per_contract', align: 'right', render: (v) => signed(v) },
     { title: '预计盈亏', dataIndex: 'expected_pnl', align: 'right', render: (v) => signed(v) },
   ];
-  const outcomes: { k: string; v: number | null; note: string }[] = [
+  // v 带上 undefined:totals 是可选的,兜底成 {} 之后这几项本来就可能没有(以前 r 是 any,一样的值)
+  const outcomes: { k: string; v: number | null | undefined; note: string }[] = [
     { k: '按策略回放', v: t.strategy, note: `${events.length} 次出手` },
     { k: '实际', v: t.actual, note: r.outcome.kind === 'closed' ? `以 ${r.outcome.price} 平仓` : r.outcome.kind === 'expired' ? '到期结算' : '持仓中,未计' },
     { k: '持到结算 / 最新', v: t.hold_to_settle, note: '按最后一根标的 K 线的内在价值' },
@@ -219,9 +220,9 @@ export function ExitPlan({ r }: { r: any }) {
           />
         </>
       )}
-      {(plan.notes || []).length ? (
+      {notes.length ? (
         <ul className="review-notes">
-          {plan.notes.map((n: string, i: number) => (
+          {notes.map((n: string, i: number) => (
             <li key={i}>{n}</li>
           ))}
         </ul>

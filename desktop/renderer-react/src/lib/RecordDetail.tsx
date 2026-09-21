@@ -6,6 +6,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Alert, Button, Collapse, Descriptions, Table, Timeline } from 'antd';
 import { dafri, errorMessage } from '../bridge';
+import type { RecordFill, RecordIbkr, RecordLlm, RecordStatusEvent, TradeRecord } from '../bridge';
 import { fmtExpiry, fmtMoney, fmtTime, fmtTimeShort } from './format';
 import {
   ACTION_LABEL,
@@ -78,27 +79,25 @@ export function RecordDetail({ id, onClose }: { id: string; onClose: () => void 
   );
 }
 
-/** TODO(2026-09-21):`any` 暂时留着。records.get 已经在契约里(TradeRecord),但这个函数体里
- *  有七八处 `record.X || {}` 的兜底——兜完编译器就只认得 `{}` 了,得给每个局部标上
- *  `Partial<…>`。那是改函数体,不该夹在一次搬家里做;和 ReviewResult 里的 ExitPlan 同一件事,
- *  一起单独做。 */
-function DetailBody({ record, onClose }: { record: any; onClose: () => void }) {
-  const c = record.contract || {};
-  const o = record.order || {};
-  const ib = record.ibkr || {};
-  const llm = record.llm || {};
-  const timeline: { status?: string; at?: string }[] = ib.status_timeline || [];
-  const fills: { exec_id?: string; time?: string; qty?: number; price?: number; commission?: number }[] = ib.fills || [];
+function DetailBody({ record, onClose }: { record: TradeRecord; onClose: () => void }) {
+  // 这四处兜底成空对象之后编译器就只认得 `{}` 了,所以各标一个类型(值一个字没动)。
+  // contract / order 在契约里本来就是松散的 JSON(券商那边的结构),所以是 Record。
+  const c: Record<string, unknown> = record.contract || {};
+  const o: Record<string, unknown> = record.order || {};
+  const ib: Partial<RecordIbkr> = record.ibkr || {};
+  const llm: RecordLlm = record.llm || {};
+  const timeline: RecordStatusEvent[] = ib.status_timeline || [];
+  const fills: RecordFill[] = ib.fills || [];
   const ticket = ticketFromRecord(c, o, record.trigger);
 
   return (
     <>
       <div className="detail-head">
-        <strong>{`${c.symbol || '—'} · ${ACTION_LABEL[o.action] || o.action || ''} ${o.totalQuantity ?? ''}`}</strong>
+        <strong>{`${c.symbol || '—'} · ${ACTION_LABEL[String(o.action ?? '')] || o.action || ''} ${o.totalQuantity ?? ''}`}</strong>
         <StatusPill record={record} fallback="进行中" />
         <span className="detail-actions">
           {c.combo_strategy === 'BUTTERFLY' ? (
-            <Button size="small" onClick={() => openReviewFor(record.id)}>
+            <Button size="small" onClick={() => openReviewFor(record.id ?? '')}>
               分析这笔交易
             </Button>
           ) : null}
@@ -137,7 +136,7 @@ function DetailBody({ record, onClose }: { record: any; onClose: () => void }) {
           ['行权价', c.strike],
           ['方向', c.right === 'C' ? '看涨 Call' : c.right === 'P' ? '看跌 Put' : null],
           ['组合', say(COMBO_LABEL, c.combo_strategy)],
-          ['腿数', c.legs ? c.legs.length : null],
+          ['腿数', Array.isArray(c.legs) ? c.legs.length : null],
         ]}
       />
       <Section

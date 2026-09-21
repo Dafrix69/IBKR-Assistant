@@ -162,7 +162,7 @@ export function BookWall({ books, onAnalyze }: { books: Books; onAnalyze: (symbo
   );
 }
 
-export function BookCard({ symbol, snapshot, loading, onAnalyze, onRefresh, onRemove }: { symbol: string; snapshot: any; loading: boolean; onAnalyze: () => void; onRefresh: () => void; onRemove: () => void }) {
+export function BookCard({ symbol, snapshot, loading, onAnalyze, onRefresh, onRemove }: { symbol: string; snapshot: BookCell | null; loading: boolean; onAnalyze: () => void; onRefresh: () => void; onRemove: () => void }) {
   return (
     <Card
       size="small"

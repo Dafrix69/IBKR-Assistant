@@ -843,10 +843,30 @@ killswitch + 上面那 6 个方法),用基类 getter 把它们摊成 `this.store
    函数真正的结束行)。手写行号一定会错,写成断言就几秒钟。
 3. **逐行对账不是形式**。它抓到两类脚本自己的错:`export` 贴到了文档注释前面(TS 和 lint 都不报),
    以及**过度转出**(内部助手也被加了 `export`,共三处)。
-4. **搬家就只搬**。三处 `any`(`switchTo` 那一处改对了,`ExitPlan` / `DetailBody` 两处没改)——
-   没改的原因写在代码的 TODO 里:它们卡在 `x || {}` 兜完之后编译器只认得 `{}`,要动函数体。
-   **那是一轮单独的活**,顺带把契约里 `ExitPlan.phases`(`Record<string, unknown>`)收紧,
-   要配特征测试 + 反向验证,不该夹在搬家里做。
+4. **搬家就只搬**。三处 `any` 里只有 `switchTo` 那一处当场改对了(它是明显的错类型);
+   `ExitPlan` / `DetailBody` 两处留了 TODO,因为要动函数体——**下面那一节就是把它们做完**。
+
+**2026-09-21,收尾那一轮:把拆页过程中露出来的松类型收紧。**
+
+- 契约(`contract/review.ts`)补/收三处,依据是引擎**实际产出**:
+  · `ExitPlan.actual_exit_mult`(第七刀发现的缺口,标成可选——只在真平了仓时才有);
+  · `ExitPlan.phases` 从 `Record<string, unknown>` 收成显式的 `ExitPhases`(六个字段,时刻是 `HH:MM` 墙钟串);
+  · `ExitSimulation.reason`(不适用那一支才有,说明为什么不能回放)。
+- 界面收掉四处 `any`:`ExitPlan`(→ `ButterflyReviewResult`)、`DetailBody`(→ `TradeRecord`)、
+  `BookCard.snapshot`(→ `BookCell | null`)、偏离图里 4 个 `(s: any)`(→ `DeviationPoint`)。
+  连带发现**界面手抄的两处局部类型和契约不一致**:时间线的 `status` 手抄成 `string | undefined`,
+  引擎给的是 `string | null`;成交行也一样。按契约改了。
+- **反向验证暴露了一件更要紧的事**:改 `ExitPhases` 的字段名,只有界面编译不过,**引擎照过**——
+  因为 `flyexit.ts` 整个用 `Rec` 拼,契约在引擎那一侧根本没被检查。这和之前 handler 里的
+  `as unknown as` 是同一个病。于是把 `levels()` → `ReviewLevel[]`、`zones()` → `ExitZone[]`、
+  `plan()` 里的 `out` 标成契约类型。`flyexit.ts` 在钱路径上:**去掉注释后编译产物逐字节一致**。
+- **字节比对当场抓到一个真问题**:我把 `import type` 放在了所有 import 的最前面,文件头那块 JSDoc
+  就挂到了一个会被擦除的语句上,**编译产物里整块注释消失了**。挪到值 import 之后才一致。
+  这条值得记:`import type` 不要插在文件头注释与第一个值 import 之间。
+- `simulate()` 的返回**刻意还是 `Rec`**:标成 `ExitSimulation` 之后 `sim["totals"]["model_minutes"]`
+  这几处要改成可选链——那是改函数体。正确的收法是把 `ExitSimulation` 改成**按 `applicable` 判别的
+  联合类型**(不适用那支只有 reason,适用那支 totals / series 必有),那样这几处不用改就能收窄。
+  签名上留了 TODO。**这是这条线上还欠的最后一件。**
 
 > `tests/rpc-lanes.spec.ts` 这一轮又偶发红了一次(重跑即绿)。频率变高有个直接原因:修它的那个会话
 > 正在同一台机器上跑,负载更高——这本身就是"它测的是墙钟而不是顺序"的旁证。

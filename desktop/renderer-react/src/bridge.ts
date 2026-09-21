@@ -36,7 +36,7 @@ export interface ConfirmOptions {
 // 界面的 tsc 不装引擎依赖也解析得了);contract/schema/ 是引擎自己的运行时校验,这里不碰。
 import type {
   AppStatus, BrokerCatalog, BrokerProviderEntry, DiagnoseAccount, DiagnoseResult, FutuScanResult, GuideStep, PortStatus, TwsScanResult,
-  ButterflyCandidate, ButterflyReviewResult, ExitPlan, ReviewAnalyzeResult, ReviewCandidate, ReviewFinding, StockCandidate,
+  ButterflyCandidate, ButterflyReviewResult, ExitPhases, ExitPlan, ExitSimulation, ReviewAnalyzeResult, ReviewCandidate, ReviewFinding, StockCandidate,
   StockReviewResult,
   PaAnalyzeResult, PaComment, PaEvent, PaEvidence, PaLevel, PaPattern, PaSwing, PaTimeframe,
   CdSignal, CdSignalError, DeviationPoint, DeviationResult, InflectionResult, InflectionRow, RsResult, RsRow, RsTagRow,
@@ -60,7 +60,7 @@ import type {
 
 export type {
   AppStatus, BrokerCatalog, BrokerProviderEntry, DiagnoseAccount, DiagnoseResult, FutuScanResult, GuideStep, PortStatus, TwsScanResult,
-  ButterflyCandidate, ButterflyReviewResult, ExitPlan, ReviewAnalyzeResult, ReviewCandidate, ReviewFinding, StockCandidate,
+  ButterflyCandidate, ButterflyReviewResult, ExitPhases, ExitPlan, ExitSimulation, ReviewAnalyzeResult, ReviewCandidate, ReviewFinding, StockCandidate,
   StockReviewResult,
   PaAnalyzeResult, PaComment, PaEvent, PaEvidence, PaLevel, PaPattern, PaSwing, PaTimeframe,
   CdSignal, CdSignalError, DeviationPoint, DeviationResult, InflectionResult, InflectionRow, RsResult, RsRow, RsTagRow,
