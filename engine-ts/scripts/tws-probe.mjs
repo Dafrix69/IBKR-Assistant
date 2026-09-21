@@ -284,7 +284,13 @@ const MD_CODES = new Set([354, 10089, 10090, 10091, 10167, 10168, 10197, 200]);
 
 async function checkEntitlements() {
   const { IBApi, EventName } = await import("@stoqey/ib");
-  const conn = cfg.connections[connNames[0]];
+  // 用**真正连上的那条**连接,不是配置里的第一条:2026-09-21 联调时只开了 7496(live),
+  // 而 connNames[0] 是 paper(7497),这一步于是对着一个没开的端口等满 10 秒才报"底层连接超时"。
+  // 那不是行情权限的问题,是探针自己挑错了连接。
+  const connected = report.steps.find((s) => s.method === "broker.connect")?.result?.connected ?? [];
+  const pick = connected.find((n) => cfg.connections[n]) ?? connNames[0];
+  const conn = cfg.connections[pick];
+  if (!conn) throw new Error(`没有可用的连接(connect 那一步连上的是 ${JSON.stringify(connected)})`);
   const api = new IBApi({ host: conn.host, port: conn.port });
   const seen = new Map(); // reqId → { live, delayed, codes: Map<code, msg> }
   const details = new Map(); // reqId → contract[]
