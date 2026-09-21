@@ -6,7 +6,7 @@
  */
 const L = {
   contractTypes: "^src/contract/[^/]+\\.ts$",
-  util:        "^src/(py|pyjson|tz|schemaOut|notify|keychain|killswitch|protections|rpcError)\\.ts$",
+  util:        "^src/(py|pyjson|tz|notify|keychain|killswitch|protections|rpcError)\\.ts$",
   domain:      "^src/(config|models|store|positions|marketdata)\\.ts$",
   analysis:    "^src/(backtest|priceaction|screener|research|optionwall|anomaly|flyexit|tradereview|ibtrades|macro|market|alerts)\\.ts$",
   parsing:     "^src/(validator|providers|prompts|shorthand|llm)\\.ts$",

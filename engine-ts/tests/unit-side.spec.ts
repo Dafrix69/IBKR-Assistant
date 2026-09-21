@@ -1,4 +1,4 @@
-/** 非黄金的单元测试:killswitch(文件状态机)/ macro(双来源与降级)/ schema 清洗。
+/** 非黄金的单元测试:killswitch(文件状态机)/ macro(双来源与降级)。
  * 行为规格来自 Python 版对应测试的要点。 */
 import * as fs from "node:fs";
 import * as os from "node:os";
@@ -8,7 +8,6 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { expandHome, loadSettings } from "../src/config.js";
 import { KillSwitch } from "../src/killswitch.js";
 import { MACRO_SYMBOLS, clearMacroCache, liveTickers, macroBoard } from "../src/macro.js";
-import { stripUnsupported } from "../src/schemaOut.js";
 import { loadGolden } from "./util.js";
 
 describe("killswitch", () => {
@@ -243,33 +242,6 @@ describe("macro", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     const third = await macroBoard({ fetcher, now: () => t + 1 });
     expect(third["rows"][0]!["last"]).toBe(43.0); // 后台取回的新值落到缓存
-  });
-});
-
-describe("schema strip", () => {
-  it("剥掉数值/长度约束并补 additionalProperties:false", () => {
-    const schema = {
-      type: "object",
-      properties: {
-        qty: { type: "integer", minimum: 1, maximum: 10 },
-        name: { type: "string", minLength: 1, pattern: "^a" },
-        legs: {
-          type: "array", minItems: 2, maxItems: 4,
-          items: { type: "object", properties: { strike: { type: "number", exclusiveMinimum: 0 } } },
-        },
-      },
-      required: ["qty"],
-    };
-    const out = stripUnsupported(schema) as any;
-    expect(out.additionalProperties).toBe(false);
-    expect(out.properties.qty.minimum).toBeUndefined();
-    expect(out.properties.name.pattern).toBeUndefined();
-    expect(out.properties.legs.minItems).toBeUndefined();
-    expect(out.properties.legs.items.additionalProperties).toBe(false);
-    expect(out.properties.legs.items.properties.strike.exclusiveMinimum).toBeUndefined();
-    expect(out.required).toEqual(["qty"]);
-    // 原对象不被改动
-    expect(schema.properties.qty.minimum).toBe(1);
   });
 });
 

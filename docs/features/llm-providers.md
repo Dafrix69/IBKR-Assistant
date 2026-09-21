@@ -17,6 +17,11 @@
   持仓、成交记录一概不出本机,和供应商是谁无关。
 - **输出仍然要过 schema**。能用 `json_schema` 就用;端点只支持 `json_object` 时自动降级,
   把 schema 内嵌进系统提示词,并在界面上明确标出已降级——因为这会直接影响解析可靠性、抬高拒绝率。
+- **发给 API 的 schema 是检入资产,不在运行时生成**(`baseline/llm/*_schema.json`,由 `loadSchemaAsset`
+  读出来)。各家不支持的数值/长度约束(`minimum` `pattern` `minItems` 这一类)和 `additionalProperties:false`
+  在**导出那一刻**就已经处理掉了,资产里逐个字段都是干净的,所以引擎侧没有、也不需要运行时的 schema 清洗;
+  语义约束由 `models.ts` 在本地复校验。改 `models.ts` 要重跑导出脚本更新资产,别在发送前临时改形状——
+  发出去的字节被黄金对拍钉着。
 - 无论模型多弱,§5 的硬校验层照样逐条复核限额、方向、账户与价差结构。模型再离谱也越不过这一层。
 
 界面能改的只有上面那几项。`keychain_service` 之类的字段被 RPC 层显式拒绝,base_url 写错会
