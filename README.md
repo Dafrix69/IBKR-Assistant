@@ -67,9 +67,18 @@ Electron 桌面端 ──stdio JSON-RPC──▶ 交易引擎(Node 子进程,eng
 
 ## 安装
 
-**Windows**:到 [Releases](https://github.com/Dafrix69/IBKR-Assistant/releases) 下载 `IBKR-Assistant-<版本>-win-x64.exe` 安装。安装包未签名,SmartScreen 会拦,「更多信息 → 仍要运行」。机器上不需要装 Node 或 Python。
+两个平台的安装包都在 [Releases](https://github.com/Dafrix69/IBKR-Assistant/releases) 里。装的机器上**不需要 Node 或 Python**,引擎打在包里。
 
-**macOS**:需要在 Mac 上自行打包(`cd desktop && npm run dist:mac`),首次打开右键 → 打开,或 `xattr -dr com.apple.quarantine`。
+**Windows** x64:下载 `IBKR-Assistant-<版本>-win-x64.exe`。未签名,SmartScreen 会拦,「更多信息 → 仍要运行」。
+
+**macOS** Apple Silicon(需 macOS 12 以上,Intel Mac 不支持):下载 `IBKR-Assistant-<版本>-mac-arm64.dmg`。
+未签名、未公证,首次打开右键 → 打开,或 `xattr -dr com.apple.quarantine "/Applications/IBKR-Assistant.app"`。
+在 Mac 上本地打也行:`cd desktop && npm run dist:mac`。
+
+两个包都由 `安装包` 工作流出(`.github/workflows/package.yml`:手动 Run workflow、推 `v*` 标签、改到打包相关文件的 PR
+都会触发)。推 `v*` 标签时两个包一起打,都通过了才挂到对应的 Release——任一平台挂了就不发版。
+工作流不只是编译:核对 DMG 完整性与原生模块的架构、用包里的 Electron 拉起包里的引擎、
+再真把应用启动 30 秒确认不闪退且引擎子进程起来了。
 
 **运行前提**
 
