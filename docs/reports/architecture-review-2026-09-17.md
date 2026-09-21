@@ -926,3 +926,35 @@ TWS 起来之后跑了 `npm run probe`(只读:临时配置 / 临时库、三道�
   **真正的大头是 `BrokerRouter` 这个类本身:2,006 行,占 84%**(类之前只有 387 行纯函数、类之后 7 行)。
   再往下拆等于拆类——按「连接与会话 / 行情与订阅 / 下单与撤单 / 持仓与回报」四件事分,
   和 `engine.ts` 剩下那三块一样贴着钱路径,要单独判断,不该顺手做。
+
+### `BrokerRouter` 怎么拆:量过之后的方案(2026-09-21,只出方案,没动手)
+
+上面说"再往下拆要拆类,得单独判断"。判断做了,数据在这儿:
+
+- `BrokerRouter` 388–2393 = **2,006 行,62 个方法,34 个字段**。
+- **函数预算是过的**:最大的方法 `optionChain` 94 行,没有一个超 150。所以这纯粹是"一个类装了太多件事",
+  不是某个方法写胖了。
+- **状态已经自己聚好了**:除 `settings`(18 个方法读它,属于环境配置,和 `engine/*.ts` 那三刀一样由宿主现取)
+  之外,**几乎每个字段只被 2–6 个方法碰**。这意味着按状态划缝是可行的,不用先重写谁。
+
+按字段→方法的实际耦合,五簇:
+
+| 簇 | 字段 | 主要方法 |
+|---|---|---|
+| 连接与会话 | `connectionsMap` `factory` `accountRoute` `sessionHook` `upstreamOkFlag` `conIdCache` `hoursCache` | connect / disconnectAll / sessions / connectedNames / forAccount / qualify* / contractHours |
+| 指数与期货推算 | `spotInfos` `basisCache` `futuresBackoff` `lastFuturesError` | indexPrice / futuresPrice / futuresSpot / loadBasis / saveBasis / spotInfo |
+| 行情订阅(流) | `streams` `optionStreams` `futStreams` `volumeStreams` `volumeRetry` `stockStreams` | streamPrice / streamQuotes / volumeQuotes / ensureOptionStreams / cancelStreams |
+| 下单与托管 | `hostedTrades` | place / placeHosted / modifyHosted / cancelHosted / listHostedOpen |
+| 持仓与回报 | `unmappedAccounts` | positionRow / fillPositionPrices |
+
+**建议第一刀切「指数与期货推算」那一簇**,理由:
+
+1. 4 个字段、5–6 个方法,是五簇里最自成一体的一块(`futuresSpot` 54 行 + `futuresPrice` 49 行 + `indexPrice`)。
+2. 它的口径本来就独立、而且已经有真机证据:夜盘 SPX 按 ES 减基差推算、基差取同一分钟、推算失败退回昨收
+   并在 `source` 里标 `index_stale`——2026-09-21 的探针把这条路走过了。
+3. 唯一的跨簇牵连是 `cancelStreams` 会碰 `futStreams` / `futuresBackoff`:照 `HostedOrders.clear()` 的办法,
+   给搬出去的那个类留一个 `clearStreams()` 入口就行,不用把流管理也一起动。
+
+办法照旧:宿主接口只放它真用得着的那几样(`settings` / `router` 的会话 / `store`),函数体逐字搬,
+边界用大括号匹配自动找,搬完逐行对账;`broker.ts` 在钱路径上,改完跑
+`golden-brokerpure` / `futures-spot` / `volume-stream` 那几套 + 全量,再用探针在真机上复核一次夜盘推算。
