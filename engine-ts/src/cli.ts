@@ -6,6 +6,7 @@
  *   node dist/cli.js parse "买入 AAPL 100股 limit 230"   # 调 LLM,不下单
  *   node dist/cli.js run "..." --i-understand-this-places-real-orders
  *   node dist/cli.js records / halt / resume / export / set-key / rpc
+ *   node dist/cli.js import-fills fills.csv --account 别名 [--dry-run]   # 补历史成交(只收股票)
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -13,6 +14,7 @@ import * as path from "node:path";
 import { BrokerRouter } from "./broker.js";
 import { Settings, loadSettings, nowEt } from "./config.js";
 import { TradingEngine } from "./engine.js";
+import { parseFillsCsv } from "./fillsCsv.js";
 import { FutuRouter } from "./futuBroker.js";
 import { setSecret } from "./keychain.js";
 import { KillSwitch } from "./killswitch.js";
@@ -97,19 +99,49 @@ export async function main(argv: string[]): Promise<number> {
       console.log(`已导出到 ${args[0]}`);
       return 0;
     }
+    case "import-fills":
+      return importFills(settings, args[0] ?? "", flagValue(args, "--account") ?? "", args.includes("--dry-run"));
     case "set-key":
       setSecret(settings.llm.keychain_service, settings.llm.keychain_account, args[0]!);
       console.log(`已写入 Keychain(service=${settings.llm.keychain_service})`);
       return 0;
     default:
       console.error(
-        "用法:cli <selftest|rpc|validate|parse|run|records|idea|ideas|halt|resume|export|set-key> [--config path]",
+        "用法:cli <selftest|rpc|validate|parse|run|records|idea|ideas|halt|resume|export|import-fills|set-key> [--config path]",
       );
       return 1;
   }
 }
 
 // ----------------------------------------------------------------------
+/**
+ * 把 IBKR 账户成交导出(fills.csv)补进 broker_fills:TWS 只给当天的成交,攒之前的历史靠这个。只收股票(见 fillsCsv.ts)。
+ * 导出里没有账户号,--account 按配置里的别名指明它是哪个账户;账户号不打印。已有的 exec_id 不动(只增不改)。
+ */
+function importFills(settings: Settings, csvPath: string, alias: string, dryRun: boolean): number {
+  const account = settings.accounts.find((a) => a.alias === alias);
+  if (!csvPath || account === undefined) {
+    const known = settings.accounts.map((a) => a.alias).join("、") || "(配置里没有账户)";
+    console.error(`用法:cli import-fills fills.csv --account <别名> [--dry-run];可选的别名:${known}`);
+    return 1;
+  }
+  const parsed = parseFillsCsv(fs.readFileSync(csvPath, "utf-8"), account.account_id);
+  const store = new TradeStore(settings.db_path);
+  const known = new Set(store.listFills(1_000_000).map((f) => String(f["exec_id"] ?? "")));
+  const fresh = parsed.fills.filter((f) => !known.has(f.exec_id));
+  console.log(`账户:${alias}${account.is_paper ? "(模拟)" : ""}`);
+  console.log(`股票成交 ${parsed.fills.length} 笔(${parsed.first ?? "-"} → ${parsed.last ?? "-"}),库里已有 ${parsed.fills.length - fresh.length} 笔,新增 ${fresh.length} 笔`);
+  for (const [reason, count] of Object.entries(parsed.skipped)) console.log(`  未收 ${count} 行:${reason}`);
+  if (dryRun) {
+    console.log("--dry-run:没有写库。");
+    return 0;
+  }
+  const added = store.rememberFills(parsed.fills);
+  store.audit("cli", "fills_import", { file: path.basename(csvPath), account: alias, added, skipped: parsed.skipped });
+  console.log(`已写入 ${added} 笔。`);
+  return 0;
+}
+
 function selftest(settings: Settings): number {
   const bundle = loadPromptBundle(settings);
   const moment = nowEt();

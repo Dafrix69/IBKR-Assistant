@@ -51,44 +51,9 @@ export class ReviewHandlers extends HandlerBase {
     return [ibt.groupButterflies(this.engine.store.listFills(), accounts), synced];
   }
 
-  static readonly REVIEW_HOLDINGS_TTL_S = 15.0; // 当前持仓多久重新向券商要一次(只为反推期初仓位)
-  private reviewHoldingsAt = -Infinity;
-  private reviewHoldings: Record<string, number> | null = null;
-
-  /**
-   * 股票成交 → 一笔笔交易(从空仓到空仓)。期初仓位靠当前持仓反推:库里的成交是一天天攒的,
-   * 最早那笔卖出多半卖的是更早买的货,不核对持仓就会把它认成做空。读不到持仓(没连、券商报错)就传 null,
-   * stockreview 那头会把每一笔标成 opening_assumed,先卖的部分按卖出老仓位算(不读成卖空),界面上标"期初持仓未核对"。
-   */
+  /** 股票成交 → 一笔笔交易(从空仓到空仓)。期初仓位的反推与持仓缓存在 services/stockTrips(想法总结也用)。 */
   private async reviewStockTrips(): Promise<Rec[]> {
-    const sr = await import("../../stockreview.js");
-    const accounts = this.settings.accounts.map((a) => ({ alias: a.alias, account_id: a.account_id, is_paper: a.is_paper }));
-    const router: any = this.router;
-    if (router !== null && typeof router.positions === "function" && router.sessions().length) {
-      const now = performance.now() / 1000;
-      if (now - this.reviewHoldingsAt >= ReviewHandlers.REVIEW_HOLDINGS_TTL_S) {
-        try {
-          const idOf = new Map(accounts.map((a) => [a.alias, a.account_id]));
-          const holdings: Record<string, number> = {};
-          for (const row of await router.positions()) {
-            if (String(row["sec_type"] ?? "") !== "STK") continue;
-            const accountId = idOf.get(String(row["account"] ?? ""));
-            if (accountId === undefined) continue;
-            const key = sr.holdingKey(accountId, row["symbol"]);
-            holdings[key] = (holdings[key] ?? 0) + (Number(row["quantity"]) || 0);
-          }
-          this.reviewHoldings = holdings;
-        } catch (exc) {
-          if (!(exc instanceof BrokerError)) throw exc;
-          this.reviewHoldings = null; // 读不到 ≠ 空仓:宁可标"期初未核对",也不拿空表去反推
-        }
-        this.reviewHoldingsAt = now;
-      }
-    } else {
-      this.reviewHoldings = null;
-      this.reviewHoldingsAt = -Infinity;
-    }
-    return sr.groupStockTrips(this.engine.store.listFills(), accounts, this.reviewHoldings);
+    return this.ctx.stockTrips.trips();
   }
 
   private static stockCandidate(trip: Rec): StockCandidate {

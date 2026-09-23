@@ -13,6 +13,7 @@ import { gatewayName, needConnection } from "../services/host.js";
 import type { Rec, Router, ServiceHost } from "../services/host.js";
 import type { MarketDataService } from "../services/marketData.js";
 import type { PoolService } from "../services/pool.js";
+import type { StockTripsService } from "../services/stockTrips.js";
 import { redactAccount } from "../store.js";
 
 export type { Rec } from "../services/host.js";
@@ -42,6 +43,7 @@ export interface RpcContext extends ServiceHost {
   readonly alerts: AlertsService;
   readonly anomaly: AnomalyService;
   readonly pool: PoolService;
+  readonly stockTrips: StockTripsService;
 }
 
 /** handler 的基类:把上下文里最常用的几样摊成 this.settings / this.router / this.engine,
