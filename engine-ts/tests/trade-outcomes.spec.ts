@@ -230,6 +230,7 @@ describe("ideas.digest(trades):RPC", () => {
     const row = (await call("ideas.digest", { scope: "all", trades: true }))["result"]["digest"];
     const { system, user } = parser.calls.at(-1)!;
     expect(system).toContain("交易结果是事实");
+    expect(system).toContain("actions 最多 6 条"); // 交易一多模型会超上限,整份被复验拒掉
     expect(system).not.toContain("不要编造'赚了/亏了'");
     expect(user.startsWith("共 1 条想法,按时间从早到晚:")).toBe(true);
     expect(user).toContain("交易结果(软件从券商逐笔成交算出,是事实;共 8 笔:赚 2、亏 2、持平 0、未了结 2、结果不明 2)");
