@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { Button, Card, Input, Segmented, Space } from 'antd';
+import { Button, Card, Checkbox, Input, Segmented, Space } from 'antd';
 import { dafri, errorMessage } from '../bridge';
-import type { Idea, IdeaAnalysis, IdeaBriefMetric, IdeaDigest, IdeaDigestRow, IdeaMatch } from '../bridge';
+import type {
+  Idea, IdeaAnalysis, IdeaBriefMetric, IdeaDigest, IdeaDigestRow, IdeaMatch, IdeaTradeFact, IdeaTradeResult,
+} from '../bridge';
 import { fmtTime, fmtTimeShort } from '../lib/format';
 import { showBanner } from '../store/banner';
 import { navigate } from '../store/nav';
@@ -14,6 +16,13 @@ import { EmptyState, Meta, PageHead, Primer, StatusCard } from '../ui/kit';
 
 const IDEA_STATUS_LABEL: Record<string, string> = { active: '进行中', done: '已完成', archived: '已归档' };
 const MATCH_LABEL: Record<IdeaMatch, string> = { symbol: '标的命中', text: '原文命中', recent: '近期' };
+const RESULT_LABEL: Record<IdeaTradeResult, string> = { win: '赚', loss: '亏', flat: '持平', open: '未了结', unknown: '结果不明' };
+
+/** 总结时对照的一笔交易(引擎算好的事实,这里只排版) */
+function tradeText(t: IdeaTradeFact): string {
+  const pct = t.return_pct === null ? '' : ` ${t.return_pct > 0 ? '+' : ''}${t.return_pct}%`;
+  return `${t.opened_at.slice(0, 10)} ${t.label}${t.paper ? '(模拟)' : ''}:${RESULT_LABEL[t.result]}${pct}${t.note ? `(${t.note})` : ''}`;
+}
 
 const BRIEF_LABELS: [IdeaBriefMetric, string, string][] = [
   ['last', '现价', ''],
@@ -48,6 +57,8 @@ export function IdeasPage() {
   const [digests, setDigests] = useState<IdeaDigestRow[]>([]);
   const [text, setText] = useState('');
   const [digesting, setDigesting] = useState(false);
+  // 总结时附带真实成交算出的结局(成 / 败 / 收益率由引擎算,模型只解读)
+  const [withTrades, setWithTrades] = useState(true);
   // 检索:回车才生效(每分钟那一轮刷新也按它取),清空即回到列表
   const [query, setQuery] = useState('');
   const [matched, setMatched] = useState<Record<string, IdeaMatch[]>>({});
@@ -113,7 +124,7 @@ export function IdeasPage() {
     setDigesting(true);
     try {
       // 已归档 + 已完成一起看,规律才完整;有检索词时改成「命中的按时间分层抽 + 最近的一批」
-      await dafri.digestIdeas('all', query ? { q: query } : undefined);
+      await dafri.digestIdeas('all', query ? { q: query } : undefined, withTrades);
       await loadDigests();
     } catch (err) {
       showBanner(`知识总结失败:${errorMessage(err)}`, false);
@@ -163,6 +174,9 @@ export function IdeasPage() {
           placeholder="检索想法:蝴蝶 结算 / RKLB(回车)"
           onSearch={(v) => setQuery(v.trim())}
         />
+        <Checkbox checked={withTrades} onChange={(e) => setWithTrades(e.target.checked)}>
+          附带交易结果
+        </Checkbox>
         <Button size="small" loading={digesting} onClick={() => void digest()}>
           {digesting ? '总结中…' : query ? '按检索总结' : '总结知识'}
         </Button>
@@ -174,9 +188,11 @@ export function IdeasPage() {
           <BulletList title="经验教训:" items={d.lessons} />
           <BulletList title="想法质量的规律:" items={d.patterns} />
           <BulletList title="下一步:" items={d.actions} />
+          <BulletList title="对照的交易(引擎从真实成交算出):" items={latest.trades?.map(tradeText)} />
           <Meta
             items={[
               `基于 ${latest.idea_count} 条想法`,
+              latest.trades ? `附带 ${latest.trades.length} 笔交易结果` : null,
               latest.focus ? `检索:${[latest.focus.q, ...(latest.focus.symbols || [])].filter(Boolean).join(' ')}` : null,
               d.model ? `模型 ${d.model}` : null,
               <span title={fmtTime(latest.created_at)}>{`总结于 ${fmtTimeShort(latest.created_at)}`}</span>,

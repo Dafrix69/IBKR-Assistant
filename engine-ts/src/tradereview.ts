@@ -197,6 +197,28 @@ export function findExit(profile: Rec, entryTime: number, others: Rec[], exclude
   return best;
 }
 
+/** 开仓 ↔ 平仓配对:同一张蝴蝶的反向成交。返回 {id: {role, peer}}。交易分析页与想法总结共用这一份。 */
+export function pairButterflies(trades: Rec[]): Record<string, Rec> {
+  const pairs: Record<string, Rec> = {};
+  for (const record of trades) {
+    if (record["id"] in pairs) continue;
+    const profile = butterflyProfile(record);
+    if (profile === null) continue;
+    let entry: { time: number; estimated: boolean };
+    try {
+      entry = entryOf(record);
+    } catch (exc) {
+      if (exc instanceof ReviewError) continue;
+      throw exc;
+    }
+    const exitRec = findExit(profile, entry.time, trades, record["id"]);
+    if (exitRec === null || exitRec["record_id"] in pairs) continue;
+    pairs[record["id"]] = { role: "entry", peer: exitRec["record_id"] };
+    pairs[exitRec["record_id"]] = { role: "exit", peer: record["id"] };
+  }
+  return pairs;
+}
+
 export function expiryClose(profile: Rec): number {
   const [y, m, d] = String(profile["expiry"]).split("-").map(Number) as [number, number, number];
   return wallToEpoch({ year: y, month: m, day: d, hour: 16, minute: 0, second: 0 }, ET);

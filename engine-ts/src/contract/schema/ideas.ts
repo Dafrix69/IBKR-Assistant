@@ -39,6 +39,7 @@ const focus = z.object({
 export const IdeasDigestParamsSchema: ParamsSchema<IdeasDigestParams> = z.object({
   scope: optional(z.string()),
   focus: optional(focus),
+  trades: optional(z.boolean()),
 });
 
 export const IdeasSearchParamsSchema: ParamsSchema<IdeasSearchParams> = z.object({

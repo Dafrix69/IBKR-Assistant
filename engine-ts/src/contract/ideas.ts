@@ -104,6 +104,41 @@ export interface IdeaHit {
   matched_by: IdeaMatch[];
 }
 
+/** 一笔交易为什么算成 / 败:平仓 = 反向成交;到期 = 按到期日标的收盘结算;持仓中 = 还没有结局。 */
+export type IdeaTradeHow = "closed" | "expired" | "open";
+
+/** 结局。unknown = 算不出来(成本在记录之前、取不到结算价……),原因在 note,**不猜**。 */
+export type IdeaTradeResult = "win" | "loss" | "flat" | "open" | "unknown";
+
+/**
+ * 一笔真实成交过的交易的结果,由代码从库里累积的券商成交算出(`tradeOutcomes.ts`),和想法一起喂给知识总结。
+ * **只有单价与比例**:不带数量、金额、账户——模型拿到的是"这笔成没成、幅度多大",不是账户有多大。
+ */
+export interface IdeaTradeFact {
+  /** 交易分析页的同一个 id(`ib:<permId>` / `stk:…`) */
+  id: string;
+  kind: "butterfly" | "stock";
+  symbol: string;
+  /** 开仓时刻(ISO) */
+  opened_at: string;
+  /** 平仓 / 到期时刻(ISO);持仓中、或时刻不明时为 null */
+  closed_at: string | null;
+  /** 结构与方向,如「SPX 7625/7650/7675 看跌蝴蝶 买入」「RKLB 做多」 */
+  label: string;
+  /** 蝴蝶:每张权利金;股票:进场均价。成本未知时为 null */
+  entry_price: number | null;
+  /** 蝴蝶:平仓价或到期结算价值;股票:出场均价 */
+  exit_price: number | null;
+  how: IdeaTradeHow;
+  result: IdeaTradeResult;
+  /** 收益率(%),对成本算;算不出来为 null */
+  return_pct: number | null;
+  /** 模拟账户的成交 */
+  paper: boolean;
+  /** 结局算不出来的原因,或需要带着看的说明;没有就是空串 */
+  note: string;
+}
+
 /** idea_digests 表的一行:总结保留历史,复盘时能看到认知怎么变的。 */
 export interface IdeaDigestRow {
   id: string;
@@ -120,6 +155,11 @@ export interface IdeaDigestRow {
    * 所以同一个问题下两种取数的结果能并排比(idea-retrieval.md 的「切换前先留基准」)。
    */
   focus?: IdeaFocus;
+  /**
+   * 这次总结附带的交易结果(喂给模型的就是这些)。**只有勾了「附带交易结果」的总结才有这个键**,
+   * 老的行、不带交易的行一字不变。
+   */
+  trades?: IdeaTradeFact[];
 }
 
 // ---------------------------------------------------------------- 入参
@@ -153,6 +193,11 @@ export interface IdeasDigestParams {
    * 不给就是原来的全塞(最近 100 条)——默认口径不变。
    */
   focus?: IdeaFocus;
+  /**
+   * true:把库里累积的真实成交按笔算出结局(成 / 败 / 收益率,代码算),当事实和想法一起喂给模型,换一段允许谈结果的
+   * 系统提示词。焦点带标的时只附这些标的的交易。不给 / false = 原来的口径,提示词一字不变。
+   */
+  trades?: boolean;
 }
 
 export interface IdeasSearchParams {

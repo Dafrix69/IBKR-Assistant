@@ -14,7 +14,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 import type { Watch } from "./contract/alerts.js";
-import type { Idea, IdeaAnalysis, IdeaDigest, IdeaDigestRow, IdeaFocus } from "./contract/ideas.js";
+import type { Idea, IdeaAnalysis, IdeaDigest, IdeaDigestRow, IdeaFocus, IdeaTradeFact } from "./contract/ideas.js";
 import type { AnomalyEvent, QualityStockRow } from "./contract/quality.js";
 import type { Sector, SectorStock } from "./contract/sectors.js";
 import type { Track } from "./contract/tracker.js";
@@ -88,7 +88,8 @@ CREATE TABLE IF NOT EXISTS idea_digests (
     idea_count INTEGER NOT NULL DEFAULT 0,
     idea_ids   TEXT NOT NULL DEFAULT '[]',
     digest     TEXT NOT NULL DEFAULT '{}',
-    focus      TEXT NOT NULL DEFAULT ''
+    focus      TEXT NOT NULL DEFAULT '',
+    trades     TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_idea_digests_created ON idea_digests(created_at);
 
@@ -271,6 +272,9 @@ export class TradeStore {
     );
     if (dcols.size && !dcols.has("focus")) {
       this.db.exec("ALTER TABLE idea_digests ADD COLUMN focus TEXT NOT NULL DEFAULT ''");
+    }
+    if (dcols.size && !dcols.has("trades")) {
+      this.db.exec("ALTER TABLE idea_digests ADD COLUMN trades TEXT NOT NULL DEFAULT ''");
     }
     this.ideasFts = this.ensureIdeasFts();
 
@@ -882,6 +886,7 @@ export class TradeStore {
   // ---- 想法知识总结 ----------------------------------------------------
   addIdeaDigest(
     scope: string, ideaIds: string[], digest: IdeaDigest, focus: IdeaFocus | null = null,
+    trades: IdeaTradeFact[] | null = null,
   ): IdeaDigestRow {
     const row: IdeaDigestRow = {
       id: crypto.randomUUID(),
@@ -892,14 +897,16 @@ export class TradeStore {
       digest: { ...digest },
     };
     if (focus !== null) row.focus = { ...focus }; // 只有检索出来的总结才有这个键,老口径的行一字不变
+    if (trades !== null) row.trades = trades.map((t) => ({ ...t })); // 同上:只有附带交易结果的总结才有
     this.db
       .prepare(
-        "INSERT INTO idea_digests (id, created_at, scope, idea_count, idea_ids, digest, focus)" +
-        " VALUES (?,?,?,?,?,?,?)",
+        "INSERT INTO idea_digests (id, created_at, scope, idea_count, idea_ids, digest, focus, trades)" +
+        " VALUES (?,?,?,?,?,?,?,?)",
       )
       .run(
         row.id, row.created_at, row.scope, row.idea_count,
         JSON.stringify(row.idea_ids), JSON.stringify(row.digest), focus !== null ? JSON.stringify(focus) : "",
+        trades !== null ? JSON.stringify(trades) : "",
       );
     return row;
   }
@@ -909,7 +916,7 @@ export class TradeStore {
       .prepare("SELECT * FROM idea_digests ORDER BY created_at DESC LIMIT ?")
       .all(limit) as Rec[];
     return rows.map((raw) => {
-      const { focus: rawFocus, ...digest } = raw;
+      const { focus: rawFocus, trades: rawTrades, ...digest } = raw;
       for (const [key, empty] of [["idea_ids", []], ["digest", {}]] as const) {
         try {
           digest[key] = JSON.parse((digest[key] as string) || "null") ?? empty;
@@ -923,6 +930,12 @@ export class TradeStore {
         if (focus !== null && typeof focus === "object") digest["focus"] = focus;
       } catch {
         // 读不出来当没有
+      }
+      try {
+        const trades: unknown = rawTrades ? JSON.parse(String(rawTrades)) : null;
+        if (Array.isArray(trades)) digest["trades"] = trades;
+      } catch {
+        // 同上
       }
       return digest as IdeaDigestRow; // 库的边界,同 watchRow
     });

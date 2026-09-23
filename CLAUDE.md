@@ -27,7 +27,7 @@ transport     rpc.ts(转出的壳)  rpc/server.ts  rpc/context.ts  rpc/contractM
 orchestrate   engine.ts  engine/*.ts(hosted 托管单、reconcile 执行对账、callbacks 回报落库、clock)  tracker.ts  services/*.ts
 execution     broker.ts  ibContracts.ts(怎么拼一张 IB 合约)  futuBroker.ts  ibSession.ts  ibTypes.ts  tws.ts  futu.ts  futuBridge.ts
 parsing       validator.ts  providers.ts  prompts.ts  shorthand.ts  llm.ts
-analysis      backtest priceaction screener research ideaRetrieval optionwall anomaly flyexit tradereview ibtrades macro market alerts
+analysis      backtest priceaction screener research ideaRetrieval optionwall anomaly flyexit tradereview tradeOutcomes ibtrades macro market alerts
 domain        config.ts  models.ts  store.ts  positions.ts  marketdata.ts
 util          py.ts  pyjson.ts  tz.ts  notify.ts  keychain.ts  killswitch.ts  protections.ts  rpcError.ts
 contract      contract/*.ts(纯类型,零 import,谁都能引)  contract/schema/*.ts(入参的 zod 校验,只给 rpc/ 用)
