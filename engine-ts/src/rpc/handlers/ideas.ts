@@ -14,6 +14,7 @@ import { extractSymbols } from "../../market.js";
 import { IdeaAnalysisSchema, IdeaDigestSchema } from "../../models.js";
 import { loadSchemaAsset } from "../../providers.js";
 import { RpcError } from "../../rpcError.js";
+import type { LlmJson } from "../../services/ideaSemantic.js";
 import { factLine, tallyLine } from "../../tradeOutcomes.js";
 import { pad2, wallParts } from "../../tz.js";
 import { HandlerBase } from "../context.js";
@@ -69,8 +70,8 @@ export class IdeasHandlers extends HandlerBase {
     return { id: ideaId, status };
   }
 
-  /** 按关键词 / 标的 / 时间窗 / 状态找想法,新的在前。纯本地:不碰券商;给了关键词时再用本机嵌入补上意思相近的
-   *  (先按状态、时间窗过滤,再在这批里按语义排,见 services/ideaSemantic;嵌入不可用就是纯关键词)。
+  /** 按关键词 / 标的 / 时间窗 / 状态找想法,新的在前。不碰券商;给了关键词时再补上意思相近的——默认让配置的大模型挑
+   *  (先按状态、时间窗过滤,再在这批里挑,见 services/ideaSemantic;不可用就是纯关键词)。
    *  关键词与标的都没给时就是一个带时间窗的列表(matched_by 为空)。 */
   async ideasSearch(params: IdeasSearchParams): Promise<RpcResult<"ideas.search">> {
     const status = params["status"] || null;
@@ -94,7 +95,7 @@ export class IdeasHandlers extends HandlerBase {
     const q = String(params["q"] ?? "").trim();
     if (q) {
       const pool = store.searchIdeas({ ...filter, limit: 5000 }).map((c) => c.idea);
-      const semantic = await this.ctx.ideaSemantic.rank(q, pool);
+      const semantic = await this.ctx.ideaSemantic.rank(q, pool, this.llmJson());
       if (semantic !== null && semantic.size) candidates = mergeSemantic(candidates, pool, semantic, limit);
     }
     return { hits: candidates.map((c) => ({ idea: c.idea, matched_by: matchTags(c) })) };
@@ -339,10 +340,15 @@ export class IdeasHandlers extends HandlerBase {
     // 关键词之外再补意思相近的(本机嵌入;不可用就是纯关键词)
     if (focus.q) {
       const pool = store.searchIdeas({ statuses, limit: 5000 }).map((c) => c.idea);
-      const semantic = await this.ctx.ideaSemantic.rank(focus.q, pool);
+      const semantic = await this.ctx.ideaSemantic.rank(focus.q, pool, this.llmJson());
       if (semantic !== null && semantic.size) matches = mergeSemantic(matches, pool, semantic, 5000);
     }
     return pickForDigest(matches, recentPool).map((p) => p.idea).reverse();
+  }
+
+  /** 语义挑选用的「调一次大模型要 JSON」:配置里的那个模型(同知识总结) */
+  private llmJson(): LlmJson {
+    return (system, user, schema) => this.parserFactory(this.settings.llm).completeJson(system, user, schema);
   }
 
   ideasDigests(params: IdeasDigestsParams): RpcResult<"ideas.digests"> {
