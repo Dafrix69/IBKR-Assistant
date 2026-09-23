@@ -42,7 +42,11 @@ export function isLoopbackUrl(raw: string): boolean {
 }
 
 export class OllamaEmbedder implements Embedder {
-  constructor(private readonly baseUrl: string, readonly model: string) {
+  /**
+   * `keepAlive`:Ollama 的 keep_alive——用完留在显存里多久。-1 = 一直留着(用户要常驻:空闲 5 分钟被卸载、
+   * 再用冷启动约 3 秒不划算,显存本来就是给它的);"5m" 这类是 Ollama 自己的默认。可用 DAFRI_EMBED_KEEP_ALIVE 改。
+   */
+  constructor(private readonly baseUrl: string, readonly model: string, private readonly keepAlive: string | number = -1) {
     if (!isLoopbackUrl(baseUrl)) throw new EmbedError(`嵌入服务只许本机地址,收到:${baseUrl}`);
   }
 
@@ -53,7 +57,7 @@ export class OllamaEmbedder implements Embedder {
       res = await fetch(`${this.baseUrl.replace(/\/+$/, "")}/api/embed`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ model: this.model, input: texts }),
+        body: JSON.stringify({ model: this.model, input: texts, keep_alive: this.keepAlive }),
         signal: AbortSignal.timeout(timeoutMs),
       });
     } catch (exc) {
