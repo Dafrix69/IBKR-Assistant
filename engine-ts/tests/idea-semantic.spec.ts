@@ -5,7 +5,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { EmbedError, OllamaEmbedder, QUERY_INSTRUCTION, cosine, isLoopbackUrl } from "../src/embeddings.js";
 import type { Embedder } from "../src/embeddings.js";
@@ -84,6 +84,33 @@ describe("embeddings", () => {
     expect(["http://192.168.1.5:11434", "https://api.example.com", "file:///x", "garbage"].map(isLoopbackUrl))
       .toEqual([false, false, false, false]);
     expect(() => new OllamaEmbedder("http://10.0.0.2:11434", "m")).toThrow(EmbedError);
+  });
+
+  it("请求带 keep_alive:默认 -1(常驻显存),可以换", async () => {
+    const bodies: Rec[] = [];
+    const spy = vi.spyOn(globalThis, "fetch").mockImplementation(async (_url, init) => {
+      bodies.push(JSON.parse(String((init as RequestInit).body)));
+      return new Response(JSON.stringify({ embeddings: [[1, 0]] }), { status: 200 });
+    });
+    try {
+      await new OllamaEmbedder("http://127.0.0.1:11434", "m").embed(["x"]);
+      await new OllamaEmbedder("http://127.0.0.1:11434", "m", "5m").embed(["x"]);
+    } finally {
+      spy.mockRestore();
+    }
+    expect(bodies).toEqual([
+      { model: "m", input: ["x"], keep_alive: -1 },
+      { model: "m", input: ["x"], keep_alive: "5m" },
+    ]);
+  });
+
+  it("预热:没开嵌入时什么都不做;嵌入出错也不抛", async () => {
+    const { s } = makeServer();
+    await expect(s.ideaSemantic.warm()).resolves.toBeUndefined();
+    const fake = new FakeEmbedder();
+    fake.failing = true;
+    s.ideaSemantic.embedder = fake;
+    await expect(s.ideaSemantic.warm()).resolves.toBeUndefined();
   });
 
   it("余弦", () => {

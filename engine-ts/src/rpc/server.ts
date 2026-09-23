@@ -215,6 +215,8 @@ export class RpcServer implements RpcContext {
     const warmSpot = (): void => { publicIndexPrice("SPX").catch(() => null); };
     warmSpot();
     setInterval(warmSpot, 4 * 60 * 1000).unref();
+    // 本机嵌入模型启动就载进显存并常驻(keep_alive -1):想法检索的第一次不必等冷启动。失败就算了
+    void this.ideaSemantic.warm();
     const rl = readline.createInterface({ input, crlfDelay: Infinity });
     const BAD: Rec = { __bad_json__: true };
     const normal: Rec[] = [];

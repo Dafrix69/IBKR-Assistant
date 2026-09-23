@@ -32,7 +32,9 @@
 
 - **本机 Ollama,只许本机地址。** `embeddings.ts` 调 `POST /api/embed`,不加 npm 依赖、不引向量库;地址不是 127.0.0.1 / localhost / ::1
   就当场拒(想法原文可能有仓位金额,嵌入是一次外发——拦在地址上,不靠洗文本)。模型默认 `qwen3-embedding:8b-q8_0`(4096 维,
-  下载约 8 GB,载入后占显存约 10 GB,RTX 5070 12 GB 放得下;空闲 5 分钟 Ollama 会卸载,再用冷启动约 3 秒)。查询带任务说明前缀、
+  下载约 8 GB,载入后占显存约 10 GB,RTX 5070 12 GB 放得下)。**常驻显存**(用户要的):请求带 `keep_alive: -1`,
+  引擎启动就在后台预热(冷启动约 3 秒,之后每次查询 30–60 毫秒);代价是应用关了它也还占着,要腾显存就 `ollama stop qwen3-embedding:8b-q8_0`,
+  或用 `DAFRI_EMBED_KEEP_ALIVE=5m` 改回 Ollama 默认的空闲卸载。查询带任务说明前缀、
   文档原样嵌入。环境变量:`DAFRI_EMBED=off` 关掉,`DAFRI_EMBED_URL` / `DAFRI_EMBED_MODEL` 换地址 / 模型。
 - **向量懒算、存库。** `idea_vectors`(`ideaVectors.ts`,`store.vectors`):一条想法 × 一个模型一行,Float32 BLOB,带原文指纹。
   第一次检索时把缺的补上(8B 给 12 条约 2 秒),之后只算查询那一句(30–60 毫秒)。换模型就按新模型重算,旧的不删。
