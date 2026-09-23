@@ -15,6 +15,8 @@
 净权利金优先取 BAG 行的成交价(券商撮合的净价);逐腿成交没有 BAG 行时按 Σ(买腿 价×比例) − Σ(卖腿 价×比例)
 算。同一条腿分几笔成交按数量加权,时间取最早。只认 1:2:1、同到期、同方向的三腿,别的组合不猜。
 
+开仓 ↔ 平仓的配对(`tradereview.pairButterflies`)想法的知识总结也在用(附带交易结果时,见 [ideas.md](ideas.md)),改它两边一起变。
+
 引擎侧是纯函数(`tradereview.ts`,黄金对拍 `tradereview.json`),RPC 两个方法:
 `review.candidates {include_local}` 列出可复盘的蝴蝶(同时把券商成交同步进库),`review.analyze {id, timeframe}` 复盘,
 `id` 以 `ib:` 开头的是券商成交合成的记录。周期默认 `auto`:离现在越近越细

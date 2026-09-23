@@ -131,27 +131,10 @@ export class ReviewHandlers extends HandlerBase {
     };
   }
 
-  /** 开仓 ↔ 平仓配对:同一张蝴蝶的反向成交。返回 {id: {role, peer}}。 */
+  /** 开仓 ↔ 平仓配对:同一张蝴蝶的反向成交。返回 {id: {role, peer}}。算法在 tradereview(想法总结也用)。 */
   private static async reviewPairs(trades: Rec[]): Promise<Record<string, Rec>> {
     const tr = await import("../../tradereview.js");
-    const pairs: Record<string, Rec> = {};
-    for (const record of trades) {
-      if (record["id"] in pairs) continue;
-      const profile = tr.butterflyProfile(record);
-      if (profile === null) continue;
-      let entry: { time: number; estimated: boolean };
-      try {
-        entry = tr.entryOf(record);
-      } catch (exc) {
-        if (exc instanceof tr.ReviewError) continue;
-        throw exc;
-      }
-      const exitRec = tr.findExit(profile, entry.time, trades, record["id"]);
-      if (exitRec === null || exitRec["record_id"] in pairs) continue;
-      pairs[record["id"]] = { role: "entry", peer: exitRec["record_id"] };
-      pairs[exitRec["record_id"]] = { role: "exit", peer: record["id"] };
-    }
-    return pairs;
+    return tr.pairButterflies(trades);
   }
 
   /** 可复盘的蝴蝶:默认只列券商真实成交的(最新在前);include_local 时再附上本地没成交的。

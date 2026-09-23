@@ -30,8 +30,8 @@ contextBridge.exposeInMainWorld('dafri', {
   updateIdea: (id, status) =>
     ipcRenderer.invoke('rpc', { method: 'ideas.update', params: { id, status } }),
   analyzeIdea: (id) => ipcRenderer.invoke('rpc', { method: 'ideas.analyze', params: { id } }),
-  digestIdeas: (scope, focus) =>
-    ipcRenderer.invoke('rpc', { method: 'ideas.digest', params: { scope, focus } }),
+  digestIdeas: (scope, focus, trades) =>
+    ipcRenderer.invoke('rpc', { method: 'ideas.digest', params: { scope, focus, trades } }),
   listIdeaDigests: () => ipcRenderer.invoke('rpc', { method: 'ideas.digests', params: {} }),
   searchIdeas: (filter) => ipcRenderer.invoke('rpc', { method: 'ideas.search', params: { ...filter } }),
 
