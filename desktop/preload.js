@@ -34,6 +34,7 @@ contextBridge.exposeInMainWorld('dafri', {
     ipcRenderer.invoke('rpc', { method: 'ideas.digest', params: { scope, focus, trades } }),
   listIdeaDigests: () => ipcRenderer.invoke('rpc', { method: 'ideas.digests', params: {} }),
   searchIdeas: (filter) => ipcRenderer.invoke('rpc', { method: 'ideas.search', params: { ...filter } }),
+  similarTrades: (ticket) => ipcRenderer.invoke('rpc', { method: 'ideas.similar_trades', params: { ...ticket } }),
 
   // ---- 自定义板块 + AI 选股(展示用数据,不进下单链路)--------------------
   listSectors: () => ipcRenderer.invoke('rpc', { method: 'sectors.list', params: {} }),

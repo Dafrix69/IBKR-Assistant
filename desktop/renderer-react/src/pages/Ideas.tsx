@@ -2,8 +2,9 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Button, Card, Checkbox, Input, Segmented, Space } from 'antd';
 import { dafri, errorMessage } from '../bridge';
 import type {
-  Idea, IdeaAnalysis, IdeaBriefMetric, IdeaDigest, IdeaDigestRow, IdeaMatch, IdeaTradeFact, IdeaTradeResult,
+  Idea, IdeaAnalysis, IdeaBriefMetric, IdeaDigest, IdeaDigestRow, IdeaMatch,
 } from '../bridge';
+import { tradeText } from '../lib/tradeFacts';
 import { fmtTime, fmtTimeShort } from '../lib/format';
 import { showBanner } from '../store/banner';
 import { navigate } from '../store/nav';
@@ -16,15 +17,6 @@ import { EmptyState, Meta, PageHead, Primer, StatusCard } from '../ui/kit';
 
 const IDEA_STATUS_LABEL: Record<string, string> = { active: '进行中', done: '已完成', archived: '已归档' };
 const MATCH_LABEL: Record<IdeaMatch, string> = { symbol: '标的命中', text: '原文命中', recent: '近期' };
-const RESULT_LABEL: Record<IdeaTradeResult, string> = { win: '赚', loss: '亏', flat: '持平', open: '未了结', unknown: '结果不明' };
-
-/** 总结时对照的一笔交易(引擎算好的事实,这里只排版) */
-function tradeText(t: IdeaTradeFact): string {
-  const pct = t.return_pct === null ? '' : ` ${t.return_pct > 0 ? '+' : ''}${t.return_pct}%`;
-  const pts = t.pnl_points === null || t.pnl_points === undefined ? '' : ` ${t.pnl_points > 0 ? '+' : ''}${t.pnl_points} 点/份`;
-  return `${t.opened_at.slice(0, 10)} ${t.label}${t.paper ? '(模拟)' : ''}:${RESULT_LABEL[t.result]}${pct}${pts}${t.note ? `(${t.note})` : ''}`;
-}
-
 const BRIEF_LABELS: [IdeaBriefMetric, string, string][] = [
   ['last', '现价', ''],
   ['chg_1d_pct', '1日', '%'],

@@ -5,6 +5,7 @@ import type { TextAreaRef } from 'antd/es/input/TextArea';
 import { fmtMoney } from '../lib/format';
 import { REJECT_CODE_LABEL, REJECT_SOURCE_LABEL, say } from '../lib/labels';
 import { isTicket, OrderTicket } from '../lib/OrderTicket';
+import { SimilarTrades } from '../lib/SimilarTrades';
 import { useLlmCatalog } from '../store/llm';
 import { navigate } from '../store/nav';
 import { brokerShortName, gatewayName, pickableAccounts, useStatus } from '../store/status';
@@ -289,6 +290,8 @@ function ResultCards({ payload }: { payload: SubmitPayload }) {
           {/* 老引擎的摘要里没有 ticket:那就只剩标题那一句话,和从前一样 */}
           {isTicket(item.ticket) ? <OrderTicket ticket={item.ticket} /> : null}
           <Meta items={meta} />
+          {/* 历史里相似的交易:只读展示,不拦单 */}
+          {isTicket(item.ticket) ? <SimilarTrades ticket={item.ticket} /> : null}
         </StatusCard>,
       );
     });

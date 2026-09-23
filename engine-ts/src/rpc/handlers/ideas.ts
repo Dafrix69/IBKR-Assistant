@@ -4,7 +4,8 @@ import { ET, nowEt } from "../../config.js";
 import type { EtNow } from "../../config.js";
 import type {
   Idea, IdeaAnalysis, IdeaBrief, IdeaDigest, IdeaFocus, IdeaTradeFact, IdeasAddParams, IdeasAnalyzeParams,
-  IdeasDigestParams, IdeasDigestsParams, IdeasListParams, IdeasSearchParams, IdeasUpdateParams, RpcResult,
+  IdeasDigestParams, IdeasDigestsParams, IdeasListParams, IdeasSearchParams, IdeasSimilarTradesParams, IdeasUpdateParams,
+  RpcResult,
 } from "../../contract/index.js";
 import {
   DIGEST_PICK, dayBound, matchTags, normalizeFocus, parseSymbols, pickForDigest, splitTerms,
@@ -29,6 +30,7 @@ export class IdeasHandlers extends HandlerBase {
       "ideas.digest": (p) => this.ideasDigest(p),
       "ideas.digests": (p) => this.ideasDigests(p),
       "ideas.search": (p) => this.ideasSearch(p),
+      "ideas.similar_trades": (p) => this.ideasSimilarTrades(p),
     });
   }
 
@@ -221,7 +223,7 @@ export class IdeasHandlers extends HandlerBase {
     }
     ideas = ideas.slice(0, 100); // 最近 100 条足够看出规律,再多只是烧 token
     // 附带交易结果:焦点带标的时只附这些标的的交易
-    const trades = params["trades"] === true ? await this.tradeFacts(focus?.symbols ?? []) : null;
+    const trades = params["trades"] === true ? (await this.ctx.tradeHistory.load(focus?.symbols ?? [])).facts : null;
     if (!ideas.length && !trades?.length) {
       throw new RpcError(-32602, "没有可总结的想法。先把几条想法归档或标记完成,再来总结。");
     }
@@ -267,40 +269,30 @@ export class IdeasHandlers extends HandlerBase {
   }
 
   /**
-   * 库里累积的券商成交 → 每笔交易的结局(交易分析页的同一批记录,同一套算法);再加上导入的期权出场事件。只读本地库,不向券商同步新成交;
-   * 没平仓的过期蝴蝶按到期日标的日线收盘结算——要连着券商取日线,取不到就是「结果不明」。
-   * 股票持仓段与交易分析页同一份(services/stockTrips):连着券商时按当前持仓反推期初仓位,先卖后买回认得出是做空;
-   * 没连时先卖的部分按卖出老仓位算、成本不明。
+   * 下单页「历史相似交易」:拿订单票据在历史交易里找相似的(tradeSimilar,规则打分,不调模型),按出场方式数胜负,
+   * 再带上提到这个标的的复盘想法。只读、只展示,不回流到任何下单决策。股票还会把同板块(自定义板块)的别的股票列出来,不算进胜负。
    */
-  private async tradeFacts(symbols: readonly string[]): Promise<IdeaTradeFact[]> {
-    const [{ groupButterflies }, outcomes] = await Promise.all([
-      import("../../ibtrades.js"), import("../../tradeOutcomes.js"),
-    ]);
-    const accounts = this.settings.accounts.map((a) => ({ alias: a.alias, account_id: a.account_id, is_paper: a.is_paper }));
-    const fills = this.engine.store.listFills();
-    const butterflies = groupButterflies(fills, accounts);
-    const trips = await this.ctx.stockTrips.trips(); // 连着券商时按当前持仓反推期初仓位,同交易分析页
-    const now = Date.now();
-
-    const want = new Set(symbols.map((s) => s.toUpperCase()));
-    const closes = new Map<string, number>();
-    const needed = outcomes.settlementsNeeded(butterflies, now).filter((n) => !want.size || want.has(n.symbol));
-    for (const symbol of new Set(needed.map((n) => n.symbol))) {
-      try {
-        for (const bar of await this.ctx.market.dailyHistory(symbol)) {
-          const close = Number(bar["close"]);
-          if (Number.isFinite(close)) closes.set(`${symbol}|${String(bar["date"] ?? "")}`, close);
-        }
-      } catch {
-        // 没连券商 / 取不到日线:这些到期的蝴蝶记成「结果不明」,原因写在每一笔的 note 里
+  async ideasSimilarTrades(params: IdeasSimilarTradesParams): Promise<RpcResult<"ideas.similar_trades">> {
+    const symbol = String(params["symbol"] ?? "").trim().toUpperCase();
+    if (!symbol) throw new RpcError(-32602, "缺少标的");
+    const sim = await import("../../tradeSimilar.js");
+    const store = this.engine.store;
+    const peers = new Set<string>();
+    if (String(params["sec_type"]).toUpperCase() === "STK") {
+      for (const sector of store.listSectors()) {
+        const members = (sector["stocks"] ?? []).map((st) => String(st["symbol"] ?? "").toUpperCase());
+        if (members.includes(symbol)) for (const m of members) if (m && m !== symbol) peers.add(m);
       }
     }
-    // 导入的期权(按结构整理的导出,没有行权价):同一账户同一天库里已有完整期权成交的,以完整的为准
-    const paper = new Set(this.settings.accounts.filter((a) => a.is_paper).map((a) => a.account_id));
-    const options = outcomes.optionFacts(
-      this.engine.store.listOptionTrades(), (id) => paper.has(id), outcomes.optionDaysCovered(fills),
-    );
-    return outcomes.collectFacts(butterflies, trips, (s, d) => closes.get(`${s}|${d}`) ?? null, now, symbols, options);
+    const history = await this.ctx.tradeHistory.load([symbol, ...peers]);
+    const entries = [
+      ...sim.butterflyEntries(history.butterflies, history.facts),
+      ...sim.optionEntries(history.options, history.facts),
+      ...sim.stockEntries(history.facts),
+    ];
+    const found = sim.findSimilar(params, entries, Date.now(), peers);
+    const lessons = store.searchIdeas({ statuses: ["archived", "done"], symbols: [symbol], limit: 3 }).map((c) => c.idea);
+    return { ...found, lessons };
   }
 
   /** 带焦点的取数:范围内最近的一批 + 命中焦点的按时间分层抽。返回新的在前(同老口径 listIdeas 的次序)。 */

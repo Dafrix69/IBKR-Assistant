@@ -45,6 +45,7 @@ import type {
   BacktestCurvePoint, BacktestRunResult, BacktestRunSpec, BacktestStrategy, BacktestTrade, CustomRules, CustomRulesInput,
   RuleConditionInput, RuleOperandInput,
   Idea, IdeaAnalysis, IdeaBrief, IdeaBriefMetric, IdeaDigest, IdeaDigestRow, IdeaMatch, IdeaTradeFact, IdeaTradeResult,
+  IdeasSimilarTradesParams, IdeasSimilarTradesResult, SimilarExitStat, SimilarTrade,
   AnomalyConfig, AnomalyEvent, AnomalyKind, AnomalyMetrics, LevelKind, OptionWall, PoolWatch, PoolWatchPatch, PositionRow,
   AccountView, Limits, Policies, ProtectionsConfig, QualityList, QualityMonitor, QualityStock, RpcParams, RpcResult, Sector,
   SectorStock, SettingsPatch, SettingsView, SpotTarget, StockQuote, Targets, Track, Watch, WatchEvent, WatchLevel,
@@ -69,6 +70,7 @@ export type {
   BacktestCurvePoint, BacktestRunResult, BacktestRunSpec, BacktestStrategy, BacktestTrade, CustomRules, CustomRulesInput,
   RuleConditionInput, RuleOperandInput,
   Idea, IdeaAnalysis, IdeaBrief, IdeaBriefMetric, IdeaDigest, IdeaDigestRow, IdeaMatch, IdeaTradeFact, IdeaTradeResult,
+  IdeasSimilarTradesParams, IdeasSimilarTradesResult, SimilarExitStat, SimilarTrade,
   AnomalyEvent, AnomalyKind, LevelKind, OptionWall, PoolWatch, PoolWatchPatch, PositionRow, QualityList, QualityMonitor,
   QualityStock, Sector, SectorStock, SettingsPatch, SpotTarget, StockQuote, Targets, Track, Watch, WatchEvent, WatchLevel,
   BreakerBrief, BreakerState, IndexSpot, ProtectionCooldown, SystemSelftest, SystemStatus, TrackerHeartbeat,
@@ -138,6 +140,7 @@ export interface DafriBridge {
   ): Rpc<RpcResult<'ideas.digest'>>;
   listIdeaDigests(): Rpc<RpcResult<'ideas.digests'>>;
   searchIdeas(filter: RpcParams<'ideas.search'>): Rpc<RpcResult<'ideas.search'>>;
+  similarTrades(ticket: RpcParams<'ideas.similar_trades'>): Rpc<RpcResult<'ideas.similar_trades'>>;
 
   listSectors(): Rpc<RpcResult<'sectors.list'>>;
   addSector(name: string): Rpc<RpcResult<'sectors.add'>>;

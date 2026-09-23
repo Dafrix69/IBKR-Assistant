@@ -16,7 +16,7 @@ import {
 } from "./connection.js";
 import {
   IdeasAddParamsSchema, IdeasAnalyzeParamsSchema, IdeasDigestParamsSchema, IdeasDigestsParamsSchema, IdeasListParamsSchema,
-  IdeasSearchParamsSchema, IdeasUpdateParamsSchema,
+  IdeasSearchParamsSchema, IdeasSimilarTradesParamsSchema, IdeasUpdateParamsSchema,
 } from "./ideas.js";
 import { InstructionSubmitParamsSchema } from "./instruction.js";
 import { NoParamsSchema } from "./kit.js";
@@ -88,6 +88,7 @@ export const PARAMS_SCHEMAS: { readonly [M in RpcMethodName]: ParamsSchema<RpcPa
   "ideas.digest": IdeasDigestParamsSchema,
   "ideas.digests": IdeasDigestsParamsSchema,
   "ideas.search": IdeasSearchParamsSchema,
+  "ideas.similar_trades": IdeasSimilarTradesParamsSchema,
 
   "options.wall": OptionsWallParamsSchema,
 

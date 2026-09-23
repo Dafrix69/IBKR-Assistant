@@ -142,6 +142,50 @@ export interface IdeaTradeFact {
   note: string;
 }
 
+/** 下单页「历史相似交易」的一条:历史里的一笔 + 为什么算相似。 */
+export interface SimilarTrade {
+  fact: IdeaTradeFact;
+  /** 相似度分:同标的同结构是底分,每多一项相近 +1。只用来排序,不是概率 */
+  score: number;
+  /** 哪几项相近,如「翼宽相近(25 / 20)」「同为当日到期」;导入的期权会写「只能粗配」 */
+  reasons: string[];
+  /** 出场方式:提前平仓 / 持有到期 / 拆腿 / 已平仓 / 持仓中 */
+  exit: string;
+  /** false = 只是同板块的别的股票:列出来看,不算进胜负 */
+  primary: boolean;
+}
+
+/** 按出场方式分的胜负(只数 primary 的)。 */
+export interface SimilarExitStat {
+  exit: string;
+  win: number;
+  loss: number;
+  flat: number;
+  open: number;
+  unknown: number;
+}
+
+/** 下单页「历史相似交易」:这一单被认成什么、历史里相似的有几笔、胜负、按出场方式分、最像的几笔、相关的复盘经验。 */
+export interface IdeasSimilarTradesResult {
+  /** butterfly / vertical / single / stock / other:按什么口径比的 */
+  kind: string;
+  symbol: string;
+  /** 这一单的要素,给人看的(「SPX 看跌蝴蝶 · 翼宽 25 · 当日到期 · 上午」) */
+  basis: string[];
+  /** primary 的笔数与胜负 */
+  count: number;
+  win: number;
+  loss: number;
+  flat: number;
+  open: number;
+  unknown: number;
+  exits: SimilarExitStat[];
+  /** 最像的几笔(分高的在前,同分新的在前),最多 8 笔 */
+  matches: SimilarTrade[];
+  /** 提到这个标的的已归档 / 已完成想法,新的在前,最多 3 条 */
+  lessons: Idea[];
+}
+
 /** idea_digests 表的一行:总结保留历史,复盘时能看到认知怎么变的。 */
 export interface IdeaDigestRow {
   id: string;
@@ -201,6 +245,24 @@ export interface IdeasDigestParams {
    * 系统提示词。焦点带标的时只附这些标的的交易。不给 / false = 原来的口径,提示词一字不变。
    */
   trades?: boolean;
+}
+
+/**
+ * 下单页拿订单票据来问「历史里有没有相似的」。字段就是 OrderTicket(instruction.ts)里比相似要用的那几项——
+ * 契约文件之间不互相 import,所以这里照抄一份子集。只读,不回流到任何下单决策。
+ */
+export interface IdeasSimilarTradesParams {
+  sec_type: string;
+  symbol: string;
+  action: string;
+  /** 组合是净价;自动中间价的单是 null */
+  limit_price?: number | null;
+  /** YYYYMMDD(IB 的写法);正股是 null */
+  expiry?: string | null;
+  right?: string | null;
+  /** BUTTERFLY / VERTICAL / IRON_CONDOR;不是组合是 null */
+  combo_strategy?: string | null;
+  legs?: Array<{ action: string; ratio: number; strike: number | null; right: string | null }>;
 }
 
 export interface IdeasSearchParams {
