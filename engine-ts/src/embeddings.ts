@@ -8,7 +8,7 @@
 /**
  * 默认模型:qwen3-embedding 8B 的 Q8 量化(4096 维,约 8 GB,载入后占显存约 10 GB)。可用环境变量 DAFRI_EMBED_MODEL 换。
  * 2026-09-23 在用户的一小批想法、10 个人工标注的查询上和 0.6B 比过:前 3 名召回 16/20 对 13/20,
- * 「先买回身」这种字面对不上的 2/2 对 0/2(docs/features/idea-retrieval.md「第二期」)。
+ * 字面对不上的同义说法 2/2 对 0/2(docs/features/idea-retrieval.md「第二期」)。
  */
 export const DEFAULT_EMBED_MODEL = "qwen3-embedding:8b-q8_0";
 export const DEFAULT_EMBED_URL = "http://127.0.0.1:11434";

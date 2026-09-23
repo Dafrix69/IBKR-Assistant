@@ -124,7 +124,7 @@ export interface IdeaTradeFact {
   opened_at: string;
   /** 平仓 / 到期时刻(ISO);持仓中、或时刻不明时为 null */
   closed_at: string | null;
-  /** 结构与方向,如「SPX 7625/7650/7675 看跌蝴蝶 买入」「RKLB 做多」 */
+  /** 结构与方向,如「SPX 7625/7650/7675 看跌蝴蝶 买入」「AAPL 做多」 */
   label: string;
   /** 蝴蝶:每张权利金;股票:进场均价。成本未知时为 null */
   entry_price: number | null;
