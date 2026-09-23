@@ -128,9 +128,11 @@ export class AlertsService extends ServiceBase {
 
     const fired: WatchEvent[] = [];
     const checked: AlertsPollResult["checked"] = [];
-    for (const watch of this.engine.store.listWatches()) {
-      if (!watch["enabled"] || !watch["levels"].length) continue;
-      const price = await this.market.spotOf(watch["symbol"]);
+    const watches = this.engine.store.listWatches().filter((w) => w["enabled"] && w["levels"].length);
+    // 一轮的价一次取齐(spotsOf):逐只取每只要等一拍,23 只就是 3.5 秒占着交易道
+    const prices = await this.market.spotsOf(watches.map((w) => w["symbol"]));
+    for (const watch of watches) {
+      const price = prices.get(watch["symbol"]) ?? null;
       if (!price) {
         checked.push({ symbol: watch["symbol"], price: null });
         continue;

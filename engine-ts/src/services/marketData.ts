@@ -85,6 +85,36 @@ export class MarketDataService extends ServiceBase {
     }
   }
 
+  /**
+   * 一批标的的现价(盯价位那一轮用)。非指数的合成**一次** streamQuotes:常驻流建好之后它每次调用都要等一拍
+   * (settle 150 ms),逐只问就是每只一拍——23 只 3.5 秒,而且占着交易道(2026-09-23 日志里 alerts.poll 稳定 3.5 秒)。
+   * 指数走 indexPrice(夜盘要期货推算,口径同 spotOf),逐只。批量那一次抛了错就退回逐只问,单只失败还是只影响那一只。
+   * 取不到的给 null:这一轮不检查它。
+   */
+  async spotsOf(symbols: readonly string[]): Promise<Map<string, number | null>> {
+    const unique = [...new Set(symbols)];
+    const out = new Map<string, number | null>();
+    if (this.router === null || !this.router.sessions().length) {
+      for (const s of unique) out.set(s, null);
+      return out;
+    }
+    const plain: string[] = [];
+    for (const s of unique) {
+      if (this.settings.indexConfig(s)) out.set(s, await this.spotOf(s));
+      else plain.push(s);
+    }
+    if (!plain.length) return out;
+    let quotes: Record<string, Rec>;
+    try {
+      quotes = (await this.router.streamQuotes(plain)) ?? {};
+    } catch {
+      for (const s of plain) out.set(s, await this.spotOf(s));
+      return out;
+    }
+    for (const s of plain) out.set(s, ((quotes[s] ?? {})["last"] as number | undefined) ?? null);
+    return out;
+  }
+
   /** 带 TTL 的 K 线缓存——这是节流,不是性能优化(IBKR 超频会掐行情连接)。 */
   async paBars(
     symbol: string, timeframe: string, rth: boolean, force = false,
