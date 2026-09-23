@@ -37,7 +37,7 @@
 `ideas.digest({ trades: true })`(界面「附带交易结果」,默认勾上)在想法后面附一段**真实成交的结局**。这是
 [idea-retrieval.md](idea-retrieval.md)「边界」一节定的那条路:成交**不进检索、不写成想法**,数字由代码算,叙事才交给模型。
 
-- **哪些交易。** 交易分析页的同一批:库里累积的券商成交(`broker_fills`)合成的蝴蝶(`ibtrades`)与股票持仓段(`stockreview`)。
+- **哪些交易。**(`services/tradeHistory.ts`,下单页的[历史相似交易](similar-trades.md)也用这一份)交易分析页的同一批:库里累积的券商成交(`broker_fills`)合成的蝴蝶(`ibtrades`)与股票持仓段(`stockreview`)。
   只读本地库,不向券商同步新成交(要最新的,先开一次交易分析页;更早的历史用 `cli import-fills` 补,见 [tradereview.md](tradereview.md))。焦点带标的时只附这些标的的;新的优先,封顶 200 笔。
 - **成败怎么算**(`tradeOutcomes.ts`,纯函数,`tests/trade-outcomes.spec.ts`):
   蝴蝶——有反向成交就是平仓,收益率 = ±(平仓价 − 开仓价)/ 开仓价(配对算法 `tradereview.pairButterflies`,与交易分析页共用);

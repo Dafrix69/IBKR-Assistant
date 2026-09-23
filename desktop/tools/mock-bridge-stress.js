@@ -173,7 +173,7 @@ window.dafri = {
   addSector: async()=>({}), deleteSector: async()=>({}), pickSector: async()=>({}),
   addSectorStock: async()=>({}), removeSectorStock: async()=>({}),
   setSectorTag: async()=>({sector:{}}),
-  listIdeaDigests: async()=>({digests:[]}), digestIdeas: async()=>({}), searchIdeas: async()=>({hits:[]}),
+  listIdeaDigests: async()=>({digests:[]}), digestIdeas: async()=>({}), searchIdeas: async()=>({hits:[]}), similarTrades: async () => ({ kind: 'other', symbol: '', basis: [], count: 0, win: 0, loss: 0, flat: 0, open: 0, unknown: 0, exits: [], matches: [], lessons: [] }),
   // 压力那份只为 K 线 PA 造数据,扫描三页拿它当空池即可——但方法必须在,否则整页只剩一条报错横幅
   screenerRs: async()=>({sector:'压力测试', benchmark:'SPY', bench_last:645.2, counted:0, total:0,
     fetched_at:'2026-09-08T14:00:00Z', windows:[], rows:[], tags:[]}),

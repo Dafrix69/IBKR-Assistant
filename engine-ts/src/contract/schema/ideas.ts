@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import type {
   IdeasAddParams, IdeasAnalyzeParams, IdeasDigestParams, IdeasDigestsParams, IdeasListParams,
-  IdeasSearchParams, IdeasUpdateParams,
+  IdeasSearchParams, IdeasSimilarTradesParams, IdeasUpdateParams,
 } from "../ideas.js";
 import { optional, requiredButReportedByHandler } from "./kit.js";
 import type { ParamsSchema } from "./kit.js";
@@ -49,6 +49,20 @@ export const IdeasSearchParamsSchema: ParamsSchema<IdeasSearchParams> = z.object
   until: optional(z.string()),
   status: optional(z.string()),
   limit,
+});
+
+// 票据只管结构;认不认得是什么结构、价是不是合理,是 handler 与 tradeSimilar 的事
+export const IdeasSimilarTradesParamsSchema: ParamsSchema<IdeasSimilarTradesParams> = z.object({
+  sec_type: z.string(),
+  symbol: z.string(),
+  action: z.string(),
+  limit_price: optional(z.number().nullable()),
+  expiry: optional(z.string().nullable()),
+  right: optional(z.string().nullable()),
+  combo_strategy: optional(z.string().nullable()),
+  legs: optional(z.array(z.object({
+    action: z.string(), ratio: z.number(), strike: z.number().nullable(), right: z.string().nullable(),
+  }))),
 });
 
 export const IdeasDigestsParamsSchema: ParamsSchema<IdeasDigestsParams> = z.object({

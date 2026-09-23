@@ -21,6 +21,7 @@ import type { Router } from "../services/host.js";
 import { MarketDataService } from "../services/marketData.js";
 import { PoolService } from "../services/pool.js";
 import { StockTripsService } from "../services/stockTrips.js";
+import { TradeHistoryService } from "../services/tradeHistory.js";
 import { TradeStore } from "../store.js";
 import { PROTOCOL_VERSION } from "./context.js";
 import type { HandlerBase, MethodTable, Rec, RpcContext } from "./context.js";
@@ -60,6 +61,7 @@ export class RpcServer implements RpcContext {
   readonly anomaly: AnomalyService;
   readonly pool: PoolService;
   readonly stockTrips: StockTripsService;
+  readonly tradeHistory: TradeHistoryService;
   /** 各域的 handler。方法表在构造时合成一张,之后不变。 */
   readonly domains: {
     system: SystemHandlers;
@@ -87,6 +89,7 @@ export class RpcServer implements RpcContext {
     this.anomaly = new AnomalyService(this, this.alerts);
     this.pool = new PoolService(this, this.alerts, this.anomaly);
     this.stockTrips = new StockTripsService(this);
+    this.tradeHistory = new TradeHistoryService(this, this.market, this.stockTrips);
     this.domains = {
       system: new SystemHandlers(this),
       trading: new TradingHandlers(this),
@@ -190,6 +193,8 @@ export class RpcServer implements RpcContext {
     "screener.rs", "screener.inflection", "screener.deviation", "backtest.run", "backtest.strategies",
     "pa.timeframes", "tws.scan", "tws.diagnose", "futu.scan", "futu.diagnose",
     "tracker.target_preview",
+    // 下单页的历史相似交易:读本地库,过期蝴蝶的结算价可能要取一次日线,放读道不挡下单
+    "ideas.similar_trades",
   ]);
   static readonly READ_CONCURRENCY = 4;
   static readonly SLOW_MS = 1000; // 超过这个时长的请求记到 stderr

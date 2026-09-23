@@ -179,7 +179,7 @@ window.dafri = {
     {id:'i1', text:'AXTI 周五尾盘买入,量能起来了', status:'active', symbols:['AXTI'], created_at:'2026-08-20T20:00:00Z'},
     {id:'i2', text:'留意 SPY 770 这个整数关口', status:'done', symbols:['SPY'], created_at:'2026-08-19T14:00:00Z'}]}),
   addIdea: async () => ({idea:{}}), updateIdea: async () => ({}), analyzeIdea: async () => ({}),
-  listIdeaDigests: async () => ({digests:[]}), digestIdeas: async () => ({}), searchIdeas: async () => ({hits:[]}),
+  listIdeaDigests: async () => ({digests:[]}), digestIdeas: async () => ({}), searchIdeas: async () => ({hits:[]}), similarTrades: async () => ({ kind: 'other', symbol: '', basis: [], count: 0, win: 0, loss: 0, flat: 0, open: 0, unknown: 0, exits: [], matches: [], lessons: [] }),
   listSectors: async () => ({sectors:[
     {id:'s1', name:'AI 算力', stocks:[{symbol:'NVDA',company:'英伟达',reason:'龙头',tag:'芯片'},
       {symbol:'AMD',company:'超威',reason:'追赶者'},{symbol:'AVGO',company:'博通',reason:'定制芯片',tag:'芯片'}]},
