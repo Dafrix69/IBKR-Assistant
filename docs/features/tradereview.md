@@ -17,7 +17,15 @@
 
 **按结构整理的期权交易另走一张表**:`cli import-option-trades trades.csv --account <别名> [--dry-run]`
 (`optionTradesCsv.ts`,`tests/option-trades.spec.ts`)把「一行 = 一个结构的一次动作」的导出写进 `imported_option_trades`,
-不进 `broker_fills`,交易分析页也不用它(拼不出合约、画不了图)。它只给想法总结当出场成败的事实,见 [ideas.md](ideas.md)。没连 TWS 时列表就是
+不进 `broker_fills`,交易分析页也不用它(拼不出合约、画不了图)。它只给想法总结当出场成败的事实,见 [ideas.md](ideas.md)。
+
+**Flex 期权仓位**:`cli import-option-positions option_positions.csv --account <别名> [--dry-run]`(`optionPositionsCsv.ts`,
+`tests/option-positions.spec.ts`)。导出方从 Flex 逐腿成交(执行级 + 到期记账)按行权价配好的仓位表,一行一个仓位的生命周期:
+开仓结构、中心、翼宽、到期、开仓净价,了结方式(整体平仓 / 持有到期 / **拆腿后到期** / 逐腿平仓),盈亏(按腿先进先出分回、已扣佣金)。
+写进 `option_positions`(`importedTrades.ts`,和上面那张同在 `store.imports`)。**同一段时间以它为准**:它覆盖的 (账户, 美东日)
+上,按结构整理的期权事件与券商成交合成的蝴蝶都不再算进结局(`services/tradeHistory.ts`)。
+**交易分析页还不用它**:页面拿 `broker_fills` 合成蝴蝶画图,而那套配对认不出拆腿——先平身、翼到期的会被当成拿到期、按帐篷值算盈亏。
+要把 Flex 逐腿成交也灌进 `broker_fills`,得先让 `tradereview` 认得拆腿,是另一件事。没连 TWS 时列表就是
 库里累积的那些;富途没有同形的成交查询,这个页面在富途通道下只看得到之前从 IBKR 同步来的。打开「附带本地
 未成交的记录」才会把本地校验过但没成交的蝴蝶也列出来(按限价估算,卡片上标明)。
 

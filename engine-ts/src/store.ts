@@ -18,6 +18,7 @@ import type { Idea, IdeaAnalysis, IdeaDigest, IdeaDigestRow, IdeaFocus, IdeaTrad
 import type { AnomalyEvent, QualityStockRow } from "./contract/quality.js";
 import type { Sector, SectorStock } from "./contract/sectors.js";
 import type { Track } from "./contract/tracker.js";
+import { ImportedTradesStore } from "./importedTrades.js";
 import type { RecentOrder } from "./models.js";
 
 export const SCHEMA = `
@@ -51,39 +52,6 @@ CREATE TABLE IF NOT EXISTS broker_fills (
     fill_json   TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_fills_time ON broker_fills(time);
-
--- 导入的期权交易(按结构整理的成交导出,一行 = 一个结构的一次动作)。没有行权价 / 到期日,拼不出合约,
--- 所以不进 broker_fills;只增不改,按 (account_id, id) 去重。以后有了带合约描述的成交,同一天的这些行就不再用
-CREATE TABLE IF NOT EXISTS imported_option_trades (
-    account_id   TEXT NOT NULL,
-    id           TEXT NOT NULL,
-    time_et      TEXT NOT NULL,
-    date_et      TEXT NOT NULL,
-    symbol       TEXT NOT NULL,
-    structure    TEXT NOT NULL,
-    action       TEXT NOT NULL,
-    direction    TEXT NOT NULL DEFAULT '',
-    qty          REAL,
-    net_price    REAL,
-    realized_pnl REAL NOT NULL,
-    commission   REAL NOT NULL DEFAULT 0,
-    legs         TEXT NOT NULL DEFAULT '',
-    note         TEXT NOT NULL DEFAULT '',
-    source       TEXT NOT NULL DEFAULT '',
-    imported_at  TEXT NOT NULL,
-    PRIMARY KEY (account_id, id)
-);
-
--- 历史交易开仓那一刻的标的价(下单页「历史相似交易」比蝴蝶中心离现价几个翼宽用)。取一次就存下,
--- 历史不会变;取的时候标的在哪一分钟、从哪来(source)都留着
-CREATE TABLE IF NOT EXISTS trade_entry_context (
-    trade_id   TEXT PRIMARY KEY,
-    symbol     TEXT NOT NULL,
-    at         TEXT NOT NULL,
-    underlying REAL NOT NULL,
-    source     TEXT NOT NULL DEFAULT '',
-    fetched_at TEXT NOT NULL
-);
 CREATE TABLE IF NOT EXISTS audit_log (
     seq    INTEGER PRIMARY KEY AUTOINCREMENT,
     at     TEXT NOT NULL,
@@ -235,27 +203,6 @@ export interface IdeaCandidate {
   text_hit: boolean;
 }
 
-/** imported_option_trades 的一行(导入时由 optionTradesCsv 整理好)。 */
-export interface ImportedOptionTrade {
-  account_id: string;
-  /** 文件里同一个结构动作的稳定键:时间 + 标的 + 动作 + 订单号 */
-  id: string;
-  time_et: string;
-  date_et: string;
-  symbol: string;
-  structure: string;
-  action: string;
-  direction: string;
-  /** 结构的份数;拆不开的(多个仓位同时结算、两腿同向……)导出里是空的,就是 null */
-  qty: number | null;
-  net_price: number | null;
-  realized_pnl: number;
-  commission: number;
-  legs: string;
-  note: string;
-  source: string;
-}
-
 /** 一条还没有终态的记录(listWorkingRecords 的行)。 */
 export interface WorkingRecord {
   id: string;
@@ -294,6 +241,8 @@ export class TradeStore {
   private readonly db: Database.Database;
   /** 想法原文的 FTS5(trigram)索引建好了没有;SQLite 不带 FTS5 / trigram 时是 false,检索退回子串匹配 */
   private ideasFts = false;
+  /** 从外部导出补进来的交易与它们的上下文(期权仓位、按结构整理的期权交易、开仓时标的价),见 importedTrades.ts */
+  readonly imports: ImportedTradesStore;
 
   constructor(dbPath: string) {
     this.dbPath = dbPath;
@@ -303,6 +252,7 @@ export class TradeStore {
     this.db.pragma("journal_mode = WAL");
     this.db.pragma("foreign_keys = ON");
     this.db.exec(SCHEMA);
+    this.imports = new ImportedTradesStore(this.db);
     this.migrate();
     if (fresh) {
       try {
@@ -427,52 +377,6 @@ export class TradeStore {
       added += Number(info.changes ?? 0);
     }
     return added;
-  }
-
-  /** 导入的期权交易:只增不改,已有的 (account_id, id) 不动。返回新增条数。 */
-  rememberOptionTrades(rows: readonly ImportedOptionTrade[]): number {
-    const stmt = this.db.prepare(
-      "INSERT OR IGNORE INTO imported_option_trades (account_id, id, time_et, date_et, symbol, structure, action," +
-      " direction, qty, net_price, realized_pnl, commission, legs, note, source, imported_at)" +
-      " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-    );
-    const at = nowIso();
-    let added = 0;
-    for (const r of rows) {
-      added += Number(stmt.run(
-        r.account_id, r.id, r.time_et, r.date_et, r.symbol, r.structure, r.action, r.direction, r.qty,
-        r.net_price, r.realized_pnl, r.commission, r.legs, r.note, r.source, at,
-      ).changes ?? 0);
-    }
-    return added;
-  }
-
-  listOptionTrades(): ImportedOptionTrade[] {
-    return this.db
-      .prepare(
-        "SELECT account_id, id, time_et, date_et, symbol, structure, action, direction, qty, net_price, realized_pnl," +
-        " commission, legs, note, source FROM imported_option_trades ORDER BY time_et ASC, id ASC",
-      )
-      .all() as ImportedOptionTrade[]; // 库的边界:列就是接口的字段
-  }
-
-  /** 已存下的开仓时标的价:trade_id → 价。 */
-  entryUnderlyings(tradeIds: readonly string[]): Map<string, number> {
-    const out = new Map<string, number>();
-    const stmt = this.db.prepare("SELECT underlying FROM trade_entry_context WHERE trade_id=?");
-    for (const id of tradeIds) {
-      const row = stmt.get(id) as { underlying: number } | undefined;
-      if (row !== undefined) out.set(id, row.underlying);
-    }
-    return out;
-  }
-
-  rememberEntryUnderlying(tradeId: string, symbol: string, at: string, underlying: number, source: string): void {
-    this.db
-      .prepare(
-        "INSERT OR IGNORE INTO trade_entry_context (trade_id, symbol, at, underlying, source, fetched_at) VALUES (?,?,?,?,?,?)",
-      )
-      .run(tradeId, symbol, at, underlying, source, nowIso());
   }
 
   listFills(limit = 5000): Rec[] {

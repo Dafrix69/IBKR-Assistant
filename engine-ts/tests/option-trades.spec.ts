@@ -57,9 +57,9 @@ describe("parseOptionTradesCsv", () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dafri-opt-"));
     dirs.push(dir);
     const store = new TradeStore(path.join(dir, "t.db"));
-    expect(store.rememberOptionTrades(parsed.rows)).toBe(5);
-    expect(store.rememberOptionTrades(parsed.rows)).toBe(0);
-    expect(store.listOptionTrades().map((r) => r.id)).toEqual(parsed.rows.map((r) => r.id).sort((a, b) => {
+    expect(store.imports.rememberOptionTrades(parsed.rows)).toBe(5);
+    expect(store.imports.rememberOptionTrades(parsed.rows)).toBe(0);
+    expect(store.imports.listOptionTrades().map((r) => r.id)).toEqual(parsed.rows.map((r) => r.id).sort((a, b) => {
       const ta = a.split("|")[0]!, tb = b.split("|")[0]!;
       return ta < tb ? -1 : ta > tb ? 1 : a < b ? -1 : 1;
     }));
@@ -140,7 +140,7 @@ describe("ideas.digest(trades):导入的期权", () => {
         return { summary: "s", themes: [], lessons: [], patterns: [], actions: [] };
       },
     }) as never;
-    s.engine.store.rememberOptionTrades(parseOptionTradesCsv(CSV, "U0000001", "trades.csv").rows);
+    s.engine.store.imports.rememberOptionTrades(parseOptionTradesCsv(CSV, "U0000001", "trades.csv").rows);
     const call = async (method: string, params: Rec = {}): Promise<Rec> =>
       s.handle(JSON.parse(JSON.stringify({ jsonrpc: "2.0", id: 1, method, params })));
     const made = (await call("ideas.add", { text: "SPX 蝴蝶别拆腿" }))["result"]["idea"];

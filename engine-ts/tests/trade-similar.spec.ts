@@ -230,7 +230,7 @@ describe("ideas.similar_trades:RPC", () => {
     const s = new RpcServer(settingsPath, () => undefined);
     servers.push(s);
     s.engine.store.rememberFills([...FLY_FILLS, ...STOCK_FILLS]);
-    s.engine.store.rememberOptionTrades(parseOptionTradesCsv(OPT_CSV, ACCT, "t.csv").rows);
+    s.engine.store.imports.rememberOptionTrades(parseOptionTradesCsv(OPT_CSV, ACCT, "t.csv").rows);
     return async (method, params = {}) => s.handle(JSON.parse(JSON.stringify({ jsonrpc: "2.0", id: 1, method, params })));
   }
 
@@ -284,13 +284,13 @@ describe("ideas.similar_trades:RPC", () => {
     expect(asked).toEqual(["1m|true|2026-09-10"]); // 两只同一天开的:一天一次请求
     expect(r["basis"]).toContain("中心离现价 -2.0 个翼宽");
     expect(r["matches"][0]["reasons"]).toContain("中心离现价相近(-2.0 / -2.0 个翼宽)");
-    expect([...s.engine.store.entryUnderlyings(["ib:101", "ib:103"]).entries()]).toEqual([["ib:101", 7700], ["ib:103", 7690]]);
+    expect([...s.engine.store.imports.entryUnderlyings(["ib:101", "ib:103"]).entries()]).toEqual([["ib:101", 7700], ["ib:103", 7690]]);
 
     await call("ideas.similar_trades", FLY_TICKET);
     expect(asked).toHaveLength(1); // 存过了
   });
 
-  it("一次最多补 3 个交易日,新的优先;剩下的下次再补", async () => {
+  it("当场最多补 3 个交易日、新的优先;剩下的后台接着补,补过的不再取", async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dafri-similar-cap-"));
     dirs.push(dir);
     const base = JSON.parse(fs.readFileSync(path.join(HERE, "..", "baseline", "rpc", "base_config.json"), "utf-8"));
@@ -318,10 +318,13 @@ describe("ideas.similar_trades:RPC", () => {
     (s.market as unknown as Rec)["spotOf"] = async () => 7775;
     const call = async (method: string, params: Rec = {}): Promise<Rec> =>
       s.handle(JSON.parse(JSON.stringify({ jsonrpc: "2.0", id: 1, method, params })));
+    s.similarContext.backfillGapMs = 0;
     await call("ideas.similar_trades", FLY_TICKET);
     expect(asked).toEqual(["2026-09-04", "2026-09-03", "2026-09-02"]);
-    await call("ideas.similar_trades", FLY_TICKET);
+    await s.similarContext.idle();
     expect(asked.slice(3)).toEqual(["2026-09-01"]);
+    await call("ideas.similar_trades", FLY_TICKET);
+    expect(asked).toHaveLength(4);
   });
 
   it("结构错归 schema;缺标的是 handler 那句", async () => {

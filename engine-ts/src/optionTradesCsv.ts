@@ -5,7 +5,7 @@
  * 结构名(蝴蝶 / 垂直 / 单腿……)是推断。所以它不进 `broker_fills`、也拼不出交易分析页那种蝴蝶——只拿来给知识总结
  * 提供每次出场的成败(IBKR 的已实现盈亏,已扣佣金,是准的)。纯函数,不碰库。
  */
-import type { ImportedOptionTrade } from "./store.js";
+import type { ImportedOptionTrade } from "./importedTrades.js";
 
 export const OPTION_COLUMNS = [
   "time_et", "date_et", "symbol", "asset", "structure", "action", "direction", "qty", "net_price", "realized_pnl",
