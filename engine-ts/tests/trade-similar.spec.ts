@@ -6,13 +6,14 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 
 import type { IdeasSimilarTradesParams } from "../src/contract/ideas.js";
+import { BrokerRouter } from "../src/broker.js";
 import { groupButterflies } from "../src/ibtrades.js";
 import { parseOptionTradesCsv } from "../src/optionTradesCsv.js";
 import { RpcServer } from "../src/rpc.js";
 import { groupStockTrips } from "../src/stockreview.js";
 import { butterflyFacts, optionFacts, stockFacts } from "../src/tradeOutcomes.js";
 import {
-  butterflyEntries, dteBucket, findSimilar, optionEntries, slotOf, stockEntries,
+  butterflyEntries, dteBucket, findSimilar, optionEntries, priceAt, rangeBucket, rangePosition, slotOf, stockEntries,
 } from "../src/tradeSimilar.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -143,6 +144,60 @@ describe("findSimilar:股票", () => {
   });
 });
 
+/** 日线:从 2026-08-01 起每天一根,高 60 低 40(区间固定,位置好算) */
+function dailyBars(days = 40): Rec[] {
+  const out: Rec[] = [];
+  for (let i = 0; i < days; i += 1) {
+    const d = new Date(Date.UTC(2026, 7, 1 + i)).toISOString().slice(0, 10);
+    out.push({ date: d, open: 50, high: 60, low: 40, close: 50 });
+  }
+  return out;
+}
+
+describe("要行情的两项", () => {
+  it("近期区间:只看那天之前的 20 根;不够 20 根不算;可以出界", () => {
+    expect(rangePosition(dailyBars(), "2026-09-01", 50)).toBe(0.5);
+    expect(rangePosition(dailyBars(), "2026-08-10", 50)).toBeNull(); // 之前只有 9 根
+    expect(rangePosition(dailyBars(), "2026-09-01", 65)).toBe(1.25);
+    expect([rangeBucket(0.2), rangeBucket(0.5), rangeBucket(1.25)]).toEqual(["低位", "中间", "高位"]);
+  });
+
+  it("开仓那一刻的标的价:该分钟或之前最后一根的收盘;没覆盖到是 null", () => {
+    const bars = [
+      { time: "2026-09-10 10:26", close: 7690 },
+      { time: "2026-09-10 10:27", close: 7700 },
+      { time: "2026-09-10 10:28", close: 7710 },
+    ];
+    expect(priceAt(bars, Date.parse("2026-09-10T14:27:29Z"))).toBe(7700);
+    expect(priceAt(bars, Date.parse("2026-09-10T13:00:00Z"))).toBeNull();
+  });
+
+  it("蝴蝶:有开仓时标的价与现价时,比中心离现价几个翼宽", () => {
+    const flies = groupButterflies(FLY_FILLS, ACCOUNTS);
+    const facts = butterflyFacts(flies, SETTLE, NOW);
+    // ib:101 中心 7650、开仓时标的 7700 → −2.0 个翼宽;这张单中心 7725、现价 7775 → 也是 −2.0
+    const entries = butterflyEntries(flies, facts, new Map([["ib:101", 7700]]));
+    const got = findSimilar(FLY_TICKET, entries, NOW, new Set(), { spot: 7775 });
+    expect(got.basis).toContain("中心离现价 -2.0 个翼宽");
+    const top = got.matches[0]!;
+    expect([top.fact.id, top.score, top.reasons.at(-1)]).toEqual(["ib:101", 8, "中心离现价相近(-2.0 / -2.0 个翼宽)"]);
+    // 没有开仓时标的价的那只不比这一项,也不扣分
+    expect(got.matches[1]!.reasons.some((r) => r.startsWith("中心离现价"))).toBe(false);
+  });
+
+  it("股票:同在近 20 日区间的同一档进场 +1", () => {
+    const facts = stockFacts(groupStockTrips(STOCK_FILLS, ACCOUNTS, null));
+    const rklb = facts.find((f) => f.symbol === "RKLB")!;
+    const pos = rangePosition(dailyBars(), "2026-09-01", rklb.entry_price!)!;
+    const got = findSimilar(
+      { sec_type: "STK", symbol: "RKLB", action: "BUY" }, stockEntries(facts, new Map([[rklb.id, pos]])), NOW, new Set(),
+      { rangePos: 0.55 },
+    );
+    expect(got.basis).toEqual(["RKLB 股票", "买入", "现价在近 20 日区间的中间(0.55)"]);
+    expect(got.matches[0]!.reasons).toEqual(["同标的", "同为做多", "同在近 20 日区间的中间进场(0.50 / 0.55)"]);
+  });
+});
+
 // ---------------------------------------------------------------- RPC
 
 const servers: RpcServer[] = [];
@@ -192,6 +247,81 @@ describe("ideas.similar_trades:RPC", () => {
     expect(r["count"]).toBe(5); // 没连券商:过期那只看涨蝶结算价取不到,是结果不明
     expect(r["unknown"]).toBe(1);
     expect(r["lessons"].map((i: Rec) => i["text"])).toEqual(["SPX 蝴蝶不持有到期"]);
+  });
+
+  it("蝴蝶:连着 IBKR 时按开仓日取分钟线补开仓标的价,存库,下次不再取", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dafri-similar-ctx-"));
+    dirs.push(dir);
+    const base = JSON.parse(fs.readFileSync(path.join(HERE, "..", "baseline", "rpc", "base_config.json"), "utf-8"));
+    const settingsPath = path.join(dir, "settings.json");
+    fs.writeFileSync(settingsPath, JSON.stringify({
+      ...base,
+      accounts: [{ alias: "主账户", account_id: ACCT, is_paper: false, connection: "paper", default: true }],
+      storage: { db_path: path.join(dir, "t.db") },
+    }));
+    const s = new RpcServer(settingsPath, () => undefined);
+    servers.push(s);
+    s.engine.store.rememberFills(FLY_FILLS);
+    const asked: string[] = [];
+    const router = Object.create(BrokerRouter.prototype) as Rec;
+    router["sessions"] = () => [{}];
+    router["connectedNames"] = () => ["paper"];
+    router["positions"] = async () => [];
+    router["intradayBars"] = async (_sym: string, tf: string, rth: boolean, day: string) => {
+      asked.push(`${tf}|${rth}|${day}`);
+      return [
+        { time: `${day} 10:27`, close: 7700 },
+        { time: `${day} 11:59`, close: 7690 },
+      ];
+    };
+    s.router = router as never;
+    (s.market as unknown as Rec)["spotOf"] = async () => 7775;
+    (s.market as unknown as Rec)["dailyHistory"] = async () => [];
+    const call = async (method: string, params: Rec = {}): Promise<Rec> =>
+      s.handle(JSON.parse(JSON.stringify({ jsonrpc: "2.0", id: 1, method, params })));
+
+    const r = (await call("ideas.similar_trades", FLY_TICKET))["result"];
+    expect(asked).toEqual(["1m|true|2026-09-10"]); // 两只同一天开的:一天一次请求
+    expect(r["basis"]).toContain("中心离现价 -2.0 个翼宽");
+    expect(r["matches"][0]["reasons"]).toContain("中心离现价相近(-2.0 / -2.0 个翼宽)");
+    expect([...s.engine.store.entryUnderlyings(["ib:101", "ib:103"]).entries()]).toEqual([["ib:101", 7700], ["ib:103", 7690]]);
+
+    await call("ideas.similar_trades", FLY_TICKET);
+    expect(asked).toHaveLength(1); // 存过了
+  });
+
+  it("一次最多补 3 个交易日,新的优先;剩下的下次再补", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dafri-similar-cap-"));
+    dirs.push(dir);
+    const base = JSON.parse(fs.readFileSync(path.join(HERE, "..", "baseline", "rpc", "base_config.json"), "utf-8"));
+    const settingsPath = path.join(dir, "settings.json");
+    fs.writeFileSync(settingsPath, JSON.stringify({
+      ...base,
+      accounts: [{ alias: "主账户", account_id: ACCT, is_paper: false, connection: "paper", default: true }],
+      storage: { db_path: path.join(dir, "t.db") },
+    }));
+    const s = new RpcServer(settingsPath, () => undefined);
+    servers.push(s);
+    const days = ["2026-09-01", "2026-09-02", "2026-09-03", "2026-09-04"];
+    s.engine.store.rememberFills(days.flatMap((d, i) =>
+      flyFills(300 + i, "BUY", [7625, 7650, 7675], "P", d.replace(/-/g, ""), 2.0, `${d}T14:30:00+00:00`)));
+    const asked: string[] = [];
+    const router = Object.create(BrokerRouter.prototype) as Rec;
+    router["sessions"] = () => [{}];
+    router["connectedNames"] = () => ["paper"];
+    router["positions"] = async () => [];
+    router["intradayBars"] = async (_sym: string, _tf: string, _rth: boolean, day: string) => {
+      asked.push(day);
+      return [{ time: `${day} 10:30`, close: 7700 }];
+    };
+    s.router = router as never;
+    (s.market as unknown as Rec)["spotOf"] = async () => 7775;
+    const call = async (method: string, params: Rec = {}): Promise<Rec> =>
+      s.handle(JSON.parse(JSON.stringify({ jsonrpc: "2.0", id: 1, method, params })));
+    await call("ideas.similar_trades", FLY_TICKET);
+    expect(asked).toEqual(["2026-09-04", "2026-09-03", "2026-09-02"]);
+    await call("ideas.similar_trades", FLY_TICKET);
+    expect(asked.slice(3)).toEqual(["2026-09-01"]);
   });
 
   it("结构错归 schema;缺标的是 handler 那句", async () => {

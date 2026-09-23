@@ -12,7 +12,7 @@ import type {
 } from "./contract/ideas.js";
 import type { ImportedOptionTrade } from "./store.js";
 import type { ButterflyRecord } from "./tradeOutcomes.js";
-import { butterflyProfile, entryOf, etKey, parseWhen, ReviewError } from "./tradereview.js";
+import { butterflyProfile, entryOf, etKey, indexAt, parseWhen, ReviewError } from "./tradereview.js";
 import { ET, wallParts } from "./tz.js";
 
 /** 列出来的最多几笔 */
@@ -21,6 +21,10 @@ export const TOP_MATCHES = 8;
 export const WIDTH_TOLERANCE = 0.2;
 /** 权利金 / 翼宽 差在这个以内算相近(0.05 = 翼宽的 5%) */
 export const DEBIT_RATIO_TOLERANCE = 0.05;
+/** 蝴蝶中心离现价(以翼宽计)差在这个以内算相近 */
+export const CENTER_DIST_TOLERANCE = 0.5;
+/** 股票「进场价在近期区间的位置」看进场前多少根日线 */
+export const RANGE_LOOKBACK = 20;
 
 /** 一笔历史交易的可比要素(全是从成交算出来的;拿不到的项就没有,不补)。 */
 export interface HistoryEntry {
@@ -35,8 +39,48 @@ export interface HistoryEntry {
   dte?: string;
   slot?: string;
   debitRatio?: number;
+  /** 蝴蝶:开仓那一刻中心离标的价几个翼宽(中心 − 标的)/ 翼宽,正 = 中心在上方。取不到开仓时的标的价就没有 */
+  centerDist?: number;
   /** 股票:LONG / SHORT */
   side?: string;
+  /** 股票:进场价在进场前 RANGE_LOOKBACK 根日线高低区间里的位置(0 = 最低,1 = 最高,可以出界) */
+  rangePos?: number;
+}
+
+/** 上下文:要取行情的几样,由 handler 取好传进来(取不到就不给,那一项不比)。 */
+export interface SimilarContext {
+  /** 标的现价(蝴蝶算中心离现价用) */
+  spot?: number | null;
+  /** 股票:现价在近 RANGE_LOOKBACK 根日线区间里的位置 */
+  rangePos?: number | null;
+}
+
+/** 近期区间的位置分三档 */
+export function rangeBucket(pos: number): string {
+  if (pos < 1 / 3) return "低位";
+  if (pos > 2 / 3) return "高位";
+  return "中间";
+}
+
+/** 进场价在 `beforeDate` 之前 lookback 根日线的高低区间里的位置;日线不够或区间为零时 null。 */
+export function rangePosition(
+  bars: ReadonlyArray<{ date?: unknown; high?: unknown; low?: unknown }>, beforeDate: string, price: number,
+  lookback = RANGE_LOOKBACK,
+): number | null {
+  const prior = bars.filter((b) => String(b.date ?? "") < beforeDate).slice(-lookback);
+  if (prior.length < lookback) return null;
+  const hi = Math.max(...prior.map((b) => Number(b.high)));
+  const lo = Math.min(...prior.map((b) => Number(b.low)));
+  if (!Number.isFinite(hi) || !Number.isFinite(lo) || hi <= lo) return null;
+  return (price - lo) / (hi - lo);
+}
+
+/** 分钟线里开仓那一刻(该时刻或之前最后一根)的收盘价;K 线没覆盖到返回 null。 */
+export function priceAt(bars: ReadonlyArray<{ time?: unknown; close?: unknown }>, whenMs: number): number | null {
+  const idx = indexAt(bars as Array<Record<string, unknown>>, whenMs, false);
+  if (idx === null) return null;
+  const close = Number(bars[idx]?.close);
+  return Number.isFinite(close) ? close : null;
 }
 
 // ---------------------------------------------------------------- 口径
@@ -65,8 +109,12 @@ export function dteBucket(expiry: string, tradeDate: string): string | undefined
 
 // ---------------------------------------------------------------- 历史 → 可比要素
 
-/** 券商成交合成的蝴蝶:行权价齐全,各项都能比。facts 是 tradeOutcomes 算好的同一批(按 id 对上)。 */
-export function butterflyEntries(records: readonly ButterflyRecord[], facts: readonly IdeaTradeFact[]): HistoryEntry[] {
+/** 券商成交合成的蝴蝶:行权价齐全,各项都能比。facts 是 tradeOutcomes 算好的同一批(按 id 对上);
+ *  `entryUnderlying` 是开仓那一刻的标的价(id → 价,存在 trade_entry_context 里),有才比中心离现价。 */
+export function butterflyEntries(
+  records: readonly ButterflyRecord[], facts: readonly IdeaTradeFact[],
+  entryUnderlying: ReadonlyMap<string, number> = new Map(),
+): HistoryEntry[] {
   const byId = new Map(facts.filter((f) => f.kind === "butterfly").map((f) => [f.id, f]));
   const out: HistoryEntry[] = [];
   for (const record of records) {
@@ -82,6 +130,7 @@ export function butterflyEntries(records: readonly ButterflyRecord[], facts: rea
     }
     const width = Number(profile["width"]) || undefined;
     const debit = Number(profile["debit"]);
+    const under = entryUnderlying.get(fact.id);
     out.push({
       fact,
       exit: fact.how === "closed" ? "提前平仓" : fact.how === "expired" ? "持有到期" : "持仓中",
@@ -92,6 +141,7 @@ export function butterflyEntries(records: readonly ButterflyRecord[], facts: rea
       dte: dteBucket(String(profile["expiry"]), etKey(when, true)),
       slot: slotOf(when),
       debitRatio: width && Number.isFinite(debit) ? debit / width : undefined,
+      centerDist: width && under !== undefined ? (Number(profile["center"]) - under) / width : undefined,
     });
   }
   return out;
@@ -110,14 +160,15 @@ export function optionEntries(rows: readonly ImportedOptionTrade[], facts: reado
   return out;
 }
 
-/** 股票持仓段。 */
-export function stockEntries(facts: readonly IdeaTradeFact[]): HistoryEntry[] {
+/** 股票持仓段。`rangePos`:id → 进场价在进场前近期区间里的位置(handler 按日线算好,只算同标的的)。 */
+export function stockEntries(facts: readonly IdeaTradeFact[], rangePos: ReadonlyMap<string, number> = new Map()): HistoryEntry[] {
   return facts.filter((f) => f.kind === "stock").map((fact) => ({
     fact,
     exit: fact.how === "open" ? "持仓中" : "已平仓",
     structure: "股票",
     coarse: false,
     side: fact.label.endsWith("做空") ? "SHORT" : "LONG",
+    rangePos: rangePos.get(fact.id),
   }));
 }
 
@@ -132,11 +183,18 @@ interface Query {
   dte?: string;
   slot: string;
   debitRatio?: number;
+  centerDist?: number;
   side?: string;
+  rangePos?: number;
   basis: string[];
 }
 
-function describe(t: IdeasSimilarTradesParams, nowMs: number): Query {
+/** 票据是哪一类(handler 据此决定要取哪些行情)。 */
+export function ticketKind(t: IdeasSimilarTradesParams): Query["kind"] {
+  return describe(t, 0, {}).kind;
+}
+
+function describe(t: IdeasSimilarTradesParams, nowMs: number, ctx: SimilarContext): Query {
   const symbol = t.symbol.trim().toUpperCase();
   const legs = [...(t.legs ?? [])].filter((l) => l.strike !== null).sort((a, b) => (a.strike ?? 0) - (b.strike ?? 0));
   const slot = slotOf(nowMs);
@@ -149,12 +207,15 @@ function describe(t: IdeasSimilarTradesParams, nowMs: number): Query {
     const width = legs.length === 3 ? (legs[1]!.strike ?? 0) - (legs[0]!.strike ?? 0) : undefined;
     const right = String(legs[0]?.right ?? t.right ?? "").toUpperCase() || undefined;
     const debitRatio = width && t.limit_price ? Math.abs(t.limit_price) / width : undefined;
+    const center = legs.length === 3 ? legs[1]!.strike : null;
+    const centerDist = width && center !== null && ctx.spot ? (center - ctx.spot) / width : undefined;
     const basis = [`${symbol} ${right === "P" ? "看跌" : right === "C" ? "看涨" : ""}蝴蝶`];
     if (width) basis.push(`翼宽 ${width}`);
     if (dte) basis.push(dte);
     basis.push(slot);
     if (debitRatio !== undefined) basis.push(`权利金 / 翼宽 ${debitRatio.toFixed(2)}`);
-    return { kind: "butterfly", symbol, structure: "蝴蝶", right, width, dte, slot, debitRatio, basis };
+    if (centerDist !== undefined) basis.push(`中心离现价 ${centerDist.toFixed(1)} 个翼宽`);
+    return { kind: "butterfly", symbol, structure: "蝴蝶", right, width, dte, slot, debitRatio, centerDist, basis };
   }
   if (combo === "VERTICAL" || (secType === "BAG" && legs.length === 2)) {
     return { kind: "vertical", symbol, structure: "垂直价差", dte, slot, basis: [`${symbol} 垂直价差`, ...(dte ? [dte] : []), slot] };
@@ -164,7 +225,10 @@ function describe(t: IdeasSimilarTradesParams, nowMs: number): Query {
   }
   if (secType === "STK") {
     const side = t.action.toUpperCase() === "SELL" ? "SHORT" : "LONG";
-    return { kind: "stock", symbol, structure: "股票", slot, side, basis: [`${symbol} 股票`, t.action.toUpperCase() === "SELL" ? "卖出" : "买入"] };
+    const rangePos = ctx.rangePos ?? undefined;
+    const basis = [`${symbol} 股票`, t.action.toUpperCase() === "SELL" ? "卖出" : "买入"];
+    if (rangePos !== undefined) basis.push(`现价在近 ${RANGE_LOOKBACK} 日区间的${rangeBucket(rangePos)}(${rangePos.toFixed(2)})`);
+    return { kind: "stock", symbol, structure: "股票", slot, side, rangePos, basis };
   }
   return { kind: "other", symbol, structure: "", slot, basis: [symbol] };
 }
@@ -179,6 +243,10 @@ function scoreOf(q: Query, e: HistoryEntry, peers: ReadonlySet<string>): { score
     const reasons = [same ? "同标的" : `同板块(${e.fact.symbol})`];
     let score = same ? 2 : 1;
     if (e.side === q.side) { score += 1; reasons.push(q.side === "SHORT" ? "同为做空" : "同为做多"); }
+    if (q.rangePos !== undefined && e.rangePos !== undefined && rangeBucket(q.rangePos) === rangeBucket(e.rangePos)) {
+      score += 1;
+      reasons.push(`同在近 ${RANGE_LOOKBACK} 日区间的${rangeBucket(e.rangePos)}进场(${e.rangePos.toFixed(2)} / ${q.rangePos.toFixed(2)})`);
+    }
     return { score, reasons, primary: same };
   }
   if (!same) return null;
@@ -206,6 +274,10 @@ function scoreOf(q: Query, e: HistoryEntry, peers: ReadonlySet<string>): { score
     && Math.abs(e.debitRatio - q.debitRatio) <= DEBIT_RATIO_TOLERANCE) {
     score += 1; reasons.push(`权利金 / 翼宽相近(${e.debitRatio.toFixed(2)})`);
   }
+  if (q.centerDist !== undefined && e.centerDist !== undefined
+    && Math.abs(e.centerDist - q.centerDist) <= CENTER_DIST_TOLERANCE) {
+    score += 1; reasons.push(`中心离现价相近(${e.centerDist.toFixed(1)} / ${q.centerDist.toFixed(1)} 个翼宽)`);
+  }
   return { score, reasons, primary: true };
 }
 
@@ -214,8 +286,9 @@ const EXIT_ORDER = ["提前平仓", "持有到期", "拆腿", "已平仓", "持�
 /** 票据 + 历史 → 相似交易(不含 lessons,那是库里的想法,handler 去取)。`peers` 是同板块的别的股票。 */
 export function findSimilar(
   ticket: IdeasSimilarTradesParams, history: readonly HistoryEntry[], nowMs: number, peers: ReadonlySet<string> = new Set(),
+  ctx: SimilarContext = {},
 ): Omit<IdeasSimilarTradesResult, "lessons"> {
-  const q = describe(ticket, nowMs);
+  const q = describe(ticket, nowMs, ctx);
   const matched: SimilarTrade[] = [];
   for (const e of history) {
     const s = scoreOf(q, e, peers);

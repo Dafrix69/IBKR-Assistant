@@ -22,7 +22,7 @@ import type { VolumeSnapshot } from "./marketdata.js";
 import type { ApprovedOrder } from "./validator.js";
 import { fmtF, pyRound } from "./py.js";
 import {
-  ET, dateOrdinal, ibWallTime, ordinalToDate, pad2, utcIso, wallParts, wallToEpoch, zonedEpoch,
+  ET, dateOrdinal, ibEndUtc, ibWallTime, ordinalToDate, pad2, utcIso, wallParts, wallToEpoch, zonedEpoch,
 } from "./tz.js";
 import {
   describeContract, frontQuarterly, indexContract, optionContract, pickTradingClass, stockContract, streamContract,
@@ -1341,8 +1341,8 @@ export class BrokerRouter {
     return released;
   }
 
-  /** 按周期拉 K 线(PA 分析用)。历史数据同样要行情权限;先切延迟再切回实时。 */
-  async intradayBars(symbol: string, timeframe: string, rth = false): Promise<Array<Record<string, any>>> {
+  /** 按周期拉 K 线(PA 分析用;给了 endDay = 取到那个美东日收盘为止)。历史数据同样要行情权限;先切延迟再切回实时。 */
+  async intradayBars(symbol: string, timeframe: string, rth = false, endDay?: string): Promise<Array<Record<string, any>>> {
     const spec = TIMEFRAMES[timeframe];
     if (spec === undefined) {
       throw new BrokerError(`未知 K 线周期:${timeframe}(可选:${Object.keys(TIMEFRAMES).join("、")})`);
@@ -1360,7 +1360,7 @@ export class BrokerRouter {
     const show = daily && cfg === null ? "ADJUSTED_LAST" : "TRADES";
     const pull = (duration: string): Promise<RawBar[]> =>
       session.historicalData(target, {
-        endDateTime: "",
+        endDateTime: endDay ? ibEndUtc(endDay) : "",
         durationStr: duration,
         barSizeSetting: spec["bar_size"] as string,
         whatToShow: show,
@@ -1641,9 +1641,7 @@ export class BrokerRouter {
         action: String(leg["action"] ?? "BUY"), exchange: "SMART" });
     }
     const bag: IbContract = { secType: "BAG", symbol, exchange: "SMART", currency: "USD", conId: 0, comboLegs };
-    const [y, m, d] = String(day).split("-").map(Number) as [number, number, number];
-    const endEpoch = wallToEpoch({ year: y, month: m, day: d, hour: 16, minute: 5, second: 0 }, ET);
-    const endUtc = new Date(endEpoch).toISOString().slice(0, 19).replace(/-/g, "").replace("T", "-");
+    const endUtc = ibEndUtc(String(day));
     let raw: RawBar[];
     try {
       session.reqMarketDataType(3);

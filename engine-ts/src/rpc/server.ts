@@ -21,6 +21,7 @@ import type { Router } from "../services/host.js";
 import { MarketDataService } from "../services/marketData.js";
 import { PoolService } from "../services/pool.js";
 import { StockTripsService } from "../services/stockTrips.js";
+import { SimilarContextService } from "../services/similarContext.js";
 import { TradeHistoryService } from "../services/tradeHistory.js";
 import { TradeStore } from "../store.js";
 import { PROTOCOL_VERSION } from "./context.js";
@@ -62,6 +63,7 @@ export class RpcServer implements RpcContext {
   readonly pool: PoolService;
   readonly stockTrips: StockTripsService;
   readonly tradeHistory: TradeHistoryService;
+  readonly similarContext: SimilarContextService;
   /** 各域的 handler。方法表在构造时合成一张,之后不变。 */
   readonly domains: {
     system: SystemHandlers;
@@ -90,6 +92,7 @@ export class RpcServer implements RpcContext {
     this.pool = new PoolService(this, this.alerts, this.anomaly);
     this.stockTrips = new StockTripsService(this);
     this.tradeHistory = new TradeHistoryService(this, this.market, this.stockTrips);
+    this.similarContext = new SimilarContextService(this, this.market);
     this.domains = {
       system: new SystemHandlers(this),
       trading: new TradingHandlers(this),
