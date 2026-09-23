@@ -108,6 +108,7 @@ const ALLOWED_RPC = new Set([
   'ideas.analyze',
   'ideas.digest',
   'ideas.digests',
+  'ideas.search',
   'sectors.list',
   'sectors.add',
   'sectors.delete',

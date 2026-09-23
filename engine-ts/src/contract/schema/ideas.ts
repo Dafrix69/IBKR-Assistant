@@ -2,7 +2,8 @@
 import { z } from "zod";
 
 import type {
-  IdeasAddParams, IdeasAnalyzeParams, IdeasDigestParams, IdeasDigestsParams, IdeasListParams, IdeasUpdateParams,
+  IdeasAddParams, IdeasAnalyzeParams, IdeasDigestParams, IdeasDigestsParams, IdeasListParams,
+  IdeasSearchParams, IdeasUpdateParams,
 } from "../ideas.js";
 import { optional, requiredButReportedByHandler } from "./kit.js";
 import type { ParamsSchema } from "./kit.js";
@@ -29,8 +30,24 @@ export const IdeasAnalyzeParamsSchema: ParamsSchema<IdeasAnalyzeParams> = z.obje
   id: z.string(),
 });
 
+// 焦点只管结构;词多长、标的认不认识是 handler 的事
+const focus = z.object({
+  q: optional(z.string()),
+  symbols: optional(z.array(z.string())),
+});
+
 export const IdeasDigestParamsSchema: ParamsSchema<IdeasDigestParams> = z.object({
   scope: optional(z.string()),
+  focus: optional(focus),
+});
+
+export const IdeasSearchParamsSchema: ParamsSchema<IdeasSearchParams> = z.object({
+  q: optional(z.string()),
+  symbols: optional(z.union([z.array(z.string()), z.string()])),
+  since: optional(z.string()),
+  until: optional(z.string()),
+  status: optional(z.string()),
+  limit,
 });
 
 export const IdeasDigestsParamsSchema: ParamsSchema<IdeasDigestsParams> = z.object({

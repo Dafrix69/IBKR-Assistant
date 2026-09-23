@@ -22,8 +22,8 @@ import type {
   BacktestParseRulesParams, BacktestRunParams, BacktestRunResult, BacktestStrategy, CustomRules,
 } from "./backtest.js";
 import type {
-  Idea, IdeaDigestRow, IdeasAddParams, IdeasAnalyzeParams, IdeasDigestParams, IdeasDigestsParams, IdeasListParams,
-  IdeasUpdateParams,
+  Idea, IdeaDigestRow, IdeaHit, IdeasAddParams, IdeasAnalyzeParams, IdeasDigestParams, IdeasDigestsParams,
+  IdeasListParams, IdeasSearchParams, IdeasUpdateParams,
 } from "./ideas.js";
 import type { OptionWall, OptionsWallParams } from "./options.js";
 import type { PaAnalyzeParams, PaAnalyzeResult, PaCommentResult, PaTimeframesResult } from "./priceaction.js";
@@ -130,6 +130,7 @@ export interface RpcMethods {
   "ideas.analyze": { params: IdeasAnalyzeParams; result: { idea: Idea } };
   "ideas.digest": { params: IdeasDigestParams; result: { digest: IdeaDigestRow } };
   "ideas.digests": { params: IdeasDigestsParams; result: { digests: IdeaDigestRow[] } };
+  "ideas.search": { params: IdeasSearchParams; result: { hits: IdeaHit[] } };
 
   "options.wall": { params: OptionsWallParams; result: OptionWall };
 

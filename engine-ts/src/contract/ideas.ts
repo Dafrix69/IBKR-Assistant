@@ -87,6 +87,23 @@ export interface IdeaDigest {
   model: string;
 }
 
+/** 检索的焦点:按什么去召回想法。两项都可以不给;都没给 = 不检索。 */
+export interface IdeaFocus {
+  /** 关键词,空白分隔,任一命中即算(3 个字以上走 FTS5 trigram,更短的走子串匹配) */
+  q?: string;
+  /** 标的,大写;任一在想法的 symbols 里即算 */
+  symbols?: string[];
+}
+
+/** 想法因为什么被召回。recent = 最近一批无条件进,不因为匹配 */
+export type IdeaMatch = "symbol" | "text" | "recent";
+
+/** ideas.search 的一条结果:想法本身 + 它为什么被召回。 */
+export interface IdeaHit {
+  idea: Idea;
+  matched_by: IdeaMatch[];
+}
+
 /** idea_digests 表的一行:总结保留历史,复盘时能看到认知怎么变的。 */
 export interface IdeaDigestRow {
   id: string;
@@ -98,6 +115,11 @@ export interface IdeaDigestRow {
   idea_ids: string[];
   /** 那一列 JSON 读不出来时是空对象 */
   digest: Partial<IdeaDigest>;
+  /**
+   * 这次总结是按什么检索出来的。**只有带焦点的总结才有这个键**——老的「全塞」总结没有它,
+   * 所以同一个问题下两种取数的结果能并排比(idea-retrieval.md 的「切换前先留基准」)。
+   */
+  focus?: IdeaFocus;
 }
 
 // ---------------------------------------------------------------- 入参
@@ -126,6 +148,26 @@ export interface IdeasAnalyzeParams {
 export interface IdeasDigestParams {
   /** archived(默认)/ done / all(= 已归档 + 已完成);界面发的是 all */
   scope?: string;
+  /**
+   * 给了(且 q / symbols 至少一项非空)就改成「检索出来的一批 + 最近的一批」,按时间分层抽;
+   * 不给就是原来的全塞(最近 100 条)——默认口径不变。
+   */
+  focus?: IdeaFocus;
+}
+
+export interface IdeasSearchParams {
+  /** 关键词,空白分隔 */
+  q?: string;
+  /** 标的:数组,或逗号 / 空白分隔的串("SPX, AAPL") */
+  symbols?: string[] | string;
+  /** YYYY-MM-DD,含当天(按 UTC 日期比,同 created_at) */
+  since?: string;
+  /** YYYY-MM-DD,含当天 */
+  until?: string;
+  /** active / done / archived;不给(或空串)= 全部 */
+  status?: string;
+  /** 默认 50,封顶 200 */
+  limit?: number | string;
 }
 
 export interface IdeasDigestsParams {

@@ -44,7 +44,7 @@ import type {
   BookL1, BookLevel, BookLiquidity, BookSnapshot, MacroBoard, MacroRow,
   BacktestCurvePoint, BacktestRunResult, BacktestRunSpec, BacktestStrategy, BacktestTrade, CustomRules, CustomRulesInput,
   RuleConditionInput, RuleOperandInput,
-  Idea, IdeaAnalysis, IdeaBrief, IdeaBriefMetric, IdeaDigest, IdeaDigestRow,
+  Idea, IdeaAnalysis, IdeaBrief, IdeaBriefMetric, IdeaDigest, IdeaDigestRow, IdeaMatch,
   AnomalyConfig, AnomalyEvent, AnomalyKind, AnomalyMetrics, LevelKind, OptionWall, PoolWatch, PoolWatchPatch, PositionRow,
   AccountView, Limits, Policies, ProtectionsConfig, QualityList, QualityMonitor, QualityStock, RpcParams, RpcResult, Sector,
   SectorStock, SettingsPatch, SettingsView, SpotTarget, StockQuote, Targets, Track, Watch, WatchEvent, WatchLevel,
@@ -68,7 +68,7 @@ export type {
   BookL1, BookLevel, BookLiquidity, BookSnapshot, MacroBoard, MacroRow,
   BacktestCurvePoint, BacktestRunResult, BacktestRunSpec, BacktestStrategy, BacktestTrade, CustomRules, CustomRulesInput,
   RuleConditionInput, RuleOperandInput,
-  Idea, IdeaAnalysis, IdeaBrief, IdeaBriefMetric, IdeaDigest, IdeaDigestRow,
+  Idea, IdeaAnalysis, IdeaBrief, IdeaBriefMetric, IdeaDigest, IdeaDigestRow, IdeaMatch,
   AnomalyEvent, AnomalyKind, LevelKind, OptionWall, PoolWatch, PoolWatchPatch, PositionRow, QualityList, QualityMonitor,
   QualityStock, Sector, SectorStock, SettingsPatch, SpotTarget, StockQuote, Targets, Track, Watch, WatchEvent, WatchLevel,
   BreakerBrief, BreakerState, IndexSpot, ProtectionCooldown, SystemSelftest, SystemStatus, TrackerHeartbeat,
@@ -133,8 +133,9 @@ export interface DafriBridge {
   listIdeas(status?: string): Rpc<RpcResult<'ideas.list'>>;
   updateIdea(id: string, status: string): Rpc<RpcResult<'ideas.update'>>;
   analyzeIdea(id: string): Rpc<RpcResult<'ideas.analyze'>>;
-  digestIdeas(scope?: string): Rpc<RpcResult<'ideas.digest'>>;
+  digestIdeas(scope?: string, focus?: RpcParams<'ideas.digest'>['focus']): Rpc<RpcResult<'ideas.digest'>>;
   listIdeaDigests(): Rpc<RpcResult<'ideas.digests'>>;
+  searchIdeas(filter: RpcParams<'ideas.search'>): Rpc<RpcResult<'ideas.search'>>;
 
   listSectors(): Rpc<RpcResult<'sectors.list'>>;
   addSector(name: string): Rpc<RpcResult<'sectors.add'>>;
