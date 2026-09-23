@@ -8,6 +8,7 @@
  *   node dist/cli.js records / halt / resume / export / set-key / rpc
  *   node dist/cli.js import-fills fills.csv --account 别名 [--dry-run]   # 补历史成交(只收股票)
  *   node dist/cli.js import-option-trades trades.csv --account 别名 [--dry-run]   # 按结构整理的期权交易
+ *   node dist/cli.js import-option-positions option_positions.csv --account 别名 [--dry-run]   # Flex 期权仓位
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -16,6 +17,7 @@ import { BrokerRouter } from "./broker.js";
 import { Settings, loadSettings, nowEt } from "./config.js";
 import { TradingEngine } from "./engine.js";
 import { parseFillsCsv } from "./fillsCsv.js";
+import { parseOptionPositionsCsv } from "./optionPositionsCsv.js";
 import { parseOptionTradesCsv } from "./optionTradesCsv.js";
 import { FutuRouter } from "./futuBroker.js";
 import { setSecret } from "./keychain.js";
@@ -105,13 +107,15 @@ export async function main(argv: string[]): Promise<number> {
       return importFills(settings, args[0] ?? "", flagValue(args, "--account") ?? "", args.includes("--dry-run"));
     case "import-option-trades":
       return importOptionTrades(settings, args[0] ?? "", flagValue(args, "--account") ?? "", args.includes("--dry-run"));
+    case "import-option-positions":
+      return importOptionPositions(settings, args[0] ?? "", flagValue(args, "--account") ?? "", args.includes("--dry-run"));
     case "set-key":
       setSecret(settings.llm.keychain_service, settings.llm.keychain_account, args[0]!);
       console.log(`已写入 Keychain(service=${settings.llm.keychain_service})`);
       return 0;
     default:
       console.error(
-        "用法:cli <selftest|rpc|validate|parse|run|records|idea|ideas|halt|resume|export|import-fills|import-option-trades|set-key> [--config path]",
+        "用法:cli <selftest|rpc|validate|parse|run|records|idea|ideas|halt|resume|export|import-fills|import-option-trades|import-option-positions|set-key> [--config path]",
       );
       return 1;
   }
@@ -159,7 +163,7 @@ function importOptionTrades(settings: Settings, csvPath: string, alias: string, 
   }
   const parsed = parseOptionTradesCsv(fs.readFileSync(csvPath, "utf-8"), account.account_id, path.basename(csvPath));
   const store = new TradeStore(settings.db_path);
-  const known = new Set(store.listOptionTrades().filter((r) => r.account_id === account.account_id).map((r) => r.id));
+  const known = new Set(store.imports.listOptionTrades().filter((r) => r.account_id === account.account_id).map((r) => r.id));
   const fresh = parsed.rows.filter((r) => !known.has(r.id));
   const exits = parsed.rows.filter((r) => r.action !== "开仓").length;
   console.log(`账户:${alias}${account.is_paper ? "(模拟)" : ""}`);
@@ -169,9 +173,41 @@ function importOptionTrades(settings: Settings, csvPath: string, alias: string, 
     console.log("--dry-run:没有写库。");
     return 0;
   }
-  const added = store.rememberOptionTrades(parsed.rows);
+  const added = store.imports.rememberOptionTrades(parsed.rows);
   store.audit("cli", "option_trades_import", { file: path.basename(csvPath), account: alias, added, skipped: parsed.skipped });
   console.log(`已写入 ${added} 行。`);
+  return 0;
+}
+
+/**
+ * 把 Flex 期权仓位(option_positions.csv,按行权价配好、一行一个仓位的生命周期)导进 option_positions。
+ * 同一段时间以它为准:按结构整理的期权事件、券商成交合成的蝴蝶在它覆盖的日子里不再用(见 services/tradeHistory)。
+ * 只增不改,按 (账户, 行键) 去重;账户号不打印。
+ */
+function importOptionPositions(settings: Settings, csvPath: string, alias: string, dryRun: boolean): number {
+  const account = settings.accounts.find((a) => a.alias === alias);
+  if (!csvPath || account === undefined) {
+    const known = settings.accounts.map((a) => a.alias).join("、") || "(配置里没有账户)";
+    console.error(`用法:cli import-option-positions option_positions.csv --account <别名> [--dry-run];可选的别名:${known}`);
+    return 1;
+  }
+  const parsed = parseOptionPositionsCsv(fs.readFileSync(csvPath, "utf-8"), account.account_id, path.basename(csvPath));
+  const store = new TradeStore(settings.db_path);
+  const known = new Set(store.imports.listOptionPositions().filter((r) => r.account_id === account.account_id).map((r) => r.id));
+  const fresh = parsed.rows.filter((r) => !known.has(r.id));
+  const byStructure = new Map<string, number>();
+  for (const r of parsed.rows) byStructure.set(r.structure, (byStructure.get(r.structure) ?? 0) + 1);
+  console.log(`账户:${alias}${account.is_paper ? "(模拟)" : ""}`);
+  console.log(`期权仓位 ${parsed.rows.length} 个(${parsed.first ?? "-"} → ${parsed.last ?? "-"}),库里已有 ${parsed.rows.length - fresh.length} 个,新增 ${fresh.length} 个`);
+  console.log(`  结构:${[...byStructure].map(([k, n]) => `${k} ${n}`).join("、")}`);
+  for (const [reason, count] of Object.entries(parsed.skipped)) console.log(`  未收 ${count} 行:${reason}`);
+  if (dryRun) {
+    console.log("--dry-run:没有写库。");
+    return 0;
+  }
+  const added = store.imports.rememberOptionPositions(parsed.rows);
+  store.audit("cli", "option_positions_import", { file: path.basename(csvPath), account: alias, added, skipped: parsed.skipped });
+  console.log(`已写入 ${added} 个。`);
   return 0;
 }
 

@@ -293,7 +293,7 @@ export class IdeasHandlers extends HandlerBase {
     const ctx: { spot?: number | null; rangePos?: number | null } = {};
     if (kind === "butterfly") {
       ctx.spot = await context.spot(symbol);
-      entryUnderlying = await context.flyEntryUnderlyings(history.butterflies, symbol);
+      entryUnderlying = await context.flyEntryUnderlyings(history.butterflies, history.positions, symbol);
     } else if (kind === "stock") {
       const ranges = await context.stockRanges(symbol, history.facts);
       ctx.rangePos = ranges.query;
@@ -301,6 +301,7 @@ export class IdeasHandlers extends HandlerBase {
     }
     const entries = [
       ...sim.butterflyEntries(history.butterflies, history.facts, entryUnderlying),
+      ...sim.positionEntries(history.positions, history.facts, entryUnderlying),
       ...sim.optionEntries(history.options, history.facts),
       ...sim.stockEntries(history.facts, rangePos),
     ];

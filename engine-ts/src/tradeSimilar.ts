@@ -2,15 +2,15 @@
  * 下单页「历史相似交易」:拿一张订单票据,在历史交易里找相似的,按出场方式数胜负。
  *
  * 纯函数、规则打分,不用嵌入、不调模型(idea-retrieval.md 的边界:成交是精确数据,近似检索会给出不带「我不确定」的错答案)。
- * 历史来自 tradeOutcomes 的同一批事实:券商成交合成的蝴蝶(有行权价,能比翼宽、到期、时段、权利金)、股票持仓段、
- * 导入的期权出场事件(没有行权价,只能按「同标的同结构」粗配,每条都写明)。
+ * 历史来自 tradeOutcomes 的同一批事实:券商成交合成的蝴蝶与 Flex 期权仓位(都有行权价,能比翼宽、到期、时段、权利金、
+ * 中心离现价)、股票持仓段、按结构整理的期权出场事件(没有行权价,只能按「同标的同结构」粗配,每条都写明)。
  *
  * 只读、只展示:结果不回流到任何下单决策。
  */
 import type {
   IdeaTradeFact, IdeasSimilarTradesParams, IdeasSimilarTradesResult, SimilarExitStat, SimilarTrade,
 } from "./contract/ideas.js";
-import type { ImportedOptionTrade } from "./store.js";
+import type { ImportedOptionTrade, OptionPosition } from "./importedTrades.js";
 import type { ButterflyRecord } from "./tradeOutcomes.js";
 import { butterflyProfile, entryOf, etKey, indexAt, parseWhen, ReviewError } from "./tradereview.js";
 import { ET, wallParts } from "./tz.js";
@@ -96,15 +96,28 @@ export function slotOf(epochMs: number): string {
   return "尾盘一小时";
 }
 
+/** 离到期几个自然日 → 桶 */
+export function bucketOfDays(days: number): string {
+  if (days <= 0) return "当日到期";
+  if (days <= 7) return "一周内到期";
+  return "一周以上到期";
+}
+
 /** 到期日距交易日的自然日 → 桶 */
 export function dteBucket(expiry: string, tradeDate: string): string | undefined {
   const e = expiry.replace(/^(\d{4})(\d{2})(\d{2})$/, "$1-$2-$3");
   const a = Date.parse(`${e}T00:00:00Z`), b = Date.parse(`${tradeDate}T00:00:00Z`);
   if (!Number.isFinite(a) || !Number.isFinite(b)) return undefined;
-  const days = Math.round((a - b) / 86_400_000);
-  if (days <= 0) return "当日到期";
-  if (days <= 7) return "一周内到期";
-  return "一周以上到期";
+  return bucketOfDays(Math.round((a - b) / 86_400_000));
+}
+
+/** Flex 仓位的了结方式 → 相似交易里按出场方式分的那一档 */
+export function positionExit(p: OptionPosition): string {
+  if (p.status === "持仓中" || p.exit === "持仓中") return "持仓中";
+  if (p.exit === "持有到期") return "持有到期";
+  if (p.exit === "拆腿后到期") return "拆腿";
+  if (p.exit.includes("逐腿")) return "逐腿平仓";
+  return "提前平仓";
 }
 
 // ---------------------------------------------------------------- 历史 → 可比要素
@@ -142,6 +155,35 @@ export function butterflyEntries(
       slot: slotOf(when),
       debitRatio: width && Number.isFinite(debit) ? debit / width : undefined,
       centerDist: width && under !== undefined ? (Number(profile["center"]) - under) / width : undefined,
+    });
+  }
+  return out;
+}
+
+/** Flex 期权仓位:行权价齐全,和券商成交合成的蝴蝶一样逐项比。`entryUnderlying`:仓位 id → 开仓那一刻的标的价。 */
+export function positionEntries(
+  rows: readonly OptionPosition[], facts: readonly IdeaTradeFact[],
+  entryUnderlying: ReadonlyMap<string, number> = new Map(),
+): HistoryEntry[] {
+  const byId = new Map(facts.filter((f) => f.kind === "option").map((f) => [f.id, f]));
+  const out: HistoryEntry[] = [];
+  for (const p of rows) {
+    const fact = byId.get(p.id);
+    const when = parseWhen(p.open_et);
+    if (fact === undefined || when === null) continue;
+    const width = p.width !== null && p.width > 0 ? p.width : undefined;
+    const under = entryUnderlying.get(p.id);
+    out.push({
+      fact,
+      exit: positionExit(p),
+      structure: p.structure,
+      coarse: false,
+      right: p.right === "C" || p.right === "P" ? p.right : undefined,
+      width,
+      dte: p.dte === null ? dteBucket(p.expiry, p.open_et.slice(0, 10)) : bucketOfDays(p.dte),
+      slot: slotOf(when),
+      debitRatio: width && p.net_price !== null && p.net_price > 0 ? p.net_price / width : undefined,
+      centerDist: width && p.center !== null && under !== undefined ? (p.center - under) / width : undefined,
     });
   }
   return out;
@@ -281,7 +323,7 @@ function scoreOf(q: Query, e: HistoryEntry, peers: ReadonlySet<string>): { score
   return { score, reasons, primary: true };
 }
 
-const EXIT_ORDER = ["提前平仓", "持有到期", "拆腿", "已平仓", "持仓中"];
+const EXIT_ORDER = ["提前平仓", "逐腿平仓", "持有到期", "拆腿", "已平仓", "持仓中"];
 
 /** 票据 + 历史 → 相似交易(不含 lessons,那是库里的想法,handler 去取)。`peers` 是同板块的别的股票。 */
 export function findSimilar(

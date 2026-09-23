@@ -9,7 +9,7 @@
  */
 import type { IdeaTradeFact, IdeaTradeHow, IdeaTradeResult } from "./contract/ideas.js";
 import { pyRound } from "./py.js";
-import type { ImportedOptionTrade } from "./store.js";
+import type { ImportedOptionTrade, OptionPosition } from "./importedTrades.js";
 import { butterflyProfile, etKey, expiryClose, pairButterflies, parseWhen, payoffPerUnit } from "./tradereview.js";
 import { ET, utcIso, wallToEpoch } from "./tz.js";
 
@@ -225,6 +225,61 @@ export function optionFacts(
   return out;
 }
 
+const RIGHT_LABEL: Record<string, string> = { C: "看涨", P: "看跌", CP: "" };
+
+/** Flex 仓位的了结方式 → 成败口径里的 how。拆腿后到期也是「到期」,note 里写明拆过腿。 */
+function positionHow(p: OptionPosition): IdeaTradeHow {
+  if (p.status === "持仓中" || p.exit === "持仓中") return "open";
+  return p.exit.includes("到期") ? "expired" : "closed";
+}
+
+/**
+ * Flex 期权仓位(按行权价配好的,一行 = 一个仓位的完整生命周期):一个仓位一条。
+ * 成败看 Flex 的已实现盈亏(按腿先进先出分回仓位,**已扣佣金**);借方开仓(净价 > 0)再给对成本的收益率,
+ * 贷方开仓的「成本」不是付出去的钱,只给每份点数。不带数量、金额、账户;了结方式写进 note。
+ */
+export function positionFacts(rows: readonly OptionPosition[], isPaper: (accountId: string) => boolean): IdeaTradeFact[] {
+  return rows.map((p): IdeaTradeFact => {
+    const how = positionHow(p);
+    const qty = p.qty !== null && p.qty > 0 ? p.qty : null;
+    const points = qty === null ? null : pyRound(p.realized_pnl / 100 / qty, 2);
+    const pct = qty !== null && p.net_price !== null && p.net_price > 0
+      ? pyRound((p.realized_pnl / (p.net_price * 100 * qty)) * 100, 1) : null;
+    let result: IdeaTradeResult;
+    if (how === "open") result = "open";
+    else if (pct !== null) result = resultOf(pct);
+    else if (points !== null) result = Math.abs(points) < FLAT_POINTS ? "flat" : points > 0 ? "win" : "loss";
+    else result = p.realized_pnl === 0 ? "flat" : p.realized_pnl > 0 ? "win" : "loss";
+    const label = [p.symbol, p.strikes, `${RIGHT_LABEL[p.right] ?? ""}${p.structure}`, p.direction].filter(Boolean).join(" ");
+    return {
+      id: p.id,
+      kind: "option",
+      symbol: p.symbol,
+      opened_at: etIso(p.open_et),
+      closed_at: p.closed_et ? etIso(p.closed_et) : null,
+      label,
+      entry_price: p.net_price,
+      exit_price: null,
+      how,
+      result,
+      return_pct: how === "open" ? null : pct,
+      pnl_points: how === "open" ? null : points,
+      paper: isPaper(p.account_id),
+      note: [p.exit, "已扣佣金"].filter(Boolean).join(";"),
+    };
+  });
+}
+
+/** Flex 仓位覆盖的 (账户, 美东日期):开仓日与了结日。这些天的「按结构整理」的期权事件与券商成交合成的蝴蝶不再用,以仓位为准。 */
+export function positionDays(rows: readonly OptionPosition[]): Set<string> {
+  const out = new Set<string>();
+  for (const p of rows) {
+    out.add(`${p.account_id}|${p.open_et.slice(0, 10)}`);
+    if (p.closed_et) out.add(`${p.account_id}|${p.closed_et.slice(0, 10)}`);
+  }
+  return out;
+}
+
 /**
  * 两类合起来:只留给定标的的(空 = 全部),新的在前,封顶 `MAX_TRADE_FACTS`。
  * 次序与想法一致(新的在前);喂给模型时再倒成从早到晚。
@@ -268,8 +323,10 @@ export function factLine(f: IdeaTradeFact): string {
   const kindLabel = f.kind === "butterfly" ? "蝴蝶" : f.kind === "stock" ? "股票" : "期权";
   const tags = [etKey(parseWhen(f.opened_at) ?? 0, true), kindLabel, ...(f.paper ? ["模拟"] : [])];
   if (f.kind === "option") {
+    const pct = f.return_pct === null ? "" : ` ${f.return_pct > 0 ? "+" : ""}${f.return_pct}%`;
     const pts = f.pnl_points === null || f.pnl_points === undefined ? "" : ` ${f.pnl_points > 0 ? "+" : ""}${f.pnl_points} 点/份`;
-    return `[${tags.join(" | ")}] ${f.label}:${RESULT_LABEL[f.result]}${pts}(${f.note})`;
+    const price = f.entry_price === null ? "" : ` @${priceText(f.entry_price)}`;
+    return `[${tags.join(" | ")}] ${f.label}${price}:${RESULT_LABEL[f.result]}${pct}${pts}(${f.note})`;
   }
   let text = `[${tags.join(" | ")}] ${f.label} @${priceText(f.entry_price)}`;
   if (f.how !== "open") {
