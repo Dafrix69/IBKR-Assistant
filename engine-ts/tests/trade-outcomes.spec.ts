@@ -187,7 +187,7 @@ afterEach(() => {
   }
 });
 
-function makeServer(opts: { connected?: boolean; fills?: Rec[] } = {}): {
+function makeServer(opts: { connected?: boolean; fills?: Rec[]; positions?: Rec[] } = {}): {
   s: RpcServer; parser: FakeParser; call: (m: string, p?: Rec) => Promise<Rec>;
 } {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dafri-trade-outcomes-"));
@@ -204,7 +204,10 @@ function makeServer(opts: { connected?: boolean; fills?: Rec[] } = {}): {
   s.parserFactory = () => parser as never;
   s.engine.store.rememberFills(opts.fills ?? [...FLY_FILLS, ...STOCK_FILLS]);
   if (opts.connected ?? true) {
-    s.router = { sessions: () => [{}], connectedNames: () => ["paper"] } as never;
+    s.router = {
+      sessions: () => [{}], connectedNames: () => ["paper"],
+      ...(opts.positions ? { positions: async () => opts.positions } : {}),
+    } as never;
     (s.market as unknown as Rec)["dailyHistory"] = async (symbol: string): Promise<Rec[]> =>
       symbol === "SPX" ? [{ date: "2026-09-09", close: 7600 }, { date: "2026-09-10", close: 7682 }] : [];
   }
@@ -276,6 +279,23 @@ describe("ideas.digest(trades):RPC", () => {
       expect(parser.calls.at(-1)!.user).not.toContain("交易结果");
     }
     expect((await call("ideas.digests"))["result"]["digests"].every((d: Rec) => !("trades" in d))).toBe(true);
+  });
+
+  it("股票持仓段与交易分析页同一份:连着券商、当前不持有时,先卖后买回认得出是做空", async () => {
+    const shortFills = [
+      stockFill("ORC", "SLD", 25, 170.9, "2026-04-15T14:04:23+00:00", 401),
+      stockFill("ORC", "BOT", 25, 175.0, "2026-04-15T18:57:56+00:00", 402),
+    ];
+    const held = makeServer({ fills: shortFills, positions: [] });
+    await archivedIdea(held.call, "随便一条");
+    const row = (await held.call("ideas.digest", { scope: "all", trades: true }))["result"]["digest"];
+    expect(row["trades"].map((t: Rec) => [t["label"], t["result"], t["return_pct"]])).toEqual([["ORC 做空", "loss", -2.4]]);
+
+    // 读不到持仓(没有 positions):先卖的部分按卖出老仓位算,成本不明,不编
+    const blind = makeServer({ fills: shortFills });
+    await archivedIdea(blind.call, "随便一条");
+    const guessed = (await blind.call("ideas.digest", { scope: "all", trades: true }))["result"]["digest"];
+    expect(guessed["trades"].map((t: Rec) => t["result"])).toEqual(["open", "unknown"]);
   });
 
   it("trades 不是布尔:结构错归 schema", async () => {

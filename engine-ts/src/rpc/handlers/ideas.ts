@@ -269,16 +269,17 @@ export class IdeasHandlers extends HandlerBase {
   /**
    * 库里累积的券商成交 → 每笔交易的结局(交易分析页的同一批记录,同一套算法)。只读本地库,不向券商同步新成交;
    * 没平仓的过期蝴蝶按到期日标的日线收盘结算——要连着券商取日线,取不到就是「结果不明」。
-   * 期初持仓不核对(传 null):先卖的部分按卖出老仓位算、成本不明,和交易分析页没连券商时一个口径。
+   * 股票持仓段与交易分析页同一份(services/stockTrips):连着券商时按当前持仓反推期初仓位,先卖后买回认得出是做空;
+   * 没连时先卖的部分按卖出老仓位算、成本不明。
    */
   private async tradeFacts(symbols: readonly string[]): Promise<IdeaTradeFact[]> {
-    const [{ groupButterflies }, { groupStockTrips }, outcomes] = await Promise.all([
-      import("../../ibtrades.js"), import("../../stockreview.js"), import("../../tradeOutcomes.js"),
+    const [{ groupButterflies }, outcomes] = await Promise.all([
+      import("../../ibtrades.js"), import("../../tradeOutcomes.js"),
     ]);
     const accounts = this.settings.accounts.map((a) => ({ alias: a.alias, account_id: a.account_id, is_paper: a.is_paper }));
     const fills = this.engine.store.listFills();
     const butterflies = groupButterflies(fills, accounts);
-    const trips = groupStockTrips(fills, accounts, null);
+    const trips = await this.ctx.stockTrips.trips(); // 连着券商时按当前持仓反推期初仓位,同交易分析页
     const now = Date.now();
 
     const want = new Set(symbols.map((s) => s.toUpperCase()));
