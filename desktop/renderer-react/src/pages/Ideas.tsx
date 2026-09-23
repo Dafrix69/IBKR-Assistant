@@ -16,7 +16,7 @@ import { EmptyState, Meta, PageHead, Primer, StatusCard } from '../ui/kit';
 // 契约把它们标成 Partial——老版本写进去的可能缺键,所以下面每一项都按"可能没有"来画。
 
 const IDEA_STATUS_LABEL: Record<string, string> = { active: '进行中', done: '已完成', archived: '已归档' };
-const MATCH_LABEL: Record<IdeaMatch, string> = { symbol: '标的命中', text: '原文命中', recent: '近期' };
+const MATCH_LABEL: Record<IdeaMatch, string> = { symbol: '标的命中', text: '原文命中', semantic: '语义相近', recent: '近期' };
 const BRIEF_LABELS: [IdeaBriefMetric, string, string][] = [
   ['last', '现价', ''],
   ['chg_1d_pct', '1日', '%'],

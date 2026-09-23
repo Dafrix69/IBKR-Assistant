@@ -8,7 +8,7 @@ import type {
   RpcResult,
 } from "../../contract/index.js";
 import {
-  DIGEST_PICK, dayBound, matchTags, normalizeFocus, parseSymbols, pickForDigest, splitTerms,
+  DIGEST_PICK, dayBound, matchTags, mergeSemantic, normalizeFocus, parseSymbols, pickForDigest, splitTerms,
 } from "../../ideaRetrieval.js";
 import { extractSymbols } from "../../market.js";
 import { IdeaAnalysisSchema, IdeaDigestSchema } from "../../models.js";
@@ -69,25 +69,35 @@ export class IdeasHandlers extends HandlerBase {
     return { id: ideaId, status };
   }
 
-  /** 按关键词 / 标的 / 时间窗 / 状态找想法,新的在前。纯本地:不碰模型、不碰券商。
+  /** 按关键词 / 标的 / 时间窗 / 状态找想法,新的在前。纯本地:不碰券商;给了关键词时再用本机嵌入补上意思相近的
+   *  (先按状态、时间窗过滤,再在这批里按语义排,见 services/ideaSemantic;嵌入不可用就是纯关键词)。
    *  关键词与标的都没给时就是一个带时间窗的列表(matched_by 为空)。 */
-  ideasSearch(params: IdeasSearchParams): RpcResult<"ideas.search"> {
+  async ideasSearch(params: IdeasSearchParams): Promise<RpcResult<"ideas.search">> {
     const status = params["status"] || null;
     const n = Math.trunc(Number(params["limit"] || 50));
     const limit = Number.isFinite(n) && n > 0 ? Math.min(n, 200) : 50;
+    const store = this.engine.store;
+    let filter: { statuses: string[] | null; since: string | null; until: string | null };
+    let candidates;
     try {
-      const candidates = this.engine.store.searchIdeas({
+      filter = {
         statuses: status ? [status] : null,
         since: dayBound(params["since"], "since"),
         until: dayBound(params["until"], "until"),
-        symbols: parseSymbols(params["symbols"]),
-        terms: splitTerms(params["q"]),
-        limit,
+      };
+      candidates = store.searchIdeas({
+        ...filter, symbols: parseSymbols(params["symbols"]), terms: splitTerms(params["q"]), limit,
       });
-      return { hits: candidates.map((c) => ({ idea: c.idea, matched_by: matchTags(c) })) };
     } catch (exc) {
       throw new RpcError(-32602, (exc as Error).message);
     }
+    const q = String(params["q"] ?? "").trim();
+    if (q) {
+      const pool = store.searchIdeas({ ...filter, limit: 5000 }).map((c) => c.idea);
+      const semantic = await this.ctx.ideaSemantic.rank(q, pool);
+      if (semantic !== null && semantic.size) candidates = mergeSemantic(candidates, pool, semantic, limit);
+    }
+    return { hits: candidates.map((c) => ({ idea: c.idea, matched_by: matchTags(c) })) };
   }
 
   static readonly IDEA_ANALYZE_SYSTEM =
@@ -193,6 +203,11 @@ export class IdeasHandlers extends HandlerBase {
     "lessons 可复用的经验教训——优先回答'是不是在反复犯同一个错':把成功与失败的交易分开看," +
     "各自有什么共同点(结构、方向、开仓时机、持有到结算还是提前平仓),想法里写过的判断后来有没有被结果印证;" +
     "只能从给出的想法与交易结果里提,想法与交易之间没有明确对应时不要硬配;" +
+    // 2026-09-23 真跑:复盘想法是当天写的、交易全在之前,两份总结却都说「写了规则仍在违反」
+    "对照想法与交易时必须看日期先后:写在交易之后的想法(事后复盘)只能说'这些交易印证了这条结论',不能说'写了规则之后仍在违反';" +
+    "只有规则写在前、同类亏损发生在后,才算执行缺口;" +
+    "消息里的'时间线'是代码算的事实:它写着'开仓晚于最后一条想法的交易 0 笔'时,summary、lessons、patterns 里一律不许出现" +
+    "'执行没跟上''仍在违反''停留在认知层面''仍在持续发生'这类判断,只能说'结论已被这些交易印证、有待之后的交易检验';" +
     "patterns 想法质量与执行的规律(哪类想法写得具体、有价位有条件,哪类只是情绪宣泄;写了想法却没做、" +
     "做了却没写想法的情况);" +
     "actions 接下来值得做的具体动作(如'把某类成功交易写成可回测的规则'、'某类亏损结构先停手')。" +
@@ -216,7 +231,7 @@ export class IdeasHandlers extends HandlerBase {
     const focus = normalizeFocus(params["focus"]);
     let ideas: Idea[];
     if (focus !== null) {
-      ideas = this.pickByFocus(scope, focus);
+      ideas = await this.pickByFocus(scope, focus);
     } else if (scope === "all") {
       ideas = this.engine.store
         .listIdeas(null, 500)
@@ -247,7 +262,7 @@ export class IdeasHandlers extends HandlerBase {
       : `检索焦点:${focusLabel(focus)}。以下是命中焦点的想法(按时间分层抽取,不只取最相似的)` +
         `与最近的 ${DIGEST_PICK.recent} 条,共 ${ideas.length} 条,按时间从早到晚:`;
     let user = ideas.length ? `${head}\n\n${lines.join("\n\n")}` : "这个范围内没有想法,只有交易结果。";
-    if (trades !== null) user += `\n\n${tradesSection(trades)}`;
+    if (trades !== null) user += `\n\n${tradesSection(trades, ideas)}`;
 
     const parser = this.parserFactory(this.settings.llm);
     let digest;
@@ -314,13 +329,19 @@ export class IdeasHandlers extends HandlerBase {
   }
 
   /** 带焦点的取数:范围内最近的一批 + 命中焦点的按时间分层抽。返回新的在前(同老口径 listIdeas 的次序)。 */
-  private pickByFocus(scope: string, focus: IdeaFocus): Idea[] {
+  private async pickByFocus(scope: string, focus: IdeaFocus): Promise<Idea[]> {
     const statuses = scope === "all" ? ["archived", "done"] : [scope];
     const store = this.engine.store;
     const recentPool = store.searchIdeas({ statuses, limit: DIGEST_PICK.recent }).map((c) => c.idea);
-    const matches = store.searchIdeas({
+    let matches = store.searchIdeas({
       statuses, symbols: focus.symbols ?? [], terms: splitTerms(focus.q), limit: 5000,
     });
+    // 关键词之外再补意思相近的(本机嵌入;不可用就是纯关键词)
+    if (focus.q) {
+      const pool = store.searchIdeas({ statuses, limit: 5000 }).map((c) => c.idea);
+      const semantic = await this.ctx.ideaSemantic.rank(focus.q, pool);
+      if (semantic !== null && semantic.size) matches = mergeSemantic(matches, pool, semantic, 5000);
+    }
     return pickForDigest(matches, recentPool).map((p) => p.idea).reverse();
   }
 
@@ -337,10 +358,29 @@ function weekdayIndex(moment: EtNow): number {
 }
 
 /** 交易结果那一段:代码数好的胜负在最前,再按时间从早到晚一笔一行。 */
-function tradesSection(trades: IdeaTradeFact[]): string {
+function tradesSection(trades: IdeaTradeFact[], ideas: readonly Idea[]): string {
   if (!trades.length) return "交易结果:库里没有可对照的真实成交。";
   const lines = [...trades].reverse().map(factLine);
-  return `交易结果(软件从券商逐笔成交算出,是事实;${tallyLine(trades)}),按时间从早到晚:\n\n${lines.join("\n")}`;
+  return `交易结果(软件从券商逐笔成交算出,是事实;${tallyLine(trades)}),按时间从早到晚:\n${timeline(trades, ideas)}\n\n${lines.join("\n")}`;
+}
+
+/**
+ * 想法与交易的先后,代码算好了写给模型:光在提示词里叮嘱「看日期」不够——2026-09-23 真跑,
+ * 经验教训里写对了「规则晚于亏损交易,只能算印证」,开头的 summary 却还是「写了规则仍在违反」。
+ */
+function timeline(trades: readonly IdeaTradeFact[], ideas: readonly Idea[]): string {
+  const day = (iso: string): string => iso.slice(0, 10);
+  const opened = trades.map((t) => t.opened_at).filter(Boolean).sort();
+  const parts = [`交易结果开仓于 ${day(opened[0] ?? "")} 至 ${day(opened[opened.length - 1] ?? "")}`];
+  if (ideas.length) {
+    const written = ideas.map((i) => String(i["created_at"] ?? "")).filter(Boolean).sort();
+    const last = written[written.length - 1] ?? "";
+    const after = opened.filter((o) => o > last).length;
+    parts.unshift(`想法写于 ${day(written[0] ?? "")} 至 ${day(last)}`);
+    parts.push(`开仓晚于最后一条想法的交易 ${after} 笔` +
+      (after ? "" : "(所以没有任何一笔能算作『写了规则之后又违反』,只能用来印证或否定想法)"));
+  }
+  return `时间线(代码算的):${parts.join(";")}。`;
 }
 
 function focusLabel(focus: IdeaFocus): string {

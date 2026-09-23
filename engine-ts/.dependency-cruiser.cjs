@@ -7,9 +7,9 @@
 const L = {
   contractTypes: "^src/contract/[^/]+\\.ts$",
   util:        "^src/(py|pyjson|tz|notify|keychain|killswitch|protections|rpcError)\\.ts$",
-  domain:      "^src/(config|models|store|importedTrades|positions|marketdata)\\.ts$",
+  domain:      "^src/(config|models|store|importedTrades|ideaVectors|positions|marketdata)\\.ts$",
   analysis:    "^src/(backtest|priceaction|screener|research|ideaRetrieval|optionwall|anomaly|flyexit|tradereview|tradeOutcomes|fillsCsv|optionTradesCsv|optionPositionsCsv|tradeSimilar|ibtrades|macro|market|alerts)\\.ts$",
-  parsing:     "^src/(validator|providers|prompts|shorthand|llm)\\.ts$",
+  parsing:     "^src/(validator|providers|prompts|shorthand|llm|embeddings)\\.ts$",
   execution:   "^src/(broker|ibContracts|futuBroker|ibSession|ibTypes|tws|futu|futuBridge)\\.ts$",
   orchestrate: "^src/((engine|tracker)\\.ts|(engine|services)/[^/]+\\.ts)$",
   transport:   "^src/((rpc|cli)\\.ts|rpc/.+\\.ts)$",
