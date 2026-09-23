@@ -4,6 +4,7 @@ import { dafri, errorMessage } from '../bridge';
 import type { RsResult } from '../bridge';
 import { DeviationSection, useDeviation } from '../lib/DeviationSection';
 import { fmtTimeShort } from '../lib/format';
+import { LeadersSection } from '../lib/LeadersSection';
 import { ScanTable, TagCards } from '../lib/ScanTable';
 import {
   isPending, mergeRows, num, sortRows, TF_OPTIONS,
@@ -151,6 +152,7 @@ export function ScreenerPage() {
       ) : scan.busy ? null : (
         <EmptyState>选一个股票池,点「扫描」:每只股一行,RS 强度与各周期的背离并排。</EmptyState>
       )}
+      <LeadersSection sector={sectorValue} benchmark={scan.benchmark} onSymbol={drill} />
       <DeviationSection dev={dev} pool={pool} order={order} innerRef={detailRef} />
     </section>
   );

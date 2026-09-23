@@ -5,7 +5,7 @@ import { nowEt } from "../../config.js";
 import { pyRound } from "../../py.js";
 import type {
   ButterflyCandidate, ReviewAnalyzeParams, ReviewAnalyzeResult, ReviewCandidate, ReviewCandidatesParams,
-  ReviewCandidatesResult, StockCandidate,
+  ReviewCandidatesResult, ReviewPerformanceParams, ReviewPerformanceResult, StockCandidate,
 } from "../../contract/index.js";
 import { RpcError } from "../../rpcError.js";
 import { HandlerBase } from "../context.js";
@@ -17,7 +17,23 @@ export class ReviewHandlers extends HandlerBase {
     return contractMethods({
       "review.candidates": (p) => this.reviewCandidates(p),
       "review.analyze": (p) => this.reviewAnalyze(p),
+      "review.performance": (p) => this.reviewPerformance(p),
     });
+  }
+
+  // ---- 绩效体检 ----------------------------------------------------------
+  static readonly PERFORMANCE_MAX_DAYS = 3650;
+
+  /** 已了结交易的美元账本 → 体检(performance.ts)。账本与想法总结、相似交易是同一批交易、同一套去重。 */
+  async reviewPerformance(params: ReviewPerformanceParams): Promise<ReviewPerformanceResult> {
+    const days = params.days ?? null;
+    if (days !== null && (!Number.isInteger(days) || days < 1 || days > ReviewHandlers.PERFORMANCE_MAX_DAYS)) {
+      throw new RpcError(-32602, `天数要是 1 到 ${ReviewHandlers.PERFORMANCE_MAX_DAYS} 之间的整数,收到:${days}`);
+    }
+    const { performanceReport } = await import("../../performance.js");
+    await this.reviewTrades(); // 连着券商时先把新成交同步进库(15 秒一次),体检看的是库
+    const ledger = await this.ctx.tradeHistory.ledger();
+    return performanceReport(ledger, { scope: params.scope ?? "all", kind: params.kind ?? "all", days, now: Date.now() });
   }
 
   // ---- 交易分析:蝴蝶复盘 ------------------------------------------------

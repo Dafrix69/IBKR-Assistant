@@ -306,6 +306,16 @@
 .screen-table .ant-table-tbody > tr.scan-row { cursor: pointer; }
 .screen-table .ant-table-tbody > tr.row-open > td:not(.rs-cell) { background: color-mix(in srgb, var(--blue) 10%, transparent); }
 .screen-table .th-sub { margin-left: 6px; font-weight: 400; color: var(--label-tertiary); }
+/* 强势股筛选:趋势模板 8 个小点(过 / 没过 / 判断不了),颜色只表达过没过 */
+.leaders { margin-top: 18px; }
+.leaders .notice { margin: 8px 0; }
+.tt-dots { display: inline-flex; gap: 3px; vertical-align: middle; }
+.tt-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--bg-fill); box-shadow: inset 0 0 0 1px var(--separator); }
+.tt-dots i.ok { background: var(--green); box-shadow: none; }
+.tt-dots i.no { background: color-mix(in srgb, var(--red) 55%, transparent); box-shadow: none; }
+.tt-count { margin-left: 4px; font-variant-numeric: tabular-nums; color: var(--label-secondary); }
+.tt-tip { margin: 0; padding-left: 0; list-style: none; font-size: 11.5px; line-height: 1.6; }
+.tt-tooltip { max-width: 420px; }
 .row.tight .ant-select.grow { flex: 1; }
 .row.tight .ant-input-number.narrow, .row.tight .ant-input.narrow { flex: 0 0 92px; max-width: 92px; }
 /* 周期多选:可勾选的胶囊,放在一条分段控件样式的槽里 */
@@ -386,6 +396,20 @@
 
 /* ================= 交易分析 ================= */
 .review-table.ant-table-wrapper { margin-top: 8px; }
+/* 绩效体检 */
+.head-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.head-actions .ant-segmented { margin-left: 0; }
+.perf-findings { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 10px; }
+.perf-findings .status-card { margin: 0; }
+.perf-source { margin-top: 6px; }
+.perf-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 4px 16px; }
+.perf-group h4 { margin: 6px 0 0; font-size: 11px; font-weight: 500; color: var(--label-secondary); }
+.perf-num { font-variant-numeric: tabular-nums; }
+.perf-num.pos { color: var(--up-text); }
+.perf-num.neg { color: var(--down-text); }
+.sizer-inputs { display: flex; flex-wrap: wrap; gap: 12px 20px; margin-bottom: 4px; }
+.sizer-inputs label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--label-secondary); }
+.sizer-inputs .ant-input-number { width: 160px; }
 .review-table .ant-table { background: transparent; font-size: 11.5px; }
 .review-table .ant-table-thead > tr > th { font-size: 11px; font-weight: 500; }
 .review-table .ant-table-tbody > tr > td { font-size: 11.5px; vertical-align: top; }

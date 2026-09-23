@@ -296,6 +296,7 @@ describe("契约:结构错由 schema 报,领域错由 handler 报", () => {
         stoploss_guard: { enabled: true, lookback_minutes: 60, trigger_count: 3, pause_minutes: 30 },
         max_drawdown: { enabled: false, lookback_minutes: 120, max_drawdown_usd: 500, pause_minutes: 60 },
         cooldown: { enabled: true, minutes: 10 },
+        daily_loss: { enabled: true, max_loss_usd: 800 },
       },
     } } });
     expect(out["error"]).toBeUndefined();
@@ -305,6 +306,7 @@ describe("契约:结构错由 schema 报,领域错由 handler 报", () => {
       stoploss_guard: { enabled: true, lookback_minutes: 60, trigger_count: 3, pause_minutes: 30 },
       max_drawdown: { enabled: false, lookback_minutes: 120, max_drawdown_usd: 500, pause_minutes: 60 },
       cooldown: { enabled: true, minutes: 10 },
+      daily_loss: { enabled: true, max_loss_usd: 800 },
     });
     // 引擎这头立刻生效(不是只改了文件),文件里也是这份
     expect(fresh.settings.policies.auto_execute).toBe(true);

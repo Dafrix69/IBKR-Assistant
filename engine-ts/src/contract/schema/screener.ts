@@ -2,7 +2,9 @@
  *  (那几句原话 golden-rpc 钉着,连检查的先后次序一起)。 */
 import { z } from "zod";
 
-import type { ScreenerDeviationParams, ScreenerInflectionParams, ScreenerRsParams } from "../screener.js";
+import type {
+  ScreenerDeviationParams, ScreenerInflectionParams, ScreenerLeadersParams, ScreenerRsParams,
+} from "../screener.js";
 import { optional } from "./kit.js";
 import type { ParamsSchema } from "./kit.js";
 
@@ -10,6 +12,12 @@ import type { ParamsSchema } from "./kit.js";
 const numberField = optional(z.union([z.number(), z.string()]));
 
 export const ScreenerRsParamsSchema: ParamsSchema<ScreenerRsParams> = z.object({
+  sector: optional(z.string()),
+  benchmark: optional(z.string()),
+});
+
+// 基准认不认识是领域校验(和 screener.rs 同一句「基准只能是 SPY / QQQ」),在 handler
+export const ScreenerLeadersParamsSchema: ParamsSchema<ScreenerLeadersParams> = z.object({
   sector: optional(z.string()),
   benchmark: optional(z.string()),
 });

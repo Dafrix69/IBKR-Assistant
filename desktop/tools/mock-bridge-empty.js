@@ -51,6 +51,7 @@ window.dafri = {
   screenerRs: async () => { throw new Error('股票池是空的:先在「板块」页加成分股'); },
   screenerInflection: async () => { throw new Error('股票池是空的:先在「板块」页加成分股'); },
   screenerDeviation: async () => { throw new Error('极值偏离需要 TWS / IB Gateway:请先在「TWS 连接」面板连接引擎。'); },
+  screenerLeaders: async () => { throw new Error('强势股筛选需要先连接 TWS / IB Gateway'); },
   appInfo: async () => ({ version: '0.2.0', electron: '40.0.0', configPath: '', enginePath: '',
     engineRunning: true }),
   llmCatalog: async () => ({
@@ -111,6 +112,7 @@ window.dafri = {
   reviewCandidates: async () => ({candidates: [], synced: null, ibkr_available: false, fills_stored: 0}),
   reviewAnalyze: async () => { throw new Error('交易分析的 K 线需要TWS / IB Gateway:请先在「TWS 连接」面板连接引擎。'); },
   paTimeframes: async () => ({ timeframes: [] }),
+  reviewPerformance: async ({ scope = 'all', kind = 'all', days = null } = {}) => ({scope, kind, days, stats: {trades: 0, wins: 0, losses: 0, flats: 0, win_rate: null, net_pnl: 0, gross_profit: 0, gross_loss: 0, avg_win: null, avg_loss: null, payoff_ratio: null, profit_factor: null, expectancy: null, breakeven_win_rate: null, largest_win: null, largest_loss: null, max_consecutive_wins: 0, max_consecutive_losses: 0}, r_stats: {trades: 0, expectancy_r: null, std_r: null, sqn: null, sqn_label: ''}, drawdown: {max: 0, peak_at: null, trough_at: null, current: 0, recovery_factor: null}, streak: {kind: 'none', count: 0}, hold: {win_median_minutes: null, loss_median_minutes: null}, kelly: null, recent: null, per_day: {days: 0, green_days: 0, best_day: null, worst_day: null, avg_losing_day: null}, equity: [], groups: {kind: [], session: [], weekday: [], symbol: []}, findings: [], trades: [], excluded: {open: 0, unknown: 0, no_cost: 0}, notes: []}),
   paAnalyze: async () => { throw new Error("实时 K 线需要 TWS:请先在「TWS 连接」面板连接引擎。"); },
   paComment: async () => ({}),
   macroBoard: async () => ({ rows: [], fetched_at: null }),

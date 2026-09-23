@@ -406,21 +406,24 @@ function flag(raw: Raw, key: string, dflt: boolean, label: string): boolean {
   return value;
 }
 
-// 保护规则(见 protections.ts):三条各自一个小节,全部默认关闭。
+// 保护规则(见 protections.ts):四条各自一个小节,全部默认关闭。
 // 这里的错误文案与 limits / policies 同格式——它们逐字节进黄金基线。
-const PROTECTION_KEYS = ["stoploss_guard", "max_drawdown", "cooldown"];
+const PROTECTION_KEYS = ["stoploss_guard", "max_drawdown", "cooldown", "daily_loss"];
 const STOPLOSS_GUARD_KEYS = ["enabled", "lookback_minutes", "trigger_count", "pause_minutes"];
 const MAX_DRAWDOWN_KEYS = ["enabled", "lookback_minutes", "max_drawdown_usd", "pause_minutes"];
 const COOLDOWN_KEYS = ["enabled", "minutes"];
+const DAILY_LOSS_KEYS = ["enabled", "max_loss_usd"];
 
 function buildProtections(raw: Raw): ProtectionsConfig {
   rejectUnknown(PROTECTION_KEYS, raw, "protections");
   const guard = (raw["stoploss_guard"] as Raw) ?? {};
   const dd = (raw["max_drawdown"] as Raw) ?? {};
   const cool = (raw["cooldown"] as Raw) ?? {};
+  const daily = (raw["daily_loss"] as Raw) ?? {};
   rejectUnknown(STOPLOSS_GUARD_KEYS, guard, "protections.stoploss_guard");
   rejectUnknown(MAX_DRAWDOWN_KEYS, dd, "protections.max_drawdown");
   rejectUnknown(COOLDOWN_KEYS, cool, "protections.cooldown");
+  rejectUnknown(DAILY_LOSS_KEYS, daily, "protections.daily_loss");
   const one = 1;
   return {
     stoploss_guard: {
@@ -438,6 +441,10 @@ function buildProtections(raw: Raw): ProtectionsConfig {
     cooldown: {
       enabled: flag(cool, "enabled", false, "protections.cooldown"),
       minutes: num(cool, "minutes", "int", 30, "protections.cooldown", { min: one, minStr: "1" })!,
+    },
+    daily_loss: {
+      enabled: flag(daily, "enabled", false, "protections.daily_loss"),
+      max_loss_usd: num(daily, "max_loss_usd", "float", 500.0, "protections.daily_loss", { min: 0.0, minStr: "0.0" })!,
     },
   };
 }

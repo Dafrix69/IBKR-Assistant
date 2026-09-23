@@ -177,7 +177,7 @@ export function optionDaysCovered(fills: readonly FillDay[]): Set<string> {
 }
 
 /** "2026-07-20 10:23:05"(美东墙钟)→ UTC ISO */
-function etIso(timeEt: string): string {
+export function etIso(timeEt: string): string {
   const [d = "", t = ""] = timeEt.split(" ");
   const [year, month, day] = d.split("-").map(Number) as [number, number, number];
   const [hour, minute, second] = t.split(":").map(Number) as [number, number, number];

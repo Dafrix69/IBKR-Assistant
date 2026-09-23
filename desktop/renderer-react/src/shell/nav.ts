@@ -1,5 +1,5 @@
 /**
- * 侧栏三组、13 项,按"多久用一次"分层(docs/features/ui.md)。
+ * 侧栏三组、14 项,按"多久用一次"分层(docs/features/ui.md)。
  * 图标是 ui/Icons.tsx 里按 SF Symbols 几何手绘的线稿,这里只引名字。
  * 徽标:board 显示排队等待触发的订单数,sectors(股票池)显示没看过的异动条数。
  *
@@ -41,6 +41,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { key: 'screener', label: '扫描', icon: 'sf-scan' },
       { key: 'backtest', label: '回测', icon: 'sf-chart' },
       { key: 'review', label: '交易分析', icon: 'sf-review' },
+      { key: 'performance', label: '绩效体检', icon: 'sf-gauge' },
     ],
   },
   {

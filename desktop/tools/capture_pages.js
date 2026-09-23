@@ -142,8 +142,8 @@ async function run() {
           // React 的受控输入框:直接赋 value 状态不会变,要走原生 setter 再派发 input 事件
           backtest: "(() => { const i = document.getElementById('bt-symbol'); if (i) { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(i, 'NVDA'); i.dispatchEvent(new Event('input', { bubbles: true })); } const b = document.getElementById('btn-bt-run'); if (b) setTimeout(() => b.click(), 50); })();",
           market: "(() => { const i = document.getElementById('book-symbol'); if (i) { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(i, 'SPY'); i.dispatchEvent(new Event('input', { bubbles: true })); } const b = document.getElementById('btn-book-load'); if (b) setTimeout(() => b.click(), 50); })();",
-          // 扫描是一页:点一次「扫描」,RS 与背离进同一张表,榜首那只的极值偏离跟着出来
-          screener: "(() => { const b = document.getElementById('btn-scan-run'); if (b) b.click(); })();",
+          // 扫描是一页:点一次「扫描」,RS 与背离进同一张表,榜首那只的极值偏离跟着出来;表下面的强势股筛选也点一次(在首屏之外,不改变首屏)
+          screener: "(() => { const b = document.getElementById('btn-scan-run'); if (b) b.click(); const l = document.getElementById('btn-leaders-run'); if (l) l.click(); })();",
         };
         if (DEMO[tab]) {
           await win.webContents.executeJavaScript(DEMO[tab]);

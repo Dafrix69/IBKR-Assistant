@@ -26,7 +26,9 @@ import { fingerprint as promptFingerprint } from "./prompts.js";
 import { Notifier } from "./notify.js";
 import type { PromptBundle } from "./prompts.js";
 import { fingerprint, loadPromptBundle, renderUser } from "./prompts.js";
-import { NO_PROTECTION, evaluateProtections, protectionBlock } from "./protections.js";
+import {
+  NO_PROTECTION, evaluateProtections, needsPnlEvents, protectionBlock, protectionsEnabled, protectionsSince,
+} from "./protections.js";
 import type { ProtectionState } from "./protections.js";
 import { TradeStore, redactAccount } from "./store.js";
 import { nowIsoSecondsEt } from "./engine/clock.js";
@@ -1499,23 +1501,16 @@ export class TradingEngine {
   // **只挡新单,永不挡平仓**:持仓追踪发的平仓单走 closePosition,不经过这里;
   // 被挡下的单停在"仅校验未发送",不落终态,保护期过了还能再发。
 
-  /** 现算一遍保护状态。窗口取三条规则里最长的那个,一次查库同时喂给三条。 */
+  /** 现算一遍保护状态。窗口取开着的规则里最早的那个起点(protectionsSince),一次查库同时喂给各条。 */
   protectionState(nowMs = Date.now()): ProtectionState {
     const cfg = this.settings.protections;
-    if (!cfg.stoploss_guard.enabled && !cfg.max_drawdown.enabled && !cfg.cooldown.enabled) {
-      return NO_PROTECTION;
-    }
-    const lookbackMinutes = Math.max(
-      cfg.stoploss_guard.enabled ? cfg.stoploss_guard.lookback_minutes : 0,
-      cfg.max_drawdown.enabled ? cfg.max_drawdown.lookback_minutes : 0,
-      cfg.cooldown.enabled ? cfg.cooldown.minutes : 0,
-    );
-    const sinceMs = nowMs - lookbackMinutes * 60_000;
+    if (!protectionsEnabled(cfg)) return NO_PROTECTION;
+    const sinceMs = protectionsSince(cfg, nowMs);
     try {
       return evaluateProtections(
         cfg,
         this.store.recentCloses(sinceMs, nowMs),
-        cfg.max_drawdown.enabled ? this.store.realizedPnlEvents(sinceMs, nowMs) : [],
+        needsPnlEvents(cfg) ? this.store.realizedPnlEvents(sinceMs, nowMs) : [],
         nowMs,
       );
     } catch (exc) {

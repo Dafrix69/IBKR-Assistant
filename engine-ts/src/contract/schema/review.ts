@@ -1,6 +1,7 @@
 /** review.* 的入参 schema。id 对不对、周期认不认识,是领域校验,在 handler(「记录不存在」是 -32005,golden-rpc 钉着)。 */
 import { z } from "zod";
 
+import type { ReviewPerformanceParams } from "../performance.js";
 import type { ReviewAnalyzeParams, ReviewCandidatesParams } from "../review.js";
 import { optional } from "./kit.js";
 import type { ParamsSchema } from "./kit.js";
@@ -17,4 +18,11 @@ export const ReviewAnalyzeParamsSchema: ParamsSchema<ReviewAnalyzeParams> = z.ob
   id: z.string(),
   timeframe: optional(z.string()),
   exit: z.unknown(),
+});
+
+export const ReviewPerformanceParamsSchema: ParamsSchema<ReviewPerformanceParams> = z.object({
+  scope: optional(z.enum(["all", "live", "paper"])),
+  kind: optional(z.enum(["all", "butterfly", "stock", "option"])),
+  // 天数的范围(正整数、上限)是领域校验,在 handler
+  days: optional(z.number()),
 });
