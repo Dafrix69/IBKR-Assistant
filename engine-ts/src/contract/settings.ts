@@ -60,10 +60,18 @@ export interface CooldownConfig {
   minutes: number;
 }
 
+/** 日内亏损上限:当天(美东)已实现盈亏亏到线,当天剩下的时间不再下新单。 */
+export interface DailyLossConfig {
+  enabled: boolean;
+  /** 当天已实现亏损达到多少美元算触发(填正数)。 */
+  max_loss_usd: number;
+}
+
 export interface ProtectionsConfig {
   stoploss_guard: StoplossGuardConfig;
   max_drawdown: MaxDrawdownConfig;
   cooldown: CooldownConfig;
+  daily_loss: DailyLossConfig;
 }
 
 // ---------------------------------------------------------------- settings.get
@@ -101,6 +109,7 @@ export interface SettingsPatch {
     stoploss_guard?: Partial<StoplossGuardConfig>;
     max_drawdown?: Partial<MaxDrawdownConfig>;
     cooldown?: Partial<CooldownConfig>;
+    daily_loss?: Partial<DailyLossConfig>;
   };
 }
 

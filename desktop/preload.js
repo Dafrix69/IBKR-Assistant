@@ -57,6 +57,7 @@ contextBridge.exposeInMainWorld('dafri', {
   screenerRs: (spec) => ipcRenderer.invoke('rpc', { method: 'screener.rs', params: spec }),
   screenerInflection: (spec) => ipcRenderer.invoke('rpc', { method: 'screener.inflection', params: spec }),
   screenerDeviation: (spec) => ipcRenderer.invoke('rpc', { method: 'screener.deviation', params: spec }),
+  screenerLeaders: (spec) => ipcRenderer.invoke('rpc', { method: 'screener.leaders', params: spec }),
   appInfo: () => ipcRenderer.invoke('app-info'),
 
   // ---- 大模型接入 ------------------------------------------------------
@@ -155,6 +156,7 @@ contextBridge.exposeInMainWorld('dafri', {
   paComment: (spec) => ipcRenderer.invoke('rpc', { method: 'pa.comment', params: spec }),
   reviewCandidates: (limit, includeLocal) => ipcRenderer.invoke('rpc', { method: 'review.candidates', params: { limit, include_local: Boolean(includeLocal) } }),
   reviewAnalyze: (spec) => ipcRenderer.invoke('rpc', { method: 'review.analyze', params: spec }),
+  reviewPerformance: (spec) => ipcRenderer.invoke('rpc', { method: 'review.performance', params: { ...spec } }),
   macroBoard: (force) => ipcRenderer.invoke('rpc', { method: 'macro.board', params: { force } }),
 
   // ---- 持仓追踪(tracker.add / update / close_now 会真的发单)--------------

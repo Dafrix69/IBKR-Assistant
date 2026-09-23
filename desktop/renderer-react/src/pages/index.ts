@@ -13,6 +13,7 @@ import { BoardPage } from './Board';
 import { IdeasPage } from './Ideas';
 import { BacktestPage } from './Backtest';
 import { ReviewPage } from './Review';
+import { PerformancePage } from './Performance';
 import { AccessPage } from './Access';
 import { TradePage } from './Trade';
 import { MarketPage } from './Market';
@@ -24,6 +25,7 @@ export const PAGES: Record<string, ComponentType> = {
   ideas: IdeasPage,
   backtest: BacktestPage,
   review: ReviewPage,
+  performance: PerformancePage,
   access: AccessPage,
   records: RecordsPage,
   tracker: TrackerPage,

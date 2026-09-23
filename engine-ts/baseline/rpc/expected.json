@@ -252,6 +252,10 @@
     "cooldown": {
      "enabled": false,
      "minutes": 30
+    },
+    "daily_loss": {
+     "enabled": false,
+     "max_loss_usd": 500
     }
    },
    "symbol_aliases": {
@@ -346,6 +350,10 @@
     "cooldown": {
      "enabled": false,
      "minutes": 30
+    },
+    "daily_loss": {
+     "enabled": false,
+     "max_loss_usd": 500
     }
    },
    "symbol_aliases": {

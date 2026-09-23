@@ -26,6 +26,8 @@ interface Form {
   ddPause: number | null;
   coolOn: boolean;
   coolMinutes: number | null;
+  dailyOn: boolean;
+  dailyUsd: number | null;
 }
 
 function toForm(s: Settings): Form {
@@ -36,6 +38,7 @@ function toForm(s: Settings): Form {
   const sg: Partial<SettingsProtections['stoploss_guard']> = pr.stoploss_guard || {};
   const dd: Partial<SettingsProtections['max_drawdown']> = pr.max_drawdown || {};
   const cd: Partial<SettingsProtections['cooldown']> = pr.cooldown || {};
+  const dl: Partial<SettingsProtections['daily_loss']> = pr.daily_loss || {};
   return {
     autoExecute: Boolean(p.auto_execute),
     allowLive: Boolean(p.allow_live_trading),
@@ -55,6 +58,8 @@ function toForm(s: Settings): Form {
     ddPause: dd.pause_minutes ?? null,
     coolOn: Boolean(cd.enabled),
     coolMinutes: cd.minutes ?? null,
+    dailyOn: Boolean(dl.enabled),
+    dailyUsd: dl.max_loss_usd ?? null,
   };
 }
 
@@ -140,6 +145,7 @@ export function SettingsPage() {
             max_drawdown_usd: Number(form.ddUsd), pause_minutes: Number(form.ddPause),
           },
           cooldown: { enabled: form.coolOn, minutes: Number(form.coolMinutes) },
+          daily_loss: { enabled: form.dailyOn, max_loss_usd: Number(form.dailyUsd) },
         },
       });
       showBanner('设置已保存,提示词与限额已同步更新。', true);
@@ -195,7 +201,7 @@ export function SettingsPage() {
 
           <SectionTitle>保护规则</SectionTitle>
           <p className="hint">
-            比熔断细一档:接连止损、盈亏回撤过大、同一只刚平过仓,就先停一会儿自动执行。到点自己解除,不用人工。
+            比熔断细一档:接连止损、盈亏回撤过大、当天亏到上限、同一只刚平过仓,就先停一会儿自动执行。到点自己解除,不用人工。
             <b>只挡新单,永远不挡平仓。</b>被挡下的单停在「仅校验未发送」,保护期过了还能再发。
           </p>
           <Group>
@@ -218,6 +224,10 @@ export function SettingsPage() {
             <SwitchRow icon="sf-pulse" tint="teal" label="同标的冷却" sub="刚平过仓的标的,一段时间内不再下新单" checked={form.coolOn} onChange={(v) => patch({ coolOn: v })} />
             {form.coolOn ? (
               <NumberRow icon="sf-clock" tint="gray" label="冷却多久" sub="分钟" min={1} step={5} value={form.coolMinutes} onChange={(v) => patch({ coolMinutes: v })} />
+            ) : null}
+            <SwitchRow icon="sf-gauge" tint="red" label="日内亏损上限" sub="当天(美东)净亏到线,当天不再下新单;第二天零点自己解除" checked={form.dailyOn} onChange={(v) => patch({ dailyOn: v })} />
+            {form.dailyOn ? (
+              <NumberRow icon="sf-dollar" tint="red" label="当天最多亏" sub="USD,已实现盈亏以券商报的为准" min={0} step={100} value={form.dailyUsd} onChange={(v) => patch({ dailyUsd: v })} />
             ) : null}
           </Group>
 

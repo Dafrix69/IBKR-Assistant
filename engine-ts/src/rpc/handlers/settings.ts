@@ -116,6 +116,7 @@ export class SettingsHandlers extends HandlerBase {
         stoploss_guard: { ...s.protections.stoploss_guard },
         max_drawdown: { ...s.protections.max_drawdown },
         cooldown: { ...s.protections.cooldown },
+        daily_loss: { ...s.protections.daily_loss },
       },
       symbol_aliases: s.symbol_aliases,
       accounts: this.accounts(),

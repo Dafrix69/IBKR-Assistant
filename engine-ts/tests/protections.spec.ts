@@ -16,7 +16,7 @@ import { TradingEngine } from "../src/engine.js";
 import { Notifier } from "../src/notify.js";
 import * as tk from "../src/tracker.js";
 import {
-  evaluateProtections, isStopLike, protectionBlock, protectionsSummary,
+  etDayStart, evaluateProtections, isStopLike, protectionBlock, protectionsSince, protectionsSummary,
   type ProtectionsConfig,
 } from "../src/protections.js";
 import { LLMResponse } from "../src/providers.js";
@@ -156,11 +156,54 @@ describe("两条规则同时触发", () => {
   });
 });
 
+describe("日内亏损上限:当天(美东)净亏到线,当天不再下新单", () => {
+  const daily = { daily_loss: { enabled: true, max_loss_usd: 500 } };
+  // NOW = 美东 2026-09-18 10:00(夏令时),当天零点是 04:00Z,第二天零点 2026-09-19T04:00Z
+  const TOMORROW = Date.parse("2026-09-19T04:00:00Z");
+
+  it("美东日界:零点按夏令时算", () => {
+    expect(etDayStart(NOW)).toBe(Date.parse("2026-09-18T04:00:00Z"));
+    expect(etDayStart(NOW, 1)).toBe(TOMORROW);
+    expect(etDayStart(Date.parse("2026-01-15T03:00:00Z"))).toBe(Date.parse("2026-01-14T05:00:00Z")); // 冬令时,还是前一天
+  });
+
+  it("亏到 500 → 停到第二天零点", () => {
+    const pnl = [{ atMs: NOW - 200 * MIN, pnl: -300 }, { atMs: NOW - 10 * MIN, pnl: -250 }];
+    const state = evaluateProtections(cfg(daily), [], pnl, NOW);
+    expect(state.pause?.rule).toBe("daily_loss");
+    expect(state.pause?.untilMs).toBe(TOMORROW);
+    expect(protectionBlock(state, "AAPL", NOW)).toContain("已实现亏损 550.00 美元");
+  });
+
+  it("按当天净额算,不按峰值:上午赚 300、之后亏 800 → 净亏 500 到线", () => {
+    const pnl = [{ atMs: NOW - 300 * MIN + 60 * MIN, pnl: 300 }, { atMs: NOW - 5 * MIN, pnl: -800 }];
+    expect(evaluateProtections(cfg(daily), [], pnl, NOW).pause?.rule).toBe("daily_loss");
+    const notYet = [{ atMs: NOW - 200 * MIN, pnl: 300 }, { atMs: NOW - 5 * MIN, pnl: -700 }];
+    expect(evaluateProtections(cfg(daily), [], notYet, NOW).pause).toBeNull();
+  });
+
+  it("昨天的亏损不算;关着不算", () => {
+    const yesterday = [{ atMs: Date.parse("2026-09-18T03:59:00Z"), pnl: -900 }, { atMs: NOW - MIN, pnl: -100 }];
+    expect(evaluateProtections(cfg(daily), [], yesterday, NOW).pause).toBeNull();
+    const big = [{ atMs: NOW - MIN, pnl: -900 }];
+    expect(evaluateProtections(cfg(), [], big, NOW).pause).toBeNull();
+  });
+
+  it("查库的起点覆盖当天零点;别的规则的窗口更长时取更早的", () => {
+    expect(protectionsSince(cfg(daily), NOW)).toBeLessThan(Date.parse("2026-09-18T04:00:00Z"));
+    const both = cfg({ ...daily, max_drawdown: { enabled: true, lookback_minutes: 2880 } });
+    expect(protectionsSince(both, NOW)).toBe(NOW - 2880 * MIN);
+    expect(protectionsSince(cfg({ cooldown: { enabled: true, minutes: 30 } }), NOW)).toBe(NOW - 30 * MIN);
+  });
+});
+
 // ---------------------------------------------------------------- 配置
 describe("配置", () => {
   it("默认全关:老配置升级上来,行为一字不变", () => {
     const p = cfg();
-    expect([p.stoploss_guard.enabled, p.max_drawdown.enabled, p.cooldown.enabled]).toEqual([false, false, false]);
+    expect([p.stoploss_guard.enabled, p.max_drawdown.enabled, p.cooldown.enabled, p.daily_loss.enabled])
+      .toEqual([false, false, false, false]);
+    expect(p.daily_loss.max_loss_usd).toBe(500);
     expect(p.stoploss_guard.trigger_count).toBe(3);
   });
 
@@ -168,6 +211,8 @@ describe("配置", () => {
     expect(() => cfg({ stoploss_gaurd: { enabled: true } })).toThrow(/protections 里有未知配置项/);
     expect(() => cfg({ cooldown: { enabled: "true" } })).toThrow(/必须是 true\/false/);
     expect(() => cfg({ cooldown: { minutes: 0 } })).toThrow(/protections\.cooldown\.minutes/);
+    expect(() => cfg({ daily_loss: { max_loss: 100 } })).toThrow(/未知配置项/);
+    expect(() => cfg({ daily_loss: { max_loss_usd: -1 } })).toThrow(/protections\.daily_loss\.max_loss_usd/);
   });
 });
 
@@ -284,7 +329,18 @@ describe("接进引擎:挡新单,不挡平仓", () => {
     expect(router.placed).toHaveLength(1); // AAPL 不在冷却里
   });
 
-  it("三条规则都关着 → 一次库都不查", async () => {
+  it("日内亏损上限开着:从当天零点起查已实现盈亏,亏到线就挡新单", async () => {
+    const { engine, router } = build({ daily_loss: { enabled: true, max_loss_usd: 200 } });
+    let since = Infinity;
+    engine.store.realizedPnlEvents = (s: number, n: number) => { since = s; return [{ atMs: n - MIN, pnl: -250 }]; };
+    const now = Date.now();
+    expect(engine.protectionState(now).pause?.rule).toBe("daily_loss");
+    expect(since).toBeLessThan(etDayStart(now));
+    await engine.handleInstruction("买入 AAPL 100股 limit 230", "manual", FRIDAY);
+    expect(router.placed).toHaveLength(0);
+  });
+
+  it("四条规则都关着 → 一次库都不查", async () => {
     const { engine } = build({});
     let queried = 0;
     const real = engine.store.recentCloses.bind(engine.store);

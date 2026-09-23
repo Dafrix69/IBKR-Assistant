@@ -26,13 +26,15 @@ import type {
   IdeasListParams, IdeasSearchParams, IdeasSimilarTradesParams, IdeasSimilarTradesResult, IdeasUpdateParams,
 } from "./ideas.js";
 import type { OptionWall, OptionsWallParams } from "./options.js";
+import type { ReviewPerformanceParams, ReviewPerformanceResult } from "./performance.js";
 import type { PaAnalyzeParams, PaAnalyzeResult, PaCommentResult, PaTimeframesResult } from "./priceaction.js";
 import type { PoolSetWatchParams, PoolWatch } from "./pool.js";
 import type {
   ReviewAnalyzeParams, ReviewAnalyzeResult, ReviewCandidatesParams, ReviewCandidatesResult,
 } from "./review.js";
 import type {
-  DeviationResult, InflectionResult, RsResult, ScreenerDeviationParams, ScreenerInflectionParams, ScreenerRsParams,
+  DeviationResult, InflectionResult, LeadersResult, RsResult, ScreenerDeviationParams, ScreenerInflectionParams,
+  ScreenerLeadersParams, ScreenerRsParams,
 } from "./screener.js";
 import type { InstructionSubmitParams, InstructionSubmitResult } from "./instruction.js";
 import type { PositionRow } from "./positions.js";
@@ -70,6 +72,7 @@ export type * from "./ideas.js";
 export type * from "./instruction.js";
 export type * from "./llm.js";
 export type * from "./options.js";
+export type * from "./performance.js";
 export type * from "./pool.js";
 export type * from "./positions.js";
 export type * from "./priceaction.js";
@@ -152,10 +155,14 @@ export interface RpcMethods {
 
   "review.candidates": { params: ReviewCandidatesParams; result: ReviewCandidatesResult };
   "review.analyze": { params: ReviewAnalyzeParams; result: ReviewAnalyzeResult };
+  /** 绩效体检:已了结交易的美元账本 → 胜率、盈亏比、期望值、R 与 SQN、回撤、分组与行为规则。不调模型 */
+  "review.performance": { params: ReviewPerformanceParams; result: ReviewPerformanceResult };
 
   "screener.rs": { params: ScreenerRsParams; result: RsResult };
   "screener.inflection": { params: ScreenerInflectionParams; result: InflectionResult };
   "screener.deviation": { params: ScreenerDeviationParams; result: DeviationResult };
+  /** 强势股筛选:Minervini 趋势模板 8 条 + VCP + IBD 式 RS 评级,外加大盘方向(派发日)。只用日线,不调模型 */
+  "screener.leaders": { params: ScreenerLeadersParams; result: LeadersResult };
 
   "sectors.list": { params: NoParams; result: { sectors: Sector[] } };
   "sectors.add": { params: SectorsAddParams; result: { sector: Sector } };

@@ -8,6 +8,8 @@
  */
 import type { IdeaTradeFact } from "../contract/ideas.js";
 import type { ImportedOptionTrade, OptionPosition } from "../importedTrades.js";
+import type { Ledger } from "../performance.js";
+import type { SettleClose } from "../tradeOutcomes.js";
 import { ServiceBase } from "./host.js";
 import type { Rec, ServiceHost } from "./host.js";
 import type { MarketDataService } from "./marketData.js";
@@ -24,6 +26,19 @@ export interface TradeHistory {
   positions: OptionPosition[];
 }
 
+/** 读库、去过重之后的原料。 */
+interface Gathered {
+  butterflies: Rec[];
+  trips: Rec[];
+  positions: OptionPosition[];
+  /** 全部导入的期权原行;`covered` 里的 (账户, 日期) 用的时候要跳过 */
+  options: ImportedOptionTrade[];
+  covered: Set<string>;
+  isPaper: (accountId: string) => boolean;
+  settleClose: SettleClose;
+  now: number;
+}
+
 export class TradeHistoryService extends ServiceBase {
   constructor(
     host: ServiceHost,
@@ -35,6 +50,29 @@ export class TradeHistoryService extends ServiceBase {
 
   /** `symbols` 空 = 全部标的。 */
   async load(symbols: readonly string[] = []): Promise<TradeHistory> {
+    const outcomes = await import("../tradeOutcomes.js");
+    const g = await this.gather(symbols);
+    const optionFacts = outcomes.optionFacts(g.options, g.isPaper, g.covered);
+    const facts = outcomes.collectFacts(
+      g.butterflies, g.trips, g.settleClose, g.now, symbols,
+      [...optionFacts, ...outcomes.positionFacts(g.positions, g.isPaper)],
+    );
+    return { facts, butterflies: g.butterflies, options: g.options, positions: g.positions };
+  }
+
+  /** 绩效体检的美元账本:同一批交易、同一套去重,只是出金额(performance.ts)。只在本机算,不发给模型。 */
+  async ledger(): Promise<Ledger> {
+    const { buildLedger } = await import("../performance.js");
+    const g = await this.gather([]);
+    return buildLedger({
+      butterflies: g.butterflies, trips: g.trips, positions: g.positions,
+      options: g.options.filter((r) => !g.covered.has(`${r.account_id}|${r.date_et}`)),
+      settleClose: g.settleClose, isPaper: g.isPaper, now: g.now,
+    });
+  }
+
+  /** 两条路共用的那一段:读库、去重、到期结算要的收盘价。`symbols` 只管去取哪些标的的日线。 */
+  private async gather(symbols: readonly string[]): Promise<Gathered> {
     const [{ groupButterflies }, outcomes] = await Promise.all([
       import("../ibtrades.js"), import("../tradeOutcomes.js"),
     ]);
@@ -67,13 +105,12 @@ export class TradeHistoryService extends ServiceBase {
     }
     // 导入的期权(按结构整理的导出,没有行权价):同一账户同一天库里已有完整期权成交的,以完整的为准
     const paper = new Set(this.settings.accounts.filter((a) => a.is_paper).map((a) => a.account_id));
-    const options = imports.listOptionTrades();
-    const covered = new Set([...outcomes.optionDaysCovered(fills), ...byPositions]);
-    const optionFacts = outcomes.optionFacts(options, (id) => paper.has(id), covered);
-    const facts = outcomes.collectFacts(
-      butterflies, trips, (s, d) => closes.get(`${s}|${d}`) ?? null, now, symbols,
-      [...optionFacts, ...outcomes.positionFacts(positions, (id) => paper.has(id))],
-    );
-    return { facts, butterflies, options, positions };
+    return {
+      butterflies, trips, positions, now,
+      options: imports.listOptionTrades(),
+      covered: new Set([...outcomes.optionDaysCovered(fills), ...byPositions]),
+      isPaper: (id) => paper.has(id),
+      settleClose: (s, d) => closes.get(`${s}|${d}`) ?? null,
+    };
   }
 }

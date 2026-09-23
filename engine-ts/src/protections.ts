@@ -1,7 +1,7 @@
 /** 保护规则:比"连续失败熔断"细一档的自动执行暂停(思路来自 freqtrade 的 Protections)。
  *
  * 熔断(killswitch.ts)管的是**软件坏了**:连续下单失败、连续解析失败,到阈值就整体停,人工解除。
- * 这里管的是**今天不顺**:接连止损、盈亏回撤过大、刚平掉的标的立刻又要进——都不是故障,
+ * 这里管的是**今天不顺**:接连止损、盈亏回撤过大、当天亏到了上限、刚平掉的标的立刻又要进——都不是故障,
  * 是该歇一会儿。所以它不写状态文件、不需要人工解除:**规则从库里现算,到点自己就过去了**。
  *
  * 三条边界,任何时候都不许越:
@@ -11,10 +11,13 @@
  *  · **算不出来就放行**。库里读不到数据、配置关着,一律不拦——保护规则误拦是妨碍交易,
  *    而它本身并不能避免任何一笔已经发生的亏损。
  */
-// 三条规则的配置形状界面也要用,定义在 contract/settings.ts;这里转出,老的 import 不用改。
-export type { CooldownConfig, MaxDrawdownConfig, ProtectionsConfig, StoplossGuardConfig } from "./contract/settings.js";
+// 各条规则的配置形状界面也要用,定义在 contract/settings.ts;这里转出,老的 import 不用改。
+export type {
+  CooldownConfig, DailyLossConfig, MaxDrawdownConfig, ProtectionsConfig, StoplossGuardConfig,
+} from "./contract/settings.js";
 import type { ProtectionsConfig } from "./contract/settings.js";
 import type { ProtectionsSummary } from "./contract/system.js";
+import { ET, wallParts, wallToEpoch } from "./tz.js";
 
 
 
@@ -54,6 +57,36 @@ export const NO_PROTECTION: ProtectionState = { pause: null, cooldowns: {} };
 export function isStopLike(state: string): boolean {
   const bare = state.includes(":") ? state.slice(state.lastIndexOf(":") + 1) : state;
   return bare === "stop_loss" || bare === "profit_trail";
+}
+
+/** 美东某一天的零点;`offsetDays` = 1 就是第二天零点。日内亏损上限按美东日历切日子。 */
+export function etDayStart(nowMs: number, offsetDays = 0): number {
+  const p = wallParts(nowMs, ET);
+  const day = new Date(Date.UTC(p.year, p.month - 1, p.day + offsetDays));
+  return wallToEpoch(
+    { year: day.getUTCFullYear(), month: day.getUTCMonth() + 1, day: day.getUTCDate(), hour: 0, minute: 0, second: 0 }, ET,
+  );
+}
+
+/** 有没有哪条开着:全关时一次库都不查。 */
+export function protectionsEnabled(cfg: ProtectionsConfig): boolean {
+  return cfg.stoploss_guard.enabled || cfg.max_drawdown.enabled || cfg.cooldown.enabled || cfg.daily_loss.enabled;
+}
+
+/** 已实现盈亏要不要查(回撤护栏与日内亏损上限才看它)。 */
+export function needsPnlEvents(cfg: ProtectionsConfig): boolean {
+  return cfg.max_drawdown.enabled || cfg.daily_loss.enabled;
+}
+
+/** 查库从哪一刻起:开着的规则里窗口最早的那个起点。日内亏损上限从美东当天零点起。 */
+export function protectionsSince(cfg: ProtectionsConfig, nowMs: number): number {
+  const lookbackMinutes = Math.max(
+    cfg.stoploss_guard.enabled ? cfg.stoploss_guard.lookback_minutes : 0,
+    cfg.max_drawdown.enabled ? cfg.max_drawdown.lookback_minutes : 0,
+    cfg.cooldown.enabled ? cfg.cooldown.minutes : 0,
+  );
+  const since = nowMs - lookbackMinutes * 60_000;
+  return cfg.daily_loss.enabled ? Math.min(since, etDayStart(nowMs) - 1) : since;
 }
 
 /** 现算一遍当前的保护状态。纯函数:同样的输入永远同样的输出,时间也由调用方给。 */
@@ -114,6 +147,24 @@ export function evaluateProtections(
           untilMs,
         });
       }
+    }
+  }
+
+  const daily = cfg.daily_loss;
+  if (daily.enabled && daily.max_loss_usd > 0) {
+    // 当天(美东)累计已实现盈亏;亏到线就停到第二天零点。不看峰值:这条管的是"今天最多亏多少",
+    // 上午赚了 300、下午亏回 800 的那天,净亏 500 才算到线——从峰值算的是回撤护栏的事
+    const start = etDayStart(nowMs);
+    const today = pnl.filter((p) => p.atMs >= start && p.atMs <= nowMs && Number.isFinite(p.pnl));
+    const total = today.reduce((acc, p) => acc + p.pnl, 0);
+    if (today.length && -total >= daily.max_loss_usd) {
+      pauses.push({
+        rule: "daily_loss",
+        reason:
+          `今天(美东)已实现亏损 ${(-total).toFixed(2)} 美元,到了日内亏损上限 ${daily.max_loss_usd},` +
+          "今天不再下新单",
+        untilMs: etDayStart(nowMs, 1),
+      });
     }
   }
 

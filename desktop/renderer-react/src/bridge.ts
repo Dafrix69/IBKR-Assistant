@@ -40,12 +40,14 @@ import type {
   StockReviewResult,
   PaAnalyzeResult, PaComment, PaEvent, PaEvidence, PaLevel, PaPattern, PaSwing, PaTimeframe,
   CdSignal, CdSignalError, DeviationPoint, DeviationResult, InflectionResult, InflectionRow, RsResult, RsRow, RsTagRow,
+  LeaderRow, LeadersResult, MarketRegime, TrendCheck, VcpResult,
   LLMConfig, LlmCatalog, LlmPatch, LlmProvider, LlmTestResult,
   BookL1, BookLevel, BookLiquidity, BookSnapshot, MacroBoard, MacroRow,
   BacktestCurvePoint, BacktestRunResult, BacktestRunSpec, BacktestStrategy, BacktestTrade, CustomRules, CustomRulesInput,
   RuleConditionInput, RuleOperandInput,
   Idea, IdeaAnalysis, IdeaBrief, IdeaBriefMetric, IdeaDigest, IdeaDigestRow, IdeaMatch, IdeaTradeFact, IdeaTradeResult,
   IdeasSimilarTradesParams, IdeasSimilarTradesResult, SimilarExitStat, SimilarTrade,
+  EquityPoint, LedgerTrade, PerfGroup, PerformanceFinding, PerformanceKind, PerformanceScope, PerfStats, ReviewPerformanceResult,
   AnomalyConfig, AnomalyEvent, AnomalyKind, AnomalyMetrics, LevelKind, OptionWall, PoolWatch, PoolWatchPatch, PositionRow,
   AccountView, Limits, Policies, ProtectionsConfig, QualityList, QualityMonitor, QualityStock, RpcParams, RpcResult, Sector,
   SectorStock, SettingsPatch, SettingsView, SpotTarget, StockQuote, Targets, Track, Watch, WatchEvent, WatchLevel,
@@ -65,12 +67,14 @@ export type {
   StockReviewResult,
   PaAnalyzeResult, PaComment, PaEvent, PaEvidence, PaLevel, PaPattern, PaSwing, PaTimeframe,
   CdSignal, CdSignalError, DeviationPoint, DeviationResult, InflectionResult, InflectionRow, RsResult, RsRow, RsTagRow,
+  LeaderRow, LeadersResult, MarketRegime, TrendCheck, VcpResult,
   LLMConfig, LlmCatalog, LlmPatch, LlmProvider, LlmTestResult,
   BookL1, BookLevel, BookLiquidity, BookSnapshot, MacroBoard, MacroRow,
   BacktestCurvePoint, BacktestRunResult, BacktestRunSpec, BacktestStrategy, BacktestTrade, CustomRules, CustomRulesInput,
   RuleConditionInput, RuleOperandInput,
   Idea, IdeaAnalysis, IdeaBrief, IdeaBriefMetric, IdeaDigest, IdeaDigestRow, IdeaMatch, IdeaTradeFact, IdeaTradeResult,
   IdeasSimilarTradesParams, IdeasSimilarTradesResult, SimilarExitStat, SimilarTrade,
+  EquityPoint, LedgerTrade, PerfGroup, PerformanceFinding, PerformanceKind, PerformanceScope, PerfStats, ReviewPerformanceResult,
   AnomalyEvent, AnomalyKind, LevelKind, OptionWall, PoolWatch, PoolWatchPatch, PositionRow, QualityList, QualityMonitor,
   QualityStock, Sector, SectorStock, SettingsPatch, SpotTarget, StockQuote, Targets, Track, Watch, WatchEvent, WatchLevel,
   BreakerBrief, BreakerState, IndexSpot, ProtectionCooldown, SystemSelftest, SystemStatus, TrackerHeartbeat,
@@ -154,6 +158,7 @@ export interface DafriBridge {
   screenerRs(spec: RpcParams<'screener.rs'>): Rpc<RpcResult<'screener.rs'>>;
   screenerInflection(spec: RpcParams<'screener.inflection'>): Rpc<RpcResult<'screener.inflection'>>;
   screenerDeviation(spec: RpcParams<'screener.deviation'>): Rpc<RpcResult<'screener.deviation'>>;
+  screenerLeaders(spec: RpcParams<'screener.leaders'>): Rpc<RpcResult<'screener.leaders'>>;
   appInfo(): Rpc<AppInfo>;
 
   llmCatalog(): Rpc<RpcResult<'llm.catalog'>>;
@@ -204,6 +209,7 @@ export interface DafriBridge {
   paComment(spec: RpcParams<'pa.comment'>): Rpc<RpcResult<'pa.comment'>>;
   reviewCandidates(limit?: number, includeLocal?: boolean): Rpc<RpcResult<'review.candidates'>>;
   reviewAnalyze(spec: RpcParams<'review.analyze'>): Rpc<RpcResult<'review.analyze'>>;
+  reviewPerformance(spec: RpcParams<'review.performance'>): Rpc<RpcResult<'review.performance'>>;
   macroBoard(force?: boolean): Rpc<RpcResult<'macro.board'>>;
 
   listPositions(): Rpc<RpcResult<'positions.list'>>;

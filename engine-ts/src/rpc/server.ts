@@ -201,6 +201,10 @@ export class RpcServer implements RpcContext {
     "tracker.target_preview",
     // 下单页的历史相似交易:读本地库,过期蝴蝶的结算价可能要取一次日线,放读道不挡下单
     "ideas.similar_trades",
+    // 绩效体检:读本地库算账,过期蝴蝶的结算价可能要取一次日线,同上
+    "review.performance",
+    // 强势股筛选:和 screener.rs 一样逐只拉日线(10 分钟缓存),纯计算
+    "screener.leaders",
   ]);
   static readonly READ_CONCURRENCY = 4;
   static readonly SLOW_MS = 1000; // 超过这个时长的请求记到 stderr

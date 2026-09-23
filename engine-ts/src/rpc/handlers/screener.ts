@@ -2,7 +2,7 @@
  *  整个域已经在契约里(contract/screener.ts):入参过了 schema 才到这里,返回对着契约类型检查。 */
 import { nowEt } from "../../config.js";
 import type {
-  RpcResult, ScreenerDeviationParams, ScreenerInflectionParams, ScreenerRsParams,
+  RpcResult, ScreenerDeviationParams, ScreenerInflectionParams, ScreenerLeadersParams, ScreenerRsParams,
 } from "../../contract/index.js";
 import { RpcError, errText } from "../../rpcError.js";
 import { HandlerBase } from "../context.js";
@@ -16,6 +16,7 @@ export class ScreenerHandlers extends HandlerBase {
       "screener.rs": (p) => this.screenerRs(p),
       "screener.inflection": (p) => this.screenerInflection(p),
       "screener.deviation": (p) => this.screenerDeviation(p),
+      "screener.leaders": (p) => this.screenerLeaders(p),
     });
   }
 
@@ -82,6 +83,39 @@ export class ScreenerHandlers extends HandlerBase {
     }
     return {
       ...rsStrength(members, bench, benchmark, RS_WINDOWS),
+      sector: label,
+      fetched_at: new Date(nowEt().epochMs).toISOString(),
+    };
+  }
+
+  /** 强势股筛选:趋势模板 + VCP + RS 评级 + 大盘方向(leaders.ts)。日线与 RS 强度同一条 10 分钟缓存,先扫过 RS 就不再拉。 */
+  async screenerLeaders(params: ScreenerLeadersParams): Promise<RpcResult<"screener.leaders">> {
+    const { RS_BENCHMARKS } = await import("../../screener.js");
+    const { screenLeaders } = await import("../../leaders.js");
+    const benchmark = String(params["benchmark"] ?? "SPY").trim().toUpperCase();
+    if (!RS_BENCHMARKS.includes(benchmark)) {
+      throw new RpcError(-32602, `基准只能是 ${RS_BENCHMARKS.join(" / ")}`);
+    }
+    const [label, members] = this.screenMembers(params);
+    if (this.router === null || !this.router.sessions().length) {
+      throw this.needConnection(-32018, "强势股筛选");
+    }
+    let bench: Rec[];
+    try {
+      bench = await this.ctx.market.dailyHistory(benchmark);
+    } catch (exc) {
+      throw new RpcError(-32018, `拿不到基准 ${benchmark} 的日线:${errText(exc)}`);
+    }
+    const scanned = [];
+    for (const member of members) {
+      try {
+        scanned.push({ ...member, symbol: String(member["symbol"]), bars: await this.ctx.market.dailyHistory(member["symbol"]) });
+      } catch (exc) {
+        scanned.push({ ...member, symbol: String(member["symbol"]), bars: [], error: errText(exc) });
+      }
+    }
+    return {
+      ...screenLeaders(scanned, bench, benchmark),
       sector: label,
       fetched_at: new Date(nowEt().epochMs).toISOString(),
     };

@@ -47,7 +47,8 @@
   "protections": {
     "stoploss_guard": { "enabled": false, "lookback_minutes": 120, "trigger_count": 3, "pause_minutes": 60 },
     "max_drawdown": { "enabled": false, "lookback_minutes": 1440, "max_drawdown_usd": 500.0, "pause_minutes": 120 },
-    "cooldown": { "enabled": false, "minutes": 30 }
+    "cooldown": { "enabled": false, "minutes": 30 },
+    "daily_loss": { "enabled": false, "max_loss_usd": 500.0 }
   },
   "connections": {
     "paper": {

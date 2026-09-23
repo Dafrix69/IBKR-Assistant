@@ -221,3 +221,109 @@ export interface ScreenerDeviationParams {
   /** 几个标准差算极值 0.5~5,默认 2 */
   z_extreme?: number | string | null;
 }
+
+// ---------------------------------------------------------------- 强势股筛选:趋势模板 + VCP + 大盘方向
+/** 强势股筛选(screener.leaders):把实盘比赛优胜者公开过的选股规则逐条变成代码检查,见 docs/features/leaders.md。
+ *  Minervini 的趋势模板(第二阶段上升趋势的 8 条)与 VCP(波动收缩形态),O'Neil / IBD 的 RS 评级与派发日。
+ *  **只用日线**:CAN SLIM 里要财报、机构持仓的那几条(C / A / I)券商日线给不了,不假装算。 */
+export interface ScreenerLeadersParams extends ScreenerScope {
+  /** 大盘方向与相对强度的基准:SPY(默认)/ QQQ */
+  benchmark?: string;
+}
+
+/** 趋势模板的一条。ok = null:K 线不够,判断不了(不当成不及格)。 */
+export interface TrendCheck {
+  key: string;
+  label: string;
+  ok: boolean | null;
+  /** 判断用到的数,给人看的一句 */
+  detail: string;
+}
+
+/** VCP:基底里一次比一次浅的回撤。depths 按时间先后,单位 %。 */
+export interface VcpResult {
+  /** 至少两次收缩、一次比一次浅、第一次不超过 50%、最后一次不超过 15% */
+  found: boolean;
+  depths: number[];
+  /** 枢轴价:最后一次收缩开始时的高点 */
+  pivot: number | null;
+  /** breakout 放量突破 / weak_breakout 站上枢轴但量不够 / near_pivot 离枢轴 5% 以内 / forming 还在收缩 / none 不成形 */
+  status: "breakout" | "weak_breakout" | "near_pivot" | "forming" | "none";
+  /** 收盘离枢轴多远(%,负 = 还在下面) */
+  distance_pct: number | null;
+  /** 最后一次收缩里的均量低于 50 日均量的 80% */
+  volume_dryup: boolean | null;
+  /** 基底从最高点起算有多少根日线 */
+  base_bars: number | null;
+  /** 不成形的原因,或需要带着看的说明 */
+  reason: string;
+}
+
+export interface LeaderRow {
+  symbol: string;
+  tag: string;
+  company: string;
+  bars: number;
+  close: number | null;
+  ma50: number | null;
+  ma150: number | null;
+  ma200: number | null;
+  high52: number | null;
+  low52: number | null;
+  /** 离 52 周高点多远(%,≤ 0) */
+  pct_from_high: number | null;
+  /** 比 52 周低点高多少(%) */
+  pct_above_low: number | null;
+  /** IBD 式加权涨幅(%):近 3 个月 40%,前三个季度各 20% */
+  rs_score: number | null;
+  /** 在这次扫的池子里排的百分位(1–99);不是 IBD 全市场的排名 */
+  rs_rating: number | null;
+  /** 加权涨幅比基准多多少(百分点) */
+  rs_vs_bench: number | null;
+  checks: TrendCheck[];
+  /** 过了几条(0–8) */
+  passed: number;
+  /** 8 条全过 = Minervini 说的第二阶段上升趋势 */
+  stage2: boolean;
+  vcp: VcpResult;
+  /** 收盘创 52 周新高且量 ≥ 50 日均量 1.5 倍(O'Neil 的放量新高) */
+  new_high_volume: boolean;
+  /** 最后一根的量 / 50 日均量 */
+  volume_ratio: number | null;
+  /** 一句话结论 */
+  verdict: string;
+  error: string | null;
+}
+
+/** 大盘方向(CAN SLIM 的 M):基准在不在均线上、近 25 个交易日有几个派发日。 */
+export interface MarketRegime {
+  symbol: string;
+  close: number | null;
+  ma50: number | null;
+  ma200: number | null;
+  ma200_rising: boolean | null;
+  /** 离 52 周最高收盘多远(%,≤ 0) */
+  off_high_pct: number | null;
+  /** 近 25 个交易日还有效的派发日(跌 ≥ 0.2% 且量比前一天大;之后涨回 5% 的作废) */
+  distribution_days: number;
+  distribution_dates: string[];
+  /** uptrend 上升趋势 / pressure 承压 / correction 调整中 / unknown 数据不够 */
+  state: "uptrend" | "pressure" | "correction" | "unknown";
+  label: string;
+  text: string;
+}
+
+export interface LeadersResult {
+  benchmark: string;
+  market: MarketRegime;
+  /** 按过的条数、VCP、RS 评级排好 */
+  rows: LeaderRow[];
+  total: number;
+  stage2_count: number;
+  vcp_count: number;
+  /** RS 评级是在几只里排的 */
+  rating_universe: number;
+  notes: string[];
+  sector: string;
+  fetched_at: string;
+}
