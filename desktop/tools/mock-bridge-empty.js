@@ -43,7 +43,7 @@ window.dafri = {
   breakerState: async () => ({ engaged: false, reason: '', consecutive_failures: 0 }),
   listIdeas: async () => ({ ideas: [] }),
   addIdea: async () => ({ idea: {} }), updateIdea: async () => ({}), analyzeIdea: async () => ({}),
-  listIdeaDigests: async () => ({ digests: [] }), digestIdeas: async () => ({}),
+  listIdeaDigests: async () => ({ digests: [] }), digestIdeas: async () => ({}), searchIdeas: async () => ({ hits: [] }),
   listSectors: async () => ({ sectors: [] }),
   sectorQuotes: async () => ({ connected: false, quotes: {} }),
   addSector: async () => ({}), deleteSector: async () => ({}), pickSector: async () => ({}),

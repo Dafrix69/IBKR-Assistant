@@ -3,9 +3,12 @@
 import { ET, nowEt } from "../../config.js";
 import type { EtNow } from "../../config.js";
 import type {
-  Idea, IdeaAnalysis, IdeaBrief, IdeaDigest, IdeasAddParams, IdeasAnalyzeParams, IdeasDigestParams, IdeasDigestsParams,
-  IdeasListParams, IdeasUpdateParams, RpcResult,
+  Idea, IdeaAnalysis, IdeaBrief, IdeaDigest, IdeaFocus, IdeasAddParams, IdeasAnalyzeParams, IdeasDigestParams,
+  IdeasDigestsParams, IdeasListParams, IdeasSearchParams, IdeasUpdateParams, RpcResult,
 } from "../../contract/index.js";
+import {
+  DIGEST_PICK, dayBound, matchTags, normalizeFocus, parseSymbols, pickForDigest, splitTerms,
+} from "../../ideaRetrieval.js";
 import { extractSymbols } from "../../market.js";
 import { IdeaAnalysisSchema, IdeaDigestSchema } from "../../models.js";
 import { loadSchemaAsset } from "../../providers.js";
@@ -24,6 +27,7 @@ export class IdeasHandlers extends HandlerBase {
       "ideas.analyze": (p) => this.ideasAnalyze(p),
       "ideas.digest": (p) => this.ideasDigest(p),
       "ideas.digests": (p) => this.ideasDigests(p),
+      "ideas.search": (p) => this.ideasSearch(p),
     });
   }
 
@@ -60,6 +64,27 @@ export class IdeasHandlers extends HandlerBase {
     }
     if (!found) throw new RpcError(-32602, `想法不存在:${ideaId}`);
     return { id: ideaId, status };
+  }
+
+  /** 按关键词 / 标的 / 时间窗 / 状态找想法,新的在前。纯本地:不碰模型、不碰券商。
+   *  关键词与标的都没给时就是一个带时间窗的列表(matched_by 为空)。 */
+  ideasSearch(params: IdeasSearchParams): RpcResult<"ideas.search"> {
+    const status = params["status"] || null;
+    const n = Math.trunc(Number(params["limit"] || 50));
+    const limit = Number.isFinite(n) && n > 0 ? Math.min(n, 200) : 50;
+    try {
+      const candidates = this.engine.store.searchIdeas({
+        statuses: status ? [status] : null,
+        since: dayBound(params["since"], "since"),
+        until: dayBound(params["until"], "until"),
+        symbols: parseSymbols(params["symbols"]),
+        terms: splitTerms(params["q"]),
+        limit,
+      });
+      return { hits: candidates.map((c) => ({ idea: c.idea, matched_by: matchTags(c) })) };
+    } catch (exc) {
+      throw new RpcError(-32602, (exc as Error).message);
+    }
   }
 
   static readonly IDEA_ANALYZE_SYSTEM =
@@ -165,8 +190,11 @@ export class IdeasHandlers extends HandlerBase {
       );
     }
 
+    const focus = normalizeFocus(params["focus"]);
     let ideas: Idea[];
-    if (scope === "all") {
+    if (focus !== null) {
+      ideas = this.pickByFocus(scope, focus);
+    } else if (scope === "all") {
       ideas = this.engine.store
         .listIdeas(null, 500)
         .filter((i) => i["status"] === "archived" || i["status"] === "done");
@@ -189,7 +217,11 @@ export class IdeasHandlers extends HandlerBase {
       if (analysis["summary"]) entry += `\n  当时的 AI 分析:${analysis["summary"]}`;
       lines.push(entry);
     }
-    const user = `共 ${ideas.length} 条想法,按时间从早到晚:\n\n${lines.join("\n\n")}`;
+    const head = focus === null
+      ? `共 ${ideas.length} 条想法,按时间从早到晚:`
+      : `检索焦点:${focusLabel(focus)}。以下是命中焦点的想法(按时间分层抽取,不只取最相似的)` +
+        `与最近的 ${DIGEST_PICK.recent} 条,共 ${ideas.length} 条,按时间从早到晚:`;
+    const user = `${head}\n\n${lines.join("\n\n")}`;
 
     const parser = this.parserFactory(this.settings.llm);
     let digest;
@@ -204,10 +236,23 @@ export class IdeasHandlers extends HandlerBase {
 
     const stored: IdeaDigest = { ...digest, model: this.settings.llm.model };
     const row = this.engine.store.addIdeaDigest(
-      scope, ideas.map((i) => String(i["id"])), stored,
+      scope, ideas.map((i) => String(i["id"])), stored, focus,
     );
-    this.engine.store.audit("ui", "idea_digest", { scope, count: ideas.length });
+    this.engine.store.audit(
+      "ui", "idea_digest", focus === null ? { scope, count: ideas.length } : { scope, count: ideas.length, focus },
+    );
     return { digest: row };
+  }
+
+  /** 带焦点的取数:范围内最近的一批 + 命中焦点的按时间分层抽。返回新的在前(同老口径 listIdeas 的次序)。 */
+  private pickByFocus(scope: string, focus: IdeaFocus): Idea[] {
+    const statuses = scope === "all" ? ["archived", "done"] : [scope];
+    const store = this.engine.store;
+    const recentPool = store.searchIdeas({ statuses, limit: DIGEST_PICK.recent }).map((c) => c.idea);
+    const matches = store.searchIdeas({
+      statuses, symbols: focus.symbols ?? [], terms: splitTerms(focus.q), limit: 5000,
+    });
+    return pickForDigest(matches, recentPool).map((p) => p.idea).reverse();
   }
 
   ideasDigests(params: IdeasDigestsParams): RpcResult<"ideas.digests"> {
@@ -220,4 +265,11 @@ function weekdayIndex(moment: EtNow): number {
   // Python weekday():周一=0。moment.date 是美东日历日。
   const [y, m, d] = moment.date.split("-").map(Number) as [number, number, number];
   return (new Date(Date.UTC(y, m - 1, d)).getUTCDay() + 6) % 7;
+}
+
+function focusLabel(focus: IdeaFocus): string {
+  const parts: string[] = [];
+  if (focus.q) parts.push(`关键词「${focus.q}」`);
+  if (focus.symbols?.length) parts.push(`标的 ${focus.symbols.join(" ")}`);
+  return parts.join(";");
 }

@@ -14,7 +14,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 import type { Watch } from "./contract/alerts.js";
-import type { Idea, IdeaAnalysis, IdeaDigest, IdeaDigestRow } from "./contract/ideas.js";
+import type { Idea, IdeaAnalysis, IdeaDigest, IdeaDigestRow, IdeaFocus } from "./contract/ideas.js";
 import type { AnomalyEvent, QualityStockRow } from "./contract/quality.js";
 import type { Sector, SectorStock } from "./contract/sectors.js";
 import type { Track } from "./contract/tracker.js";
@@ -87,7 +87,8 @@ CREATE TABLE IF NOT EXISTS idea_digests (
     scope      TEXT NOT NULL DEFAULT 'archived',
     idea_count INTEGER NOT NULL DEFAULT 0,
     idea_ids   TEXT NOT NULL DEFAULT '[]',
-    digest     TEXT NOT NULL DEFAULT '{}'
+    digest     TEXT NOT NULL DEFAULT '{}',
+    focus      TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_idea_digests_created ON idea_digests(created_at);
 
@@ -181,6 +182,25 @@ export const TERMINAL_STATUSES = new Set([
 
 export const IDEA_STATUSES = ["active", "done", "archived"] as const;
 
+/** searchIdeas 的条件。时间是 created_at 的 ISO 串比较:since 含、until 不含(调用方把「含当天」换算成次日)。 */
+export interface IdeaSearchFilter {
+  /** 空或不给 = 全部状态 */
+  statuses?: readonly string[] | null;
+  since?: string | null;
+  until?: string | null;
+  symbols?: readonly string[];
+  terms?: readonly string[];
+  /** 默认 500 */
+  limit?: number;
+}
+
+/** searchIdeas 的一行:想法 + 命中了哪一路。 */
+export interface IdeaCandidate {
+  idea: Idea;
+  symbol_hit: boolean;
+  text_hit: boolean;
+}
+
 /** 一条还没有终态的记录(listWorkingRecords 的行)。 */
 export interface WorkingRecord {
   id: string;
@@ -217,6 +237,8 @@ export interface QualityStockPatch {
 export class TradeStore {
   readonly dbPath: string;
   private readonly db: Database.Database;
+  /** 想法原文的 FTS5(trigram)索引建好了没有;SQLite 不带 FTS5 / trigram 时是 false,检索退回子串匹配 */
+  private ideasFts = false;
 
   constructor(dbPath: string) {
     this.dbPath = dbPath;
@@ -244,6 +266,13 @@ export class TradeStore {
     if (cols.size && !cols.has("analysis")) {
       this.db.exec("ALTER TABLE ideas ADD COLUMN analysis TEXT NOT NULL DEFAULT ''");
     }
+    const dcols = new Set(
+      (this.db.pragma("table_info(idea_digests)") as Array<{ name: string }>).map((r) => r.name),
+    );
+    if (dcols.size && !dcols.has("focus")) {
+      this.db.exec("ALTER TABLE idea_digests ADD COLUMN focus TEXT NOT NULL DEFAULT ''");
+    }
+    this.ideasFts = this.ensureIdeasFts();
 
     // 追踪表加"腿身份"列并把唯一约束改成含腿(与 Python 同一段迁移):
     // 老约束让一只蝴蝶的三条腿只能追踪一条。SQLite 改不了约束,只能整表重建。
@@ -677,6 +706,41 @@ export class TradeStore {
     return this.db.prepare("DELETE FROM sectors WHERE id=?").run(sectorId).changes > 0;
   }
 
+  /**
+   * 想法原文的全文索引。自带内容(不用 external content):外部内容表靠 rowid 对应,而 ideas 的主键是 TEXT,
+   * VACUUM 会重编这种表的 rowid,索引就悄悄对错行了。多存一份原文换一个不会错位的索引,值得。
+   * 原文不可改(store 对 ideas 只有 SET status / symbols / analysis),所以只有插入触发器是承重的;
+   * 删除与改原文的两个触发器是防御——哪天真允许了,索引不至于留着旧文。建不起来(没有 FTS5 / trigram)就返回 false。
+   */
+  private ensureIdeasFts(): boolean {
+    const has = this.db
+      .prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='ideas_fts'")
+      .get();
+    if (has) return true;
+    try {
+      this.db.exec(`
+        BEGIN;
+        CREATE VIRTUAL TABLE ideas_fts USING fts5(idea_id UNINDEXED, text, tokenize='trigram');
+        CREATE TRIGGER ideas_fts_ai AFTER INSERT ON ideas BEGIN
+          INSERT INTO ideas_fts (idea_id, text) VALUES (new.id, new.text);
+        END;
+        CREATE TRIGGER ideas_fts_ad AFTER DELETE ON ideas BEGIN
+          DELETE FROM ideas_fts WHERE idea_id = old.id;
+        END;
+        CREATE TRIGGER ideas_fts_au AFTER UPDATE OF text ON ideas BEGIN
+          DELETE FROM ideas_fts WHERE idea_id = old.id;
+          INSERT INTO ideas_fts (idea_id, text) VALUES (new.id, new.text);
+        END;
+        INSERT INTO ideas_fts (idea_id, text) SELECT id, text FROM ideas;
+        COMMIT;
+      `);
+      return true;
+    } catch {
+      if (this.db.inTransaction) this.db.exec("ROLLBACK");
+      return false;
+    }
+  }
+
   // ---- 想法备忘 --------------------------------------------------------
   addIdea(text: string, symbols?: string[] | null): Idea {
     text = (text || "").trim();
@@ -747,8 +811,78 @@ export class TradeStore {
     );
   }
 
+  /**
+   * 按标的 / 关键词 / 时间窗 / 状态取想法,新的在前。纯本地、纯读,不碰模型。
+   * 给了标的或关键词:只要命中其一(任一标的 / 任一词)的;都没给:时间窗与状态内的全部。
+   * 每行带着命中了哪一路,打分与抽样不在这里(analysis 层的 ideaRetrieval)。
+   */
+  searchIdeas(filter: IdeaSearchFilter): IdeaCandidate[] {
+    const statuses = [...(filter.statuses ?? [])];
+    for (const st of statuses) {
+      if (!(IDEA_STATUSES as readonly string[]).includes(st)) throw new Error(`未知想法状态:${st}`);
+    }
+    const symbols = [...new Set((filter.symbols ?? []).map((x) => x.trim().toUpperCase()).filter(Boolean))];
+    const terms = [...new Set((filter.terms ?? []).map((x) => x.trim()).filter(Boolean))];
+
+    const where: string[] = [];
+    const args: unknown[] = [];
+    if (statuses.length) {
+      where.push(`status IN (${statuses.map(() => "?").join(",")})`);
+      args.push(...statuses);
+    }
+    if (filter.since) {
+      where.push("created_at >= ?");
+      args.push(filter.since);
+    }
+    if (filter.until) {
+      where.push("created_at < ?");
+      args.push(filter.until);
+    }
+
+    const symExpr = symbols.length
+      ? `EXISTS (SELECT 1 FROM json_each(ideas.symbols) WHERE json_each.value IN (${symbols.map(() => "?").join(",")}))`
+      : "0";
+    const textIds = terms.length ? this.ideaIdsMatching(terms) : [];
+    const txtExpr = terms.length ? "ideas.id IN (SELECT value FROM json_each(?))" : "0";
+    const selArgs: unknown[] = [...symbols, ...(terms.length ? [JSON.stringify(textIds)] : [])];
+    if (symbols.length || terms.length) {
+      where.push(`(${symExpr} OR ${txtExpr})`);
+      args.push(...selArgs);
+    }
+
+    const sql =
+      `SELECT ideas.*, (${symExpr}) AS _sym_hit, (${txtExpr}) AS _txt_hit FROM ideas` +
+      (where.length ? ` WHERE ${where.join(" AND ")}` : "") +
+      " ORDER BY created_at DESC LIMIT ?";
+    const rows = this.db
+      .prepare(sql)
+      .all(...selArgs, ...args, Math.max(1, Math.trunc(filter.limit ?? 500))) as Rec[];
+    return rows.map((row) => {
+      const { _sym_hit: symHit, _txt_hit: txtHit, ...rest } = row;
+      return { idea: ideaRow(rest), symbol_hit: Boolean(symHit), text_hit: Boolean(txtHit) };
+    });
+  }
+
+  /** 原文命中任一词的想法 id。3 个字以上走 trigram 索引;更短的(「止损」「蝴蝶」)trigram 查不了,走子串。 */
+  private ideaIdsMatching(terms: readonly string[]): string[] {
+    const out = new Set<string>();
+    const fts = this.ideasFts
+      ? this.db.prepare("SELECT idea_id FROM ideas_fts WHERE text MATCH ?")
+      : null;
+    const sub = this.db.prepare("SELECT id AS idea_id FROM ideas WHERE instr(lower(text), lower(?)) > 0");
+    for (const term of terms) {
+      const rows = fts !== null && [...term].length >= 3
+        ? fts.all(`"${term.replaceAll('"', '""')}"`)
+        : sub.all(term);
+      for (const r of rows as Array<{ idea_id: string }>) out.add(r.idea_id);
+    }
+    return [...out];
+  }
+
   // ---- 想法知识总结 ----------------------------------------------------
-  addIdeaDigest(scope: string, ideaIds: string[], digest: IdeaDigest): IdeaDigestRow {
+  addIdeaDigest(
+    scope: string, ideaIds: string[], digest: IdeaDigest, focus: IdeaFocus | null = null,
+  ): IdeaDigestRow {
     const row: IdeaDigestRow = {
       id: crypto.randomUUID(),
       created_at: nowIso(),
@@ -757,14 +891,15 @@ export class TradeStore {
       idea_ids: [...ideaIds],
       digest: { ...digest },
     };
+    if (focus !== null) row.focus = { ...focus }; // 只有检索出来的总结才有这个键,老口径的行一字不变
     this.db
       .prepare(
-        "INSERT INTO idea_digests (id, created_at, scope, idea_count, idea_ids, digest)" +
-        " VALUES (?,?,?,?,?,?)",
+        "INSERT INTO idea_digests (id, created_at, scope, idea_count, idea_ids, digest, focus)" +
+        " VALUES (?,?,?,?,?,?,?)",
       )
       .run(
         row.id, row.created_at, row.scope, row.idea_count,
-        JSON.stringify(row.idea_ids), JSON.stringify(row.digest),
+        JSON.stringify(row.idea_ids), JSON.stringify(row.digest), focus !== null ? JSON.stringify(focus) : "",
       );
     return row;
   }
@@ -774,13 +909,20 @@ export class TradeStore {
       .prepare("SELECT * FROM idea_digests ORDER BY created_at DESC LIMIT ?")
       .all(limit) as Rec[];
     return rows.map((raw) => {
-      const digest = { ...raw };
+      const { focus: rawFocus, ...digest } = raw;
       for (const [key, empty] of [["idea_ids", []], ["digest", {}]] as const) {
         try {
           digest[key] = JSON.parse((digest[key] as string) || "null") ?? empty;
         } catch {
           digest[key] = empty;
         }
+      }
+      // 没焦点(老口径、或那一列读不出来)就没有这个键——ideas.digests 的老回包一字不变
+      try {
+        const focus: unknown = rawFocus ? JSON.parse(String(rawFocus)) : null;
+        if (focus !== null && typeof focus === "object") digest["focus"] = focus;
+      } catch {
+        // 读不出来当没有
       }
       return digest as IdeaDigestRow; // 库的边界,同 watchRow
     });

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Button, Card, Input, Segmented, Space } from 'antd';
 import { dafri, errorMessage } from '../bridge';
-import type { Idea, IdeaAnalysis, IdeaBriefMetric, IdeaDigest, IdeaDigestRow } from '../bridge';
+import type { Idea, IdeaAnalysis, IdeaBriefMetric, IdeaDigest, IdeaDigestRow, IdeaMatch } from '../bridge';
 import { fmtTime, fmtTimeShort } from '../lib/format';
 import { showBanner } from '../store/banner';
 import { navigate } from '../store/nav';
@@ -13,6 +13,7 @@ import { EmptyState, Meta, PageHead, Primer, StatusCard } from '../ui/kit';
 // 契约把它们标成 Partial——老版本写进去的可能缺键,所以下面每一项都按"可能没有"来画。
 
 const IDEA_STATUS_LABEL: Record<string, string> = { active: '进行中', done: '已完成', archived: '已归档' };
+const MATCH_LABEL: Record<IdeaMatch, string> = { symbol: '标的命中', text: '原文命中', recent: '近期' };
 
 const BRIEF_LABELS: [IdeaBriefMetric, string, string][] = [
   ['last', '现价', ''],
@@ -47,6 +48,9 @@ export function IdeasPage() {
   const [digests, setDigests] = useState<IdeaDigestRow[]>([]);
   const [text, setText] = useState('');
   const [digesting, setDigesting] = useState(false);
+  // 检索:回车才生效(每分钟那一轮刷新也按它取),清空即回到列表
+  const [query, setQuery] = useState('');
+  const [matched, setMatched] = useState<Record<string, IdeaMatch[]>>({});
 
   const loadDigests = useCallback(async () => {
     try {
@@ -59,14 +63,22 @@ export function IdeasPage() {
 
   const load = useCallback(async () => {
     try {
-      const { ideas: list } = await dafri.listIdeas(filter === 'all' ? undefined : filter);
-      setIdeas(list || []);
+      const status = filter === 'all' ? undefined : filter;
+      if (query) {
+        const { hits } = await dafri.searchIdeas({ q: query, status, limit: 200 });
+        setIdeas((hits || []).map((h) => h.idea));
+        setMatched(Object.fromEntries((hits || []).map((h) => [h.idea.id, h.matched_by])));
+      } else {
+        const { ideas: list } = await dafri.listIdeas(status);
+        setIdeas(list || []);
+        setMatched({});
+      }
       setLoadError(null);
     } catch (err) {
       setLoadError(errorMessage(err));
     }
     void loadDigests(); // 不阻塞想法列表;失败只记 console
-  }, [filter, loadDigests]);
+  }, [filter, query, loadDigests]);
 
   // 进页即刷,停留期间每分钟一轮
   useEffect(() => {
@@ -100,7 +112,8 @@ export function IdeasPage() {
   async function digest() {
     setDigesting(true);
     try {
-      await dafri.digestIdeas('all'); // 已归档 + 已完成一起看,规律才完整
+      // 已归档 + 已完成一起看,规律才完整;有检索词时改成「命中的按时间分层抽 + 最近的一批」
+      await dafri.digestIdeas('all', query ? { q: query } : undefined);
       await loadDigests();
     } catch (err) {
       showBanner(`知识总结失败:${errorMessage(err)}`, false);
@@ -143,9 +156,15 @@ export function IdeasPage() {
           value={filter}
           onChange={(v) => setFilter(v as 'active' | 'all')}
         />
-        <span className="grow" />
+        <Input.Search
+          size="small"
+          className="grow"
+          allowClear
+          placeholder="检索想法:蝴蝶 结算 / RKLB(回车)"
+          onSearch={(v) => setQuery(v.trim())}
+        />
         <Button size="small" loading={digesting} onClick={() => void digest()}>
-          {digesting ? '总结中…' : '总结知识'}
+          {digesting ? '总结中…' : query ? '按检索总结' : '总结知识'}
         </Button>
       </div>
 
@@ -158,6 +177,7 @@ export function IdeasPage() {
           <Meta
             items={[
               `基于 ${latest.idea_count} 条想法`,
+              latest.focus ? `检索:${[latest.focus.q, ...(latest.focus.symbols || [])].filter(Boolean).join(' ')}` : null,
               d.model ? `模型 ${d.model}` : null,
               <span title={fmtTime(latest.created_at)}>{`总结于 ${fmtTimeShort(latest.created_at)}`}</span>,
               digests.length > 1 ? `共 ${digests.length} 次总结,新的在上` : null,
@@ -171,9 +191,11 @@ export function IdeasPage() {
         {loadError ? (
           <EmptyState>读取失败:{loadError}</EmptyState>
         ) : !ideas.length ? (
-          <EmptyState>{filter === 'active' ? '还没有进行中的想法。' : '还没有想法。'}</EmptyState>
+          <EmptyState>{query ? `没有命中「${query}」的想法。` : filter === 'active' ? '还没有进行中的想法。' : '还没有想法。'}</EmptyState>
         ) : (
-          ideas.map((idea) => <IdeaCard key={idea.id} idea={idea} onStatus={setStatus} onSend={sendToTrade} onChanged={load} />)
+          ideas.map((idea) => (
+            <IdeaCard key={idea.id} idea={idea} matchedBy={matched[idea.id]} onStatus={setStatus} onSend={sendToTrade} onChanged={load} />
+          ))
         )}
       </div>
     </section>
@@ -182,11 +204,13 @@ export function IdeasPage() {
 
 function IdeaCard({
   idea,
+  matchedBy,
   onStatus,
   onSend,
   onChanged,
 }: {
   idea: Idea;
+  matchedBy?: IdeaMatch[];
   onStatus: (id: string, status: string) => Promise<void>;
   onSend: (idea: Idea) => void;
   onChanged: () => Promise<void>;
@@ -214,7 +238,12 @@ function IdeaCard({
       extra={<span className={`status ${tone}`}>{IDEA_STATUS_LABEL[idea.status] || idea.status}</span>}
     >
       <div>{idea.text}</div>
-      <Meta items={[<span title={fmtTime(idea.created_at)}>{fmtTimeShort(idea.created_at)}</span>]} />
+      <Meta
+        items={[
+          <span title={fmtTime(idea.created_at)}>{fmtTimeShort(idea.created_at)}</span>,
+          matchedBy?.length ? matchedBy.map((m) => MATCH_LABEL[m]).join(' · ') : null,
+        ]}
+      />
       {idea.analysis ? <Analysis analysis={idea.analysis} /> : null}
       <Space size={6} className="card-actions" wrap>
         {idea.status === 'active' ? (

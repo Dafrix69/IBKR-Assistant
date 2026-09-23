@@ -171,7 +171,7 @@ export class RpcServer implements RpcContext {
   static readonly LOCAL_METHODS = new Set([
     "system.status",
     "sectors.list", "sectors.add", "sectors.delete", "sectors.add_stock", "sectors.remove_stock", "sectors.set_tag",
-    "ideas.list", "ideas.add", "ideas.update", "ideas.digests",
+    "ideas.list", "ideas.add", "ideas.update", "ideas.digests", "ideas.search",
     "records.list", "records.get", "settings.get", "breaker.state", "alerts.list", "tracker.list",
     "llm.catalog", "broker.catalog",
     // 盯盘与托管对账的节拍器在引擎里(TradingEngine.startTrackerLoop),这两个请求只是读它最新

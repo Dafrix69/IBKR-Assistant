@@ -104,7 +104,7 @@ cd desktop && npm run ui:preview \
 cd engine-ts && npm run probe                        # 真机只读联调:临时配置与临时库、三道闸强制关、只准调只读 RPC
 ```
 
-引擎与界面各有一份分层规则(`.dependency-cruiser.cjs`,依赖只能往下流),CI 里排在 lint 之后;改代码的规矩——分层、RPC 契约四处同步、黄金基线怎么改、单文件体积预算——写在根目录的 [CLAUDE.md](CLAUDE.md)。其中三项不只是写着,还各有一条**只许变短**的测试钉着:RPC 契约(界面与引擎之间全部 77 个方法都从契约走,绕过契约编译不过)、桌面端 RPC 白名单与敏感方法表(两边双向对)、单文件体积预算。换了 IBKR 用户名或 TWS 升级之后先跑一遍 `npm run probe`:行情订阅按用户名算、不按账户,它会逐个品种把 TWS 的原话摆出来。
+引擎与界面各有一份分层规则(`.dependency-cruiser.cjs`,依赖只能往下流),CI 里排在 lint 之后;改代码的规矩——分层、RPC 契约四处同步、黄金基线怎么改、单文件体积预算——写在根目录的 [CLAUDE.md](CLAUDE.md)。其中三项不只是写着,还各有一条**只许变短**的测试钉着:RPC 契约(界面与引擎之间全部 78 个方法都从契约走,绕过契约编译不过)、桌面端 RPC 白名单与敏感方法表(两边双向对)、单文件体积预算。换了 IBKR 用户名或 TWS 升级之后先跑一遍 `npm run probe`:行情订阅按用户名算、不按账户,它会逐个品种把 TWS 的原话摆出来。
 
 命令行也能用同一个引擎:`node dist/src/cli.js selftest | validate | parse | run | rpc`,危险程度递增,`run` 必须带 `--i-understand-this-places-real-orders`。
 
