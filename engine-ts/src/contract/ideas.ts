@@ -115,9 +115,10 @@ export type IdeaTradeResult = "win" | "loss" | "flat" | "open" | "unknown";
  * **只有单价与比例**:不带数量、金额、账户——模型拿到的是"这笔成没成、幅度多大",不是账户有多大。
  */
 export interface IdeaTradeFact {
-  /** 交易分析页的同一个 id(`ib:<permId>` / `stk:…`) */
+  /** 交易分析页的同一个 id(`ib:<permId>` / `stk:…`);导入的期权是 `opt:…` */
   id: string;
-  kind: "butterfly" | "stock";
+  /** option = 从按结构整理的成交导出导入的期权出场事件:没有行权价,结构是推断的,开仓没配对 */
+  kind: "butterfly" | "stock" | "option";
   symbol: string;
   /** 开仓时刻(ISO) */
   opened_at: string;
@@ -133,6 +134,8 @@ export interface IdeaTradeFact {
   result: IdeaTradeResult;
   /** 收益率(%),对成本算;算不出来为 null */
   return_pct: number | null;
+  /** 每份结构的已实现盈亏(点,已扣佣金)。只有导入的期权有——它们没配开仓,算不出收益率 */
+  pnl_points?: number | null;
   /** 模拟账户的成交 */
   paper: boolean;
   /** 结局算不出来的原因,或需要带着看的说明;没有就是空串 */

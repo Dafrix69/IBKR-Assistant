@@ -7,6 +7,7 @@
  *   node dist/cli.js run "..." --i-understand-this-places-real-orders
  *   node dist/cli.js records / halt / resume / export / set-key / rpc
  *   node dist/cli.js import-fills fills.csv --account 别名 [--dry-run]   # 补历史成交(只收股票)
+ *   node dist/cli.js import-option-trades trades.csv --account 别名 [--dry-run]   # 按结构整理的期权交易
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -15,6 +16,7 @@ import { BrokerRouter } from "./broker.js";
 import { Settings, loadSettings, nowEt } from "./config.js";
 import { TradingEngine } from "./engine.js";
 import { parseFillsCsv } from "./fillsCsv.js";
+import { parseOptionTradesCsv } from "./optionTradesCsv.js";
 import { FutuRouter } from "./futuBroker.js";
 import { setSecret } from "./keychain.js";
 import { KillSwitch } from "./killswitch.js";
@@ -101,13 +103,15 @@ export async function main(argv: string[]): Promise<number> {
     }
     case "import-fills":
       return importFills(settings, args[0] ?? "", flagValue(args, "--account") ?? "", args.includes("--dry-run"));
+    case "import-option-trades":
+      return importOptionTrades(settings, args[0] ?? "", flagValue(args, "--account") ?? "", args.includes("--dry-run"));
     case "set-key":
       setSecret(settings.llm.keychain_service, settings.llm.keychain_account, args[0]!);
       console.log(`已写入 Keychain(service=${settings.llm.keychain_service})`);
       return 0;
     default:
       console.error(
-        "用法:cli <selftest|rpc|validate|parse|run|records|idea|ideas|halt|resume|export|import-fills|set-key> [--config path]",
+        "用法:cli <selftest|rpc|validate|parse|run|records|idea|ideas|halt|resume|export|import-fills|import-option-trades|set-key> [--config path]",
       );
       return 1;
   }
@@ -139,6 +143,35 @@ function importFills(settings: Settings, csvPath: string, alias: string, dryRun:
   const added = store.rememberFills(parsed.fills);
   store.audit("cli", "fills_import", { file: path.basename(csvPath), account: alias, added, skipped: parsed.skipped });
   console.log(`已写入 ${added} 笔。`);
+  return 0;
+}
+
+/**
+ * 把按结构整理的期权交易(trades.csv)导进 imported_option_trades:没有行权价,不进 broker_fills,只给知识总结当出场成败的事实。
+ * 只增不改,按 (账户, 行键) 去重;账户号不打印。
+ */
+function importOptionTrades(settings: Settings, csvPath: string, alias: string, dryRun: boolean): number {
+  const account = settings.accounts.find((a) => a.alias === alias);
+  if (!csvPath || account === undefined) {
+    const known = settings.accounts.map((a) => a.alias).join("、") || "(配置里没有账户)";
+    console.error(`用法:cli import-option-trades trades.csv --account <别名> [--dry-run];可选的别名:${known}`);
+    return 1;
+  }
+  const parsed = parseOptionTradesCsv(fs.readFileSync(csvPath, "utf-8"), account.account_id, path.basename(csvPath));
+  const store = new TradeStore(settings.db_path);
+  const known = new Set(store.listOptionTrades().filter((r) => r.account_id === account.account_id).map((r) => r.id));
+  const fresh = parsed.rows.filter((r) => !known.has(r.id));
+  const exits = parsed.rows.filter((r) => r.action !== "开仓").length;
+  console.log(`账户:${alias}${account.is_paper ? "(模拟)" : ""}`);
+  console.log(`期权结构 ${parsed.rows.length} 行(其中出场 ${exits} 行;${parsed.first ?? "-"} → ${parsed.last ?? "-"}),库里已有 ${parsed.rows.length - fresh.length} 行,新增 ${fresh.length} 行`);
+  for (const [reason, count] of Object.entries(parsed.skipped)) console.log(`  未收 ${count} 行:${reason}`);
+  if (dryRun) {
+    console.log("--dry-run:没有写库。");
+    return 0;
+  }
+  const added = store.rememberOptionTrades(parsed.rows);
+  store.audit("cli", "option_trades_import", { file: path.basename(csvPath), account: alias, added, skipped: parsed.skipped });
+  console.log(`已写入 ${added} 行。`);
   return 0;
 }
 

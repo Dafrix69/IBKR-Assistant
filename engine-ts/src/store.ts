@@ -51,6 +51,28 @@ CREATE TABLE IF NOT EXISTS broker_fills (
     fill_json   TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_fills_time ON broker_fills(time);
+
+-- 导入的期权交易(按结构整理的成交导出,一行 = 一个结构的一次动作)。没有行权价 / 到期日,拼不出合约,
+-- 所以不进 broker_fills;只增不改,按 (account_id, id) 去重。以后有了带合约描述的成交,同一天的这些行就不再用
+CREATE TABLE IF NOT EXISTS imported_option_trades (
+    account_id   TEXT NOT NULL,
+    id           TEXT NOT NULL,
+    time_et      TEXT NOT NULL,
+    date_et      TEXT NOT NULL,
+    symbol       TEXT NOT NULL,
+    structure    TEXT NOT NULL,
+    action       TEXT NOT NULL,
+    direction    TEXT NOT NULL DEFAULT '',
+    qty          REAL,
+    net_price    REAL,
+    realized_pnl REAL NOT NULL,
+    commission   REAL NOT NULL DEFAULT 0,
+    legs         TEXT NOT NULL DEFAULT '',
+    note         TEXT NOT NULL DEFAULT '',
+    source       TEXT NOT NULL DEFAULT '',
+    imported_at  TEXT NOT NULL,
+    PRIMARY KEY (account_id, id)
+);
 CREATE TABLE IF NOT EXISTS audit_log (
     seq    INTEGER PRIMARY KEY AUTOINCREMENT,
     at     TEXT NOT NULL,
@@ -200,6 +222,27 @@ export interface IdeaCandidate {
   idea: Idea;
   symbol_hit: boolean;
   text_hit: boolean;
+}
+
+/** imported_option_trades 的一行(导入时由 optionTradesCsv 整理好)。 */
+export interface ImportedOptionTrade {
+  account_id: string;
+  /** 文件里同一个结构动作的稳定键:时间 + 标的 + 动作 + 订单号 */
+  id: string;
+  time_et: string;
+  date_et: string;
+  symbol: string;
+  structure: string;
+  action: string;
+  direction: string;
+  /** 结构的份数;拆不开的(多个仓位同时结算、两腿同向……)导出里是空的,就是 null */
+  qty: number | null;
+  net_price: number | null;
+  realized_pnl: number;
+  commission: number;
+  legs: string;
+  note: string;
+  source: string;
 }
 
 /** 一条还没有终态的记录(listWorkingRecords 的行)。 */
@@ -373,6 +416,33 @@ export class TradeStore {
       added += Number(info.changes ?? 0);
     }
     return added;
+  }
+
+  /** 导入的期权交易:只增不改,已有的 (account_id, id) 不动。返回新增条数。 */
+  rememberOptionTrades(rows: readonly ImportedOptionTrade[]): number {
+    const stmt = this.db.prepare(
+      "INSERT OR IGNORE INTO imported_option_trades (account_id, id, time_et, date_et, symbol, structure, action," +
+      " direction, qty, net_price, realized_pnl, commission, legs, note, source, imported_at)" +
+      " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+    );
+    const at = nowIso();
+    let added = 0;
+    for (const r of rows) {
+      added += Number(stmt.run(
+        r.account_id, r.id, r.time_et, r.date_et, r.symbol, r.structure, r.action, r.direction, r.qty,
+        r.net_price, r.realized_pnl, r.commission, r.legs, r.note, r.source, at,
+      ).changes ?? 0);
+    }
+    return added;
+  }
+
+  listOptionTrades(): ImportedOptionTrade[] {
+    return this.db
+      .prepare(
+        "SELECT account_id, id, time_et, date_et, symbol, structure, action, direction, qty, net_price, realized_pnl," +
+        " commission, legs, note, source FROM imported_option_trades ORDER BY time_et ASC, id ASC",
+      )
+      .all() as ImportedOptionTrade[]; // 库的边界:列就是接口的字段
   }
 
   listFills(limit = 5000): Rec[] {
