@@ -30,18 +30,6 @@ export class IdeaSemanticService extends ServiceBase {
   embedder: Embedder | null = defaultEmbedder();
 
   /**
-   * 预热:引擎启动时在后台把模型载进显存(8B 冷启动约 3 秒),第一次检索就不用等。
-   * 尽力而为:没开嵌入、Ollama 没开、模型没装,一律算了,不影响启动。
-   */
-  async warm(): Promise<void> {
-    try {
-      await this.embedder?.embed(["warm up"], 60_000);
-    } catch {
-      // 预热失败不要紧,检索时会再试,再不行就退回关键词
-    }
-  }
-
-  /**
    * 在 `pool` 里按语义找和 `query` 相近的:id → 分数(只含过了门槛、前 TOP_K 名的)。
    * 嵌入不可用时返回 null——调用方退回纯关键词。
    */
@@ -83,7 +71,7 @@ function defaultEmbedder(): Embedder | null {
     const keep = process.env["DAFRI_EMBED_KEEP_ALIVE"];
     return new OllamaEmbedder(
       process.env["DAFRI_EMBED_URL"] || DEFAULT_EMBED_URL, process.env["DAFRI_EMBED_MODEL"] || DEFAULT_EMBED_MODEL,
-      keep === undefined || keep === "" ? -1 : (Number.isFinite(Number(keep)) ? Number(keep) : keep),
+      keep === undefined || keep === "" ? "5m" : (Number.isFinite(Number(keep)) ? Number(keep) : keep),
     );
   } catch {
     return null; // 地址不是本机:不连

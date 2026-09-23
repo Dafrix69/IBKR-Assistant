@@ -86,7 +86,7 @@ describe("embeddings", () => {
     expect(() => new OllamaEmbedder("http://10.0.0.2:11434", "m")).toThrow(EmbedError);
   });
 
-  it("请求带 keep_alive:默认 -1(常驻显存),可以换", async () => {
+  it("请求带 keep_alive:默认 5m(空闲就卸,不一直占显存),可以换", async () => {
     const bodies: Rec[] = [];
     const spy = vi.spyOn(globalThis, "fetch").mockImplementation(async (_url, init) => {
       bodies.push(JSON.parse(String((init as RequestInit).body)));
@@ -94,23 +94,14 @@ describe("embeddings", () => {
     });
     try {
       await new OllamaEmbedder("http://127.0.0.1:11434", "m").embed(["x"]);
-      await new OllamaEmbedder("http://127.0.0.1:11434", "m", "5m").embed(["x"]);
+      await new OllamaEmbedder("http://127.0.0.1:11434", "m", -1).embed(["x"]);
     } finally {
       spy.mockRestore();
     }
     expect(bodies).toEqual([
-      { model: "m", input: ["x"], keep_alive: -1 },
       { model: "m", input: ["x"], keep_alive: "5m" },
+      { model: "m", input: ["x"], keep_alive: -1 },
     ]);
-  });
-
-  it("预热:没开嵌入时什么都不做;嵌入出错也不抛", async () => {
-    const { s } = makeServer();
-    await expect(s.ideaSemantic.warm()).resolves.toBeUndefined();
-    const fake = new FakeEmbedder();
-    fake.failing = true;
-    s.ideaSemantic.embedder = fake;
-    await expect(s.ideaSemantic.warm()).resolves.toBeUndefined();
   });
 
   it("余弦", () => {
