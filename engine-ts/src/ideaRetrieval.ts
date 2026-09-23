@@ -11,6 +11,8 @@ export interface RetrievalCandidate {
   idea: Idea;
   symbol_hit: boolean;
   text_hit: boolean;
+  /** 本机嵌入算出来意思相近(第二期);没开嵌入时没有这一项 */
+  semantic_hit?: boolean;
 }
 
 export interface PickedIdea {
@@ -32,14 +34,34 @@ export const DIGEST_PICK: PickOptions = { total: 100, recent: 20, buckets: 3 };
 
 /** 标的命中比原文命中重:标的是抽出来的结构化标签,词可能只是顺嘴提到。 */
 export function scoreCandidate(c: RetrievalCandidate): number {
-  return (c.symbol_hit ? 2 : 0) + (c.text_hit ? 1 : 0);
+  return (c.symbol_hit ? 2 : 0) + (c.text_hit ? 1 : 0) + (c.semantic_hit ? 1 : 0);
 }
 
 export function matchTags(c: RetrievalCandidate): IdeaMatch[] {
   const out: IdeaMatch[] = [];
   if (c.symbol_hit) out.push("symbol");
   if (c.text_hit) out.push("text");
+  if (c.semantic_hit) out.push("semantic");
   return out;
+}
+
+/**
+ * 混合检索的合并:关键词 / 标的命中的候选,加上语义相近的(`semantic`:id → 分数,只含过了门槛的)。
+ * 已在候选里的打上 semantic_hit;不在的从 `pool`(已按状态、时间窗过滤过的想法)里补进来。新的在前,封顶 limit。
+ */
+export function mergeSemantic(
+  candidates: readonly RetrievalCandidate[], pool: readonly Idea[], semantic: ReadonlyMap<string, number>, limit: number,
+): RetrievalCandidate[] {
+  const out = candidates.map((c) => (semantic.has(c.idea.id) ? { ...c, semantic_hit: true } : c));
+  const have = new Set(out.map((c) => c.idea.id));
+  for (const idea of pool) {
+    if (semantic.has(idea.id) && !have.has(idea.id)) {
+      out.push({ idea, symbol_hit: false, text_hit: false, semantic_hit: true });
+      have.add(idea.id);
+    }
+  }
+  out.sort((a, b) => createdMs(b.idea) - createdMs(a.idea) || (a.idea.id < b.idea.id ? -1 : a.idea.id > b.idea.id ? 1 : 0));
+  return out.slice(0, limit);
 }
 
 function createdMs(idea: Idea): number {

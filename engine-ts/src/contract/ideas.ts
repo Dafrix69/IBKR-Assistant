@@ -95,8 +95,8 @@ export interface IdeaFocus {
   symbols?: string[];
 }
 
-/** 想法因为什么被召回。recent = 最近一批无条件进,不因为匹配 */
-export type IdeaMatch = "symbol" | "text" | "recent";
+/** 想法因为什么被召回。recent = 最近一批无条件进,不因为匹配;semantic = 本机嵌入算出来意思相近(字面不一定对得上) */
+export type IdeaMatch = "symbol" | "text" | "semantic" | "recent";
 
 /** ideas.search 的一条结果:想法本身 + 它为什么被召回。 */
 export interface IdeaHit {

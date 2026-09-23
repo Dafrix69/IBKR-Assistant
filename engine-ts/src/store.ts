@@ -18,6 +18,7 @@ import type { Idea, IdeaAnalysis, IdeaDigest, IdeaDigestRow, IdeaFocus, IdeaTrad
 import type { AnomalyEvent, QualityStockRow } from "./contract/quality.js";
 import type { Sector, SectorStock } from "./contract/sectors.js";
 import type { Track } from "./contract/tracker.js";
+import { IdeaVectorStore } from "./ideaVectors.js";
 import { ImportedTradesStore } from "./importedTrades.js";
 import type { RecentOrder } from "./models.js";
 
@@ -243,6 +244,8 @@ export class TradeStore {
   private ideasFts = false;
   /** 从外部导出补进来的交易与它们的上下文(期权仓位、按结构整理的期权交易、开仓时标的价),见 importedTrades.ts */
   readonly imports: ImportedTradesStore;
+  /** 想法原文的嵌入向量(想法检索第二期),见 ideaVectors.ts */
+  readonly vectors: IdeaVectorStore;
 
   constructor(dbPath: string) {
     this.dbPath = dbPath;
@@ -253,6 +256,7 @@ export class TradeStore {
     this.db.pragma("foreign_keys = ON");
     this.db.exec(SCHEMA);
     this.imports = new ImportedTradesStore(this.db);
+    this.vectors = new IdeaVectorStore(this.db);
     this.migrate();
     if (fresh) {
       try {
