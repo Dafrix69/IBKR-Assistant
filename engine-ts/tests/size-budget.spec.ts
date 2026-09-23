@@ -33,7 +33,7 @@ const SCOPES = [
  * **五个的共同约束是同一条:先做真机核对,再动它们。**
  */
 const OVER_BUDGET: Record<string, number> = {
-  "engine-ts/src/broker.ts": 2400,
+  "engine-ts/src/broker.ts": 2398,
   "engine-ts/src/engine.ts": 1790,
   "engine-ts/src/futuBroker.ts": 1740,
   "desktop/renderer-react/src/lib/chart/engine.ts": 535,

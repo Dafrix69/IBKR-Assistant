@@ -285,12 +285,26 @@ export class IdeasHandlers extends HandlerBase {
       }
     }
     const history = await this.ctx.tradeHistory.load([symbol, ...peers]);
+    // 要行情的几项(现价、历史蝴蝶开仓时的标的价、股票近期区间):尽力而为,取不到那一项就不比
+    const kind = sim.ticketKind(params);
+    const context = this.ctx.similarContext;
+    let entryUnderlying = new Map<string, number>();
+    let rangePos = new Map<string, number>();
+    const ctx: { spot?: number | null; rangePos?: number | null } = {};
+    if (kind === "butterfly") {
+      ctx.spot = await context.spot(symbol);
+      entryUnderlying = await context.flyEntryUnderlyings(history.butterflies, symbol);
+    } else if (kind === "stock") {
+      const ranges = await context.stockRanges(symbol, history.facts);
+      ctx.rangePos = ranges.query;
+      rangePos = ranges.byId;
+    }
     const entries = [
-      ...sim.butterflyEntries(history.butterflies, history.facts),
+      ...sim.butterflyEntries(history.butterflies, history.facts, entryUnderlying),
       ...sim.optionEntries(history.options, history.facts),
-      ...sim.stockEntries(history.facts),
+      ...sim.stockEntries(history.facts, rangePos),
     ];
-    const found = sim.findSimilar(params, entries, Date.now(), peers);
+    const found = sim.findSimilar(params, entries, Date.now(), peers, ctx);
     const lessons = store.searchIdeas({ statuses: ["archived", "done"], symbols: [symbol], limit: 3 }).map((c) => c.idea);
     return { ...found, lessons };
   }

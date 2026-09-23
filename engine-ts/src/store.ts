@@ -73,6 +73,17 @@ CREATE TABLE IF NOT EXISTS imported_option_trades (
     imported_at  TEXT NOT NULL,
     PRIMARY KEY (account_id, id)
 );
+
+-- 历史交易开仓那一刻的标的价(下单页「历史相似交易」比蝴蝶中心离现价几个翼宽用)。取一次就存下,
+-- 历史不会变;取的时候标的在哪一分钟、从哪来(source)都留着
+CREATE TABLE IF NOT EXISTS trade_entry_context (
+    trade_id   TEXT PRIMARY KEY,
+    symbol     TEXT NOT NULL,
+    at         TEXT NOT NULL,
+    underlying REAL NOT NULL,
+    source     TEXT NOT NULL DEFAULT '',
+    fetched_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS audit_log (
     seq    INTEGER PRIMARY KEY AUTOINCREMENT,
     at     TEXT NOT NULL,
@@ -443,6 +454,25 @@ export class TradeStore {
         " commission, legs, note, source FROM imported_option_trades ORDER BY time_et ASC, id ASC",
       )
       .all() as ImportedOptionTrade[]; // 库的边界:列就是接口的字段
+  }
+
+  /** 已存下的开仓时标的价:trade_id → 价。 */
+  entryUnderlyings(tradeIds: readonly string[]): Map<string, number> {
+    const out = new Map<string, number>();
+    const stmt = this.db.prepare("SELECT underlying FROM trade_entry_context WHERE trade_id=?");
+    for (const id of tradeIds) {
+      const row = stmt.get(id) as { underlying: number } | undefined;
+      if (row !== undefined) out.set(id, row.underlying);
+    }
+    return out;
+  }
+
+  rememberEntryUnderlying(tradeId: string, symbol: string, at: string, underlying: number, source: string): void {
+    this.db
+      .prepare(
+        "INSERT OR IGNORE INTO trade_entry_context (trade_id, symbol, at, underlying, source, fetched_at) VALUES (?,?,?,?,?,?)",
+      )
+      .run(tradeId, symbol, at, underlying, source, nowIso());
   }
 
   listFills(limit = 5000): Rec[] {

@@ -148,6 +148,13 @@ export function isValidYmd(year: number, month: number, day: number): boolean {
 }
 
 /** Python `datetime.astimezone(utc).isoformat()` 同形:秒精度,+00:00 后缀。 */
+/** 美东某天某时刻 → IB historicalData 的 endDateTime(UTC,"yyyymmdd-HH:MM:SS")。默认收盘后 5 分钟。 */
+export function ibEndUtc(day: string, hour = 16, minute = 5): string {
+  const [y, m, d] = day.split("-").map(Number) as [number, number, number];
+  const epoch = wallToEpoch({ year: y, month: m, day: d, hour, minute, second: 0 }, ET);
+  return new Date(epoch).toISOString().slice(0, 19).replace(/-/g, "").replace("T", "-");
+}
+
 export function utcIso(epochMs: number): string {
   const d = new Date(epochMs);
   const base = d.toISOString().slice(0, 19);
