@@ -267,7 +267,7 @@ export class IdeasHandlers extends HandlerBase {
   }
 
   /**
-   * 库里累积的券商成交 → 每笔交易的结局(交易分析页的同一批记录,同一套算法)。只读本地库,不向券商同步新成交;
+   * 库里累积的券商成交 → 每笔交易的结局(交易分析页的同一批记录,同一套算法);再加上导入的期权出场事件。只读本地库,不向券商同步新成交;
    * 没平仓的过期蝴蝶按到期日标的日线收盘结算——要连着券商取日线,取不到就是「结果不明」。
    * 股票持仓段与交易分析页同一份(services/stockTrips):连着券商时按当前持仓反推期初仓位,先卖后买回认得出是做空;
    * 没连时先卖的部分按卖出老仓位算、成本不明。
@@ -295,7 +295,12 @@ export class IdeasHandlers extends HandlerBase {
         // 没连券商 / 取不到日线:这些到期的蝴蝶记成「结果不明」,原因写在每一笔的 note 里
       }
     }
-    return outcomes.collectFacts(butterflies, trips, (s, d) => closes.get(`${s}|${d}`) ?? null, now, symbols);
+    // 导入的期权(按结构整理的导出,没有行权价):同一账户同一天库里已有完整期权成交的,以完整的为准
+    const paper = new Set(this.settings.accounts.filter((a) => a.is_paper).map((a) => a.account_id));
+    const options = outcomes.optionFacts(
+      this.engine.store.listOptionTrades(), (id) => paper.has(id), outcomes.optionDaysCovered(fills),
+    );
+    return outcomes.collectFacts(butterflies, trips, (s, d) => closes.get(`${s}|${d}`) ?? null, now, symbols, options);
   }
 
   /** 带焦点的取数:范围内最近的一批 + 命中焦点的按时间分层抽。返回新的在前(同老口径 listIdeas 的次序)。 */

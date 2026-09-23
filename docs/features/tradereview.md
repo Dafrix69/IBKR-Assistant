@@ -13,7 +13,11 @@
 (`fillsCsv.ts`,`tests/fills-csv.spec.ts`)读 IBKR 账户成交导出,写进同一张 `broker_fills`,按 exec_id 去重、已有的行不动
 (TWS 同步来的那份佣金是 0,导出里是真的,也不覆盖——只增不改)。导出里没有账户号,`--account` 按配置里的别名指明。
 **只收股票**:那份导出的期权行没有行权价 / 到期日 / 看涨看跌,拼不出蝴蝶;残缺的行一旦进库,以后带合约描述的导出(Flex Query)
-会因为 exec_id 相同被静默忽略。期权等 Flex。没连 TWS 时列表就是
+会因为 exec_id 相同被静默忽略。期权等 Flex。
+
+**按结构整理的期权交易另走一张表**:`cli import-option-trades trades.csv --account <别名> [--dry-run]`
+(`optionTradesCsv.ts`,`tests/option-trades.spec.ts`)把「一行 = 一个结构的一次动作」的导出写进 `imported_option_trades`,
+不进 `broker_fills`,交易分析页也不用它(拼不出合约、画不了图)。它只给想法总结当出场成败的事实,见 [ideas.md](ideas.md)。没连 TWS 时列表就是
 库里累积的那些;富途没有同形的成交查询,这个页面在富途通道下只看得到之前从 IBKR 同步来的。打开「附带本地
 未成交的记录」才会把本地校验过但没成交的蝴蝶也列出来(按限价估算,卡片上标明)。
 

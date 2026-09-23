@@ -21,7 +21,8 @@ const RESULT_LABEL: Record<IdeaTradeResult, string> = { win: '赚', loss: '亏',
 /** 总结时对照的一笔交易(引擎算好的事实,这里只排版) */
 function tradeText(t: IdeaTradeFact): string {
   const pct = t.return_pct === null ? '' : ` ${t.return_pct > 0 ? '+' : ''}${t.return_pct}%`;
-  return `${t.opened_at.slice(0, 10)} ${t.label}${t.paper ? '(模拟)' : ''}:${RESULT_LABEL[t.result]}${pct}${t.note ? `(${t.note})` : ''}`;
+  const pts = t.pnl_points === null || t.pnl_points === undefined ? '' : ` ${t.pnl_points > 0 ? '+' : ''}${t.pnl_points} 点/份`;
+  return `${t.opened_at.slice(0, 10)} ${t.label}${t.paper ? '(模拟)' : ''}:${RESULT_LABEL[t.result]}${pct}${pts}${t.note ? `(${t.note})` : ''}`;
 }
 
 const BRIEF_LABELS: [IdeaBriefMetric, string, string][] = [
