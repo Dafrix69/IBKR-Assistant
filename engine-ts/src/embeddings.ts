@@ -43,10 +43,11 @@ export function isLoopbackUrl(raw: string): boolean {
 
 export class OllamaEmbedder implements Embedder {
   /**
-   * `keepAlive`:Ollama 的 keep_alive——用完留在显存里多久。-1 = 一直留着(用户要常驻:空闲 5 分钟被卸载、
-   * 再用冷启动约 3 秒不划算,显存本来就是给它的);"5m" 这类是 Ollama 自己的默认。可用 DAFRI_EMBED_KEEP_ALIVE 改。
+   * `keepAlive`:Ollama 的 keep_alive——用完留在显存里多久。默认 "5m"(同 Ollama 默认):8B 载入后占约 10 GB 显存,
+   * 用户要「不用的时候就卸掉,不然一直占着」(2026-09-23 试过 -1 常驻、又改回来);代价是空闲后第一次检索冷启动约 3 秒。
+   * 可用 DAFRI_EMBED_KEEP_ALIVE 改(-1 = 常驻)。
    */
-  constructor(private readonly baseUrl: string, readonly model: string, private readonly keepAlive: string | number = -1) {
+  constructor(private readonly baseUrl: string, readonly model: string, private readonly keepAlive: string | number = "5m") {
     if (!isLoopbackUrl(baseUrl)) throw new EmbedError(`嵌入服务只许本机地址,收到:${baseUrl}`);
   }
 
