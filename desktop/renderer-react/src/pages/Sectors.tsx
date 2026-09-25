@@ -6,6 +6,7 @@ import { Conditions } from '../lib/Conditions';
 import { fmtTime, fmtTimeShort } from '../lib/format';
 import { MonitorLine } from '../lib/MonitorLine';
 import { PoolStock } from '../lib/PoolStock';
+import { TouchConfig } from '../lib/TouchConfig';
 import { loadAlerts, useAlerts, type AlertEvent } from '../store/alerts';
 import { clearNavFocus, clearNavFocusFor, useNavFocus } from '../store/nav';
 import { loadQuality, markQualitySeen, useQuality } from '../store/quality';
@@ -34,6 +35,7 @@ export function SectorsPage() {
   const sectors = useSectors();
   const status = useStatus();
   const q = useQuality();
+  const { touchConfig } = useAlerts();
   const connected = Boolean(status?.broker_connected);
   const [name, setName] = useState('');
   const focus = useNavFocus('sectors');
@@ -135,12 +137,15 @@ export function SectorsPage() {
       <SectionTitle>提醒方式</SectionTitle>
       <AlertMethods
         popupSub="屏幕右上角的置顶小窗,不抢键盘焦点;关掉则退回系统通知"
-        soundSub="急涨 / 上穿升调,急跌 / 下破降调,放量是同一个音响两下"
+        soundSub="急涨 / 上穿升调,急跌 / 下破降调,放量与反复碰均线是同一个音响两下"
         hint="价位提醒与异动提醒共用这两个开关。"
       />
 
       <SectionTitle>触发条件</SectionTitle>
       <Conditions config={q.config} />
+
+      <SectionTitle>反复碰均线</SectionTitle>
+      <TouchConfig config={touchConfig} />
     </section>
   );
 }
@@ -281,6 +286,10 @@ function PriceAlertsSection() {
           (20 / 60 / 120 / 200 日均线与 52 周高低点)和<strong>整数关口</strong>
           (现价附近的步长整数倍:41 块、步长 5 → 40 和 45)。穿越报一次,离开足够远并过冷却后才再报,不会刷屏。
           <strong>OI 是隔夜存量</strong>,当日到期以成交墙为准。任何页面都会检查(需已连 TWS)。
+        </p>
+        <p className="hint">
+          另有一类:<strong>短期内反复碰同一条日均线</strong>(默认 10 个交易日里第 3 次碰 20 / 60 / 120 / 200 日线)。
+          连着几天贴着线走只算一次,同一段只报一次;口径在页面底部「反复碰均线」里改。
         </p>
         <p className="hint">
           新开的盯单由引擎<strong>排队慢慢算</strong>(期权链请求贵,一轮只算一只),算好之前行下写「正在算价位…」;

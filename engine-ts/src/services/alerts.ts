@@ -1,13 +1,18 @@
-/** 价位提醒:算价位(期权墙 + 趋势位 + 整数关口)、盯穿越、盯上了就自动补价位。
+/** 价位提醒:算价位(期权墙 + 趋势位 + 整数关口)、盯穿越、盯上了就自动补价位;
+ * 外加「短期内反复碰同一条日均线」——底账每天从日线算一次,盘中拿现价补今天(docs/features/ma-touch.md)。
  *
- * 状态机与价位算法在 alerts.ts(纯计算);这里是它的编排:取行情、落库、推事件、按标的退避。
+ * 状态机与价位算法在 alerts.ts、碰均线在 maTouch.ts(都是纯计算);这里是它们的编排:取行情、落库、推事件、按标的退避。
  */
 import type { AlertLevel } from "../alerts.js";
-import { etNowFromEpoch } from "../config.js";
+import { etNowFromEpoch, nowEt } from "../config.js";
 import type {
-  AlertsPollResult, AlertsRefreshParams, AlertsRefreshResult, LevelState, Watch, WatchEvent,
+  AlertsPollResult, AlertsRefreshParams, AlertsRefreshResult, LevelState, MaTouchConfig, TouchBook, Watch, WatchEvent,
 } from "../contract/alerts.js";
 import type { OptionWall } from "../contract/options.js";
+import {
+  DEFAULT_TOUCH_CONFIG, bookUsable, buildTouchBook, evaluateTouches, normalizeTouchConfig, prevTradingDay,
+} from "../maTouch.js";
+import { pyRound } from "../py.js";
 import { RpcError, errText } from "../rpcError.js";
 import { ServiceBase } from "./host.js";
 import type { Rec, ServiceHost } from "./host.js";
@@ -61,6 +66,8 @@ export class AlertsService extends ServiceBase {
       expiry: wall?.expiry ?? "",
       last_price: spot,
     });
+    // 日线已经在手上了,碰均线的底账顺手算掉,不再为它单独拉一次
+    if (history) this.saveTouchBook(watch["id"], history, nowEt().date);
     return {
       watch: this.engine.store.getWatch(watch["id"]),
       wall_error: wallError,
@@ -122,15 +129,125 @@ export class AlertsService extends ServiceBase {
     return (watch["levels"] ?? []).length ? "ok" : "pending";
   }
 
+  // ---- 短期内反复碰均线 --------------------------------------------------
+  static readonly TOUCH_CONFIG_PREF = "alerts.touch_config";
+  /** 底账算过(或算失败)的标的按 symbol 退避这么久:只拉一次日线,但拿不到日线的股(没权限、刚上市)
+   *  不该每 5 秒去打一次历史数据——IB 是 10 分钟 60 次。 */
+  static readonly TOUCH_BACKOFF_MS = 1_800_000;
+  private readonly touchTried = new Map<string, number>();
+  /** symbol → 本交易日上一轮的价。两轮之间跨过均线也算碰,但只和**同一天**的比:
+   *  库里的 last_price 可能是昨天收盘,隔夜跳空跨过均线不是"碰"。 */
+  private readonly sessionPrices = new Map<string, { date: string; price: number }>();
+
+  touchConfig(): MaTouchConfig {
+    const raw = this.engine.store.getPref(AlertsService.TOUCH_CONFIG_PREF);
+    if (raw === null) return structuredClone(DEFAULT_TOUCH_CONFIG);
+    try {
+      return normalizeTouchConfig(raw, structuredClone(DEFAULT_TOUCH_CONFIG));
+    } catch {
+      return structuredClone(DEFAULT_TOUCH_CONFIG);
+    }
+  }
+
+  /** 设置改了:底账口径对不上的会在接下来几轮重算,别让退避把它们拦上半小时。 */
+  touchConfigChanged(): void {
+    this.touchTried.clear();
+  }
+
+  private prevDay(date: string): string {
+    return prevTradingDay(date, (d) => this.settings.isTradingDay(d));
+  }
+
+  /** 从日线算底账写回库。读「报过哪段」和写回之间没有 await:不会和 poll 里写 fired 的那一下交错。 */
+  private saveTouchBook(watchId: string, history: ReadonlyArray<Record<string, unknown>>, today: string): void {
+    const latest = this.engine.store.getWatch(watchId);
+    if (latest === null) return; // 算的途中被删了
+    const book = buildTouchBook(history, today, this.touchConfig(), latest["touch"]?.fired ?? {});
+    this.engine.store.updateWatch(watchId, { touch: book });
+  }
+
+  /**
+   * 一轮最多给 1 只补碰均线的底账(只拉日线,不碰期权链)。价位那一步(tickLevels)这一轮没干活才轮到它,
+   * 两样加起来一轮还是最多一次历史请求。底账旧了(不是上一个交易日收盘的)、口径改过、还没有,才算。
+   */
+  async tickTouch(nowMs: number, inWindow: boolean): Promise<string | null> {
+    if (!inWindow || this.router === null || !this.router.sessions().length) return null;
+    const config = this.touchConfig();
+    if (!config.enabled) return null;
+    const et = etNowFromEpoch(nowMs);
+    if (!this.settings.isTradingDay(et.date)) return null; // 周末不算:下个交易日盘前再算
+    const prevDay = this.prevDay(et.date);
+    const watch = this.engine.store.listWatches().find((w) => {
+      if (!w["enabled"] || bookUsable(w["touch"], config, prevDay)) return false;
+      const tried = this.touchTried.get(String(w["symbol"]));
+      return tried === undefined || nowMs - tried >= AlertsService.TOUCH_BACKOFF_MS;
+    });
+    if (watch === undefined) return null;
+    const symbol = String(watch["symbol"]);
+    this.touchTried.set(symbol, nowMs);
+    try {
+      this.saveTouchBook(watch["id"], await this.market.dailyHistory(symbol), et.date);
+    } catch {
+      // 日线拿不到:这只今天不判碰均线,半小时后再试。价位那边的降级原因照旧由 refresh 报
+    }
+    return symbol;
+  }
+
+  /** 此刻该不该判碰均线:开着、交易日的常规时段(半日市 13:00 收)。盘前盘后的价不算"今天那根"。 */
+  private touchSession(): { config: MaTouchConfig; today: string; prevDay: string } | null {
+    const config = this.touchConfig();
+    if (!config.enabled) return null;
+    const et = nowEt();
+    if (!this.settings.isTradingDay(et.date)) return null;
+    const close = this.settings.early_close_days.includes(et.date) ? 13 * 3600 : 16 * 3600;
+    if (et.seconds < 9.5 * 3600 || et.seconds >= close) return null;
+    return { config, today: et.date, prevDay: this.prevDay(et.date) };
+  }
+
+  /**
+   * 一只股这一轮碰没碰均线。报了就把「报过哪段」写回底账,并把同一条均线这一轮的穿越并掉——
+   * 第三次碰 20 日线时价格往往也正好穿过 20 日线,同一件事不说两遍。
+   */
+  private touchEvents(
+    watch: Watch, price: number, crossings: WatchEvent[], session: { config: MaTouchConfig; today: string; prevDay: string },
+  ): { events: WatchEvent[]; book: TouchBook | null } {
+    const symbol = String(watch["symbol"]);
+    const prev = this.sessionPrices.get(symbol);
+    const prevPrice = prev !== undefined && prev.date === session.today ? prev.price : null;
+    this.sessionPrices.set(symbol, { date: session.today, price });
+    // 现读一次:前面等行情那一下,tickTouch 可能刚把底账换成今天的
+    const book = this.engine.store.getWatch(watch["id"])?.["touch"] ?? null;
+    if (!bookUsable(book, session.config, session.prevDay)) return { events: crossings, book: null };
+    const { hits, fired } = evaluateTouches(book, session.config, price, prevPrice, session.today);
+    if (!hits.length) return { events: crossings, book: null };
+    const merged = new Set(hits.map((h) => `ma${h.period}`));
+    const at = Date.now() / 1000;
+    const touches: WatchEvent[] = hits.map((h) => ({
+      symbol,
+      trigger: "touch",
+      price: h.ma,
+      label: h.label,
+      source: `ma${h.period}`,
+      kind: h.side === "above" ? "support" : "resistance",
+      direction: h.direction,
+      from: pyRound(prevPrice ?? price, 4),
+      to: pyRound(price, 4),
+      at,
+      text: h.text,
+    }));
+    return { events: [...crossings.filter((c) => !merged.has(c["source"])), ...touches], book: { ...book, fired } };
+  }
+
   /** 把每个在盯的标的走一遍状态机,触发的价位推成通知。 */
   async poll(): Promise<AlertsPollResult> {
-    const { evaluate } = await import("../alerts.js");
+    const { evaluate, levelKey } = await import("../alerts.js");
 
     const fired: WatchEvent[] = [];
     const checked: AlertsPollResult["checked"] = [];
     const watches = this.engine.store.listWatches().filter((w) => w["enabled"] && w["levels"].length);
     // 一轮的价一次取齐(spotsOf):逐只取每只要等一拍,23 只就是 3.5 秒占着交易道
     const prices = await this.market.spotsOf(watches.map((w) => w["symbol"]));
+    const session = this.touchSession();
     for (const watch of watches) {
       const price = prices.get(watch["symbol"]) ?? null;
       if (!price) {
@@ -153,25 +270,31 @@ export class AlertsService extends ServiceBase {
           last_fired_at: v["last_fired_at"] ?? null,
         };
       }
-      const [crossings, nextStates] = evaluate(
-        levels, states, watch["last_price"] ?? null, price, Date.now() / 1000,
-      );
+      const nowTs = Date.now() / 1000;
+      const [crossings, nextStates] = evaluate(levels, states, watch["last_price"] ?? null, price, nowTs);
       const history: WatchEvent[] = watch["events"] ?? [];
-      const events: WatchEvent[] = crossings.map((c) => ({ ...c, symbol: watch["symbol"] }));
+      let events: WatchEvent[] = crossings.map((c) => ({ ...c, symbol: watch["symbol"], trigger: "cross" as const }));
+      let touchBook: TouchBook | null = null;
+      if (session !== null) ({ events, book: touchBook } = this.touchEvents(watch, price, events, session));
+      // 碰均线在容差以内就报了,价格往往几轮之后才真穿过那条线:把那条线的穿越落防,免得隔几十秒再报一遍。
+      // 落防不是删掉——离开够远、过了冷却照常重新上膛(alerts.ts 的状态机)
+      const touched = new Set(events.filter((e) => e["trigger"] === "touch").map((e) => e["source"]));
+      for (const level of levels) {
+        if (touched.has(level.source)) nextStates[levelKey(level)] = { armed: false, last_fired_at: nowTs };
+      }
       for (const event of events) {
         // 只进通知流(订单看板下面那条),不走系统通知:穿越的"弹"由桌面端的置顶弹窗负责,
         // 两边都弹就是同一件事说两遍(macOS 上尤其明显)
-        this.engine.notifier.notify(
-          `${watch["symbol"]} ${event["direction"] === "up" ? "上穿" : "下破"}`,
-          String(event["text"]),
-          "",
-          { os: false },
-        );
+        const title = event["trigger"] === "touch"
+          ? `${watch["symbol"]} 反复碰 ${event["label"]}`
+          : `${watch["symbol"]} ${event["direction"] === "up" ? "上穿" : "下破"}`;
+        this.engine.notifier.notify(title, String(event["text"]), "", { os: false });
       }
       this.engine.store.updateWatch(watch["id"], {
         last_price: price,
         states: nextStates,
         events: [...history, ...events].slice(-50),
+        ...(touchBook !== null ? { touch: touchBook } : {}),
       });
       fired.push(...events);
       checked.push({ symbol: watch["symbol"], price });
@@ -185,5 +308,7 @@ export class AlertsService extends ServiceBase {
   forget(symbol: string): void {
     this.levelTried.delete(symbol);
     this.levelNotes.delete(symbol);
+    this.touchTried.delete(symbol);
+    this.sessionPrices.delete(symbol);
   }
 }

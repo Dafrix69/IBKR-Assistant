@@ -185,6 +185,8 @@ export class RpcServer implements RpcContext {
     "sectors.list", "sectors.add", "sectors.delete", "sectors.add_stock", "sectors.remove_stock", "sectors.set_tag",
     "ideas.list", "ideas.add", "ideas.update", "ideas.digests", "ideas.search",
     "records.list", "records.get", "settings.get", "breaker.state", "alerts.list", "tracker.list",
+    // 碰均线的设置:一次 app_prefs 写,底账按新口径重算是 tickTouch 的事
+    "alerts.set_touch_config",
     "llm.catalog", "broker.catalog",
     // 盯盘与托管对账的节拍器在引擎里(TradingEngine.startTrackerLoop),这两个请求只是读它最新
     // 一轮的结果——不该排在下单、大模型解析后面等。以前它们在交易道上排低优先级。

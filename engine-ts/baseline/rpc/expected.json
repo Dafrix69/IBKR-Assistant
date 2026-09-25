@@ -1318,7 +1318,8 @@
     "states": {},
     "last_price": null,
     "wall": null,
-    "events": []
+    "events": [],
+    "touch": null
    }
   }
  },
@@ -1343,9 +1344,22 @@
      "states": {},
      "last_price": null,
      "wall": null,
-     "events": []
+     "events": [],
+     "touch": null
     }
-   ]
+   ],
+   "touch_config": {
+    "enabled": true,
+    "periods": [
+     20,
+     60,
+     120,
+     200
+    ],
+    "window_days": 10,
+    "min_touches": 3,
+    "band_pct": 0.3
+   }
   }
  },
  {

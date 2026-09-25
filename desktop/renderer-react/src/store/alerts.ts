@@ -3,7 +3,7 @@
  * 唯一特别的地方:警告轮询**不挂在当前页上**——切走了还得报,不然就没用了。
  */
 import { create } from 'zustand';
-import { dafri, errorMessage, type OptionWall, type PopupItem, type Watch, type WatchEvent, type WatchLevel } from '../bridge';
+import { dafri, errorMessage, type MaTouchConfig, type OptionWall, type PopupItem, type Watch, type WatchEvent, type WatchLevel } from '../bridge';
 import { toneDirection } from '../lib/alertRules';
 import { showBanner } from './banner';
 import { showAlertPopup } from './popup';
@@ -22,6 +22,8 @@ export interface AlertsSnapshot {
   feed: AlertEvent[];
   busy: string[];
   lastCheck: string;
+  /** 短期内反复碰均线的口径;还没读到是 null */
+  touchConfig: MaTouchConfig | null;
 }
 
 export const ALERT_SOURCE_LABEL: Record<string, string> = {
@@ -40,7 +42,7 @@ export const ALERT_SOURCE_SHORT: Record<string, string> = {
 };
 
 const useStore = create<{ snap: AlertsSnapshot; soundOn: boolean }>(() => ({
-  snap: { watches: [], feed: [], busy: [], lastCheck: '—' },
+  snap: { watches: [], feed: [], busy: [], lastCheck: '—', touchConfig: null },
   soundOn: ((): boolean => {
     try {
       return localStorage.getItem('dafri-alert-sound') !== '0';
@@ -123,7 +125,9 @@ export function useSoundEnabled(): boolean {
   return useStore((s) => s.soundOn);
 }
 
+/** 碰均线的提醒没有"上穿 / 下破"这回事;老事件没有 trigger 字段,全是穿越。 */
 function alertTitle(event: AlertEvent): string {
+  if (event.trigger === 'touch') return `${event.symbol || ''} 反复碰 ${event.label}`;
   return `${event.symbol || ''} ${event.direction === 'up' ? '上穿' : '下破'} ${event.price}`;
 }
 
@@ -131,12 +135,13 @@ function toPopupItem(event: AlertEvent): PopupItem {
   const symbol = event.symbol || '';
   const at = event.at || Math.floor(Date.now() / 1000);
   return {
-    id: `level:${symbol}:${event.price}:${at}`,
+    id: `${event.trigger === 'touch' ? 'touch' : 'level'}:${symbol}:${event.price}:${at}`,
     kind: 'level',
     symbol,
     title: alertTitle(event),
     body: event.text || '',
-    tone: event.direction === 'up' ? 'up' : event.direction === 'down' ? 'down' : 'info',
+    // 碰均线是"又回到这条线上了",不是涨跌:不着涨跌色
+    tone: event.trigger === 'touch' ? 'info' : event.direction === 'up' ? 'up' : event.direction === 'down' ? 'down' : 'info',
     at: at * 1000,
     page: 'sectors',
   };
@@ -168,7 +173,7 @@ async function announce(events: AlertEvent[]): Promise<void> {
 export async function loadAlerts(): Promise<void> {
   try {
     const result = await dafri.listAlerts();
-    set({ watches: result?.watches || [] });
+    set({ watches: result?.watches || [], touchConfig: result?.touch_config || null });
   } catch (err) {
     showBanner(`警告列表读取失败:${errorMessage(err)}`, false);
   }
@@ -201,6 +206,22 @@ export async function refreshWatch(id: string, expiry?: string): Promise<void> {
   } finally {
     busySet.delete(id);
     set({ busy: [...busySet] });
+  }
+}
+
+/**
+ * 存碰均线的口径:一次只给要改的那几项,引擎在当前那份上合并、校验(越界给中文原因)。
+ * 存不上就重读——界面上已经改掉的数要退回引擎真正在用的那份,不能让人以为改成了。
+ */
+export async function saveTouchConfig(partial: Partial<MaTouchConfig>): Promise<boolean> {
+  try {
+    const res = await dafri.setTouchConfig(partial);
+    set({ touchConfig: res?.config || null });
+    return true;
+  } catch (err) {
+    showBanner(`碰均线提醒的设置没存上:${errorMessage(err)}`, false);
+    await loadAlerts();
+    return false;
   }
 }
 

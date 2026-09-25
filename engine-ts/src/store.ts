@@ -227,7 +227,7 @@ export type TrackInput = Pick<Track, "account" | "symbol"> & Partial<Pick<Track,
 export type TrackPatch = Partial<Pick<Track, "targets" | "auto_close" | "enabled" | "peak" | "fired_at" | "fired_state" | "fired_record" | "note">>;
 
 /** alert_watches 里允许改的列(id / symbol / 两个时间戳不许动)。 */
-export type WatchPatch = Partial<Pick<Watch, "step" | "enabled" | "expiry" | "levels" | "states" | "last_price" | "wall" | "events">>;
+export type WatchPatch = Partial<Pick<Watch, "step" | "enabled" | "expiry" | "levels" | "states" | "last_price" | "wall" | "events" | "touch">>;
 
 /** quality_stocks 里允许改的列:note / enabled 是用户写的,states / events 是异动监控写的。 */
 export interface QualityStockPatch {
@@ -283,6 +283,13 @@ export class TradeStore {
     }
     if (dcols.size && !dcols.has("trades")) {
       this.db.exec("ALTER TABLE idea_digests ADD COLUMN trades TEXT NOT NULL DEFAULT ''");
+    }
+    // 碰均线的底账(2026-09-25):建表语句是和 Python 版逐字节对齐的那一段,不改它,新库老库都靠这里补列
+    const wcols = new Set(
+      (this.db.pragma("table_info(alert_watches)") as Array<{ name: string }>).map((r) => r.name),
+    );
+    if (wcols.size && !wcols.has("touch")) {
+      this.db.exec("ALTER TABLE alert_watches ADD COLUMN touch TEXT NOT NULL DEFAULT ''");
     }
     this.ideasFts = this.ensureIdeasFts();
 
@@ -425,6 +432,7 @@ export class TradeStore {
       last_price: null,
       wall: null,
       events: [],
+      touch: null,
     };
     try {
       this.db
@@ -455,14 +463,14 @@ export class TradeStore {
   /** 只允许改这几列。列名是白名单,不接受任意字段拼 SQL。 */
   updateWatch(watchId: string, fields: WatchPatch): boolean {
     const allowed = new Set([
-      "step", "enabled", "expiry", "levels", "states", "last_price", "wall", "events",
+      "step", "enabled", "expiry", "levels", "states", "last_price", "wall", "events", "touch",
     ]);
     const sets: string[] = [];
     const values: unknown[] = [];
     for (const [key, rawValue] of Object.entries(fields)) {
       if (!allowed.has(key)) throw new Error(`不允许修改的字段:${key}`);
       let value = rawValue;
-      if (["levels", "states", "wall", "events"].includes(key)) {
+      if (["levels", "states", "wall", "events", "touch"].includes(key)) {
         value = rawValue !== null && rawValue !== undefined ? JSON.stringify(rawValue) : "";
       }
       if (key === "enabled") value = rawValue ? 1 : 0;
@@ -1227,7 +1235,7 @@ export class TradeStore {
 function watchRow(row: Rec): Watch {
   const watch: Rec = { ...row };
   for (const [key, empty] of [
-    ["levels", []], ["states", {}], ["events", []], ["wall", null],
+    ["levels", []], ["states", {}], ["events", []], ["wall", null], ["touch", null],
   ] as Array<[string, unknown]>) {
     const raw = watch[key];
     try {
@@ -1237,7 +1245,7 @@ function watchRow(row: Rec): Watch {
     }
   }
   watch["enabled"] = Boolean(watch["enabled"]);
-  // 库的边界:列是建表语句定死的,JSON 四列上面已经解开,这里认成行类型
+  // 库的边界:列是建表语句 + migrate 定死的,JSON 五列上面已经解开,这里认成行类型
   return watch as Watch;
 }
 

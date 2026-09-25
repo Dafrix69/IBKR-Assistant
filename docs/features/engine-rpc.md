@@ -5,7 +5,7 @@
 
 | 道 | 方法 | 调度 |
 |---|---|---|
-| 本地道 | `sectors.*`(AI 选股除外)、`ideas.*`、`records.*`、`settings.get`、`breaker.state`、`alerts.list`、`tracker.list`、目录类 | 同步的本地库 / 配置读写,来了就答 |
+| 本地道 | `sectors.*`(AI 选股除外)、`ideas.*`、`records.*`、`settings.get`、`breaker.state`、`alerts.list`、`alerts.set_touch_config`、`tracker.list`、目录类 | 同步的本地库 / 配置读写,来了就答 |
 | 读道 | `pa.analyze`、`book.snapshot`、`options.wall`、`positions.list`、`sectors.quotes`、`macro.board`、`screener.*`、`backtest.*`、`tws.*` / `futu.*` 探测 | 只读,最多 4 个并发 |
 | 交易道 | 其余:`instruction.submit`、`pending.poll`、`tracker.poll`、熔断、连接切换、`settings.patch` | 严格顺序,用户请求插到周期轮询前面 |
 

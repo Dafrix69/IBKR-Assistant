@@ -80,18 +80,22 @@ const VOLUME_KINDS = new Set(['rvol', 'burst']);
 
 export interface TonedEvent {
   kind?: string;
+  /** 价位提醒:cross = 穿越,touch = 短期内反复碰均线(没有这个字段的老事件是穿越) */
+  trigger?: string;
   direction?: 'up' | 'down' | null;
 }
 
 /**
  * 一批提醒响一声,方向怎么定:只看价格类(急涨急跌 / 大涨大跌 / 上穿下破)。
  * 放量事件的 direction 是引擎顺手带上的涨跌方向,给圆点和色块用;拿它选音就会把"放量"报成升降调,
- * 和「提醒方式」里写的对不上。方向不一致(有涨有跌)或一条价格类都没有,都是中性的两声。
+ * 和「提醒方式」里写的对不上。碰均线同理:它的 direction 是"从哪边碰上来的",从上方回踩是 down,
+ * 响成降调就成了"下破"。方向不一致(有涨有跌)或一条价格类都没有,都是中性的两声。
  */
 export function toneDirection(events: readonly TonedEvent[] | null | undefined): 'up' | 'down' | null {
   const dirs = new Set<'up' | 'down'>();
   for (const e of Array.isArray(events) ? events : []) {
     if (!e || (typeof e.kind === 'string' && VOLUME_KINDS.has(e.kind))) continue;
+    if (e.trigger === 'touch') continue;
     if (e.direction === 'up' || e.direction === 'down') dirs.add(e.direction);
   }
   return dirs.size === 1 ? [...dirs][0]! : null;

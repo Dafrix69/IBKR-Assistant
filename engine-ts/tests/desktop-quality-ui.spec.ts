@@ -166,6 +166,9 @@ describe("界面:提示音一批只响一声,放量是中性的", () => {
     expect(rules.toneDirection([{ kind: "spike", direction: "up" }, { kind: "day_move", direction: "down" }])).toBeNull();
     // 价位提醒没有 kind,一律按方向
     expect(rules.toneDirection([{ direction: "up" }, { direction: "up" }])).toBe("up");
+    // 碰均线的 direction 是"从哪边碰上来的"(从上方回踩 = down):响成降调就成了"下破",一律中性
+    expect(rules.toneDirection([{ trigger: "touch", direction: "down" }])).toBeNull();
+    expect(rules.toneDirection([{ trigger: "touch", direction: "down" }, { trigger: "cross", direction: "up" }])).toBe("up");
     expect(rules.toneDirection([])).toBeNull();
     expect(rules.toneDirection(null)).toBeNull();
   });
