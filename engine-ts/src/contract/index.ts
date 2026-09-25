@@ -8,7 +8,8 @@
  * 入参的运行时校验在 `schema/`,只有引擎 import。
  */
 import type {
-  AlertsCreateParams, AlertsDeleteParams, AlertsPollResult, AlertsRefreshParams, AlertsRefreshResult, Watch,
+  AlertsCreateParams, AlertsDeleteParams, AlertsList, AlertsPollResult, AlertsRefreshParams, AlertsRefreshResult,
+  AlertsSetTouchConfigParams, MaTouchConfig, Watch,
 } from "./alerts.js";
 import type { BookSnapshot, BookSnapshotParams } from "./book.js";
 import type {
@@ -90,11 +91,12 @@ export type * from "./trackerloop.js";
 export type NoParams = Record<string, never>;
 
 export interface RpcMethods {
-  "alerts.list": { params: NoParams; result: { watches: Watch[] } };
+  "alerts.list": { params: NoParams; result: AlertsList };
   "alerts.create": { params: AlertsCreateParams; result: { watch: Watch } };
   "alerts.delete": { params: AlertsDeleteParams; result: { deleted: string } };
   "alerts.refresh": { params: AlertsRefreshParams; result: AlertsRefreshResult };
   "alerts.poll": { params: NoParams; result: AlertsPollResult };
+  "alerts.set_touch_config": { params: AlertsSetTouchConfigParams; result: { config: MaTouchConfig } };
 
   "book.snapshot": { params: BookSnapshotParams; result: BookSnapshot };
 

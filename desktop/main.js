@@ -135,6 +135,7 @@ const ALLOWED_RPC = new Set([
   'alerts.delete',
   'alerts.refresh',
   'alerts.poll',
+  'alerts.set_touch_config',
   'pa.timeframes',
   'pa.analyze',
   'pa.comment',

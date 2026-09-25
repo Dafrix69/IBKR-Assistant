@@ -126,7 +126,7 @@ export class AnomalyService extends ServiceBase {
     const state = this.anomalyLoop;
     const t0 = Date.now();
     const prevError = String(state["last_error"] ?? "");
-    const out: Rec = { events: [] as AnomalyEvent[], evaluated: [] as string[], skipped: "", levels: null };
+    const out: Rec = { events: [] as AnomalyEvent[], evaluated: [] as string[], skipped: "", levels: null, touch: null };
     try {
       const router = this.router;
       if (router === null || !router.sessions().length) {
@@ -150,6 +150,8 @@ export class AnomalyService extends ServiceBase {
       // 「盯价位」开着就该有价位:捎带算 1 只。放在异动那几道闸之前——富途不支持异动、
       // 今天一只优质股都没启用,价位一样要算。
       out["levels"] = await this.alerts.tickLevels(nowMs, inWindow);
+      // 价位这一轮没干活,才轮到碰均线的底账(只拉日线):一轮最多一次历史请求
+      out["touch"] = out["levels"] === null ? await this.alerts.tickTouch(nowMs, inWindow) : null;
 
       const source = router as unknown as VolumeQuoteSource;
       if (source.SUPPORTS_VOLUME_QUOTES !== true) {

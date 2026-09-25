@@ -150,6 +150,8 @@ contextBridge.exposeInMainWorld('dafri', {
   refreshAlert: (id, expiry) =>
     ipcRenderer.invoke('rpc', { method: 'alerts.refresh', params: { id, expiry } }),
   pollAlerts: () => ipcRenderer.invoke('rpc', { method: 'alerts.poll', params: {} }),
+  setTouchConfig: (config) =>
+    ipcRenderer.invoke('rpc', { method: 'alerts.set_touch_config', params: { config } }),
 
   paTimeframes: () => ipcRenderer.invoke('rpc', { method: 'pa.timeframes', params: {} }),
   paAnalyze: (spec) => ipcRenderer.invoke('rpc', { method: 'pa.analyze', params: spec }),

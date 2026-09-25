@@ -35,7 +35,7 @@
 
 ![板块](docs/screenshots/sectors.png)
 
-**板块 · 价位提醒** 输入一个主题,AI 选出成分股并可打业务标签;每只股票一条价位条:期权持仓量墙 / 成交量墙、最大痛点、γ 翻转、均线、52 周高低、整数关口,穿越时提醒。
+**板块 · 价位提醒** 输入一个主题,AI 选出成分股并可打业务标签;每只股票一条价位条:期权持仓量墙 / 成交量墙、最大痛点、γ 翻转、均线、52 周高低、整数关口,穿越时提醒;短期内反复碰同一条日均线(默认 10 个交易日里第 3 次)也提醒。
 
 ![扫描](docs/screenshots/screener.png)
 
@@ -124,7 +124,7 @@ cd engine-ts && npm run probe                        # 真机只读联调:临时
 | `symbol_aliases` / `index_symbols` | 「苹果 → AAPL」这类别名;SPX 的交易所与交易类 |
 | `prompt_version` | 提示词版本,`prompts/` 下按版本号只增不改,一行回滚 |
 
-更细的设计决策与口径按模块放在 [docs/features](docs/features):[界面](docs/features/ui.md)、[引擎 RPC](docs/features/engine-rpc.md)、[持仓追踪](docs/features/tracker.md)、[执行对账](docs/features/reconcile.md)、[保护规则](docs/features/protections.md)、[K 线 PA](docs/features/priceaction.md)、[期权墙与价位提醒](docs/features/optionwall-alerts.md)、[股票池:盯价位与盯异动](docs/features/quality-watch.md)、[交易分析](docs/features/tradereview.md)、[绩效体检](docs/features/performance.md)、[强势股筛选](docs/features/leaders.md)、[双账户发单](docs/features/dual-account.md)、[富途 OpenD](docs/features/futu-opend.md)、[依赖选型](docs/features/dependencies.md) 等。
+更细的设计决策与口径按模块放在 [docs/features](docs/features):[界面](docs/features/ui.md)、[引擎 RPC](docs/features/engine-rpc.md)、[持仓追踪](docs/features/tracker.md)、[执行对账](docs/features/reconcile.md)、[保护规则](docs/features/protections.md)、[K 线 PA](docs/features/priceaction.md)、[期权墙与价位提醒](docs/features/optionwall-alerts.md)、[反复碰均线](docs/features/ma-touch.md)、[股票池:盯价位与盯异动](docs/features/quality-watch.md)、[交易分析](docs/features/tradereview.md)、[绩效体检](docs/features/performance.md)、[强势股筛选](docs/features/leaders.md)、[双账户发单](docs/features/dual-account.md)、[富途 OpenD](docs/features/futu-opend.md)、[依赖选型](docs/features/dependencies.md) 等。
 
 出问题要现场:主进程、引擎 stderr、渲染层报错都写进 `userData/logs/main.log`(滚动,单份 4 MB),路径在「关于」页。
 

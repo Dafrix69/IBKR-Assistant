@@ -51,6 +51,7 @@ import type {
   AnomalyConfig, AnomalyEvent, AnomalyKind, AnomalyMetrics, LevelKind, OptionWall, PoolWatch, PoolWatchPatch, PositionRow,
   AccountView, Limits, Policies, ProtectionsConfig, QualityList, QualityMonitor, QualityStock, RpcParams, RpcResult, Sector,
   SectorStock, SettingsPatch, SettingsView, SpotTarget, StockQuote, Targets, Track, Watch, WatchEvent, WatchLevel,
+  MaTouchConfig, TouchBook, TouchEpisode, TouchLine, WatchTrigger,
   BreakerBrief, BreakerState, IndexSpot, ProtectionCooldown, ProtectionsSummary, SystemSelftest, SystemStatus,
   TrackerHeartbeat,
   PendingItem, PendingPollResult, RecordAccount, RecordFill, RecordIbkr, RecordInput, RecordLlm, RecordStatusEvent,
@@ -77,6 +78,7 @@ export type {
   EquityPoint, LedgerTrade, PerfGroup, PerformanceFinding, PerformanceKind, PerformanceScope, PerfStats, ReviewPerformanceResult,
   AnomalyEvent, AnomalyKind, LevelKind, OptionWall, PoolWatch, PoolWatchPatch, PositionRow, QualityList, QualityMonitor,
   QualityStock, Sector, SectorStock, SettingsPatch, SpotTarget, StockQuote, Targets, Track, Watch, WatchEvent, WatchLevel,
+  MaTouchConfig, TouchBook, TouchEpisode, TouchLine, WatchTrigger,
   BreakerBrief, BreakerState, IndexSpot, ProtectionCooldown, SystemSelftest, SystemStatus, TrackerHeartbeat,
   PendingItem, PendingPollResult, RecordAccount, RecordFill, RecordIbkr, RecordInput, RecordLlm, RecordStatusEvent,
   TradeRecord, TradeRecordSummary,
@@ -203,6 +205,8 @@ export interface DafriBridge {
   deleteAlert(id: string): Rpc<RpcResult<'alerts.delete'>>;
   refreshAlert(id: string, expiry?: string): Rpc<RpcResult<'alerts.refresh'>>;
   pollAlerts(): Rpc<RpcResult<'alerts.poll'>>;
+  /** 短期内反复碰均线的口径(本地道,存 app_prefs)。一次只给要改的那几项。 */
+  setTouchConfig(config: Partial<MaTouchConfig>): Rpc<RpcResult<'alerts.set_touch_config'>>;
 
   paTimeframes(): Rpc<RpcResult<'pa.timeframes'>>;
   paAnalyze(spec: RpcParams<'pa.analyze'>): Rpc<RpcResult<'pa.analyze'>>;

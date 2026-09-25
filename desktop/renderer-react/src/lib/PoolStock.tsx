@@ -18,7 +18,7 @@ import { fmtPrice, fmtSigned, fmtWhen, lastEvent, shortTitle } from './anomalyFo
 import { LevelStrip } from './LevelStrip';
 import { setPoolWatch } from '../store/pool';
 import { toggleQuality } from '../store/quality';
-import { refreshWatch, type Watch } from '../store/alerts';
+import { refreshWatch, useAlerts, type Watch } from '../store/alerts';
 import { removeStock, setTag, type Quote, type SectorStock } from '../store/sectors';
 import { Meta, cx } from '../ui/kit';
 
@@ -250,6 +250,20 @@ function Levels({ watch, quality, spot, computing }: { watch: Watch; quality: Qu
   const status = quality?.levels_status;
   const err = levelsError(status);
   const wall = watch.wall;
+  const { touchConfig } = useAlerts();
+  // 碰均线攒到第几次了:底账里(截至上一根完整日线)窗口内已经有 2 段以上的线,写出来——提醒来之前就看得见它在攒
+  const touchCounts = touchConfig?.enabled
+    ? (watch.touch?.lines || [])
+        .filter((l) => touchConfig.periods.includes(l.period) && l.episodes.length >= 2)
+        .map((l) => (
+          <Tooltip
+            key={`touch${l.period}`}
+            title={`近 ${touchConfig.window_days} 个交易日碰过 ${l.period} 日线的几段:${l.episodes.map((e) => (e.start === e.end ? e.start.slice(5) : `${e.start.slice(5)}~${e.end.slice(5)}`)).join('、')}。连着几天贴着线算一段;碰出第 ${touchConfig.min_touches} 段时提醒`}
+          >
+            <span>{`MA${l.period} 近 ${touchConfig.window_days} 日碰过 ${l.episodes.length} 次`}</span>
+          </Tooltip>
+        ))
+    : [];
   const meta = [
     `整数关口步长 ${watch.step}`,
     watch.expiry ? `到期 ${watch.expiry}` : null,
@@ -263,6 +277,7 @@ function Levels({ watch, quality, spot, computing }: { watch: Watch; quality: Qu
       </Tooltip>
     ) : null,
     (wall?.days_to_expiry ?? 99) <= 1 ? '当天到期:OI 是隔夜存量,以成交墙为准' : null,
+    ...touchCounts,
     <Button size="small" type="text" className="inline-link" loading={computing} onClick={() => void refreshWatch(watch.id)}>
       {computing ? '计算中…' : '重算墙'}
     </Button>,

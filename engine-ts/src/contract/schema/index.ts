@@ -8,7 +8,9 @@
  * 都是编译错。
  */
 import type { RpcMethodName, RpcParams } from "../index.js";
-import { AlertsCreateParamsSchema, AlertsDeleteParamsSchema, AlertsRefreshParamsSchema } from "./alerts.js";
+import {
+  AlertsCreateParamsSchema, AlertsDeleteParamsSchema, AlertsRefreshParamsSchema, AlertsSetTouchConfigParamsSchema,
+} from "./alerts.js";
 import { BacktestParseRulesParamsSchema, BacktestRunParamsSchema } from "./backtest.js";
 import {
   BrokerConnectParamsSchema, BrokerSelectParamsSchema, DiagnoseParamsSchema, FutuSetPasswordParamsSchema,
@@ -53,6 +55,7 @@ export const PARAMS_SCHEMAS: { readonly [M in RpcMethodName]: ParamsSchema<RpcPa
   "alerts.delete": AlertsDeleteParamsSchema,
   "alerts.refresh": AlertsRefreshParamsSchema,
   "alerts.poll": NoParamsSchema,
+  "alerts.set_touch_config": AlertsSetTouchConfigParamsSchema,
 
   "book.snapshot": BookSnapshotParamsSchema,
 
