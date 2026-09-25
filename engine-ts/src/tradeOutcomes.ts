@@ -36,7 +36,7 @@ export type StockTrip = {
   realized_qty?: unknown;
   created_at?: unknown;
   closed_at?: unknown;
-  account?: { is_paper?: unknown } | null;
+  account?: { alias?: unknown; is_paper?: unknown } | null;
 };
 
 /** 一次总结最多附多少笔(新的优先)。一笔一行约 80 字,200 笔几千 token;再多只是烧 token。 */

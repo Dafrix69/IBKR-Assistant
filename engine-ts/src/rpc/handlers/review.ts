@@ -33,7 +33,10 @@ export class ReviewHandlers extends HandlerBase {
     const { performanceReport } = await import("../../performance.js");
     await this.reviewTrades(); // 连着券商时先把新成交同步进库(15 秒一次),体检看的是库
     const ledger = await this.ctx.tradeHistory.ledger();
-    return performanceReport(ledger, { scope: params.scope ?? "all", kind: params.kind ?? "all", days, now: Date.now() });
+    return performanceReport(ledger, { scope: params.scope ?? "all", kind: params.kind ?? "all", days, now: Date.now() }, {
+      traces: this.engine.store.closeTraces(),
+      protections: this.settings.protections,
+    });
   }
 
   // ---- 交易分析:蝴蝶复盘 ------------------------------------------------

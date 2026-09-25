@@ -65,7 +65,7 @@ export class TradeHistoryService extends ServiceBase {
     const { buildLedger } = await import("../performance.js");
     const g = await this.gather([]);
     return buildLedger({
-      butterflies: g.butterflies, trips: g.trips, positions: g.positions,
+      butterflies: g.butterflies, trips: g.trips, positions: g.positions, stops: this.engine.store.plannedStops(),
       options: g.options.filter((r) => !g.covered.has(`${r.account_id}|${r.date_et}`)),
       settleClose: g.settleClose, isPaper: g.isPaper, now: g.now,
     });

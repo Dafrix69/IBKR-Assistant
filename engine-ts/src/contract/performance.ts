@@ -167,9 +167,69 @@ export interface ReviewPerformanceResult {
     symbol: PerfGroup[];
   };
   findings: PerformanceFinding[];
+  /** 自动平仓的执行损耗:触发那一刻的持仓现价对实际成交均价(execQuality.ts)。范围与天数同上;品种按合约类型映射 */
+  execution: ExecutionCost;
+  /** 按这本账给保护规则的建议参数;只建议、不改设置,界面点了才写进去 */
+  protection_advice: ProtectionAdvice[];
   /** 进账本的交易,新的在前,最多 300 笔 */
   trades: LedgerTrade[];
   /** 没进账本的:持仓中、结果不明(比如到期结算价取不到)、成本不明(建仓早于已同步的成交) */
   excluded: { open: number; unknown: number; no_cost: number };
   notes: string[];
 }
+
+// ---------------------------------------------------------------- 执行损耗
+
+/** 一次自动平仓:触发时的现价(中间价口径)vs 实际成交均价。 */
+export interface ExecutionRow {
+  /** 触发时刻(ISO) */
+  at: string;
+  symbol: string;
+  /** auto_close = 引擎到价发的平仓单;hosted_sweep = 托管单被改成追价平仓 */
+  path: "auto_close" | "hosted_sweep";
+  /** 触发原因(take_profit / stop_loss / …) */
+  state: string;
+  sec_type: string;
+  /** 平仓单的方向:SELL = 平多头 */
+  side: "BUY" | "SELL";
+  /** 触发那一刻的持仓现价(每份) */
+  mark: number;
+  /** 成交均价(每份,组合取 BAG 行、绝对值) */
+  fill: number;
+  qty: number;
+  /** 让出去的钱(美元):正 = 成交比触发价差 */
+  cost_usd: number;
+  /** 每份让出去的 / 触发价 × 100 */
+  cost_pct: number;
+  paper: boolean;
+}
+
+export interface ExecutionGroup {
+  sec_type: string;
+  samples: number;
+  median_pct: number | null;
+  avg_usd: number | null;
+}
+
+export interface ExecutionCost {
+  /** 触发价与成交均价都有的笔数 */
+  samples: number;
+  /** 有平仓痕但算不出的:2026-09-26 之前的痕没记触发价、单没成交、找不到那张单 */
+  missing: number;
+  total_usd: number | null;
+  avg_usd: number | null;
+  /** 每笔损耗占触发价的百分比:中位数(回测的成本假设用它)与平均 */
+  median_pct: number | null;
+  avg_pct: number | null;
+  by_sec_type: ExecutionGroup[];
+  /** 新的在前,最多 50 笔 */
+  rows: ExecutionRow[];
+}
+
+// ---------------------------------------------------------------- 保护规则建议
+
+/** 一条建议:键与 settings.protections 的同名段一致,界面「按建议填入」原样发 settings.patch。 */
+export type ProtectionAdvice =
+  | { rule: "daily_loss"; suggested: { enabled: true; max_loss_usd: number }; reason: string; source: string }
+  | { rule: "stoploss_guard"; suggested: { enabled: true; lookback_minutes: number; trigger_count: number; pause_minutes: number }; reason: string; source: string }
+  | { rule: "cooldown"; suggested: { enabled: true; minutes: number }; reason: string; source: string };

@@ -288,8 +288,9 @@ export class TrackerHandlers extends HandlerBase {
     } catch (exc) {
       throw new RpcError(-32602, (exc as Error).message);
     }
+    // account / sec_type 是绩效体检认"这笔股票建仓时计划的止损"用的(performance.ts 的 R):追踪行会被删,这条痕只增
     this.engine.store.audit("ui", "tracker_add", {
-      symbol: raw["symbol"], targets, auto_close: auto,
+      symbol: raw["symbol"], account: raw["account"], sec_type: raw["sec_type"], targets, auto_close: auto,
     });
     return { track };
   }

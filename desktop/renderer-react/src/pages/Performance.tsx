@@ -3,6 +3,7 @@ import { Button, Segmented, Select } from 'antd';
 import { dafri, errorMessage } from '../bridge';
 import type { PerformanceKind, PerformanceScope, ReviewPerformanceResult } from '../bridge';
 import { EquitySection, FindingsSection, GroupsSection, LedgerSection, StatsSection } from '../lib/PerformanceParts';
+import { AdviceSection, ExecutionSection } from '../lib/PerformanceExtras';
 import { PositionSizer } from '../lib/PositionSizer';
 import { EmptyState, Notice, PageHead, Primer, SectionTitle, Working } from '../ui/kit';
 
@@ -111,10 +112,13 @@ export function PerformancePage() {
         <>
           <SectionTitle count={data.findings.length}>体检结论</SectionTitle>
           <FindingsSection findings={data.findings} />
+          {data.protection_advice.length ? <SectionTitle count={data.protection_advice.length}>保护规则建议</SectionTitle> : null}
+          <AdviceSection r={data} onApplied={() => void load()} />
           <SectionTitle>核心数字</SectionTitle>
           <StatsSection r={data} />
           <EquitySection r={data} />
           <GroupsSection r={data} />
+          <ExecutionSection r={data} />
           <SectionTitle>下一笔做多大</SectionTitle>
           <PositionSizer key={String(typicalUnitRisk(data))} typicalRisk={typicalUnitRisk(data)} losingStreak={data.stats.max_consecutive_losses} />
           <SectionTitle>明细</SectionTitle>

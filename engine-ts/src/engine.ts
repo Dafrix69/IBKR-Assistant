@@ -997,7 +997,7 @@ export class TradingEngine {
         if (sweep && tk.sweepReason(track) === null && !track["fired_at"]) {
           const state = `${tk.SWEEP_PREFIX}${result.state}`;
           this.store.updateTrack(track["id"], { fired_at: nowIsoSecondsEt(), fired_state: state });
-          this.store.audit("engine", "hosted_sweep", { track: track["id"], symbol: track["symbol"], state: result.state, reason: result.reason });
+          this.store.audit("engine", "hosted_sweep", { track: track["id"], symbol: track["symbol"], state: result.state, reason: result.reason, mark: position.market_price, record: this.hostedOrders.tpEntry(String(track["id"]))?.["record_id"] ?? null });
           this.notifier.notify(
             "追价平仓", `${track["symbol"]}:${result.reason}。托管单改到立刻成交的价,没成交就每秒再追`,
           );
@@ -1289,9 +1289,9 @@ export class TradingEngine {
       status: placement.status, order_id: placement.order_id,
     });
     // 平仓留一条只增的痕:保护规则按它数"最近几次止损"、算同一只标的的冷却期(见 protections.ts)。
-    // 追踪表的 fired_state 顶不了这个用——它就地更新,平第二次就把第一次盖掉了。
+    // 追踪表的 fired_state 顶不了这个用——它就地更新,平第二次就把第一次盖掉了。mark 是触发那一刻的持仓现价,绩效体检拿它对成交均价算执行损耗(execQuality.ts)。
     this.store.audit("engine", "auto_close", {
-      track: track["id"], symbol: track["symbol"], state: result["state"], record: recordId,
+      track: track["id"], symbol: track["symbol"], state: result["state"], record: recordId, mark: position.market_price,
     });
     this.killswitch.recordSuccess("broker");
     // 期权 / 组合的限价平仓单发出去只是开始:挂在自然价上未必立刻成交,之后每轮按最新买卖价

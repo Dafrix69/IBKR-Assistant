@@ -1179,6 +1179,64 @@ export class TradeStore {
     return out;
   }
 
+  /** 自动平仓的痕 + 它指向的那张单(绩效体检的执行损耗,见 execQuality.ts)。
+   * `mark` 是触发时的持仓现价,2026-09-26 起才记;托管单被改成追价平仓的那条痕带 `record`(托管止盈单的记录)。 */
+  closeTraces(limit = 2000): Array<{
+    at: string; path: "auto_close" | "hosted_sweep"; symbol: string; state: string; mark: number | null; record: Rec | null;
+  }> {
+    const rows = this.db
+      .prepare(
+        "SELECT at, action, detail FROM audit_log WHERE actor='engine' AND action IN ('auto_close','hosted_sweep')" +
+        " ORDER BY seq DESC LIMIT ?",
+      )
+      .all(limit) as Array<{ at: string; action: string; detail: string }>;
+    return rows.flatMap((row) => {
+      let detail: Rec;
+      try {
+        detail = JSON.parse(row.detail) as Rec;
+      } catch {
+        return [];
+      }
+      const mark = Number(detail["mark"]);
+      const recordId = typeof detail["record"] === "string" ? detail["record"] : "";
+      return [{
+        at: row.at,
+        path: row.action === "hosted_sweep" ? "hosted_sweep" as const : "auto_close" as const,
+        symbol: String(detail["symbol"] ?? ""),
+        state: String(detail["state"] ?? ""),
+        mark: detail["mark"] === null || detail["mark"] === undefined || !Number.isFinite(mark) ? null : mark,
+        record: recordId ? this.getRecord(recordId) : null,
+      }];
+    });
+  }
+
+  /** 建追踪时填的止损(绩效体检给股票算 R 用,见 performance.ts 的 `plannedStopFor`)。
+   * 取 audit_log 里 ui 写的 tracker_add:追踪行会被删、止损会被改,R 的分母要的是**建仓时计划的**那个。
+   * 2026-09-26 之前的痕里没有 account,读出来是 null,按标的配。 */
+  plannedStops(): Array<{ at: string; account: string | null; symbol: string; sec_type: string | null; stop: number }> {
+    const rows = this.db
+      .prepare("SELECT at, detail FROM audit_log WHERE actor='ui' AND action='tracker_add' ORDER BY seq")
+      .all() as Array<{ at: string; detail: string }>;
+    const out: Array<{ at: string; account: string | null; symbol: string; sec_type: string | null; stop: number }> = [];
+    for (const row of rows) {
+      let detail: Rec;
+      try {
+        detail = JSON.parse(row.detail) as Rec;
+      } catch {
+        continue;
+      }
+      const stop = Number((detail["targets"] ?? {})["stop_loss"]);
+      const symbol = String(detail["symbol"] ?? "").toUpperCase();
+      if (!symbol || !Number.isFinite(stop) || stop <= 0) continue;
+      out.push({
+        at: row.at, symbol, stop,
+        account: detail["account"] === undefined ? null : String(detail["account"]),
+        sec_type: detail["sec_type"] === undefined ? null : String(detail["sec_type"]),
+      });
+    }
+    return out;
+  }
+
   /** 窗口内的已实现盈亏(保护规则的回撤护栏用)。券商的佣金回报里带 realizedPNL,
    * 平仓那一笔才有值——这是全仓库唯一"券商认的"盈亏口径(见 tracker.md 盈亏以券商报的为准)。 */
   realizedPnlEvents(sinceMs: number, nowMs: number): Array<{ atMs: number; pnl: number }> {
