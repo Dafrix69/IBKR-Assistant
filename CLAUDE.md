@@ -29,7 +29,7 @@ execution     broker.ts  ibContracts.ts(怎么拼一张 IB 合约)  futuBroker.t
 parsing       validator.ts  providers.ts  prompts.ts  shorthand.ts  llm.ts  embeddings.ts
 analysis      backtest priceaction screener research ideaRetrieval optionwall anomaly flyexit tradereview tradeOutcomes performance leaders fillsCsv optionTradesCsv optionPositionsCsv tradeSimilar ibtrades macro market alerts maTouch execQuality
 domain        config.ts  models.ts  store.ts  importedTrades.ts  ideaVectors.ts  positions.ts  marketdata.ts
-util          py.ts  pyjson.ts  tz.ts  notify.ts  keychain.ts  killswitch.ts  protections.ts  rpcError.ts
+util          py.ts  pyjson.ts  tz.ts  notify.ts  keychain.ts  killswitch.ts  protections.ts  riskBudget.ts  rpcError.ts
 contract      contract/*.ts(纯类型,零 import,谁都能引)  contract/schema/*.ts(入参的 zod 校验,只给 rpc/ 用)
 ```
 

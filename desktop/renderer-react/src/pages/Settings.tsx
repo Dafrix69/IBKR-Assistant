@@ -28,6 +28,11 @@ interface Form {
   coolMinutes: number | null;
   dailyOn: boolean;
   dailyUsd: number | null;
+  // 单笔风险预算(见 engine-ts/src/riskBudget.ts):只告警、不拦单。权益按账户别名填
+  rbOn: boolean;
+  rbRisk: number | null;
+  rbPosition: number | null;
+  rbEquity: Record<string, number | null>;
 }
 
 function toForm(s: Settings): Form {
@@ -60,6 +65,10 @@ function toForm(s: Settings): Form {
     coolMinutes: cd.minutes ?? null,
     dailyOn: Boolean(dl.enabled),
     dailyUsd: dl.max_loss_usd ?? null,
+    rbOn: Boolean(s.risk_budget?.enabled),
+    rbRisk: s.risk_budget?.max_risk_pct ?? null,
+    rbPosition: s.risk_budget?.max_position_pct ?? null,
+    rbEquity: Object.fromEntries((s.accounts || []).map((a) => [a.alias, s.risk_budget?.equity_usd?.[a.alias] ?? null])),
   };
 }
 
@@ -147,6 +156,10 @@ export function SettingsPage() {
           cooldown: { enabled: form.coolOn, minutes: Number(form.coolMinutes) },
           daily_loss: { enabled: form.dailyOn, max_loss_usd: Number(form.dailyUsd) },
         },
+        risk_budget: {
+          enabled: form.rbOn, max_risk_pct: Number(form.rbRisk), max_position_pct: Number(form.rbPosition),
+          equity_usd: Object.fromEntries(Object.entries(form.rbEquity).map(([alias, v]) => [alias, Number(v ?? 0)])),
+        },
       });
       showBanner('设置已保存,提示词与限额已同步更新。', true);
       await Promise.all([load(), refreshStatus()]);
@@ -228,6 +241,21 @@ export function SettingsPage() {
             <SwitchRow icon="sf-gauge" tint="red" label="日内亏损上限" sub="当天(美东)净亏到线,当天不再下新单;第二天零点自己解除" checked={form.dailyOn} onChange={(v) => patch({ dailyOn: v })} />
             {form.dailyOn ? (
               <NumberRow icon="sf-dollar" tint="red" label="当天最多亏" sub="USD,已实现盈亏以券商报的为准" min={0} step={100} value={form.dailyUsd} onChange={(v) => patch({ dailyUsd: v })} />
+            ) : null}
+          </Group>
+
+          <SectionTitle>单笔风险预算</SectionTitle>
+          <Group hint="一单占账户权益太多时,在订单卡片上多一句提醒;只提醒,不拦单,平仓单不受影响。权益自己填,引擎不向券商要。">
+            <SwitchRow icon="sf-gauge" tint="orange" label="按账户权益提醒" sub="期权 / 组合看最坏亏损,股票看名义金额" checked={form.rbOn} onChange={(v) => patch({ rbOn: v })} />
+            {form.rbOn ? (
+              <>
+                <NumberRow icon="sf-xmark" tint="red" label="期权 / 组合最坏亏损" sub="占权益 %,冠军们多在 0.5–2" min={0.1} max={100} step={0.5} value={form.rbRisk} onChange={(v) => patch({ rbRisk: v })} />
+                <NumberRow icon="sf-layers" tint="purple" label="股票仓位" sub="名义金额占权益 %" min={0.1} max={1000} step={5} value={form.rbPosition} onChange={(v) => patch({ rbPosition: v })} />
+                {Object.keys(form.rbEquity).map((alias) => (
+                  <NumberRow key={alias} icon="sf-dollar" tint="green" label={`${alias} 的权益`} sub="USD,空着 = 这个账户不提醒" min={0} step={1000}
+                    value={form.rbEquity[alias] ?? null} onChange={(v) => patch({ rbEquity: { ...form.rbEquity, [alias]: v } })} />
+                ))}
+              </>
             ) : null}
           </Group>
 

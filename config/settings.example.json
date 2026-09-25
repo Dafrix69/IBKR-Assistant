@@ -50,6 +50,7 @@
     "cooldown": { "enabled": false, "minutes": 30 },
     "daily_loss": { "enabled": false, "max_loss_usd": 500.0 }
   },
+  "risk_budget": { "enabled": false, "equity_usd": {}, "max_risk_pct": 2.0, "max_position_pct": 25.0 },
   "connections": {
     "paper": {
       "broker": "ibkr",

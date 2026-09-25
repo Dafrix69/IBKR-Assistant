@@ -74,6 +74,19 @@ export interface ProtectionsConfig {
   daily_loss: DailyLossConfig;
 }
 
+// ---------------------------------------------------------------- 单笔风险预算
+/** 单笔风险预算(docs/features/risk-budget.md):一单的最坏亏损 / 名义金额占账户权益太多时**只告警、不拦单**。
+ *  权益是人填的:引擎不向券商要 NetLiquidation(那条路没在真机上核对过),仓位计算器也是这么做的。默认关。 */
+export interface RiskBudgetConfig {
+  enabled: boolean;
+  /** 账户别名 → 权益(美元)。没填、填 0 的账户不告警 */
+  equity_usd: Record<string, number>;
+  /** 期权 / 组合:最坏亏损占权益超过这个百分比就告警 */
+  max_risk_pct: number;
+  /** 股票:名义金额占权益超过这个百分比就告警(股票的最坏亏损取决于止损,下单时不知道) */
+  max_position_pct: number;
+}
+
 // ---------------------------------------------------------------- settings.get
 /** 给界面看的账户:账号打了码,真账号不出引擎。 */
 export interface AccountView {
@@ -93,6 +106,7 @@ export interface SettingsView {
   limits: Limits;
   policies: Policies;
   protections: ProtectionsConfig;
+  risk_budget: RiskBudgetConfig;
   symbol_aliases: Record<string, string>;
   accounts: AccountView[];
   /** 只给 host / port:账户与连接不许从界面改(见 settings.patch) */
@@ -100,7 +114,7 @@ export interface SettingsView {
 }
 
 // ---------------------------------------------------------------- settings.patch
-/** 界面「设置」页能改的三段,每段只给要改的键。**只有这三段**:别的顶层段 handler 当场拒(不认识的不再被写进配置文件;
+/** 界面「设置」页能改的四段,每段只给要改的键。**只有这四段**:别的顶层段 handler 当场拒(不认识的不再被写进配置文件;
  *  模型配置走 llm.patch——它有自己的字段白名单,券商切换走 broker.select,账户 / 连接 / 库路径只能手改配置文件)。 */
 export interface SettingsPatch {
   policies?: Partial<Policies>;
@@ -111,6 +125,7 @@ export interface SettingsPatch {
     cooldown?: Partial<CooldownConfig>;
     daily_loss?: Partial<DailyLossConfig>;
   };
+  risk_budget?: Partial<RiskBudgetConfig>;
 }
 
 /**

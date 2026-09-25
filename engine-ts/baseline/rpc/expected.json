@@ -258,6 +258,12 @@
      "max_loss_usd": 500
     }
    },
+   "risk_budget": {
+    "enabled": false,
+    "equity_usd": {},
+    "max_risk_pct": 2,
+    "max_position_pct": 25
+   },
    "symbol_aliases": {
     "苹果": "AAPL",
     "英伟达": "NVDA",
@@ -355,6 +361,12 @@
      "enabled": false,
      "max_loss_usd": 500
     }
+   },
+   "risk_budget": {
+    "enabled": false,
+    "equity_usd": {},
+    "max_risk_pct": 2,
+    "max_position_pct": 25
    },
    "symbol_aliases": {
     "苹果": "AAPL",
