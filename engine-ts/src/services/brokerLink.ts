@@ -33,6 +33,14 @@ export class BrokerLinkService {
   /** 在当前这个 router 上连上过的连接名(换了 router 就清):这些断了归会话层自己重连 */
   private readonly seen = new Set<string>();
   private seenRouter: Router | null = null;
+  /** 连接动作排成一队:启动自动连还在握手(最长 10 秒)时用户点了「连接」,两边各建一个会话会抢同一个 client id */
+  private chain: Promise<unknown> = Promise.resolve();
+
+  private serial<T>(fn: () => Promise<T>): Promise<T> {
+    const run = this.chain.then(fn, fn);
+    this.chain = run.then(() => undefined, () => undefined);
+    return run;
+  }
 
   constructor(private readonly host: BrokerLinkHost) {}
 
@@ -57,7 +65,11 @@ export class BrokerLinkService {
   }
 
   /** 「连接」:连上指定的(默认全部)连接,并让引擎带上 router 重建。界面的按钮与启动自动连走同一条路。 */
-  async connect(names?: string[]): Promise<BrokerConnectResult> {
+  connect(names?: string[]): Promise<BrokerConnectResult> {
+    return this.serial(() => this.connectNow(names));
+  }
+
+  private async connectNow(names?: string[]): Promise<BrokerConnectResult> {
     const provider = this.host.settings.broker.provider;
     if (this.host.router !== null && this.host.router.BROKER !== provider) {
       // 配置里换过券商:旧 router 说的是另一家的协议,先断干净再重建
@@ -94,11 +106,13 @@ export class BrokerLinkService {
   }
 
   /** 「断开」:用户明确不要连着了,之后不再自动连。 */
-  async disconnect(): Promise<void> {
+  disconnect(): Promise<void> {
     this.wanted = false;
-    if (this.host.router) await this.host.router.disconnectAll();
-    this.host.router = null;
-    this.host.dropEngine();
+    return this.serial(async () => {
+      if (this.host.router) await this.host.router.disconnectAll();
+      this.host.router = null;
+      this.host.dropEngine();
+    });
   }
 
   /** 换券商:旧连接已经断干净,等用户在新那家上点「连接」。 */
@@ -115,7 +129,7 @@ export class BrokerLinkService {
       const provider = this.host.settings.broker.provider;
       const names = Object.keys(this.host.settings.connectionsFor(provider)).sort();
       if (router === null || router.BROKER !== provider) {
-        const result = await this.connect(names);
+        const result = await this.serial(() => this.connectNow(names));
         if (result.connected.length) logStderr(`[link] 已连上:${result.connected.join("、")}`);
         return;
       }
@@ -124,7 +138,8 @@ export class BrokerLinkService {
         if (this.seen.has(name)) continue;
         try {
           // router 上已经挂着 sessionHook(引擎的 attachListeners),新会话的回报监听会自动接上,不用重建引擎
-          await router.connect(name);
+          if (!this.wanted || this.host.router !== router) return; // 排队期间用户点了断开 / 换了 router
+          await this.serial(async () => { await router.connect(name); });
           this.seen.add(name);
           logStderr(`[link] 已连上:${name}`);
           this.host.engine.notifier.notify("券商已连上", `连接 ${name} 已连上,这条连接上账户的追踪开始盯盘。`);
@@ -162,6 +177,7 @@ export class BrokerLinkService {
       const engine = this.host.engine;
       engine.store.audit("engine", up ? "broker_link_up" : "broker_link_down", { connection: name });
       if (up) {
+        engine.reconcileSoon(); // 断线期间单子可能成交或被撤了:下一轮就对账,不等满一分钟
         engine.notifier.notify("券商已重新连上", `连接 ${name} 已自动重连,追踪恢复盯盘。`);
       } else {
         engine.notifier.warning(

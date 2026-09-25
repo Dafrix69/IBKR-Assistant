@@ -2085,9 +2085,12 @@ export class BrokerRouter {
     return [...this.connectionsMap.values()].filter((s) => s.isConnected());
   }
 
-  /** 此刻读得到持仓的账户别名(见 ibLink.coveredAccounts):不在里面的账户,持仓列表里没有它不等于没仓。 */
+  /** 此刻读得到持仓的账户别名 / 账户号(见 ibLink.coveredAccounts):不在里面的账户,读不到不等于没有。 */
   coveredAccounts(): Set<string> {
     return coveredAccounts(this.settings.accounts, this.connectionsMap);
+  }
+  coveredAccountIds(): Set<string> {
+    return new Set(this.settings.accounts.filter((a) => this.coveredAccounts().has(a.alias)).map((a) => a.account_id));
   }
 
   connectedNames(): string[] {

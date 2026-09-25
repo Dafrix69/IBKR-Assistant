@@ -81,6 +81,10 @@ export class HostedOrders {
   /** 券商 orderId → [track_id, kind] */
   private readonly hostedIndex = new Map<number, [string, string]>();
   private hostedAdopted = false;
+  /** 上一轮读得到的账户(router 说不清就是 null)。多出一个账户(会话刚连上 / 重连回来)就重新认领:
+   * 引擎重建那一刻这个账户的会话没连着,它在券商那边挂着的托管单当时认领不到——不重认,
+   * 对账会当成"没挂"再挂一张,两张平仓单各成交一次就是反向开仓。认领按 orderRef 去重,重认是幂等的。 */
+  private lastCovered: Set<string> | null = null;
   /** 被券商拒掉的:track_id|kind → {到期时刻, 原因}。退避期内不重挂也不再改价 */
   private readonly hostedRetryAt = new Map<string, { at: number; reason: string }>();
 
@@ -114,6 +118,10 @@ export class HostedOrders {
     const tracks = this.store.listTracks();
     const wantsHosting = tracks.some((t) => Boolean((t["auto_close"] ?? {})["host_at_broker"]));
     if (!wantsHosting && this.hosted.size === 0) return out;
+    const covered: Set<string> | null = router.coveredAccounts?.() ?? null;
+    const prev = this.lastCovered;
+    if (covered !== null && prev !== null && [...covered].some((a) => !prev.has(a))) this.hostedAdopted = false;
+    this.lastCovered = covered;
     if (!this.hostedAdopted) await this.adoptHosted();
 
     let positions: Record<string, Rec>;
@@ -130,7 +138,6 @@ export class HostedOrders {
     }
 
     const breaker = this.killswitch.state();
-    const covered: Set<string> | null = router.coveredAccounts?.() ?? null;
     const alive = new Set<string>();
     for (const track of tracks) {
       const tid = String(track["id"]);
