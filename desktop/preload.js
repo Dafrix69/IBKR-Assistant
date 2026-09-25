@@ -136,6 +136,7 @@ contextBridge.exposeInMainWorld('dafri', {
   // ---- 策略回测(纯计算,不下单)----------------------------------------
   backtestStrategies: () => ipcRenderer.invoke('rpc', { method: 'backtest.strategies', params: {} }),
   runBacktest: (spec) => ipcRenderer.invoke('rpc', { method: 'backtest.run', params: spec }),
+  sweepBacktest: (spec) => ipcRenderer.invoke('rpc', { method: 'backtest.sweep', params: spec }),
   parseBacktestRules: (text) =>
     ipcRenderer.invoke('rpc', { method: 'backtest.parse_rules', params: { text } }),
   orderBook: (symbol) => ipcRenderer.invoke('rpc', { method: 'book.snapshot', params: { symbol } }),

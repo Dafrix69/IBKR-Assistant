@@ -127,6 +127,7 @@ const ALLOWED_RPC = new Set([
   'screener.leaders',
   'backtest.strategies',
   'backtest.run',
+  'backtest.sweep',
   'backtest.parse_rules',
   'book.snapshot',
   'options.wall',

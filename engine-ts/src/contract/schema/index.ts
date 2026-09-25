@@ -11,7 +11,7 @@ import type { RpcMethodName, RpcParams } from "../index.js";
 import {
   AlertsCreateParamsSchema, AlertsDeleteParamsSchema, AlertsRefreshParamsSchema, AlertsSetTouchConfigParamsSchema,
 } from "./alerts.js";
-import { BacktestParseRulesParamsSchema, BacktestRunParamsSchema } from "./backtest.js";
+import { BacktestParseRulesParamsSchema, BacktestRunParamsSchema, BacktestSweepParamsSchema } from "./backtest.js";
 import {
   BrokerConnectParamsSchema, BrokerSelectParamsSchema, DiagnoseParamsSchema, FutuSetPasswordParamsSchema,
   FutuUnlockParamsSchema, LaunchParamsSchema,
@@ -67,6 +67,7 @@ export const PARAMS_SCHEMAS: { readonly [M in RpcMethodName]: ParamsSchema<RpcPa
 
   "backtest.strategies": NoParamsSchema,
   "backtest.run": BacktestRunParamsSchema,
+  "backtest.sweep": BacktestSweepParamsSchema,
   "backtest.parse_rules": BacktestParseRulesParamsSchema,
 
   "broker.catalog": NoParamsSchema,

@@ -20,7 +20,8 @@ import type {
 import type { LlmCatalog, LlmPatchParams, LlmTestParams, LlmTestResult } from "./llm.js";
 import type { MacroBoard, MacroBoardParams } from "./macro.js";
 import type {
-  BacktestParseRulesParams, BacktestRunParams, BacktestRunResult, BacktestStrategy, CustomRules,
+  BacktestParseRulesParams, BacktestRunParams, BacktestRunResult, BacktestStrategy, BacktestSweepParams,
+  BacktestSweepResult, CustomRules,
 } from "./backtest.js";
 import type {
   Idea, IdeaDigestRow, IdeaHit, IdeasAddParams, IdeasAnalyzeParams, IdeasDigestParams, IdeasDigestsParams,
@@ -110,6 +111,8 @@ export interface RpcMethods {
 
   "backtest.strategies": { params: NoParams; result: { strategies: BacktestStrategy[] } };
   "backtest.run": { params: BacktestRunParams; result: BacktestRunResult };
+  /** 参数网格 × 样本内 / 样本外 × 滚动前推;纯计算,不经过模型 */
+  "backtest.sweep": { params: BacktestSweepParams; result: BacktestSweepResult };
   /** 一句话 → 条件:模型的回答过了 CustomRulesSchema 复验才回来 */
   "backtest.parse_rules": { params: BacktestParseRulesParams; result: { rules: CustomRules } };
 

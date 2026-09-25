@@ -43,7 +43,7 @@ import type {
   LeaderRow, LeadersResult, MarketRegime, TrendCheck, VcpResult,
   LLMConfig, LlmCatalog, LlmPatch, LlmProvider, LlmTestResult,
   BookL1, BookLevel, BookLiquidity, BookSnapshot, MacroBoard, MacroRow,
-  BacktestCurvePoint, BacktestRunResult, BacktestRunSpec, BacktestStrategy, BacktestTrade, CustomRules, CustomRulesInput,
+  BacktestCurvePoint, BacktestRunResult, BacktestRunSpec, BacktestStrategy, BacktestTrade, CustomRules, CustomRulesInput, BacktestSweepResult, BacktestSweepSpec, SegmentStats, SweepObjective, SweepRow, WalkForward,
   RuleConditionInput, RuleOperandInput,
   Idea, IdeaAnalysis, IdeaBrief, IdeaBriefMetric, IdeaDigest, IdeaDigestRow, IdeaMatch, IdeaTradeFact, IdeaTradeResult,
   IdeasSimilarTradesParams, IdeasSimilarTradesResult, SimilarExitStat, SimilarTrade,
@@ -71,7 +71,7 @@ export type {
   LeaderRow, LeadersResult, MarketRegime, TrendCheck, VcpResult,
   LLMConfig, LlmCatalog, LlmPatch, LlmProvider, LlmTestResult,
   BookL1, BookLevel, BookLiquidity, BookSnapshot, MacroBoard, MacroRow,
-  BacktestCurvePoint, BacktestRunResult, BacktestRunSpec, BacktestStrategy, BacktestTrade, CustomRules, CustomRulesInput,
+  BacktestCurvePoint, BacktestRunResult, BacktestRunSpec, BacktestStrategy, BacktestTrade, CustomRules, CustomRulesInput, BacktestSweepResult, BacktestSweepSpec, SegmentStats, SweepObjective, SweepRow, WalkForward,
   RuleConditionInput, RuleOperandInput,
   Idea, IdeaAnalysis, IdeaBrief, IdeaBriefMetric, IdeaDigest, IdeaDigestRow, IdeaMatch, IdeaTradeFact, IdeaTradeResult,
   IdeasSimilarTradesParams, IdeasSimilarTradesResult, SimilarExitStat, SimilarTrade,
@@ -196,6 +196,7 @@ export interface DafriBridge {
   backtestStrategies(): Rpc<RpcResult<'backtest.strategies'>>;
   /** spec 的对象字面量要直接标成 BacktestRunSpec(同 TrackerAddSpec):这样写错的键名编译期就查得出来 */
   runBacktest(spec: BacktestRunSpec): Rpc<RpcResult<'backtest.run'>>;
+  sweepBacktest(spec: BacktestSweepSpec): Rpc<RpcResult<'backtest.sweep'>>;
   parseBacktestRules(text: string): Rpc<RpcResult<'backtest.parse_rules'>>;
   orderBook(symbol: string): Rpc<RpcResult<'book.snapshot'>>;
 

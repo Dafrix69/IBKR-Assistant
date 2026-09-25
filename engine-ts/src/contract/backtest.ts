@@ -130,9 +130,11 @@ export interface BacktestReport {
   win_rate_pct: number | null;
   /** 持仓天数占比 */
   exposure_pct: number;
-  /** 最近 100 笔 */
+  /** 最近 100 笔(扣了成交成本的,如果给了) */
   trade_list: BacktestTrade[];
   curve: BacktestCurvePoint[];
+  /** 每边成交成本(%);只有给了、且大于 0 才有——没有这个键就是不扣成本的老口径 */
+  cost_pct?: number;
   /** 只有 custom 策略才有 */
   rules?: CustomRules;
   /** 调用方给了几项就是几项,type 没给补成 stock;经 RPC 进来的已经被 BacktestInstrumentSchema 补齐了 */
@@ -157,19 +159,125 @@ export interface BacktestRunSpec {
   rules?: CustomRulesInput;
   /** 不给 = 正股 */
   instrument?: BacktestInstrumentInput;
+  /** 每边成交成本(%,0~10):佣金 + 滑点;不给 = 0。绩效体检的执行损耗中位数可以直接填 */
+  cost_pct?: number | string;
 }
 
 /**
  * 进 handler 时的样子:schema 只确认 params 是个对象,**rules / instrument 由 models.ts 的两个 schema 校验**并给
  * 「自定义条件不合法:…」「交易品种配置不合法:…」,params 由 runBacktest 逐项校验——所以这三项在这里是 unknown:它们确实还没验过。
  */
-export interface BacktestRunParams extends Omit<BacktestRunSpec, "params" | "rules" | "instrument"> {
+export interface BacktestRunParams extends Omit<BacktestRunSpec, "params" | "rules" | "instrument" | "cost_pct"> {
   params?: Record<string, unknown>;
   rules?: unknown;
   instrument?: unknown;
+  cost_pct?: unknown;
 }
 
 export interface BacktestParseRulesParams {
   /** 策略描述,去掉首尾空白后 1~1000 字 */
   text: string;
+}
+
+// ---------------------------------------------------------------- backtest.sweep:参数扫描 + 样本外
+
+/** 挑参数按什么排:总收益,或 Calmar(年化 ÷ 最大回撤,回撤为 0 时按年化算) */
+export type SweepObjective = "return" | "calmar";
+
+/** 界面照这个给(bridge.ts 的 sweepBacktest 用它标签名)。 */
+export interface BacktestSweepSpec {
+  /** 1~8 只;多只时每组参数的得分取各只的平均 */
+  symbols: string[];
+  start: string;
+  end: string;
+  /** 不能是 custom / buy_hold:没有参数可扫 */
+  strategy: string;
+  /** 参数名 → 要试的取值;组合总数不超过 200 */
+  grid: Record<string, Array<number | string>>;
+  instrument?: BacktestInstrumentInput;
+  cost_pct?: number | string;
+  /** 样本内占多少(%,50~90),默认 70 */
+  split_pct?: number | string;
+  /** 滚动前推的折数(2~6);不给 / 0 = 不做 */
+  folds?: number | string;
+  objective?: SweepObjective;
+}
+
+/** 同上,schema 只确认结构;代码、日期、网格、比例的合法范围由 handler / backtestLab 报人话。 */
+export interface BacktestSweepParams {
+  symbols: unknown;
+  start?: unknown;
+  end?: unknown;
+  strategy?: unknown;
+  grid?: unknown;
+  instrument?: unknown;
+  cost_pct?: unknown;
+  split_pct?: unknown;
+  folds?: unknown;
+  objective?: unknown;
+}
+
+/** 一段(样本内 / 样本外 / 前推的一折)的成绩;多只标的时是各只的平均。 */
+export interface SegmentStats {
+  return_pct: number;
+  annualized_pct: number;
+  max_drawdown_pct: number;
+  /** 年化 ÷ |最大回撤|;回撤为 0 时是 null */
+  calmar: number | null;
+  trades: number;
+  win_rate_pct: number | null;
+  /** 同一段买入持有 */
+  bench_return_pct: number;
+}
+
+export interface SweepRow {
+  params: Record<string, number>;
+  /** 样本内的得分(按 objective),排名用 */
+  score: number;
+  is: SegmentStats;
+  oos: SegmentStats;
+  /** 样本外的得分在全部组合里排第几(1 = 最好) */
+  oos_rank: number;
+}
+
+export interface WalkForwardFold {
+  /** 训练段的最后一天 */
+  train_end: string;
+  test_start: string;
+  test_end: string;
+  /** 训练段里得分最高的那组参数 */
+  params: Record<string, number>;
+  test_return_pct: number;
+  bench_return_pct: number;
+}
+
+export interface WalkForward {
+  folds: WalkForwardFold[];
+  /** 每折测试段收益连乘:只拿"当时就能选出来的参数"去跑下一段,是这张表里唯一不偷看未来的总收益 */
+  total_return_pct: number;
+  bench_return_pct: number;
+}
+
+export interface BacktestSweepResult {
+  strategy: string;
+  symbols: string[];
+  objective: SweepObjective;
+  cost_pct: number;
+  instrument: BacktestInstrument;
+  /** 实际用到的首尾日期(各只取交集) */
+  start: string;
+  end: string;
+  /** 样本外从哪天开始 */
+  split_date: string;
+  /** 试了多少组、有几组不合法被跳过(比如快线 ≥ 慢线) */
+  combos: number;
+  skipped: Array<{ params: Record<string, number>; reason: string }>;
+  /** 样本内得分最高的前 20 组 */
+  rows: SweepRow[];
+  /** 样本内第一名;全部不合法时是 null */
+  best: SweepRow | null;
+  /** 全部组合样本内与样本外得分的秩相关(Spearman,-1~1):接近 0 或为负 = 样本内的排名在样本外不作数,多半是过拟合 */
+  rank_corr: number | null;
+  walk_forward: WalkForward | null;
+  notes: string[];
 }

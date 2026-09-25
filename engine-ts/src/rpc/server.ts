@@ -198,7 +198,7 @@ export class RpcServer implements RpcContext {
   ]);
   static readonly READ_METHODS = new Set([
     "positions.list", "sectors.quotes", "pa.analyze", "book.snapshot", "options.wall", "macro.board",
-    "screener.rs", "screener.inflection", "screener.deviation", "backtest.run", "backtest.strategies",
+    "screener.rs", "screener.inflection", "screener.deviation", "backtest.run", "backtest.strategies", "backtest.sweep",
     "pa.timeframes", "tws.scan", "tws.diagnose", "futu.scan", "futu.diagnose",
     "tracker.target_preview",
     // 下单页的历史相似交易:读本地库,过期蝴蝶的结算价可能要取一次日线,放读道不挡下单

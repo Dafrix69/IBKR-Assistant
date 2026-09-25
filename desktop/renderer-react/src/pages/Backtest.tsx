@@ -4,6 +4,7 @@ import dayjs from 'dayjs';
 import { dafri, errorMessage } from '../bridge';
 import type { BacktestRunResult, BacktestRunSpec, BacktestStrategy } from '../bridge';
 import { BacktestResult } from '../lib/BacktestResult';
+import { SweepPanel } from '../lib/SweepPanel';
 import { BT_INST_LABELS } from '../lib/labels';
 import { fmtCond, RuleBuilder, type Rules } from '../lib/RuleBuilder';
 import { showBanner } from '../store/banner';
@@ -37,6 +38,7 @@ export function BacktestPage() {
   const [rules, setRules] = useState<Rules>(DEFAULT_RULES);
   const [instType, setInstType] = useState('stock');
   const [inst, setInst] = useState({ dte: 30 as number | null, offset: 0 as number | null, width: 2 as number | null, risk: 10 as number | null });
+  const [cost, setCost] = useState<number | null>(0);
   const [result, setResult] = useState<BacktestRunResult | null>(null);
   const [running, setRunning] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
@@ -59,6 +61,9 @@ export function BacktestPage() {
   }, [strategy]);
 
   const isOption = instType !== 'stock';
+  const instrument: NonNullable<BacktestRunSpec['instrument']> = !isOption
+    ? { type: 'stock' }
+    : { type: instType, dte: inst.dte || 30, offset_pct: inst.offset || 0, width_pct: inst.width || 2, risk_pct: inst.risk || 10 };
 
   async function run() {
     const sym = symbol.trim().toUpperCase();
@@ -74,9 +79,8 @@ export function BacktestPage() {
       params: Object.fromEntries(Object.entries(params).filter((e): e is [string, number] => e[1] !== null && e[1] !== undefined)),
     };
     if (strategyKey === 'custom') spec.rules = rules;
-    spec.instrument = !isOption
-      ? { type: 'stock' }
-      : { type: instType, dte: inst.dte || 30, offset_pct: inst.offset || 0, width_pct: inst.width || 2, risk_pct: inst.risk || 10 };
+    spec.instrument = instrument;
+    if (cost) spec.cost_pct = cost;
     setRunning(true);
     setFailure(null);
     try {
@@ -143,6 +147,7 @@ export function BacktestPage() {
         {isOption ? <NumberRow label="行权价偏移" sub="% 相对入场价" min={-30} max={30} step={0.5} value={inst.offset} onChange={(v) => setInst((i) => ({ ...i, offset: v }))} /> : null}
         {isOption ? <NumberRow label="宽度 / 翼宽" sub="% 相对入场价" min={0.5} max={20} step={0.5} value={inst.width} onChange={(v) => setInst((i) => ({ ...i, width: v }))} /> : null}
         {isOption ? <NumberRow label="单笔投入" sub="% 净值" min={1} max={100} step={1} value={inst.risk} onChange={(v) => setInst((i) => ({ ...i, risk: v }))} /> : null}
+        <NumberRow label="每边成交成本" sub="%,佣金 + 滑点;绩效体检的执行损耗中位数可以填这里" min={0} max={10} step={0.05} value={cost} onChange={setCost} />
       </Group>
       {isOption ? (
         <p className="hint">
@@ -192,6 +197,9 @@ export function BacktestPage() {
         ) : null}
         {result && !running ? <BacktestResult r={result} strategyLabel={strategy?.label} /> : null}
       </div>
+
+      <SectionTitle>参数扫描 · 样本外</SectionTitle>
+      <SweepPanel ctx={{ symbol, start, end, strategy, instrument, costPct: cost }} />
     </section>
   );
 }

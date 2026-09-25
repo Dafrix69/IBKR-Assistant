@@ -103,6 +103,7 @@ window.dafri = {
   exportData: async () => ({}), restartEngine: async () => ({}),
   backtestStrategies: async () => ({ strategies: [] }),
   runBacktest: async () => { throw new Error('回测的历史行情需要 TWS / IB Gateway'); },
+  sweepBacktest: async () => { throw new Error('回测的历史行情需要 TWS / IB Gateway'); },
   parseBacktestRules: async () => ({}),
   orderBook: async () => { throw new Error('读取盘口需要 TWS / IB Gateway'); },
   optionWall: async () => { throw new Error('计算期权墙需要 TWS / IB Gateway'); },

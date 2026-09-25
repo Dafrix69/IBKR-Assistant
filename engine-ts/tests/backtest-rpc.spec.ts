@@ -250,3 +250,49 @@ describe("backtest.parse_rules", () => {
     expect(bad["message"]).toMatch(/^条件生成失败:/);
   });
 });
+
+describe("backtest.run:成交成本", () => {
+  it("cost_pct 认数字串;给了才在回执里多一个键;超范围报人话", async () => {
+    const { call } = makeServer();
+    const plain = (await call("backtest.run", ui()))["result"];
+    const net = (await call("backtest.run", ui({ cost_pct: "0.2" })))["result"];
+    expect(Object.keys(plain).sort()).toEqual(REPORT_KEYS);
+    expect(net["cost_pct"]).toBe(0.2);
+    expect(net["total_return_pct"]).toBeLessThan(plain["total_return_pct"]);
+    expect((await call("backtest.run", ui({ cost_pct: 12 })))["error"]["message"]).toContain("每边成交成本要在 0~10 之间");
+  });
+});
+
+describe("backtest.sweep", () => {
+  const sweep = (over: Rec = {}): Rec => ({
+    symbols: ["aapl", "MSFT"], start: "2025-01-01", end: "2026-03-01", strategy: "sma_cross",
+    grid: { fast: [5, "10"], slow: [20, 40] }, instrument: { type: "stock" }, split_pct: 70, folds: 2, ...over,
+  });
+
+  it("逐只取日线;回执带样本内外、前推与 notes", async () => {
+    const { call, router } = makeServer();
+    const r = (await call("backtest.sweep", sweep()))["result"];
+    expect(router.asked.map((a) => a[0])).toEqual(["AAPL", "MSFT"]);
+    expect(r["combos"]).toBe(4);
+    expect(r["rows"]).toHaveLength(4);
+    expect(r["best"]["oos"]).toHaveProperty("return_pct");
+    expect(r["walk_forward"]["folds"]).toHaveLength(2);
+    expect(Object.keys(r).sort()).toEqual([
+      "best", "combos", "cost_pct", "end", "instrument", "notes", "objective", "rank_corr", "rows", "skipped", "split_date",
+      "start", "strategy", "symbols", "walk_forward",
+    ]);
+  });
+
+  it("入参:代码、日期、网格、标准、比例都报人话;没连券商报 -32012", async () => {
+    const { call } = makeServer();
+    expect((await call("backtest.sweep", sweep({ symbols: ["BAD CODE"] })))["error"]["message"]).toContain("股票代码不合法");
+    expect((await call("backtest.sweep", sweep({ start: "2025/01/01" })))["error"]["message"]).toBe("日期必须是 YYYY-MM-DD");
+    expect((await call("backtest.sweep", sweep({ grid: { fast: ["x"] } })))["error"]["message"]).toContain("参数 fast 的取值");
+    expect((await call("backtest.sweep", sweep({ objective: "sharpe" })))["error"]["message"]).toContain("return / calmar");
+    expect((await call("backtest.sweep", sweep({ split_pct: 40 })))["error"]["message"]).toContain("样本内占比");
+    expect((await call("backtest.sweep", sweep({ strategy: "custom" })))["error"]["message"]).toContain("没有参数可扫");
+    expect((await call("backtest.sweep", { ...sweep(), symbols: "AAPL" }))["error"]["code"]).toBe(-32602);
+    const off = makeServer({ connected: false });
+    expect((await off.call("backtest.sweep", sweep()))["error"]["code"]).toBe(-32012);
+  });
+});
