@@ -29,6 +29,7 @@ import type {
 } from "./ideas.js";
 import type { OptionWall, OptionsWallParams } from "./options.js";
 import type { ReviewPerformanceParams, ReviewPerformanceResult } from "./performance.js";
+import type { ReviewSignalsParams, ReviewSignalsResult } from "./signals.js";
 import type { PaAnalyzeParams, PaAnalyzeResult, PaCommentResult, PaTimeframesResult } from "./priceaction.js";
 import type { PoolSetWatchParams, PoolWatch } from "./pool.js";
 import type {
@@ -75,6 +76,7 @@ export type * from "./instruction.js";
 export type * from "./llm.js";
 export type * from "./options.js";
 export type * from "./performance.js";
+export type * from "./signals.js";
 export type * from "./pool.js";
 export type * from "./positions.js";
 export type * from "./priceaction.js";
@@ -162,6 +164,8 @@ export interface RpcMethods {
   "review.analyze": { params: ReviewAnalyzeParams; result: ReviewAnalyzeResult };
   /** 绩效体检:已了结交易的美元账本 → 胜率、盈亏比、期望值、R 与 SQN、回撤、分组与行为规则。不调模型 */
   "review.performance": { params: ReviewPerformanceParams; result: ReviewPerformanceResult };
+  /** 信号成绩单:价位提醒与盯异动发出的信号,之后 1 / 5 / 20 天押对了没有;纯计算,不下单 */
+  "review.signals": { params: ReviewSignalsParams; result: ReviewSignalsResult };
 
   "screener.rs": { params: ScreenerRsParams; result: RsResult };
   "screener.inflection": { params: ScreenerInflectionParams; result: InflectionResult };

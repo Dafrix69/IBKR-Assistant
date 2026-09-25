@@ -5,7 +5,7 @@ import { nowEt } from "../../config.js";
 import { pyRound } from "../../py.js";
 import type {
   ButterflyCandidate, ReviewAnalyzeParams, ReviewAnalyzeResult, ReviewCandidate, ReviewCandidatesParams,
-  ReviewCandidatesResult, ReviewPerformanceParams, ReviewPerformanceResult, StockCandidate,
+  ReviewCandidatesResult, ReviewPerformanceParams, ReviewPerformanceResult, ReviewSignalsParams, ReviewSignalsResult, StockCandidate,
 } from "../../contract/index.js";
 import { RpcError } from "../../rpcError.js";
 import { HandlerBase } from "../context.js";
@@ -18,6 +18,7 @@ export class ReviewHandlers extends HandlerBase {
       "review.candidates": (p) => this.reviewCandidates(p),
       "review.analyze": (p) => this.reviewAnalyze(p),
       "review.performance": (p) => this.reviewPerformance(p),
+      "review.signals": (p) => this.reviewSignals(p),
     });
   }
 
@@ -37,6 +38,29 @@ export class ReviewHandlers extends HandlerBase {
       traces: this.engine.store.closeTraces(),
       protections: this.settings.protections,
     });
+  }
+
+  /** 信号成绩单(signalOutcomes.ts):信号日志 × 各标的日线。取不到日线的标的记进 missing_symbols,不让整个请求失败。 */
+  async reviewSignals(params: ReviewSignalsParams): Promise<ReviewSignalsResult> {
+    const days = params.days ?? null;
+    if (days !== null && (!Number.isInteger(days) || days < 1 || days > ReviewHandlers.PERFORMANCE_MAX_DAYS)) {
+      throw new RpcError(-32602, `天数要是 1 到 ${ReviewHandlers.PERFORMANCE_MAX_DAYS} 之间的整数,收到:${days}`);
+    }
+    const { scoreSignals } = await import("../../signalOutcomes.js");
+    const since = days === null ? null : new Date(Date.now() - days * 86_400_000).toISOString();
+    const signals = this.engine.store.signals.list(since);
+    const bars = new Map<string, Array<{ date: string; close: number }>>();
+    for (const symbol of new Set(signals.map((s) => s.symbol))) {
+      try {
+        const rows = await this.ctx.market.dailyHistory(symbol);
+        bars.set(symbol, rows
+          .map((r) => ({ date: String(r["date"] ?? ""), close: Number(r["close"]) }))
+          .filter((r) => /^\d{4}-\d{2}-\d{2}$/.test(r.date) && Number.isFinite(r.close) && r.close > 0));
+      } catch {
+        // 没连券商 / 没有这只的行情权限:这只的信号不进成绩,结果里列出来
+      }
+    }
+    return scoreSignals(signals, bars, days);
   }
 
   // ---- 交易分析:蝴蝶复盘 ------------------------------------------------

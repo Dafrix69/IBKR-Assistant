@@ -4,6 +4,7 @@ import { dafri, errorMessage } from '../bridge';
 import type { PerformanceKind, PerformanceScope, ReviewPerformanceResult } from '../bridge';
 import { EquitySection, FindingsSection, GroupsSection, LedgerSection, StatsSection } from '../lib/PerformanceParts';
 import { AdviceSection, ExecutionSection } from '../lib/PerformanceExtras';
+import { SignalScorecard } from '../lib/SignalScorecard';
 import { PositionSizer } from '../lib/PositionSizer';
 import { EmptyState, Notice, PageHead, Primer, SectionTitle, Working } from '../ui/kit';
 
@@ -125,6 +126,8 @@ export function PerformancePage() {
           <LedgerSection r={data} />
         </>
       ) : null}
+      <SectionTitle>信号成绩单</SectionTitle>
+      <SignalScorecard days={days} />
     </section>
   );
 }

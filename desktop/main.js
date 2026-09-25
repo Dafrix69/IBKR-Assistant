@@ -141,7 +141,7 @@ const ALLOWED_RPC = new Set([
   'pa.analyze',
   'pa.comment',
   'macro.board',
-  'positions.list', 'review.candidates', 'review.analyze', 'review.performance',
+  'positions.list', 'review.candidates', 'review.analyze', 'review.performance', 'review.signals',
   'tracker.list',
   'tracker.add',
   'tracker.update',

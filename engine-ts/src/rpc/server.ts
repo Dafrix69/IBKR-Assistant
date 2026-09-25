@@ -205,6 +205,8 @@ export class RpcServer implements RpcContext {
     "ideas.similar_trades",
     // 绩效体检:读本地库算账,过期蝴蝶的结算价可能要取一次日线,同上
     "review.performance",
+    // 信号成绩单:读本地库的信号日志,逐只取日线(10 分钟缓存),纯计算
+    "review.signals",
     // 强势股筛选:和 screener.rs 一样逐只拉日线(10 分钟缓存),纯计算
     "screener.leaders",
   ]);

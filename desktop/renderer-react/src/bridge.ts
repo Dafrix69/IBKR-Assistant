@@ -47,7 +47,7 @@ import type {
   RuleConditionInput, RuleOperandInput,
   Idea, IdeaAnalysis, IdeaBrief, IdeaBriefMetric, IdeaDigest, IdeaDigestRow, IdeaMatch, IdeaTradeFact, IdeaTradeResult,
   IdeasSimilarTradesParams, IdeasSimilarTradesResult, SimilarExitStat, SimilarTrade,
-  EquityPoint, LedgerTrade, PerfGroup, PerformanceFinding, PerformanceKind, PerformanceScope, PerfStats, ReviewPerformanceResult, ExecutionCost, ExecutionGroup, ExecutionRow, ProtectionAdvice,
+  EquityPoint, LedgerTrade, PerfGroup, PerformanceFinding, PerformanceKind, PerformanceScope, PerfStats, ReviewPerformanceResult, ExecutionCost, ExecutionGroup, ExecutionRow, ProtectionAdvice, ReviewSignalsResult, SignalEntry, SignalGroup, SignalHorizonStats, SignalSource,
   AnomalyConfig, AnomalyEvent, AnomalyKind, AnomalyMetrics, LevelKind, OptionWall, PoolWatch, PoolWatchPatch, PositionRow,
   AccountView, Limits, Policies, ProtectionsConfig, QualityList, QualityMonitor, QualityStock, RpcParams, RpcResult, Sector,
   SectorStock, SettingsPatch, SettingsView, SpotTarget, StockQuote, Targets, Track, Watch, WatchEvent, WatchLevel,
@@ -75,7 +75,7 @@ export type {
   RuleConditionInput, RuleOperandInput,
   Idea, IdeaAnalysis, IdeaBrief, IdeaBriefMetric, IdeaDigest, IdeaDigestRow, IdeaMatch, IdeaTradeFact, IdeaTradeResult,
   IdeasSimilarTradesParams, IdeasSimilarTradesResult, SimilarExitStat, SimilarTrade,
-  EquityPoint, LedgerTrade, PerfGroup, PerformanceFinding, PerformanceKind, PerformanceScope, PerfStats, ReviewPerformanceResult, ExecutionCost, ExecutionGroup, ExecutionRow, ProtectionAdvice,
+  EquityPoint, LedgerTrade, PerfGroup, PerformanceFinding, PerformanceKind, PerformanceScope, PerfStats, ReviewPerformanceResult, ExecutionCost, ExecutionGroup, ExecutionRow, ProtectionAdvice, ReviewSignalsResult, SignalEntry, SignalGroup, SignalHorizonStats, SignalSource,
   AnomalyEvent, AnomalyKind, LevelKind, OptionWall, PoolWatch, PoolWatchPatch, PositionRow, QualityList, QualityMonitor,
   QualityStock, Sector, SectorStock, SettingsPatch, SpotTarget, StockQuote, Targets, Track, Watch, WatchEvent, WatchLevel,
   MaTouchConfig, TouchBook, TouchEpisode, TouchLine, WatchTrigger,
@@ -215,6 +215,7 @@ export interface DafriBridge {
   reviewCandidates(limit?: number, includeLocal?: boolean): Rpc<RpcResult<'review.candidates'>>;
   reviewAnalyze(spec: RpcParams<'review.analyze'>): Rpc<RpcResult<'review.analyze'>>;
   reviewPerformance(spec: RpcParams<'review.performance'>): Rpc<RpcResult<'review.performance'>>;
+  reviewSignals(spec: RpcParams<'review.signals'>): Rpc<RpcResult<'review.signals'>>;
   macroBoard(force?: boolean): Rpc<RpcResult<'macro.board'>>;
 
   listPositions(): Rpc<RpcResult<'positions.list'>>;

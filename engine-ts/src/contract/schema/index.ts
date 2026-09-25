@@ -32,7 +32,7 @@ import {
   QualityAddParamsSchema, QualityRemoveParamsSchema, QualitySetConfigParamsSchema, QualityUpdateParamsSchema,
 } from "./quality.js";
 import { RecordsGetParamsSchema, RecordsListParamsSchema } from "./records.js";
-import { ReviewAnalyzeParamsSchema, ReviewCandidatesParamsSchema, ReviewPerformanceParamsSchema } from "./review.js";
+import { ReviewAnalyzeParamsSchema, ReviewCandidatesParamsSchema, ReviewPerformanceParamsSchema, ReviewSignalsParamsSchema } from "./review.js";
 import {
   ScreenerDeviationParamsSchema, ScreenerInflectionParamsSchema, ScreenerLeadersParamsSchema, ScreenerRsParamsSchema,
 } from "./screener.js";
@@ -113,6 +113,7 @@ export const PARAMS_SCHEMAS: { readonly [M in RpcMethodName]: ParamsSchema<RpcPa
   "review.candidates": ReviewCandidatesParamsSchema,
   "review.analyze": ReviewAnalyzeParamsSchema,
   "review.performance": ReviewPerformanceParamsSchema,
+  "review.signals": ReviewSignalsParamsSchema,
 
   "screener.rs": ScreenerRsParamsSchema,
   "screener.inflection": ScreenerInflectionParamsSchema,

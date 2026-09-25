@@ -19,6 +19,7 @@ import type { AnomalyEvent, QualityStockRow } from "./contract/quality.js";
 import type { Sector, SectorStock } from "./contract/sectors.js";
 import type { Track } from "./contract/tracker.js";
 import { IdeaVectorStore } from "./ideaVectors.js";
+import { SignalLogStore } from "./signalLog.js";
 import { ImportedTradesStore } from "./importedTrades.js";
 import type { RecentOrder } from "./models.js";
 
@@ -246,6 +247,8 @@ export class TradeStore {
   readonly imports: ImportedTradesStore;
   /** 想法原文的嵌入向量(想法检索第二期),见 ideaVectors.ts */
   readonly vectors: IdeaVectorStore;
+  /** 价位提醒与盯异动发出的每一条信号(只增不改),见 signalLog.ts */
+  readonly signals: SignalLogStore;
 
   constructor(dbPath: string) {
     this.dbPath = dbPath;
@@ -257,6 +260,7 @@ export class TradeStore {
     this.db.exec(SCHEMA);
     this.imports = new ImportedTradesStore(this.db);
     this.vectors = new IdeaVectorStore(this.db);
+    this.signals = new SignalLogStore(this.db);
     this.migrate();
     if (fresh) {
       try {

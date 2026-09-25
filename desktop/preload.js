@@ -160,6 +160,7 @@ contextBridge.exposeInMainWorld('dafri', {
   reviewCandidates: (limit, includeLocal) => ipcRenderer.invoke('rpc', { method: 'review.candidates', params: { limit, include_local: Boolean(includeLocal) } }),
   reviewAnalyze: (spec) => ipcRenderer.invoke('rpc', { method: 'review.analyze', params: spec }),
   reviewPerformance: (spec) => ipcRenderer.invoke('rpc', { method: 'review.performance', params: { ...spec } }),
+  reviewSignals: (spec) => ipcRenderer.invoke('rpc', { method: 'review.signals', params: { ...spec } }),
   macroBoard: (force) => ipcRenderer.invoke('rpc', { method: 'macro.board', params: { force } }),
 
   // ---- 持仓追踪(tracker.add / update / close_now 会真的发单)--------------
