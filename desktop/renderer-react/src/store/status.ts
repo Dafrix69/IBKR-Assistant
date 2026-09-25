@@ -52,13 +52,15 @@ export function startStatusPolling(): void {
   void refreshStatus();
   setInterval(refreshStatus, 5000);
   dafri.on('engine-event', ({ event, data }) => {
-    if (event === 'breaker' || event === 'ready' || event === 'settings' || event === 'pending') void refreshStatus();
+    if (event === 'breaker' || event === 'ready' || event === 'settings' || event === 'pending' || event === 'broker_link') {
+      void refreshStatus(); // broker_link:与 TWS 断开 / 自动连回,顶栏的连接状态当场跟着变
+    }
     // 引擎报上来的错(券商掉线、鉴权失效之类)必须落到界面上,不能只留在主进程日志里
     else if (event === 'error') showBanner(String(data?.message ?? '引擎报告了一个错误'), false);
   });
   dafri.on('engine-exit', ({ detail }) => {
     useStore.setState({ engineOk: false });
-    showBanner(`交易引擎已退出:${detail}。可在「关于」里重启。`, false);
+    showBanner(`交易引擎已退出:${detail}。正在自动重启,重启后自动连回券商;也可在「关于」里手动重启。`, false);
   });
   dafri.on('menu', ({ action }) => {
     if (action === 'refresh') void refreshStatus();

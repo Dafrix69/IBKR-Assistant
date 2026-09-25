@@ -178,6 +178,9 @@ export interface IbSession {
   executions?(): Promise<Array<{ contract: Record<string, any>; execution: Record<string, any> }>>;
   /** 连接级事件(1100/1101/1102)回调。 */
   onConnectivity(cb: (code: number) => void): void;
+  /** 本机到 TWS 的 socket 断了(false)/ 自动重连回来了(true)。首次连上不报,显式 disconnect() 也不报。
+   *  测试替身可不实现。 */
+  onLink?(cb: (up: boolean) => void): void;
   /** engine 挂订单回报监听用(推式)。 */
   onOrderStatus?(cb: (trade: any) => void): void;
   /** fill.live === false:reqExecutions 补回来的成交,不是实时推送(引擎只落库不通知)。 */

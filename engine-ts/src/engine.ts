@@ -10,6 +10,7 @@ import type {
   InstructionLlm, InstructionOrder, InstructionRejection, OrderTicket,
 } from "./contract/instruction.js";
 import type { TrackerHeartbeat } from "./contract/system.js";
+import { heartbeatOf } from "./engine/heartbeat.js";
 import type { TrackFired, TrackerPollTick, TrackerSyncHostedTick } from "./contract/trackerloop.js";
 import {
   BrokerError, PendingTrigger, PlacementResult, autoMidLimit, comboMidPrice, shouldFire,
@@ -67,6 +68,8 @@ export interface RouterLike {
   BROKER?: string;
   SUPPORTS_NATIVE_CONDITIONS?: boolean;
   sessionHook?: unknown;
+  /** 此刻读得到持仓的账户别名;没有这个方法就当全都读得到(见 tk.unreachableReason)。 */
+  coveredAccounts?(): Set<string>;
   indexPrice(symbol: string): Promise<number | null>;
   /** 最近一次 indexPrice 的来源(官方指数 / 期货推算);没有就是 null。 */
   spotInfo?(symbol: string): Rec | null;
@@ -800,16 +803,7 @@ export class TradingEngine {
 
   /** 心跳摘要(不带每轮的明细),给 system.status 与界面用。 */
   trackerHeartbeat(): TrackerHeartbeat {
-    const s = this.trackerLoop;
-    const age = s["last_at"] ? Date.now() - Date.parse(String(s["last_at"])) : null;
-    return {
-      running: s["running"], interval_ms: s["interval_ms"], ticks: s["ticks"], slow_ticks: s["slow_ticks"],
-      last_ms: s["last_ms"], max_ms: s["max_ms"], age_ms: age, last_error: s["last_error"],
-      // 事件循环被同步代码占住的时长(毫秒):上一个节拍间隔里的最大值,与开机以来的最坏值。
-      // 它高、而 last_ms 不高,说明节拍器没慢,是进程里别的事卡住了它
-      event_loop_last_ms: s["lag_last_ms"] ?? null,
-      event_loop_worst_ms: s["lag_worst_ms"] ?? null,
-    };
+    return heartbeatOf(this.trackerLoop);
   }
 
   // ---- 标的目标价 → 每轮重算的预计价位 -----------------------------------
@@ -908,9 +902,15 @@ export class TradingEngine {
 
     if (!this.closeChaseAdopted) await this.adoptCloseChase(tracks);
     const breaker = this.killswitch.state();
+    const covered = this.router.coveredAccounts?.() ?? null;
     for (const track of tracks) {
       const key = tk.trackKey(track);
       const raw = positions[key];
+      const unreachable = raw === undefined ? tk.unreachableReason(covered, track["account"]) : null;
+      if (unreachable !== null) {
+        out["rows"].push({ ...track, state: tk.STATE_HOLDING, reason: unreachable });
+        continue;
+      }
       if (raw === undefined) {
         // 仓位已经不在了。停掉追踪但不删——用户要能看见"它为什么不再盯了"。
         if (track["enabled"]) {

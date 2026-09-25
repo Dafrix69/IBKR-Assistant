@@ -162,16 +162,29 @@ export function execForwarder(
   };
 }
 
+/** 本机到 TWS 的 socket 断了之后隔多久重连(IBApiNext 的 reconnectInterval)。
+ *
+ * 以前没设,等于 0 = **永不重连**。而 IBApiNext 收到 1100 / 2110(TWS 与 IBKR 服务器之间断了,
+ * 每晚服务器重置、白天网络闪一下都会来)时,会主动把本机到 TWS 的 socket 也关掉——之后持仓快照与
+ * 报价就冻在断开那一刻,盯盘拿着一个不动的价判断,跟踪止损永远不会触发,心跳却照常。
+ * 重连回来后库会把常驻订阅(持仓、行情)原样重订一遍。 */
+export const IB_RECONNECT_MS = 5_000;
+
 export async function createIbApiNextSession(cfg: {
   host: string;
   port: number;
   clientId: number;
   readonly: boolean;
-}): Promise<IbSession> {
-  const mod: any = await import("@stoqey/ib");
-  const api = new mod.IBApiNext({ host: cfg.host, port: cfg.port });
+}, deps: { mod?: any } = {}): Promise<IbSession> {
+  const mod: any = deps.mod ?? await import("@stoqey/ib");
+  const api = new mod.IBApiNext({ host: cfg.host, port: cfg.port, reconnectInterval: IB_RECONNECT_MS });
 
   let connected = false;
+  /** 首次连上之后才认通断:首连阶段的 Disconnected / Connecting 是握手过程,不是掉线 */
+  let established = false;
+  /** 显式 disconnect() 了:之后的状态变化都不报 */
+  let closing = false;
+  const linkCbs: Array<(up: boolean) => void> = [];
   let managed: string[] = [];
   const connectivityCbs: Array<(code: number) => void> = [];
   const errorCbs: Array<(reqId: number, code: number, message: string) => void> = [];
@@ -198,8 +211,20 @@ export async function createIbApiNextSession(cfg: {
 
   api.connect(cfg.clientId);
   // 用库自带的 getManagedAccounts 做"连接完成"的信号
-  managed = await withTimeout(api.getManagedAccounts(), 10_000, "连接超时");
+  try {
+    managed = await withTimeout(api.getManagedAccounts(), 10_000, "连接超时");
+  } catch (exc) {
+    // 连不上就把这个客户端关干净:开了自动重连之后,不关它会在后台每 5 秒重试一次,
+    // TWS 一起来就占住这个 client id,之后真正的那次连接反而吃 326「client id 已被占用」
+    try {
+      api.disconnect();
+    } catch {
+      /* ignore */
+    }
+    throw exc;
+  }
   connected = true;
+  established = true;
 
   // 订单状态 / 成交 / 佣金:直接挂在底层 IBApi 的事件上,转成引擎期望的 ib_insync 同形对象。
   // IBApiNext 的 getOpenOrders 推的是 OpenOrdersUpdate 集合、不带成交明细——2026-09-08 模拟盘实测:
@@ -255,6 +280,29 @@ export async function createIbApiNextSession(cfg: {
       positionsSub = null;
     }
   };
+  // 本机到 TWS 的通断。库断线后按 IB_RECONNECT_MS 自己重连,重连回来会把持仓、行情这些常驻订阅原样重订;
+  // 这里只做三件事:isConnected() 说真话(router 据此不把断着的会话当活的)、断开时作废冻住的快照与报价
+  // (不拿断线前的数冒充现价)、重连后把会话级的行情类型基线补回去(那是 per-connection 的设置)。
+  api.connectionState?.subscribe?.((state: number) => {
+    const S: any = mod.ConnectionState ?? { Disconnected: 0, Connecting: 1, Connected: 2 };
+    if (!established || closing) return;
+    if (state === S.Connected && !connected) {
+      connected = true;
+      try {
+        api.setMarketDataType(mdBaseline);
+      } catch {
+        /* ignore */
+      }
+      void api.getManagedAccounts?.().then((m: string[]) => { if (m?.length) managed = m; }, () => undefined);
+      for (const cb of linkCbs) cb(true);
+    } else if (state === S.Disconnected && connected) {
+      connected = false;
+      positionsLatest = null;
+      for (const live of tickers.values()) live.data = emptyTicker();
+      for (const cb of linkCbs) cb(false);
+    }
+  });
+
   const toIbContract = (c: IbContract): Record<string, unknown> => ({
     secType: c.secType,
     symbol: c.symbol,
@@ -276,6 +324,7 @@ export async function createIbApiNextSession(cfg: {
     isConnected: () => connected,
 
     disconnect: () => {
+      closing = true;
       connected = false;
       for (const live of tickers.values()) live.sub?.unsubscribe();
       tickers.clear();
@@ -555,6 +604,8 @@ export async function createIbApiNextSession(cfg: {
       // 常驻订阅,读最新快照。以前每次都现订阅、拿到一笔就退订:盯盘、托管对账、提醒、持仓页
       // 四处并发读,IBApiNext 共享的那条持仓订阅在"退订/重订"的竞态里卡死,之后再也不推——
       // 2026-09-10 夜盘真机:从 07:18 起每次读持仓都等满 8 秒拿到 null。
+      // 断着就当场报错,不去干等 8 秒:节拍器每秒一轮,等满会把整条交易道拖住
+      if (!connected) throw new Error("与 TWS 的连接已断开,正在自动重连");
       ensurePositions();
       if (positionsLatest === null) {
         await new Promise<void>((resolve) => {
@@ -584,6 +635,9 @@ export async function createIbApiNextSession(cfg: {
 
     onConnectivity(cb) {
       connectivityCbs.push(cb);
+    },
+    onLink(cb) {
+      linkCbs.push(cb);
     },
     onError(cb) {
       errorCbs.push(cb);

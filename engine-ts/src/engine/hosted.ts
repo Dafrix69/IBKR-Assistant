@@ -130,6 +130,7 @@ export class HostedOrders {
     }
 
     const breaker = this.killswitch.state();
+    const covered: Set<string> | null = router.coveredAccounts?.() ?? null;
     const alive = new Set<string>();
     for (const track of tracks) {
       const tid = String(track["id"]);
@@ -145,6 +146,8 @@ export class HostedOrders {
       }
       const key = tk.trackKey(track);
       const raw = positions[key];
+      // 账户读不到 ≠ 仓没了:券商侧的托管单原样留着,它们本来就不靠本机盯
+      if (raw === undefined && tk.unreachableReason(covered, track["account"]) !== null) continue;
       if (raw === undefined) {
         await this.cancelHostedTrack(tid, "持仓已不存在");
         continue;

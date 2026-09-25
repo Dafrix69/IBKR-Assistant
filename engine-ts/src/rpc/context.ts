@@ -15,6 +15,7 @@ import type { MarketDataService } from "../services/marketData.js";
 import type { PoolService } from "../services/pool.js";
 import type { StockTripsService } from "../services/stockTrips.js";
 import type { IdeaSemanticService } from "../services/ideaSemantic.js";
+import type { BrokerLinkService } from "../services/brokerLink.js";
 import type { SimilarContextService } from "../services/similarContext.js";
 import type { TradeHistoryService } from "../services/tradeHistory.js";
 import { redactAccount } from "../store.js";
@@ -50,6 +51,7 @@ export interface RpcContext extends ServiceHost {
   readonly tradeHistory: TradeHistoryService;
   readonly similarContext: SimilarContextService;
   readonly ideaSemantic: IdeaSemanticService;
+  readonly brokerLink: BrokerLinkService;
 }
 
 /** handler 的基类:把上下文里最常用的几样摊成 this.settings / this.router / this.engine,

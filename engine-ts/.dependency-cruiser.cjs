@@ -10,7 +10,7 @@ const L = {
   domain:      "^src/(config|models|store|importedTrades|ideaVectors|positions|marketdata)\\.ts$",
   analysis:    "^src/(backtest|priceaction|screener|research|ideaRetrieval|optionwall|anomaly|flyexit|tradereview|tradeOutcomes|performance|leaders|fillsCsv|optionTradesCsv|optionPositionsCsv|tradeSimilar|ibtrades|macro|market|alerts|maTouch)\\.ts$",
   parsing:     "^src/(validator|providers|prompts|shorthand|llm|embeddings)\\.ts$",
-  execution:   "^src/(broker|ibContracts|futuBroker|ibSession|ibTypes|tws|futu|futuBridge)\\.ts$",
+  execution:   "^src/(broker|ibContracts|ibLink|futuBroker|ibSession|ibTypes|tws|futu|futuBridge)\\.ts$",
   orchestrate: "^src/((engine|tracker)\\.ts|(engine|services)/[^/]+\\.ts)$",
   transport:   "^src/((rpc|cli)\\.ts|rpc/.+\\.ts)$",
 };
