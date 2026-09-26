@@ -2,6 +2,7 @@
 import type { DrawdownLate, DrawdownTier, Targets } from "../contract/tracker.js";
 import {
   drawdownArm as fxDrawdownArm, drawdownFloor as fxDrawdownFloor, drawdownLate as fxDrawdownLate,
+  drawdownUsdPreset as fxDrawdownUsdPreset,
   drawdownTiers as fxDrawdownTiers,
 } from "../flyexit.js";
 import { pyG } from "../py.js";
@@ -64,11 +65,13 @@ export function drawdownArmOf(params: Rec): number | null {
  * 100 等于永不触发,两个都不是用户想要的,当场拒比事后困惑好。自列档位不带激活线与最少回吐
  * (两个都是 null):改成自列时要把 preset 留下的那两道一起清掉,不能残留。
  */
-export function drawdownTiersOf(params: Rec): DrawdownSettings {
+export function drawdownTiersOf(params: Rec, flyUnitCostUsd: number | null = null): DrawdownSettings {
   if (String(params["profit_drawdown_preset"] ?? "").toLowerCase() === "fly") {
+    // 组合持仓按金额起算($100 起追、$200 收紧,flyexit.drawdownUsdPreset);别的持仓、或成本算不出来,退回按比例的预设
+    const usd = fxDrawdownUsdPreset(flyUnitCostUsd);
     return {
-      profit_drawdown_tiers: fxDrawdownTiers(null), profit_drawdown_late: fxDrawdownLate(null),
-      profit_drawdown_arm: fxDrawdownArm(null), profit_drawdown_floor: fxDrawdownFloor(null),
+      profit_drawdown_tiers: usd?.tiers ?? fxDrawdownTiers(null), profit_drawdown_late: fxDrawdownLate(null),
+      profit_drawdown_arm: usd?.arm ?? fxDrawdownArm(null), profit_drawdown_floor: fxDrawdownFloor(null),
     };
   }
   // 自列档位 / 固定百分比:激活线用用户填的起算门槛(不填就是 null),最少回吐只有蝶式那套才有

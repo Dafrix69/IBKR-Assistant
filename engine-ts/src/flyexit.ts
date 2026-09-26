@@ -120,6 +120,37 @@ export function drawdownArm(raw?: Rec | null): number {
   return pyRound(paramsFrom(raw ?? null)["trail_arm"] - 1.0, 6);
 }
 
+/** 实盘蝶式预设按**金额**起算(2026-09-26 用户定):每组浮盈到过 $100 才开始追回撤,到过 $200 收紧一档。
+ * 回放仍按 D 的倍数(trail_arm / trail_loose_below)——两边在"从哪儿起算、哪儿收紧"这两条线上不再是同一套,
+ * 档位百分比、尾盘收紧、最少回吐仍然同源。见 docs/features/tracker.md「蝶式按金额起算」。 */
+export const FLY_ARM_USD = 100;
+export const FLY_TIGHTEN_USD = 200;
+
+/**
+ * 把上面两条金额线按这只蝶**每组的开仓成本**(美元,含乘数,即组合行的 avg_cost)换算成 Targets 的倍数口径
+ * (浮盈 / |成本|),引擎的判断一行不用动。成本算不出来回 null,调用方退回按比例的预设。
+ *
+ * 档位:浮盈 < $200 让 trail_loose(40%),≥ $200 让 trail(30%);原来 ≥ trail_tight_at×成本 让 trail_tight(20%)
+ * 那一档保留,但只在它比 $200 那条线更高时才有——便宜的蝶 3 倍成本不到 $200,那一档会排到"收紧"之前,
+ * 等于先紧后松,不要。
+ */
+export function drawdownUsdPreset(
+  unitCostUsd: number | null, raw?: Rec | null,
+): { tiers: DrawdownTier[]; arm: number } | null {
+  const cost = unitCostUsd === null ? NaN : Math.abs(Number(unitCostUsd));
+  if (!Number.isFinite(cost) || cost <= 0) return null;
+  const p = paramsFrom(raw ?? null);
+  const tighten = pyRound(FLY_TIGHTEN_USD / cost, 6);
+  const tiers: DrawdownTier[] = [
+    { above: 0.0, pct: pyRound(p["trail_loose"] * 100, 4) },
+    { above: tighten, pct: pyRound(p["trail"] * 100, 4) },
+  ];
+  if (Number(p["trail_tight_at"]) > tighten) {
+    tiers.push({ above: Number(p["trail_tight_at"]), pct: pyRound(p["trail_tight"] * 100, 4) });
+  }
+  return { tiers, arm: pyRound(FLY_ARM_USD / cost, 6) };
+}
+
 /** 最少回吐,导出成 tracker.Targets.profit_drawdown_floor 的形状(每份的价格点,和蝶价同一个单位)。 */
 export function drawdownFloor(raw?: Rec | null): number {
   return Number(paramsFrom(raw ?? null)["trail_floor"]);

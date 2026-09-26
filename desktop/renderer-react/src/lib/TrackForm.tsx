@@ -282,7 +282,9 @@ export function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: strin
       <label className="switch-row">
         <span className="group-label">
           分档利润回撤(蝶式 40/30/20)
-          <span className="sub">按浮盈相对成本的倍数换档:&lt;1× 让 40%、1–3× 让 30%、≥3× 让 20%,15:00 后一律减半。现价到过成本的 1.3 倍才开始追,离峰值不到 0.20 不触发(和复盘回放同一套)。勾上就不看上面那个固定百分比</span>
+          <span className="sub">{isCombo
+            ? '按每组浮盈的金额:到过 $100 才开始追,之后让 40%;到过 $200 收紧到 30%;到过成本 3 倍让 20%。15:00 后一律减半,离峰值不到 0.20 不触发。勾上就不看上面那个固定百分比'
+            : '按浮盈相对成本的倍数换档:<1× 让 40%、1–3× 让 30%、≥3× 让 20%,15:00 后一律减半。现价到过成本的 1.3 倍才开始追,离峰值不到 0.20 不触发(和复盘回放同一套)。勾上就不看上面那个固定百分比'}</span>
         </span>
         <Switch
           checked={tiers}
