@@ -4,7 +4,8 @@
  *
  * 全部是纯函数,不碰券商、不碰存储。几条口径:
  * - 标的价格用 K 线收盘价,开仓/平仓时点对齐到"该时刻或之前最后一根 K 线";时间戳全系统按美东。
- * - 理论价值 = 到期内在价值(蝴蝶的"帐篷"),是下界,不是当时能卖到的价。
+ * - 理论价值 = 到期内在价值(蝴蝶的"帐篷"),不是当时能卖到的价:离到期还有时间时,标的越靠近
+ *   中心,蝶的市价比它低得越多。有组合分钟线时,"曾有的机会"改用真实中间价说(marketOpportunity)。
  * - 盈亏平衡与最大盈亏按成交均价算,没成交就用限价并标注"估算"。
  */
 import { fmtF, pyRound } from "./py.js";
@@ -540,7 +541,7 @@ export function buildFindings(profile: Rec, z: Rec, entry: Rec, outcome: Rec, st
     const realized: number | null = outcome["pnl"];
     if (realized === null || bt["pnl"] > realized) {
       out.push({ tone: "warn", title: "曾有的机会",
-        text: `${bt["time"]} 标的到 ${pts(bt["underlying"])},若当时到期理论盈利 ${money(bt["pnl"])}(内在价值口径,是下界);最终结果 ${money(realized)}。` });
+        text: `${bt["time"]} 标的到 ${pts(bt["underlying"])},若当时到期盈利 ${money(bt["pnl"])}(到期内在价值口径,不是当时能卖到的价:离到期还有时间时,标的越靠近中心,蝶的市价比它低得越多);最终结果 ${money(realized)}。` });
     }
   }
 
@@ -565,4 +566,56 @@ export function buildFindings(profile: Rec, z: Rec, entry: Rec, outcome: Rec, st
     }
   }
   return out;
+}
+
+/**
+ * 用组合的真实分钟中间价(IBKR MIDPOINT)重说"曾有的机会"。
+ *
+ * 到期内在价值说的是"若那一刻到期",离到期还有时间时卖不到——2026-09-25 那张 7700/7720/7740 看跌蝶,
+ * 12:23 标的离中心 12.74 点,内在价值 7.26(+411),盘面中间价只有 4.65(+150)。持有期间盘面上真有过的
+ * 是组合中间价。窗口:开仓那一分钟起,到平仓那一分钟之前(那根 K 线收在平仓之后)、或到期日 16:00 之前。
+ * 中间价仍比能成交的买价乐观,所以文字说"按它平仓",不说"能卖到"。
+ *
+ * 只认多头蝶:卖出的蝶组合价的符号跟着 BAG 的买卖方向走,没核对过,宁可不说。
+ * 就地改 result:写 stats.best_market,替换 findings 里那一条;拿不到数据就什么都不动。
+ */
+export function marketOpportunity(result: Rec, flyBars: Rec[], entryBar: string): void {
+  const profile: Rec = result["profile"] ?? {};
+  const outcome: Rec = result["outcome"] ?? {};
+  const stats: Rec = result["stats"] ?? {};
+  const d = num(profile["debit"]);
+  if (d === null || profile["action"] !== "BUY" || outcome["kind"] === KIND_OPEN) return;
+  const day = entryBar.slice(0, 10);
+  const end = outcome["kind"] === KIND_CLOSED ? String(outcome["time_et"] ?? "") : `${day} 16:00`;
+  let best: { time: string; mid: number } | null = null;
+  for (const bar of flyBars) {
+    const t = String(bar["time"] ?? "");
+    const mid = num(bar["close"]);
+    if (mid === null || t.slice(0, 10) !== day || t < entryBar || t >= end) continue;
+    if (best === null || mid > best.mid) best = { time: t, mid };
+  }
+  if (best === null) return;
+  const pnl = pyRound((best.mid - d) * profile["multiplier"] * profile["qty"], 2);
+  stats["best_market"] = { time: best.time, mid: best.mid, pnl };
+
+  const realized = num(outcome["pnl"]);
+  const bt: Rec | null = stats["best_theoretical"] ?? null;
+  const missed = realized === null || pnl > realized;
+  const head = `持有期间组合中间价最高 ${pts(best.mid)}(${best.time}),按它平仓 ${money(pnl)}`;
+  const tail = bt !== null && bt["pnl"] !== null && bt["pnl"] > 0
+    ? `按到期内在价值算的 ${money(bt["pnl"])}(${bt["time"]} 标的到 ${pts(bt["underlying"])})是若当时到期的数,离到期还有时间时卖不到。`
+    : "";
+  const row = {
+    tone: missed ? "warn" : "good", title: "曾有的机会",
+    text: missed ? `${head};最终结果 ${money(realized)}。${tail}` : `${head},最终结果 ${money(realized)} 不比它差。${tail}`,
+  };
+  const findings: Rec[] = result["findings"] ?? [];
+  const i = findings.findIndex((f) => f["title"] === "曾有的机会");
+  if (i >= 0) {
+    findings[i] = row;
+  } else if (missed && pnl > 0) {
+    // 内在价值一直不比结果好(比如标的始终在翼外),盘面上却真有过浮盈:补一条,排在结局之前
+    const at = findings.findIndex((f) => f["title"] === "平仓" || f["title"] === "到期");
+    findings.splice(at >= 0 ? at : findings.length, 0, row);
+  }
 }

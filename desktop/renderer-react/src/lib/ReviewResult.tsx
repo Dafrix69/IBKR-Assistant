@@ -36,7 +36,8 @@ export function ReviewResult({ r }: { r: ButterflyReviewResult }) {
     ['持有期间标的区间', `${s.hold_low} ~ ${s.hold_high}`],
     ['最接近中心', s.closest ? `${s.closest.price}(${s.closest.time},距 ${s.closest.distance})` : null],
     ['盈利区内收盘 K 线', s.in_zone_bars == null ? null : `${s.in_zone_bars}/${s.hold_bars}`],
-    ['最好的理论时刻', s.best_theoretical ? `${s.best_theoretical.time} · ${fmtMoney(s.best_theoretical.pnl)}` : null],
+    ['最好的理论时刻(若当时到期)', s.best_theoretical ? `${s.best_theoretical.time} · ${fmtMoney(s.best_theoretical.pnl)}` : null],
+    ['持有期间最高中间价', s.best_market ? `${s.best_market.time} · ${s.best_market.mid} · ${fmtMoney(s.best_market.pnl)}` : null],
     ['最大盈利 / 最大亏损', z.known ? `${fmtMoney(z.max_profit)} / ${fmtMoney(z.max_loss)}` : null],
     ['平仓记录', o.record_id],
   ];

@@ -186,3 +186,53 @@ describe("review.analyze", () => {
     expect(fixed["timeframe_label"]).toBe("1 分钟");
   });
 });
+
+describe("review.analyze:蝴蝶 + 组合分钟线", () => {
+  // 2026-09-25 真机那一张:SPX 7700/7720/7740 看跌蝶,12:16:55 以 3.15 买入,12:34:40 以 4.05 卖出(+90)
+  const EXP = "20260925";
+  function flyFills(perm: number, side: "BOT" | "SLD", price: number, legs: [number, number][], utc: string): Rec[] {
+    const leg = (strike: number, legPrice: number, i: number, shares: number, legSide: string): Rec => ({
+      account_id: ACCT, exec_id: `fly${perm}.${i}`, perm_id: perm, order_id: null, order_ref: "", side: legSide, shares,
+      price: legPrice, time: utc, commission: 0,
+      contract: { conId: 900 + strike, currency: "USD", exchange: "CBOE", expiry: EXP, multiplier: "100", right: "P",
+        secType: "OPT", strike, symbol: "SPX", tradingClass: "SPXW" },
+    });
+    const flip = (s: string): string => (s === "BOT" ? "SLD" : "BOT");
+    return [
+      { account_id: ACCT, exec_id: `fly${perm}.0`, perm_id: perm, order_id: null, order_ref: "", side, shares: 1, price,
+        time: utc, commission: 0,
+        contract: { conId: 28812380, currency: "USD", exchange: "CBOE", expiry: "", multiplier: "0", right: "P",
+          secType: "BAG", strike: null, symbol: "SPX", tradingClass: "" } },
+      leg(7740, legs[0]![1], 1, 1, side), leg(7720, legs[1]![1], 2, 2, flip(side)), leg(7700, legs[2]![1], 3, 1, side),
+    ];
+  }
+  const minute = (m: number): string => `2026-09-25 ${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+  // 标的:11:30 起,从 7760 一路走到 12:23 的 7732.74 附近再回去——只要把开仓 / 平仓时刻盖住
+  const SPX: Rec[] = [];
+  for (let m = 11 * 60 + 30; m <= 13 * 60; m += 1) {
+    const close = m <= 12 * 60 + 23 ? 7760 - (m - (11 * 60 + 30)) * 0.515 : 7732.74 + (m - (12 * 60 + 23)) * 0.3;
+    SPX.push({ time: minute(m), open: close, high: close + 0.5, low: close - 0.5, close: Math.round(close * 100) / 100, volume: 1 });
+  }
+  const TAPE: [number, number][] = [
+    [736, 3.05], [737, 3.75], [738, 4.25], [739, 4.1], [740, 4.65], [741, 4.45], [742, 4.7], [743, 4.65], [744, 4.7],
+    [745, 4.5], [746, 3.55], [753, 3.0], [754, 4.35], [755, 4.0],
+  ];
+  const FLY = TAPE.map(([m, close]) => ({ time: minute(m), open: close, high: close, low: close, close }));
+
+  it("拿到组合分钟线:「曾有的机会」以持有期间的最高中间价开头(+155),不再说内在价值是下界", async () => {
+    const { s, call } = makeServer();
+    s.engine.store.rememberFills([
+      ...flyFills(501, "BOT", 3.15, [[7740, 7.98], [7720, 3.05], [7700, 1.27]], "2026-09-25T16:16:55+00:00"),
+      ...flyFills(502, "SLD", 4.05, [[7740, 12.99], [7720, 5.49], [7700, 2.04]], "2026-09-25T16:34:40+00:00"),
+    ]);
+    (s.market as unknown as Rec)["paBars"] = async (): Promise<[Rec[], boolean]> => [SPX, false];
+    (s.router as unknown as Rec)["comboBars"] = async (): Promise<Rec[]> => FLY;
+    const r = (await call("review.analyze", { id: "ib:501", timeframe: "1m" }))["result"];
+    expect(r["outcome"]).toMatchObject({ kind: "closed", pnl: 90 });
+    expect(r["stats"]["best_market"]).toEqual({ time: "2026-09-25 12:22", mid: 4.7, pnl: 155 });
+    const f = r["findings"].find((x: Rec) => x["title"] === "曾有的机会");
+    expect(f["text"].startsWith("持有期间组合中间价最高 4.7(2026-09-25 12:22),按它平仓 +155.00;最终结果 +90.00。")).toBe(true);
+    expect(f["text"]).not.toContain("下界");
+    expect(r["fly_series"]["source"]).toBe("ibkr");
+  });
+});

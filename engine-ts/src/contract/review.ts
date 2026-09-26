@@ -233,6 +233,8 @@ export interface ReviewStats {
   in_zone_ratio?: number | null;
   touched_zone_bars?: number | null;
   best_theoretical?: { pnl: number; time: string; underlying: number | null } | null;
+  /** 持有期间组合分钟中间价的最高点(IBKR MIDPOINT);拿不到组合分钟线、或不是多头蝶时没有这个键 */
+  best_market?: { time: string; mid: number; pnl: number } | null;
   settle_value?: number | null;
   // ---- 两类都有 ----
   pre_entry_move?: number | null;

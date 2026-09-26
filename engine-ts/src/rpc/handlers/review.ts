@@ -340,6 +340,8 @@ export class ReviewHandlers extends HandlerBase {
     const plan = fx.plan(profile, entryBar, spx1m, flyBars, exitParams, actual);
     (plan["notes"] as string[]).push(...notes);
     result["exit_plan"] = plan;
+    // 有真实蝶价就用它说"曾有的机会":到期内在价值在持有期间是卖不到的数
+    tr.marketOpportunity(result, flyBars, entryBar);
 
     const dayFly = flyBars.filter((b) => String(b["time"] ?? "").slice(0, 10) === entryDay);
     let startI = 0;
