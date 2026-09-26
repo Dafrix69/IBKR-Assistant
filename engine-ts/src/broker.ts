@@ -31,6 +31,8 @@ import type {
   IbContract, IbSession, IbSessionFactory, OptChainParam, OrderIntent, PortfolioItemLike, PositionItemLike,
   RawBar, TickerData, TickerHandle,
 } from "./ibTypes.js";
+import { coveredAccounts, liveSessions, logStderr, redactForLog } from "./ibLink.js";
+export { logStderr, redactForLog } from "./ibLink.js";
 
 // IB 适配层的接口住在 ibTypes.ts;这里转出,老的 import 路径不变。
 export type {
@@ -229,19 +231,6 @@ export function barTimestamp(value: unknown): string {
   return text;
 }
 
-/** 日志里的账号一律掩码(§9.3)。 */
-export function redactForLog(accountId: string): string {
-  return accountId.length > 5 ? `${accountId.slice(0, 2)}***${accountId.slice(-3)}` : "***";
-}
-
-export function logStderr(message: string): void {
-  try {
-    process.stderr.write(message + "\n");
-  } catch {
-    /* 日志失败绝不影响交易路径 */
-  }
-}
-
 /** 把 IBKR 的报价字段清洗成可用数字:NaN / 非正 / 非数字都归 null。 */
 export function cleanPrice(value: unknown): number | null {
   const v = Number(value);
@@ -401,6 +390,8 @@ export class BrokerRouter {
   private readonly connectionsMap = new Map<string, IbSession>();
   private readonly accountRoute = new Map<string, string>();
   sessionHook: ((session: IbSession) => void) | null = null;
+  /** 某条连接断了(false)/ 自动重连回来了(true)。服务层据此提醒用户、留痕。 */
+  linkHook: ((connection: string, up: boolean) => void) | null = null;
   private readonly streams = new Map<string, TickerHandle | null>();
   private upstreamOkFlag = true;
 
@@ -417,6 +408,7 @@ export class BrokerRouter {
   async connect(connectionName: string): Promise<IbSession> {
     const existing = this.connectionsMap.get(connectionName);
     if (existing && existing.isConnected()) return existing;
+    await existing?.disconnect(); // 断着的旧会话先停掉它自己的重连,别和新会话抢同一个 client id
     const cfg = this.connections[connectionName];
     if (cfg === undefined) {
       throw new BrokerError(`未定义的连接:${connectionName}(这里只在 IBKR 连接里查找)`);
@@ -438,6 +430,7 @@ export class BrokerRouter {
       if (code === 1100) this.upstreamOkFlag = false;
       else if (code === 1101 || code === 1102) this.upstreamOkFlag = true;
     });
+    session.onLink?.((up) => this.linkHook?.(connectionName, up));
     this.connectionsMap.set(connectionName, session);
     // 只服务纸面账户的会话,行情类型基线定成 3(有实时权限照样是实时,没有才给延迟)。
     // 行情类型是会话级的全局开关,各处取完价都"切回 1";而纸面会话在实盘 TWS 同时登录时按类型 1
@@ -1752,7 +1745,7 @@ export class BrokerRouter {
     const out = new Map<string, PositionRow>();
     const aliasOf = new Map(this.settings.accounts.map((a) => [a.account_id, a.alias]));
 
-    for (const session of this.sessions()) {
+    for (const session of liveSessions(this.connectionsMap, (m) => new BrokerError(m))) {
       let items: PortfolioItemLike[] = [];
       try {
         items = await session.portfolio();
@@ -2092,6 +2085,14 @@ export class BrokerRouter {
     return [...this.connectionsMap.values()].filter((s) => s.isConnected());
   }
 
+  /** 此刻读得到持仓的账户别名 / 账户号(见 ibLink.coveredAccounts):不在里面的账户,读不到不等于没有。 */
+  coveredAccounts(): Set<string> {
+    return coveredAccounts(this.settings.accounts, this.connectionsMap);
+  }
+  coveredAccountIds(): Set<string> {
+    return new Set(this.settings.accounts.filter((a) => this.coveredAccounts().has(a.alias)).map((a) => a.account_id));
+  }
+
   connectedNames(): string[] {
     return [...this.connectionsMap.entries()]
       .filter(([, s]) => s.isConnected())
@@ -2383,7 +2384,6 @@ async function pollTicker(
     waited += 100;
   }
 }
-
 
 export function isTimeout(exc: unknown): boolean {
   const msg = String((exc as Error)?.message ?? exc).toLowerCase();

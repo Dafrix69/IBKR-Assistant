@@ -1067,6 +1067,14 @@ function gapPct(price: number | null, target: number | null): number | null {
   return pyRound((t / p - 1) * 100.0, 3);
 }
 
+/** 持仓列表里没有这条追踪的仓时,先问一句:它的账户此刻读得到吗?读不到(会话断着、模拟盘 TWS 没开)
+ * 就回一句"这一轮不判断"的原因——没看到 ≠ 没有,停掉追踪、撤掉托管止损都是不可逆的。
+ * covered 为 null = router 说不清(测试替身、富途),按读得到处理。 */
+export function unreachableReason(covered: Set<string> | null, account: unknown): string | null {
+  if (covered === null || covered.has(String(account))) return null;
+  return `账户 ${String(account)} 的券商会话没连上(或正在重连),这一轮读不到它的持仓,先不判断`;
+}
+
 /** 平掉这个持仓要下的方向。多头平仓是卖,空头平仓是买。 */
 export function closeSide(position: Position): string {
   return isLong(position) ? "SELL" : "BUY";

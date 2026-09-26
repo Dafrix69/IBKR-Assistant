@@ -5,7 +5,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { BrokerError, BrokerRouter } from "../../broker.js";
+import { BrokerError } from "../../broker.js";
 import type {
   BrokerCatalog, BrokerConnectParams, BrokerConnectResult, BrokerDisconnectResult, BrokerSelectParams,
   BrokerSelectResult, DiagnoseParams, DiagnoseResult, DiagnoseResults, FutuScanResult,
@@ -45,12 +45,6 @@ export class ConnectionHandlers extends HandlerBase {
     ibkr: "盈透证券(IBKR / TWS)",
     futu: "富途证券(OpenD)",
   };
-
-  /** 按配置里生效的那家券商建 router(全系统唯一需要分支的地方)。 */
-  private makeRouter(): BrokerRouter | FutuRouter {
-    if (this.settings.broker.provider === "futu") return new FutuRouter(this.settings);
-    return new BrokerRouter(this.settings);
-  }
 
   brokerCatalog(): BrokerCatalog {
     const provider = this.settings.broker.provider;
@@ -119,6 +113,7 @@ export class ConnectionHandlers extends HandlerBase {
       await this.ctx.router.disconnectAll();
       this.ctx.router = null;
     }
+    this.ctx.brokerLink.forget();
     this.ctx.dropEngine();
     this.engine.store.audit("ui", "broker_select", { provider });
     return {
@@ -127,43 +122,13 @@ export class ConnectionHandlers extends HandlerBase {
     };
   }
 
+  /** 连接 / 断开的整条路在 services/brokerLink.ts:启动自动连、断线重连提醒与这里的按钮共用。 */
   async brokerConnect(params: BrokerConnectParams): Promise<BrokerConnectResult> {
-    const provider = this.settings.broker.provider;
-    if (this.ctx.router !== null && this.ctx.router.BROKER !== provider) {
-      // 配置里换过券商:旧 router 说的是另一家的协议,先断干净再重建
-      await this.ctx.router.disconnectAll();
-      this.ctx.router = null;
-    }
-    if (this.ctx.router === null) this.ctx.router = this.makeRouter();
-    const names: string[] =
-      params["connections"] ?? Object.keys(this.settings.connectionsFor(provider)).sort();
-    const connected: string[] = [];
-    const failed: Record<string, string> = {};
-    for (const name of names) {
-      try {
-        await this.ctx.router.connect(name);
-        connected.push(name);
-      } catch (exc) {
-        if (exc instanceof BrokerError) failed[name] = exc.message;
-        else throw exc;
-      }
-    }
-    // 夜盘:连上就在后台把期货推算暖起来,免得第一笔速记单拿昨收去推断看涨看跌
-    if (connected.length) (this.ctx.router as { warmIndexFutures?: () => void }).warmIndexFutures?.();
-    // 立刻把引擎建起来:节拍器随引擎一起起,盯盘不等界面来第一次请求
-    if (connected.length) void this.engine;
-    this.ctx.dropEngine(); // 让引擎带上 router 重建
-    const attached = this.engine.attachListeners();
-    this.engine.store.audit("ui", "broker_connect", {
-      provider, connected, failed: Object.keys(failed),
-    });
-    return { provider, connected, failed, listeners: attached };
+    return this.ctx.brokerLink.connect(params["connections"] ?? undefined);
   }
 
   async brokerDisconnect(): Promise<BrokerDisconnectResult> {
-    if (this.ctx.router) await this.ctx.router.disconnectAll();
-    this.ctx.router = null;
-    this.ctx.dropEngine();
+    await this.ctx.brokerLink.disconnect();
     return { connected: [] };
   }
 

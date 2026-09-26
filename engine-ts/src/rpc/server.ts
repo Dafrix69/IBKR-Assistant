@@ -17,6 +17,7 @@ import { buildParser } from "../providers.js";
 import { RpcError } from "../rpcError.js";
 import { AlertsService } from "../services/alerts.js";
 import { AnomalyService } from "../services/anomaly.js";
+import { BrokerLinkService } from "../services/brokerLink.js";
 import type { Router } from "../services/host.js";
 import { MarketDataService } from "../services/marketData.js";
 import { PoolService } from "../services/pool.js";
@@ -66,6 +67,7 @@ export class RpcServer implements RpcContext {
   readonly tradeHistory: TradeHistoryService;
   readonly similarContext: SimilarContextService;
   readonly ideaSemantic: IdeaSemanticService;
+  readonly brokerLink: BrokerLinkService;
   /** 各域的 handler。方法表在构造时合成一张,之后不变。 */
   readonly domains: {
     system: SystemHandlers;
@@ -96,6 +98,7 @@ export class RpcServer implements RpcContext {
     this.tradeHistory = new TradeHistoryService(this, this.market, this.stockTrips);
     this.similarContext = new SimilarContextService(this, this.market);
     this.ideaSemantic = new IdeaSemanticService(this);
+    this.brokerLink = new BrokerLinkService(this);
     this.domains = {
       system: new SystemHandlers(this),
       trading: new TradingHandlers(this),
@@ -304,6 +307,7 @@ export class RpcServer implements RpcContext {
       await this.handle(request);
     }
     this.anomaly.stop();
+    this.brokerLink.stop();
     return 0;
   }
 
@@ -378,5 +382,8 @@ export async function main(settingsPath?: string | null): Promise<number> {
   // 任何依赖的 console.log 都落到 stderr(§10.1)
   console.log = (...args: unknown[]) => console.error(...args);
   const server = new RpcServer(settingsPath, (line) => realWrite(line + "\n"));
-  return server.serve();
+  const done = server.serve(); // ready 已经同步发出
+  // 启动即连券商(broker.auto_connect)。只在这个真正的入口里起:测试里直接 serve() 的那几条不许连真券商
+  server.brokerLink.start();
+  return done;
 }

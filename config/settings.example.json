@@ -14,6 +14,7 @@
   },
   "broker": {
     "provider": "ibkr",
+    "auto_connect": true,
     "futu": {
       "trd_market": "US",
       "security_firm": "FUTUSECURITIES",

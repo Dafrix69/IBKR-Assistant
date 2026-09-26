@@ -87,6 +87,9 @@ export interface FutuConfig {
 export interface BrokerConfig {
   provider: string;
   futu: FutuConfig;
+  /** 引擎一启动就连券商,连不上的每 30 秒再试(services/brokerLink.ts)。默认开:追踪要全天有效,
+   *  不能等人想起来去点「连接」——重启电脑、引擎崩了被拉起来,都是没人在场的时候。 */
+  auto_connect: boolean;
 }
 
 export interface IndexConfig {
@@ -593,12 +596,14 @@ function buildFutu(raw: Raw): FutuConfig {
 }
 
 function buildBroker(raw: Raw): BrokerConfig {
-  rejectUnknown(["provider", "futu"], raw, "broker");
+  rejectUnknown(["provider", "futu", "auto_connect"], raw, "broker");
   const provider = String(raw["provider"] ?? "ibkr");
   if (!(BROKER_PROVIDERS as readonly string[]).includes(provider)) {
     throw new Error(`broker.provider 只能是 ${BROKER_PROVIDERS.join("、")}`);
   }
-  return { provider, futu: buildFutu((raw["futu"] as Raw) ?? {}) };
+  const autoConnect = raw["auto_connect"] ?? true;
+  if (typeof autoConnect !== "boolean") throw new Error("broker.auto_connect 只能是 true 或 false");
+  return { provider, futu: buildFutu((raw["futu"] as Raw) ?? {}), auto_connect: autoConnect };
 }
 
 function buildConnection(name: string, raw: Raw): ConnectionConfig {

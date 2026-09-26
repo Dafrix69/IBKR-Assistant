@@ -89,12 +89,16 @@ export class Reconciler {
       openByRef.set(ref, row);
     }
     const working = this.store.listWorkingRecords(Reconciler.RECONCILE_MAX_AGE_DAYS, nowMs);
+    // 此刻读得到的账户号(router 说不清就是 null = 都当读得到)。会话断着 / 没连上的账户,券商侧的未成交单
+    // 根本没读到——"券商侧没有"是假的,不能拿它下"去向不明"的结论(断一次线弹一串假警报)
+    const covered: Set<string> | null = this.router?.["coveredAccountIds"]?.() ?? null;
     for (const rec of working) {
       const open = openByRef.get(rec.id);
       if (open !== undefined) {
         if (this.adoptOpenOrder(rec.id, open)) out["adopted"] = Number(out["adopted"]) + 1;
         continue;
       }
+      if (covered !== null && rec.accountId && !covered.has(rec.accountId)) continue;
       // 本进程还在盯的条件单没发到券商,不算失联;刚发出去的单也给券商一点滞后余量
       if (this.pendingTriggers.some((p) => p.record_id === rec.id)) continue;
       if (nowMs - rec.createdAtMs < Reconciler.RECONCILE_GRACE_MS) continue;

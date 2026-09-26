@@ -9,7 +9,9 @@
  *   * 不加载任何远程页面,导航与开新窗口一律拦掉;
  *   * 生产构建关掉 DevTools。
  */
-const { app, BrowserWindow, Menu, Notification, ipcMain, dialog, shell, session, nativeTheme } = require('electron');
+const {
+  app, BrowserWindow, Menu, Notification, ipcMain, dialog, shell, session, nativeTheme, powerSaveBlocker,
+} = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const log = require('electron-log/main');
@@ -182,6 +184,11 @@ const SENSITIVE_RPC = new Set([
 
 let mainWindow = null;
 let engine = null;
+// 正在退出应用:这时引擎退出是我们让它退的,不拉起
+let quitting = false;
+// 引擎意外退出后的自动拉起:退避 3 s → 6 s → … 封顶 60 s;稳定跑过 5 分钟就清零
+let engineRestarts = 0;
+let engineStartedAt = 0;
 // 异动 / 价位提醒的置顶弹窗。懒创建:第一条提醒来了才开窗,平时不占一个渲染进程
 const popup = new PopupManager({
   dev: DEV,
@@ -376,7 +383,21 @@ function wireEngine() {
   engine.on('exit', (info) => {
     log.error('[engine] 已退出', info);
     send('engine-exit', info);
+    // 引擎一停,追踪止盈止损就没人盯了——而崩的时候往往没人在场。以前只提示「可在关于里重启」,
+    // 要等界面下一次轮询才被顺手拉起。这里直接拉起;引擎起来后按 broker.auto_connect 自己连回券商。
+    // 我们自己停的(退出应用 / 手动重启发的 SIGTERM)不拉。
+    if (quitting || info?.signal === 'SIGTERM') return;
+    if (Date.now() - engineStartedAt > 5 * 60 * 1000) engineRestarts = 0;
+    const delay = Math.min(60_000, 3000 * 2 ** engineRestarts);
+    engineRestarts += 1;
+    log.warn(`[engine] ${delay / 1000} 秒后自动重启(第 ${engineRestarts} 次)`);
+    setTimeout(() => {
+      if (quitting || !engine || engine.child) return;
+      engineStartedAt = Date.now();
+      engine.start().catch(() => {});
+    }, delay);
   });
+  engineStartedAt = Date.now();
   // 启动失败会以 engine-exit 事件呈现在界面上
   engine.start().catch(() => {});
 }
@@ -600,6 +621,12 @@ if (!gotLock) {
     const bootstrap = ensureConfigExists();
     registerIpc();
     wireEngine();
+    // 应用开着就不让系统挂起:挂起期间引擎不跑,追踪止盈止损也就不盯了。只挡挂起,不挡关屏
+    try {
+      powerSaveBlocker.start('prevent-app-suspension');
+    } catch (err) {
+      log.warn('[power] 阻止系统挂起失败', err);
+    }
     createWindow();
     buildMenu();
     if (bootstrap.created) {
@@ -612,12 +639,14 @@ if (!gotLock) {
   });
 
   app.on('window-all-closed', () => {
+    quitting = true;
     popup.destroy();
     if (engine) engine.stop();
     if (process.platform !== 'darwin') app.quit();
   });
 
   app.on('before-quit', () => {
+    quitting = true;
     popup.destroy();
     if (engine) engine.stop();
   });
