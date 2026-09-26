@@ -114,6 +114,17 @@ export function drawdownLate(raw?: Rec | null): DrawdownLate {
   return { after: p["trail_late"], factor: Number(p["trail_late_factor"]) };
 }
 
+/** 激活线,导出成 tracker.Targets.profit_drawdown_arm 的形状(浮盈 / 成本 的倍数)。
+ * 回放是"蝶价 ≥ trail_arm × D 才开始记高水位",换成浮盈就是 (trail_arm − 1) × D——同一条线。 */
+export function drawdownArm(raw?: Rec | null): number {
+  return pyRound(paramsFrom(raw ?? null)["trail_arm"] - 1.0, 6);
+}
+
+/** 最少回吐,导出成 tracker.Targets.profit_drawdown_floor 的形状(每份的价格点,和蝶价同一个单位)。 */
+export function drawdownFloor(raw?: Rec | null): number {
+  return Number(paramsFrom(raw ?? null)["trail_floor"]);
+}
+
 export function fmtMinute(minute: number): string {
   const h = Math.floor(minute / 60), m = minute % 60;
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;

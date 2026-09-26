@@ -17,7 +17,9 @@
      {"above": 1, "pct": 30},
      {"above": 3, "pct": 20}
     ],
-    "late": {"after": "15:00", "factor": 0.5}
+    "late": {"after": "15:00", "factor": 0.5},
+    "arm": 0.3,
+    "floor": 0.2
    }
   },
   {
@@ -29,18 +31,20 @@
      {"above": 1, "pct": 30},
      {"above": 3, "pct": 20}
     ],
-    "late": {"after": "15:00", "factor": 0.5}
+    "late": {"after": "15:00", "factor": 0.5},
+    "arm": 0.3,
+    "floor": 0.2
    }
   },
   {
    "name": "empty",
    "params": {},
-   "expect": {"tiers": null, "late": null}
+   "expect": {"tiers": null, "late": null, "arm": null, "floor": null}
   },
   {
    "name": "explicit_null",
    "params": {"profit_drawdown_tiers": null},
-   "expect": {"tiers": null, "late": null}
+   "expect": {"tiers": null, "late": null, "arm": null, "floor": null}
   },
   {
    "name": "custom",
@@ -55,7 +59,9 @@
      {"above": 0, "pct": 50},
      {"above": 2, "pct": 25}
     ],
-    "late": null
+    "late": null,
+    "arm": null,
+    "floor": null
    }
   },
   {
@@ -70,7 +76,9 @@
     "tiers": [
      {"above": 0, "pct": 35}
     ],
-    "late": {"after": "15:30", "factor": 0.4}
+    "late": {"after": "15:30", "factor": 0.4},
+    "arm": null,
+    "floor": null
    }
   },
   {
@@ -78,7 +86,7 @@
    "params": {
     "profit_drawdown_late": {"after": "15:30", "factor": 0.4}
    },
-   "expect": {"tiers": null, "late": null}
+   "expect": {"tiers": null, "late": null, "arm": null, "floor": null}
   },
   {
    "name": "bad_not_list",
@@ -3641,7 +3649,9 @@
    {"above": 1, "pct": 30},
    {"above": 3, "pct": 20}
   ],
-  "late": {"after": "15:00", "factor": 0.5}
+  "late": {"after": "15:00", "factor": 0.5},
+  "arm": 0.3,
+  "floor": 0.2
  },
  "close_blockers": [
   {

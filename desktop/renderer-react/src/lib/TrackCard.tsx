@@ -68,10 +68,14 @@ function Gauge({ live, targets }: { live: LiveRow; targets: TrackTargets }) {
   } else if (hasTrail) {
     // 设了回撤、但峰值利润还没越过成本:回撤无从谈起,不是"没设"
     const peak = live.profit_peak;
+    const arm = targets.profit_drawdown_arm;
     pending.push(
       peak != null && peak <= 0
         ? `利润回撤已设,但这笔从建仓起还没盈利过(峰值利润 ${fmtMoney(peak)})——先转正才会开始算回撤,在那之前只有止损能保护它。`
-        : '利润回撤已设,等第一次盈利后开始记峰值。',
+        : peak != null && arm != null
+          // 蝶式预设的激活线:浮盈只有几毛时,组合中间价晃一下就是 40% 的回撤,先不追
+          ? `利润回撤未激活:峰值利润 ${fmtMoney(peak)},现价到过成本的 ${fmtNum(1 + arm)} 倍才开始追回撤;在那之前只有止损能保护它。`
+          : '利润回撤已设,等第一次盈利后开始记峰值。',
     );
   }
   const st = live.spot_target;

@@ -235,8 +235,11 @@ describe("golden: tracker", () => {
 
   it("drawdown_threshold", () => {
     // 档位来自 flyexit(唯一事实源):导出的形状两侧必须逐字段一致
-    expectSame(flyexit.drawdownTiers(null), g.fly_tiers.tiers, "fly_tiers");
-    expectSame(flyexit.drawdownLate(null), g.fly_tiers.late, "fly_late");
+    // 激活线与最少回吐也在这一组里:实盘那两道闸和回放的 trail_arm / trail_floor 是同一个数
+    expectSame({
+      tiers: flyexit.drawdownTiers(null), late: flyexit.drawdownLate(null),
+      arm: flyexit.drawdownArm(null), floor: flyexit.drawdownFloor(null),
+    }, g.fly_tiers, "fly_tiers");
     for (const [i, c] of g.drawdown_threshold.entries()) {
       const targets = tracker.makeTargets(g.drawdown_threshold_targets[c.targets]);
       const out = tracker.drawdownThreshold(targets, c.profit_peak, c.basis, c.minute ?? null);
@@ -308,8 +311,11 @@ describe("golden: tracker", () => {
         expect(thrown.code, c.name).toBe(c.error.code);
         expect(thrown.message, c.name).toBe(c.error.message);
       } else {
-        const [tiers, late] = drawdownTiersOf(c.params);
-        expectSame({ tiers, late }, c.expect, `drawdown_tiers_params ${c.name}`);
+        const d = drawdownTiersOf(c.params);
+        expectSame({
+          tiers: d.profit_drawdown_tiers, late: d.profit_drawdown_late,
+          arm: d.profit_drawdown_arm, floor: d.profit_drawdown_floor,
+        }, c.expect, `drawdown_tiers_params ${c.name}`);
       }
     }
   });

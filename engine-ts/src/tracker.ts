@@ -8,12 +8,15 @@ import {
   structureValue,
 } from "./flyexit.js";
 import { finiteOrNull, fmtF, pyFloat, pyG, pyRound } from "./py.js";
+import { drawdownArmed, drawdownFloorMet, drawdownThreshold } from "./trackerDrawdown.js";
 import { fmtStrike, makeKey } from "./positions.js";
 import type { HostedOrderPlan } from "./positions.js";
 
 // 持仓身份搬到了 positions.ts;这里转出,老的 import 路径不变。
 export { legOf, makeKey, positionLabel } from "./positions.js";
 export type { HostedOrderPlan } from "./positions.js";
+// 利润回撤的几道闸搬到了 trackerDrawdown.ts;这里转出,老的 import 路径不变。
+export { drawdownThreshold } from "./trackerDrawdown.js";
 // 目标、自动平仓设置、标的目标价的试算结果——这三个形状界面也要用,定义在 contract/tracker.ts;这里转出,老的 import 不用改。
 export type { AutoClose, SpotTarget, Targets } from "./contract/tracker.js";
 import type { AutoClose, SpotTarget, Targets } from "./contract/tracker.js";
@@ -296,6 +299,8 @@ export function makeTargets(raw: Partial<Targets> = {}): Targets {
     profit_drawdown_pct: raw.profit_drawdown_pct ?? null,
     profit_drawdown_tiers: raw.profit_drawdown_tiers ?? null,
     profit_drawdown_late: raw.profit_drawdown_late ?? null,
+    profit_drawdown_arm: raw.profit_drawdown_arm ?? null,
+    profit_drawdown_floor: raw.profit_drawdown_floor ?? null,
     spot_target: raw.spot_target ?? null,
   };
 }
@@ -716,49 +721,6 @@ function withPnl(out: SpotTarget, position: Position): SpotTarget {
   return out;
 }
 
-function minutesOfClock(hhmm: unknown): number | null {
-  const parts = String(hhmm ?? "").split(":");
-  if (parts.length !== 2) return null;
-  const h = Number(parts[0]), m = Number(parts[1]);
-  if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
-  return Math.trunc(h) * 60 + Math.trunc(m);
-}
-
-/**
- * 此刻该用的利润回撤阈值(百分点)。没配分档就是那个固定值。
- *
- * 分档按浮盈倍数 `profitPeak / |basis|` 选:取所有 above ≤ 当前倍数 里最高的一档。
- * 用绝对值是为了让贷方组合(记为空头、basis 为负)也说得通——那时倍数的含义是
- * "赚到的 / 当初收的权利金"。
- */
-export function drawdownThreshold(
-  targets: Targets, profitPeak: number | null, basis: number | null, minute: number | null = null,
-): number | null {
-  let pct = finiteOrNull(targets.profit_drawdown_pct);
-  const tiers: Array<Record<string, any>> = targets.profit_drawdown_tiers ?? [];
-  const peak = finiteOrNull(profitPeak);
-  const base = finiteOrNull(basis);
-  if (tiers.length && peak !== null && base) {
-    const ratio = peak / Math.abs(base);
-    let bestAbove: number | null = null;
-    for (const tier of tiers) {
-      const above = finiteOrNull((tier ?? {})["above"]);
-      const tierPct = finiteOrNull((tier ?? {})["pct"]);
-      if (above === null || tierPct === null || ratio < above) continue;
-      if (bestAbove === null || above >= bestAbove) {
-        bestAbove = above;
-        pct = tierPct;
-      }
-    }
-  }
-  if (pct === null) return null;
-  const late: Record<string, any> = targets.profit_drawdown_late ?? {};
-  const after = late["after"] ? minutesOfClock(late["after"]) : null;
-  const factor = finiteOrNull(late["factor"]);
-  if (after !== null && factor !== null && minute !== null && minute >= after) pct *= factor;
-  return pyRound(pct, 6);
-}
-
 // ----------------------------------------------------------------------
 // 盈亏
 // ----------------------------------------------------------------------
@@ -1027,7 +989,12 @@ export function evaluate(
       if (profitPeak > 0) {
         profitDd = (1.0 - profitNow / profitPeak) * 100.0;
         threshold = drawdownThreshold(targets, profitPeak, basis, minute);
-        if (threshold !== null) hitProfitTrail = profitNow <= profitPeak * (1.0 - threshold / 100.0);
+        // 没过激活线就当还没开始追:不报档位、不给触发价,界面读作"未激活"而不是"当前 40%"
+        if (!drawdownArmed(targets, profitPeak, basis)) threshold = null;
+        if (threshold !== null) {
+          hitProfitTrail = profitNow <= profitPeak * (1.0 - threshold / 100.0)
+            && drawdownFloorMet(targets, newPeak, p);
+        }
       }
     }
   }
@@ -1037,7 +1004,8 @@ export function evaluate(
   out.profit_drawdown_threshold = threshold === null ? null : pyRound(threshold, 4);
   // 这一档对应的**价格**。百分比看不出紧迫感,"跌到 0.14 就平"才看得懂;
   // 分档时它会随档位跳变,所以每轮都要重算,不能在界面上按配置算一次了事。
-  out.profit_trail_stop = threshold === null ? null : profitTrailStopPrice(position, newPeak, threshold);
+  out.profit_trail_stop = threshold === null
+    ? null : profitTrailStopPrice(position, newPeak, threshold, targets.profit_drawdown_floor);
 
   if (hitStop) {
     out.state = STATE_STOP_LOSS;
@@ -1383,9 +1351,10 @@ function hostedStopPrice(position: Position, value: number | null | undefined): 
  * 利润对价格是线性的:profit(p) = qty·mult·(p − c),c 为每股成本。
  * 多头触发条件 profit ≤ peak_profit·(1−d) 等价于 p ≤ c + (峰值−c)·(1−d);
  * 空头对称。峰值利润必须为正(峰值越过成本)才挂——和 evaluate() 的
- * "从未盈利不触发"同一条规则,两条路径必须给出同一个触发价。 */
+ * "从未盈利不触发"同一条规则,两条路径必须给出同一个触发价。
+ * 有最少回吐(floor,每份价格点)时还得离峰值至少这么远,两个条件同时满足才触发,取更远的那个价。 */
 export function profitTrailStopPrice(
-  position: Position, peak: number | null, drawdownPct: number | null,
+  position: Position, peak: number | null, drawdownPct: number | null, floor: number | null = null,
 ): number | null {
   const p = finiteOrNull(peak);
   const dd = finiteOrNull(drawdownPct);
@@ -1393,12 +1362,15 @@ export function profitTrailStopPrice(
   const mult = position.multiplier || 1.0;
   const cost = position.avg_cost / mult; // 每股成本(avg_cost 含乘数)
   const keep = 1.0 - dd / 100.0;
+  const fl = finiteOrNull(floor);
   if (isLong(position)) {
     if (p <= cost) return null; // 从未盈利,没有可回撤的利润
-    return cost + (p - cost) * keep;
+    const stop = cost + (p - cost) * keep;
+    return fl === null ? stop : Math.min(stop, p - fl);
   }
   if (p >= cost) return null;
-  return cost - (cost - p) * keep;
+  const stop = cost - (cost - p) * keep;
+  return fl === null ? stop : Math.max(stop, p + fl);
 }
 
 /** 要挂在券商侧的订单清单(纯函数,顺序固定:tp、sl、trail、ptrail)。

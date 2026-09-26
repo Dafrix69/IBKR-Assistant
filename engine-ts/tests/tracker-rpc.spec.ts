@@ -119,6 +119,8 @@ describe("tracker.add:界面发来的数值是字符串,'' 是不设", () => {
     expect(track["targets"]).toEqual({
       take_profit: null, stop_loss: 95, trail_pct: null, profit_drawdown_pct: null,
       profit_drawdown_tiers: null, profit_drawdown_late: null, spot_target: null,
+      // 2026-09-26 起多了激活线与最少回吐两个键(只有 fly 预设会设),这里是新增的键,不是改了哪条行为
+      profit_drawdown_arm: null, profit_drawdown_floor: null,
     });
     expect(track["auto_close"]).toMatchObject({
       enabled: false, order_type: "MKT", slippage_pct: 0.3, close_fraction_pct: 100, host_at_broker: false,
@@ -133,6 +135,8 @@ describe("tracker.add:界面发来的数值是字符串,'' 是不设", () => {
     expect(out["result"]["track"]["targets"]).toEqual({
       take_profit: 140.5, stop_loss: 95, trail_pct: 8, profit_drawdown_pct: 40,
       profit_drawdown_tiers: null, profit_drawdown_late: null, spot_target: null,
+      // 2026-09-26 起多了激活线与最少回吐两个键(只有 fly 预设会设),这里是新增的键,不是改了哪条行为
+      profit_drawdown_arm: null, profit_drawdown_floor: null,
     });
   });
 
@@ -158,6 +162,9 @@ describe("tracker.add:界面发来的数值是字符串,'' 是不设", () => {
     const targets = (await call("tracker.add", ui({ profit_drawdown_preset: "fly" })))["result"]["track"]["targets"];
     expect(targets["profit_drawdown_tiers"]).toEqual([{ above: 0, pct: 40 }, { above: 1, pct: 30 }, { above: 3, pct: 20 }]);
     expect(targets["profit_drawdown_late"]).toEqual({ after: "15:00", factor: 0.5 });
+    // 回放的两道闸跟着一起进来:蝶价到过 1.3×D 才开始追(浮盈 0.3 倍),回吐不足 0.20 点不触发
+    expect(targets["profit_drawdown_arm"]).toBe(0.3);
+    expect(targets["profit_drawdown_floor"]).toBe(0.2);
     expect(targets["profit_drawdown_pct"]).toBeNull();
   });
 
@@ -171,6 +178,17 @@ describe("tracker.add:界面发来的数值是字符串,'' 是不设", () => {
     expect(out["result"]["track"]["targets"]).toMatchObject({
       profit_drawdown_tiers: [{ above: 0, pct: 35 }, { above: 2, pct: 25 }],
       profit_drawdown_late: { after: "15:30", factor: 0.6 },
+      profit_drawdown_arm: null, profit_drawdown_floor: null,
+    });
+  });
+
+  it("fly 预设改成自列档位:预设留下的激活线与最少回吐一起清掉,不残留", async () => {
+    const { call } = makeServer();
+    const id = (await call("tracker.add", ui({ profit_drawdown_preset: "fly" })))["result"]["track"]["id"];
+    const out = await call("tracker.update", { id, profit_drawdown_tiers: [{ above: 0, pct: 35 }] });
+    expect(out["error"]).toBeUndefined();
+    expect(out["result"]["track"]["targets"]).toMatchObject({
+      profit_drawdown_tiers: [{ above: 0, pct: 35 }], profit_drawdown_arm: null, profit_drawdown_floor: null,
     });
   });
 
@@ -272,6 +290,8 @@ describe("tracker.update", () => {
     expect(out["result"]["track"]["targets"]).toEqual({
       take_profit: 140, stop_loss: 96, trail_pct: null, profit_drawdown_pct: null,
       profit_drawdown_tiers: null, profit_drawdown_late: null, spot_target: null,
+      // 2026-09-26 起多了激活线与最少回吐两个键(只有 fly 预设会设),这里是新增的键,不是改了哪条行为
+      profit_drawdown_arm: null, profit_drawdown_floor: null,
     });
     // 现状:只给一个目标字段,其余四个按"没填"算,等于被清掉——不是"只改这一个"
     const only = await call("tracker.update", { id, stop_loss: "97" });

@@ -255,14 +255,12 @@ export class TrackerHandlers extends HandlerBase {
       quantity: raw["quantity"], avg_cost: raw["avg_cost"], multiplier: raw["multiplier"],
       currency: raw["currency"], market_price: raw["market_price"],
     });
-    const [tiers, late] = drawdownTiersOf(params);
     const targets = tkMod.makeTargets({
       take_profit: optFloat(params["take_profit"]),
       stop_loss: optFloat(params["stop_loss"]),
       trail_pct: optFloat(params["trail_pct"]),
       profit_drawdown_pct: optFloat(params["profit_drawdown_pct"]),
-      profit_drawdown_tiers: tiers,
-      profit_drawdown_late: late,
+      ...drawdownTiersOf(params),
       spot_target: flySpot,
     });
     const auto = tkMod.makeAutoClose({
@@ -324,14 +322,12 @@ export class TrackerHandlers extends HandlerBase {
     }
     if (["take_profit", "stop_loss", "trail_pct", "profit_drawdown_pct",
          "profit_drawdown_tiers", "profit_drawdown_preset", "spot_target"].some((k) => k in params)) {
-      const [tiers, late] = drawdownTiersOf(params);
       const targets = tkMod.makeTargets({
         take_profit: optFloat(params["take_profit"]),
         stop_loss: optFloat(params["stop_loss"]),
         trail_pct: optFloat(params["trail_pct"]),
         profit_drawdown_pct: optFloat(params["profit_drawdown_pct"]),
-        profit_drawdown_tiers: tiers,
-        profit_drawdown_late: late,
+        ...drawdownTiersOf(params),
         spot_target: optFloat(params["spot_target"]),
       });
       // 改目标和新建走**同一套**校验:以前这里什么都不查,改一下目标价就能绕过

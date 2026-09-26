@@ -32,6 +32,11 @@ export interface Targets {
   profit_drawdown_tiers: DrawdownTier[] | null;
   /** 尾盘收紧:{after: "15:00", factor: 0.5}。 */
   profit_drawdown_late: DrawdownLate | null;
+  /** 激活线:峰值浮盈 / |成本| 没到这个倍数之前,利润回撤不触发。蝶式 0.3(= 蝶价到过 1.3×D)。
+   * 只有 preset "fly" 会设;老记录没有这个键,读出来是 null,行为不变。 */
+  profit_drawdown_arm: number | null;
+  /** 最少回吐(每份的价格点):现价离峰值不到这么多不触发,免得被组合中间价的噪声扫出去。蝶式 0.20。 */
+  profit_drawdown_floor: number | null;
   /** **标的**的目标价。止盈价不由人填,而是每一轮按当前波动率算出「标的走到这里时
    * 这份持仓该值多少」——正股、单腿期权、蝶式/价差都走这一条,见 spotTarget()。 */
   spot_target: number | null;
@@ -137,7 +142,7 @@ export interface TargetsInput {
   stop_loss?: NumberField;
   trail_pct?: NumberField;
   profit_drawdown_pct?: NumberField;
-  /** "fly" = 直接用蝶式那套 40 / 30 / 20 + 15:00 收紧;给了它就不看下面两项 */
+  /** "fly" = 直接用蝶式那套 40 / 30 / 20 + 15:00 收紧 + 激活线 + 最少回吐;给了它就不看下面两项 */
   profit_drawdown_preset?: string;
   /** '' / 不给 = 不分档 */
   profit_drawdown_tiers?: DrawdownTierInput[] | "";
