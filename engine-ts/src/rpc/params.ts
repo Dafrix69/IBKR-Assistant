@@ -44,6 +44,20 @@ export type DrawdownSettings = Pick<
 >;
 
 /**
+ * 利润回撤的起算门槛:界面填百分比(峰值浮盈 / |成本| × 100),存成倍数,和蝶式的激活线同一个口径、同一道闸
+ * (trackerDrawdown.drawdownArmed)。刚开仓时浮盈只有几分钱,不设门槛的话 30% 的回撤就是一分钱的波动。
+ * 上限 1000%(十倍)只是挡手误;0 与负数等于没设,当场拒,别让人以为设上了。
+ */
+export function drawdownArmOf(params: Rec): number | null {
+  const pct = optFloat(params["profit_drawdown_arm_pct"]);
+  if (pct === null) return null;
+  if (!(pct > 0 && pct <= 1000)) {
+    throw new RpcError(-32602, `利润回撤的起算门槛要在 0(不含)到 1000% 之间,当前 ${pyG(pct)}`);
+  }
+  return pct / 100;
+}
+
+/**
  * 分档利润回撤:要么给 preset="fly"(直接用蝶式那套 40/30/20 + 激活线 + 最少回吐),要么自己列档位。
  *
  * 自列的档位只收 {above, pct} 两个数,pct 必须落在 (0, 100]——0 等于一有回撤就平,
@@ -57,7 +71,8 @@ export function drawdownTiersOf(params: Rec): DrawdownSettings {
       profit_drawdown_arm: fxDrawdownArm(null), profit_drawdown_floor: fxDrawdownFloor(null),
     };
   }
-  const none = { profit_drawdown_arm: null, profit_drawdown_floor: null };
+  // 自列档位 / 固定百分比:激活线用用户填的起算门槛(不填就是 null),最少回吐只有蝶式那套才有
+  const none = { profit_drawdown_arm: drawdownArmOf(params), profit_drawdown_floor: null };
   const raw = params["profit_drawdown_tiers"];
   if (raw === null || raw === undefined || raw === "") {
     return { profit_drawdown_tiers: null, profit_drawdown_late: null, ...none };

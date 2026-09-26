@@ -29,6 +29,7 @@ const targetsInput = {
     z.array(z.object({ above: z.union([z.number(), z.string(), z.null()]), pct: z.union([z.number(), z.string(), z.null()]) }).strict()),
   ])),
   profit_drawdown_late: optional(z.object({ after: z.string(), factor: numberField }).strict()),
+  profit_drawdown_arm_pct: numberField,
   spot_target: numberField,
 };
 

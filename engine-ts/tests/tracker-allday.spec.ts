@@ -46,8 +46,9 @@ const SPECS: Spec[] = [
     fires: (pk, p) => p <= pk * 0.97 },
   { symbol: "BBB", account: "模拟", qty: -50, avg: 80, start: 80, targets: { trail_pct: 2 },
     fires: (pk, p) => p >= pk * 1.02 },
-  { symbol: "CCC", account: "模拟", qty: 200, avg: 100, start: 100, targets: { profit_drawdown_pct: 30 },
-    fires: (pk, p) => (pk - 100) > 0 && (p - 100) <= (pk - 100) * 0.7 },
+  // 起算门槛 10%:峰值浮盈到过成本的 10% 才按回撤平(不设的话开仓两分钟内就被一分钱的波动平掉)
+  { symbol: "CCC", account: "模拟", qty: 200, avg: 100, start: 100, targets: { profit_drawdown_pct: 30, profit_drawdown_arm: 0.1 },
+    fires: (pk, p) => (pk - 100) / 100 >= 0.1 && (p - 100) <= (pk - 100) * 0.7 },
   { symbol: "DDD", account: "模拟", qty: 10, avg: 30, start: 30, targets: { stop_loss: 27, trail_pct: 5 },
     fires: (pk, p) => p <= Math.max(27, pk * 0.95) },
   // 实盘账户那台 TWS 有一段没连上(见 uncovered):那段时间它的持仓不在列表里

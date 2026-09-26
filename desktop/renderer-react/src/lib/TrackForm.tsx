@@ -29,6 +29,9 @@ export function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: strin
   const [sl, setSl] = useState<number | null>(null);
   const [trail, setTrail] = useState<number | null>(null);
   const [profitDd, setProfitDd] = useState<number | null>(null);
+  // 利润回撤的起算门槛:浮盈到过成本的这么多 % 才开始按回撤平。默认 10——不设的话刚开仓浮盈几分钱,
+  // 30% 的回撤就是一分钱的波动。清空 = 不设门槛
+  const [ddArm, setDdArm] = useState<number | null>(10);
   const [tiers, setTiers] = useState(false);
   const [spotTarget, setSpotTarget] = useState<number | null>(null);
   // 试算结果和它算的那个目标价绑在一起:改了目标价、防抖还没跑完的那几百毫秒里,
@@ -95,6 +98,7 @@ export function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: strin
       trail_pct: str(trail),
       profit_drawdown_pct: tiers ? '' : str(profitDd),
       profit_drawdown_preset: tiers ? 'fly' : undefined,
+      profit_drawdown_arm_pct: tiers || profitDd == null ? '' : str(ddArm),
       spot_target: str(spotTarget),
       close_fraction_pct: str(fraction) || undefined,
       chase_max_pct: str(chaseMax) || undefined,
@@ -274,6 +278,7 @@ export function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: strin
       {/* 两个"追踪"是不同刻度,标签必须自解释:价格回撤 5% 在利润口径上会被成本杠杆放大 */}
       {num({ label: '跟踪止损 %(按价格)', hint: '价格从峰值回落 N%,全平', value: trail, onChange: setTrail })}
       {num({ label: '利润回撤 %(按利润)', hint: '利润从峰值缩水 N%', value: profitDd, onChange: setProfitDd, disabled: tiers })}
+      {num({ label: '利润回撤起算门槛 %', hint: '浮盈到过成本的 N% 才开始算回撤;清空=一盈利就算', value: ddArm, onChange: setDdArm, disabled: tiers })}
       <label className="switch-row">
         <span className="group-label">
           分档利润回撤(蝶式 40/30/20)

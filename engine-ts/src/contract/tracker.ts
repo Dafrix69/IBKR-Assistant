@@ -147,6 +147,9 @@ export interface TargetsInput {
   /** '' / 不给 = 不分档 */
   profit_drawdown_tiers?: DrawdownTierInput[] | "";
   profit_drawdown_late?: { after: string; factor?: NumberField };
+  /** 利润回撤的起算门槛(%):峰值浮盈到过成本的这么多才开始按回撤平,存成 Targets.profit_drawdown_arm = 它 / 100。
+   *  '' / 不给 = 不设(浮盈一 > 0 就算,加门槛之前的行为)。preset "fly" 用蝶式自己那道激活线,不看它 */
+  profit_drawdown_arm_pct?: NumberField;
   /** 和 take_profit 只能选一个 */
   spot_target?: NumberField;
 }
