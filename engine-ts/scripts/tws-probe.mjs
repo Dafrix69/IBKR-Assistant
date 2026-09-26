@@ -6,6 +6,7 @@
 //   npm run probe -- --symbols NVO,AAPL --index SPX --client-id 71
 //   npm run probe -- --config D:/other/settings.json
 //   npm run probe -- --steps stockreview --seed-fills D:/backup/trades.db   # 股票复盘;拿一份库的备份把历史成交灌进临时库
+//   npm run probe -- --steps flyreview --seed-fills D:/backup/trades.db --review-id ib:<permId>   # 蝴蝶复盘 + 止盈策略回放
 //
 // 走的是引擎的 RPC(dist/src/cli.js rpc)——和桌面应用同一条路,不是另写一套连接代码。
 //
@@ -52,6 +53,7 @@ const timeoutMs = Number(opt("timeout", "90000"));
 // TWS 只给当天的成交,空的临时库里看不到历史:给一份库的**备份**,只把 broker_fills 这一张表灌进临时库
 // (追踪、托管单、条件单一条不带——临时库照旧没有东西可以让盯盘循环去动)
 const seedFills = opt("seed-fills", "");
+const reviewId = opt("review-id", "");
 
 // ---- 只读白名单 ------------------------------------------------------------
 // 新增一步之前先确认那个 RPC 不会发单、撤单、改配置、动追踪。写库只许写临时库。
@@ -92,6 +94,7 @@ const STEPS = {
   entitlements: { title: "行情权限(逐个品种:实时 / 延迟)", needs: ["positions"], run: () => checkEntitlements() },
   // 股票复盘:候选列表(期初仓位要靠当前持仓反推,所以排在 positions 之后)+ 逐笔分析
   stockreview: { title: "股票交易复盘", needs: ["positions"], script: () => stockReviewStep() },
+  flyreview: { title: "蝴蝶交易复盘(含止盈策略回放)", needs: ["connect"], script: () => flyReviewStep() },
   after: { title: "连接后的引擎状态", needs: [], calls: () => [["system.status", {}]] },
 };
 
@@ -384,8 +387,9 @@ async function checkEntitlements() {
 }
 
 // ---- 股票复盘 ----------------------------------------------------------------
-async function stockReviewStep() {
-  if (seedFills) {
+async function seedFillsOnce() {
+  if (seedFills && !seedFillsOnce.done) {
+    seedFillsOnce.done = true;
     const { createRequire } = await import("node:module");
     const Database = createRequire(import.meta.url)("better-sqlite3");
     const src = new Database(path.resolve(seedFills), { readonly: true, fileMustExist: true });
@@ -397,12 +401,28 @@ async function stockReviewStep() {
     dst.close();
     console.log(`  · 从 ${seedFills} 灌入 ${rows.length} 条历史成交`);
   }
+}
+
+async function stockReviewStep() {
+  await seedFillsOnce();
   const listed = await doCall("stockreview", "review.candidates", { limit: 200 });
   const stocks = (listed.result?.candidates ?? []).filter((c) => c.kind === "stock");
   for (const c of stocks) {
     console.log(`  · ${c.id} ${c.intent_summary} · ${c.status}${c.carried ? " · carried" : ""}${c.opening_assumed ? " · 期初未核对" : ""}`);
   }
   for (const c of stocks.slice(0, 8)) await doCall("stockreview", "review.analyze", { id: c.id, timeframe: "auto" });
+}
+
+// ---- 蝴蝶复盘 ----------------------------------------------------------------
+// 同一套候选 + 分析,只挑蝴蝶;--review-id 指定一笔(如 ib:1291496381),不给就取最近 3 笔。
+// 完整返回(含止盈策略回放 exit_plan.simulation 的逐分钟序列)在 report.json 里。
+async function flyReviewStep() {
+  await seedFillsOnce();
+  const listed = await doCall("flyreview", "review.candidates", { limit: 200 });
+  const flies = (listed.result?.candidates ?? []).filter((c) => c.kind !== "stock");
+  for (const c of flies.slice(0, 10)) console.log(`  · ${c.id} ${c.intent_summary} · ${c.status}`);
+  const ids = reviewId ? [reviewId] : flies.slice(0, 3).map((c) => c.id);
+  for (const id of ids) await doCall("flyreview", "review.analyze", { id, timeframe: "1m" });
 }
 
 async function doCall(name, method, params) {
