@@ -14,8 +14,14 @@ export async function toggleBrokerConnection(): Promise<void> {
     } else {
       const result = await dafri.connectBroker();
       const failed = Object.entries(result.failed || {});
-      if (result.connected.length) pushNotification('已连接', result.connected.join('、'));
-      if (failed.length) showBanner(`部分连接失败:${failed.map(([k, v]) => `${k}(${v})`).join(';')}`, false);
+      // 连上了至少一条:没连上的那几条(常见的是模拟盘 TWS 没开)引擎在后台每 30 秒自动重试,不弹红条,
+      // 只在通知里带一句。一条都没连上才是真出了问题,那时照旧弹红条说清原因
+      if (result.connected.length) {
+        const pending = failed.length ? `;${failed.map(([k]) => k).join('、')} 未连上,后台自动重试` : '';
+        pushNotification('已连接', `${result.connected.join('、')}${pending}`);
+      } else if (failed.length) {
+        showBanner(`连接失败:${failed.map(([k, v]) => `${k}(${v})`).join(';')}`, false);
+      }
     }
   } catch (err) {
     showBanner(`连接失败:${errorMessage(err)}`, false);
