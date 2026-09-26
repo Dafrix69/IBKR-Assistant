@@ -260,7 +260,7 @@ export class TrackerHandlers extends HandlerBase {
       stop_loss: optFloat(params["stop_loss"]),
       trail_pct: optFloat(params["trail_pct"]),
       profit_drawdown_pct: optFloat(params["profit_drawdown_pct"]),
-      ...drawdownTiersOf(params),
+      ...drawdownTiersOf(params, flyUnitCost(raw)),
       spot_target: flySpot,
     });
     const auto = tkMod.makeAutoClose({
@@ -322,19 +322,20 @@ export class TrackerHandlers extends HandlerBase {
     }
     if (["take_profit", "stop_loss", "trail_pct", "profit_drawdown_pct", "profit_drawdown_tiers",
          "profit_drawdown_preset", "profit_drawdown_arm_pct", "spot_target"].some((k) => k in params)) {
+      // 改目标和新建走**同一套**校验:以前这里什么都不查,改一下目标价就能绕过
+      // 「算出来的价比现价还差、挂上去立刻成交」那道拦——等于绕过了「同意价格后发单」。
+      // 持仓先取:蝶式预设按每组成本把金额线换算成倍数
+      const rows = Object.fromEntries(tkMod.withCombos(await this.livePositions()).map((r) => [r["key"], r]));
+      const raw = rows[tkMod.trackKey(track)];
+      if (raw === undefined) throw new RpcError(-32602, "找不到这个持仓(可能已经平掉了),改不了目标。");
       const targets = tkMod.makeTargets({
         take_profit: optFloat(params["take_profit"]),
         stop_loss: optFloat(params["stop_loss"]),
         trail_pct: optFloat(params["trail_pct"]),
         profit_drawdown_pct: optFloat(params["profit_drawdown_pct"]),
-        ...drawdownTiersOf(params),
+        ...drawdownTiersOf(params, flyUnitCost(raw)),
         spot_target: optFloat(params["spot_target"]),
       });
-      // 改目标和新建走**同一套**校验:以前这里什么都不查,改一下目标价就能绕过
-      // 「算出来的价比现价还差、挂上去立刻成交」那道拦——等于绕过了「同意价格后发单」。
-      const rows = Object.fromEntries(tkMod.withCombos(await this.livePositions()).map((r) => [r["key"], r]));
-      const raw = rows[tkMod.trackKey(track)];
-      if (raw === undefined) throw new RpcError(-32602, "找不到这个持仓(可能已经平掉了),改不了目标。");
       const auto = tkMod.makeAutoClose((fields["auto_close"] ?? track["auto_close"] ?? {}) as Rec);
       await this.checkTargets(raw, rows, this.positionOf(raw), targets, auto);
       fields["targets"] = targets;
@@ -465,4 +466,11 @@ export class TrackerHandlers extends HandlerBase {
       throw exc;
     }
   }
+}
+
+/** 蝶式预设按金额起算要的"每组开仓成本"(美元,含乘数):只认组合行,正股 / 单腿回 null(那些仍按比例)。 */
+function flyUnitCost(raw: Rec): number | null {
+  if (String(raw["sec_type"] ?? "") !== "BAG") return null;
+  const cost = Math.abs(Number(raw["avg_cost"] ?? 0));
+  return Number.isFinite(cost) && cost > 0 ? cost : null;
 }

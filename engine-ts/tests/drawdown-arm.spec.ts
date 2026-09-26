@@ -11,6 +11,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 
+import * as fx from "../src/flyexit.js";
 import { RpcServer } from "../src/rpc.js";
 import * as tk from "../src/tracker.js";
 
@@ -149,5 +150,82 @@ describe("托管到券商:没过门槛不挂利润回撤停损单", () => {
 
   it("不设门槛:和以前一样,一盈利就挂", () => {
     expect(kinds(105, null)).toContain(tk.HOSTED_KIND_PTRAIL);
+  });
+});
+
+// ---------------------------------------------------------------- 蝶式按金额起算
+/** 一组 7600/7615/7630 看跌蝶的三条腿;腿成本含乘数,净成本 300 − 2×200 + 325 = $225 / 组 */
+function flyLegs(units = 1): Rec[] {
+  const legs: Array<[number, number, number]> = [[7600, 1, 300], [7615, -2, 200], [7630, 1, 325]];
+  return legs.map(([strike, q, cost]) => {
+    const contract = { secType: "OPT", symbol: "SPX", lastTradeDateOrContractMonth: "20260901", strike, right: "P", multiplier: "100" };
+    const ident = tk.legOf(contract);
+    return {
+      key: tk.makeKey("模拟", "SPX", "OPT", ident), account: "模拟", symbol: "SPX", sec_type: "OPT", leg: ident,
+      label: tk.positionLabel("SPX", "OPT", contract), quantity: q * units, avg_cost: cost, multiplier: 100,
+      currency: "USD", market_price: null, market_value: null, unrealized_pnl: null, contract,
+    };
+  });
+}
+
+describe("蝶式预设按金额起算:每组浮盈 $100 起追、$200 收紧", () => {
+  it("换算:$225 的蝶 → 激活线 100/225,$200 那条线 200/225 让 30%,3 倍成本让 20%", () => {
+    const p = fx.drawdownUsdPreset(225)!;
+    expect(p.arm).toBeCloseTo(100 / 225, 6);
+    expect(p.tiers).toEqual([{ above: 0, pct: 40 }, { above: 0.888889, pct: 30 }, { above: 3, pct: 20 }]);
+  });
+
+  it("便宜的蝶($50):3 倍成本不到 $200,那一档不要(否则先紧后松)", () => {
+    const p = fx.drawdownUsdPreset(50)!;
+    expect(p.arm).toBe(2);
+    expect(p.tiers).toEqual([{ above: 0, pct: 40 }, { above: 4, pct: 30 }]);
+  });
+
+  it("成本算不出来:回 null,调用方退回按比例的预设", () => {
+    expect(fx.drawdownUsdPreset(null)).toBeNull();
+    expect(fx.drawdownUsdPreset(0)).toBeNull();
+  });
+
+  it("RPC:在组合持仓上勾蝶式预设 → 存的是按这只蝶成本换算的线;正股上勾仍是按比例(见 tracker-rpc.spec)", async () => {
+    const { s, call } = makeServer();
+    const legs = flyLegs();
+    (s.router as unknown as FakeRouter).rows = legs;
+    const fly = tk.withCombos(legs).find((r) => r["sec_type"] === "BAG")!;
+    const out = await call("tracker.add", ui({ key: fly["key"], profit_drawdown_preset: "fly" }));
+    expect(out["error"]).toBeUndefined();
+    const t = out["result"]["track"]["targets"];
+    expect(t["profit_drawdown_arm"]).toBeCloseTo(100 / 225, 6);
+    expect(t["profit_drawdown_tiers"]).toEqual(fx.drawdownUsdPreset(225)!.tiers);
+    expect(t["profit_drawdown_late"]).toEqual(fx.drawdownLate(null));
+    expect(t["profit_drawdown_floor"]).toBe(fx.drawdownFloor(null));
+  });
+
+  const flyPos = (units: number) => tk.makePosition({
+    account: "模拟", symbol: "SPX", sec_type: "BAG", quantity: units, avg_cost: 225, multiplier: 100,
+  });
+  const preset = tk.makeTargets({
+    profit_drawdown_tiers: fx.drawdownUsdPreset(225)!.tiers, profit_drawdown_late: fx.drawdownLate(null),
+    profit_drawdown_arm: fx.drawdownUsdPreset(225)!.arm, profit_drawdown_floor: fx.drawdownFloor(null),
+  });
+
+  it("峰值只赚 $95(没到 $100):回吐到 $60 也不平", () => {
+    expect(tk.evaluate(flyPos(1), preset, 2.85, 3.20).state).toBe(tk.STATE_HOLDING);
+  });
+
+  it("峰值赚过 $105:让 40%,赚 $70 时拿着、赚 $60 时平", () => {
+    expect(tk.evaluate(flyPos(1), preset, 2.95, 3.30).state).toBe(tk.STATE_HOLDING);
+    expect(tk.evaluate(flyPos(1), preset, 2.85, 3.30).state).toBe(tk.STATE_PROFIT_TRAIL);
+  });
+
+  it("峰值赚过 $205:收紧到 30%,赚 $145 时拿着、赚 $140 时平", () => {
+    expect(tk.evaluate(flyPos(1), preset, 3.70, 4.30).state).toBe(tk.STATE_HOLDING);
+    const r = tk.evaluate(flyPos(1), preset, 3.65, 4.30);
+    expect(r.state).toBe(tk.STATE_PROFIT_TRAIL);
+    expect(r.profit_drawdown_threshold).toBe(30);
+  });
+
+  it("$100 是按每组算:两组的仓,合计赚 $190(每组 $95)不起算,合计 $210 起算", () => {
+    expect(tk.evaluate(flyPos(2), preset, 2.85, 3.20).state).toBe(tk.STATE_HOLDING);
+    expect(tk.evaluate(flyPos(2), preset, 2.85, 3.30).state).toBe(tk.STATE_PROFIT_TRAIL);
   });
 });

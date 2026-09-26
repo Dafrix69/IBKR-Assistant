@@ -74,7 +74,7 @@ function Gauge({ live, targets }: { live: LiveRow; targets: TrackTargets }) {
         ? `利润回撤已设,但这笔从建仓起还没盈利过(峰值利润 ${fmtMoney(peak)})——先转正才会开始算回撤,在那之前只有止损能保护它。`
         : peak != null && arm != null
           // 起算门槛(蝶式预设的激活线,或自己填的):浮盈只有几毛时,晃一下就是 40% 的回撤,先不追
-          ? `利润回撤未激活:峰值利润 ${fmtMoney(peak)},浮盈到过成本的 ${fmtNum(arm * 100)}% 才开始追回撤;在那之前只有止损能保护它。`
+          ? `利润回撤未激活:峰值利润 ${fmtMoney(peak)},浮盈到过 ${live.cost_basis != null ? `${fmtMoney(arm * Math.abs(live.cost_basis))}(成本的 ${fmtNum(arm * 100)}%)` : `成本的 ${fmtNum(arm * 100)}%`} 才开始追回撤;在那之前只有止损能保护它。`
           : '利润回撤已设,等第一次盈利后开始记峰值。',
     );
   }
