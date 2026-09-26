@@ -9,8 +9,11 @@
  */
 import type {
   EquityPoint, LedgerTrade, PerfDays, PerfDrawdown, PerfGroup, PerfRStats, PerfStats, PerformanceFinding,
-  PerformanceKind, PerformanceScope, ReviewPerformanceResult,
+  PerformanceKind, PerformanceScope, ProtectionAdvice, ReviewPerformanceResult,
 } from "./contract/performance.js";
+import type { ProtectionsConfig } from "./contract/settings.js";
+import { executionCost } from "./execQuality.js";
+import type { CloseTrace } from "./execQuality.js";
 import type { ImportedOptionTrade, OptionPosition } from "./importedTrades.js";
 import { pyRound } from "./py.js";
 import { etIso } from "./tradeOutcomes.js";
@@ -24,9 +27,23 @@ export type LedgerStockTrip = StockTrip & { qty?: unknown; commission?: unknown 
 /** 蝴蝶记录里这里多读的:券商回报里的合计佣金。 */
 type FlyRecord = ButterflyRecord & { ibkr?: { avg_fill_price?: unknown; total_commission?: unknown } | null };
 
+/** 建追踪时计划的止损(store.plannedStops):股票没有「风险」这个成交字段,R 的分母只能从这里来。 */
+export interface PlannedStop {
+  /** 建追踪的时刻(ISO) */
+  at: string;
+  /** 账户别名;老的痕里没有,是 null(只按标的配) */
+  account: string | null;
+  symbol: string;
+  /** 老的痕里没有,是 null;有的话只认 STK */
+  sec_type: string | null;
+  stop: number;
+}
+
 export interface LedgerInputs {
   butterflies: FlyRecord[];
   trips: LedgerStockTrip[];
+  /** 没有就是空:股票一笔也没有 R,和以前一样 */
+  stops?: readonly PlannedStop[];
   positions: readonly OptionPosition[];
   /** 已经按「库里有完整成交 / Flex 仓位覆盖」去过重的导入期权事件 */
   options: readonly ImportedOptionTrade[];
@@ -141,8 +158,29 @@ export function butterflyLedger(records: FlyRecord[], settleClose: SettleClose, 
   return out;
 }
 
+/** 这段持仓建仓时计划的止损:同标的(有账户的痕还要同账户)、在持仓期间建的追踪里**最早**那条。
+ * 止损要在保护一侧(做多低于进场均价、做空高于),否则不是止损,不算。
+ * 要的是初始风险(Van Tharp 的 R):之后改过、上移过的止损不算,所以只看建追踪那一刻填的。 */
+export function plannedStopFor(trip: LedgerStockTrip, stops: readonly PlannedStop[]): number | null {
+  const from = parseWhen(trip.created_at);
+  const to = parseWhen(trip.closed_at);
+  const entry = num(trip.avg_entry);
+  if (from === null || to === null || entry === null) return null;
+  const symbol = String(trip.symbol ?? "").toUpperCase();
+  const alias = String(trip.account?.alias ?? "");
+  const short = trip.side === "SHORT";
+  for (const s of stops) {
+    if (s.symbol !== symbol || (s.sec_type !== null && s.sec_type !== "STK")) continue;
+    if (s.account !== null && alias && s.account !== alias) continue;
+    const at = Date.parse(s.at);
+    if (Number.isNaN(at) || at < from || at > to) continue;
+    if (short ? s.stop > entry : s.stop < entry) return s.stop;
+  }
+  return null;
+}
+
 /** 股票:平完的一段持仓一笔。建仓早于已同步成交的(成本不明)不进账。 */
-export function stockLedger(trips: LedgerStockTrip[], excluded: Ledger["excluded"]): LedgerTrade[] {
+export function stockLedger(trips: LedgerStockTrip[], excluded: Ledger["excluded"], stops: readonly PlannedStop[] = []): LedgerTrade[] {
   const out: LedgerTrade[] = [];
   for (const trip of trips) {
     if (trip.status !== "closed") {
@@ -163,6 +201,10 @@ export function stockLedger(trips: LedgerStockTrip[], excluded: Ledger["excluded
       excluded.unknown += 1;
       continue;
     }
+    // R 的分母 = |进场均价 − 计划止损| × 峰值股数。加过仓的按峰值算,偏保守(分母偏大、R 偏小)
+    const stop = plannedStopFor(trip, stops);
+    const risk = stop !== null && entry !== null && qty !== null && qty > 0 ? Math.abs(entry - stop) * qty : null;
+    const pnl = pyRound(realized - (comm ?? 0), 2);
     out.push({
       id: String(trip.id ?? ""),
       kind: "stock",
@@ -170,10 +212,10 @@ export function stockLedger(trips: LedgerStockTrip[], excluded: Ledger["excluded
       label: `${trip.symbol} ${trip.side === "SHORT" ? "做空" : "做多"}`,
       opened_at: openedAt,
       closed_at: closedAt,
-      pnl: pyRound(realized - (comm ?? 0), 2),
+      pnl,
       net_of_commission: comm !== null,
-      risk: null,
-      r: null,
+      risk: risk === null ? null : pyRound(risk, 2),
+      r: rOf(pnl, risk),
       exposure: entry !== null && qty !== null ? pyRound(entry * qty, 2) : null,
       hold_minutes: minutesBetween(openedAt, closedAt),
       paper: Boolean(trip.account?.is_paper),
@@ -246,7 +288,7 @@ export function buildLedger(inp: LedgerInputs): Ledger {
   const excluded = { open: 0, unknown: 0, no_cost: 0 };
   const trades = [
     ...butterflyLedger(inp.butterflies, inp.settleClose, inp.now, excluded),
-    ...stockLedger(inp.trips, excluded),
+    ...stockLedger(inp.trips, excluded, inp.stops ?? []),
     ...positionLedger(inp.positions, inp.isPaper, excluded),
     ...optionLedger(inp.options, inp.isPaper),
   ];
@@ -459,8 +501,14 @@ export function filterLedger(trades: readonly LedgerTrade[], opts: PerformanceOp
     && (since === null || Date.parse(t.closed_at) >= since));
 }
 
+/** 体检之外、账本里没有的两样:平仓痕(执行损耗)与眼下的保护规则设置(给建议时比一比)。都不给就是空的。 */
+export interface PerformanceExtras {
+  traces?: readonly CloseTrace[];
+  protections?: ProtectionsConfig | null;
+}
+
 /** 整份体检。`ledger.trades` 要按了结时刻从早到晚(buildLedger 给的就是)。 */
-export function performanceReport(ledger: Ledger, opts: PerformanceOptions): ReviewPerformanceResult {
+export function performanceReport(ledger: Ledger, opts: PerformanceOptions, extras: PerformanceExtras = {}): ReviewPerformanceResult {
   const trades = filterLedger(ledger.trades, opts);
   const stats = perfStats(trades);
   const { points, drawdown } = equityCurve(trades);
@@ -506,11 +554,14 @@ export function performanceReport(ledger: Ledger, opts: PerformanceOptions): Rev
     equity: points,
     groups: { kind, session, weekday, symbol },
     findings: [],
+    execution: executionCost(extras.traces ?? [], opts),
+    protection_advice: [],
     trades: [...trades].reverse().slice(0, MAX_LEDGER_ROWS),
     excluded: { ...ledger.excluded },
     notes: ledgerNotes(trades),
   };
   report.findings = findingsOf(trades, report, counts, pnl);
+  report.protection_advice = protectionAdvice(trades, report, extras.protections ?? null);
   return report;
 }
 
@@ -746,6 +797,93 @@ function behaviourFindings(trades: readonly LedgerTrade[], report: ReviewPerform
       out.push({ id: "session", tone: "info", title: `时段差异:${best.g.label}赚、${worst.g.label}亏`,
         text: `${best.g.label} ${best.g.trades} 笔平均每笔 ${money(best.e)};${worst.g.label} ${worst.g.trades} 笔平均每笔 ${money(worst.e)}。优势只在某些时段时,其余时段少做或不做。`,
         source: "Andrea Unger(四届 World Cup 期货冠军)· 用时间过滤器只做有优势的时段" });
+    }
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------- 保护规则建议
+
+/** 取整到 10 美元,向上:线宁可松一点点,也不要比数据说的更紧。 */
+function ceil10(v: number): number {
+  return Math.ceil(v / 10) * 10;
+}
+
+/** 平掉一笔亏损之后 REVENGE_MINUTES 分钟内,**同一只标的**又开的仓 vs 其余。同标的冷却只管这一种。 */
+export function sameSymbolReentry(trades: readonly LedgerTrade[]): { quick: LedgerTrade[]; rest: LedgerTrade[] } {
+  const lossesBySymbol = new Map<string, number[]>();
+  for (const t of trades) {
+    if (outcome(t) !== "loss") continue;
+    lossesBySymbol.set(t.symbol, [...(lossesBySymbol.get(t.symbol) ?? []), Date.parse(t.closed_at)]);
+  }
+  const quick: LedgerTrade[] = [];
+  const rest: LedgerTrade[] = [];
+  for (const t of trades) {
+    if (t.opened_at === null) continue;
+    const open = Date.parse(t.opened_at);
+    const after = (lossesBySymbol.get(t.symbol) ?? []).some((c) => open >= c && open - c <= REVENGE_MINUTES * 60_000);
+    (after ? quick : rest).push(t);
+  }
+  return { quick, rest };
+}
+
+/**
+ * 按这本账给保护规则填什么(docs/features/protections.md「按体检建议填」)。**只建议**:不改设置,界面点「按建议填入」才发 settings.patch。
+ * 每条都要数据撑得住才给,且只在那条规则关着、或开着但比建议松的时候给——已经比建议严的不劝人放松。
+ * 回撤护栏不给:它和日亏上限切的是同一类坏日子,两条一起按数据填会互相打架,人自己挑一条更清楚。
+ */
+export function protectionAdvice(
+  trades: readonly LedgerTrade[], report: ReviewPerformanceResult, current: ProtectionsConfig | null,
+): ProtectionAdvice[] {
+  const out: ProtectionAdvice[] = [];
+  const avgLosingDay = report.per_day.avg_losing_day;
+  const worstDay = report.per_day.worst_day;
+  const pnlByDay = perDay(trades).pnl;
+  const losingDays = [...pnlByDay.values()].filter((v) => v < 0);
+  if (avgLosingDay !== null && worstDay !== null && losingDays.length >= 5) {
+    const line = ceil10(Math.abs(avgLosingDay) * 2);
+    const crossed = losingDays.filter((v) => v <= -line).length;
+    const cur = current?.daily_loss;
+    const looser = !cur || !cur.enabled || cur.max_loss_usd > line;
+    if (crossed > 0 && looser) {
+      out.push({
+        rule: "daily_loss",
+        suggested: { enabled: true, max_loss_usd: line },
+        reason: `${losingDays.length} 个亏钱日平均 ${money(avgLosingDay)},最差一天 ${money(worstDay.pnl)}。线设在亏钱日平均的 2 倍(${money(-line)}),`
+          + `历史上有 ${crossed} 天越过它——那几天到线就停,剩下的亏损就不会发生。`,
+        source: "职业交易员与自营公司的日亏上限 · 坏日子不许变成灾难日",
+      });
+    }
+  }
+  const streak = report.stats.max_consecutive_losses;
+  const { quick, rest } = revengeSplit(trades);
+  const q = quick.length >= 5 && rest.length >= 5 ? perfStats(quick).expectancy : null;
+  const r = quick.length >= 5 && rest.length >= 5 ? perfStats(rest).expectancy : null;
+  const revenge = q !== null && r !== null && q < 0 && q < r;
+  if ((streak >= 4 || revenge) && !current?.stoploss_guard.enabled) {
+    const why = [
+      streak >= 4 ? `最长连亏 ${streak} 笔` : "",
+      revenge ? `亏完 ${REVENGE_MINUTES} 分钟内再开的 ${quick.length} 笔平均每笔 ${money(q ?? 0)}(其余 ${money(r ?? 0)})` : "",
+    ].filter(Boolean).join(";");
+    out.push({
+      rule: "stoploss_guard",
+      suggested: { enabled: true, lookback_minutes: 120, trigger_count: 3, pause_minutes: 60 },
+      reason: `${why}。两小时内止损 3 次就歇一小时,先把"马上赚回来"那一段挡掉。它只数持仓追踪发出的止损类平仓,手动平的不算。`,
+      source: "Mark Douglas / Brett Steenbarger · 报复性交易;freqtrade Protections",
+    });
+  }
+  const same = sameSymbolReentry(trades);
+  if (same.quick.length >= 5 && same.rest.length >= 5) {
+    const sq = perfStats(same.quick).expectancy;
+    const sr = perfStats(same.rest).expectancy;
+    const cur = current?.cooldown;
+    if (sq !== null && sr !== null && sq < 0 && sq < sr && (!cur || !cur.enabled || cur.minutes < REVENGE_MINUTES)) {
+      out.push({
+        rule: "cooldown",
+        suggested: { enabled: true, minutes: REVENGE_MINUTES },
+        reason: `同一只标的亏完 ${REVENGE_MINUTES} 分钟内又开的 ${same.quick.length} 笔,平均每笔 ${money(sq)};其余 ${money(sr)}。刚亏过的标的冷却半小时再说。`,
+        source: "Mark Douglas · 报复性交易;freqtrade Protections 的 CooldownPeriod",
+      });
     }
   }
   return out;

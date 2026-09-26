@@ -10,6 +10,7 @@ import { fmtF, pyG } from "./py.js";
 import { weekdayOfDate } from "./tz.js";
 export type { RecentOrder } from "./models.js";
 import type { RecentOrder } from "./models.js";
+import { riskBudgetWarning } from "./riskBudget.js";
 
 export const VALIDATOR_CODES = new Set([
   "LOW_CONFIDENCE", "UNKNOWN_ACCOUNT", "LIVE_TRADING_DISABLED", "EXCEEDS_LIMIT",
@@ -200,6 +201,10 @@ export class Validator {
     }
 
     if (issues.length || account === null) return [issues, null];
+
+    // 10. 单笔风险预算:占账户权益的比例,只告警
+    const budget = riskBudgetWarning(this.settings.risk_budget, account.alias, order.contract.secType, notional);
+    if (budget !== null) warnings.push(budget);
 
     const merged = [...order.warnings, ...warnings];
     return [[], { order, account, notional, signature, warnings: merged }];

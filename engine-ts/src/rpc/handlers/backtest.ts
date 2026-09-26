@@ -3,7 +3,8 @@
 import type { Bar } from "../../backtest.js";
 import { BrokerError } from "../../broker.js";
 import type {
-  BacktestParseRulesParams, BacktestReport, BacktestRunParams, BacktestRunResult, CustomRules, RpcResult,
+  BacktestInstrument, BacktestParseRulesParams, BacktestReport, BacktestRunParams, BacktestRunResult, BacktestSweepParams,
+  BacktestSweepResult, CustomRules, RpcResult, SweepObjective,
 } from "../../contract/index.js";
 import { BacktestInstrumentSchema, CustomRulesSchema } from "../../models.js";
 import { loadSchemaAsset } from "../../providers.js";
@@ -18,6 +19,7 @@ export class BacktestHandlers extends HandlerBase {
     return contractMethods({
       "backtest.strategies": () => this.backtestStrategies(),
       "backtest.run": (p) => this.backtestRun(p),
+      "backtest.sweep": (p) => this.backtestSweep(p),
       "backtest.parse_rules": (p) => this.backtestParseRules(p),
     });
   }
@@ -40,16 +42,7 @@ export class BacktestHandlers extends HandlerBase {
     if (!SYMBOL_RE.test(symbol)) {
       throw new RpcError(-32602, `股票代码不合法:'${params["symbol"]}'`);
     }
-    const start = String(params["start"] ?? "");
-    const end = String(params["end"] ?? "");
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end) ||
-        Number.isNaN(Date.parse(start)) || Number.isNaN(Date.parse(end))) {
-      throw new RpcError(-32602, "日期必须是 YYYY-MM-DD");
-    }
-    if (start >= end) throw new RpcError(-32602, "开始日期必须早于结束日期");
-    if ((Date.parse(end) - Date.parse(start)) / 86_400_000 > 3660) {
-      throw new RpcError(-32602, "回测区间最长 10 年");
-    }
+    const [start, end] = BacktestHandlers.dateRange(params);
 
     const strategy = String(params["strategy"] ?? "");
     let rules: CustomRules | null = null;
@@ -83,10 +76,11 @@ export class BacktestHandlers extends HandlerBase {
       throw exc;
     }
 
+    const costPct = BacktestHandlers.numberIn(params["cost_pct"], 0, 0, 10, "每边成交成本");
     let report: BacktestReport;
     try {
       // 券商适配层给的日线就是 Bar 的形状(date / open / high / low / close,另带 volume);它们的返回类型还是松的
-      report = runBacktest(rawBars as unknown as Bar[], strategy, params["params"] ?? {}, rules, instParsed.data);
+      report = runBacktest(rawBars as unknown as Bar[], strategy, params["params"] ?? {}, rules, instParsed.data, costPct);
     } catch (exc) {
       if (exc instanceof BacktestError) throw new RpcError(-32602, exc.message);
       throw exc;
@@ -96,6 +90,83 @@ export class BacktestHandlers extends HandlerBase {
     this.engine.store.audit("ui", "backtest_run", {
       symbol, strategy: result["strategy"], start: result["start"], end: result["end"],
     });
+    return result;
+  }
+
+  /** 数字或数字串;不给 / 空串 = 默认值;超出范围报人话。 */
+  static numberIn(raw: unknown, dflt: number, min: number, max: number, label: string): number {
+    if (raw === undefined || raw === null || raw === "") return dflt;
+    const v = typeof raw === "number" ? raw : typeof raw === "string" ? Number(raw.trim()) : Number.NaN;
+    if (!Number.isFinite(v) || v < min || v > max) {
+      throw new RpcError(-32602, `${label}要在 ${min}~${max} 之间,收到:${String(raw)}`);
+    }
+    return v;
+  }
+
+  private static dateRange(params: { start?: unknown; end?: unknown }): [string, string] {
+    const start = String(params.start ?? "");
+    const end = String(params.end ?? "");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end) ||
+        Number.isNaN(Date.parse(start)) || Number.isNaN(Date.parse(end))) {
+      throw new RpcError(-32602, "日期必须是 YYYY-MM-DD");
+    }
+    if (start >= end) throw new RpcError(-32602, "开始日期必须早于结束日期");
+    if ((Date.parse(end) - Date.parse(start)) / 86_400_000 > 3660) {
+      throw new RpcError(-32602, "回测区间最长 10 年");
+    }
+    return [start, end];
+  }
+
+  /** 参数网格 × 样本内 / 样本外 × 滚动前推(backtestLab.ts)。日线逐只取,和 backtest.run 同一条缓存。 */
+  async backtestSweep(params: BacktestSweepParams): Promise<BacktestSweepResult> {
+    const { BacktestError } = await import("../../backtest.js");
+    const { MAX_SYMBOLS, runSweep } = await import("../../backtestLab.js");
+    const symbols = [...new Set((params.symbols as string[]).map((x) => String(x).trim().toUpperCase()).filter(Boolean))];
+    if (!symbols.length) throw new RpcError(-32602, "至少给一只标的");
+    if (symbols.length > MAX_SYMBOLS) throw new RpcError(-32602, `一次最多扫 ${MAX_SYMBOLS} 只`);
+    const bad = symbols.filter((x) => !SYMBOL_RE.test(x));
+    if (bad.length) throw new RpcError(-32602, `股票代码不合法:${bad.join("、")}`);
+    const [start, end] = BacktestHandlers.dateRange(params);
+    const strategy = String(params.strategy ?? "");
+    const grid: Record<string, number[]> = {};
+    for (const [key, values] of Object.entries((params.grid ?? {}) as Record<string, Array<number | string>>)) {
+      grid[key] = values.map((v) => BacktestHandlers.numberIn(v, Number.NaN, 0.0001, 250, `参数 ${key} 的取值`));
+    }
+    const objective = String(params.objective ?? "return");
+    if (objective !== "return" && objective !== "calmar") {
+      throw new RpcError(-32602, `挑参数的标准只认 return / calmar,收到:${objective}`);
+    }
+    const instParsed = BacktestInstrumentSchema.safeParse(params.instrument ?? {});
+    if (!instParsed.success) {
+      throw new RpcError(-32602, `交易品种配置不合法:${instParsed.error.message.replace(/\n/g, " ").slice(0, 300)}`);
+    }
+    const costPct = BacktestHandlers.numberIn(params.cost_pct, 0, 0, 10, "每边成交成本");
+    const splitPct = BacktestHandlers.numberIn(params.split_pct, 70, 50, 90, "样本内占比");
+    const folds = Math.trunc(BacktestHandlers.numberIn(params.folds, 0, 0, 6, "滚动前推的折数"));
+
+    if (this.router === null || !this.router.sessions().length) {
+      throw this.needConnection(-32012, "回测的历史行情");
+    }
+    const series: Array<{ symbol: string; bars: Bar[] }> = [];
+    for (const symbol of symbols) {
+      try {
+        series.push({ symbol, bars: (await this.router.historicalBars(symbol, start, end)) as unknown as Bar[] });
+      } catch (exc) {
+        if (exc instanceof BrokerError) throw new RpcError(-32012, `${symbol}:${exc.message}`);
+        throw exc;
+      }
+    }
+    let result: BacktestSweepResult;
+    try {
+      result = runSweep({
+        series, strategy, grid, instrument: instParsed.data as BacktestInstrument, costPct, splitPct, folds,
+        objective: objective as SweepObjective,
+      });
+    } catch (exc) {
+      if (exc instanceof BacktestError) throw new RpcError(-32602, exc.message);
+      throw exc;
+    }
+    this.engine.store.audit("ui", "backtest_sweep", { symbols, strategy, start, end, combos: result.combos });
     return result;
   }
 

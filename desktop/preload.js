@@ -136,6 +136,7 @@ contextBridge.exposeInMainWorld('dafri', {
   // ---- 策略回测(纯计算,不下单)----------------------------------------
   backtestStrategies: () => ipcRenderer.invoke('rpc', { method: 'backtest.strategies', params: {} }),
   runBacktest: (spec) => ipcRenderer.invoke('rpc', { method: 'backtest.run', params: spec }),
+  sweepBacktest: (spec) => ipcRenderer.invoke('rpc', { method: 'backtest.sweep', params: spec }),
   parseBacktestRules: (text) =>
     ipcRenderer.invoke('rpc', { method: 'backtest.parse_rules', params: { text } }),
   orderBook: (symbol) => ipcRenderer.invoke('rpc', { method: 'book.snapshot', params: { symbol } }),
@@ -159,6 +160,7 @@ contextBridge.exposeInMainWorld('dafri', {
   reviewCandidates: (limit, includeLocal) => ipcRenderer.invoke('rpc', { method: 'review.candidates', params: { limit, include_local: Boolean(includeLocal) } }),
   reviewAnalyze: (spec) => ipcRenderer.invoke('rpc', { method: 'review.analyze', params: spec }),
   reviewPerformance: (spec) => ipcRenderer.invoke('rpc', { method: 'review.performance', params: { ...spec } }),
+  reviewSignals: (spec) => ipcRenderer.invoke('rpc', { method: 'review.signals', params: { ...spec } }),
   macroBoard: (force) => ipcRenderer.invoke('rpc', { method: 'macro.board', params: { force } }),
 
   // ---- 持仓追踪(tracker.add / update / close_now 会真的发单)--------------

@@ -3,6 +3,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import Database from "better-sqlite3";
 import { afterEach, describe, expect, it } from "vitest";
 
 import type { LedgerTrade } from "../src/contract/performance.js";
@@ -113,9 +114,26 @@ describe("账本:四类交易摊成美元", () => {
     expect(expired).toMatchObject({ pnl: 1445, risk: 355, r: 4.07, closed_at: "2026-09-10T20:00:00+00:00" });
   });
 
-  it("股票:平完的一段一笔,占用 = 均价 × 股数;没有 R", () => {
+  it("股票:平完的一段一笔,占用 = 均价 × 股数;没有计划止损就没有 R", () => {
     const stocks = ledger.trades.filter((x) => x.kind === "stock").map((x) => [x.symbol, x.pnl, x.exposure, x.r]);
     expect(stocks).toEqual([["RKLB", 500, 5000, null], ["SPCX", -100, 1000, null]]);
+  });
+
+  it("股票:持仓期间建的追踪里最早那条止损当初始风险;改过的、保护反侧的、别的账户的不算", () => {
+    const withStops = buildLedger({
+      butterflies: [], positions: [], options: [], settleClose: SETTLE, isPaper: () => false, now: NOW,
+      trips: groupStockTrips(STOCK_FILLS, ACCOUNTS, null),
+      stops: [
+        { at: "2026-08-30T14:00:00Z", account: "主账户", symbol: "RKLB", sec_type: "STK", stop: 30 }, // 建仓之前,不算
+        { at: "2026-09-01T15:00:00Z", account: "别的账户", symbol: "RKLB", sec_type: "STK", stop: 49 }, // 别的账户
+        { at: "2026-09-01T16:00:00Z", account: "主账户", symbol: "RKLB", sec_type: "STK", stop: 48 }, // ← 这条
+        { at: "2026-09-02T16:00:00Z", account: "主账户", symbol: "RKLB", sec_type: "STK", stop: 52 }, // 上移过的,不是初始风险
+        { at: "2026-09-02T15:00:00Z", account: null, symbol: "SPCX", sec_type: null, stop: 105 }, // 做多的止损在上方:不是止损
+      ],
+    });
+    const rows = withStops.trades.map((x) => [x.symbol, x.risk, x.r]);
+    // RKLB:|50 − 48| × 100 = 200,+500 → 2.5R
+    expect(rows).toEqual([["RKLB", 200, 2.5], ["SPCX", null, null]]);
   });
 
   it("导入的期权:一次出场一笔,盈亏照导出(已扣佣金),没有开仓时刻", () => {
@@ -247,6 +265,40 @@ describe("行为规则", () => {
     expect(report(trades).findings.find((f) => f.id === "revenge")).toMatchObject({ tone: "bad" });
   });
 
+  it("保护规则建议:报复性交易 → 止损护栏;同标的亏完又进 → 冷却;已经开着且更严的不劝", () => {
+    const trades: LedgerTrade[] = [];
+    for (let i = 0; i < 6; i += 1) {
+      const day = Date.parse("2026-02-02T15:00:00Z") + i * 86_400_000;
+      const iso = (ms: number): string => new Date(ms).toISOString();
+      trades.push(t(80, iso(day), iso(day + 30 * 60_000)));
+      trades.push(t(-50, iso(day + 60 * 60_000), iso(day + 90 * 60_000)));
+      trades.push(t(-70, iso(day + 100 * 60_000), iso(day + 130 * 60_000)));
+    }
+    const off = (rule: string): Record<string, unknown> => ({ enabled: false, rule });
+    const cfg = {
+      stoploss_guard: { ...off("s"), lookback_minutes: 60, trigger_count: 3, pause_minutes: 30 },
+      max_drawdown: { ...off("m"), lookback_minutes: 60, max_drawdown_usd: 0, pause_minutes: 30 },
+      cooldown: { ...off("c"), minutes: 0 },
+      daily_loss: { ...off("d"), max_loss_usd: 0 },
+    } as never;
+    const advice = performanceReport({ trades, excluded: { open: 0, unknown: 0, no_cost: 0 } },
+      { scope: "all", kind: "all", days: null, now: NOW }, { protections: cfg }).protection_advice;
+    expect(advice.map((a) => a.rule)).toEqual(["stoploss_guard", "cooldown"]);
+    expect(advice[1]).toMatchObject({ suggested: { enabled: true, minutes: 30 } });
+    // 每天净亏 40、最差也是 40:线(80)一天都切不到,不建议日亏上限
+    const on = { ...cfg as Record<string, Record<string, unknown>>, cooldown: { enabled: true, minutes: 60 }, stoploss_guard: { enabled: true, lookback_minutes: 60, trigger_count: 2, pause_minutes: 60 } };
+    expect(performanceReport({ trades, excluded: { open: 0, unknown: 0, no_cost: 0 } },
+      { scope: "all", kind: "all", days: null, now: NOW }, { protections: on as never }).protection_advice).toEqual([]);
+  });
+
+  it("保护规则建议:日亏上限 = 亏钱日平均的 2 倍,取整到 10;要有越过它的日子才建议", () => {
+    const trades = daily([-50, 100, -50, 100, -50, 100, -50, -300, 100]);
+    const advice = report(trades).protection_advice;
+    expect(advice.find((a) => a.rule === "daily_loss")).toMatchObject({ suggested: { enabled: true, max_loss_usd: 200 } });
+    expect(advice.find((a) => a.rule === "daily_loss")?.reason).toContain("1 天越过它");
+    expect(report(daily([-50, 100, -50, 100, -50, 100, -50, -60, 100])).protection_advice.find((a) => a.rule === "daily_loss")).toBeUndefined();
+  });
+
   it("亏后加码:亏损之后下一笔的占用放大到中位数 1.5 倍以上", () => {
     const pnls = [50, -50, 50, -50, 50, -50, 50, -50, 50, -50, 50, -50];
     // 亏损之后的那一笔(偶数位,除第一笔)占用 3000,其余 1000
@@ -339,9 +391,26 @@ describe("review.performance:RPC", () => {
     expect(r["excluded"]).toEqual({ open: 0, unknown: 1, no_cost: 0 });
     expect(r["scope"]).toBe("all");
     expect(Object.keys(r).sort()).toEqual([
-      "days", "drawdown", "equity", "excluded", "findings", "groups", "hold", "kelly", "kind", "notes", "per_day",
-      "r_stats", "recent", "scope", "stats", "streak", "trades",
+      "days", "drawdown", "equity", "excluded", "execution", "findings", "groups", "hold", "kelly", "kind", "notes", "per_day",
+      "protection_advice", "r_stats", "recent", "scope", "stats", "streak", "trades",
     ]);
+    // 没有自动平仓的痕:执行损耗全空,不编
+    expect(r["execution"]).toMatchObject({ samples: 0, missing: 0, median_pct: null });
+  });
+
+  it("股票的 R:取 tracker_add 审计里的计划止损(追踪行删了也还在)", async () => {
+    const call = makeServer();
+    const s = servers[servers.length - 1]!;
+    // 审计表只增不改(触发器),所以直接插一条带时刻的痕,落在 SPCX 那段持仓里
+    const raw = new Database(s.engine.store.dbPath);
+    raw.prepare("INSERT INTO audit_log (at, actor, action, detail) VALUES (?,?,?,?)").run(
+      "2026-09-02T15:00:00+00:00", "ui", "tracker_add",
+      JSON.stringify({ symbol: "SPCX", account: "主账户", sec_type: "STK", targets: { stop_loss: 95 } }),
+    );
+    raw.close();
+    const r = (await call("review.performance", { kind: "stock" }))["result"];
+    const spcx = (r["trades"] as Rec[]).find((x) => x["symbol"] === "SPCX");
+    expect(spcx).toMatchObject({ risk: 50, r: -2 });
   });
 
   it("入参:范围与品种认枚举,天数是 1–3650 的整数", async () => {

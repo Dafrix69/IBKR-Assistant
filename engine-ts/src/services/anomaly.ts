@@ -10,6 +10,7 @@ import type { AnomalyConfig, AnomalyEvent, AnomalyState, Metrics, Sample } from 
 import { etNowFromEpoch, nowEt } from "../config.js";
 import type { QualityMonitor } from "../contract/quality.js";
 import type { VolumeSnapshot } from "../marketdata.js";
+import { signalFromAnomaly } from "../signalOutcomes.js";
 import type { AlertsService } from "./alerts.js";
 import { ServiceBase } from "./host.js";
 import type { Rec, ServiceHost } from "./host.js";
@@ -265,7 +266,10 @@ export class AnomalyService extends ServiceBase {
       state["delayed"] = delayed;
       state["last_error"] = errors.join(";").slice(0, 300);
       // 只推给界面,不走 notifier:那会在 macOS 再弹一次系统通知;看板通知流由界面自己写
-      if ((out["events"] as AnomalyEvent[]).length) this.emit("anomaly", { events: out["events"] });
+      if ((out["events"] as AnomalyEvent[]).length) {
+        store.signals.log((out["events"] as AnomalyEvent[]).map(signalFromAnomaly)); // 信号成绩单
+        this.emit("anomaly", { events: out["events"] });
+      }
     } catch (exc) {
       state["last_error"] = String((exc as Error).message).slice(0, 200);
     } finally {

@@ -73,7 +73,7 @@ export function BacktestResult({ r, strategyLabel }: { r: BacktestRunResult; str
         {chart ? (
           <>
             <CanvasChart size="short" spec={chart} />
-            <Meta items={[`${curve[0].date} → ${curve[curve.length - 1].date} · 期末净值 策略 ${curve[curve.length - 1].equity} / 基准 ${curve[curve.length - 1].bench}`]} />
+            <Meta items={[`${curve[0].date} → ${curve[curve.length - 1].date} · 期末净值 策略 ${curve[curve.length - 1].equity} / 基准 ${curve[curve.length - 1].bench}`, r.cost_pct ? `已扣每边成交成本 ${r.cost_pct}%` : '未扣成交成本']} />
           </>
         ) : null}
       </StatusCard>

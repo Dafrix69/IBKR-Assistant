@@ -13,6 +13,7 @@ import {
   DEFAULT_TOUCH_CONFIG, bookUsable, buildTouchBook, evaluateTouches, normalizeTouchConfig, prevTradingDay,
 } from "../maTouch.js";
 import { pyRound } from "../py.js";
+import { signalFromWatchEvent } from "../signalOutcomes.js";
 import { RpcError, errText } from "../rpcError.js";
 import { ServiceBase } from "./host.js";
 import type { Rec, ServiceHost } from "./host.js";
@@ -300,7 +301,11 @@ export class AlertsService extends ServiceBase {
       checked.push({ symbol: watch["symbol"], price });
     }
 
-    if (fired.length) this.emit("alerts", { events: fired });
+    if (fired.length) {
+      // 每条发出去的都记一笔,之后按 1 / 5 / 20 天的走势打分(信号成绩单,signalOutcomes.ts)
+      this.engine.store.signals.log(fired.map(signalFromWatchEvent));
+      this.emit("alerts", { events: fired });
+    }
     return { fired, checked };
   }
 

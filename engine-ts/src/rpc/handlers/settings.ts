@@ -118,6 +118,7 @@ export class SettingsHandlers extends HandlerBase {
         cooldown: { ...s.protections.cooldown },
         daily_loss: { ...s.protections.daily_loss },
       },
+      risk_budget: { ...s.risk_budget, equity_usd: { ...s.risk_budget.equity_usd } },
       symbol_aliases: s.symbol_aliases,
       accounts: this.accounts(),
       connections: Object.fromEntries(
@@ -126,7 +127,7 @@ export class SettingsHandlers extends HandlerBase {
     };
   }
 
-  static readonly PATCHABLE: ReadonlySet<string> = new Set(["policies", "limits", "protections"]);
+  static readonly PATCHABLE: ReadonlySet<string> = new Set(["policies", "limits", "protections", "risk_budget"]);
 
   settingsPatch(params: SettingsPatchParams): RpcResult<"settings.patch"> {
     const patch = params["patch"] ?? {};
@@ -138,13 +139,13 @@ export class SettingsHandlers extends HandlerBase {
       // 账户与连接牵涉真实账号,只允许人手动改配置文件,不给 UI 通道(§9.6)
       throw new RpcError(-32006, `账户与连接配置不允许从界面修改:${forbidden.join(", ")}`);
     }
-    // 只认契约里写着的三段(SettingsPatch)。段**里面**的键 config.fromDict 会逐个校验,但它不看顶层:2026-09-20 之前
+    // 只认契约里写着的四段(SettingsPatch)。段**里面**的键 config.fromDict 会逐个校验,但它不看顶层:2026-09-20 之前
     // { foo: {…} } 会成功,foo 被原样写进配置文件;{ llm: {…} } 则绕过了 llm.patch 的字段白名单(能改 keychain_service)。
     const unknown = Object.keys(patch).filter((k) => !SettingsHandlers.PATCHABLE.has(k)).sort();
     if (unknown.length) {
       throw new RpcError(
         -32602,
-        `settings.patch 只能改 policies / limits / protections,收到:${unknown.join("、")}` +
+        `settings.patch 只能改 policies / limits / protections / risk_budget,收到:${unknown.join("、")}` +
         "(模型配置走 llm.patch,券商切换走 broker.select,其余只能手改配置文件)",
       );
     }

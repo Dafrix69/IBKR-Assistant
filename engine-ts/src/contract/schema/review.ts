@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import type { ReviewPerformanceParams } from "../performance.js";
 import type { ReviewAnalyzeParams, ReviewCandidatesParams } from "../review.js";
+import type { ReviewSignalsParams } from "../signals.js";
 import { optional } from "./kit.js";
 import type { ParamsSchema } from "./kit.js";
 
@@ -24,5 +25,10 @@ export const ReviewPerformanceParamsSchema: ParamsSchema<ReviewPerformanceParams
   scope: optional(z.enum(["all", "live", "paper"])),
   kind: optional(z.enum(["all", "butterfly", "stock", "option"])),
   // 天数的范围(正整数、上限)是领域校验,在 handler
+  days: optional(z.number()),
+});
+
+export const ReviewSignalsParamsSchema: ParamsSchema<ReviewSignalsParams> = z.object({
+  // 天数的范围同 review.performance,在 handler
   days: optional(z.number()),
 });

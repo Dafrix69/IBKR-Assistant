@@ -330,7 +330,7 @@ describe("契约:结构错由 schema 报,领域错由 handler 报", () => {
     // 顶层只认三段。2026-09-20 之前:不认识的段会成功并被原样写进配置文件;llm 段则绕过了 llm.patch 的字段白名单
     expect(await err({ foo: { a: 1 } })).toEqual({
       code: -32602,
-      message: "settings.patch 只能改 policies / limits / protections,收到:foo(模型配置走 llm.patch,券商切换走 broker.select,其余只能手改配置文件)",
+      message: "settings.patch 只能改 policies / limits / protections / risk_budget,收到:foo(模型配置走 llm.patch,券商切换走 broker.select,其余只能手改配置文件)",
     });
     expect((await err({ llm: { keychain_service: "别人的" }, limits: { max_mkt_shares: 1 } })).message).toContain("收到:llm(");
     expect((await err({ storage: { db_path: "C:/elsewhere.db" } })).message).toContain("收到:storage(");

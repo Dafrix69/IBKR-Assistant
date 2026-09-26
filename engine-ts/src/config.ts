@@ -8,7 +8,7 @@ import * as fsModule from "node:fs";
 // 限额与策略开关的形状界面也要用,定义在 contract/settings.ts;这里转出,老的 import 不用改。
 export type { Limits, Policies } from "./contract/settings.js";
 import type { LLMConfig } from "./contract/llm.js";
-import type { Limits, Policies } from "./contract/settings.js";
+import type { Limits, Policies, RiskBudgetConfig } from "./contract/settings.js";
 import * as path from "node:path";
 import * as os from "node:os";
 import { fileURLToPath } from "node:url";
@@ -186,6 +186,7 @@ export class Settings {
   limits!: Limits;
   policies!: Policies;
   protections!: ProtectionsConfig;
+  risk_budget!: RiskBudgetConfig;
   accounts: AccountConfig[] = [];
   connections: Record<string, ConnectionConfig> = {};
   symbol_aliases: Record<string, string> = {};
@@ -452,6 +453,27 @@ function buildProtections(raw: Raw): ProtectionsConfig {
   };
 }
 
+// 单笔风险预算(见 riskBudget.ts):只告警、不拦单,默认关。权益按账户别名填;写了不认识的别名不报错(账户可能刚改名),只是用不上。
+const RISK_BUDGET_KEYS = ["enabled", "equity_usd", "max_risk_pct", "max_position_pct"];
+
+function buildRiskBudget(raw: Raw): RiskBudgetConfig {
+  rejectUnknown(RISK_BUDGET_KEYS, raw, "risk_budget");
+  const equityRaw = raw["equity_usd"] ?? {};
+  if (equityRaw === null || typeof equityRaw !== "object" || Array.isArray(equityRaw)) {
+    throw new Error(`risk_budget.equity_usd 必须是 {账户别名: 金额},收到 ${pyRepr(equityRaw)}`);
+  }
+  const equity: Record<string, number> = {};
+  for (const alias of Object.keys(equityRaw as Raw)) {
+    equity[alias] = num(equityRaw as Raw, alias, "float", 0, "risk_budget.equity_usd", { min: 0.0, minStr: "0.0" })!;
+  }
+  return {
+    enabled: flag(raw, "enabled", false, "risk_budget"),
+    equity_usd: equity,
+    max_risk_pct: num(raw, "max_risk_pct", "float", 2.0, "risk_budget", { min: 0.1, minStr: "0.1", max: 100, maxStr: "100" })!,
+    max_position_pct: num(raw, "max_position_pct", "float", 25.0, "risk_budget", { min: 0.1, minStr: "0.1", max: 1000, maxStr: "1000" })!,
+  };
+}
+
 const LIMIT_KEYS = [
   "max_order_notional", "max_option_contracts", "max_mkt_shares", "min_confidence",
   "max_spread_slippage", "max_orders_per_input", "duplicate_window_minutes",
@@ -675,6 +697,7 @@ export function fromDict(raw: Raw, source: string | null = null): Settings {
   settings.limits = buildLimits((raw["limits"] as Raw) ?? {});
   settings.policies = buildPolicies((raw["policies"] as Raw) ?? {});
   settings.protections = buildProtections((raw["protections"] as Raw) ?? {});
+  settings.risk_budget = buildRiskBudget((raw["risk_budget"] as Raw) ?? {});
   settings.accounts = accounts;
   settings.connections = connections;
   const aliases: Record<string, string> = {};
