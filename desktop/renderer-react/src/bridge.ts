@@ -43,11 +43,11 @@ import type {
   LeaderRow, LeadersResult, MarketRegime, TrendCheck, VcpResult,
   LLMConfig, LlmCatalog, LlmPatch, LlmProvider, LlmTestResult,
   BookL1, BookLevel, BookLiquidity, BookSnapshot, MacroBoard, MacroRow,
-  BacktestCurvePoint, BacktestRunResult, BacktestRunSpec, BacktestStrategy, BacktestTrade, CustomRules, CustomRulesInput,
+  BacktestCurvePoint, BacktestRunResult, BacktestRunSpec, BacktestStrategy, BacktestTrade, CustomRules, CustomRulesInput, BacktestSweepResult, BacktestSweepSpec, SegmentStats, SweepObjective, SweepRow, WalkForward,
   RuleConditionInput, RuleOperandInput,
   Idea, IdeaAnalysis, IdeaBrief, IdeaBriefMetric, IdeaDigest, IdeaDigestRow, IdeaMatch, IdeaTradeFact, IdeaTradeResult,
   IdeasSimilarTradesParams, IdeasSimilarTradesResult, SimilarExitStat, SimilarTrade,
-  EquityPoint, LedgerTrade, PerfGroup, PerformanceFinding, PerformanceKind, PerformanceScope, PerfStats, ReviewPerformanceResult,
+  EquityPoint, LedgerTrade, PerfGroup, PerformanceFinding, PerformanceKind, PerformanceScope, PerfStats, ReviewPerformanceResult, ExecutionCost, ExecutionGroup, ExecutionRow, ProtectionAdvice, ReviewSignalsResult, SignalEntry, SignalGroup, SignalHorizonStats, SignalSource,
   AnomalyConfig, AnomalyEvent, AnomalyKind, AnomalyMetrics, LevelKind, OptionWall, PoolWatch, PoolWatchPatch, PositionRow,
   AccountView, Limits, Policies, ProtectionsConfig, QualityList, QualityMonitor, QualityStock, RpcParams, RpcResult, Sector,
   SectorStock, SettingsPatch, SettingsView, SpotTarget, StockQuote, Targets, Track, Watch, WatchEvent, WatchLevel,
@@ -71,11 +71,11 @@ export type {
   LeaderRow, LeadersResult, MarketRegime, TrendCheck, VcpResult,
   LLMConfig, LlmCatalog, LlmPatch, LlmProvider, LlmTestResult,
   BookL1, BookLevel, BookLiquidity, BookSnapshot, MacroBoard, MacroRow,
-  BacktestCurvePoint, BacktestRunResult, BacktestRunSpec, BacktestStrategy, BacktestTrade, CustomRules, CustomRulesInput,
+  BacktestCurvePoint, BacktestRunResult, BacktestRunSpec, BacktestStrategy, BacktestTrade, CustomRules, CustomRulesInput, BacktestSweepResult, BacktestSweepSpec, SegmentStats, SweepObjective, SweepRow, WalkForward,
   RuleConditionInput, RuleOperandInput,
   Idea, IdeaAnalysis, IdeaBrief, IdeaBriefMetric, IdeaDigest, IdeaDigestRow, IdeaMatch, IdeaTradeFact, IdeaTradeResult,
   IdeasSimilarTradesParams, IdeasSimilarTradesResult, SimilarExitStat, SimilarTrade,
-  EquityPoint, LedgerTrade, PerfGroup, PerformanceFinding, PerformanceKind, PerformanceScope, PerfStats, ReviewPerformanceResult,
+  EquityPoint, LedgerTrade, PerfGroup, PerformanceFinding, PerformanceKind, PerformanceScope, PerfStats, ReviewPerformanceResult, ExecutionCost, ExecutionGroup, ExecutionRow, ProtectionAdvice, ReviewSignalsResult, SignalEntry, SignalGroup, SignalHorizonStats, SignalSource,
   AnomalyEvent, AnomalyKind, LevelKind, OptionWall, PoolWatch, PoolWatchPatch, PositionRow, QualityList, QualityMonitor,
   QualityStock, Sector, SectorStock, SettingsPatch, SpotTarget, StockQuote, Targets, Track, Watch, WatchEvent, WatchLevel,
   MaTouchConfig, TouchBook, TouchEpisode, TouchLine, WatchTrigger,
@@ -196,6 +196,7 @@ export interface DafriBridge {
   backtestStrategies(): Rpc<RpcResult<'backtest.strategies'>>;
   /** spec 的对象字面量要直接标成 BacktestRunSpec(同 TrackerAddSpec):这样写错的键名编译期就查得出来 */
   runBacktest(spec: BacktestRunSpec): Rpc<RpcResult<'backtest.run'>>;
+  sweepBacktest(spec: BacktestSweepSpec): Rpc<RpcResult<'backtest.sweep'>>;
   parseBacktestRules(text: string): Rpc<RpcResult<'backtest.parse_rules'>>;
   orderBook(symbol: string): Rpc<RpcResult<'book.snapshot'>>;
 
@@ -214,6 +215,7 @@ export interface DafriBridge {
   reviewCandidates(limit?: number, includeLocal?: boolean): Rpc<RpcResult<'review.candidates'>>;
   reviewAnalyze(spec: RpcParams<'review.analyze'>): Rpc<RpcResult<'review.analyze'>>;
   reviewPerformance(spec: RpcParams<'review.performance'>): Rpc<RpcResult<'review.performance'>>;
+  reviewSignals(spec: RpcParams<'review.signals'>): Rpc<RpcResult<'review.signals'>>;
   macroBoard(force?: boolean): Rpc<RpcResult<'macro.board'>>;
 
   listPositions(): Rpc<RpcResult<'positions.list'>>;

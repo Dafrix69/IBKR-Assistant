@@ -66,13 +66,53 @@ const INT_PARAM_KEYS = new Set(["fast", "slow", "period", "entry", "exit"]);
 type Rules = Record<string, any>;
 type Instrument = Record<string, any>;
 
+/** 每边成交成本的上限(%):再高就不是成本假设,是填错了。 */
+export const MAX_COST_PCT = 10;
+
+/**
+ * `costPct` 是**每一边**(开、平各一次)的成交成本占成交额的百分比:佣金 + 滑点。默认 0 = 老口径,数值一位不差
+ * (golden-backtest 钉着)。执行损耗(execQuality)的中位数就是给它填的。
+ */
 export function runBacktest(
   bars: Bar[],
   strategy: string,
   params?: Record<string, unknown> | null,
   rules?: CustomRules | null,
   instrument?: Instrument | null,
+  costPct = 0,
 ): BacktestReport {
+  const { positions, usedParams } = signalPositions(bars, strategy, params, rules);
+  const inst: Instrument = { ...(instrument ?? {}) };
+  if (inst["type"] === undefined || inst["type"] === null) inst["type"] = "stock";
+  const result = evaluateSegment(bars, positions, strategy, usedParams, inst, costPct);
+  if (rules) result["rules"] = rules;
+  result["instrument"] = inst;
+  return result;
+}
+
+/** 拿一段日线与对齐好的持仓序列结算(参数扫描按段切,见 backtestLab.ts)。`inst.type` 要已经补齐。 */
+export function evaluateSegment(
+  bars: Bar[], positions: number[], strategy: string, usedParams: Record<string, number>,
+  inst: Instrument, costPct = 0,
+): BacktestReport {
+  if (!(costPct >= 0 && costPct <= MAX_COST_PCT)) {
+    throw new BacktestError(`每边成交成本要在 0~${MAX_COST_PCT}% 之间`);
+  }
+  const cost = costPct / 100;
+  const report = inst["type"] === "stock"
+    ? evaluateStock(bars, positions, strategy, usedParams, cost)
+    : evaluateOptions(bars, positions, strategy, usedParams, inst, cost);
+  if (cost > 0) report["cost_pct"] = costPct;
+  return report;
+}
+
+/**
+ * 信号 → 每根日线收盘后的持仓(1 / 0)与实际用的参数。指标全是因果的(只看当根及以前),
+ * 所以在整段上算一次、再按日期切成样本内 / 样本外,和只在那一段上算相比只多了指标的预热,不多看未来。
+ */
+export function signalPositions(
+  bars: Bar[], strategy: string, params?: Record<string, unknown> | null, rules?: CustomRules | null,
+): { positions: number[]; usedParams: Record<string, number> } {
   if (!(strategy in STRATEGIES)) {
     throw new BacktestError(`未知策略:${strategy}(可选:${Object.keys(STRATEGIES).join("、")})`);
   }
@@ -105,16 +145,7 @@ export function runBacktest(
     positions = strategyPositions(bars, strategy, merged);
     usedParams = merged;
   }
-
-  const inst: Instrument = { ...(instrument ?? {}) };
-  if (inst["type"] === undefined || inst["type"] === null) inst["type"] = "stock";
-  const result =
-    inst["type"] === "stock"
-      ? evaluateStock(bars, positions, strategy, usedParams)
-      : evaluateOptions(bars, positions, strategy, usedParams, inst);
-  if (rules) result["rules"] = rules;
-  result["instrument"] = inst;
-  return result;
+  return { positions, usedParams };
 }
 
 // ---------------------------------------------------------------- 信号
@@ -364,7 +395,7 @@ type LegSpec = [number, string, number]; // ratio, right, strike
 
 function evaluateOptions(
   bars: Bar[], positions: number[], strategy: string,
-  params: Record<string, number>, inst: Instrument,
+  params: Record<string, number>, inst: Instrument, cost = 0,
 ): BacktestReport {
   if (!(inst["type"] in OPTION_TYPES)) {
     throw new BacktestError(`未知交易品种:${inst["type"]}`);
@@ -402,9 +433,12 @@ function evaluateOptions(
   const trades: BacktestTrade[] = [];
   let heldBars = 0;
 
+  // 成交成本:开仓多付、平仓少收各 cost(按权利金算)。cost = 0 时原样返回,数值一位不差
+  const paid = (c: number): number => (cost > 0 ? c * (1 + cost) : c);
+  const got = (v: number): number => (cost > 0 ? v * (1 - cost) : v);
   const closePosition = (i: number, proceeds: number, why: "expiry" | "signal"): void => {
     const h = pos.h!;
-    const ret = proceeds / h.cost - 1.0;
+    const ret = got(proceeds) / paid(h.cost) - 1.0;
     cash *= 1.0 + risk * ret;
     trades.push({
       entry_date: bars[h.entry_i]!.date,
@@ -448,7 +482,7 @@ function evaluateOptions(
       heldBars += 1;
       const tLeft = Math.max(h.expiry - dates[i]!, 0) / 365.0;
       const value = structureValue(h.legs, closes[i]!, tLeft, h.sigma);
-      equity.push(cash * (1.0 + risk * (value / h.cost - 1.0)));
+      equity.push(cash * (1.0 + risk * (got(value) / paid(h.cost) - 1.0)));
     } else {
       equity.push(cash);
     }
@@ -463,7 +497,7 @@ function evaluateOptions(
       exit_date: null,
       entry_price: pyRound(h.cost, 4),
       exit_price: pyRound(value, 4),
-      return_pct: pyRound((value / h.cost - 1.0) * 100, 2),
+      return_pct: pyRound((got(value) / paid(h.cost) - 1.0) * 100, 2),
       closed: false,
       exit_reason: "open",
     });
@@ -538,14 +572,19 @@ export function realizedVol(closes: number[], window = 20): number {
 
 // ---------------------------------------------------------------- 结算
 function evaluateStock(
-  bars: Bar[], positions: number[], strategy: string, params: Record<string, number>,
+  bars: Bar[], positions: number[], strategy: string, params: Record<string, number>, cost = 0,
 ): BacktestReport {
   const n = bars.length;
   const equity = [1.0];
   const bench = [1.0];
+  // 第 0 根收盘就持有 = 那一刻买进,也要付一次
+  if (cost > 0 && positions[0] === 1) equity[0] = 1.0 - cost;
   for (let i = 1; i < n; i++) {
     const ret = bars[i]!.close / bars[i - 1]!.close;
-    equity.push(equity[i - 1]! * (positions[i - 1] === 1 ? ret : 1.0));
+    let next = equity[i - 1]! * (positions[i - 1] === 1 ? ret : 1.0);
+    // 收盘成交:这一根的持仓和上一根不一样就付一次(买进或卖出)
+    if (cost > 0 && (positions[i] ?? 0) !== (positions[i - 1] ?? 0)) next *= 1.0 - cost;
+    equity.push(next);
     bench.push(bench[i - 1]! * ret);
   }
 
@@ -555,11 +594,11 @@ function evaluateStock(
     if (positions[i] === 1 && entryIdx === null) {
       entryIdx = i;
     } else if (positions[i] === 0 && entryIdx !== null) {
-      trades.push(makeTrade(bars, entryIdx, i, true));
+      trades.push(makeTrade(bars, entryIdx, i, true, cost));
       entryIdx = null;
     }
   }
-  if (entryIdx !== null) trades.push(makeTrade(bars, entryIdx, n - 1, false));
+  if (entryIdx !== null) trades.push(makeTrade(bars, entryIdx, n - 1, false, cost));
 
   const closed = trades.filter((t) => t["closed"]);
   const wins = trades.filter((t) => (t["return_pct"] as number) > 0);
@@ -587,15 +626,18 @@ function evaluateStock(
   };
 }
 
-function makeTrade(bars: Bar[], entry: number, exit: number, closed: boolean): BacktestTrade {
+function makeTrade(bars: Bar[], entry: number, exit: number, closed: boolean, cost = 0): BacktestTrade {
   const entryPx = bars[entry]!.close;
   const exitPx = bars[exit]!.close;
+  // 扣成本的口径和净值一致:买进付一次,平掉再付一次;还开着的那笔只扣进场那一次
+  const gross = exitPx / entryPx;
+  const net = cost > 0 ? gross * (1.0 - cost) * (closed ? 1.0 - cost : 1.0) : gross;
   return {
     entry_date: bars[entry]!.date,
     exit_date: closed ? bars[exit]!.date : null,
     entry_price: entryPx,
     exit_price: exitPx,
-    return_pct: pyRound((exitPx / entryPx - 1.0) * 100, 2),
+    return_pct: pyRound((net - 1.0) * 100, 2),
     closed,
   };
 }

@@ -11,7 +11,7 @@ import type { RpcMethodName, RpcParams } from "../index.js";
 import {
   AlertsCreateParamsSchema, AlertsDeleteParamsSchema, AlertsRefreshParamsSchema, AlertsSetTouchConfigParamsSchema,
 } from "./alerts.js";
-import { BacktestParseRulesParamsSchema, BacktestRunParamsSchema } from "./backtest.js";
+import { BacktestParseRulesParamsSchema, BacktestRunParamsSchema, BacktestSweepParamsSchema } from "./backtest.js";
 import {
   BrokerConnectParamsSchema, BrokerSelectParamsSchema, DiagnoseParamsSchema, FutuSetPasswordParamsSchema,
   FutuUnlockParamsSchema, LaunchParamsSchema,
@@ -32,7 +32,7 @@ import {
   QualityAddParamsSchema, QualityRemoveParamsSchema, QualitySetConfigParamsSchema, QualityUpdateParamsSchema,
 } from "./quality.js";
 import { RecordsGetParamsSchema, RecordsListParamsSchema } from "./records.js";
-import { ReviewAnalyzeParamsSchema, ReviewCandidatesParamsSchema, ReviewPerformanceParamsSchema } from "./review.js";
+import { ReviewAnalyzeParamsSchema, ReviewCandidatesParamsSchema, ReviewPerformanceParamsSchema, ReviewSignalsParamsSchema } from "./review.js";
 import {
   ScreenerDeviationParamsSchema, ScreenerInflectionParamsSchema, ScreenerLeadersParamsSchema, ScreenerRsParamsSchema,
 } from "./screener.js";
@@ -67,6 +67,7 @@ export const PARAMS_SCHEMAS: { readonly [M in RpcMethodName]: ParamsSchema<RpcPa
 
   "backtest.strategies": NoParamsSchema,
   "backtest.run": BacktestRunParamsSchema,
+  "backtest.sweep": BacktestSweepParamsSchema,
   "backtest.parse_rules": BacktestParseRulesParamsSchema,
 
   "broker.catalog": NoParamsSchema,
@@ -112,6 +113,7 @@ export const PARAMS_SCHEMAS: { readonly [M in RpcMethodName]: ParamsSchema<RpcPa
   "review.candidates": ReviewCandidatesParamsSchema,
   "review.analyze": ReviewAnalyzeParamsSchema,
   "review.performance": ReviewPerformanceParamsSchema,
+  "review.signals": ReviewSignalsParamsSchema,
 
   "screener.rs": ScreenerRsParamsSchema,
   "screener.inflection": ScreenerInflectionParamsSchema,
