@@ -75,7 +75,7 @@ Electron 桌面端 ──stdio JSON-RPC──▶ 交易引擎(Node 子进程,eng
 **Windows** x64:下载 `IBKR-Assistant-<版本>-win-x64.exe`。未签名,SmartScreen 会拦,「更多信息 → 仍要运行」。
 
 **macOS** Apple Silicon(需 macOS 12 以上,Intel Mac 不支持):下载 `IBKR-Assistant-<版本>-mac-arm64.dmg`。
-未签名、未公证,首次打开右键 → 打开,或 `xattr -dr com.apple.quarantine "/Applications/IBKR-Assistant.app"`。
+ad-hoc 签名、未公证,首次打开会提示无法验证开发者:到「系统设置 → 隐私与安全性」点「仍要打开」,或在终端执行 `xattr -dr com.apple.quarantine "/Applications/IBKR-Assistant.app"`。
 在 Mac 上本地打也行:`cd desktop && npm run dist:mac`。
 
 两个包都由 `安装包` 工作流出(`.github/workflows/package.yml`:手动 Run workflow、推 `v*` 标签、改到打包相关文件的 PR
@@ -146,7 +146,7 @@ cd engine-ts && npm run probe                        # 真机只读联调:临时
 - 执行对账(重启 / 重连后认领在途单)与保护规则(止损护栏、回撤护栏、同标的冷却、日内亏损上限)目前只有离线测试,尚未在真机上核对。
 - 执行损耗、单笔风险预算、信号记录(2026-09-26 加的)目前只有离线测试;信号成绩单要攒够信号才有结论。
 - 富途 OpenD 通道:检测与诊断可用,下单桥在真机核对前显式不可用。
-- 安装包未签名;macOS 公证需要自己的开发者证书。
+- 安装包没有开发者证书:Windows 未签名,macOS 是 ad-hoc 签名;公证需要自己的开发者证书。
 
 ## 许可证
 

@@ -86,7 +86,7 @@
     ],
     "mac": {
       "category": "public.app-category.finance",
-      "identity": null,
+      "identity": "-",
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
       "entitlements": "build/entitlements.mac.plist",

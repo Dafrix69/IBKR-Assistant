@@ -5,8 +5,8 @@ name: 安装包
 #   - 推 v* 标签:两个包一起出,跑完自动挂到对应的 Release
 #   - 改到打包相关文件的 PR:先打一遍,确认还能出包
 # 每次运行的产物都在 Artifacts 里(IBKR-Assistant-mac-arm64 / IBKR-Assistant-win-x64),保留 30 天;
-# 打标签的那次还会发到 Releases。两个包都未签名:
-#   macOS 未公证,首次打开右键 → 打开,或 xattr -dr com.apple.quarantine "/Applications/IBKR-Assistant.app"
+# 打标签的那次还会发到 Releases。两个包都没有开发者证书:
+#   macOS 是 ad-hoc 签名、未公证,首次打开到「系统设置 → 隐私与安全性」点「仍要打开」,或 xattr -dr com.apple.quarantine "/Applications/IBKR-Assistant.app"
 #   Windows 会弹 SmartScreen,「更多信息 → 仍要运行」
 
 on:
@@ -31,7 +31,7 @@ jobs:
     runs-on: macos-latest
     timeout-minutes: 45
     env:
-      # package.json 里 mac.identity 为 null:不签名。别让 electron-builder 去钥匙串里自动找证书
+      # package.json 里 mac.identity 为 "-":ad-hoc 签名。别让 electron-builder 去钥匙串里自动找证书
       CSC_IDENTITY_AUTO_DISCOVERY: 'false'
     steps:
       - uses: actions/checkout@v4
@@ -231,7 +231,7 @@ jobs:
           find artifacts -type f | sort
           mapfile -t files < <(find artifacts -type f \( -name '*.dmg' -o -name '*.exe' -o -name '*.blockmap' \) | sort)
           [ "${#files[@]}" -gt 0 ] || { echo "::error::没有可发布的产物"; exit 1; }
-          notes=$'**macOS**(Apple Silicon,需 macOS 12 以上):`IBKR-Assistant-*-mac-arm64.dmg`。未签名未公证,首次打开右键 → 打开,或 `xattr -dr com.apple.quarantine "/Applications/IBKR-Assistant.app"`。Intel Mac 不支持。\n\n**Windows** x64:`IBKR-Assistant-*-win-x64.exe`。未签名,SmartScreen 拦下时「更多信息 → 仍要运行」。\n\n两个包都自带交易引擎,目标机器不需要装 Node 或 Python。\n\n用之前:IBKR 的 TWS 或 IB Gateway 要登录并打开 API;自备一个大模型 API Key(Anthropic 或 OpenAI 兼容端点)。建议先只接模拟账户。'
+          notes=$'**macOS**(Apple Silicon,需 macOS 12 以上):`IBKR-Assistant-*-mac-arm64.dmg`。ad-hoc 签名、未公证,首次打开会提示无法验证开发者:到「系统设置 → 隐私与安全性」点「仍要打开」,或 `xattr -dr com.apple.quarantine "/Applications/IBKR-Assistant.app"`。Intel Mac 不支持。\n\n**Windows** x64:`IBKR-Assistant-*-win-x64.exe`。未签名,SmartScreen 拦下时「更多信息 → 仍要运行」。\n\n两个包都自带交易引擎,目标机器不需要装 Node 或 Python。\n\n用之前:IBKR 的 TWS 或 IB Gateway 要登录并打开 API;自备一个大模型 API Key(Anthropic 或 OpenAI 兼容端点)。建议先只接模拟账户。'
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             echo "Release $GITHUB_REF_NAME 已存在,补传资产(同名覆盖)"
             gh release upload "$GITHUB_REF_NAME" "${files[@]}" --clobber

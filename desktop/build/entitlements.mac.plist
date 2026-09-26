@@ -8,6 +8,13 @@
     <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
     <true/>
 
+    <!--
+      ad-hoc 签名(package.json 里 mac.identity 为 "-")没有 Team ID,Hardened Runtime 的库校验会拒绝加载
+      Electron Framework 与引擎的原生模块(better-sqlite3、keyring),应用一启动就崩。换成 Developer ID 签名后可去掉。
+    -->
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+
     <!-- 出站连接:LLA API 域名 + 本机 TWS 端口(§10.3 唯一出网点) -->
     <key>com.apple.security.network.client</key>
     <true/>
