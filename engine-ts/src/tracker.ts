@@ -9,6 +9,7 @@ import {
 } from "./flyexit.js";
 import { finiteOrNull, fmtF, pyFloat, pyG, pyRound } from "./py.js";
 import { drawdownArmed, drawdownFloorMet, drawdownThreshold } from "./trackerDrawdown.js";
+import { ibkrLegSigmas } from "./ivPricing.js";
 import { fmtStrike, makeKey } from "./positions.js";
 import type { HostedOrderPlan } from "./positions.js";
 
@@ -431,10 +432,11 @@ function legsByMoneyness(legs: StructureLeg[], spot: number): StructureLeg[] {
 
 /** σ 来源里哪些算"市场价":只有这几种算出来的数才能拿去挂单或改单。
  * clock 是写死的 EM 算出来的模型默认值——给人看可以,拿去发单不行。 */
-export const MARKET_SIGMA_SOURCES = new Set(["none", "smile", "net", "leg"]);
+export const MARKET_SIGMA_SOURCES = new Set(["none", "ibkr", "smile", "net", "leg"]);
 
 export const SIGMA_SOURCE_LABEL: Record<string, string> = {
   none: "正股按目标价本身,不用波动率",
+  ibkr: "每条腿用 IBKR 推的模型隐含波动率,锚在当前报价上",
   smile: "每条腿按各自的报价反解,各用各的波动率",
   net: "按这份持仓当前的净价反解",
   leg: "按最贴近平值那条腿的报价反解",
@@ -476,6 +478,10 @@ export function spotTarget(args: {
   minute: number | null;
   em?: number | null;
   spotNote?: string;
+  /** 各腿 IBKR 的模型 IV(年化,按 legPriceKey)、到期时刻、此刻——三样齐了才有 ibkr 档(见 ivPricing.ts) */
+  legIvs?: Record<string, number | null> | null;
+  expiryMs?: number | null;
+  nowMs?: number | null;
 }): SpotTarget {
   const { structure, position } = args;
   const target = args.spotTarget;
@@ -508,8 +514,13 @@ export function spotTarget(args: {
   let source = "";
   let legSigmas: Record<string, number> | null = null;
   const mark = finiteOrNull(args.markPrice);
-  // 组合先走 smile:每条腿按各自报价反解。缺一条就整档不用——缺腿的"微笑"还原不了现价
-  if (spot !== null && structure.kind === "combo") {
+  // 先走 ibkr:每条腿用 IBKR 推的模型 IV(换算成点数 σ)。缺一条腿的 IV 就整档不用,退到按报价反解
+  if (spot !== null && args.legIvs && args.nowMs !== null && args.nowMs !== undefined) {
+    legSigmas = ibkrLegSigmas(structure.legs, spot, args.legIvs, args.expiryMs ?? null, args.nowMs, legPriceKey);
+    if (legSigmas !== null) source = "ibkr";
+  }
+  // 组合再走 smile:每条腿按各自报价反解。缺一条就整档不用——缺腿的"微笑"还原不了现价
+  if (source === "" && spot !== null && structure.kind === "combo") {
     legSigmas = smileSigmas(structure.legs, spot, args.legPrices ?? {});
     if (legSigmas !== null) source = "smile";
   }
@@ -566,8 +577,16 @@ export function spotTarget(args: {
   } else {
     out.sigma = pyRound(sigma!, 4);
   }
-  out.price = pyRound(valueAt(target), 4);
-  if (spot !== null) out.reached = reachedTarget(position, pyRound(valueAt(spot), 4), out.price);
+  const atTarget = pyRound(valueAt(target), 4);
+  const atSpot = spot === null ? null : valueAt(spot);
+  out.price = atTarget;
+  // ibkr 档:IB 的模型价和盘口中间价常差一截(smile 档在现价处正好还原报价,这一档不会)。IB 的 IV 只给
+  // "从现价走到目标价变多少",水平锚在市场现价上——否则挂单价和"会不会立刻成交"的判断都带着这截偏差
+  if (source === "ibkr") {
+    out.leg_ivs = Object.fromEntries(Object.entries(args.legIvs ?? {}).map(([k, v]) => [k, pyRound(Number(v), 6)]));
+    if (mark !== null && atSpot !== null) out.price = pyRound(Math.max(0, mark + atTarget - atSpot), 4);
+  }
+  if (atSpot !== null) out.reached = reachedTarget(position, pyRound(atSpot, 4), atTarget);
   return withPnl(out, position);
 }
 
@@ -861,6 +880,9 @@ export function validateSpotTarget(args: {
   legPrices?: Record<string, number | null> | null;
   minute: number | null;
   em?: number | null;
+  legIvs?: Record<string, number | null> | null;
+  expiryMs?: number | null;
+  nowMs?: number | null;
 }): SpotTarget {
   const structure = structureOf(args.position.sec_type, args.contract);
   if (structure === null) {

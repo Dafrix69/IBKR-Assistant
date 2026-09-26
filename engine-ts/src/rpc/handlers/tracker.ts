@@ -14,6 +14,8 @@ import { HandlerBase } from "../context.js";
 import type { MethodTable, Rec } from "../context.js";
 import { contractMethods } from "../contractMethods.js";
 import { drawdownTiersOf, optFloat } from "../params.js";
+import { legInputsOf } from "../../ivPricing.js";
+import type { LegInputs } from "../../ivPricing.js";
 
 /** 券商没报盈亏(positions() 兜底路径只有成本)时,用追踪器同一套口径本地算(对应 Python _fill_pnl)。 */
 function fillPnl(row: PositionRow): void {
@@ -198,9 +200,8 @@ export class TrackerHandlers extends HandlerBase {
   /** 算预计价位要的三样行情:标的现价、持仓报价、各腿报价。拿不到就是 null,不编。 */
   private async spotInputs(
     raw: Rec, rows: Record<string, Rec>, structure: tkMod.TargetStructure,
-  ): Promise<{
-    spot: number | null; markPrice: number | null;
-    legPrices: Record<string, number | null>; minute: number; spotNote: string;
+  ): Promise<LegInputs & {
+    spot: number | null; markPrice: number | null; minute: number; spotNote: string; nowMs: number;
   }> {
     let spot: number | null = null;
     if (structure.kind === "stock") {
@@ -212,26 +213,19 @@ export class TrackerHandlers extends HandlerBase {
         spot = null;
       }
     }
-    const legPrices: Record<string, number | null> = {};
-    for (const legKey of (raw["legs"] ?? []) as string[]) {
-      const leg = rows[legKey];
-      if (leg === undefined) continue;
-      const c = (leg["contract"] ?? {}) as Rec;
-      const strike = Number(c["strike"]);
-      const right = String(c["right"] ?? "").slice(0, 1).toUpperCase();
-      if (!Number.isFinite(strike) || !right) continue;
-      legPrices[tkMod.legPriceKey({ strike, right })] = (leg["market_price"] ?? null) as number | null;
-    }
     const info = structure.kind === "stock" || this.router === null
       ? null
       : (this.router as { spotInfo?: (s: string) => Rec | null }).spotInfo?.(String(raw["symbol"])) ?? null;
     // 夜盘推算失败时拿到的是昨收:当作没有现价,和盯盘那一路同一条规矩
     if (info?.["source"] === "index_stale") spot = null;
+    const now = nowEt();
     return {
       spot,
       markPrice: (raw["market_price"] ?? null) as number | null,
-      legPrices,
-      minute: nowEt().minutes,
+      // 各腿报价、IBKR 模型 IV、到期:和盯盘同一个函数拼,试算与实盘不分叉
+      ...legInputsOf(raw, rows, tkMod.legPriceKey),
+      minute: now.minutes,
+      nowMs: now.epochMs,
       spotNote: String(info?.["note"] ?? ""),
     };
   }
