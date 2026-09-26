@@ -320,8 +320,8 @@ export class TrackerHandlers extends HandlerBase {
         this.requireHostingSupported(String(track["account"]));
       }
     }
-    if (["take_profit", "stop_loss", "trail_pct", "profit_drawdown_pct",
-         "profit_drawdown_tiers", "profit_drawdown_preset", "spot_target"].some((k) => k in params)) {
+    if (["take_profit", "stop_loss", "trail_pct", "profit_drawdown_pct", "profit_drawdown_tiers",
+         "profit_drawdown_preset", "profit_drawdown_arm_pct", "spot_target"].some((k) => k in params)) {
       const targets = tkMod.makeTargets({
         take_profit: optFloat(params["take_profit"]),
         stop_loss: optFloat(params["stop_loss"]),

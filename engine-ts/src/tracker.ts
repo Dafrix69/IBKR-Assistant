@@ -1434,9 +1434,12 @@ export function hostedPlan(
       label: `${HOSTED_LABELS[HOSTED_KIND_TRAIL]} ${pyG(trail)}%`,
     });
   }
-  const pstop = hostedStopPrice(
-    position, profitTrailStopPrice(position, peak, targets.profit_drawdown_pct),
-  );
+  // 利润回撤的停损单只在过了起算门槛之后才挂:没过门槛就挂上去,券商侧会在浮盈几分钱时按回撤触发——
+  // 正是门槛要挡的那一下。峰值持久化、只朝有利方向走,过了门槛就一直算过了
+  const armed = peak !== null && drawdownArmed(targets, (marketValue(position, peak) ?? 0) - costBasis(position), costBasis(position));
+  const pstop = armed
+    ? hostedStopPrice(position, profitTrailStopPrice(position, peak, targets.profit_drawdown_pct))
+    : null;
   if (pstop !== null) {
     plan.push({
       kind: HOSTED_KIND_PTRAIL, action: side, order_type: "STP",
