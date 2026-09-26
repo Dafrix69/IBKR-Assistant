@@ -458,9 +458,12 @@ async function ivCheckStep() {
       const years = Math.max(0, expiryMs - now) / (365 * 24 * 3600 * 1000);
       const sigma = m.undPrice * m.iv * Math.sqrt(years);
       const ours = legValue(c.right, m.undPrice, Number(c.strike), sigma);
+      // 同一个 IV、同一个剩余时间的 Black-Scholes(r = 0)。三个数并排:BS 对得上 IB、我们偏——是正态换算的近似
+      // (离平值越远越大);两个都偏——是剩余时间的约定错了(到期时刻、结算方式)
+      const bs = bsPrice(c.right, m.undPrice, Number(c.strike), m.iv, years);
       rows.push({
         name: leg.name, ok: true, delayed: m.delayed, und: m.undPrice, iv: m.iv, hours_left: +(years * 8760).toFixed(2),
-        ib_model: +m.optPrice.toFixed(4), ours: +ours.toFixed(4), diff: +(ours - m.optPrice).toFixed(4),
+        ib_model: +m.optPrice.toFixed(4), bs_ref: +bs.toFixed(4), ours: +ours.toFixed(4), diff: +(ours - m.optPrice).toFixed(4),
         diff_pct: +(((ours - m.optPrice) / m.optPrice) * 100).toFixed(2),
       });
     });
@@ -474,9 +477,26 @@ async function ivCheckStep() {
   if (error) console.log(`  ✗ ${String(ms).padStart(6)} ms  ${error.message}`);
   for (const r of rows) {
     console.log(r.ok
-      ? `  ✓ ${r.name.padEnd(28)} 标的 ${r.und}  IV ${(r.iv * 100).toFixed(2)}%  剩 ${r.hours_left} h  IB 模型价 ${r.ib_model}  我们 ${r.ours}  差 ${r.diff}(${r.diff_pct}%)${r.delayed ? "  [延迟]" : ""}`
+      ? `  ✓ ${r.name.padEnd(28)} 标的 ${r.und}  IV ${(r.iv * 100).toFixed(2)}%  剩 ${r.hours_left} h  IB 模型价 ${r.ib_model}  BS 参考 ${r.bs_ref}  我们 ${r.ours}  差 ${r.diff}(${r.diff_pct}%)${r.delayed ? "  [延迟]" : ""}`
       : `  ✗ ${r.name.padEnd(28)} ${r.why}`);
   }
+}
+
+/** Black-Scholes(r = 0、无股息),只给 ivcheck 当参考价。正态分布函数用 Abramowitz–Stegun 7.1.26 近似(误差 < 1.5e-7)。 */
+function bsPrice(right, s, k, iv, years) {
+  const intrinsic = String(right).toUpperCase().startsWith("P") ? Math.max(k - s, 0) : Math.max(s - k, 0);
+  if (!(years > 0) || !(iv > 0)) return intrinsic;
+  const erf = (x) => {
+    const t = 1 / (1 + 0.3275911 * Math.abs(x));
+    const y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x);
+    return x >= 0 ? y : -y;
+  };
+  const N = (x) => 0.5 * (1 + erf(x / Math.SQRT2));
+  const v = iv * Math.sqrt(years);
+  const d1 = (Math.log(s / k) + 0.5 * v * v) / v;
+  const d2 = d1 - v;
+  const call = s * N(d1) - k * N(d2);
+  return String(right).toUpperCase().startsWith("P") ? call - s + k : call;
 }
 
 // ---- 股票复盘 ----------------------------------------------------------------

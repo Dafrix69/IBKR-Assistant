@@ -39,6 +39,9 @@ describe("到期时刻", () => {
     expect(expiryEpochMs("SPX", EXPIRY, "")).toBeNull();
     expect(expiryEpochMs("NDX", EXPIRY, "")).toBeNull();
   });
+  it("TWS 带着时间后缀的到期字段:只认前 8 位", () => {
+    expect(expiryEpochMs("SPX", "20260925 15:00 US/Central", "SPXW")).toBe(CLOSE);
+  });
   it("日期写法不对:null", () => {
     expect(expiryEpochMs("SPX", "2026-09-25", "SPXW")).toBeNull();
     expect(expiryEpochMs("SPX", "202609", "SPXW")).toBeNull();

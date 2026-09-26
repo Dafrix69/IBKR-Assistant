@@ -23,9 +23,10 @@ interface PricedLeg { strike: number; right: string }
 const AM_SETTLED_ROOTS = new Set(["SPX", "NDX", "RUT"]);
 const YEAR_MS = 365 * 24 * 3600 * 1000;
 
-/** 这张期权最后一刻还有时间价值的时刻(毫秒)。到期日格式 YYYYMMDD;认不出回 null。 */
+/** 这张期权最后一刻还有时间价值的时刻(毫秒)。到期日取前 8 位 YYYYMMDD——TWS 有时带着时间后缀
+ * ("20260918 08:30 US/Central"),整串匹配会把它判成认不出;认不出回 null。 */
 export function expiryEpochMs(symbol: string, expiry: string, tradingClass: string): number | null {
-  const m = /^(\d{4})(\d{2})(\d{2})$/.exec(String(expiry ?? "").trim());
+  const m = /^(\d{4})(\d{2})(\d{2})(?!\d)/.exec(String(expiry ?? "").trim());
   if (m === null) return null;
   const sym = String(symbol ?? "").toUpperCase();
   const tc = String(tradingClass ?? "").toUpperCase();
