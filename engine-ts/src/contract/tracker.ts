@@ -98,11 +98,13 @@ export interface SpotTarget {
   pnl_pct: number | null;
   /** 算这个价用的 σ_剩余(点);正股没有 σ。smile 档报最贴近目标价那条腿的。 */
   sigma: number | null;
-  /** σ 从哪来:none = 正股不需要、smile = 每条腿各自反解、net = 净价反解、leg = 最近腿反解、
+  /** σ 从哪来:none = 正股不需要、ibkr = 各腿 IBKR 模型 IV、smile = 每条腿各自反解、net = 净价反解、leg = 最近腿反解、
    * clock = EM×√剩余方差。 */
   sigma_source: string;
-  /** smile 档每条腿各自的 σ(按 legPriceKey 索引);别的档没有这一项。 */
+  /** smile / ibkr 档每条腿各自的 σ(点,按 legPriceKey 索引);别的档没有这一项。 */
   leg_sigmas?: Record<string, number>;
+  /** ibkr 档每条腿 IBKR 推的模型 IV(年化,按 legPriceKey 索引);别的档没有这一项。 */
+  leg_ivs?: Record<string, number>;
   /** 这份持仓是什么结构,给错误信息和界面用。 */
   structure: string;
   /** 算不出来的时候说清楚为什么——静默回 null 会让界面显示成"还没到价"。 */

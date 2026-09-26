@@ -708,11 +708,13 @@ export function applyTicks(mod: any, data: TickerData, update: any): void {
   setIf(get("OPTION_PUT_OPEN_INTEREST"), (v) => (data.putOpenInterest = v));
   setIf(get("OPTION_CALL_VOLUME"), (v) => (data.callVolume = v));
   setIf(get("OPTION_PUT_VOLUME"), (v) => (data.putVolume = v));
-  // 模型 greeks:IBApiNext 把 MODEL_OPTION 的各分量拆成独立 tick
-  const gamma = get("MODEL_OPTION_GAMMA") ?? get("modelGamma");
-  const iv = get("MODEL_OPTION_IV") ?? get("modelIV");
+  // 模型 greeks:IBApiNext 把 MODEL_OPTION 的各分量拆成独立 tick。实时优先、延迟兜底(pick):
+  // 纸面会话按行情类型 3 订,来的是 DELAYED_MODEL_OPTION_*(10045…)——只认实时的话,模拟账户永远拿不到 IV
+  const gamma = pick("MODEL_OPTION_GAMMA") ?? get("modelGamma");
+  const iv = pick("MODEL_OPTION_IV") ?? get("modelIV");
+  const optPrice = pick("MODEL_OPTION_PRICE");
   if (gamma !== undefined || iv !== undefined) {
-    data.modelGreeks = { gamma: gamma ?? null, impliedVol: iv ?? null };
+    data.modelGreeks = { gamma: gamma ?? null, impliedVol: iv ?? null, optPrice: optPrice ?? null };
   }
   if (data.last === null && data.bid > 0 && data.ask > 0) {
     data.marketPrice = (data.bid + data.ask) / 2;

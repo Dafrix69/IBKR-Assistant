@@ -11,6 +11,7 @@ import type {
 } from "./contract/instruction.js";
 import type { TrackerHeartbeat } from "./contract/system.js";
 import { heartbeatOf } from "./engine/heartbeat.js";
+import { legInputsOf } from "./ivPricing.js";
 import type { TrackFired, TrackerPollTick, TrackerSyncHostedTick } from "./contract/trackerloop.js";
 import {
   BrokerError, PendingTrigger, PlacementResult, autoMidLimit, comboMidPrice, shouldFire,
@@ -839,17 +840,8 @@ export class TradingEngine {
         spot = null; // 行情失败不该炸掉轮询;下面会退到上一轮的价
       }
     }
-    // 组合各腿的报价:每条腿按自己的报价反解 σ(smile 档,翼内翼外都解得出);缺腿时退到净价/最近腿
-    const legPrices: Record<string, number | null> = {};
-    for (const legKey of (raw["legs"] ?? []) as string[]) {
-      const leg = positions[legKey];
-      if (leg === undefined) continue;
-      const c = (leg["contract"] ?? {}) as Rec;
-      const strike = finiteOrNull(c["strike"]);
-      const right = String(c["right"] ?? "").slice(0, 1).toUpperCase();
-      if (strike === null || !right) continue;
-      legPrices[tk.legPriceKey({ strike, right })] = (leg["market_price"] ?? null) as number | null;
-    }
+    // 各腿报价、IBKR 模型 IV、到期(ibkr 档用 IV,缺了退到按报价反解;见 ivPricing.ts),与试算同一个函数拼
+    const legs = legInputsOf(raw, positions, tk.legPriceKey);
 
     const info = structure.kind === "stock" ? null : this.router!.spotInfo?.(String(raw["symbol"])) ?? null;
     const spotNote = String(info?.["note"] ?? "");
@@ -859,7 +851,7 @@ export class TradingEngine {
     const st = tk.spotTarget({
       structure, position, spotTarget: target, spot,
       markPrice: (raw["market_price"] ?? null) as number | null,
-      legPrices, minute: at.minutes, spotNote,
+      ...legs, minute: at.minutes, nowMs: at.epochMs, spotNote,
     });
     const tid = String(track["id"]);
     const last = this.flyMark.get(tid) ?? null;

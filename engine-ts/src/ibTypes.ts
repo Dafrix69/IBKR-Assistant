@@ -53,7 +53,8 @@ export interface TickerData {
   putOpenInterest?: number | null;
   callVolume?: number | null;
   putVolume?: number | null;
-  modelGreeks?: { gamma: number | null; impliedVol: number | null } | null;
+  /** optPrice:IB 按同一个 IV 算出来的模型价——拿来核对我们换算 IV 用的剩余时间对不对 */
+  modelGreeks?: { gamma: number | null; impliedVol: number | null; optPrice?: number | null } | null;
   /** 订阅被 TWS 拒掉时的错误码与原文(如 10197 实盘会话占着实时行情)。有它就说明这条流已经死了。 */
   error?: string | null;
   // 以下只有异动监控订的那条流(generic "165,104,595")才有;只用于研究与提醒,绝不进订单定价

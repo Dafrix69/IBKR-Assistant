@@ -7,6 +7,7 @@
 //   npm run probe -- --config D:/other/settings.json
 //   npm run probe -- --steps stockreview --seed-fills D:/backup/trades.db   # 股票复盘;拿一份库的备份把历史成交灌进临时库
 //   npm run probe -- --steps flyreview --seed-fills D:/backup/trades.db --review-id ib:<permId>   # 蝴蝶复盘 + 止盈策略回放
+//   npm run probe -- --steps ivcheck --iv-legs SPX:SPXW:20260928:7700C,SPX:SPXW:20260928:7720C   # 标的目标价 ibkr 档的换算核对
 //
 // 走的是引擎的 RPC(dist/src/cli.js rpc)——和桌面应用同一条路,不是另写一套连接代码。
 //
@@ -54,6 +55,8 @@ const timeoutMs = Number(opt("timeout", "90000"));
 // (追踪、托管单、条件单一条不带——临时库照旧没有东西可以让盯盘循环去动)
 const seedFills = opt("seed-fills", "");
 const reviewId = opt("review-id", "");
+// ivcheck 要核对的期权腿:符号:交易类别:到期:行权价+C/P;不给就用持仓里的期权腿
+const ivLegs = list(opt("iv-legs", ""));
 
 // ---- 只读白名单 ------------------------------------------------------------
 // 新增一步之前先确认那个 RPC 不会发单、撤单、改配置、动追踪。写库只许写临时库。
@@ -95,6 +98,7 @@ const STEPS = {
   // 股票复盘:候选列表(期初仓位要靠当前持仓反推,所以排在 positions 之后)+ 逐笔分析
   stockreview: { title: "股票交易复盘", needs: ["positions"], script: () => stockReviewStep() },
   flyreview: { title: "蝴蝶交易复盘(含止盈策略回放)", needs: ["connect"], script: () => flyReviewStep() },
+  ivcheck: { title: "IBKR 模型 IV 换算核对(标的目标价 ibkr 档)", needs: ["positions"], script: () => ivCheckStep() },
   after: { title: "连接后的引擎状态", needs: [], calls: () => [["system.status", {}]] },
 };
 
@@ -153,7 +157,8 @@ const connNames = conns.map(([n]) => n);
 
 const workDir = fs.mkdtempSync(path.join(os.tmpdir(), "dafri-probe-"));
 const cfg = structuredClone(base);
-cfg.broker = { ...(cfg.broker ?? {}), provider: "ibkr" };
+// 探针自己按步骤连(connect 那一步),不要引擎启动即连——那会多一条连接、没开的那台 TWS 还要白等 10 秒
+cfg.broker = { ...(cfg.broker ?? {}), provider: "ibkr", auto_connect: false };
 cfg.connections = Object.fromEntries(conns.map(([n, c], i) => [n, { ...c, client_id: clientIdBase + i }]));
 cfg.accounts = (cfg.accounts ?? []).filter((a) => connNames.includes(a.connection));
 if (cfg.accounts.length && !cfg.accounts.some((a) => a.default)) cfg.accounts[0].default = true;
@@ -384,6 +389,114 @@ async function checkEntitlements() {
   } finally {
     api.disconnect();
   }
+}
+
+// ---- IBKR 模型 IV 换算核对 ------------------------------------------------------
+// 标的目标价的 ibkr 档把 IB 推的年化 IV 换成点数 σ = 标的价 × IV × √剩余年数,再按 Bachelier 定价(见 ivPricing.ts)。
+// IB 同时推它自己按同一个 IV 算的模型价(MODEL_OPTION tick 13 / 延迟 83)。拿我们的换算在 IB 的标的价处重算,
+// 和 IB 的模型价比:平值附近应当很近;差一大截先怀疑剩余时间(到期时刻、结算方式),再看离平值多远。
+async function ivCheckStep() {
+  const { IBApi, EventName } = await import("@stoqey/ib");
+  const { pathToFileURL } = await import("node:url");
+  const { expiryEpochMs } = await import(pathToFileURL(path.join(ENGINE_DIR, "dist", "src", "ivPricing.js")).href);
+  const { legValue } = await import(pathToFileURL(path.join(ENGINE_DIR, "dist", "src", "flyexit.js")).href);
+  const held = report.steps.find((s) => s.method === "positions.list")?.result?.positions ?? [];
+  const legs = ivLegs.length
+    ? ivLegs.map((spec) => {
+        const [symbol, tradingClass, expiry, strikeRight] = spec.split(":");
+        const right = String(strikeRight ?? "").slice(-1).toUpperCase();
+        return {
+          name: spec,
+          contract: { symbol, tradingClass, lastTradeDateOrContractMonth: expiry, strike: Number(String(strikeRight).slice(0, -1)),
+                      right, secType: "OPT", exchange: "SMART", currency: "USD", multiplier: "100" },
+        };
+      })
+    : held.filter((p) => p.sec_type === "OPT" && p.contract).slice(0, 4).map((p) => ({ name: p.label, contract: { ...p.contract, exchange: "SMART" } }));
+  const t0 = performance.now();
+  if (!legs.length) {
+    report.steps.push({ step: "ivcheck", method: "(直连) ivcheck", params: null, ok: true, ms: 0, result: [], error: null });
+    console.log("  - 没有期权持仓,也没给 --iv-legs:跳过");
+    return;
+  }
+  const connected = report.steps.find((s) => s.method === "broker.connect")?.result?.connected ?? [];
+  const conn = cfg.connections[connected.find((n) => cfg.connections[n]) ?? connNames[0]];
+  const api = new IBApi({ host: conn.host, port: conn.port });
+  const got = new Map(); // reqId → { iv, optPrice, undPrice, delayed }
+  api.on(EventName.tickOptionComputation, (reqId, field, _attr, iv, _delta, optPrice, _pv, _g, _v, _t, undPrice) => {
+    if (field !== 13 && field !== 83) return; // 13 = 模型,83 = 延迟模型
+    if (!(iv > 0) || !(optPrice > 0) || !(undPrice > 0)) return;
+    if (field === 83 && got.get(reqId)?.delayed === false) return; // 实时的优先
+    got.set(reqId, { iv, optPrice, undPrice, delayed: field === 83 });
+  });
+  await new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error("底层连接超时(10 秒)")), 10_000);
+    api.once(EventName.nextValidId, () => {
+      clearTimeout(t);
+      resolve();
+    });
+    api.connect(clientIdBase + 11);
+  });
+  const rows = [];
+  let error = null;
+  try {
+    api.reqMarketDataType(3); // 有实时就是实时,没有给延迟(和纸面会话同一条规矩)
+    const ids = legs.map((leg, i) => {
+      api.reqMktData(8000 + i, leg.contract, "", false, false);
+      return 8000 + i;
+    });
+    await new Promise((r) => setTimeout(r, 6000));
+    ids.forEach((id) => api.cancelMktData(id));
+    const now = Date.now();
+    legs.forEach((leg, i) => {
+      const m = got.get(ids[i]);
+      const c = leg.contract;
+      const expiryMs = expiryEpochMs(c.symbol, String(c.lastTradeDateOrContractMonth).slice(0, 8), c.tradingClass ?? "");
+      if (!m || expiryMs === null) {
+        rows.push({ name: leg.name, ok: false, why: !m ? "IB 没推模型值(休市 / 没有行情权限?)" : "认不出到期时刻(没有交易类别?)" });
+        return;
+      }
+      const years = Math.max(0, expiryMs - now) / (365 * 24 * 3600 * 1000);
+      const sigma = m.undPrice * m.iv * Math.sqrt(years);
+      const ours = legValue(c.right, m.undPrice, Number(c.strike), sigma);
+      // 同一个 IV、同一个剩余时间的 Black-Scholes(r = 0)。三个数并排:BS 对得上 IB、我们偏——是正态换算的近似
+      // (离平值越远越大);两个都偏——是剩余时间的约定错了(到期时刻、结算方式)
+      const bs = bsPrice(c.right, m.undPrice, Number(c.strike), m.iv, years);
+      rows.push({
+        name: leg.name, ok: true, delayed: m.delayed, und: m.undPrice, iv: m.iv, hours_left: +(years * 8760).toFixed(2),
+        ib_model: +m.optPrice.toFixed(4), bs_ref: +bs.toFixed(4), ours: +ours.toFixed(4), diff: +(ours - m.optPrice).toFixed(4),
+        diff_pct: +(((ours - m.optPrice) / m.optPrice) * 100).toFixed(2),
+      });
+    });
+  } catch (exc) {
+    error = { message: String(exc?.message ?? exc) };
+  } finally {
+    api.disconnect();
+  }
+  const ms = Math.round(performance.now() - t0);
+  report.steps.push({ step: "ivcheck", method: "(直连) ivcheck", params: { legs: legs.map((l) => l.name) }, ok: !error, ms, result: rows, error });
+  if (error) console.log(`  ✗ ${String(ms).padStart(6)} ms  ${error.message}`);
+  for (const r of rows) {
+    console.log(r.ok
+      ? `  ✓ ${r.name.padEnd(28)} 标的 ${r.und}  IV ${(r.iv * 100).toFixed(2)}%  剩 ${r.hours_left} h  IB 模型价 ${r.ib_model}  BS 参考 ${r.bs_ref}  我们 ${r.ours}  差 ${r.diff}(${r.diff_pct}%)${r.delayed ? "  [延迟]" : ""}`
+      : `  ✗ ${r.name.padEnd(28)} ${r.why}`);
+  }
+}
+
+/** Black-Scholes(r = 0、无股息),只给 ivcheck 当参考价。正态分布函数用 Abramowitz–Stegun 7.1.26 近似(误差 < 1.5e-7)。 */
+function bsPrice(right, s, k, iv, years) {
+  const intrinsic = String(right).toUpperCase().startsWith("P") ? Math.max(k - s, 0) : Math.max(s - k, 0);
+  if (!(years > 0) || !(iv > 0)) return intrinsic;
+  const erf = (x) => {
+    const t = 1 / (1 + 0.3275911 * Math.abs(x));
+    const y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x);
+    return x >= 0 ? y : -y;
+  };
+  const N = (x) => 0.5 * (1 + erf(x / Math.SQRT2));
+  const v = iv * Math.sqrt(years);
+  const d1 = (Math.log(s / k) + 0.5 * v * v) / v;
+  const d2 = d1 - v;
+  const call = s * N(d1) - k * N(d2);
+  return String(right).toUpperCase().startsWith("P") ? call - s + k : call;
 }
 
 // ---- 股票复盘 ----------------------------------------------------------------
