@@ -63,13 +63,14 @@ jobs:
         working-directory: desktop
         run: npm ci
 
+      # PR 上一律 ad-hoc:证书不暴露给 PR,也不为每个 PR 排一次公证
       - name: 打包 DMG(界面构建 → 暂存引擎 → 冒烟 → electron-builder)
-        if: env.HAS_DEVELOPER_ID != 'true'
+        if: env.HAS_DEVELOPER_ID != 'true' || github.event_name == 'pull_request'
         working-directory: desktop
         run: npm run dist:mac
 
       - name: 打包 DMG(同上,Developer ID 签名 + 公证,最后按 Gatekeeper 口径自验)
-        if: env.HAS_DEVELOPER_ID == 'true'
+        if: env.HAS_DEVELOPER_ID == 'true' && github.event_name != 'pull_request'
         working-directory: desktop
         env:
           CSC_LINK: ${{ secrets.MAC_CERT_P12_BASE64 }}

@@ -58,6 +58,14 @@ function inFileProvider(dir) {
 // ---- 1. 签名版先查齐 --------------------------------------------------------------------
 if (process.platform !== 'darwin') fail('Mac 安装包只能在 macOS 上打');
 
+// electron-builder 在 PR 构建(GitHub 上看 GITHUB_BASE_REF)里默认跳过签名,防的是外部 PR 偷用证书。
+// ad-hoc 签名不碰任何密钥,没有那层风险,而跳过的后果是 PR 打出来的包和发版的不是同一个东西
+// (连签名都没有,下面的 codesign 自验必挂——2026-09-27 PR #5 第一次跑就这么挂的)。所以 ad-hoc 照签;
+// Developer ID 在 PR 里一律不签,CI 那边也只在非 PR 时走签名版
+const isPullRequest = Boolean(env.GITHUB_BASE_REF);
+if (!signed) env.CSC_FOR_PULL_REQUEST = 'true';
+else if (isPullRequest) fail('PR 构建里不做 Developer ID 签名与公证(证书不该暴露给 PR);PR 上用 npm run dist:mac');
+
 const team = (env.APPLE_TEAM_ID || '').trim();
 let notary = null;
 if (signed) {
