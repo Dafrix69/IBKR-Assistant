@@ -10,7 +10,7 @@
  *   * 生产构建关掉 DevTools。
  */
 const {
-  app, BrowserWindow, Menu, Notification, ipcMain, dialog, shell, session, nativeTheme, powerSaveBlocker,
+  app, BrowserWindow, Menu, Notification, ipcMain, dialog, shell, session, nativeTheme, powerSaveBlocker, screen,
 } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
@@ -184,8 +184,10 @@ const SENSITIVE_RPC = new Set([
 
 let mainWindow = null;
 let engine = null;
-// 正在退出应用:这时引擎退出是我们让它退的,不拉起
+// 正在退出应用:这时引擎退出是我们让它退的,不拉起;macOS 上也靠它区分"关窗 = 藏起来"与"真退出"
 let quitting = false;
+// macOS 关窗后提示一次"还在后台跑"。每次启动只提示一次,不然每按一次 ⌘W 都弹一条通知
+let hiddenHintShown = false;
 // 引擎意外退出后的自动拉起:退避 3 s → 6 s → … 封顶 60 s;稳定跑过 5 分钟就清零
 let engineRestarts = 0;
 let engineStartedAt = 0;
@@ -236,10 +238,91 @@ function ensureConfigExists() {
   return { created: true };
 }
 
+// 窗口的位置与大小:下次打开回到上次的地方(Mac 应用的惯例,Windows 上一样受用)。
+// 显示器可能拔掉了、分辨率可能变了:记下的位置已经不在任何一块屏上,就退回默认居中——不然窗口开在屏幕外面找不回来。
+function windowStatePath() {
+  return path.join(app.getPath('userData'), 'window-state.json');
+}
+
+function loadWindowBounds() {
+  try {
+    const saved = JSON.parse(fs.readFileSync(windowStatePath(), 'utf8'));
+    const { x, y, width, height } = saved || {};
+    if (![x, y, width, height].every(Number.isFinite)) return {};
+    const onScreen = screen.getAllDisplays().some(({ workArea: a }) =>
+      x < a.x + a.width - 80 && x + width > a.x + 80 && y >= a.y - 20 && y < a.y + a.height - 60);
+    if (!onScreen) return {};
+    return { x, y, width, height, maximized: saved.maximized === true };
+  } catch {
+    return {}; // 第一次打开,或文件坏了
+  }
+}
+
+function saveWindowBounds() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  try {
+    // getNormalBounds:最大化、全屏时拿到的也是还原后的那一个框
+    const bounds = mainWindow.getNormalBounds();
+    fs.writeFileSync(windowStatePath(), JSON.stringify({ ...bounds, maximized: mainWindow.isMaximized() }));
+  } catch {
+    /* 写不进去就下次居中打开,不值得为它打断关窗 */
+  }
+}
+
+/** 焦点与全屏状态转给渲染层。失焦时侧栏选中项退灰(AppKit 源列表的标准表现);全屏时没有红绿灯,工具栏不用给它留位。 */
+function sendWindowState(patch = {}) {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  send('window', { focused: mainWindow.isFocused(), fullscreen: mainWindow.isFullScreen(), ...patch });
+}
+
+/** 把主窗口叫回前台:Dock、菜单、第二个实例都走这里。窗口已销毁(只会在退出途中)时返回 false。 */
+function showMainWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) return false;
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  if (!mainWindow.isVisible()) mainWindow.show();
+  mainWindow.focus();
+  return true;
+}
+
+/** 菜单里的跳页:先把窗口叫出来,再走和弹窗「查看」同一条 menu 通道(界面只认侧栏里真有的页)。 */
+function navigateFromMenu(page) {
+  showMainWindow();
+  send('menu', { action: 'navigate', page });
+}
+
+/**
+ * macOS:关窗(红灯 / ⌘W)只把窗口藏起来,应用留在 Dock 里。这是 Mac 的惯例,在这里更是保护:
+ * 托管单的秒级调整、盯盘、提醒都跑在这个渲染进程里,窗口一销毁它们就停了;以前关窗还会经
+ * window-all-closed 把引擎一起停掉,人以为挂着的止损其实没人盯,再点 Dock 回来也不会自动恢复。
+ */
+function hideMainWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  // 全屏的窗口直接 hide,它那块全屏空间会留下一整屏黑:先退出全屏,动画走完再藏
+  if (mainWindow.isFullScreen()) {
+    mainWindow.once('leave-full-screen', () => hideMainWindow());
+    mainWindow.setFullScreen(false);
+    return;
+  }
+  mainWindow.hide();
+  if (!hiddenHintShown) {
+    hiddenHintShown = true;
+    notifySystem('IBKR-Assistant 仍在运行', '追踪、提醒与自动执行照常在后台工作。点 Dock 图标打开窗口,⌘Q 退出。');
+  }
+}
+
+/** 系统通知。截断:内容来自行情与用户填的标的,不该由它决定通知多大。 */
+function notifySystem(title, body) {
+  if (!Notification.isSupported()) return false;
+  new Notification({ title: title.slice(0, 120), body: body.slice(0, 300) }).show();
+  return true;
+}
+
 function createWindow() {
+  const saved = loadWindowBounds();
   mainWindow = new BrowserWindow({
-    width: 1360,
-    height: 900,
+    width: saved.width ?? 1360,
+    height: saved.height ?? 900,
+    ...(saved.x !== undefined ? { x: saved.x, y: saved.y } : {}),
     minWidth: 900,             // 1000 以下侧栏收成图标栏,内容区仍有 840 以上
     minHeight: 700,
     title: 'IBKR-Assistant',
@@ -269,6 +352,7 @@ function createWindow() {
     },
   });
 
+  if (saved.maximized) mainWindow.maximize();
   mainWindow.loadFile(RENDERER_INDEX);
 
   // UI 全部是本地资源,任何导航或新窗口都是异常,一律拦掉并交给系统浏览器
@@ -289,13 +373,25 @@ function createWindow() {
     else if (DEV) log.debug(text);
   });
 
-  // 焦点状态转给渲染层:窗口失焦时侧栏选中项退灰,这是 AppKit 源列表的标准表现
   mainWindow.on('focus', () => {
     // 弹窗出来时主窗口不在前台会闪任务栏;人回来了就别再闪
     if (mainWindow && !mainWindow.isDestroyed()) mainWindow.flashFrame(false);
-    send('window', { focused: true });
+    sendWindowState({ focused: true });
   });
-  mainWindow.on('blur', () => send('window', { focused: false }));
+  mainWindow.on('blur', () => sendWindowState({ focused: false }));
+  mainWindow.on('enter-full-screen', () => sendWindowState({ fullscreen: true }));
+  mainWindow.on('leave-full-screen', () => sendWindowState({ fullscreen: false }));
+  // 页面(重)载完补发一次:全屏里重启界面,或 ui:watch 重建后重载,渲染层不会自己知道
+  mainWindow.webContents.on('did-finish-load', () => sendWindowState());
+
+  // 真退出(⌘Q、Dock 的「退出」、关机)时 before-quit 先把 quitting 置上,这里放行;
+  // 其余情况在 macOS 上都只是藏起来(为什么见 hideMainWindow)
+  mainWindow.on('close', (event) => {
+    saveWindowBounds();
+    if (process.platform !== 'darwin' || quitting) return;
+    event.preventDefault();
+    hideMainWindow();
+  });
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -305,27 +401,108 @@ function createWindow() {
   });
 }
 
-function buildMenu() {
-  const template = [
-    ...(process.platform === 'darwin'
-      ? [{ role: 'appMenu' }]
-      : []),
+/**
+ * macOS 的菜单栏。Electron 的 role 自带标签是写死的英文(About / Hide / Edit / Undo…),
+ * 夹在「交易」「窗口」中间就是中英混排,所以每一项都显式写中文;用的词照 macOS 简体中文系统自己的叫法
+ * (拷贝、隐藏其他、前置全部窗口)。Windows 的菜单栏被隐藏标题栏收掉了,只用得到快捷键,那边保持原样。
+ */
+function macMenuTemplate(tradeMenu) {
+  const name = app.name;
+  return [
     {
-      label: '交易',
+      label: name,
       submenu: [
-        {
-          label: '暂停全部自动执行(熔断)',
-          accelerator: 'CommandOrControl+Shift+H',
-          click: () => haltFromMenu(),
-        },
+        { label: `关于 ${name}`, click: () => navigateFromMenu('about') },
         { type: 'separator' },
-        {
-          label: '刷新状态',
-          accelerator: 'CommandOrControl+R',
-          click: () => send('menu', { action: 'refresh' }),
-        },
+        { label: '设置…', accelerator: 'Command+,', click: () => navigateFromMenu('settings') },
+        { type: 'separator' },
+        { label: '服务', role: 'services' },
+        { type: 'separator' },
+        { label: `隐藏 ${name}`, role: 'hide' },
+        { label: '隐藏其他', role: 'hideOthers' },
+        { label: '全部显示', role: 'unhide' },
+        { type: 'separator' },
+        { label: `退出 ${name}`, role: 'quit' },
       ],
     },
+    tradeMenu,
+    {
+      label: '编辑',
+      submenu: [
+        { label: '撤销', role: 'undo' },
+        { label: '重做', role: 'redo' },
+        { type: 'separator' },
+        { label: '剪切', role: 'cut' },
+        { label: '拷贝', role: 'copy' },
+        { label: '粘贴', role: 'paste' },
+        { label: '粘贴并匹配样式', role: 'pasteAndMatchStyle' },
+        { label: '全选', role: 'selectAll' },
+      ],
+    },
+    {
+      // role: 'window' 让系统接管这个菜单:窗口列表、以及 macOS 自己加的「移动与调整大小」都挂在这里
+      label: '窗口',
+      role: 'window',
+      submenu: [
+        { label: '最小化', role: 'minimize' },
+        { label: '缩放', role: 'zoom' },
+        { label: '切换全屏幕', role: 'togglefullscreen' },
+        { type: 'separator' },
+        // ⌘W 只把窗口藏起来,后台照跑(见 hideMainWindow);⌘0 叫回来,和「信息」「音乐」的「窗口」菜单一样
+        { label: '关闭窗口', role: 'close' },
+        { label: '主窗口', accelerator: 'Command+0', click: () => showMainWindow() },
+        { type: 'separator' },
+        { label: '前置全部窗口', role: 'front' },
+        ...(DEV ? [{ type: 'separator' }, { role: 'toggleDevTools' }] : []),
+      ],
+    },
+    {
+      label: '帮助',
+      role: 'help',
+      submenu: [
+        // 出了问题要日志时不用再去「关于」页抄路径
+        { label: '在访达中显示日志', click: () => shell.showItemInFolder(log.transports.file.getFile().path) },
+      ],
+    },
+  ];
+}
+
+/**
+ * Dock 图标的右键菜单。窗口藏着的时候这是离熔断最近的地方——不用先把窗口叫出来再找按钮。
+ */
+function buildDockMenu() {
+  if (process.platform !== 'darwin' || !app.dock) return;
+  app.dock.setMenu(Menu.buildFromTemplate([
+    { label: '显示主窗口', click: () => showMainWindow() },
+    { type: 'separator' },
+    { label: '暂停全部自动执行(熔断)', click: () => haltFromMenu('Dock 菜单触发熔断') },
+  ]));
+}
+
+function buildMenu() {
+  const tradeMenu = {
+    label: '交易',
+    submenu: [
+      {
+        label: '暂停全部自动执行(熔断)',
+        accelerator: 'CommandOrControl+Shift+H',
+        click: () => haltFromMenu(),
+      },
+      { type: 'separator' },
+      {
+        label: '刷新状态',
+        accelerator: 'CommandOrControl+R',
+        click: () => send('menu', { action: 'refresh' }),
+      },
+    ],
+  };
+  if (process.platform === 'darwin') {
+    Menu.setApplicationMenu(Menu.buildFromTemplate(macMenuTemplate(tradeMenu)));
+    buildDockMenu();
+    return;
+  }
+  const template = [
+    tradeMenu,
     { role: 'editMenu' },
     {
       label: '窗口',
@@ -339,12 +516,16 @@ function buildMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
-async function haltFromMenu() {
+async function haltFromMenu(reason = '菜单/快捷键触发熔断') {
+  // 从 Dock 菜单、或窗口藏着时按快捷键熔断,界面上那条回执没人看得见:结果另发一条系统通知
+  const unseen = !mainWindow || mainWindow.isDestroyed() || !mainWindow.isVisible();
   try {
-    const result = await engine.call('breaker.halt', { reason: '菜单/快捷键触发熔断' });
+    const result = await engine.call('breaker.halt', { reason });
     send('engine-event', { event: 'breaker', data: result });
+    if (unseen) notifySystem('已暂停全部自动执行', '熔断已生效。恢复要回到应用里操作。');
   } catch (err) {
     send('engine-event', { event: 'error', data: { message: err.message } });
+    if (unseen) notifySystem('熔断没有生效', String(err.message || err));
   }
 }
 
@@ -469,10 +650,7 @@ function registerIpc() {
     if (typeof title !== 'string' || typeof body !== 'string') {
       throw new Error('通知内容不合法');
     }
-    if (!Notification.isSupported()) return { shown: false };
-    // 截断:通知内容来自行情与用户填的标的,不该由它决定弹窗多大
-    new Notification({ title: title.slice(0, 120), body: body.slice(0, 300) }).show();
-    return { shown: true };
+    return { shown: notifySystem(title, body) };
   });
 
   // 异动 / 价位提醒的置顶弹窗(不抢焦点)。内容来自行情与用户填的标的,
@@ -552,9 +730,11 @@ async function offerMoveToApplications() {
       return false;
     }
   }
-  const cp = spawnSync('cp', ['-R', bundle, target]);
+  // ditto 而不是 cp -R:拷应用包是它的本职,扩展属性、资源分支、框架里的符号链接都原样带过去,
+  // 签名才对得上(Apple 自己的安装说明也用它)
+  const cp = spawnSync('ditto', [bundle, target]);
   if (cp.status !== 0) {
-    dialog.showErrorBox('复制失败', String(cp.stderr || 'cp 退出码 ' + cp.status));
+    dialog.showErrorBox('复制失败', String(cp.stderr || 'ditto 退出码 ' + cp.status));
     return false;
   }
   // 去掉隔离属性,免得新副本又被 Gatekeeper 拦一次(仅限用户已确认打开的这份)
@@ -570,10 +750,7 @@ if (!gotLock) {
   app.quit();
 } else {
   app.on('second-instance', (event, argv) => {
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore();
-      mainWindow.focus();
-    }
+    showMainWindow(); // macOS 上窗口可能是藏着的(关窗只是隐藏),单 focus() 叫不出来
     // 另一个副本尝试启动却被本实例的锁挡下。若它来自不同路径,几乎必是
     // 用户在装新版本——静默吞掉会让用户以为"新版装不上/打不开"。
     const incoming = (argv || []).find((a) => a && !a.startsWith('-')) || '';
@@ -603,6 +780,14 @@ if (!gotLock) {
 
   app.whenReady().then(async () => {
     if (await offerMoveToApplications()) return; // 已复制并打开新副本,本进程退出
+    // 开发态(npm start)的 Dock 图标:不设就是 Electron 的默认图标。打包版的图标在应用包里,不走这里
+    if (!PACKAGED && process.platform === 'darwin' && app.dock) {
+      try {
+        app.dock.setIcon(path.join(__dirname, 'build', 'icon.png'));
+      } catch {
+        /* 图标文件不在也不影响启动 */
+      }
+    }
     // 严格 CSP:不允许任何远程资源、不允许 eval
     session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
       const nonce = styleNonce();
@@ -633,8 +818,10 @@ if (!gotLock) {
       send('bootstrap', { message: '已从示例创建 config/settings.json,请先在设置里核对账户与限额。' });
     }
 
+    // 点 Dock 图标:窗口藏着就叫回来。原来按"一扇窗都没有才新建"判断,可置顶弹窗也算一扇窗,
+    // 藏着的主窗口更算——那样点 Dock 什么都不会发生
     app.on('activate', () => {
-      if (BrowserWindow.getAllWindows().length === 0) createWindow();
+      if (!showMainWindow()) createWindow();
     });
   });
 

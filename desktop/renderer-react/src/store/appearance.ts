@@ -119,6 +119,9 @@ export function initAppearance(): void {
   // macOS 之外没有 vibrancy 底材,半透明面板背后是空的——换成实底
   document.documentElement.dataset.vibrancy = dafri.platform === 'darwin' ? 'on' : 'off';
   void dafri.setTheme(getThemeMode()).catch(() => {});
-  // 窗口失焦时侧栏选中项退成灰(AppKit 的源列表就是这样)
-  dafri.on('window', ({ focused }) => document.documentElement.toggleAttribute('data-window-blur', !focused));
+  // 窗口失焦时侧栏选中项退成灰(AppKit 的源列表就是这样);全屏时红绿灯收起,工具栏不用再给它留位
+  dafri.on('window', ({ focused, fullscreen }) => {
+    document.documentElement.toggleAttribute('data-window-blur', !focused);
+    document.documentElement.toggleAttribute('data-fullscreen', Boolean(fullscreen));
+  });
 }

@@ -424,3 +424,63 @@ PayoffChart(+PayoffAxis)/ StagePath / SymBadge / Widget。全是内联 SVG 与�
 
 **改名(2026-09-17)**:产品名 Dafri Trading → IBKR-Assistant(窗口标题、顶栏、安装包名、快捷方式)。`appId`、`window.dafri`、`DAFRI_*` 环境变量、
 localStorage 的 `dafri-*` 键都没动——改了就丢用户的偏好。userData 目录按产品名取,`main.js` 开头有一段:旧目录在、新目录里还没有 settings.json 就继续用旧目录。
+
+## Mac 版(2026-09-27)
+
+对着 0.5.1 的 mac-arm64 包逐项量出来的,都是只在 macOS 上才露面的问题:
+
+- **关窗 = 藏起来,不是退出。** 红灯 / ⌘W 原来会销毁主窗口并经 `window-all-closed` 停掉引擎,应用却按 Mac 惯例留在 Dock 里——
+  托管单的秒级调整、盯盘、提醒都跑在渲染进程,人以为挂着的止损其实没人盯;`quitting` 还被置成 true,引擎之后再崩也不会自动拉起。
+  现在 macOS 上关窗只 `hide()`(全屏时先退全屏再藏,不然留一整屏黑),引擎与渲染层照跑,每次启动第一次关窗发一条通知说明;
+  点 Dock / ⌘0 / 第二个实例都经 `showMainWindow()` 叫回来。真退出只有 ⌘Q、Dock「退出」、关机:`before-quit` 先置 `quitting`,`close` 再放行。
+  原来的 `activate` 按"一扇窗都没有才新建"判断,而置顶弹窗与藏着的主窗口都算窗,点 Dock 什么都不会发生。Windows 行为不变。
+- **菜单栏说中文。** Electron role 的默认标签写死英文,原来是「IBKR-Assistant / 交易 / Edit / 窗口」混排。macOS 分支每一项显式写中文,
+  词照系统自己的叫法(拷贝、隐藏其他、前置全部窗口);加了 ⌘, 打开设置、「关于」跳关于页、⌘W、⌘0 主窗口、切换全屏幕、
+  「帮助 › 在访达中显示日志」。「窗口」「帮助」挂 `role`,系统的窗口列表、「移动与调整大小」、帮助搜索框才挂得上。
+- **Dock 右键菜单**:显示主窗口、熔断。窗口藏着的时候这是离熔断最近的地方;从这里(或窗口藏着时按快捷键)熔断,结果另发一条系统通知,
+  界面上的回执没人看得见。
+- **全屏时工具栏不留红绿灯的 88px**:主进程的 `window` 事件多带 `fullscreen`(每次都是完整一份),渲染层挂 `data-fullscreen`。
+- **窗口位置与大小记在 `userData/window-state.json`**,下次打开回到原处;那个位置已经不在任何一块屏上(拔了显示器)就退回默认居中。两个平台都生效。
+- **系统界面原来是英文的。** `electronLanguages` 写的是 `zh-CN`,macOS 的语言目录叫 `zh_CN.lproj`,electron-builder 按名字没对上,
+  把应用包和 Electron 框架里的中文语言资源全删了,只剩 `en.lproj`——于是中文系统上存储面板、系统往菜单里加的项都是英文,
+  `navigator.language` 也是 `en-US`。`build.mac.electronLanguages` 单独写成 `zh_CN / zh_TW / en`。
+  界面自己的格式化都显式传了 `'zh-CN'` / `'en-US'`,不受这一条影响。
+- **「移到应用程序」用 `ditto` 拷**,不用 `cp -R`:拷应用包是它的本职,扩展属性与框架里的符号链接原样带过去。
+
+安装包瘦身见 [dependencies.md](dependencies.md)(`better-sqlite3` 改白名单,mac 包的引擎目录 100 MB → 18 MB);DMG 改 `ULFO`(LZFSE)压缩。
+还没做、要单独拍板的:Intel / Universal 包。
+
+### 应用图标(同日)
+
+原来两个平台用的都是 Electron 的默认图标。现在 `desktop/tools/make_icon.swift` 画一次矢量、按每个尺寸直接栅格化(不拿 1024 缩小),
+产出 `build/icon.icns`(Mac)、`build/icon.ico`(Windows)、`build/icon.png`(开发态 `npm start` 的 Dock 图标)。
+
+- **造型**:Mac 图标网格(1024 画布、824 底板、四周留 100、自带落影),底板是 n = 5 的超椭圆——和 Apple 的连续曲率圆角几乎重合,
+  没有普通圆角矩形在切点那道折痕。深海蓝渐变 + 左上漫射光 + 上沿亮的玻璃内描边,呼应界面的 Liquid Glass。
+  三根逐级走高、越往右越实的白色 K 线;右上一大一小两颗暖金四角星表示"助手"。颜色只有蓝、白、一点金——
+  界面那一轮"过于艳丽"的评价同样适用于图标。Windows 版不带落影、底板铺满到四周留 32,系统不会再给它套底板。
+- **为什么是 Swift**:要渐变、柔和投影、抗锯齿的矢量渲染,CoreGraphics 本机就有;Node 这边得为一年跑一两次的出图引一个原生依赖。
+  `.icns` 是脚本自己按格式拼的(每个尺寸一段 PNG),不走 `iconutil`——它要调系统服务,在沙箱里连一个好的 iconset 都转不回去。
+- **踩到的坑**:CoreGraphics 的阴影偏移与模糊按设备像素算,不吃坐标变换——不换算的话阴影往上跑,小尺寸上 24px 的模糊糊成一圈灰方框。
+  半透明的 K 线要把影线和实体合成一个形状一次填,分两次填会在重叠处叠出一道亮条。
+
+改图标就改脚本重跑,把 `build/` 下三个产物一起提交;打包不依赖这个脚本。
+
+### Developer ID 签名与公证(同日)
+
+签名的路接好了,证书(要付费的 Apple Developer 账号)到手即用:本机 `npm run dist:mac:signed`,CI 在仓库 Secrets 里配六项。
+`package.json` 里的 `identity: "-"`(ad-hoc)仍是没证书时的默认,`dist:mac` 不受影响。
+
+- **身份按 Team ID 选**:electron-builder 找证书是拿 `identity` 在钥匙串的证书名里做子串匹配。`"-"` 本身也会被拿去匹配——
+  证书名里碰巧有个连字符就会被误中;Team ID 在证书名的括号里,是唯一不会误中的写法。
+- **缺什么先报**:证书、公证凭据(Apple ID + App 专用密码 / API 密钥 / 钥匙串配置三选一,判断顺序与 electron-builder 一致)
+  在开始打包之前逐项检查,不在打了几分钟之后才报。
+- **DMG 也公证**:electron-builder 只公证、装订里面的 `.app`;脚本再把签过名的 DMG 送一次公证并装订,下载后打开 DMG 这一步也不会被拦。
+  最后按 Gatekeeper 的口径自验(`codesign --strict`、`spctl`、`stapler validate`),期望 `source=Notarized Developer ID`。
+- **iCloud 里的项目**:「桌面与文稿」开了 iCloud 同步时,在里面打出来的应用包目录会被 File Provider **异步**挂上
+  `com.apple.FinderInfo`,codesign 当它是垃圾数据拒签——赶上了就失败、没赶上就过,ad-hoc 包一样时好时坏(同一天在 ~/Desktop 里
+  连打三次,第三次在签名那步挂了)。所以 `dist:mac` 也改成走 `tools/dist_mac.js`(签名版加 `--signed`):发现项目在 File Provider
+  目录里,就把构建输出放到 `~/Library/Caches/IBKR-Assistant/`,DMG 最后拷回 `dist/`;打完两种包都过一遍 `codesign --strict`。
+  CI 与普通目录下输出照旧是 `dist/`。
+- 没动的:`entitlements.mac.plist` 里的 `disable-library-validation` 是给 ad-hoc 签名开的,换成 Developer ID 后理应可以去掉
+  (嵌套的二进制都会被签成同一个 Team),但要拿第一个签名包真机验过再删。

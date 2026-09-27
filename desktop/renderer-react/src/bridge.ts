@@ -256,7 +256,8 @@ export interface DafriBridge {
   on(channel: 'engine-exit', handler: (payload: { detail: string }) => void): () => void;
   /** 菜单与弹窗的「查看」:navigate 带着要去的页和标的 */
   on(channel: 'menu', handler: (payload: { action: string; page?: string; symbol?: string }) => void): () => void;
-  on(channel: 'window', handler: (payload: { focused: boolean }) => void): () => void;
+  /** 主窗口的焦点与全屏状态;每次都是完整的一份,不是增量 */
+  on(channel: 'window', handler: (payload: { focused: boolean; fullscreen?: boolean }) => void): () => void;
 }
 
 declare global {

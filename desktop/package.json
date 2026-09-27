@@ -18,7 +18,8 @@
     "ui:typecheck": "tsc -p renderer-react/tsconfig.json",
     "lint": "eslint .",
     "depcruise": "depcruise renderer-react/src --config .dependency-cruiser.cjs",
-    "dist:mac": "npm run ui:build && npm run stage:engine:mac && npm run smoke:engine && electron-builder --mac dmg --arm64 --publish never",
+    "dist:mac": "node tools/dist_mac.js",
+    "dist:mac:signed": "node tools/dist_mac.js --signed",
     "dist:win": "npm run ui:build && npm run stage:engine:win && npm run smoke:engine && electron-builder --win nsis --x64 --publish never",
     "dist": "npm run dist:mac && npm run dist:win",
     "stage:engine:win": "node tools/ensure_engine_ts.js && node tools/stage_engine_ts.js --platform win32 --arch x64",
@@ -86,20 +87,28 @@
     ],
     "mac": {
       "category": "public.app-category.finance",
+      "icon": "build/icon.icns",
       "identity": "-",
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.plist",
       "notarize": false,
-      "artifactName": "IBKR-Assistant-${version}-mac-${arch}.${ext}"
+      "artifactName": "IBKR-Assistant-${version}-mac-${arch}.${ext}",
+      "electronLanguages": [
+        "zh_CN",
+        "zh_TW",
+        "en"
+      ]
     },
     "dmg": {
       "title": "IBKR-Assistant",
+      "format": "ULFO",
       "writeUpdateInfo": false
     },
     "win": {
       "target": "nsis",
+      "icon": "build/icon.ico",
       "artifactName": "IBKR-Assistant-${version}-win-${arch}.${ext}"
     },
     "nsis": {

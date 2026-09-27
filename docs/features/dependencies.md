@@ -27,6 +27,9 @@
 
 引擎的生产依赖会按 `package-lock.json` 的闭包整包进安装包(`tools/stage_engine_ts.js` 会裁掉 `.d.ts` / `.map` /
 测试目录 / 非本平台的预编译二进制)。加一个运行时依赖之前先想清楚它会不会把安装包撑大:`openai` 裁完约 2.8 MB。
+`better-sqlite3` 是白名单(只带 `lib/`、`package.json`、`LICENSE` 与目标平台那一个 `prebuilds/*.node`):原来的黑名单挡不住开发机上
+编译留下的残渣——node-gyp 把 devdir 当成字面量 `true` 写出的头文件缓存 `true/<版本>/include` 有 65 MB,0.5.1 的 mac 包就这么
+大了一圈(引擎目录 100 MB,改后 18 MB)。
 
 **桌面端加运行时依赖要放 `dependencies`,不能放 `devDependencies`**:渲染层的东西(react / antd / zustand / dayjs)
 由 Vite 打进产物,所以它们是 devDependencies;而主进程 `require()` 的东西(`electron-log`)必须是生产依赖,

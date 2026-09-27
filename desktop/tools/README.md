@@ -92,6 +92,16 @@ npm run smoke:engine         # tools/smoke_engine_ts.js:Electron 自带 Node + �
 `npm run dist:win` / `dist:mac` 会先构建界面(`ui:build`)再跑这两步。为什么不用 `npm ci --omit=dev`:better-sqlite3 没有 install 脚本,
 npm 见到 binding.gyp 会去跑 node-gyp,没有 C++ 工具链的机器直接失败;而它的 tarball 本来就带了全部平台的预编译二进制。
 
+## Mac 安装包与图标
+
+```bash
+npm run dist:mac             # tools/dist_mac.js:ad-hoc 签名;项目在 iCloud 同步目录里时输出挪到 ~/Library/Caches/IBKR-Assistant/
+npm run dist:mac:signed      # 同上 + Developer ID 签名、公证 .app 与 DMG、Gatekeeper 自验;要的环境变量见脚本开头
+swift tools/make_icon.swift  # 重画图标 → build/icon.icns / icon.ico / icon.png(加 --preview 预览.png 出一张各尺寸对照)
+```
+
+两者的设计口径在 `docs/features/ui.md` 的「Mac 版」一节。
+
 ## 解析链路时延压测
 
 ```bash
