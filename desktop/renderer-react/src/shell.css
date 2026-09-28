@@ -70,6 +70,12 @@
 .topbar .ant-badge-status-default { background: var(--label-tertiary); }
 /* 「暂停自动执行」常态下是普通按钮——红字会被读成"正在告警";只有已熔断(要解除)时才红 */
 .topbar .ant-btn.halt.engaged { font-weight: 510; }
+/* 「新版本」提示:只把字染成强调色,和状态圆点一样的克制——它不该比熔断按钮抢眼 */
+.topbar .ant-btn.update-pill { color: var(--accent); }
+
+/* ================= 关于 · 更新 ================= */
+.update-panel { margin-bottom: 10px; }
+.update-notes { max-height: 160px; }
 
 /* ================= 顶部通知(横幅的替代) ================= */
 .ant-notification .toast { padding: 12px 16px; }
@@ -262,6 +268,45 @@
 .chip-tag.ant-tag:hover { background: var(--bg-fill-strong); }
 .readiness.ant-card { margin-bottom: 16px; }
 
+/* ---- 蝴蝶测算(交易指令页右栏的另一面)---- */
+.fly-form { padding: 10px 12px 12px; border-radius: var(--radius-card); background: var(--bg-fill); margin-bottom: 12px; }
+.fly-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 14px; margin-bottom: 10px; }
+.fly-row label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--label-secondary); }
+.fly-row .ant-input { font-variant-numeric: tabular-nums; }
+.fly-chips { padding-bottom: 1px; }
+.fly-form .primer { margin: 0 0 10px; }
+.fly-form .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: 0; }
+.fly-auto { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
+.fly-recorder { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; padding-top: 8px; border-top: 0.5px solid var(--separator); font-size: 12px; }
+.fly-recorder .hint { margin-top: 0; }
+.fly-problems { margin-top: 8px; font-size: 11.5px; color: var(--orange-text); }
+.fly-stale { margin-bottom: 8px; padding: 6px 10px; border-radius: var(--radius-control); font-size: 12px; color: var(--orange-text); background: color-mix(in srgb, var(--orange) 12%, transparent); }
+.fly-result.stale { opacity: 0.55; }
+.fly-result .ant-card { margin-bottom: 10px; }
+.fly-pnl { font-variant-numeric: tabular-nums; }
+.fly-pnl.pos { color: var(--up-text); }
+.fly-pnl.neg { color: var(--down-text); }
+.fly-table { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
+.fly-table th { text-align: right; font-size: 11px; font-weight: 500; color: var(--label-secondary); padding: 3px 8px; border-bottom: 0.5px solid var(--separator); }
+.fly-table td { text-align: right; padding: 4px 8px; border-bottom: 0.5px solid var(--separator); }
+.fly-table th:first-child, .fly-table td:first-child { text-align: left; }
+.fly-table tr:last-child td { border-bottom: 0; }
+.fly-table tr.on td { background: color-mix(in srgb, var(--blue) 12%, transparent); font-weight: 590; }
+.fly-table.legs { margin-bottom: 8px; }
+.fly-chart-plot { position: relative; margin: 14px 0 4px; }
+.fly-chart-plot svg { display: block; width: 100%; height: 190px; }
+.fly-chart-labels { position: absolute; inset: 0; pointer-events: none; font-size: 10.5px; font-variant-numeric: tabular-nums; color: var(--label-secondary); }
+.fly-chart-labels span { position: absolute; white-space: nowrap; }
+.fly-chart-labels .strike { bottom: 0; transform: translateX(-50%); font-family: var(--font-mono); }
+.fly-chart-labels .mark { top: -4px; transform: translateX(-50%); padding: 1px 7px; border-radius: 999px; font-weight: 590; color: #fff; }
+.fly-chart-labels .mark.spot { background: var(--label-secondary); }
+.fly-chart-labels .mark.target { background: var(--blue); }
+.fly-chart-labels .cost { right: 2px; transform: translateY(-115%); color: var(--label-tertiary); }
+.fly-chart-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 11px; color: var(--label-secondary); margin-bottom: 6px; }
+.fly-chart-legend .line { display: inline-block; width: 18px; height: 0; margin-right: 5px; vertical-align: middle; border-top: 2px solid var(--blue); }
+.fly-chart-legend .line.now { border-top: 2px dashed var(--orange); }
+.fly-chart-legend .line.expiry { border-top: 1.5px solid var(--label-tertiary); }
+
 /* ================= 交易记录 ================= */
 .records-table .ant-table { background: transparent; }
 .records-table .ant-table-thead > tr > th { font-size: 11px; font-weight: 590; }
@@ -430,3 +475,44 @@
 .glass-swatch::after { content: ''; position: absolute; inset: 0; background: var(--glass-base); }
 .glass-swatch.clear::after { opacity: 0.25; }
 .glass-swatch.tinted::after { opacity: 0.9; }
+
+/* ================= 绩效体检 · 分享卡片 ================= */
+.share-card { display: flex; flex-direction: column; gap: 12px; }
+.share-card-preview { width: 100%; aspect-ratio: 4 / 5; border-radius: var(--radius-card); box-shadow: var(--glass-edge-small); }
+.share-card-toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; cursor: pointer; }
+.share-card-hint { font-size: 11.5px; color: var(--label-secondary); line-height: 1.5; }
+
+/* ================= 实盘标识(顶栏常驻)================= */
+/* 工具栏里别的状态只有圆点有颜色;实盘这一格连字也着色、加粗——它是这一栏里唯一"看漏了会亏钱"的状态 */
+.chip-live.on .ant-badge-status-text { color: var(--red-text, var(--red)); font-weight: 650; }
+
+/* ================= 设置:未保存 / 数据与备份 ================= */
+.unsaved { display: inline-flex; align-items: center; gap: 10px; }
+.data-panel .mono, .support-panel .mono { font-family: var(--font-mono); font-size: 11px; word-break: break-all; }
+.selectable { user-select: text; }
+
+/* ================= 条款同意页 ================= */
+.consent-modal .ant-modal-body { padding-top: 4px; }
+.consent-lead { font-size: 13px; line-height: 1.6; margin: 0 0 8px; color: var(--label); }
+.consent-doc { max-height: min(52vh, 460px); overflow-y: auto; padding: 2px 10px 8px 2px; }
+.consent-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; text-align: left; }
+.consent-actions { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; }
+.consent-error { color: var(--red-text, var(--red)); font-size: 11.5px; max-width: 260px; }
+.consent-version { margin-top: 8px; font-size: 11px; color: var(--label-tertiary); }
+.plain-doc { font-size: 12.5px; line-height: 1.65; color: var(--label); }
+.plain-doc h2 { font-size: 17px; font-weight: 700; margin: 4px 0 8px; }
+.plain-doc h3 { font-size: 13.5px; font-weight: 650; margin: 16px 0 6px; }
+.plain-doc h4 { font-size: 12.5px; font-weight: 650; margin: 12px 0 4px; }
+.plain-doc p { margin: 0 0 8px; }
+.plain-doc ul { margin: 0 0 8px; padding-left: 20px; }
+.plain-doc li { margin: 3px 0; }
+.plain-doc table { width: 100%; border-collapse: collapse; margin: 4px 0 10px; font-size: 12px; }
+.plain-doc th, .plain-doc td { text-align: left; vertical-align: top; padding: 5px 8px; border-bottom: 0.5px solid var(--separator); }
+.plain-doc th { color: var(--label-secondary); font-weight: 500; font-size: 11px; }
+
+/* ================= 某一页出错 ================= */
+.page-crash { padding: 48px 16px; }
+.page-crash-detail {
+  display: block; max-width: 640px; padding: 8px 10px; border-radius: 8px; background: var(--bg-fill);
+  font-family: var(--font-mono); font-size: 11px; color: var(--label-secondary); white-space: pre-wrap; word-break: break-word;
+}

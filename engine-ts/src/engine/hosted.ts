@@ -11,13 +11,16 @@ import { nowEt } from "../config.js";
 import { BrokerError } from "../broker.js";
 import type { KillSwitch } from "../killswitch.js";
 import { ContractSpecSchema } from "../models.js";
-import type { HostedOrderRow, TrackerSyncHostedTick } from "../contract/trackerloop.js";
+import type { HostedOrderRow, TrackerPollTick, TrackerSyncHostedTick } from "../contract/trackerloop.js";
 import type { Notifier } from "../notify.js";
 import { finiteOrNull } from "../py.js";
 import type { TradeStore } from "../store.js";
 import type { Rec } from "../store.js";
 import * as tk from "../tracker.js";
 import { nowIsoSecondsEt } from "./clock.js";
+
+/** 托管单拼不出来(我们这头的错,比如结构没法反转成一张合法的平仓单)。不算券商失败、不计入熔断。 */
+export class HostedPlanError extends Error {}
 
 /** 托管单这一块要用到的引擎那一面。每次用到都现取,不在构造时存拷贝。 */
 export interface HostedHost {
@@ -30,6 +33,8 @@ export interface HostedHost {
   readonly orderIndex: Map<number, string>;
   /** 比 placeOrder 返回还早到的订单错误 */
   readonly earlyOrderErrors: Map<number, [number, string, number]>;
+  /** 本会话对哪个单号做过什么、什么时候(形状同 engine/callbacks.ts 的 SentOrder;那边要 import 这边的类型,这里只写结构,免得成环) */
+  readonly sentOrders: Map<number, { at: number; kind: "place" | "modify" | "cancel" }>;
   accountIsPaper(alias: string): boolean;
   applySpotTarget(
     track: Rec, raw: Rec, position: tk.Position, targets: tk.Targets,
@@ -85,8 +90,12 @@ export class HostedOrders {
    * 引擎重建那一刻这个账户的会话没连着,它在券商那边挂着的托管单当时认领不到——不重认,
    * 对账会当成"没挂"再挂一张,两张平仓单各成交一次就是反向开仓。认领按 orderRef 去重,重认是幂等的。 */
   private lastCovered: Set<string> | null = null;
-  /** 被券商拒掉的:track_id|kind → {到期时刻, 原因}。退避期内不重挂也不再改价 */
-  private readonly hostedRetryAt = new Map<string, { at: number; reason: string }>();
+  /** 对账已经替它排过单的追踪(过了闸门、算过计划)。盯盘在同一轮里先于对账跑:刚建的追踪、重启后还没认领的,
+   * 缓存里没有单不等于券商侧没有保护——没对过账之前,"负责这一项的单不在"不作数(见 onTriggered)。 */
+  private readonly synced = new Set<string>();
+  /** 被券商拒掉的:track_id|kind → {到期时刻, 原因}。退避期内不重挂也不再改价。
+   * warn:第一次在对账里碰到它时提醒一次(券商主动撤单那一路用它,见 onStatus) */
+  private readonly hostedRetryAt = new Map<string, { at: number; reason: string; warn?: boolean }>();
 
   // ---- 给引擎那头的小窗口 ----
   /** 这条追踪的止盈单(界面要显示上一轮追到的价);没有就是 undefined。 */
@@ -101,10 +110,23 @@ export class HostedOrders {
     return true;
   }
 
+  /** 这条追踪此刻在券商侧挂着哪几种托管单(tp / sl / trail / ptrail)。 */
+  liveKinds(trackId: string): Set<string> {
+    return new Set(this.hosted.get(trackId)?.keys() ?? []);
+  }
+
+  /** 手动「立即平仓」:这条追踪的退避一律作废,下一轮对账马上挂 / 改。人点了平仓,就不该再等一分钟。 */
+  clearBackoff(trackId: string): void {
+    for (const key of [...this.hostedRetryAt.keys()]) {
+      if (key.startsWith(`${trackId}|`)) this.hostedRetryAt.delete(key);
+    }
+  }
+
   /** 熔断撤了全部单:缓存跟着清。 */
   clear(): void {
     this.hosted.clear();
     this.hostedIndex.clear();
+    this.synced.clear();
   }
   // ---- 券商托管的止盈/止损:对账循环 -----------------------------------
   /** 把"追踪设置"和"券商侧挂着的托管单"对齐(挂缺的、改变了的、撤多余的)。
@@ -123,6 +145,16 @@ export class HostedOrders {
     if (covered !== null && prev !== null && [...covered].some((a) => !prev.has(a))) this.hostedAdopted = false;
     this.lastCovered = covered;
     if (!this.hostedAdopted) await this.adoptHosted();
+    if (!this.hostedAdopted) {
+      // 券商侧已经挂着哪些托管单还没认领上(未成交单列表这一轮没取到):不挂、不改、不撤。
+      // 拿一份不知道券商那头有什么的缓存去"补挂",就是给同一个仓再挂一组单(2026-09-27 审计)
+      for (const t of tracks) {
+        if ((t["auto_close"] ?? {})["host_at_broker"]) {
+          out["blocked"].push({ id: t["id"], symbol: t["symbol"], blockers: ["还没认领上券商侧已挂的托管单(未成交单列表没取到),这一轮不挂也不改"] });
+        }
+      }
+      return out;
+    }
 
     let positions: Record<string, Rec>;
     try {
@@ -175,12 +207,21 @@ export class HostedOrders {
         accountIsPaper: this.accountIsPaper(track["account"]),
         autoExecute: this.settings.policies.auto_execute,
         allowLiveTrading: this.settings.policies.allow_live_trading,
-        breakerEngaged: breaker.engaged,
+        // 自动熔断不挡追价平仓:那是在减仓,和软件止损同一口径(见 killswitch.ts 的 auto)
+        breakerEngaged: breaker.engaged && !(breaker.auto && sweeping),
         marketStatus: "盘中",
         alreadyFired: Boolean(track["fired_at"]) && !sweeping,
         comboLiveOk: this.settings.policies.allow_combo_live,
       });
       if (blockers.length) {
+        // 挡住它的只有**自动**熔断:券商侧已经挂着的托管单原样留着,只是不再挂新的、不再改价。
+        // 它们本来就在保护持仓;在软件接连出错的时候把止损撤掉,等于把保护和毛病一起拿走
+        // (2026-09-27 审计:大模型接口超时三次 → 下一轮对账撤光全部托管止损)。手动熔断照旧全撤——那是人说"全部停下"。
+        if (breaker.auto && blockers.every((b) => b === tk.BLOCK_BREAKER)) {
+          out["blocked"].push({ id: tid, symbol: track["symbol"], blockers: [`${tk.BLOCK_BREAKER}(自动熔断:券商侧已挂的托管单原样保留,不再改价)`] });
+          if (this.hosted.has(tid)) out["hosted"].push({ id: tid, symbol: track["symbol"], orders: this.hostedRows(tid) });
+          continue;
+        }
         await this.cancelHostedTrack(tid, blockers.join("、"));
         out["blocked"].push({ id: tid, symbol: track["symbol"], blockers });
         continue;
@@ -225,6 +266,7 @@ export class HostedOrders {
           item.quantity = Math.min(Math.trunc(Number(cur["quantity"] ?? 0)), item.quantity + filled);
         }
       }
+      this.synced.add(tid);
       const desired = new Set(plan.map((item) => item.kind));
       // 只守不挂的这一轮,止盈单"不在计划里"不等于"该撤":撤掉一张站岗的单比停在旧价危险得多
       if (hold) desired.add(tk.HOSTED_KIND_TP);
@@ -233,8 +275,16 @@ export class HostedOrders {
       }
       const oca = `dafri-trk-${tid.slice(0, 8)}`;
       for (const item of plan) {
+        // 上面每一次 await 券商的空档里,回报都可能已经改了这条追踪(托管单成交落了闩)。
+        // 拿这一轮开头读的旧快照接着挂,就是给一个刚平掉的仓再挂一组平仓单——止盈价就是刚成交的那个价,
+        // 挂上去当场成交,反向开仓(2026-09-27 审计复现)
+        if (!this.stillHosting(tid)) break;
         const cur = current.get(item.kind);
         const retry = this.hostedRetryAt.get(`${tid}|${item.kind}`);
+        if (retry?.warn) {
+          retry.warn = false;
+          this.notifier.warning(`${track["symbol"]} 的${item.label}:${retry.reason}。60 秒后再挂,期间这一项没有券商侧的单`);
+        }
         if (cur === undefined && retry !== undefined) {
           if (retry.at > Date.now()) {
             // 刚被券商拒过:退避期内不重挂,把原因交给界面
@@ -256,11 +306,17 @@ export class HostedOrders {
             }
           }
         } catch (exc) {
-          // 单张失败不拖垮整轮
-          this.store.audit("engine", "hosted_place_failed", {
-            track: tid, kind: item.kind, error: String((exc as Error).message).slice(0, 300),
-          });
-          this.killswitch.recordFailure((exc as Error).message, "broker");
+          // 单张失败不拖垮整轮。也不每秒重来:以前挂一次失败下一秒再挂,三秒就把熔断打合上,
+          // 连带别的追踪一起停摆。退避一分钟;拼不出合约这类我们自己的错,券商那边永远不会好,退避十分钟且不算券商失败
+          const message = String((exc as Error).message).slice(0, 300);
+          const own = exc instanceof HostedPlanError;
+          this.store.audit("engine", "hosted_place_failed", { track: tid, kind: item.kind, error: message });
+          this.hostedRetryAt.set(`${tid}|${item.kind}`, { at: Date.now() + (own ? 600_000 : 60_000), reason: message });
+          this.notifier.warning(`${track["symbol"]} 的${item.label}没有挂上:${message}`);
+          if (!own) {
+            const engaged = this.killswitch.recordFailure(message, "broker");
+            if (engaged) this.notifier.breaker(engaged.reason);
+          }
         }
       }
       if (chase !== null) {
@@ -290,6 +346,94 @@ export class HostedOrders {
     return out;
   }
 
+  /** 这一轮对账还该不该接着给这条追踪挂 / 改单:它被删了、或者托管单成交落了闩(不是追价平仓中),就停手。
+   * 引擎侧的改动(删追踪、熔断、手动平仓)都和对账共用一把锁,轮中能插进来的只有券商回报——它会先改库。 */
+  private stillHosting(tid: string): boolean {
+    const fresh = this.store.getTrack(tid);
+    if (fresh === null) return false;
+    return !fresh["fired_at"] || tk.sweepReason(fresh) !== null;
+  }
+
+  /** 触发状态 → 哪几种托管单在券商侧负责它。组合只托管止盈单,止损类在券商侧本来就没有单。 */
+  private static readonly COVERING: Record<string, string[]> = {
+    [tk.STATE_TAKE_PROFIT]: [tk.HOSTED_KIND_TP],
+    [tk.STATE_STOP_LOSS]: [tk.HOSTED_KIND_SL, tk.HOSTED_KIND_TRAIL],
+    [tk.STATE_PROFIT_TRAIL]: [tk.HOSTED_KIND_PTRAIL],
+  };
+
+  /**
+   * 托管的追踪在盯盘里判到了触发:交给券商侧那张单,还是改成追价平仓——把 OCA 组里的止盈单改到(或挂在)
+   * 立刻成交的价上、没成交就每秒再追(syncHosted)。追的始终是组里那一张:另发一张组外的平仓单,
+   * 和券商侧的止损同时成交就是反向开仓。
+   *
+   * 2026-09-27 从 engine.pollTrackers 搬过来,补了一条:**该负责这个触发的那张单不在券商侧**时也要追价。
+   * 以前这里只认"组合的止损类 / 标的到了目标价",其余一律 continue——被券商拒了正在退避的止损、
+   * 分档利润回撤(券商侧根本没有对应的单)、还没来得及挂上的,持仓就在没有任何保护的状态下被标成"已托管"。
+   * 回 true 表示这一轮这条追踪归托管这条路处理完了(调用方 continue)。
+   */
+  onTriggered(args: {
+    track: Rec; raw: Rec; position: tk.Position; state: string; reason: string; spotReached: boolean;
+    row: Rec; out: TrackerPollTick;
+  }): void {
+    const { track, raw, position, state, reason, spotReached, row, out } = args;
+    const tid = String(track["id"]);
+    row["hosted"] = true;
+    const secType = String(raw["sec_type"] ?? "");
+    // 组合与单腿期权的止盈单挂在模型价(中间价口径)上,标的真到了目标价,买价也未必够得着——那时同样改到立刻成交的价
+    const derivative = secType === "BAG" || secType === "OPT" || secType === "FOP";
+    const live = this.liveKinds(tid);
+    const covered = (HostedOrders.COVERING[state] ?? []).some((k) => live.has(k));
+    // 组合只托管止盈单:止损类在券商侧永远没有单,不用等对账就知道。其余品种要对过一次账才作数(见 synced)
+    const uncoveredForSure = secType === "BAG" && state !== tk.STATE_TAKE_PROFIT;
+    const sweep = (derivative && spotReached) || uncoveredForSure || (!covered && this.synced.has(tid));
+    if (sweep && tk.sweepReason(track) === null && !track["fired_at"]) {
+      const breaker = this.killswitch.state();
+      const blockers = tk.closeBlockers({
+        auto: tk.makeAutoClose(track["auto_close"] ?? {}),
+        position,
+        accountIsPaper: this.accountIsPaper(track["account"]),
+        autoExecute: this.settings.policies.auto_execute,
+        allowLiveTrading: this.settings.policies.allow_live_trading,
+        breakerEngaged: breaker.engaged && !breaker.auto,
+        // 托管单挂着等成交,不是立刻发出去:时段闸门不适用(同 syncHosted)
+        marketStatus: "盘中",
+        alreadyFired: false,
+        comboLiveOk: this.settings.policies.allow_combo_live,
+      });
+      if (blockers.length) {
+        // 到价了但动不了,必须当场说。只提醒一次,不刷屏(同软件平仓那条路)
+        if (!track["fired_state"]) {
+          this.store.updateTrack(tid, { fired_state: "blocked" });
+          this.notifier.warning(`${track["symbol"]} ${reason},但没有平仓:${blockers.join("、")}`);
+        }
+        row["blocked"] = blockers;
+        out["blocked"].push({ id: track["id"], symbol: track["symbol"], reason, blockers });
+        return;
+      }
+      const firedState = `${tk.SWEEP_PREFIX}${state}`;
+      this.store.updateTrack(tid, { fired_at: nowIsoSecondsEt(), fired_state: firedState });
+      this.store.audit("engine", "hosted_sweep", { track: tid, symbol: track["symbol"], state, reason, mark: position.market_price, record: this.tpEntry(tid)?.["record_id"] ?? null });
+      // 该出手了:上一次被拒留下的退避不再等
+      this.clearBackoff(tid);
+      this.notifier.notify(
+        "追价平仓",
+        `${track["symbol"]}:${reason}。${covered ? "托管单改到" : "券商侧没有负责这一项的单,在同一组里挂一张止盈单,挂在"}立刻成交的价,没成交就每秒再追`,
+      );
+      out["fired"].push({ id: track["id"], symbol: track["symbol"], state: firedState, reason });
+    }
+    if (tk.sweepReason(this.store.getTrack(tid) ?? track) !== null) {
+      row["sweeping"] = true;
+      // 托管对账在盯盘之后跑,这里给界面的是上一轮追到的价
+      const tp = this.tpEntry(tid);
+      if (tp && tp["chase_limit"] !== undefined) {
+        row["chase"] = {
+          rounds: tp["chase_rounds"] ?? 0, limit: tp["chase_limit"], natural: tp["chase_natural"] ?? null,
+          floor: tp["chase_floor"] ?? null,
+        };
+      }
+    }
+  }
+
   /** 这条追踪在券商那边挂着的托管单(给界面看的那几个字段)。 */
   private hostedRows(tid: string): HostedOrderRow[] {
     const entries = this.hosted.get(tid) ?? new Map<string, Rec>();
@@ -317,8 +461,12 @@ export class HostedOrders {
     const reason = `IBKR ${code}: ${message}`;
     const track = this.store.getTrack(tid);
     const symbol = track ? track["symbol"] : "?";
-    if (code !== 202 && entry["pending"] === "modify" && entry["accepted"]) {
-      Object.assign(entry, entry["accepted"] as Rec, { pending: null });
+    // 券商接受过这张单(推过 Submitted / PreSubmitted、或是认领回来的)就说明它在券商侧:之后的错误都是在回某一次改单。
+    // 只看 pending 不够——晚到的 Submitted 回执会把"改价中"的标记提前清掉,拿它判成"刚挂的单被拒"就会摘掉一张
+    // 还活着的单,下一轮再挂一张,两张各成交一次(2026-09-27 审计)
+    if (code !== 202 && (entry["pending"] === "modify" || entry["live"])) {
+      if (entry["accepted"]) Object.assign(entry, entry["accepted"] as Rec);
+      entry["pending"] = null;
       this.hostedRetryAt.set(`${tid}|${kind}`, { at: Date.now() + 60_000, reason });
       this.notifier.warning(`${symbol} 的托管单改价被券商拒绝,仍挂在原价:${reason}`);
       return;
@@ -340,14 +488,21 @@ export class HostedOrders {
       return;
     }
     let rows: Rec[];
+    let timer: ReturnType<typeof setTimeout> | null = null;
     try {
-      rows = await lister.call(this.router);
+      // 未成交单的请求本身没有超时:TWS 挂住时它永远不回,而对账在盯盘锁里——整条盯盘跟着停。10 秒放手,下一轮再认
+      rows = await Promise.race([
+        lister.call(this.router) as Promise<Rec[]>,
+        new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error("券商 10 秒没有回应未成交单列表")), 10_000); }),
+      ]);
     } catch (exc) {
       // 下一轮再试
       this.store.audit("engine", "hosted_adopt_failed", {
         error: String((exc as Error).message).slice(0, 300),
       });
       return;
+    } finally {
+      if (timer !== null) clearTimeout(timer);
     }
     // 同一个"追踪 + 单型"在券商那边有多张:以前的 bug(重启认领落空、解析时临时改配置)
     // 留下的重复单。只认单号最新的那一张,其余当场撤掉——两张止盈卖单挂在 3 股持仓上,
@@ -366,6 +521,7 @@ export class HostedOrders {
       for (const dup of group.slice(1)) {
         const orderId = Number(dup["order_id"] ?? 0);
         if (!orderId) continue;
+        this.host.sentOrders.set(orderId, { at: Date.now(), kind: "cancel" });
         try {
           await this.router!.cancelHosted!(orderId);
           this.store.audit("engine", "hosted_duplicate_cancelled", { order_ref: ref, order_id: orderId, kept: group[0]!["order_id"] });
@@ -386,11 +542,14 @@ export class HostedOrders {
         kind,
         label: tk.HOSTED_LABELS[kind] ?? kind,
         order_id: row["order_id"] ?? null,
-        record_id: null,
+        // 执行对账已经按 orderRef 把这张单认回了它的记录的话,接上:之后的改价、成交落闩都记到那条记录上
+        record_id: row["order_id"] ? (this.orderIndex.get(Number(row["order_id"])) ?? null) : null,
         quantity: row["quantity"] ?? null,
         lmt_price: row["lmt_price"] ?? null,
         aux_price: row["aux_price"] ?? null,
         trailing_percent: row["trailing_percent"] ?? null,
+        // 从券商的未成交单里认领回来的:它就在券商侧
+        live: true,
       };
       if (!this.hosted.has(tid)) this.hosted.set(tid, new Map());
       this.hosted.get(tid)!.set(kind, entry);
@@ -409,6 +568,9 @@ export class HostedOrders {
     //    回 10311「该委托单将直接传递至 NYSE」拒单(2026-09-10 真机:托管止盈单就这么没挂上);
     //    closeContract 收敛成四要素走 SMART。
     //  · 组合:每条腿方向全部反转(持仓 +1/−2/+1 → 平仓 SELL 1 / BUY 2 / SELL 1)。
+    // 拼不出一张能下的平仓合约(自定义组合这类结构):这是我们这头的事,不是券商失败——不计入熔断(见 syncHosted)
+    const issue = tk.closeContractIssue(track);
+    if (issue !== null) throw new HostedPlanError(issue);
     const contractSpec = ContractSpecSchema.parse(tk.closeContract((track["contract"] ?? {}) as Rec));
     const ref = `trk:${track["id"]}:${item.kind}`;
     const record: Rec = {
@@ -427,8 +589,10 @@ export class HostedOrders {
       signature: ref,
     };
     const recordId = this.store.createRecord(record);
+    this.store.markSubmitIntent(recordId);
 
     const result = await this.router!.placeHosted!(account, contractSpec, item, oca, ref);
+    if (result.order_id) this.host.sentOrders.set(Number(result.order_id), { at: Date.now(), kind: "place" });
     const entry: Rec = { ...item, order_id: result.order_id, record_id: recordId, pending: "place" };
     if (!this.hosted.has(String(track["id"]))) this.hosted.set(String(track["id"]), new Map());
     this.hosted.get(String(track["id"]))!.set(item.kind, entry);
@@ -460,6 +624,7 @@ export class HostedOrders {
       trailing_percent: current["trailing_percent"], label: current["label"],
     };
     current["pending"] = "modify";
+    this.host.sentOrders.set(Number(orderId), { at: Date.now(), kind: "modify" });
     const ok = await this.router!.modifyHosted!(Number(orderId), item);
     if (!ok) {
       // 券商侧已经不认识这张单(成交/撤销竞态):丢掉缓存,下一轮重挂
@@ -495,6 +660,9 @@ export class HostedOrders {
     if (entry === undefined) return;
     const orderId = entry["order_id"];
     if (orderId) {
+      // 撤单回报可能在 cancelHosted 返回之前就到(见 onStatus):先记下是我们撤的
+      entry["cancelling"] = true;
+      this.host.sentOrders.set(Number(orderId), { at: Date.now(), kind: "cancel" });
       try {
         await this.router!.cancelHosted!(Number(orderId));
       } catch (exc) {
@@ -502,6 +670,7 @@ export class HostedOrders {
         this.store.audit("engine", "hosted_cancel_failed", {
           track: trackId, kind, error: String((exc as Error).message).slice(0, 300),
         });
+        entry["cancelling"] = false;
         return;
       }
     }
@@ -551,18 +720,32 @@ export class HostedOrders {
       });
       const track = this.store.getTrack(tid);
       const symbol = track ? track["symbol"] : "?";
+      // 保护规则按审计表数"最近几次止损"、算同一标的的冷却(store.recentCloses)。追价平仓触发时已经记过 hosted_sweep,
+      // 这里只记券商自己触发的那些——以前一笔都不记,股票最主要的止损路径(券商侧 STP)在保护规则眼里等于不存在
+      if (sweep === null) {
+        this.store.audit("engine", "hosted_fill", { track: tid, symbol, state: HostedOrders.HOSTED_FIRED_STATE[kind] ?? kind, record: entry["record_id"] ?? null });
+      }
       this.notifier.notify("托管单已成交", `${symbol}:${entry["label"] ?? kind}`);
       // 整组落闩:OCA 兄弟单券商会自己撤,这里直接清缓存
       for (const k of [...(this.hosted.get(tid)?.keys() ?? [])]) {
         this.dropHostedEntry(tid, k);
       }
     } else if (["Cancelled", "ApiCancelled", "Inactive"].includes(status)) {
+      const entry = this.hosted.get(tid)?.get(kind);
       this.dropHostedEntry(tid, kind);
+      // 不是我们撤的(券商撤了、或有人在 TWS 里撤了):以前下一秒原样重挂,撤一次挂一次,还每次报"已挂出"。
+      // 退避 60 秒,并在下一轮对账时说一声(那时若是 OCA 兄弟单成交落了闩,这条追踪已经不会再走到这里)
+      if (entry !== undefined && !entry["cancelling"]) {
+        this.hostedRetryAt.set(`${tid}|${kind}`, {
+          at: Date.now() + 60_000, reason: `券商侧${status === "Inactive" ? "把这张托管单置为失效" : "撤掉了这张托管单"}`, warn: true,
+        });
+      }
     } else if (["Submitted", "PreSubmitted"].includes(status)) {
       // 券商接受了这一版(新挂的或改过价的):之后再来的错误就不是"刚才那一下被拒"
       const entry = this.hosted.get(tid)?.get(kind);
       if (entry) {
         entry["pending"] = null;
+        entry["live"] = true;
         // 部分成交:记住已成交的数量,对账改总量时不把剩下的再砍一截(见 syncHosted)
         const filled = finiteOrNull(trade?.orderStatus?.filled ?? null);
         if (filled !== null && filled > 0) entry["filled"] = filled;

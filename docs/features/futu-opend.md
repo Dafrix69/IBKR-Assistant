@@ -167,10 +167,18 @@ C − K·D ... 严格写作   C − P = S − K·D        (D = e^(−rT),折现�
 ## 装它
 
 ```bash
-(cd engine-ts && npm install)   # npm 包 futu-api 已在依赖里,只连本机的 OpenD,不直连券商服务器
+(cd engine-ts && npm install)   # npm 包 futu-api 在开发依赖里,只连本机的 OpenD,不直连券商服务器
 ```
 
-没装也不会影响 IBKR 通道:SDK 是延迟导入的,缺了只在富途面板上报"怎么装"。
+没装也不会影响 IBKR 通道。
+
+> **2026-09-28:`futu-api` 不再随安装包发出去。** 它从 `dependencies` 挪到了 `devDependencies`:适配桥没完成真机核对之前
+> 运行时用不到它,而它依赖的 protobufjs 6 有已公开、没有修复版本的安全通告(`npm audit` 报 critical)。`loadFutuBridge()`
+> 也不再去 import 它(以前 import 只为了区分"没装"和"没核对",装了也一样不可用)。装好的应用里富途面板显示
+> 「这个版本没有带富途的接口库」;检测与诊断照常。**适配桥完成核对的那一天:把它挪回 `dependencies`,在 `futuBridge.ts` 里接上。**
+>
+> 同一天:已提交订单的状态同步不再要求"有排队的条件单"——富途没有成交回报的事件流,状态只在 `pending.poll` 那一轮里同步回来;
+> 以前没有条件单在排队时界面不发这一轮,成交了的单一直显示「进行中」。
 
 > **现状(2026-09-08)**:上面的真机结论是 Python 引擎时代用 Python SDK 验出来的;Python 引擎已退役,TS 侧的 `futuBridge.ts`
 > 在真机核对前显式抛 FutuUnavailable。要重新启用富途,需要连着本机 OpenD 把 npm futu-api 的接口签名、返回列名、枚举取值

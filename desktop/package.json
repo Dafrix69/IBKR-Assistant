@@ -18,12 +18,16 @@
     "ui:typecheck": "tsc -p renderer-react/tsconfig.json",
     "lint": "eslint .",
     "depcruise": "depcruise renderer-react/src --config .dependency-cruiser.cjs",
-    "dist:mac": "npm run ui:build && npm run stage:engine:mac && npm run smoke:engine && electron-builder --mac dmg --arm64 --publish never",
-    "dist:win": "npm run ui:build && npm run stage:engine:win && npm run smoke:engine && electron-builder --win nsis --x64 --publish never",
+    "dist:mac": "node tools/dist_mac.js",
+    "dist:mac:signed": "node tools/dist_mac.js --signed",
+    "dist:win": "npm run ui:build && npm run notices && npm run stage:engine:win && npm run smoke:engine && electron-builder --win nsis --x64 --publish never",
     "dist": "npm run dist:mac && npm run dist:win",
     "stage:engine:win": "node tools/ensure_engine_ts.js && node tools/stage_engine_ts.js --platform win32 --arch x64",
     "stage:engine:mac": "node tools/ensure_engine_ts.js && node tools/stage_engine_ts.js --platform darwin --arch arm64",
-    "smoke:engine": "node tools/smoke_engine_ts.js"
+    "smoke:engine": "node tools/smoke_engine_ts.js",
+    "notices": "node tools/gen_notices.js",
+    "notices:check": "node tools/gen_notices.js --check",
+    "release:check": "node tools/check_release.js"
   },
   "devDependencies": {
     "dependency-cruiser": "^18.3.1",
@@ -33,7 +37,7 @@
     "@vitejs/plugin-react": "^4.7.0",
     "antd": "^5.29.3",
     "dayjs": "^1.11.23",
-    "electron": "^40.0.0",
+    "electron": "^41.10.7",
     "electron-builder": "^26.0.12",
     "eslint": "^10.10.0",
     "eslint-plugin-react-hooks": "^7.1.1",
@@ -56,8 +60,19 @@
       "rpc-client.js",
       "popup-window.js",
       "popup-preload.js",
+      "update-check.js",
+      "config-guard.js",
+      "store-guard.js",
+      "consent.js",
+      "confirm-grants.js",
+      "redact.js",
+      "diagnostics.js",
+      "support-ipc.js",
+      "accounts-setup.js",
       "popup/**/*",
-      "renderer-react/dist/**/*"
+      "renderer-react/dist/**/*",
+      "!**/* [0-9].*",
+      "!**/* [0-9]"
     ],
     "extraResources": [
       {
@@ -82,24 +97,52 @@
         "filter": [
           "**/*"
         ]
+      },
+      {
+        "from": "build/THIRD-PARTY-NOTICES.txt",
+        "to": "THIRD-PARTY-NOTICES.txt"
+      },
+      {
+        "from": "node_modules/electron/dist/LICENSES.chromium.html",
+        "to": "LICENSES.chromium.html"
+      },
+      {
+        "from": "../LICENSE",
+        "to": "LICENSE.txt"
+      },
+      {
+        "from": "../docs/legal",
+        "to": "legal",
+        "filter": [
+          "*.md",
+          "!README.md"
+        ]
       }
     ],
     "mac": {
       "category": "public.app-category.finance",
+      "icon": "build/icon.icns",
       "identity": "-",
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.plist",
       "notarize": false,
-      "artifactName": "IBKR-Assistant-${version}-mac-${arch}.${ext}"
+      "artifactName": "IBKR-Assistant-${version}-mac-${arch}.${ext}",
+      "electronLanguages": [
+        "zh_CN",
+        "zh_TW",
+        "en"
+      ]
     },
     "dmg": {
       "title": "IBKR-Assistant",
+      "format": "ULFO",
       "writeUpdateInfo": false
     },
     "win": {
       "target": "nsis",
+      "icon": "build/icon.ico",
       "artifactName": "IBKR-Assistant-${version}-win-${arch}.${ext}"
     },
     "nsis": {
@@ -112,7 +155,13 @@
       "zh-CN",
       "zh-TW",
       "en-US"
-    ]
+    ],
+    "electronFuses": {
+      "runAsNode": true,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "onlyLoadAppFromAsar": true
+    }
   },
   "dependencies": {
     "electron-log": "^5.4.4"

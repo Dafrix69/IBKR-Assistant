@@ -6,7 +6,7 @@
 | 道 | 方法 | 调度 |
 |---|---|---|
 | 本地道 | `sectors.*`(AI 选股除外)、`ideas.*`、`records.*`、`settings.get`、`breaker.state`、`alerts.list`、`alerts.set_touch_config`、`tracker.list`、目录类 | 同步的本地库 / 配置读写,来了就答 |
-| 读道 | `pa.analyze`、`book.snapshot`、`options.wall`、`positions.list`、`sectors.quotes`、`macro.board`、`screener.*`、`backtest.*`、`tws.*` / `futu.*` 探测 | 只读,最多 4 个并发 |
+| 读道 | `pa.analyze`、`book.snapshot`、`options.wall`、`options.fly_plan`、`positions.list`、`sectors.quotes`、`macro.board`、`screener.*`、`backtest.*`、`tws.*` / `futu.*` 探测 | 只读,最多 4 个并发 |
 | 交易道 | 其余:`instruction.submit`、`pending.poll`、`tracker.poll`、熔断、连接切换、`settings.patch` | 严格顺序,用户请求插到周期轮询前面 |
 
 只有交易道需要顺序:下单、熔断、连接切换共享引擎状态,并发会把"批内熔断""重复单"这些闸门变成竞态。
@@ -44,6 +44,27 @@
 - **加方法**:先进契约(见下一节),再在所属域的 `methods()` 里用 `contractMethods` 实现;新域就在 `server.ts` 的
   `domains` 里加一行。同名方法重复登记,构造时直接抛。
   `tests/desktop-whitelist.spec.ts` 双向核对引擎方法表 ↔ `main.js` 的 `ALLOWED_RPC`,并核对三张道表里的名字都是真方法。
+
+## 引擎重建:券商回报永远落到"现在的"引擎上
+
+`settings.patch` / `llm.patch`(`reload()`)、连接 / 断开、切券商都会 `dropEngine()` 再建一个新引擎。
+会话上的回报监听却是**某一个**引擎挂的(`engine.wireSession` 的闭包里是那个实例),会话打着 `_dafriWired` 不许重挂,
+`router.sessionHook` 指的也是那个实例。2026-09-27 审出:改一下设置,新引擎就再也听不见券商——托管止损被拒照样显示
+「已托管」,止盈成交了追踪不落闩。现在的口径:
+
+- **换下来的引擎把回报转给现在的。** `dropEngine` 把旧实例上接回报的五只手(`onOrderStatus` / `onExecDetails` /
+  `onCommission` / `onIbError` / `wireSession`)换成"现取 `this.engine` 再转过去"。会话上始终只有一套监听,
+  换几次引擎都一样;之后才连上的会话经 `sessionHook` 挂到当时的引擎上。
+- **新引擎接着记旧引擎的回报账**(同一个 router 时):`orderIndex`、终态、成交 / 佣金的 exec_id 去重、没对上的回报、
+  早到的错误。换了 router 就是换了连接,旧订单号不作数,不接。
+- **新引擎第一轮托管对账之前**,它还不认得上一个引擎挂出去的托管单(要等 `adoptHosted` 按 orderRef 认领):
+  这段时间来的状态回报再让上一个引擎的托管缓存过一手,成交照样落闩,不会被当成"没挂"再挂一张。
+- **改完设置当场重建**(连着券商时),节拍器随引擎一起起;以前要等界面下一次来要引擎,中间那几秒没人盯盘。
+- 没搬过去的:上一个引擎内存里的软件盯盘条件单队列(`pendingTriggers`)与追价平仓缓存——后者由新引擎第一轮
+  `adoptCloseChase` 按 orderRef 认领回来;前者照旧随重建丢掉(对账会把它们标成「去向不明」)。
+
+`tests/fix-callbacks-rewire.spec.ts` 钉着:改设置 → 托管单的成交 / 被拒落到新引擎、不重复挂监听、后连上的会话、
+旧引擎发出的普通单的成交、新引擎认领之前的成交。
 
 ## 契约:入参与返回只写一处(`src/contract/`)
 
@@ -184,3 +205,31 @@
   数字由校验层给(`notional`),模型算的不可靠。
 - 本地验证:pytest 661、vitest 409、黄金 / store 夹具 / RPC 契约样本重生成后两侧对拍一致。付费端点只抽查了
   压测里误拒的那几条(`latency_bench.js --match`):5 条(误拒的 4 条 + 同文案的 1 条)模型全部交出订单,没有一条 EXCEEDS_LIMIT;4 条直接通过校验层,带触发条件的那条被校验层以 AMBIGUOUS_TRIGGER 拦下——压测台没连券商、拿不到 SPX 现价快照,是离线环境的限制,不是解析问题。时延 2.9–3.6 s;第一条 5.4 s 是提示词换版本后前缀缓存全未命中(12.3k token)再加撞一次 json_schema 400,之后 12288 token 缓存命中。
+
+## 超时不等于没发生(2026-09-28)
+
+交易道严格顺序、不能取消。桌面端等一个调用最多等 120 秒(`rpc-client.js`),等不到就报错——而那个请求可能只是还排在后面,
+过一会儿照样执行。对只读的方法无所谓;对发单的方法,界面显示「调用失败」,人顺手重发,第一张随后才到券商。
+
+| 方法 | 超时之后 |
+|---|---|
+| `instruction.submit`、`tracker.add`、`tracker.update`、`tracker.close_now` | 报「结果未知:…可能已经执行,请先到订单看板和券商端核对,不要直接重发」。引擎之后回话了,主进程补一条系统通知与通知流,说明那次操作最终有没有执行,并让界面重读挂单 |
+| 其余 | 照旧报超时 |
+
+实现上是调用方要求记(`call(..., { lateReply: true })`)的才记:轮询和心跳超时了不记,否则引擎卡住三分钟,
+两百个超时的轮询会把那一条发单的记录挤出去。引擎进程退了,等它迟到回执的那几条一并作废。
+
+## 备份清单与立即备份(2026-09-28)
+
+| 方法 | 道 | 做什么 |
+|---|---|---|
+| `data.backups` | 本地道 | 库在哪、备份目录在哪、结构版本、备份清单(新的在前) |
+| `data.backup` | 本地道 | 现在出一份 `manual` 备份,留一条审计 |
+
+都不是敏感方法:清单只读;出一份备份是往备份目录里多写一个文件,不动库、不动钱。**恢复不在引擎里**——
+换库文件时引擎必须是停着的,那是主进程自己的通道。口径见 [数据与配置的保险](durability.md)。
+
+## 每一次大模型外发都查账号(2026-09-28)
+
+`RpcServer` 默认的解析器工厂带着账号闸(`providers.guardAccountIds`)。以前只有下单解析那条路在渲染提示词时查;
+`completeJson`(想法分析、AI 选股、行情解读、回测条件解析)不查。见 [大模型接入](llm-providers.md)。

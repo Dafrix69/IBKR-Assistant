@@ -9,6 +9,8 @@ import type { TradingEngine } from "../engine.js";
 import type { RpcError } from "../rpcError.js";
 import type { AlertsService } from "../services/alerts.js";
 import type { AnomalyService } from "../services/anomaly.js";
+import type { FlyPlannerService } from "../services/flyPlanner.js";
+import type { IvRecorderService } from "../services/ivRecorder.js";
 import { gatewayName, needConnection } from "../services/host.js";
 import type { Rec, Router, ServiceHost } from "../services/host.js";
 import type { MarketDataService } from "../services/marketData.js";
@@ -36,9 +38,9 @@ export interface RpcContext extends ServiceHost {
   readonly engineBuilt: TradingEngine | null;
   /** 测试可注入的解析器工厂。 */
   parserFactory: (cfg: LLMConfig) => any;
-  /** 配置变了就整体重建:限额、别名表都会进提示词,必须一起换掉。 */
+  /** 配置变了就整体重建:限额、别名表都会进提示词,必须一起换掉。连着券商时当场建好新引擎(节拍器不停摆)。 */
   reload(): void;
-  /** 丢掉当前引擎(先停它的节拍器),下次用到时重建。 */
+  /** 丢掉当前引擎(先停它的节拍器),下次用到时重建。旧引擎挂在会话上的回报监听转给以后的引擎,不会变聋。 */
   dropEngine(): void;
   /** 追踪相关操作的共享锁:每一轮盯盘、建 / 改 / 删追踪、立即平仓、熔断排成一队。 */
   trackerLock<T>(fn: () => Promise<T>): Promise<T>;
@@ -52,6 +54,8 @@ export interface RpcContext extends ServiceHost {
   readonly similarContext: SimilarContextService;
   readonly ideaSemantic: IdeaSemanticService;
   readonly brokerLink: BrokerLinkService;
+  readonly flyPlanner: FlyPlannerService;
+  readonly ivRecorder: IvRecorderService;
 }
 
 /** handler 的基类:把上下文里最常用的几样摊成 this.settings / this.router / this.engine,

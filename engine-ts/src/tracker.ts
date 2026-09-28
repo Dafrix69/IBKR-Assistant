@@ -10,18 +10,21 @@ import {
 import { finiteOrNull, fmtF, pyFloat, pyG, pyRound } from "./py.js";
 import { drawdownArmed, drawdownFloorMet, drawdownThreshold } from "./trackerDrawdown.js";
 import { ibkrLegSigmas } from "./ivPricing.js";
-import { fmtStrike, makeKey } from "./positions.js";
+import { makeKey } from "./positions.js";
 import type { HostedOrderPlan } from "./positions.js";
+import { same } from "./combos.js";
+import { ContractSpecSchema } from "./models.js";
 
 // 持仓身份搬到了 positions.ts;这里转出,老的 import 路径不变。
 export { legOf, makeKey, positionLabel } from "./positions.js";
 export type { HostedOrderPlan } from "./positions.js";
+// 组合识别与组合虚拟行搬到了 combos.ts;这里转出,老的 import 路径不变。
+export { comboRow, groupLegs, shapeOf, splitStructures, withCombos } from "./combos.js";
 // 利润回撤的几道闸搬到了 trackerDrawdown.ts;这里转出,老的 import 路径不变。
 export { drawdownThreshold } from "./trackerDrawdown.js";
 // 目标、自动平仓设置、标的目标价的试算结果——这三个形状界面也要用,定义在 contract/tracker.ts;这里转出,老的 import 不用改。
 export type { AutoClose, SpotTarget, Targets } from "./contract/tracker.js";
 import type { AutoClose, SpotTarget, Targets } from "./contract/tracker.js";
-import type { PositionRow } from "./contract/positions.js";
 
 export const STATE_HOLDING = "holding";
 export const STATE_TAKE_PROFIT = "take_profit";
@@ -74,221 +77,6 @@ export function trackKey(track: Record<string, any>): string {
     String(track["account"]), String(track["symbol"]),
     String(track["sec_type"] || "STK"), String(track["leg"] || ""),
   );
-}
-
-function same(a: number, b: number): boolean {
-  return Math.abs(a - b) <= 1e-6 * Math.max(1.0, Math.abs(a), Math.abs(b));
-}
-
-const COMBO_STRATEGY: Record<string, string> = {
-  butterfly: "BUTTERFLY", vertical: "VERTICAL", iron_condor: "IRON_CONDOR",
-};
-
-/** 把一个组合折成一条可追踪的虚拟持仓(对应 Python combo_row):
- * 数量 N 组,借方=多头 +N、贷方=空头 -N;成本/现价取每组净值的绝对值;
- * 任何一条腿没现价就是 null。sec_type=BAG,只提醒、不自动平仓。 */
-export function comboRow(
-  combo: Record<string, any>, rows: Array<Record<string, any>>,
-): PositionRow {
-  const byKey = new Map(rows.map((r) => [r["key"] as string, r]));
-  const legs = (combo["legs"] as string[]).map((k) => byKey.get(k)).filter(Boolean) as Array<Record<string, any>>;
-  const qtys = legs.map((r) => Number(r["quantity"] ?? 0) || 0);
-  let units = Number(combo["quantity"] ?? 0);
-  if (!units) units = 1.0; // 认不出形状的组合:按 1 组算,腿比例就是各腿数量
-  const ratios = qtys.map((q) => q / units);
-  const netCost = legs.reduce((acc, leg, i) => acc + ratios[i]! * (Number(leg["avg_cost"] ?? 0) || 0), 0);
-  const prices = legs.map((leg) => leg["market_price"] as number | null | undefined);
-  const netPrice =
-    legs.length && prices.every((p) => p !== null && p !== undefined)
-      ? legs.reduce((acc, _leg, i) => acc + ratios[i]! * Number(prices[i]), 0)
-      : null;
-  // 昨收口径的每组净值:只给界面在休市时显示用(见 broker.fillOptionPrices),不参与任何判断
-  const closes = legs.map((leg) => finiteOrNull(leg["close_price"] ?? null));
-  const netClose =
-    legs.length && closes.every((p) => p !== null)
-      ? legs.reduce((acc, _leg, i) => acc + ratios[i]! * closes[i]!, 0)
-      : null;
-  const long = netCost >= 0;
-  const contract = (legs[0]?.["contract"] ?? {}) as Record<string, any>;
-  const multiplier = legs.length ? Number(legs[0]!["multiplier"] ?? 100) || 100 : 100;
-  const sig = legs
-    .map((leg, i) => {
-      const c = leg["contract"] ?? {};
-      return `${ratios[i]! >= 0 ? "+" : ""}${pyG(ratios[i]!)}x${fmtStrike(c["strike"])}${String(c["right"] ?? "").slice(0, 1).toUpperCase()}`;
-    })
-    .join(",");
-  const legId = `${combo["expiry"]}|${sig}`;
-  return {
-    key: makeKey(combo["account"], combo["symbol"], "BAG", legId),
-    account: combo["account"],
-    symbol: combo["symbol"],
-    sec_type: "BAG",
-    leg: legId,
-    label: combo["label"],
-    kind: combo["kind"],
-    quantity: long ? units : -units,
-    multiplier,
-    currency: legs.length ? legs[0]!["currency"] : "USD",
-    avg_cost: pyRound(Math.abs(netCost), 4),
-    market_price: netPrice === null ? null : pyRound(Math.abs(netPrice), 4),
-    // 没有就不带这个键:黄金基线里的组合行逐字段比对,不该多出一个恒为 null 的字段
-    ...(netClose === null ? {} : { close_price: pyRound(Math.abs(netClose), 4) }),
-    net_side: long ? "debit" : "credit",
-    market_value: combo["market_value"] ?? null,
-    unrealized_pnl: combo["unrealized_pnl"] ?? null,
-    legs: [...(combo["legs"] as string[])],
-    ratios,
-    contract: {
-      secType: "BAG",
-      symbol: combo["symbol"],
-      exchange: contract["exchange"] || "SMART",
-      currency: contract["currency"] || "USD",
-      multiplier: String(Math.trunc(multiplier)),
-      combo_strategy: COMBO_STRATEGY[combo["kind"]] ?? null,
-      label: combo["label"],
-      legs: legs.map((leg, i) => {
-        const c = leg["contract"] ?? {};
-        return {
-          lastTradeDateOrContractMonth: c["lastTradeDateOrContractMonth"] ?? null,
-          strike: c["strike"] ?? null,
-          right: c["right"] ?? null,
-          ratio: ratios[i],
-        };
-      }),
-    },
-  };
-}
-
-/** 券商持仓行 + 组合虚拟行。所有按 key 找持仓的地方都该用这个,组合才追踪得到。 */
-export function withCombos<T extends Record<string, any>>(rows: T[]): Array<T | PositionRow> {
-  const list: Array<T | PositionRow> = [...rows];
-  return list.concat(groupLegs(list).map((c) => comboRow(c, list)));
-}
-
-/** 把同一账户、同一标的、同一到期日的期权腿认成组合(蝴蝶/价差/铁鹰)。
- * 只做识别与展示;认不出来的叫"组合(N 腿)",绝不猜。对应 Python group_legs。 */
-const strikeOfLeg = (r: Record<string, any>): number => Number((r["contract"] ?? {})["strike"] ?? 0) || 0;
-const rightOfLeg = (r: Record<string, any>): string => String((r["contract"] ?? {})["right"] ?? "");
-
-function legFields(legs: Array<Record<string, any>>): [number[], string[], number[]] {
-  return [
-    legs.map(strikeOfLeg),
-    legs.map((r) => rightOfLeg(r).slice(0, 1).toUpperCase()),
-    legs.map((r) => Number(r["quantity"] ?? 0) || 0),
-  ];
-}
-
-/** 这几条腿(已按行权价排好序)构成什么标准结构?认不出回 null。
- * 规则刻意保守——猜错的后果是净价、成本、盈亏全算在一个根本不存在的结构上。 */
-export function shapeOf(legs: Array<Record<string, any>>): [string, number] | null {
-  const [strikes, rights, qtys] = legFields(legs);
-  const sameRight = new Set(rights).size === 1;
-  if (legs.length === 2 && sameRight && qtys[0]! * qtys[1]! < 0 &&
-      same(Math.abs(qtys[0]!), Math.abs(qtys[1]!))) {
-    return ["vertical", Math.abs(qtys[0]!)];
-  }
-  if (legs.length === 3 && sameRight && same(strikes[1]! - strikes[0]!, strikes[2]! - strikes[1]!) &&
-      same(qtys[0]!, qtys[2]!) && same(qtys[1]!, -2.0 * qtys[0]!) && qtys[0] !== 0) {
-    return ["butterfly", Math.abs(qtys[0]!)];
-  }
-  if (legs.length === 4 && rights.join(",") === "P,P,C,C" && qtys[0]! * qtys[1]! < 0 &&
-      qtys[2]! * qtys[3]! < 0 && same(Math.abs(qtys[0]!), Math.abs(qtys[1]!)) &&
-      same(Math.abs(qtys[2]!), Math.abs(qtys[3]!))) {
-    return [same(strikes[1]!, strikes[2]!) ? "iron_butterfly" : "iron_condor", Math.abs(qtys[0]!)];
-  }
-  return null;
-}
-
-/**
- * 把同一到期日的腿按结构切成若干**独立**组合。
- *
- * 为什么必须切:IBKR 的持仓只给每条腿的净数量,不告诉你哪些腿属于同一张组合。
- * 同一天到期的两张蝶(哪怕一张看涨一张看跌)会挤在同一个桶里,不切开就成了
- * "组合(6 腿)"——净价、成本、盈亏全混在一起,平仓单更是拼不出来
- * (2026-09-04 实测:7595/7620/7645 看跌蝶 + 7800/7820/7840 看涨蝶被认成一个)。
- *
- * 贪心:从行权价最低的腿开始,依次试 4 腿(铁鹰/铁蝶)、3 腿(蝶)、2 腿(价差),匹配上就
- * 消费掉再往后走。先试长的,免得把铁鹰的前两条腿当成一个价差。当前位置一个都匹配不上,
- * 就把**剩下的整块**交出去按"组合(N 腿)"处理——认不出可以接受,拆错不行。
- */
-export function splitStructures(legs: Array<Record<string, any>>): Array<Array<Record<string, any>>> {
-  const out: Array<Array<Record<string, any>>> = [];
-  let rest = [...legs];
-  while (rest.length >= 2) {
-    let matched = false;
-    for (const size of [4, 3, 2]) {
-      if (rest.length >= size && shapeOf(rest.slice(0, size)) !== null) {
-        out.push(rest.slice(0, size));
-        rest = rest.slice(size);
-        matched = true;
-        break;
-      }
-    }
-    if (!matched) break;
-  }
-  if (rest.length) out.push(rest);
-  return out.length ? out : [[...legs]];
-}
-
-export function groupLegs(rows: Array<Record<string, any>>): Array<Record<string, any>> {
-  const buckets = new Map<string, { account: string; symbol: string; expiry: string; legs: Array<Record<string, any>> }>();
-  for (const row of rows) {
-    const secType = String(row["sec_type"] ?? "STK") || "STK";
-    if (secType !== "OPT" && secType !== "FOP") continue;
-    const contract = row["contract"] ?? {};
-    const expiry = String(contract["lastTradeDateOrContractMonth"] ?? "").slice(0, 8);
-    const account = String(row["account"]);
-    const symbol = String(row["symbol"]);
-    const id = `${account}|${symbol}|${expiry}`;
-    if (!buckets.has(id)) buckets.set(id, { account, symbol, expiry, legs: [] });
-    buckets.get(id)!.legs.push(row);
-  }
-
-  const combos: Array<Record<string, any>> = [];
-  const ordered = [...buckets.values()].sort((a, b) =>
-    a.account < b.account ? -1 : a.account > b.account ? 1 :
-    a.symbol < b.symbol ? -1 : a.symbol > b.symbol ? 1 :
-    a.expiry < b.expiry ? -1 : a.expiry > b.expiry ? 1 : 0);
-  for (const { account, symbol, expiry, legs: raw } of ordered) {
-    if (raw.length < 2) continue;
-    const bucket = [...raw].sort((a, b) =>
-      strikeOfLeg(a) - strikeOfLeg(b) ||
-      (rightOfLeg(a) < rightOfLeg(b) ? -1 : rightOfLeg(a) > rightOfLeg(b) ? 1 : 0));
-    for (const legs of splitStructures(bucket)) {
-      if (legs.length < 2) continue;
-      const [strikes, rights, qtys] = legFields(legs);
-      const sameRight = new Set(rights).size === 1;
-      const rightName = sameRight ? ({ C: "看涨", P: "看跌" } as Record<string, string>)[rights[0]!] ?? "" : "";
-      const strikeText = strikes.map((s) => fmtStrike(s)).join("/");
-
-      const shape = shapeOf(legs);
-      let kind = "custom";
-      let label = `组合(${legs.length} 腿) ${strikeText}`;
-      let quantity: number | null = null;
-      if (shape !== null) {
-        [kind, quantity] = shape;
-        if (kind === "vertical") label = `${rightName}价差 ${strikeText}`;
-        else if (kind === "butterfly") {
-          label = `${qtys[0]! > 0 ? "买入" : "卖出"}${rightName}蝴蝶 ${strikeText}`;
-        } else label = `${kind === "iron_butterfly" ? "铁蝶" : "铁鹰"} ${strikeText}`;
-      }
-
-      const values = legs.map((r) => r["market_value"] as number | null | undefined);
-      const pnls = legs.map((r) => r["unrealized_pnl"] as number | null | undefined);
-      const sumOf = (xs: Array<number | null | undefined>): number | null =>
-        xs.every((v) => v !== null && v !== undefined) ? pyRound(xs.reduce((a, b) => a + (b as number), 0), 2) : null;
-      combos.push({
-        account, symbol, expiry,
-        right: sameRight ? rights[0] : "",
-        kind, label, quantity,
-        net_cost: pyRound(legs.reduce((acc, r, i) => acc + qtys[i]! * (Number(r["avg_cost"] ?? 0) || 0), 0), 2),
-        market_value: sumOf(values),
-        unrealized_pnl: sumOf(pnls),
-        legs: legs.map((r) => r["key"]),
-      });
-    }
-  }
-  return combos;
 }
 
 
@@ -668,7 +456,7 @@ export function chaseMaxSteps(position: Position, natural: number, auto: AutoClo
  *  · **只朝成交方向动,绝不退回来**(prev 是上一轮挂的价):买价抬上去了,挂在下面的卖单本来
  *    就会按买价成交,改回去只是多一次改单、多一段在交易所排队的空档;买价掉下去了,新的自然价
  *    减去同样的让价一定更低,顺着追。
- *  · 按跳动朝成交方向取整,至少一跳。
+ *  · 按这个价所在那一档的跳动(closeTick)朝成交方向取整,至少一跳。
  */
 export function chaseLimit(
   position: Position, natural: number, prev: number | null, rounds: number, auto: AutoClose,
@@ -680,8 +468,12 @@ export function chaseLimit(
   );
   const long = isLong(position);
   const raw = long ? natural - steps * tick : natural + steps * tick;
-  const aligned = long ? Math.floor(raw / tick + 1e-9) : Math.ceil(raw / tick - 1e-9);
-  let out = Math.max(aligned * tick, tick);
+  // 取整按**算出来的这个价**那一档的跳动,不是自然价那一档:空头买回从 2.90 往上追会越过 3 元,那边是 0.10,
+  // 按 0.05 取整挂出 3.05,IBKR 以 110 拒掉改单(2026-09-27 审计)。按 raw 那一档朝成交方向取整一定合法:
+  // 从 3 元以下向上取整,最多落到 3.00;从 3 元以上向下取整,最低也是 3.00
+  const step = closeTick(position, raw);
+  const aligned = long ? Math.floor(raw / step + 1e-9) : Math.ceil(raw / step - 1e-9);
+  let out = Math.max(aligned * step, step);
   const p = finiteOrNull(prev);
   if (p !== null) out = long ? Math.min(out, p) : Math.max(out, p);
   return pyRound(out, 4);
@@ -938,7 +730,9 @@ export function trailStopPrice(
 ): number | null {
   const pk = finiteOrNull(peak);
   const pct = finiteOrNull(trailPct);
-  if (pk === null || pct === null) return null;
+  // 峰值落到 0 以下只有净值会穿过 0 的组合才会(见 combos.comboRow):负数上"回撤 N%"说不清,
+  // 照公式算空头的停损会压到峰值另一侧、当场触发。不给停损价
+  if (pk === null || pct === null || pk < 0) return null;
   const ratio = pct / 100.0;
   return isLong(position) ? pk * (1 - ratio) : pk * (1 + ratio);
 }
@@ -1221,6 +1015,33 @@ export function closeBagContract(contract: Record<string, unknown>): Record<stri
   };
   if (contract["combo_strategy"]) out["combo_strategy"] = contract["combo_strategy"];
   return out;
+}
+
+/**
+ * 这份持仓(追踪行或持仓行,看它的 contract)拼不拼得出一张能过下单 schema 的平仓合约。拼得出回 null,拼不出回一句人话。
+ *
+ * 平仓单到价那一刻才构造(自动平仓、托管挂单),构造不出来就是"到价了却发不出去":自动平仓每一轮被 schema 拒一次,
+ * 托管每一轮失败一次、连续三次就熔断,连带撤掉别的持仓的托管单(2026-09-27 审计)。所以开自动平仓 / 托管之前
+ * 先问这一句。拼不出来的有:认不出结构的组合(断翼蝶、比例价差——没有 combo_strategy)、腿比例不是 1 / 2 的组合、
+ * 下单 schema 不认的类型(FOP)。只查合约;订单那一半(限价、数量)到价时才定。
+ */
+export function closeContractIssue(row: { contract?: unknown } | null | undefined): string | null {
+  const raw = row?.contract;
+  if (raw === null || raw === undefined || typeof raw !== "object") return "这份持仓没有合约信息,拼不出平仓单。";
+  const contract = raw as Record<string, unknown>;
+  let spec: Record<string, unknown>;
+  try {
+    spec = closeContract(contract);
+  } catch (exc) {
+    if (exc instanceof TrackerError) return exc.message;
+    throw exc;
+  }
+  const parsed = ContractSpecSchema.safeParse(spec);
+  if (parsed.success) return null;
+  if (String(contract["secType"] ?? "") === "BAG" && !contract["combo_strategy"]) {
+    return "认不出这个组合的结构(只认垂直价差、等距蝴蝶、铁鹰 / 铁蝶),拼不出平仓单:只能提醒,不能自动平仓或托管。";
+  }
+  return `平仓合约过不了下单校验:${parsed.error.issues.map((i) => i.message).join(";")}`;
 }
 
 /**

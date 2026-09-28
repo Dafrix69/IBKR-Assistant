@@ -185,8 +185,10 @@ export function TrackCard({
 
   async function closeNow() {
     const ok = await dafri.confirm({
+      purpose: 'tracker.close_now',
+      binding: { id: t.id },
       title: '立即平仓',
-      message: `马上把 ${t.symbol} 的持仓平掉?`,
+      message: `马上把 ${legLabel(t.symbol, t.sec_type, t.contract)} 的持仓平掉?账户 ${t.account}。`,
       detail: '这会立刻发出一张平仓单,和到价自动平仓走的是同一条路。',
       confirmLabel: '平仓',
     });

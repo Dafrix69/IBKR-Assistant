@@ -26,7 +26,7 @@
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 1.8, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
       "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "「15蝴蝶」按中心 6915(现价百位+15)理解", "中心 6915 高于现价 6907.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v3"]
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "「15蝴蝶」按中心 6915(现价百位+15)理解", "中心 6915 高于现价 6907.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
      }
     ],
     "rejections": []
@@ -57,7 +57,7 @@
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 1.8, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
       "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "「15蝴蝶」按中心 6915(现价百位+15)理解", "中心 6915 低于现价 6992.1,推断为看跌蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v3"]
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "「15蝴蝶」按中心 6915(现价百位+15)理解", "中心 6915 低于现价 6992.1,推断为看跌蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
      }
     ],
     "rejections": []
@@ -88,7 +88,7 @@
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 2.5, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
       "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v3"]
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
      }
     ],
     "rejections": []
@@ -119,7 +119,7 @@
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "AUTO_MID", "lmtPrice": null, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
       "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "未指定净权利金上限,将在下单时按盘口中间价定价(AUTO_MID);若成交成本敏感,请写明如'权利金不超过 3'", "本地速记解析(未经大模型),语法 shorthand-v3"]
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "未指定净权利金上限,将在下单时按盘口中间价定价(AUTO_MID);若成交成本敏感,请写明如'权利金不超过 3'", "本地速记解析(未经大模型),语法 shorthand-v4"]
      }
     ],
     "rejections": []
@@ -150,7 +150,7 @@
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 3, "price_mode": "EXPLICIT", "lmtPrice": 2.5, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
       "confidence": 1.0,
-      "warnings": ["未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v3"]
+      "warnings": ["未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
      }
     ],
     "rejections": []
@@ -181,7 +181,7 @@
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 5.0, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
       "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写到期日,已按默认当日到期处理", "中心 21020 高于现价 20988,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v3"]
+      "warnings": ["未写张数,已按默认 1 张处理", "未写到期日,已按默认当日到期处理", "中心 21020 高于现价 20988,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
      }
     ],
     "rejections": []
@@ -212,7 +212,7 @@
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 2.5, "tif": "GTC", "outsideRth": false},
       "reason": "本地速记解析",
       "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v3"]
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
      }
     ],
     "rejections": []
@@ -243,7 +243,7 @@
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 2.5, "tif": "DAY", "outsideRth": true},
       "reason": "本地速记解析",
       "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v3"]
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
      }
     ],
     "rejections": []
@@ -274,7 +274,7 @@
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "AUTO_MID", "lmtPrice": null, "tif": "DAY", "outsideRth": true},
       "reason": "本地速记解析",
       "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "未指定净权利金上限,将在下单时按盘口中间价定价(AUTO_MID);若成交成本敏感,请写明如'权利金不超过 3'", "本地速记解析(未经大模型),语法 shorthand-v3"]
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "未指定净权利金上限,将在下单时按盘口中间价定价(AUTO_MID);若成交成本敏感,请写明如'权利金不超过 3'", "本地速记解析(未经大模型),语法 shorthand-v4"]
      }
     ],
     "rejections": []
@@ -305,7 +305,7 @@
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 2.5, "tif": "DAY", "outsideRth": true},
       "reason": "本地速记解析",
       "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v3"]
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
      }
     ],
     "rejections": []
@@ -336,7 +336,7 @@
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 3, "price_mode": "EXPLICIT", "lmtPrice": 2.5, "tif": "GTC", "outsideRth": true},
       "reason": "本地速记解析",
       "confidence": 1.0,
-      "warnings": ["未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v3"]
+      "warnings": ["未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
      }
     ],
     "rejections": []
@@ -367,7 +367,7 @@
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 1.8, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
       "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 6915 等于现价,默认按看涨蝴蝶处理", "本地速记解析(未经大模型),语法 shorthand-v3"]
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 6915 等于现价,默认按看涨蝴蝶处理", "本地速记解析(未经大模型),语法 shorthand-v4"]
      }
     ],
     "rejections": []
@@ -428,7 +428,7 @@
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 1.8, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
       "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "「15蝴蝶」按中心 6915(现价百位+15)理解", "中心 6915 高于现价 6907.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v3"]
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "「15蝴蝶」按中心 6915(现价百位+15)理解", "中心 6915 高于现价 6907.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
      }
     ],
     "rejections": []
@@ -459,7 +459,7 @@
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 3.3, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
       "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写到期日,已按默认当日到期处理", "中心 7400 低于现价 7462.35,推断为看跌蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v3"]
+      "warnings": ["未写张数,已按默认 1 张处理", "未写到期日,已按默认当日到期处理", "中心 7400 低于现价 7462.35,推断为看跌蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
      }
     ],
     "rejections": []
@@ -490,7 +490,7 @@
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 2, "price_mode": "EXPLICIT", "lmtPrice": 2.5, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
       "confidence": 1.0,
-      "warnings": ["未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v3"]
+      "warnings": ["未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
      }
     ],
     "rejections": []
@@ -521,7 +521,7 @@
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 2.5, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
       "confidence": 1.0,
-      "warnings": ["未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v3"]
+      "warnings": ["未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
      }
     ],
     "rejections": []
@@ -552,7 +552,7 @@
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 10, "price_mode": "EXPLICIT", "lmtPrice": 2.5, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
       "confidence": 1.0,
-      "warnings": ["未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v3"]
+      "warnings": ["未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
      }
     ],
     "rejections": []
@@ -583,7 +583,7 @@
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 2.0, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
       "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v3"]
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
      }
     ],
     "rejections": []
@@ -614,7 +614,7 @@
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 2.5, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
       "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v3"]
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
      }
     ],
     "rejections": []
@@ -645,7 +645,7 @@
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 2.5, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
       "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v3"]
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
      }
     ],
     "rejections": []
@@ -676,7 +676,7 @@
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 1.8, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
       "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7515 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v3"]
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7515 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
      }
     ],
     "rejections": []
@@ -707,7 +707,7 @@
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 1.8, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
       "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 6915 高于现价 6907.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v3"]
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 6915 高于现价 6907.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
      }
     ],
     "rejections": []
@@ -748,7 +748,7 @@
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 3.3, "tif": "DAY", "outsideRth": false},
       "reason": "突破回踩",
       "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v3"]
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
      }
     ],
     "rejections": []
@@ -779,7 +779,7 @@
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 1.8, "tif": "DAY", "outsideRth": false},
       "reason": "开盘冲高回落",
       "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "「15蝴蝶」按中心 7715(现价百位+15)理解", "中心 7715 低于现价 7745.2,推断为看跌蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v3"]
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "「15蝴蝶」按中心 7715(现价百位+15)理解", "中心 7715 低于现价 7745.2,推断为看跌蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
      }
     ],
     "rejections": []
@@ -815,7 +815,7 @@
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 1.8, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
       "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "「15蝴蝶」按中心 7715(现价百位+15)理解", "中心 7715 低于现价 7745.2,推断为看跌蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v3"]
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "「15蝴蝶」按中心 7715(现价百位+15)理解", "中心 7715 低于现价 7745.2,推断为看跌蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
      }
     ],
     "rejections": []
@@ -846,7 +846,7 @@
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 5.0, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
       "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "「明天」按下一交易日 2026-08-17 处理", "中心 7830 高于现价 7745.2,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v3"]
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "「明天」按下一交易日 2026-08-17 处理", "中心 7830 高于现价 7745.2,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
      }
     ],
     "rejections": []
@@ -877,7 +877,7 @@
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 5.0, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
       "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7700 低于现价 7745.2,推断为看跌蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v3"]
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7700 低于现价 7745.2,推断为看跌蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
      }
     ],
     "rejections": []
@@ -908,7 +908,7 @@
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 3.0, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
       "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "「45蝴蝶」按中心 7745(现价百位+45)理解", "中心 7745 低于现价 7745.2,推断为看跌蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v3"]
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "「45蝴蝶」按中心 7745(现价百位+45)理解", "中心 7745 低于现价 7745.2,推断为看跌蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
      }
     ],
     "rejections": []
@@ -939,7 +939,7 @@
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 4.4, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
       "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "「0蝴蝶」按中心 7700(现价百位+0)理解", "中心 7700 低于现价 7745.2,推断为看跌蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v3"]
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "「0蝴蝶」按中心 7700(现价百位+0)理解", "中心 7700 低于现价 7745.2,推断为看跌蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
      }
     ],
     "rejections": []
@@ -970,7 +970,7 @@
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 2.3, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
       "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "「明天」按下一交易日 2026-08-17 处理", "中心 7850 高于现价 7745.2,推断为看涨蝴蝶", "未写「蝴蝶」,按 cm 行话默认为蝴蝶组合", "本地速记解析(未经大模型),语法 shorthand-v3"]
+      "warnings": ["未写张数,已按默认 1 张处理", "「明天」按下一交易日 2026-08-17 处理", "中心 7850 高于现价 7745.2,推断为看涨蝴蝶", "未写「蝴蝶」,按 cm 行话默认为蝴蝶组合", "本地速记解析(未经大模型),语法 shorthand-v4"]
      }
     ],
     "rejections": []
@@ -1001,7 +1001,7 @@
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 2.3, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
       "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7850 高于现价 7745.2,推断为看涨蝴蝶", "未写「蝴蝶」,按 cm 行话默认为蝴蝶组合", "本地速记解析(未经大模型),语法 shorthand-v3"]
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7850 高于现价 7745.2,推断为看涨蝴蝶", "未写「蝴蝶」,按 cm 行话默认为蝴蝶组合", "本地速记解析(未经大模型),语法 shorthand-v4"]
      }
     ],
     "rejections": []

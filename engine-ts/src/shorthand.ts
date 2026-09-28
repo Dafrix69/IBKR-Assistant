@@ -16,8 +16,10 @@ import { dateOrdinal, ordinalToDate, weekdayOfDate } from "./tz.js";
 
 /** 记录里的"模型名":一眼能看出这单没经过大模型 */
 export const LOCAL_MODEL = "local-shorthand";
-/** 语法版本:改语法必须升版本,记录里跟着走 */
-export const GRAMMAR_VERSION = "shorthand-v3";
+/** 语法版本:改语法必须升版本,记录里跟着走。
+ * v4(2026-09-27):中心与张数的数字左边加边界,三位数中心(「580蝴蝶」)不再被拆成"权利金 5 + 80蝴蝶",
+ * 改为交给大模型——语法只收窄,没有新写法。 */
+export const GRAMMAR_VERSION = "shorthand-v4";
 
 type Rec = Record<string, any>;
 
@@ -136,8 +138,9 @@ export function tryParseShorthand(
     work = work.split(filler).join(" ");
   }
   work = work.replace(/0dte/gi, " ");
+  // 左边界:数字不能从更长的数字中间截。没有它,「1500张」会取成 500 张、剩下的 1 又被当成权利金
   let mQty: RegExpMatchArray | null;
-  [work, mQty] = take(work, /(\d{1,3})\s*张/);
+  [work, mQty] = take(work, /(?<![\d.])(\d{1,3})\s*张/);
   let qty: number | null = mQty ? Number(mQty[1]) : null;
   if (qty === null) {
     let mCn: RegExpMatchArray | null;
@@ -150,13 +153,17 @@ export function tryParseShorthand(
   }
   if (!(qty >= 1 && qty <= 999)) return null;
 
-  // 中心:三种显式写法,最多命中一种
+  // 中心:三种显式写法,最多命中一种。
+  // 三条都要左边界 (?<![\d.]):数字只能整段认,不能从中间截。没有它,「580蝴蝶」被 mC2 截成
+  // 「80蝴蝶」(现价百位 + 80),剩下的 5 又落进"孤立数字 = 权利金上限"——QQQ 在 612 时成了
+  // 670/680/690 看涨蝶、限价 5(2026-09-27 审计 V3)。三位数中心不带「的」说不清是绝对价还是
+  // "百位 + N",这里三条都不命中,剩下的 580 也不够"行权价量级",整条交给大模型。
   let mC1: RegExpMatchArray | null;
   let mC2: RegExpMatchArray | null;
   let mC3: RegExpMatchArray | null;
-  [work, mC1] = take(work, /(\d{4,5}(?:\.\d+)?)\s*(?=蝴蝶)/); // 7515蝴蝶 / 7520 蝴蝶
-  [work, mC2] = take(work, /(\d{1,2})\s*(?=蝴蝶)/);            // 15蝴蝶(百位+N)
-  [work, mC3] = take(work, /(\d{3,5}(?:\.\d+)?)\s*的/);        // 7520的…蝴蝶
+  [work, mC1] = take(work, /(?<![\d.])(\d{4,5}(?:\.\d+)?)\s*(?=蝴蝶)/); // 7515蝴蝶 / 7520 蝴蝶
+  [work, mC2] = take(work, /(?<![\d.])(\d{1,2})\s*(?=蝴蝶)/);            // 15蝴蝶(百位+N)
+  [work, mC3] = take(work, /(?<![\d.])(\d{3,5}(?:\.\d+)?)\s*的/);        // 7520的…蝴蝶
   const hits = [mC1, mC2, mC3].filter((m) => m !== null);
   if (hits.length > 1) return null;
   const centerTail = mC2 !== null ? Number(mC2[1]) : null;

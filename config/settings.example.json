@@ -1,6 +1,7 @@
 {
   "_comment": "复制为 config/settings.json 后修改。此文件不含任何密钥:LLM API Key、IBKR 凭证、富途交易解锁密码都只存 Keychain / DPAPI(§9.2)。",
-  "prompt_version": "v1.8.0",
+  "_prompt_version_comment": "latest = 跟着软件带的最新一版提示词走;要钉住某一版(回滚)就写成具体的版本号,如 v1.8.0。",
+  "prompt_version": "latest",
   "llm": {
     "provider": "anthropic",
     "model": "claude-opus-5",

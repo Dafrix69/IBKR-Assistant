@@ -44,14 +44,20 @@ export interface TrackerSnapshot {
   positions: Position[];
   positionsError: string | null;
   tracks: Track[];
+  /** 追踪列表读不到时的原因。读不到时 tracks 留着上一份——不能因为一次读失败就显示"还没有在追踪任何持仓" */
+  tracksError: string | null;
   rows: Record<string, LiveRow>;
   hosted: Record<string, { orders: HostedOrder[] }>;
   delayed: boolean;
   loop: LoopHeartbeat | null;
+  /** 盯盘结果连着几轮读不到时的原因。有它的时候 loop 是 null:上一份心跳已经不能代表现在 */
+  pollError: string | null;
 }
 
 const useStore = create<{ snap: TrackerSnapshot }>(() => ({
-  snap: { positions: [], positionsError: null, tracks: [], rows: {}, hosted: {}, delayed: false, loop: null },
+  snap: {
+    positions: [], positionsError: null, tracks: [], tracksError: null, rows: {}, hosted: {}, delayed: false, loop: null, pollError: null,
+  },
 }));
 
 let pollBusy = false;
@@ -67,14 +73,16 @@ function set(part: Partial<TrackerSnapshot>) {
 }
 
 export async function loadTracker(refreshPositions = true): Promise<void> {
-  let tracks: Track[] = [];
+  const part: Partial<TrackerSnapshot> = {};
   try {
     const res = await dafri.listTrackers();
-    tracks = Array.isArray(res?.tracks) ? res.tracks : [];
-  } catch {
-    tracks = [];
+    part.tracks = Array.isArray(res?.tracks) ? res.tracks : [];
+    part.tracksError = null;
+  } catch (err) {
+    // 读不到 ≠ 没有。以前这里把列表清空:页面显示"还没有在追踪任何持仓",每秒的盯盘读取也跟着停(它看 tracks.length)——
+    // 而引擎里那几条追踪其实还在盯、还会发平仓单
+    part.tracksError = errorMessage(err);
   }
-  const part: Partial<TrackerSnapshot> = { tracks };
   // 没连券商时读不到持仓,引擎会直接拒绝:不发这个请求,页面按"连接后才能读到"显示,主进程日志也不必多一条错误
   if (refreshPositions && !getStatus()?.broker_connected) {
     part.positions = [];
@@ -102,6 +110,9 @@ export async function loadTracker(refreshPositions = true): Promise<void> {
  * 免得拿旧数冒充实时。
  */
 const POSITIONS_FAIL_LIMIT = 3;
+/** 盯盘结果同理:连着这么多轮读不到,就不再拿上一份心跳冒充"节拍器正常" */
+const POLL_FAIL_LIMIT = 3;
+let pollFails = 0;
 let positionsBusy = false;
 let positionsFails = 0;
 let positionsSig = '';
@@ -144,6 +155,8 @@ export async function pollTrackers(): Promise<void> {
   pollBusy = true;
   try {
     const result = await dafri.pollTrackers();
+    pollFails = 0;
+    if (snapshot().pollError !== null) set({ pollError: null });
     const rows: Record<string, LiveRow> = {};
     for (const row of result?.rows || []) rows[row.id] = row;
     const loop: LoopHeartbeat | null = result?.loop ?? null;
@@ -169,8 +182,14 @@ export async function pollTrackers(): Promise<void> {
     } else if (loop && (loop.ticks !== snapshot().loop?.ticks || loop.last_error !== snapshot().loop?.last_error)) {
       set({ loop }); // 心跳每轮都变;行没变时只刷心跳
     }
-  } catch {
-    /* 单轮失败不打断界面;下一轮再来 */
+  } catch (err) {
+    // 单轮失败不打断界面;连着几轮都读不到,就得说出来——页面上那行"盯盘:引擎每 1 秒一轮"是上一份心跳,
+    // 引擎要是已经不回话了,它还显示着一切正常
+    pollFails += 1;
+    if (pollFails >= POLL_FAIL_LIMIT && snapshot().pollError === null) {
+      rowsSig = '';
+      set({ loop: null, pollError: errorMessage(err) });
+    }
   } finally {
     pollBusy = false;
   }

@@ -1,4 +1,5 @@
 const FULL_POOL = false;
+const FIRST_RUN_ACCOUNTS = [{alias:'模拟', account_masked:'DU***000', is_paper:true, connection:'paper', broker:'ibkr', default:true},{alias:'主账户', account_masked:'U***000', is_paper:false, connection:'live', broker:'ibkr', default:false},{alias:'富途模拟', account_masked:'***000', is_paper:true, connection:'futu', broker:'futu', default:false}];
 // 首次启动的样子:引擎在跑,但什么都还没配、什么都还没发生。
 //
 // 这是新用户唯一会看到的状态,却也是开发时最少看到的状态——手上有数据的时候
@@ -27,19 +28,20 @@ window.dafri = {
     breaker: { engaged: false, reason: '', consecutive_failures: 0 },
     protections: { paused: false, rule: '', reason: '', until_ms: null, cooldowns: [] },
     broker_provider: 'ibkr', broker_connected: false, broker_upstream_ok: true,
-    pending_count: 0, accounts: [],
+    // 首次启动时配置是从示例拷来的:三个占位账户都在,只是账号还是全零
+    pending_count: 0, accounts: FIRST_RUN_ACCOUNTS,
     limits: { max_order_notional: 5000, max_option_contracts: 5, max_mkt_shares: 200,
               min_confidence: 0.9, max_spread_slippage: 0.1, duplicate_window_minutes: 10 },
   }),
   selftest: async () => ({ prompt_version: 'v1.8.0', prompt_fingerprint: '',
-    system_prompt_chars: 0, fewshot_pairs: 0, symbol_aliases: {}, accounts: [] }),
+    system_prompt_chars: 0, fewshot_pairs: 0, symbol_aliases: {}, accounts: FIRST_RUN_ACCOUNTS }),
   listRecords: async () => ({ records: [] }),
   getRecord: async () => ({ record: null }),
   listPending: async () => ({ pending: [] }),
   pollPending: async () => ({ fired: [], prices: {}, synced: 0 }),
   // 引擎是平铺返回的;这里刻意给最空的一份,看界面扛不扛得住
   getSettings: async () => ({ path: 'config/settings.json', llm: {}, limits: {}, policies: {},
-    symbol_aliases: {}, accounts: [], connections: {} }),
+    symbol_aliases: {}, accounts: FIRST_RUN_ACCOUNTS, connections: {} }),
   breakerState: async () => ({ engaged: false, reason: '', consecutive_failures: 0 }),
   listIdeas: async () => ({ ideas: [] }),
   addIdea: async () => ({ idea: {} }), updateIdea: async () => ({}), analyzeIdea: async () => ({}),
@@ -54,6 +56,11 @@ window.dafri = {
   screenerLeaders: async () => { throw new Error('强势股筛选需要先连接 TWS / IB Gateway'); },
   appInfo: async () => ({ version: '0.2.0', electron: '40.0.0', configPath: '', enginePath: '',
     engineRunning: true }),
+  // 新版本检查:首次启动的样子——已是最新
+  exportImage: async () => ({ ok: true }),
+  checkUpdate: async () => ({current:'0.2.0', latest:'0.2.0', newer:false,
+    url:'https://github.com/Dafrix69/IBKR-Assistant/releases/tag/v0.2.0', download:null,
+    publishedAt:'2026-09-20T02:00:00Z', notes:'', checkedAt:Date.now()}),
   llmCatalog: async () => ({
     providers: [{ key: 'anthropic', label: 'Anthropic(Claude)', default_model: 'claude-opus-5',
       models: ['claude-opus-5'], supports_effort: true, supports_temperature: false,
@@ -101,12 +108,28 @@ window.dafri = {
   disconnectBroker: async () => ({ connected: [] }),
   halt: async () => ({ engaged: true, cancelled: 0 }), resume: async () => ({ engaged: false }),
   exportData: async () => ({}), restartEngine: async () => ({}),
+  // 备份、诊断、条款(desktop/support-ipc.js 与引擎的 data.backups / data.backup)
+  listBackups: async () => ({db_path:'~/Library/Application Support/dafri/trades.db', dir:'~/Library/Application Support/dafri/backups', schema_version:1,
+    backups: []}),
+  backupNow: async () => ({backup:{name:'trades-20260928-013000-manual.db', reason:'manual', at:'2026-09-28T01:30:00Z', bytes:1843200}}),
+  restoreBackup: async () => ({ok:false, canceled:true}),
+  exportDiagnostics: async () => ({ok:false, canceled:true}), copyDiagnostics: async () => ({ok:true}),
+  reveal: async () => ({ok:true}),
+  // 地址后面加 ?consent=0 看首次启动时的条款确认页(平时当作已经同意过,不挡着截图)
+  consentState: async () => (/[?&]consent=0/.test(location.search) ? {version:'2026-09-28', accepted:false, acceptedAt:null} : {version:'2026-09-28', accepted:true, acceptedAt:'2026-09-28T01:00:00.000Z'}),
+  acceptConsent: async (version) => ({version, accepted:true, acceptedAt:'2026-09-28T01:00:00.000Z'}),
+  quit: async () => ({}),
+  accountsInfo: async () => ({placeholders:['模拟','主账户','富途模拟'], connections:[{name:'paper',broker:'ibkr',port:7497},{name:'live',broker:'ibkr',port:7496},{name:'futu',broker:'futu',port:11111}]}),
+  changeAccount: async () => ({ok:false, canceled:true}),
   backtestStrategies: async () => ({ strategies: [] }),
   runBacktest: async () => { throw new Error('回测的历史行情需要 TWS / IB Gateway'); },
   sweepBacktest: async () => { throw new Error('回测的历史行情需要 TWS / IB Gateway'); },
   parseBacktestRules: async () => ({}),
   orderBook: async () => { throw new Error('读取盘口需要 TWS / IB Gateway'); },
   optionWall: async () => { throw new Error('计算期权墙需要 TWS / IB Gateway'); },
+  flyPlan: async () => { throw new Error('没连 TWS / IB Gateway,拿不到现价:先去连接,或者手动填上现价与 IV 再算。'); },
+  ivRecorder: async () => ({enabled:true,running:true,symbol:'SPX',interval_seconds:300,dir:'~/Library/Application Support/dafri/fly-iv',days:0,samples:0,first_date:null,last_date:null,last_at:null,idle_reason:'没连券商',last_error:''}),
+  setIvRecorder: async (enabled) => ({...{enabled:true,running:true,symbol:'SPX',interval_seconds:300,dir:'~/Library/Application Support/dafri/fly-iv',days:0,samples:0,first_date:null,last_date:null,last_at:null,idle_reason:'没连券商',last_error:''}, enabled, idle_reason: enabled ? '' : '已关闭'}),
   listAlerts: async () => ({ watches: [] }),
   createAlert: async () => ({}), deleteAlert: async () => ({}), refreshAlert: async () => ({}),
   pollAlerts: async () => ({ fired: [], checked: [] }),

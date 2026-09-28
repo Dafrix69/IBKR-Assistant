@@ -112,16 +112,13 @@ export const FUTU_ENUMS = {
   OptionType: { CALL: "CALL", PUT: "PUT" },
 };
 
-/** 默认桥:npm futu-api 的适配。真机联调前显式不可用——绝不假装。 */
+/** 默认桥:npm futu-api 的适配。真机联调前显式不可用——绝不假装。
+ *
+ * 2026-09-28 起 futu-api 只是开发依赖,不随安装包发出去:适配桥没写完之前运行时用不到它,
+ * 而它带着的 protobufjs 6 有已公开、没有修复版本的安全通告——一个用不到的库不值得让每个用户的安装包背着。
+ * 所以这里也不再去 import 它(以前 import 只为了区分"没装"和"没核对",装了也一样不可用)。
+ * 适配桥完成真机核对的那一天:把 futu-api 挪回 dependencies,在这里接上。 */
 export async function loadFutuBridge(): Promise<FutuBridge> {
-  try {
-    await import("futu-api");
-  } catch (exc) {
-    throw new FutuUnavailable(
-      "未安装 futu-api(npm)。在 engine-ts 目录执行 npm install futu-api。" +
-      `原始报错:${(exc as Error).message}`,
-    );
-  }
   const err = new FutuUnavailable(
     "npm futu-api 的适配桥尚未完成真机核对(接口签名、返回列名、枚举取值都要连着" +
     "本机 OpenD 逐一对过)。富途通道暂不可用,等待真机联调完成;IBKR 通道不受影响。",

@@ -91,6 +91,8 @@ export function FutuPanel() {
   // 把整个类型化掉了。唯一的调用方传的就是券商目录里的一项,按实际改成 BrokerProviderEntry。
   async function switchTo(provider: BrokerProviderEntry) {
     const ok = await dafri.confirm({
+      purpose: 'broker.select',
+      binding: { provider: provider.key },
       title: '切换券商',
       message: `把下单出口切到「${provider.label}」?`,
       detail: '现有的券商连接会先断开,选择会写进配置文件。' + (provider.key === 'futu' ? ' 富途不支持组合单:价差 / 蝴蝶 / 铁鹰会被引擎拒绝。' : ''),
@@ -212,7 +214,7 @@ export function FutuPanel() {
         ) : (
           <>
             {/* SDK 没装的话,后面几步全都会卡在同一个地方。先把它摆在最前面 */}
-            {scan.sdk_installed === false ? <InfoCard tone="bad" title="futu-api(npm 包)未安装" body="连接 OpenD 必需:在 engine-ts 目录执行 npm install,然后在「关于」里重启引擎。" /> : null}
+            {scan.sdk_installed === false ? <InfoCard tone="warn" title="这个版本没有带富途的接口库" body="富途通道的下单桥还没有完成真机核对,暂未开放;检测与诊断照常可用,IBKR 通道不受影响。" /> : null}
             <AppsCards apps={scan.apps || []} missingText="未找到(绿色包放在非常见目录时检测不到,可手动启动)" onLaunch={launch} />
           </>
         )}

@@ -66,6 +66,18 @@ const symbolField = makeSymbolField((v) => `标的代码必须是大写字母/�
 
 const expiryField = z.string().trim().superRefine(checkExpiry);
 
+/** 期权乘数。空串 / 纯空白 / 数值等于 100 的写法("100.0")一律归一成 "100",别的值原样留着,
+ * 由校验层按"只支持 100"拒绝(schema 只管结构,领域规则在 validator)。
+ * 空串必须在这里补上:发给券商的合约遇到空乘数会整个省略这个字段,IBKR 按通配确认成标准
+ * 100 乘数合约;而校验层若拿 Number("") = 0 算限额,敞口就成了 0(2026-09-27 审计 V2)。 */
+const multiplierField = z
+  .string()
+  .transform((v) => {
+    const t = v.trim();
+    return t === "" || Number(t) === 100 ? "100" : t;
+  })
+  .default("100");
+
 export const LegSchema = z
   .object({
     action: z.enum(ACTIONS),
@@ -74,7 +86,7 @@ export const LegSchema = z
     strike: looseFloat.pipe(z.number().gt(0)),
     right: z.enum(RIGHTS),
     tradingClass: z.string().trim().nullable().default(null),
-    multiplier: z.string().trim().default("100"),
+    multiplier: multiplierField,
   })
   .strict();
 export type Leg = z.infer<typeof LegSchema>;
@@ -88,7 +100,7 @@ export const ContractSpecSchema = z
     lastTradeDateOrContractMonth: expiryField.nullable().default(null),
     strike: looseFloat.pipe(z.number().gt(0)).nullable().default(null),
     right: z.enum(RIGHTS).nullable().default(null),
-    multiplier: z.string().trim().default("100"),
+    multiplier: multiplierField,
     tradingClass: z.string().trim().nullable().default(null),
     combo_strategy: z.enum(["VERTICAL", "BUTTERFLY", "IRON_CONDOR"]).nullable().default(null),
     legs: z.array(LegSchema).nullable().default(null),
@@ -129,9 +141,11 @@ export const ContractSpecSchema = z
   });
 export type ContractSpec = z.infer<typeof ContractSpecSchema>;
 
+/** 乘数的数值。非有限、零或负数一律按 100:乘数只会让敞口变大,不能把它缩成 0 或翻成负数
+ * (期权 / 组合不是 100 的,校验层另有一条直接拒绝,这里只是兜底)。 */
 export function multiplierValue(contract: { multiplier: string }): number {
   const v = Number(contract.multiplier);
-  return Number.isFinite(v) ? v : 100.0;
+  return Number.isFinite(v) && v > 0 ? v : 100.0;
 }
 
 export const TriggerSpecSchema = z

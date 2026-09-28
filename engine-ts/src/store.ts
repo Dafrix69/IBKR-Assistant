@@ -22,6 +22,8 @@ import { IdeaVectorStore } from "./ideaVectors.js";
 import { SignalLogStore } from "./signalLog.js";
 import { ImportedTradesStore } from "./importedTrades.js";
 import type { RecentOrder } from "./models.js";
+import type { BackupInfo, BackupReason } from "./contract/settings.js";
+import { createBackup, describeOpenFailure, guardOnOpen, stampVersion } from "./storeSafety.js";
 
 export const SCHEMA = `
 CREATE TABLE IF NOT EXISTS trade_records (
@@ -215,6 +217,10 @@ export interface WorkingRecord {
   createdAtMs: number;
   /** 最后一条状态回报的 status 字段(PendingTrigger / Submitted / PreSubmitted…)。 */
   lastStatus: string;
+  /** 最后一条状态回报落库的时刻。对账的宽限期从它算:条件单等几个小时才触发,一发出去就是"刚发的"。 */
+  lastStatusAtMs: number | null;
+  /** 托管单的记录是 `trk:<追踪>:<单型>`,也就是它在券商那边的 orderRef;普通单是空的(orderRef = 记录 id)。 */
+  signature: string;
 }
 
 /** 库这一层的松散记录类型。`engine/` 拆出来的那几个文件也引它(那些代码本来就在 engine.ts 里、整块搬过来的),
@@ -250,18 +256,28 @@ export class TradeStore {
   /** 价位提醒与盯异动发出的每一条信号(只增不改),见 signalLog.ts */
   readonly signals: SignalLogStore;
 
-  constructor(dbPath: string) {
+  /** safety:真应用开库时给 true——拒绝比软件新的库、查完整性、升级前与每天各备份一次、盖结构版本号,
+   *  打不开时抛 StoreOpenError(一句人话)。口径见 storeSafety.ts;测试与黄金基线开的库不走这一套。 */
+  constructor(dbPath: string, opts: { safety?: boolean } = {}) {
     this.dbPath = dbPath;
-    fs.mkdirSync(path.dirname(this.dbPath), { recursive: true });
-    const fresh = !fs.existsSync(this.dbPath);
-    this.db = new Database(this.dbPath);
-    this.db.pragma("journal_mode = WAL");
-    this.db.pragma("foreign_keys = ON");
-    this.db.exec(SCHEMA);
-    this.imports = new ImportedTradesStore(this.db);
-    this.vectors = new IdeaVectorStore(this.db);
-    this.signals = new SignalLogStore(this.db);
-    this.migrate();
+    const safety = opts.safety === true;
+    let fresh = false;
+    try {
+      fs.mkdirSync(path.dirname(this.dbPath), { recursive: true });
+      fresh = !fs.existsSync(this.dbPath);
+      this.db = new Database(this.dbPath);
+      this.db.pragma("journal_mode = WAL");
+      this.db.pragma("foreign_keys = ON");
+      if (safety) guardOnOpen(this.db, this.dbPath, fresh);
+      this.db.exec(SCHEMA);
+      this.imports = new ImportedTradesStore(this.db);
+      this.vectors = new IdeaVectorStore(this.db);
+      this.signals = new SignalLogStore(this.db);
+      this.migrate();
+      if (safety) stampVersion(this.db);
+    } catch (exc) {
+      throw safety ? describeOpenFailure(exc, this.dbPath) : exc;
+    }
     if (fresh) {
       try {
         fs.chmodSync(this.dbPath, 0o600);
@@ -303,8 +319,8 @@ export class TradeStore {
       (this.db.pragma("table_info(position_tracks)") as Array<{ name: string }>).map((r) => r.name),
     );
     if (tcols.size && !tcols.has("leg")) {
-      this.db.exec(`
-        BEGIN;
+      // 整表重建放进一个事务函数:半路出错整段回滚(以前是裸的 BEGIN…COMMIT,出错后事务悬着,库停在半截)
+      this.db.transaction(() => this.db.exec(`
         CREATE TABLE position_tracks_v2 (
             id         TEXT PRIMARY KEY,
             created_at TEXT NOT NULL,
@@ -332,13 +348,17 @@ export class TradeStore {
         FROM position_tracks;
         DROP TABLE position_tracks;
         ALTER TABLE position_tracks_v2 RENAME TO position_tracks;
-        COMMIT;
-      `);
+      `))();
     }
   }
 
   close(): void {
     this.db.close();
+  }
+
+  /** 现在出一份备份(一致快照,不动库本身)。 */
+  backupNow(reason: BackupReason): BackupInfo {
+    return createBackup(this.db, this.dbPath, reason);
   }
 
   // ---- 写入 -----------------------------------------------------------
@@ -369,6 +389,16 @@ export class TradeStore {
     this.db
       .prepare("INSERT INTO record_events (record_id, at, kind, payload) VALUES (?,?,?,?)")
       .run(recordId, nowIso(), kind, JSON.stringify(payload));
+  }
+
+  /** 发单之前先留一条痕(事件 kind = submit_intent)。
+   *
+   * 记录是在发单之前建的,第一条状态回报却要等券商回话之后才落。进程要是在这中间被杀(重启、退出、心跳判死),
+   * 单可能已经到了券商,库里这条记录却一条状态都没有——对账(listWorkingRecords)和重复单防抖(recentOrders)
+   * 都只认"有过状态回报"的记录,看不见它:重启后没人认领这张单,照原样再发一次也不会被提醒。
+   * 这条痕让两者都认得它。读记录时 foldEvents 不认这个 kind,折出来的文档一字不变。 */
+  markSubmitIntent(recordId: string): void {
+    this.appendEvent(recordId, "submit_intent", {});
   }
 
   setFinalStatus(recordId: string, status: string, errorDetail: string | null = null): void {
@@ -1087,8 +1117,8 @@ export class TradeStore {
         " WHERE signature != ''" +
         " AND EXISTS (" +
         "   SELECT 1 FROM record_events e" +
-        "   WHERE e.record_id = t.id AND e.kind = 'status'" +
-        "   AND e.payload NOT LIKE '%ValidatedOnly%'" +
+        "   WHERE e.record_id = t.id AND (e.kind = 'submit_intent'" +
+        "     OR (e.kind = 'status' AND e.payload NOT LIKE '%ValidatedOnly%'))" +
         " )" +
         " ORDER BY rowid DESC LIMIT 1000",
       )
@@ -1106,7 +1136,7 @@ export class TradeStore {
     return out;
   }
 
-  /** 在途记录:回报过状态、还没有终态的那些。对账用(见 engine.reconcileOrders)——
+  /** 在途记录:回报过状态(或留过发单的痕,见 markSubmitIntent)、还没有终态的那些。对账用(见 engine.reconcileOrders)——
    * 引擎重启后 orderIndex 是空的,券商后来推的状态与成交认不出记录,这些单会永远停在旧状态。
    * 只校验未发送(ValidatedOnly)不算在途:它从没提交过。
    * 时间过滤与 recentOrders 同理,在代码里做,不在 SQL 里比字符串。 */
@@ -1114,15 +1144,18 @@ export class TradeStore {
     const maxAgeMs = maxAgeDays * 86_400_000;
     const rows = this.db
       .prepare(
-        "SELECT t.id, t.symbol, t.account_id, t.quantity, t.created_at," +
+        "SELECT t.id, t.symbol, t.account_id, t.quantity, t.created_at, t.signature," +
         " (SELECT e2.payload FROM record_events e2" +
         "   WHERE e2.record_id = t.id AND e2.kind = 'status'" +
-        "   ORDER BY e2.seq DESC LIMIT 1) AS last_status" +
+        "   ORDER BY e2.seq DESC LIMIT 1) AS last_status," +
+        " (SELECT e3.at FROM record_events e3" +
+        "   WHERE e3.record_id = t.id AND e3.kind = 'status'" +
+        "   ORDER BY e3.seq DESC LIMIT 1) AS last_status_at" +
         " FROM trade_records t" +
         " WHERE EXISTS (" +
         "   SELECT 1 FROM record_events e" +
-        "   WHERE e.record_id = t.id AND e.kind = 'status'" +
-        "   AND e.payload NOT LIKE '%ValidatedOnly%'" +
+        "   WHERE e.record_id = t.id AND (e.kind = 'submit_intent'" +
+        "     OR (e.kind = 'status' AND e.payload NOT LIKE '%ValidatedOnly%'))" +
         " )" +
         " AND NOT EXISTS (" +
         "   SELECT 1 FROM record_events f WHERE f.record_id = t.id AND f.kind = 'final'" +
@@ -1131,7 +1164,7 @@ export class TradeStore {
       )
       .all() as Array<{
         id: string; symbol: string; account_id: string; quantity: number; created_at: string;
-        last_status: string | null;
+        signature: string | null; last_status: string | null; last_status_at: string | null;
       }>;
     const out: WorkingRecord[] = [];
     for (const row of rows) {
@@ -1144,9 +1177,11 @@ export class TradeStore {
       } catch {
         /* payload 坏了就当没有状态,对账那边按"认不出"处理 */
       }
+      const statusAt = row.last_status_at === null ? NaN : Date.parse(row.last_status_at);
       out.push({
         id: row.id, symbol: row.symbol, accountId: row.account_id,
         quantity: Number(row.quantity) || 0, createdAtMs: created, lastStatus: status,
+        lastStatusAtMs: Number.isNaN(statusAt) ? null : statusAt, signature: row.signature ?? "",
       });
       if (out.length >= limit) break;
     }
@@ -1160,7 +1195,8 @@ export class TradeStore {
     const rows = this.db
       .prepare(
         "SELECT at, detail FROM audit_log" +
-        " WHERE actor='engine' AND action IN ('auto_close','hosted_sweep')" +
+        // hosted_fill:券商侧自己触发的托管单成交(engine/hosted.ts)。股票最主要的止损路径就是它,以前不算
+        " WHERE actor='engine' AND action IN ('auto_close','hosted_sweep','hosted_fill')" +
         " ORDER BY seq DESC LIMIT 2000",
       )
       .all() as Array<{ at: string; detail: string }>;
@@ -1242,29 +1278,38 @@ export class TradeStore {
   }
 
   /** 窗口内的已实现盈亏(保护规则的回撤护栏用)。券商的佣金回报里带 realizedPNL,
-   * 平仓那一笔才有值——这是全仓库唯一"券商认的"盈亏口径(见 tracker.md 盈亏以券商报的为准)。 */
+   * 平仓那一笔才有值——这是全仓库唯一"券商认的"盈亏口径(见 tracker.md 盈亏以券商报的为准)。
+   *
+   * 同一 exec_id 只算**先到的那一条**,与 foldEvents 同口径。库里真有重复(2026-09-10 模拟盘 #89 一条佣金落了
+   * 三次;引擎一重建 seenCommissions 就空了,交易分析一同步当天的佣金回报又会重推一遍),而这里以前逐行相加:
+   * 亏 300 按 600 算,日内亏损上限被假触发,当天所有新单都被拦(2026-09-27 审计 H4)。
+   * 先去重再按窗口筛:昨天落过、今天又被重推的那笔不许算进今天。没有 exec_id 的认不出是不是同一笔,照旧都算。 */
   realizedPnlEvents(sinceMs: number, nowMs: number): Array<{ atMs: number; pnl: number }> {
     const rows = this.db
       .prepare(
         "SELECT at, payload FROM record_events WHERE kind='commission' ORDER BY seq DESC LIMIT 2000",
       )
       .all() as Array<{ at: string; payload: string }>;
-    const out: Array<{ atMs: number; pnl: number }> = [];
+    const anonymous: Array<{ atMs: number; pnl: number }> = [];
+    // 行是新的在前:同一 exec_id 后读到的更早,覆盖下来,留下的就是先到的那条
+    const firstByExec = new Map<string, { atMs: number; pnl: number }>();
     for (const row of rows) {
       const at = Date.parse(row.at);
-      if (Number.isNaN(at) || at <= sinceMs || at > nowMs) continue;
+      if (Number.isNaN(at)) continue;
       let payload: Rec;
       try {
         payload = JSON.parse(row.payload) as Rec;
       } catch {
         continue;
       }
-      const pnl = Number(payload["realized_pnl"]);
-      // IBKR 对开仓的佣金回报给一个哨兵大数(1.7976931348623157e308),不是真盈亏
-      if (!Number.isFinite(pnl) || Math.abs(pnl) >= 1e307) continue;
-      out.push({ atMs: at, pnl });
+      const item = { atMs: at, pnl: Number(payload["realized_pnl"]) };
+      const execId = String(payload["exec_id"] ?? "");
+      if (execId) firstByExec.set(execId, item);
+      else anonymous.push(item);
     }
-    return out;
+    // IBKR 对开仓的佣金回报给一个哨兵大数(1.7976931348623157e308),不是真盈亏
+    return [...anonymous, ...firstByExec.values()].filter((p) =>
+      p.atMs > sinceMs && p.atMs <= nowMs && Number.isFinite(p.pnl) && Math.abs(p.pnl) < 1e307);
   }
 
   // ---- 导出 / 删除(§9.3 可携带权与删除权)------------------------------

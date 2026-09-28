@@ -12,6 +12,14 @@ export interface BreakerState {
   at: string;
   consecutive_failures: number; // broker(下单)失败
   consecutive_parse_failures: number; // LLM 解析失败
+  /**
+   * 是不是连续失败**自动**合上的。手动熔断(界面按钮、菜单、Dock、状态文件损坏)是 false。
+   * 两种熔断对"已经在保护持仓的东西"处置不同:手动熔断是人说"全部停下",照旧撤单、连平仓也不发;
+   * 自动熔断只说明解析或下单接连出错——那时撤掉券商侧的止损单、停掉软件止损,等于在软件出毛病的时候
+   * 把持仓的保护一起拿掉(2026-09-27 审计:大模型接口超时三次,下一轮对账就把全部托管止损撤了)。
+   * 旧版状态文件没有这一项,按手动处理——对保护最保守的那一侧。
+   */
+  auto: boolean;
 }
 
 export class KillSwitch {
@@ -26,7 +34,7 @@ export class KillSwitch {
 
   state(): BreakerState {
     if (!fs.existsSync(this.path)) {
-      return { engaged: false, reason: "", at: "", consecutive_failures: 0, consecutive_parse_failures: 0 };
+      return { engaged: false, reason: "", at: "", consecutive_failures: 0, consecutive_parse_failures: 0, auto: false };
     }
     let raw: Record<string, unknown>;
     try {
@@ -35,7 +43,7 @@ export class KillSwitch {
       // 状态文件坏了 → 按已熔断处理,宁可停,不可乱下单
       return {
         engaged: true, reason: "熔断状态文件损坏,已按安全侧处理", at: "",
-        consecutive_failures: 0, consecutive_parse_failures: 0,
+        consecutive_failures: 0, consecutive_parse_failures: 0, auto: false,
       };
     }
     return {
@@ -44,6 +52,7 @@ export class KillSwitch {
       at: String(raw["at"] ?? ""),
       consecutive_failures: Math.trunc(Number(raw["consecutive_failures"] ?? 0)) || 0,
       consecutive_parse_failures: Math.trunc(Number(raw["consecutive_parse_failures"] ?? 0)) || 0,
+      auto: raw["auto"] === true,
     };
   }
 
@@ -51,7 +60,8 @@ export class KillSwitch {
     return this.state().engaged;
   }
 
-  engage(reason: string): BreakerState {
+  /** auto 只由 recordFailure 传 true;其余调用方(手动熔断)一律是手动。 */
+  engage(reason: string, auto = false): BreakerState {
     const state = this.state();
     const next: BreakerState = {
       engaged: true,
@@ -59,6 +69,7 @@ export class KillSwitch {
       at: localIsoSeconds(),
       consecutive_failures: state.consecutive_failures,
       consecutive_parse_failures: state.consecutive_parse_failures,
+      auto,
     };
     this.write(next);
     return next;
@@ -71,6 +82,7 @@ export class KillSwitch {
       at: localIsoSeconds(),
       consecutive_failures: 0,
       consecutive_parse_failures: 0,
+      auto: false,
     };
     this.write(next);
     return next;
@@ -102,7 +114,7 @@ export class KillSwitch {
     }
     if (count >= this.threshold && !state.engaged) {
       this.write(state);
-      return this.engage(`连续 ${count} 次失败后自动熔断(最近一次:${reason})`);
+      return this.engage(`连续 ${count} 次失败后自动熔断(最近一次:${reason})`, true);
     }
     this.write(state);
     return null;
@@ -116,6 +128,7 @@ export class KillSwitch {
       at: state.at,
       consecutive_failures: state.consecutive_failures,
       consecutive_parse_failures: state.consecutive_parse_failures,
+      auto: state.auto,
     });
     const tmp = this.path.replace(/\.json$/, "") + ".json.tmp";
     fs.writeFileSync(tmp, payload, "utf-8");

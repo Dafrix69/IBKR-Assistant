@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { Badge, Button, Tooltip } from 'antd';
 import { toggleBreaker, toggleBrokerConnection } from '../store/broker';
-import { gatewayName, useEngineOk, useStatus } from '../store/status';
+import { gatewayName, pickableAccounts, useEngineOk, useStatus } from '../store/status';
 import { MOD_KEY, SHIFT_KEY } from '../store/appearance';
+import { navigate } from '../store/nav';
+import { useUpdateBadge } from '../store/update';
+import { AppMark } from '../ui/AppMark';
 
 type Dot = 'success' | 'warning' | 'error' | 'default';
 
@@ -14,6 +17,7 @@ export function Topbar() {
   const status = useStatus();
   const engineOk = useEngineOk();
   const [busy, setBusy] = useState(false);
+  const update = useUpdateBadge();
 
   const gateway = gatewayName(status);
   const connected = Boolean(status?.broker_connected);
@@ -22,13 +26,32 @@ export function Topbar() {
   // 保护规则的暂停:比熔断轻一档,到点自己解除(见 engine-ts/src/protections.ts)
   const guarded = Boolean(status?.protections?.paused);
 
-  const brokerText = upstreamDown ? `${gateway} 上游中断` : connected ? `${gateway} 已连接` : `${gateway} 未连接`;
-  const brokerDot: Dot = upstreamDown ? 'warning' : connected ? 'success' : 'default';
-  const brokerTip = upstreamDown
-    ? `${gateway} 与券商服务器断连:本机连得上 ${gateway},但行情无回应。等待自动重连或检查网络。`
-    : connected
-      ? '引擎与券商网关的长连接正常'
-      : '未连接券商:只能解析,不能下单,也拿不到行情';
+  // 引擎不答话时,手上这份状态是它最后一次答话时的样子:不能再照着它写「已连接」
+  const stale = engineOk === false;
+  const brokerText = stale ? `${gateway} 状态未知` : upstreamDown ? `${gateway} 上游中断` : connected ? `${gateway} 已连接` : `${gateway} 未连接`;
+  const brokerDot: Dot = stale ? 'error' : upstreamDown ? 'warning' : connected ? 'success' : 'default';
+  const brokerTip = stale
+    ? '交易引擎没有回应,券商连接的状态读不到。引擎恢复后这里会自己更新。'
+    : upstreamDown
+      ? `${gateway} 与券商服务器断连:本机连得上 ${gateway},但行情无回应。等待自动重连或检查网络。`
+      : connected
+        ? '引擎与券商网关的长连接正常'
+        : '未连接券商:只能解析,不能下单,也拿不到行情';
+
+  // 实盘闸门单独一格、常驻。它原来只藏在「自动执行(含实盘)」那几个字里,和「仅纸面」同一个颜色;
+  // 自动执行关着、熔断着、保护暂停着的时候更是完全看不出来——而那几样一恢复,实盘单就发得出去了
+  const liveAliases = pickableAccounts(status).filter((a) => !a.is_paper).map((a) => a.alias);
+  const liveOpen = Boolean(status?.allow_live_trading) && liveAliases.length > 0;
+  const liveText = !status ? '—' : liveOpen ? '实盘已放开' : '仅纸面';
+  const liveTip = !status
+    ? undefined
+    : liveOpen
+      ? `实盘闸门开着:发到实盘账户(${liveAliases.join('、')})的订单不会被它拦下,会用真钱成交。` +
+        (status.auto_execute ? '' : '现在自动执行关着,什么单都发不出去;一打开就是这个状态。') +
+        '在「设置」里关掉「允许实盘账户下单」当场生效。'
+      : liveAliases.length
+        ? `发到实盘账户(${liveAliases.join('、')})的订单会被拦下:「设置」里没有允许实盘账户下单。`
+        : '这家券商下没有配置实盘账户。';
 
   let modeText = '仅解析';
   let modeDot: Dot = 'default';
@@ -68,10 +91,7 @@ export function Topbar() {
       <Tooltip title={engineOk === null ? '引擎启动中' : engineOk ? '交易引擎运行中' : '交易引擎无响应'} placement="bottomLeft">
         <div className="brand">
           <span className="brand-mark">
-            <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-              <path d="M2.5 11 6 7.2l2.6 2.2 4.9-5.6" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M10.4 3.6h3.2v3.2" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            <AppMark size={24} />
             <i className={`engine-dot ${engineDot}`} />
           </span>
           <strong>IBKR-Assistant</strong>
@@ -88,6 +108,11 @@ export function Topbar() {
             <Badge status={modeDot} text={modeText} />
           </span>
         </Tooltip>
+        <Tooltip title={liveTip} placement="bottom">
+          <span className={`chip chip-live${liveOpen ? ' on' : ''}`} id="live-chip">
+            <Badge status={liveOpen ? 'error' : 'default'} text={liveText} />
+          </span>
+        </Tooltip>
         <Tooltip title={status ? `美东时间 ${status.now_et}` : undefined} placement="bottom">
           <span className="chip chip-clock">
             <Badge status={marketDot} text={marketText} />
@@ -99,6 +124,14 @@ export function Topbar() {
       </div>
       <div className="topbar-spacer" />
       <div className="topbar-actions">
+        {update ? (
+          // 有更新的正式版才出现;点进「关于」看说明、下载或忽略这一版。不用彩色填充——它不比熔断重要
+          <Tooltip title={`新版本 ${update.latest} 已发布,点开看更新内容`} placement="bottom">
+            <Button shape="round" className="update-pill" onClick={() => navigate('about')}>
+              新版本 {update.latest}
+            </Button>
+          </Tooltip>
+        ) : null}
         <Button shape="round" loading={busy} onClick={() => void connect()}>
           {connected ? `断开 ${gateway}` : `连接 ${gateway}`}
         </Button>

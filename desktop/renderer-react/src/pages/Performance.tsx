@@ -6,6 +6,7 @@ import { EquitySection, FindingsSection, GroupsSection, LedgerSection, StatsSect
 import { AdviceSection, ExecutionSection } from '../lib/PerformanceExtras';
 import { SignalScorecard } from '../lib/SignalScorecard';
 import { PositionSizer } from '../lib/PositionSizer';
+import { ShareCardButton } from '../lib/ShareCard';
 import { EmptyState, Notice, PageHead, Primer, SectionTitle, Working } from '../ui/kit';
 
 // 绩效体检:已了结交易的美元账本 → 冠军交易员天天盯的那几个数 → 行为上的毛病。
@@ -87,6 +88,7 @@ export function PerformancePage() {
       <Button size="small" onClick={() => void load()} loading={loading}>
         重新计算
       </Button>
+      {data && data.stats.trades ? <ShareCardButton data={data} scope={scope} kind={kind} days={days} /> : null}
     </div>
   );
 

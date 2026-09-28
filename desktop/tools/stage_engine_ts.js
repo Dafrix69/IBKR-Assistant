@@ -25,7 +25,9 @@ const OUT = path.join(DESKTOP, 'build', 'engine-ts');
 
 // ---- 文件级过滤:这些在运行时一个都用不到 -----------------------------------
 const SKIP_EXT = new Set(['.map', '.md', '.markdown', '.txt', '.mts', '.cts', '.ts', '.tsbuildinfo', '.flow']);
-const KEEP_TXT = new Set(['LICENSE.txt', 'LICENCE.txt', 'NOTICE.txt']);   // 许可文件保留
+// 许可与声明文件一律保留,不管后缀:MIT / BSD / Apache 都要求它随副本一起走。
+// 以前只认 .txt 的那三个名字,LICENSE.md(node-addon-api、ms 都是这么放的)跟着 .md 一起被裁掉了
+const LICENSE_FILE = /^(licen[sc]e|copying|notice)([-.].*)?$/i;
 const SKIP_DIRS = new Set(['test', 'tests', '__tests__', 'docs', 'doc', 'example', 'examples',
   '.github', 'benchmark', 'benchmarks', 'coverage', '.nyc_output', 'man']);
 const SKIP_NAMES = new Set(['.npmignore', '.eslintrc', '.eslintrc.js', '.eslintrc.json', '.prettierrc',
@@ -34,11 +36,14 @@ const SKIP_NAMES = new Set(['.npmignore', '.eslintrc', '.eslintrc.js', '.eslintr
 // ---- 包级过滤:按包名裁掉明确无用的大块 --------------------------------------
 const PACKAGE_RULES = {
   'better-sqlite3': (rel) => {
-    // 只留当前平台的预编译二进制;deps/(sqlite 源码)与 src/(C++)只在从源码编译时才需要
+    // 白名单:运行时只 require lib/ 与目标平台那一个预编译二进制(lib/binding.js 先找 prebuilds/<平台>.node)。
+    // 原来是黑名单(挡 deps/ src/ binding.gyp),挡不住开发机上编译留下的残渣:build/ 的 Makefile,
+    // 以及 node-gyp 把 devdir 配置当成字面量 "true" 写出来的头文件缓存 true/<Node 版本>/include——
+    // 65 MB,0.5.1 的 mac 包里量到(2026-09-27)。没见过的东西默认不带。
+    if (rel === 'package.json' || rel === 'LICENSE') return true;
+    if (rel === 'lib/' || rel.startsWith('lib/')) return true;
     if (rel === 'prebuilds/') return true;   // 目录本身要进,里面只留一个文件
-    if (rel.startsWith('prebuilds/')) return rel === `prebuilds/${platform}-${arch}.node`;
-    if (rel.startsWith('deps/') || rel.startsWith('src/') || rel === 'binding.gyp') return false;
-    return true;
+    return rel === `prebuilds/${platform}-${arch}.node`;
   },
   'protobufjs': (rel) => !rel.startsWith('cli/'),          // 命令行工具(带自己的 node_modules)
   '@anthropic-ai/sdk': (rel) => !rel.startsWith('src/'),   // TypeScript 源码,运行时用 dist 里的 js
@@ -47,12 +52,19 @@ const PACKAGE_RULES = {
 function shouldCopy(pkgName, rel, isDir, base) {
   if (isDir) {
     if (SKIP_DIRS.has(base)) return false;
+    // 点开头的目录没有一个是运行时要的(.github、.vscode、.idea…)。有的包把作者本机的工具配置也发了出来:
+    // resolve 这个包里带着一个 .claude/settings.local.json,0.5.1 的安装包里就有它(2026-09-28 量到)
+    if (base.startsWith('.')) return false;
     if (base === 'node_modules') return false;   // 嵌套依赖是 lock 里独立的条目,各自复制
   } else {
     const ext = path.extname(base);
     if (base.endsWith('.d.ts') || base.endsWith('.d.mts') || base.endsWith('.d.cts')) return false;
-    if (SKIP_EXT.has(ext) && !KEEP_TXT.has(base)) return false;
+    if (LICENSE_FILE.test(base)) return true;
+    if (base.startsWith('.')) return false;   // .nycrc、.prettierignore、.nvmrc…:同上,运行时一个都用不到
+    if (SKIP_EXT.has(ext)) return false;
     if (SKIP_NAMES.has(base)) return false;
+    // iCloud 同步出来的冲突副本("index 2.js"):项目放在同步目录里时会冒出来
+    if (/ \d+(\.[^.]+)?$/.test(base)) return false;
   }
   const rule = PACKAGE_RULES[pkgName];
   if (rule && !rule(rel, isDir)) return false;

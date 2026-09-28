@@ -58,9 +58,12 @@ export function startStatusPolling(): void {
     // 引擎报上来的错(券商掉线、鉴权失效之类)必须落到界面上,不能只留在主进程日志里
     else if (event === 'error') showBanner(String(data?.message ?? '引擎报告了一个错误'), false);
   });
-  dafri.on('engine-exit', ({ detail }) => {
+  dafri.on('engine-exit', ({ detail, fatal }) => {
     useStore.setState({ engineOk: false });
-    showBanner(`交易引擎已退出:${detail}。正在自动重启,重启后自动连回券商;也可在「关于」里手动重启。`, false);
+    // 配置读不进来不会自动重启(重启也是同一个错):主进程会弹对话框,这里只把原因留在横幅上
+    if (fatal === 'config') showBanner(`配置文件有问题,交易引擎没有启动:${detail}`, false);
+    else if (fatal === 'store') showBanner(`交易库打不开,交易引擎没有启动:${detail}`, false);
+    else showBanner(`交易引擎已退出:${detail}。正在自动重启,重启后自动连回券商;也可在「关于」里手动重启。`, false);
   });
   dafri.on('menu', ({ action }) => {
     if (action === 'refresh') void refreshStatus();

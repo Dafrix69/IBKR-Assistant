@@ -6,11 +6,22 @@ import erfStdlib from "@stdlib/math-base-special-erf";
 import type { ExitPlan, ExitSimPoint, ExitSimulation, ExitZone, ReviewLevel } from "./contract/review.js";
 import type { DrawdownLate, DrawdownTier } from "./contract/tracker.js";
 
+import { FLY_IV_MODEL } from "./flyIvModel.js";
 import { fmtF, pyG, pyRound } from "./py.js";
 
 type Rec = Record<string, any>;
 
-export const VARIANCE_WEIGHTS = [0.15, 0.09, 0.07, 0.06, 0.05, 0.04, 0.04, 0.04, 0.05, 0.06, 0.07, 0.11, 0.17];
+/**
+ * 日内方差分布:常规时段里每半小时占全天方差的份额(09:30 起 13 桶)。剩余波动、阶段切换、clock 档的 σ 都靠它。
+ *
+ * 2026-09-28 起用**校准出来的那一份**(flyIvModel.ts;怎么估的见 flyCalibration.ts 与 docs/features/fly-plan.md),
+ * 和蝴蝶测算是同一份——用户看过数据之后定的。原来那份是
+ * [0.15, 0.09, 0.07, 0.06, 0.05, 0.04, 0.04, 0.04, 0.05, 0.06, 0.07, 0.11, 0.17]:最后一小时占 28%,
+ * 而 2023-12 → 2026-09 的数据里是 15%。尾盘的剩余 σ 因此变小,B → C 的切换提早(25 点翼宽、EM 36:15:25 → 14:45 上下)。
+ *
+ * 重新校准会连它一起改:黄金基线会红,核对过再 `npm run golden:update`。
+ */
+export const VARIANCE_WEIGHTS: readonly number[] = FLY_IV_MODEL.variance_weights;
 export const OPEN_MIN = 9 * 60 + 30;
 export const CLOSE_MIN = 16 * 60;
 

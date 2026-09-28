@@ -14,14 +14,24 @@ describe("golden: flyexit", () => {
     });
   }
 
+  // 整行拿 expectSame 比:日内方差分布是校准出来的参数,重新校准之后这些行要能靠 golden:update 重生成,
+  // 不用手改基线。严格程度不变(相对容差 1e-9;这几个量本身取整到 4–6 位小数)
   it("variance schedule / phases", () => {
     const params = fx.paramsFrom({ em: 36 });
     for (const v of g.variance) {
-      expect(fx.remainingVariance(v.minute)).toBeCloseTo(v.R, 9);
-      expect(fx.sigmaRemaining(36, v.minute)).toBeCloseTo(v.sigma36, 9);
-      expect(fx.phaseAt(v.minute, 25.0, params)).toBe(v.phase_w25);
+      expectSame({
+        minute: v.minute,
+        R: fx.remainingVariance(v.minute),
+        sigma36: fx.sigmaRemaining(36, v.minute),
+        phase_w25: fx.phaseAt(v.minute, 25.0, params),
+      }, v, `variance[${v.minute}]`);
     }
-    for (const c of g.switch) expect(fx.switchMinute(c.width, fx.paramsFrom({ em: c.em }))).toBe(c.expect);
+    for (const c of g.switch) {
+      expectSame(
+        { width: c.width, em: c.em, expect: fx.switchMinute(c.width, fx.paramsFrom({ em: c.em })) }, c,
+        `switch[w=${c.width} em=${c.em}]`,
+      );
+    }
   });
 
   it("model price", () => {

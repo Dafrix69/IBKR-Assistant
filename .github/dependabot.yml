@@ -1,0 +1,30 @@
+# 依赖的安全更新与例行升级。两个 npm 工程各管各的;GitHub Actions 自己也算一份依赖。
+# 升级的 PR 会跑完整的 ci(含黄金基线):数值算法相关的依赖升了版本,基线红了就是行为变了,照 CLAUDE.md 的规矩判断。
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /engine-ts
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      dev-tools:
+        dependency-type: development
+  - package-ecosystem: npm
+    directory: /desktop
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    ignore:
+      # Electron 42 起 macOS 的系统通知要求应用有正式签名(ad-hoc 签名的包发不出通知),
+      # 而价位提醒、引擎无响应的告警都靠系统通知。拿到 Developer ID 证书、出了签名版之后再升大版本
+      - dependency-name: electron
+        update-types: ['version-update:semver-major']
+    groups:
+      dev-tools:
+        dependency-type: development
+        exclude-patterns: ['electron']
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

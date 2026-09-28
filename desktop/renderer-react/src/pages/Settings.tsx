@@ -1,76 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Button, Segmented, Slider } from 'antd';
-import { dafri, errorMessage, type Settings, type SettingsProtections } from '../bridge';
+import { dafri, errorMessage, type Settings } from '../bridge';
 import { showBanner } from '../store/banner';
-import { brokerShortName, refreshStatus, useStatus } from '../store/status';
+import { refreshStatus } from '../store/status';
 import { applyGlassTint, applyTheme, applyUpDown, useGlassTint, useThemeMode, useUpDown, type ThemeMode, type UpDown } from '../store/appearance';
-import { Group, GroupRow, LoadingBlock, NumberRow, PageHead, SectionTitle, SwitchRow } from '../ui/kit';
-
-interface Form {
-  autoExecute: boolean;
-  allowLive: boolean;
-  triggerVerify: boolean;
-  notional: number | null;
-  contracts: number | null;
-  mktShares: number | null;
-  slippage: number | null;
-  dupe: number | null;
-  // 保护规则(见 engine-ts/src/protections.ts)。默认全关,老配置升级上来行为不变。
-  slGuard: boolean;
-  slLookback: number | null;
-  slCount: number | null;
-  slPause: number | null;
-  ddGuard: boolean;
-  ddLookback: number | null;
-  ddUsd: number | null;
-  ddPause: number | null;
-  coolOn: boolean;
-  coolMinutes: number | null;
-  dailyOn: boolean;
-  dailyUsd: number | null;
-  // 单笔风险预算(见 engine-ts/src/riskBudget.ts):只告警、不拦单。权益按账户别名填
-  rbOn: boolean;
-  rbRisk: number | null;
-  rbPosition: number | null;
-  rbEquity: Record<string, number | null>;
-}
-
-function toForm(s: Settings): Form {
-  // 少一个字段就整页崩掉、只留一句 JS 报错,不是可交付的失败方式:缺什么就空着那一格,其余照常可用
-  const p = s.policies || {};
-  const l = s.limits || {};
-  const pr: Partial<SettingsProtections> = s.protections || {};
-  const sg: Partial<SettingsProtections['stoploss_guard']> = pr.stoploss_guard || {};
-  const dd: Partial<SettingsProtections['max_drawdown']> = pr.max_drawdown || {};
-  const cd: Partial<SettingsProtections['cooldown']> = pr.cooldown || {};
-  const dl: Partial<SettingsProtections['daily_loss']> = pr.daily_loss || {};
-  return {
-    autoExecute: Boolean(p.auto_execute),
-    allowLive: Boolean(p.allow_live_trading),
-    triggerVerify: Boolean(p.require_trigger_price_verification),
-    notional: l.max_order_notional ?? null,
-    contracts: l.max_option_contracts ?? null,
-    mktShares: l.max_mkt_shares ?? null,
-    slippage: l.max_spread_slippage ?? null,
-    dupe: l.duplicate_window_minutes ?? null,
-    slGuard: Boolean(sg.enabled),
-    slLookback: sg.lookback_minutes ?? null,
-    slCount: sg.trigger_count ?? null,
-    slPause: sg.pause_minutes ?? null,
-    ddGuard: Boolean(dd.enabled),
-    ddLookback: dd.lookback_minutes ?? null,
-    ddUsd: dd.max_drawdown_usd ?? null,
-    ddPause: dd.pause_minutes ?? null,
-    coolOn: Boolean(cd.enabled),
-    coolMinutes: cd.minutes ?? null,
-    dailyOn: Boolean(dl.enabled),
-    dailyUsd: dl.max_loss_usd ?? null,
-    rbOn: Boolean(s.risk_budget?.enabled),
-    rbRisk: s.risk_budget?.max_risk_pct ?? null,
-    rbPosition: s.risk_budget?.max_position_pct ?? null,
-    rbEquity: Object.fromEntries((s.accounts || []).map((a) => [a.alias, s.risk_budget?.equity_usd?.[a.alias] ?? null])),
-  };
-}
+import { DataPanel } from '../lib/DataPanel';
+import { formProblems, isDirty, toForm, toPatch, type SettingsForm } from '../lib/settingsForm';
+import { Group, GroupRow, LoadingBlock, Notice, NumberRow, PageHead, SectionTitle, SwitchRow } from '../ui/kit';
 
 const THEME_OPTIONS: { label: string; value: ThemeMode }[] = [
   { label: '跟随系统', value: 'system' },
@@ -86,10 +22,11 @@ export function SettingsPage() {
   const themeMode = useThemeMode();
   const updown = useUpDown();
   const glass = useGlassTint();
-  const status = useStatus();
   const [saved, setSaved] = useState<Settings | null>(null);
-  const [form, setForm] = useState<Form | null>(null);
+  const [form, setForm] = useState<SettingsForm | null>(null);
   const [saving, setSaving] = useState(false);
+  // 点过一次保存之后才把问题清单摆出来:一进页面就是一排红字,谁也不想看
+  const [checked, setChecked] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -108,60 +45,53 @@ export function SettingsPage() {
     });
   }, [load]);
 
-  const patch = (part: Partial<Form>) => setForm((f) => (f ? { ...f, ...part } : f));
+  const patch = (part: Partial<SettingsForm>) => setForm((f) => (f ? { ...f, ...part } : f));
+  const problems = form ? formProblems(form) : [];
+  const dirty = form ? isDirty(form, saved) : false;
+
+  /**
+   * 两个执行闸门:**关**是当场生效的,不等「保存设置」。以前关掉开关之后要滚到页面最底下点保存才算数,
+   * 中途切走页面,这次修改就丢了——人以为自动执行已经关了,其实还开着。开则照旧跟着保存走(要确认)。
+   */
+  async function setGate(key: 'autoExecute' | 'allowLive', policy: 'auto_execute' | 'allow_live_trading', on: boolean) {
+    patch({ [key]: on });
+    if (on || !saved?.policies?.[policy]) return;
+    try {
+      const next = await dafri.patchSettings({ policies: { [policy]: false } });
+      setSaved(next);
+      showBanner(policy === 'auto_execute' ? '已关闭自动执行,当场生效。' : '已关闭实盘账户下单,当场生效。', true);
+      await refreshStatus();
+    } catch (err) {
+      patch({ [key]: true });
+      showBanner(`没有关掉:${errorMessage(err)}`, false);
+    }
+  }
 
   async function save() {
     if (!form) return;
+    setChecked(true);
+    if (problems.length) {
+      showBanner(`还不能保存:${problems[0]}${problems.length > 1 ? `(另有 ${problems.length - 1} 处)` : ''}`, false);
+      return;
+    }
+    // 打开闸门、放宽限额都要在主进程的确认框里点过确认(desktop/confirm-grants.js):框上的话由主进程写,
+    // 限额从多少改到多少也由它对着引擎现在的设置算。没有这一步,后面的 patchSettings 会被拒
     if (form.autoExecute && !saved?.policies?.auto_execute) {
-      const ok = await dafri.confirm({
-        title: '打开自动执行',
-        message: `打开后,解析通过的订单会被直接发送到${brokerShortName(status)},没有人工确认环节。`,
-        detail: '建议先在纸面账户跑够回归测试再打开。',
-        confirmLabel: '我明白,打开',
-      });
+      const ok = await dafri.confirm({ purpose: 'gate.auto_execute', title: '打开自动执行', message: '', confirmLabel: '我明白,打开' });
       if (!ok) return patch({ autoExecute: false });
     }
     if (form.allowLive && !saved?.policies?.allow_live_trading) {
-      const ok = await dafri.confirm({
-        title: '允许实盘下单',
-        message: '打开后,指向实盘账户的订单将不再被拦截,会用真钱成交。',
-        confirmLabel: '我明白,打开实盘',
-      });
+      const ok = await dafri.confirm({ purpose: 'gate.allow_live_trading', title: '允许实盘下单', message: '', confirmLabel: '我明白,打开实盘' });
       if (!ok) return patch({ allowLive: false });
     }
+    const next = toPatch(form, saved);
+    const ok = await dafri.confirm({ purpose: 'limits.loosen', binding: { limits: next.limits ?? {} }, title: '放宽风控限额', message: '', confirmLabel: '我明白,放宽' });
+    if (!ok) return;
     setSaving(true);
     try {
-      await dafri.patchSettings({
-        policies: {
-          auto_execute: form.autoExecute,
-          allow_live_trading: form.allowLive,
-          require_trigger_price_verification: form.triggerVerify,
-        },
-        limits: {
-          max_order_notional: Number(form.notional),
-          max_option_contracts: Number(form.contracts),
-          max_mkt_shares: Number(form.mktShares),
-          max_spread_slippage: Number(form.slippage),
-          duplicate_window_minutes: Number(form.dupe),
-        },
-        protections: {
-          stoploss_guard: {
-            enabled: form.slGuard, lookback_minutes: Number(form.slLookback),
-            trigger_count: Number(form.slCount), pause_minutes: Number(form.slPause),
-          },
-          max_drawdown: {
-            enabled: form.ddGuard, lookback_minutes: Number(form.ddLookback),
-            max_drawdown_usd: Number(form.ddUsd), pause_minutes: Number(form.ddPause),
-          },
-          cooldown: { enabled: form.coolOn, minutes: Number(form.coolMinutes) },
-          daily_loss: { enabled: form.dailyOn, max_loss_usd: Number(form.dailyUsd) },
-        },
-        risk_budget: {
-          enabled: form.rbOn, max_risk_pct: Number(form.rbRisk), max_position_pct: Number(form.rbPosition),
-          equity_usd: Object.fromEntries(Object.entries(form.rbEquity).map(([alias, v]) => [alias, Number(v ?? 0)])),
-        },
-      });
+      await dafri.patchSettings(next);
       showBanner('设置已保存,提示词与限额已同步更新。', true);
+      setChecked(false);
       await Promise.all([load(), refreshStatus()]);
     } catch (err) {
       showBanner(`保存失败(配置未改动):${errorMessage(err)}`, false);
@@ -172,7 +102,17 @@ export function SettingsPage() {
 
   return (
     <section className="tab-panel active" id="page-settings">
-      <PageHead title="设置" />
+      <PageHead
+        title="设置"
+        extra={dirty ? (
+          <span className="unsaved">
+            <span className="muted">有未保存的修改</span>
+            <Button size="small" type="primary" onClick={() => void save()} loading={saving}>
+              保存设置
+            </Button>
+          </span>
+        ) : undefined}
+      />
 
       <SectionTitle>外观</SectionTitle>
       <Group>
@@ -198,8 +138,8 @@ export function SettingsPage() {
         <>
           <SectionTitle>执行闸门</SectionTitle>
           <Group>
-            <SwitchRow icon="sf-bolt" tint="orange" label="允许自动执行" sub="关闭时只解析校验,永不发单" checked={form.autoExecute} onChange={(v) => patch({ autoExecute: v })} />
-            <SwitchRow icon="sf-dollar" tint="red" label="允许实盘账户下单" sub="默认关闭,纸面账户不受此限" checked={form.allowLive} onChange={(v) => patch({ allowLive: v })} />
+            <SwitchRow icon="sf-bolt" tint="orange" label="允许自动执行" sub="关闭时只解析校验,永不发单。关是当场生效的,开要点保存" checked={form.autoExecute} onChange={(v) => void setGate('autoExecute', 'auto_execute', v)} />
+            <SwitchRow icon="sf-dollar" tint="red" label="允许实盘账户下单" sub="默认关闭,纸面账户不受此限。关是当场生效的,开要点保存" checked={form.allowLive} onChange={(v) => void setGate('allowLive', 'allow_live_trading', v)} />
             <SwitchRow icon="sf-shield" tint="blue" label="触发方向必须有现价" sub="拿不到现价就拒绝条件单" checked={form.triggerVerify} onChange={(v) => patch({ triggerVerify: v })} />
           </Group>
 
@@ -259,14 +199,29 @@ export function SettingsPage() {
             ) : null}
           </Group>
 
+          {checked && problems.length ? (
+            <Notice tone="warn" title="还不能保存">
+              <ul className="hint-list">
+                {problems.map((text) => (
+                  <li key={text}>{text}</li>
+                ))}
+              </ul>
+            </Notice>
+          ) : null}
           <Button type="primary" onClick={() => void save()} loading={saving}>
             保存设置
           </Button>
           <p className="hint">
-            账户别名与连接端口涉及真实账号,仅可手动编辑 <code>config/settings.json</code>。
+            账户在「接入 → 账户」里配。连接(端口、client id)只能手动编辑配置文件,改完重启交易引擎生效。{' '}
+            <Button size="small" type="link" onClick={() => void dafri.reveal('config').catch((err) => showBanner(errorMessage(err), false))}>
+              打开配置文件所在位置
+            </Button>
           </p>
         </>
       )}
+
+      <SectionTitle>数据与备份</SectionTitle>
+      <DataPanel />
     </section>
   );
 }

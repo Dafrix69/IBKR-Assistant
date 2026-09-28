@@ -5,6 +5,8 @@ import { useEngineLog } from '../store/engineLog';
 import { refreshStatus } from '../store/status';
 import { isMac } from '../store/appearance';
 import { EmptyState, LoadingBlock, PageHead, SectionTitle } from '../ui/kit';
+import { UpdatePanel } from '../lib/UpdatePanel';
+import { SupportPanel } from '../lib/SupportPanel';
 
 // 注册在案的快捷键。别在这里编不存在的——列表本身就是承诺。
 const SHORTCUTS: { keys: string[]; what: string }[] = [
@@ -37,7 +39,12 @@ export function AboutPage() {
   }, []);
 
   async function restart() {
-    await dafri.restartEngine();
+    try {
+      await dafri.restartEngine();
+    } catch (err) {
+      setError(`重启没有成功:${errorMessage(err)}`);
+      return;
+    }
     setTimeout(() => {
       void refreshStatus();
       void load();
@@ -63,6 +70,7 @@ export function AboutPage() {
             labelStyle={{ width: 96 }}
             items={[
               { key: 'v', label: '应用版本', children: info.app.version },
+              ...(info.app.engineVersion ? [{ key: 'ev', label: '交易引擎', children: String(info.app.engineVersion) }] : []),
               { key: 'e', label: 'Electron', children: info.app.electron },
               { key: 'c', label: 'Chromium', children: info.app.chrome },
               { key: 'n', label: 'Node', children: info.app.node },
@@ -89,6 +97,10 @@ export function AboutPage() {
           />
         )}
       </div>
+      <SectionTitle>更新</SectionTitle>
+      <UpdatePanel current={info?.app.version ?? null} />
+      <SectionTitle>支持</SectionTitle>
+      <SupportPanel />
       <SectionTitle>键盘快捷键</SectionTitle>
       <Descriptions
         className="keys"

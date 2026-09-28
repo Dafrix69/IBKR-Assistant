@@ -12,7 +12,7 @@ import type { EtNow } from "../src/config.js";
 import { TradingEngine } from "../src/engine.js";
 import { Notifier } from "../src/notify.js";
 import { LLMResponse } from "../src/providers.js";
-import { LOCAL_MODEL, tryParseShorthand } from "../src/shorthand.js";
+import { GRAMMAR_VERSION, LOCAL_MODEL, tryParseShorthand } from "../src/shorthand.js";
 import { TradeStore } from "../src/store.js";
 import { expectSame, loadGolden, makeSettings } from "./util.js";
 
@@ -130,5 +130,38 @@ describe("shorthand: 公开源现价兜底(没连券商也要秒解)", () => {
     engine.publicPriceFn = async () => null;
     await engine.handleInstruction("1.8 挂15蝴蝶 15CM", "manual", FRIDAY, {});
     expect(calls).toHaveLength(1);
+  });
+});
+
+describe("shorthand: 数字边界(2026-09-27 审计 V3)", () => {
+  // 以前「NN蝴蝶」「N张」的正则左边不设边界:「580蝴蝶」被拆成孤立的 5(当成权利金上限)+「80蝴蝶」
+  // (现价百位 + 80),QQQ 在 612 时就成了 670/680/690 看涨蝶、限价 5——和用户要的完全不是一张单。
+  // 三位数中心说不清是绝对价还是"百位 + N",语法不接,交给大模型。
+  it("三位数中心(没有「的」)不猜,回落大模型", () => {
+    const cases: Array<[string, Record<string, number>]> = [
+      ["QQQ 580蝴蝶 10cm", { QQQ: 612 }],
+      ["QQQ 580蝴蝶 10cm", { QQQ: 585 }],
+      ["AAPL 230蝴蝶 5cm", { AAPL: 226 }],
+      ["SPY 670蝴蝶 10cm", { SPY: 662 }],
+    ];
+    for (const [text, snap] of cases) expect(tryParseShorthand(text, snap, FRIDAY), text).toBeNull();
+  });
+
+  it("张数不从更长的数字中间截:「1500张」不是 500 张 + 权利金 1", () => {
+    expect(tryParseShorthand("1500张 7520的20cm蝴蝶", { SPX: 7462.35 }, FRIDAY)).toBeNull();
+  });
+
+  it("四位数中心、「N蝴蝶」、「三位数的」照常解析(对照)", () => {
+    const four = tryParseShorthand("7515蝴蝶 15cm 1.8", { SPX: 7462.35 }, FRIDAY);
+    expect(four?.["orders"][0]["intent_summary"]).toContain("7500/7515/7530");
+    const tail = tryParseShorthand("1.8 挂15蝴蝶 15CM", { SPX: 6907.35 }, FRIDAY);
+    expect(tail?.["orders"][0]["intent_summary"]).toContain("6900/6915/6930");
+    const three = tryParseShorthand("QQQ 580的10cm蝴蝶 看跌 2", { QQQ: 585 }, FRIDAY);
+    expect(three?.["orders"][0]["intent_summary"]).toContain("570/580/590");
+    expect(three?.["orders"][0]["order"]["lmtPrice"]).toBe(2);
+  });
+
+  it("语法收窄,版本号跟着升", () => {
+    expect(GRAMMAR_VERSION).toBe("shorthand-v4");
   });
 });

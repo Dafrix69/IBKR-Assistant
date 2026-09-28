@@ -37,7 +37,7 @@ export const PAGES: Record<string, ComponentType> = {
 
 /** 合并页的子页(页头分段控件里切)。截图脚本按叶子页逐页拍,这里是它的清单来源。 */
 export const PAGE_SUBTABS: Record<string, string[]> = {
-  access: ['tws', 'futu', 'llm'],
+  access: ['tws', 'futu', 'accounts', 'llm'],
 };
 
 export const LEAF_TABS: string[] = Object.keys(PAGES).flatMap((key) => PAGE_SUBTABS[key] || [key]);

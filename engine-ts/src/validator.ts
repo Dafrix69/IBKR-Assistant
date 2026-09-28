@@ -3,7 +3,7 @@
  * 立场不变:LLM 的输出是不可信输入。限额自己重算、方向自己复核、账户自己映射、
  * 价差结构自己验。所有拒绝信息与 Python 版逐字节一致(黄金对拍直接比字符串)。
  */
-import type { EtNow, Settings } from "./config.js";
+import type { EtNow, IndexConfig, Settings } from "./config.js";
 import type { ContractSpec, Leg, OrderSpec, ParsedOrder } from "./models.js";
 import { multiplierValue } from "./models.js";
 import { fmtF, pyG } from "./py.js";
@@ -163,10 +163,15 @@ export class Validator {
           "请改写指令或先在设置里添加别名。",
       });
     } else if (!account.is_paper && !this.settings.policies.allow_live_trading) {
+      // 配置里没写 is_paper 的账户按实盘处理(config.paperFlag):把原因说出来,
+      // 否则用户会以为自己的模拟账户被莫名当成了实盘
+      const unflagged = this.settings.paper_flag_missing.includes(account.alias)
+        ? `(配置里没写 is_paper,按实盘处理;若它是模拟账户,请写明 "is_paper": true)`
+        : "";
       issues.push({
         code: "LIVE_TRADING_DISABLED",
         message:
-          `订单指向实盘账户 ${account.alias},但当前没有允许实盘下单(默认关闭)。` +
+          `订单指向实盘账户 ${account.alias}${unflagged},但当前没有允许实盘下单(默认关闭)。` +
           "请先在纸面账户跑够回归测试,再到「设置」里打开「允许实盘账户下单」。",
       });
     }
@@ -233,25 +238,23 @@ export class Validator {
       }
     }
 
-    // 指数期权的 tradingClass 按到期日复核(§8.3)
+    // 指数期权的 tradingClass 按到期日复核(§8.3)。只纠正"这天根本没有这条链"的写法,
+    // 不替用户换结算方式(见 reviewTradingClass)。
     const indexCfg = this.settings.indexConfig(contract.symbol);
     if (indexCfg && expiries.length) {
       for (const [slot, raw] of expirySlots(contract)) {
-        const expiry = expiryToIso(raw);
-        const expected = isIndexMonthlyExpiry(expiry, this.settings)
-          ? indexCfg.monthly_trading_class
-          : indexCfg.daily_trading_class;
-        if (!expected) continue;
         const current = slot.tradingClass;
-        if (current !== expected) {
+        const reviewed = reviewTradingClass(current, expiryToIso(raw), indexCfg, this.settings);
+        if (reviewed !== current) {
           warnings.push(
             `${contract.symbol} ${raw} 到期的 tradingClass 由 ` +
-            `${current === null ? "None" : `'${current}'`} 复核为 '${expected}'(按到期日判定)`,
+            `${current === null ? "None" : `'${current}'`} 复核为 '${reviewed}'(按到期日判定)`,
           );
-          slot.tradingClass = expected;
+          slot.tradingClass = reviewed;
         }
       }
     }
+    issues.push(...mixedTradingClass(contract), ...nonStandardMultiplier(contract));
     return issues;
   }
 
@@ -482,26 +485,21 @@ export class Validator {
         notional = qty * multiplierValue(contract) * contract.strike;
       } else {
         // 买入期权:最大亏损 = 付出的权利金(标的现价不是权利金,不做快照兜底)
-        const premium = referencePrice(spec, null);
-        if (premium === null) {
-          return [0.0, [{
-            code: "UNPRICEABLE",
-            message:
-              "单腿期权缺少可用于估算风险敞口的价格(权利金),无法核对限额,已拒绝。" +
-              "请写明权利金上限,例如'权利金不超过 5.5'。",
-          }]];
-        }
+        const premium = optionPremiumCap(spec);
+        if (premium === null) return [0.0, [unpriceableOptionBuy(spec)]];
         notional = qty * multiplierValue(contract) * premium;
       }
     } else {
-      const ref = referencePrice(spec, this.snapshot[contract.symbol] ?? null);
+      const ref = stockReferencePrice(spec, this.snapshot[contract.symbol] ?? null);
       if (ref === null) {
         if (qty > limits.max_mkt_shares) {
           return [0.0, [{
             code: "EXCEEDS_LIMIT",
-            message:
-              `无法估算市价单金额(指令与行情快照都没有参考价),股数 ${spec.totalQuantity} ` +
-              `超过市价单上限 ${limits.max_mkt_shares} 股。`,
+            message: spec.orderType === "MKT"
+              ? `无法估算市价单金额(指令与行情快照都没有参考价),股数 ${spec.totalQuantity} ` +
+                `超过市价单上限 ${limits.max_mkt_shares} 股。`
+              : `无法估算这张 ${spec.orderType} 单的金额(回撤额不是价格,行情快照也没有现价),` +
+                `股数 ${spec.totalQuantity} 超过无参考价时的上限 ${limits.max_mkt_shares} 股。`,
           }]];
         }
         return [0.0, []];
@@ -657,11 +655,108 @@ export function riskWidth(contract: ContractSpec): number {
   return 0.0;
 }
 
-function referencePrice(spec: OrderSpec, snapshotPrice: number | null): number | null {
-  for (const candidate of [spec.lmtPrice, spec.auxPrice, snapshotPrice]) {
-    if (candidate) return Number(candidate);
+// ---- 限额口径的价格(2026-09-27 审计 V1)----------------------------------
+// 以前按 lmtPrice → auxPrice → 快照 取第一个非空当"成交价",三处算错:TRAIL 的 auxPrice 是
+// **回撤额**(提示词原话"TRAIL 的固定回撤额"),「买入 2000 股 AAPL,回撤 2 美元移动止损」算成
+// 2000×2 = 4,000 美元过了 5,000 的上限,实际约 46 万;买入止损价低于现价会当场触发成市价单;
+// 卖出限价只是下限,远低于现价时按市价成交。限额只能拿"成交价的上界"来乘。
+
+function positivePrice(value: number | null | undefined): number | null {
+  if (value === null || value === undefined) return null;
+  const v = Number(value);
+  return Number.isFinite(v) && v > 0 ? v : null;
+}
+
+/** 正股这一单的参考成交价。买入且带限价(LMT / STP LMT):限价就是成交价的硬上限,直接用它。
+ * 其余一律取「限价、STP / STP LMT 的触发价、现价快照」里最大的那个;TRAIL 的 auxPrice 永远不进候选。
+ * 一个都没有(MKT / TRAIL 又没有快照)回 null,由调用方走无参考价的股数上限。 */
+function stockReferencePrice(spec: OrderSpec, snapshotPrice: number | null): number | null {
+  const limit = positivePrice(spec.lmtPrice);
+  const buyCapped = spec.orderType === "LMT" || spec.orderType === "STP LMT";
+  if (spec.action === "BUY" && buyCapped && limit !== null) return limit;
+  const stopIsPrice = spec.orderType === "STP" || spec.orderType === "STP LMT";
+  const candidates = [limit, stopIsPrice ? positivePrice(spec.auxPrice) : null, positivePrice(snapshotPrice)]
+    .filter((v): v is number => v !== null);
+  return candidates.length ? Math.max(...candidates) : null;
+}
+
+/** 单腿期权买单的权利金上限:只有 LMT / STP LMT 的限价算数。STP 的触发价是"到了就市价买",
+ * TRAIL 的 auxPrice 是回撤额,都不限制付出的权利金。 */
+function optionPremiumCap(spec: OrderSpec): number | null {
+  if (spec.orderType !== "LMT" && spec.orderType !== "STP LMT") return null;
+  return positivePrice(spec.lmtPrice);
+}
+
+function unpriceableOptionBuy(spec: OrderSpec): ValidationIssue {
+  if (spec.orderType === "STP" || spec.orderType === "TRAIL") {
+    return {
+      code: "UNPRICEABLE",
+      message:
+        `单腿期权的 ${spec.orderType} 买单没有限价:触发价 / 回撤额不是权利金,成交价没有上限,` +
+        "无法核对限额,已拒绝。请改成限价单或止损限价单(STP LMT),例如'权利金不超过 5.5'" +
+        "或'涨到 6 后以不高于 6.5 买入'。",
+    };
   }
-  return null;
+  return {
+    code: "UNPRICEABLE",
+    message:
+      "单腿期权缺少可用于估算风险敞口的价格(权利金),无法核对限额,已拒绝。" +
+      "请写明权利金上限,例如'权利金不超过 5.5'。",
+  };
+}
+
+// ---- 合约要素复核 ----------------------------------------------------------
+
+/** 期权 / 组合(含每一条腿)的乘数只认 100(2026-09-27 审计 V2)。
+ * 模型给的 multiplier 只有校验层在用:组合的顶层乘数根本不发给券商,各腿按各自的乘数确认合约。
+ * 照单全收的话,"1" 把限额缩小 100 倍、"0" 直接清零——而券商那边下的仍是标准 100 乘数合约。 */
+function nonStandardMultiplier(contract: ContractSpec): ValidationIssue[] {
+  if (contract.secType !== "OPT" && contract.secType !== "BAG") return [];
+  const values = [contract.multiplier, ...(contract.legs ?? []).map((l) => l.multiplier)];
+  const odd = values.find((m) => m !== "100");
+  if (odd === undefined) return [];
+  return [{
+    code: "UNSUPPORTED",
+    message:
+      `期权合约乘数只支持 100(美股 / 美指标准期权),收到 '${odd}'。` +
+      "非标准乘数的合约本系统不支持,也无法按它核对限额,已拒绝。",
+  }];
+}
+
+/** 指数期权某个到期日该用哪条链(2026-09-27 审计 V4:绝不替用户换结算方式)。
+ * · 没写 → 按到期日判定(月度那天用月度类,其余用日到期类),与以前一样;
+ * · 写的是日到期类(SPXW):每个交易日都有这条链,原样保留(只统一大小写)。月度那个周四两条链
+ *   都在,SPXW 是当天收盘 PM 结算、SPX 是次日开盘 AM 结算——以前一律改成 SPX,速记的 0DTE 蝶
+ *   就被悄悄换成了隔夜结算的合约;
+ * · 写的是月度类却不在月度到期日,或写了认不出的类:这天根本没有这张合约,照旧纠正并告警。 */
+function reviewTradingClass(
+  current: string | null, expiryIso: string, cfg: IndexConfig, settings: Settings,
+): string | null {
+  const expected = isIndexMonthlyExpiry(expiryIso, settings)
+    ? cfg.monthly_trading_class
+    : cfg.daily_trading_class;
+  if (!expected) return current;
+  const given = (current ?? "").trim().toUpperCase();
+  if (!given) return expected;
+  if (given === expected.toUpperCase()) return expected;
+  const daily = cfg.daily_trading_class;
+  if (daily && given === daily.toUpperCase()) return daily;
+  return expected;
+}
+
+/** 组合各腿的交易类必须一致(只比写了的腿)。同一天的 SPX(AM 结算)和 SPXW(PM 结算)混在
+ * 一张组合里,两半在不同时刻按不同价格结算,不是任何一种支持的结构。 */
+function mixedTradingClass(contract: ContractSpec): ValidationIssue[] {
+  if (contract.secType !== "BAG") return [];
+  const classes = new Set(
+    (contract.legs ?? []).map((l) => (l.tradingClass ?? "").trim().toUpperCase()).filter(Boolean),
+  );
+  if (classes.size <= 1) return [];
+  return [bad(
+    `组合各腿的 tradingClass 不一致(${[...classes].sort().join(" / ")}):不同交易类的结算方式` +
+    "不同(如 SPX 为次日开盘 AM 结算、SPXW 为当天收盘 PM 结算),混在一张组合里不支持。" +
+    "请把各腿统一写成同一类后重试。",
+  )];
 }
 
 function qtyClose(a: number, b: number, tolerance: number): boolean {

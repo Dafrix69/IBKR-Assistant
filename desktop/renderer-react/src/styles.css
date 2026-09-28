@@ -218,6 +218,8 @@ input, textarea { user-select: text; }
 .topbar button, .topbar .chip, .topbar .brand, .topbar .glass-capsule { -webkit-app-region: no-drag; }
 
 :root[data-platform="darwin"] .topbar { padding-left: 88px; }
+/* 全屏里红绿灯收起了(鼠标碰到屏幕顶端才随菜单栏一起滑出来),那 88px 平时就是空着。VS Code 也是这么处理的 */
+:root[data-platform="darwin"][data-fullscreen] .topbar { padding-left: 12px; }
 /* Windows 用 titleBarOverlay 把系统按钮叠在我们自己的顶栏上,右侧要留出它们的宽度 */
 :root[data-platform="win32"] .topbar { padding-right: 148px; }
 
@@ -237,11 +239,12 @@ input, textarea { user-select: text; }
 .brand { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .brand strong { font-size: 13px; font-weight: 650; letter-spacing: -0.01em; }
 /* 应用标:一枚渐变的圆角方块,里面一根上行的折线;引擎状态是它右下角的小圆点 */
+/* 品牌标就是应用图标本身(ui/AppMark.tsx,与 build/icon.* 同一份几何),自带底板与配色,这里只管尺寸与引擎圆点的锚点 */
 .brand-mark {
-  position: relative; width: 24px; height: 24px; border-radius: 7px; flex-shrink: 0;
-  display: inline-flex; align-items: center; justify-content: center; color: #fff;
-  background: var(--blue);
+  position: relative; width: 24px; height: 24px; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
 }
+.brand-mark svg { display: block; }
 .brand-mark .engine-dot {
   position: absolute; right: -2px; bottom: -2px; width: 9px; height: 9px; border-radius: 50%;
   border: 2px solid var(--bg-window); background: var(--gray);

@@ -13,6 +13,7 @@ import type {
   IbContract, IbSession, OptChainParam, OrderIntent, PortfolioItemLike, PositionItemLike,
   RawBar, TickerData, TickerHandle, TradeLike,
 } from "./ibTypes.js";
+import { logStderr } from "./ibLink.js";
 
 type Subscription = { unsubscribe(): void };
 
@@ -37,12 +38,21 @@ function emptyTicker(): TickerData {
  * 必须带上 generic ticks:同一只股,顶栏宏观带先订了一条不带 generic 的流,异动监控再订
  * "165,104,595"(均量 / 历史波动率 / 短时量)时,只按合约认的话拿回来的是宏观带那条——
  * 里面永远没有均量,放量就永远判不出来。
+ *
+ * 期权写了交易类的也要带上:SPX(月度,AM 结算)与 SPXW 在 20260917 这样的日子同一到期日 / 行权价 /
+ * 看涨看跌都存在,是两张合约。不带的话后订的那张读到的是先订那张的盘口(2026-09-28)。
+ * 只对期权带:正股、期货的交易类分不出别的合约,而它只在真去确认过的那个对象上才有(走 conId 缓存的
+ * 没有),带上只会让同一只股平白多占一条线路。
  */
 export function tickerKey(contract: IbContract, genericTicks = ""): string {
+  const optionLike = contract.secType === "OPT" || contract.secType === "FOP";
   const base = `${contract.secType}|${contract.symbol}|${contract.lastTradeDateOrContractMonth ?? ""}|` +
-    `${contract.strike ?? ""}|${contract.right ?? ""}`;
+    `${contract.strike ?? ""}|${contract.right ?? ""}${optionLike && contract.tradingClass ? `|${contract.tradingClass}` : ""}`;
   return genericTicks ? `${base}#${genericTicks}` : base;
 }
+
+/** 句柄对应的流已经不在缓存里时读到的 error(见 subscribeTicker)。 */
+const TICKER_DETACHED = "订阅已被撤销";
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
@@ -346,13 +356,15 @@ export async function createIbApiNextSession(cfg: {
         (async () => {
           for (const contract of contracts) {
             try {
-              const details = await api.getContractDetails(toIbContract(contract));
-              const first = Array.isArray(details) ? details[0] : details;
-              const resolved = first?.contract;
-              if (resolved?.conId) {
+              const details: unknown = await api.getContractDetails(toIbContract(contract));
+              // 多条匹配时不取第一条(见 pickContractDetail):分不出来就确认失败,绝不猜
+              const resolved = pickContractDetail(contract, details);
+              if (resolved !== null) {
                 contract.conId = resolved.conId;
                 if (resolved.exchange) contract.exchange = resolved.exchange;
                 if (resolved.tradingClass) contract.tradingClass = resolved.tradingClass;
+              } else {
+                contract.conId = 0; // 没有或分不出:router 侧统一转成"无法确认该合约"
               }
             } catch {
               contract.conId = 0; // 确认失败:router 侧统一转成"无法确认该合约"
@@ -430,7 +442,16 @@ export async function createIbApiNextSession(cfg: {
           /* 订阅失败:句柄读到的是空盘口,守卫会拒 */
         }
       }
-      const handle: TickerHandle = { read: () => ({ ...live!.data }) };
+      // 流按合约缓存、不记谁在用:同一个合约别处 cancelTicker 一撤(AUTO_MID 定价、盘口页都是现订现撤),
+      // 这条流就不在缓存里了,之后不会再有 tick。以前句柄照旧读那一份,读到的是撤掉那一刻的盘口、
+      // 还不报错——盯盘拿着它判止损。现在给空盘口 + error:常驻订阅那几处见到 error 会摘掉重订,
+      // 不查 error 的读到的是"没有价"。被 TWS 拒掉的流照旧(error 是 TWS 的原文)。
+      const entry = live;
+      const handle: TickerHandle = {
+        read: () => (tickers.get(key) === entry || entry.data.error
+          ? { ...entry.data }
+          : { ...emptyTicker(), error: TICKER_DETACHED }),
+      };
       return handle;
     },
 
@@ -721,6 +742,50 @@ export function applyTicks(mod: any, data: TickerData, update: any): void {
   } else if (data.last !== null) {
     data.marketPrice = data.last;
   }
+}
+
+/** getContractDetails 回的一条候选里,确认合约要用到的那几个字段。 */
+interface ResolvedContract {
+  conId: number;
+  exchange: string;
+  tradingClass: string;
+}
+
+function candidatesOf(details: unknown): ResolvedContract[] {
+  const rows: unknown[] = Array.isArray(details) ? details : [details];
+  const out: ResolvedContract[] = [];
+  for (const row of rows) {
+    const c = (row as { contract?: Partial<ResolvedContract> } | null | undefined)?.contract;
+    const conId = Number(c?.conId ?? 0);
+    if (!Number.isFinite(conId) || conId <= 0 || out.some((x) => x.conId === conId)) continue;
+    out.push({ conId, exchange: String(c?.exchange ?? ""), tradingClass: String(c?.tradingClass ?? "") });
+  }
+  return out;
+}
+
+/**
+ * 从合约详情里挑出**唯一**那一张;挑不出回 null(按确认失败处理)。
+ *
+ * 以前取 details[0]。股票期权下单不带交易类(提示词让模型省略),IBKR 对同一到期日 / 行权价 /
+ * 看涨看跌可能同时回标准类和调整期权类(AAPL 与 2AAPL,交割物不同,见 pickTradingClass 的注释),
+ * 谁排在前面就下到谁头上(2026-09-27 审计 V5)。现在的顺序:同一 conId 的重复行合并 →
+ * 请求里写明的交易类 → 与标的同名的交易类(标准链)→ 还剩多条就不猜,写一行日志说清是哪几条。
+ */
+function pickContractDetail(requested: IbContract, details: unknown): ResolvedContract | null {
+  const all = candidatesOf(details);
+  if (all.length <= 1) return all[0] ?? null;
+  for (const name of [requested.tradingClass, requested.symbol]) {
+    const wanted = (name ?? "").trim().toUpperCase();
+    if (!wanted) continue;
+    const hit = all.filter((c) => c.tradingClass.toUpperCase() === wanted);
+    if (hit.length === 1) return hit[0] ?? null;
+  }
+  logStderr(
+    `[ibkr] 合约确认有 ${all.length} 条匹配(交易类 ${all.map((c) => c.tradingClass || "?").join(" / ")}),` +
+    `分不出要哪一条,按确认失败处理:${requested.symbol} ${requested.secType} ` +
+    `${requested.lastTradeDateOrContractMonth ?? ""} ${requested.strike ?? ""} ${requested.right ?? ""}`.trim(),
+  );
+  return null;
 }
 
 function toIbOrder(mod: any, order: OrderIntent): Record<string, unknown> {

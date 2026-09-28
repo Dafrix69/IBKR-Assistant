@@ -8,7 +8,7 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { BrokerRouter } from "../src/broker.js";
 import type { IbSession } from "../src/broker.js";
@@ -177,5 +177,52 @@ describe("启动即连券商", () => {
     const db = (host.engine.store as any).db;
     const actions = db.prepare("SELECT action FROM audit_log ORDER BY seq").all().map((r: Rec) => r["action"]);
     expect(actions).toEqual(expect.arrayContaining(["broker_link_down", "broker_link_up"]));
+  });
+});
+
+describe("反复断开:提醒一次,之后安静,稳定连上再说一声(2026-09-27 真机日志:每 5 秒两条通知,一晚上上万条)", () => {
+  it("连上几毫秒就断、每 5 秒一轮:只有头两轮提醒,判定反复断开后只报一次原因;稳定 10 秒后报一次已连上", async () => {
+    const { machine, host, link } = setup();
+    machine.up.add(7497);
+    link.start();
+    await settle();
+    const s = machine.sessions[7497]!;
+    const fire = (up: boolean) => { for (const cb of s.linkCbs) cb(up); };
+    vi.useFakeTimers();
+    try {
+      fire(false);
+      for (let i = 0; i < 40; i++) { // 40 轮 × 5 秒 = 200 秒的抖动
+        vi.advanceTimersByTime(5_000);
+        fire(true);
+        vi.advanceTimersByTime(5);
+        fire(false);
+      }
+      const flapNotes = host.notes.filter((n) => n.includes("反复断开"));
+      expect(flapNotes).toHaveLength(1);
+      expect(flapNotes[0]).toContain("client id");
+      // 判定之前那两轮照常提醒(每轮一断一连),之后全部收声
+      expect(host.notes.filter((n) => n.startsWith("券商已重新连上")).length).toBeLessThanOrEqual(2);
+      expect(host.notes.filter((n) => n.includes("断开了") && !n.includes("反复断开")).length).toBeLessThanOrEqual(2);
+      const db = (host.engine.store as any).db;
+      const audits = db.prepare("SELECT action FROM audit_log WHERE action LIKE 'broker_link%'").all() as Rec[];
+      expect(audits.length).toBeLessThanOrEqual(5);
+
+      // 终于稳定了:撑过 10 秒才说
+      fire(true);
+      vi.advanceTimersByTime(9_000);
+      expect(host.notes.filter((n) => n.startsWith("券商已重新连上")).length).toBeLessThanOrEqual(2);
+      vi.advanceTimersByTime(1_500);
+      const ups = host.notes.filter((n) => n.startsWith("券商已重新连上"));
+      expect(ups.length).toBeGreaterThanOrEqual(1);
+      const last = host.events.at(-1);
+      expect(last).toEqual(["broker_link", { connection: "paper", up: true }]);
+
+      // 稳定之后再断一次:那是新的一次掉线,照常当场提醒
+      const before = host.notes.length;
+      fire(false);
+      expect(host.notes.slice(before).some((n) => n.includes("断开了"))).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

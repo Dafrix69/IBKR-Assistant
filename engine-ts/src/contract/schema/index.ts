@@ -25,7 +25,7 @@ import { NoParamsSchema } from "./kit.js";
 import type { ParamsSchema } from "./kit.js";
 import { LlmPatchParamsSchema, LlmTestParamsSchema } from "./llm.js";
 import { BookSnapshotParamsSchema, MacroBoardParamsSchema } from "./market.js";
-import { OptionsWallParamsSchema } from "./options.js";
+import { FlyPlanParamsSchema, IvRecorderSetParamsSchema, OptionsWallParamsSchema } from "./options.js";
 import { PaAnalyzeParamsSchema } from "./priceaction.js";
 import { PoolSetWatchParamsSchema } from "./pool.js";
 import {
@@ -95,6 +95,9 @@ export const PARAMS_SCHEMAS: { readonly [M in RpcMethodName]: ParamsSchema<RpcPa
   "ideas.similar_trades": IdeasSimilarTradesParamsSchema,
 
   "options.wall": OptionsWallParamsSchema,
+  "options.fly_plan": FlyPlanParamsSchema,
+  "options.iv_recorder": NoParamsSchema,
+  "options.iv_recorder_set": IvRecorderSetParamsSchema,
 
   "pa.timeframes": NoParamsSchema,
   "pa.analyze": PaAnalyzeParamsSchema,
@@ -133,6 +136,8 @@ export const PARAMS_SCHEMAS: { readonly [M in RpcMethodName]: ParamsSchema<RpcPa
   "settings.patch": SettingsPatchParamsSchema,
   "keychain.set": KeychainSetParamsSchema,
   "data.export": DataExportParamsSchema,
+  "data.backups": NoParamsSchema,
+  "data.backup": NoParamsSchema,
 
   "instruction.submit": InstructionSubmitParamsSchema,
 

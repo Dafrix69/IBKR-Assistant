@@ -96,7 +96,8 @@ export function RecordsPage() {
       const target = await dafri.pickExportPath();
       if (!target) return;
       const result = await dafri.exportData(target);
-      showBanner(`已导出 ${result.records} 条记录到 ${result.path}`, true);
+      // 导出的是库里的原样,账号没有打码(界面上的是打了码的)——当场说一声,免得被当成可以直接发给别人的东西
+      showBanner(`已导出 ${result.records} 条记录到 ${result.path}。文件里的账号是完整的,请自己保管`, true);
     } catch (err) {
       showBanner(`导出失败:${errorMessage(err)}`, false);
     }

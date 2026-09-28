@@ -124,7 +124,8 @@ describe("对账 ①:券商侧还挂着的单,按 orderRef 认领回来", () => 
     expect(statuses(engine, recordId)).toEqual(["Submitted", "Submitted"]); // 认领那一条,仅此一条
   });
 
-  it("托管单(trk: 前缀)不归这里管——adoptHosted 自己有一套认领与去重", async () => {
+  // 托管单的记录按 signature 认(见 fix-reconcile-audit.spec.ts);普通记录不会去认一张 trk: 前缀的单
+  it("普通记录不认 trk: 前缀的单——那张是托管单,归它自己那条记录与 adoptHosted", async () => {
     const router = new FakeRouter();
     const { engine } = buildEngine(router);
     const recordId = workingRecord(engine);

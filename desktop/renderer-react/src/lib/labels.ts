@@ -31,7 +31,7 @@ export const LIVE_STATUS_LABEL: Record<string, string> = {
   Inactive: '券商报错',
   Unknown: '状态未知',
   // 引擎写的：对账时券商侧既没有这张单、也查不到它的成交（见 engine.reconcileOrders）
-  NotAtBroker: '券商侧查无此单',
+  NotAtBroker: '去向不明(券商侧查无此单)',
 };
 
 // 拒绝码。三个来源各有一套词表:模型自己拒的(prompts 里的 rejections.code)、

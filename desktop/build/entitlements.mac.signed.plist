@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!--
+      Developer ID 签名版用的权限(dist_mac.js 的签名版指到这一份)。比 ad-hoc 那份少两项:
+
+      · 没有 disable-library-validation:应用本体、Electron Framework、引擎的原生模块(better-sqlite3、keyring)
+        都由同一个 Team 签名,库校验过得去。留着它,等于允许任何人签的动态库被加载进这个能下单的进程。
+      · 没有 allow-unsigned-executable-memory:那是老版本 Electron 要的;现在的 V8 只要 allow-jit。
+
+      改这份之前先在签名版上实测:应用起得来、引擎子进程起得来、钥匙串读得到。
+    -->
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+</dict>
+</plist>

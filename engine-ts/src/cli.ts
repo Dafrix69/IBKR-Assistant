@@ -14,7 +14,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 import { BrokerRouter } from "./broker.js";
-import { Settings, loadSettings, nowEt } from "./config.js";
+import { ConfigLoadError, EXIT_CONFIG, Settings, loadSettings, nowEt } from "./config.js";
 import { TradingEngine } from "./engine.js";
 import { parseFillsCsv } from "./fillsCsv.js";
 import { parseOptionPositionsCsv } from "./optionPositionsCsv.js";
@@ -28,6 +28,7 @@ import { Notifier } from "./notify.js";
 import { buildParser, structuredOutputSchema } from "./providers.js";
 import { fingerprint, loadPromptBundle, renderUser } from "./prompts.js";
 import { TradeStore } from "./store.js";
+import { EXIT_STORE, StoreOpenError } from "./storeSafety.js";
 import { Validator, primaryCode, rejectionMessage } from "./validator.js";
 import { fmtF } from "./py.js";
 
@@ -43,7 +44,22 @@ export async function main(argv: string[]): Promise<number> {
 
   if (command === "rpc") {
     const { main: rpcMain } = await import("./rpc.js");
-    return rpcMain(configPath);
+    try {
+      return await rpcMain(configPath);
+    } catch (exc) {
+      // 配置读不进来 / 交易库打不开:不打调用栈(桌面端只看得见 stderr 的最后几行,十行栈会把这句话顶出去),
+      // 只留给人看的话,并用专门的退出码告诉桌面端"别重启我,去问用户"
+      if (exc instanceof ConfigLoadError) {
+        console.error(`[fatal:config:${exc.kind}] ${exc.message.replace(/\s*\n\s*/g, " ")}`);
+        return EXIT_CONFIG;
+      }
+      if (exc instanceof StoreOpenError) {
+        console.error(`[fatal:store:path] ${exc.dbPath}`);
+        console.error(`[fatal:store:${exc.kind}] ${exc.message.replace(/\s*\n\s*/g, " ")}`);
+        return EXIT_STORE;
+      }
+      throw exc;
+    }
   }
 
   const settings = loadSettings(configPath ?? undefined);
