@@ -25,7 +25,7 @@ cd desktop   && npm run lint && npm run ui:typecheck
 ```
 transport     rpc.ts(转出的壳)  rpc/server.ts  rpc/context.ts  rpc/contractMethods.ts  rpc/params.ts  rpc/handlers/*.ts  cli.ts
 orchestrate   engine.ts  engine/*.ts(hosted 托管单、reconcile 执行对账、callbacks 回报落库、clock)  tracker.ts  services/*.ts
-execution     broker.ts  ibContracts.ts(怎么拼一张 IB 合约)  futuBroker.ts  ibSession.ts  ibTypes.ts  tws.ts  futu.ts  futuBridge.ts
+execution     broker.ts  ibContracts.ts(怎么拼一张 IB 合约)  futuBroker.ts  ibSession.ts  ibTypes.ts  tws.ts  futu.ts  futuBridge.ts  heldStreams.ts(持仓的常驻行情订阅:平掉的撤掉)
 parsing       validator.ts  providers.ts  prompts.ts  shorthand.ts  llm.ts  embeddings.ts
 analysis      backtest backtestLab priceaction screener research ideaRetrieval optionwall anomaly flyexit tradereview tradeOutcomes performance leaders fillsCsv optionTradesCsv optionPositionsCsv tradeSimilar ibtrades macro market alerts maTouch execQuality signalOutcomes trackerDrawdown ivPricing
 domain        config.ts  models.ts  store.ts  storeSafety.ts(库的版本号、完整性、备份)  importedTrades.ts  ideaVectors.ts  signalLog.ts  positions.ts  combos.ts(期权腿 → 组合)  marketdata.ts

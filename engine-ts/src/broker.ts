@@ -32,6 +32,7 @@ import type {
   RawBar, TickerData, TickerHandle,
 } from "./ibTypes.js";
 import { coveredAccounts, liveSessions, logStderr, redactForLog } from "./ibLink.js";
+import { HeldStreams } from "./heldStreams.js";
 export { logStderr, redactForLog } from "./ibLink.js";
 
 // IB 适配层的接口住在 ibTypes.ts;这里转出,老的 import 路径不变。
@@ -494,7 +495,7 @@ export class BrokerRouter {
   }
 
   // 期权腿的常驻订阅:key → 合约(撤订阅要按它自己的合约撤)
-  private readonly optionStreams = new Map<string, { handle: TickerHandle | null; contract: IbContract | null }>();
+  private readonly optionStreams = new HeldStreams();
 
   private async cancelStreams(): Promise<void> {
     const sessions = this.sessions();
@@ -1780,11 +1781,23 @@ export class BrokerRouter {
     }
 
     const rows = [...out.values()].filter((r) => r["quantity"]);
+    this.releaseClosed(rows);
     await this.fillPositionPrices(rows);
     return rows.sort((a, b) =>
       String(a["account"]).localeCompare(String(b["account"])) ||
       String(a["symbol"]).localeCompare(String(b["symbol"])),
     );
+  }
+
+  /** 平掉的腿 / 正股撤掉常驻订阅(heldStreams.ts),不然一直占着行情线路。**读不到 ≠ 平仓了**:读持仓报错的那一轮
+   * 走不到这里;有连接断着时它那个账户的仓只是这一轮看不见,也不撤。先撤后订:额度紧的时候先把线路腾出来。 */
+  private releaseClosed(rows: PositionRow[]): void {
+    if (this.sessions().length < this.connectionsMap.size) return;
+    this.optionStreams.release(rows.map((r) => `opt:${r["key"]}`));
+    // 顶栏行情带、标的现价订的是同一只股的同一条流,它们还在用就不撤
+    const shared = (symbol: string): Array<TickerHandle | null | undefined> =>
+      [this.streams.get(symbol), this.streams.get(`idx:${symbol}`)];
+    this.stockStreams.release(rows.filter((r) => r["sec_type"] === "STK").map((r) => String(r["symbol"])), shared);
   }
 
   private readonly unmappedAccounts = new Set<string>();
@@ -1907,20 +1920,8 @@ export class BrokerRouter {
     try {
       for (const row of legs) {
         const key = `opt:${row["key"]}`;
-        const existing = this.optionStreams.get(key);
         // 被拒过的流不会自己活过来:摘掉重订(认不出的合约 handle 为 null,照旧不重试)
-        if (existing?.handle && existing.handle.read().error) {
-          if (existing.contract) {
-            try {
-              session.cancelTicker(existing.contract);
-            } catch {
-              /* 撤不掉也要重订 */
-            }
-          }
-          this.optionStreams.delete(key);
-        } else if (existing) {
-          continue;
-        }
+        if (this.optionStreams.usable(session, key)) continue;
         const spec = (row["contract"] ?? {}) as Record<string, any>;
         const target = optionContract(
           String(row["symbol"]), String(spec["lastTradeDateOrContractMonth"] ?? ""),
@@ -1937,7 +1938,7 @@ export class BrokerRouter {
           }
           throw exc;
         }
-        this.optionStreams.set(key, { handle: session.subscribeTicker(target), contract: target });
+        this.optionStreams.subscribe(session, key, target);
         fresh = true;
       }
       // 首次订阅要等第一笔 tick 落地;之后每轮只是从常驻订阅的缓存里读,泵一下事件循环
@@ -1957,7 +1958,7 @@ export class BrokerRouter {
    * BE 的账户推送没有现价,tracker.poll 与 tracker.reconcile 每轮各 2.5 秒,整条交易道被占满,
    * 「秒级调价」变成五秒一次,下单也得排在后面。和期权腿价(fillOptionPrices)同一套写法。
    */
-  private readonly stockStreams = new Map<string, { handle: TickerHandle | null; contract: IbContract | null }>();
+  private readonly stockStreams = new HeldStreams("");
 
   private async fillPositionPrices(rows: Array<Record<string, any>>): Promise<void> {
     const need = [...new Set(rows
@@ -1972,18 +1973,8 @@ export class BrokerRouter {
         if (paper) session.reqMarketDataType(3);
         try {
           for (const symbol of need) {
-            const existing = this.stockStreams.get(symbol);
-            if (existing?.handle && existing.handle.read().error) {
-              // 被拒过的流不会自己活过来:摘掉重订(只撤不带 generic 的这条,别误伤异动监控的量能流)
-              try {
-                if (existing.contract) session.cancelTicker(existing.contract, "");
-              } catch {
-                /* 撤不掉也要重订 */
-              }
-              this.stockStreams.delete(symbol);
-            } else if (existing) {
-              continue;
-            }
+            // 被拒过的流不会自己活过来:摘掉重订(只撤不带 generic 的这条,别误伤异动监控的量能流)
+            if (this.stockStreams.usable(session, symbol)) continue;
             const target = stockContract(symbol);
             try {
               await this.qualifyOrRaise(session, target);
@@ -1994,7 +1985,7 @@ export class BrokerRouter {
               }
               throw exc;
             }
-            this.stockStreams.set(symbol, { handle: session.subscribeTicker(target), contract: target });
+            this.stockStreams.subscribe(session, symbol, target);
             fresh = true;
           }
           await session.settle(fresh ? 1500 : 50);

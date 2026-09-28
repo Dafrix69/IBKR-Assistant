@@ -38,12 +38,21 @@ function emptyTicker(): TickerData {
  * 必须带上 generic ticks:同一只股,顶栏宏观带先订了一条不带 generic 的流,异动监控再订
  * "165,104,595"(均量 / 历史波动率 / 短时量)时,只按合约认的话拿回来的是宏观带那条——
  * 里面永远没有均量,放量就永远判不出来。
+ *
+ * 期权写了交易类的也要带上:SPX(月度,AM 结算)与 SPXW 在 20260917 这样的日子同一到期日 / 行权价 /
+ * 看涨看跌都存在,是两张合约。不带的话后订的那张读到的是先订那张的盘口(2026-09-28)。
+ * 只对期权带:正股、期货的交易类分不出别的合约,而它只在真去确认过的那个对象上才有(走 conId 缓存的
+ * 没有),带上只会让同一只股平白多占一条线路。
  */
 export function tickerKey(contract: IbContract, genericTicks = ""): string {
+  const optionLike = contract.secType === "OPT" || contract.secType === "FOP";
   const base = `${contract.secType}|${contract.symbol}|${contract.lastTradeDateOrContractMonth ?? ""}|` +
-    `${contract.strike ?? ""}|${contract.right ?? ""}`;
+    `${contract.strike ?? ""}|${contract.right ?? ""}${optionLike && contract.tradingClass ? `|${contract.tradingClass}` : ""}`;
   return genericTicks ? `${base}#${genericTicks}` : base;
 }
+
+/** 句柄对应的流已经不在缓存里时读到的 error(见 subscribeTicker)。 */
+const TICKER_DETACHED = "订阅已被撤销";
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
@@ -433,7 +442,16 @@ export async function createIbApiNextSession(cfg: {
           /* 订阅失败:句柄读到的是空盘口,守卫会拒 */
         }
       }
-      const handle: TickerHandle = { read: () => ({ ...live!.data }) };
+      // 流按合约缓存、不记谁在用:同一个合约别处 cancelTicker 一撤(AUTO_MID 定价、盘口页都是现订现撤),
+      // 这条流就不在缓存里了,之后不会再有 tick。以前句柄照旧读那一份,读到的是撤掉那一刻的盘口、
+      // 还不报错——盯盘拿着它判止损。现在给空盘口 + error:常驻订阅那几处见到 error 会摘掉重订,
+      // 不查 error 的读到的是"没有价"。被 TWS 拒掉的流照旧(error 是 TWS 的原文)。
+      const entry = live;
+      const handle: TickerHandle = {
+        read: () => (tickers.get(key) === entry || entry.data.error
+          ? { ...entry.data }
+          : { ...emptyTicker(), error: TICKER_DETACHED }),
+      };
       return handle;
     },
 
