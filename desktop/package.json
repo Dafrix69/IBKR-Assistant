@@ -57,6 +57,7 @@
       "rpc-client.js",
       "popup-window.js",
       "popup-preload.js",
+      "update-check.js",
       "popup/**/*",
       "renderer-react/dist/**/*"
     ],

@@ -59,6 +59,11 @@ contextBridge.exposeInMainWorld('dafri', {
   screenerDeviation: (spec) => ipcRenderer.invoke('rpc', { method: 'screener.deviation', params: spec }),
   screenerLeaders: (spec) => ipcRenderer.invoke('rpc', { method: 'screener.leaders', params: spec }),
   appInfo: () => ipcRenderer.invoke('app-info'),
+  // 新版本检查:主进程去 GitHub 读公开的发布信息(见 update-check.js),这里只转一个 force 布尔
+  checkUpdate: (force) => ipcRenderer.invoke('update-check', { force: Boolean(force) }),
+  // 分享卡片:action 只认 copy / save,主进程只收 PNG;保存路径由主进程的对话框定
+  exportImage: (action, dataUrl, name) =>
+    ipcRenderer.invoke('image-export', { action: String(action), dataUrl: String(dataUrl), name: String(name || '') }),
 
   // ---- 大模型接入 ------------------------------------------------------
   llmCatalog: () => ipcRenderer.invoke('rpc', { method: 'llm.catalog', params: {} }),

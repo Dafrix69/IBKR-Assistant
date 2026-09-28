@@ -13,6 +13,7 @@ import type {
   IbContract, IbSession, OptChainParam, OrderIntent, PortfolioItemLike, PositionItemLike,
   RawBar, TickerData, TickerHandle, TradeLike,
 } from "./ibTypes.js";
+import { logStderr } from "./ibLink.js";
 
 type Subscription = { unsubscribe(): void };
 
@@ -346,13 +347,15 @@ export async function createIbApiNextSession(cfg: {
         (async () => {
           for (const contract of contracts) {
             try {
-              const details = await api.getContractDetails(toIbContract(contract));
-              const first = Array.isArray(details) ? details[0] : details;
-              const resolved = first?.contract;
-              if (resolved?.conId) {
+              const details: unknown = await api.getContractDetails(toIbContract(contract));
+              // 多条匹配时不取第一条(见 pickContractDetail):分不出来就确认失败,绝不猜
+              const resolved = pickContractDetail(contract, details);
+              if (resolved !== null) {
                 contract.conId = resolved.conId;
                 if (resolved.exchange) contract.exchange = resolved.exchange;
                 if (resolved.tradingClass) contract.tradingClass = resolved.tradingClass;
+              } else {
+                contract.conId = 0; // 没有或分不出:router 侧统一转成"无法确认该合约"
               }
             } catch {
               contract.conId = 0; // 确认失败:router 侧统一转成"无法确认该合约"
@@ -721,6 +724,50 @@ export function applyTicks(mod: any, data: TickerData, update: any): void {
   } else if (data.last !== null) {
     data.marketPrice = data.last;
   }
+}
+
+/** getContractDetails 回的一条候选里,确认合约要用到的那几个字段。 */
+interface ResolvedContract {
+  conId: number;
+  exchange: string;
+  tradingClass: string;
+}
+
+function candidatesOf(details: unknown): ResolvedContract[] {
+  const rows: unknown[] = Array.isArray(details) ? details : [details];
+  const out: ResolvedContract[] = [];
+  for (const row of rows) {
+    const c = (row as { contract?: Partial<ResolvedContract> } | null | undefined)?.contract;
+    const conId = Number(c?.conId ?? 0);
+    if (!Number.isFinite(conId) || conId <= 0 || out.some((x) => x.conId === conId)) continue;
+    out.push({ conId, exchange: String(c?.exchange ?? ""), tradingClass: String(c?.tradingClass ?? "") });
+  }
+  return out;
+}
+
+/**
+ * 从合约详情里挑出**唯一**那一张;挑不出回 null(按确认失败处理)。
+ *
+ * 以前取 details[0]。股票期权下单不带交易类(提示词让模型省略),IBKR 对同一到期日 / 行权价 /
+ * 看涨看跌可能同时回标准类和调整期权类(AAPL 与 2AAPL,交割物不同,见 pickTradingClass 的注释),
+ * 谁排在前面就下到谁头上(2026-09-27 审计 V5)。现在的顺序:同一 conId 的重复行合并 →
+ * 请求里写明的交易类 → 与标的同名的交易类(标准链)→ 还剩多条就不猜,写一行日志说清是哪几条。
+ */
+function pickContractDetail(requested: IbContract, details: unknown): ResolvedContract | null {
+  const all = candidatesOf(details);
+  if (all.length <= 1) return all[0] ?? null;
+  for (const name of [requested.tradingClass, requested.symbol]) {
+    const wanted = (name ?? "").trim().toUpperCase();
+    if (!wanted) continue;
+    const hit = all.filter((c) => c.tradingClass.toUpperCase() === wanted);
+    if (hit.length === 1) return hit[0] ?? null;
+  }
+  logStderr(
+    `[ibkr] 合约确认有 ${all.length} 条匹配(交易类 ${all.map((c) => c.tradingClass || "?").join(" / ")}),` +
+    `分不出要哪一条,按确认失败处理:${requested.symbol} ${requested.secType} ` +
+    `${requested.lastTradeDateOrContractMonth ?? ""} ${requested.strike ?? ""} ${requested.right ?? ""}`.trim(),
+  );
+  return null;
 }
 
 function toIbOrder(mod: any, order: OrderIntent): Record<string, unknown> {

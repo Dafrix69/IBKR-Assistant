@@ -23,6 +23,11 @@
   语义约束由 `models.ts` 在本地复校验。改 `models.ts` 要重跑导出脚本更新资产,别在发送前临时改形状——
   发出去的字节被黄金对拍钉着。
 - 无论模型多弱,§5 的硬校验层照样逐条复核限额、方向、账户与价差结构。模型再离谱也越不过这一层。
+  **前提是校验层只用它能核实的字段算限额**(2026-09-27 审计补上两处):期权 / 组合及每条腿的
+  `multiplier` 只认 `"100"`(空串归一成 `"100"`,别的值直接拒)——组合的顶层乘数根本不发给券商,
+  以前模型写个 `"1"` 就能把限额缩小 100 倍;名义金额只乘真正的价格,TRAIL 的 `auxPrice` 是回撤额、
+  买入止损的触发价与卖出限价都不是成交价上界,正股改按「限价 / 止损触发价 / 现价快照」里最大的算,
+  单腿期权的 STP / TRAIL 买单没有限价就拒绝。
 
 界面能改的只有上面那几项。`keychain_service` 之类的字段被 RPC 层显式拒绝,base_url 写错会
 **回滚且不落盘**。
@@ -42,3 +47,10 @@ Anthropic 走 `@anthropic-ai/sdk`,OpenAI 兼容端点走 `openai`(底层仍是�
 
 **形状在引擎契约里**(`engine-ts/src/contract/llm.ts`):目录、当前配置、测试回执,界面从 `bridge.ts` 拿同一份。`llm.test` 测不通
 不是 RPC 报错,是 `ok: false` 的回执;带一把没保存的 key 先试时用的就是那一把,试一下不等于保存(`tests/llm-rpc.spec.ts` 用本机假端点钉着)。
+
+**已保存的 Key 只发往保存它时的那个端点**(2026-09-27 审计):`llm.test` 的临时覆盖只认 `llm.patch` 那七项
+(provider、model、base_url、effort、temperature、max_tokens、timeout_s),`keychain_*` 一律拒;供应商或 Base URL
+与已保存的不同时,必须在这次调用里带上 `api_key`——以前一段被注入的界面脚本可以把 base_url 指到别处、让引擎把钥匙串里的
+Key 发过去(绕开了界面 `connect-src 'none'` 的 CSP,因为请求是引擎发的)。例外是只连自家官方端点的供应商(Anthropic,
+客户端不读 base_url):换到它可以直接用已保存的那把测。代价只落在 OpenAI 兼容端点上:换了地址直接点「测试」,要把 Key
+再填一次,或先保存再测(`tests/fix-llmtest-exfil.spec.ts`、`tests/fix-llmtest-official.spec.ts`)。

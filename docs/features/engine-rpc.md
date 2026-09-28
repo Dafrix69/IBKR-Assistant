@@ -45,6 +45,27 @@
   `domains` 里加一行。同名方法重复登记,构造时直接抛。
   `tests/desktop-whitelist.spec.ts` 双向核对引擎方法表 ↔ `main.js` 的 `ALLOWED_RPC`,并核对三张道表里的名字都是真方法。
 
+## 引擎重建:券商回报永远落到"现在的"引擎上
+
+`settings.patch` / `llm.patch`(`reload()`)、连接 / 断开、切券商都会 `dropEngine()` 再建一个新引擎。
+会话上的回报监听却是**某一个**引擎挂的(`engine.wireSession` 的闭包里是那个实例),会话打着 `_dafriWired` 不许重挂,
+`router.sessionHook` 指的也是那个实例。2026-09-27 审出:改一下设置,新引擎就再也听不见券商——托管止损被拒照样显示
+「已托管」,止盈成交了追踪不落闩。现在的口径:
+
+- **换下来的引擎把回报转给现在的。** `dropEngine` 把旧实例上接回报的五只手(`onOrderStatus` / `onExecDetails` /
+  `onCommission` / `onIbError` / `wireSession`)换成"现取 `this.engine` 再转过去"。会话上始终只有一套监听,
+  换几次引擎都一样;之后才连上的会话经 `sessionHook` 挂到当时的引擎上。
+- **新引擎接着记旧引擎的回报账**(同一个 router 时):`orderIndex`、终态、成交 / 佣金的 exec_id 去重、没对上的回报、
+  早到的错误。换了 router 就是换了连接,旧订单号不作数,不接。
+- **新引擎第一轮托管对账之前**,它还不认得上一个引擎挂出去的托管单(要等 `adoptHosted` 按 orderRef 认领):
+  这段时间来的状态回报再让上一个引擎的托管缓存过一手,成交照样落闩,不会被当成"没挂"再挂一张。
+- **改完设置当场重建**(连着券商时),节拍器随引擎一起起;以前要等界面下一次来要引擎,中间那几秒没人盯盘。
+- 没搬过去的:上一个引擎内存里的软件盯盘条件单队列(`pendingTriggers`)与追价平仓缓存——后者由新引擎第一轮
+  `adoptCloseChase` 按 orderRef 认领回来;前者照旧随重建丢掉(对账会把它们标成「去向不明」)。
+
+`tests/fix-callbacks-rewire.spec.ts` 钉着:改设置 → 托管单的成交 / 被拒落到新引擎、不重复挂监听、后连上的会话、
+旧引擎发出的普通单的成交、新引擎认领之前的成交。
+
 ## 契约:入参与返回只写一处(`src/contract/`)
 
 同一个形状以前写两遍:引擎的 `anomaly.ts` 一份,界面的 `bridge.ts` 手抄一份,中间靠一条正则测试逐字段对——

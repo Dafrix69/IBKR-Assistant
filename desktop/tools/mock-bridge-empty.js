@@ -54,6 +54,11 @@ window.dafri = {
   screenerLeaders: async () => { throw new Error('强势股筛选需要先连接 TWS / IB Gateway'); },
   appInfo: async () => ({ version: '0.2.0', electron: '40.0.0', configPath: '', enginePath: '',
     engineRunning: true }),
+  // 新版本检查:首次启动的样子——已是最新
+  exportImage: async () => ({ ok: true }),
+  checkUpdate: async () => ({current:'0.2.0', latest:'0.2.0', newer:false,
+    url:'https://github.com/Dafrix69/IBKR-Assistant/releases/tag/v0.2.0', download:null,
+    publishedAt:'2026-09-20T02:00:00Z', notes:'', checkedAt:Date.now()}),
   llmCatalog: async () => ({
     providers: [{ key: 'anthropic', label: 'Anthropic(Claude)', default_model: 'claude-opus-5',
       models: ['claude-opus-5'], supports_effort: true, supports_temperature: false,

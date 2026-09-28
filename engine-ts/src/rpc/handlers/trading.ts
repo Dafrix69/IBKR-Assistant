@@ -129,16 +129,27 @@ export class TradingHandlers extends HandlerBase {
 
   async breakerHalt(params: BreakerHaltParams): Promise<RpcResult<"breaker.halt">> {
     const reason = String(params["reason"] || "用户在界面上按下暂停");
-    // 熔断(撤全部单)和一轮盯盘互斥:否则那一轮可能在熔断前过了闸门、熔断撤完单之后才把托管单
-    // 挂出去,熔断后还留着一张活单
+    // 闸**先**合上,再去排锁撤单。以前整件事都在盯盘锁里:一轮盯盘慢(合约确认卡过 24 秒)、或者 TWS 挂住,
+    // 按下熔断之后状态文件迟迟没写,这段时间里新指令、下一轮盯盘照样发单。合闸只是写一个文件,不需要等谁
+    this.engine.killswitch.engage(reason);
+    // 撤全部单和一轮盯盘仍然互斥:否则那一轮可能在熔断前过了闸门、撤完单之后才把托管单挂出去,熔断后还留着一张活单
     const outcome = await this.ctx.trackerLock(async (): Promise<RpcResult<"breaker.halt">> => {
+      let timer: ReturnType<typeof setTimeout> | null = null;
+      // 撤单请求本身没有超时(券商那头挂住时它永远不回):等 15 秒就放手,闸已经合上,锁不能被它一直占着
+      const timeout = new Promise<RpcResult<"breaker.halt">>((resolve) => {
+        timer = setTimeout(() => resolve({
+          engaged: true, cancelled: 0, warning: "撤单请求 15 秒没有回应:熔断已生效,但挂单可能还在,请到 TWS 里核对",
+        }), 15_000);
+      });
       try {
-        return await this.engine.halt(reason) as RpcResult<"breaker.halt">;
+        return await Promise.race([this.engine.halt(reason) as Promise<RpcResult<"breaker.halt">>, timeout]);
       } catch (exc) {
         if (!(exc instanceof BrokerError)) throw exc;
         // 撤单炸了:闸照样合上,回执里多一句 warning。这是安全兜底,不是失败
         this.engine.killswitch.engage(reason);
         return { engaged: true, cancelled: 0, warning: exc.message };
+      } finally {
+        if (timer !== null) clearTimeout(timer);
       }
     });
     this.emit("breaker", outcome);

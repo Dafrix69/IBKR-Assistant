@@ -22,9 +22,30 @@ export interface BrokerLinkHost extends ServiceHost {
   dropEngine(): void;
 }
 
+/** 一条连接的通断记账(见 onLink:反复断开时收声)。 */
+interface LinkFlap {
+  /** 最近一次连上的时刻;连上后不到 STABLE_MS 又断,算一次抖动 */
+  lastUpAt: number | null;
+  /** 最近一分钟内的抖动时刻 */
+  flaps: number[];
+  /** 判定为反复断开了:提醒过一次,之后安静,直到稳定连上 STABLE_MS */
+  flapping: boolean;
+  /** 这一次断开已经提醒过 */
+  downAnnounced: boolean;
+  stableTimer: ReturnType<typeof setTimeout> | null;
+  /** 反复断开期间的日志汇总:上次写汇总的时刻、之后又断了几次 */
+  summaryAt: number;
+  quietDowns: number;
+}
+
 export class BrokerLinkService {
   /** 从没连上的连接隔多久再试一次。连不上时一次尝试最多 10 秒(会话层的握手超时)。 */
   static readonly RETRY_MS = 30_000;
+  /** 连上后能撑过这么久才算"稳定连上";撑不过就是抖动 */
+  static readonly STABLE_MS = 10_000;
+  /** 一分钟内抖动到这个次数,判定为反复断开 */
+  static readonly FLAP_COUNT = 2;
+  private readonly flaps = new Map<string, LinkFlap>();
 
   /** 用户要不要连着:启动时按 broker.auto_connect,点「连接」置真,点「断开」/ 换券商置假 */
   private wanted = false;
@@ -56,6 +77,7 @@ export class BrokerLinkService {
   stop(): void {
     if (this.timer !== null) clearInterval(this.timer);
     this.timer = null;
+    for (const f of this.flaps.values()) if (f.stableTimer !== null) clearTimeout(f.stableTimer);
   }
 
   /** 按配置里生效的那家券商建 router(全系统唯一需要分支的地方)。 */
@@ -170,8 +192,87 @@ export class BrokerLinkService {
     if (router instanceof BrokerRouter) router.linkHook = (name, up) => this.onLink(name, up);
   }
 
-  /** 掉线 / 重连回来:当场说。掉线那段时间追踪读不到持仓与报价,既不判断也不发单——用户得知道。 */
+  /**
+   * 掉线 / 重连回来:当场说。掉线那段时间追踪读不到持仓与报价,既不判断也不发单——用户得知道。
+   *
+   * 但**反复断开**时不能每一次都说:TWS 接受连接又马上断开(周末重启后等着重新登录、弹着 API 连接确认框、
+   * client id 被别的程序占着……),会话层每 5 秒重连一次,以前每一轮都弹"断开了""已重新连上"两条系统通知、
+   * 写两条审计、两行日志——一晚上上万条(2026-09-27 真机日志)。连上后撑不过 STABLE_MS 又断就是一次抖动;
+   * 一分钟内抖到 FLAP_COUNT 次判定为反复断开:提醒一次、写明常见原因,之后安静,稳定连上 STABLE_MS 后再说一声。
+   */
   private onLink(name: string, up: boolean): void {
+    const now = Date.now();
+    let f = this.flaps.get(name);
+    if (f === undefined) {
+      f = { lastUpAt: null, flaps: [], flapping: false, downAnnounced: false, stableTimer: null, summaryAt: 0, quietDowns: 0 };
+      this.flaps.set(name, f);
+    }
+    if (up) {
+      f.lastUpAt = now;
+      if (!f.flapping) {
+        f.downAnnounced = false;
+        this.announceLink(name, true);
+        return;
+      }
+      // 反复断开期间连上了:先不说,撑过 STABLE_MS 才算真的好了
+      if (f.stableTimer !== null) clearTimeout(f.stableTimer);
+      const state = f;
+      f.stableTimer = setTimeout(() => {
+        state.stableTimer = null;
+        state.flapping = false;
+        state.flaps = [];
+        state.downAnnounced = false;
+        logStderr(`[link] 连接 ${name} 已稳定连上(反复断开期间又断了 ${state.quietDowns} 次)`);
+        state.quietDowns = 0;
+        this.announceLink(name, true);
+      }, BrokerLinkService.STABLE_MS);
+      f.stableTimer.unref?.();
+      return;
+    }
+    if (f.stableTimer !== null) {
+      clearTimeout(f.stableTimer);
+      f.stableTimer = null;
+    }
+    if (f.lastUpAt !== null && now - f.lastUpAt < BrokerLinkService.STABLE_MS) f.flaps.push(now);
+    f.flaps = f.flaps.filter((t) => now - t < 60_000);
+    if (f.flapping) {
+      f.quietDowns += 1;
+      if (now - f.summaryAt >= 60_000) {
+        f.summaryAt = now;
+        logStderr(`[link] 连接 ${name} 仍在反复断开(提醒过之后又断了 ${f.quietDowns} 次)`);
+      }
+      return;
+    }
+    if (f.flaps.length >= BrokerLinkService.FLAP_COUNT) {
+      f.flapping = true;
+      f.summaryAt = now;
+      f.quietDowns = 0;
+      this.announceFlapping(name);
+      return;
+    }
+    if (f.downAnnounced) return;
+    f.downAnnounced = true;
+    this.announceLink(name, false);
+  }
+
+  /** 反复断开:只说这一次,把最常见的几个原因摆出来。 */
+  private announceFlapping(name: string): void {
+    logStderr(`[link] 连接 ${name} 反复断开:TWS 接受了连接又马上断开,之后不再逐次记录`);
+    try {
+      const engine = this.host.engine;
+      engine.store.audit("engine", "broker_link_flapping", { connection: name });
+      engine.notifier.warning(
+        `与 TWS 的连接 ${name} 反复断开:连上几毫秒就被断开,正在每 5 秒重试(之后不再逐次提醒)。` +
+        "常见原因:TWS 自动重启后在等重新登录、TWS 弹出了 API 连接确认框、同一个 client id 被别的程序占用。" +
+        "请先看一眼 TWS 窗口。断开期间追踪读不到持仓与报价,不会判断、也不会发单;托管到券商的止盈止损单不受影响。",
+      );
+      this.host.emit("broker_link", { connection: name, up: false });
+    } catch {
+      /* 提醒失败不影响重连本身 */
+    }
+  }
+
+  private announceLink(name: string, up: boolean): void {
     logStderr(`[link] 连接 ${name} ${up ? "已自动重连" : "断开,正在自动重连"}`);
     try {
       const engine = this.host.engine;

@@ -101,6 +101,12 @@ function migrateLegacy(service: string, account: string): string | null {
   return legacy;
 }
 
+/**
+ * `security` 是同步起的子进程:它等着的时候整个引擎(含盯盘节拍)都停着。旧凭证的访问控制对不上时
+ * macOS 会弹窗问人,没人点就一直挂——给它一个上限,到点当"读不到"处理,界面显示未配置、用户重填一次。
+ */
+const SECURITY_TIMEOUT_MS = 20_000;
+
 /** 删除时同步清掉旧存储里的那份。返回是否真的删掉了什么。 */
 function dropLegacy(service: string, account: string): boolean {
   if (os.platform() === "win32") {
@@ -113,7 +119,7 @@ function dropLegacy(service: string, account: string): boolean {
   }
   const proc = spawnSync(
     "security", ["delete-generic-password", "-s", service, "-a", account],
-    { encoding: "utf-8" },
+    { encoding: "utf-8", timeout: SECURITY_TIMEOUT_MS },
   );
   return proc.status === 0;
 }
@@ -122,8 +128,12 @@ function dropLegacy(service: string, account: string): boolean {
 function securityGet(service: string, account: string): string | null {
   const proc = spawnSync(
     "security", ["find-generic-password", "-s", service, "-a", account, "-w"],
-    { encoding: "utf-8" },
+    { encoding: "utf-8", timeout: SECURITY_TIMEOUT_MS },
   );
+  if (proc.error) {
+    process.stderr.write(`[keychain] security 命令没有按时返回(${service}/${account}),按读不到处理:${proc.error.message}\n`);
+    return null;
+  }
   if (proc.status !== 0) return null;
   return (proc.stdout ?? "").trim() || null;
 }

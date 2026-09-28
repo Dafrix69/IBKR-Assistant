@@ -267,6 +267,12 @@ export class TrackerHandlers extends HandlerBase {
       chase_max_pct: optFloat(params["chase_max_pct"]) ?? undefined,
     });
     if (auto.host_at_broker) this.requireHostingSupported(String(raw["account"]));
+    // 拼不出平仓单的结构(自定义组合、比例价差……)只能提醒。以前照样建:到价那一刻才发现发不出去,
+    // 托管的还每秒挂一次失败、三秒把熔断打合上(2026-09-27 审计)。建的时候就说清楚
+    if (auto.enabled || auto.host_at_broker) {
+      const issue = tkMod.closeContractIssue(raw);
+      if (issue !== null) throw new RpcError(-32602, issue);
+    }
     await this.checkTargets(raw, rows, position, targets, auto);
 
     let track: Track;
@@ -312,6 +318,10 @@ export class TrackerHandlers extends HandlerBase {
       fields["auto_close"] = { ...(track["auto_close"] ?? {}), ...Object.fromEntries(given) };
       if ((fields["auto_close"] as Rec)["host_at_broker"]) {
         this.requireHostingSupported(String(track["account"]));
+      }
+      if ((fields["auto_close"] as Rec)["enabled"] || (fields["auto_close"] as Rec)["host_at_broker"]) {
+        const issue = tkMod.closeContractIssue(track);
+        if (issue !== null) throw new RpcError(-32602, issue);
       }
     }
     if (["take_profit", "stop_loss", "trail_pct", "profit_drawdown_pct", "profit_drawdown_tiers",
@@ -419,23 +429,42 @@ export class TrackerHandlers extends HandlerBase {
     });
     const auto = tkMod.makeAutoClose(track["auto_close"] ?? {});
     auto.enabled = true; // 手动平仓不看"自动平仓"那个开关,是你在点
+    // 按合约自己的时段判,和到价自动平仓同一口径:以前用正股日历,01:10 的 0DTE 蝶手动平不了
+    // (自动止损同一时刻却发得出去),16:15 反倒放行一张合约早已收盘的单
+    const marketStatus = await this.engine.marketStatusFor(raw, nowEt());
+    const breaker = this.engine.killswitch.state();
     const blockers = tkMod.closeBlockers({
       auto, position,
       accountIsPaper: this.engine.accountIsPaper(track["account"]),
       autoExecute: this.settings.policies.auto_execute,
       allowLiveTrading: this.settings.policies.allow_live_trading,
-      breakerEngaged: this.engine.killswitch.state().engaged,
-      marketStatus: this.settings.marketStatus(nowEt()),
+      // 自动熔断不挡平仓(那是在减仓);手动熔断照旧(见 killswitch.ts 的 auto)
+      breakerEngaged: breaker.engaged && !breaker.auto,
+      marketStatus,
       outsideRth: true, // 手动平仓同样全时段:盘外自动转限价
       alreadyFired: false,
       comboLiveOk: this.settings.policies.allow_combo_live,
     });
     if (blockers.length) throw new RpcError(-32019, `不能平仓:${blockers.join("、")}`);
 
-    // 券商那边已经有这条追踪的单(托管的止盈单、或正在追价的平仓单):改那张去追价,不另发一张——
+    // 券商那边已经有这条追踪的路(托管单那一组、或正在追价的平仓单):改成追价平仓,不另发一张——
     // 两张各平一次就是反向开仓
     if (await this.engine.sweepExisting(track, "手动平仓")) {
-      return { fired: { id: String(track["id"]), symbol: String(track["symbol"]), state: tkMod.STATE_STOP_LOSS, reason: "手动平仓:现有的单改到立刻成交的价追价" } };
+      let note = "现有的单改到立刻成交的价追价";
+      if (auto.host_at_broker) {
+        // 托管的:现在就对一轮账,把组里的止盈单改到 / 挂在立刻成交的价上,不等下一秒的节拍。挂不出去要当场说
+        const tick = await this.engine.syncHosted();
+        const stuck = tick.blocked.find((b) => String(b.id) === String(track["id"]));
+        note = stuck
+          ? `已改成追价平仓,但这一轮没挂出去:${stuck.blockers.join("、")}。之后每秒重试`
+          : "在托管单那一组里改到立刻成交的价追价,一成交券商撤掉组里其余的单";
+      }
+      return { fired: { id: String(track["id"]), symbol: String(track["symbol"]), state: tkMod.STATE_STOP_LOSS, reason: `手动平仓:${note}` } };
+    }
+    // 上一次自动平仓发出的单(正股限价、市价、没能追价的)还挂着:再发一张就是两张各平一次
+    const pending = this.engine.pendingCloseRecord(track);
+    if (pending !== null) {
+      throw new RpcError(-32019, `上一次发出的平仓单(记录 ${pending.slice(0, 8)})还挂在券商侧、没有终态。再发一张就是两张各平一次:等它成交,或先在 TWS 里撤掉它再点。`);
     }
     // 期权 / 组合的限价按各腿买卖价合成的立刻成交价算(拿不到才退回现价让滑点),和到价自动平仓同一口径
     let price = raw["market_price"];
@@ -444,7 +473,7 @@ export class TrackerHandlers extends HandlerBase {
       if (natural !== null) price = natural;
     }
     const result = { state: tkMod.STATE_STOP_LOSS, price, reason: "手动平仓" };
-    const fired = await this.engine.closePosition(track, position, auto, result);
+    const fired = await this.engine.closePosition(track, position, auto, result, marketStatus);
     if (!fired) throw new RpcError(-32019, "平仓单没有发出去,详见引擎日志与交易记录。");
     return { fired };
   }

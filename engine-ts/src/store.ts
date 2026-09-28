@@ -215,6 +215,10 @@ export interface WorkingRecord {
   createdAtMs: number;
   /** 最后一条状态回报的 status 字段(PendingTrigger / Submitted / PreSubmitted…)。 */
   lastStatus: string;
+  /** 最后一条状态回报落库的时刻。对账的宽限期从它算:条件单等几个小时才触发,一发出去就是"刚发的"。 */
+  lastStatusAtMs: number | null;
+  /** 托管单的记录是 `trk:<追踪>:<单型>`,也就是它在券商那边的 orderRef;普通单是空的(orderRef = 记录 id)。 */
+  signature: string;
 }
 
 /** 库这一层的松散记录类型。`engine/` 拆出来的那几个文件也引它(那些代码本来就在 engine.ts 里、整块搬过来的),
@@ -1114,10 +1118,13 @@ export class TradeStore {
     const maxAgeMs = maxAgeDays * 86_400_000;
     const rows = this.db
       .prepare(
-        "SELECT t.id, t.symbol, t.account_id, t.quantity, t.created_at," +
+        "SELECT t.id, t.symbol, t.account_id, t.quantity, t.created_at, t.signature," +
         " (SELECT e2.payload FROM record_events e2" +
         "   WHERE e2.record_id = t.id AND e2.kind = 'status'" +
-        "   ORDER BY e2.seq DESC LIMIT 1) AS last_status" +
+        "   ORDER BY e2.seq DESC LIMIT 1) AS last_status," +
+        " (SELECT e3.at FROM record_events e3" +
+        "   WHERE e3.record_id = t.id AND e3.kind = 'status'" +
+        "   ORDER BY e3.seq DESC LIMIT 1) AS last_status_at" +
         " FROM trade_records t" +
         " WHERE EXISTS (" +
         "   SELECT 1 FROM record_events e" +
@@ -1131,7 +1138,7 @@ export class TradeStore {
       )
       .all() as Array<{
         id: string; symbol: string; account_id: string; quantity: number; created_at: string;
-        last_status: string | null;
+        signature: string | null; last_status: string | null; last_status_at: string | null;
       }>;
     const out: WorkingRecord[] = [];
     for (const row of rows) {
@@ -1144,9 +1151,11 @@ export class TradeStore {
       } catch {
         /* payload 坏了就当没有状态,对账那边按"认不出"处理 */
       }
+      const statusAt = row.last_status_at === null ? NaN : Date.parse(row.last_status_at);
       out.push({
         id: row.id, symbol: row.symbol, accountId: row.account_id,
         quantity: Number(row.quantity) || 0, createdAtMs: created, lastStatus: status,
+        lastStatusAtMs: Number.isNaN(statusAt) ? null : statusAt, signature: row.signature ?? "",
       });
       if (out.length >= limit) break;
     }
@@ -1160,7 +1169,8 @@ export class TradeStore {
     const rows = this.db
       .prepare(
         "SELECT at, detail FROM audit_log" +
-        " WHERE actor='engine' AND action IN ('auto_close','hosted_sweep')" +
+        // hosted_fill:券商侧自己触发的托管单成交(engine/hosted.ts)。股票最主要的止损路径就是它,以前不算
+        " WHERE actor='engine' AND action IN ('auto_close','hosted_sweep','hosted_fill')" +
         " ORDER BY seq DESC LIMIT 2000",
       )
       .all() as Array<{ at: string; detail: string }>;
@@ -1242,29 +1252,38 @@ export class TradeStore {
   }
 
   /** 窗口内的已实现盈亏(保护规则的回撤护栏用)。券商的佣金回报里带 realizedPNL,
-   * 平仓那一笔才有值——这是全仓库唯一"券商认的"盈亏口径(见 tracker.md 盈亏以券商报的为准)。 */
+   * 平仓那一笔才有值——这是全仓库唯一"券商认的"盈亏口径(见 tracker.md 盈亏以券商报的为准)。
+   *
+   * 同一 exec_id 只算**先到的那一条**,与 foldEvents 同口径。库里真有重复(2026-09-10 模拟盘 #89 一条佣金落了
+   * 三次;引擎一重建 seenCommissions 就空了,交易分析一同步当天的佣金回报又会重推一遍),而这里以前逐行相加:
+   * 亏 300 按 600 算,日内亏损上限被假触发,当天所有新单都被拦(2026-09-27 审计 H4)。
+   * 先去重再按窗口筛:昨天落过、今天又被重推的那笔不许算进今天。没有 exec_id 的认不出是不是同一笔,照旧都算。 */
   realizedPnlEvents(sinceMs: number, nowMs: number): Array<{ atMs: number; pnl: number }> {
     const rows = this.db
       .prepare(
         "SELECT at, payload FROM record_events WHERE kind='commission' ORDER BY seq DESC LIMIT 2000",
       )
       .all() as Array<{ at: string; payload: string }>;
-    const out: Array<{ atMs: number; pnl: number }> = [];
+    const anonymous: Array<{ atMs: number; pnl: number }> = [];
+    // 行是新的在前:同一 exec_id 后读到的更早,覆盖下来,留下的就是先到的那条
+    const firstByExec = new Map<string, { atMs: number; pnl: number }>();
     for (const row of rows) {
       const at = Date.parse(row.at);
-      if (Number.isNaN(at) || at <= sinceMs || at > nowMs) continue;
+      if (Number.isNaN(at)) continue;
       let payload: Rec;
       try {
         payload = JSON.parse(row.payload) as Rec;
       } catch {
         continue;
       }
-      const pnl = Number(payload["realized_pnl"]);
-      // IBKR 对开仓的佣金回报给一个哨兵大数(1.7976931348623157e308),不是真盈亏
-      if (!Number.isFinite(pnl) || Math.abs(pnl) >= 1e307) continue;
-      out.push({ atMs: at, pnl });
+      const item = { atMs: at, pnl: Number(payload["realized_pnl"]) };
+      const execId = String(payload["exec_id"] ?? "");
+      if (execId) firstByExec.set(execId, item);
+      else anonymous.push(item);
     }
-    return out;
+    // IBKR 对开仓的佣金回报给一个哨兵大数(1.7976931348623157e308),不是真盈亏
+    return [...anonymous, ...firstByExec.values()].filter((p) =>
+      p.atMs > sinceMs && p.atMs <= nowMs && Number.isFinite(p.pnl) && Math.abs(p.pnl) < 1e307);
   }
 
   // ---- 导出 / 删除(§9.3 可携带权与删除权)------------------------------

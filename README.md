@@ -50,9 +50,9 @@
 
 **交易分析** 蝴蝶与股票的复盘,页面顶上按「全部 / 蝴蝶 / 股票」筛。蝴蝶从 IBKR 逐笔成交自动合成(1 条 BAG + 3 条腿),画出行权价、到期盈利区、开仓与结局,按规则给出八条结论;叠加蝶价走势回放止盈策略(分档止盈、止损、回撤激活)。股票按一段持仓算一笔(从空仓到空仓,中途加仓、分批卖出都在里面):进场与出场落在持有期区间的什么位置、最大浮盈浮亏与兑现率、卖出之后是"没吃到"还是"躲开了"。TWS 只给当天的成交,所以期初仓位用当前持仓反推;卖的是更早买的货时只复盘出场,成本与盈亏不编。没连券商、读不到持仓时同样不把卖出读成卖空,并标明「期初持仓未核对」。股票那张图的窗口按**交易日**给(至少 5 个交易日,持仓更长就按全长、前后各留一天),不会塌成成交当天的日内。
 
-**绩效体检** 交易分析一次看一笔,这一页看全部:把已了结的蝴蝶、股票、导入的期权摊成一本美元账,算出实盘比赛优胜者天天盯的那几个数——胜率、盈亏比、期望值、R 倍数与 SQN、平仓权益曲线的最大回撤与恢复因子、连胜连亏,再按品种、开仓时段、星期、标的拆开看优势在哪儿。然后按写死的规则挑行为上的毛病:赚小亏大、一笔大亏吃掉一周、亏损单拿得比赚钱单久、亏完半小时内再进、亏后加码、做得越多亏得越多,每条写明借鉴自谁(Van Tharp、Minervini、Larry Williams、Andrea Unger、Kevin Davey……)。附一个固定风险比例的仓位计算器。股票按建追踪时的初始止损算 R;自动平仓按触发价对成交价算执行损耗;按账本给保护规则的建议参数,点了才写进设置。最下面的「信号成绩单」给价位提醒与盯异动发出的每条信号按之后 1 / 5 / 20 天打分,和随手一天比。全部本机代码算,不调模型。
+**绩效体检** 交易分析一次看一笔,这一页看全部:把已了结的蝴蝶、股票、导入的期权摊成一本美元账,算出实盘比赛优胜者天天盯的那几个数——胜率、盈亏比、期望值、R 倍数与 SQN、平仓权益曲线的最大回撤与恢复因子、连胜连亏,再按品种、开仓时段、星期、标的拆开看优势在哪儿。然后按写死的规则挑行为上的毛病:赚小亏大、一笔大亏吃掉一周、亏损单拿得比赚钱单久、亏完半小时内再进、亏后加码、做得越多亏得越多,每条写明借鉴自谁(Van Tharp、Minervini、Larry Williams、Andrea Unger、Kevin Davey……)。附一个固定风险比例的仓位计算器。股票按建追踪时的初始止损算 R;自动平仓按触发价对成交价算执行损耗;按账本给保护规则的建议参数,点了才写进设置。「分享卡片」把胜率、盈亏比、R、权益曲线形状画成一张 4:5 的图,默认不带金额,有模拟盘交易、样本不到 20 笔都会写明,拷贝或存 PNG。最下面的「信号成绩单」给价位提醒与盯异动发出的每条信号按之后 1 / 5 / 20 天打分,和随手一天比。全部本机代码算,不调模型。
 
-**其他** 股票池盯价位与盯异动(放量、急涨急跌,置顶不抢焦点的提醒弹窗);想法备忘与 AI 知识提炼;顶栏宏观行情带(标普、纳指、VIX、美债、美元、黄金);TWS / OpenD 连接检测与诊断。界面是 iOS 27 风格的 Liquid Glass,玻璃透明度在「设置」里调,深浅色与涨跌配色随系统。
+**其他** 股票池盯价位与盯异动(放量、急涨急跌,置顶不抢焦点的提醒弹窗);想法备忘与 AI 知识提炼;顶栏宏观行情带(标普、纳指、VIX、美债、美元、黄金);TWS / OpenD 连接检测与诊断;新版本检查(只读 GitHub 上公开的发布信息,有新版时顶栏提示、「关于」页给这台机器对应的安装包,可关)。界面是 iOS 27 风格的 Liquid Glass,玻璃透明度在「设置」里调,深浅色与涨跌配色随系统。
 
 ## 它怎么工作
 
@@ -127,7 +127,7 @@ cd engine-ts && npm run probe                        # 真机只读联调:临时
 | `symbol_aliases` / `index_symbols` | 「苹果 → AAPL」这类别名;SPX 的交易所与交易类 |
 | `prompt_version` | 提示词版本,`prompts/` 下按版本号只增不改,一行回滚 |
 
-更细的设计决策与口径按模块放在 [docs/features](docs/features):[界面](docs/features/ui.md)、[引擎 RPC](docs/features/engine-rpc.md)、[持仓追踪](docs/features/tracker.md)、[执行对账](docs/features/reconcile.md)、[保护规则](docs/features/protections.md)、[K 线 PA](docs/features/priceaction.md)、[期权墙与价位提醒](docs/features/optionwall-alerts.md)、[反复碰均线](docs/features/ma-touch.md)、[股票池:盯价位与盯异动](docs/features/quality-watch.md)、[交易分析](docs/features/tradereview.md)、[绩效体检](docs/features/performance.md)、[单笔风险预算](docs/features/risk-budget.md)、[回测成本与参数扫描](docs/features/backtest-lab.md)、[信号成绩单](docs/features/signal-scorecard.md)、[强势股筛选](docs/features/leaders.md)、[双账户发单](docs/features/dual-account.md)、[富途 OpenD](docs/features/futu-opend.md)、[依赖选型](docs/features/dependencies.md) 等。
+更细的设计决策与口径按模块放在 [docs/features](docs/features):[界面](docs/features/ui.md)、[引擎 RPC](docs/features/engine-rpc.md)、[持仓追踪](docs/features/tracker.md)、[执行对账](docs/features/reconcile.md)、[保护规则](docs/features/protections.md)、[K 线 PA](docs/features/priceaction.md)、[期权墙与价位提醒](docs/features/optionwall-alerts.md)、[反复碰均线](docs/features/ma-touch.md)、[股票池:盯价位与盯异动](docs/features/quality-watch.md)、[交易分析](docs/features/tradereview.md)、[绩效体检](docs/features/performance.md)、[单笔风险预算](docs/features/risk-budget.md)、[回测成本与参数扫描](docs/features/backtest-lab.md)、[信号成绩单](docs/features/signal-scorecard.md)、[强势股筛选](docs/features/leaders.md)、[新版本检查](docs/features/update-check.md)、[双账户发单](docs/features/dual-account.md)、[富途 OpenD](docs/features/futu-opend.md)、[依赖选型](docs/features/dependencies.md) 等。
 
 出问题要现场:主进程、引擎 stderr、渲染层报错都写进 `userData/logs/main.log`(滚动,单份 4 MB),路径在「关于」页。
 
@@ -147,6 +147,10 @@ cd engine-ts && npm run probe                        # 真机只读联调:临时
 - 追价平仓(让价节奏、非托管平仓单改价、部分成交后改总量)目前只有离线测试,尚未在真机上核对。
 - 执行对账(重启 / 重连后认领在途单)与保护规则(止损护栏、回撤护栏、同标的冷却、日内亏损上限)目前只有离线测试,尚未在真机上核对。
 - 执行损耗、单笔风险预算、信号记录(2026-09-26 加的)目前只有离线测试;信号成绩单要攒够信号才有结论。
+- 2026-09-27 做过一轮钱路径审计(下单校验、速记解析、持仓追踪与追价、托管单、回报落库、执行对账、保护规则、桌面端),
+  修掉 30 多处会让一张单变成另一张单、或让持仓失去保护的问题,每处都有先红后绿的离线回归测试;
+  口径变化写在各自的 feature 文档里(持仓追踪「熔断与已有的保护」「立即平仓」两节、保护规则、执行对账、双账户、期权墙)。
+  这些改动同样只有离线测试,真机上重跑一遍 `npm run probe` 与模拟账户上的托管 / 立即平仓 / 熔断之后再上实盘。
 - 富途 OpenD 通道:检测与诊断可用,下单桥在真机核对前显式不可用。
 - 安装包没有开发者证书:Windows 未签名,macOS 是 ad-hoc 签名。Developer ID 签名与公证的路已经接好
   (`dist:mac:signed`、CI 的 Secrets),证书到手之前发出去的仍是 ad-hoc 包。

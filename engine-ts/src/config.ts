@@ -195,6 +195,10 @@ export class Settings {
   early_close_days: string[] = [];
   db_path: string = path.join(os.homedir(), "Library/Application Support/dafri/trades.db");
   source_path: string | null = null;
+  /** 加载时发现的、不致命但必须让用户知道的配置问题(如账户没写 is_paper)。自检与拒单说明读它。 */
+  config_warnings: string[] = [];
+  /** 没写 is_paper、因此按实盘处理的账户别名(见 paperFlag)。 */
+  paper_flag_missing: string[] = [];
 
   accountByAlias(alias: string): AccountConfig | null {
     if (alias === "DEFAULT") return this.defaultAccount();
@@ -652,14 +656,38 @@ function assertAccountConnections(settings: Settings): void {
   }
 }
 
+/**
+ * 账户的 is_paper。它决定要不要过实盘闸门(allow_live_trading),所以两件事必须对:
+ * · 没写 = **按实盘处理**(失败朝安全的一侧)。以前没写默认 true,把实盘账号照抄进纸面模板、
+ *   漏了这一行,实盘闸门就对它失效;
+ * · 字符串只认 "true" / "false"(不分大小写)。以前走 truthy,"false" 是非空字符串 → 当成 true。
+ * 其它值(1、"yes"、"")说不清,直接报错,和 policies 的开关同一个态度。
+ */
+function paperFlag(a: Raw): boolean | null {
+  if (!("is_paper" in a) || a["is_paper"] === null || a["is_paper"] === undefined) return null;
+  const value = a["is_paper"];
+  if (typeof value === "boolean") return value;
+  const text = typeof value === "string" ? value.trim().toLowerCase() : "";
+  if (text === "true") return true;
+  if (text === "false") return false;
+  throw new Error(
+    `账户 ${String(a["alias"])} 的 is_paper 必须是 true/false,收到 ${pyRepr(value)}`,
+  );
+}
+
 export function fromDict(raw: Raw, source: string | null = null): Settings {
-  const accounts: AccountConfig[] = ((raw["accounts"] as Raw[]) ?? []).map((a) => ({
-    alias: String(a["alias"]),
-    account_id: String(a["account_id"]),
-    is_paper: truthy(a["is_paper"] ?? true),
-    connection: String(a["connection"] ?? "paper"),
-    default: truthy(a["default"] ?? false),
-  }));
+  const paperMissing: string[] = [];
+  const accounts: AccountConfig[] = ((raw["accounts"] as Raw[]) ?? []).map((a) => {
+    const paper = paperFlag(a);
+    if (paper === null) paperMissing.push(String(a["alias"]));
+    return {
+      alias: String(a["alias"]),
+      account_id: String(a["account_id"]),
+      is_paper: paper ?? false,
+      connection: String(a["connection"] ?? "paper"),
+      default: truthy(a["default"] ?? false),
+    };
+  });
   assertUniqueAliases(accounts);
 
   const connections: Record<string, ConnectionConfig> = {};
@@ -710,6 +738,12 @@ export function fromDict(raw: Raw, source: string | null = null): Settings {
   settings.early_close_days = [...(((raw["early_close_days"] as string[]) ?? []))];
   if (storage["db_path"]) settings.db_path = expandHome(String(storage["db_path"]));
   settings.source_path = source;
+  settings.paper_flag_missing = paperMissing;
+  settings.config_warnings = paperMissing.map(
+    (alias) =>
+      `账户 ${alias} 没写 is_paper,已按实盘账户处理(下单要过「允许实盘账户下单」这道闸)。` +
+      "请在 config/settings.json 里给它写明 \"is_paper\": true 或 false。",
+  );
   assertAccountConnections(settings);
   return settings;
 }

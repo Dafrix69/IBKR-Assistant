@@ -1863,8 +1863,8 @@ export class BrokerRouter {
       const entry = this.optionStreams.get(`opt:${row["key"]}`);
       if (!entry?.handle) continue;
       const t = entry.handle.read();
-      const bid = cleanPrice(t.bid);
-      const ask = cleanPrice(t.ask);
+      // 买价恰好为 0 = 没人出价(0DTE 远翼常见),卖价在就是真盘口,按 (0+卖价)/2 记;退到最新成交可能拿到几小时前的价,把组合现价抬高一截去判止损(2026-09-27 审计)。−1 / NaN 才是真没有
+      const bid = t.bid === 0 ? 0 : cleanPrice(t.bid), ask = cleanPrice(t.ask);
       if (bid !== null && ask !== null && ask >= bid) row["market_price"] = pyRound((bid + ask) / 2.0, 4);
       else row["market_price"] = cleanPrice(t.last) ?? cleanPrice(t.marketPrice);
       // 休市时 TWS 只报昨收(09-17 真机:USO 115P/120P 只有 close)。昨收只给界面看,绝不填进 market_price——拿昨晚的价判触发、
@@ -1878,7 +1878,7 @@ export class BrokerRouter {
   /**
    * 持仓期权腿此刻的买卖价(按持仓 key)。和 fillOptionPrices 共用同一批常驻订阅:第一次要等首笔 tick,
    * 之后每轮只读缓存。追价平仓每秒要一次「立刻成交价」,legQuotes 那种现订现撤、一等四秒的办法跟不上。
-   * 拿不到的腿给 null,不编。
+   * 拿不到的腿给 null,不编;买价恰好为 0 照实给 0(没人出价,见 fillOptionPrices)——naturalClosePrice 按 0 卖那条腿。
    */
   async optionQuotes(
     rows: Array<Record<string, any>>,
@@ -1891,7 +1891,7 @@ export class BrokerRouter {
     await this.ensureOptionStreams(session, legs);
     for (const row of legs) {
       const t = this.optionStreams.get(`opt:${row["key"]}`)?.handle?.read();
-      out[String(row["key"])] = { bid: t ? cleanPrice(t.bid) : null, ask: t ? cleanPrice(t.ask) : null };
+      out[String(row["key"])] = { bid: t ? (t.bid === 0 ? 0 : cleanPrice(t.bid)) : null, ask: t ? cleanPrice(t.ask) : null };
     }
     return out;
   }
@@ -2006,11 +2006,11 @@ export class BrokerRouter {
           const entry = this.stockStreams.get(String(row["symbol"]));
           if (!entry?.handle) continue;
           const t = entry.handle.read();
-          const bid = cleanPrice(t.bid);
-          const ask = cleanPrice(t.ask);
+          const bid = cleanPrice(t.bid), ask = cleanPrice(t.ask), close = cleanPrice(t.close);
           row["market_price"] = cleanPrice(t.last)
-            ?? (bid !== null && ask !== null && ask >= bid ? pyRound((bid + ask) / 2.0, 4) : null)
-            ?? cleanPrice(t.close);
+            ?? (bid !== null && ask !== null && ask >= bid ? pyRound((bid + ask) / 2.0, 4) : null);
+          // 昨收和期权腿同一条规矩(fillOptionPrices):只给界面看,不进 market_price——追踪拿 market_price 判止损
+          if (close !== null) row["close_price"] = close;
           if (row["market_price"] !== null) row["price_source"] = "quote";
         }
       }

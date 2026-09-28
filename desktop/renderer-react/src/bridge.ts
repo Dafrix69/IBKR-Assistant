@@ -23,6 +23,22 @@ export interface AppInfo {
   [key: string]: unknown;
 }
 
+/** 新版本检查的结果(desktop/update-check.js 的 summarizeRelease)。链接只会是本仓库 releases 下的地址。 */
+export interface UpdateInfo {
+  current: string;
+  /** 最新正式版的版本号;GitHub 上的 tag 认不出时为 null */
+  latest: string | null;
+  newer: boolean;
+  /** 这一版的发布页 */
+  url: string;
+  /** 这台机器对应的安装包;没有对应平台的包(如 Intel Mac)时为 null,只给发布页 */
+  download: { name: string; url: string; size: number | null } | null;
+  publishedAt: string | null;
+  /** 发布说明,纯文本、已截断 */
+  notes: string;
+  checkedAt: number;
+}
+
 export interface ConfirmOptions {
   title: string;
   message: string;
@@ -162,6 +178,10 @@ export interface DafriBridge {
   screenerDeviation(spec: RpcParams<'screener.deviation'>): Rpc<RpcResult<'screener.deviation'>>;
   screenerLeaders(spec: RpcParams<'screener.leaders'>): Rpc<RpcResult<'screener.leaders'>>;
   appInfo(): Rpc<AppInfo>;
+  /** force:跳过主进程 10 分钟的缓存(「检查更新」按钮用) */
+  checkUpdate(force?: boolean): Rpc<UpdateInfo>;
+  /** 分享卡片:PNG 拷进剪贴板 / 另存(路径由主进程的对话框定;用户取消回 canceled) */
+  exportImage(action: 'copy' | 'save', dataUrl: string, name?: string): Rpc<{ ok: boolean; canceled?: boolean; path?: string }>;
 
   llmCatalog(): Rpc<RpcResult<'llm.catalog'>>;
   /** llm 的对象字面量要直接标成 LlmPatch(同 TrackerAddSpec):写错的键名编译期就查得出来 */

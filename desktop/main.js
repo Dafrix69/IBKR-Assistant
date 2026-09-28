@@ -10,13 +10,15 @@
  *   * 生产构建关掉 DevTools。
  */
 const {
-  app, BrowserWindow, Menu, Notification, ipcMain, dialog, shell, session, nativeTheme, powerSaveBlocker, screen,
+  app, BrowserWindow, Menu, Notification, ipcMain, dialog, shell, session, nativeTheme, powerSaveBlocker, screen, net,
+  clipboard, nativeImage,
 } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const log = require('electron-log/main');
 const { EngineClient } = require('./rpc-client');
 const { PopupManager } = require('./popup-window');
+const { checkForUpdate } = require('./update-check');
 
 // 2026-09-17 产品改名 Dafri Trading → IBKR-Assistant。userData 目录是按产品名取的:不处理的话,老用户升级后
 // 配置、交易库、日志全都"不见了"(其实还躺在旧目录里)。旧目录在、新目录还没建过,就继续用旧的。
@@ -191,6 +193,12 @@ let hiddenHintShown = false;
 // 引擎意外退出后的自动拉起:退避 3 s → 6 s → … 封顶 60 s;稳定跑过 5 分钟就清零
 let engineRestarts = 0;
 let engineStartedAt = 0;
+// 最近一次成功的新版本检查(见 update-check 通道)
+let updateCache = null;
+// 主窗口渲染进程最近几次崩溃的时刻:一分钟内崩到第四次就不再自动重载,免得死循环
+let rendererCrashes = [];
+// 「导出全部交易数据」刚在保存对话框里选的路径。data.export 只许写到它,用一次就作废(见 rpc 通道)
+let pickedExportPath = null;
 // 异动 / 价位提醒的置顶弹窗。懒创建:第一条提醒来了才开窗,平时不占一个渲染进程
 const popup = new PopupManager({
   dev: DEV,
@@ -292,8 +300,8 @@ function navigateFromMenu(page) {
 
 /**
  * macOS:关窗(红灯 / ⌘W)只把窗口藏起来,应用留在 Dock 里。这是 Mac 的惯例,在这里更是保护:
- * 托管单的秒级调整、盯盘、提醒都跑在这个渲染进程里,窗口一销毁它们就停了;以前关窗还会经
- * window-all-closed 把引擎一起停掉,人以为挂着的止损其实没人盯,再点 Dock 回来也不会自动恢复。
+ * 盯盘与托管单的秒级节拍在引擎里,但价位提醒、异动弹窗的轮询还跑在这个渲染进程里,窗口一销毁它们就停了;
+ * 以前关窗还会经 window-all-closed 把引擎一起停掉,人以为挂着的止损其实没人盯,再点 Dock 回来也不会自动恢复。
  */
 function hideMainWindow() {
   if (!mainWindow || mainWindow.isDestroyed()) return;
@@ -346,7 +354,7 @@ function createWindow() {
       webSecurity: true,
       allowRunningInsecureContent: false,
       spellcheck: false,
-      // 托管单的秒级调整循环跑在 renderer:窗口最小化时不能被节流
+      // 价位提醒 / 异动弹窗的轮询跑在 renderer:窗口最小化时不能被节流(盯盘节拍在引擎里,不受这一项影响)
       backgroundThrottling: false,
       devTools: DEV,
     },
@@ -372,6 +380,26 @@ function createWindow() {
     if (level === 'error' || level === 'warning') log.warn(text);
     else if (DEV) log.debug(text);
   });
+
+  // 界面崩了(内存、GPU、渲染进程被系统杀掉):以前窗口就一直白着,价位提醒与异动弹窗的轮询跟着停,没人知道。
+  // 持仓追踪的节拍在引擎里,不受影响。这里记日志、发系统通知、自动重新载入;一分钟内崩到第四次就停手
+  mainWindow.webContents.on('render-process-gone', (_event, details) => {
+    log.error('[renderer] 主窗口渲染进程退出', details);
+    if (quitting || details.reason === 'clean-exit') return;
+    const now = Date.now();
+    rendererCrashes = rendererCrashes.filter((t) => now - t < 60_000);
+    rendererCrashes.push(now);
+    if (rendererCrashes.length > 3) {
+      notifySystem('界面反复崩溃,已停止自动重新载入', '持仓追踪在交易引擎里照常运行;价位提醒已停。请重启应用,日志在「帮助 → 在访达中显示日志」。');
+      return;
+    }
+    notifySystem('界面意外退出,正在重新载入', '持仓追踪在交易引擎里照常运行;价位提醒在界面恢复后继续。');
+    setTimeout(() => {
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.reload();
+    }, 800);
+  });
+  mainWindow.on('unresponsive', () => log.warn('[renderer] 主窗口无响应'));
+  mainWindow.on('responsive', () => log.info('[renderer] 主窗口恢复响应'));
 
   mainWindow.on('focus', () => {
     // 弹窗出来时主窗口不在前台会闪任务栏;人回来了就别再闪
@@ -581,6 +609,62 @@ function wireEngine() {
   engineStartedAt = Date.now();
   // 启动失败会以 engine-exit 事件呈现在界面上
   engine.start().catch(() => {});
+  startEngineWatchdog();
+}
+
+/**
+ * 引擎心跳。进程还在、却不回话(事件循环被同步代码占住、钥匙串弹窗挡住了同步读……)时,
+ * 盯盘节拍跟着停了,而进程没退出,上面"退出就自动拉起"的那条路不会走到。
+ * 每 10 秒问一次 system.status(本地道,正常是即答);连续 30 秒不回发系统通知,
+ * 连续 3 分钟不回强制结束并重启——不急着杀:钥匙串弹窗可能正等着人点,杀了它下一次还会再弹。
+ */
+const WATCHDOG_EVERY_MS = 10_000;
+const WATCHDOG_WARN_MS = 30_000;
+const WATCHDOG_KILL_MS = 180_000;
+
+function startEngineWatchdog() {
+  let silentSince = 0;
+  let warned = false;
+  let inFlight = false;
+  setInterval(async () => {
+    if (quitting || !engine || !engine.child || inFlight) return;
+    inFlight = true;
+    const sentAt = Date.now();
+    try {
+      await engine.call('system.status', {}, { timeoutMs: 8000 });
+      if (warned) {
+        log.info('[watchdog] 引擎恢复响应');
+        notifySystem('交易引擎已恢复响应', '持仓追踪照常运行。');
+      }
+      silentSince = 0;
+      warned = false;
+    } catch {
+      // 这一问期间引擎退出了:自动拉起那条路会处理,不算"不回话"
+      if (!engine.child) {
+        silentSince = 0;
+        return;
+      }
+      if (!silentSince) silentSince = sentAt;
+      const silent = Date.now() - silentSince;
+      if (silent >= WATCHDOG_KILL_MS) {
+        log.error(`[watchdog] 引擎 ${Math.round(silent / 1000)} 秒没有回应,强制重启`);
+        notifySystem('交易引擎无响应,已强制重启', '重启后会按设置自动连回券商、恢复持仓追踪。请核对追踪与挂单状态。');
+        silentSince = 0;
+        warned = false;
+        engineStartedAt = Date.now();
+        engine.restart().catch(() => {});
+      } else if (silent >= WATCHDOG_WARN_MS && !warned) {
+        warned = true;
+        log.warn(`[watchdog] 引擎 ${Math.round(silent / 1000)} 秒没有回应`);
+        notifySystem(
+          '交易引擎没有回应',
+          '持仓追踪的止盈止损暂时停了。屏幕上若有钥匙串 / 凭据弹窗,请先处理;3 分钟仍无回应会自动重启引擎。',
+        );
+      }
+    } finally {
+      inFlight = false;
+    }
+  }, WATCHDOG_EVERY_MS).unref();
 }
 
 function registerIpc() {
@@ -596,6 +680,14 @@ function registerIpc() {
     }
     const clean = { ...(params || {}) };
     delete clean.__confirmed;
+    if (method === 'data.export') {
+      // 引擎会把整本交易记录写到给它的路径上。路径只认用户刚在保存对话框里选的那一个,用一次作废——
+      // 否则一段被注入的界面脚本就能拿它覆盖任意文件(配置、交易库)(2026-09-27 审计)
+      if (!pickedExportPath || clean.path !== pickedExportPath) {
+        throw new Error('导出路径必须是刚在保存对话框里选的那一个,请重新点「导出」');
+      }
+      pickedExportPath = null;
+    }
     return engine.call(method, clean);
   });
 
@@ -624,10 +716,27 @@ function registerIpc() {
     };
   });
 
+  // 新版本检查(update-check.js):只读 GitHub 的公开发布信息,不下载不安装。
+  // 结果缓存 10 分钟——GitHub 对未登录的查询一小时只给 60 次,界面上连点「检查更新」不该把额度点光
+  ipcMain.handle('update-check', async (event, opts) => {
+    if (!isTrustedSender(event)) throw new Error('调用来源不受信任');
+    const force = Boolean(opts && opts.force);
+    if (!force && updateCache && Date.now() - updateCache.checkedAt < 10 * 60 * 1000) return updateCache;
+    updateCache = await checkForUpdate({
+      current: app.getVersion(),
+      platform: process.platform,
+      arch: process.arch,
+      fetchImpl: (url, init) => net.fetch(url, init),
+    });
+    return updateCache;
+  });
+
   ipcMain.handle('engine-restart', async (event) => {
     if (!isTrustedSender(event)) throw new Error('调用来源不受信任');
-    engine.stop();
-    engine.start().catch(() => {});
+    // 先等旧引擎真的退出再拉新的(rpc-client.js 的 stop / restart):两个引擎同时活着会抢同一个 TWS client id、
+    // 同时写库、同时跑盯盘节拍——界面只看得见其中一个
+    engineStartedAt = Date.now();
+    engine.restart().catch(() => {});
     return { ok: true };
   });
 
@@ -639,7 +748,39 @@ function registerIpc() {
       defaultPath: path.join(app.getPath('downloads'), 'dafri-trades.json'),
       filters: [{ name: 'JSON', extensions: ['json'] }],
     });
-    return result.canceled ? null : result.filePath;
+    pickedExportPath = result.canceled || !result.filePath ? null : result.filePath;
+    return pickedExportPath;
+  });
+
+  // 绩效体检的分享卡片:渲染层画好的 PNG → 拷进剪贴板 / 另存。渲染层没有剪贴板权限(权限请求一律拒),也拿不到文件系统。
+  // 只收 data:image/png、限 12 MB;另存的路径由这里的对话框定,渲染层递不进路径——它能决定的只有画了什么
+  ipcMain.handle('image-export', async (event, payload) => {
+    if (!isTrustedSender(event)) throw new Error('调用来源不受信任');
+    const { action, dataUrl, name } = payload || {};
+    if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/png;base64,') || dataUrl.length > 12 * 1024 * 1024) {
+      throw new Error('图片不合法');
+    }
+    const image = nativeImage.createFromDataURL(dataUrl);
+    if (image.isEmpty()) throw new Error('图片不合法');
+    if (action === 'copy') {
+      clipboard.writeImage(image);
+      return { ok: true };
+    }
+    if (action === 'save') {
+      // 文件名里不认的字符(路径分隔符、Windows 保留字符、控制字符)一律换成下划线
+      const safe = Array.from(String(name || '交易体检'))
+        .map((ch) => (ch.charCodeAt(0) < 32 || '\\/:*?"<>|'.includes(ch) ? '_' : ch))
+        .join('').slice(0, 60) || '交易体检';
+      const result = await dialog.showSaveDialog(mainWindow, {
+        title: '保存分享卡片',
+        defaultPath: path.join(app.getPath('downloads'), `${safe}.png`),
+        filters: [{ name: 'PNG 图片', extensions: ['png'] }],
+      });
+      if (result.canceled || !result.filePath) return { ok: false, canceled: true };
+      fs.writeFileSync(result.filePath, image.toPNG());
+      return { ok: true, path: result.filePath };
+    }
+    throw new Error('未知操作');
   });
 
   // 系统通知。引擎侧的 notify.py 只在 macOS 上真的弹通知(其余平台只打印到
@@ -828,13 +969,13 @@ if (!gotLock) {
   app.on('window-all-closed', () => {
     quitting = true;
     popup.destroy();
-    if (engine) engine.stop();
+    if (engine) engine.stop({ final: true });
     if (process.platform !== 'darwin') app.quit();
   });
 
   app.on('before-quit', () => {
     quitting = true;
     popup.destroy();
-    if (engine) engine.stop();
+    if (engine) engine.stop({ final: true });
   });
 }

@@ -57,12 +57,15 @@ export class SettingsHandlers extends HandlerBase {
     };
   }
 
+  /** 界面能改(llm.patch)、能临时盖着试(llm.test)的七项。keychain_* 不在里面:用哪条凭证只跟着供应商走。 */
+  static readonly LLM_FIELDS: ReadonlySet<string> = new Set([
+    "provider", "model", "base_url", "effort", "temperature", "max_tokens", "timeout_s",
+  ]);
+
   /** 改模型配置。切供应商时 keychain_account 跟着切,避免用错那把 key。 */
   llmPatch(params: LlmPatchParams): LlmCatalog {
     const patch: Rec = { ...(params["llm"] ?? {}) };
-    const allowed = new Set([
-      "provider", "model", "base_url", "effort", "temperature", "max_tokens", "timeout_s",
-    ]);
+    const allowed = SettingsHandlers.LLM_FIELDS;
     const unknown = Object.keys(patch).filter((k) => !allowed.has(k)).sort();
     if (unknown.length) throw new RpcError(-32602, `不允许修改的字段:${unknown.join("、")}`);
     if ("provider" in patch) patch["keychain_account"] = patch["provider"];
@@ -77,18 +80,44 @@ export class SettingsHandlers extends HandlerBase {
     return this.llmCatalog();
   }
 
-  /** 真打一次最小请求。允许带一把未保存的 key 先试。 */
+  /**
+   * 真打一次最小请求。允许带一把未保存的 key 先试。
+   *
+   * 已保存的 key 只发往保存时的那个端点(安全审计 #3,2026-09-27):以前覆盖项凡是 LLMConfig 上有的键都盖,
+   * 界面(或被注入的渲染层)一句 { base_url: 别处, keychain_account: 另一家 } 就能让引擎把凭证库里的 key 发给别人。
+   *  · 覆盖项和 llm.patch 同一张白名单(LLM_FIELDS);配置上有、白名单外的键(keychain_*)原话拒——那只可能是在另指凭证条目;
+   *    配置上压根没有的键照旧不看(界面多带一个无关键,测试照常);
+   *  · 供应商或 Base URL 和已保存的不一样,这一次就必须自己带 api_key,凭证库一眼都不看。
+   */
   async llmTest(params: LlmTestParams): Promise<LlmTestResult> {
-    let cfg = this.settings.llm;
+    const saved = this.settings.llm;
     const overrides: Rec = params["llm"] ?? {};
-    if (Object.keys(overrides).length) {
-      const merged: Rec = { ...cfg };
-      for (const [k, v] of Object.entries(overrides)) if (k in cfg) merged[k] = v;
-      if ("provider" in overrides) merged["keychain_account"] = overrides["provider"];
-      cfg = merged as LLMConfig;
+    const forbidden = Object.keys(overrides)
+      .filter((k) => Object.hasOwn(saved, k) && !SettingsHandlers.LLM_FIELDS.has(k))
+      .sort();
+    if (forbidden.length) {
+      throw new RpcError(
+        -32602,
+        `不允许修改的字段:${forbidden.join("、")}(测试用哪把 Key 只跟着供应商走,不能另指凭证条目)`,
+      );
+    }
+    const merged: Rec = { ...saved };
+    for (const [k, v] of Object.entries(overrides)) if (SettingsHandlers.LLM_FIELDS.has(k)) merged[k] = v;
+    // 同一家:用的就是解析时那一条凭证(配置里的 keychain_account,不一定等于供应商名);换了家:只是占位,下面要求现填 key
+    merged["keychain_account"] = merged["provider"] === saved.provider ? saved.keychain_account : merged["provider"];
+    const cfg = merged as LLMConfig;
+    const explicitKey = params["api_key"] || null;
+    // 例外:换到的是只连自家官方端点的供应商(Anthropic 不读 base_url):那把 Key 只可能发往它自己的服务器,
+    // 不必让人为了"测一下"再填一遍。能指任意地址的(OpenAI 兼容)换了端点照旧要现填
+    const fixedEndpoint = !(PROVIDERS[String(cfg.provider)]?.needs_base_url ?? true);
+    if (explicitKey === null && !sameEndpoint(cfg, saved) && !fixedEndpoint) {
+      throw new RpcError(
+        -32602,
+        "换了供应商或 Base URL 来测试时,要在这次测试里填上 API Key:已保存的 Key 只会发往保存时的那个端点,不会发往新地址。",
+      );
     }
     try {
-      const parser = buildParser(cfg, params["api_key"] || null);
+      const parser = buildParser(cfg, explicitKey);
       const result: LlmTestProbe = await parser.test();
       return { ...result, provider: cfg.provider };
     } catch (exc) {
@@ -181,4 +210,11 @@ export class SettingsHandlers extends HandlerBase {
     this.engine.store.audit("ui", "export", { path: target });
     return { path: target, records: (data["records"] as Rec[]).length };
   }
+}
+
+/** 两套模型配置发往的是不是同一个端点:同一家供应商、同一个 Base URL(去掉首尾空白与末尾的 /,和 validateBaseUrl 一个口径)。
+ *  Anthropic 现在不看 base_url,但这里照样比:哪天它开始用了,这道闸不必跟着改。 */
+function sameEndpoint(a: LLMConfig, b: LLMConfig): boolean {
+  const url = (v: unknown): string => (typeof v === "string" ? v.trim().replace(/\/+$/, "") : String(v ?? ""));
+  return String(a.provider) === String(b.provider) && url(a.base_url) === url(b.base_url);
 }

@@ -5,6 +5,7 @@
  *
  * 两条纪律写在代码里:成交与佣金按 exec_id 只落第一条(券商会重推,翻倍就是账不平);
  * 认不出记录的回报先攒着(unmatchedEvents),等 orderIndex 建好再重放——直接丢就是「快速成交永远停在 Submitted」。
+ * 第三条(2026-09-27):错误通道上的一条错误只带 reqId,宣判一张单之前先问清它是不是冲这张单来的(见 onIbError)。
  */
 import type { Notifier } from "../notify.js";
 import { redactAccount, type TradeStore } from "../store.js";
@@ -14,6 +15,13 @@ import { redactAccount, type TradeStore } from "../store.js";
 export interface CallbackHostedOrders {
   handleError(orderId: number, code: number, message: string): boolean;
   onStatus(trade: any): void;
+}
+
+/** 本会话自己对一张单发出去的最近一个动作(见 CallbackHost.sentOrders)。 */
+export interface SentOrder {
+  /** 发出的时刻(毫秒) */
+  at: number;
+  kind: "place" | "modify" | "cancel";
 }
 
 /** 回报落库这一块要用到的引擎那一面。每次用到都现取,不在构造时存拷贝。 */
@@ -33,6 +41,15 @@ export interface CallbackHost {
   /** 追价中的平仓单:orderId → track_id。只读一下在不在,改是下单侧的事 */
   readonly closeChaseIndex: ReadonlyMap<number, string>;
   closeChaseOnStatus(trade: any): void;
+  /** 追价平仓单的改价被拒:把追价缓存里的限价恢复成上一次被券商接受的那一版(可选;没实现就只提醒)。 */
+  closeChaseModifyRejected?(orderId: number): void;
+  /**
+   * 本会话自己发出过的订单:orderId → 最近一次下单 / 改单 / 撤单。错误通道只带 reqId,而行情、历史数据、
+   * 合约查询的请求号和订单号在同一条数轴上(IBApiNext 的请求号从 1 数起),光凭"orderIndex 里有这个号"
+   * 分不清这条错误冲着谁来。有了这本账,只有本会话真发过的号才能被一条错误宣判;没发过的(上个会话留下、
+   * 对账认领回来的)只记警告。宿主还没接这本账(undefined)时按旧口径:认得出记录就算。
+   */
+  readonly sentOrders?: ReadonlyMap<number, SentOrder>;
 }
 
 export class IbCallbacks {
@@ -102,8 +119,42 @@ export class IbCallbacks {
   private static readonly IB_MARKET_DATA_CODES: ReadonlySet<number> = new Set([
     101, 300, 309, 316, 317, 322, 354, 10089, 10090, 10091, 10167, 10168, 10185, 10197,
   ]);
+  /**
+   * 只会来自数据请求的错误码:历史 K 线 / 逐笔(162 165 166 366 10187 10314)、实时 bar(420 10225)、
+   * 实时更新断开(10182)、延迟行情也没有(10186)、基本面(430)。
+   *
+   * 和行情订阅同一个道理,但这些以前没进上面那张表,于是配得上记录时直接落终态:K 线、价位提醒、交易分析
+   * 都在拉历史数据,IBKR 15 秒内同样的请求算超频(162)。2026-09-27 审出:一条 162 与一张活着的托管止盈单
+   * 同号,那张单被判成"被拒"——缓存摘掉、记录落 ibkr_error、60 秒后又挂一张,原来那张还在券商那边挂着,
+   * 从此没人改价、也没人撤。
+   */
+  private static readonly IB_DATA_REQUEST_CODES: ReadonlySet<number> = new Set([
+    162, 165, 166, 366, 420, 430, 10182, 10186, 10187, 10225, 10314,
+  ]);
+  /**
+   * 两边都会报的码:200 查不到合约、321 请求校验不过。合约确认 / 期权链 / 交易时段这些查询天天报 200;
+   * 订单上只在合约失效、TWS 开着「API 只读」这类时候才见到。所以只有本会话**刚**对这个号发过单
+   * (AMBIGUOUS_WINDOW_MS 内,见 CallbackHost.sentOrders)才当成订单的错误;宿主没接发单账本时一律不宣判。
+   */
+  private static readonly IB_AMBIGUOUS_CODES: ReadonlySet<number> = new Set([200, 321]);
+  // IBKR 对一张单的校验错误(查不到合约、请求不合法)在一秒内就回;窗口开得越宽,撞号的数据请求错误就越容易被当成订单被拒
+  private static readonly AMBIGUOUS_WINDOW_MS = 10_000;
+  /**
+   * 券商回绝的只是我们这一下改单 / 撤单,理由是这张单已经走完了:104 已成交不能改、161 不在可撤状态、
+   * 10148 撤不掉(已成交 / 已撤)。单子的去向由状态回报定——错误先到、落了 ibkr_error,紧跟着的 Filled
+   * 就再也落不上去(finalized 只认第一次)。
+   */
+  private static readonly IB_REFUSED_ONLY_CODES: ReadonlySet<number> = new Set([104, 161, 10148]);
+  /** 追价平仓单改价被拒的提醒:同一张单一分钟最多一次。追价每秒改一次价,被拒也可能每秒来一条。 */
+  private static readonly CHASE_REFUSAL_NOTIFY_MS = 60_000;
+  private readonly chaseRefusalNotifiedAt = new Map<number, number>();
 
-  /** 订单级 errorEvent → 终态落库(110 价格档位、201 保证金、203 无权限只走这条路)。 */
+  /** 订单级 errorEvent → 终态落库(110 价格档位、201 保证金、203 无权限只走这条路)。
+   *
+   * 错误通道只带一个 reqId,它可能是订单号,也可能是撞了号的某个数据请求。所以一条错误要宣判一张单,
+   * 得先过三道:错误码可能属于订单(mayConcernOrder)、这张单是本会话发的(sentOrders)、它回绝的不只是
+   * 我们刚才那一下改单 / 撤单(refusesRequestOnly)。过不了的只在记录上留一句话,不落终态——终态不可逆,
+   * 判错了后面的成交回报全接不上;而单子真没了,状态回报与对账都还会说。 */
   onIbError(reqId: unknown, errorCode: unknown, errorString: unknown): void {
     const code = Math.trunc(Number(errorCode));
     const req = Math.trunc(Number(reqId));
@@ -113,19 +164,56 @@ export class IbCallbacks {
     const message = String(errorString ?? "");
     const informational = code >= IbCallbacks.IB_INFO_MIN && code < IbCallbacks.IB_INFO_MAX;
     const recordId = this.orderIndex.get(req);
+    if (!this.mayConcernOrder(req, code)) {
+      // 撞了号的数据请求:同号的那张单(若有)什么事都没有。留一句话备查;不宣判,也不留给下一张同号的单
+      if (recordId !== undefined) {
+        this.store.appendEvent(recordId, "warning", {
+          message: `IBKR ${code}: ${message}(同号的数据请求报的错,与这张单无关,不作终态)`,
+        });
+      }
+      return;
+    }
     if (recordId === undefined) {
+      if (informational || IbCallbacks.IB_WARNING_CODES.has(code)) return;
+      if (this.sentRecently(req)) {
+        // 没有记录、可我们刚改过 / 撤过它:重启后认领回来的托管单。改价被拒要交给托管那一路,
+        // 它分得清是改价被拒(原单原价还在)还是单子没了——以前这条只会进 earlyOrderErrors 然后过期
+        this.hostedOrders.handleError(req, code, message);
+        return;
+      }
       // 错误比 placeOrder 返回还早:先记下,挂单登记完再对上(见 placeHostedOne)
-      if (!informational && !IbCallbacks.IB_WARNING_CODES.has(code)) {
-        this.earlyOrderErrors.set(req, [code, message, Date.now()]);
-        for (const [id, [, , at]] of this.earlyOrderErrors) {
-          if (Date.now() - at > 60_000) this.earlyOrderErrors.delete(id);
-        }
+      this.earlyOrderErrors.set(req, [code, message, Date.now()]);
+      for (const [id, [, , at]] of this.earlyOrderErrors) {
+        if (Date.now() - at > 60_000) this.earlyOrderErrors.delete(id);
       }
       return;
     }
     if (informational || IbCallbacks.IB_WARNING_CODES.has(code)) {
       this.store.appendEvent(recordId, "warning", { message: `IBKR ${code}: ${message}` });
       if (!informational) this.notifier.warning(`IBKR ${code}: ${message}`);
+      return;
+    }
+    const sent = this.host.sentOrders;
+    if (sent !== undefined && !sent.has(req)) {
+      // 不是本会话发出去的单(上个会话留下、对账认领回来的):这条错误未必冲它来,更不是在回我们哪一下。
+      // 只记一句话、提醒一声;它真没了,状态回报与对账会说
+      this.store.appendEvent(recordId, "warning", {
+        message: `IBKR ${code}: ${message}(这张单不是本会话发出的,不作终态)`,
+      });
+      this.notifier.warning(`IBKR ${code}: ${message}`);
+      return;
+    }
+    if (this.refusesRequestOnly(recordId, code)) {
+      // 回绝的只是刚才那一下改单 / 撤单:原单还按上一次被接受的价挂着(或已经成交,等状态回报)。
+      // 托管那一路自己会把缓存恢复成上一版、退避;追价平仓单不摘、下一轮接着追;记录不落终态
+      this.hostedOrders.handleError(req, code, message);
+      this.store.appendEvent(recordId, "warning", {
+        message: `IBKR ${code}: ${message}(改单 / 撤单被拒,原单仍在,不作终态)`,
+      });
+      if (this.closeChaseIndex.has(req)) {
+        this.host.closeChaseModifyRejected?.(req);
+        this.warnChaseRefused(req, code, message);
+      }
       return;
     }
     const final = code === 202 ? "cancelled" : "ibkr_error";
@@ -142,6 +230,47 @@ export class IbCallbacks {
     if (final === "ibkr_error") {
       this.notifier.rejection("IBKR_ERROR", `IBKR ${code}: ${message}`);
     }
+  }
+
+  /** 这个错误码可能是冲着一张订单来的吗(见 IB_DATA_REQUEST_CODES / IB_AMBIGUOUS_CODES)。 */
+  private mayConcernOrder(req: number, code: number): boolean {
+    if (IbCallbacks.IB_DATA_REQUEST_CODES.has(code)) return false;
+    if (IbCallbacks.IB_AMBIGUOUS_CODES.has(code)) return this.sentRecently(req);
+    return true;
+  }
+
+  /** 本会话在 AMBIGUOUS_WINDOW_MS 之内对这个号发过单 / 改单 / 撤单。宿主没接发单账本 → false。 */
+  private sentRecently(req: number): boolean {
+    const sent = this.host.sentOrders?.get(req);
+    return sent !== undefined && Date.now() - sent.at <= IbCallbacks.AMBIGUOUS_WINDOW_MS;
+  }
+
+  /**
+   * 这条错误回绝的只是我们刚才那一下改单 / 撤单,单子本身还在(或去向由状态回报定)。
+   *
+   * 证据只看这张单自己的时间线:最后一条状态是我们写的 Adjusted(改价发出去了、券商还没回话),这时来的错误
+   * 就是在回这一下改价。IBKR 改价被拒时原单原价照挂——托管那一路一直是这么处理的(hosted.onError),
+   * 追价平仓那张单以前却当成"单子没了":不追了、落终态、提醒"已失效",用户照着再手动平一次,两张一起成交
+   * 就是反向开仓(2026-09-27 审出)。202 已撤、135 找不到这张单:单子确实不在了,不算。
+   */
+  private refusesRequestOnly(recordId: string, code: number): boolean {
+    if (code === 202 || code === 135) return false;
+    if (IbCallbacks.IB_REFUSED_ONLY_CODES.has(code)) return true;
+    const timeline: unknown = this.store.getRecord(recordId)?.["ibkr"]?.["status_timeline"];
+    if (!Array.isArray(timeline) || !timeline.length) return false;
+    const last: unknown = timeline[timeline.length - 1];
+    return typeof last === "object" && last !== null && (last as { status?: unknown }).status === "Adjusted";
+  }
+
+  /** 追价平仓单改价被拒:说清楚单子还在、还在追(同一张单一分钟最多提醒一次)。 */
+  private warnChaseRefused(orderId: number, code: number, message: string): void {
+    const now = Date.now();
+    const last = this.chaseRefusalNotifiedAt.get(orderId);
+    if (last !== undefined && now - last < IbCallbacks.CHASE_REFUSAL_NOTIFY_MS) return;
+    this.chaseRefusalNotifiedAt.set(orderId, now);
+    this.notifier.warning(
+      `追价平仓单改价被券商拒绝(IBKR ${code}: ${message}),原单仍按上一次被接受的价挂着,下一轮按最新买卖价接着改。`,
+    );
   }
 
   private recordFor(trade: any): string | null {

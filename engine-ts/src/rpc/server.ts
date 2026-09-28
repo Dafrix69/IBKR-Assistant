@@ -47,6 +47,8 @@ export class RpcServer implements RpcContext {
   settings: Settings;
   router: Router | null = null;
   private engineInstance: TradingEngine | null = null;
+  /** 最近一个被换下来的引擎(见 retireEngine):新引擎接它的回报账,第一轮托管对账之前借它的托管缓存认旧单。 */
+  private retiredEngine: TradingEngine | null = null;
   /** 追踪相关操作的共享锁(跨引擎实例同一把):每一轮盯盘、建 / 改 / 删追踪、立即平仓排成一队。 */
   private trackerChain: Promise<unknown> = Promise.resolve();
   readonly trackerLock = <T>(fn: () => Promise<T>): Promise<T> => {
@@ -142,6 +144,10 @@ export class RpcServer implements RpcContext {
         ),
         router: this.router,
       });
+      const previous = this.retiredEngine;
+      if (previous !== null && previous.router === this.engineInstance.router) {
+        RpcServer.inheritLedgers(previous, this.engineInstance);
+      }
       this.engineInstance.sharedTrackerLock = this.trackerLock;
       // 触发了、或者到价却发不出去,当场推给界面——不能等界面下一次来读
       this.engineInstance.onTrackerTick = (poll) => {
@@ -153,16 +159,66 @@ export class RpcServer implements RpcContext {
     return this.engineInstance;
   }
 
-  /** 丢掉当前引擎(配置变了 / 连接变了):先停它的节拍器,否则旧实例会和新实例各跑一个循环。 */
+  /** 丢掉当前引擎(配置变了 / 连接变了):先停它的节拍器,否则旧实例会和新实例各跑一个循环;
+   *  再让它把会话回报转给以后的引擎(retireEngine),否则新引擎听不见券商。 */
   dropEngine(): void {
-    this.engineInstance?.stopTrackerLoop();
+    const old = this.engineInstance;
     this.engineInstance = null;
+    if (old === null) return;
+    old.stopTrackerLoop();
+    this.retireEngine(old);
   }
 
-  /** 配置变了就整体重建:限额、别名表都会进提示词,必须一起换掉。 */
+  /** 配置变了就整体重建:限额、别名表都会进提示词,必须一起换掉。
+   *  连着券商就当场重建:节拍器随引擎一起起——以前要等界面下一次来要引擎,那几秒里没人盯盘、没人调托管单。 */
   reload(): void {
     this.settings = loadSettings(this.settingsPath ?? undefined);
     this.dropEngine();
+    if (this.router !== null) void this.engine;
+  }
+
+  /**
+   * 换下来的引擎把会话回报转给**现在的**引擎。
+   *
+   * 会话上的回报监听是某一个引擎挂的(engine.wireSession:闭包里调的是 `那个实例.onOrderStatus(...)`),
+   * 会话打着 _dafriWired 不许重挂;router.sessionHook 调的也是 `那个实例.wireSession(...)`。所以引擎一重建,
+   * 新引擎就听不见券商了——2026-09-27 审出:在「设置」里动一下任何一项,托管止损被拒照样显示「已托管」,
+   * 止盈成交了追踪不落闩,部分成交的数量它也不知道。
+   * 做法:把旧实例上接回报的这几只手换成"现取 this.engine 再转过去"。会话上还是原来那一套监听(不重复挂),
+   * 之后才连上的会话经 sessionHook 挂到现在的引擎上;再换一次引擎,也总是转给那时的"现在"。
+   * 这依赖 engine.wireSession 的闭包按名字调实例方法——tests/fix-callbacks-rewire.spec.ts 钉着。
+   */
+  private retireEngine(old: TradingEngine): void {
+    this.retiredEngine = old;
+    old.onOrderStatus = (trade) => this.deliverOrderStatus(trade);
+    old.onExecDetails = (trade, fill) => this.engine.onExecDetails(trade, fill);
+    old.onCommission = (trade, fill, report) => this.engine.onCommission(trade, fill, report);
+    old.onIbError = (reqId, code, message) => this.engine.onIbError(reqId, code, message);
+    old.wireSession = (session) => this.engine.wireSession(session);
+  }
+
+  /** 状态回报交给现在的引擎。它第一轮托管对账(按 orderRef 认领)之前还不认得上一个引擎挂出去的托管单:
+   *  这时来的成交再让上一个引擎的托管缓存过一手,追踪照样落闩——否则那一轮会当成"没挂"再挂一张。 */
+  private deliverOrderStatus(trade: Parameters<TradingEngine["onOrderStatus"]>[0]): void {
+    const live = this.engine;
+    live.onOrderStatus(trade);
+    const previous = this.retiredEngine;
+    if (previous !== null && previous !== live && live.trackerLoop["hosted"] === null) {
+      previous.hostedOrders.onStatus(trade);
+    }
+  }
+
+  /** 新引擎接着记旧引擎的回报账:orderIndex(旧引擎发出去的单,回报才认得出记录)、终态与 exec_id 去重
+   *  (券商重推时不落第二次,手续费与已实现盈亏才不翻倍)、还没对上的回报与早到的错误。
+   *  只在同一个 router 上接——换了 router 就是换了券商连接,旧的订单号不作数。 */
+  private static inheritLedgers(from: TradingEngine, to: TradingEngine): void {
+    for (const [id, recordId] of from.orderIndex) if (!to.orderIndex.has(id)) to.orderIndex.set(id, recordId);
+    for (const recordId of from.finalized) to.finalized.add(recordId);
+    for (const execId of from.seenFills) to.seenFills.add(execId);
+    for (const execId of from.seenCommissions) to.seenCommissions.add(execId);
+    for (const [id, early] of from.earlyOrderErrors) if (!to.earlyOrderErrors.has(id)) to.earlyOrderErrors.set(id, early);
+    for (const [id, sent] of from.sentOrders) if (!to.sentOrders.has(id)) to.sentOrders.set(id, sent);
+    to.unmatchedEvents.push(...from.unmatchedEvents);
   }
 
   get engineBuilt(): TradingEngine | null {

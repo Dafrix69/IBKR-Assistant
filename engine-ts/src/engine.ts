@@ -22,8 +22,7 @@ import { LLMError, LLMResponse } from "./providers.js";
 import { extractSymbols } from "./market.js";
 import type { ParsedOrder, Rejection } from "./models.js";
 import { multiplierValue, parseLlmPayload } from "./models.js";
-import { LOCAL_MODEL, looksLikeShorthand, shorthandSymbols, tryParseShorthand } from "./shorthand.js";
-import { publicIndexPrice } from "./macro.js";
+import { LOCAL_MODEL } from "./shorthand.js";
 import { fingerprint as promptFingerprint } from "./prompts.js";
 import { Notifier } from "./notify.js";
 import type { PromptBundle } from "./prompts.js";
@@ -35,7 +34,10 @@ import type { ProtectionState } from "./protections.js";
 import { TradeStore, redactAccount } from "./store.js";
 import { nowIsoSecondsEt } from "./engine/clock.js";
 import { HostedOrders } from "./engine/hosted.js";
+import { tryLocalShorthand } from "./engine/localShorthand.js";
+import { reducesPositions } from "./engine/closing.js";
 import { IbCallbacks } from "./engine/callbacks.js";
+import type { SentOrder } from "./engine/callbacks.js";
 import { Reconciler } from "./engine/reconcile.js";
 import * as tk from "./tracker.js";
 import type { ApprovedOrder, RejectedOrder } from "./validator.js";
@@ -205,6 +207,9 @@ export class TradingEngine {
   /** 比 placeOrder 返回还早到的订单错误:orderId → [错误码, 原文, 时刻]。挂单登记完再对上,
    * 否则那条错误落不到任何人头上,缓存里就一直当这张单在站岗。 */
   readonly earlyOrderErrors = new Map<number, [number, string, number]>();
+  /** 本会话对哪个单号做过什么(下单 / 改单 / 撤单)、什么时候。错误通道只带一个号,可能是订单也可能是撞了号的
+   * 数据请求:凭它分辨这条错误是不是冲着我们的单来、是不是在回我们刚才那一下(engine/callbacks.ts)。 */
+  readonly sentOrders = new Map<number, SentOrder>();
   /** 没开托管、到价自动平仓发出去的那张限价单,发出后照样追价(见 chaseCloseOrder):
    * track_id → {order_id, record_id, action, quantity, label, rounds, limit};orderId → track_id。
    * 成交 / 撤销 / 被拒都从这里摘掉。重启后按记录 id(= orderRef)认领回来(adoptCloseChase)。 */
@@ -293,59 +298,8 @@ export class TradingEngine {
       snap = await buildSnapshotAsync(symbols, this.router, snap);
     }
 
-    // 本地速记优先:用户的固定行话(如「1.8 挂15蝴蝶 15CM」)不必等大模型,
-    // 微秒级出与 LLM 同形的 payload,走完全相同的校验与执行路径。
-    // 本地解析抛任何异常都静默回落到 LLM——快是锦上添花,不能成为新的故障点。
-    let localPayload: Rec | null = null;
-    let shorthandNote: string | null = null;
-    try {
-      if (looksLikeShorthand(instruction)) {
-        // 没连券商时快照里没有现价,「15蝴蝶」的中心算不出来——
-        // 用宏观行情带同款公开源兜底(^GSPC 就是 SPX 本尊,分钟级延迟)。
-        const fetchSpot = this.publicPriceFn ?? publicIndexPrice;
-        for (const sym of shorthandSymbols(instruction)) {
-          // 「50蝴蝶」没写标的,上面的快照抽不到 SPX:先问券商(夜盘走期货推算),拿不到才退公开源。
-          // 以前直接退公开源——那也是指数本身,夜盘一样是昨收,拿它推断看涨看跌会翻转
-          // (2026-09-10 02:40 真机:昨收 7636.36 推成看涨,ES 推算的真实现价 7658 该是看跌)。
-          if ((snap[sym] === undefined || snap[sym] === null) && this.router !== null) {
-            try {
-              const price = await this.router.indexPrice(sym);
-              if (price !== null) snap[sym] = price;
-            } catch {
-              /* 券商取价失败:照旧退公开源 */
-            }
-          }
-          if (snap[sym] === undefined || snap[sym] === null) {
-            const price = await fetchSpot(sym);
-            if (price !== null) {
-              snap[sym] = price;
-              shorthandNote = "现价来自公开数据源(可能延迟数分钟),请核对中心行权价与方向";
-            }
-          }
-          // 现价不是官方指数实时价时要说出来:推算的写明怎么推的,昨收的明说是昨收
-          const info = this.router?.spotInfo?.(sym) ?? null;
-          if (!shorthandNote && info?.["source"] === "futures") {
-            shorthandNote = `现价 ${pyRound(Number(info["price"]), 2)}:${String(info["note"])}`;
-          } else if (!shorthandNote && info?.["source"] === "index_stale") {
-            shorthandNote = `${String(info["note"])}——请核对中心行权价与看涨看跌`;
-          }
-        }
-      }
-      localPayload = tryParseShorthand(instruction, snap, at);
-      if (localPayload !== null && shorthandNote) {
-        for (const item of localPayload["orders"] as Rec[]) {
-          (item["warnings"] as string[]).push(shorthandNote);
-        }
-      }
-    } catch {
-      localPayload = null;
-    }
-
-    if (localPayload === null && looksLikeShorthand(instruction)) {
-      // 观测点:哪条蝴蝶写法没被本地语法接住(落到大模型)。
-      // 不影响任何行为,只为日后照着真实落网样本扩语法。
-      this.store.audit("engine", "shorthand_fallback", { instruction: instruction.slice(0, 120) });
-    }
+    // 本地速记优先(engine/localShorthand.ts):固定行话不等大模型,解析不了回 null 交给大模型。它会往 snap 里补现价
+    const localPayload = await tryLocalShorthand(this, instruction, snap, at);
 
     let response: LLMResponse;
     if (localPayload !== null) {
@@ -360,8 +314,9 @@ export class TradingEngine {
       } catch (exc) {
         if (!(exc instanceof LLMError)) throw exc;
       // 调用失败 = 这条指令被拒了,不是"提示"
-        this.killswitch.recordFailure(exc.message, "parse");
+        const engaged = this.killswitch.recordFailure(exc.message, "parse");
         this.notifier.rejection("LLM_ERROR", exc.message);
+        if (engaged) this.notifier.breaker(engaged.reason);
         this.store.audit("engine", "llm_error", { instruction, error: exc.message });
         result.rejections.push({
           source: "engine", code: "LLM_ERROR", message: exc.message, original_text: instruction,
@@ -383,8 +338,9 @@ export class TradingEngine {
       parsed = parseLlmPayload(response.payload());
     } catch (exc) {
       const message = (exc as Error).message;
-      this.killswitch.recordFailure(message, "parse");
+      const engaged = this.killswitch.recordFailure(message, "parse");
       this.notifier.rejection("BAD_PAYLOAD", message);
+      if (engaged) this.notifier.breaker(engaged.reason);
       this.store.audit("engine", "bad_payload", { error: message, raw: response.text.slice(0, 2000) });
       result.rejections.push({
         source: "engine", code: "BAD_PAYLOAD", message, original_text: instruction,
@@ -406,8 +362,11 @@ export class TradingEngine {
       });
     }
 
-    // 2. 软件层硬校验(先按勾选账户扇出:同一笔订单每个账户一份)
-    const [orders, fanoutNote] = fanOutOrders(parsed.orders, targets);
+    // 2. 软件层硬校验(先按勾选账户扇出:同一笔订单每个账户一份)。单条输入的订单上限在扇出**之前**截:
+    // 它限的是"一句话最多几笔",不是"每个账户几笔"。以前扇出后按"上限 × 账户数"截,6 笔进两个账户 =
+    // 第一个账户 6 笔全过、第二个只剩 4 笔(2026-09-27 审计)
+    const cap = this.settings.limits.max_orders_per_input;
+    const [orders, fanoutNote] = fanOutOrders(parsed.orders.slice(0, cap), targets);
     if (fanoutNote) {
       result.warnings.push(fanoutNote);
       this.store.audit("engine", "fanout", {
@@ -426,9 +385,14 @@ export class TradingEngine {
       this.store.recentOrders(this.settings.limits.duplicate_window_minutes, at.epochMs),
       (o) => this.orderMarketStatus(o, at),
     );
-    const outcome = validator.validateAll(
-      priced, this.settings.limits.max_orders_per_input * Math.max(1, targets.length),
-    );
+    const outcome = validator.validateAll(priced, Math.max(priced.length, 1));
+    parsed.orders.slice(cap).forEach((order, i) => outcome.rejected.push({
+      order,
+      issues: [{
+        code: "EXCEEDS_LIMIT",
+        message: `单次输入最多解析 ${cap} 笔订单,本条排在第 ${cap + i + 1} 位,已拦截。请拆成多次提交。`,
+      }],
+    }));
 
     for (const rejected of outcome.rejected) {
       this.recordValidatorRejection(instruction, channel, response, rejected);
@@ -441,7 +405,8 @@ export class TradingEngine {
       });
     }
 
-    // 3. 通过的订单
+    // 3. 通过的订单。保护规则放行平仓要看持仓:一批只读一次(undefined = 还没读,null = 读不到)
+    let guardRows: Rec[] | null | undefined;
     for (const approved of outcome.approved) {
       const recordId = this.recordApproved(instruction, channel, response, approved);
       for (const warning of approved.warnings) {
@@ -490,9 +455,14 @@ export class TradingEngine {
 
       // 保护规则:接连止损 / 回撤过大 / 同一标的刚平过仓。挡下的单停在"仅校验未发送",
       // 不落终态——保护期过了原样再发一次就行,不像熔断那样判死。
-      const guard = protectionBlock(
+      let guard = protectionBlock(
         this.protectionState(), String(approved.order.contract.symbol ?? ""), Date.now(),
       );
+      // 只挡新单、永不挡平仓:每条腿都在减已有持仓的单照发(engine/closing.ts)。读不到持仓就认不准,照旧挡
+      if (guard !== null && this.router !== null) {
+        if (guardRows === undefined) guardRows = await this.router.positions().catch(() => null);
+        if (guardRows !== null && reducesPositions(approved.order, approved.account.alias, guardRows)) guard = null;
+      }
       if (guard !== null) {
         this.store.appendEvent(recordId, "status", { status: "ValidatedOnly" });
         this.store.appendEvent(recordId, "warning", { message: `保护规则拦下:${guard}` });
@@ -975,37 +945,12 @@ export class TradingEngine {
       if (!track["enabled"] || result.state === tk.STATE_HOLDING) continue;
 
       if (auto.host_at_broker && this.router.SUPPORTS_HOSTED_CLOSE) {
-        // 执行归券商托管单(syncHosted 那条路)。这里若再另发一张平仓单,就是托管单 + 软件单
-        // 各平一次——双重平仓等于反向开仓。
-        (row as Rec)["hosted"] = true;
-        // 正股:止损 / 跟踪 / 利润回撤都有券商侧的单子站岗,止盈价就是目标价本身——全交给券商。
-        // 组合与单腿期权不一样:止盈单挂在模型价(中间价口径)上,标的真到了目标价,买价也未必够得着;
-        // 组合更是只有这一张单,止损类目标全靠引擎盯。这些情形引擎把**那张托管单**改到立刻成交的价、
-        // 没成交就每秒再追(syncHosted)。改的始终是同一张单,不会多出第二张平仓单。
-        const secType = String(raw["sec_type"] ?? "");
-        const derivative = secType === "BAG" || secType === "OPT" || secType === "FOP";
-        const stopLike = result.state !== tk.STATE_TAKE_PROFIT;
-        const sweep = derivative && (Boolean(spotTargetRow?.reached) || (secType === "BAG" && stopLike));
-        if (sweep && tk.sweepReason(track) === null && !track["fired_at"]) {
-          const state = `${tk.SWEEP_PREFIX}${result.state}`;
-          this.store.updateTrack(track["id"], { fired_at: nowIsoSecondsEt(), fired_state: state });
-          this.store.audit("engine", "hosted_sweep", { track: track["id"], symbol: track["symbol"], state: result.state, reason: result.reason, mark: position.market_price, record: this.hostedOrders.tpEntry(String(track["id"]))?.["record_id"] ?? null });
-          this.notifier.notify(
-            "追价平仓", `${track["symbol"]}:${result.reason}。托管单改到立刻成交的价,没成交就每秒再追`,
-          );
-          out["fired"].push({ id: track["id"], symbol: track["symbol"], state, reason: result.reason });
-        }
-        if (tk.sweepReason(this.store.getTrack(track["id"]) ?? track) !== null) {
-          (row as Rec)["sweeping"] = true;
-          // 托管对账在盯盘之后跑,这里给界面的是上一轮追到的价
-          const tp = this.hostedOrders.tpEntry(String(track["id"]));
-          if (tp && tp["chase_limit"] !== undefined) {
-            (row as Rec)["chase"] = {
-              rounds: tp["chase_rounds"] ?? 0, limit: tp["chase_limit"], natural: tp["chase_natural"] ?? null,
-              floor: tp["chase_floor"] ?? null,
-            };
-          }
-        }
+        // 执行归券商托管单(engine/hosted.ts 的 onTriggered + syncHosted)。这里若再另发一张平仓单,
+        // 就是托管单 + 软件单各平一次——双重平仓等于反向开仓
+        this.hostedOrders.onTriggered({
+          track, raw, position, state: result.state, reason: result.reason,
+          spotReached: Boolean(spotTargetRow?.reached), row: row as Rec, out,
+        });
         continue;
       }
       // 追踪止盈全时段有效:盘前/盘后照样平(平仓单会自动转盘外限价),只有休市才真的发不出去。
@@ -1018,7 +963,8 @@ export class TradingEngine {
         accountIsPaper: this.accountIsPaper(track["account"]),
         autoExecute: this.settings.policies.auto_execute,
         allowLiveTrading: this.settings.policies.allow_live_trading,
-        breakerEngaged: breaker.engaged,
+        // 自动熔断(连续失败)不挡止损类平仓:那是在减仓。手动熔断照旧一律不发(见 killswitch.ts 的 auto)
+        breakerEngaged: breaker.engaged && !breaker.auto,
         marketStatus,
         outsideRth: true,
         alreadyFired: Boolean(track["fired_at"]),
@@ -1151,7 +1097,7 @@ export class TradingEngine {
   }
 
   /** 这条持仓此刻能不能交易。期权/组合优先用合约的真实时段,拿不到就退回正股表。 */
-  private async marketStatusFor(raw: Rec, at: EtNow): Promise<string> {
+  async marketStatusFor(raw: Rec, at: EtNow): Promise<string> {
     const secType = String(raw["sec_type"] ?? "");
     if (secType !== "OPT" && secType !== "FOP" && secType !== "BAG") {
       return this.settings.marketStatus(at);
@@ -1207,6 +1153,15 @@ export class TradingEngine {
     return account ? Boolean(account.is_paper) : true;
   }
 
+  /** 平仓单拼不出来(老的自定义组合追踪):说一次,不每秒刷一条拒单。持仓仍在,要人自己处理。 */
+  private closeUnbuildable(track: Rec, message: string): null {
+    if (track["fired_state"] !== "blocked") {
+      this.store.updateTrack(track["id"], { fired_state: "blocked" });
+      this.notifier.rejection("TRACKER_ERROR", `${track["symbol"]} ${message}请手动平仓。`);
+    }
+    return null;
+  }
+
   /** 真的把平仓单发出去,并且先落闩再发。 */
   async closePosition(
     track: Rec, position: tk.Position, auto: tk.AutoClose, result: Rec, marketStatus?: string | null,
@@ -1218,19 +1173,16 @@ export class TradingEngine {
         marketStatus ?? this.settings.marketStatus(nowEt()),
       );
     } catch (exc) {
-      this.notifier.rejection("TRACKER_ERROR", `平仓单构造失败:${(exc as Error).message}`);
-      return null;
+      return this.closeUnbuildable(track, `平仓单构造失败:${(exc as Error).message}`);
     }
     let parsed: ReturnType<typeof parseLlmPayload>;
     try {
       parsed = parseLlmPayload({ orders: [payload], rejections: [] });
     } catch (exc) {
-      this.notifier.rejection("TRACKER_ERROR", `平仓单构造失败:${(exc as Error).message}`);
-      return null;
+      return this.closeUnbuildable(track, `平仓单构造失败:${(exc as Error).message}`);
     }
     if (!parsed.orders.length) {
-      this.notifier.rejection("TRACKER_ERROR", "平仓单没有通过 schema 校验,已放弃。");
-      return null;
+      return this.closeUnbuildable(track, "平仓单没有通过 schema 校验,已放弃。");
     }
 
     const account = this.settings.accountByAlias(track["account"]);
@@ -1271,8 +1223,9 @@ export class TradingEngine {
     } catch (exc) {
       const detail = `自动平仓下单失败:${(exc as Error).message}。请立刻手动核对持仓。`;
       this.store.setFinalStatus(recordId, "ibkr_error", detail);
-      this.killswitch.recordFailure((exc as Error).message, "broker");
+      const engaged = this.killswitch.recordFailure((exc as Error).message, "broker");
       this.notifier.rejection(this.brokerCode(), detail);
+      if (engaged) this.notifier.breaker(engaged.reason);
       return null;
     }
 
@@ -1326,7 +1279,11 @@ export class TradingEngine {
     raw: Rec, position: tk.Position, positions: Record<string, Rec>, auto: tk.AutoClose,
     prev: number | null, rounds: number,
   ): Promise<{ natural: number; limit: number; floor: number } | null> {
-    const natural = await this.naturalCloseFor(raw, position, positions);
+    // 正股没有腿的买卖价可合成:"立刻成交价"取现价朝成交方向让 slippage_pct(和市价平仓转限价同一口径)。
+    // 以前正股这里一律回 null,托管的正股一旦要追价平仓(手动平仓、止损单不在券商侧)就每轮"拿不到报价"、永远平不掉
+    const natural = String(raw["sec_type"] ?? "") === "STK"
+      ? tk.closeLimitPrice(position, position.market_price ?? (await this.router?.indexPrice(String(raw["symbol"] ?? "")).catch(() => null)) ?? null, auto.slippage_pct)
+      : await this.naturalCloseFor(raw, position, positions);
     if (natural === null) return null;
     return {
       natural,
@@ -1365,6 +1322,9 @@ export class TradingEngine {
         trailing_percent: null, trail_stop_seed: null, label: String(entry["label"]),
       };
       let ok = false;
+      // 改价被拒时原单还按这个价挂着(closeChaseModifyRejected 恢复它)
+      entry["accepted_limit"] = prev;
+      this.sentOrders.set(Number(entry["order_id"]), { at: Date.now(), kind: "modify" });
       try {
         ok = await this.router!.modifyHosted!(Number(entry["order_id"]), item);
       } catch (exc) {
@@ -1383,6 +1343,14 @@ export class TradingEngine {
     entry["rounds"] = Number(entry["rounds"] ?? 0) + 1;
     this.chaseWarnIfStuck(track, entry, q.limit, q.natural);
     return { rounds: entry["rounds"], limit: entry["limit"], natural: q.natural, floor: q.floor };
+  }
+
+  /** 追价平仓单改价被拒(engine/callbacks.ts 判的):原单还按上一次被接受的价挂着,下一轮从那个价接着追。
+   *  不加 private:CallbackHost 的可选钩子。 */
+  closeChaseModifyRejected(orderId: number): void {
+    const tid = this.closeChaseIndex.get(orderId);
+    const entry = tid === undefined ? undefined : this.closeChase.get(tid);
+    if (entry !== undefined && entry["accepted_limit"] !== undefined) entry["limit"] = entry["accepted_limit"];
   }
 
   private dropCloseChase(tid: string): void {
@@ -1447,20 +1415,40 @@ export class TradingEngine {
   }
 
   /**
-   * 手动「立即平仓」落在一条已经有单在券商侧的追踪上(托管单、或正在追价的平仓单):不另发一张,
-   * 把那张改成追价平仓——两张各平一次就是反向开仓。回 true 表示已经这么办了;false 表示没有现成的单,
-   * 调用方照常发平仓单。
+   * 手动「立即平仓」落在一条已经有单在券商侧的追踪上:不另发一张,把现成的那条路改成追价平仓。
+   *  · 正在追价的软件平仓单:它就是这次的平仓单;
+   *  · 托管的追踪:不管券商侧此刻挂着哪几张(止盈、止损、跟踪)——它们在同一个 OCA 组里。平仓也放进这个组:
+   *    止盈单改到(没有就挂一张在)立刻成交的价、每秒再追,一成交券商撤掉其余。以前只认"有止盈单"的托管追踪,
+   *    只挂着止损的那种另发一张组外的平仓单,下一轮对账又按追价挂出一张止盈单——一手多头挂出三张卖单(2026-09-27 审计)。
+   * 回 true 表示已经这么办了;false 表示没有现成的路,调用方照常发平仓单。
    */
   async sweepExisting(track: Rec, reason: string): Promise<boolean> {
     const tid = String(track["id"]);
-    const hasHosted = this.hostedOrders.tpEntry(tid) !== undefined;
-    if (!hasHosted && !this.closeChase.has(tid)) return false;
+    if (this.closeChase.has(tid)) return true;
+    const auto = tk.makeAutoClose(track["auto_close"] ?? {});
+    if (!auto.host_at_broker || !this.router?.SUPPORTS_HOSTED_CLOSE) return false;
     if (tk.sweepReason(track) === null) {
       this.store.updateTrack(tid, { fired_at: nowIsoSecondsEt(), fired_state: `${tk.SWEEP_PREFIX}${tk.STATE_STOP_LOSS}` });
       this.store.audit("engine", "hosted_sweep", { track: tid, symbol: track["symbol"], state: tk.STATE_STOP_LOSS, reason });
-      this.notifier.notify("追价平仓", `${track["symbol"]}:${reason}。现有的那张单改到立刻成交的价,没成交就每秒再追`);
+      this.notifier.notify("追价平仓", `${track["symbol"]}:${reason}。在托管单那一组里改到立刻成交的价,没成交就每秒再追`);
     }
+    // 人点了平仓:上一次被拒留下的退避不再等
+    this.hostedOrders.clearBackoff(tid);
     return true;
+  }
+
+  /**
+   * 这条追踪上一次自动平仓发出的那张单还挂在券商侧(本进程认得它、还没有终态):再发一张就是两张各平一次。
+   * 只认本进程订单索引里的——重启前发的单若还挂着,执行对账会按 orderRef 认领回索引;
+   * 若在软件关着时成交了,库里不会有终态,不能因此把手动平仓永远挡住。
+   */
+  pendingCloseRecord(track: Rec): string | null {
+    const recordId = String(track["fired_record"] ?? "");
+    if (!recordId || this.finalized.has(recordId)) return null;
+    if (![...this.orderIndex.values()].includes(recordId)) return null;
+    const record = this.store.getRecord(recordId);
+    if (record === null || record["input"]?.["input_channel"] !== "tracker") return null;
+    return record["final_status"] ? null : recordId;
   }
 
   // ---- 券商托管的止盈/止损:整块在 engine/hosted.ts ---------------------
@@ -1533,6 +1521,7 @@ export class TradingEngine {
     for (const key of [placement.perm_id, placement.order_id]) {
       if (key) this.orderIndex.set(Number(key), recordId);
     }
+    if (placement.order_id) this.sentOrders.set(Number(placement.order_id), { at: Date.now(), kind: "place" });
     this.replayUnmatched();
   }
 

@@ -237,6 +237,14 @@ window.dafri = {
       readout:['收盘在 20 周期均线上方 7.16%,折近 120 根历史 z = +2.31(分位 98%)。','修正版买卖压力 -0.412(卖压占优),最近一根收盘位于真实区间 22% 处。','偏离已到上方极值:z ≥ 2.0,历史上这种拉伸幅度很少见。','拉得很高但买压转负——推升的力量在减弱,注意衰竭。','本段(120 根)偏离最大 +7.16%(2026-09-05),最小 -5.02%(2026-05-15)。']}; },
   appInfo: async () => ({version:'0.2.0', electron:'40.0.0', configPath:'config/settings.json',
     logPath:'~/Library/Logs/IBKR-Assistant/main.log', enginePath:'src/ibkr_agent', engineRunning:true}),
+  // 新版本检查(主进程 update-check.js 的返回形状):预览台摆一个"有新版"的样子,顶栏提示与「关于」页的下载按钮都看得到
+  exportImage: async () => ({ ok: true }),
+  checkUpdate: async () => ({current:'0.2.0', latest:'0.2.1', newer:true,
+    url:'https://github.com/Dafrix69/IBKR-Assistant/releases/tag/v0.2.1',
+    download:{name:'IBKR-Assistant-0.2.1-mac-arm64.dmg', url:'https://github.com/Dafrix69/IBKR-Assistant/releases/download/v0.2.1/IBKR-Assistant-0.2.1-mac-arm64.dmg', size:118000000},
+    publishedAt:'2026-09-28T02:00:00Z',
+    notes:'修复\n- 追价平仓:部分成交后改价不再缩量\n- 执行对账:重连后认领在途单\n\n新增\n- 关于页:新版本检查',
+    checkedAt:Date.now()}),
   llmCatalog: async () => ({providers:[
     {key:'anthropic',label:'Anthropic(Claude)',default_model:'claude-opus-5',
      models:['claude-opus-5','claude-sonnet-5','claude-haiku-4-5'],supports_effort:true,

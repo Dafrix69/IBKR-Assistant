@@ -70,6 +70,12 @@
 .topbar .ant-badge-status-default { background: var(--label-tertiary); }
 /* 「暂停自动执行」常态下是普通按钮——红字会被读成"正在告警";只有已熔断(要解除)时才红 */
 .topbar .ant-btn.halt.engaged { font-weight: 510; }
+/* 「新版本」提示:只把字染成强调色,和状态圆点一样的克制——它不该比熔断按钮抢眼 */
+.topbar .ant-btn.update-pill { color: var(--accent); }
+
+/* ================= 关于 · 更新 ================= */
+.update-panel { margin-bottom: 10px; }
+.update-notes { max-height: 160px; }
 
 /* ================= 顶部通知(横幅的替代) ================= */
 .ant-notification .toast { padding: 12px 16px; }
@@ -430,3 +436,9 @@
 .glass-swatch::after { content: ''; position: absolute; inset: 0; background: var(--glass-base); }
 .glass-swatch.clear::after { opacity: 0.25; }
 .glass-swatch.tinted::after { opacity: 0.9; }
+
+/* ================= 绩效体检 · 分享卡片 ================= */
+.share-card { display: flex; flex-direction: column; gap: 12px; }
+.share-card-preview { width: 100%; aspect-ratio: 4 / 5; border-radius: var(--radius-card); box-shadow: var(--glass-edge-small); }
+.share-card-toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; cursor: pointer; }
+.share-card-hint { font-size: 11.5px; color: var(--label-secondary); line-height: 1.5; }

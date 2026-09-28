@@ -20,6 +20,7 @@ import { startQualityFeed } from './store/quality';
 import { startRecordsFeed } from './store/records';
 import { startStatusPolling } from './store/status';
 import { startTrackerLoops } from './store/tracker';
+import { startUpdateChecks } from './store/update';
 import { initAppearance } from './store/appearance';
 
 function cspNonce(): string {
@@ -56,4 +57,5 @@ startTrackerLoops();  // 每秒盯盘与托管对账,不看当前在哪一页—
 startAlertsLoop();    // 价位警告 10 秒一轮,同样不看当前在哪一页
 startQualityFeed();   // 异动检测在引擎里 5 秒一轮;这里只订阅它的 anomaly 事件,弹窗 / 响铃同样不看当前在哪一页
 startMenuNavigation(); // 弹窗的「查看」经主进程的 menu 通道跳回对应页
+startUpdateChecks();    // 新版本检查:启动 30 秒后问一次 GitHub,之后 12 小时一次;「关于」页可关
 createRoot(document.getElementById('root')!).render(<App nonce={nonce} />);

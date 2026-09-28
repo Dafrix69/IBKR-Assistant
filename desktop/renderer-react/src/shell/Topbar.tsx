@@ -3,6 +3,9 @@ import { Badge, Button, Tooltip } from 'antd';
 import { toggleBreaker, toggleBrokerConnection } from '../store/broker';
 import { gatewayName, useEngineOk, useStatus } from '../store/status';
 import { MOD_KEY, SHIFT_KEY } from '../store/appearance';
+import { navigate } from '../store/nav';
+import { useUpdateBadge } from '../store/update';
+import { AppMark } from '../ui/AppMark';
 
 type Dot = 'success' | 'warning' | 'error' | 'default';
 
@@ -14,6 +17,7 @@ export function Topbar() {
   const status = useStatus();
   const engineOk = useEngineOk();
   const [busy, setBusy] = useState(false);
+  const update = useUpdateBadge();
 
   const gateway = gatewayName(status);
   const connected = Boolean(status?.broker_connected);
@@ -68,10 +72,7 @@ export function Topbar() {
       <Tooltip title={engineOk === null ? '引擎启动中' : engineOk ? '交易引擎运行中' : '交易引擎无响应'} placement="bottomLeft">
         <div className="brand">
           <span className="brand-mark">
-            <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-              <path d="M2.5 11 6 7.2l2.6 2.2 4.9-5.6" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M10.4 3.6h3.2v3.2" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            <AppMark size={24} />
             <i className={`engine-dot ${engineDot}`} />
           </span>
           <strong>IBKR-Assistant</strong>
@@ -99,6 +100,14 @@ export function Topbar() {
       </div>
       <div className="topbar-spacer" />
       <div className="topbar-actions">
+        {update ? (
+          // 有更新的正式版才出现;点进「关于」看说明、下载或忽略这一版。不用彩色填充——它不比熔断重要
+          <Tooltip title={`新版本 ${update.latest} 已发布,点开看更新内容`} placement="bottom">
+            <Button shape="round" className="update-pill" onClick={() => navigate('about')}>
+              新版本 {update.latest}
+            </Button>
+          </Tooltip>
+        ) : null}
         <Button shape="round" loading={busy} onClick={() => void connect()}>
           {connected ? `断开 ${gateway}` : `连接 ${gateway}`}
         </Button>

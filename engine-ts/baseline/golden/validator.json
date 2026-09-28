@@ -271,7 +271,7 @@
   },
   {
    "name": "tclass_monthly_fix",
-   "_comment": "第三个周五的前一个交易日(20260917)才是月度 SPX(AM 结算);写成 SPXW 要被改回来。",
+   "_comment": "第三个周五的前一个交易日(20260917)两条链都在:SPX 月度(AM 结算)与 SPXW 日到期(PM 结算)。一条腿写 SPXW、其余写 SPX 是混了两种结算方式——2026-09-27 起不再替用户把 SPXW 改成 SPX(那是悄悄换结算方式),整张拒掉让人改写。",
    "payload": {
     "intent_summary": "卖出 2 张 SPX 7200/7250/7650/7700 铁鹰(月度)",
     "contract": {
@@ -300,16 +300,13 @@
    "snapshot": {"SPX": 7462.35, "AAPL": 229.4, "NVDA": 181.2},
    "recents": null,
    "expect": {
-    "issues": [],
+    "issues": [
+     {"code": "BAD_SPREAD", "message": "组合各腿的 tradingClass 不一致(SPX / SPXW):不同交易类的结算方式不同(如 SPX 为次日开盘 AM 结算、SPXW 为当天收盘 PM 结算),混在一张组合里不支持。请把各腿统一写成同一类后重试。"}
+    ],
     "signature": "DEFAULT|SELL|BAG|SPX|BUY|1|20260917|7200|P|SELL|1|20260917|7250|P|SELL|1|20260917|7650|C|BUY|1|20260917|7700|C",
-    "approved": {
-     "notional": 7600,
-     "signature": "DEFAULT|SELL|BAG|SPX|BUY|1|20260917|7200|P|SELL|1|20260917|7250|P|SELL|1|20260917|7650|C|BUY|1|20260917|7700|C",
-     "warnings": ["SPX 20260917 到期的 tradingClass 由 'SPXW' 复核为 'SPX'(按到期日判定)"],
-     "account_id": "DU7654321"
-    },
+    "approved": null,
     "contract_trading_class": null,
-    "leg_trading_classes": ["SPX", "SPX", "SPX", "SPX"]
+    "leg_trading_classes": null
    }
   },
   {

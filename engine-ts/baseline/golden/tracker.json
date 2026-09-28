@@ -451,13 +451,13 @@
      "symbol": "SPX",
      "expiry": "20260901",
      "right": "",
-     "kind": "custom",
-     "label": "组合(4 腿) 7550/7600/7600/7650",
-     "quantity": null,
+     "kind": "iron_butterfly",
+     "label": "铁蝶 7550/7600/7600/7650",
+     "quantity": 1,
      "net_cost": -20,
      "market_value": null,
      "unrealized_pnl": null,
-     "legs": ["模拟|SPX|OPT|20260901|7550|P", "模拟|SPX|OPT|20260901|7600|C", "模拟|SPX|OPT|20260901|7600|P", "模拟|SPX|OPT|20260901|7650|C"]
+     "legs": ["模拟|SPX|OPT|20260901|7550|P", "模拟|SPX|OPT|20260901|7600|P", "模拟|SPX|OPT|20260901|7600|C", "模拟|SPX|OPT|20260901|7650|C"]
     }
    ]
   },
@@ -2150,8 +2150,8 @@
      "symbol": "SPX",
      "sec_type": "BAG",
      "leg": "20260901|+1x7550P,-1x7600C,-1x7600P,+1x7650C",
-     "label": "组合(4 腿) 7550/7600/7600/7650",
-     "kind": "custom",
+     "label": "铁蝶 7550/7600/7600/7650",
+     "kind": "iron_butterfly",
      "quantity": -1,
      "multiplier": 100,
      "currency": "USD",
@@ -2160,7 +2160,7 @@
      "net_side": "credit",
      "market_value": null,
      "unrealized_pnl": null,
-     "legs": ["模拟|SPX|OPT|20260901|7550|P", "模拟|SPX|OPT|20260901|7600|C", "模拟|SPX|OPT|20260901|7600|P", "模拟|SPX|OPT|20260901|7650|C"],
+     "legs": ["模拟|SPX|OPT|20260901|7550|P", "模拟|SPX|OPT|20260901|7600|P", "模拟|SPX|OPT|20260901|7600|C", "模拟|SPX|OPT|20260901|7650|C"],
      "ratios": [1, -1, -1, 1],
      "contract": {
       "secType": "BAG",
@@ -2168,12 +2168,12 @@
       "exchange": "SMART",
       "currency": "USD",
       "multiplier": "100",
-      "combo_strategy": null,
-      "label": "组合(4 腿) 7550/7600/7600/7650",
+      "combo_strategy": "IRON_CONDOR",
+      "label": "铁蝶 7550/7600/7600/7650",
       "legs": [
        {"lastTradeDateOrContractMonth": "20260901", "strike": 7550, "right": "P", "ratio": 1},
-       {"lastTradeDateOrContractMonth": "20260901", "strike": 7600, "right": "C", "ratio": -1},
        {"lastTradeDateOrContractMonth": "20260901", "strike": 7600, "right": "P", "ratio": -1},
+       {"lastTradeDateOrContractMonth": "20260901", "strike": 7600, "right": "C", "ratio": -1},
        {"lastTradeDateOrContractMonth": "20260901", "strike": 7650, "right": "C", "ratio": 1}
       ]
      }
