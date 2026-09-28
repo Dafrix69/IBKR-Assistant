@@ -22,7 +22,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/better-sqlite3": "^9.6.0",
-    "@types/node": "^24.0.0",
+    "@types/node": "^24.13.6",
     "dependency-cruiser": "^18.4.0",
     "eslint": "^10.11.0",
     "futu-api": "^10.11.7108",
