@@ -69,7 +69,7 @@
 3.5px 的焦点环),深浅色切换后重算,两套界面永远取同一份值。迁到 React 的页面继续用
 `.group` / `.field-row` / `.section-title` 这些布局类,控件换成 AntD 的 Switch / Segmented / InputNumber / Table。
 
-**CSP 只放宽一条。** AntD 5 用 CSS-in-JS 注入 `<style>`,`style-src 'self'` 会拦;构建期生成一个随机
+**CSP 只放宽一条。** AntD 用 CSS-in-JS 注入 `<style>`,`style-src 'self'` 会拦;构建期生成一个随机
 nonce 写进页面 meta 与 `dist/csp-nonce.txt`,主进程把它拼进响应头的 CSP,两处一致。`script-src` 仍是 `'self'`,
 不允许任何远程资源。AntD 的主样式经 ConfigProvider 的 `csp` 拿到 nonce,但 rc-util 里两处工具样式
 (测滚动条宽度的临时 `<style>`、弹层的滚动锁)不接收 nonce,会被拦下并在控制台报错——入口处给每个动态创建的 `<style>`
@@ -524,3 +524,46 @@ npx electron tools/capture_pages.js renderer-react/dist-preview/index.html .uipr
 ```
 
 没有新加依赖。新文件都在预算内(最长的 `lib/AccountsPanel.tsx` 不到 180 行)。
+
+## AntD 6 与 React 19(2026-09-28)
+
+组件库与框架各升一个大版本。目标只有一个:**界面不变**。验证办法与结果在 [依赖选型](dependencies.md#界面升级怎么验证)。
+
+AntD 6 能装、能构建、类型检查通过、控制台零报错,但 24 个界面状态里 23 个和升级前不一样。原因分三类:
+
+**一、内部结构与类名改了,压在上面的样式落空。**
+
+| 组件 | 5 | 6 | 怎么处理 |
+|---|---|---|---|
+| 提示条 Alert | `ant-alert-message`,属性 `message` | `ant-alert-title`,属性 `title` | 样式与五处调用跟着改名 |
+| 折叠面板 Collapse | `content > content-box`;展开图标靠 `padding-inline-end` 让位 | `panel > body`;改成 `margin-inline-end` | 样式跟着改 |
+| 通知 | `notice-message`,图标绝对定位、标题靠左边距让位 | `notice-title`,弹性排列 | 样式跟着改 |
+| 提示气泡 Tooltip | `ant-tooltip-inner`,投影是 `box-shadow` | `ant-tooltip-container`,投影是整体的 `filter: drop-shadow`(组件库默认的三层,不是主题里定的) | 关掉 filter,把主题的弹层投影补回内层 |
+| 搜索框 Input.Search | 输入框 + addon 壳 + 按钮(`ant-input-search-button`) | `Space.Compact`:输入框 + 按钮 | 图标颜色、小号输入框的圆角按原样补回 |
+| 数字磁贴 Statistic | 标题直接在根下 | 多包一层 `ant-statistic-header`,自带 4px 下边距 | 边距清零 |
+| 下拉框 Select | 展开时当前值换成占位字的颜色;小号的箭头离右边 11px | 展开时整体 25% 不透明度;箭头贴着内边距;"选中又高亮"多了一档底色 | 三处按原样补回 |
+| 日期选择器 | 快捷项上下内边距 1.5px | 2.5px | 补回 |
+| 空表 | 占位那一行铺控件底色 | 不铺 | 补回 |
+| 禁用态的边框 | 用 `colorBorder` | 单开一个 token `colorBorderDisabled`(默认是实底浅灰) | 主题里指回分隔线的颜色 |
+
+**二、组件整个换了实现。** 时间线 Timeline 在 6 里是套着步骤条的壳,步骤条 Steps 自己的结构与间距也全变了。
+这两样在界面里都只是"一列圆点(或图标)加连线,右边几行字",于是**不用组件库的了**:记录详情的状态时间线是几行自己的标记
+(`.tl`),就绪清单与连接指引用 `ui/kit` 的 `StepList`(`.steplist`)。尺寸照 5 里量出来的计算值写死在 `shell.css`,
+以后组件库再怎么改内部结构,这两处不跟着变。
+
+**三、有几条自家样式在 5 里从来没生效过。** 组件库的规则写得更具体(选择器里的类更多),把它们盖住了:
+通知的内边距(写的 12/16,实际一直是 20/24)、气泡的内边距(写的 4/8,实际 6/8、最小高度 32)、步骤条的行高与下边距
+(写的 20 / 8,实际 18 / 12)、步骤说明的颜色(写的次级色,进行中的那几步实际是正文色)。6 的规则没那么具体,
+这些"死规则"一升级就全活了,界面反而变了。处理办法是**照实际显示的样子写**:死规则删掉或改成真正生效的那个值。
+往后往 `.ant-*` 上压样式,写完用开发者工具(或 `__ui.rulesFor`)看一眼它到底赢了没有。
+
+React 19 这边只有一处类型:全局的 `JSX` 命名空间没有了,`PoolStock.tsx` 改用 `ReactElement`。没有用到被删掉的接口
+(`defaultProps`、`propTypes`、`findDOMNode`、字符串 ref)。
+
+**留着没对齐的三处**(都看过,认为不值得为它们写样式):
+
+- 搜索框右边的按钮:5 里按钮后面还垫着 addon 壳的一层 8% 浅灰,按钮右端是全圆角而壳是 12px 圆角,两个角上露出一点灰。
+  6 里没有这层壳,角上干净了,按钮本身的底色、边框、圆角、投影都没变。
+- 扫描结果表里「周线」「日线」两列:没有配宽度,5 里按内容算出来是 131 / 128,6 里是 130 / 130。
+- 解析结果卡片上「全链路 xx ms」那个数字每次都不一样,与升级无关。
+

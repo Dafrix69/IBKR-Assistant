@@ -4,11 +4,11 @@
  * 公用的这几样放这里,页面与三节都从这里拿(page → lib 是允许的方向)。
  */
 import { useState, type ReactNode } from 'react';
-import { Badge, Button, Card, List, Steps } from 'antd';
+import { Badge, Button, Card, List } from 'antd';
 import type { AppStatus, DiagnoseAccount, DiagnoseResult, GuideStep, PortStatus } from '../bridge';
 import { toggleBrokerConnection } from '../store/broker';
 import { useStatus } from '../store/status';
-import { Meta, Primer, SectionTitle, StatusCard, type Tone } from '../ui/kit';
+import { Meta, Primer, SectionTitle, StatusCard, StepList, type Tone } from '../ui/kit';
 
 export function InfoCard({ tone, title, body, meta, children }: { tone: Tone; title: string; body?: string | null; meta?: string[]; children?: ReactNode }) {
   return (
@@ -86,7 +86,7 @@ export function PortsGrid({ ports, connected }: { ports: Port[]; connected: stri
 export function Guide({ id, steps, connected }: { id: string; steps: GuideStep[]; connected: boolean }) {
   return (
     <Primer id={id} summary="连不上时照着做" defaultOpen={!connected}>
-      <Steps direction="vertical" size="small" progressDot className="guide" items={steps.map((s) => ({ title: s.title, description: s.detail, status: 'process' }))} />
+      <StepList className="guide" items={steps.map((s) => ({ title: s.title, detail: s.detail }))} />
     </Primer>
   );
 }

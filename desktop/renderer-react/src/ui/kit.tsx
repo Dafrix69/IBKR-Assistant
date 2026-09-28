@@ -122,6 +122,41 @@ export function Meta({ items, className, title }: { items: ReactNode[]; classNam
   );
 }
 
+// ---- 步骤清单 --------------------------------------------------------------
+
+export interface StepItem {
+  title: ReactNode;
+  detail?: ReactNode;
+  /** 这一步已经做完:说明变成次级色 */
+  done?: boolean;
+  /** 不给就是一个小圆点 */
+  icon?: ReactNode;
+}
+
+/**
+ * 竖排的步骤清单:左边一列圆点(或图标)用细线连起来,右边标题加说明。
+ * 自己的标记,不用 AntD 的 Steps——6 改了它的内部结构与间距,压在 .ant-steps-* 上的样式跟着全变。
+ * 尺寸照 5 的小号竖排步骤条量的(shell.css 的 .steplist)。
+ */
+export function StepList({ items, className }: { items: StepItem[]; className?: string }) {
+  return (
+    <ol className={cx('steplist', className)}>
+      {items.map((item, i) => (
+        <li className={cx('step', item.done && 'done')} key={i}>
+          <span className="step-tail" aria-hidden />
+          <span className="step-mark" aria-hidden>
+            {item.icon ?? <span className="step-dot" />}
+          </span>
+          <div className="step-body">
+            <div className="step-title">{item.title}</div>
+            {item.detail !== undefined && item.detail !== null ? <div className="step-detail">{item.detail}</div> : null}
+          </div>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 // ---- 内嵌分组列表 ----------------------------------------------------------
 
 /** System Settings 那种内嵌分组列表:子项写成 <GroupRow> / <SwitchRow> / <NumberRow>。 */
@@ -251,7 +286,7 @@ export function NumberRow({
 
 const ALERT_TYPE: Record<Tone, 'success' | 'warning' | 'error' | 'info'> = { ok: 'success', warn: 'warning', bad: 'error', info: 'info' };
 
-/** 提示条。有 title 时正文进 description;没有就整段当 message。 */
+/** 提示条。有 title 时正文进 description;没有就整段当标题。 */
 export function Notice({ tone = 'info', title, children, className, closable }: { tone?: Tone; title?: ReactNode; children?: ReactNode; className?: string; closable?: boolean }) {
   return (
     <Alert
@@ -259,7 +294,7 @@ export function Notice({ tone = 'info', title, children, className, closable }: 
       type={ALERT_TYPE[tone]}
       showIcon
       closable={closable}
-      message={title ?? children}
+      title={title ?? children}
       description={title !== undefined && title !== null ? children : undefined}
     />
   );

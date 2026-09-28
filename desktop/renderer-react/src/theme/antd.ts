@@ -73,6 +73,8 @@ export function buildAntdTheme(dark: boolean): ThemeConfig {
       colorBgMask: 'rgba(0, 0, 0, 0.32)',
       colorBorder: separator,
       colorBorderSecondary: separator,
+      // AntD 6 给禁用态的边框单开了一个 token(默认是实底的浅灰),5 里禁用的输入框用的就是 colorBorder
+      colorBorderDisabled: separator,
       colorSplit: separator,
       colorFill: fillStrong,
       colorFillSecondary: fill,
@@ -316,7 +318,6 @@ export function buildAntdTheme(dark: boolean): ThemeConfig {
       Message: { contentBg: bgPopup, contentPadding: '8px 14px' },
       Tag: { defaultBg: fill, defaultColor: label2, borderRadiusSM: 999 },
       Empty: { colorTextDescription: label3, fontSize: 12 },
-      Timeline: { dotBg: bgElevated, tailColor: separator, itemPaddingBottom: 8 },
       Splitter: {
         splitBarSize: 1,
         splitTriggerSize: 6,

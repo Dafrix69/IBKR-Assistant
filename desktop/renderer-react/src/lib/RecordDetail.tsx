@@ -4,7 +4,7 @@
  * 真账号不在这里:引擎那头已经换成了打码后的 account_masked(见 contract/records.ts)。
  */
 import { useEffect, useState, type ReactNode } from 'react';
-import { Alert, Button, Collapse, Descriptions, Table, Timeline } from 'antd';
+import { Alert, Button, Collapse, Descriptions, Table } from 'antd';
 import { dafri, errorMessage } from '../bridge';
 import type { RecordFill, RecordIbkr, RecordLlm, RecordStatusEvent, TradeRecord } from '../bridge';
 import { fmtExpiry, fmtMoney, fmtTime, fmtTimeShort } from './format';
@@ -115,7 +115,7 @@ function DetailBody({ record, onClose }: { record: TradeRecord; onClose: () => v
         </div>
       ) : null}
 
-      {record.error_detail ? <Alert type="error" showIcon message="失败原因" description={String(record.error_detail)} style={{ marginTop: 10 }} /> : null}
+      {record.error_detail ? <Alert type="error" showIcon title="失败原因" description={String(record.error_detail)} style={{ marginTop: 10 }} /> : null}
 
       <Section
         title="这笔单"
@@ -174,17 +174,21 @@ function DetailBody({ record, onClose }: { record: TradeRecord; onClose: () => v
       {timeline.length ? (
         <div className="detail-section">
           <h4>状态时间线</h4>
-          <Timeline
-            items={timeline.map((step, i) => ({
-              key: i,
-              children: (
-                <span className="timeline-item">
-                  <b>{LIVE_STATUS_LABEL[step.status || ''] || step.status || '—'}</b>
-                  <span>{fmtTime(step.at)}</span>
-                </span>
-              ),
-            }))}
-          />
+          {/* 自己的一列圆点加连线,不用 AntD 的 Timeline:6 把它改成了套着步骤条的壳,间距与圆点都变了 */}
+          <ol className="tl">
+            {timeline.map((step, i) => (
+              <li className="tl-item" key={i}>
+                <span className="tl-tail" aria-hidden />
+                <span className="tl-dot" aria-hidden />
+                <div className="tl-content">
+                  <span className="timeline-item">
+                    <b>{LIVE_STATUS_LABEL[step.status || ''] || step.status || '—'}</b>
+                    <span>{fmtTime(step.at)}</span>
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ol>
         </div>
       ) : null}
 
@@ -207,7 +211,7 @@ function DetailBody({ record, onClose }: { record: TradeRecord; onClose: () => v
       ) : null}
 
       {(record.post_warnings || []).map((w: { message?: string }, i: number) => (
-        <Alert key={i} type="warning" showIcon message="提醒" description={w.message || ''} style={{ marginTop: 10 }} />
+        <Alert key={i} type="warning" showIcon title="提醒" description={w.message || ''} style={{ marginTop: 10 }} />
       ))}
 
       {/* 原始 JSON 不删,只是收起来:这个项目在意可审计性,那份原文要留得住 */}

@@ -294,7 +294,7 @@ export function TrackCard({
           {live.chase.floor != null ? `,最多让到 ${fmtMoney(live.chase.floor)}` : ''}
         </div>
       ) : null}
-      {live.blocked?.length ? <Alert type="warning" showIcon message="到价了但没有平仓" description={live.blocked.join('、')} style={{ marginTop: 8 }} /> : null}
+      {live.blocked?.length ? <Alert type="warning" showIcon title="到价了但没有平仓" description={live.blocked.join('、')} style={{ marginTop: 8 }} /> : null}
 
       <Space size={6} className="card-actions" wrap>
         <Button size="small" loading={busy === 'toggle'} onClick={() => void toggle()}>

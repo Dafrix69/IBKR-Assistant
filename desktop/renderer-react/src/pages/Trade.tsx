@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Button, Input, Segmented, Space, Splitter, Steps, Tag } from 'antd';
+import { Button, Input, Segmented, Space, Splitter, Tag } from 'antd';
 import { CheckCircleFilled, ExclamationCircleFilled } from '@ant-design/icons';
 import type { TextAreaRef } from 'antd/es/input/TextArea';
 import { FlyPlanner } from '../lib/FlyPlanner';
@@ -14,7 +14,7 @@ import { appendInstruction, clearResult, savePickedAccounts, selectedAccounts, s
 import { dafri, type InstructionOrder } from '../bridge';
 import { showBanner } from '../store/banner';
 import { ENTER_KEY, MOD_KEY, SHIFT_KEY } from '../store/appearance';
-import { EmptyState, Meta, PageHead, Primer, StatusCard, Working, type Tone } from '../ui/kit';
+import { EmptyState, Meta, PageHead, Primer, StatusCard, StepList, Working, type Tone } from '../ui/kit';
 
 // 交易指令:输入框(⌘Enter 解析)与解析结果并排(可拖分栏);「解析并校验(不下单)」/「发送到 IBKR / 富途」两个按钮。
 // 这是整个软件唯一的主动作,进页就把光标放进输入框。右栏可以切到「蝴蝶测算」(只算不下单,见 lib/FlyPlanner)。
@@ -254,15 +254,13 @@ export function TradePage() {
       {blocking.length ? (
         <StatusCard tone="warn" title={`还差 ${blocking.length} 步才能开始`} className="readiness">
           <div className="readiness-sub">未完成项会挡住解析或下单,点右侧按钮前往。</div>
-          <Steps
-            direction="vertical"
-            size="small"
+          <StepList
             className="readiness-steps"
             items={steps.map((step) => ({
               title: step.title,
-              status: step.done ? 'finish' : 'process',
+              done: step.done,
               icon: step.done ? <CheckCircleFilled className="tone-icon ok" /> : <ExclamationCircleFilled className="tone-icon warn" />,
-              description: (
+              detail: (
                 <span className="readiness-step">
                   <span>{step.done ? step.ok : step.todo}</span>
                   {!step.done ? (

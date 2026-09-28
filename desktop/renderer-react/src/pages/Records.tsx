@@ -226,7 +226,7 @@ export function RecordsPage() {
         />
       </div>
 
-      {loadError ? <Alert type="error" showIcon message={`读取失败:${loadError}`} style={{ marginBottom: 10 }} /> : null}
+      {loadError ? <Alert type="error" showIcon title={`读取失败:${loadError}`} style={{ marginBottom: 10 }} /> : null}
 
       <Table<RecordSummary>
         className="records-table"
