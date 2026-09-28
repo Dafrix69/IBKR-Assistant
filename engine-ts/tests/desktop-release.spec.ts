@@ -119,6 +119,32 @@ describe("加固", () => {
   });
 });
 
+describe("依赖升级(.github/dependabot.yml)", () => {
+  const bot = read(".github", "dependabot.yml");
+
+  it("Node 的类型跟着运行时走:@types/node 的大版本 = 工作流里装的 Node", () => {
+    const major = /^\^(\d+)\./.exec(enginePkg.devDependencies["@types/node"] ?? "")?.[1];
+    expect(major).toBeTruthy();
+    for (const file of ["ci.yml", "package.yml"]) {
+      const versions = [...read(".github", "workflows", file).matchAll(/node-version: (\d+)/g)].map((m) => m[1]);
+      expect(versions.length, file).toBeGreaterThan(0);
+      expect(new Set(versions), file).toEqual(new Set([major]));
+    }
+    expect(bot).toMatch(/dependency-name: '@types\/node'\n\s+update-types: \['version-update:semver-major'\]/);
+  });
+
+  it("合成一个 PR 的只有小版本与补丁:大版本混在组里,一个装不上整组都红", () => {
+    expect(bot.match(/dev-tools:\n\s+dependency-type: development\n\s+update-types: \[minor, patch\]/g)?.length).toBe(2);
+  });
+
+  it("引擎的依赖清单变了也要打一次包:生产依赖是整包进安装包的", () => {
+    const yml = read(".github", "workflows", "package.yml");
+    for (const p of ["engine-ts/package.json", "engine-ts/package-lock.json", "desktop/package.json", "desktop/package-lock.json"]) {
+      expect(yml, p).toContain(`- '${p}'`);
+    }
+  });
+});
+
 describe("发版闸门(tools/check_release.js)", () => {
   const { changelogSection } = require(path.join(DESKTOP, "tools", "check_release.js")) as {
     changelogSection(text: string, version: string): { date: string; body: string } | null;

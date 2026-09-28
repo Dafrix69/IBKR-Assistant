@@ -87,3 +87,40 @@
   见 [发版](release.md)。
 
 随包的开源组件与它们的许可由 `tools/gen_notices.js` 收成一份声明,许可不在白名单里的会让打包失败。
+
+## 升级怎么判断
+
+Dependabot 每周提升级的 PR(配置在 `.github/dependabot.yml`)。**CI 绿了不等于能合**,先看这个依赖发不发给用户:
+
+- **只在开发时用的**(eslint、vitest、dependency-cruiser…):lint、类型检查、全套测试过了就可以合。
+- **随包发出去的**(引擎的 `dependencies`、渲染层的库、Electron):除了 CI,还要看「安装包」工作流——它会真的打包、
+  拉起安装包里的引擎、把应用启动 30 秒。改到依赖清单的 PR 会自动跑它。
+- **钱路径上的**(`@stoqey/ib`、`zod`、`better-sqlite3`):先把新旧两版的包内容 diff 一遍,看清楚动了什么再决定。
+  离线测试用的是假的 TWS,证明不了库自己的协议实现没变。
+
+合成一个 PR 的只有小版本与补丁。大版本一个依赖一个 PR(必须一起动的除外:react 全家、vite 与它的插件),
+混在一组里,一个装不上整组都红。
+
+### 2026-09-28 的第一批(10 个 PR)
+
+| 升级 | 处置 | 依据 |
+|---|---|---|
+| GitHub Actions:`checkout` 4 → 7、`setup-node` 4 → 7、`upload-artifact` 4 → 7、`download-artifact` 4 → 8 | 合入 | 逐个读了中间各大版本的发布说明:运行时换成 Node 24、内部改成 ESM;有行为变化的几处(按 ID 下载单个产物的路径、`pull_request_target` 下不再检出 fork、校验和不符改为报错)工作流都没用到。`download-artifact` 只在打标签发版时才跑,PR 上的 CI 没有执行过它,**下一次发版是它第一次真跑** |
+| `openai` 7.15 → 7.23、`@anthropic-ai/sdk` 0.122 → 0.128 | 合入 | 全套测试(含对本机假端点发真 HTTP 的重试、超时、断连用例)通过;暂存出来的引擎能起来 |
+| `@stoqey/ib` 1.6.7 → 1.6.10 | 合入 | 两版的包逐文件比过:**代码一个字节都没变**,只有 `package.json` 把 `rxjs` 从 dependencies 挪成了 peerDependencies。npm 7 起 peer 依赖照样自动装;暂存脚本按 lock 里"不是 dev 的条目"收,`rxjs` 仍在安装包里(暂存后从那份目录 `require('@stoqey/ib')` 验过) |
+| 开发工具的小版本:`eslint` 10.11、`typescript-eslint` 8.70.1、`dependency-cruiser` 18.4、`futu-api` 10.11 | 合入(从两个合组 PR 里单拿出来) | lint、分层检查、类型检查、全套测试通过。`futu-api` 只是开发依赖,运行时不加载 |
+| `vitest` 3 → 5 | 合入,补了一份 `engine-ts/vitest.config.ts` | 2,023 条测试不改一行全过;`golden:update` 重跑一遍基线零变化。**有一处默认行为变了**:4 起不再排除 `dist/`,而 tsc 把 `tests/` 也编译进了 `dist/tests`——本机只要有编译产物,每条用例会对着它再跑一遍并失败(量到多出 118 个文件、324 条红)。CI 只跑 `tsc --noEmit`、没有 `dist/`,所以 CI 上是绿的,开发机上是红的。配置里把 `dist/**` 排除掉了 |
+| 两个合组 PR 里其余的大版本、`zod` 4 | 没升,见下表 | |
+
+### 刻意没升的大版本
+
+| 包 | 停在 | 卡在哪 | 什么时候再看 |
+|---|---|---|---|
+| `typescript` | 5.9 | `typescript-eslint` 8 要求 `typescript <6.1.0`,TypeScript 7 装不上(`npm ci` 报 ERESOLVE)。那一批里同组的六个升级就是被它拖着一起红的。TypeScript 6 没有评估过 | `typescript-eslint` 支持 7 之后。Dependabot 里忽略着,到时候删掉那条 |
+| `@types/node` | 24 | 类型要跟着运行时走:Electron 41 内置的与 CI 用的都是 Node 24。类型先升到 26,编译器会放行运行时还没有的 API,到用户机器上才报错 | 换 Electron 大版本、Node 跟着变的时候,和工作流里的 `node-version` 一起改(`desktop-release.spec` 钉着两者一致) |
+| `zod` | 3.25 | 4 改了校验问题的结构(`invalid_type` 没有 `received` 了,`invalid_union` 的 `unionErrors` 换成了 `errors`)和默认报错文案。直接换上去:`contract/schema/kit.ts` 11 处编译错,**58 条测试红**(`contract` 12、`pa-rpc` 10、`golden-rpc` 9、`review-rpc` 7…)。它管着三件事:RPC 入参校验(发单方法的 `.strict()` 在内)、模型输出的复校验(`models.ts`)、golden-rpc 里钉着的报错原话 | 单独做一次迁移:报错文案逐条对回原样(不为了让基线过去 `golden:update`),再核对 `.default()` / `.nullish()` / `preprocess` 在 4 里的语义有没有让某个原来拒掉的订单变成放行。3.25 里已经带着 `zod/v4` 子路径,可以一个 schema 一个 schema 地迁。Dependabot 里忽略着 |
+| `react` + `react-dom` + 两个类型包 | 18.3 | 和 `antd` 6 一起装上之后类型检查只红 1 处(`PoolStock.tsx` 的 `JSX` 命名空间),构建没试到底。卡的不是代码量:界面框架换代要逐页看一遍,而沙箱里起不了 Electron | Dependabot 会单独提一个 PR(四个包一组)。合之前过一遍「安装包」工作流,再在真机上逐页看 |
+| `antd` | 5.29 | 6 会动组件的 DOM 与样式变量,`shell.css` 里压在 `.ant-*` 上的样式要逐页核对 | 同上,单独一个 PR |
+| `vite` + `@vitejs/plugin-react` | 6.4 / 4.7 | 8 能构建出来(`inlineDynamicImports` 提示弃用,要换成 `codeSplitting: false`),但打包器换成了 Rolldown:**发给用户的界面包整个重新生成**,CSS 与 JS 的体积都变了。引擎那边的 vitest 5 自带一份 vite 8,只用来跑测试,不进产物 | 同上,两个包一组。合之前看 CSP nonce、去掉 `crossorigin` 这两处自定义处理在新产物里还对不对 |
+
+`electron` 停在 41 的原因见上面与 [发版](release.md)。
