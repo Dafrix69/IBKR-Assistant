@@ -9,11 +9,16 @@
 //     并落到 dist/csp-nonce.txt——主进程把它拼进响应头的 CSP,两处必须一致;
 //   · 去掉 Vite 给 <script type="module"> 加的 crossorigin:file:// 下的 origin 是 null,
 //     带 crossorigin 的模块脚本会被 CORS 拦掉。
+//
+// 后缀是 .mts:desktop/package.json 没有 "type": "module"(主进程是 CommonJS),.ts 的配置会被当成 CommonJS 加载,
+// 而这里写的是 ESM——Vite 8 对此给警告,并预告下一个大版本不再兼容。所以目录用 import.meta.dirname,不用 __dirname。
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+
+const here = import.meta.dirname;
 
 function dafriHtml(preview: boolean, nonce: string, outDir: string): Plugin {
   return {
@@ -34,7 +39,7 @@ function dafriHtml(preview: boolean, nonce: string, outDir: string): Plugin {
       if (preview) {
         // DAFRI_MOCK 选数据源:mock-bridge.js(有数据)/ mock-bridge-empty.js(首次启动)/ mock-bridge-stress.js
         const mock = process.env.DAFRI_MOCK || 'mock-bridge.js';
-        fs.copyFileSync(path.resolve(__dirname, '../tools', mock), path.join(outDir, 'mock-bridge.js'));
+        fs.copyFileSync(path.resolve(here, '../tools', mock), path.join(outDir, 'mock-bridge.js'));
       }
     },
   };
@@ -43,10 +48,10 @@ function dafriHtml(preview: boolean, nonce: string, outDir: string): Plugin {
 export default defineConfig(({ mode }) => {
   const preview = mode === 'preview';
   const nonce = crypto.randomBytes(16).toString('base64');
-  const outDir = path.resolve(__dirname, preview ? 'dist-preview' : 'dist');
+  const outDir = path.resolve(here, preview ? 'dist-preview' : 'dist');
   return {
     // 从 desktop/ 里用 --config 调起时 cwd 不是这里,根目录要显式指定
-    root: __dirname,
+    root: here,
     base: './',
     plugins: [react(), dafriHtml(preview, nonce, outDir)],
     build: {
@@ -55,7 +60,7 @@ export default defineConfig(({ mode }) => {
       target: 'esnext',
       modulePreload: { polyfill: false },
       // 单个包:Electron 本地加载没有分包的收益,却多出一堆 modulepreload 的 crossorigin 要处理
-      rollupOptions: { output: { manualChunks: undefined, inlineDynamicImports: true } },
+      rolldownOptions: { output: { codeSplitting: false } },
       chunkSizeWarningLimit: 4000,
     },
   };

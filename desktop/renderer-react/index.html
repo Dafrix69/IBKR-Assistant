@@ -5,7 +5,7 @@
     <!--
       CSP 与原来的无框架界面同样严格,只多一条:style-src 里有一个构建期生成的 nonce。
       Ant Design 5 用 CSS-in-JS 往页面注入 <style>,没有 nonce 会被 'self' 拦掉;
-      nonce 每次构建随机生成(vite.config.ts),主进程读同一份,响应头里的 CSP 与这里保持一致。
+      nonce 每次构建随机生成(vite.config.mts),主进程读同一份,响应头里的 CSP 与这里保持一致。
     -->
     <meta
       http-equiv="Content-Security-Policy"
