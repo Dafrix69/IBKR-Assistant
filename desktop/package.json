@@ -35,7 +35,7 @@
     "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^6.1.1",
-    "antd": "^5.29.3",
+    "antd": "^6.6.5",
     "dayjs": "^1.11.23",
     "electron": "^41.10.7",
     "electron-builder": "^26.0.12",
