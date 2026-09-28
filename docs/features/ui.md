@@ -512,4 +512,15 @@ localStorage 的 `dafri-*` 键都没动——改了就丢用户的偏好。userD
 预览台:三份 mock 都补了新的桥方法;`mock-bridge-empty.js` 的账户改成示例配置里那三个占位账户(首次启动时配置是从示例拷来的,
 账户是有的,只是账号还没填);地址后面加 `?consent=0` 看条款同意页。
 
+**演示的场景是「TWS 已连」**(同日改)。`mock-bridge.js` 与 `mock-bridge-stress.js` 原来演示的是富途 OpenD 已连、TWS 端口没开:
+顶栏「OpenD 已连接」、发单按钮「发送到富途」、账户「富途模拟」——产品的主路径是 IBKR,README 的截图却全是富途。
+现在当前券商是 IBKR、连着模拟那一条,下单与持仓都在「模拟」账户上;行情带是连着 TWS 时的样子(读指数本身,字段照引擎的
+`MacroRow`);富途是配置好了但 OpenD 没开的第二家;期权墙换成引擎 `optionwall.analyze` 真算出来的一份。
+**README 里的九张截图要重新生成**(要能开 Electron 的机器):
+
+```
+cd desktop && npm run ui:preview
+npx electron tools/capture_pages.js renderer-react/dist-preview/index.html .uipreview/shots --theme dark --demo
+```
+
 没有新加依赖。新文件都在预算内(最长的 `lib/AccountsPanel.tsx` 不到 180 行)。
