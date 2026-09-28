@@ -140,7 +140,7 @@ jobs:
           if [ "$engine" != 1 ]; then echo "::error::30 秒内没看到引擎子进程"; exit 1; fi
           echo "应用存活 30 秒,引擎子进程已起来"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: IBKR-Assistant-mac-arm64
           path: |
@@ -221,7 +221,7 @@ jobs:
           if (-not $engine) { Write-Host "::error::30 秒内没看到引擎子进程"; exit 1 }
           "应用存活 30 秒,引擎子进程已起来"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: IBKR-Assistant-win-x64
           path: |
