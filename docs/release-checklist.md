@@ -4,7 +4,7 @@
 
 ## 之前
 
-- [ ] `main` 上的 CI 是绿的(`ci` 工作流四个任务;`engine-ts-platforms` 在观察期内可以是黄的,但要看一眼它为什么黄)。
+- [ ] `main` 上的 CI 是绿的(`ci` 工作流四个任务,其中 `engine-ts-platforms` 的 Windows 那一路必过;macOS 那一路在观察期内可以是黄的,但要看一眼它为什么黄)。
 - [ ] 这一版动了钱路径(`engine.ts` `tracker.ts` `broker.ts` `store.ts` `flyexit.ts` `engine/*`、主进程的放行逻辑)的话:
       在**模拟账户**上走一遍——发单与确认框、立即平仓、托管单、重启引擎后的对账、熔断。`cd engine-ts && npm run probe` 先跑。
 - [ ] 动了交易库结构的话:拿一份上一版的库(从自己的备份目录里拷)用新版打开,确认留了 `upgrade` 备份、数据都在。

@@ -39,14 +39,15 @@ jobs:
 
   # 用户的机器是 macOS 和 Windows,测试却一直只在 Linux 上跑:路径分隔符、文件锁、rename 覆盖、凭证库这些
   # 平台相关的地方(配置的原子写、交易库的备份与恢复、keychain)只有在那两个平台上跑才验得到。
-  # 观察期:先不挡合并(continue-on-error)。连着绿两周之后把那一行删掉,让它和上面那个任务一样硬。
+  # Windows 必过(2026-09-28 起):第一次跑红了十条,全是测试自己的事(文件锁、CRLF、信号),修完就绿了,用户定的不再等。
+  # macOS 还在观察期,先不挡合并(continue-on-error):连着绿两周之后把那一行改成 false,让它和别的任务一样硬。
   engine-ts-platforms:
     strategy:
       fail-fast: false
       matrix:
         os: [macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
-    continue-on-error: true
+    continue-on-error: ${{ matrix.os != 'windows-latest' }}
     defaults:
       run:
         working-directory: engine-ts
