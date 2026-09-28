@@ -30,7 +30,7 @@
     "release:check": "node tools/check_release.js"
   },
   "devDependencies": {
-    "dependency-cruiser": "^18.3.1",
+    "dependency-cruiser": "^18.4.0",
     "@eslint/js": "^10.0.1",
     "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7",
@@ -39,14 +39,14 @@
     "dayjs": "^1.11.23",
     "electron": "^41.10.7",
     "electron-builder": "^26.0.12",
-    "eslint": "^10.10.0",
+    "eslint": "^10.11.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.12.0",
     "lightweight-charts": "^5.2.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.70.0",
+    "typescript-eslint": "^8.70.1",
     "vite": "^6.4.3",
     "zustand": "^5.0.15"
   },

@@ -1,5 +1,11 @@
 # 依赖的安全更新与例行升级。两个 npm 工程各管各的;GitHub Actions 自己也算一份依赖。
 # 升级的 PR 会跑完整的 ci(含黄金基线):数值算法相关的依赖升了版本,基线红了就是行为变了,照 CLAUDE.md 的规矩判断。
+#
+# 分组的规矩(2026-09-28 处理完第一批 10 个 PR 之后定的,经过见 docs/features/dependencies.md):
+#   · 合成一个 PR 的只有小版本与补丁。大版本一个依赖一个 PR:混在一组里,一个装不上整组都红
+#     (那一批里是 TypeScript 7 拖着同组的六个一起装不上)。
+#   · 必须一起动的大版本单独成组(react 全家、vite 与它的插件):拆开了哪一个都过不了。
+#   · 被卡住的大版本写进 ignore,每一条写明卡在哪、什么时候放开。
 version: 2
 updates:
   - package-ecosystem: npm
@@ -7,9 +13,22 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      # 类型跟着运行时走:Electron 41 内置的与 CI 用的都是 Node 24。类型先升上去,编译器会放行运行时还没有的 API。
+      # 换 Electron 大版本、Node 跟着变的时候,和工作流里的 node-version 一起改(desktop-release.spec 钉着)
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
+      # typescript-eslint 8 要求 typescript <6.1.0,TypeScript 7 装不上(npm ci 报 ERESOLVE)。等它支持了再放开
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
+      # zod 4 改了校验问题的结构与默认文案,而入参校验、模型输出的复校验、golden-rpc 里的报错原话都靠它:
+      # 直接换上去 58 条测试红。要单独做一次迁移,做完把这条删掉
+      - dependency-name: zod
+        update-types: ['version-update:semver-major']
     groups:
       dev-tools:
         dependency-type: development
+        update-types: [minor, patch]
   - package-ecosystem: npm
     directory: /desktop
     schedule:
@@ -20,11 +39,27 @@ updates:
       # 而价位提醒、引擎无响应的告警都靠系统通知。拿到 Developer ID 证书、出了签名版之后再升大版本
       - dependency-name: electron
         update-types: ['version-update:semver-major']
+      # 同引擎那一条:typescript-eslint 8 要求 typescript <6.1.0
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
     groups:
+      # 渲染层的库由 Vite 打进产物,所以登记在 devDependencies 里——它们是发给用户的东西,不是工具。
+      # 大版本不进 dev-tools 那一组:react 全家一起动,vite 与插件一起动,antd 自己一个 PR
+      react:
+        patterns: ['react', 'react-dom', '@types/react', '@types/react-dom']
+        update-types: [major]
+      vite:
+        patterns: ['vite', '@vitejs/plugin-react']
+        update-types: [major]
       dev-tools:
         dependency-type: development
+        update-types: [minor, patch]
         exclude-patterns: ['electron']
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: monthly
+    groups:
+      # 四个 action 改的是相邻的几行,分开提 PR 会互相冲突(2026-09 那一批的 #6 与 #9)
+      actions:
+        patterns: ['*']

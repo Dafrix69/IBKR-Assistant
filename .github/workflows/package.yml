@@ -3,7 +3,7 @@ name: 安装包
 # macOS(DMG,Apple Silicon)与 Windows(NSIS,x64)安装包。
 #   - 手动:Actions → 安装包 → Run workflow(或 gh workflow run package.yml --ref main)
 #   - 推 v* 标签:两个包一起出,跑完自动挂到对应的 Release
-#   - 改到打包相关文件的 PR:先打一遍,确认还能出包
+#   - 改到打包相关文件的 PR(含两个工程的依赖清单,Dependabot 的升级也算):先打一遍,确认还能出包
 # 每次运行的产物都在 Artifacts 里(IBKR-Assistant-mac-arm64 / IBKR-Assistant-win-x64),保留 30 天;
 # 打标签的那次还会发到 Releases。签名:
 #   macOS:仓库 Secrets 配了 Developer ID 证书(MAC_CERT_P12_BASE64 等,见 dmg 任务)就签名 + 公证,双击即开;
@@ -18,6 +18,10 @@ on:
     paths:
       - '.github/workflows/package.yml'
       - 'desktop/package.json'
+      - 'desktop/package-lock.json'
+      # 引擎的生产依赖整包进安装包:它们升了版本,要看装出来的应用还起不起得来
+      - 'engine-ts/package.json'
+      - 'engine-ts/package-lock.json'
       - 'desktop/build/**'
       - 'desktop/tools/stage_engine_ts.js'
       - 'desktop/tools/smoke_engine_ts.js'
@@ -47,8 +51,8 @@ jobs:
       #   APPLE_API_ISSUER     Issuer ID(App Store Connect → 用户和访问 → 集成 页面顶上)
       HAS_DEVELOPER_ID: ${{ secrets.MAC_CERT_P12_BASE64 != '' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           # 与 ci.yml 一致:better-sqlite3 13 要 Node >= 22,Electron 40 内置的也是 Node 24
           node-version: 24
@@ -140,7 +144,7 @@ jobs:
           if [ "$engine" != 1 ]; then echo "::error::30 秒内没看到引擎子进程"; exit 1; fi
           echo "应用存活 30 秒,引擎子进程已起来"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: IBKR-Assistant-mac-arm64
           path: |
@@ -154,8 +158,8 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           # 与 ci.yml 一致:better-sqlite3 13 要 Node >= 22,Electron 40 内置的也是 Node 24
           node-version: 24
@@ -221,7 +225,7 @@ jobs:
           if (-not $engine) { Write-Host "::error::30 秒内没看到引擎子进程"; exit 1 }
           "应用存活 30 秒,引擎子进程已起来"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: IBKR-Assistant-win-x64
           path: |
@@ -239,12 +243,12 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           path: artifacts
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
 
