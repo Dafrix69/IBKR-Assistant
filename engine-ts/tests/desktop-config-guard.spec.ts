@@ -38,7 +38,13 @@ beforeEach(() => {
   writeFileSync(file, BASE);
 });
 
-afterEach(() => rmSync(dir, { recursive: true, force: true }));
+afterEach(() => {
+  try {
+    rmSync(dir, { recursive: true, force: true });
+  } catch {
+    /* Windows 上文件可能还被占着(SQLite、刚退出的子进程):临时目录留给系统清 */
+  }
+});
 
 describe("两头说的是同一回事", () => {
   it("退出码与备份文件名:引擎和桌面端一致", () => {

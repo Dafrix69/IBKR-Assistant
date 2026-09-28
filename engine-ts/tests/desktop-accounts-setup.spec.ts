@@ -150,7 +150,13 @@ describe("落盘", () => {
     file = path.join(dir, "settings.json");
     writeFileSync(file, JSON.stringify({ ...EXAMPLE, storage: { db_path: path.join(dir, "t.db") } }, null, 2));
   });
-  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+  afterEach(() => {
+    try {
+      rmSync(dir, { recursive: true, force: true });
+    } catch {
+      /* Windows 上文件可能还被占着(SQLite、刚退出的子进程):临时目录留给系统清 */
+    }
+  });
 
   it("planChange 不写盘;commitChange 写下去,引擎读得进去,改动前那一份在 .bak 里", () => {
     const before = readFileSync(file, "utf-8");

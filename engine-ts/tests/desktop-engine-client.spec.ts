@@ -98,7 +98,11 @@ afterEach(async () => {
 });
 
 afterAll(() => {
-  if (root) rmSync(root, { recursive: true, force: true });
+  try {
+    if (root) rmSync(root, { recursive: true, force: true });
+  } catch {
+    /* Windows 上文件可能还被占着(SQLite、刚退出的子进程):临时目录留给系统清 */
+  }
 });
 
 describe("EngineClient:重启是先死后生", () => {
@@ -128,7 +132,8 @@ describe("EngineClient:重启是先死后生", () => {
     expect(exits).toHaveLength(0);
   });
 
-  it("旧引擎不理 SIGTERM:宽限期一过就 SIGKILL,stop() 在它真死之后才落地", async () => {
+  // Windows 没有信号:kill 就是直接结束进程,没有"不理 SIGTERM"这回事,也就没有宽限期可量
+  it.skipIf(process.platform === "win32")("旧引擎不理 SIGTERM:宽限期一过就 SIGKILL,stop() 在它真死之后才落地", async () => {
     process.env.FAKE_IGNORE_TERM = "1";
     const { c } = client();
     const pid = (await c.call("system.status")).pid;

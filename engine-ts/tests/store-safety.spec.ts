@@ -38,7 +38,11 @@ beforeEach(() => {
 afterEach(() => {
   vi.restoreAllMocks();
   vi.useRealTimers();
-  rmSync(dir, { recursive: true, force: true });
+  try {
+    rmSync(dir, { recursive: true, force: true });
+  } catch {
+    /* Windows 上文件可能还被占着(SQLite、刚退出的子进程):临时目录留给系统清 */
+  }
 });
 
 function userVersion(file: string): number {

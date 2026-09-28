@@ -25,7 +25,11 @@ describe("latestPromptVersion", () => {
       writeFileSync(path.join(dir, "system_v2.0.0.md"), "x");
       expect(latestPromptVersion(dir)).toBe("v2.0.0");
     } finally {
-      rmSync(dir, { recursive: true, force: true });
+      try {
+        rmSync(dir, { recursive: true, force: true });
+      } catch {
+        /* Windows 上文件可能还被占着(SQLite、刚退出的子进程):临时目录留给系统清 */
+      }
     }
   });
 
@@ -36,7 +40,11 @@ describe("latestPromptVersion", () => {
       mkdirSync(path.join(dir, "sub"));
       expect(latestPromptVersion(dir)).toBeNull();
     } finally {
-      rmSync(dir, { recursive: true, force: true });
+      try {
+        rmSync(dir, { recursive: true, force: true });
+      } catch {
+        /* Windows 上文件可能还被占着(SQLite、刚退出的子进程):临时目录留给系统清 */
+      }
     }
   });
 });

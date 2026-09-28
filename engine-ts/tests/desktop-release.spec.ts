@@ -155,7 +155,7 @@ describe("仓库里不该出现的东西", () => {
   it("配置的备份与残留和 settings.json 一样不进仓库(里面是真实账号)", () => {
     const ignore = read(".gitignore");
     for (const line of ["config/settings.json", "config/settings.json.bak", "config/settings.json.broken-*", "config/settings.json.tmp-*", "desktop/build/THIRD-PARTY-NOTICES.txt"]) {
-      expect(ignore.split("\n"), line).toContain(line);
+      expect(ignore.split(/\r?\n/), line).toContain(line);
     }
   });
 });

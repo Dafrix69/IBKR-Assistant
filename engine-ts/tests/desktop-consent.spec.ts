@@ -37,7 +37,13 @@ let dir = "";
 beforeEach(() => {
   dir = mkdtempSync(path.join(os.tmpdir(), "dafri-consent-"));
 });
-afterEach(() => rmSync(dir, { recursive: true, force: true }));
+afterEach(() => {
+  try {
+    rmSync(dir, { recursive: true, force: true });
+  } catch {
+    /* Windows 上文件可能还被占着(SQLite、刚退出的子进程):临时目录留给系统清 */
+  }
+});
 
 describe("同意记录", () => {
   it("没同意过:accepted 是 false", () => {
@@ -111,7 +117,7 @@ describe("条款文本", () => {
 
   it("三份开头的版本号一致,且就是主进程认的现行版本", () => {
     for (const d of docs) {
-      const line = d.text.split("\n")[2];
+      const line = d.text.split(/\r?\n/)[2];
       expect(line, d.name).toBe(`版本:${consent.TERMS_VERSION}`);
     }
   });

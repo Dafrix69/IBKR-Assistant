@@ -113,7 +113,13 @@ describe("诊断包", () => {
     ].join("\n"));
   });
 
-  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+  afterEach(() => {
+    try {
+      rmSync(dir, { recursive: true, force: true });
+    } catch {
+      /* Windows 上文件可能还被占着(SQLite、刚退出的子进程):临时目录留给系统清 */
+    }
+  });
 
   const input = (): Record<string, unknown> => ({
     app: { version: "0.5.1", platform: "darwin", arch: "arm64", os: "Darwin 27.0.0", electron: "40.0.0", node: "24.0.0", user_data: "/Users/zhangsan/Library/Application Support/IBKR-Assistant" },

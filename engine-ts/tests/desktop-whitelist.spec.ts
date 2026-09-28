@@ -76,7 +76,11 @@ describe("引擎方法表 ↔ 桌面端白名单", () => {
   const settingsPath = path.join(dir, "settings.json");
   writeFileSync(settingsPath, readFileSync(path.resolve(__dirname, "..", "baseline", "rpc", "base_config.json"), "utf-8"));
   const names = new RpcServer(settingsPath, () => {}).methodNames();
-  rmSync(dir, { recursive: true, force: true });
+  try {
+    rmSync(dir, { recursive: true, force: true });
+  } catch {
+    /* Windows 上文件可能还被占着(SQLite、刚退出的子进程):临时目录留给系统清 */
+  }
 
   it("白名单里的每个方法引擎都接得住(各域的表都接进了 server)", () => {
     expect(names.length).toBeGreaterThan(70);
