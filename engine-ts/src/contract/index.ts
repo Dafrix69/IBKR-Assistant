@@ -27,7 +27,9 @@ import type {
   Idea, IdeaDigestRow, IdeaHit, IdeasAddParams, IdeasAnalyzeParams, IdeasDigestParams, IdeasDigestsParams,
   IdeasListParams, IdeasSearchParams, IdeasSimilarTradesParams, IdeasSimilarTradesResult, IdeasUpdateParams,
 } from "./ideas.js";
-import type { OptionWall, OptionsWallParams } from "./options.js";
+import type {
+  FlyPlanParams, FlyPlanResult, IvRecorderSetParams, IvRecorderStatus, OptionWall, OptionsWallParams,
+} from "./options.js";
 import type { ReviewPerformanceParams, ReviewPerformanceResult } from "./performance.js";
 import type { ReviewSignalsParams, ReviewSignalsResult } from "./signals.js";
 import type { PaAnalyzeParams, PaAnalyzeResult, PaCommentResult, PaTimeframesResult } from "./priceaction.js";
@@ -144,6 +146,12 @@ export interface RpcMethods {
   "ideas.similar_trades": { params: IdeasSimilarTradesParams; result: IdeasSimilarTradesResult };
 
   "options.wall": { params: OptionsWallParams; result: OptionWall };
+  /** 蝴蝶测算:开仓之前估「标的在某个时刻走到某个点位」时这只蝶值多少、赚多少。只算不下单 */
+  "options.fly_plan": { params: FlyPlanParams; result: FlyPlanResult };
+  /** 当日到期期权 IV 的记录现在是什么状态:开没开、攒了多少、上一轮为什么没记 */
+  "options.iv_recorder": { params: NoParams; result: IvRecorderStatus };
+  /** 开 / 关那份记录。关掉之后不订任何行情;已经攒下的不删 */
+  "options.iv_recorder_set": { params: IvRecorderSetParams; result: IvRecorderStatus };
 
   "pa.timeframes": { params: NoParams; result: PaTimeframesResult };
   "pa.analyze": { params: PaAnalyzeParams; result: PaAnalyzeResult };

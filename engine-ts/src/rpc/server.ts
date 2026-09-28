@@ -18,6 +18,8 @@ import { RpcError } from "../rpcError.js";
 import { AlertsService } from "../services/alerts.js";
 import { AnomalyService } from "../services/anomaly.js";
 import { BrokerLinkService } from "../services/brokerLink.js";
+import { FlyPlannerService } from "../services/flyPlanner.js";
+import { IvRecorderService } from "../services/ivRecorder.js";
 import type { Router } from "../services/host.js";
 import { MarketDataService } from "../services/marketData.js";
 import { PoolService } from "../services/pool.js";
@@ -70,6 +72,8 @@ export class RpcServer implements RpcContext {
   readonly similarContext: SimilarContextService;
   readonly ideaSemantic: IdeaSemanticService;
   readonly brokerLink: BrokerLinkService;
+  readonly flyPlanner: FlyPlannerService;
+  readonly ivRecorder: IvRecorderService;
   /** 各域的 handler。方法表在构造时合成一张,之后不变。 */
   readonly domains: {
     system: SystemHandlers;
@@ -101,6 +105,10 @@ export class RpcServer implements RpcContext {
     this.similarContext = new SimilarContextService(this, this.market);
     this.ideaSemantic = new IdeaSemanticService(this);
     this.brokerLink = new BrokerLinkService(this);
+    this.flyPlanner = new FlyPlannerService(this);
+    // 记 IV 用的是测算那批自己的行情流;测算读到行情时也顺带记一笔
+    this.ivRecorder = new IvRecorderService(this, this.flyPlanner.marks);
+    this.flyPlanner.onMarks = (sample) => this.ivRecorder.recordPlan(sample);
     this.domains = {
       system: new SystemHandlers(this),
       trading: new TradingHandlers(this),
@@ -256,6 +264,8 @@ export class RpcServer implements RpcContext {
     "data.backups", "data.backup",
     // 股票池上的两个开关:建 / 删两张表里的一行,同步 SQLite,价位与行情都是别的循环的事
     "pool.set_watch",
+    // IV 记录的状态与开关:数一下目录里的文件、写一行偏好;记的那一路是引擎里自己的循环
+    "options.iv_recorder", "options.iv_recorder_set",
   ]);
   static readonly READ_METHODS = new Set([
     "positions.list", "sectors.quotes", "pa.analyze", "book.snapshot", "options.wall", "macro.board",
@@ -270,6 +280,8 @@ export class RpcServer implements RpcContext {
     "review.signals",
     // 强势股筛选:和 screener.rs 一样逐只拉日线(10 分钟缓存),纯计算
     "screener.leaders",
+    // 蝴蝶测算:取现价与三条腿的盘口 / IV(自己的行情流,不碰盯盘的),纯计算。开着自动刷新时十秒一次,不该排在交易道上
+    "options.fly_plan",
   ]);
   static readonly READ_CONCURRENCY = 4;
   static readonly SLOW_MS = 1000; // 超过这个时长的请求记到 stderr
@@ -278,6 +290,8 @@ export class RpcServer implements RpcContext {
     this.emit("ready", { protocol: PROTOCOL_VERSION, config: String(this.settings.source_path) });
     // 优质股异动监控在引擎里按节拍跑,不靠界面驱动:窗口最小化、切到别的页,放量照样当场报
     this.anomaly.start();
+    // 当日到期期权 IV 的记录同理:在引擎里按节拍跑,连着 IBKR、在常规时段里才真的去记
+    this.ivRecorder.start();
     // 预热 SPX 公开现价:本地速记「15蝴蝶」的中心要靠它算,冷取一次约 0.7 秒(实测 790 ms)。
     // 启动就取、之后每 4 分钟后台刷一次(缓存 10 分钟内"旧值先给、后台换新"),让这条 2 毫秒的路径
     // 不因为"第一次"或"十分钟没人用"变成 700 毫秒。取不到就算了,速记自己还会再取。
@@ -365,6 +379,8 @@ export class RpcServer implements RpcContext {
       await this.handle(request);
     }
     this.anomaly.stop();
+    this.ivRecorder.stop();
+    this.flyPlanner.marks.close();
     this.brokerLink.stop();
     return 0;
   }

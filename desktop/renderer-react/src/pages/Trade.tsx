@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Button, Input, Space, Splitter, Steps, Tag } from 'antd';
+import { Button, Input, Segmented, Space, Splitter, Steps, Tag } from 'antd';
 import { CheckCircleFilled, ExclamationCircleFilled } from '@ant-design/icons';
 import type { TextAreaRef } from 'antd/es/input/TextArea';
+import { FlyPlanner } from '../lib/FlyPlanner';
 import { fmtMoney } from '../lib/format';
 import { REJECT_CODE_LABEL, REJECT_SOURCE_LABEL, say } from '../lib/labels';
 import { isTicket, OrderTicket } from '../lib/OrderTicket';
@@ -9,14 +10,14 @@ import { SimilarTrades } from '../lib/SimilarTrades';
 import { useLlmCatalog } from '../store/llm';
 import { navigate } from '../store/nav';
 import { brokerShortName, gatewayName, pickableAccounts, useStatus } from '../store/status';
-import { clearResult, savePickedAccounts, selectedAccounts, setInstruction, submitInstruction, useComposer, usePickedRevision, type SubmitPayload } from '../store/trade';
+import { appendInstruction, clearResult, savePickedAccounts, selectedAccounts, setInstruction, setTradePane, submitInstruction, useComposer, usePickedRevision, type SubmitPayload, type TradePane } from '../store/trade';
 import { dafri, type InstructionOrder } from '../bridge';
 import { showBanner } from '../store/banner';
 import { ENTER_KEY, MOD_KEY, SHIFT_KEY } from '../store/appearance';
 import { EmptyState, Meta, PageHead, Primer, StatusCard, Working, type Tone } from '../ui/kit';
 
 // 交易指令:输入框(⌘Enter 解析)与解析结果并排(可拖分栏);「解析并校验(不下单)」/「发送到 IBKR / 富途」两个按钮。
-// 这是整个软件唯一的主动作,进页就把光标放进输入框。
+// 这是整个软件唯一的主动作,进页就把光标放进输入框。右栏可以切到「蝴蝶测算」(只算不下单,见 lib/FlyPlanner)。
 
 // 期权速记:内容与提示词的既定偏好逐条同源(§2 铁律 1/5 的用户例外),不在这里发明任何解析器不认识的规则
 const SHORTHAND_CHIPS: [string, string][] = [
@@ -45,7 +46,7 @@ export function TradePage() {
   const llm = useLlmCatalog();
   const stacked = useStacked();
   // 输入、结果、进行中的提交都在 store 里:切页回来还在原处(壳一次只挂载一页)
-  const { text, busy, working, payload, failure } = useComposer();
+  const { text, pane, busy, working, payload, failure } = useComposer();
   const setText = setInstruction;
   const pickRevision = usePickedRevision();
   const areaRef = useRef<TextAreaRef>(null);
@@ -213,24 +214,35 @@ export function TradePage() {
   const results = (
     <div className="trade-results">
       <div className="pane-head">
-        <h3>解析结果</h3>
-        <Button size="small" type="text" onClick={clearResult}>
-          清空
-        </Button>
+        <Segmented
+          size="small"
+          value={pane}
+          onChange={(v) => setTradePane(v as TradePane)}
+          options={[{ label: '解析结果', value: 'result' }, { label: '蝴蝶测算', value: 'fly' }]}
+        />
+        {pane === 'result' ? (
+          <Button size="small" type="text" onClick={clearResult}>
+            清空
+          </Button>
+        ) : null}
       </div>
-      <div className="result">
-        {working ? (
-          <Working>{working}</Working>
-        ) : failure ? (
-          <StatusCard tone="bad" title="调用失败">
-            <div>{failure}</div>
-          </StatusCard>
-        ) : payload ? (
-          <ResultCards payload={payload} />
-        ) : (
-          <EmptyState>还没有解析结果</EmptyState>
-        )}
-      </div>
+      {pane === 'fly' ? (
+        <FlyPlanner onInstruction={appendInstruction} />
+      ) : (
+        <div className="result">
+          {working ? (
+            <Working>{working}</Working>
+          ) : failure ? (
+            <StatusCard tone="bad" title="调用失败">
+              <div>{failure}</div>
+            </StatusCard>
+          ) : payload ? (
+            <ResultCards payload={payload} />
+          ) : (
+            <EmptyState>还没有解析结果</EmptyState>
+          )}
+        </div>
+      )}
     </div>
   );
 

@@ -95,6 +95,7 @@ import type {
   IdeasSimilarTradesParams, IdeasSimilarTradesResult, SimilarExitStat, SimilarTrade,
   EquityPoint, LedgerTrade, PerfGroup, PerformanceFinding, PerformanceKind, PerformanceScope, PerfStats, ReviewPerformanceResult, ExecutionCost, ExecutionGroup, ExecutionRow, ProtectionAdvice, ReviewSignalsResult, SignalEntry, SignalGroup, SignalHorizonStats, SignalSource,
   AnomalyConfig, AnomalyEvent, AnomalyKind, AnomalyMetrics, LevelKind, OptionWall, PoolWatch, PoolWatchPatch, PositionRow,
+  FlyPlanIvMode, FlyPlanLeg, FlyPlanParams, FlyPlanPoint, FlyPlanResult, FlyPlanScenario, FlyPlanTime, FlyPlanValue, IvRecorderStatus,
   AccountView, Limits, Policies, ProtectionsConfig, QualityList, QualityMonitor, QualityStock, RpcParams, RpcResult, Sector,
   SectorStock, SettingsPatch, SettingsView, SpotTarget, StockQuote, Targets, Track, Watch, WatchEvent, WatchLevel,
   MaTouchConfig, TouchBook, TouchEpisode, TouchLine, WatchTrigger,
@@ -124,6 +125,7 @@ export type {
   IdeasSimilarTradesParams, IdeasSimilarTradesResult, SimilarExitStat, SimilarTrade,
   EquityPoint, LedgerTrade, PerfGroup, PerformanceFinding, PerformanceKind, PerformanceScope, PerfStats, ReviewPerformanceResult, ExecutionCost, ExecutionGroup, ExecutionRow, ProtectionAdvice, ReviewSignalsResult, SignalEntry, SignalGroup, SignalHorizonStats, SignalSource,
   AnomalyEvent, AnomalyKind, LevelKind, OptionWall, PoolWatch, PoolWatchPatch, PositionRow, QualityList, QualityMonitor,
+  FlyPlanIvMode, FlyPlanLeg, FlyPlanParams, FlyPlanPoint, FlyPlanResult, FlyPlanScenario, FlyPlanTime, FlyPlanValue, IvRecorderStatus,
   QualityStock, Sector, SectorStock, SettingsPatch, SpotTarget, StockQuote, Targets, Track, Watch, WatchEvent, WatchLevel,
   MaTouchConfig, TouchBook, TouchEpisode, TouchLine, WatchTrigger,
   BreakerBrief, BreakerState, IndexSpot, ProtectionCooldown, SystemSelftest, SystemStatus, TrackerHeartbeat,
@@ -276,6 +278,9 @@ export interface DafriBridge {
   orderBook(symbol: string): Rpc<RpcResult<'book.snapshot'>>;
 
   optionWall(spec: RpcParams<'options.wall'>): Rpc<RpcResult<'options.wall'>>;
+  flyPlan(spec: RpcParams<'options.fly_plan'>): Rpc<RpcResult<'options.fly_plan'>>;
+  ivRecorder(): Rpc<RpcResult<'options.iv_recorder'>>;
+  setIvRecorder(enabled: boolean): Rpc<RpcResult<'options.iv_recorder_set'>>;
   listAlerts(): Rpc<RpcResult<'alerts.list'>>;
   createAlert(symbol: string, step: number): Rpc<RpcResult<'alerts.create'>>;
   deleteAlert(id: string): Rpc<RpcResult<'alerts.delete'>>;

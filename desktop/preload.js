@@ -173,6 +173,11 @@ contextBridge.exposeInMainWorld('dafri', {
   // ---- 实时 K 线 + 价格行为分析(只读:不下单、不定价、不写配置)----------
   // ---- 期权墙 + 价位警告(只读:只算、只通知,不下单)--------------------
   optionWall: (spec) => ipcRenderer.invoke('rpc', { method: 'options.wall', params: spec }),
+  // 蝴蝶测算:开仓之前估「标的在某个时刻走到某个点位」时这只蝶值多少(只算,不下单)
+  flyPlan: (spec) => ipcRenderer.invoke('rpc', { method: 'options.fly_plan', params: spec }),
+  // 当日到期期权 IV 的记录(给蝴蝶测算重新校准用):状态与开关。只读行情
+  ivRecorder: () => ipcRenderer.invoke('rpc', { method: 'options.iv_recorder', params: {} }),
+  setIvRecorder: (enabled) => ipcRenderer.invoke('rpc', { method: 'options.iv_recorder_set', params: { enabled } }),
   listAlerts: () => ipcRenderer.invoke('rpc', { method: 'alerts.list', params: {} }),
   createAlert: (symbol, step) =>
     ipcRenderer.invoke('rpc', { method: 'alerts.create', params: { symbol, step } }),

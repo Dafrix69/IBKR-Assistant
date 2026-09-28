@@ -16,8 +16,12 @@ import { brokerShortName, refreshStatus } from './status';
  *  它是从点下按钮到回执到手的墙钟时间(含界面这一侧),给用户看"这次等了多久"。 */
 export type SubmitPayload = InstructionSubmitResult & { __elapsedMs?: number };
 
+/** 右栏摆的是哪一样:解析结果,还是蝴蝶测算 */
+export type TradePane = 'result' | 'fly';
+
 export interface ComposerState {
   text: string;
+  pane: TradePane;
   /** 正在跑的是哪一个按钮;null = 空闲 */
   busy: 'parse' | 'execute' | null;
   working: string | null;
@@ -26,7 +30,7 @@ export interface ComposerState {
 }
 
 const useStore = create<{ composer: ComposerState }>(() => ({
-  composer: { text: '', busy: null, working: null, payload: null, failure: null },
+  composer: { text: '', pane: 'result', busy: null, working: null, payload: null, failure: null },
 }));
 
 function set(part: Partial<ComposerState>) {
@@ -39,6 +43,16 @@ export function useComposer(): ComposerState {
 
 export function setInstruction(text: string): void {
   set({ text });
+}
+
+export function setTradePane(pane: TradePane): void {
+  set({ pane });
+}
+
+/** 蝴蝶测算的「写进指令」:输入框空着就填进去,有字就另起一行接在后面——不覆盖用户已经写的 */
+export function appendInstruction(line: string): void {
+  const text = useStore.getState().composer.text;
+  set({ text: text.trim() ? `${text.replace(/\s+$/, '')}\n${line}` : line });
 }
 
 export function clearResult(): void {
@@ -70,7 +84,8 @@ export async function submitInstruction(execute: boolean, accounts: string[]): P
     });
     if (!ok) return;
   }
-  set({ busy: execute ? 'execute' : 'parse', working: execute ? '正在解析并发送…' : '正在解析…(最长约 1 分钟)', failure: null });
+  // 右栏要是正摆着蝴蝶测算,切回解析结果:点了按钮却看不到结果,会以为没反应
+  set({ pane: 'result', busy: execute ? 'execute' : 'parse', working: execute ? '正在解析并发送…' : '正在解析…(最长约 1 分钟)', failure: null });
   const t0 = performance.now();
   try {
     const result: SubmitPayload = await dafri.submit(body, execute, accounts);

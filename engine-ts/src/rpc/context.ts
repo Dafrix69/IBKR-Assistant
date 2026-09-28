@@ -9,6 +9,8 @@ import type { TradingEngine } from "../engine.js";
 import type { RpcError } from "../rpcError.js";
 import type { AlertsService } from "../services/alerts.js";
 import type { AnomalyService } from "../services/anomaly.js";
+import type { FlyPlannerService } from "../services/flyPlanner.js";
+import type { IvRecorderService } from "../services/ivRecorder.js";
 import { gatewayName, needConnection } from "../services/host.js";
 import type { Rec, Router, ServiceHost } from "../services/host.js";
 import type { MarketDataService } from "../services/marketData.js";
@@ -52,6 +54,8 @@ export interface RpcContext extends ServiceHost {
   readonly similarContext: SimilarContextService;
   readonly ideaSemantic: IdeaSemanticService;
   readonly brokerLink: BrokerLinkService;
+  readonly flyPlanner: FlyPlannerService;
+  readonly ivRecorder: IvRecorderService;
 }
 
 /** handler 的基类:把上下文里最常用的几样摊成 this.settings / this.router / this.engine,

@@ -268,6 +268,45 @@
 .chip-tag.ant-tag:hover { background: var(--bg-fill-strong); }
 .readiness.ant-card { margin-bottom: 16px; }
 
+/* ---- 蝴蝶测算(交易指令页右栏的另一面)---- */
+.fly-form { padding: 10px 12px 12px; border-radius: var(--radius-card); background: var(--bg-fill); margin-bottom: 12px; }
+.fly-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 14px; margin-bottom: 10px; }
+.fly-row label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--label-secondary); }
+.fly-row .ant-input { font-variant-numeric: tabular-nums; }
+.fly-chips { padding-bottom: 1px; }
+.fly-form .primer { margin: 0 0 10px; }
+.fly-form .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: 0; }
+.fly-auto { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
+.fly-recorder { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; padding-top: 8px; border-top: 0.5px solid var(--separator); font-size: 12px; }
+.fly-recorder .hint { margin-top: 0; }
+.fly-problems { margin-top: 8px; font-size: 11.5px; color: var(--orange-text); }
+.fly-stale { margin-bottom: 8px; padding: 6px 10px; border-radius: var(--radius-control); font-size: 12px; color: var(--orange-text); background: color-mix(in srgb, var(--orange) 12%, transparent); }
+.fly-result.stale { opacity: 0.55; }
+.fly-result .ant-card { margin-bottom: 10px; }
+.fly-pnl { font-variant-numeric: tabular-nums; }
+.fly-pnl.pos { color: var(--up-text); }
+.fly-pnl.neg { color: var(--down-text); }
+.fly-table { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
+.fly-table th { text-align: right; font-size: 11px; font-weight: 500; color: var(--label-secondary); padding: 3px 8px; border-bottom: 0.5px solid var(--separator); }
+.fly-table td { text-align: right; padding: 4px 8px; border-bottom: 0.5px solid var(--separator); }
+.fly-table th:first-child, .fly-table td:first-child { text-align: left; }
+.fly-table tr:last-child td { border-bottom: 0; }
+.fly-table tr.on td { background: color-mix(in srgb, var(--blue) 12%, transparent); font-weight: 590; }
+.fly-table.legs { margin-bottom: 8px; }
+.fly-chart-plot { position: relative; margin: 14px 0 4px; }
+.fly-chart-plot svg { display: block; width: 100%; height: 190px; }
+.fly-chart-labels { position: absolute; inset: 0; pointer-events: none; font-size: 10.5px; font-variant-numeric: tabular-nums; color: var(--label-secondary); }
+.fly-chart-labels span { position: absolute; white-space: nowrap; }
+.fly-chart-labels .strike { bottom: 0; transform: translateX(-50%); font-family: var(--font-mono); }
+.fly-chart-labels .mark { top: -4px; transform: translateX(-50%); padding: 1px 7px; border-radius: 999px; font-weight: 590; color: #fff; }
+.fly-chart-labels .mark.spot { background: var(--label-secondary); }
+.fly-chart-labels .mark.target { background: var(--blue); }
+.fly-chart-labels .cost { right: 2px; transform: translateY(-115%); color: var(--label-tertiary); }
+.fly-chart-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 11px; color: var(--label-secondary); margin-bottom: 6px; }
+.fly-chart-legend .line { display: inline-block; width: 18px; height: 0; margin-right: 5px; vertical-align: middle; border-top: 2px solid var(--blue); }
+.fly-chart-legend .line.now { border-top: 2px dashed var(--orange); }
+.fly-chart-legend .line.expiry { border-top: 1.5px solid var(--label-tertiary); }
+
 /* ================= 交易记录 ================= */
 .records-table .ant-table { background: transparent; }
 .records-table .ant-table-thead > tr > th { font-size: 11px; font-weight: 590; }

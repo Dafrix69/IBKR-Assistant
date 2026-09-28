@@ -25,10 +25,10 @@ cd desktop   && npm run lint && npm run ui:typecheck
 ```
 transport     rpc.ts(转出的壳)  rpc/server.ts  rpc/context.ts  rpc/contractMethods.ts  rpc/params.ts  rpc/handlers/*.ts  cli.ts
 orchestrate   engine.ts  engine/*.ts(hosted 托管单、reconcile 执行对账、callbacks 回报落库、clock)  tracker.ts  services/*.ts
-execution     broker.ts  ibContracts.ts(怎么拼一张 IB 合约)  futuBroker.ts  ibSession.ts  ibTypes.ts  tws.ts  futu.ts  futuBridge.ts  heldStreams.ts(持仓的常驻行情订阅:平掉的撤掉)
+execution     broker.ts  ibContracts.ts(怎么拼一张 IB 合约)  futuBroker.ts  ibSession.ts  ibTypes.ts  tws.ts  futu.ts  futuBridge.ts  optionMarks.ts(蝴蝶测算取行情:自己的流,不碰盯盘的)  heldStreams.ts(持仓的常驻行情订阅:平掉的撤掉)
 parsing       validator.ts  providers.ts  prompts.ts  shorthand.ts  llm.ts  embeddings.ts
-analysis      backtest backtestLab priceaction screener research ideaRetrieval optionwall anomaly flyexit tradereview tradeOutcomes performance leaders fillsCsv optionTradesCsv optionPositionsCsv tradeSimilar ibtrades macro market alerts maTouch execQuality signalOutcomes trackerDrawdown ivPricing
-domain        config.ts  models.ts  store.ts  storeSafety.ts(库的版本号、完整性、备份)  importedTrades.ts  ideaVectors.ts  signalLog.ts  positions.ts  combos.ts(期权腿 → 组合)  marketdata.ts
+analysis      backtest backtestLab priceaction screener research ideaRetrieval optionwall anomaly flyexit tradereview tradeOutcomes performance leaders fillsCsv optionTradesCsv optionPositionsCsv tradeSimilar ibtrades macro market alerts maTouch execQuality signalOutcomes trackerDrawdown ivPricing flyPlan flyCalibration flyIvModel(校准出来的参数,脚本生成,不手改)
+domain        config.ts  models.ts  store.ts  storeSafety.ts(库的版本号、完整性、备份)  importedTrades.ts  ideaVectors.ts  signalLog.ts  positions.ts  combos.ts(期权腿 → 组合)  marketdata.ts  ivSamples.ts(自己攒的期权 IV,文件读写)
 util          py.ts  pyjson.ts  tz.ts  notify.ts  keychain.ts  killswitch.ts  protections.ts  riskBudget.ts  rpcError.ts  marketCalendar.ts(内置休市日历)
 contract      contract/*.ts(纯类型,零 import,谁都能引)  contract/schema/*.ts(入参的 zod 校验,只给 rpc/ 用)
 ```
@@ -71,7 +71,7 @@ contract      contract/*.ts(纯类型,零 import,谁都能引)  contract/schema/
   `contract/schema/` 配入参 schema(漏了是编译错)→ 所属域 handler 用 `contractMethods({...})` 实现 → `main.js` 的
   `ALLOWED_RPC`(会发单的还要进 `SENSITIVE_RPC`)→ `preload.js` → `bridge.ts` 的 `DafriBridge` 用 `RpcParams` / `RpcResult` 写签名。
   方法要走本地道 / 读道,还要进 `server.ts` 的道表。`tests/desktop-whitelist.spec.ts` 与 `tests/contract.spec.ts` 少一处会红。
-- `tests/contract.spec.ts` 的 `LEGACY_METHODS` **已于 2026-09-20 空掉**(当时 77 个方法、现在 86 个,全在契约里)。那张表留着是闸门:
+- `tests/contract.spec.ts` 的 `LEGACY_METHODS` **已于 2026-09-20 空掉**(当时 77 个方法、现在 89 个,全在契约里)。那张表留着是闸门:
   想绕过契约就得先往里加一行,而那条用例不让。**只许变短,不许加。**
 - 契约的类型文件(`contract/` 顶层)**不 import 任何东西**:界面的 tsc 会顺着 `bridge.ts` 走进来,而 CI 里界面那一路
   不装引擎的依赖。界面只有 `bridge.ts` 能跨进引擎目录,只许 `import type`,只许进 `contract/` 顶层。
@@ -121,6 +121,8 @@ contract      contract/*.ts(纯类型,零 import,谁都能引)  contract/schema/
   安装包多大;桌面端主进程 `require` 的放 `dependencies`,渲染层的放 `devDependencies`。
 - 新指标 / 新数值算法:自己写,不引技术指标库——平滑口径不同就是换数,黄金基线会全红。
 - 新提示词:`prompts/` 按版本号只增不改,`config` 里 `prompt_version` 切换。
+- 进定价的参数不写经验值:拿历史数据估,估的方法进纯函数并用已知答案的合成数据测,估出来的那一份写明样本、检验结果与局限
+  (样子见 `flyCalibration.ts` / `flyIvModel.ts` / `scripts/calibrate-fly-iv.mjs`)。原始行情数据不进仓库。
 - 新功能:`docs/features/<名字>.md` 一份,写设计决策与口径,不写操作手册。事故写 `docs/journal/`。
   用户看得见的改动还要进两处:`CHANGELOG.md` 的「未发布」(发布页与「关于 → 更新」显示的就是它),
   以及 `docs/user-guide/` 里对应的那一页。

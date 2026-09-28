@@ -3,8 +3,8 @@
 import { BrokerError } from "../../broker.js";
 import { nowEt } from "../../config.js";
 import type {
-  BookSnapshot, BookSnapshotParams, MacroBoard, MacroBoardParams, OptionWall, OptionsWallParams,
-  PaAnalysis, PaAnalyzeParams, PaAnalyzeResult, PaCommentResult, PaHtfSummary, PaTimeframesResult,
+  BookSnapshot, BookSnapshotParams, FlyPlanParams, FlyPlanResult, IvRecorderSetParams, IvRecorderStatus, MacroBoard,
+  MacroBoardParams, OptionWall, OptionsWallParams, PaAnalysis, PaAnalyzeParams, PaAnalyzeResult, PaCommentResult, PaHtfSummary, PaTimeframesResult,
 } from "../../contract/index.js";
 import { liveTickers, macroBoard } from "../../macro.js";
 import { PACommentSchema } from "../../models.js";
@@ -21,6 +21,9 @@ export class MarketHandlers extends HandlerBase {
     return contractMethods({
       "book.snapshot": (p) => this.bookSnapshot(p),
       "options.wall": (p) => this.optionsWall(p),
+      "options.fly_plan": (p) => this.optionsFlyPlan(p),
+      "options.iv_recorder": () => this.ivRecorderStatus(),
+      "options.iv_recorder_set": (p) => this.ivRecorderSet(p),
       "macro.board": (p) => this.macroBoardMethod(p),
       "pa.timeframes": () => this.paTimeframes(),
       "pa.analyze": (p) => this.paAnalyze(p),
@@ -51,6 +54,22 @@ export class MarketHandlers extends HandlerBase {
     const expiry = String(params["expiry"] ?? "").trim() || null;
     const width = Math.trunc(Number(params["width"] ?? 10));
     return this.ctx.market.wallFor(symbol, expiry, width);
+  }
+
+  // ---- 蝴蝶测算 --------------------------------------------------------
+  async optionsFlyPlan(params: FlyPlanParams): Promise<FlyPlanResult> {
+    const symbol = String(params.symbol ?? "SPX").trim().toUpperCase() || "SPX";
+    if (!SYMBOL_RE.test(symbol)) throw new RpcError(-32602, `标的代码不合法:'${params.symbol}'`);
+    return this.ctx.flyPlanner.planFor({ ...params, symbol });
+  }
+
+  // ---- 自己攒当日到期期权的 IV ------------------------------------------
+  ivRecorderStatus(): IvRecorderStatus {
+    return this.ctx.ivRecorder.status();
+  }
+
+  ivRecorderSet(params: IvRecorderSetParams): IvRecorderStatus {
+    return this.ctx.ivRecorder.setEnabled(params.enabled);
   }
 
   // ---- 实时 K 线 + 价格行为分析 -----------------------------------------
