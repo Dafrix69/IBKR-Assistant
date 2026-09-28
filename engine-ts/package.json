@@ -31,7 +31,7 @@
     "vitest": "^3.0.0"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.122.0",
+    "@anthropic-ai/sdk": "^0.128.0",
     "@napi-rs/keyring": "^2.0.0",
     "@stdlib/math-base-special-erf": "^0.2.6",
     "@stoqey/ib": "^1.6.7",
