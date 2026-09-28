@@ -21,7 +21,7 @@ interface Stub {
 
 let running: Stub | null = null;
 
-async function stub(handler: Handler): Promise<Stub> {
+async function stub(handler: Handler, fixedPort = 0): Promise<Stub> {
   const seen: Stub["seen"] = [];
   const server = http.createServer((req, res) => {
     let raw = "";
@@ -31,7 +31,10 @@ async function stub(handler: Handler): Promise<Stub> {
       handler(req, res, raw);
     });
   });
-  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  await new Promise<void>((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(fixedPort, "127.0.0.1", resolve);
+  });
   const port = (server.address() as { port: number }).port;
   running = {
     url: `http://127.0.0.1:${port}/v1`,
@@ -140,4 +143,42 @@ describe("OpenAI 兼容:真 HTTP", () => {
     await expect(dead.test()).rejects.toThrowError(/无法连接|网络不通/);
     expect(s.seen.length).toBe(0);
   }, 20_000);
+});
+
+/** 一个此刻没人听的本机端口,端口号以 prefix 开头(42900–42999 这样的一百个里挑第一个占得上的)。 */
+async function closedPort(prefix: string): Promise<number> {
+  for (let i = 0; i < 100; i++) {
+    const port = Number(prefix) * 100 + i;
+    const free = await new Promise<boolean>((resolve) => {
+      const probe = http.createServer();
+      probe.once("error", () => resolve(false));
+      probe.listen(port, "127.0.0.1", () => probe.close(() => resolve(true)));
+    });
+    if (free) return port;
+  }
+  throw new Error(`${prefix}00–${prefix}99 没有一个空着的端口`);
+}
+
+describe("OpenAI 兼容:地址里的数字不是状态码", () => {
+  // 没有状态码的错误只能看文字,而「无法连接 <base_url>:…」里带着地址。2026-09-28 CI 上红过一次:
+  // 随机端口里正好有 429,「端点关着」那一条拿到的是「触发限流」。用户那边同样会撞上——LiteLLM 默认的端口就是 4000
+  it.each([
+    ["401", /网络不通/],
+    ["404", /网络不通/],
+    ["429", /网络不通/],
+  ])("端口里带着 %s 的端点连不上:说的是网络不通,不是 Key 失效 / 模型不存在 / 限流", async (digits, expected) => {
+    const port = await closedPort(digits);
+    await expect(parser(`http://127.0.0.1:${port}/v1`).test()).rejects.toThrowError(expected);
+  }, 20_000);
+
+  it("端口里带着 400 的端点连不上:不当成「端点不认 json_schema」,恢复之后照样先用 json_schema", async () => {
+    const port = await closedPort("400");
+    const p = parser(`http://127.0.0.1:${port}/v1`);
+    await expect(p.completeJson("你只输出 JSON。", '回复 {"ok": true}', PING)).rejects.toThrowError(/无法连接/);
+
+    const s = await stub((_req, res) => ok(res, '{"ok": true}'), port);
+    expect(await p.completeJson("你只输出 JSON。", '回复 {"ok": true}', PING)).toEqual({ ok: true });
+    expect(s.seen.length).toBe(1);
+    expect(s.seen[0]![2]["response_format"]["type"]).toBe("json_schema");
+  }, 30_000);
 });

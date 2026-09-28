@@ -101,6 +101,10 @@
   `allow-unsigned-executable-memory`)。ad-hoc 版不变。
 - 界面里只有发布页(github.com)与图表库署名(tradingview.com)两处外链打得开。
 - 报错信息里不再带着 `Error invoking remote method 'rpc': Error:` 这段前缀。
+- **大模型端点连不上时不再把原因说错**(OpenAI 兼容端点)。端点地址里正好带着 400 / 401 / 404 / 429 这几个数字时
+  (比如本机代理开在 4000 端口),连不上会被当成"端点不支持结构化输出"、之后一直按降级方式解析,
+  「测试连接」则会说成 Key 失效、模型不存在或限流。现在都按连不上处理。
+- 随包的组件升级:`openai` 7.23、`@anthropic-ai/sdk` 0.128、`@stoqey/ib` 1.6.10(后者代码没有变化)。
 
 ### 已知的限制
 
