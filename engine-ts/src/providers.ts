@@ -401,7 +401,7 @@ export class OpenAICompatibleParser {
       try {
         return [await this.post("/chat/completions", body), "json_schema"];
       } catch (exc) {
-        if (!(exc instanceof LLMError) || !rejectsJsonSchema(exc)) throw exc;
+        if (!(exc instanceof LLMError) || !rejectsJsonSchema(exc, this.baseUrl)) throw exc;
         // 端点不认 json_schema:这一进程里不再试。实测 DeepSeek 每次都 400,不记住就每条指令多一个往返。
         this.schemaRejected = true;
       }
@@ -470,7 +470,7 @@ export class OpenAICompatibleParser {
       [data, mode] = await probe.complete(messages, PING_SCHEMA);
     } catch (exc) {
       // 「测试连接」是给人看的:401 / 404 / 429 说人话,别把端点的原始报文甩到界面上
-      throw new LLMError(friendlyApiError(exc as Error), (exc as LLMError).status);
+      throw new LLMError(friendlyApiError(exc as Error, this.baseUrl), (exc as LLMError).status);
     }
     const latencyMs = Math.trunc(performance.now() - started);
     const choice = (data["choices"] as Msg[] | undefined)?.[0] ?? {};
@@ -527,16 +527,32 @@ function asLLMError(exc: any, baseUrl: string): LLMError {
   return new LLMError(`无法连接 ${baseUrl}:${String(exc?.message ?? exc)}`);
 }
 
+/** 看错误文字之前先把端点的地址拿掉:「无法连接 <base_url>:…」里带着地址,而地址里的数字与单词不是端点说的话。
+ *  不拿掉的话,地址里正好有 400 / 401 / 404 / 429 的端点(LiteLLM 默认的端口就是 4000)一旦连不上,
+ *  会被当成"端点不认 json_schema"(这一进程从此降级),或者说成 Key 失效 / 模型不存在 / 限流。 */
+function withoutAddress(text: string, baseUrl: string): string {
+  if (!baseUrl) return text;
+  let host = "";
+  try {
+    host = new URL(baseUrl).host;
+  } catch {
+    // 不是合法的 URL:只按原文去掉
+  }
+  const out = text.split(baseUrl).join("");
+  return host ? out.split(host).join("") : out;
+}
+
 /** 这个错误是不是"端点不认 json_schema"?有状态码只认 400;
  *  没有状态码(假端点 / 老路径)才退回看错误文字。 */
-function rejectsJsonSchema(exc: LLMError): boolean {
+function rejectsJsonSchema(exc: LLMError, baseUrl: string): boolean {
   if (exc.status !== undefined) return exc.status === 400;
-  const msg = String(exc.message);
+  const msg = withoutAddress(String(exc.message), baseUrl);
   return msg.includes("400") || msg.includes("response_format");
 }
 
-export function friendlyApiError(exc: Error): string {
-  const text = String(exc.message ?? exc);
+export function friendlyApiError(exc: Error, baseUrl = ""): string {
+  const full = String(exc.message ?? exc);
+  const text = withoutAddress(full, baseUrl);
   const name = exc.constructor.name;
   const status = (exc as { status?: unknown }).status;
   if (typeof status === "number") {
@@ -557,7 +573,7 @@ export function friendlyApiError(exc: Error): string {
   if (text.toLowerCase().includes("connection") || name === "APIConnectionError") {
     return "网络不通:检查出网白名单与代理设置。";
   }
-  return `${name}: ${text}`;
+  return `${name}: ${full}`;
 }
 
 // ----------------------------------------------------------------------
