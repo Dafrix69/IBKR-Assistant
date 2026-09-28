@@ -7,7 +7,7 @@
 
 - `engine-ts/` 交易引擎(TypeScript,Node ≥ 22,ESM,`.js` 后缀 import)。`src/` 实现、`tests/` vitest、
   `baseline/` 黄金基线。
-- `desktop/` Electron。`main.js` / `preload.js` 主进程与桥,`renderer-react/src/` 界面(React + AntD 5 + zustand)。
+- `desktop/` Electron。`main.js` / `preload.js` 主进程与桥,`renderer-react/src/` 界面(React 19 + AntD 6 + zustand)。
 - 引擎与界面之间只有 stdio JSON-RPC,没有端口。真实账号永远不进提示词、不进日志、不进仓库。
 
 ## 每次改完必须跑

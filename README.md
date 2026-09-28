@@ -147,7 +147,7 @@ cd engine-ts && npm run probe                        # 真机只读联调:临时
 | 目录 | 内容 |
 |---|---|
 | `engine-ts/` | 交易引擎(TypeScript):`src/` 实现、`tests/` 测试、`baseline/` 回归基线、`examples/` 校验样例 |
-| `desktop/` | Electron 桌面端:主进程、preload、`renderer-react/` 界面(React + Ant Design 5,Vite 构建;壳 / 页面 / store 分层,见 `docs/features/ui.md`)、`tools/` 预览数据源 / 截图 smoke / 压测 / 打包 |
+| `desktop/` | Electron 桌面端:主进程、preload、`renderer-react/` 界面(React 19 + Ant Design 6,Vite 构建;壳 / 页面 / store 分层,见 `docs/features/ui.md`)、`tools/` 预览数据源 / 截图 smoke / 压测 / 打包 |
 | `prompts/` | 提示词资产,按版本号只增不改 |
 | `config/` | `settings.example.json` |
 | `docs/` | `user-guide/` 用户手册、`legal/` 条款文本、`features/` 功能文档、`journal/` 事故记录、`briefs/` 与 `reports/` 历史文档、`screenshots/`、`release-checklist.md` |

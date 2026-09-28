@@ -48,6 +48,22 @@ npx electron tools/capture_pages.js renderer-react/dist-preview/index.html .uipr
 界面改动的验收方式是**截图对比**:改前改后各出一套,并排看,差异只允许出现在该次改动声明要改的地方。
 `.uipreview/` 已 gitignore,截图集不进仓库。
 
+## 界面对比(升级之后证明"没变")
+
+`capture_pages.js` 要起 Electron;起不了的地方(CI 之外的沙箱)用 `ui_compare.js`——它生成一段在预览页里跑的脚本,
+把每个页面、每个演示动作之后的状态记成"带文字的元素 + 看得见的盒子",改动前后两份逐项比。
+
+```
+npm run ui:preview && cp -R renderer-react/dist-preview /tmp/ui/after      # 改动之前那一份同样拷成 /tmp/ui/before
+node tools/ui_compare.js /tmp/ui/before /tmp/ui/after
+(cd /tmp/ui && python3 -m http.server 5199 --bind 127.0.0.1)
+```
+
+浏览器里依次打开两份(同一个源,窗口 1360×900),控制台里加载 `./ui-compare.js`,
+`await __ui.capture('before')` / `await __ui.capture('after')`,再 `__ui.compare('before', 'after')`。
+弹层与聚焦态用 `captureOverlays`,条款页(地址加 `?consent=0`)用 `captureConsent`;换场景就换目录里的 `mock-bridge.js`。
+演示动作取自 `capture_pages.js` 的 `DEMO`,两边是同一份。口径与局限写在文件开头。
+
 ## 图表交互核对
 
 ```bash
