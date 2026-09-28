@@ -11,6 +11,9 @@ import { useStatus } from '../store/status';
 import { useDark } from '../store/appearance';
 import { useAntdTheme } from '../theme/antd';
 import { Toasts } from './Toasts';
+import { ConsentGate } from './ConsentGate';
+import { ErrorBoundary } from '../ui/ErrorBoundary';
+import { exportDiagnostics } from '../lib/SupportPanel';
 
 /** 壳:统一工具栏 + 源列表侧栏 + 内容区(macOS UI Kit 的应用模板结构),Ant Design 按 styles.css 的 token 配色。 */
 export function App({ nonce }: { nonce: string }) {
@@ -69,9 +72,19 @@ export function App({ nonce }: { nonce: string }) {
         <div className="shell">
           <Sidebar active={tab} onSelect={navigate} pendingCount={status?.pending_count || 0} />
           <main className="content" ref={contentRef}>
-            <Page />
+            {/* 一页出错只换掉这一页:顶栏、侧栏、熔断按钮照常可用 */}
+            <ErrorBoundary
+              resetKey={tab}
+              actions={[
+                { label: '重新载入界面', onClick: () => window.location.reload() },
+                { label: '导出诊断信息…', onClick: () => void exportDiagnostics(), primary: true },
+              ]}
+            >
+              <Page />
+            </ErrorBoundary>
           </main>
         </div>
+        <ConsentGate />
       </AntdApp>
     </ConfigProvider>
   );

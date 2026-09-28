@@ -1,6 +1,10 @@
 # 本地配置含账号别名与真实账号映射,永远不进仓库(§9.2)
 config/settings.json
 config/*.local.json
+# 配置的备份、坏掉时留下的那一份、原子写的临时文件:和 settings.json 一样含真实账号
+config/settings.json.bak
+config/settings.json.broken-*
+config/settings.json.tmp-*
 
 # 桌面端:依赖、打包产物、预览与压测输出
 desktop/node_modules/
@@ -8,6 +12,8 @@ desktop/dist/
 desktop/renderer-react/dist/
 desktop/renderer-react/dist-preview/
 desktop/build/engine-ts/
+# 打包时生成的第三方许可声明(tools/gen_notices.js)
+desktop/build/THIRD-PARTY-NOTICES.txt
 .uipreview/
 
 # 引擎自己的忽略见 engine-ts/.gitignore

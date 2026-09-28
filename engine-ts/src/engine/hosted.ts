@@ -589,6 +589,7 @@ export class HostedOrders {
       signature: ref,
     };
     const recordId = this.store.createRecord(record);
+    this.store.markSubmitIntent(recordId);
 
     const result = await this.router!.placeHosted!(account, contractSpec, item, oca, ref);
     if (result.order_id) this.host.sentOrders.set(Number(result.order_id), { at: Date.now(), kind: "place" });

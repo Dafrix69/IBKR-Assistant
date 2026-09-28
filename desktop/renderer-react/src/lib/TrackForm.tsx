@@ -48,7 +48,8 @@ export function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: strin
   const [saving, setSaving] = useState(false);
 
   const acct = pickableAccounts(status).find((a) => a.alias === p.account);
-  const isPaper = acct ? acct.is_paper : true;
+  // 认不出这个账户(配置里没有它)时按实盘说:提示宁可偏严
+  const isPaper = acct ? acct.is_paper : false;
   const hasSpotTarget = spotTarget !== null && spotTarget > 0;
   // 只认算的就是当前这个目标价的那一份;对不上就当没有
   const priced = hasSpotTarget && preview?.target === spotTarget ? preview.row : null;
@@ -155,6 +156,8 @@ export function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: strin
       : '';
     if (spec.host_at_broker) {
       const ok = await dafri.confirm({
+        purpose: 'tracker.add',
+        binding: spec,
         title: quoted ? '确认这个止盈价位,并挂到券商' : '托管到券商服务器',
         message: quoted
           ? `${p.symbol} 到 ${fmtNum(spotTarget)} 就走,现在算下来约 ${fmtMoney(quoted.price)}。`
@@ -170,6 +173,8 @@ export function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: strin
     } else if (spec.auto_close) {
       // 这一步是在授权软件替你发单,值得一次明确的确认
       const ok = await dafri.confirm({
+        purpose: 'tracker.add',
+        binding: spec,
         title: quoted ? '确认这个止盈价位,并开启自动平仓' : '开启到价自动平仓',
         message: quoted
           ? `${p.symbol} 到 ${fmtNum(spotTarget)} 就走,现在算下来约 ${fmtMoney(quoted.price)}。`

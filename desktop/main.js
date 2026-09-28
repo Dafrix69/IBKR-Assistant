@@ -19,6 +19,12 @@ const log = require('electron-log/main');
 const { EngineClient } = require('./rpc-client');
 const { PopupManager } = require('./popup-window');
 const { checkForUpdate } = require('./update-check');
+const configGuard = require('./config-guard');
+const storeGuard = require('./store-guard');
+const consent = require('./consent');
+const { GrantBook, PURPOSES, requiredGrants, loosenedLimits, normalizeBinding } = require('./confirm-grants');
+const { createRedactor, accountsFromConfig } = require('./redact');
+const { registerSupportIpc, handleStoreFatal } = require('./support-ipc');
 
 // 2026-09-17 产品改名 Dafri Trading → IBKR-Assistant。userData 目录是按产品名取的:不处理的话,老用户升级后
 // 配置、交易库、日志全都"不见了"(其实还躺在旧目录里)。旧目录在、新目录还没建过,就继续用旧的。
@@ -36,12 +42,33 @@ if (app.isPackaged) {
 log.initialize();
 log.transports.file.level = 'info';
 log.transports.file.maxSize = 4 * 1024 * 1024;
-log.transports.console.level = process.env.DAFRI_DEV === '1' ? 'debug' : false;
+log.transports.console.level = process.env.DAFRI_DEV === '1' && !app.isPackaged ? 'debug' : false;
 log.errorHandler.startCatching({ showDialog: false });
 Object.assign(console, log.functions); // 主进程里已有的 console.* 一并落盘
 
-const DEV = process.env.DAFRI_DEV === '1';
+// 落盘之前先脱敏(redact.js):账号、API Key、家目录里的用户名。进日志的不只是引擎自己打的那些已经打过码的行,
+// 还有券商回的错误原文、调用栈、渲染层的控制台报错——用户会把这份日志发给别人
+let redact = createRedactor();
+log.hooks.push((message) => {
+  message.data = message.data.map((item) => {
+    if (typeof item === 'string') return redact(item);
+    if (item instanceof Error) return redact(item.stack || item.message);
+    if (item && typeof item === 'object') {
+      try {
+        return redact(JSON.stringify(item));
+      } catch {
+        return '[写不进日志的对象]';
+      }
+    }
+    return item;
+  });
+  return message;
+});
+
 const PACKAGED = app.isPackaged;
+// 开发态只认源码运行:装好的应用带着 DAFRI_DEV=1 启动也不开 DevTools——那等于给本机任何进程留一扇
+// 能直接调 window.dafri(下单桥)的门
+const DEV = process.env.DAFRI_DEV === '1' && !PACKAGED;
 // 打包后引擎源码在 resources/engine(见 package.json extraResources);开发时就是仓库根
 const REPO_ROOT = PACKAGED
   ? path.join(process.resourcesPath, 'engine')
@@ -75,6 +102,30 @@ function styleNonce() {
 }
 if (!fs.existsSync(RENDERER_INDEX)) {
   console.error('界面产物不存在:先运行 npm run ui:build(或直接 npm start,它会自动构建)。');
+}
+// 第三方许可声明:打包时生成(tools/gen_notices.js),随包放在 resources 里;从源码运行时在 build/ 下
+const NOTICES_PATH = PACKAGED
+  ? path.join(process.resourcesPath, 'THIRD-PARTY-NOTICES.txt')
+  : path.join(__dirname, 'build', 'THIRD-PARTY-NOTICES.txt');
+
+/** 引擎自己的版本号(engine-ts/package.json)。和应用版本是两个数:引擎可以单独改。 */
+function engineVersion() {
+  try {
+    return String(JSON.parse(fs.readFileSync(path.join(TS_ENGINE_ROOT, 'package.json'), 'utf8')).version || '');
+  } catch {
+    return '';
+  }
+}
+
+/** 按配置里现在写着的账号重建脱敏器。配置读不出来就只剩"按样子抹"的那一道。 */
+function refreshRedactor() {
+  let accounts = [];
+  try {
+    accounts = accountsFromConfig(JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8')));
+  } catch {
+    /* 配置还没建、或者坏了 */
+  }
+  redact = createRedactor({ accounts });
 }
 
 /** renderer 允许调用的引擎方法。不在表里的一律拒绝,新增方法必须显式登记。 */
@@ -165,6 +216,10 @@ const ALLOWED_RPC = new Set([
   'quality.set_config',
   'keychain.set',
   'data.export',
+  // 交易库的备份:清单只读;出一份备份是往备份目录里多写一个文件,不动库、不动钱。
+  // 恢复不在这里——那要停引擎、换库文件,是主进程自己的通道(support-ipc.js 的 backup-restore)
+  'data.backups',
+  'data.backup',
 ]);
 
 /** 会真的动钱或动配置的通道,额外要求界面已经确认过一次。 */
@@ -184,6 +239,41 @@ const SENSITIVE_RPC = new Set([
   'tracker.close_now', // 直接发平仓单
 ]);
 
+/**
+ * 超时不等于没发生的调用。引擎的交易道是严格顺序的、不能取消:120 秒没回话时,这张单可能还排在后面、
+ * 过一会儿照样发出去。对这几个方法,超时报的是「结果未知」而不是「失败」,引擎迟到的回执到了再补一条通知
+ * (rpc-client.js 的 late-reply)——以前界面显示「调用失败」,人顺手重发,第一张随后才到券商。
+ */
+const OUTCOME_UNKNOWN_RPC = new Set([
+  'instruction.submit',
+  'tracker.add',
+  'tracker.update',
+  'tracker.close_now',
+]);
+const OUTCOME_LABEL = {
+  'instruction.submit': '发送指令',
+  'tracker.add': '建立追踪',
+  'tracker.update': '修改追踪',
+  'tracker.close_now': '立即平仓',
+};
+
+/** 界面只许打开这几个站点的 https 链接(发布页、图表库署名)。别的一律不开:链接文本来自哪里都一样。 */
+const EXTERNAL_HOSTS = new Set(['github.com', 'www.tradingview.com']);
+
+function openExternalIfAllowed(url) {
+  try {
+    const u = new URL(String(url));
+    if (u.protocol === 'https:' && EXTERNAL_HOSTS.has(u.hostname)) {
+      shell.openExternal(u.toString());
+      return true;
+    }
+  } catch {
+    /* 不是 URL */
+  }
+  log.warn('[shell] 拒绝打开外部链接', String(url).slice(0, 200));
+  return false;
+}
+
 let mainWindow = null;
 let engine = null;
 // 正在退出应用:这时引擎退出是我们让它退的,不拉起;macOS 上也靠它区分"关窗 = 藏起来"与"真退出"
@@ -199,6 +289,8 @@ let updateCache = null;
 let rendererCrashes = [];
 // 「导出全部交易数据」刚在保存对话框里选的路径。data.export 只许写到它,用一次就作废(见 rpc 通道)
 let pickedExportPath = null;
+// 确认凭据:会发单 / 授权发单 / 打开闸门的调用,要有主进程原生确认框发出的一次性凭据才放行(confirm-grants.js)
+const grants = new GrantBook();
 // 异动 / 价位提醒的置顶弹窗。懒创建:第一条提醒来了才开窗,平时不占一个渲染进程
 const popup = new PopupManager({
   dev: DEV,
@@ -243,6 +335,18 @@ function ensureConfigExists() {
   if (!fs.existsSync(example)) return { created: false, missing: true };
   fs.mkdirSync(path.dirname(CONFIG_PATH), { recursive: true });
   fs.copyFileSync(example, CONFIG_PATH);
+  if (PACKAGED && process.platform === 'win32') {
+    // 示例里的库路径是 macOS 的样子(~/Library/Application Support/…),照搬到 Windows 上,交易库会落在
+    // C:\Users\<人>\Library\… 这种没人想得到去找的地方。只在**新建配置的这一刻**改:已有的配置不动,
+    // 库在哪儿还在哪儿
+    try {
+      const config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
+      config.storage = { ...(config.storage || {}), db_path: path.join(app.getPath('userData'), 'data', 'trades.db') };
+      fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2), 'utf8');
+    } catch (err) {
+      log.warn('[boot] 没能把交易库的位置改到应用数据目录,沿用示例里的', err);
+    }
+  }
   return { created: true };
 }
 
@@ -365,7 +469,7 @@ function createWindow() {
 
   // UI 全部是本地资源,任何导航或新窗口都是异常,一律拦掉并交给系统浏览器
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (/^https:\/\//.test(url)) shell.openExternal(url);
+    openExternalIfAllowed(url);
     return { action: 'deny' };
   });
   mainWindow.webContents.on('will-navigate', (event, url) => {
@@ -488,11 +592,18 @@ function macMenuTemplate(tradeMenu) {
       label: '帮助',
       role: 'help',
       submenu: [
-        // 出了问题要日志时不用再去「关于」页抄路径
+        // 出了问题时的两样东西:一份能直接发给支持的诊断信息,和日志本身
+        { label: '导出诊断信息…', click: () => supportFromMenu('export-diagnostics') },
         { label: '在访达中显示日志', click: () => shell.showItemInFolder(log.transports.file.getFile().path) },
       ],
     },
   ];
+}
+
+/** 菜单里的支持项:窗口叫出来,动作交给界面去发起(和界面上的按钮走同一条通道、同一个保存对话框)。 */
+function supportFromMenu(action) {
+  showMainWindow();
+  send('menu', { action });
 }
 
 /**
@@ -540,6 +651,13 @@ function buildMenu() {
         ...(DEV ? [{ type: 'separator' }, { role: 'toggleDevTools' }] : []),
       ],
     },
+    {
+      label: '帮助',
+      submenu: [
+        { label: '导出诊断信息…', click: () => supportFromMenu('export-diagnostics') },
+        { label: '打开日志所在位置', click: () => shell.showItemInFolder(log.transports.file.getFile().path) },
+      ],
+    },
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
@@ -584,13 +702,33 @@ function wireEngine() {
     appVersion: app.getVersion(),
     tsEngineRoot: TS_ENGINE_ROOT,
   });
-  engine.on('engine-event', (payload) => send('engine-event', payload));
+  engine.on('engine-event', (payload) => {
+    // 引擎每次起来(含改了配置之后手动重启)都按现在的配置重建脱敏器:账号只能手改配置文件
+    if (payload && payload.event === 'ready') refreshRedactor();
+    send('engine-event', payload);
+  });
   engine.on('log', (line) => {
-    send('engine-log', { line });
+    send('engine-log', { line: redact(line) }); // 「关于」页那块日志会被截图发出去,同样先脱敏
     log.info('[engine]', line); // 引擎 stderr 也落盘:界面只留最近 200 行,崩溃前那几行往往在更早
   });
   engine.on('exit', (info) => {
     log.error('[engine] 已退出', info);
+    // 配置读不进来(引擎用专门的退出码说的):重启一万次也是同一个错。停下自动重启,问用户怎么办
+    if (info?.code === configGuard.EXIT_CONFIG && !quitting) {
+      const fatal = configGuard.fatalLine(info.detail) || { kind: 'invalid', message: '配置文件读不进来' };
+      send('engine-exit', { ...info, fatal: 'config', detail: fatal.message });
+      engine.holdUntil(Number.MAX_SAFE_INTEGER, '交易引擎没有启动:配置文件有问题,请按弹出的提示处理');
+      void handleConfigFatal(fatal);
+      return;
+    }
+    // 交易库打不开:同样不是重启能解决的
+    if (info?.code === storeGuard.EXIT_STORE && !quitting) {
+      const fatal = storeGuard.fatalLine(info.detail) || { kind: 'corrupt', message: '交易库打不开', dbPath: null };
+      send('engine-exit', { ...info, fatal: 'store', detail: fatal.message });
+      engine.holdUntil(Number.MAX_SAFE_INTEGER, '交易引擎没有启动:交易库打不开,请按弹出的提示处理');
+      void onStoreFatal(fatal);
+      return;
+    }
     send('engine-exit', info);
     // 引擎一停,追踪止盈止损就没人盯了——而崩的时候往往没人在场。以前只提示「可在关于里重启」,
     // 要等界面下一次轮询才被顺手拉起。这里直接拉起;引擎起来后按 broker.auto_connect 自己连回券商。
@@ -600,16 +738,121 @@ function wireEngine() {
     const delay = Math.min(60_000, 3000 * 2 ** engineRestarts);
     engineRestarts += 1;
     log.warn(`[engine] ${delay / 1000} 秒后自动重启(第 ${engineRestarts} 次)`);
+    // 退避期间界面的轮询不许顺手把引擎拉起来(rpc-client.js 的 holdUntil),否则这个退避形同虚设
+    engine.holdUntil(Date.now() + delay);
     setTimeout(() => {
       if (quitting || !engine || engine.child) return;
       engineStartedAt = Date.now();
-      engine.start().catch(() => {});
+      engine.start({ force: true }).catch(() => {});
     }, delay);
+  });
+  // 发单类调用超时之后,引擎才回话:把结果补报出来(系统通知 + 通知流 + 日志),并让界面重读记录
+  engine.on('late-reply', (late) => {
+    if (!OUTCOME_UNKNOWN_RPC.has(late.method)) return;
+    const what = OUTCOME_LABEL[late.method] || late.method;
+    const seconds = Math.round(late.waitedMs / 1000);
+    const body = late.ok
+      ? `引擎在 ${seconds} 秒后回话了:这次操作已经执行。请到「订单看板」核对,不要重复提交。`
+      : `引擎在 ${seconds} 秒后回话了:这次操作没有成功(${String(late.error || '').slice(0, 160)})。`;
+    log.warn(`[engine] 迟到的回执 ${late.method}(${seconds}s):${late.ok ? '已执行' : late.error}`);
+    notifySystem(`「${what}」有结果了`, body);
+    send('engine-event', { event: 'notification', data: { title: `「${what}」超时后有结果了`, subtitle: 'late', body } });
+    send('engine-event', { event: 'pending', data: {} });
   });
   engineStartedAt = Date.now();
   // 启动失败会以 engine-exit 事件呈现在界面上
   engine.start().catch(() => {});
   startEngineWatchdog();
+}
+
+/** 主窗口在就挂在它上面(模态),不在就是一个独立的对话框。 */
+function showBox(options) {
+  return mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible()
+    ? dialog.showMessageBox(mainWindow, options)
+    : dialog.showMessageBox(options);
+}
+
+let configDialogOpen = false;
+let storeDialogOpen = false;
+
+/** 交易库打不开时的对话框(support-ipc.js 的 handleStoreFatal),以及它之后的事:重试或退出。 */
+async function onStoreFatal(fatal) {
+  if (storeDialogOpen || quitting) return;
+  storeDialogOpen = true;
+  try {
+    const next = await handleStoreFatal({ dialog, shell, log, showBox, notify: notifySystem }, fatal);
+    if (next === 'quit') {
+      app.quit();
+      return;
+    }
+    engineStartedAt = Date.now();
+    engine.start({ force: true }).catch(() => {});
+  } finally {
+    storeDialogOpen = false;
+  }
+}
+
+/**
+ * 配置文件读不进来时的那个对话框(为什么、口径见 config-guard.js)。
+ * 四条路:恢复上一份可用的配置(有备份、且和现在这份不一样时才有)/ 打开文件所在位置自己改 / 重试 / 退出。
+ */
+async function handleConfigFatal(fatal) {
+  if (configDialogOpen || quitting) return;
+  configDialogOpen = true;
+  const RESTORE = '恢复上一份可用的配置';
+  const REVEAL = '打开配置文件所在位置';
+  const RETRY = '我改好了,重试';
+  const QUIT = '退出';
+  const why = { missing: '配置文件不见了', syntax: '配置文件的格式坏了', invalid: '配置文件里有一项不合规' }[fatal.kind] || '配置文件读不进来';
+  try {
+    for (;;) {
+      const state = configGuard.inspectConfig(CONFIG_PATH);
+      const canRestore = state.backup.usable && !state.backup.sameAsCurrent;
+      const buttons = [...(canRestore ? [RESTORE] : []), REVEAL, RETRY, QUIT];
+      const backupNote = canRestore
+        ? `\n\n上一份可用的配置备份于 ${new Date(state.backup.at).toLocaleString('zh-CN', { hour12: false })}。` +
+          '恢复后「允许自动执行」「允许实盘账户下单」会是关闭的,需要时请到「设置」里重新打开;现在这份会改名留在旁边,不会删。'
+        : '\n\n没有可以恢复的备份(还没有从界面改过设置)。请打开配置文件修正,或对照 settings.example.json 重写。';
+      const { response } = await showBox({
+        type: 'warning',
+        buttons,
+        defaultId: 0,
+        cancelId: buttons.length - 1,
+        title: '配置文件有问题',
+        message: `${why},交易引擎没有启动`,
+        detail: `${fatal.message}\n\n文件:${CONFIG_PATH}\n引擎没有启动期间,持仓追踪的止盈止损不在盯盘。${backupNote}`,
+        noLink: true,
+      });
+      const choice = buttons[response];
+      if (choice === REVEAL) {
+        shell.showItemInFolder(CONFIG_PATH);
+        continue; // 对话框再出来一次:改完了好点「重试」
+      }
+      if (choice === RESTORE) {
+        try {
+          const done = configGuard.restoreBackup(CONFIG_PATH);
+          log.warn('[config] 已从备份恢复配置', done);
+          notifySystem(
+            '已恢复上一份可用的配置',
+            done.closedGates.length ? `已关闭:${done.closedGates.join('、')}。需要时请到「设置」里重新打开。` : '执行闸门保持关闭。',
+          );
+        } catch (err) {
+          log.error('[config] 恢复配置失败', err);
+          dialog.showErrorBox('恢复失败', String(err && err.message ? err.message : err));
+          continue;
+        }
+      }
+      if (choice === QUIT || choice === undefined) {
+        app.quit();
+        return;
+      }
+      engineStartedAt = Date.now();
+      engine.start({ force: true }).catch(() => {});
+      return;
+    }
+  } finally {
+    configDialogOpen = false;
+  }
 }
 
 /**
@@ -622,6 +865,27 @@ const WATCHDOG_EVERY_MS = 10_000;
 const WATCHDOG_WARN_MS = 30_000;
 const WATCHDOG_KILL_MS = 180_000;
 
+/**
+ * 排队中的条件单(方式 B)要有人按时去问一声才会触发、过期、回写成交:引擎那头 `pending.poll` 是唯一的入口。
+ * 这一声原来只有界面在喊(store/pending.ts,10 秒一次)——界面崩了、正在重载、卡住了,条件单就没人盯。
+ * 主进程跟着心跳再喊一遍:两边都喊不会出事(引擎的交易道是顺序的,第二声什么也不会多做),
+ * 只有界面那一声没了的时候,这一声才是唯一的。
+ */
+let pendingBusy = false;
+
+function drivePending(status) {
+  if (pendingBusy || quitting || !status || !status.broker_connected) return;
+  // 富途没有成交回报的事件流:已提交订单的状态只在这一轮里同步回来,没有排队的条件单也得问
+  if (!status.pending_count && status.broker_provider !== 'futu') return;
+  pendingBusy = true;
+  engine
+    .call('pending.poll', {}, { timeoutMs: 60_000 })
+    .catch((err) => log.warn('[pending] 这一轮没问成', err && err.message ? err.message : err))
+    .finally(() => {
+      pendingBusy = false;
+    });
+}
+
 function startEngineWatchdog() {
   let silentSince = 0;
   let warned = false;
@@ -631,13 +895,14 @@ function startEngineWatchdog() {
     inFlight = true;
     const sentAt = Date.now();
     try {
-      await engine.call('system.status', {}, { timeoutMs: 8000 });
+      const status = await engine.call('system.status', {}, { timeoutMs: 8000 });
       if (warned) {
         log.info('[watchdog] 引擎恢复响应');
         notifySystem('交易引擎已恢复响应', '持仓追踪照常运行。');
       }
       silentSince = 0;
       warned = false;
+      drivePending(status);
     } catch {
       // 这一问期间引擎退出了:自动拉起那条路会处理,不算"不回话"
       if (!engine.child) {
@@ -652,7 +917,8 @@ function startEngineWatchdog() {
         silentSince = 0;
         warned = false;
         engineStartedAt = Date.now();
-        engine.restart().catch(() => {});
+        // 它已经不回话了,等它"答完在途请求"没有意义:不排空,直接结束
+        engine.restart({ drainMs: 0 }).catch(() => {});
       } else if (silent >= WATCHDOG_WARN_MS && !warned) {
         warned = true;
         log.warn(`[watchdog] 引擎 ${Math.round(silent / 1000)} 秒没有回应`);
@@ -680,6 +946,19 @@ function registerIpc() {
     }
     const clean = { ...(params || {}) };
     delete clean.__confirmed;
+    // 没同意现行条款之前,钱路径一律不放行(consent.js)
+    const blocked = consent.blockedWithoutConsent(method, clean);
+    if (blocked && !consent.consentState(app.getPath('userData')).accepted) throw new Error(blocked);
+    // 会发单 / 授权发单 / 打开闸门的:要有原生确认框发出的凭据,而且绑的就是这一次的内容(confirm-grants.js)
+    const current = method === 'settings.patch' ? await engine.call('settings.get', {}, { timeoutMs: 8000 }) : null;
+    const needs = requiredGrants(method, clean, current);
+    if (needs.length) {
+      const missing = grants.consumeAll(needs);
+      if (missing.length) {
+        log.warn(`[rpc] ${method} 缺少确认凭据:${missing.join('、')}`);
+        throw new Error(`这一步要先在确认框里点确认(${missing.join('、')})。没有确认、确认已过期、或内容在确认之后变了,都不会放行。`);
+      }
+    }
     if (method === 'data.export') {
       // 引擎会把整本交易记录写到给它的路径上。路径只认用户刚在保存对话框里选的那一个,用一次作废——
       // 否则一段被注入的界面脚本就能拿它覆盖任意文件(配置、交易库)(2026-09-27 审计)
@@ -688,7 +967,19 @@ function registerIpc() {
       }
       pickedExportPath = null;
     }
-    return engine.call(method, clean);
+    if (!OUTCOME_UNKNOWN_RPC.has(method)) return engine.call(method, clean);
+    try {
+      return await engine.call(method, clean, { lateReply: true });
+    } catch (err) {
+      if (err && err.code === 'ENGINE_TIMEOUT') {
+        throw new Error(
+          '结果未知:引擎 2 分钟内没有回话,这次操作可能已经执行(订单可能已经发出)。' +
+            '请先到「订单看板」和券商端核对,不要直接重发;引擎回话后这里会再通知一次。',
+          { cause: err }
+        );
+      }
+      throw err;
+    }
   });
 
   // 外观:走 nativeTheme,渲染层的 prefers-color-scheme 与窗口底色一起切换
@@ -711,6 +1002,7 @@ function registerIpc() {
       configPath: CONFIG_PATH,
       repoRoot: REPO_ROOT,
       logPath: log.transports.file.getFile().path,
+      engineVersion: engineVersion(),
       dev: DEV,
       engineRunning: Boolean(engine && engine.child),
     };
@@ -808,20 +1100,103 @@ function registerIpc() {
     popup.handleAction(msg);
   });
 
-  ipcMain.handle('confirm', async (event, { title, message, detail, confirmLabel }) => {
+  // 确认框。带 purpose 的是"要凭据的那种"(confirm-grants.js):最显眼的那一行由这里按用途写,界面改不了;
+  // 用户点了确认才发凭据,凭据绑着 binding——之后那一次调用的内容对不上就不放行
+  ipcMain.handle('confirm', async (event, options) => {
     if (!isTrustedSender(event)) throw new Error('调用来源不受信任');
+    const { title, message, detail, confirmLabel, purpose, binding } = options || {};
+    const bound = purpose !== undefined && purpose !== null;
+    if (bound && !Object.hasOwn(PURPOSES, purpose)) throw new Error(`未知的确认用途:${String(purpose)}`);
+    const box = bound
+      ? await boundConfirmText(purpose, normalizeBinding(purpose, binding), { message, detail })
+      : { title: String(title || '确认'), message: String(message || ''), detail: detail ? String(detail) : undefined };
+    // 没有可确认的内容(比如要放宽的限额其实一项都没放宽):不弹框、不发凭据
+    if (box === null) return true;
     const { response } = await dialog.showMessageBox(mainWindow, {
       type: 'warning',
-      buttons: ['取消', confirmLabel || '确认'],
+      buttons: ['取消', String(confirmLabel || '确认').slice(0, 40)],
       defaultId: 0,
       cancelId: 0,
-      title: String(title || '确认'),
-      message: String(message || ''),
-      detail: detail ? String(detail) : undefined,
+      title: box.title,
+      message: box.message,
+      detail: box.detail,
       noLink: true,
     });
-    return response === 1;
+    const ok = response === 1;
+    // 凭据绑的是**摆给人看的那一份**内容(box.binding),不是界面递过来的原样
+    if (ok && bound) grants.issue(purpose, box.binding);
+    return ok;
   });
+
+  registerSupportIpc({
+    ipcMain, dialog, shell, clipboard, app, log,
+    configPath: CONFIG_PATH,
+    noticesPath: NOTICES_PATH,
+    engine: () => engine,
+    window: () => (mainWindow && !mainWindow.isDestroyed() ? mainWindow : null),
+    isTrustedSender,
+    showBox,
+    notify: notifySystem,
+    send,
+    engineFacts: () => ({ restarts: engineRestarts, lastUpdateCheck: updateCache }),
+    markEngineStarted: () => {
+      engineStartedAt = Date.now();
+    },
+  });
+}
+
+const GATE_TEXT = {
+  'gate.auto_execute': '打开后,解析通过的订单会被直接发送到券商,没有人工确认环节。\n建议先在纸面账户跑够之后再打开。',
+  'gate.allow_live_trading': '打开后,指向实盘账户的订单不再被拦截,会用真钱成交。',
+  'gate.allow_combo_live': '打开后,实盘账户上的组合(价差 / 蝴蝶)也会被软件自动平仓。这条路目前只有离线测试。',
+};
+
+/**
+ * 带凭据的确认框上写什么。第一行(这是在确认什么)永远是主进程按用途写的;
+ * 发单那一种连"发的是哪句话、发到哪些账户、是纸面还是实盘"也由这里写——绑进凭据的就是摆给人看的那一份。
+ */
+async function boundConfirmText(purpose, binding, { message, detail }) {
+  const headline = PURPOSES[purpose];
+  if (purpose.startsWith('gate.')) return { title: headline, message: headline, detail: GATE_TEXT[purpose], binding };
+  if (purpose === 'limits.loosen') {
+    // 从多少改到多少,由这里对着引擎现在的设置算:界面说"只是从 5,000 调到 6,000"不作数
+    const current = await engine.call('settings.get', {}, { timeoutMs: 8000 });
+    const loosened = loosenedLimits(binding.limits, current.limits);
+    if (!loosened.length) return null;
+    const fmt = (n) => (Number.isFinite(n) ? n.toLocaleString('en-US', { maximumFractionDigits: 4 }) : '—');
+    return {
+      title: headline,
+      message: headline,
+      detail:
+        loosened.map((l) => `${l.label}:${fmt(l.from)} → ${fmt(l.to)}`).join('\n') +
+        '\n\n这些限额是每一笔订单都要过的闸:放宽之后,解析错了的指令能造成的损失也跟着变大。',
+      // 只绑真的放宽了的那几项:放行时主进程也是这么算的(requiredGrants)
+      binding: { limits: Object.fromEntries(loosened.map((l) => [l.key, l.to])) },
+    };
+  }
+  const lines = [message, detail].filter((v) => typeof v === 'string' && v.trim()).map((v) => String(v).slice(0, 1200));
+  if (purpose === 'instruction.submit') {
+    // 账户是纸面还是实盘,问引擎,不听界面的
+    let kinds = new Map();
+    try {
+      const status = await engine.call('system.status', {}, { timeoutMs: 5000 });
+      kinds = new Map((status.accounts || []).map((a) => [String(a.alias), a.is_paper ? '纸面' : '实盘']));
+    } catch {
+      /* 引擎不答话:账户类别标「未知」,发不发得出去由引擎的闸门说了算 */
+    }
+    const targets = binding.accounts.map((alias) => `${alias}(${kinds.get(alias) || '类别未知'})`).join('、');
+    const live = binding.accounts.some((alias) => kinds.get(alias) === '实盘');
+    return {
+      title: headline,
+      message: live ? `${headline}(含实盘账户)` : headline,
+      detail:
+        `${String(message || '').slice(0, 600)}\n\n` +
+        `指令:${binding.text.slice(0, 800)}\n` +
+        `账户:${targets || '(没有勾选账户)'}${binding.accounts.length > 1 ? `\n每笔订单各发 ${binding.accounts.length} 份。` : ''}`,
+      binding,
+    };
+  }
+  return { title: headline, message: headline, detail: lines.join('\n\n') || undefined, binding };
 }
 
 
@@ -860,9 +1235,22 @@ async function offerMoveToApplications() {
   if (response !== 0) return false;
 
   const { spawnSync } = require('node:child_process');
+  // 先把新的拷到旁边,拷成了再换掉旧的。以前是先删旧的再拷:拷到一半失败(磁盘满、权限),
+  // 「应用程序」里就一个版本都没有了
+  const incoming = `${target}.incoming`;
+  spawnSync('rm', ['-rf', incoming]);
+  // ditto 而不是 cp -R:拷应用包是它的本职,扩展属性、资源分支、框架里的符号链接都原样带过去,
+  // 签名才对得上(Apple 自己的安装说明也用它)
+  const cp = spawnSync('ditto', [bundle, incoming]);
+  if (cp.status !== 0) {
+    spawnSync('rm', ['-rf', incoming]);
+    dialog.showErrorBox('复制失败', String(cp.stderr || 'ditto 退出码 ' + cp.status) + '\n「应用程序」里原有的版本没有动。');
+    return false;
+  }
   if (fs.existsSync(target)) {
     const rm = spawnSync('rm', ['-rf', target]);
     if (rm.status !== 0) {
+      spawnSync('rm', ['-rf', incoming]);
       dialog.showErrorBox(
         '无法替换旧版本',
         '删除旧版失败:' + String(rm.stderr || '') +
@@ -871,11 +1259,10 @@ async function offerMoveToApplications() {
       return false;
     }
   }
-  // ditto 而不是 cp -R:拷应用包是它的本职,扩展属性、资源分支、框架里的符号链接都原样带过去,
-  // 签名才对得上(Apple 自己的安装说明也用它)
-  const cp = spawnSync('ditto', [bundle, target]);
-  if (cp.status !== 0) {
-    dialog.showErrorBox('复制失败', String(cp.stderr || 'ditto 退出码 ' + cp.status));
+  try {
+    fs.renameSync(incoming, target);
+  } catch (err) {
+    dialog.showErrorBox('无法放进「应用程序」', String(err && err.message ? err.message : err) + `\n新版本在 ${incoming},可以手动改名。`);
     return false;
   }
   // 去掉隔离属性,免得新副本又被 Gatekeeper 拦一次(仅限用户已确认打开的这份)
@@ -944,7 +1331,20 @@ if (!gotLock) {
     // 界面不需要任何系统权限
     session.defaultSession.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
 
-    const bootstrap = ensureConfigExists();
+    let bootstrap;
+    try {
+      bootstrap = ensureConfigExists();
+    } catch (err) {
+      // 数据目录写不进去(权限、磁盘满):以前是一个未捕获异常,窗口不开、也没有任何提示
+      log.error('[boot] 创建配置文件失败', err);
+      dialog.showErrorBox(
+        'IBKR-Assistant 无法启动',
+        `写不进配置文件:${CONFIG_PATH}\n${String(err && err.message ? err.message : err)}\n\n请检查这个文件夹的权限与磁盘剩余空间后重试。`,
+      );
+      app.quit();
+      return;
+    }
+    refreshRedactor();
     registerIpc();
     wireEngine();
     // 应用开着就不让系统挂起:挂起期间引擎不跑,追踪止盈止损也就不盯了。只挡挂起,不挡关屏
@@ -956,7 +1356,7 @@ if (!gotLock) {
     createWindow();
     buildMenu();
     if (bootstrap.created) {
-      send('bootstrap', { message: '已从示例创建 config/settings.json,请先在设置里核对账户与限额。' });
+      send('bootstrap', { message: '已从示例创建配置文件。请先到「接入 → 账户」填上你的账号,并在「设置」里核对限额。' });
     }
 
     // 点 Dock 图标:窗口藏着就叫回来。原来按"一扇窗都没有才新建"判断,可置顶弹窗也算一扇窗,
@@ -969,13 +1369,25 @@ if (!gotLock) {
   app.on('window-all-closed', () => {
     quitting = true;
     popup.destroy();
-    if (engine) engine.stop({ final: true });
+    // 引擎在 before-quit 里停(等它停稳才真的退出)。macOS 走不到这里:关窗只是藏起来
     if (process.platform !== 'darwin') app.quit();
+    else if (engine) engine.stop({ final: true });
   });
 
-  app.on('before-quit', () => {
+  // 退出要等引擎停稳:引擎先答完在途请求(正在发的那张单落完库)再退;它不肯退,rpc-client 会在宽限期后强制结束。
+  // 不等的话主进程先走了,SIGTERM / SIGKILL 的定时器跟着没了——卡住的引擎会变成孤儿,连着券商继续跑盯盘节拍
+  let engineStopped = false;
+  app.on('before-quit', (event) => {
     quitting = true;
     popup.destroy();
-    if (engine) engine.stop({ final: true });
+    if (!engine || engineStopped) return;
+    event.preventDefault();
+    engine
+      .stop({ final: true })
+      .catch(() => {})
+      .finally(() => {
+        engineStopped = true;
+        app.quit();
+      });
   });
 }

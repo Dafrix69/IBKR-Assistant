@@ -41,7 +41,9 @@ export async function loadPending(): Promise<void> {
 async function pollPending(): Promise<void> {
   if (polling) return;
   const status = getStatus();
-  if (!status?.broker_connected || !status.pending_count) return;
+  if (!status?.broker_connected) return;
+  // 富途没有成交回报的事件流:已提交订单的状态只在这一轮里同步回来,没有排队的条件单也得问
+  if (!status.pending_count && status.broker_provider !== 'futu') return;
   polling = true;
   try {
     await dafri.pollPending();

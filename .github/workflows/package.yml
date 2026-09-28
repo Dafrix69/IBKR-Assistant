@@ -22,6 +22,8 @@ on:
       - 'desktop/tools/stage_engine_ts.js'
       - 'desktop/tools/smoke_engine_ts.js'
       - 'desktop/tools/dist_mac.js'
+      - 'desktop/tools/gen_notices.js'
+      - 'desktop/tools/check_release.js'
 
 concurrency:
   group: package-${{ github.ref }}
@@ -242,14 +244,21 @@ jobs:
         with:
           path: artifacts
 
-      - name: 标签与 desktop/package.json 的版本必须对得上
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      # 发版闸门(desktop/tools/check_release.js):标签与版本号对得上、CHANGELOG 里有这一版、条款文本里没有留着占位符、
+      # 示例配置的闸门是关的、随包的开源组件许可都在白名单里。任何一条不过就不发。
+      # 许可那一条要读两个工程的 node_modules,所以先装依赖(不下 Electron 二进制)
+      - name: 发版闸门
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: 1
         run: |
           set -euo pipefail
-          tag="${GITHUB_REF_NAME#v}"
-          pkg=$(node -p "require('./desktop/package.json').version")
-          echo "标签 $tag / package.json $pkg"
-          # 对不上就停:产物文件名带的是 package.json 的版本号,发出去会和标签不一致
-          [ "$tag" = "$pkg" ] || { echo "::error::标签 v$tag 与 desktop/package.json 的 $pkg 对不上"; exit 1; }
+          (cd engine-ts && npm ci)
+          (cd desktop && npm ci)
+          node desktop/tools/check_release.js --tag "$GITHUB_REF_NAME" --notes > "$RUNNER_TEMP/changes.md"
 
       - name: 挂到 Release
         env:
@@ -259,12 +268,25 @@ jobs:
           find artifacts -type f | sort
           mapfile -t files < <(find artifacts -type f \( -name '*.dmg' -o -name '*.exe' -o -name '*.blockmap' \) | sort)
           [ "${#files[@]}" -gt 0 ] || { echo "::error::没有可发布的产物"; exit 1; }
-          notes=$'**macOS**(Apple Silicon,需 macOS 12 以上):`IBKR-Assistant-*-mac-arm64.dmg`。ad-hoc 签名、未公证,首次打开会提示无法验证开发者:到「系统设置 → 隐私与安全性」点「仍要打开」,或 `xattr -dr com.apple.quarantine "/Applications/IBKR-Assistant.app"`。Intel Mac 不支持。\n\n**Windows** x64:`IBKR-Assistant-*-win-x64.exe`。未签名,SmartScreen 拦下时「更多信息 → 仍要运行」。\n\n两个包都自带交易引擎,目标机器不需要装 Node 或 Python。\n\n用之前:IBKR 的 TWS 或 IB Gateway 要登录并打开 API;自备一个大模型 API Key(Anthropic 或 OpenAI 兼容端点)。建议先只接模拟账户。'
+          # 校验和:下载的人拿它核对安装包没有被换过、没有下坏(shasum -a 256 -c SHA256SUMS.txt)
+          mkdir -p out
+          for f in "${files[@]}"; do cp "$f" out/; done
+          (cd out && sha256sum -- * > SHA256SUMS.txt && cat SHA256SUMS.txt)
+          # 更新说明 = CHANGELOG.md 里这一版的那一节 + 每一版都一样的安装提示。「关于 → 更新」显示的就是这段话
+          {
+            cat "$RUNNER_TEMP/changes.md"
+            printf '\n---\n\n'
+            printf '**macOS**(Apple Silicon,需 macOS 12 以上):`IBKR-Assistant-*-mac-arm64.dmg`。没有开发者证书时是 ad-hoc 签名、未公证,首次打开会提示无法验证开发者:到「系统设置 → 隐私与安全性」点「仍要打开」。Intel Mac 不支持。\n\n'
+            printf '**Windows** x64:`IBKR-Assistant-*-win-x64.exe`。未签名,SmartScreen 拦下时「更多信息 → 仍要运行」。\n\n'
+            printf '两个包都自带交易引擎,目标机器不需要装 Node 或 Python。安装包的 SHA-256 在 `SHA256SUMS.txt` 里。\n\n'
+            printf '用之前:IBKR 的 TWS 或 IB Gateway 要登录并打开 API;自备一个大模型 API Key。**请先只接模拟账户。**\n'
+          } > "$RUNNER_TEMP/notes.md"
+          # 发出去的版本不再改:同一个标签已经有 Release 就停下。要改就发一个新的补丁版本——
+          # 悄悄换掉一个已经有人下载过的安装包,校验和、更新提示、问题复现都会对不上
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            echo "Release $GITHUB_REF_NAME 已存在,补传资产(同名覆盖)"
-            gh release upload "$GITHUB_REF_NAME" "${files[@]}" --clobber
-          else
-            gh release create "$GITHUB_REF_NAME" "${files[@]}" \
-              --title "IBKR-Assistant ${GITHUB_REF_NAME#v}" \
-              --notes "$notes"
+            echo "::error::Release $GITHUB_REF_NAME 已经存在。发出去的版本不覆盖:请改版本号、打新标签"
+            exit 1
           fi
+          gh release create "$GITHUB_REF_NAME" out/* \
+            --title "IBKR-Assistant ${GITHUB_REF_NAME#v}" \
+            --notes-file "$RUNNER_TEMP/notes.md"

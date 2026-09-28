@@ -22,6 +22,8 @@ import { IdeaVectorStore } from "./ideaVectors.js";
 import { SignalLogStore } from "./signalLog.js";
 import { ImportedTradesStore } from "./importedTrades.js";
 import type { RecentOrder } from "./models.js";
+import type { BackupInfo, BackupReason } from "./contract/settings.js";
+import { createBackup, describeOpenFailure, guardOnOpen, stampVersion } from "./storeSafety.js";
 
 export const SCHEMA = `
 CREATE TABLE IF NOT EXISTS trade_records (
@@ -254,18 +256,28 @@ export class TradeStore {
   /** 价位提醒与盯异动发出的每一条信号(只增不改),见 signalLog.ts */
   readonly signals: SignalLogStore;
 
-  constructor(dbPath: string) {
+  /** safety:真应用开库时给 true——拒绝比软件新的库、查完整性、升级前与每天各备份一次、盖结构版本号,
+   *  打不开时抛 StoreOpenError(一句人话)。口径见 storeSafety.ts;测试与黄金基线开的库不走这一套。 */
+  constructor(dbPath: string, opts: { safety?: boolean } = {}) {
     this.dbPath = dbPath;
-    fs.mkdirSync(path.dirname(this.dbPath), { recursive: true });
-    const fresh = !fs.existsSync(this.dbPath);
-    this.db = new Database(this.dbPath);
-    this.db.pragma("journal_mode = WAL");
-    this.db.pragma("foreign_keys = ON");
-    this.db.exec(SCHEMA);
-    this.imports = new ImportedTradesStore(this.db);
-    this.vectors = new IdeaVectorStore(this.db);
-    this.signals = new SignalLogStore(this.db);
-    this.migrate();
+    const safety = opts.safety === true;
+    let fresh = false;
+    try {
+      fs.mkdirSync(path.dirname(this.dbPath), { recursive: true });
+      fresh = !fs.existsSync(this.dbPath);
+      this.db = new Database(this.dbPath);
+      this.db.pragma("journal_mode = WAL");
+      this.db.pragma("foreign_keys = ON");
+      if (safety) guardOnOpen(this.db, this.dbPath, fresh);
+      this.db.exec(SCHEMA);
+      this.imports = new ImportedTradesStore(this.db);
+      this.vectors = new IdeaVectorStore(this.db);
+      this.signals = new SignalLogStore(this.db);
+      this.migrate();
+      if (safety) stampVersion(this.db);
+    } catch (exc) {
+      throw safety ? describeOpenFailure(exc, this.dbPath) : exc;
+    }
     if (fresh) {
       try {
         fs.chmodSync(this.dbPath, 0o600);
@@ -307,8 +319,8 @@ export class TradeStore {
       (this.db.pragma("table_info(position_tracks)") as Array<{ name: string }>).map((r) => r.name),
     );
     if (tcols.size && !tcols.has("leg")) {
-      this.db.exec(`
-        BEGIN;
+      // 整表重建放进一个事务函数:半路出错整段回滚(以前是裸的 BEGIN…COMMIT,出错后事务悬着,库停在半截)
+      this.db.transaction(() => this.db.exec(`
         CREATE TABLE position_tracks_v2 (
             id         TEXT PRIMARY KEY,
             created_at TEXT NOT NULL,
@@ -336,13 +348,17 @@ export class TradeStore {
         FROM position_tracks;
         DROP TABLE position_tracks;
         ALTER TABLE position_tracks_v2 RENAME TO position_tracks;
-        COMMIT;
-      `);
+      `))();
     }
   }
 
   close(): void {
     this.db.close();
+  }
+
+  /** 现在出一份备份(一致快照,不动库本身)。 */
+  backupNow(reason: BackupReason): BackupInfo {
+    return createBackup(this.db, this.dbPath, reason);
   }
 
   // ---- 写入 -----------------------------------------------------------
@@ -373,6 +389,16 @@ export class TradeStore {
     this.db
       .prepare("INSERT INTO record_events (record_id, at, kind, payload) VALUES (?,?,?,?)")
       .run(recordId, nowIso(), kind, JSON.stringify(payload));
+  }
+
+  /** 发单之前先留一条痕(事件 kind = submit_intent)。
+   *
+   * 记录是在发单之前建的,第一条状态回报却要等券商回话之后才落。进程要是在这中间被杀(重启、退出、心跳判死),
+   * 单可能已经到了券商,库里这条记录却一条状态都没有——对账(listWorkingRecords)和重复单防抖(recentOrders)
+   * 都只认"有过状态回报"的记录,看不见它:重启后没人认领这张单,照原样再发一次也不会被提醒。
+   * 这条痕让两者都认得它。读记录时 foldEvents 不认这个 kind,折出来的文档一字不变。 */
+  markSubmitIntent(recordId: string): void {
+    this.appendEvent(recordId, "submit_intent", {});
   }
 
   setFinalStatus(recordId: string, status: string, errorDetail: string | null = null): void {
@@ -1091,8 +1117,8 @@ export class TradeStore {
         " WHERE signature != ''" +
         " AND EXISTS (" +
         "   SELECT 1 FROM record_events e" +
-        "   WHERE e.record_id = t.id AND e.kind = 'status'" +
-        "   AND e.payload NOT LIKE '%ValidatedOnly%'" +
+        "   WHERE e.record_id = t.id AND (e.kind = 'submit_intent'" +
+        "     OR (e.kind = 'status' AND e.payload NOT LIKE '%ValidatedOnly%'))" +
         " )" +
         " ORDER BY rowid DESC LIMIT 1000",
       )
@@ -1110,7 +1136,7 @@ export class TradeStore {
     return out;
   }
 
-  /** 在途记录:回报过状态、还没有终态的那些。对账用(见 engine.reconcileOrders)——
+  /** 在途记录:回报过状态(或留过发单的痕,见 markSubmitIntent)、还没有终态的那些。对账用(见 engine.reconcileOrders)——
    * 引擎重启后 orderIndex 是空的,券商后来推的状态与成交认不出记录,这些单会永远停在旧状态。
    * 只校验未发送(ValidatedOnly)不算在途:它从没提交过。
    * 时间过滤与 recentOrders 同理,在代码里做,不在 SQL 里比字符串。 */
@@ -1128,8 +1154,8 @@ export class TradeStore {
         " FROM trade_records t" +
         " WHERE EXISTS (" +
         "   SELECT 1 FROM record_events e" +
-        "   WHERE e.record_id = t.id AND e.kind = 'status'" +
-        "   AND e.payload NOT LIKE '%ValidatedOnly%'" +
+        "   WHERE e.record_id = t.id AND (e.kind = 'submit_intent'" +
+        "     OR (e.kind = 'status' AND e.payload NOT LIKE '%ValidatedOnly%'))" +
         " )" +
         " AND NOT EXISTS (" +
         "   SELECT 1 FROM record_events f WHERE f.record_id = t.id AND f.kind = 'final'" +

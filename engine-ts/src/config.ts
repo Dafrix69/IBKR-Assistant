@@ -13,6 +13,7 @@ import * as path from "node:path";
 import * as os from "node:os";
 import { fileURLToPath } from "node:url";
 
+import { builtinCalendar, mergeCalendar } from "./marketCalendar.js";
 import { pyFloat, pyRepr, truthy } from "./py.js";
 import type { ProtectionsConfig } from "./protections.js";
 import { BJ, ET, wallParts, weekdayOfDate } from "./tz.js";
@@ -178,8 +179,29 @@ export function nowEt(): EtNow {
   return etNowFromEpoch(clockOverrideMs ?? Date.now());
 }
 
+/** 提示词目录里版本号最大的那一版(按 system_vX.Y.Z.md 认,数值比较)。目录读不了、一版都没有时返回 null。 */
+export function latestPromptVersion(promptDir: string): string | null {
+  let names: string[];
+  try {
+    names = fsModule.readdirSync(promptDir);
+  } catch {
+    return null;
+  }
+  let best: { version: string; rank: number } | null = null;
+  for (const name of names) {
+    const m = /^system_(v(\d+)\.(\d+)\.(\d+))\.md$/.exec(name);
+    if (!m) continue;
+    // 三段各不会超过一百万:拼成一个数来比,省得逐段比
+    const rank = Number(m[2]) * 1e12 + Number(m[3]) * 1e6 + Number(m[4]);
+    if (best === null || rank > best.rank) best = { version: String(m[1]), rank };
+  }
+  return best?.version ?? null;
+}
+
 export class Settings {
   prompt_version = "v1.0.0";
+  /** 配置里写的是不是 "latest"(跟着软件带的最新一版走);false = 钉在某一版上 */
+  prompt_follows_latest = false;
   prompt_dir: string = DEFAULT_PROMPT_DIR;
   llm!: LLMConfig;
   broker!: BrokerConfig;
@@ -657,6 +679,26 @@ function assertAccountConnections(settings: Settings): void {
 }
 
 /**
+ * is_paper 是人填的,而它决定要不要过实盘闸门——把实盘账号标成纸面,那道闸对它就失效了。
+ * IBKR 的模拟账号都以 D 开头(DU / DF…),实盘账号以 U / F / I 开头:账号长得像实盘、却标成了纸面的,
+ * **按实盘处理**并留一条提醒(失败朝安全的一侧;最坏的结果是一个真的纸面账户多过一道闸)。
+ * 只管走 IBKR 的账户;富途的账号是纯数字,从样子上分不出来。
+ */
+function livePaperMismatches(settings: Settings): string[] {
+  const out: string[] = [];
+  for (const acct of settings.accounts) {
+    if (!acct.is_paper || settings.accountBroker(acct) !== "ibkr") continue;
+    if (/^D/i.test(acct.account_id)) continue;
+    acct.is_paper = false;
+    out.push(
+      `账户 ${acct.alias} 标的是纸面账户,但账号不是 IBKR 模拟账号的样子(模拟账号以 D 开头),已按实盘账户处理` +
+      "(下单要过「允许实盘账户下单」这道闸)。如果它确实是模拟账户,请核对账号有没有填错。",
+    );
+  }
+  return out;
+}
+
+/**
  * 账户的 is_paper。它决定要不要过实盘闸门(allow_live_trading),所以两件事必须对:
  * · 没写 = **按实盘处理**(失败朝安全的一侧)。以前没写默认 true,把实盘账号照抄进纸面模板、
  *   漏了这一行,实盘闸门就对它失效;
@@ -717,8 +759,16 @@ export function fromDict(raw: Raw, source: string | null = null): Settings {
 
   const storage = (raw["storage"] as Raw) ?? {};
   const settings = new Settings();
-  settings.prompt_version = String(raw["prompt_version"] ?? "v1.0.0");
   settings.prompt_dir = raw["prompt_dir"] ? String(raw["prompt_dir"]) : DEFAULT_PROMPT_DIR;
+  settings.prompt_version = String(raw["prompt_version"] ?? "v1.0.0");
+  // "latest":跟着软件带的最新一版提示词走。配置是首次启动时从示例拷出来的,之后不会再被改写——
+  // 钉死某一版的话,软件升级带来的新提示词老用户永远用不上。要钉住(回滚)就把它写成具体的版本号。
+  if (settings.prompt_version === "latest") {
+    const latest = latestPromptVersion(settings.prompt_dir);
+    if (latest === null) throw new Error(`prompt_version 写的是 latest,但提示词目录里一版都没有:${settings.prompt_dir}`);
+    settings.prompt_version = latest;
+    settings.prompt_follows_latest = true;
+  }
   // 与 Python 的 Settings(...) 参数求值顺序一致:llm → broker → limits → policies
   settings.llm = buildLlm((raw["llm"] as Raw) ?? {});
   settings.broker = buildBroker((raw["broker"] as Raw) ?? {});
@@ -734,8 +784,16 @@ export function fromDict(raw: Raw, source: string | null = null): Settings {
   }
   settings.symbol_aliases = aliases;
   settings.index_symbols = indexes;
-  settings.market_holidays = [...(((raw["market_holidays"] as string[]) ?? []))];
-  settings.early_close_days = [...(((raw["early_close_days"] as string[]) ?? []))];
+  // 休市日 / 提前收盘日 = 配置里写的 ∪ 内置日历(marketCalendar.ts 按 NYSE 规则推算)。配置那张表只写到某一年,
+  // 表里没有的年份以前每个工作日都算交易日;临时休市规则算不出来,照旧靠配置。
+  // "market_calendar": "config_only" 退回老口径(只认配置里写的)。
+  const calendarMode = String(raw["market_calendar"] ?? "builtin");
+  if (calendarMode !== "builtin" && calendarMode !== "config_only") {
+    throw new Error(`market_calendar 只能是 builtin 或 config_only,收到 ${pyRepr(raw["market_calendar"])}`);
+  }
+  const builtin = calendarMode === "builtin" ? builtinCalendar() : { holidays: [], earlyCloses: [] };
+  settings.market_holidays = mergeCalendar((raw["market_holidays"] as string[]) ?? [], builtin.holidays);
+  settings.early_close_days = mergeCalendar((raw["early_close_days"] as string[]) ?? [], builtin.earlyCloses);
   if (storage["db_path"]) settings.db_path = expandHome(String(storage["db_path"]));
   settings.source_path = source;
   settings.paper_flag_missing = paperMissing;
@@ -745,6 +803,7 @@ export function fromDict(raw: Raw, source: string | null = null): Settings {
       "请在 config/settings.json 里给它写明 \"is_paper\": true 或 false。",
   );
   assertAccountConnections(settings);
+  settings.config_warnings.push(...livePaperMismatches(settings));
   return settings;
 }
 
@@ -752,26 +811,95 @@ const fs = fsModule;
 
 export const DEFAULT_CONFIG_PATH = process.env["DAFRI_CONFIG"] ?? findDefaultConfigPath();
 
+/** 引擎因为配置读不进来而退出时用的退出码(sysexits.h 的 EX_CONFIG)。桌面端认它:
+ *  不再按"引擎崩了"去自动重启(配置不改,重启一万次也是同一个错),改成问用户怎么办。 */
+export const EXIT_CONFIG = 78;
+
+/** 配置读不进来。missing = 文件不在;syntax = 不是合法的 JSON;invalid = 是 JSON,但校验不过。
+ *  invalid 的 message 就是校验那句原话,不加前缀——那些话和 Python 版逐字节一致,别处在比。 */
+export class ConfigLoadError extends Error {
+  readonly kind: "missing" | "syntax" | "invalid";
+  readonly path: string;
+
+  constructor(kind: "missing" | "syntax" | "invalid", filePath: string, message: string) {
+    super(message);
+    this.name = "ConfigLoadError";
+    this.kind = kind;
+    this.path = filePath;
+  }
+}
+
 export function loadSettings(settingsPath?: string | null): Settings {
   const p = settingsPath ?? DEFAULT_CONFIG_PATH;
   if (!fs.existsSync(p)) {
-    throw new Error(
+    throw new ConfigLoadError(
+      "missing", p,
       `找不到配置文件 ${p}。请复制 config/settings.example.json 为 config/settings.json 后修改。`,
     );
   }
-  const raw = JSON.parse(fs.readFileSync(p, "utf-8"));
-  return fromDict(raw, p);
+  let raw: unknown;
+  try {
+    raw = JSON.parse(fs.readFileSync(p, "utf-8"));
+  } catch (exc) {
+    throw new ConfigLoadError("syntax", p, `配置文件不是合法的 JSON(多半是手改时少了逗号或引号):${(exc as Error).message}`);
+  }
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new ConfigLoadError("syntax", p, "配置文件的最外层必须是一个 { } 对象");
+  }
+  try {
+    return fromDict(raw as Raw, p);
+  } catch (exc) {
+    throw new ConfigLoadError("invalid", p, (exc as Error).message);
+  }
 }
 
-/** 深合并一份补丁到配置文件。先在内存里验一遍,验不过就不落盘。 */
+/** 上一份可用配置的备份放在哪:同目录、原名加 .bak。桌面端的「恢复上一份可用的配置」读的就是它。 */
+export function configBackupPath(settingsPath: string): string {
+  return `${settingsPath}.bak`;
+}
+
+/**
+ * 原子写:先写同目录的临时文件、落盘(fsync),再 rename 过去。进程在任何一步被杀、磁盘在半路写满,
+ * 留下的要么是旧文件、要么是新文件,不会是半截 JSON——半截 JSON 的后果是引擎起不来,持仓追踪没人盯。
+ */
+function writeFileAtomic(target: string, text: string): void {
+  const tmp = `${target}.tmp-${process.pid}`;
+  const fd = fs.openSync(tmp, "w", 0o600);
+  try {
+    fs.writeSync(fd, text, null, "utf-8");
+    fs.fsyncSync(fd);
+  } finally {
+    fs.closeSync(fd);
+  }
+  try {
+    fs.renameSync(tmp, target);
+  } catch (exc) {
+    // Windows 上目标文件正被别的进程打开(杀毒、同步盘)时 rename 会 EPERM / EBUSY:退回直接写,不让这一次保存失败
+    try {
+      fs.writeFileSync(target, text, "utf-8");
+    } finally {
+      fs.rmSync(tmp, { force: true });
+    }
+    if (!fs.existsSync(target)) throw exc;
+  }
+}
+
+/** 深合并一份补丁到配置文件。先在内存里验一遍,验不过就不落盘。
+ *  落盘之前把**改动前**那一份存成 .bak(它刚被读进来过,是能用的),再原子写新的。 */
 export function patchConfigFile(settingsPath: string | null, patch: Raw): Settings {
   if (settingsPath === null || settingsPath === undefined) {
     throw new Error("当前设置不是从文件加载的,无法写回");
   }
-  const raw = JSON.parse(fs.readFileSync(settingsPath, "utf-8"));
+  const before = fs.readFileSync(settingsPath, "utf-8");
+  const raw = JSON.parse(before);
   const merged = deepMerge(raw, patch);
   const settings = fromDict(merged, settingsPath); // 验证:抛异常就不会走到写盘
-  fs.writeFileSync(settingsPath, JSON.stringify(merged, null, 2), "utf-8");
+  try {
+    writeFileAtomic(configBackupPath(settingsPath), before);
+  } catch {
+    // 备份写不进去(目录只读?)不该挡住这一次保存:保存本身还会再试一次写盘,写不进去由它报
+  }
+  writeFileAtomic(settingsPath, JSON.stringify(merged, null, 2));
   return settings;
 }
 

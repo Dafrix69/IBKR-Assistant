@@ -28,8 +28,8 @@ orchestrate   engine.ts  engine/*.ts(hosted 托管单、reconcile 执行对账�
 execution     broker.ts  ibContracts.ts(怎么拼一张 IB 合约)  futuBroker.ts  ibSession.ts  ibTypes.ts  tws.ts  futu.ts  futuBridge.ts
 parsing       validator.ts  providers.ts  prompts.ts  shorthand.ts  llm.ts  embeddings.ts
 analysis      backtest backtestLab priceaction screener research ideaRetrieval optionwall anomaly flyexit tradereview tradeOutcomes performance leaders fillsCsv optionTradesCsv optionPositionsCsv tradeSimilar ibtrades macro market alerts maTouch execQuality signalOutcomes trackerDrawdown ivPricing
-domain        config.ts  models.ts  store.ts  importedTrades.ts  ideaVectors.ts  signalLog.ts  positions.ts  combos.ts(期权腿 → 组合)  marketdata.ts
-util          py.ts  pyjson.ts  tz.ts  notify.ts  keychain.ts  killswitch.ts  protections.ts  riskBudget.ts  rpcError.ts
+domain        config.ts  models.ts  store.ts  storeSafety.ts(库的版本号、完整性、备份)  importedTrades.ts  ideaVectors.ts  signalLog.ts  positions.ts  combos.ts(期权腿 → 组合)  marketdata.ts
+util          py.ts  pyjson.ts  tz.ts  notify.ts  keychain.ts  killswitch.ts  protections.ts  riskBudget.ts  rpcError.ts  marketCalendar.ts(内置休市日历)
 contract      contract/*.ts(纯类型,零 import,谁都能引)  contract/schema/*.ts(入参的 zod 校验,只给 rpc/ 用)
 ```
 
@@ -50,13 +50,28 @@ contract      contract/*.ts(纯类型,零 import,谁都能引)  contract/schema/
 要共享的下沉到 `lib/`(组件、纯函数)或 `store/`(跨页状态、轮询)。轮询循环只能在 `store/` 里,
 不挂在组件生命周期上——切走页面追踪器还得跑。规则在 `desktop/.dependency-cruiser.cjs`,`npm run depcruise`。
 
+## 主进程(`desktop/*.js`)
+
+- `main.js` 只管窗口、菜单、引擎的生与死、把通道接起来。**判断写在旁边的纯模块里**:`config-guard.js` `store-guard.js`
+  `consent.js` `confirm-grants.js` `redact.js` `diagnostics.js` `accounts-setup.js` 都不 require electron,
+  `engine-ts/tests/desktop-*.spec.ts` 直接跑它们。新加的主进程逻辑照这个样子写:能离线测的部分单拎一个文件。
+  接线由 `tests/desktop-main.spec.ts` 管:它用一个假的 `electron` 把 `main.js` 真的跑起来、引擎子进程是真的。
+  新加通道、改放行的先后次序之后,在那里补一条。
+- 新的主进程文件要进三处:`package.json` 的 `build.files`(漏了装好的应用一启动就 `Cannot find module`,
+  `desktop-update.spec` 钉着)、`eslint.config.mjs` 的主进程那一组、以及对应的测试。
+- 每个 `ipcMain.handle` 第一句核对发起方。界面递不进路径:写到哪、打开哪个目录,由主进程或它弹的系统对话框定。
+- **会发单 / 授权发单 / 开闸门 / 放宽限额的新通道,要进 `confirm-grants.js` 的 `requiredGrants`**;
+  `__confirmed` 只说明调用是从桥上走的,不等于用户确认过。
+- 落盘的日志一律过 `redact.js`。新加一种会进日志的敏感内容,先在那里加规则和测试。
+- 引擎用专门的退出码说"别重启我":`EXIT_CONFIG`(78)、`EXIT_STORE`(74)。两头各有一个常量,测试对着。
+
 ## 引擎 ↔ 界面契约
 
 - **新方法只能从契约加**,顺序是:`contract/<域>.ts` 写入参与返回的类型 → `contract/index.ts` 的 `RpcMethods` 登记 →
   `contract/schema/` 配入参 schema(漏了是编译错)→ 所属域 handler 用 `contractMethods({...})` 实现 → `main.js` 的
   `ALLOWED_RPC`(会发单的还要进 `SENSITIVE_RPC`)→ `preload.js` → `bridge.ts` 的 `DafriBridge` 用 `RpcParams` / `RpcResult` 写签名。
   方法要走本地道 / 读道,还要进 `server.ts` 的道表。`tests/desktop-whitelist.spec.ts` 与 `tests/contract.spec.ts` 少一处会红。
-- `tests/contract.spec.ts` 的 `LEGACY_METHODS` **已于 2026-09-20 空掉**(77 个方法全在契约里)。那张表留着是闸门:
+- `tests/contract.spec.ts` 的 `LEGACY_METHODS` **已于 2026-09-20 空掉**(当时 77 个方法、现在 86 个,全在契约里)。那张表留着是闸门:
   想绕过契约就得先往里加一行,而那条用例不让。**只许变短,不许加。**
 - 契约的类型文件(`contract/` 顶层)**不 import 任何东西**:界面的 tsc 会顺着 `bridge.ts` 走进来,而 CI 里界面那一路
   不装引擎的依赖。界面只有 `bridge.ts` 能跨进引擎目录,只许 `import type`,只许进 `contract/` 顶层。
@@ -91,7 +106,7 @@ contract      contract/*.ts(纯类型,零 import,谁都能引)  contract/schema/
 真要让某个文件变长,就得去改那个数字——改的那一刻正好回答上面那句话。
 已知超线且待拆的:`engine.ts`(2026-09-20 托管单 → `engine/hosted.ts`、执行对账 → `engine/reconcile.ts`、
 回报落库 → `engine/callbacks.ts`;2026-09-27 本地速记 → `engine/localShorthand.ts`、托管追踪的触发处置 →
-`engine/hosted.ts` 的 `onTriggered`、平仓识别 → `engine/closing.ts`,还剩 1,766 行。**另有两个方法超了 150 行的函数预算:
+`engine/hosted.ts` 的 `onTriggered`、平仓识别 → `engine/closing.ts`;2026-09-28 `localIsoSeconds` → `engine/clock.ts`,还剩 1,757 行。**另有两个方法超了 150 行的函数预算:
 `handleInstruction` 230 行、`pollTrackers` 154 行** —— 拆它时要顺带切开,不能只搬不动。
 四簇与建议顺序量在体检报告里)、
 `broker.ts`(2026-09-21 合约工具函数已搬进 `ibContracts.ts`,还剩 2,400 行 —— **大头是 `BrokerRouter`
@@ -107,6 +122,11 @@ contract      contract/*.ts(纯类型,零 import,谁都能引)  contract/schema/
 - 新指标 / 新数值算法:自己写,不引技术指标库——平滑口径不同就是换数,黄金基线会全红。
 - 新提示词:`prompts/` 按版本号只增不改,`config` 里 `prompt_version` 切换。
 - 新功能:`docs/features/<名字>.md` 一份,写设计决策与口径,不写操作手册。事故写 `docs/journal/`。
+  用户看得见的改动还要进两处:`CHANGELOG.md` 的「未发布」(发布页与「关于 → 更新」显示的就是它),
+  以及 `docs/user-guide/` 里对应的那一页。
+- 改条款文本(`docs/legal/`)的实质内容:三份开头的「版本」与 `desktop/consent.js` 的 `TERMS_VERSION` 一起改成新日期。
+- 改交易库的表结构(加列以外的):`storeSafety.ts` 的 `SCHEMA_VERSION` 加一,`store.ts` 的 `migrate` 里写迁移。
+- 新的外部域名(引擎要连一个新的数据源):先改 `docs/legal/privacy.md`,`desktop-consent.spec` 钉着域名清单。
 
 ## 不做的事
 
@@ -114,3 +134,5 @@ contract      contract/*.ts(纯类型,零 import,谁都能引)  contract/schema/
 - 不在测试里连真券商、不发真单。`tests/` 全部离线,新测试也必须离线。
 - 不改 `baseline/` 里的 `.db` 与 `golden/*.json` 手工内容,只通过 `golden:update` 重生成。
 - 不把 `config/settings.json`、`~/`、`.claude/` 提交进仓库。
+- 不覆盖已经发出去的版本。要改就发新的补丁版本。
+- 不把 Electron 升到 42 及以上,直到有了正式签名的包(42 起 macOS 的系统通知要求签名)。

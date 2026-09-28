@@ -78,3 +78,12 @@
 但 lock 里 12 个都在。`tools/stage_engine_ts.js` 按 lock 条目的 `os` / `cpu` 只收目标平台那一个(win32-x64 约 1.8 MB),
 其余跳过;**目标平台那个不在磁盘上会直接报错**——少打一个原生包,要到用户机器上才会以 "Cannot find module" 暴露。
 
+
+**2026-09-28 的两处变动**:
+
+- `futu-api` 从引擎的 `dependencies` 挪到 `devDependencies`,不再随安装包发出去(连同它独占的 17 个传递依赖,protobufjs 在内)。
+  原因与挪回来的条件见 [富途 OpenD](futu-opend.md)。引擎生产依赖的 `npm audit` 从此是 0。
+- `electron` 从 40 升到 41.10.x,并**停在 41**:40 的那条 high 级通告修在 41.10.3;42 起 macOS 的系统通知要求正式签名。
+  见 [发版](release.md)。
+
+随包的开源组件与它们的许可由 `tools/gen_notices.js` 收成一份声明,许可不在白名单里的会让打包失败。

@@ -69,6 +69,7 @@ const PARENT_OF: Record<string, string> = {
   deviation: 'screener',
   tws: 'access',
   futu: 'access',
+  accounts: 'access',
   llm: 'access',
   alerts: 'sectors',
   // 异动弹窗的「查看」发的是 page:'quality'(主进程里存着的旧条目也是),那一页已经并进板块页——

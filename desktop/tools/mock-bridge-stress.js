@@ -257,6 +257,19 @@ window.dafri = {
   connectBroker: async()=>({provider:'futu',connected:['opend'],failed:{},listeners:0}),
   disconnectBroker: async()=>({connected:[]}), halt: async()=>({engaged:true,cancelled:0}),
   resume: async()=>({engaged:false}), exportData: async()=>({}), restartEngine: async()=>({}),
+  // 备份、诊断、条款(desktop/support-ipc.js 与引擎的 data.backups / data.backup)
+  listBackups: async () => ({db_path:'~/Library/Application Support/dafri/trades.db', dir:'~/Library/Application Support/dafri/backups', schema_version:1,
+    backups: [{name:'trades-20260928-010000-daily.db', reason:'daily', at:'2026-09-28T01:00:00Z', bytes:1843200},{name:'trades-20260927-010500-daily.db', reason:'daily', at:'2026-09-27T01:05:00Z', bytes:1810432},{name:'trades-20260926-143000-upgrade.db', reason:'upgrade', at:'2026-09-26T14:30:00Z', bytes:1790976}]}),
+  backupNow: async () => ({backup:{name:'trades-20260928-013000-manual.db', reason:'manual', at:'2026-09-28T01:30:00Z', bytes:1843200}}),
+  restoreBackup: async () => ({ok:false, canceled:true}),
+  exportDiagnostics: async () => ({ok:false, canceled:true}), copyDiagnostics: async () => ({ok:true}),
+  reveal: async () => ({ok:true}),
+  // 地址后面加 ?consent=0 看首次启动时的条款确认页(平时当作已经同意过,不挡着截图)
+  consentState: async () => (/[?&]consent=0/.test(location.search) ? {version:'2026-09-28', accepted:false, acceptedAt:null} : {version:'2026-09-28', accepted:true, acceptedAt:'2026-09-28T01:00:00.000Z'}),
+  acceptConsent: async (version) => ({version, accepted:true, acceptedAt:'2026-09-28T01:00:00.000Z'}),
+  quit: async () => ({}),
+  accountsInfo: async () => ({placeholders:[], connections:[{name:'paper',broker:'ibkr',port:7497},{name:'live',broker:'ibkr',port:7496},{name:'futu',broker:'futu',port:11111}]}),
+  changeAccount: async () => ({ok:false, canceled:true}),
   // params 是 dict 不是数组(见 backtest.STRATEGIES),param_labels 给界面显示中文名
   backtestStrategies: async () => ({strategies:[
     {key:'buy_hold',label:'买入持有',desc:'第一天买入,一直持有到区间结束。是所有策略的基准。',

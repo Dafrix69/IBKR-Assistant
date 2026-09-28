@@ -32,7 +32,7 @@ import {
 } from "./protections.js";
 import type { ProtectionState } from "./protections.js";
 import { TradeStore, redactAccount } from "./store.js";
-import { nowIsoSecondsEt } from "./engine/clock.js";
+import { localIsoSeconds, nowIsoSecondsEt } from "./engine/clock.js";
 import { HostedOrders } from "./engine/hosted.js";
 import { tryLocalShorthand } from "./engine/localShorthand.js";
 import { reducesPositions } from "./engine/closing.js";
@@ -540,6 +540,7 @@ export class TradingEngine {
       });
     }
 
+    this.store.markSubmitIntent(recordId); // 先留痕再发单:发到一半进程被杀,对账与重复单防抖还认得出这条记录
     const placement = await this.router.place(recordId, approved, limitOverride);
     this.indexPlacement(recordId, placement);
     this.store.appendEvent(recordId, "status", {
@@ -580,6 +581,7 @@ export class TradingEngine {
       let placement: PlacementResult;
       try {
         limit = await this.priceAutoMid(pending.approved);
+        this.store.markSubmitIntent(pending.record_id);
         placement = await this.router!.place(pending.record_id, pending.approved, limit);
       } catch (exc) {
         if (exc instanceof BrokerError) {
@@ -1219,6 +1221,7 @@ export class TradingEngine {
     });
     let placement: PlacementResult;
     try {
+      this.store.markSubmitIntent(recordId);
       placement = await this.router!.place(recordId, approved);
     } catch (exc) {
       const detail = `自动平仓下单失败:${(exc as Error).message}。请立刻手动核对持仓。`;
@@ -1748,18 +1751,6 @@ async function buildSnapshotAsync(
     if (price) snapshot[symbol] = Number(price);
   }
   return snapshot;
-}
-
-function localIsoSeconds(): string {
-  const d = new Date();
-  const off = -d.getTimezoneOffset();
-  const sign = off >= 0 ? "+" : "-";
-  const pad = (n: number): string => String(Math.abs(n)).padStart(2, "0");
-  return (
-    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
-    `T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}` +
-    `${sign}${pad(Math.trunc(off / 60))}:${pad(off % 60)}`
-  );
 }
 
 export { fingerprint };

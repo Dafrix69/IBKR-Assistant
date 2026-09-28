@@ -110,10 +110,19 @@ export function TrackerPage() {
       </div>
 
       <SectionTitle innerRef={trackersHead}>正在追踪</SectionTitle>
-      {connected && snap.tracks.length ? <LoopPulse loop={snap.loop} /> : null}
+      {snap.tracksError ? (
+        <Notice tone="bad" title="追踪列表没读到,下面是上一次读到的">
+          {snap.tracksError}。引擎里的追踪不受影响;引擎恢复后点「刷新持仓」。
+        </Notice>
+      ) : null}
+      {snap.pollError ? (
+        <div className="hint warn-text" id="tracker-loop-pulse">{`读不到盯盘结果:${snap.pollError}。下面的价格与状态停在最后一次读到的时候。`}</div>
+      ) : connected && snap.tracks.length ? (
+        <LoopPulse loop={snap.loop} />
+      ) : null}
       <div className="cards" id="trackers">
         {!snap.tracks.length ? (
-          <EmptyState>还没有在追踪任何持仓。在上面的持仓卡片里设置止盈止损。</EmptyState>
+          <EmptyState>{snap.tracksError ? '追踪列表没读到。' : '还没有在追踪任何持仓。在上面的持仓卡片里设置止盈止损。'}</EmptyState>
         ) : (
           snap.tracks.map((t) => (
             <TrackCard key={t.id} t={t} live={snap.rows[t.id] || { id: t.id }} hosted={snap.hosted[t.id]} delayed={snap.delayed} connected={connected} flash={t.id === flashId} />

@@ -59,12 +59,13 @@ export async function submitInstruction(execute: boolean, accounts: string[]): P
     return;
   }
   if (execute) {
-    // 这一步是在授权直接发单,值得一次明确的确认;勾了几个账户就在这里说清楚会发几份
-    const fanout = accounts.length > 1 ? `同时发到 ${accounts.length} 个账户,每笔订单各一份:` : '目标账户:';
+    // 这一步是在授权直接发单,值得一次明确的确认。指令原文、发到哪些账户、各是纸面还是实盘,由主进程自己写在
+    // 确认框上(账户类别它去问引擎);这里绑的内容(binding)要和下面 submit 的入参是同一份,对不上主进程不放行
     const ok = await dafri.confirm({
+      purpose: 'instruction.submit',
+      binding: { text: body, accounts },
       title: '发送真实订单',
-      message: `这条指令解析后会直接发送到${brokerShortName()},没有二次确认环节。${fanout}${accounts.join('、')}。`,
-      detail: body,
+      message: `这条指令解析后会直接发送到${brokerShortName()},没有二次确认环节。`,
       confirmLabel: '我确认,发送',
     });
     if (!ok) return;

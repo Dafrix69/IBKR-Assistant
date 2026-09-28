@@ -4,7 +4,11 @@
  *
  * renderer 能碰到的全部能力就是下面这几个函数——没有 require、没有 fs、
  * 没有 ipcRenderer 原始对象。下单、改限额、连券商这类敏感调用统一带上
- * __confirmed 标记,主进程会核对;界面代码绕不过去。
+ * __confirmed 标记,主进程会核对。
+ *
+ * 这个标记只说明"调用是从这座桥上走的",**不等于用户确认过**:会发单 / 授权发单 / 打开闸门的那几种,
+ * 主进程另外要一张确认凭据——只有它自己弹的原生确认框、用户点了确认才会发(confirm-grants.js)。
+ * 界面在调用之前先 `confirm({ purpose, binding, … })`,binding 就是接下来那一次调用的内容。
  */
 const { contextBridge, ipcRenderer } = require('electron');
 
@@ -137,6 +141,26 @@ contextBridge.exposeInMainWorld('dafri', {
   resume: () => ipcRenderer.invoke('rpc', { method: 'breaker.resume', params: {} }),
   exportData: (path) => ipcRenderer.invoke('rpc', { method: 'data.export', params: { path } }),
   restartEngine: () => ipcRenderer.invoke('engine-restart'),
+
+  // ---- 交易库备份:清单与「立即备份」走引擎;恢复要停引擎、换库文件,是主进程自己的通道 ----
+  listBackups: () => ipcRenderer.invoke('rpc', { method: 'data.backups', params: {} }),
+  backupNow: () => ipcRenderer.invoke('rpc', { method: 'data.backup', params: {} }),
+  // 只递一个文件名:哪个目录、要不要恢复,由主进程和它弹的确认框定
+  restoreBackup: (name) => ipcRenderer.invoke('backup-restore', String(name)),
+
+  // ---- 支持:诊断信息、打开日志 / 配置 / 备份 / 许可声明所在位置(只认这几个固定的地方)----
+  exportDiagnostics: () => ipcRenderer.invoke('diagnostics-export'),
+  copyDiagnostics: () => ipcRenderer.invoke('diagnostics-copy'),
+  reveal: (kind) => ipcRenderer.invoke('reveal', String(kind)),
+
+  // ---- 条款同意:同意的是某一版条款,记录在主进程那边 ----
+  consentState: () => ipcRenderer.invoke('consent-get'),
+  acceptConsent: (version) => ipcRenderer.invoke('consent-accept', String(version)),
+  quit: () => ipcRenderer.invoke('quit-app'),
+
+  // ---- 账户设置:表单里的几个值交给主进程,它校验、弹原生确认框(写着将要写进配置的每一项)、写盘、重启引擎 ----
+  accountsInfo: () => ipcRenderer.invoke('accounts-info'),
+  changeAccount: (change) => ipcRenderer.invoke('accounts-change', change),
 
   // ---- 策略回测(纯计算,不下单)----------------------------------------
   backtestStrategies: () => ipcRenderer.invoke('rpc', { method: 'backtest.strategies', params: {} }),

@@ -10,7 +10,8 @@ import { useLlmCatalog } from '../store/llm';
 import { navigate } from '../store/nav';
 import { brokerShortName, gatewayName, pickableAccounts, useStatus } from '../store/status';
 import { clearResult, savePickedAccounts, selectedAccounts, setInstruction, submitInstruction, useComposer, usePickedRevision, type SubmitPayload } from '../store/trade';
-import type { InstructionOrder } from '../bridge';
+import { dafri, type InstructionOrder } from '../bridge';
+import { showBanner } from '../store/banner';
 import { ENTER_KEY, MOD_KEY, SHIFT_KEY } from '../store/appearance';
 import { EmptyState, Meta, PageHead, Primer, StatusCard, Working, type Tone } from '../ui/kit';
 
@@ -64,9 +65,16 @@ export function TradePage() {
     areaRef.current?.focus();
   }, []);
 
+  // 账户还是示例里的占位账号(全零):解析得了,但单子发不到任何真的账户上。主进程读配置文件才知道
+  const [placeholders, setPlaceholders] = useState<string[]>([]);
+  useEffect(() => {
+    void dafri.accountsInfo().then((info) => setPlaceholders(info.placeholders || [])).catch(() => undefined);
+  }, [status?.accounts]);
+
   const keyed = llm ? Boolean(llm.key_configured?.[llm.current.provider]) : null;
   const steps = [
     { done: keyed !== false, title: '配置大模型 API Key', todo: '没有 Key 无法解析指令。Key 存于系统凭据库,不落配置文件。', ok: '已配置', tab: 'llm', action: '去配置', optional: false },
+    { done: !placeholders.length, title: '填上你的券商账号', todo: `「${placeholders.join('」「')}」还是示例里的占位账号:解析得了指令,但订单发不到你的账户上。`, ok: '已配置', tab: 'accounts', action: '去填写', optional: false },
     { done: connected, title: `连接${gateway}`, todo: '没有券商连接只能解析,不能下单,也拿不到行情。', ok: '已连接', tab: status?.broker_provider === 'futu' ? 'futu' : 'tws', action: '去连接', optional: false },
     { done: Boolean(status?.auto_execute), title: '打开自动执行', todo: '当前「仅解析」,校验通过也不发单。确认要下单再打开。', ok: '已打开', tab: 'settings', action: '去设置', optional: true },
   ];
@@ -128,7 +136,9 @@ export function TradePage() {
           // Ctrl+Enter 解析;Ctrl+Shift+Enter 解析并发送(走同一个确认框)
           if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
             e.preventDefault();
-            void submit(e.shiftKey);
+            // 快捷键和按钮同一个口径:按钮此刻是灰的(发不出去),快捷键也不该发起一次注定被拦的发送
+            if (e.shiftKey && !canExecute) showBanner(`现在发不出去:${blockers.join('、')}`, false);
+            else void submit(e.shiftKey);
           }
         }}
       />

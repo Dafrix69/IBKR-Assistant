@@ -7,6 +7,9 @@
 
 > 本仓库是软件实现,不构成任何投资建议。自动执行意味着解析错误会真金白银成交,请先在模拟账户跑够回归再考虑实盘。
 
+**使用者**从 [用户手册](docs/user-guide/README.md) 看起;每一版改了什么在 [更新记录](CHANGELOG.md);
+发现安全问题请按 [SECURITY.md](SECURITY.md) 私下报告。
+
 ![交易指令](docs/screenshots/trade.png)
 
 ## 功能
@@ -52,6 +55,8 @@
 
 **绩效体检** 交易分析一次看一笔,这一页看全部:把已了结的蝴蝶、股票、导入的期权摊成一本美元账,算出实盘比赛优胜者天天盯的那几个数——胜率、盈亏比、期望值、R 倍数与 SQN、平仓权益曲线的最大回撤与恢复因子、连胜连亏,再按品种、开仓时段、星期、标的拆开看优势在哪儿。然后按写死的规则挑行为上的毛病:赚小亏大、一笔大亏吃掉一周、亏损单拿得比赚钱单久、亏完半小时内再进、亏后加码、做得越多亏得越多,每条写明借鉴自谁(Van Tharp、Minervini、Larry Williams、Andrea Unger、Kevin Davey……)。附一个固定风险比例的仓位计算器。股票按建追踪时的初始止损算 R;自动平仓按触发价对成交价算执行损耗;按账本给保护规则的建议参数,点了才写进设置。「分享卡片」把胜率、盈亏比、R、权益曲线形状画成一张 4:5 的图,默认不带金额,有模拟盘交易、样本不到 20 笔都会写明,拷贝或存 PNG。最下面的「信号成绩单」给价位提醒与盯异动发出的每条信号按之后 1 / 5 / 20 天打分,和随手一天比。全部本机代码算,不调模型。
 
+**出了事有路可走** 交易库每天、每次升级之前自动备份,「设置 → 数据与备份」里可以立即备份、从某一份恢复;配置文件坏了、交易库打不开时不再无限重启,而是说清楚哪里不对、给出恢复的路。会发单、开闸门、放宽限额的操作,主进程要拿到"用户在原生确认框里点了确认"的一次性凭据才放行,凭据绑着这一次的内容。发单超时报的是「结果未知」而不是「失败」。日志落盘前抹掉账号、密钥与用户名;「关于 → 支持」一键导出可以直接发给支持的诊断信息。首次启动先看风险揭示、使用条款与隐私说明。
+
 **其他** 股票池盯价位与盯异动(放量、急涨急跌,置顶不抢焦点的提醒弹窗);想法备忘与 AI 知识提炼;顶栏宏观行情带(标普、纳指、VIX、美债、美元、黄金);TWS / OpenD 连接检测与诊断;新版本检查(只读 GitHub 上公开的发布信息,有新版时顶栏提示、「关于」页给这台机器对应的安装包,可关)。界面是 iOS 27 风格的 Liquid Glass,玻璃透明度在「设置」里调,深浅色与涨跌配色随系统。
 
 ## 它怎么工作
@@ -89,7 +94,8 @@ CI 上在仓库 Secrets 里配好证书也会自动走这条路(见 `.github/wor
 
 1. IBKR 的 TWS 或 IB Gateway 已登录并打开 API(默认模拟账户端口 7497,实盘 7496)。建议先只用模拟账户。
 2. 一个大模型 API Key:Anthropic,或任意 OpenAI 兼容端点。
-3. 首次启动会从示例生成配置;在「接入 → 大模型」填 Key,在「接入 → TWS」检测连接,在「设置」核对限额与开关。
+3. 首次启动先读风险揭示与条款;之后按「交易指令」页上的就绪清单走:在「接入 → 大模型」填 Key,在「接入 → 账户」填上自己的账号,
+   在「接入 → TWS」检测连接,在「设置」核对限额与开关。逐步的图文见 [用户手册 · 安装与首次配置](docs/user-guide/01-安装与首次配置.md)。
 
 同一 IBKR 用户名在别处登录时,行情会跟着那边走,本机会拿不到 K 线;先在别处登出。
 
@@ -106,10 +112,12 @@ cd engine-ts && npm run lint && npm run depcruise && npx tsc --noEmit && npx vit
 cd desktop && npm run lint && npm run depcruise && npm run ui:typecheck                   # 界面:lint、分层、类型检查(React + TS)
 cd desktop && npm run ui:preview \
   && npx electron tools/capture_pages.js renderer-react/dist-preview/index.html .uipreview/check --check   # 界面 smoke:每页各点一遍,控制台零报错
+cd desktop && npm run notices:check                  # 随包的开源组件:许可都在白名单里
+cd desktop && npm run release:check                  # 发版闸门:版本号、更新说明、条款文本、示例配置、开源许可
 cd engine-ts && npm run probe                        # 真机只读联调:临时配置与临时库、三道闸强制关、只准调只读 RPC
 ```
 
-引擎与界面各有一份分层规则(`.dependency-cruiser.cjs`,依赖只能往下流),CI 里排在 lint 之后;改代码的规矩——分层、RPC 契约四处同步、黄金基线怎么改、单文件体积预算——写在根目录的 [CLAUDE.md](CLAUDE.md)。其中三项不只是写着,还各有一条**只许变短**的测试钉着:RPC 契约(界面与引擎之间全部 81 个方法都从契约走,绕过契约编译不过)、桌面端 RPC 白名单与敏感方法表(两边双向对)、单文件体积预算。换了 IBKR 用户名或 TWS 升级之后先跑一遍 `npm run probe`:行情订阅按用户名算、不按账户,它会逐个品种把 TWS 的原话摆出来。
+引擎与界面各有一份分层规则(`.dependency-cruiser.cjs`,依赖只能往下流),CI 里排在 lint 之后;改代码的规矩——分层、RPC 契约四处同步、黄金基线怎么改、单文件体积预算——写在根目录的 [CLAUDE.md](CLAUDE.md)。其中三项不只是写着,还各有一条**只许变短**的测试钉着:RPC 契约(界面与引擎之间全部 86 个方法都从契约走,绕过契约编译不过)、桌面端 RPC 白名单与敏感方法表(两边双向对)、单文件体积预算。换了 IBKR 用户名或 TWS 升级之后先跑一遍 `npm run probe`:行情订阅按用户名算、不按账户,它会逐个品种把 TWS 的原话摆出来。
 
 命令行也能用同一个引擎:`node dist/src/cli.js selftest | validate | parse | run | rpc`,危险程度递增,`run` 必须带 `--i-understand-this-places-real-orders`。
 
@@ -123,13 +131,14 @@ cd engine-ts && npm run probe                        # 真机只读联调:临时
 | `policies` | `auto_execute`、`allow_live_trading`、`allow_combo_live`、触发价复核、休市市价单策略、连续失败熔断阈值 |
 | `protections` | 保护规则:止损护栏、回撤护栏、同标的冷却、日内亏损上限。默认全关,只挡新单、永不挡平仓,到点自己解除 |
 | `risk_budget` | 单笔风险预算:按账户填权益,期权最坏亏损 / 股票名义金额占比超线时在订单上提醒,不拦单。默认关 |
-| `connections` / `accounts` | TWS 端口与 client id;账户别名 → 真实账号,`is_paper` 决定实盘闸门 |
+| `connections` / `accounts` | TWS 端口与 client id;账户别名 → 真实账号,`is_paper` 决定实盘闸门。账户可以在「接入 → 账户」里配;连接只能手改 |
+| `market_holidays` / `early_close_days` / `market_calendar` | 临时休市写在这里;规则算得出来的假日由内置日历补上(`config_only` 退回只认配置) |
 | `symbol_aliases` / `index_symbols` | 「苹果 → AAPL」这类别名;SPX 的交易所与交易类 |
-| `prompt_version` | 提示词版本,`prompts/` 下按版本号只增不改,一行回滚 |
+| `prompt_version` | 提示词版本,`prompts/` 下按版本号只增不改,一行回滚;`latest` = 跟着软件带的最新一版走 |
 
-更细的设计决策与口径按模块放在 [docs/features](docs/features):[界面](docs/features/ui.md)、[引擎 RPC](docs/features/engine-rpc.md)、[持仓追踪](docs/features/tracker.md)、[执行对账](docs/features/reconcile.md)、[保护规则](docs/features/protections.md)、[K 线 PA](docs/features/priceaction.md)、[期权墙与价位提醒](docs/features/optionwall-alerts.md)、[反复碰均线](docs/features/ma-touch.md)、[股票池:盯价位与盯异动](docs/features/quality-watch.md)、[交易分析](docs/features/tradereview.md)、[绩效体检](docs/features/performance.md)、[单笔风险预算](docs/features/risk-budget.md)、[回测成本与参数扫描](docs/features/backtest-lab.md)、[信号成绩单](docs/features/signal-scorecard.md)、[强势股筛选](docs/features/leaders.md)、[新版本检查](docs/features/update-check.md)、[双账户发单](docs/features/dual-account.md)、[富途 OpenD](docs/features/futu-opend.md)、[依赖选型](docs/features/dependencies.md) 等。
+更细的设计决策与口径按模块放在 [docs/features](docs/features):[界面](docs/features/ui.md)、[引擎 RPC](docs/features/engine-rpc.md)、[持仓追踪](docs/features/tracker.md)、[执行对账](docs/features/reconcile.md)、[保护规则](docs/features/protections.md)、[K 线 PA](docs/features/priceaction.md)、[期权墙与价位提醒](docs/features/optionwall-alerts.md)、[反复碰均线](docs/features/ma-touch.md)、[股票池:盯价位与盯异动](docs/features/quality-watch.md)、[交易分析](docs/features/tradereview.md)、[绩效体检](docs/features/performance.md)、[单笔风险预算](docs/features/risk-budget.md)、[回测成本与参数扫描](docs/features/backtest-lab.md)、[信号成绩单](docs/features/signal-scorecard.md)、[强势股筛选](docs/features/leaders.md)、[新版本检查](docs/features/update-check.md)、[数据与配置的保险](docs/features/durability.md)、[确认凭据](docs/features/confirm-grants.md)、[条款同意](docs/features/consent.md)、[日志脱敏与诊断信息](docs/features/diagnostics.md)、[内置休市日历](docs/features/market-calendar.md)、[从界面配置账户](docs/features/accounts-setup.md)、[发版](docs/features/release.md)、[双账户发单](docs/features/dual-account.md)、[富途 OpenD](docs/features/futu-opend.md)、[依赖选型](docs/features/dependencies.md) 等。
 
-出问题要现场:主进程、引擎 stderr、渲染层报错都写进 `userData/logs/main.log`(滚动,单份 4 MB),路径在「关于」页。
+出问题要现场:主进程、引擎 stderr、渲染层报错都写进一份滚动日志 `main.log`(单份 4 MB;macOS 在 `~/Library/Logs/IBKR-Assistant/`,Windows 在 `userData/logs/`),落盘前抹掉账号、密钥与用户名。路径在「关于」页;「关于 → 支持 → 导出诊断信息…」把它连同版本、引擎状态、脱敏后的配置收成一份可以直接发出去的文件。
 
 ## 仓库布局
 
@@ -139,7 +148,7 @@ cd engine-ts && npm run probe                        # 真机只读联调:临时
 | `desktop/` | Electron 桌面端:主进程、preload、`renderer-react/` 界面(React + Ant Design 5,Vite 构建;壳 / 页面 / store 分层,见 `docs/features/ui.md`)、`tools/` 预览数据源 / 截图 smoke / 压测 / 打包 |
 | `prompts/` | 提示词资产,按版本号只增不改 |
 | `config/` | `settings.example.json` |
-| `docs/` | `features/` 功能文档、`journal/` 事故记录、`briefs/` 与 `reports/` 历史文档、`screenshots/` |
+| `docs/` | `user-guide/` 用户手册、`legal/` 条款文本、`features/` 功能文档、`journal/` 事故记录、`briefs/` 与 `reports/` 历史文档、`screenshots/`、`release-checklist.md` |
 
 ## 状态
 
@@ -151,13 +160,19 @@ cd engine-ts && npm run probe                        # 真机只读联调:临时
   修掉 30 多处会让一张单变成另一张单、或让持仓失去保护的问题,每处都有先红后绿的离线回归测试;
   口径变化写在各自的 feature 文档里(持仓追踪「熔断与已有的保护」「立即平仓」两节、保护规则、执行对账、双账户、期权墙)。
   这些改动同样只有离线测试,真机上重跑一遍 `npm run probe` 与模拟账户上的托管 / 立即平仓 / 熔断之后再上实盘。
-- 富途 OpenD 通道:检测与诊断可用,下单桥在真机核对前显式不可用。
+- 2026-09-28 做了一轮商用准备(钱路径上几处只在异常时刻才暴露的漏洞、数据的备份与恢复、确认凭据、日志脱敏与诊断信息、
+  条款确认、从界面配置账户、打包加固、发版闸门),做了什么、还差什么、哪些要你来定,见
+  [docs/reports/commercial-readiness-2026-09-28.md](docs/reports/commercial-readiness-2026-09-28.md)。
+  这些改动同样只有离线测试;打包相关的(Electron 41、熔断丝、签名版权限、安装器)要实际打一次包才验证得了。
+- 富途 OpenD 通道:检测与诊断可用,下单桥在真机核对前显式不可用;接口库 `futu-api` 不随安装包发出去。
 - 安装包没有开发者证书:Windows 未签名,macOS 是 ad-hoc 签名。Developer ID 签名与公证的路已经接好
   (`dist:mac:signed`、CI 的 Secrets),证书到手之前发出去的仍是 ad-hoc 包。
 
 ## 许可证
 
 [MIT](LICENSE)。可以自由使用、修改、再分发(包括商用),保留版权与许可声明即可。软件按"原样"提供,不附带任何担保;
-用它下单产生的盈亏与风险由使用者自己承担。
+用它下单产生的盈亏与风险由使用者自己承担。应用首次启动时展示的风险揭示、使用条款与隐私说明在 [docs/legal](docs/legal)
+(草稿,未经律师审阅)。
 
-依赖各自沿用原来的许可证,不因本项目改变。其中 TradingView Lightweight Charts 是 Apache-2.0,按它的要求在「关于」页保留了署名。
+依赖各自沿用原来的许可证,不因本项目改变:安装包里带着一份第三方许可声明(「关于 → 支持 → 第三方许可声明」,
+由 `desktop/tools/gen_notices.js` 生成)。其中 TradingView Lightweight Charts 是 Apache-2.0,按它的要求在「关于」页保留了署名。

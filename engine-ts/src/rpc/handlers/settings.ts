@@ -1,4 +1,4 @@
-/** llm.* / settings.* / keychain.set / data.export:大模型接入与设置。
+/** llm.* / settings.* / keychain.set / data.*:大模型接入、设置、导出与备份。
  *  整个域已经在契约里(contract/settings.ts、contract/llm.ts):入参过了 schema 才到这里,返回对着契约类型检查。 */
 import * as fs from "node:fs";
 
@@ -11,6 +11,7 @@ import type {
   SettingsPatchParams, SettingsView,
 } from "../../contract/index.js";
 import { RpcError } from "../../rpcError.js";
+import { SCHEMA_VERSION, backupDir, listBackups } from "../../storeSafety.js";
 import { HandlerBase } from "../context.js";
 import type { MethodTable, Rec } from "../context.js";
 import { contractMethods } from "../contractMethods.js";
@@ -25,6 +26,8 @@ export class SettingsHandlers extends HandlerBase {
       "settings.patch": (p) => this.settingsPatch(p),
       "keychain.set": (p) => this.keychainSet(p),
       "data.export": (p) => this.dataExport(p),
+      "data.backups": () => this.dataBackups(),
+      "data.backup": () => this.dataBackup(),
     });
   }
 
@@ -206,9 +209,26 @@ export class SettingsHandlers extends HandlerBase {
     const target = String(params["path"] ?? "");
     if (!target) throw new RpcError(-32602, "缺少导出路径");
     const data = this.engine.store.exportAll();
-    fs.writeFileSync(target, JSON.stringify(data, null, 2), "utf-8");
+    // 里面是整本交易记录(含真实账号):只给本人读写。Windows 上 mode 不起作用,尽力而为
+    fs.writeFileSync(target, JSON.stringify(data, null, 2), { encoding: "utf-8", mode: 0o600 });
     this.engine.store.audit("ui", "export", { path: target });
     return { path: target, records: (data["records"] as Rec[]).length };
+  }
+
+  // ---- 备份(口径见 storeSafety.ts)--------------------------------------
+  dataBackups(): RpcResult<"data.backups"> {
+    const dbPath = this.engine.store.dbPath;
+    return { db_path: dbPath, dir: backupDir(dbPath), schema_version: SCHEMA_VERSION, backups: listBackups(dbPath) };
+  }
+
+  dataBackup(): RpcResult<"data.backup"> {
+    try {
+      const backup = this.engine.store.backupNow("manual");
+      this.engine.store.audit("ui", "backup", { name: backup.name, bytes: backup.bytes });
+      return { backup };
+    } catch (exc) {
+      throw new RpcError(-32009, `备份没有成功:${(exc as Error).message}。请检查磁盘剩余空间与备份目录的权限。`);
+    }
   }
 }
 

@@ -13,7 +13,7 @@ import { TradingEngine } from "../engine.js";
 import { KillSwitch } from "../killswitch.js";
 import { publicIndexPrice } from "../macro.js";
 import { Notifier } from "../notify.js";
-import { buildParser } from "../providers.js";
+import { buildParser, guardAccountIds } from "../providers.js";
 import { RpcError } from "../rpcError.js";
 import { AlertsService } from "../services/alerts.js";
 import { AnomalyService } from "../services/anomaly.js";
@@ -57,8 +57,8 @@ export class RpcServer implements RpcContext {
     return run;
   };
   private readonly out: (line: string) => void;
-  /** 测试可注入的解析器工厂。 */
-  parserFactory: (cfg: LLMConfig) => any = (cfg) => buildParser(cfg);
+  /** 测试可注入的解析器工厂。真的那一个带着账号闸(guardAccountIds):每一次外发都查一遍真实账号。 */
+  parserFactory: (cfg: LLMConfig) => any = (cfg) => guardAccountIds(buildParser(cfg), () => this.settings.accounts);
 
   // 带状态的编排:缓存、循环、迁移标记都在它们身上,server 自己不留业务状态
   readonly market: MarketDataService;
@@ -136,7 +136,7 @@ export class RpcServer implements RpcContext {
       this.engineInstance = new TradingEngine({
         settings: this.settings,
         parser: this.parserFactory(this.settings.llm),
-        store: new TradeStore(this.settings.db_path),
+        store: new TradeStore(this.settings.db_path, { safety: true }),
         notifier,
         killswitch: new KillSwitch(
           path.join(path.dirname(this.settings.db_path), "breaker.json"),
@@ -252,6 +252,8 @@ export class RpcServer implements RpcContext {
     "tracker.poll", "tracker.reconcile",
     // 优质股追踪:同步 SQLite + 读异动循环留在内存里的指标,取行情是循环自己的事(startAnomalyLoop)
     "quality.list", "quality.add", "quality.update", "quality.remove", "quality.set_config",
+    // 备份清单是读一个目录;出一份备份是一条 VACUUM INTO(几十毫秒到一两秒),不该排在下单、解析后面
+    "data.backups", "data.backup",
     // 股票池上的两个开关:建 / 删两张表里的一行,同步 SQLite,价位与行情都是别的循环的事
     "pool.set_watch",
   ]);
@@ -438,6 +440,9 @@ export async function main(settingsPath?: string | null): Promise<number> {
   // 任何依赖的 console.log 都落到 stderr(§10.1)
   console.log = (...args: unknown[]) => console.error(...args);
   const server = new RpcServer(settingsPath, (line) => realWrite(line + "\n"));
+  // 先把交易库开一遍:打不开(坏了、被占着、写不进去、比软件新)就在这里当场说清楚并退出(cli.ts 接 StoreOpenError)。
+  // 库是懒建的——不先开这一遍,引擎会"正常启动",然后每一个请求都回一句 SqliteError
+  new TradeStore(server.settings.db_path, { safety: true }).close();
   const done = server.serve(); // ready 已经同步发出
   // 启动即连券商(broker.auto_connect)。只在这个真正的入口里起:测试里直接 serve() 的那几条不许连真券商
   server.brokerLink.start();

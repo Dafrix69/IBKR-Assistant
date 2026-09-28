@@ -158,3 +158,27 @@ export interface DataExportResult {
   /** 导出了多少条交易记录 */
   records: number;
 }
+
+// ---------------------------------------------------------------- data.backups / data.backup
+/** 一份备份是为什么出的:每天第一次打开时 / 升级迁移之前 / 用户点的(以及恢复之前自动留的那一份)。 */
+export type BackupReason = "daily" | "upgrade" | "manual";
+
+export interface BackupInfo {
+  /** 文件名(不带目录):trades-年月日-时分秒-原因.db,时间是 UTC */
+  name: string;
+  reason: BackupReason;
+  /** 出这份备份的时刻,ISO 8601(UTC) */
+  at: string;
+  bytes: number;
+}
+
+export interface DataBackupsResult {
+  /** 交易库文件 */
+  db_path: string;
+  /** 备份放在哪个目录 */
+  dir: string;
+  /** 这个版本的软件认的库结构版本 */
+  schema_version: number;
+  /** 新的在前 */
+  backups: BackupInfo[];
+}

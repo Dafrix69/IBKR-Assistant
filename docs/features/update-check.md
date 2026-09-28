@@ -46,3 +46,12 @@ ad-hoc 签名的包装不上去;Windows 包也没签名,自动替换一个没签
 ## 仓库改名 / 换发布渠道
 
 地址写死在 `desktop/update-check.js` 顶上的 `RELEASES_REPO` 一处。改那一行,再改 `tests/desktop-update.spec.ts` 里的 `REPO`。
+
+## 发布说明从哪来(2026-09-28)
+
+「更新」一节显示的发布说明以前每一版都是同一段安装提示——发布任务里写死的。现在取自 `CHANGELOG.md` 里对应版本的那一节,
+后面才是安装提示(`desktop/tools/check_release.js --notes`)。截断到 1,200 字的规矩不变,所以每一版的那一节要把最要紧的写在前面。
+
+发布页上多了 `SHA256SUMS.txt`。挑安装包按文件名后缀认,它不会被误当成安装包。
+
+已经发出去的版本不再覆盖(原来是 `--clobber`):同一个标签已经有 Release,发布任务就停下。见 [发版](release.md)。

@@ -322,7 +322,10 @@ export class Reconciler {
     const why =
       rec.lastStatus === "PendingTrigger"
         ? "软件重启后条件单不再被盯,要继续请重新提交"
-        : "券商侧已经没有这张单,当天的成交里也没有它(更早成交的券商不再回报,请在 TWS 里核对后再决定是否重下)";
+        : rec.lastStatus === ""
+          // 只留下了发单的痕、一条状态回报都没有:发到一半软件中断了(见 store.markSubmitIntent)
+          ? "发单途中软件中断了,券商侧没有这张单,当天的成交里也没有它:它多半没有发出去(请在 TWS 里核对后再决定是否重下)"
+          : "券商侧已经没有这张单,当天的成交里也没有它(更早成交的券商不再回报,请在 TWS 里核对后再决定是否重下)";
     this.notifier.warning(`对账:${rec.symbol} 的单子去向不明——${why}。`);
     return true;
   }

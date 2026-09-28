@@ -39,6 +39,9 @@ export async function toggleBreaker(): Promise<void> {
     } else {
       const result = await dafri.halt('用户在界面上按下暂停');
       pushNotification('已熔断', `撤销未成交单 ${result.cancelled ?? 0} 笔`);
+      // 闸合上了,但撤单那一步没做成(券商没回应):挂单可能还在券商那边。这句话以前只在回执里,界面没摆出来——
+      // 人以为"熔断 = 挂单都撤了",其实得自己去 TWS 里看
+      if (result.warning) showBanner(`已熔断,但撤单没有确认:${result.warning}`, false);
     }
   } catch (err) {
     showBanner(`操作失败:${errorMessage(err)}`, false);

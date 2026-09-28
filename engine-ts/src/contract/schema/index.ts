@@ -133,6 +133,8 @@ export const PARAMS_SCHEMAS: { readonly [M in RpcMethodName]: ParamsSchema<RpcPa
   "settings.patch": SettingsPatchParamsSchema,
   "keychain.set": KeychainSetParamsSchema,
   "data.export": DataExportParamsSchema,
+  "data.backups": NoParamsSchema,
+  "data.backup": NoParamsSchema,
 
   "instruction.submit": InstructionSubmitParamsSchema,
 

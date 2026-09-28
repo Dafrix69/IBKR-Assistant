@@ -573,6 +573,43 @@ export function buildParser(
   );
 }
 
+/**
+ * §9.1「真实账号永远不进提示词」管到**每一次**外发。
+ *
+ * 下单解析那条路在渲染提示词时查过(prompts.ts 的 assertNoAccountIds);想法分析、AI 选股、行情解读、
+ * 回测条件解析走的是 completeJson,以前不查——用户把账号写进一条想法里,原文就发给了大模型。
+ * 这里把解析器的两个出口都包一层:外发的文字里出现配置里的真实账号,这一次调用中止,并说明为什么。
+ * 不替用户改写内容:悄悄抹掉几个字符再发出去,模型看到的就不是他写的那句话了。
+ * 示例配置里的占位账号(DU0000000 这类全零的)不算:那不是谁的账号,却会撞上"10000000"这样的普通数字。
+ */
+export function guardAccountIds<T extends object>(
+  parser: T, accounts: () => ReadonlyArray<{ alias: string; account_id: string }>,
+): T {
+  const check = (texts: unknown[]): void => {
+    for (const acct of accounts()) {
+      const id = String(acct.account_id ?? "");
+      if (id.length < 4 || /^[A-Za-z]*0+$/.test(id)) continue;
+      if (texts.some((t) => typeof t === "string" && t.includes(id))) {
+        throw new LLMError(
+          `要发给大模型的内容里出现了真实账号(别名 ${acct.alias}),为保护隐私没有发出。请把账号从文字里删掉后再试。`,
+        );
+      }
+    }
+  };
+  const target = parser as Record<string, unknown>;
+  const wrap = (name: string, texts: (args: unknown[]) => unknown[]): void => {
+    const original = target[name];
+    if (typeof original !== "function") return;
+    target[name] = async (...args: unknown[]): Promise<unknown> => {
+      check(texts(args));
+      return (original as (...a: unknown[]) => unknown).apply(parser, args);
+    };
+  };
+  wrap("completeJson", (args) => [args[0], args[1]]);
+  wrap("parse", (args) => [(args[0] as PromptBundle | undefined)?.system_text, args[1]]);
+  return parser;
+}
+
 export function fewshotMessages(bundle: PromptBundle, cacheLast: boolean): Msg[] {
   const messages: Msg[] = [];
   bundle.fewshot.forEach((pair: FewShotPair, idx: number) => {

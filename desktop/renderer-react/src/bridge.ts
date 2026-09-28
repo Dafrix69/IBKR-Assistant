@@ -39,11 +39,41 @@ export interface UpdateInfo {
   checkedAt: number;
 }
 
+/** 要确认凭据的那几种用途(desktop/confirm-grants.js 的 PURPOSES)。 */
+export type ConfirmPurpose =
+  | 'instruction.submit' | 'tracker.close_now' | 'tracker.add' | 'broker.select'
+  | 'gate.auto_execute' | 'gate.allow_live_trading' | 'gate.allow_combo_live' | 'limits.loosen';
+
 export interface ConfirmOptions {
+  /** 带 purpose 时对话框最显眼的那一行由主进程按用途写,这里给的 title 不显示 */
   title: string;
   message: string;
   detail?: string;
   confirmLabel?: string;
+  /**
+   * 会发单 / 授权发单 / 打开闸门的确认要带上它:用户点了确认,主进程才给接下来那一次调用发凭据。
+   * 不带的是普通确认(删除一条追踪这类),不发凭据。
+   */
+  purpose?: ConfirmPurpose;
+  /** 接下来那一次调用的内容(发单:{ text, accounts };建追踪:整个 spec;平仓:{ id })。对不上不放行 */
+  binding?: object;
+}
+
+/** 账户设置(desktop/accounts-setup.js)。账号只在这一次提交里出现:界面之后读到的仍是打了码的。 */
+export type AccountChange =
+  | { action: 'upsert'; alias: string; account_id: string; is_paper: boolean; connection: string; make_default?: boolean }
+  | { action: 'remove'; alias: string };
+
+export interface AccountsInfo {
+  placeholders: string[];
+  connections: { name: string; broker: string; port: number | null }[];
+}
+
+/** 条款同意的状态(desktop/consent.js)。version 是现行条款的版本号。 */
+export interface ConsentState {
+  version: string;
+  accepted: boolean;
+  acceptedAt: string | null;
 }
 
 // ---- 引擎契约(engine-ts/src/contract/):优质股追踪、股票池开关、板块、价位提醒、持仓追踪、设置、想法、回测、盘口、行情带、扫描器 ------
@@ -76,6 +106,7 @@ import type {
   TrackerCloseNowResult, TrackerPollResult, TrackerReconcileResult,
   InstructionLlm, InstructionOrder, InstructionRejection, InstructionSubmitResult, OrderTicket, OrderTicketLeg,
   OrderTrigger,
+  BackupInfo, DataBackupsResult,
 } from '../../../engine-ts/src/contract/index';
 
 export type {
@@ -102,6 +133,7 @@ export type {
   TrackerCloseNowResult, TrackerPollResult, TrackerReconcileResult,
   InstructionLlm, InstructionOrder, InstructionRejection, InstructionSubmitResult, OrderTicket, OrderTicketLeg,
   OrderTrigger,
+  BackupInfo, DataBackupsResult,
 };
 /** 界面这边一直用的名字;引擎契约里分别叫 AccountView / SettingsView / Policies / Limits / ProtectionsConfig。 */
 export type Account = AccountView;
@@ -213,6 +245,29 @@ export interface DafriBridge {
   exportData(path: string): Rpc<RpcResult<'data.export'>>;
   restartEngine(): Rpc<any>;
 
+  /** 交易库的备份清单(库旁边的 backups/ 目录),新的在前 */
+  listBackups(): Rpc<RpcResult<'data.backups'>>;
+  backupNow(): Rpc<RpcResult<'data.backup'>>;
+  /** 从备份恢复:主进程弹确认框、停引擎、换库、再拉起。用户取消回 canceled */
+  restoreBackup(name: string): Rpc<{ ok: boolean; canceled?: boolean; restored?: string }>;
+
+  /** 导出一份能发给支持的诊断信息(已脱敏);保存到哪由主进程的对话框定 */
+  exportDiagnostics(): Rpc<{ ok: boolean; canceled?: boolean; path?: string }>;
+  /** 把几行概要拷进剪贴板(不带日志) */
+  copyDiagnostics(): Rpc<{ ok: boolean }>;
+  /** 在文件管理器里打开:日志 / 配置文件 / 备份目录 / 第三方许可声明 */
+  reveal(kind: 'logs' | 'config' | 'backups' | 'notices'): Rpc<{ ok: boolean }>;
+
+  consentState(): Rpc<ConsentState>;
+  acceptConsent(version: string): Rpc<ConsentState>;
+  /** 退出应用(不同意条款时用)。和 ⌘Q 走同一条路:引擎停稳了才真的退出 */
+  quit(): Rpc<void>;
+
+  /** 还是示例占位的账户别名,与配置里可选的连接 */
+  accountsInfo(): Rpc<AccountsInfo>;
+  /** 加 / 改 / 删一个账户别名。主进程校验、弹原生确认框、写配置、重启引擎;用户取消回 canceled */
+  changeAccount(change: AccountChange): Rpc<{ ok: boolean; canceled?: boolean }>;
+
   backtestStrategies(): Rpc<RpcResult<'backtest.strategies'>>;
   /** spec 的对象字面量要直接标成 BacktestRunSpec(同 TrackerAddSpec):这样写错的键名编译期就查得出来 */
   runBacktest(spec: BacktestRunSpec): Rpc<RpcResult<'backtest.run'>>;
@@ -273,7 +328,8 @@ export interface DafriBridge {
 
   on(channel: 'engine-event', handler: (payload: EngineEvent) => void): () => void;
   on(channel: 'engine-log', handler: (payload: { line: string }) => void): () => void;
-  on(channel: 'engine-exit', handler: (payload: { detail: string }) => void): () => void;
+  /** fatal:配置读不进来 / 交易库打不开,引擎不会自动重启(主进程会弹对话框);其余情况主进程自己会拉起 */
+  on(channel: 'engine-exit', handler: (payload: { detail: string; fatal?: 'config' | 'store' }) => void): () => void;
   /** 菜单与弹窗的「查看」:navigate 带着要去的页和标的 */
   on(channel: 'menu', handler: (payload: { action: string; page?: string; symbol?: string }) => void): () => void;
   /** 主窗口的焦点与全屏状态;每次都是完整的一份,不是增量 */
@@ -292,7 +348,10 @@ declare global {
 
 export const dafri: DafriBridge = window.dafri;
 
+/** Electron 给主进程抛回来的错加的前缀:「Error invoking remote method 'rpc': Error: 」。那不是给用户看的话。 */
+const IPC_PREFIX = /^Error invoking remote method '[^']*':\s*(?:[A-Za-z]*Error:\s*)?/;
+
 export function errorMessage(err: unknown): string {
-  if (err instanceof Error) return err.message;
-  return String(err);
+  const text = err instanceof Error ? err.message : String(err);
+  return text.replace(IPC_PREFIX, '');
 }

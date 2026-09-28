@@ -54,7 +54,10 @@ export default tseslint.config(
   // ---- 主进程与预加载:Node + Electron(CommonJS)----------------------------
   // 新加主进程文件要记得列进来:不在任何一组里的文件 ESLint 照样"检查",但一条规则都不套,等于没查
   {
-    files: ['main.js', 'preload.js', 'rpc-client.js', 'popup-window.js', 'popup-preload.js'],
+    files: [
+      'main.js', 'preload.js', 'rpc-client.js', 'popup-window.js', 'popup-preload.js', 'update-check.js',
+      'config-guard.js', 'store-guard.js', 'consent.js', 'confirm-grants.js', 'redact.js', 'diagnostics.js', 'support-ipc.js', 'accounts-setup.js',
+    ],
     extends: [js.configs.recommended],
     languageOptions: {
       globals: { ...globals.node, ...globals.browser },  // preload 两边的全局都碰得到

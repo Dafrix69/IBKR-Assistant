@@ -21,6 +21,7 @@ import { startRecordsFeed } from './store/records';
 import { startStatusPolling } from './store/status';
 import { startTrackerLoops } from './store/tracker';
 import { startUpdateChecks } from './store/update';
+import { startConsent } from './store/consent';
 import { initAppearance } from './store/appearance';
 
 function cspNonce(): string {
@@ -46,6 +47,7 @@ function nonceAllDynamicStyles(nonce: string): void {
 const nonce = cspNonce();
 nonceAllDynamicStyles(nonce);
 initAppearance();
+startConsent();         // 条款同意的状态:没同意现行条款之前,壳把界面挡在同意页后面
 startStatusPolling();
 startEngineLog();
 startRecordsFeed();

@@ -235,9 +235,35 @@ describe("V7 is_paper 缺省按实盘处理", () => {
 
   it("字符串 \"false\" / \"true\" 按字面意思解析", () => {
     expect(makeSettings(gv.base_config, ACCTS({ is_paper: "false" })).accountByAlias("主账户")?.is_paper).toBe(false);
-    expect(makeSettings(gv.base_config, ACCTS({ is_paper: "true" })).accountByAlias("主账户")?.is_paper).toBe(true);
+    // "true" 要配一个长得像模拟账号的(D 开头):U 开头的账号标成纸面会被按实盘处理,见下面那一条
+    expect(makeSettings(gv.base_config, ACCTS({ is_paper: "true", account_id: "DU1234567" })).accountByAlias("主账户")?.is_paper).toBe(true);
     expect(makeSettings(gv.base_config, ACCTS({ is_paper: false })).accountByAlias("主账户")?.is_paper).toBe(false);
     expect(makeSettings(gv.base_config, ACCTS({ is_paper: false })).config_warnings).toEqual([]);
+  });
+
+  it("账号长得像实盘(U 开头)却标成纸面:按实盘处理并提醒——is_paper 是人填的,填错一格实盘闸门就失效", () => {
+    // 2026-09-28 起的口径(config.ts 的 livePaperMismatches)
+    const settings = makeSettings(gv.base_config, ACCTS({ is_paper: true }));
+    expect(settings.accountByAlias("主账户")?.is_paper).toBe(false);
+    expect(settings.config_warnings.join(" ")).toMatch(/主账户 标的是纸面账户.*已按实盘账户处理/);
+    const r = check(toLive(), {}, TUESDAY, { ...LIMITS, ...ACCTS({ is_paper: true }) });
+    expect(codes(r.issues)).toEqual(["LIVE_TRADING_DISABLED"]);
+    // 真的模拟账号(D 开头)不受影响,也不多一条提醒
+    const paper = makeSettings(gv.base_config, ACCTS({ is_paper: false }));
+    expect(paper.accountByAlias("模拟")?.is_paper).toBe(true);
+    expect(paper.config_warnings).toEqual([]);
+  });
+
+  it("富途的账号是纯数字,从样子上分不出来:不套这条规则", () => {
+    const settings = makeSettings(gv.base_config, {
+      connections: { ...gv.base_config.connections, futu: { broker: "futu", host: "127.0.0.1", port: 11111 } },
+      accounts: [
+        { alias: "模拟", account_id: "DU7654321", is_paper: true, connection: "paper", default: true },
+        { alias: "富途模拟", account_id: "28190044", is_paper: true, connection: "futu" },
+      ],
+    });
+    expect(settings.accountByAlias("富途模拟")?.is_paper).toBe(true);
+    expect(settings.config_warnings).toEqual([]);
   });
 
   it("认不出的值(1、\"yes\")直接报错,不猜", () => {

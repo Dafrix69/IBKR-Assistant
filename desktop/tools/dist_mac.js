@@ -119,6 +119,7 @@ if (outDir !== DIST) console.log(`项目在 iCloud 同步目录里,构建输出�
 
 // ---- 2. 打包 --------------------------------------------------------------------------
 run('npm', ['run', 'ui:build']);
+run('npm', ['run', 'notices']);   // 第三方许可声明:随包进 resources(tools/gen_notices.js);许可不在白名单里的在这里就失败
 run('npm', ['run', 'stage:engine:mac']);
 run('npm', ['run', 'smoke:engine']);
 
@@ -132,7 +133,18 @@ async function main() {
     // 只给覆盖项:electron-builder 先读 package.json 的 build,再把这里深合并上去
     config: {
       directories: { output: outDir },
-      ...(signed ? { mac: { identity: team, notarize: true }, dmg: { sign: true } } : {}),
+      ...(signed
+        ? {
+            // 签名版换一份更严的权限:同一个 Team 签的库过得了库校验,不再需要 disable-library-validation
+            mac: {
+              identity: team,
+              notarize: true,
+              entitlements: 'build/entitlements.mac.signed.plist',
+              entitlementsInherit: 'build/entitlements.mac.signed.plist',
+            },
+            dmg: { sign: true },
+          }
+        : {}),
     },
   });
 
