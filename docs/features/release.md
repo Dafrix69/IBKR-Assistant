@@ -78,7 +78,7 @@ MIT / BSD / ISC / Apache-2.0 都要求许可声明随副本一起走。安装包
 | 任务 | 新加的 |
 |---|---|
 | `engine-ts` | — |
-| `engine-ts-platforms` | macOS 与 Windows 上跑引擎测试。用户的机器是这两个平台,测试却一直只在 Linux 上跑。Windows 必过(2026-09-28 起);macOS 还在观察期,不挡合并 |
+| `engine-ts-platforms` | macOS 与 Windows 上跑引擎测试。用户的机器是这两个平台,测试却一直只在 Linux 上跑。两个平台都必过(2026-09-28 起) |
 | `desktop-ui` | 开源许可检查 |
 | `audit` | 生产依赖 high 及以上的通告就红;Electron 单独查(它是开发依赖,却随包发出去) |
 
