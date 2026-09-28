@@ -34,7 +34,7 @@
     "@anthropic-ai/sdk": "^0.122.0",
     "@napi-rs/keyring": "^2.0.0",
     "@stdlib/math-base-special-erf": "^0.2.6",
-    "@stoqey/ib": "^1.6.7",
+    "@stoqey/ib": "^1.6.10",
     "better-sqlite3": "^13.0.3",
     "openai": "^7.15.0",
     "zod": "^3.24.0"
