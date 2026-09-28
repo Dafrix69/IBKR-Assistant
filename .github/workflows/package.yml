@@ -47,7 +47,7 @@ jobs:
       #   APPLE_API_ISSUER     Issuer ID(App Store Connect → 用户和访问 → 集成 页面顶上)
       HAS_DEVELOPER_ID: ${{ secrets.MAC_CERT_P12_BASE64 != '' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           # 与 ci.yml 一致:better-sqlite3 13 要 Node >= 22,Electron 40 内置的也是 Node 24
@@ -154,7 +154,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           # 与 ci.yml 一致:better-sqlite3 13 要 Node >= 22,Electron 40 内置的也是 Node 24
@@ -239,7 +239,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
