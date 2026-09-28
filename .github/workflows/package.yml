@@ -48,7 +48,7 @@ jobs:
       HAS_DEVELOPER_ID: ${{ secrets.MAC_CERT_P12_BASE64 != '' }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           # 与 ci.yml 一致:better-sqlite3 13 要 Node >= 22,Electron 40 内置的也是 Node 24
           node-version: 24
@@ -155,7 +155,7 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           # 与 ci.yml 一致:better-sqlite3 13 要 Node >= 22,Electron 40 内置的也是 Node 24
           node-version: 24
@@ -244,7 +244,7 @@ jobs:
         with:
           path: artifacts
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
 
