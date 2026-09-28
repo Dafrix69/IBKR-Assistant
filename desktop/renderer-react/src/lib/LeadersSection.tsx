@@ -36,7 +36,7 @@ function Checks({ checks }: { checks: TrendCheck[] }) {
     </ul>
   );
   return (
-    <Tooltip title={tip} overlayClassName="tt-tooltip">
+    <Tooltip title={tip} classNames={{ root: 'tt-tooltip' }}>
       <span className="tt-dots" aria-label={`趋势模板过了 ${checks.filter((c) => c.ok).length} 条`}>
         {checks.map((c) => (
           <i key={c.key} className={c.ok === true ? 'ok' : c.ok === false ? 'no' : 'na'} />

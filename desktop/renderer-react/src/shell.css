@@ -78,9 +78,10 @@
 .update-notes { max-height: 160px; }
 
 /* ================= 顶部通知(横幅的替代) ================= */
-.ant-notification .toast { padding: 12px 16px; }
-.ant-notification .toast .ant-notification-notice-message { font-size: 13px; font-weight: 510; margin-bottom: 0; padding-inline-end: 20px; }
-.ant-notification .toast .ant-notification-notice-with-icon .ant-notification-notice-message { margin-inline-start: 30px; }
+/* AntD 6:标题的类名从 notice-message 改成 notice-title,图标与标题改成弹性排列(不再靠左边距让位)。
+   内边距写的是 5 里实际生效的那个值:原来这里写的 12/16 一直被组件库自己的规则盖着,从没生效过 */
+.ant-notification .toast { padding: 20px 24px; }
+.ant-notification .toast .ant-notification-notice-title { font-size: 13px; font-weight: 510; margin-bottom: 0; }
 .ant-notification .toast .ant-notification-notice-icon { font-size: 18px; margin-top: 1px; }
 
 /* ================= 通用控件微调 ================= */
@@ -97,9 +98,17 @@
 .ant-btn.btn-warn:not(:disabled) { color: var(--orange-text); }
 .ant-btn.card-action { margin-top: 8px; }
 .ant-input-number-input, .ant-input[type="date"] { font-variant-numeric: tabular-nums; }
-.ant-select-dropdown, .ant-tooltip-inner, .ant-popover-inner, .ant-notification-notice { -webkit-font-smoothing: antialiased; }
+/* AntD 6:提示与气泡的内层从 -inner 改名成 -container */
+.ant-select-dropdown, .ant-tooltip-container, .ant-popover-container, .ant-notification-notice { -webkit-font-smoothing: antialiased; }
 .ant-tooltip { max-width: 320px; }
-.ant-tooltip-inner { padding: 4px 8px; min-height: 0; }
+/* AntD 6 把提示的投影从内层的 box-shadow 换成了整体的 filter: drop-shadow,用的是组件库默认的三层投影,不是主题里定的弹层投影 */
+.ant-tooltip { filter: none; }
+.ant-tooltip .ant-tooltip-container { box-shadow: var(--ant-box-shadow-secondary); }
+/* 下拉框展开时:当前值按占位字的颜色变淡(6 改成了整体 25% 不透明度);选中又正好是高亮的那一项保持选中色(6 给它单开了一档更深的) */
+.ant-select-single.ant-select-open .ant-select-content-has-value { opacity: 1; color: var(--ant-color-text-placeholder); }
+.ant-select-dropdown .ant-select-item-option-selected.ant-select-item-option-active:not(.ant-select-item-option-disabled) { background-color: var(--ant-select-option-selected-bg); }
+/* 日期选择器左侧的快捷项:6 把每项的上下内边距从 1.5 加到了 2.5 */
+.ant-picker-dropdown .ant-picker-panel-container .ant-picker-presets ul li { padding-block: 1.5px; }
 /* 小圆标:卡片标题前、就绪清单里的 ✓ / ! / × */
 .tone-icon { font-size: 16px; margin-right: 6px; vertical-align: -1px; }
 .tone-icon.ok { color: var(--green); }
@@ -143,7 +152,7 @@
 /* 组合腿明细:折叠区里的子卡片再退一层 */
 .combo-legs { margin-top: 8px; }
 .combo-legs .ant-collapse-header { padding: 4px 0 !important; }
-.combo-legs .ant-collapse-content-box { padding: 0 !important; display: flex; flex-direction: column; gap: 8px; }
+.combo-legs .ant-collapse-body { padding: 0 !important; display: flex; flex-direction: column; gap: 8px; }
 .combo-legs .ant-card { background: var(--bg-content); box-shadow: none; }
 
 /* ================= 内嵌分组列表(Group = List) ================= */
@@ -170,11 +179,11 @@
 
 /* ================= 提示条(Notice = Alert) ================= */
 .notice.ant-alert { margin-bottom: 14px; align-items: flex-start; }
-.notice.ant-alert .ant-alert-message { font-size: 12px; font-weight: 590; color: var(--label); }
+.notice.ant-alert .ant-alert-title { font-size: 12px; font-weight: 590; color: var(--label); }
 .notice.ant-alert .ant-alert-description { font-size: 11.5px; line-height: 1.55; color: var(--label-secondary); }
 .notice.ant-alert .ant-alert-description strong { color: var(--label); }
-.notice.ant-alert-info .ant-alert-message strong { color: var(--blue); }
-.notice.ant-alert-warning .ant-alert-message { color: var(--orange-text); }
+.notice.ant-alert-info .ant-alert-title strong { color: var(--blue); }
+.notice.ant-alert-warning .ant-alert-title { color: var(--orange-text); }
 .notice.ant-alert .ant-alert-icon { margin-top: 2px; font-size: 14px; }
 .notice.ant-alert:empty { display: none; }
 
@@ -186,9 +195,9 @@
   padding: 2px 0 !important; font-size: 11.5px; color: var(--label-tertiary); font-weight: 400;
 }
 .primer.ant-collapse > .ant-collapse-item > .ant-collapse-header:hover { color: var(--label-secondary); }
-.primer.ant-collapse .ant-collapse-expand-icon { padding-inline-end: 0 !important; height: auto !important; }
+.primer.ant-collapse .ant-collapse-expand-icon { margin-inline-end: 0 !important; padding-inline-end: 0 !important; height: auto !important; }
 .primer.ant-collapse .ant-collapse-expand-icon .anticon { font-size: 10px; color: inherit; transition: transform 0.15s ease; }
-.primer.ant-collapse > .ant-collapse-item > .ant-collapse-content > .ant-collapse-content-box { padding: 6px 0 0 !important; }
+.primer.ant-collapse > .ant-collapse-item > .ant-collapse-panel > .ant-collapse-body { padding: 6px 0 0 !important; }
 .primer.ant-collapse .hint { margin-top: 0; }
 /* 非 intro 的参考资料(连接指引、读盘常识):一颗填充底的小按钮,第一次来的时候它们是救命的,连上之后就该让路 */
 .primer.ant-collapse:not(.intro) { margin-top: 16px; }
@@ -198,22 +207,32 @@
   background: var(--bg-fill); color: var(--label-secondary); font-weight: 510;
 }
 .primer.ant-collapse:not(.intro) > .ant-collapse-item > .ant-collapse-header:hover { background: var(--bg-fill-strong); color: var(--label); }
-.primer.ant-collapse:not(.intro) > .ant-collapse-item > .ant-collapse-content > .ant-collapse-content-box { padding-top: 10px !important; }
-/* 连接指引:Steps 的点线,标题正文各一行 */
-.guide.ant-steps { padding-left: 4px; }
-.guide.ant-steps .ant-steps-item-title { font-size: 12.5px; font-weight: 510; color: var(--label); line-height: 20px; }
-.guide.ant-steps .ant-steps-item-description { font-size: 11.5px; color: var(--label-secondary); line-height: 1.55; padding-bottom: 8px; }
-.guide.ant-steps .ant-steps-item-tail::after { background: var(--separator) !important; }
-.guide.ant-steps .ant-steps-icon-dot { background: var(--label-tertiary) !important; }
+.primer.ant-collapse:not(.intro) > .ant-collapse-item > .ant-collapse-panel > .ant-collapse-body { padding-top: 10px !important; }
+/* ================= 步骤清单(ui/kit 的 StepList) =================
+   尺寸照 AntD 5 小号竖排步骤条量的:每步至少 48 高,标题一行 18,说明下面留 12;连线 1px,离上一个图标 6、离下一个 0 */
+.steplist { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.steplist > .step { position: relative; display: flex; align-items: flex-start; flex: 1 0 auto; margin: 0; padding: 0; list-style: none; }
+.steplist > .step > .step-body { flex: 1; min-width: 0; min-height: 48px; overflow: hidden; }
+.steplist .step-title { width: fit-content; max-width: 100%; padding-inline-end: 12px; font-size: 13px; line-height: 18px; font-weight: 510; color: var(--label); }
+.steplist .step-detail { font-size: 11.5px; line-height: 1.47; color: var(--label); padding-bottom: 12px; }
+.steplist > .step.done .step-detail { color: var(--label-secondary); }
+.steplist > .step > .step-tail { position: absolute; inset-block-start: 0; inset-inline-start: 8px; box-sizing: border-box; width: 1px; height: 100%; padding: 24px 0 6px; font-size: 0; line-height: 0; }
+.steplist > .step > .step-tail::after { content: ""; display: inline-block; width: 1px; height: 100%; background: var(--separator); border-radius: 1px; }
+.steplist > .step:last-child > .step-tail { display: none; }
+.steplist > .step > .step-mark { flex: none; display: flex; align-items: flex-start; justify-content: center; width: 18px; height: 21px; margin-inline-end: 16px; font-size: 18px; line-height: 18px; }
 
-/* ================= 就绪检查表(Steps) ================= */
-.readiness-steps.ant-steps .ant-steps-item-title { font-size: 13px; font-weight: 510; line-height: 20px; }
-.readiness-steps.ant-steps .ant-steps-item-finish .ant-steps-item-title { color: var(--label-secondary); }
-.readiness-steps.ant-steps .ant-steps-item-description { font-size: 11.5px; color: var(--label-secondary); padding-bottom: 8px; }
-.readiness-steps.ant-steps .ant-steps-item-icon { margin-inline-end: 8px; }
-.readiness-steps.ant-steps .ant-steps-item-icon .tone-icon { font-size: 18px; margin: 0; }
-.readiness-steps.ant-steps .ant-steps-item-tail::after { background: var(--separator) !important; }
-.readiness-steps.ant-steps .ant-steps-item:last-child .ant-steps-item-description { padding-bottom: 0; }
+/* 连接指引:一列小圆点 */
+.guide.steplist { padding-left: 4px; }
+.guide.steplist > .step > .step-mark { position: relative; inset-inline-start: -1px; width: 8px; height: 8px; margin: 8px 16px 0 0; }
+.guide.steplist .step-dot { position: relative; inset-block-start: -0.5px; display: block; width: 8px; height: 8px; border-radius: 100px; background: var(--label-tertiary); }
+.guide.steplist > .step > .step-tail { inset-block-start: 9px; inset-inline-start: 0; padding: 14px 0 8px; }
+.guide.steplist > .step > .step-tail::after { margin-inline-start: 2.5px; }
+.guide.steplist .step-title { font-size: 12.5px; }
+.guide.steplist .step-detail { line-height: 1.55; }
+
+/* ================= 就绪检查表 ================= */
+.readiness-steps .step-mark .tone-icon { font-size: 18px; margin: 0; }
+.readiness-steps > .step:last-child .step-detail { padding-bottom: 0; }
 
 /* ================= 空态 / 忙碌 / 骨架 ================= */
 .empty-state.ant-empty { margin: 10px 0; padding: 8px 12px 10px; }
@@ -242,6 +261,8 @@
 .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin: 10px 0; }
 .stat-tile { background: var(--bg-fill); border-radius: var(--radius-tile); padding: 10px 12px; min-width: 0; }
 .stat-tile .ant-statistic-title { font-size: 10.5px; color: var(--label-secondary); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* AntD 6 在标题外面多包了一层 header,自带 4px 的下边距:数字磁贴因此高了 4px */
+.ant-statistic .ant-statistic-header { padding-bottom: 0; }
 .stat-tile .ant-statistic-content { font-family: var(--font-display); font-size: 17px; font-weight: 700; letter-spacing: -0.015em; line-height: 1.3; color: var(--label); font-variant-numeric: tabular-nums; }
 .stat-tile.mono .ant-statistic-content { font-family: var(--font-mono); font-size: 15px; font-weight: 500; }
 .stat-tile.pos .ant-statistic-content { color: var(--up-text); }
@@ -310,6 +331,8 @@
 /* ================= 交易记录 ================= */
 .records-table .ant-table { background: transparent; }
 .records-table .ant-table-thead > tr > th { font-size: 11px; font-weight: 590; }
+/* 空表那一行:AntD 5 给它铺了控件底色,6 不铺了 */
+.ant-table-tbody > tr.ant-table-placeholder { background: var(--bg-control); }
 .records-table .ant-table-tbody > tr > td { font-size: 12px; }
 .records-table .ant-table-tbody > tr.row-open > td { background: color-mix(in srgb, var(--blue) 10%, transparent); }
 .records-table .reason { display: block; color: var(--label-secondary); font-size: 11px; }
@@ -318,13 +341,26 @@
 .records-table .side.sell { color: var(--down-text); }
 .row.tight .ant-segmented { flex-shrink: 0; }
 .row.tight .ant-input-search { flex: 1; }
+/* AntD 6 的搜索框是 Space.Compact:按钮直接排在输入框后面,没有 addon 那层壳,也没有 ant-input-search-button 这个类。
+   图标的颜色、小号输入框左侧的圆角按 5 的样子补回来 */
+.ant-input-search > .ant-btn:not(:hover):not(:disabled) { color: var(--label-secondary); }
+.ant-input-search > .ant-input-affix-wrapper-sm { border-start-start-radius: 12px; border-end-start-radius: 12px; }
+/* 小号下拉框的箭头:5 里离右边 11px(不随尺寸变),6 里贴着 7px 的内边距 */
+.ant-select-sm .ant-select-suffix { margin-inline-end: 3px; }
 .detail-head .detail-actions { margin-left: auto; display: inline-flex; gap: 6px; }
 .detail .ant-descriptions-item-label { color: var(--label-secondary); font-size: 12px; width: 84px; }
 .detail .ant-descriptions-item-content { font-size: 12px; font-variant-numeric: tabular-nums; word-break: break-word; user-select: text; }
 .detail .ant-descriptions-row > th, .detail .ant-descriptions-row > td { padding-bottom: 4px; }
 .detail .timeline-item { display: inline-flex; gap: 10px; font-size: 12px; }
 .detail .timeline-item span { color: var(--label-secondary); font-variant-numeric: tabular-nums; }
-.detail .ant-timeline .ant-timeline-item { padding-bottom: 8px; font-size: 12px; }
+/* 状态时间线:尺寸照 AntD 5 的 Timeline 量的(圆点 10、边 3、连线 2、行距 26、最后一行留 48 高) */
+.detail .tl { margin: 0; padding: 0; list-style: none; font-size: 12px; line-height: 1.47; }
+.detail .tl-item { position: relative; margin: 0; padding-bottom: 8px; font-size: 12px; list-style: none; }
+.detail .tl-tail { position: absolute; inset-block-start: 10px; inset-inline-start: 4px; height: calc(100% - 10px); border-inline-start: 2px solid var(--separator); }
+.detail .tl-dot { position: absolute; inset-block-start: 0; inset-inline-start: 0; width: 10px; height: 10px; box-sizing: border-box; background: var(--bg-elevated); border: 3px solid var(--blue); border-radius: 50%; }
+.detail .tl-content { position: relative; inset-block-start: -5px; margin-inline-start: 26px; min-height: 18px; word-break: break-word; }
+.detail .tl-item:last-child > .tl-tail { display: none; }
+.detail .tl-item:last-child > .tl-content { min-height: 48px; }
 .detail .detail-raw .ant-collapse-header { padding-left: 0 !important; font-size: 12px; color: var(--label-secondary); }
 .detail .detail-raw pre {
   margin: 0; font-family: var(--font-mono); font-size: 11px;
