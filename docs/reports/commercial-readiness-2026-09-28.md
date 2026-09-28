@@ -119,7 +119,7 @@ Electron 是假的、对话框按脚本回答,**交易引擎是真的**(`tests/d
 | 打包卫生 | 不带点开头的目录(0.5.1 的包里有一个别人的 `.claude/settings.local.json`)、iCloud 冲突副本;许可文件不管什么后缀都带 |
 | 加固 | 熔断丝关掉 `NODE_OPTIONS` 与 `--inspect`;装好的应用不能开开发者工具;外链白名单;签名版用更严的权限文件 |
 | 依赖 | `futu-api` 不随包(它带着有 critical 通告的 protobufjs,而富途下单桥本来就没开);Electron 40 → 41.10.7 |
-| CI | 令牌权限收到只读;安全通告检查;开源许可检查;macOS / Windows 上跑引擎测试(观察期内不挡合并);Dependabot |
+| CI | 令牌权限收到只读;安全通告检查;开源许可检查;macOS / Windows 上跑引擎测试(Windows 必过,macOS 在观察期内不挡合并);Dependabot |
 
 为什么 Electron 停在 41 而不是最新:42 起 macOS 的系统通知要求正式签名,ad-hoc 的包发不出通知。见 [发版](../features/release.md)。
 
@@ -153,7 +153,8 @@ Electron 是假的、对话框按脚本回答,**交易引擎是真的**(`tests/d
    只有这一步验得了。Windows 同理(`dist:win`,或推一个 PR 让 `安装包` 工作流跑)。
 4. **从备份恢复。** 有追踪、有托管单的时候,「设置 → 数据与备份」恢复到昨天的那一份,看引擎重启后对账怎么认领。
 5. **把配置文件故意改坏**(删一个逗号),启动,看对话框;点「恢复上一份可用的配置」。
-6. **CI。** 推上去之后看 `engine-ts-platforms`(macOS / Windows)绿不绿。它在观察期内不挡合并;红了多半是路径分隔符或文件锁。
+6. **CI。** ~~推上去之后看 `engine-ts-platforms`(macOS / Windows)绿不绿。~~ 已看:macOS 一次就绿;Windows 第一次红了十条(文件锁、CRLF、信号,都是测试自己的事),
+   修完之后绿了,Windows 那一路改成了必过。macOS 那一路还在观察期。
 7. **本地没有 git 仓库。** `~/Desktop/ibkr/IBKR-Assistant` 下没有 `.git`,这一轮的改动没有任何版本历史。
    在推到 GitHub 之前,请先把这个目录和仓库对上(`git init` + 接上远端,或者把改动拷进你的工作副本)。
 8. **项目放在 iCloud 同步的桌面上,而且磁盘快满了**。系统已经把 `node_modules` 里七成的文件换出到了云端,
