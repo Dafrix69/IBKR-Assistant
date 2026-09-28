@@ -10,7 +10,7 @@
  * 关着的时候引擎根本没在给这只算,显示「—」而不是留白。
  */
 import { DeltaBar, MeterBar } from '../ui/graphics';
-import { useRef, useState } from 'react';
+import { useRef, useState, type ReactElement } from 'react';
 import { Button, Input, Switch, Tag, Tooltip } from 'antd';
 import type { QualityConfig, QualityMetrics, QualityStock } from '../bridge';
 import { burstVerdict } from './alertRules';
@@ -151,7 +151,7 @@ function PriceCell({ last, delayed, error, anomalyOn }: { last: number | null; d
 }
 
 /** 关着「异动」时两列量比一律是「—」:引擎没在给这只算,留白会被当成"还没到时候"。 */
-function offCell(): JSX.Element {
+function offCell(): ReactElement {
   return (
     <Tooltip title="「异动」没开:引擎没在给这只算量比">
       <span className="muted">—</span>
