@@ -97,7 +97,13 @@ afterEach(() => {
     s.anomaly.stop();
     s.engineBuilt?.stopTrackerLoop();
   }
-  for (const d of dirs.splice(0)) fs.rmSync(d, { recursive: true, force: true });
+  for (const d of dirs.splice(0)) {
+    try {
+      fs.rmSync(d, { recursive: true, force: true });
+    } catch {
+      /* Windows 上文件可能还被占着(SQLite、刚退出的子进程):临时目录留给系统清 */
+    }
+  }
 });
 
 /** 连上券商之后的样子:brokerLink.connectNow 做的就是 dropEngine → engine.attachListeners()。 */

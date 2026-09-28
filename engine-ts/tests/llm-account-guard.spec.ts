@@ -101,7 +101,11 @@ describe("引擎装配", () => {
       // 在发任何请求之前就被挡下:端点是个连不上的地址,真发出去报的会是"连不上"
       await expect(parser.completeJson("s", `账号 ${real!.account_id}`, {})).rejects.toThrow(/出现了真实账号/);
     } finally {
-      rmSync(dir, { recursive: true, force: true });
+      try {
+        rmSync(dir, { recursive: true, force: true });
+      } catch {
+        /* Windows 上文件可能还被占着(SQLite、刚退出的子进程):临时目录留给系统清 */
+      }
     }
   });
 });

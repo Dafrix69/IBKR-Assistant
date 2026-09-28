@@ -34,7 +34,13 @@ beforeEach(() => {
   dbPath = path.join(dir, "trades.db");
   resetIntegrityCache();
 });
-afterEach(() => rmSync(dir, { recursive: true, force: true }));
+afterEach(() => {
+  try {
+    rmSync(dir, { recursive: true, force: true });
+  } catch {
+    /* Windows 上文件可能还被占着(SQLite、刚退出的子进程):临时目录留给系统清 */
+  }
+});
 
 /** 库里先有一条想法 → 备份 → 再加一条。返回备份的文件名。 */
 function seed(): string {

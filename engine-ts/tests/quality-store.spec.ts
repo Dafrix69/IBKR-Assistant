@@ -29,7 +29,11 @@ describe("store: 优质股追踪", () => {
     } catch {
       /* 已关 */
     }
-    fs.rmSync(dir, { recursive: true, force: true });
+    try {
+      fs.rmSync(dir, { recursive: true, force: true });
+    } catch {
+      /* Windows 上文件可能还被占着(SQLite、刚退出的子进程):临时目录留给系统清 */
+    }
   });
 
   it("老库文件直接打开就补上两张新表,原有数据不动", () => {

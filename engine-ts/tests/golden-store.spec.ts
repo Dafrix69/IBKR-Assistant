@@ -39,7 +39,11 @@ describe("store: 兼容性对拍(Python 生成的库文件)", () => {
     } catch {
       /* already closed */
     }
-    fs.rmSync(dir, { recursive: true, force: true });
+    try {
+      fs.rmSync(dir, { recursive: true, force: true });
+    } catch {
+      /* Windows 上文件可能还被占着(SQLite、刚退出的子进程):临时目录留给系统清 */
+    }
   });
 
   it("get_record:事件折叠与 Python 逐字段一致", () => {
@@ -120,7 +124,11 @@ describe("store: TS 写入路径行为", () => {
     } catch {
       /* already closed */
     }
-    fs.rmSync(dir, { recursive: true, force: true });
+    try {
+      fs.rmSync(dir, { recursive: true, force: true });
+    } catch {
+      /* Windows 上文件可能还被占着(SQLite、刚退出的子进程):临时目录留给系统清 */
+    }
   });
 
   it("create → events → fold 往返", () => {

@@ -1,4 +1,6 @@
-* text=auto
+# 一律按 LF 检出:Windows 上检出成 CRLF 的话,按行读的地方(条款版本、.gitignore 的核对、打进安装包的文本)
+# 每行末尾多一个 \r,和别的平台不一样
+* text=auto eol=lf
 *.db binary
 *.png binary
 *.jpg binary

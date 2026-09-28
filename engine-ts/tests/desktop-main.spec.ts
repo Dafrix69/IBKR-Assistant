@@ -8,7 +8,7 @@
  * 全部离线:配置里 `broker.auto_connect` 关着,不连任何券商;走到引擎的调用都挑了不会碰网络与钥匙串的。
  */
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { closeSync, existsSync, mkdtempSync, openSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync, writeSync } from "node:fs";
 import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
@@ -177,7 +177,11 @@ afterAll(async () => {
   if (prevented) await until(() => quits > 0, 12_000).catch(() => undefined);
   restoreLoad?.();
   delete process.env["DAFRI_CONFIG"];
-  rmSync(dir, { recursive: true, force: true });
+  try {
+    rmSync(dir, { recursive: true, force: true });
+  } catch {
+    /* Windows 上文件可能还被占着(SQLite、刚退出的子进程):临时目录留给系统清 */
+  }
 }, 30_000);
 
 describe.runIf(ready)("主进程:接线", () => {
@@ -426,12 +430,15 @@ describe.runIf(ready)("主进程:引擎说「别重启我」", () => {
     boxes.length = 0;
     sent.length = 0;
     answers.push(0); // 用最近的备份恢复
-    // 先把库换成一个坏文件,再重启引擎:启动时那一遍探测会发现它
-    const bad = "这不是数据库".repeat(500);
+    // 先把库写坏,再重启引擎:启动时那一遍探测会发现它。
+    // **原地覆盖,不删不换**:引擎还开着这个文件,Windows 上别的进程开着的文件删不掉(EPERM),写是可以的
+    // (SQLite 开库时允许别人读写)。从头盖到尾,引擎收尾时从 WAL 写回来的那几页救不了它。
     await invoke("engine-restart").catch(() => undefined);
     await until(engineUp);
-    for (const suffix of ["", "-wal", "-shm"]) rmSync(dbPath + suffix, { force: true });
-    writeFileSync(dbPath, bad);
+    const size = Math.max(statSync(dbPath).size, 4096);
+    const fd = openSync(dbPath, "r+");
+    writeSync(fd, Buffer.alloc(size, "这不是数据库"), 0, size, 0);
+    closeSync(fd);
     await invoke("engine-restart");
     await until(() => boxes.length > 0);
     expect(boxes[0]!["message"]).toBe("交易库文件损坏了,交易引擎没有启动");
