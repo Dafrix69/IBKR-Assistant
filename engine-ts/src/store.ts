@@ -429,9 +429,16 @@ export class TradeStore {
     return added;
   }
 
-  listFills(limit = 5000): Rec[] {
-    return (this.db.prepare("SELECT fill_json FROM broker_fills ORDER BY time ASC, exec_id ASC LIMIT ?").all(limit) as Rec[])
+  /** 全部成交,按时间升序。不封顶:用它的都要完整的历史——蝴蝶按开平配对、股票从空仓推到空仓、
+   * 哪些 (账户, 日期) 已有完整期权成交——封了顶丢的是最新的那几天,而那正是最该看的。 */
+  listFills(): Rec[] {
+    return (this.db.prepare("SELECT fill_json FROM broker_fills ORDER BY time ASC, exec_id ASC").all() as Rec[])
       .map((r) => JSON.parse(String(r["fill_json"])));
+  }
+
+  /** 库里攒了多少条成交(交易分析页显示用,不必把整张表读出来)。 */
+  countFills(): number {
+    return Number((this.db.prepare("SELECT COUNT(*) AS n FROM broker_fills").get() as Rec)["n"] ?? 0);
   }
 
   /** 某张单(orderRef = 记录 id)在券商成交表里的成交行。执行对账判"它是不是已经成交了"用。

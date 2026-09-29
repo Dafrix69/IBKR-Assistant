@@ -7,6 +7,7 @@
  */
 import { create } from 'zustand';
 import { dafri, errorMessage, type Account, type InstructionSubmitResult } from '../bridge';
+import { pickAccounts } from '../lib/accountPick';
 import { showBanner } from './banner';
 import { loadPending } from './pending';
 import { loadRecords } from './records';
@@ -100,7 +101,7 @@ export async function submitInstruction(execute: boolean, accounts: string[]): P
 }
 
 // ---- 发单账户勾选:勾一个发一个,勾两个每笔各发一份(引擎按账户扇出)------------------
-// 勾选状态存本地;没存过时默认只勾默认账户,行为与没有这个控件时一致。
+// 勾选状态存本地;没存过时默认只勾默认账户,行为与没有这个控件时一致(规则见 lib/accountPick.ts)。
 const ACCOUNT_PICK_KEY = 'dafri-submit-accounts';
 
 function readPicked(): string[] | null {
@@ -126,15 +127,9 @@ export function savePickedAccounts(aliases: string[]): void {
   }
 }
 
+/** 这一次发到哪几个账户。规则(只有一个账户、存的勾选已经对不上时回到默认账户)在 lib/accountPick.ts。 */
 export function selectedAccounts(usable: Account[]): string[] {
-  if (!usable.length) return [];
-  const aliases = usable.map((a) => a.alias);
-  const picked = usePicked.getState().picked;
-  if (picked === null) {
-    const def = usable.find((a) => a.default) || usable[0];
-    return [def.alias];
-  }
-  return picked.filter((alias) => aliases.includes(alias));
+  return pickAccounts(usable, usePicked.getState().picked);
 }
 
 /** 勾选变化的订阅口:页面据此重算 selectedAccounts,不必自己维护计数器。 */

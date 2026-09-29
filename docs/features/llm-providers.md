@@ -21,8 +21,9 @@
   外发的文字里出现配置里的真实账号,这一次调用中止,报错里只提别名,不替用户改写内容;示例配置里全零的占位账号不算。
   下单解析在渲染提示词时先过一道 `prompts.ts` 的 `assertNoAccountIds`,这一道没有占位账号的例外。
 - **输出要过 schema。** 能用 `json_schema` 就用;端点只支持 `json_object` 时自动降级,把 schema 写进系统提示词,并在界面上标出已降级
-  (解析可靠性会变差、拒绝率会升高)。同一个解析器对象被端点拒过一次 `json_schema`(HTTP 400)就记住,之后直接走 `json_object`;
-  引擎的下单解析器活到下一次重载配置,想法分析、AI 选股、行情解读、回测条件解析每次调用新建一个解析器。
+  (解析可靠性会变差、拒绝率会升高)。降级按(端点、模型、schema)记在进程里(`providers.ts` 的 `SCHEMA_REJECTED`):
+  同一组合收到过一次 400,这一进程里之后直接走 `json_object`,每次调用新建的解析器(想法分析、AI 选股、行情解读、回测条件解析)也共用这份记录。
+  键里带着 schema,一份 schema 撞的 400 只让这一份降级;换了端点或模型重新试;只在内存里,重启从头试。「测试连接」不看记下的降级,每次都先试 `json_schema`。
 - **发给 API 的 schema 是检入的资产**(`engine-ts/baseline/llm/*_schema.json`,`loadSchemaAsset` 读出):各家不支持的数值与长度约束在资产里已经去掉,
   每个对象节点保留 `additionalProperties:false`,语义约束由 `models.ts` 在本地复校验。运行时唯一的改动是 `parseSchemaForPrompt`:
   提示词 v1.8.0 起从拒绝码的枚举里去掉 `EXCEEDS_LIMIT`(模型不再判断限额)。改 `models.ts` 时手工同步 schema 资产;
@@ -55,6 +56,7 @@ Anthropic 走 `@anthropic-ai/sdk`,兼容端点走 `openai`(请求体逐字段自
 
 ## 测试
 
-`provider-http.spec.ts`(起一个本机 http 端点:URL 拼接、Authorization、按状态码降级、5xx 重试后成功、端点关着时的报错、地址里带状态码数字的端点连不上)、
+`provider-http.spec.ts`(起一个本机 http 端点:URL 拼接、Authorization、按状态码降级、降级在新建的解析器之间共用、换 schema 或模型重新试、
+测试连接不看记下的降级、5xx 重试后成功、端点关着时的报错、地址里带状态码数字的端点连不上)、
 `llm-rpc.spec.ts`(`llm.test` 用本机假端点)、`fix-llmtest-exfil.spec.ts` 与 `fix-llmtest-official.spec.ts`(Key 只发往保存它的端点)、
 `llm-account-guard.spec.ts`(外发前的账号检查)、`prompt-latest.spec.ts`、`golden-providers.spec.ts`。全部离线。

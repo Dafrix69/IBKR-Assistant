@@ -192,7 +192,7 @@ export class ReviewHandlers extends HandlerBase {
       candidates: out.slice(0, limit),
       synced,
       ibkr_available: Boolean(router !== null && typeof router.executions === "function" && router.sessions().length),
-      fills_stored: this.engine.store.listFills().length,
+      fills_stored: this.engine.store.countFills(),
     };
   }
 

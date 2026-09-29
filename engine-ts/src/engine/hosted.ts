@@ -697,7 +697,7 @@ export class HostedOrders {
   };
   /** 触发状态 → 给人看的名字。追价平仓那一路(还在 engine.ts)也读它。 */
   static readonly STATE_LABEL: Record<string, string> = {
-    take_profit: "止盈", stop_loss: "止损", profit_trail: "利润回撤",
+    take_profit: "止盈", stop_loss: "止损", profit_trail: "利润回撤", manual: "手动平仓",
   };
 
   /** 托管单的终态处理:成交 → 追踪落闩;撤销 → 丢缓存。

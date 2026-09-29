@@ -151,7 +151,7 @@ function importFills(settings: Settings, csvPath: string, alias: string, dryRun:
   }
   const parsed = parseFillsCsv(fs.readFileSync(csvPath, "utf-8"), account.account_id);
   const store = new TradeStore(settings.db_path);
-  const known = new Set(store.listFills(1_000_000).map((f) => String(f["exec_id"] ?? "")));
+  const known = new Set(store.listFills().map((f) => String(f["exec_id"] ?? "")));
   const fresh = parsed.fills.filter((f) => !known.has(f.exec_id));
   console.log(`账户:${alias}${account.is_paper ? "(模拟)" : ""}`);
   console.log(`股票成交 ${parsed.fills.length} 笔(${parsed.first ?? "-"} → ${parsed.last ?? "-"}),库里已有 ${parsed.fills.length - fresh.length} 笔,新增 ${fresh.length} 笔`);

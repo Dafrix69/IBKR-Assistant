@@ -115,11 +115,13 @@ export const TRACK_STATE_LABEL: Record<string, string> = {
   take_profit: '止盈已触发',
   profit_trail: '利润回撤已触发',
   stop_loss: '止损已触发',
+  manual: '已手动平仓',
   closed: '持仓已不在',
   // 触发了、正在把托管单改到立刻成交的价往下追(见引擎 sweepReason)
   'sweep:take_profit': '到了目标价,追价平仓中',
   'sweep:stop_loss': '止损触发,追价平仓中',
   'sweep:profit_trail': '利润回撤触发,追价平仓中',
+  'sweep:manual': '手动平仓,追价中',
 };
 
 /** 蝶式复盘里那三个阶段(引擎 flyexit.ts 分的)。图上的色带与表里的标签用同一份。 */

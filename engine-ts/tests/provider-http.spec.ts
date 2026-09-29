@@ -8,7 +8,7 @@ import * as http from "node:http";
 import { afterEach, describe, expect, it } from "vitest";
 
 import type { LLMConfig } from "../src/config.js";
-import { OpenAICompatibleParser } from "../src/providers.js";
+import { OpenAICompatibleParser, PING_SCHEMA } from "../src/providers.js";
 
 type Handler = (req: http.IncomingMessage, res: http.ServerResponse, body: string) => void;
 
@@ -99,7 +99,6 @@ describe("OpenAI 兼容:真 HTTP", () => {
       }
       ok(res, '{"ok": true}');
     });
-    // 同一个 parser 实例问两次:降级状态记在实例上(引擎全程用同一个实例)
     const p = parser(s.url);
     expect(await p.completeJson("你只输出 JSON。", '回复 {"ok": true}', PING)).toEqual({ ok: true });
     expect(s.seen.length).toBe(2); // 撞一次 400,再发一次
@@ -109,6 +108,56 @@ describe("OpenAI 兼容:真 HTTP", () => {
     await p.completeJson("你只输出 JSON。", '回复 {"ok": true}', PING);
     expect(s.seen.length).toBe(3); // 第二条指令直接走 json_object,没有再撞 400
     expect(s.seen[2]![2]["response_format"]).toEqual({ type: "json_object" });
+
+    // 想法分析、AI 选股、行情解读、回测条件解析每次调用都新建一个 parser:记下的降级它们一样认
+    await parser(s.url).completeJson("你只输出 JSON。", '回复 {"ok": true}', PING);
+    expect(s.seen.length).toBe(4);
+    expect(s.seen[3]![2]["response_format"]).toEqual({ type: "json_object" });
+  });
+
+  it("降级按 (端点, 模型, schema) 记:换一份 schema、换一个模型,都先照常试 json_schema", async () => {
+    const s = await stub((_req, res, raw) => {
+      const body = JSON.parse(raw);
+      const props = Object.keys(body.response_format?.json_schema?.schema?.properties ?? {});
+      // 只拒带 ok 字段的那份 schema(模拟端点不认某份 schema 里的写法),别的照收
+      if (body.response_format?.type === "json_schema" && props.includes("ok")) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: { message: "unsupported schema" } }));
+        return;
+      }
+      ok(res, props.includes("n") ? '{"n": 1}' : '{"ok": true}');
+    });
+    const OTHER = { type: "object", properties: { n: { type: "number" } }, required: ["n"] };
+    await parser(s.url).completeJson("你只输出 JSON。", "x", PING); // 400 → 降级
+    expect(s.seen.map((r) => r[2]["response_format"]["type"])).toEqual(["json_schema", "json_object"]);
+
+    expect(await parser(s.url).completeJson("你只输出 JSON。", "x", OTHER)).toEqual({ n: 1 });
+    expect(s.seen[2]![2]["response_format"]["type"]).toBe("json_schema"); // 另一份 schema 不受牵连
+
+    await parser(s.url, { model: "deepseek-reasoner" }).completeJson("你只输出 JSON。", "x", PING);
+    expect(s.seen[3]![2]["response_format"]["type"]).toBe("json_schema"); // 换了模型:重新试
+    expect(s.seen[4]![2]["response_format"]).toEqual({ type: "json_object" });
+    expect(s.seen).toHaveLength(5);
+  });
+
+  it("「测试连接」不看记下的降级,先试 json_schema,报端点此刻的样子", async () => {
+    let schemaOk = false;
+    const s = await stub((_req, res, raw) => {
+      if (JSON.parse(raw).response_format?.type === "json_schema" && !schemaOk) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: { message: "response_format json_schema not supported" } }));
+        return;
+      }
+      ok(res, '{"ok": true}');
+    });
+    expect((await parser(s.url).test())["structured_mode"]).toBe("json_object");
+    expect((await parser(s.url).test())["structured_mode"]).toBe("json_object");
+    expect(s.seen.map((r) => r[2]["response_format"]["type"])).toEqual(["json_schema", "json_object", "json_schema", "json_object"]);
+    // 端点升级了(或换了网关):下一次测试连接就如实报出来,之后的调用也跟着用回 json_schema
+    schemaOk = true;
+    expect((await parser(s.url).test())["structured_mode"]).toBe("json_schema");
+    await parser(s.url).completeJson("你只输出 JSON。", '回复 {"ok": true}', PING_SCHEMA); // 测试连接用的那一份
+    expect(s.seen.slice(4).map((r) => r[2]["response_format"]["type"])).toEqual(["json_schema", "json_schema"]);
   });
 
   it("5xx 自动重试后成功(手写 fetch 时代这里是一条指令白发)", async () => {

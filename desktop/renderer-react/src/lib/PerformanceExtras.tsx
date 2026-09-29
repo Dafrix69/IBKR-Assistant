@@ -20,7 +20,8 @@ const SEC_LABEL: Record<string, string> = { STK: '股票', OPT: '单腿期权', 
 const execCols: ColumnsType<ExecutionRow> = [
   { title: '触发', dataIndex: 'at', key: 'at', width: 110, render: (v: string) => fmtTimeShort(v) },
   { title: '标的', dataIndex: 'symbol', key: 'symbol', render: (v: string, r) => `${v} · ${SEC_LABEL[r.sec_type] ?? r.sec_type}${r.paper ? ' · 模拟' : ''}` },
-  { title: '路径', dataIndex: 'path', key: 'path', render: (v: ExecutionRow['path']) => PATH_LABEL[v] },
+  // 「立即平仓」走的是同两条路,触发原因记成 manual:标出来,和到价触发的分开看
+  { title: '路径', dataIndex: 'path', key: 'path', render: (v: ExecutionRow['path'], r) => (r.state === 'manual' ? `手动 · ${v === 'hosted_sweep' ? '托管追价' : '立即平仓'}` : PATH_LABEL[v]) },
   { title: '触发价 → 成交', key: 'px', align: 'right', render: (_: unknown, r) => `${r.mark} → ${r.fill}` },
   { title: '让出', dataIndex: 'cost_usd', key: 'cost', align: 'right', render: (v: number, r) => `${usd(-v)}(${r.cost_pct}%)` },
 ];

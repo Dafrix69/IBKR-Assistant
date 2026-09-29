@@ -7,6 +7,7 @@
  * 盯的是四件事:认领(券商侧还挂着)、补录(断线期间成交了)、留痕(去向不明,**不落终态**)、
  * 克制(刚发出去的单、本进程还在盯的条件单,一律不动)。
  */
+import Database from "better-sqlite3";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -165,6 +166,51 @@ describe("对账 ②:券商侧没有、成交表里有——断线期间成交�
     const record = engine.store.getRecord(recordId)!;
     expect(record["final_status"] ?? null).toBeNull();
     expect(record["ibkr"]["fills"]).toHaveLength(1);
+  });
+
+  // 那一半成交刚在 ② 补录进记录:③ 的提醒语要是说"当天的成交里也没有它",照着这句重下整张就多出 40 股
+  it("只成交了一半、剩下的券商侧也没有 → 去向不明,但照实说成交了多少、剩下多少", async () => {
+    const router = new FakeRouter();
+    const { engine, notifier } = buildEngine(router);
+    const recordId = workingRecord(engine);
+    engine.store.rememberFills([fillRow(recordId, { shares: 40 })]);
+
+    const out = await engine.reconcileOrders(NOW);
+    expect(out.unknown).toBe(1);
+    expect(statuses(engine, recordId)).toEqual(["Submitted", "NotAtBroker"]);
+    const warnings = notifier.history.map(([, , body]) => String(body)).filter((b) => b.includes("去向不明"));
+    expect(warnings).toEqual([
+      "对账:AAPL 的单子去向不明——券商侧已经没有这张单,当天的成交里只找到 40(共 100),已补录进记录;"
+      + "剩下的 60 可能被撤了,也可能更早成交、券商不再回报(请在 TWS 里核对后再决定是否补下剩下的部分)。",
+    ]);
+    // 事件与审计里也带着数:事后排查不用再去翻成交表
+    const db = new Database(engine.store.dbPath, { readonly: true });
+    try {
+      const events = db.prepare("SELECT payload FROM record_events WHERE record_id=? AND kind='status' ORDER BY seq").all(recordId) as Rec[];
+      expect(JSON.parse(String(events[events.length - 1]!["payload"]))).toMatchObject({ status: "NotAtBroker", filled: 40, quantity: 100 });
+      const audit = db.prepare("SELECT detail FROM audit_log WHERE action='reconcile_missing'").all() as Rec[];
+      expect(audit.map((r) => JSON.parse(String(r["detail"])))).toEqual([{ record: recordId, was: "Submitted", filled: 40, quantity: 100 }]);
+    } finally {
+      db.close();
+    }
+    // 第二轮不再报
+    expect((await engine.reconcileOrders(NOW + 60_000)).unknown).toBe(0);
+  });
+
+  it("发单途中中断、却查到了一部分成交:说成交了多少,不说「多半没有发出去」", async () => {
+    const router = new FakeRouter();
+    const { engine, notifier } = buildEngine(router);
+    const recordId = engine.store.createRecord({
+      created_at: OLD, contract: { secType: "STK", symbol: "AAPL" }, order: { totalQuantity: 100 },
+    });
+    engine.store.markSubmitIntent(recordId); // 只有发单的痕,一条状态回报都没有
+    engine.store.rememberFills([fillRow(recordId, { shares: 30 })]);
+
+    expect((await engine.reconcileOrders(NOW)).unknown).toBe(1);
+    const body = notifier.history.map(([, , b]) => String(b)).find((b) => b.includes("去向不明")) ?? "";
+    expect(body).toContain("当天的成交里只找到 30(共 100)");
+    expect(body).not.toContain("多半没有发出去");
+    expect(engine.store.getRecord(recordId)!["ibkr"]["fills"]).toHaveLength(1);
   });
 
   it("组合单只认 BAG 行:腿加起来是份数的好几倍,拿它判填满会把没成交的单标成已成交", async () => {

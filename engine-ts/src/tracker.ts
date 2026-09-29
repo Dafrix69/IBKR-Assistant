@@ -30,6 +30,8 @@ export const STATE_HOLDING = "holding";
 export const STATE_TAKE_PROFIT = "take_profit";
 export const STATE_STOP_LOSS = "stop_loss";
 export const STATE_PROFIT_TRAIL = "profit_trail"; // 利润从峰值回撤达到阈值
+/** 人点的「立即平仓」。保护规则的止损护栏不数它(同一标的冷却照常,和止盈一样),绩效体检也分得开。 */
+export const STATE_MANUAL = "manual";
 
 export class TrackerError extends Error {}
 
@@ -486,7 +488,7 @@ export function chaseFloor(position: Position, natural: number, auto: AutoClose)
 
 /**
  * 「追价平仓」:追踪触发后,把托管单改到立刻成交的价、没成交就每秒再追一次,直到持仓没了。
- * fired_state 记成 `sweep:<触发原因>`,成交后再换回原因本身(止盈 / 止损 / 利润回撤)。
+ * fired_state 记成 `sweep:<触发原因>`,成交后再换回原因本身(止盈 / 止损 / 利润回撤 / 手动平仓)。
  */
 export const SWEEP_PREFIX = "sweep:";
 
@@ -1081,7 +1083,7 @@ export function buildCloseOrder(
   const qtyFull = Math.trunc(Math.abs(position.quantity));
   const side = closeSide(position);
   const why =
-    state === STATE_TAKE_PROFIT ? "止盈" : state === STATE_PROFIT_TRAIL ? "利润回撤" : "止损";
+    state === STATE_TAKE_PROFIT ? "止盈" : state === STATE_PROFIT_TRAIL ? "利润回撤" : state === STATE_MANUAL ? "手动" : "止损";
   const extended = EXTENDED_SESSIONS.includes(marketStatus);
   // 组合一律不发市价单:BAG 的 MKT 会让每条腿各吃一次价差,0DTE 蝶的三条腿加起来
   // 能吃掉大半个净价。宁可挂一张让了滑点的限价单,也不把"成交价随缘"当成平仓。
@@ -1118,7 +1120,7 @@ export function buildCloseOrder(
     trigger: null,
     account: position.account,
     order,
-    reason: `持仓追踪${why}触发,自动平仓`,
+    reason: state === STATE_MANUAL ? "持仓追踪里点了「立即平仓」" : `持仓追踪${why}触发,自动平仓`,
     confidence: 1.0, // 不是模型解析出来的,是规则算出来的
     warnings: [],
   };

@@ -141,11 +141,11 @@ export class AnomalyService extends ServiceBase {
 
       const et = etNowFromEpoch(nowMs);
       const sessionMinutes = this.settings.early_close_days.includes(et.date) ? 210 : 390;
-      // 周末 / 假日的 09:30–16:00 按钟点算也落在"时段内",而流里还是上一个交易日的量价——
-      // 周六上午会把周五的全天量当成"开盘一小时就放量 5 倍"报出来。非交易日一律当"已收盘":
-      // 指标照算(就是上一个交易日的全天值),不报。
-      const minute = this.settings.isTradingDay(et.date) ? (et.seconds - 9.5 * 3600) / 60 : sessionMinutes;
-      const inWindow =
+      const minute = (et.seconds - 9.5 * 3600) / 60;
+      // 周末 / 假日整天都不在时段内:不订量能流、不判异动、不重算价位、不补碰均线的底账。
+      // 流里是上一个交易日的量价,周六上午按钟点判会把周五的全天量当成"开盘一小时就放量 5 倍";
+      // 算"时段内"的话,量能流整个周末不撤,在盯价位的股每 10 分钟重拉一遍期权链与日线。
+      const inWindow = this.settings.isTradingDay(et.date) &&
         minute >= -AnomalyService.ANOMALY_WARMUP_MINUTES &&
         minute < sessionMinutes + AnomalyService.ANOMALY_TAIL_MINUTES;
       // 「盯价位」开着就该有价位:捎带算 1 只。放在异动那几道闸之前——富途不支持异动、

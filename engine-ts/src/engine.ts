@@ -1431,8 +1431,8 @@ export class TradingEngine {
     const auto = tk.makeAutoClose(track["auto_close"] ?? {});
     if (!auto.host_at_broker || !this.router?.SUPPORTS_HOSTED_CLOSE) return false;
     if (tk.sweepReason(track) === null) {
-      this.store.updateTrack(tid, { fired_at: nowIsoSecondsEt(), fired_state: `${tk.SWEEP_PREFIX}${tk.STATE_STOP_LOSS}` });
-      this.store.audit("engine", "hosted_sweep", { track: tid, symbol: track["symbol"], state: tk.STATE_STOP_LOSS, reason });
+      this.store.updateTrack(tid, { fired_at: nowIsoSecondsEt(), fired_state: `${tk.SWEEP_PREFIX}${tk.STATE_MANUAL}` });
+      this.store.audit("engine", "hosted_sweep", { track: tid, symbol: track["symbol"], state: tk.STATE_MANUAL, reason });
       this.notifier.notify("追价平仓", `${track["symbol"]}:${reason}。在托管单那一组里改到立刻成交的价,没成交就每秒再追`);
     }
     // 人点了平仓:上一次被拒留下的退避不再等

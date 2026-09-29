@@ -44,6 +44,10 @@ function withTimeout<T>(promise: Promise<T>, ms: number, what: string): Promise<
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
+/** ② 的结局:填满了(已落 filled),或者还没有——`filled` 是成交表里找到的数量(0 = 一条都没有),
+ * `quantity` 是这张单的数量(0 = 说不清)。 */
+type Settled = { kind: "filled" } | { kind: "open"; filled: number; quantity: number };
+
 function idOf(value: unknown): number | null {
   return Math.trunc(Number(value ?? 0)) || null;
 }
@@ -142,14 +146,15 @@ export class Reconciler {
       // 本进程还在盯的条件单没发到券商,不算失联;刚发出去的单也给券商一点滞后余量
       if (pendingAtStart.has(rec.id) || this.pendingTriggers.some((p) => p.record_id === rec.id)) continue;
       if (this.withinGrace(rec, nowMs)) continue;
-      if (this.settleFromFills(rec)) out["filled"] = Number(out["filled"]) + 1;
+      if (this.settleFromFills(rec).kind === "filled") out["filled"] = Number(out["filled"]) + 1;
       else missing.push(rec);
     }
     // ③ 之前先问一遍券商当天的成交:本地成交表只有交易分析同步过才有,不问就说"没查到它的成交"是假话
     if (missing.length && (await this.syncExecutions(missing, nowMs))) {
       for (const rec of missing) {
-        if (this.settleFromFills(rec)) out["filled"] = Number(out["filled"]) + 1;
-        else if (this.flagUnreconciled(rec)) out["unknown"] = Number(out["unknown"]) + 1;
+        const settled = this.settleFromFills(rec);
+        if (settled.kind === "filled") out["filled"] = Number(out["filled"]) + 1;
+        else if (this.flagUnreconciled(rec, settled)) out["unknown"] = Number(out["unknown"]) + 1;
       }
     }
     this.replayUnmatched();
@@ -232,10 +237,11 @@ export class Reconciler {
   }
 
   /** ② 券商侧没有这张单,但成交表里有它的成交:补录成交事件,数量填满才落 filled。
-   * 组合单 IBKR 回 1 条 BAG 行 + 每条腿各一行,只认 BAG 行——腿加起来是数量的好几倍。 */
-  private settleFromFills(rec: WorkingRecord): boolean {
+   * 组合单 IBKR 回 1 条 BAG 行 + 每条腿各一行,只认 BAG 行——腿加起来是数量的好几倍。
+   * 没落终态的也把找到了多少交出去(`filled` 为 0 = 一条成交都没有):③ 的提醒语要照实说。 */
+  private settleFromFills(rec: WorkingRecord): Settled {
     const fills = this.fillsOf(rec);
-    if (!fills.length) return false;
+    if (!fills.length) return { kind: "open", filled: 0, quantity: rec.quantity };
     const isBag = fills.some((f) => String((f["contract"] ?? {})["secType"] ?? "") === "BAG");
     const counted = isBag
       ? fills.filter((f) => String((f["contract"] ?? {})["secType"] ?? "") === "BAG")
@@ -267,8 +273,8 @@ export class Reconciler {
     // 托管单的记录按 order.quantity 落(不是 totalQuantity),库里那一列是 0,从记录本身取
     const quantity = rec.quantity > 0 ? rec.quantity : Number(record?.["order"]?.["quantity"] ?? 0) || 0;
     // 差一点点算填满:数量是浮点,组合单的份数与腿数在券商侧也可能有舍入
-    if (quantity > 0 && filledQty + 1e-9 < quantity) return false;
-    if (this.finalized.has(rec.id)) return false;
+    if (quantity > 0 && filledQty + 1e-9 < quantity) return { kind: "open", filled: filledQty, quantity };
+    if (this.finalized.has(rec.id)) return { kind: "open", filled: filledQty, quantity };
     this.finalized.add(rec.id);
     this.store.setFinalStatus(rec.id, "filled");
     this.store.audit("engine", "reconcile_filled", {
@@ -277,7 +283,7 @@ export class Reconciler {
     this.notifier.warning(
       `对账:${rec.symbol} 的单子在断线期间已经成交(${filledQty}),记录已补上成交与终态。`,
     );
-    return true;
+    return { kind: "filled" };
   }
 
   /** ③ 之前先向券商要当天的成交,存进成交表。返回"这一轮能不能下去向不明的结论"。
@@ -310,22 +316,30 @@ export class Reconciler {
     }
   }
 
-  /** ③ 去向不明:券商侧没有、当天成交里也没有。只留痕 + 提醒一次,不落终态。 */
-  private flagUnreconciled(rec: WorkingRecord): boolean {
+  /** ③ 去向不明:券商侧没有这张单,当天的成交也没有填满它。只留痕 + 提醒一次,不落终态。
+   * 找到过一部分成交的(已在 ② 补录进记录)照实说成交了多少、剩下多少去向不明——这条压过下面按状态分的几句:
+   * 有成交就说明单子发出去过,"当天的成交里也没有它""多半没有发出去"都是假话。 */
+  private flagUnreconciled(rec: WorkingRecord, settled: { filled: number; quantity: number }): boolean {
     if (rec.lastStatus === Reconciler.STATUS_NOT_AT_BROKER) return false;
+    const partial = settled.filled > 0 ? { filled: settled.filled, quantity: settled.quantity } : {};
     this.store.appendEvent(rec.id, "status", {
       status: Reconciler.STATUS_NOT_AT_BROKER,
       source: "reconcile",
       was: rec.lastStatus,
+      ...partial,
     });
-    this.store.audit("engine", "reconcile_missing", { record: rec.id, was: rec.lastStatus });
+    this.store.audit("engine", "reconcile_missing", { record: rec.id, was: rec.lastStatus, ...partial });
     const why =
-      rec.lastStatus === "PendingTrigger"
-        ? "软件重启后条件单不再被盯,要继续请重新提交"
-        : rec.lastStatus === ""
-          // 只留下了发单的痕、一条状态回报都没有:发到一半软件中断了(见 store.markSubmitIntent)
-          ? "发单途中软件中断了,券商侧没有这张单,当天的成交里也没有它:它多半没有发出去(请在 TWS 里核对后再决定是否重下)"
-          : "券商侧已经没有这张单,当天的成交里也没有它(更早成交的券商不再回报,请在 TWS 里核对后再决定是否重下)";
+      settled.filled > 0
+        ? `券商侧已经没有这张单,当天的成交里只找到 ${settled.filled}(共 ${settled.quantity}),已补录进记录;`
+          + `剩下的 ${Math.max(0, settled.quantity - settled.filled)} 可能被撤了,也可能更早成交、券商不再回报`
+          + "(请在 TWS 里核对后再决定是否补下剩下的部分)"
+        : rec.lastStatus === "PendingTrigger"
+          ? "软件重启后条件单不再被盯,要继续请重新提交"
+          : rec.lastStatus === ""
+            // 只留下了发单的痕、一条状态回报都没有:发到一半软件中断了(见 store.markSubmitIntent)
+            ? "发单途中软件中断了,券商侧没有这张单,当天的成交里也没有它:它多半没有发出去(请在 TWS 里核对后再决定是否重下)"
+            : "券商侧已经没有这张单,当天的成交里也没有它(更早成交的券商不再回报,请在 TWS 里核对后再决定是否重下)";
     this.notifier.warning(`对账:${rec.symbol} 的单子去向不明——${why}。`);
     return true;
   }

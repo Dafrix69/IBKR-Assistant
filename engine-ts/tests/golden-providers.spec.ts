@@ -148,7 +148,8 @@ describe("providers: OpenAI 兼容降级", () => {
   });
 
   it("端点不认 json_schema 时降级 json_object 并把 schema 写进系统提示词", async () => {
-    const parser = new FakeCompatible(compatConfig(), false);
+    // 降级按端点记、整个进程共用:用一个只有这条用例用的端点,别的用例照常先试 json_schema
+    const parser = new FakeCompatible(compatConfig({ base_url: "https://no-json-schema.example/v1" }), false);
     const response = await parser.parse(bundle, "买入 AAPL 100股 limit 230");
     expect(response.structured_mode).toBe("json_object");
     expect(parser.bodies.length).toBe(2);

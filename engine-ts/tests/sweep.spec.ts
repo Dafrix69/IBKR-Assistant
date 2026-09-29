@@ -688,12 +688,14 @@ describe("托管的组合追价:越等越让,只朝成交方向动,部分成交�
 });
 
 describe("手动「立即平仓」落在已有单的追踪上:改那张追价,不另发", () => {
-  it("托管中(还没触发):落闩成 sweep:stop_loss,下一轮把托管单改到自然价;没有第二张单", async () => {
+  it("托管中(还没触发):落闩成 sweep:manual,下一轮把托管单改到自然价;没有第二张单", async () => {
     const { engine, router, track } = build({ targets: { spot_target: 7740 } });
     await tick(engine);
     expect(router.placed).toHaveLength(1);
     expect(await engine.sweepExisting(engine.store.getTrack(track["id"])!, "手动平仓")).toBe(true);
-    expect(engine.store.getTrack(track["id"])!["fired_state"]).toBe("sweep:stop_loss");
+    // 人点的平仓记成 manual:止损护栏不数它(见 protections.spec)
+    expect(engine.store.getTrack(track["id"])!["fired_state"]).toBe("sweep:manual");
+    expect(engine.store.recentCloses(0, Date.now() + 1000).map((c) => c.state)).toEqual(["manual"]);
     await tick(engine);
     const last = router.modified[router.modified.length - 1]!;
     expect(last.order_id).toBe(router.placed[0]!.order_id);

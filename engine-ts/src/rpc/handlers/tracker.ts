@@ -266,6 +266,7 @@ export class TrackerHandlers extends HandlerBase {
       // 追价让价上限:0 也是合法值(至少两跳),所以不能用 || 兜底
       chase_max_pct: optFloat(params["chase_max_pct"]) ?? undefined,
     });
+    requireAutoCloseForHosting(auto.host_at_broker, auto.enabled);
     if (auto.host_at_broker) this.requireHostingSupported(String(raw["account"]));
     // 拼不出平仓单的结构(自定义组合、比例价差……)只能提醒。以前照样建:到价那一刻才发现发不出去,
     // 托管的还每秒挂一次失败、三秒把熔断打合上(2026-09-27 审计)。建的时候就说清楚
@@ -316,6 +317,8 @@ export class TrackerHandlers extends HandlerBase {
       // 这道过滤是给绕过 schema 直接调 handler 的人留的:undefined 盖上去,JSON 落库时那个键就没了,等于又回到"替换"。
       const given = Object.entries(params["auto_close"] ?? {}).filter(([, value]) => value !== undefined);
       fields["auto_close"] = { ...(track["auto_close"] ?? {}), ...Object.fromEntries(given) };
+      // 查的是合并之后的那一份:只关「到价自动平仓」、托管留着,和新建时两个一起填是同一件事
+      requireAutoCloseForHosting(Boolean((fields["auto_close"] as Rec)["host_at_broker"]), Boolean((fields["auto_close"] as Rec)["enabled"]));
       if ((fields["auto_close"] as Rec)["host_at_broker"]) {
         this.requireHostingSupported(String(track["account"]));
       }
@@ -459,7 +462,7 @@ export class TrackerHandlers extends HandlerBase {
           ? `已改成追价平仓,但这一轮没挂出去:${stuck.blockers.join("、")}。之后每秒重试`
           : "在托管单那一组里改到立刻成交的价追价,一成交券商撤掉组里其余的单";
       }
-      return { fired: { id: String(track["id"]), symbol: String(track["symbol"]), state: tkMod.STATE_STOP_LOSS, reason: `手动平仓:${note}` } };
+      return { fired: { id: String(track["id"]), symbol: String(track["symbol"]), state: tkMod.STATE_MANUAL, reason: `手动平仓:${note}` } };
     }
     // 上一次自动平仓发出的单(正股限价、市价、没能追价的)还挂着:再发一张就是两张各平一次
     const pending = this.engine.pendingCloseRecord(track);
@@ -472,7 +475,8 @@ export class TrackerHandlers extends HandlerBase {
       const natural = await this.engine.naturalCloseFor(raw, position, rows);
       if (natural !== null) price = natural;
     }
-    const result = { state: tkMod.STATE_STOP_LOSS, price, reason: "手动平仓" };
+    // 记成 manual:止损护栏数的是"接连止损",人点的平仓(赚着钱也可能点)不数进去(protections.ts)
+    const result = { state: tkMod.STATE_MANUAL, price, reason: "手动平仓" };
     const fired = await this.engine.closePosition(track, position, auto, result, marketStatus);
     if (!fired) throw new RpcError(-32019, "平仓单没有发出去,详见引擎日志与交易记录。");
     return { fired };
@@ -488,6 +492,14 @@ export class TrackerHandlers extends HandlerBase {
       if (exc instanceof BrokerError) throw new RpcError(-32018, exc.message);
       throw exc;
     }
+  }
+}
+
+/** 托管到券商就是授权发单:「到价自动平仓」没开,托管单一张都挂不出去(closeBlockers 的 BLOCK_DISABLED),
+ * 而且是静默的——挂着的会被撤掉、没挂的永远不挂,用户却以为关机也有保护。设置那一刻就拒,话和界面那张表单同一句。 */
+function requireAutoCloseForHosting(hostAtBroker: boolean, autoClose: boolean): void {
+  if (hostAtBroker && !autoClose) {
+    throw new RpcError(-32602, "托管到券商需先打开「到价自动平仓」:挂托管单即发单授权。");
   }
 }
 

@@ -12,6 +12,8 @@
 
 - **TWS 只给当天的成交**(`reqExecutions`),所以拉到的都存进本地库 `broker_fills`(只增,按 execId 去重),历史一天天累积。
   写入的时机:打开交易分析页或点「同步成交」、打开绩效体检页(15 秒内不重复)、执行对账在给出「去向不明」之前问一次当天成交、命令行导入。
+  读的时候读全表(`store.listFills()`,不设上限,按成交时间从早到晚):蝴蝶的开平配对、股票从空仓推到空仓都要完整的历史。
+  页面上的「库内成交 N 笔」数的也是全表(`store.countFills()`)。
 - **之前的历史用导入补**:
   - `node dist/src/cli.js import-fills fills.csv --account <别名> [--dry-run]`(`fillsCsv.ts`):IBKR 账户成交导出,写进 `broker_fills`,按 exec_id 去重、
     已有的行不动。只收股票:那份导出的期权行没有行权价、到期日、看涨看跌,残缺的行进库之后,以后带合约描述的导出会因为 exec_id 相同被忽略。
@@ -102,4 +104,4 @@
 ## 测试
 
 `golden-ibtrades.spec.ts`、`golden-tradereview.spec.ts`、`golden-flyexit.spec.ts`(黄金基线)、`stockreview.spec.ts`(含"只认股票"与"记录不是股票:报 ReviewError")、
-`review-rpc.spec.ts`、`fills-csv.spec.ts`、`option-trades.spec.ts`、`option-positions.spec.ts`。
+`review-rpc.spec.ts`、`fills-csv.spec.ts`、`option-trades.spec.ts`、`option-positions.spec.ts`、`store-fills.spec.ts`(五千多笔成交全部读得回、最新的在最后)。

@@ -3,7 +3,7 @@
  * 用户原话:「增加优质股票追踪功能,股票出现异常波动,比如放量时,直接弹窗提醒」。这里钉住引擎这一侧:
  *  1. quality.* 全在本地道(同步 SQLite + 读内存),CRUD 与校验、上限 30 只、阈值校验;
  *  2. 异动循环在引擎里跑:盘中放量 → 推 "anomaly" 事件、档位落库;同档不重报;重启不重报;换日重置;
- *  3. 休市 / 盘前只算指标不报(周末按钟点落在 09:30–16:00 也不能报);
+ *  3. 开盘前 10 分钟与收盘后 20 分钟只算指标不报;周末、假日整天不订量能流、不算、不报;
  *  4. 没连券商 / 富途不支持时给一句人话;取行情抛异常循环照跑;一轮没跑完绝不开下一轮;
  *  5. 只推给界面,不走 notifier(那会在 macOS 另弹一次系统通知)。
  */
@@ -26,8 +26,13 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const ET_1100 = Date.parse("2026-09-11T11:00:00-04:00");
 const ET_1055 = Date.parse("2026-09-11T10:55:00-04:00");
 const ET_PRE = Date.parse("2026-09-11T08:00:00-04:00");
+/** 开盘前 5 分钟:量能流开盘前 10 分钟就订上 */
+const ET_WARM = Date.parse("2026-09-11T09:25:00-04:00");
 const ET_POST = Date.parse("2026-09-11T17:00:00-04:00");
+const SAT_0000 = Date.parse("2026-09-12T00:00:00-04:00");
 const SAT_1100 = Date.parse("2026-09-12T11:00:00-04:00");
+const SAT_1605 = Date.parse("2026-09-12T16:05:00-04:00");
+const SUN_1100 = Date.parse("2026-09-13T11:00:00-04:00");
 const MON_1100 = Date.parse("2026-09-14T11:00:00-04:00");
 
 class FakeVolumeRouter {
@@ -313,24 +318,38 @@ describe("异动监控:一轮 anomalyTickOnce", () => {
     expect(anomalyEmits(chunks)).toHaveLength(1);
   });
 
-  it("休市(周六 11:00)与盘前:只算指标不报;监控状态给出时段说明", async () => {
+  it("周末整天不在时段内:不订量能流、不算指标、不报;交易日开盘前 10 分钟起只算指标不报", async () => {
     const { s, chunks, router } = withRouter();
     s.domains.quality.qualityAdd({ symbol: "RKLB" });
     router.quotes["RKLB"] = quote();
 
-    const sat = await s.anomaly.tickOnce(SAT_1100);
-    expect(sat["events"]).toEqual([]);
+    // 周六凌晨、按钟点在"盘中"的 11:00、收盘钟点后 5 分钟(按钟点落在收盘后 20 分钟的尾巴里)、周日
+    for (const at of [SAT_0000, SAT_1100, SAT_1605, SUN_1100]) {
+      const out = await s.anomaly.tickOnce(at);
+      expect(out["events"], String(at)).toEqual([]);
+      expect(out["skipped"], String(at)).toBe("不在交易时段");
+    }
+    expect(router.calls).toEqual([]); // 一次行情都没要:量能流不订
+    expect(router.released).toEqual([[], [], [], []]); // 每一轮都撤光
     setClock(SAT_1100);
     let listed = (await call(s, "quality.list"))["result"];
-    // 非交易日当"已收盘":量比就是上一个交易日的全天值 1200 万 / 1000 万
-    expect(listed["stocks"][0]["metrics"]["rvol"]).toBeCloseTo(1.2, 6);
+    expect(listed["stocks"][0]["metrics"]).toBeNull();
     expect(listed["monitor"]).toMatchObject({ session: "closed", note: "休市:开盘后开始检测" });
 
-    const pre = await s.anomaly.tickOnce(ET_PRE);
-    expect(pre["events"]).toEqual([]);
-    setClock(ET_PRE);
+    // 交易日开盘前 10 分钟之内:订上流、算指标,不报
+    const warm = await s.anomaly.tickOnce(ET_WARM);
+    expect(warm["events"]).toEqual([]);
+    expect(router.calls).toEqual([["RKLB"]]);
+    setClock(ET_WARM);
     listed = (await call(s, "quality.list"))["result"];
     expect(listed["stocks"][0]["metrics"]).not.toBeNull();
+    expect(listed["monitor"]).toMatchObject({ session: "pre", note: "盘前:开盘后开始检测" });
+
+    // 更早的盘前(08:00)不在时段内,不订流;监控状态照样给时段说明
+    expect((await s.anomaly.tickOnce(ET_PRE))["skipped"]).toBe("不在交易时段");
+    expect(router.calls).toHaveLength(1);
+    setClock(ET_PRE);
+    listed = (await call(s, "quality.list"))["result"];
     expect(listed["monitor"]).toMatchObject({ session: "pre", note: "盘前:开盘后开始检测" });
 
     setClock(ET_POST);

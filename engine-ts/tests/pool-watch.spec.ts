@@ -548,10 +548,6 @@ describe("价位自动算:盯上了就该有价位", () => {
     expect((await s.anomaly.tickOnce(ET_OPEN + 5000))["levels"]).toBeNull();
     expect((await s.anomaly.tickOnce(preOpen + AlertsService.LEVELS_BACKOFF_MS + 1000))["levels"]).toBe("NVDA");
     expect(router.chainCalls).toEqual(["NVDA", "NVDA"]);
-
-    // 休市日新加进来的:一条价位都没有,照样算
-    await call(s, "pool.set_watch", { symbol: "AMD", price: true });
-    expect((await s.anomaly.tickOnce(Date.parse("2026-09-12T10:00:00-04:00")))["levels"]).toBe("AMD");
   });
 
   it("没连券商 / 不在时段内:一只也不算(期权链太贵,不整夜打)", async () => {
@@ -569,6 +565,45 @@ describe("价位自动算:盯上了就该有价位", () => {
     // 盘中就算
     expect((await s.anomaly.tickOnce(ET_1100))["levels"]).toBe("NVDA");
     expect(router.chainCalls).toEqual(["NVDA"]);
+  });
+
+  // 非交易日要是算"时段内":周五收盘后算的价位,周六 00:00–09:30 每一轮都是"今天开盘之前算的",
+  // 每 10 分钟(退避一过)就重拉一遍期权链与日线,一个周末几十次
+  it("周末、假日一只也不算:周五算过的价位不重拉;下一个交易日开盘后照常重算", async () => {
+    const { s } = makeServer();
+    const router = new FakeLevelsRouter();
+    (s as any).router = router;
+    await sectorWith(s, "科技", ["NVDA"]);
+    await s.anomaly.tickOnce(ET_1100); // 周五 11:00 算的
+    expect(router.chainCalls).toEqual(["NVDA"]);
+
+    const weekend = [
+      "2026-09-12T00:00:00-04:00", "2026-09-12T08:00:00-04:00", "2026-09-12T09:25:00-04:00",
+      "2026-09-12T11:00:00-04:00", "2026-09-12T16:05:00-04:00", "2026-09-13T08:00:00-04:00",
+      "2026-09-07T11:00:00-04:00", // 劳动节(配置里的休市日),按钟点在盘中
+    ].map((t) => Date.parse(t));
+    for (const at of weekend) {
+      for (const dt of [0, AlertsService.LEVELS_BACKOFF_MS + 1000]) {
+        expect((await s.anomaly.tickOnce(at + dt))["levels"], new Date(at + dt).toISOString()).toBeNull();
+      }
+    }
+    expect(router.chainCalls).toEqual(["NVDA"]);
+
+    // 周一开盘前 5 分钟:在时段内了,但已有价位的只认开盘之后算的,开盘前不重拉
+    expect((await s.anomaly.tickOnce(Date.parse("2026-09-14T09:25:00-04:00")))["levels"]).toBeNull();
+    // 开盘之后,上周五的价位重算
+    expect((await s.anomaly.tickOnce(Date.parse("2026-09-14T09:30:05-04:00")))["levels"]).toBe("NVDA");
+    expect(router.chainCalls).toEqual(["NVDA", "NVDA"]);
+  });
+
+  it("周末新开的盯单:价位等到下一个交易日开盘前再算(和工作日夜里新开的一样)", async () => {
+    const { s } = makeServer();
+    const router = new FakeLevelsRouter();
+    (s as any).router = router;
+    await sectorWith(s, "科技", ["NVDA"]);
+    expect((await s.anomaly.tickOnce(Date.parse("2026-09-12T11:00:00-04:00")))["levels"]).toBeNull();
+    expect(router.chainCalls).toEqual([]);
+    expect((await s.anomaly.tickOnce(Date.parse("2026-09-14T09:21:00-04:00")))["levels"]).toBe("NVDA");
   });
 
   it("算失败:按 symbol 退避 10 分钟再试,不每 5 秒去打一次期权链", async () => {

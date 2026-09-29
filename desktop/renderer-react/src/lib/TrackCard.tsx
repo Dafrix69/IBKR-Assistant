@@ -164,7 +164,9 @@ export function TrackCard({
   const [busy, setBusy] = useState<'toggle' | 'close' | 'delete' | null>(null);
   const fired = Boolean(t.fired_at);
   const sweeping = String(t.fired_state || '').startsWith('sweep:');
-  const kind: Tone = sweeping ? 'warn' : fired ? (t.fired_state === 'take_profit' ? 'ok' : 'bad') : t.enabled ? 'info' : 'warn';
+  // 止盈绿、止损类红;人点的「立即平仓」不分好坏,用中性色
+  const firedTone: [Tone, Tint] = t.fired_state === 'take_profit' ? ['ok', 'green'] : t.fired_state === 'manual' ? ['info', 'gray'] : ['bad', 'red'];
+  const kind: Tone = sweeping ? 'warn' : fired ? firedTone[0] : t.enabled ? 'info' : 'warn';
   const targets = t.targets || {};
   const autoClose = t.auto_close || {};
   const ddTiers = targets.profit_drawdown_tiers || null;
@@ -230,7 +232,7 @@ export function TrackCard({
       flash={flash}
       title={`${legLabel(t.symbol, t.sec_type, t.contract)} · ${t.account}`}
       extra={
-        <Pill dot tint={sweeping ? 'orange' : fired ? (t.fired_state === 'take_profit' ? 'green' : 'red') : t.enabled ? 'blue' : 'gray'}>
+        <Pill dot tint={sweeping ? 'orange' : fired ? firedTone[1] : t.enabled ? 'blue' : 'gray'}>
           {fired ? TRACK_STATE_LABEL[t.fired_state || ''] || '已触发' : t.enabled ? TRACK_STATE_LABEL[live.state || ''] || '持有中' : '已暂停'}
         </Pill>
       }

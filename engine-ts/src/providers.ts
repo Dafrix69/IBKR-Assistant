@@ -4,6 +4,7 @@
  * 能用 json_schema 就用;端点只支持 json_object 时自动降级并把 schema 塞进
  * 系统提示词,降级记在返回里(界面要显示,它直接影响解析可靠性)。
  */
+import { createHash } from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -305,6 +306,16 @@ function anthropicUsage(usage: any): Record<string, unknown> {
 }
 
 // ---------------------------------------------------------------- OpenAI 兼容
+/** 哪些 (端点, 模型, schema) 拒过 json_schema。整个进程共用一份:下单解析之外,想法分析、AI 选股、行情解读、
+ * 回测条件解析每次调用都新建一个 parser,记在实例上等于没记——DeepSeek 这类端点每一次都要先撞一个 400。
+ * 键里带着 schema:任何 400 都算"不认 json_schema"(rejectsJsonSchema),一份 schema 撞的 400
+ * (比如用了这个端点不认的关键字)只让这一份降级,不连累别的调用。只在内存里,重启从头试。 */
+const SCHEMA_REJECTED = new Set<string>();
+
+function schemaKey(baseUrl: string, model: string, schema: Record<string, unknown>): string {
+  return `${baseUrl}\n${model}\n${createHash("sha256").update(JSON.stringify(schema)).digest("hex")}`;
+}
+
 /** 走 /chat/completions 的通用实现(官方 openai SDK)。
  *
  * 用 SDK 而不是手写 fetch,拿的是三件现成的东西:429 / 5xx / 连接中断按指数退避重试
@@ -315,8 +326,6 @@ export class OpenAICompatibleParser {
   readonly provider = "openai_compatible";
   readonly baseUrl: string;
 
-  /** 端点拒过 json_schema(HTTP 400)就记住:后面直接走 json_object,不再每次先撞一遍 400。 */
-  private schemaRejected = false;
   private client: any = null;
 
   constructor(
@@ -383,9 +392,11 @@ export class OpenAICompatibleParser {
     );
   }
 
-  /** 先试 json_schema;端点不认再退到 json_object,并把 schema 写进系统提示词。 */
+  /** 先试 json_schema;端点不认再退到 json_object,并把 schema 写进系统提示词。
+   * 这个端点、这个模型拒过这份 schema 的,直接走 json_object(见 SCHEMA_REJECTED)。
+   * `fresh`:不看记下的,先试一次 json_schema(「测试连接」报的是端点此刻的样子);试的结果照样记。 */
   protected async complete(
-    messages: Msg[], schema: Record<string, unknown>,
+    messages: Msg[], schema: Record<string, unknown>, fresh = false,
   ): Promise<[Msg, string]> {
     const body: Msg = {
       model: this.config.model,
@@ -397,13 +408,16 @@ export class OpenAICompatibleParser {
         json_schema: { name: "parse_result", strict: true, schema },
       },
     };
-    if (!this.schemaRejected) {
+    const key = schemaKey(this.baseUrl, this.config.model, schema);
+    if (fresh || !SCHEMA_REJECTED.has(key)) {
       try {
-        return [await this.post("/chat/completions", body), "json_schema"];
+        const data = await this.post("/chat/completions", body);
+        SCHEMA_REJECTED.delete(key);
+        return [data, "json_schema"];
       } catch (exc) {
         if (!(exc instanceof LLMError) || !rejectsJsonSchema(exc, this.baseUrl)) throw exc;
-        // 端点不认 json_schema:这一进程里不再试。实测 DeepSeek 每次都 400,不记住就每条指令多一个往返。
-        this.schemaRejected = true;
+        // 端点不认 json_schema:这一进程里这份 schema 不再试。实测 DeepSeek 每次都 400,不记住就每次调用多一个往返。
+        SCHEMA_REJECTED.add(key);
       }
     }
     const fallback = [...messages];
@@ -467,7 +481,7 @@ export class OpenAICompatibleParser {
     let data: Msg;
     let mode: string;
     try {
-      [data, mode] = await probe.complete(messages, PING_SCHEMA);
+      [data, mode] = await probe.complete(messages, PING_SCHEMA, true);
     } catch (exc) {
       // 「测试连接」是给人看的:401 / 404 / 429 说人话,别把端点的原始报文甩到界面上
       throw new LLMError(friendlyApiError(exc as Error, this.baseUrl), (exc as LLMError).status);

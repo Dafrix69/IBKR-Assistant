@@ -265,6 +265,15 @@ describe("tracker.add:该拒的当场拒,话要说清楚", () => {
     const err = await errorOf(ui({ profit_drawdown_tiers: [{ above: 0, pct: 0 }] }));
     expect(err).toEqual({ code: -32602, message: "分档的 pct 要在 0(不含)到 100 之间,当前 0" });
   });
+
+  // 界面那张表单也这么拦(TrackForm.tsx);引擎自己也要拦:绕过表单建出来的这种托管追踪一张单都挂不出去(BLOCK_DISABLED),而且不出声
+  it("托管到券商却没开「到价自动平仓」:当场拒,话和界面那张表单同一句,库里不建", async () => {
+    const { s, call } = makeServer();
+    expect((await call("tracker.add", ui({ stop_loss: "95", auto_close: false, host_at_broker: true })))["error"]).toEqual({
+      code: -32602, message: "托管到券商需先打开「到价自动平仓」:挂托管单即发单授权。",
+    });
+    expect(s.engine.store.listTracks()).toEqual([]);
+  });
 });
 
 // ---------------------------------------------------------------- tracker.update
@@ -326,6 +335,25 @@ describe("tracker.update", () => {
       code: -32602, message: "tracker.update 的参数不对:auto_close.order_type 应为 string,收到 null",
     });
     expect(s.engine.store.getTrack(id)!["auto_close"]).toEqual({ ...before, close_fraction_pct: 50, enabled: false });
+  });
+
+  it("托管要连着「到价自动平仓」:合并之后是「托管开、自动平仓关」的改法当场拒,库里不动", async () => {
+    const message = "托管到券商需先打开「到价自动平仓」:挂托管单即发单授权。";
+    const { call, id, s } = await tracked();
+    const before = s.engine.store.getTrack(id)!["auto_close"];
+    // 同一次里关自动平仓、开托管
+    expect((await call("tracker.update", { id, auto_close: { enabled: false, host_at_broker: true } }))["error"]).toEqual({ code: -32602, message });
+    expect(s.engine.store.getTrack(id)!["auto_close"]).toEqual(before);
+    // 自动平仓开着时开托管:照常
+    const hosted = await call("tracker.update", { id, auto_close: { host_at_broker: true } });
+    expect(hosted["error"]).toBeUndefined();
+    expect(hosted["result"]["track"]["auto_close"]).toMatchObject({ enabled: true, host_at_broker: true });
+    // 托管开着时只关自动平仓:查的是合并之后的那一份,同样拒
+    expect((await call("tracker.update", { id, auto_close: { enabled: false } }))["error"]).toEqual({ code: -32602, message });
+    expect(s.engine.store.getTrack(id)!["auto_close"]).toMatchObject({ enabled: true, host_at_broker: true });
+    // 两个一起关:照常
+    const off = await call("tracker.update", { id, auto_close: { enabled: false, host_at_broker: false } });
+    expect(off["result"]["track"]["auto_close"]).toMatchObject({ enabled: false, host_at_broker: false });
   });
 
   it("没有要改的字段 / 没有这个追踪", async () => {
@@ -393,11 +421,14 @@ describe("positions.list / tracker.list / tracker.target_preview", () => {
 describe("tracker.close_now:手动平仓走和自动平仓同一条路,同一套闸门", () => {
   it("盘中、模拟账户、自动执行开着:发出一张卖出 100 股的平仓单,记上这条追踪", async () => {
     setClock(NOON);
-    const { call, router } = makeServer({ autoExecute: true });
+    const { s, call, router } = makeServer({ autoExecute: true });
     const id = (await call("tracker.add", ui({ stop_loss: "95" })))["result"]["track"]["id"];
     const out = await call("tracker.close_now", { id });
     expect(out["error"]).toBeUndefined();
-    expect(out["result"]["fired"]).toMatchObject({ id, symbol: "BE", state: "stop_loss", reason: "手动平仓", order_id: 990 });
+    expect(out["result"]["fired"]).toMatchObject({ id, symbol: "BE", state: "manual", reason: "手动平仓", order_id: 990 });
+    // 记成 manual:追踪落的闩、保护规则读的平仓痕都分得出这是人点的
+    expect(s.engine.store.getTrack(id)!["fired_state"]).toBe("manual");
+    expect(s.engine.store.recentCloses(0, Date.now() + 1000).map((c) => c.state)).toEqual(["manual"]);
     expect(router.sent).toHaveLength(1);
     // 交给券商的是一张和指令路径同形的已批准订单:order.order 是下单参数,order.contract 是合约
     const approved = router.sent[0]!;
@@ -414,7 +445,7 @@ describe("tracker.close_now:手动平仓走和自动平仓同一条路,同一套
     const id = (await call("tracker.add", ui({ stop_loss: "95", auto_close: true, close_fraction_pct: "50" })))["result"]["track"]["id"];
     expect((await call("tracker.close_now", { id }))["error"]).toBeUndefined();
     expect(router.sent[0]!["order"]["order"]).toMatchObject({ action: "SELL", totalQuantity: 50 });
-    expect(router.sent[0]!["order"]["intent_summary"]).toBe("止损平仓:卖出 50 BE(市价,平 50/100)");
+    expect(router.sent[0]!["order"]["intent_summary"]).toBe("手动平仓:卖出 50 BE(市价,平 50/100)");
   });
 
   it("「允许自动执行」没开:拒,一张单都不发", async () => {

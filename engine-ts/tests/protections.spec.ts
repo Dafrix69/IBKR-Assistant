@@ -69,6 +69,16 @@ describe("止损护栏:窗口内止损够次数就暂停,到点自己解除", ()
     expect(isStopLike("sweep:take_profit")).toBe(false);
   });
 
+  // 「立即平仓」要是算止损:赚着钱手动平掉三次,止损护栏也会把自动执行停一小时
+  it("人点的「立即平仓」(manual)不算止损;同一标的冷却照常,和止盈一样", () => {
+    expect(isStopLike("manual")).toBe(false);
+    expect(isStopLike("sweep:manual")).toBe(false);
+    const manual = [close(30, "manual", "AAPL"), close(20, "sweep:manual", "AAPL"), close(10, "manual", "AAPL")];
+    expect(evaluateProtections(cfg(guard), manual, [], NOW).pause).toBeNull();
+    const cool = evaluateProtections(cfg({ cooldown: { enabled: true, minutes: 30 } }), [close(10, "manual", "AAPL")], [], NOW);
+    expect(Object.keys(cool.cooldowns)).toEqual(["AAPL"]);
+  });
+
   it("暂停到点自动解除:不写状态文件,也不用人工解除", () => {
     const closes = [close(200, "stop_loss"), close(190, "stop_loss"), close(185, "stop_loss")];
     const state = evaluateProtections(cfg({

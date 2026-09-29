@@ -90,8 +90,10 @@ export function TradePage() {
   if (!status?.auto_execute) blockers.push('自动执行未打开');
   if (!connected) blockers.push(`未连接 ${gateway}`);
   if (engaged) blockers.push('已熔断');
-  if (status?.protections?.paused) blockers.push('保护规则暂停中');
   const canExecute = !blockers.length;
+  // 保护规则暂停不算发送条件:它只挡新单、不挡平仓,而一条指令是开是平要对着持仓认(引擎 engine/closing.ts)。
+  // 这里灰掉「发送」,手敲的平仓指令就发不出去了——照发,由引擎判:新单停在「仅校验未发送」,平仓照发
+  const guard = status?.protections?.paused ? status.protections : null;
 
   function insertSnippet(snippet: string) {
     const box = areaRef.current?.resizableTextArea?.textArea;
@@ -189,6 +191,11 @@ export function TradePage() {
           <Button size="small" onClick={() => navigate('settings')}>
             去设置
           </Button>
+        </div>
+      ) : null}
+      {guard ? (
+        <div className="live-gate">
+          <span>{`保护规则暂停中:${guard.reason || '规则已触发'}。新开仓的单会被引擎拦下(停在「仅校验未发送」,到点后可再发);对着持仓认得出是在减仓的单照发。`}</span>
         </div>
       ) : null}
       {/* 速记片段是"可点的词",不是胶囊按钮:填充底、无边框,和 Mail 收件人 token 同一族 */}

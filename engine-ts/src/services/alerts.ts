@@ -110,8 +110,8 @@ export class AlertsService extends ServiceBase {
   async tickLevels(nowMs: number, inWindow: boolean): Promise<string | null> {
     if (!inWindow || this.router === null || !this.router.sessions().length) return null;
     const et = etNowFromEpoch(nowMs);
-    // 今天美东 09:30 那一刻。休市日没有开盘(异动循环在周末、假日照跑,按收盘后算指标):
-    // 有价位的一律不重算,留到下一个交易日开盘后;一条价位都没有的照算
+    // 今天美东 09:30 那一刻。周末、假日异动循环不在时段内,走不到这里;万一走到,休市日没有开盘:
+    // 有价位的一律不重算,留到下一个交易日开盘后
     const openMs = this.settings.isTradingDay(et.date)
       ? nowMs - (et.seconds - 9.5 * 3600) * 1000
       : Number.POSITIVE_INFINITY;
