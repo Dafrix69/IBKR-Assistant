@@ -948,7 +948,7 @@ export class FutuRouter {
       if (!(start <= day && day <= end)) continue;
       const values = ohlc(row);
       if (values === null) continue;
-      bars.push({ date: day, ...values });
+      bars.push({ date: day, ...values, volume: Math.max(toFloat(fieldOf(row, "volume")) ?? 0.0, 0.0) });
     }
     bars.sort((a, b) => String(a["date"]).localeCompare(String(b["date"])));
     if (!bars.length) {

@@ -6,11 +6,14 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { BrokerRouter } from "../src/broker.js";
+import { nowEt } from "../src/config.js";
 import type { DailyBarIn } from "../src/leaders.js";
 import {
   cleanDaily, contractions, detectVcp, distributionDays, marketRegime, ratings, rsScore, screenLeaders,
 } from "../src/leaders.js";
 import { RpcServer } from "../src/rpc.js";
+import { FakeTws, connect } from "./fakeTws.js";
+import type { LibBar } from "./fakeTws.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 type Rec = Record<string, any>;
@@ -178,15 +181,20 @@ afterEach(() => {
   }
 });
 
+function newServer(): [RpcServer, (m: string, p?: Rec) => Promise<Rec>] {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dafri-leaders-"));
+  dirs.push(dir);
+  const base = JSON.parse(fs.readFileSync(path.join(HERE, "..", "baseline", "rpc", "base_config.json"), "utf-8"));
+  const settingsPath = path.join(dir, "settings.json");
+  fs.writeFileSync(settingsPath, JSON.stringify({ ...base, storage: { db_path: path.join(dir, "t.db") } }));
+  const s = new RpcServer(settingsPath, () => undefined);
+  servers.push(s);
+  return [s, async (method, params = {}) => s.handle(JSON.parse(JSON.stringify({ jsonrpc: "2.0", id: 1, method, params })))];
+}
+
 describe("screener.leaders:RPC", () => {
   function makeServer(connected: boolean): (m: string, p?: Rec) => Promise<Rec> {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dafri-leaders-"));
-    dirs.push(dir);
-    const base = JSON.parse(fs.readFileSync(path.join(HERE, "..", "baseline", "rpc", "base_config.json"), "utf-8"));
-    const settingsPath = path.join(dir, "settings.json");
-    fs.writeFileSync(settingsPath, JSON.stringify({ ...base, storage: { db_path: path.join(dir, "t.db") } }));
-    const s = new RpcServer(settingsPath, () => undefined);
-    servers.push(s);
+    const [s, call] = newServer();
     if (connected) {
       const router = Object.create(BrokerRouter.prototype) as Rec;
       router["sessions"] = () => [{}];
@@ -197,7 +205,7 @@ describe("screener.leaders:RPC", () => {
         return data[sym];
       };
     }
-    return async (method, params = {}) => s.handle(JSON.parse(JSON.stringify({ jsonrpc: "2.0", id: 1, method, params })));
+    return call;
   }
 
   it("按板块扫:大盘方向 + 每只一行,拉不到的那只带着原话", async () => {
@@ -218,5 +226,66 @@ describe("screener.leaders:RPC", () => {
     const sector = (await call("sectors.add", { name: "测试" }))["result"]["sector"];
     await call("sectors.add_stock", { id: sector["id"], symbol: "LEAD" });
     expect((await call("screener.leaders", {}))["error"]["code"]).toBe(-32018);
+  });
+});
+
+/** 换成库给的 Bar:日期从今天往回排(IBKR formatDate=1 的 yyyyMMdd)——dailyHistory 只要最近 420 天,BrokerRouter 按区间切片。 */
+function libBars(bars: readonly DailyBarIn[], withVolume = true): LibBar[] {
+  const today = Date.parse(nowEt().date + "T00:00:00Z");
+  return bars.map((b, i) => {
+    const day = new Date(today - (bars.length - 1 - i) * 86_400_000).toISOString().slice(0, 10).split("-").join("");
+    const bar: LibBar = { time: day, open: Number(b.open), high: Number(b.high), low: Number(b.low), close: Number(b.close) };
+    if (withVolume) bar.volume = Number(b.volume);
+    return bar;
+  });
+}
+
+describe("screener.leaders:券商日线的量一路带到规则里", () => {
+  // 只假到 @stoqey/ib 为止(fakeTws.ts):库的 Bar → ibSession → BrokerRouter.historicalBars → dailyHistory → leaders。
+  // 四条量能规则各造一处:放量越过枢轴、最后一次收缩缩量、放量创 52 周新高、基准最近 4 个放量下跌日。
+  const breakout = series([...VCP_POINTS.slice(0, -1), [299, 118]], (i) => (i === 299 ? 2_000_000 : dryVolume(i)));
+  const newHigh = series([[0, 50], [299, 120]], (i) => (i === 299 ? 2_000_000 : 1_000_000));
+  const heavy = (i: number): boolean => i > 278 && i % 5 === 0;
+  const bench = series([[0, 400], [299, 480]], (i) => (heavy(i) ? 3_000_000 : 1_000_000))
+    .map((b, i) => (heavy(i) ? { ...b, close: Number(b.close) * 0.99 } : b));
+
+  async function fakeTws(): Promise<[FakeTws, BrokerRouter]> {
+    const tws = new FakeTws();
+    tws.history.set("SPY", libBars(bench));
+    tws.history.set("VCP", libBars(breakout));
+    tws.history.set("HIGH", libBars(newHigh));
+    tws.history.set("SPX", libBars(BENCH, false)); // 指数:TWS 回 -1,库里就没有 volume
+    const { router } = await connect(tws);
+    return [tws, router];
+  }
+
+  it("historicalBars 带着每根的量;股票走 ADJUSTED_LAST,指数走 TRADES、没有量归零", async () => {
+    const [tws, router] = await fakeTws();
+    const end = nowEt().date;
+    const start = new Date(Date.parse(end + "T00:00:00Z") - 400 * 86_400_000).toISOString().slice(0, 10);
+    const stock = await router.historicalBars("VCP", start, end);
+    expect(stock.map((b) => b["volume"])).toEqual(breakout.map((b) => b.volume));
+    expect(stock.at(-1)).toMatchObject({ date: end, close: 118, volume: 2_000_000 });
+    const index = await router.historicalBars("SPX", start, end);
+    expect(index).toHaveLength(BENCH.length);
+    expect(index.every((b) => b["volume"] === 0)).toBe(true);
+    expect(tws.histRequests).toEqual([
+      { symbol: "VCP", whatToShow: "ADJUSTED_LAST" }, { symbol: "SPX", whatToShow: "TRADES" },
+    ]);
+  });
+
+  it("screener.leaders 走真的日线:放量突破、缩量、放量新高、派发日都算得出来", async () => {
+    const [, router] = await fakeTws();
+    const [s, call] = newServer();
+    s.router = router;
+    const sector = (await call("sectors.add", { name: "测试" }))["result"]["sector"];
+    for (const symbol of ["VCP", "HIGH"]) await call("sectors.add_stock", { id: sector["id"], symbol });
+    const r = (await call("screener.leaders", { sector: sector["id"] }))["result"];
+    const row = (symbol: string): Rec => r["rows"].find((x: Rec) => x["symbol"] === symbol);
+    // 50 日均量 = 32 根 100 万 + 18 根 50 万 → 82 万;最后一根 200 万是它的 2.44 倍
+    expect(row("VCP")["vcp"]).toMatchObject({ found: true, status: "breakout", pivot: 116.58, volume_dryup: true });
+    expect(row("VCP")["volume_ratio"]).toBe(2.44);
+    expect(row("HIGH")).toMatchObject({ new_high_volume: true, volume_ratio: 2 });
+    expect(r["market"]).toMatchObject({ state: "pressure", distribution_days: 4 });
   });
 });

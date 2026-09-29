@@ -247,16 +247,18 @@ describe("FutuRouter: K 线与盘口", () => {
     await expect(router.intradayBars("AAPL", "2m")).rejects.toThrowError(/最小档位是 1 分钟/);
   });
 
-  it("日线历史按日期排序并按区间裁剪;空结果提到额度", async () => {
+  it("日线历史按日期排序并按区间裁剪、带成交量;空结果提到额度", async () => {
     const [router, quote] = makeRouter();
     await router.connect("opend");
     quote.history = [
-      { time_key: "2026-08-13 00:00:00", open: 2, high: 3, low: 1, close: 2.5 },
-      { time_key: "2026-08-11 00:00:00", open: 1, high: 2, low: 0.5, close: 1.5 },
-      { time_key: "2026-09-01 00:00:00", open: 9, high: 9, low: 9, close: 9 }, // 区间外
+      { time_key: "2026-08-13 00:00:00", open: 2, high: 3, low: 1, close: 2.5, volume: 1_250_000 },
+      { time_key: "2026-08-12 00:00:00", open: 1.5, high: 2.5, low: 1, close: 2 }, // 没给量:归零
+      { time_key: "2026-08-11 00:00:00", open: 1, high: 2, low: 0.5, close: 1.5, volume: 830_000 },
+      { time_key: "2026-09-01 00:00:00", open: 9, high: 9, low: 9, close: 9, volume: 1 }, // 区间外
     ];
     const bars = await router.historicalBars("AAPL", "2026-08-10", "2026-08-20");
-    expect(bars.map((b) => b["date"])).toEqual(["2026-08-11", "2026-08-13"]);
+    expect(bars.map((b) => b["date"])).toEqual(["2026-08-11", "2026-08-12", "2026-08-13"]);
+    expect(bars.map((b) => b["volume"])).toEqual([830_000, 0, 1_250_000]);
     quote.history = [];
     await expect(router.historicalBars("AAPL", "2026-08-10", "2026-08-20")).rejects.toThrowError(
       /额度是否已用完/,

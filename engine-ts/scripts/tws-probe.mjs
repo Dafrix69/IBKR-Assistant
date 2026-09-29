@@ -62,7 +62,7 @@ const ivLegs = list(opt("iv-legs", ""));
 // 新增一步之前先确认那个 RPC 不会发单、撤单、改配置、动追踪。写库只许写临时库。
 const ALLOWED = new Set([
   "system.status", "tws.scan", "tws.diagnose", "broker.connect", "broker.disconnect",
-  "positions.list", "book.snapshot", "pa.analyze", "options.wall", "macro.board",
+  "positions.list", "book.snapshot", "pa.analyze", "screener.deviation", "options.wall", "macro.board",
   "review.candidates", "records.list",
   // 复盘:读成交、拉 K 线、算数;唯一的写是把当天成交记进(临时)库
   "review.analyze",
@@ -87,6 +87,8 @@ const STEPS = {
     calls: () => [
       ["pa.analyze", { symbol: indexSymbol, timeframe: "5m" }],
       ["pa.analyze", { symbol: symbols[0] ?? "AAPL", timeframe: "1d" }],
+      // 扫描、强势股筛选、提醒用的日线走另一条路(historicalBars,ADJUSTED_LAST),看它带没带成交量
+      ["screener.deviation", { symbol: symbols[0] ?? "AAPL", timeframe: "1d" }],
     ],
   },
   options: { title: "期权链(期权墙)", needs: ["connect"], calls: () => [["options.wall", { symbol: indexSymbol, width: 10 }]] },
@@ -260,6 +262,14 @@ function brief(method, params, r) {
       const last = x.last_bar ?? null;
       return `${params.symbol} ${params.timeframe}:${x.bar_count ?? 0} 根,最后一根 ${last?.time ?? last ?? "—"}` +
         `${x.cached ? "(缓存)" : ""}${x.warnings?.length ? ` · ${x.warnings.join(";")}` : ""}`;
+    }
+    case "screener.deviation": {
+      // 量比全是空的 = 日线没带成交量:强势股筛选的四条量能规则、日线的买卖压力加权都会失效。
+      // 盘中跑时最后一根的日期是今天,说明当天没走完的那根也在里面(leaders.md「成交量从哪来」)
+      const points = x.series ?? [];
+      const withVolume = points.filter((p) => p.volume_ratio !== null && p.volume_ratio !== undefined).length;
+      return `${params.symbol} ${params.timeframe}:${x.bars ?? 0} 根,最后一根 ${points.at(-1)?.time ?? "—"} · ` +
+        `带量比的 ${withVolume}/${points.length} 根${points.length && !withVolume ? "(日线没有成交量)" : ""}`;
     }
     case "options.wall":
       return `${params.symbol} 到期 ${x.expiry} · 现价 ${x.spot}(${x.spot_source}) · ${x.strike_count} 档 · ` +

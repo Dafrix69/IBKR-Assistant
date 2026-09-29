@@ -1120,7 +1120,7 @@ export class BrokerRouter {
     return out;
   }
 
-  /** 日线历史(回测用)。ADJUSTED_LAST 前复权;指数用 TRADES。 */
+  /** 日线历史(回测、扫描、提醒共用),带当日成交量。ADJUSTED_LAST 前复权;指数用 TRADES,没有量,归零。 */
   async historicalBars(symbol: string, start: string, end: string): Promise<Array<Record<string, any>>> {
     const sessions = this.sessions();
     const session = sessions[0] ?? null;
@@ -1159,7 +1159,7 @@ export class BrokerRouter {
     for (const bar of raw ?? []) {
       const day = barTimestamp(bar.date).slice(0, 10);
       if (start <= day && day <= end) {
-        bars.push({ date: day, open: bar.open, high: bar.high, low: bar.low, close: bar.close });
+        bars.push({ date: day, open: bar.open, high: bar.high, low: bar.low, close: bar.close, volume: Math.max(Number(bar.volume ?? 0) || 0, 0.0) });
       }
     }
     if (!bars.length) {

@@ -22,11 +22,18 @@ export const TICK = { BID: 1, ASK: 2, LAST: 4, CLOSE: 9 };
 export const CFG = { host: "127.0.0.1", port: 7497, clientId: 11, readonly: false };
 export const ACCOUNT = "DU7654321";
 
+/** 库给的一根历史 K 线(`@stoqey/ib` 的 Bar):TWS 回 -1 的字段库里就没有,指数的日线因此不带 volume。 */
+export interface LibBar { time: string; open: number; high: number; low: number; close: number; volume?: number }
+
 /** 一个假的 TWS:合约按 conId 认,盘口按 conId 给,只有没撤掉的订阅收得到 tick。 */
 export class FakeTws {
   readonly subs: Sub[] = [];
   readonly book = new Map<number, Quote>();
   held: Held[] = [];
+  /** 标的 → 历史 K 线,不管请求的时长与周期,原样给(切片是 BrokerRouter 的事) */
+  readonly history = new Map<string, LibBar[]>();
+  /** 每次历史请求的标的与 whatToShow */
+  readonly histRequests: Array<{ symbol: string; whatToShow: string }> = [];
   private readonly ids = new Map<string, number>();
   private readonly positionObservers: Array<(u: unknown) => void> = [];
 
@@ -133,6 +140,11 @@ export class FakeTws {
       }
       getMarketDepth(): { subscribe(): { unsubscribe(): void } } {
         return { subscribe: () => ({ unsubscribe: () => undefined }) };
+      }
+      getHistoricalData(contract: Wire, _end: unknown, _duration: string, _barSize: string, whatToShow: string): Promise<LibBar[]> {
+        const symbol = String(contract["symbol"]);
+        tws.histRequests.push({ symbol, whatToShow });
+        return Promise.resolve(tws.history.get(symbol) ?? []);
       }
     }
     return {
