@@ -213,8 +213,8 @@ export function FutuPanel() {
           <LoadingBlock rows={2} />
         ) : (
           <>
-            {/* SDK 没装的话,后面几步全都会卡在同一个地方。先把它摆在最前面 */}
-            {scan.sdk_installed === false ? <InfoCard tone="warn" title="这个版本没有带富途的接口库" body="富途通道的下单桥还没有完成真机核对,暂未开放;检测与诊断照常可用,IBKR 通道不受影响。" /> : null}
+            {/* 适配桥没接上:第 1、2 步照常,第 3 步的握手起全都走不通。装好的应用不带接口库,先把这件事摆在最前面 */}
+            {scan.sdk_installed === false ? <InfoCard tone="warn" title="这个版本没有带富途的接口库" body="富途通道的适配桥还没有完成真机核对,暂未开放。进程检测与端口探测照常可用;端口通的时候,「检测连接」的握手会停在「适配桥尚未完成真机核对」。IBKR 通道不受影响。" /> : null}
             <AppsCards apps={scan.apps || []} missingText="未找到(绿色包放在非常见目录时检测不到,可手动启动)" onLaunch={launch} />
           </>
         )}

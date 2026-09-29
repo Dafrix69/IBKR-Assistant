@@ -24,7 +24,7 @@ function readCollapsed(): Record<string, boolean> {
   return out;
 }
 
-/** 窄窗口只剩图标(Mail / Finder 的做法):Menu 折叠成 56px,项的名字进悬停提示。 */
+/** 窄窗口只剩图标(Mail / Finder 的做法):Menu 折叠成 60px,项的名字进悬停提示。 */
 function useNarrow(): boolean {
   const [narrow, setNarrow] = useState(() => window.matchMedia('(max-width: 1000px)').matches);
   useEffect(() => {

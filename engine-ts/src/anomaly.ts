@@ -241,7 +241,7 @@ export interface AnomalyState {
   day_down_fired: number;
   /** 今天见过的最大一步,折成日均量的几分之几(不带单位,量与均量同乘 100 结果不变)。全天量比要去掉它再比档——
    * 09:45 刚开闸时 cum 只有 0.12,一笔占日均量 12% 的大宗就能把量比顶高一整倍。
-   * 中途重启会丢(样本只留 20 分钟),丢了只是退回不去大单的老口径。 */
+   * 跟着整份状态存进 quality_stocks.states,重启不丢;美东换日随档位一起清零。 */
   max_step_share: number;
   burst: SignalArm;
   spike: SignalArm;

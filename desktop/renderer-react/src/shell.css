@@ -91,7 +91,7 @@
 .ant-segmented-sm .ant-segmented-item-label { padding: 0 12px; }
 .ant-segmented .n { margin-left: 5px; opacity: 0.7; font-variant-numeric: tabular-nums; }
 .page-head .ant-segmented { margin-left: auto; }
-/* 按钮按下只是变暗一点、缩 1.5%——AppKit 的按下反馈,没有水波纹(wave 已在 ConfigProvider 关掉) */
+/* 按钮按下只是变暗一点、缩 3%——AppKit 的按下反馈,没有水波纹(wave 已在 ConfigProvider 关掉) */
 .ant-btn:not(:disabled):active { transform: scale(0.97); }
 .ant-btn { transition: transform 0.18s cubic-bezier(0.3, 1.4, 0.5, 1), background 0.15s ease; }
 .ant-btn-primary:not(:disabled) { font-weight: 590; box-shadow: none; }

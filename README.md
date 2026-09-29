@@ -58,7 +58,7 @@
 
 **数据与安全** 交易库每天与升级之前自动备份,可以从界面恢复;配置或库坏了时给出恢复的路;发单、开闸门、放宽限额要经主进程的原生确认;发单超时报「结果未知」;日志落盘前脱敏,可以导出诊断信息;首次启动先看风险揭示与条款。见 [数据与配置的保险](docs/features/durability.md)、[确认凭据](docs/features/confirm-grants.md)、[日志脱敏与诊断信息](docs/features/diagnostics.md)、[条款同意](docs/features/consent.md)。
 
-**其他** 想法备忘与知识总结、下单页的历史相似交易、顶栏宏观行情带、TWS / OpenD 连接检测与自动重连、新版本检查。界面是 Liquid Glass 风格,深浅色默认跟随系统,涨跌配色与玻璃透明度在「设置」里调。
+**其他** 想法备忘与知识总结、下单页的历史相似交易、顶栏宏观行情带(标普、纳指、VIX、美债 10Y、纽约金、布油、比特币)、TWS 连接检测与自动重连、OpenD 的进程与端口检测、新版本检查。界面是 Liquid Glass 风格,深浅色默认跟随系统,涨跌配色与玻璃透明度在「设置」里调。
 
 ## 它怎么工作
 
@@ -165,7 +165,7 @@ cd engine-ts && npm run probe                        # 真机只读联调:临时
   条款确认、从界面配置账户、打包加固、发版闸门),做了什么、还差什么、哪些要你来定,见
   [docs/reports/commercial-readiness-2026-09-28.md](docs/reports/commercial-readiness-2026-09-28.md)。
   这些改动同样只有离线测试;打包相关的(Electron 41、熔断丝、签名版权限、安装器)要实际打一次包才验证得了。
-- 富途 OpenD 通道:检测与诊断可用,下单桥在真机核对前显式不可用;接口库 `futu-api` 不随安装包发出去。
+- 富途 OpenD 通道:进程检测与端口探测可用;握手诊断、连接与下单在适配桥完成真机核对之前不可用;接口库 `futu-api` 不随安装包发出去。
 - 安装包没有开发者证书:Windows 未签名,macOS 是 ad-hoc 签名。Developer ID 签名与公证的路已经接好
   (`dist:mac:signed`、CI 的 Secrets),证书到手之前发出去的仍是 ad-hoc 包。
 

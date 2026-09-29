@@ -401,7 +401,7 @@ export function screenLeaders(members: readonly LeaderMember[], benchBars: reado
     b.passed - a.passed || STATUS_RANK[b.vcp.status] - STATUS_RANK[a.vcp.status]
     || (b.rs_rating ?? -1) - (a.rs_rating ?? -1) || a.symbol.localeCompare(b.symbol));
   const notes = [
-    `RS 评级是在这次扫的 ${universe} 只里排的百分位(IBD 的公式:近 3 个月 40%、前三个季度各 20%),不是全市场排名`,
+    `RS 评级是在这次扫的 ${universe} 只里排的百分位(IBD 式加权涨幅:0.4 × 近 63 个交易日 + 0.2 × 近 126 / 189 / 252 个交易日,都是到今天的累计涨幅),不是全市场排名`,
     "CAN SLIM 里的当季 / 年度盈利增长(C、A)与机构持仓(I)要财报数据,券商日线给不了,这里没算",
     `大盘方向用 ${benchmark} 的日线与成交量近似;IBD 看的是指数本身`,
   ];

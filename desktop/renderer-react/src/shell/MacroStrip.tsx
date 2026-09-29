@@ -20,14 +20,18 @@ export function MacroStrip() {
         const title = live
           ? row.instrument === 'PAXOS'
             ? 'TWS 实时流式,读的是 IBKR/PAXOS 的比特币现货,就是币价本身'
-            : `TWS 实时流式,实际读的是 ${row.instrument}(ETF,涨跌幅贴近但绝对价位与指数不同)`
-          : '公开数据源,分钟级;VIX 与美债10Y 永远走这条(它们没有不失真的 ETF 替身)';
+            : row.key === '^TNX'
+              ? 'TWS 实时流式,读的是 Cboe 的 TNX 指数本身;它按 10 倍报价,这里显示除以 10 之后的收益率'
+              : `TWS 实时流式,读的是标的本身(${row.instrument})`
+          : row.instrument === 'Cboe'
+            ? 'Yahoo 取不到,改读 Cboe 官方的延迟行情(15 分钟),读的同样是指数本身'
+            : '公开数据源(Yahoo),分钟级:没连 TWS、或 TWS 这一格没有报价时走这条';
         const dir = row.change_pct == null ? null : row.change_pct > 0 ? 'up' : row.change_pct < 0 ? 'down' : 'flat';
         return (
           <div className="macro-item" key={row.key} title={title}>
             <span className="macro-top">
               <span className="macro-label">{row.label}</span>
-              {/* 读的不是指数本身就必须标出来:GLD 几百美元、黄金期货几千美元,不标的话那个数字会让人以为行情崩了 */}
+              {/* 标出这一格读的是哪条行情:TWS 那路的合约(SPX、COMEX GC、PAXOS…),或 Yahoo 挂掉时的 Cboe 备用源;走 Yahoo 的不标 */}
               {row.instrument ? <span className="macro-inst">{row.instrument}</span> : null}
               {row.stale ? <span className="macro-stale">旧</span> : null}
             </span>

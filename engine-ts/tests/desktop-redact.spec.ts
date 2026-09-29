@@ -40,7 +40,8 @@ const CONFIG = {
 describe("脱敏", () => {
   const redact = redactMod.createRedactor({ accounts: redactMod.accountsFromConfig(CONFIG), homedir: "/Users/zhangsan" });
 
-  it("配置里的真实账号:逐个换成打码的样子(和引擎的 redactAccount 同一个样子)", () => {
+  it("配置里的真实账号:逐个打码,留开头的字母与末三位", () => {
+    // 引擎的 redactAccount 留前两个字符:DU 开头的两边一样,U1234567 在引擎那边是 U1***567
     expect(redact("order rejected for account U1234567: margin")).toBe("order rejected for account U***567: margin");
     expect(redact("DU7654321 与 U1234567")).toBe("DU***321 与 U***567");
     expect(redact("富途账户 28190044 解锁失败")).toBe("富途账户 ***044 解锁失败");

@@ -868,7 +868,7 @@ export function protectionAdvice(
     out.push({
       rule: "stoploss_guard",
       suggested: { enabled: true, lookback_minutes: 120, trigger_count: 3, pause_minutes: 60 },
-      reason: `${why}。两小时内止损 3 次就歇一小时,先把"马上赚回来"那一段挡掉。它只数持仓追踪发出的止损类平仓,手动平的不算。`,
+      reason: `${why}。两小时内止损 3 次就歇一小时,先把"马上赚回来"那一段挡掉。它只数持仓追踪到价触发的止损类平仓;追踪上点的「立即平仓」、在 TWS 里直接下的单、指令框里手敲的平仓都不算。`,
       source: "Mark Douglas / Brett Steenbarger · 报复性交易;freqtrade Protections",
     });
   }

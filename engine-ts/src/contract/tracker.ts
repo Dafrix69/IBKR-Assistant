@@ -2,7 +2,7 @@
  *
  * tracker.add / tracker.update 是在**授权软件自动发单**,所以这个域的入参 schema 是 strict 的(见 schema/tracker.ts):
  * 不认识的键当场拒,不像别的域那样静默丢掉——丢一个键 = 追踪建成了,那道保护却没设上。
- * tracker.poll / reconcile / close_now 的返回还没进契约:那三样是 engine.ts 在下单路径里拼出来的,等它拆开再标类型。
+ * tracker.poll / reconcile / close_now 的入参与返回在 trackerloop.ts。
  */
 
 // ---------------------------------------------------------------- 目标
@@ -127,7 +127,7 @@ export interface SpotTarget {
 
 // ---------------------------------------------------------------- 入参
 /**
- * 表单里的一个数。界面发过来的是**字符串**(Tracker.tsx 用 str(tp) 取表单值),'' 表示不设;数字也认;
+ * 表单里的一个数。界面发过来的是**字符串**(lib/TrackForm.tsx 用 str(tp) 取表单值),'' 表示不设;数字也认;
  * null / 不给 = 不设。**'' 不是 0**——这一条 tracker-rpc.spec 钉着。不是数的字符串由 handler 报「不是有效数字」。
  */
 export type NumberField = number | string | null;

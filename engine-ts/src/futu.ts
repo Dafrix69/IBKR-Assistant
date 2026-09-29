@@ -20,8 +20,6 @@ import {
   Endpoint, PortProber, checkAliasMapping, expandGlob, probePort, processRunning, scanEndpoints,
 } from "./tws.js";
 
-/** SDK 缺失/未接线。单独一个类型:它的处理方式和"连不上"完全不同。 */
-
 // OpenD 的两个默认端口。telnet 口只做展示:它是控制台,不是 API 通道。
 export const KNOWN_ENDPOINTS: Endpoint[] = [
   { port: 11111, label: "OpenD API", kind: "opend", paper: null },
@@ -130,7 +128,8 @@ export function explainConnectError(
     if ((exc as FutuUnavailable & { code?: string }).code === "bridge_unverified") {
       return { reason: text, hint: "等 TS 侧的富途桥完成真机联调;IBKR 通道照常可用。", code: "bridge_unverified" };
     }
-    return { reason: text, hint: "装完 futu-api 后重启引擎再试。", code: "sdk_missing" };
+    // loadFutuBridge 不 import futu-api,装不装它都接不上;不带 code 的 FutuUnavailable 眼下没有谁会抛
+    return { reason: text, hint: "这个版本的富途通道还接不上 OpenD;IBKR 通道照常可用。", code: "sdk_missing" };
   }
   if ((exc as NodeJS.ErrnoException).code === "ECONNREFUSED" || lowered.includes("refused")) {
     return {

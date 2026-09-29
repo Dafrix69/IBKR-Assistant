@@ -15,7 +15,8 @@
  */
 const os = require('node:os');
 
-/** 和引擎的 redactAccount 同一个样子:DU1234567 → DU***567。 */
+/** 留开头的字母与末三位:DU1234567 → DU***567,U1234567 → U***567,纯数字的富途账号 28190044 → ***044。
+ * 引擎的 redactAccount 留的是前两个字符:DU 开头的两边一样,U1234567 在引擎那边是 U1***567、28190044 是 28***044。 */
 function maskAccount(id) {
   const text = String(id || '');
   if (text.length <= 5) return '***';
