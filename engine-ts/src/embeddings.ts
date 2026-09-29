@@ -1,5 +1,5 @@
 /**
- * 本机文本嵌入(想法检索第二期,见 docs/features/idea-retrieval.md):调本机 Ollama 的 /api/embed,不引向量库、不加 npm 依赖。
+ * 本机文本嵌入(想法检索的语义补充,见 docs/features/idea-retrieval.md):调本机 Ollama 的 /api/embed,不引向量库、不加 npm 依赖。
  *
  * **只许本机地址**:想法原文里可能有仓位、金额,嵌入是一次外发——所以地址不是 127.0.0.1 / localhost / ::1 就当场拒,
  * 而不是「发出去之前用正则洗一遍」(正则一定漏)。
@@ -8,7 +8,7 @@
 /**
  * 默认模型:qwen3-embedding 8B 的 Q8 量化(4096 维,约 8 GB,载入后占显存约 10 GB)。可用环境变量 DAFRI_EMBED_MODEL 换。
  * 2026-09-23 在用户的一小批想法、10 个人工标注的查询上和 0.6B 比过:前 3 名召回 16/20 对 13/20,
- * 字面对不上的同义说法 2/2 对 0/2(docs/features/idea-retrieval.md「第二期」)。
+ * 字面对不上的同义说法 2/2 对 0/2(docs/features/idea-retrieval.md「语义补充」)。
  */
 export const DEFAULT_EMBED_MODEL = "qwen3-embedding:8b-q8_0";
 export const DEFAULT_EMBED_URL = "http://127.0.0.1:11434";

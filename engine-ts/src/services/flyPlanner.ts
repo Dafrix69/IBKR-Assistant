@@ -1,7 +1,7 @@
 /** 蝴蝶测算的编排:定日程 → 取现价 → 取三条腿的盘口与 IV → 交给 flyPlan.planFly(纯计算)。只读,不下单。
  *
- * 能离线算:现价与 IV 都手动给了,就一条行情都不取——没连券商、休市、想按"假如现价是 X"推演时用。
- * 手动只给了其中一样,另一样照旧去券商取。
+ * 能离线算:没连 IBKR、现价与 IV 都手动给了,就一条行情都不取——休市、想按"假如现价是 X"推演时用。
+ * 连着 IBKR 时三条腿的盘口照取(成本与买卖价要用);手动只给了其中一样,另一样照旧去券商取。
  */
 import { nowEt } from "../config.js";
 import type { FlyPlanParams, FlyPlanResult } from "../contract/options.js";

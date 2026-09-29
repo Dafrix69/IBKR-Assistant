@@ -1,4 +1,4 @@
-/** 几条期权腿此刻的盘口与 IBKR 的模型 IV(只读)。蝴蝶测算用(services/marketData 的 flyPlanFor)。
+/** 几条期权腿此刻的盘口与 IBKR 的模型 IV(只读)。蝴蝶测算(services/flyPlanner.ts 的 planFor)与 IV 记录(services/ivRecorder.ts)用。
  *
  * 为什么不借 BrokerRouter.legQuotes 或持仓那批常驻流:
  *

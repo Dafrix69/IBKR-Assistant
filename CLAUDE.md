@@ -1,7 +1,7 @@
 # CLAUDE.md — IBKR-Assistant 的工作规矩
 
-这个文件只写**约束**,不写说明。项目是什么、怎么跑、每个功能怎么设计,看 `README.md` 与 `docs/features/*.md`;
-动某个功能之前先读它对应的那份 feature 文档,改完把口径的变化写回去。
+这个文件只写**约束**,不写说明。项目是什么、怎么跑、每个功能怎么设计,看 `README.md` 与 `docs/features/`
+(目录在 `docs/features/README.md`);动某个功能之前先读它对应的那份 feature 文档,改完把文档改成改动之后的样子。
 
 ## 仓库
 
@@ -123,7 +123,9 @@ contract      contract/*.ts(纯类型,零 import,谁都能引)  contract/schema/
 - 新提示词:`prompts/` 按版本号只增不改,`config` 里 `prompt_version` 切换。
 - 进定价的参数不写经验值:拿历史数据估,估的方法进纯函数并用已知答案的合成数据测,估出来的那一份写明样本、检验结果与局限
   (样子见 `flyCalibration.ts` / `flyIvModel.ts` / `scripts/calibrate-fly-iv.mjs`)。原始行情数据不进仓库。
-- 新功能:`docs/features/<名字>.md` 一份,写设计决策与口径,不写操作手册。事故写 `docs/journal/`。
+- 新功能:`docs/features/<名字>.md` 一份,写设计决策与口径,不写操作手册,并在 `docs/features/README.md` 的目录里加一行。
+  feature 文档只写现在的样子:不写日期、不写"以前 / 后来改成"、不写修过的缺陷与每一次真机核对的经过(历史在 git 里);
+  哪些路径已在真机核对、哪些只有离线测试,写成一段当前状态。一条规则的理由用一句话写在规则旁边。事故写 `docs/journal/`。
   用户看得见的改动还要进两处:`CHANGELOG.md` 的「未发布」(发布页与「关于 → 更新」显示的就是它),
   以及 `docs/user-guide/` 里对应的那一页。
 - 改条款文本(`docs/legal/`)的实质内容:三份开头的「版本」与 `desktop/consent.js` 的 `TERMS_VERSION` 一起改成新日期。

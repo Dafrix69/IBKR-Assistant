@@ -1,7 +1,7 @@
 /** 当日到期期权 IV 的记录:连着 IBKR、在常规时段里,每五分钟把一圈行权价的盘口与模型 IV 记一笔。
  *
  * 记来做什么:蝴蝶测算里"IV 怎么变"现在是拿 IV 指数校准的;攒够了真的期权 IV,校准脚本就能拿它重估
- * (scripts/calibrate-fly-iv.mjs --samples)。口径见 docs/features/fly-plan.md「自己攒 IV」。
+ * (scripts/calibrate-fly-iv.mjs --samples)。口径见 docs/features/fly-plan.md「自己积攒 IV」。
  *
  * 几条规矩:
  * * **只读行情,不碰交易。** 用的是测算那批自己的行情流(optionMarks.ts),盯盘的流碰不到。

@@ -287,7 +287,7 @@ describe("界面:文字着色用可访问变体(docs/features/ui.md)", () => {
 
 // 拒绝卡片是用户读得最仔细的一张卡——单子没发出去,他正等着这张卡告诉他为什么。
 // 它原来的第一行是 `校验拒绝 · LIVE_TRADING_DISABLED`,正文里写着 allow_live_trading=false:
-// 两样都是引擎内部的说法,一样也不该出现在这里(docs/features/ui.md §第三轮)。
+// 两样都是引擎内部的说法,一样也不该出现在这里(docs/features/ui.md「界面文案」)。
 describe("界面:拒绝卡片摆人话,不摆引擎枚举(docs/features/ui.md)", () => {
   // 两道执行闸门在「设置」里各有一个开关,用户读得到的只该是那个开关的名字。
   // 不在名单里的:allow_combo_live 没有设置项、只能手改配置文件,limits.* 的校验错误说的

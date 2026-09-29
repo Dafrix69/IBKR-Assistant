@@ -1,4 +1,4 @@
-/** 想法检索(docs/features/idea-retrieval.md 第一期):结构化过滤 + 关键词 + 按时间分层抽样。
+/** 想法检索(docs/features/idea-retrieval.md「关键词检索」):结构化过滤 + 关键词 + 按时间分层抽样。
  *
  * 分三层钉:
  *  · 纯函数(ideaRetrieval.ts):给定候选,**哪几条被选中**是确定的;
