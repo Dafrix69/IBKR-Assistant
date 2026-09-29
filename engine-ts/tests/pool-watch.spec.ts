@@ -5,7 +5,8 @@
  *  2. 进池子的默认是两个都开(`sectors.add_stock` / `sectors.pick`),AI 一次十几只很容易吃满 30 只;
  *  3. 出了池子(而且不在别的板块里)连带把两张表的行清掉——池子说了算谁能有这两行;
  *  4. 一次性迁移只跑一次:**用户手动关掉的开关,重启之后必须还是关的**(这条一旦破,每次启动都翻开关);
- *  5. 价位自动算捎带在异动那一轮里做:一轮最多 1 只、连着券商、在时段内,失败按 symbol 退避。
+ *  5. 价位自动算捎带在异动那一轮里做:一轮最多 1 只、连着券商、在时段内,失败按 symbol 退避;
+ *     价位新不新只看 levels_at——界面每 10 秒一次的 alerts.poll 会盖掉 updated_at,开盘后每只照样重算一遍。
  */
 import * as fs from "node:fs";
 import * as os from "node:os";
@@ -24,6 +25,9 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 /** 2026-09-11(周五,交易日)美东 11:00 = 开盘后第 90 分钟;17:00 = 收盘后第 60 分钟(时段外)。 */
 const ET_1100 = Date.parse("2026-09-11T11:00:00-04:00");
 const ET_POST = Date.parse("2026-09-11T17:00:00-04:00");
+/** 同一天 09:30 开盘那一刻;上一个交易日(2026-09-10,周四)的 11:00。 */
+const ET_OPEN = Date.parse("2026-09-11T09:30:00-04:00");
+const PREV_1100 = Date.parse("2026-09-10T11:00:00-04:00");
 
 /** 只为「价位自动算」那一段服务的假券商:不支持量能流,异动那一段会在算完价位之后短路。 */
 class FakeLevelsRouter {
@@ -83,6 +87,16 @@ function makeServer(dir?: string): { s: RpcServer; chunks: string[]; dir: string
 
 async function call(s: RpcServer, method: string, params: Rec = {}): Promise<Rec> {
   return s.handle({ jsonrpc: "2.0", id: 1, method, params });
+}
+
+/** 界面的 alerts.poll(每 10 秒)和引擎的一轮(每 5 秒)按真实的先后交错着跑一步:
+ *  回 poll 查到的价(取到价的那几只都被 poll 写过一遍)和这一轮算了哪只的价位。 */
+async function pollThenTick(s: RpcServer, nowMs: number): Promise<{ prices: Array<number | null>; levels: string | null }> {
+  setClock(nowMs);
+  const polled = (await call(s, "alerts.poll"))["result"] as Rec;
+  const prices = (polled["checked"] as Rec[]).map((c) => c["price"] as number | null);
+  const levels = (await s.anomaly.tickOnce(nowMs))["levels"] as string | null;
+  return { prices, levels };
 }
 
 /** 审计表里 pool_* 那几行(detail 是 JSON 字符串,解出来好断言)。 */
@@ -441,7 +455,70 @@ describe("价位自动算:盯上了就该有价位", () => {
     }
   });
 
-  it("隔夜变旧的价位(上一个交易日算的)第二天开盘后重算:均线、52 周位会隔夜变", async () => {
+  it("两次开盘之间界面一直在 poll(每次都盖 updated_at):第二天开盘后每只照样重算一遍", async () => {
+    const { s } = makeServer();
+    const router = new FakeLevelsRouter();
+    (s as any).router = router;
+    const symbols = ["AMD", "NVDA", "TSLA"];
+    await sectorWith(s, "科技", symbols);
+
+    // 上一个交易日盘中:一轮一只,三轮算完;界面照常 poll
+    for (let i = 0; i < symbols.length; i += 1) await pollThenTick(s, PREV_1100 + i * 5000);
+    expect([...router.chainCalls].sort()).toEqual(symbols);
+
+    // 收盘后、夜里、开盘前热身的 10 分钟:poll 一直在写 last_price / states。
+    // 热身时段引擎也在跑,但昨天的价位等开盘后再重算:一天一遍,不在 09:25 算一遍、09:30 又算一遍
+    for (const at of [PREV_1100 + 6 * 3_600_000, ET_OPEN - 8 * 3_600_000, ET_OPEN - 5 * 60_000, ET_OPEN - 5000]) {
+      const step = await pollThenTick(s, at);
+      expect(step.prices, new Date(at).toISOString()).toEqual([100, 100, 100]); // 三只都真被 poll 写过
+      expect(step.levels, new Date(at).toISOString()).toBeNull();
+    }
+    expect(router.chainCalls).toHaveLength(3);
+
+    // 开盘后:一轮一只,三轮把三只都重算完,中间 poll 照常
+    const reopened: Array<string | null> = [];
+    for (let i = 0; i < symbols.length; i += 1) reopened.push((await pollThenTick(s, ET_OPEN + i * 5000)).levels);
+    expect([...reopened].sort()).toEqual(symbols);
+    expect(router.chainCalls).toHaveLength(6);
+    for (const watch of s.engine.store.listWatches()) {
+      expect(Date.parse(watch["levels_at"]), String(watch["symbol"])).toBeGreaterThanOrEqual(ET_OPEN);
+    }
+    // 今天的都算过了:退避过了也不再打期权链
+    for (const at of [ET_OPEN + 15_000, ET_OPEN + AlertsService.LEVELS_BACKOFF_MS + 20_000, ET_1100]) {
+      expect((await pollThenTick(s, at)).levels, new Date(at).toISOString()).toBeNull();
+    }
+    expect(router.chainCalls).toHaveLength(6);
+
+    // 周六:休市日引擎的循环照跑(按收盘后算指标),旧价位不动,留到下一个交易日开盘后再重算
+    for (const at of [Date.parse("2026-09-12T10:00:00-04:00"), Date.parse("2026-09-12T15:00:00-04:00")]) {
+      expect((await pollThenTick(s, at)).levels, new Date(at).toISOString()).toBeNull();
+    }
+    expect(router.chainCalls).toHaveLength(6);
+  });
+
+  it("第二天盘中才打开应用(新引擎开同一个库):界面一进来先 poll,每只照样重算一遍", async () => {
+    const { s, dir } = makeServer();
+    const router = new FakeLevelsRouter();
+    (s as any).router = router;
+    const symbols = ["AMD", "NVDA", "TSLA"];
+    await sectorWith(s, "科技", symbols);
+    for (let i = 0; i < symbols.length; i += 1) await pollThenTick(s, PREV_1100 + i * 5000);
+    expect(router.chainCalls).toHaveLength(3);
+
+    const second = makeServer(dir);
+    const secondRouter = new FakeLevelsRouter();
+    (second.s as any).router = secondRouter;
+    const recomputed: Array<string | null> = [];
+    for (let i = 0; i < symbols.length; i += 1) {
+      const step = await pollThenTick(second.s, ET_1100 + i * 5000);
+      expect(step.prices).toEqual([100, 100, 100]);
+      recomputed.push(step.levels);
+    }
+    expect([...recomputed].sort()).toEqual(symbols);
+    expect([...secondRouter.chainCalls].sort()).toEqual(symbols);
+  });
+
+  it("升级上来的库:有价位、levels_at 是空串(加这一列之前算的)——当作旧的,重算一遍", async () => {
     const { s } = makeServer();
     const router = new FakeLevelsRouter();
     (s as any).router = router;
@@ -450,14 +527,31 @@ describe("价位自动算:盯上了就该有价位", () => {
     expect(router.chainCalls).toEqual(["NVDA"]);
     const id = s.engine.store.listWatches()[0]!["id"];
 
-    // 把这一行改成"上一个交易日收盘时算的"(updateWatch 自己会盖 updated_at,只能直接改库)
-    s.engine.store.rawExec("UPDATE alert_watches SET updated_at=? WHERE id=?", ["2026-09-10T20:00:00+00:00", id]);
+    // 改成加列之前的样子:migrate 给老行补的是空串
+    s.engine.store.rawExec("UPDATE alert_watches SET levels_at='' WHERE id=?", [id]);
     const next = await s.anomaly.tickOnce(ET_1100 + AlertsService.LEVELS_BACKOFF_MS + 1000);
     expect(next["levels"]).toBe("NVDA");
     expect(router.chainCalls).toEqual(["NVDA", "NVDA"]);
     // 重算完就是今天的了,再往后几轮不再打期权链
     expect((await s.anomaly.tickOnce(ET_1100 + 2 * AlertsService.LEVELS_BACKOFF_MS + 2000))["levels"]).toBeNull();
     expect(router.chainCalls).toHaveLength(2);
+  });
+
+  it("开盘前热身的 10 分钟只给还没有价位的算;开盘前算的不算今天的,退避一过再算一遍", async () => {
+    const { s } = makeServer();
+    const router = new FakeLevelsRouter();
+    (s as any).router = router;
+    await sectorWith(s, "科技", ["NVDA"]);
+    const preOpen = ET_OPEN - 5 * 60_000; // 09:25
+    expect((await s.anomaly.tickOnce(preOpen))["levels"]).toBe("NVDA"); // 新盯的一条价位都没有:不等开盘
+    // 09:25 算的现价还是盘前的:开盘后要重算,这时还在退避里
+    expect((await s.anomaly.tickOnce(ET_OPEN + 5000))["levels"]).toBeNull();
+    expect((await s.anomaly.tickOnce(preOpen + AlertsService.LEVELS_BACKOFF_MS + 1000))["levels"]).toBe("NVDA");
+    expect(router.chainCalls).toEqual(["NVDA", "NVDA"]);
+
+    // 休市日新加进来的:一条价位都没有,照样算
+    await call(s, "pool.set_watch", { symbol: "AMD", price: true });
+    expect((await s.anomaly.tickOnce(Date.parse("2026-09-12T10:00:00-04:00")))["levels"]).toBe("AMD");
   });
 
   it("没连券商 / 不在时段内:一只也不算(期权链太贵,不整夜打)", async () => {

@@ -163,8 +163,8 @@ describe("碰均线:底账", () => {
 
   it("异动那一轮里:价位这一步没干活才轮到它(一轮最多一次历史请求)", async () => {
     const { s, id } = await touchServer();
-    // 价位是今天开盘后算的(updateWatch 盖的是真实时钟,这里钉成 09-24 10:00 ET),tickLevels 不挑它
-    s.engine.store.rawExec("UPDATE alert_watches SET updated_at=? WHERE id=?", ["2026-09-24T14:00:00+00:00", id]);
+    // 价位是今天开盘后算的(levels_at = 09-24 10:00 ET),tickLevels 不挑它
+    s.engine.store.updateWatch(id, { levels_at: "2026-09-24T14:00:00+00:00" });
     const out = await s.anomaly.tickOnce(THU_1100);
     expect(out["levels"]).toBeNull();
     expect(out["touch"]).toBe("NVDA");

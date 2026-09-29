@@ -233,8 +233,9 @@ export type TrackInput = Pick<Track, "account" | "symbol"> & Partial<Pick<Track,
 /** position_tracks 里允许改的列。 */
 export type TrackPatch = Partial<Pick<Track, "targets" | "auto_close" | "enabled" | "peak" | "fired_at" | "fired_state" | "fired_record" | "note">>;
 
-/** alert_watches 里允许改的列(id / symbol / 两个时间戳不许动)。 */
-export type WatchPatch = Partial<Pick<Watch, "step" | "enabled" | "expiry" | "levels" | "states" | "last_price" | "wall" | "events" | "touch">>;
+/** alert_watches 里允许改的列(id / symbol / created_at / updated_at 不许动)。levels_at 由写价位的那一方给,
+ *  时刻来自它自己的时钟:updated_at 这里一律盖成此刻,说明不了价位是哪天算的。 */
+export type WatchPatch = Partial<Pick<Watch, "step" | "enabled" | "expiry" | "levels" | "states" | "last_price" | "wall" | "events" | "touch" | "levels_at">>;
 
 /** quality_stocks 里允许改的列:note / enabled 是用户写的,states / events 是异动监控写的。 */
 export interface QualityStockPatch {
@@ -310,6 +311,10 @@ export class TradeStore {
     );
     if (wcols.size && !wcols.has("touch")) {
       this.db.exec("ALTER TABLE alert_watches ADD COLUMN touch TEXT NOT NULL DEFAULT ''");
+    }
+    // 价位算出来的时刻(2026-09-29):老行补空串,读的一方当作没算过,开盘后重算一遍
+    if (wcols.size && !wcols.has("levels_at")) {
+      this.db.exec("ALTER TABLE alert_watches ADD COLUMN levels_at TEXT NOT NULL DEFAULT ''");
     }
     this.ideasFts = this.ensureIdeasFts();
 
@@ -467,6 +472,7 @@ export class TradeStore {
       wall: null,
       events: [],
       touch: null,
+      levels_at: "",
     };
     try {
       this.db
@@ -497,7 +503,7 @@ export class TradeStore {
   /** 只允许改这几列。列名是白名单,不接受任意字段拼 SQL。 */
   updateWatch(watchId: string, fields: WatchPatch): boolean {
     const allowed = new Set([
-      "step", "enabled", "expiry", "levels", "states", "last_price", "wall", "events", "touch",
+      "step", "enabled", "expiry", "levels", "states", "last_price", "wall", "events", "touch", "levels_at",
     ]);
     const sets: string[] = [];
     const values: unknown[] = [];

@@ -18,8 +18,19 @@
 - 三种墙的含义不同,界面分开摆:OI 是隔夜存量(OCC 每天开盘前公布一次);成交量墙才是当天真正的流向,0DTE 合约多数当天开当天平,OI 墙基本没有参考价值;
   GEX 的符号是一个假设(做市商多头 call、空头 put),适合判断波动会被压住还是放大,不适合判断方向。最大痛点只是统计量,当参考位看。
 
-**什么时候算**:打开盯价位时登记,引擎在后台每轮最多算一只;价位在没算过、或早于当天开盘算的时候重算(实际情况见 [股票池](quality-watch.md)「池子与开关」);
-点行下面的「重算墙」立即算。日线历史带 10 分钟缓存:富途的历史 K 线按额度计,不把额度烧在重复请求上。
+打开盯价位时登记,引擎在后台算(下一节);点行下面的「重算墙」立即算。日线历史带 10 分钟缓存:富途的历史 K 线按额度计,不把额度烧在重复请求上。
+
+## 价位哪天算的
+
+盯单上单独记着价位算出来的时刻(`alert_watches.levels_at`,UTC,到秒),自动算与手点「重算墙」都写它;判断要不要重算只看它
+(`updated_at` 在每一轮 `alerts.poll` 写现价时都会被改写)。自动算的是 `AlertsService.tickLevels`,附在异动那条 5 秒循环里:
+
+- 一条价位都没有的,在循环运行的时段里随时算,包括开盘前 10 分钟。
+- 有价位的,只认当天美东 09:30 之后算的;开盘前的那 10 分钟不重算,免得 09:25 算完 09:30 又算一遍(期权链请求贵,开盘前的现价也不是开盘后的价)。
+- 每轮最多一只,算过(或算失败)的标的退避 10 分钟:30 只盯单开盘后约两分半全部重算完;盘中才打开应用也一样逐只重算。
+- 墙或日线取不到、降级算出来的价位同样记为当天算过(原因显示在行上),当天不反复重试;连现价都取不到的那一次什么都不写,退避过了再试。
+- 休市日有价位的不重算,留到下一个交易日开盘后。
+- `levels_at` 为空串(加这一列之前的行)当作没算过,开盘后重算一遍。
 
 ## 不刷屏
 
@@ -62,4 +73,5 @@ IBKR 不接受 `ADJUSTED_LAST` 配非空的 `endDateTime`(错误 321),所以结�
 ## 代码与测试
 
 `engine-ts/src/alerts.ts`(价位生成、合并、状态机)、`optionwall.ts`、`services/alerts.ts`(排队计算、穿越判定、碰均线)、`services/marketData.ts`;
-界面 `lib/PoolStock.tsx`、`lib/LevelStrip.tsx`、`store/alerts.ts`。测试:`alerts-poll.spec.ts`、`pool-watch.spec.ts`、`golden-analysis.spec.ts`(optionwall 与 alerts 的黄金基线)。
+界面 `lib/PoolStock.tsx`、`lib/LevelStrip.tsx`、`store/alerts.ts`。测试:`alerts-poll.spec.ts`、`pool-watch.spec.ts`(含两次开盘之间界面一直在 poll、第二天开盘后每只照样重算;盘中重启同理)、
+`golden-analysis.spec.ts`(optionwall 与 alerts 的黄金基线)。

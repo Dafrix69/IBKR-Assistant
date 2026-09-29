@@ -67,6 +67,9 @@ export interface Watch {
   events: WatchEvent[];
   /** 碰均线的底账:日线上已经发生过的触碰、盘中算均线要的收盘和、报过哪一段。还没算过是 null。 */
   touch: TouchBook | null;
+  /** 价位最近一次算出来的时刻(UTC ISO,到秒);还没算过是空串。价位新不新只看它:
+   *  updated_at 每一轮 poll 写现价时都会被盖掉。 */
+  levels_at: string;
 }
 
 // ---------------------------------------------------------------- 短期内反复碰均线

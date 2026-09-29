@@ -15,6 +15,7 @@ import {
 import { pyRound } from "../py.js";
 import { signalFromWatchEvent } from "../signalOutcomes.js";
 import { RpcError, errText } from "../rpcError.js";
+import { utcIso } from "../tz.js";
 import { ServiceBase } from "./host.js";
 import type { Rec, ServiceHost } from "./host.js";
 import type { MarketDataService } from "./marketData.js";
@@ -24,8 +25,9 @@ export class AlertsService extends ServiceBase {
     super(host);
   }
 
-  /** 重算某个标的的期权墙、趋势位与价位。两者都是加分项——降级可以,不能悄悄降级。 */
-  async refresh(params: AlertsRefreshParams): Promise<AlertsRefreshResult> {
+  /** 重算某个标的的期权墙、趋势位与价位。两者都是加分项——降级可以,不能悄悄降级。
+   *  nowMs 记成 levels_at(价位是什么时候算的);自动算那一轮传它自己的时刻,和判断新旧用的是同一个钟。 */
+  async refresh(params: AlertsRefreshParams, nowMs: number = nowEt().epochMs): Promise<AlertsRefreshResult> {
     const { buildLevels, levelDict, trendSnapshot } = await import("../alerts.js");
 
     const watch = this.engine.store.getWatch(String(params["id"] ?? ""));
@@ -66,6 +68,7 @@ export class AlertsService extends ServiceBase {
       wall,
       expiry: wall?.expiry ?? "",
       last_price: spot,
+      levels_at: utcIso(nowMs - (nowMs % 1000)), // 到秒,和库里别的时刻一个写法
     });
     // 日线已经在手上了,碰均线的底账顺手算掉,不再为它单独拉一次
     if (history) this.saveTouchBook(watch["id"], history, nowEt().date);
@@ -88,13 +91,18 @@ export class AlertsService extends ServiceBase {
   /** symbol → 上一次的失败 / 降级原因:降级可以,不能悄悄降级。 */
   private readonly levelNotes = new Map<string, string>();
 
-  /** 这只股的价位该算了吗:没算过、或还是今天开盘前算的(均线、52 周位会隔夜变旧)。刚试过的先退避。 */
+  /** 这只股的价位该算了吗。刚试过的先退避;一条价位都没有就算(开盘前热身的 10 分钟也算);
+   *  有价位的只认今天开盘之后算的——均线、52 周位隔夜会变,盘前的现价也不是开盘后的价。
+   *  新旧只看 levels_at:updated_at 每一轮 poll 写现价时都会被盖掉,说明不了价位是哪天算的。 */
   private needsLevels(watch: Watch, nowMs: number, openMs: number): boolean {
     if (!watch["enabled"]) return false;
     const tried = this.levelTried.get(String(watch["symbol"]));
     if (tried !== undefined && nowMs - tried < AlertsService.LEVELS_BACKOFF_MS) return false;
     if (!(watch["levels"] ?? []).length) return true;
-    const at = Date.parse(String(watch["updated_at"] ?? ""));
+    // 旧价位等开盘再重算:热身时段算了,09:30 一过它又成了开盘前算的,一天要多打一遍期权链。
+    // 休市日 openMs 是无穷大,整天都在这里拦下
+    if (nowMs < openMs) return false;
+    const at = Date.parse(watch["levels_at"]);
     return !Number.isFinite(at) || at < openMs;
   }
 
@@ -102,14 +110,18 @@ export class AlertsService extends ServiceBase {
   async tickLevels(nowMs: number, inWindow: boolean): Promise<string | null> {
     if (!inWindow || this.router === null || !this.router.sessions().length) return null;
     const et = etNowFromEpoch(nowMs);
-    const openMs = nowMs - (et.seconds - 9.5 * 3600) * 1000; // 今天美东 09:30 那一刻
+    // 今天美东 09:30 那一刻。休市日没有开盘(异动循环在周末、假日照跑,按收盘后算指标):
+    // 有价位的一律不重算,留到下一个交易日开盘后;一条价位都没有的照算
+    const openMs = this.settings.isTradingDay(et.date)
+      ? nowMs - (et.seconds - 9.5 * 3600) * 1000
+      : Number.POSITIVE_INFINITY;
     const watch = this.engine.store.listWatches().find((w) => this.needsLevels(w, nowMs, openMs));
     if (watch === undefined) return null;
     const symbol = String(watch["symbol"]);
     // 成功失败都先记一次:失败的那只退避 10 分钟再试,不能每 5 秒去打一次期权链
     this.levelTried.set(symbol, nowMs);
     try {
-      const out = await this.refresh({ id: watch["id"] });
+      const out = await this.refresh({ id: watch["id"] }, nowMs);
       // 墙 / 日线取不到时价位照给(只是少了那部分),原因留着给界面显示
       const note = [out["wall_error"], out["history_error"]].filter(Boolean).map(String).join(";");
       if (note) this.levelNotes.set(symbol, note.slice(0, 200));

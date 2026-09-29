@@ -1331,7 +1331,8 @@
     "last_price": null,
     "wall": null,
     "events": [],
-    "touch": null
+    "touch": null,
+    "levels_at": ""
    }
   }
  },
@@ -1357,7 +1358,8 @@
      "last_price": null,
      "wall": null,
      "events": [],
-     "touch": null
+     "touch": null,
+     "levels_at": ""
     }
    ],
    "touch_config": {
