@@ -106,7 +106,7 @@ contract      contract/*.ts(纯类型,零 import,谁都能引)  contract/schema/
 真要让某个文件变长,就得去改那个数字——改的那一刻正好回答上面那句话。
 已知超线且待拆的:`engine.ts`(2026-09-20 托管单 → `engine/hosted.ts`、执行对账 → `engine/reconcile.ts`、
 回报落库 → `engine/callbacks.ts`;2026-09-27 本地速记 → `engine/localShorthand.ts`、托管追踪的触发处置 →
-`engine/hosted.ts` 的 `onTriggered`、平仓识别 → `engine/closing.ts`;2026-09-28 `localIsoSeconds` → `engine/clock.ts`,还剩 1,757 行。**另有两个方法超了 150 行的函数预算:
+`engine/hosted.ts` 的 `onTriggered`、平仓识别 → `engine/closing.ts`;2026-09-28 `localIsoSeconds` → `engine/clock.ts`,还剩 1,756 行。**另有两个方法超了 150 行的函数预算:
 `handleInstruction` 230 行、`pollTrackers` 154 行** —— 拆它时要顺带切开,不能只搬不动。
 四簇与建议顺序量在体检报告里)、
 `broker.ts`(2026-09-21 合约工具函数已搬进 `ibContracts.ts`,还剩 2,400 行 —— **大头是 `BrokerRouter`

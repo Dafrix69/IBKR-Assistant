@@ -25,12 +25,11 @@ const PURPOSES = {
   'broker.select': '切换下单的券商',
   'gate.auto_execute': '打开自动执行',
   'gate.allow_live_trading': '允许实盘账户下单',
-  'gate.allow_combo_live': '允许实盘账户自动平组合单',
   'limits.loosen': '放宽风控限额',
 };
 
 /** settings.patch 里从关变开要凭据的闸门。 */
-const GATES = ['auto_execute', 'allow_live_trading', 'allow_combo_live'];
+const GATES = ['auto_execute', 'allow_live_trading'];
 
 /**
  * 风控限额里"往松了改"要确认的那几项。up = 调大是放松,down = 调小是放松。

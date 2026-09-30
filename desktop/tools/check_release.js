@@ -80,7 +80,7 @@ function main() {
   // ---- 4. 示例配置 ----
   try {
     const example = JSON.parse(read('config', 'settings.example.json'));
-    for (const gate of ['auto_execute', 'allow_live_trading', 'allow_combo_live']) {
+    for (const gate of ['auto_execute', 'allow_live_trading']) {
       if (example.policies && example.policies[gate] !== false) problems.push(`示例配置的 policies.${gate} 不是 false`);
     }
     for (const account of example.accounts || []) {

@@ -521,10 +521,12 @@ function buildLimits(raw: Raw): Limits {
 }
 
 const POLICY_KEYS = [
-  "auto_execute", "allow_live_trading", "allow_combo_live", "auto_outside_rth",
+  "auto_execute", "allow_live_trading", "auto_outside_rth",
   "require_trigger_price_verification",
   "trigger_min_gap_bps", "closed_market_policy", "consecutive_failure_breaker",
   "review_feature_enabled",
+  // 已撤掉的开关:老配置里还写着,认下、不用。当未知项拒掉的话,升级完第一次启动就起不来
+  "allow_combo_live",
 ];
 
 function buildPolicies(raw: Raw): Policies {
@@ -538,7 +540,6 @@ function buildPolicies(raw: Raw): Policies {
   return {
     auto_execute: flag(raw, "auto_execute", false, "policies"),
     allow_live_trading: flag(raw, "allow_live_trading", false, "policies"),
-    allow_combo_live: flag(raw, "allow_combo_live", false, "policies"),
     auto_outside_rth: flag(raw, "auto_outside_rth", true, "policies"),
     require_trigger_price_verification: flag(raw, "require_trigger_price_verification", true, "policies"),
     trigger_min_gap_bps: num(raw, "trigger_min_gap_bps", "float", 5.0, "policies", { min: 0.0, minStr: "0.0" })!,

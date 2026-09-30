@@ -211,7 +211,6 @@ export class HostedOrders {
         breakerEngaged: breaker.engaged && !(breaker.auto && sweeping),
         marketStatus: "盘中",
         alreadyFired: Boolean(track["fired_at"]) && !sweeping,
-        comboLiveOk: this.settings.policies.allow_combo_live,
       });
       if (blockers.length) {
         // 挡住它的只有**自动**熔断:券商侧已经挂着的托管单原样留着,只是不再挂新的、不再改价。
@@ -398,7 +397,6 @@ export class HostedOrders {
         // 托管单挂着等成交,不是立刻发出去:时段闸门不适用(同 syncHosted)
         marketStatus: "盘中",
         alreadyFired: false,
-        comboLiveOk: this.settings.policies.allow_combo_live,
       });
       if (blockers.length) {
         // 到价了但动不了,必须当场说。只提醒一次,不刷屏(同软件平仓那条路)

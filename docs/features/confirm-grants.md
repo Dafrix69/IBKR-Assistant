@@ -13,7 +13,7 @@ preload 给敏感调用带的 `__confirmed: true` 只说明调用是从这座桥
 | `tracker.close_now` | `tracker.close_now` | 追踪 id |
 | `tracker.add` | `tracker.add` 且带 `auto_close` 或 `host_at_broker` | 整个入参 |
 | `broker.select` | `broker.select` | 券商名 |
-| `gate.auto_execute` / `gate.allow_live_trading` / `gate.allow_combo_live` | `settings.patch` 把这个闸门**从关改到开** | 无 |
+| `gate.auto_execute` / `gate.allow_live_trading` | `settings.patch` 把这个闸门**从关改到开** | 无 |
 | `limits.loosen` | `settings.patch` 把限额**往松了改** | 放宽的那几项与新值 |
 
 不要凭据的:只解析不发单、只设提醒价位不授权发单的追踪、关闸门、收紧限额、熔断(不能挡)、删追踪、`tracker.update`。
@@ -34,7 +34,7 @@ preload 给敏感调用带的 `__confirmed: true` 只说明调用是从这座桥
 ## 界面这一侧
 
 调用之前先 `dafri.confirm({ purpose, binding, … })`,`binding` 和接下来那次调用的入参是同一份内容。`bridge.ts` 的 `ConfirmPurpose` 与主进程那张表由测试对照。
-设置页保存:先过本地检查 → 要打开的闸门各确认一次(界面上只有 `auto_execute` 与 `allow_live_trading` 两个开关,`allow_combo_live` 只能手改配置)
+设置页保存:先过本地检查 → 要打开的闸门各确认一次(`auto_execute` 与 `allow_live_trading` 两个开关)
 → 有放宽的限额确认一次(没有放宽的主进程直接回 `true`,不弹框)→ `patchSettings`。
 
 ## 测试

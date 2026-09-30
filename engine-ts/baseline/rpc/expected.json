@@ -228,7 +228,6 @@
    "policies": {
     "auto_execute": false,
     "allow_live_trading": false,
-    "allow_combo_live": false,
     "auto_outside_rth": true,
     "require_trigger_price_verification": true,
     "trigger_min_gap_bps": 5,
@@ -332,7 +331,6 @@
    "policies": {
     "auto_execute": false,
     "allow_live_trading": false,
-    "allow_combo_live": false,
     "auto_outside_rth": true,
     "require_trigger_price_verification": true,
     "trigger_min_gap_bps": 5,

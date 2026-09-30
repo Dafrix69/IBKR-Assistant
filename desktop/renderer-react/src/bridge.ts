@@ -42,7 +42,7 @@ export interface UpdateInfo {
 /** 要确认凭据的那几种用途(desktop/confirm-grants.js 的 PURPOSES)。 */
 export type ConfirmPurpose =
   | 'instruction.submit' | 'tracker.close_now' | 'tracker.add' | 'broker.select'
-  | 'gate.auto_execute' | 'gate.allow_live_trading' | 'gate.allow_combo_live' | 'limits.loosen';
+  | 'gate.auto_execute' | 'gate.allow_live_trading' | 'limits.loosen';
 
 export interface ConfirmOptions {
   /** 带 purpose 时对话框最显眼的那一行由主进程按用途写,这里给的 title 不显示 */

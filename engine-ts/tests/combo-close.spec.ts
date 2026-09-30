@@ -165,18 +165,20 @@ describe("组合平仓:从轮询到发单", () => {
     expect(out["fired"][0]!.reason).toContain("阈值 15%");
   });
 
-  it("实盘账户没开 allow_combo_live 就发不出去", async () => {
+  it("实盘账户的组合和单腿同一道闸:允许实盘下单就发得出去,不允许就拦", async () => {
     const rows = butterflyLegs([1.20, 0.90, 0.70], "主账户");
-    const a = buildEngine(rows, { allow_live_trading: true });
+    const a = buildEngine(rows, { allow_live_trading: false });
     addComboTrack(a.engine, rows, { take_profit: 0.05 }, "主账户");
     const out = await a.engine.pollTrackers(NOON);
     expect(out["fired"]).toEqual([]);
     expect(a.router.placed).toEqual([]);
-    expect(out["blocked"][0]!.blockers).toContain(tk.BLOCK_COMBO_LIVE);
+    expect(out["blocked"][0]!.blockers).toEqual([tk.BLOCK_LIVE]);
 
-    const b = buildEngine(rows, { allow_live_trading: true, allow_combo_live: true });
+    // 老配置里还写着已撤掉的 allow_combo_live: false:照样读得进去,也不再挡
+    const b = buildEngine(rows, { allow_live_trading: true, allow_combo_live: false });
     addComboTrack(b.engine, rows, { take_profit: 0.05 }, "主账户");
     expect((await b.engine.pollTrackers(NOON))["fired"]).toHaveLength(1);
+    expect(b.router.placed).toHaveLength(1);
   });
 
   it("发过一次就落闩", async () => {

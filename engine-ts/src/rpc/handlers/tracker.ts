@@ -446,7 +446,6 @@ export class TrackerHandlers extends HandlerBase {
       marketStatus,
       outsideRth: true, // 手动平仓同样全时段:盘外自动转限价
       alreadyFired: false,
-      comboLiveOk: this.settings.policies.allow_combo_live,
     });
     if (blockers.length) throw new RpcError(-32019, `不能平仓:${blockers.join("、")}`);
 

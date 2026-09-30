@@ -888,9 +888,9 @@ export const BLOCK_BREAKER = "已熔断,不再发出任何新单";
 export const BLOCK_MARKET = "当前时段不能交易";
 export const BLOCK_ALREADY = "这个追踪已经触发过一次,不重复发单";
 export const BLOCK_QTY = "持仓数量为 0,没有可平的头寸";
-export const BLOCK_COMBO_LIVE = "组合平仓单还没在实盘核对过,实盘账户需要先打开 allow_combo_live";
 
-/** 自动平仓前要过的闸门。刻意不走 validator 那一套(平仓是减少风险)。 */
+/** 自动平仓前要过的闸门。刻意不走 validator 那一套(平仓是减少风险)。
+ * 组合与单腿同一套闸门:开仓的组合单只看 allow_live_trading,平仓再多要一道授权,就成了能开不能平。 */
 export function closeBlockers(args: {
   auto: AutoClose;
   position: Position;
@@ -901,7 +901,6 @@ export function closeBlockers(args: {
   marketStatus: string;
   outsideRth?: boolean;
   alreadyFired?: boolean;
-  comboLiveOk?: boolean;
 }): string[] {
   const blocked: string[] = [];
   if (!args.auto.enabled) blocked.push(BLOCK_DISABLED);
@@ -909,12 +908,6 @@ export function closeBlockers(args: {
   if (!args.position.quantity) blocked.push(BLOCK_QTY);
   if (!args.autoExecute) blocked.push(BLOCK_AUTO_EXECUTE);
   if (!args.accountIsPaper && !args.allowLiveTrading) blocked.push(BLOCK_LIVE);
-  // 组合平仓要发 BAG 单,腿方向反转一步错就是反向建仓。纸面账户随便跑,实盘要另开
-  // 一道闸——allowLiveTrading 是"我允许这个软件碰实盘",不等于"我信任这条还没在
-  // 真机上核对过的新路径"。核对通过之前,这两件事必须分开授权。
-  if (args.position.sec_type === "BAG" && !args.accountIsPaper && !args.comboLiveOk) {
-    blocked.push(BLOCK_COMBO_LIVE);
-  }
   if (args.breakerEngaged) blocked.push(BLOCK_BREAKER);
   const tradable = new Set(["盘中"]);
   if (args.outsideRth) for (const s of EXTENDED_SESSIONS) tradable.add(s);

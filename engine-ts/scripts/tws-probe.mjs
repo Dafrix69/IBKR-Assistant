@@ -164,7 +164,7 @@ cfg.broker = { ...(cfg.broker ?? {}), provider: "ibkr", auto_connect: false };
 cfg.connections = Object.fromEntries(conns.map(([n, c], i) => [n, { ...c, client_id: clientIdBase + i }]));
 cfg.accounts = (cfg.accounts ?? []).filter((a) => connNames.includes(a.connection));
 if (cfg.accounts.length && !cfg.accounts.some((a) => a.default)) cfg.accounts[0].default = true;
-cfg.policies = { ...(cfg.policies ?? {}), auto_execute: false, allow_live_trading: false, allow_combo_live: false };
+cfg.policies = { ...(cfg.policies ?? {}), auto_execute: false, allow_live_trading: false };
 cfg.storage = { ...(cfg.storage ?? {}), db_path: path.join(workDir, "probe.db").split(path.sep).join("/") };
 const configPath = path.join(workDir, "settings.json");
 fs.writeFileSync(configPath, JSON.stringify(cfg, null, 1));

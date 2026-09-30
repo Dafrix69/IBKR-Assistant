@@ -290,8 +290,7 @@ describe("界面:文字着色用可访问变体(docs/features/ui.md)", () => {
 // 两样都是引擎内部的说法,一样也不该出现在这里(docs/features/ui.md「界面文案」)。
 describe("界面:拒绝卡片摆人话,不摆引擎枚举(docs/features/ui.md)", () => {
   // 两道执行闸门在「设置」里各有一个开关,用户读得到的只该是那个开关的名字。
-  // 不在名单里的:allow_combo_live 没有设置项、只能手改配置文件,limits.* 的校验错误说的
-  // 就是配置本身写错了哪一行——这两种情况下说出键名才是帮忙(见 docs/features/tracker.md)
+  // 不在名单里的:limits.* 的校验错误说的就是配置本身写错了哪一行——这时说出键名才是帮忙
   const CONFIG_KEYS = ["allow_live_trading", "auto_execute"];
 
   /** 引擎与券商自己报的码(模型的在 REJECTION_CODES,硬校验的在 VALIDATOR_CODES)。 */

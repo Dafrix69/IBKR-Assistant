@@ -99,7 +99,7 @@ describe("inspectConfig", () => {
 });
 
 describe("restoreBackup", () => {
-  it("恢复出来的配置引擎读得进去;坏的那份改名留着;三个闸门是关的", () => {
+  it("恢复出来的配置引擎读得进去;坏的那份改名留着;闸门是关的", () => {
     // 备份里闸门是开的(用户开过自动执行与实盘),之后又改了一次设置,然后文件坏了
     patchConfigFile(file, { policies: { auto_execute: true, allow_live_trading: true } });
     patchConfigFile(file, { limits: { max_order_notional: 4321 } }); // .bak = 闸门开着的那一份
@@ -114,7 +114,6 @@ describe("restoreBackup", () => {
     const settings = loadSettings(file);
     expect(settings.policies.auto_execute).toBe(false);
     expect(settings.policies.allow_live_trading).toBe(false);
-    expect(settings.policies.allow_combo_live).toBe(false);
     // 备份本身不动:再坏一次还能再恢复
     expect(existsSync(guard.backupPath(file))).toBe(true);
     expect(readdirSync(dir).filter((f) => f.includes(".tmp-"))).toEqual([]);

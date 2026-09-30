@@ -259,7 +259,6 @@ describe("golden: tracker", () => {
         marketStatus: c.market_status,
         outsideRth: c.outside_rth,
         alreadyFired: c.already_fired,
-        comboLiveOk: c.combo_live_ok ?? false,
       });
       expect(out, `close_blockers[${i}]`).toEqual(c.expect);
     }

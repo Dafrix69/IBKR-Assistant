@@ -23,12 +23,11 @@ const fs = require('node:fs');
 const EXIT_CONFIG = 78;
 
 /** 恢复时一律关上的执行闸门(policies 里的键)。 */
-const GATES = ['auto_execute', 'allow_live_trading', 'allow_combo_live'];
+const GATES = ['auto_execute', 'allow_live_trading'];
 
 const GATE_LABEL = {
   auto_execute: '允许自动执行',
   allow_live_trading: '允许实盘账户下单',
-  allow_combo_live: '允许实盘组合单',
 };
 
 function isObject(v) {

@@ -970,7 +970,6 @@ export class TradingEngine {
         marketStatus,
         outsideRth: true,
         alreadyFired: Boolean(track["fired_at"]),
-        comboLiveOk: this.settings.policies.allow_combo_live,
       });
       if (blockers.length) {
         // 到价了但发不出去,必须当场说。只提醒一次,不刷屏。

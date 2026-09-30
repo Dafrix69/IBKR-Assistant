@@ -129,7 +129,7 @@ cd engine-ts && npm run probe                        # 真机只读联调:临时
 | 段 | 说明 |
 |---|---|
 | `limits` | 单笔名义金额、期权张数、市价单股数、最小置信度、价差滑点、重复单窗口 |
-| `policies` | `auto_execute`、`allow_live_trading`、`allow_combo_live`、触发价复核、休市市价单策略、连续失败熔断阈值 |
+| `policies` | `auto_execute`、`allow_live_trading`、触发价复核、休市市价单策略、连续失败熔断阈值 |
 | `protections` | 保护规则:止损护栏、回撤护栏、同标的冷却、日内亏损上限。默认全关,只挡新单、永不挡平仓,到点自己解除 |
 | `risk_budget` | 单笔风险预算:按账户填权益,期权最坏亏损 / 股票名义金额占比超线时在订单上提醒,不拦单。默认关 |
 | `connections` / `accounts` | TWS 端口与 client id;账户别名 → 真实账号,`is_paper` 决定实盘闸门。账户可以在「接入 → 账户」里配;连接只能手改 |

@@ -33,6 +33,8 @@ if (!fs.existsSync(entry)) {
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'dafri-smoke-'));
 const example = JSON.parse(fs.readFileSync(path.join(DESKTOP, '..', 'config', 'settings.example.json'), 'utf8'));
 example.storage = Object.assign({}, example.storage, { db_path: path.join(tmp, 'trades.db') });
+// 示例配置开着 auto_connect:不关的话冒烟会拿 client id 12 去敲本机 7496——正开着的实盘 TWS
+example.broker = Object.assign({}, example.broker, { auto_connect: false });
 const cfg = path.join(tmp, 'settings.json');
 fs.writeFileSync(cfg, JSON.stringify(example, null, 2));
 

@@ -19,10 +19,6 @@ export interface Limits {
 export interface Policies {
   auto_execute: boolean;
   allow_live_trading: boolean;
-  /** 组合(BAG)自动平仓:纸面账户不受此开关约束,实盘账户必须显式打开。
-   * 平组合要反转每条腿再发 BAG 单,这条路还没在真机上核对过——在核对通过之前,
-   * "允许碰实盘"和"信任这条新路径"是两件事,分开授权。 */
-  allow_combo_live: boolean;
   /** 合约此刻在盘外时段能交易时,自动给订单打上 outsideRth。
    * 不打这个标志的后果是单子挂着不动——IBKR 会等到常规时段才送交易所。
    * 默认开;盘外流动性薄、点差宽,不想在那个时段成交就关掉它。 */

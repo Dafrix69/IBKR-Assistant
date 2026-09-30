@@ -42,7 +42,10 @@ export function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: strin
   const [fraction, setFraction] = useState<number | null>(null);
   // 追价平仓最多让到自然价的百分之几(期权 / 组合);空 = 引擎默认 10%
   const [chaseMax, setChaseMax] = useState<number | null>(null);
-  const [auto, setAuto] = useState(false);
+  // 全局自动执行开着就默认打开:建追踪就是为了到价能走,默认"仅提醒"的话到价只剩一条通知。
+  // 状态还没到的那一刻按关算;人拨过一次之后以人拨的为准
+  const [autoPicked, setAuto] = useState<boolean | null>(null);
+  const auto = autoPicked ?? Boolean(status?.auto_execute);
   const [orderType, setOrderType] = useState<'MKT' | 'LMT'>(isCombo ? 'LMT' : 'MKT');
   const [host, setHost] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -344,18 +347,12 @@ export function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: strin
           <div>
             组合按整组净价触发。平仓会发一张腿方向全部反转的 BAG 限价单,价按各腿当前买卖价算的立刻成交价(组合不发市价单:每条腿各吃一次价差)。托管到券商:挂一张按标的目标价算出的限价止盈单,止损类目标由软件盯,触发时把这张单改到立刻成交的价。
           </div>
-          <div>
-            {isPaper ? (
-              <>
-                <span className="tag paper">模拟账户</span> 组合追踪与到价自动平仓已完全开放,不需要任何额外开关——就在这里测。
-              </>
-            ) : (
-              <>
-                <span className="tag live">实盘账户</span> 组合平仓单还没在实盘核对过:到价会算、会提醒,但不会发单,除非在配置里打开
-                policies.allow_combo_live。建议先在模拟账户跑通。
-              </>
-            )}
-          </div>
+          {isPaper ? null : (
+            <div>
+              <span className="tag live">实盘账户</span> 和单腿一样:打开到价自动平仓、设置里允许了实盘下单,到价就发单。
+              这张腿方向反转的 BAG 平仓单还没在实盘成交过,第一次到价时在 TWS 里看一眼成交。
+            </div>
+          )}
         </div>
       ) : null}
       {/* 设了目标价却算不出价钱,就不给点:那一步下去要么被引擎拒、要么是盲签一张真单 */}

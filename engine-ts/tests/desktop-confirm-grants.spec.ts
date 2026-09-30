@@ -29,7 +29,7 @@ interface Grants {
 const g = require(path.join(DESKTOP, "confirm-grants.js")) as Grants;
 
 const CURRENT = {
-  policies: { auto_execute: false, allow_live_trading: false, allow_combo_live: false },
+  policies: { auto_execute: false, allow_live_trading: false },
   limits: { max_order_notional: 5000, max_option_contracts: 5, max_mkt_shares: 200, max_spread_slippage: 0.1, min_confidence: 0.9, duplicate_window_minutes: 10, max_orders_per_input: 5 },
 };
 

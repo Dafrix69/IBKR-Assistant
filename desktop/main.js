@@ -1187,7 +1187,6 @@ function registerIpc() {
 const GATE_TEXT = {
   'gate.auto_execute': '打开后,解析通过的订单会被直接发送到券商,没有人工确认环节。\n建议先在纸面账户跑够之后再打开。',
   'gate.allow_live_trading': '打开后,指向实盘账户的订单不再被拦截,会用真钱成交。',
-  'gate.allow_combo_live': '打开后,实盘账户上的组合(价差 / 蝴蝶)也会被软件自动平仓。这条路目前只有离线测试。',
 };
 
 /**

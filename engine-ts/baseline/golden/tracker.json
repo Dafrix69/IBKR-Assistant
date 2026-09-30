@@ -3707,12 +3707,12 @@
    "position": "long_fly",
    "account_is_paper": false,
    "auto_execute": true,
-   "allow_live_trading": true,
+   "allow_live_trading": false,
    "breaker_engaged": false,
    "market_status": "盘中",
    "outside_rth": false,
    "already_fired": false,
-   "expect": ["组合平仓单还没在实盘核对过,实盘账户需要先打开 allow_combo_live"]
+   "expect": ["实盘账户需要先在「设置」里允许实盘下单"]
   },
   {
    "auto": {"enabled": true},
@@ -3724,7 +3724,6 @@
    "market_status": "盘中",
    "outside_rth": false,
    "already_fired": false,
-   "combo_live_ok": true,
    "expect": []
   },
   {

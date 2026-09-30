@@ -28,7 +28,7 @@ const CONSENT_REQUIRED_RPC = new Set([
 ]);
 
 /** 没同意条款之前不许从关变开的闸门(settings.patch 的 policies 里)。 */
-const CONSENT_GATES = ['auto_execute', 'allow_live_trading', 'allow_combo_live'];
+const CONSENT_GATES = ['auto_execute', 'allow_live_trading'];
 
 function consentPath(userDataDir) {
   return path.join(userDataDir, 'consent.json');
