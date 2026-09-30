@@ -68,6 +68,7 @@
       "redact.js",
       "diagnostics.js",
       "support-ipc.js",
+      "power-watch.js",
       "accounts-setup.js",
       "popup/**/*",
       "renderer-react/dist/**/*",

@@ -95,7 +95,8 @@ export class SectorsHandlers extends HandlerBase {
       );
       picks = SectorPicksSchema.parse(payload); // 软件层复验:结构与 ticker 形状
     } catch (exc) {
-      throw new RpcError(-32010, `AI 选股失败:${(exc as Error).message}`);
+      // 只报原因:「AI 选股失败:」由界面加——板块不存在、入参校验、引擎没起来这些报错不经过这里,只有界面每条路都看得见
+      throw new RpcError(-32010, (exc as Error).message);
     }
 
     // 上面等了大模型几秒,而 sectors.delete 在本地道、来了就答——板块可能就在这几秒里被删了。

@@ -29,6 +29,7 @@ function emptyTicker(): TickerData {
     callVolume: null, putVolume: null, modelGreeks: null, error: null,
     open: null, high: null, low: null, volume: null, avgVolume: null, histVol: null,
     vol3m: null, vol5m: null, vol10m: null, lastTradeAt: null, delayed: false,
+    requestedAt: null, quotedAt: null,
   };
 }
 
@@ -203,9 +204,9 @@ export async function createIbApiNextSession(cfg: {
   const commissionCbs: Array<(trade: any, fill: any, report: any) => void> = [];
   const tickers = new Map<string, LiveTicker>();
 
-  // 连接级错误(1100/1101/1102 等)与订单级错误(reqId = orderId,如 200 证券定义、
-  // 110 价格跳动、201 拒单)都从 error$ 流上来。订单级的必须转给引擎落库,
-  // 否则被 TWS 当场拒掉的单会永远停在 Submitted——模拟盘实测(2026-09-03)。
+  // 订单级错误(reqId = orderId,如 200 证券定义、110 价格跳动、201 拒单)从 error$ 流上来。
+  // 订单级的必须转给引擎落库,否则被 TWS 当场拒掉的单会永远停在 Submitted——模拟盘实测(2026-09-03)。
+  // TWS 不带 id(= −1)的连接级消息(1100 / 1101 / 1102 / 2110 ……)不走这里,走 info 事件,见下面 raw.on
   const onApiError = (err: any): void => {
     const code = Number(err?.code ?? 0);
     if (!code) return;
@@ -259,6 +260,13 @@ export async function createIbApiNextSession(cfg: {
     // 实时成交与 reqExecutions 的回应走的是同一个事件,见 execForwarder
     raw.on(E.execDetails ?? "execDetails", execs.onExecDetails);
     raw.on(E.commissionReport ?? "commissionReport", execs.onCommissionReport);
+    // 连接级消息:库的解码器把 id = −1 的 ERR_MSG 发成 info 事件,不进 error$。以前只订了 error$,
+    // 1100 一次都没转出来过,router 的上游标志永远是"通"。库自己的 info 监听挂得比这里早:1100 / 2110
+    // 转到这里时它已经把 socket 断了(onLink(false) 先报),见 ibLink.ts 的 UpstreamWatch
+    raw.on(E.info ?? "info", (_message: unknown, code: unknown) => {
+      if (closing || !Number(code)) return;
+      for (const cb of connectivityCbs) cb(Number(code));
+    });
   } else {
     // 拿不到底层事件源(库版本差异)就退回集合推流;engine 侧对账循环兜底
     api.getOpenOrders?.().subscribe?.((update: any) => {
@@ -303,6 +311,9 @@ export async function createIbApiNextSession(cfg: {
       } catch {
         /* ignore */
       }
+      // 库紧接着把每条行情流按原来的 reqId 重订一遍。从这一刻起算它们多久没来盘口(heldStreams.quoteSilenceMs):
+      // 重订了却一直不来(2026-09-29 真机:只来一笔模型 IV,之后什么都没有),常驻订阅那几处过了时限会撤掉重订
+      for (const live of tickers.values()) live.data.requestedAt = Date.now();
       void api.getManagedAccounts?.().then((m: string[]) => { if (m?.length) managed = m; }, () => undefined);
       for (const cb of linkCbs) cb(true);
     } else if (state === S.Disconnected && connected) {
@@ -421,7 +432,7 @@ export async function createIbApiNextSession(cfg: {
       const key = tickerKey(contract, genericTicks);
       let live = tickers.get(key);
       if (!live) {
-        live = { data: emptyTicker(), sub: null };
+        live = { data: { ...emptyTicker(), requestedAt: Date.now() }, sub: null };
         tickers.set(key, live);
         try {
           const observable = api.getMarketData(toIbContract(contract), genericTicks, false, false);
@@ -680,6 +691,9 @@ export async function createIbApiNextSession(cfg: {
   return session;
 }
 
+/** 算"盘口还在来"的 tick:买卖价与量、成交价与量,实时与延迟两组。昨收、模型 IV、generic 的统计量都不算 */
+const QUOTE_TICKS = ["BID", "ASK", "LAST", "BID_SIZE", "ASK_SIZE", "LAST_SIZE"].flatMap((n) => [n, `DELAYED_${n}`]);
+
 /** 一次行情推送 → TickerData(原地改)。导出只为离线测试(用假的 tick 枚举表)。 */
 export function applyTicks(mod: any, data: TickerData, update: any): void {
   const ticks = update?.all ?? update;
@@ -729,6 +743,9 @@ export function applyTicks(mod: any, data: TickerData, update: any): void {
   setIf(get("OPTION_PUT_OPEN_INTEREST"), (v) => (data.putOpenInterest = v));
   setIf(get("OPTION_CALL_VOLUME"), (v) => (data.callVolume = v));
   setIf(get("OPTION_PUT_VOLUME"), (v) => (data.putVolume = v));
+  // 这一次推送里有盘口 tick 就记下时刻(TickerData.quotedAt)。看新到的那几个(库给 changed / added),不看累计的 all
+  const delta = update?.changed ?? update?.added ?? ticks;
+  if (QUOTE_TICKS.some((name) => T1[name] !== undefined && delta?.has?.(T1[name]))) data.quotedAt = Date.now();
   // 模型 greeks:IBApiNext 把 MODEL_OPTION 的各分量拆成独立 tick。实时优先、延迟兜底(pick):
   // 纸面会话按行情类型 3 订,来的是 DELAYED_MODEL_OPTION_*(10045…)——只认实时的话,模拟账户永远拿不到 IV
   const gamma = pick("MODEL_OPTION_GAMMA") ?? get("modelGamma");

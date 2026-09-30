@@ -75,6 +75,11 @@ export interface TickerData {
   lastTradeAt?: number | null;
   /** LAST 取自 DELAYED_LAST(延迟行情) */
   delayed?: boolean;
+  /** 这条流最近一次向 TWS 发出请求的本地时刻(毫秒):订阅时,以及断线重连后库把它重订时。没有 = 会话不报 */
+  requestedAt?: number | null;
+  /** 最近一笔盘口 tick(买卖价与量、成交价与量,含延迟的)到的本地时刻,断开时清空。模型 IV 不算:
+   * 2026-09-29 真机,电脑睡着后的那几段只来过模型 IV、一笔盘口都没有,IV 还一连三次一模一样 */
+  quotedAt?: number | null;
 }
 
 export interface TickerHandle {
@@ -177,7 +182,8 @@ export interface IbSession {
   positions(): Promise<PositionItemLike[]>;
   /** 当天逐笔成交(reqExecutions)。真机适配层实现;测试替身可不实现。 */
   executions?(): Promise<Array<{ contract: Record<string, any>; execution: Record<string, any> }>>;
-  /** 连接级事件(1100/1101/1102)回调。 */
+  /** 连接级事件回调:TWS 不带 id 的消息(1100 / 2110 与 IBKR 断开、1101 / 1102 恢复,数据农场的 21xx 等),
+   *  以及 error$ 上的错误码。收到什么转什么,挑哪几个码由调用方定。 */
   onConnectivity(cb: (code: number) => void): void;
   /** 本机到 TWS 的 socket 断了(false)/ 自动重连回来了(true)。首次连上不报,显式 disconnect() 也不报。
    *  测试替身可不实现。 */

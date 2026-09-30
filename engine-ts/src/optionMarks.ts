@@ -8,8 +8,12 @@
  * * **IV 会变,测算要能跟着刷。** 现订现撤一次要等首笔 tick(一两秒到四秒);界面十秒刷一次的话大半时间都在等。
  *   订上之后留着,一分钟没人读才撤;留着的时候读是即时的。最多留 MAX_STREAMS 条,行情线路是有配额的(约 100 条)。
  *
+ * * **重连过、被拒过、连着却太久没盘口的流不会自己活过来。** 读之前摘掉重订;"太久"按此刻的时段由调用方给
+ *   (heldStreams.silenceLimitMs),这一层不认识交易时段。
+ *
  * 这一层只认合约与行情:拿不到的给 null,不编;要不要退到手动 IV 是上一层的事。
  */
+import { quoteSilenceMs } from "./heldStreams.js";
 import { describeContract, optionContract } from "./ibContracts.js";
 import type { IbContract, IbSession, TickerHandle } from "./ibTypes.js";
 
@@ -59,9 +63,10 @@ export class OptionMarkStreams {
   private sweeper: ReturnType<typeof setInterval> | null = null;
   private tail: Promise<unknown> = Promise.resolve();
 
-  /** 同一时刻只跑一次:两次读交错的话,一边在等的流可能被另一边的清理撤掉 */
-  read(session: IbSession, legs: OptionLegSpec[], delayedOk: boolean): Promise<OptionMark[]> {
-    const run = this.tail.then(() => this.readNow(session, legs, delayedOk));
+  /** 同一时刻只跑一次:两次读交错的话,一边在等的流可能被另一边的清理撤掉。
+   * @param silentLimitMs 连着却这么久没来一笔盘口的流当它死了、重订(0 = 不判) */
+  read(session: IbSession, legs: OptionLegSpec[], delayedOk: boolean, silentLimitMs = 0): Promise<OptionMark[]> {
+    const run = this.tail.then(() => this.readNow(session, legs, delayedOk, silentLimitMs));
     this.tail = run.catch(() => undefined);
     return run;
   }
@@ -141,16 +146,19 @@ export class OptionMarkStreams {
     }
   }
 
-  private async readNow(session: IbSession, legs: OptionLegSpec[], delayedOk: boolean): Promise<OptionMark[]> {
+  private async readNow(session: IbSession, legs: OptionLegSpec[], delayedOk: boolean, silentLimitMs: number): Promise<OptionMark[]> {
     const keys = legs.map((leg) => this.key(leg));
     this.sweep(Date.now(), new Set(keys));
     const contracts = legs.map((leg) =>
       optionContract(leg.symbol, leg.expiry, leg.strike, leg.right, leg.exchange, "USD", "100", leg.tradingClass));
 
-    // 换了会话(重连过)、或者被拒过的流不会自己活过来:摘掉重订
+    // 换了会话、被拒过、或者连着却太久没盘口(同一个会话断线重连后库重订了、TWS 却不给)的:摘掉重订
+    const now = Date.now(), limit = session.isConnected() ? silentLimitMs : 0;
     keys.forEach((key) => {
       const s = this.streams.get(key);
-      if (s && (s.session !== session || s.handle.read().error)) this.drop(key);
+      if (!s) return;
+      const t = s.handle.read(), silence = limit > 0 ? quoteSilenceMs(t, now) : null;
+      if (s.session !== session || t.error || (silence !== null && silence >= limit)) this.drop(key);
     });
     const fresh = keys.filter((key) => !this.streams.has(key));
     if (fresh.length) {

@@ -137,15 +137,17 @@ export function TrackerPage() {
 function LoopPulse({ loop }: { loop: import('../store/tracker').LoopHeartbeat | null }) {
   if (!loop) return <div className="hint">盯盘节拍器:等第一轮结果…</div>;
   const stale = loop.age_ms !== null && loop.age_ms > 3_000;
-  const bad = !loop.running || stale || Boolean(loop.last_error);
+  const bad = !loop.running || stale || Boolean(loop.last_error) || Boolean(loop.hold);
   const text = !loop.running
     ? '盯盘节拍器没在跑:追踪止盈与托管调价都停了'
     : loop.last_error
       ? `盯盘这一轮没做成:${loop.last_error}`
       : stale
         ? `盯盘节拍器已经 ${Math.round((loop.age_ms || 0) / 1000)} 秒没跳了`
-        : `盯盘:引擎每 ${Math.round(loop.interval_ms / 100) / 10} 秒一轮 · 上一轮 ${loop.last_ms ?? '—'} ms` +
-          (loop.slow_ticks ? ` · 慢过 ${loop.slow_ticks} 轮(最长 ${loop.max_ms} ms)` : '');
+        : loop.hold
+          ? loop.hold
+          : `盯盘:引擎每 ${Math.round(loop.interval_ms / 100) / 10} 秒一轮 · 上一轮 ${loop.last_ms ?? '—'} ms` +
+            (loop.slow_ticks ? ` · 慢过 ${loop.slow_ticks} 轮(最长 ${loop.max_ms} ms)` : '');
   return <div className={bad ? 'hint warn-text' : 'hint'} id="tracker-loop-pulse">{text}</div>;
 }
 

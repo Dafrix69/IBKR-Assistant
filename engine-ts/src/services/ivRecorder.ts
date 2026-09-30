@@ -16,6 +16,7 @@ import * as path from "node:path";
 
 import { etNowFromEpoch, nowEt } from "../config.js";
 import type { IvRecorderStatus } from "../contract/options.js";
+import { silenceLimitMs } from "../heldStreams.js";
 import type { IbSession } from "../ibTypes.js";
 import { IvSampleStore } from "../ivSamples.js";
 import type { IvSample } from "../ivSamples.js";
@@ -142,6 +143,7 @@ export class IvRecorderService extends ServiceBase {
         session,
         legs.map((leg) => ({ symbol, expiry, strike: leg.strike, right: leg.right, exchange: "SMART", tradingClass: cfg.daily_trading_class })),
         delayedOk,
+        silenceLimitMs("盘中"), // 只在常规时段记;五分钟一笔、流闲一分钟就撤,多半是新订的,这条只防测算那边一直热着的
       );
       const sample: IvSample = {
         t: nowMs, symbol, expiry, trading_class: cfg.daily_trading_class, spot,
@@ -150,9 +152,12 @@ export class IvRecorderService extends ServiceBase {
       };
       // 到了该记的时候就算记过一轮:行情一条都没来也不紧接着重试,免得每三十秒订一遍
       this.lastLoopAt = nowMs;
-      if (!sample.legs.some((leg) => leg.iv !== null || leg.ask !== null)) {
+      // 一条盘口都没有就不记,哪怕有模型 IV:2026-09-29 电脑合盖睡着,之后只在几秒钟的维护唤醒里跑,那几笔只有模型 IV、
+      // 一连三笔一模一样——不是行情,进了校准就是假数据(docs/journal/stale-streams-after-sleep.md)
+      if (!sample.legs.some((leg) => leg.ask !== null)) {
         const why = got.find((m) => m.error)?.error;
-        return this.idle(why ? `行情订阅被拒:${why}` : "这一轮一条行情都没来");
+        const onlyModel = sample.legs.some((leg) => leg.iv !== null);
+        return this.idle(why ? `行情订阅被拒:${why}` : onlyModel ? "这一轮只有模型 IV、没有盘口,不记" : "这一轮一条行情都没来");
       }
       this.write(sample);
       this.lastError = "";

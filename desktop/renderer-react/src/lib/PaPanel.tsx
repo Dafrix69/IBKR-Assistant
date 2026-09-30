@@ -6,7 +6,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Descriptions, Input, Select, Space } from 'antd';
-import { dafri, errorMessage } from '../bridge';
+import { dafri, errorMessage, errorWithPrefix } from '../bridge';
 import type { PaAnalyzeResult, PaComment, PaEvent, PaEvidence, PaLevel, PaPattern, PaSwing } from '../bridge';
 import { CanvasChart } from './Chart';
 import { paSpec } from './chart/paSpec';
@@ -162,7 +162,7 @@ export function PaPanel({ books, pick }: { books: Books; pick: { symbol: string;
       setData(result.analysis);
       setComment({ ...result.comment, model: result.model });
     } catch (err) {
-      showBanner(`AI 解读失败:${errorMessage(err)}`, false);
+      showBanner(errorWithPrefix('AI 解读失败:', err), false);
     } finally {
       setCommenting(false);
     }

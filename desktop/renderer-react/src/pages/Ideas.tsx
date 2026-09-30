@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Button, Card, Checkbox, Input, Segmented, Space } from 'antd';
-import { dafri, errorMessage } from '../bridge';
+import { dafri, errorMessage, errorWithPrefix } from '../bridge';
 import type {
   Idea, IdeaAnalysis, IdeaBriefMetric, IdeaDigest, IdeaDigestRow, IdeaMatch,
 } from '../bridge';
@@ -120,7 +120,7 @@ export function IdeasPage() {
       await dafri.digestIdeas('all', query ? { q: query } : undefined, withTrades);
       await loadDigests();
     } catch (err) {
-      showBanner(`知识总结失败:${errorMessage(err)}`, false);
+      showBanner(errorWithPrefix('知识总结失败:', err), false);
     } finally {
       setDigesting(false);
     }
@@ -232,7 +232,7 @@ function IdeaCard({
       await dafri.analyzeIdea(idea.id);
       await onChanged();
     } catch (err) {
-      showBanner(`AI 分析失败:${errorMessage(err)}`, false);
+      showBanner(errorWithPrefix('AI 分析失败:', err), false);
     } finally {
       setAnalyzing(false);
     }

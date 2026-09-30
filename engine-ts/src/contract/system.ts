@@ -76,6 +76,10 @@ export interface TrackerHeartbeat {
    *  它高、而 last_ms 不高,说明节拍器没慢,是进程里别的事卡住了它。 */
   event_loop_last_ms: number | null;
   event_loop_worst_ms: number | null;
+  /** 电脑刚醒、这一轮不判断的原因:醒来头几秒的报价可能还是睡前的。在照常判断时是空串,**不是 null** */
+  hold: string;
+  /** 此刻在盯的追踪条数(启用着、还没触发的,加上正在追价平仓的)。主进程拿它决定用电池时要不要提醒 */
+  live_tracks: number;
 }
 
 /** 某个指数最近一次现价是怎么来的:官方实时 / 夜盘期货推算 / 推算失败退回的昨收(带原因)。 */

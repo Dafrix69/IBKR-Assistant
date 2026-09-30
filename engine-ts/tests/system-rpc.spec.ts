@@ -139,7 +139,7 @@ describe("system.status", () => {
     expect(out["index_spot"]["SPX"]["price"]).toBe(5600.25);
   });
 
-  it("tracker_loop:十项齐全(没在跑 / 太久没跳 / 上一轮报错都要当场看得见)", async () => {
+  it("tracker_loop:十二项齐全(没在跑 / 太久没跳 / 上一轮报错 / 醒后在等都要当场看得见)", async () => {
     const { s, call } = makeServer();
     // 写成 `engineBuilt ? … : null` 是防御性的,实际上问不到 null:同一个方法体在前面读过
     // this.engine(拿熔断状态),引擎那时就已经建起来了。类型上仍按可空登记。
@@ -147,9 +147,11 @@ describe("system.status", () => {
     const hb = (await call("system.status"))["result"]["tracker_loop"];
     expect(hb).not.toBeNull();
     expect(Object.keys(hb).sort()).toEqual([
-      "age_ms", "event_loop_last_ms", "event_loop_worst_ms", "interval_ms", "last_error", "last_ms", "max_ms",
-      "running", "slow_ticks", "ticks",
+      "age_ms", "event_loop_last_ms", "event_loop_worst_ms", "hold", "interval_ms", "last_error", "last_ms",
+      "live_tracks", "max_ms", "running", "slow_ticks", "ticks",
     ]);
+    expect(hb["hold"]).toBe("");
+    expect(hb["live_tracks"]).toBe(0);
     expect(typeof hb["running"]).toBe("boolean");
     expect(typeof hb["ticks"]).toBe("number");
   });

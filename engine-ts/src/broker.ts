@@ -9,7 +9,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import { nowEt } from "./config.js";
+import { hoursStatus, nowEt } from "./config.js";
 import type { AccountConfig, EtNow, IndexConfig, Settings } from "./config.js";
 import type { ContractSpec, OrderSpec, TriggerSpec } from "./models.js";
 import type { HostedOrderPlan } from "./positions.js";
@@ -31,8 +31,8 @@ import type {
   IbContract, IbSession, IbSessionFactory, OptChainParam, OrderIntent, PortfolioItemLike, PositionItemLike,
   RawBar, TickerData, TickerHandle,
 } from "./ibTypes.js";
-import { coveredAccounts, liveSessions, logStderr, redactForLog } from "./ibLink.js";
-import { HeldStreams } from "./heldStreams.js";
+import { UpstreamWatch, coveredAccounts, liveSessions, logStderr, redactForLog } from "./ibLink.js";
+import { HeldStreams, silenceLimitMs } from "./heldStreams.js";
 export { logStderr, redactForLog } from "./ibLink.js";
 
 // IB 适配层的接口住在 ibTypes.ts;这里转出,老的 import 路径不变。
@@ -394,7 +394,7 @@ export class BrokerRouter {
   /** 某条连接断了(false)/ 自动重连回来了(true)。服务层据此提醒用户、留痕。 */
   linkHook: ((connection: string, up: boolean) => void) | null = null;
   private readonly streams = new Map<string, TickerHandle | null>();
-  private upstreamOkFlag = true;
+  private readonly upstream = new UpstreamWatch();
 
   constructor(settings: Settings, factory?: IbSessionFactory) {
     this.settings = settings;
@@ -425,13 +425,8 @@ export class BrokerRouter {
         "请确认 TWS/IB Gateway 已启动且开启了本机 API。",
       );
     }
-    this.upstreamOkFlag = true;
-    session.onConnectivity((code) => {
-      // 只盯 TWS↔IBKR 那一段的通断(1100 断 / 1101、1102 恢复)
-      if (code === 1100) this.upstreamOkFlag = false;
-      else if (code === 1101 || code === 1102) this.upstreamOkFlag = true;
-    });
-    session.onLink?.((up) => this.linkHook?.(connectionName, up));
+    // TWS↔IBKR 那一段的通断按连接记(见 UpstreamWatch);本机 socket 的通断交给服务层提醒、留痕
+    this.upstream.watch(connectionName, session, (up) => this.linkHook?.(connectionName, up));
     this.connectionsMap.set(connectionName, session);
     // 只服务纸面账户的会话,行情类型基线定成 3(有实时权限照样是实时,没有才给延迟)。
     // 行情类型是会话级的全局开关,各处取完价都"切回 1";而纸面会话在实盘 TWS 同时登录时按类型 1
@@ -482,16 +477,17 @@ export class BrokerRouter {
   }
 
   get upstreamOk(): boolean {
-    return this.upstreamOkFlag;
+    return this.upstream.lost === null;
   }
 
   async disconnectAll(): Promise<void> {
     await this.cancelStreams();
     for (const session of this.connectionsMap.values()) {
-      if (session.isConnected()) await session.disconnect();
+      await session.disconnect(); // 断着的也要停:库在后台每 5 秒重连,不停它会连回一个没人管、占着 client id 的会话
     }
     this.connectionsMap.clear();
     this.accountRoute.clear();
+    this.upstream.clear();
   }
 
   // 期权腿的常驻订阅:key → 合约(撤订阅要按它自己的合约撤)
@@ -664,6 +660,23 @@ export class BrokerRouter {
     }
   }
 
+  /** 确认得了回 true;认不出(BrokerError)回 false,别的错照抛。常驻行情流用(heldStreams.ensure) */
+  private async qualifies(session: IbSession, contract: IbContract): Promise<boolean> {
+    try {
+      await this.qualifyOrRaise(session, contract);
+      return true;
+    } catch (exc) {
+      if (exc instanceof BrokerError) return false;
+      throw exc;
+    }
+  }
+
+  /** 这张期权此刻的时段:合约自己的(缓存里有才用,见 cachedContractHours),没有退回正股表 */
+  private streamStatus(symbol: string, expiry: string): string {
+    const now = nowEt(), hours = this.cachedContractHours(symbol, expiry);
+    return (hours && hoursStatus(hours[0], hours[2], now.epochMs, hours[1])) || this.settings.marketStatus(now);
+  }
+
   /** 合约确认必须有硬超时:TWS 上游断开时 socket 还活着,请求会永远等不到回应。 */
   async qualifyOrRaise(session: IbSession, contract: IbContract): Promise<void> {
     const key = this.conIdKey(contract);
@@ -688,11 +701,11 @@ export class BrokerRouter {
   }
 
   private stalledMessage(): string {
-    if (!this.upstreamOkFlag) {
+    const lost = this.upstream.lost;
+    if (lost !== null) {
       return (
-        "TWS 与 IBKR 服务器的连接已中断(错误 1100)。本机到 TWS 的连接还在," +
-        "所以请求发得出去、但永远等不到回应。等 TWS 自己重连(它会一直重试)," +
-        "或检查网络后在「TWS 连接」面板重连引擎。"
+        `TWS 与 IBKR 服务器的连接已中断(错误 ${lost}),请求到不了 IBKR。TWS 会自己一直重试,` +
+        "本机也会跟着重连 TWS,连回来就恢复;一直不恢复就检查网络,或在「TWS 连接」面板重连引擎。"
       );
     }
     return (
@@ -1919,27 +1932,16 @@ export class BrokerRouter {
     if (paper) session.reqMarketDataType(3);
     try {
       for (const row of legs) {
-        const key = `opt:${row["key"]}`;
-        // 被拒过的流不会自己活过来:摘掉重订(认不出的合约 handle 为 null,照旧不重试)
-        if (this.optionStreams.usable(session, key)) continue;
+        // 被拒过、或者连着却太久没盘口的流不会自己活过来:摘掉重订(heldStreams.ts;认不出的合约照旧不重试)
         const spec = (row["contract"] ?? {}) as Record<string, any>;
-        const target = optionContract(
+        const target = (): IbContract => optionContract(
           String(row["symbol"]), String(spec["lastTradeDateOrContractMonth"] ?? ""),
           Number(spec["strike"] ?? 0) || 0, String(spec["right"] ?? ""),
           String(spec["exchange"] || "SMART"), "USD", String(spec["multiplier"] || "100"),
           spec["tradingClass"] ?? null,
         );
-        try {
-          await this.qualifyOrRaise(session, target);
-        } catch (exc) {
-          if (exc instanceof BrokerError) {
-            this.optionStreams.set(key, { handle: null, contract: null }); // 认不出的合约不反复重试
-            continue;
-          }
-          throw exc;
-        }
-        this.optionStreams.subscribe(session, key, target);
-        fresh = true;
+        const limit = silenceLimitMs(this.streamStatus(String(row["symbol"]), String(spec["lastTradeDateOrContractMonth"] ?? "")));
+        if (await this.optionStreams.ensure(session, `opt:${row["key"]}`, target, (c) => this.qualifies(session, c), limit)) fresh = true;
       }
       // 首次订阅要等第一笔 tick 落地;之后每轮只是从常驻订阅的缓存里读,泵一下事件循环
       // 就够。追踪轮询按秒跑,这里每多等 100ms 就是 10% 的占用,而 RPC 是单线程的。
@@ -1972,21 +1974,10 @@ export class BrokerRouter {
           .every((r) => this.settings.accountByAlias(String(r["account"]))?.is_paper ?? false);
         if (paper) session.reqMarketDataType(3);
         try {
+          // 被拒过、或者连着却太久没盘口的流:摘掉重订(只撤不带 generic 的这条,别误伤异动监控的量能流)
+          const limit = silenceLimitMs(this.settings.marketStatus(nowEt()));
           for (const symbol of need) {
-            // 被拒过的流不会自己活过来:摘掉重订(只撤不带 generic 的这条,别误伤异动监控的量能流)
-            if (this.stockStreams.usable(session, symbol)) continue;
-            const target = stockContract(symbol);
-            try {
-              await this.qualifyOrRaise(session, target);
-            } catch (exc) {
-              if (exc instanceof BrokerError) {
-                this.stockStreams.set(symbol, { handle: null, contract: null }); // 认不出的不反复重试
-                continue;
-              }
-              throw exc;
-            }
-            this.stockStreams.subscribe(session, symbol, target);
-            fresh = true;
+            if (await this.stockStreams.ensure(session, symbol, () => stockContract(symbol), (c) => this.qualifies(session, c), limit)) fresh = true;
           }
           await session.settle(fresh ? 1500 : 50);
         } finally {

@@ -5,7 +5,7 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from 'antd';
-import { dafri, errorMessage } from '../bridge';
+import { dafri, errorMessage, errorWithPrefix } from '../bridge';
 import type { DiagnoseResult, TwsScanResult } from '../bridge';
 import { AppsCards, ConnectRow, Diagnosis, Guide, PortsGrid, type App } from './connectBits';
 import { showBanner } from '../store/banner';
@@ -60,7 +60,7 @@ export function TwsPanel() {
       pushNotification(`已启动 ${app.name}`, '请在它自己的窗口里登录');
       setTimeout(() => void doScan(), 4000);
     } catch (err) {
-      showBanner(`启动失败:${errorMessage(err)}`, false);
+      showBanner(errorWithPrefix('启动失败:', err), false);
     }
   }
 

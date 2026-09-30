@@ -287,7 +287,31 @@ orderRef 是 `trk:<追踪>:<单型>`。软件关掉也生效,停在最后一次�
 - **一把锁串起所有改追踪的动作**:节拍、建 / 改 / 删追踪、立即平仓、熔断走同一条链(`withTrackerLock`,跨引擎实例共用)。
 - **界面只读结果。** `tracker.poll` / `tracker.reconcile` 在本地道,直接返回最近一轮的结果与心跳;触发或被拦时引擎主动推 `tracker` 事件。
 - **心跳**:`system.status` 的 `tracker_loop` 给出轮数、慢轮数(> 1.5 秒)、最近 / 最慢一轮用时、距上一轮多久、最近一次错误,
-  以及事件循环被占住的时长(`monitorEventLoopDelay`),节拍慢了先分清是这一轮慢还是进程被别的同步代码占住。
+  以及事件循环被占住的时长(`monitorEventLoopDelay`),节拍慢了先分清是这一轮慢还是进程被别的同步代码占住;
+  还有 `hold`(醒后这一轮不判断的原因,照常判断时是空串)与 `live_tracks`(此刻在盯的追踪条数,主进程用它决定用电池时提醒不提醒)。
+
+### 停摆与睡醒(`engine/wakeGuard.ts`)
+
+合盖睡着时进程被冻住,节拍器的计时器也不走,醒来只是接着排下一轮;只有墙钟看得出中间过了多久。每一轮开始时把墙钟、单调时钟、
+此刻连着的连接名、在盯的追踪交给 `WakeGuard`,规则如下:
+
+| 规则 | 口径 | 理由 |
+|---|---|---|
+| 停摆 | 相邻两轮开始的墙钟差 > 30 秒 | 正常 1 秒;一轮卡在券商那头二十几秒的见过,不算 |
+| 睡着还是卡住 | 墙钟差减单调时钟差占一半以上算睡着,否则算卡住 | macOS 的单调时钟在睡眠里不走 |
+| 睡醒先不判断 | 券商连接(连着的连接名不变、不为空)连续稳住 20 秒才恢复;连接一变重新计时;最长 2 分钟 | 醒来那一秒 TWS 给新订阅的可能是睡前的缓存盘口,紧接着断线重连;峰值落库,一轮旧价或新旧腿拼出的净价就能把峰值抬上去,之后拿真价一比就是一次假回撤 |
+| 卡住的不等 | 只有睡着的才等 | 卡住的那段时间行情一直在走,等只会更晚 |
+| 一整段 | 连着跑满 60 秒没再停才算醒稳;之间的停摆并成一段 | 睡着以后系统每十几分钟维护唤醒一次、每次 2–21 秒,每一次都是一次停摆 |
+| 报一次 | 一段结束时写一行日志、一条审计 `monitor_gap`;有在盯的追踪、整段超过 1 分钟才弹通知 | 维护唤醒不刷屏;没追踪的停摆只留痕 |
+
+- 在盯的追踪:启用着、还没触发的,加上平仓单正在追价的。托管的另数,通知里说"券商那边的单照常有效"。
+- 等的那几轮持仓照读(持仓腿与正股的常驻行情流跟着续订、到时限照样重订),不判触发、不推峰值、不追价、不改托管单;
+  每一行是 `state: holding` 加原因,不带价与评估结果(这几轮的价不可信,不摆出来)。执行对账照做,它不看报价。
+- 日志三种:`[盯盘] 节拍停了 …`(每次停摆)、`[盯盘] 醒后等了 N 秒 … 恢复判断`、`[盯盘] 这一段停摆结束 …`。
+- 节拍器被有意停掉(引擎重建、断开券商)再起来不算停摆;引擎重建时 `WakeGuard` 交给新实例(`RpcServer.inheritLedgers`),
+  醒后正在等的、一段还没报完的接着算。
+- 分不出来的:墙钟被人往前拨一大截(看起来就是睡着了,多等 20 秒、多一条通知);单调时钟在睡眠里照走的系统(不确定 Windows 是不是),
+  睡着会被当成卡住,只报不等。用电池时的提前提醒在主进程,见 [TWS 连接](tws-connection.md)。
 
 ## 盈亏以券商报的为准
 
@@ -309,6 +333,26 @@ IBKR 用 portfolio 推送里的盈亏,富途用 `position_list_query` 的 `pl_va
 首次订阅等首笔报价最多 1.5 秒;那一轮没等到,这条腿没有价,按「拿不到现价,本轮不判断」处理。
 期权的缓存键带交易类(SPX 与 SPXW 同到期同行权价各是各的流);持仓的键(`makeKey`)不带交易类,同时持有这两张时会合成一行,
 见 [journal/shared-ticker-stream.md](../journal/shared-ticker-stream.md)。
+
+**连着却不来盘口的流。** 断线重连后底层库按原 reqId 把行情流重订一遍,但 TWS 不一定真的再给(真机上见过只来一笔模型 IV、
+一笔盘口都没有);流自己没了动静也一样。这种流不报 `error`:断过线的读到空盘口,没断过线的读到冻住的最后一个价。
+
+- 会话层给每条流记两个时刻:最近一次请求(订阅、重连后库重订)与最近一笔盘口 tick(买卖价与量、成交价与量,含延迟的)。
+  模型 IV、昨收不算盘口。
+- `ensureOptionStreams` / `fillPositionPrices` 每一轮先过 `HeldStreams.usable`:连接还在、却超过时限一笔盘口都没来,
+  只撤自己那一条(不带 generic)重订,新的请求换一个新的 reqId。断着的时候不判,等库连回来自己重订。
+- 时限按此刻的时段(`heldStreams.silenceLimitMs`):盘中 30 秒,盘外 / 盘前 / 盘后 2 分钟,休市不判。期权用合约自己的时段
+  (`cachedContractHours`,缓存里有才用),否则正股表。盘中 0DTE 期权与持仓正股每秒都在跳,半分钟没动静是流断了、不是清淡;
+  判错的代价是一次撤订加重订,TWS 对新请求当场回一份现价。
+- 重订的那一轮等首笔报价最多 1.5 秒;没等到就是「拿不到现价,本轮不判断」,过了时限再重订。
+- 一段没盘口只在头一次写一行日志(`[ibkr] 行情流 … 撤掉重订`),盘口回来再写一行(`重订 N 次后盘口回来了`)。
+- 同一条流挂在两个键上(两个账户持有同一条腿):一边重订好了,另一边直接接上那一条,不撤。撤了的话两边每一轮互相撤掉对方刚订的,
+  谁都读不到价;流被别处撤掉之后也是这样处理。
+
+**电脑睡着时盯盘不跑。** 用电池时合上笔记本盖子,macOS 直接睡眠,应用挡不住(见 [TWS 连接](tws-connection.md)「软件管不了的」)。
+睡着以后引擎只在系统几秒钟的维护唤醒里跑一下,那时拿不到盘口;醒来那一刻 TWS 给新订阅的可能还是睡前的旧盘口。
+所以睡醒之后先等连接稳住再判断,醒稳了报一次睡了多久、哪些追踪没人盯,见上面「停摆与睡醒」与
+[journal/stale-streams-after-sleep.md](../journal/stale-streams-after-sleep.md)。
 
 **平掉的持仓让出行情线路。** 持仓腿的常驻订阅一条占一条行情线路(IBKR 大约 100 条)。账本在 `heldStreams.ts`;
 `BrokerRouter.positions()` 每次读到持仓之后,把持仓里已经没有的腿与正股撤掉,规则偏向多占一条:
@@ -365,6 +409,7 @@ IBKR 用 portfolio 推送里的盈亏,富途用 `position_list_query` 的 `pl_va
 
 - 追踪列表读不到时留着上一份,顶上说明"追踪列表没读到,下面是上一次读到的"。
 - 连续 3 轮读不到盯盘结果就清掉心跳,改为提示"读不到盯盘结果…下面的价格与状态停在最后一次读到的时候"。
+- 醒后在等的那几轮,心跳那一行与每张追踪卡片写心跳里的 `hold`(「电脑刚醒,先不判断…」),用警示色。
 - 顶栏在引擎不答话时,券商那一格显示「状态未知」。
 - 界面醒目地写明:盯盘在本机进行,软件关掉就不再盯。
 
@@ -377,9 +422,11 @@ IBKR 用 portfolio 推送里的盈亏,富途用 `position_list_query` 的 `pl_va
 | `engine-ts/src/flyexit.ts` | 蝶式档位与金额起算、方差分布、定价 |
 | `engine-ts/src/ivPricing.ts` | IBKR 模型 IV 换算、到期时刻 |
 | `engine-ts/src/engine.ts` | 盯盘(`pollTrackers`)、自动平仓发单、追价平仓 |
+| `engine-ts/src/engine/wakeGuard.ts` | 停摆与睡醒:认停摆、醒后等连接稳住、一整段报一次 |
+| `engine-ts/src/engine/heartbeat.ts` | 心跳摘要、每轮计时与事件循环延迟(`LoopMeter`) |
 | `engine-ts/src/engine/hosted.ts` | 托管对账(`syncHosted`)、触发处理(`onTriggered`)、认领 |
 | `engine-ts/src/engine/closing.ts` | 识别手敲的平仓单 |
-| `engine-ts/src/heldStreams.ts` | 持仓行情线路的账本 |
+| `engine-ts/src/heldStreams.ts` | 持仓行情线路的账本:能不能用(被拒、被撤、连着却太久没盘口)、平掉的撤掉 |
 | `engine-ts/src/combos.ts` | 期权腿合成组合行 |
 | `engine-ts/src/rpc/handlers/tracker.ts`、`contract/tracker.ts` | RPC 与契约 |
 | `desktop/renderer-react/src/pages/Tracker.tsx`、`lib/TrackCard.tsx`、`lib/TrackForm.tsx`、`store/tracker.ts` | 界面 |
@@ -387,11 +434,13 @@ IBKR 用 portfolio 推送里的盈亏,富途用 `position_list_query` 的 `pl_va
 测试:`combo-close.spec.ts`(组合从盯盘到发单的整条链)、`tracker-rpc.spec.ts`(界面载荷)、`tracker-drawdown.spec.ts`、`drawdown-arm.spec.ts`、
 `spot-target.spec.ts`、`sweep.spec.ts`、`tracker-allday.spec.ts`(04:00–20:00 每 20 秒一轮的全天演练,含断线、某只股没报价、引擎中途重建,
 期望值由测试里独立写的参考模型给出)、`hosted.spec.ts` 与 `fix-engine-hosted.spec.ts`(托管单)、`fix-shared-ticker-stream.spec.ts`、
-`fix-closed-position-streams.spec.ts`、`golden-core.spec.ts`(追踪的黄金基线)以及各 `fix-tracker-*.spec.ts`。
+`fix-closed-position-streams.spec.ts`、`fix-stale-streams.spec.ts`(重连后不来盘口的流按时限重订,第一段用真的 IBApiNext)、
+`wake-guard.spec.ts`(停摆与睡醒:原样回放 09-29 下午的合盖与维护唤醒;接进引擎后醒来那一笔旧价不推峰值、不触发)、
+`golden-core.spec.ts`(追踪的黄金基线)以及各 `fix-tracker-*.spec.ts`。
 
 ## 真机核对
 
 IBKR 纸面账户上,带真实持仓的托管路径已经跑通:试算、托管 BAG 挂单(净价符号、腿方向、GTC、OCA、orderRef)、秒级原地改价、
 应用关掉后单子留在券商、重启认领、止盈单成交后标记已触发、另一只持仓不受牵连。
-只有离线测试的:追价平仓、没托管的组合自动平仓真正发单(所以实盘要单独打开 `allow_combo_live`)、`ibkr` 档的 IV 换算
+只有离线测试的:追价平仓、连着却不来盘口的行情流按时限重订、睡醒的认定与醒后等待(合盖一次、看日志三行与通知)、没托管的组合自动平仓真正发单(所以实盘要单独打开 `allow_combo_live`)、`ibkr` 档的 IV 换算
 (`npm run probe -- --steps ivcheck`)、富途。第一次用在实盘之前,先在模拟账户上确认平仓方向和数量。

@@ -36,6 +36,8 @@ const revealed: string[] = [];
 let savePath: string | null = null;
 let quits = 0;
 let clipboardText = "";
+const powerEvents = new Map<string, () => void>();
+let onBattery = false;
 
 const webContents = {
   on: () => undefined,
@@ -102,6 +104,10 @@ const fakeElectron = {
   session: { defaultSession: { webRequest: { onHeadersReceived: () => undefined }, setPermissionRequestHandler: () => undefined } },
   nativeTheme: { on: () => undefined, shouldUseDarkColors: false, themeSource: "system" },
   powerSaveBlocker: { start: () => 1 },
+  powerMonitor: {
+    on: (name: string, fn: () => void) => { powerEvents.set(name, fn); },
+    isOnBatteryPower: () => onBattery,
+  },
   screen: { getAllDisplays: () => [] },
   net: { fetch: async () => { throw new Error("测试里不联网"); } },
   clipboard: { writeText: (t: string) => { clipboardText = t; }, writeImage: () => undefined },
@@ -200,6 +206,25 @@ describe.runIf(ready)("主进程:接线", () => {
     }
     // 子 frame 也不行
     await expect(Promise.resolve().then(() => handlers.get("rpc")!({ ...event, senderFrame: { parent: {} } }, { method: "system.status", params: {} }))).rejects.toThrow(/不受信任/);
+  });
+
+  it("电源:睡下、醒来、换电源各记一行日志;没有追踪在盯时拔电源不提醒", () => {
+    for (const name of ["suspend", "resume", "on-battery", "on-ac"]) expect(powerEvents.has(name), name).toBe(true);
+    logged.length = 0;
+    const notices = sent.length;
+    onBattery = true;
+    powerEvents.get("on-battery")!();
+    powerEvents.get("suspend")!();
+    powerEvents.get("resume")!();
+    onBattery = false;
+    powerEvents.get("on-ac")!();
+    const text = logged.join("\n");
+    expect(text).toContain("[power] 改用电池");
+    expect(text).toContain("[power] 系统睡眠,用电池;在盯的追踪 0 条");
+    expect(text).toMatch(/\[power\] 系统醒来,睡了 \d+ 秒/);
+    expect(text).toContain("[power] 接上了电源");
+    // 没连券商、没有追踪:用电池也没什么可提醒的(提醒的规矩在 desktop-power-watch.spec)
+    expect(sent.slice(notices).filter((m) => m.payload?.["data"]?.["subtitle"] === "power")).toEqual([]);
   });
 
   it("引擎起来了,用的是临时目录里的配置与库", async () => {

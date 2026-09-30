@@ -280,6 +280,20 @@ describe("进池子的默认:两个开关都开", () => {
     expect(watched(s)).toContain("DDD");
     expect(anomalied(s)).toContain("DDD");
   });
+
+  it("sectors.pick:模型报错、回的不合格——-32010 只报原因(「AI 选股失败:」归界面加,两头都加横幅上就说两遍),一个开关都不开", async () => {
+    const { s } = makeServer();
+    const sector = (await call(s, "sectors.add", { name: "AI 算力" }))["result"]["sector"];
+    s.parserFactory = () => ({ completeJson: async () => { throw new Error("429 限流"); } }) as any;
+    expect((await call(s, "sectors.pick", { id: sector["id"] }))["error"]).toEqual({ code: -32010, message: "429 限流" });
+
+    s.parserFactory = () => ({ completeJson: async () => ({ stocks: [{ symbol: "不是代码" }] }) }) as any;
+    const bad = (await call(s, "sectors.pick", { id: sector["id"] }))["error"];
+    expect(bad["code"]).toBe(-32010);
+    expect(bad["message"]).not.toMatch(/AI 选股失败/);
+    expect(watched(s)).toEqual([]);
+    expect(anomalied(s)).toEqual([]);
+  });
 });
 
 // ---------------------------------------------------------------- 出池子的连带清理

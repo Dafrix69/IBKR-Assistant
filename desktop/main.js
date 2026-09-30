@@ -10,7 +10,7 @@
  *   * 生产构建关掉 DevTools。
  */
 const {
-  app, BrowserWindow, Menu, Notification, ipcMain, dialog, shell, session, nativeTheme, powerSaveBlocker, screen, net,
+  app, BrowserWindow, Menu, Notification, ipcMain, dialog, shell, session, nativeTheme, powerSaveBlocker, powerMonitor, screen, net,
   clipboard, nativeImage,
 } = require('electron');
 const path = require('node:path');
@@ -25,6 +25,7 @@ const consent = require('./consent');
 const { GrantBook, PURPOSES, requiredGrants, loosenedLimits, normalizeBinding } = require('./confirm-grants');
 const { createRedactor, accountsFromConfig } = require('./redact');
 const { registerSupportIpc, handleStoreFatal } = require('./support-ipc');
+const { PowerWatch } = require('./power-watch');
 
 // 2026-09-17 产品改名 Dafri Trading → IBKR-Assistant。userData 目录是按产品名取的:不处理的话,老用户升级后
 // 配置、交易库、日志全都"不见了"(其实还躺在旧目录里)。旧目录在、新目录还没建过,就继续用旧的。
@@ -430,6 +431,40 @@ function notifySystem(title, body) {
   if (!Notification.isSupported()) return false;
   new Notification({ title: title.slice(0, 120), body: body.slice(0, 300) }).show();
   return true;
+}
+
+/** 睡下、醒来、换电源各记一行日志;用电池又有追踪在本机盯着时提醒一次(判断在 power-watch.js)。
+ *  合盖睡着之后盯盘停了多久、哪些追踪没人盯,由引擎醒来后自己说(engine/wakeGuard.ts)。 */
+const powerWatch = new PowerWatch();
+
+function applyPower(action) {
+  if (action.log) log.info(action.log);
+  if (!action.notify) return;
+  notifySystem(action.notify.title, action.notify.body);
+  send('engine-event', { event: 'notification', data: { title: action.notify.title, subtitle: 'power', body: action.notify.body } });
+}
+
+function watchPower() {
+  try {
+    applyPower(powerWatch.observe({ onBattery: powerMonitor.isOnBatteryPower() }));
+    // on-battery 只有 macOS 发;Windows 换到电池靠心跳每 10 秒读一次 isOnBatteryPower(observePower)
+    powerMonitor.on('on-battery', () => applyPower(powerWatch.observe({ onBattery: true })));
+    powerMonitor.on('on-ac', () => applyPower(powerWatch.observe({ onBattery: false })));
+    powerMonitor.on('suspend', () => applyPower(powerWatch.suspend(Date.now())));
+    powerMonitor.on('resume', () => applyPower(powerWatch.resume(Date.now())));
+  } catch (err) {
+    log.warn('[power] 监听电源事件失败', err);
+  }
+}
+
+/** 心跳每一问之后:在盯的追踪条数(没连券商时本来就没在盯,按 0)与此刻是不是电池。 */
+function observePower(status) {
+  const loop = status && status.broker_connected ? status.tracker_loop : null;
+  try {
+    applyPower(powerWatch.observe({ onBattery: powerMonitor.isOnBatteryPower(), live: loop ? Number(loop.live_tracks) || 0 : 0 }));
+  } catch {
+    /* 读不到电源状态不影响心跳 */
+  }
 }
 
 function createWindow() {
@@ -906,6 +941,7 @@ function startEngineWatchdog() {
       silentSince = 0;
       warned = false;
       drivePending(status);
+      observePower(status);
     } catch {
       // 这一问期间引擎退出了:自动拉起那条路会处理,不算"不回话"
       if (!engine.child) {
@@ -1350,12 +1386,14 @@ if (!gotLock) {
     refreshRedactor();
     registerIpc();
     wireEngine();
-    // 应用开着就不让系统挂起:挂起期间引擎不跑,追踪止盈止损也就不盯了。只挡挂起,不挡关屏
+    // 应用开着就不让系统挂起:挂起期间引擎不跑,追踪止盈止损也就不盯了。只挡闲置睡眠,不挡关屏;
+    // 用电池时合上盖子它挡不住,那种情形只能提醒(watchPower)
     try {
       powerSaveBlocker.start('prevent-app-suspension');
     } catch (err) {
       log.warn('[power] 阻止系统挂起失败', err);
     }
+    watchPower();
     createWindow();
     buildMenu();
     if (bootstrap.created) {

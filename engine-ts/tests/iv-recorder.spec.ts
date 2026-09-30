@@ -8,7 +8,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { setClock } from "../src/config.js";
 import type { IbContract, TickerData } from "../src/ibTypes.js";
@@ -209,6 +209,19 @@ describe("什么时候不记", () => {
     const before = m.router.session.subscribed.length;
     await m.rec.tickOnce(at("10:01"));
     expect(m.router.session.subscribed.length).toBe(before);
+  });
+
+  it("只有模型 IV、一条盘口都没有:不记(2026-09-29 电脑睡着后那几笔:IV 一连三笔一模一样,不是行情)", async () => {
+    const m = make();
+    const read = vi.spyOn(m.s.flyPlanner.marks, "read");
+    for (const k of [7645, 7670, 7695, 7710, 7720, 7730, 7745, 7770, 7795]) m.router.session.ticks[k] = { bid: NaN, ask: NaN };
+    expect(await m.rec.tickOnce(at("10:00"))).toBeNull();
+    expect(m.store.dates()).toEqual([]);
+    expect(m.rec.status().idle_reason).toBe("这一轮只有模型 IV、没有盘口,不记");
+    // 连着却半分钟没盘口的流重订(heldStreams.silenceLimitMs 的盘中时限):测算那边一直热着的流也管得到
+    expect(read.mock.calls[0]?.[3]).toBe(30_000);
+    m.router.session.ticks = {};
+    expect(await m.rec.tickOnce(at("10:05"))).not.toBeNull();
   });
 
   it("出了错:吞掉、记下来,下一轮照常", async () => {

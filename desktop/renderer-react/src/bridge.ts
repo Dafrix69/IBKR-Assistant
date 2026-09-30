@@ -360,3 +360,12 @@ export function errorMessage(err: unknown): string {
   const text = err instanceof Error ? err.message : String(err);
   return text.replace(IPC_PREFIX, '');
 }
+
+/**
+ * 「AI 解读失败:<原因>」这类横幅,前缀只出现一次。前缀归界面:引擎没起来、入参校验这些报错不经过 handler,只有界面每条路都看得见。
+ * 有几处引擎的报错自己已经带着同一个前缀(引擎测试钉着原话),这里不再叠一层。
+ */
+export function errorWithPrefix(prefix: string, err: unknown): string {
+  const text = errorMessage(err);
+  return text.startsWith(prefix) ? text : `${prefix}${text}`;
+}

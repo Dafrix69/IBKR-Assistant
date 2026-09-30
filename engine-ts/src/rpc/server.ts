@@ -227,6 +227,7 @@ export class RpcServer implements RpcContext {
     for (const [id, early] of from.earlyOrderErrors) if (!to.earlyOrderErrors.has(id)) to.earlyOrderErrors.set(id, early);
     for (const [id, sent] of from.sentOrders) if (!to.sentOrders.has(id)) to.sentOrders.set(id, sent);
     to.unmatchedEvents.push(...from.unmatchedEvents);
+    to.wakeGuard = from.wakeGuard; // 醒后正在等连接稳住、一段停摆还没报完的,重建之后接着算
   }
 
   get engineBuilt(): TradingEngine | null {

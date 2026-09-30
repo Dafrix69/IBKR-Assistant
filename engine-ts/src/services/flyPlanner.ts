@@ -7,6 +7,7 @@ import { nowEt } from "../config.js";
 import type { FlyPlanParams, FlyPlanResult } from "../contract/options.js";
 import { FlyPlanError, markKey, planFly, planSchedule } from "../flyPlan.js";
 import type { LegMark } from "../flyPlan.js";
+import { silenceLimitMs } from "../heldStreams.js";
 import type { IbSession } from "../ibTypes.js";
 import type { IvSample } from "../ivSamples.js";
 import { OptionMarkStreams, OptionMarksError } from "../optionMarks.js";
@@ -139,7 +140,8 @@ export class FlyPlannerService extends ServiceBase {
     }));
     let got;
     try {
-      got = await this.marks.read(session, legs, delayedOk);
+      // 开着自动刷新时这批流一直是热的:断线重连后一直没盘口的,过了时限重订(按正股表的时段给时限)
+      got = await this.marks.read(session, legs, delayedOk, silenceLimitMs(this.settings.marketStatus(nowEt())));
     } catch (exc) {
       if (exc instanceof OptionMarksError && given.iv) return giveUp(exc.message);
       throw exc;

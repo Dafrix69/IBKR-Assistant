@@ -10,7 +10,9 @@ import type {
   InstructionLlm, InstructionOrder, InstructionRejection, OrderTicket,
 } from "./contract/instruction.js";
 import type { TrackerHeartbeat } from "./contract/system.js";
-import { heartbeatOf } from "./engine/heartbeat.js";
+import type { Track } from "./contract/tracker.js";
+import { LoopMeter, heartbeatOf } from "./engine/heartbeat.js";
+import { WakeGuard, linkOf, liveTracksOf, reportWake } from "./engine/wakeGuard.js";
 import { legInputsOf } from "./ivPricing.js";
 import type { TrackFired, TrackerPollTick, TrackerSyncHostedTick } from "./contract/trackerloop.js";
 import {
@@ -44,7 +46,7 @@ import type { ApprovedOrder, RejectedOrder } from "./validator.js";
 import { EXTENDED_STATUSES, Validator, primaryCode, rejectionMessage } from "./validator.js";
 import { finiteOrNull, fmtF, pyG, pyRound } from "./py.js";
 import * as path from "node:path";
-import { monitorEventLoopDelay } from "node:perf_hooks";
+import { performance } from "node:perf_hooks";
 
 type Rec = Record<string, any>;
 
@@ -671,25 +673,18 @@ export class TradingEngine {
    * 太久没跳就当场告警——静默停摆比慢更危险。 */
   readonly trackerLoop: Rec = {
     running: false, interval_ms: TradingEngine.TRACKER_TICK_MS, ticks: 0, slow_ticks: 0,
-    last_at: null, last_ms: null, max_ms: 0, last_error: "", poll: null, hosted: null,
+    last_at: null, last_ms: null, max_ms: 0, last_error: "", poll: null, hosted: null, hold: "", live_tracks: 0,
   };
   /** 每轮结束的回调(RPC 层据此把触发 / 被拦推给界面)。 */
   onTrackerTick: ((poll: Rec, hosted: Rec) => void) | null = null;
-
-  /** 引擎进程的事件循环延迟。节拍器是异步的,只有同步代码占住事件循环才会让它晚——
-   * 慢了要分得清是"这一轮自己慢"还是"整个进程被别的事卡住"。 */
-  private loopDelay: ReturnType<typeof monitorEventLoopDelay> | null = null;
+  /** 每轮计时与事件循环延迟(engine/heartbeat.ts) */
+  private readonly loopMeter = new LoopMeter();
+  /** 盯盘停过没有、醒后还等不等(engine/wakeGuard.ts)。引擎重建时 RPC 层把它交给新实例 */
+  wakeGuard = new WakeGuard();
 
   startTrackerLoop(intervalMs: number = TradingEngine.TRACKER_TICK_MS): void {
     if (this.tickTimer !== null) return;
-    if (this.loopDelay === null) {
-      try {
-        this.loopDelay = monitorEventLoopDelay({ resolution: 20 });
-        this.loopDelay.enable();
-      } catch {
-        this.loopDelay = null;
-      }
-    }
+    this.loopMeter.start();
     this.trackerLoop["running"] = true;
     this.trackerLoop["interval_ms"] = intervalMs;
     const loop = async (): Promise<void> => {
@@ -706,14 +701,14 @@ export class TradingEngine {
     this.trackerLoop["running"] = false;
     if (this.tickTimer !== null) clearTimeout(this.tickTimer);
     this.tickTimer = null;
-    this.loopDelay?.disable();
-    this.loopDelay = null;
+    this.loopMeter.stop();
+    this.wakeGuard.pause();
   }
 
   /** 一轮盯盘:读一次持仓 → 判触发 → 托管对账。任何异常都不许让节拍器停下。 */
   async trackerTickOnce(moment?: EtNow | null): Promise<void> {
     const state = this.trackerLoop;
-    const t0 = Date.now();
+    const t0 = Date.now(), mono = performance.now();
     try {
       await this.withTrackerLock(async () => {
         // 执行对账与盯盘无关(没有追踪也要对),但同用一把锁:它会改 orderIndex 与终态
@@ -727,7 +722,9 @@ export class TradingEngine {
             });
           }
         }
-        if (this.router === null || !this.store.listTracks().length) {
+        const tracks = this.store.listTracks();
+        const hold = this.wakeTick(t0, mono, tracks);
+        if (this.router === null || !tracks.length) {
           state["poll"] = { rows: [], fired: [], blocked: [] };
           state["hosted"] = { hosted: [], blocked: [], quote_maybe_delayed: false };
           state["last_error"] = "";
@@ -739,6 +736,12 @@ export class TradingEngine {
         } catch (exc) {
           // 读不到持仓:这一轮不判断、不对账——当成空仓会停掉追踪、撤掉托管单
           state["last_error"] = `读不到持仓:${String((exc as Error).message).slice(0, 200)}`;
+          return;
+        }
+        if (hold) {
+          // 醒后这几秒的报价不可信:持仓照读(常驻行情流跟着续订),不判触发、不推峰值、不追价、不改托管单
+          state["poll"] = { rows: tracks.map((t) => ({ ...t, state: tk.STATE_HOLDING, reason: hold })), fired: [], blocked: [] };
+          state["last_error"] = "";
           return;
         }
         const poll = await this.pollTrackers(moment ?? null, rows);
@@ -758,20 +761,17 @@ export class TradingEngine {
       state["last_error"] = String((exc as Error).message).slice(0, 200);
       this.store.audit("engine", "tracker_tick_failed", { error: state["last_error"] });
     } finally {
-      const ms = Date.now() - t0;
-      // 事件循环延迟按"每一轮一个窗口"记:上一个节拍间隔里最长被占了多久。累计的最大值分不清是哪一下
-      if (this.loopDelay !== null) {
-        const lag = Number.isFinite(this.loopDelay.max) ? Math.round(this.loopDelay.max / 1e6) : 0;
-        state["lag_last_ms"] = lag;
-        state["lag_worst_ms"] = Math.max(Number(state["lag_worst_ms"] ?? 0), lag);
-        this.loopDelay.reset();
-      }
-      state["ticks"] = Number(state["ticks"]) + 1;
-      state["last_at"] = new Date().toISOString();
-      state["last_ms"] = ms;
-      state["max_ms"] = Math.max(Number(state["max_ms"]), ms);
-      if (ms > TradingEngine.TRACKER_SLOW_MS) state["slow_ticks"] = Number(state["slow_ticks"]) + 1;
+      this.loopMeter.record(state, t0, TradingEngine.TRACKER_SLOW_MS);
     }
+  }
+
+  /** 上一轮到这一轮之间停过没有、醒后还要不要等(engine/wakeGuard.ts)。返回非空 = 这一轮不判断,是给界面的原因 */
+  private wakeTick(wall: number, mono: number, tracks: Track[]): string {
+    const live = liveTracksOf(tracks, (id) => this.closeChase.has(id));
+    const step = this.wakeGuard.step({ wall, mono, link: linkOf(this.router), live });
+    reportWake(step, this.store, this.notifier);
+    Object.assign(this.trackerLoop, { hold: step.hold, live_tracks: live.total });
+    return step.hold;
   }
 
   /** 心跳摘要(不带每轮的明细),给 system.status 与界面用。 */

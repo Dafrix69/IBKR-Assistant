@@ -104,6 +104,9 @@
 - 每页开头的说明收成一行三级色的折叠项(`Primer`),展开状态按页记住;「这一页会真的发单」这类安全警告不收。
   「读盘常识」「连不上时照着做」这类参考资料在需要的时候自动展开(没连上时展开、连上收起),用户手动点过一次之后按用户的选择。
 - 报错不带 `Error invoking remote method 'rpc': Error:` 这段前缀。
+- 横幅的「<动作>失败:」前缀由界面加,只加一次:引擎没起来、入参校验这些报错不经过 handler,只有界面每条路都看得见。
+  `ideas.analyze` / `ideas.digest` / `pa.comment` / `backtest.parse_rules` 与一键拉起 TWS / OpenD 的引擎报错自己带着同一个前缀
+  (引擎测试钉着原话),这几处用 `bridge.ts` 的 `errorWithPrefix`,已经带着就不再叠一层。
 
 ## 交互
 

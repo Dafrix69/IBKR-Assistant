@@ -6,7 +6,7 @@
  */
 import { useState } from 'react';
 import { Button, Input, InputNumber, Select, Space } from 'antd';
-import { dafri, errorMessage } from '../bridge';
+import { dafri, errorWithPrefix } from '../bridge';
 import type { CustomRulesInput, RuleConditionInput, RuleOperandInput } from '../bridge';
 import { showBanner } from '../store/banner';
 
@@ -47,7 +47,7 @@ export function RuleBuilder({ rules, onChange }: { rules: Rules; onChange: (r: R
       const { rules: next } = await dafri.parseBacktestRules(t);
       onChange(next);
     } catch (err) {
-      showBanner(`条件生成失败:${errorMessage(err)}`, false);
+      showBanner(errorWithPrefix('条件生成失败:', err), false);
     } finally {
       setGenerating(false);
     }

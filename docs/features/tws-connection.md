@@ -25,7 +25,8 @@
 |---|---|
 | 电脑重启、应用重开、引擎崩溃被拉起 | `broker.auto_connect`(默认开)让引擎一启动就连;连不上的每 30 秒再试(`services/brokerLink.ts`) |
 | TWS 比应用晚开 | 同上,TWS 起来 30 秒内连上;新会话挂到已有 router 上,不重建引擎(托管单缓存、追价进度在内存里) |
-| TWS 重启、与 IBKR 服务器闪断(1100 / 2110,每晚服务器重置必来) | 会话每 `IB_RECONNECT_MS`(5 秒)自己重连,重连后底层库把持仓、行情等常驻订阅原样重订;`isConnected()` 跟着 `connectionState` 如实报告;断开时作废冻住的持仓快照与报价;重连后补回会话级的行情类型 |
+| TWS 重启、与 IBKR 服务器闪断(1100 / 2110,每晚服务器重置必来) | 会话每 `IB_RECONNECT_MS`(5 秒)自己重连,重连后底层库把持仓、行情等常驻订阅按原 reqId 重订;`isConnected()` 跟着 `connectionState` 如实报告;断开时作废冻住的持仓快照与报价;重连后先补回会话级的行情类型,再由库重订 |
+| 重连了,行情却一直不来 | 库重订了不等于 TWS 会给。持仓腿、持仓正股、测算的流连着却超过时限没有一笔盘口,各自撤掉重订(新的 reqId),见 [持仓追踪](tracker.md)「读不到 ≠ 平仓了」 |
 
 - 掉线与连回当场提醒并留痕(`broker_link_down` / `broker_link_up`),顶栏跟着变。
 - **反复断开只提醒一次**:连上后撑不过 10 秒又断算一次抖动,一分钟内抖动两次判定为反复断开,提醒一次并写明常见原因
@@ -34,9 +35,22 @@
 - 已经连上过的连接断了,由会话层自己重连,服务层不抢:两边同时连会撞上 326(client id 已被占用)。服务层只重试本 router 上从没连上过的连接,
   重试成功留一条 `broker_link_retry`;首次连不上时把那个客户端关干净,不留一个在后台重连、占住 client id 的客户端。连接尝试串行执行,
   启动时的自动连接与用户点击不会同时开两个会话。
-- 用户点了「断开」或换了券商,就不再自动连。自动连接只在真正的 stdio 入口(`rpc/server.ts` 的 `main()`)里启动,测试碰不到本机的 TWS。
+- **TWS↔IBKR 那一段的通断按连接单独记**(`ibLink.ts` 的 `UpstreamWatch`)。TWS 不带 id 的消息(1100 / 1101 / 1102 / 2110、数据农场的 21xx)
+  库发的是 `info` 事件、不进 `error$`,会话层两边都订,原样转给 `onConnectivity`。1100 / 2110 记成断;1101 / 1102、这条连接的 socket
+  重新连上、换了新会话都记成通——库在 1100 / 2110 上会断掉本机 socket 重连,新 socket 上未必再有 1101 / 1102,只认这两个码标志就回不来;
+  上游还断着时 TWS 在新 socket 上再报一次,就再记成断。`upstreamOk`(`system.status` 的 `broker_upstream_ok`)要所有连接都通。
+  合约确认超时的时候有连接断着,报错说「TWS 与 IBKR 服务器的连接已中断(错误 1100)」,码用 TWS 给的那个;都通着是"TWS 没有响应"那句。
+  只有离线测试(真的 IBApiNext + 假的 Controller):上游断着时 TWS 会不会在新 socket 上再报 1100 / 2110,没在真机上核对;
+  不报的话 socket 连回来之后标志就是通,报错退回"没有响应"那句。首次握手时(监听还没挂上)TWS 说的码收不到,要等库断开重连后的那一次。
+- 用户点了「断开」或换了券商,就不再自动连;断着、正在等库重连的会话也一起停掉,不留一个几秒后自己连回来、占着 client id 的会话。
+  自动连接只在真正的 stdio 入口(`rpc/server.ts` 的 `main()`)里启动,测试碰不到本机的 TWS。
 - **桌面端**:引擎意外退出由主进程按 3 秒起、翻倍、最长 60 秒的退避自动拉起,拉起来之后按 `auto_connect` 连回;应用开着时用
-  `powerSaveBlocker('prevent-app-suspension')` 挡住系统睡眠。
+  `powerSaveBlocker('prevent-app-suspension')` 挡住闲置睡眠。
+- **电源与睡眠**(主进程,判断在 `desktop/power-watch.js`):`powerMonitor` 的睡下、醒来、换电源各记一行 `[power]` 日志,
+  醒来那行带上睡了多久,事后对得上 `pmset -g log`,导出的诊断信息里就有。用电池、又有追踪在本机盯着(引擎心跳的 `live_tracks`,
+  没连券商按 0)时提醒一次:合盖本身没有事件可听,睡下去之前应用只收到一个 `suspend`,那时发的通知要醒来才看得见,能提前说的只有
+  "现在在用电池"。一段电池期间只提醒一次,接回电源再拔掉算新的一段。`on-battery` 只有 macOS 发,别的系统靠心跳每 10 秒读一次
+  `isOnBatteryPower()`。醒来之后睡了多久、哪些追踪没人盯由引擎说,它看得到盯盘到底停了多久,见 [持仓追踪](tracker.md)「停摆与睡醒」。
 
 **读不到 ≠ 没有**(`ibLink.ts`),规则偏向"这一轮不判断":
 
@@ -46,7 +60,9 @@
 - 托管单认领:托管对账记着上一轮读得到哪些账户,多出一个就按 orderRef 重新认领一遍(幂等),避免会话连上后把"没认领到"当成"没挂"再挂一张。
 - 执行对账:读不到的账户(`coveredAccountIds()`)的在途单这一轮不下「去向不明」的结论;自动重连回来立刻安排一次对账。
 
-**软件管不了的**:电脑关机、TWS 需要重新登录(双重认证)。这时本机盯盘全停,要有保护只能开「托管到券商」。
+**软件管不了的**:电脑关机、TWS 需要重新登录(双重认证)、**用电池时合上笔记本的盖子**(macOS 直接睡眠,`prevent-app-suspension`
+挡不住;睡着以后引擎只在系统几秒钟的维护唤醒里跑一下,那时一笔盘口都拿不到,醒来那一刻 TWS 给新订阅的还可能是睡前的旧盘口)。
+这时本机盯盘全停,要有保护只能开「托管到券商」。软件做得到的只有说出来:用电池时提前提醒一次,醒来先等连接稳住再判断,醒稳了报睡了多久。
 IBApiNext 的连接看门狗没开,TWS 假死而 socket 不断的情形检测不到。
 
 ## 只读联调:`npm run probe`
@@ -75,4 +91,7 @@ npm run probe -- --steps stockreview --seed-fills D:/backup/trades.db
 ## 测试
 
 `broker-autoconnect.spec.ts`(自动连接、重试、用假时钟走完 200 秒的抖动)、`link-engine.spec.ts`(读不到的账户不判断、托管单重新认领)、
-`tracker-allday.spec.ts`(全天演练里的断线)。
+`tracker-allday.spec.ts`(全天演练里的断线)、`fix-stale-streams.spec.ts`(真的 IBApiNext 在重连时做了什么;重订了却不来盘口的流按时限重订)、
+`fix-upstream-info.spec.ts`(TWS 不带 id 的消息走 `info`;上游标志跨过断开重连、按连接记;「断开」停掉正在重连的会话)、
+`desktop-power-watch.spec.ts`(用电池时提醒的规矩、睡下与醒来的日志)与 `desktop-main.spec.ts` 里电源事件的接线。
+真的 IBApiNext 那套替身(只换掉最底下的 socket 控制器)在 `tests/fakeController.ts`。

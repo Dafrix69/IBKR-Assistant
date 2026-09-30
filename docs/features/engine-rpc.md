@@ -32,6 +32,7 @@ stdout 只传协议,日志一律走 stderr。引擎单线程,请求按方法分�
   K 线缓存被行情、扫描、价位提醒、交易分析共用,所以它是 service;IBKR 把 15 秒内相同的历史请求算作超频,各处各缓存一份等于没缓存。
 - service 只认宿主(`ServiceHost`),每次用到 `settings` / `router` / `engine` 都从宿主现取:配置会重载、券商会重连、引擎会重建。
 - 错误码的类 `RpcError` 在 util 层的 `rpcError.ts`,service 抛带码的错(例如 −32017「需要先连券商」)不用 import 传输层。
+- 报错的 message 写原因,不写「AI 选股失败:」这类动作前缀:前缀由界面加(见 [界面](ui.md) 的「界面文案」),两头都加横幅上就说两遍。
 - 方法表是无原型对象,请求里的 `constructor` 这类外来字符串取不到东西;同名方法重复登记时构造当场报错。
 - 新域在 `server.ts` 的 `domains` 里加一行。`npm run depcruise` 检查分层,规则在 `engine-ts/.dependency-cruiser.cjs`。
 
