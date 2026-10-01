@@ -7,7 +7,7 @@ stdout 只传协议,日志一律走 stderr。引擎单线程,请求按方法分�
 
 | 道 | 调度 | 放什么 |
 |---|---|---|
-| 本地道 | 来了就答 | 同步的本地库与配置读写:板块增删、想法列表与检索、记录、设置读取、熔断状态、追踪列表、`tracker.poll` / `tracker.reconcile`(只读引擎最近一轮盯盘的结果)、`quality.*`、`pool.set_watch`、`data.backups` / `data.backup`、`options.iv_recorder*`、`system.status` |
+| 本地道 | 来了就答 | 同步的本地库与配置读写:板块增删、想法列表与检索、记录、设置读取、熔断状态、追踪列表、`tracker.poll` / `tracker.reconcile`(只读引擎最近一轮盯盘的结果)、`quality.*`、`pool.set_watch`、`data.backups` / `data.backup`、`options.iv_recorder*`、`system.status`、`keychain.set` / `futu.set_password`(写系统凭证库,可能等 macOS 弹窗,不该挡住下单) |
 | 读道 | 最多 4 个并发 | 只读的行情、探测与纯计算:`positions.list`、`pa.analyze`、`book.snapshot`、`macro.board`、`screener.*`、`backtest.run` / `sweep`、`options.fly_plan`、`review.performance` / `signals`、`ideas.similar_trades`、`tracker.target_preview`、`tws.*` / `futu.*` 探测 |
 | 交易道 | 严格顺序 | 其余全部:`instruction.submit`、`pending.poll`、熔断、连接与切换券商、`settings.patch`,以及调用大模型的 `ideas.analyze` / `ideas.digest` / `backtest.parse_rules` / AI 选股 |
 
@@ -32,6 +32,7 @@ stdout 只传协议,日志一律走 stderr。引擎单线程,请求按方法分�
   K 线缓存被行情、扫描、价位提醒、交易分析共用,所以它是 service;IBKR 把 15 秒内相同的历史请求算作超频,各处各缓存一份等于没缓存。
 - service 只认宿主(`ServiceHost`),每次用到 `settings` / `router` / `engine` 都从宿主现取:配置会重载、券商会重连、引擎会重建。
 - 错误码的类 `RpcError` 在 util 层的 `rpcError.ts`,service 抛带码的错(例如 −32017「需要先连券商」)不用 import 传输层。
+  凭证库的错(`KeychainError`,含等系统弹窗超时)在 `server.ts` 统一报 −32008、原话给界面,见 [系统凭证库](credentials.md)。
 - 报错的 message 写原因,不写「AI 选股失败:」这类动作前缀:前缀由界面加(见 [界面](ui.md) 的「界面文案」),两头都加横幅上就说两遍。
 - 方法表是无原型对象,请求里的 `constructor` 这类外来字符串取不到东西;同名方法重复登记时构造当场报错。
 - 新域在 `server.ts` 的 `domains` 里加一行。`npm run depcruise` 检查分层,规则在 `engine-ts/.dependency-cruiser.cjs`。

@@ -4,13 +4,13 @@ import * as fs from "node:fs";
 
 import { patchConfigFile } from "../../config.js";
 import type { LLMConfig } from "../../config.js";
-import { KeychainError, hasSecret, setSecret } from "../../keychain.js";
 import { PROVIDERS, buildParser, providerCatalog } from "../../providers.js";
 import type {
   DataExportParams, KeychainSetParams, LlmCatalog, LlmPatchParams, LlmTestParams, LlmTestProbe, LlmTestResult, RpcResult,
   SettingsPatchParams, SettingsView,
 } from "../../contract/index.js";
 import { RpcError } from "../../rpcError.js";
+import { KeychainError, secretExists, writeSecret } from "../../secrets.js";
 import { SCHEMA_VERSION, backupDir, listBackups } from "../../storeSafety.js";
 import { HandlerBase } from "../context.js";
 import type { MethodTable, Rec } from "../context.js";
@@ -32,17 +32,12 @@ export class SettingsHandlers extends HandlerBase {
   }
 
   // ---- 大模型接入 ------------------------------------------------------
-  llmCatalog(): LlmCatalog {
+  /** 界面一打开就来问:「已配置」只查有没有存过,不解密——解密会让 macOS 弹窗问人(secrets.ts)。 */
+  async llmCatalog(): Promise<LlmCatalog> {
     const cfg = this.settings.llm;
-    const keys: Record<string, boolean> = {};
-    for (const name of Object.keys(PROVIDERS)) {
-      try {
-        keys[name] = hasSecret(cfg.keychain_service, name); // 只查有没有,不解密(解密要起 PowerShell)
-      } catch (exc) {
-        if (!(exc instanceof KeychainError)) throw exc;
-        keys[name] = false;
-      }
-    }
+    const names = Object.keys(PROVIDERS);
+    const found = await Promise.all(names.map((name) => secretExists(cfg.keychain_service, name)));
+    const keys: Record<string, boolean> = Object.fromEntries(names.map((name, i) => [name, found[i] ?? false]));
     return {
       providers: providerCatalog(),
       current: {
@@ -66,7 +61,7 @@ export class SettingsHandlers extends HandlerBase {
   ]);
 
   /** 改模型配置。切供应商时 keychain_account 跟着切,避免用错那把 key。 */
-  llmPatch(params: LlmPatchParams): LlmCatalog {
+  async llmPatch(params: LlmPatchParams): Promise<LlmCatalog> {
     const patch: Rec = { ...(params["llm"] ?? {}) };
     const allowed = SettingsHandlers.LLM_FIELDS;
     const unknown = Object.keys(patch).filter((k) => !allowed.has(k)).sort();
@@ -79,8 +74,9 @@ export class SettingsHandlers extends HandlerBase {
     }
     this.engine.store.audit("ui", "llm_patch", { patch });
     this.ctx.reload();
-    this.emit("llm", this.llmCatalog());
-    return this.llmCatalog();
+    const catalog = await this.llmCatalog();
+    this.emit("llm", catalog);
+    return catalog;
   }
 
   /**
@@ -126,8 +122,9 @@ export class SettingsHandlers extends HandlerBase {
     } catch (exc) {
       return {
         ok: false,
+        // 模型与凭证库的错本身就是人话(凭证库超时会说去处理系统弹窗),别的错带上类名好排查
         error:
-          exc instanceof Error && exc.constructor.name !== "LLMError"
+          exc instanceof Error && exc.constructor.name !== "LLMError" && !(exc instanceof KeychainError)
             ? `${exc.constructor.name}: ${exc.message}`
             : (exc as Error).message,
         provider: cfg.provider,
@@ -192,11 +189,11 @@ export class SettingsHandlers extends HandlerBase {
     return this.settingsGet();
   }
 
-  keychainSet(params: KeychainSetParams): RpcResult<"keychain.set"> {
+  async keychainSet(params: KeychainSetParams): Promise<RpcResult<"keychain.set">> {
     const secret = String(params["secret"] ?? "");
     try {
       const account = params["provider"] || this.settings.llm.keychain_account;
-      setSecret(this.settings.llm.keychain_service, account, secret);
+      await writeSecret(this.settings.llm.keychain_service, account, secret);
     } catch (exc) {
       if (exc instanceof KeychainError) throw new RpcError(-32008, exc.message);
       throw exc;

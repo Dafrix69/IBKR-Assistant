@@ -12,9 +12,9 @@ import { fileURLToPath } from "node:url";
 import type { LLMConfig } from "./config.js";
 import { LLMError } from "./config.js";
 import type { LlmProvider, LlmTestProbe, LlmUsage } from "./contract/llm.js";
-import { getSecret } from "./keychain.js";
 import type { FewShotPair, PromptBundle } from "./prompts.js";
 import { fingerprint } from "./prompts.js";
+import { readSecret } from "./secrets.js";
 
 export { LLMError };
 export { validateBaseUrl } from "./config.js";
@@ -71,9 +71,10 @@ export function providerCatalog(): LlmProvider[] {
   return Object.entries(PROVIDERS).map(([key, meta]) => ({ key, ...meta }));
 }
 
-export function resolveApiKey(config: LLMConfig, explicit?: string | null): string {
+/** 用哪把 Key:这一次显式给的优先,否则到这一步才去凭证库取(可能等系统弹窗,最多 SECRET_TIMEOUT_MS,见 secrets.ts)。 */
+export async function resolveApiKey(config: LLMConfig, explicit?: string | null): Promise<string> {
   if (explicit) return explicit;
-  const key = getSecret(config.keychain_service, config.keychain_account);
+  const key = await readSecret(config.keychain_service, config.keychain_account);
   if (!key) {
     throw new LLMError(
       `Keychain 里没有 ${config.provider} 的 API Key` +
@@ -163,7 +164,7 @@ export class AnthropicParser {
       }
       const Anthropic = AnthropicMod.default ?? AnthropicMod.Anthropic;
       this.client = new Anthropic({
-        apiKey: resolveApiKey(this.config, this.apiKey),
+        apiKey: await resolveApiKey(this.config, this.apiKey),
         timeout: this.config.timeout_s * 1000,
         maxRetries: 2,
       });
@@ -345,7 +346,7 @@ export class OpenAICompatibleParser {
       }
       const OpenAI = OpenAIMod.default ?? OpenAIMod.OpenAI;
       this.client = new OpenAI({
-        apiKey: resolveApiKey(this.config, this.apiKey),
+        apiKey: await resolveApiKey(this.config, this.apiKey),
         baseURL: this.baseUrl,
         timeout: this.config.timeout_s * 1000,
         // 4xx(含降级要认的 400)不重试,只重试 408 / 409 / 429 / 5xx 与连接中断

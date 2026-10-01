@@ -17,7 +17,7 @@ import {
 } from "./broker.js";
 import type { FutuBridge, FutuQuoteCtx, FutuTradeCtx } from "./futuBridge.js";
 import { loadFutuBridge } from "./futuBridge.js";
-import { KeychainError, getSecret } from "./keychain.js";
+import { KeychainError, readSecret, type SecretReader } from "./secrets.js";
 import type { ContractSpec } from "./models.js";
 import { MIN_BARS, TIMEFRAMES } from "./marketdata.js";
 import { fmtF, pyRound } from "./py.js";
@@ -270,13 +270,13 @@ export class FutuRouter {
   private readonly seenDeals = new Set<string>();
   private upstreamOkFlag = true;
 
-  private readonly secretReader: (service: string, account: string) => string | null;
+  private readonly secretReader: SecretReader;
 
   constructor(
     settings: Settings,
     bridge?: FutuBridge | null,
     prober?: PortProber,
-    secretReader?: (service: string, account: string) => string | null,
+    secretReader?: SecretReader,
   ) {
     this.settings = settings;
     this.bridgePromise = bridge
@@ -287,7 +287,7 @@ export class FutuRouter {
         };
     if (bridge) this.bridgeCache = bridge;
     this.prober = prober ?? probePort;
-    this.secretReader = secretReader ?? getSecret;
+    this.secretReader = secretReader ?? readSecret;
   }
 
   private async bridge(): Promise<FutuBridge> {
@@ -1175,7 +1175,7 @@ export class FutuRouter {
     const names = connectionName ? [connectionName] : Object.keys(this.connections);
     let secret: string | null;
     try {
-      secret = this.secretReader(futuCfg.keychain_service, futuCfg.keychain_account);
+      secret = await this.secretReader(futuCfg.keychain_service, futuCfg.keychain_account);
     } catch (exc) {
       if (exc instanceof KeychainError) {
         throw new BrokerError(`读取交易解锁密码失败:${exc.message}`);

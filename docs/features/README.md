@@ -52,6 +52,7 @@
 | [TWS 连接](tws-connection.md) | 检测与诊断、自动连接与重连、只读联调探针 |
 | [富途 OpenD](futu-opend.md) | 备用券商通道的现状与差异 |
 | [大模型接入](llm-providers.md) | 供应商、结构化输出、密钥、外发前的账号检查 |
+| [系统凭证库](credentials.md) | API Key 与富途解锁密码怎么存取;钥匙串弹窗不卡住盯盘 |
 | [从界面配置账户](accounts-setup.md) | 「接入 → 账户」的写入规则 |
 
 ## 应用与工程

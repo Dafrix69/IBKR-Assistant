@@ -12,7 +12,7 @@
 | `@anthropic-ai/sdk` | engine-ts | Anthropic 官方 SDK:structured outputs、prompt caching、重试 |
 | `openai` | engine-ts | OpenAI 兼容端点(DeepSeek / 通义 / Kimi / 智谱):429 / 5xx / 连接中断自动指数退避重试、超时、带状态码的错误类型 |
 | `zod` | engine-ts | RPC 入参的 schema(`contract/schema/`,发单方法用 `.strict()`)与模型输出的复校验(`models.ts`) |
-| `@napi-rs/keyring` | engine-ts | 系统凭证库(macOS Keychain / Windows 凭据管理器),原生 N-API,一次读写 3 毫秒以内 |
+| `@napi-rs/keyring` | engine-ts | 系统凭证库(macOS Keychain / Windows 凭据管理器),原生 N-API,一次读写 3 毫秒以内。同步调用,macOS 弹窗时一直等,所以只在凭证子进程里调,见 [系统凭证库](credentials.md) |
 | `@stdlib/math-base-special-erf` | engine-ts | 误差函数(Cody 有理逼近,double 精度);黄金对拍容差 1e-9,教科书级近似过不了 |
 | `futu-api` | engine-ts(开发依赖) | 富途 SDK;适配桥核对完之前不随安装包发出去,见 [富途 OpenD](futu-opend.md) |
 | `react` + `antd` + `vite` | desktop | 界面框架、组件库、构建(见 [界面](ui.md)) |
@@ -60,7 +60,7 @@
 密钥存系统凭证库(`@napi-rs/keyring`)。旧版的存法是 macOS 的 `security` 命令(Keychain 里的 generic password)与 Windows 的
 `%LOCALAPPDATA%/dafri/credentials.dpapi.json`(DPAPI 密文):
 
-- 第一次读到就迁移:凭证库里没有、旧存储里有 → 解出来写进凭证库,再把值交出去,用户不用重填。
+- 第一次读到就迁移:凭证库里没有、旧存储里有 → 解出来写进凭证库,再把值交出去,用户不用重填。迁移在凭证子进程里做(见 [系统凭证库](credentials.md))。
 - 旧的不删,回退到旧版本时那边还读得到;用户删除这条凭证时两边一起清掉,否则删完再读又被迁回来。
 - `tests/keychain.spec.ts` 在 Windows 上真的造一份旧格式密文(临时 `LOCALAPPDATA`)走完这条路。
 

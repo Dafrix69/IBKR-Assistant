@@ -15,6 +15,7 @@ import { publicIndexPrice } from "../macro.js";
 import { Notifier } from "../notify.js";
 import { buildParser, guardAccountIds } from "../providers.js";
 import { RpcError } from "../rpcError.js";
+import { KeychainError } from "../secrets.js";
 import { AlertsService } from "../services/alerts.js";
 import { AnomalyService } from "../services/anomaly.js";
 import { BrokerLinkService } from "../services/brokerLink.js";
@@ -267,6 +268,9 @@ export class RpcServer implements RpcContext {
     "pool.set_watch",
     // IV 记录的状态与开关:数一下目录里的文件、写一行偏好;记的那一路是引擎里自己的循环
     "options.iv_recorder", "options.iv_recorder_set",
+    // 存 API Key / 富途解锁密码:写系统凭证库(子进程,可能等 macOS 弹窗,最多 20 秒)。和下单状态无关,
+    // 不该让一个没人点的弹窗把排在后面的下单、立即平仓挡住
+    "keychain.set", "futu.set_password",
   ]);
   static readonly READ_METHODS = new Set([
     "positions.list", "sectors.quotes", "pa.analyze", "book.snapshot", "options.wall", "macro.board",
@@ -416,6 +420,9 @@ export class RpcServer implements RpcContext {
     } catch (exc) {
       if (exc instanceof RpcError) {
         message = { jsonrpc: "2.0", id: requestId, error: { code: exc.code, message: exc.message } };
+      } else if (exc instanceof KeychainError) {
+        // 凭证库的错(超时、被拒、读不到)本身是一句人话,原样给界面(超时那句会说去处理系统弹窗);不打调用栈
+        message = { jsonrpc: "2.0", id: requestId, error: { code: -32008, message: exc.message } };
       } else {
         process.stderr.write(String((exc as Error).stack ?? exc) + "\n");
         message = {

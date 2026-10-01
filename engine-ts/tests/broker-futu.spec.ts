@@ -6,6 +6,7 @@ import type { FutuBridge, FutuQuoteCtx, FutuRet, FutuTradeCtx } from "../src/fut
 import { FUTU_ENUMS } from "../src/futuBridge.js";
 import { FutuRouter, ReportEvent } from "../src/futuBroker.js";
 import { ParsedOrderSchema } from "../src/models.js";
+import { useSecretBackend } from "../src/secrets.js";
 import type { ApprovedOrder } from "../src/validator.js";
 import { loadGolden, makeSettings } from "./util.js";
 
@@ -145,7 +146,7 @@ function makeRouter(
     settings,
     fakeBridge(quote, trade),
     async () => ({ open: true, latency_ms: 1, error: null }),
-    () => secret,
+    async () => secret,
   );
   return [router, quote, trade];
 }
@@ -319,6 +320,25 @@ describe("FutuRouter: 下单(真机结论③:trd_env 核对)", () => {
   it("没存密码时明说只有模拟盘可用", async () => {
     const [router] = makeRouter({}, null);
     await expect(router.unlock("opend")).rejects.toThrowError(/不解锁只能下模拟盘/);
+  });
+
+  it("解锁密码迟迟读不出来(macOS 弹窗没人点):到点报错、说清楚怎么办,不一直挂着", async () => {
+    // 不注入读取器:走引擎真用的那一个(secrets.readSecret),凭证库换成永远不回话的
+    useSecretBackend(
+      { exists: async () => true, read: () => new Promise<string | null>(() => undefined), write: async () => undefined },
+      { timeoutMs: 50 },
+    );
+    try {
+      const trade = new FakeTradeCtx();
+      const router = new FutuRouter(
+        makeSettings(g.base_config, FUTU_OVER), fakeBridge(new FakeQuoteCtx(), trade),
+        async () => ({ open: true, latency_ms: 1, error: null }),
+      );
+      await expect(router.unlock("opend")).rejects.toThrowError(/读取交易解锁密码失败:系统凭证库 \d+ 秒没有交出凭证/);
+      expect(trade.unlockCalls).toEqual([]);
+    } finally {
+      useSecretBackend(null);
+    }
   });
 
   it("绑在 IBKR 连接上的账户拒绝(跨券商绝不改道)", async () => {

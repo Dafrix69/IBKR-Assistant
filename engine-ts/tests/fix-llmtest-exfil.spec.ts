@@ -9,7 +9,7 @@
  *  · 覆盖项和 llm.patch 同一张白名单;keychain_* 永远不许从这里指定(原话拒);
  *  · 供应商或 Base URL 和已保存的不一样时,这一次调用里必须自己带 api_key——已保存的 key 只发往保存时的那个端点。
  *
- * 全部离线:两个"端点"都是 127.0.0.1 上的假服务;凭证库整个换成假的(vi.mock),不读也不写系统凭证库。
+ * 全部离线:两个"端点"都是 127.0.0.1 上的假服务;凭证库整个换成假的(useSecretBackend),不读也不写系统凭证库。
  */
 import * as fs from "node:fs";
 import * as http from "node:http";
@@ -18,16 +18,13 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// 凭证库换成假的:取到的"已保存 key"带着 service / account,发到哪儿一眼看得出是哪一把
-const keychain = vi.hoisted(() => ({
-  getSecret: vi.fn((service: string, account: string): string | null => `sk-stored-${service}-${account}`),
-}));
-vi.mock("../src/keychain.js", async (importOriginal) => {
-  const real = await importOriginal<typeof import("../src/keychain.js")>();
-  return { ...real, getSecret: keychain.getSecret, hasSecret: () => true, setSecret: () => undefined };
-});
-
 import { RpcServer } from "../src/rpc.js";
+import { useSecretBackend } from "../src/secrets.js";
+
+// 凭证库换成假的:取到的"已保存 key"带着 service / account,发到哪儿一眼看得出是哪一把
+const keychain = {
+  getSecret: vi.fn(async (service: string, account: string): Promise<string | null> => `sk-stored-${service}-${account}`),
+};
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 type Rec = Record<string, any>;
@@ -81,9 +78,11 @@ const uiOpenAi = (url: string): Rec => ({
 
 beforeEach(() => {
   keychain.getSecret.mockClear();
+  useSecretBackend({ exists: async () => true, read: keychain.getSecret, write: async () => undefined });
 });
 
 afterEach(async () => {
+  useSecretBackend(null);
   for (const ep of endpoints.splice(0)) await ep.close();
   for (const s of servers.splice(0)) {
     s.anomaly.stop();

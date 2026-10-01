@@ -29,7 +29,7 @@ execution     broker.ts  ibContracts.ts(怎么拼一张 IB 合约)  futuBroker.t
 parsing       validator.ts  providers.ts  prompts.ts  shorthand.ts  llm.ts  embeddings.ts
 analysis      backtest backtestLab priceaction screener research ideaRetrieval optionwall anomaly flyexit tradereview tradeOutcomes performance leaders fillsCsv optionTradesCsv optionPositionsCsv tradeSimilar ibtrades macro market alerts maTouch execQuality signalOutcomes trackerDrawdown ivPricing flyPlan flyCalibration flyIvModel(校准出来的参数,脚本生成,不手改)
 domain        config.ts  models.ts  store.ts  storeSafety.ts(库的版本号、完整性、备份)  importedTrades.ts  ideaVectors.ts  signalLog.ts  positions.ts  combos.ts(期权腿 → 组合)  marketdata.ts  ivSamples.ts(自己攒的期权 IV,文件读写)
-util          py.ts  pyjson.ts  tz.ts  notify.ts  keychain.ts  killswitch.ts  protections.ts  riskBudget.ts  rpcError.ts  marketCalendar.ts(内置休市日历)
+util          py.ts  pyjson.ts  tz.ts  notify.ts  keychain.ts  keychainChild.ts(凭证子进程)  secrets.ts(引擎里凭证读写的入口)  killswitch.ts  protections.ts  riskBudget.ts  rpcError.ts  marketCalendar.ts(内置休市日历)
 contract      contract/*.ts(纯类型,零 import,谁都能引)  contract/schema/*.ts(入参的 zod 校验,只给 rpc/ 用)
 ```
 
@@ -37,6 +37,8 @@ contract      contract/*.ts(纯类型,零 import,谁都能引)  contract/schema/
 - 执行层只认合约、订单、行情。它需要的领域概念已经有家:持仓身份与托管单计划在 `positions.ts`,
   K 线周期表与量价快照在 `marketdata.ts`,IB 会话接口在 `ibTypes.ts`。不从 `tracker` / `priceaction` / `anomaly` 拿。
 - 不许循环 import,类型环也不许(`import type` 的环说明接口放错了文件)。
+- 引擎进程里不直接调 `keychain.ts`:它是同步的原生调用,macOS 弹窗问人时整个事件循环停住(盯盘跟着停)。
+  一律走 `secrets.ts`(子进程、有时限),见 `docs/features/credentials.md`;depcruise 的 `keychain-off-the-loop` 钉着。
 - `rpc/server.ts` 只管传输、生命周期、装配,**不写业务**。一个方法属于哪个域就进 `rpc/handlers/<域>.ts`;
   handler 之间不互相 import,也不 import server——两个域都要的东西下沉:带状态的(缓存、循环、迁移标记)进
   `services/`,纯函数进 `rpc/params.ts`。`services/` 不认识 RPC,只认 `ServiceHost`;settings / router / engine

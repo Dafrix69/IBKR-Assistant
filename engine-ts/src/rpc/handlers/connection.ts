@@ -14,8 +14,8 @@ import type {
 import { DEFAULT_BROKER_PORT, patchConfigFile } from "../../config.js";
 import * as futu from "../../futu.js";
 import { FutuRouter } from "../../futuBroker.js";
-import { KeychainError, hasSecret, setSecret } from "../../keychain.js";
 import { RpcError } from "../../rpcError.js";
+import { KeychainError, secretExists, writeSecret } from "../../secrets.js";
 import { redactAccount } from "../../store.js";
 import * as twsMod from "../../tws.js";
 import { HandlerBase } from "../context.js";
@@ -46,15 +46,11 @@ export class ConnectionHandlers extends HandlerBase {
     futu: "富途证券(OpenD)",
   };
 
-  brokerCatalog(): BrokerCatalog {
+  async brokerCatalog(): Promise<BrokerCatalog> {
     const provider = this.settings.broker.provider;
     const futuCfg = this.settings.broker.futu;
-    let unlockSaved = false;
-    try {
-      unlockSaved = hasSecret(futuCfg.keychain_service, futuCfg.keychain_account); // 只查有没有,不解密
-    } catch (exc) {
-      if (!(exc instanceof KeychainError)) throw exc;
-    }
+    // 只查有没有存过,不解密:解密会让 macOS 弹窗问人(secrets.ts)
+    const unlockSaved = await secretExists(futuCfg.keychain_service, futuCfg.keychain_account);
     return {
       current: provider,
       connected: this.router ? this.router.connectedNames() : [],
@@ -229,7 +225,7 @@ export class ConnectionHandlers extends HandlerBase {
   }
 
   /** 存交易解锁密码。只存 md5,绝不存明文,也绝不回显任何一段。 */
-  futuSetPassword(params: FutuSetPasswordParams): { ok: true } {
+  async futuSetPassword(params: FutuSetPasswordParams): Promise<{ ok: true }> {
     let secret = String(params["password"] ?? "");
     if (!secret) throw new RpcError(-32602, "交易解锁密码为空");
     if (!params["already_md5"]) {
@@ -241,7 +237,7 @@ export class ConnectionHandlers extends HandlerBase {
     }
     const futuCfg = this.settings.broker.futu;
     try {
-      setSecret(futuCfg.keychain_service, futuCfg.keychain_account, secret);
+      await writeSecret(futuCfg.keychain_service, futuCfg.keychain_account, secret);
     } catch (exc) {
       if (exc instanceof KeychainError) throw new RpcError(-32008, exc.message);
       throw exc;

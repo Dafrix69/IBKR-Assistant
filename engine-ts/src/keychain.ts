@@ -12,6 +12,11 @@
  * 迁移:旧版写在 `%LOCALAPPDATA%/dafri/credentials.dpapi.json`(DPAPI 密文)与 macOS
  * `security` 命令里的凭证,第一次读到时一次性搬进系统凭证库。**旧的不删**——万一要回退到旧版本,
  * 那边还读得到(删除凭证时才会把两边一起清掉,否则删完再读又被迁回来)。
+ *
+ * **引擎进程不直接调这里。** 这些都是同步调用,而 macOS 钥匙串条目认的是写入它的那个程序的签名:
+ * 换一个 ad-hoc 签名的包,第一次解密就弹窗问人,同步调用在弹窗前一直等,整个事件循环跟着停(盯盘也停)。
+ * 引擎走 `secrets.ts`(子进程、有时限);这里的函数只在凭证子进程(`keychainChild.ts`)与一次性的 cli 里跑,
+ * `.dependency-cruiser.cjs` 的 keychain-off-the-loop 钉着。
  */
 import { spawnSync } from "node:child_process";
 import * as fs from "node:fs";
@@ -26,7 +31,7 @@ export function isSupported(): boolean {
   return os.platform() === "darwin" || os.platform() === "win32";
 }
 
-function requireSupported(): void {
+export function requireSupported(): void {
   if (!isSupported()) {
     throw new KeychainError(
       "当前平台既不是 macOS 也不是 Windows,没有可用的系统凭证存储。" +
@@ -52,7 +57,7 @@ export function getSecret(service: string, account: string): string | null {
   return migrateLegacy(service, account);
 }
 
-/** 有没有保存过这条凭证。原生读一次只要几毫秒,不必再为它单独做一条"不解密"的路径。 */
+/** 有没有保存过这条凭证。会解密(macOS 上可能弹窗):引擎查"有没有"走 secrets.secretExists,那边在 macOS 上只查属性。 */
 export function hasSecret(service: string, account: string): boolean {
   requireSupported();
   return getSecret(service, account) !== null;
@@ -78,6 +83,45 @@ export function deleteSecret(service: string, account: string): boolean {
   }
   // 旧存储里那份也要清掉,否则删完再读又被迁回来
   return dropLegacy(service, account) || removed;
+}
+
+// ---------------------------------------------------------------- 凭证子进程的一次请求
+/** 引擎(secrets.ts)经管道发给凭证子进程的一次请求。密钥只经管道,不进命令行参数与环境变量。 */
+export interface KeychainRequest {
+  op: "get" | "has" | "set";
+  service: string;
+  account: string;
+  secret?: string;
+}
+
+/** 子进程回的结果:get 带明文(没有是 null),has / set 只说有没有;失败带一句人话,不带调用栈。 */
+export type KeychainReply =
+  | { ok: true; value: string | null; exists: boolean }
+  | { ok: false; error: string };
+
+/** 在子进程里做一次请求。任何失败都折成 `{ ok: false }`,不抛:子进程只管把结果交回去。 */
+export function runKeychainRequest(raw: unknown): KeychainReply {
+  const req = (raw ?? {}) as Partial<KeychainRequest>;
+  if (typeof req.service !== "string" || typeof req.account !== "string") {
+    return { ok: false, error: "凭证请求缺 service / account" };
+  }
+  try {
+    switch (req.op) {
+      case "get": {
+        const value = getSecret(req.service, req.account);
+        return { ok: true, value, exists: value !== null };
+      }
+      case "has":
+        return { ok: true, value: null, exists: hasSecret(req.service, req.account) };
+      case "set":
+        setSecret(req.service, req.account, String(req.secret ?? ""));
+        return { ok: true, value: null, exists: true };
+      default:
+        return { ok: false, error: `不认识的凭证操作:${String(req.op)}` };
+    }
+  } catch (exc) {
+    return { ok: false, error: (exc as Error).message };
+  }
 }
 
 // ---------------------------------------------------------------- 旧存储迁移

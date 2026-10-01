@@ -6,7 +6,7 @@
  */
 const L = {
   contractTypes: "^src/contract/[^/]+\\.ts$",
-  util:        "^src/(py|pyjson|tz|notify|keychain|killswitch|protections|riskBudget|rpcError|marketCalendar)\\.ts$",
+  util:        "^src/(py|pyjson|tz|notify|keychain|keychainChild|secrets|killswitch|protections|riskBudget|rpcError|marketCalendar)\\.ts$",
   domain:      "^src/(config|models|store|storeSafety|importedTrades|ideaVectors|signalLog|positions|combos|marketdata|ivSamples)\\.ts$",
   analysis:    "^src/(backtest|priceaction|screener|research|ideaRetrieval|optionwall|anomaly|flyexit|tradereview|tradeOutcomes|performance|leaders|fillsCsv|optionTradesCsv|optionPositionsCsv|tradeSimilar|ibtrades|macro|market|alerts|maTouch|execQuality|backtestLab|signalOutcomes|trackerDrawdown|ivPricing|flyPlan|flyCalibration|flyIvModel)\\.ts$",
   parsing:     "^src/(validator|providers|prompts|shorthand|llm|embeddings)\\.ts$",
@@ -29,6 +29,10 @@ module.exports = {
       from: { path: L.domain }, to: { path: [L.analysis, L.parsing, L.execution, L.orchestrate, L.transport] } },
     { name: "util-bottom", severity: "error", comment: "util 不依赖任何业务模块(契约的类型文件在它下面,可以引:protections.ts 的配置形状就定义在那里)",
       from: { path: L.util }, to: { path: "^src/", pathNot: [L.util, L.contractTypes] } },
+    { name: "keychain-off-the-loop", severity: "error",
+      comment: "keychain.ts 是同步的原生调用:macOS 弹窗问人时它一直等,引擎的事件循环跟着停(盯盘、托管单、所有 RPC)。" +
+        "引擎里一律走 secrets.ts(子进程、有时限);只有凭证子进程、secrets.ts 本身与一次性的 cli 能直接引",
+      from: { path: "^src/", pathNot: "^src/(secrets|keychainChild|cli)\\.ts$" }, to: { path: "^src/keychain\\.ts$" } },
     { name: "contract-types-import-nothing", severity: "error",
       comment: "契约的类型文件只许互相引用:界面的 tsc 会顺着 bridge.ts 的 import type 走进来,而 CI 里界面那一路不装引擎的依赖、也没有 node 的类型",
       from: { path: L.contractTypes }, to: { pathNot: L.contractTypes } },

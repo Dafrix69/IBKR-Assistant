@@ -73,6 +73,7 @@ MIT / BSD / ISC / Apache-2.0 都要求许可声明随副本一起走,而 Vite �
 ## 还没做的
 
 - **代码签名。** macOS 的路已经接好,等证书;Windows 的还没接(OV / EV 证书或 Azure Trusted Signing,形式没定)。
+  没有签名之前,每装一个新包,第一次用 API Key、第一次富途交易解锁时 macOS 各问一次钥匙串(见 [系统凭证库](credentials.md))。
 - **自动更新。** 要先有签名(macOS 的 Squirrel 要求新旧两版同一个签名);届时还要定:有追踪或托管单在运行时不自动重启。
 - **SBOM 与构建来源证明。** `gen_notices.js` 已经有完整的组件清单,出一份 CycloneDX 不难,等有客户要时再做。
 - **界面 smoke 进 CI。** `capture_pages.js --check` 要在无头环境里运行 Electron,没有验证过。
