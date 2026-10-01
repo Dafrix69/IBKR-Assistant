@@ -67,7 +67,9 @@
     "age_ms": null,
     "last_error": "",
     "event_loop_last_ms": null,
-    "event_loop_worst_ms": null
+    "event_loop_worst_ms": null,
+    "hold": "",
+    "live_tracks": 0
    },
    "accounts": [
     {
@@ -1423,7 +1425,9 @@
     "age_ms": null,
     "last_error": "",
     "event_loop_last_ms": null,
-    "event_loop_worst_ms": null
+    "event_loop_worst_ms": null,
+    "hold": "",
+    "live_tracks": 0
    }
   }
  },
