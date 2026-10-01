@@ -69,6 +69,7 @@
       "diagnostics.js",
       "support-ipc.js",
       "power-watch.js",
+      "lid-guard.js",
       "accounts-setup.js",
       "popup/**/*",
       "renderer-react/dist/**/*",

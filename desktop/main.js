@@ -26,6 +26,7 @@ const { GrantBook, PURPOSES, requiredGrants, loosenedLimits, normalizeBinding } 
 const { createRedactor, accountsFromConfig } = require('./redact');
 const { registerSupportIpc, handleStoreFatal } = require('./support-ipc');
 const { PowerWatch } = require('./power-watch');
+const lidGuardLib = require('./lid-guard');
 
 // 2026-09-17 产品改名 Dafri Trading → IBKR-Assistant。userData 目录是按产品名取的:不处理的话,老用户升级后
 // 配置、交易库、日志全都"不见了"(其实还躺在旧目录里)。旧目录在、新目录还没建过,就继续用旧的。
@@ -460,10 +461,120 @@ function watchPower() {
 /** 心跳每一问之后:在盯的追踪条数(没连券商时本来就没在盯,按 0)与此刻是不是电池。 */
 function observePower(status) {
   const loop = status && status.broker_connected ? status.tracker_loop : null;
+  const live = loop ? Number(loop.live_tracks) || 0 : 0;
   try {
-    applyPower(powerWatch.observe({ onBattery: powerMonitor.isOnBatteryPower(), live: loop ? Number(loop.live_tracks) || 0 : 0 }));
+    applyPower(powerWatch.observe({ onBattery: powerMonitor.isOnBatteryPower(), live, lidAwake: Boolean(lidGuard && lidGuard.owned) }));
   } catch {
     /* 读不到电源状态不影响心跳 */
+  }
+  driveLidGuard(live);
+}
+
+/** 盯盘时合盖不睡(判断在 lid-guard.js):读 pmset、弹系统授权框去改、结果落盘。只在 macOS。 */
+let lidGuard = null;
+
+function lidGuardFile() {
+  return path.join(app.getPath('userData'), 'lid-guard.json');
+}
+
+function initLidGuard() {
+  if (process.platform !== 'darwin') return;
+  lidGuard = new lidGuardLib.LidGuard(lidGuardLib.loadState(lidGuardFile()));
+}
+
+function runFile(cmd, args, timeoutMs) {
+  const { execFile } = require('node:child_process');
+  return new Promise((resolve, reject) => {
+    execFile(cmd, args, { timeout: timeoutMs }, (err, stdout, stderr) => {
+      if (err) {
+        err.stderr = String(stderr || '');
+        reject(err);
+      } else {
+        resolve(String(stdout || ''));
+      }
+    });
+  });
+}
+
+async function readSleepDisabled() {
+  try {
+    return lidGuardLib.parseSleepDisabled(await runFile('/usr/bin/pmset', ['-g'], 5000));
+  } catch {
+    return null;
+  }
+}
+
+/** 弹授权框改 disablesleep,把结果交回 lid-guard。授权框最多等 2 分钟。 */
+async function applyLidAction(action) {
+  if (action.log) log.info(action.log);
+  if (action.set === null) return;
+  let outcome = 'ok';
+  let detail = '';
+  try {
+    await runFile('/usr/bin/osascript', ['-e', lidGuardLib.pmsetScript(action.set)], 120_000);
+  } catch (err) {
+    outcome = lidGuardLib.isCancelled(err) ? 'cancelled' : 'failed';
+    detail = String((err && (err.stderr || err.message)) || '').trim().slice(0, 200);
+  }
+  applyPower(lidGuard.done(action.set, outcome, detail));
+  try {
+    lidGuardLib.saveState(lidGuardFile(), lidGuard.state());
+  } catch (err) {
+    log.warn('[power] 写不进 lid-guard.json', err);
+  }
+}
+
+let lidDriving = false;
+
+async function driveLidGuard(live) {
+  if (!lidGuard || lidDriving || quitting) return;
+  lidDriving = true;
+  try {
+    if (!lidGuard.wantsReading(live)) {
+      lidGuard.observe({ live, now: Date.now() });
+      return;
+    }
+    const sleepDisabled = await readSleepDisabled();
+    await applyLidAction(lidGuard.observe({ live, sleepDisabled, now: Date.now() }));
+  } catch (err) {
+    log.warn('[power] 合盖睡眠处理出错', err);
+  } finally {
+    lidDriving = false;
+  }
+}
+
+/** 菜单里勾上 / 去掉「盯盘时合盖不睡」:落盘,当场按新设置走一轮(去掉且是自己关的就当场恢复)。 */
+async function setLidGuardEnabled(enabled) {
+  if (!lidGuard) return;
+  lidGuard.setEnabled(enabled);
+  log.info(`[power] 「盯盘时合盖不睡」${enabled ? '打开' : '关掉'}`);
+  try {
+    lidGuardLib.saveState(lidGuardFile(), lidGuard.state());
+  } catch (err) {
+    log.warn('[power] 写不进 lid-guard.json', err);
+  }
+  await driveLidGuard(powerWatch.live);
+}
+
+/** 退出之前:自己关掉的合盖睡眠要恢复。只做一次;没成就当场说怎么手动恢复。 */
+let lidRestored = false;
+
+function lidRestorePending() {
+  return Boolean(lidGuard && lidGuard.owned && !lidRestored);
+}
+
+async function restoreLidSleep() {
+  if (!lidRestorePending()) return;
+  lidRestored = true;
+  const action = lidGuard.quitAction();
+  if (action.set === null) return;
+  await applyLidAction(action);
+  if (lidGuard.owned) {
+    dialog.showMessageBoxSync({
+      type: 'warning',
+      message: '合盖睡眠还关着',
+      detail: '合上盖子电脑不会睡。要恢复,在终端里运行:\nsudo pmset -a disablesleep 0',
+    });
   }
 }
 
@@ -671,6 +782,17 @@ function buildMenu() {
         accelerator: 'CommandOrControl+R',
         click: () => send('menu', { action: 'refresh' }),
       },
+      ...(lidGuard
+        ? [
+            { type: 'separator' },
+            {
+              label: '盯盘时合盖不睡',
+              type: 'checkbox',
+              checked: lidGuard.enabled,
+              click: (item) => void setLidGuardEnabled(item.checked),
+            },
+          ]
+        : []),
     ],
   };
   if (process.platform === 'darwin') {
@@ -1393,6 +1515,7 @@ if (!gotLock) {
       log.warn('[power] 阻止系统挂起失败', err);
     }
     watchPower();
+    initLidGuard();
     createWindow();
     buildMenu();
     if (bootstrap.created) {
@@ -1420,14 +1543,16 @@ if (!gotLock) {
   app.on('before-quit', (event) => {
     quitting = true;
     popup.destroy();
-    if (!engine || engineStopped) return;
+    const engineRunning = Boolean(engine) && !engineStopped;
+    if (!engineRunning && !lidRestorePending()) return;
     event.preventDefault();
-    engine
-      .stop({ final: true })
-      .catch(() => {})
-      .finally(() => {
+    // 先停引擎(等它停稳),再恢复自己关掉的合盖睡眠(会弹授权框),最后真的退出
+    (engineRunning ? engine.stop({ final: true }).catch(() => {}) : Promise.resolve())
+      .then(() => {
         engineStopped = true;
-        app.quit();
-      });
+        return restoreLidSleep();
+      })
+      .catch((err) => log.warn('[power] 退出时恢复合盖睡眠出错', err))
+      .finally(() => app.quit());
   });
 }

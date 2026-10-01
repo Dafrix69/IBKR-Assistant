@@ -56,7 +56,7 @@ export default tseslint.config(
   {
     files: [
       'main.js', 'preload.js', 'rpc-client.js', 'popup-window.js', 'popup-preload.js', 'update-check.js',
-      'config-guard.js', 'store-guard.js', 'consent.js', 'confirm-grants.js', 'redact.js', 'diagnostics.js', 'support-ipc.js', 'accounts-setup.js', 'power-watch.js',
+      'config-guard.js', 'store-guard.js', 'consent.js', 'confirm-grants.js', 'redact.js', 'diagnostics.js', 'support-ipc.js', 'accounts-setup.js', 'power-watch.js', 'lid-guard.js',
     ],
     extends: [js.configs.recommended],
     languageOptions: {

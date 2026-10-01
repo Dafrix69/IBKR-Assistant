@@ -20,7 +20,14 @@ function minutesText(ms) {
   return min < 60 ? `${min} 分钟` : `${Math.floor(min / 60)} 小时 ${min % 60} 分`;
 }
 
-function batteryNotice(live) {
+function batteryNotice(live, lidAwake = false) {
+  if (lidAwake) {
+    // 合盖睡眠已经关掉(lid-guard.js):合盖不停,停的是电
+    return {
+      title: '正在用电池:电耗光,本机盯盘就停了',
+      body: `有 ${live} 条追踪在本机盯着。合盖不会睡,但电池耗光电脑就关了。要离开很久请接上电源,或者给追踪打开「托管到券商」。`,
+    };
+  }
   return {
     title: '正在用电池:合上盖子,本机盯盘就停了',
     body:
@@ -37,13 +44,15 @@ class PowerWatch {
     /** 这一段电池期间提醒过了 */
     this.warned = false;
     this.suspendedAt = null;
+    /** 合盖睡眠已关掉(lid-guard.js 报的) */
+    this.lidAwake = false;
   }
 
   /**
    * 电源状态或在盯的追踪条数变了(没给的那一项不变)。返回 { log, notify },没有要做的事时两项都是 null。
    * `live` 取引擎心跳的 live_tracks;没连券商时传 0:那时本来就没在盯。
    */
-  observe({ onBattery, live } = {}) {
+  observe({ onBattery, live, lidAwake } = {}) {
     const out = { log: null, notify: null };
     if (typeof onBattery === 'boolean' && onBattery !== this.onBattery) {
       out.log = this.onBattery === null
@@ -53,9 +62,10 @@ class PowerWatch {
       this.onBattery = onBattery;
     }
     if (Number.isFinite(live)) this.live = Math.max(0, Math.trunc(live));
+    if (typeof lidAwake === 'boolean') this.lidAwake = lidAwake;
     if (this.onBattery === true && this.live > 0 && !this.warned) {
       this.warned = true;
-      out.notify = batteryNotice(this.live);
+      out.notify = batteryNotice(this.live, this.lidAwake);
     }
     return out;
   }

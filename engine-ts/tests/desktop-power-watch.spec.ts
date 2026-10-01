@@ -34,6 +34,13 @@ describe("用电池时的提醒", () => {
     for (const live of [2, 3, 0, 1]) expect(w.observe({ onBattery: true, live }).notify).toBeNull();
   });
 
+  it("合盖睡眠已关掉(lid-guard):用电池时说的是电会耗光,不再说合盖就停", () => {
+    const w = new PowerWatch();
+    const a = (w.observe as (o: { onBattery?: boolean; live?: number; lidAwake?: boolean }) => Action)({ onBattery: true, live: 1, lidAwake: true });
+    expect(a.notify?.title).toBe("正在用电池:电耗光,本机盯盘就停了");
+    expect(a.notify?.body).toContain("合盖不会睡");
+  });
+
   it("接回电源再拔掉:算新的一段,再提醒一次", () => {
     const w = new PowerWatch();
     w.observe({ onBattery: true, live: 1 });
