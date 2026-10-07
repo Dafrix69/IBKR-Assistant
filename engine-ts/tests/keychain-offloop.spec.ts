@@ -281,9 +281,10 @@ describe("RPC:一个请求在等钥匙串,交易照常", () => {
     await done;
     const submit = answered.get(2)!;
     expect(submit.msg["error"]).toEqual({ code: -32602, message: "指令为空" });
-    expect(submit.at).toBeLessThan(300);
     const set = answered.get(1)!;
     expect(set.at).toBeGreaterThanOrEqual(380);
+    // 要证的是下单没有排在存 Key 后面:它比存 Key 先答完。不按绝对毫秒数算——CI 的 Windows 机器起一个 server 就要几百毫秒
+    expect(submit.at).toBeLessThan(set.at);
     expect(set.msg["error"]["code"]).toBe(-32008);
     expect(set.msg["error"]["message"]).toMatch(/没有写完凭证.*这次保存会自己完成/);
   });

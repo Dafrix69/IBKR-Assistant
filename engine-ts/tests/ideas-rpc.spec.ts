@@ -120,7 +120,7 @@ describe("ideas.add / list / update:界面的载荷", () => {
     expect((await call("ideas.add", { text: "   " }))["error"]).toEqual({ code: -32602, message: "想法内容为空" });
     expect((await call("ideas.add", { text: "长".repeat(2001) }))["error"]).toEqual({ code: -32602, message: "想法太长(超过 2000 字),请精简" });
     expect((await call("ideas.add", { text: "长".repeat(2000) }))["error"]).toBeUndefined();
-  });
+  }, 30_000); // 两千字的想法要算向量,CI 的 Windows 机器上超过 5 秒
 
   it("完成 / 归档 / 恢复:回执只有 id 与 status;「进行中」的筛选跟着变", async () => {
     const { call } = makeServer();
