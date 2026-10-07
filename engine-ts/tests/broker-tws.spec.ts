@@ -1,5 +1,8 @@
 /** tws.ts 行为测试(移植自 Python test_tws.py)。TCP 探测用真实本机 socket。 */
+import * as fs from "node:fs";
 import * as net from "node:net";
+import * as os from "node:os";
+import * as path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import {
@@ -143,6 +146,24 @@ describe("tws: 别名核对 / 拉起 / 指引", () => {
     expect(apps.map((a) => a["key"]).sort()).toEqual(["gateway", "tws"]);
     for (const app of apps) {
       for (const key of ["name", "installed", "paths", "running"]) expect(key in app).toBe(true);
+    }
+  });
+
+  it("detect_apps 滤掉卸载器:install4j 的 Uninstaller.app 和本体同目录、同前缀,排序还在前面", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "tws-detect-"));
+    for (const name of ["Trader Workstation 10.50 Uninstaller.app", "Trader Workstation 10.50.app"]) {
+      fs.mkdirSync(path.join(dir, name));
+    }
+    try {
+      const apps = detectApps(
+        { tws: [path.join(dir, "Trader Workstation *.app")] },
+        { tws: "no-such-process-name-for-this-test" },
+      );
+      expect(apps).toHaveLength(1);
+      expect(apps[0]!["installed"]).toBe(true);
+      expect(apps[0]!["paths"]).toEqual([path.join(dir, "Trader Workstation 10.50.app")]);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
     }
   });
 

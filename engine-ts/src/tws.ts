@@ -184,7 +184,9 @@ export function detectApps(
   for (const [key, globs] of Object.entries(candidates)) {
     const found: string[] = [];
     for (const pattern of globs) {
-      if (pattern) found.push(...expandGlob(pattern));
+      // install4j 把「Trader Workstation 10.50 Uninstaller.app」放在本体旁边,通配符两个都中,
+      // 排序后卸载器还排在前面(空格小于点):不滤掉,界面显示的、一键拉起的都是卸载器。
+      if (pattern) found.push(...expandGlob(pattern).filter((p) => !/uninstall/i.test(path.basename(p))));
     }
     apps.push({
       key,
