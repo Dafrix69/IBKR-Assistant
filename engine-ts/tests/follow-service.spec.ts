@@ -111,6 +111,36 @@ afterEach(() => {
   useSecretBackend(null);
 });
 
+describe("follow service: 「N蝴蝶」在百位边上", () => {
+  it("现价 6990、「00蝴蝶」算成 6900(离 90 点):不发单,记成没接住并写明原因;写明完整中心的照跟", async () => {
+    const { service, router, log } = build();
+    router.prices["SPX"] = [6990];
+    await service.onMessage(message("00蝴蝶 15CM 1.8"));
+    expect(router.placed).toHaveLength(0);
+    expect(log()[0]).toMatchObject({ outcome: "unparsed" });
+    expect(log()[0]!.detail).toContain("中心 6900");
+    expect(log()[0]!.detail).toContain("7000蝴蝶");
+    await service.onMessage(message("7000蝴蝶 15CM 1.8"));
+    expect(router.placed).toHaveLength(1);
+    expect(log()[0]).toMatchObject({ outcome: "sent" });
+  });
+
+  it("只观察时也一样说「没接住」,不能记成「只观察」让人以为打开之后会跟上", async () => {
+    const { service, router, log } = build({ enabled: false });
+    router.prices["SPX"] = [6990];
+    await service.onMessage(message("00蝴蝶 15CM 1.8"));
+    expect(log()[0]).toMatchObject({ outcome: "unparsed" });
+    expect(router.placed).toHaveLength(0);
+  });
+
+  it("现价 6907.35、「00蝴蝶」算成 6900(离 7 点):照跟", async () => {
+    const { service, router, log } = build();
+    await service.onMessage(message("00蝴蝶 15CM 1.8"));
+    expect(router.placed).toHaveLength(1);
+    expect(log()[0]).toMatchObject({ outcome: "sent" });
+  });
+});
+
 describe("follow service: 本地收件", () => {
   const line = (content: string, key: string): string =>
     JSON.stringify({ v: 1, key, seen_at: new Date(NOW - 1000).toISOString(), channel: "charlie的策略", author: "老王", time_label: "22:31", content }) + "\n";

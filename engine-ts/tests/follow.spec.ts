@@ -5,7 +5,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import type { FollowConfig, FollowEntry } from "../src/contract/follow.js";
-import { decide, outcomeOf, triage, worstCaseUsd } from "../src/follow.js";
+import { RELATIVE_CENTER_MAX_POINTS, decide, outcomeOf, relativeCenterProblem, triage, worstCaseUsd } from "../src/follow.js";
 import type { FollowGates } from "../src/follow.js";
 import { tryParseShorthand } from "../src/shorthand.js";
 import { TradeStore } from "../src/store.js";
@@ -248,5 +248,33 @@ describe("follow: 日志表", () => {
     const db = (s as unknown as { db: { prepare(sql: string): { run(): unknown } } }).db;
     expect(() => db.prepare("UPDATE follow_log SET outcome = 'observed'").run()).toThrow(/append-only/);
     expect(() => db.prepare("DELETE FROM follow_log").run()).toThrow(/append-only/);
+  });
+});
+
+
+describe("follow: 「N蝴蝶」在百位边上说不清,不跟", () => {
+  const parse = (text: string, spot: number): unknown => tryParseShorthand(text, { SPX: spot }, FRIDAY);
+
+  it("现价 7690 时「00蝴蝶」按百位算成 7600,离现价 90 点——说的多半是 7700:不跟,说明里写了算成什么、怎么改", () => {
+    const problem = relativeCenterProblem(parse("00蝴蝶 20CM 3.6", 7690), 7690);
+    expect(problem).not.toBeNull();
+    expect(problem!.detail).toContain("中心 7600");
+    expect(problem!.detail).toContain("有 90 点");
+    expect(problem!.detail).toContain("7700蝴蝶");
+    expect(problem!.summary).toContain("7580/7600/7620");
+  });
+
+  it("阈值:离现价不到 50 点的照跟,正好 50 点(两个百位一样近)不跟", () => {
+    expect(RELATIVE_CENTER_MAX_POINTS).toBe(50);
+    expect(relativeCenterProblem(parse("00蝴蝶 20CM 3.6", 7649.9), 7649.9)).toBeNull();
+    expect(relativeCenterProblem(parse("00蝴蝶 20CM 3.6", 7650), 7650)).not.toBeNull();
+    expect(relativeCenterProblem(parse("50蝴蝶 20CM 3.6", 7690), 7690)).toBeNull(); // 7650,离 40 点
+    expect(relativeCenterProblem(parse("20蝴蝶 25cm 挂个4.5试试", 7619), 7619)).toBeNull();
+  });
+
+  it("不是蝴蝶、现价不是数:不管(判定那一步自有说法)", () => {
+    expect(relativeCenterProblem(null, 7690)).toBeNull();
+    expect(relativeCenterProblem({ orders: [] }, 7690)).toBeNull();
+    expect(relativeCenterProblem(parse("00蝴蝶 20CM 3.6", 7690), Number.NaN)).toBeNull();
   });
 });

@@ -15,9 +15,9 @@
        "currency": "USD",
        "combo_strategy": "BUTTERFLY",
        "legs": [
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 6900.0, "right": "C", "tradingClass": "SPXW"},
-        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 6915.0, "right": "C", "tradingClass": "SPXW"},
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 6930.0, "right": "C", "tradingClass": "SPXW"}
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 6900, "right": "C", "tradingClass": "SPXW"},
+        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 6915, "right": "C", "tradingClass": "SPXW"},
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 6930, "right": "C", "tradingClass": "SPXW"}
        ]
       },
       "execution_type": "IMMEDIATE",
@@ -25,8 +25,8 @@
       "account": "DEFAULT",
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 1.8, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
-      "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "「15蝴蝶」按中心 6915(现价百位+15)理解", "中心 6915 高于现价 6907.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
+      "confidence": 1,
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "「15蝴蝶」按中心 6915(现价百位+15)理解", "中心 6915 高于现价 6907.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v5"]
      }
     ],
     "rejections": []
@@ -46,9 +46,9 @@
        "currency": "USD",
        "combo_strategy": "BUTTERFLY",
        "legs": [
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 6900.0, "right": "P", "tradingClass": "SPXW"},
-        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 6915.0, "right": "P", "tradingClass": "SPXW"},
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 6930.0, "right": "P", "tradingClass": "SPXW"}
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 6900, "right": "P", "tradingClass": "SPXW"},
+        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 6915, "right": "P", "tradingClass": "SPXW"},
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 6930, "right": "P", "tradingClass": "SPXW"}
        ]
       },
       "execution_type": "IMMEDIATE",
@@ -56,8 +56,8 @@
       "account": "DEFAULT",
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 1.8, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
-      "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "「15蝴蝶」按中心 6915(现价百位+15)理解", "中心 6915 低于现价 6992.1,推断为看跌蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
+      "confidence": 1,
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "「15蝴蝶」按中心 6915(现价百位+15)理解", "中心 6915 低于现价 6992.1,推断为看跌蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v5"]
      }
     ],
     "rejections": []
@@ -77,9 +77,9 @@
        "currency": "USD",
        "combo_strategy": "BUTTERFLY",
        "legs": [
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7500.0, "right": "C", "tradingClass": "SPXW"},
-        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7520.0, "right": "C", "tradingClass": "SPXW"},
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7540.0, "right": "C", "tradingClass": "SPXW"}
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7500, "right": "C", "tradingClass": "SPXW"},
+        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7520, "right": "C", "tradingClass": "SPXW"},
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7540, "right": "C", "tradingClass": "SPXW"}
        ]
       },
       "execution_type": "IMMEDIATE",
@@ -87,8 +87,8 @@
       "account": "DEFAULT",
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 2.5, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
-      "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
+      "confidence": 1,
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v5"]
      }
     ],
     "rejections": []
@@ -108,9 +108,9 @@
        "currency": "USD",
        "combo_strategy": "BUTTERFLY",
        "legs": [
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7500.0, "right": "P", "tradingClass": "SPXW"},
-        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7520.0, "right": "P", "tradingClass": "SPXW"},
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7540.0, "right": "P", "tradingClass": "SPXW"}
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7500, "right": "P", "tradingClass": "SPXW"},
+        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7520, "right": "P", "tradingClass": "SPXW"},
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7540, "right": "P", "tradingClass": "SPXW"}
        ]
       },
       "execution_type": "IMMEDIATE",
@@ -118,8 +118,8 @@
       "account": "DEFAULT",
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "AUTO_MID", "lmtPrice": null, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
-      "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "未指定净权利金上限,将在下单时按盘口中间价定价(AUTO_MID);若成交成本敏感,请写明如'权利金不超过 3'", "本地速记解析(未经大模型),语法 shorthand-v4"]
+      "confidence": 1,
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "未指定净权利金上限,将在下单时按盘口中间价定价(AUTO_MID);若成交成本敏感,请写明如'权利金不超过 3'", "本地速记解析(未经大模型),语法 shorthand-v5"]
      }
     ],
     "rejections": []
@@ -139,9 +139,9 @@
        "currency": "USD",
        "combo_strategy": "BUTTERFLY",
        "legs": [
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7500.0, "right": "C", "tradingClass": "SPXW"},
-        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7520.0, "right": "C", "tradingClass": "SPXW"},
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7540.0, "right": "C", "tradingClass": "SPXW"}
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7500, "right": "C", "tradingClass": "SPXW"},
+        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7520, "right": "C", "tradingClass": "SPXW"},
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7540, "right": "C", "tradingClass": "SPXW"}
        ]
       },
       "execution_type": "IMMEDIATE",
@@ -149,8 +149,8 @@
       "account": "DEFAULT",
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 3, "price_mode": "EXPLICIT", "lmtPrice": 2.5, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
-      "confidence": 1.0,
-      "warnings": ["未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
+      "confidence": 1,
+      "warnings": ["未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v5"]
      }
     ],
     "rejections": []
@@ -158,7 +158,7 @@
   },
   {
    "text": "ndx 21020的30cm蝴蝶 5",
-   "snapshot": {"NDX": 20988.0},
+   "snapshot": {"NDX": 20988},
    "expect": {
     "orders": [
      {
@@ -170,18 +170,18 @@
        "currency": "USD",
        "combo_strategy": "BUTTERFLY",
        "legs": [
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 20990.0, "right": "C"},
-        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 21020.0, "right": "C"},
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 21050.0, "right": "C"}
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 20990, "right": "C"},
+        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 21020, "right": "C"},
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 21050, "right": "C"}
        ]
       },
       "execution_type": "IMMEDIATE",
       "trigger": null,
       "account": "DEFAULT",
-      "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 5.0, "tif": "DAY", "outsideRth": false},
+      "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 5, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
-      "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写到期日,已按默认当日到期处理", "中心 21020 高于现价 20988,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
+      "confidence": 1,
+      "warnings": ["未写张数,已按默认 1 张处理", "未写到期日,已按默认当日到期处理", "中心 21020 高于现价 20988,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v5"]
      }
     ],
     "rejections": []
@@ -201,9 +201,9 @@
        "currency": "USD",
        "combo_strategy": "BUTTERFLY",
        "legs": [
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7500.0, "right": "C", "tradingClass": "SPXW"},
-        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7520.0, "right": "C", "tradingClass": "SPXW"},
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7540.0, "right": "C", "tradingClass": "SPXW"}
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7500, "right": "C", "tradingClass": "SPXW"},
+        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7520, "right": "C", "tradingClass": "SPXW"},
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7540, "right": "C", "tradingClass": "SPXW"}
        ]
       },
       "execution_type": "IMMEDIATE",
@@ -211,8 +211,8 @@
       "account": "DEFAULT",
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 2.5, "tif": "GTC", "outsideRth": false},
       "reason": "本地速记解析",
-      "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
+      "confidence": 1,
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v5"]
      }
     ],
     "rejections": []
@@ -232,9 +232,9 @@
        "currency": "USD",
        "combo_strategy": "BUTTERFLY",
        "legs": [
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7500.0, "right": "C", "tradingClass": "SPXW"},
-        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7520.0, "right": "C", "tradingClass": "SPXW"},
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7540.0, "right": "C", "tradingClass": "SPXW"}
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7500, "right": "C", "tradingClass": "SPXW"},
+        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7520, "right": "C", "tradingClass": "SPXW"},
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7540, "right": "C", "tradingClass": "SPXW"}
        ]
       },
       "execution_type": "IMMEDIATE",
@@ -242,8 +242,8 @@
       "account": "DEFAULT",
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 2.5, "tif": "DAY", "outsideRth": true},
       "reason": "本地速记解析",
-      "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
+      "confidence": 1,
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v5"]
      }
     ],
     "rejections": []
@@ -263,9 +263,9 @@
        "currency": "USD",
        "combo_strategy": "BUTTERFLY",
        "legs": [
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7500.0, "right": "C", "tradingClass": "SPXW"},
-        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7520.0, "right": "C", "tradingClass": "SPXW"},
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7540.0, "right": "C", "tradingClass": "SPXW"}
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7500, "right": "C", "tradingClass": "SPXW"},
+        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7520, "right": "C", "tradingClass": "SPXW"},
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7540, "right": "C", "tradingClass": "SPXW"}
        ]
       },
       "execution_type": "IMMEDIATE",
@@ -273,8 +273,8 @@
       "account": "DEFAULT",
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "AUTO_MID", "lmtPrice": null, "tif": "DAY", "outsideRth": true},
       "reason": "本地速记解析",
-      "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "未指定净权利金上限,将在下单时按盘口中间价定价(AUTO_MID);若成交成本敏感,请写明如'权利金不超过 3'", "本地速记解析(未经大模型),语法 shorthand-v4"]
+      "confidence": 1,
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "未指定净权利金上限,将在下单时按盘口中间价定价(AUTO_MID);若成交成本敏感,请写明如'权利金不超过 3'", "本地速记解析(未经大模型),语法 shorthand-v5"]
      }
     ],
     "rejections": []
@@ -294,9 +294,9 @@
        "currency": "USD",
        "combo_strategy": "BUTTERFLY",
        "legs": [
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7500.0, "right": "C", "tradingClass": "SPXW"},
-        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7520.0, "right": "C", "tradingClass": "SPXW"},
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7540.0, "right": "C", "tradingClass": "SPXW"}
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7500, "right": "C", "tradingClass": "SPXW"},
+        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7520, "right": "C", "tradingClass": "SPXW"},
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7540, "right": "C", "tradingClass": "SPXW"}
        ]
       },
       "execution_type": "IMMEDIATE",
@@ -304,8 +304,8 @@
       "account": "DEFAULT",
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 2.5, "tif": "DAY", "outsideRth": true},
       "reason": "本地速记解析",
-      "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
+      "confidence": 1,
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v5"]
      }
     ],
     "rejections": []
@@ -325,9 +325,9 @@
        "currency": "USD",
        "combo_strategy": "BUTTERFLY",
        "legs": [
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7500.0, "right": "C", "tradingClass": "SPXW"},
-        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7520.0, "right": "C", "tradingClass": "SPXW"},
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7540.0, "right": "C", "tradingClass": "SPXW"}
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7500, "right": "C", "tradingClass": "SPXW"},
+        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7520, "right": "C", "tradingClass": "SPXW"},
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7540, "right": "C", "tradingClass": "SPXW"}
        ]
       },
       "execution_type": "IMMEDIATE",
@@ -335,8 +335,8 @@
       "account": "DEFAULT",
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 3, "price_mode": "EXPLICIT", "lmtPrice": 2.5, "tif": "GTC", "outsideRth": true},
       "reason": "本地速记解析",
-      "confidence": 1.0,
-      "warnings": ["未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
+      "confidence": 1,
+      "warnings": ["未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v5"]
      }
     ],
     "rejections": []
@@ -344,7 +344,7 @@
   },
   {
    "text": "6915的15cm蝴蝶 1.8",
-   "snapshot": {"SPX": 6915.0},
+   "snapshot": {"SPX": 6915},
    "expect": {
     "orders": [
      {
@@ -356,9 +356,9 @@
        "currency": "USD",
        "combo_strategy": "BUTTERFLY",
        "legs": [
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 6900.0, "right": "C", "tradingClass": "SPXW"},
-        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 6915.0, "right": "C", "tradingClass": "SPXW"},
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 6930.0, "right": "C", "tradingClass": "SPXW"}
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 6900, "right": "C", "tradingClass": "SPXW"},
+        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 6915, "right": "C", "tradingClass": "SPXW"},
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 6930, "right": "C", "tradingClass": "SPXW"}
        ]
       },
       "execution_type": "IMMEDIATE",
@@ -366,8 +366,8 @@
       "account": "DEFAULT",
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 1.8, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
-      "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 6915 等于现价,默认按看涨蝴蝶处理", "本地速记解析(未经大模型),语法 shorthand-v4"]
+      "confidence": 1,
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 6915 等于现价,默认按看涨蝴蝶处理", "本地速记解析(未经大模型),语法 shorthand-v5"]
      }
     ],
     "rejections": []
@@ -417,9 +417,9 @@
        "currency": "USD",
        "combo_strategy": "BUTTERFLY",
        "legs": [
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 6900.0, "right": "C", "tradingClass": "SPXW"},
-        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 6915.0, "right": "C", "tradingClass": "SPXW"},
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 6930.0, "right": "C", "tradingClass": "SPXW"}
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 6900, "right": "C", "tradingClass": "SPXW"},
+        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 6915, "right": "C", "tradingClass": "SPXW"},
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 6930, "right": "C", "tradingClass": "SPXW"}
        ]
       },
       "execution_type": "IMMEDIATE",
@@ -427,8 +427,8 @@
       "account": "DEFAULT",
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 1.8, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
-      "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "「15蝴蝶」按中心 6915(现价百位+15)理解", "中心 6915 高于现价 6907.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
+      "confidence": 1,
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "「15蝴蝶」按中心 6915(现价百位+15)理解", "中心 6915 高于现价 6907.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v5"]
      }
     ],
     "rejections": []
@@ -448,9 +448,9 @@
        "currency": "USD",
        "combo_strategy": "BUTTERFLY",
        "legs": [
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7375.0, "right": "P", "tradingClass": "SPXW"},
-        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7400.0, "right": "P", "tradingClass": "SPXW"},
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7425.0, "right": "P", "tradingClass": "SPXW"}
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7375, "right": "P", "tradingClass": "SPXW"},
+        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7400, "right": "P", "tradingClass": "SPXW"},
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7425, "right": "P", "tradingClass": "SPXW"}
        ]
       },
       "execution_type": "IMMEDIATE",
@@ -458,8 +458,8 @@
       "account": "DEFAULT",
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 3.3, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
-      "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写到期日,已按默认当日到期处理", "中心 7400 低于现价 7462.35,推断为看跌蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
+      "confidence": 1,
+      "warnings": ["未写张数,已按默认 1 张处理", "未写到期日,已按默认当日到期处理", "中心 7400 低于现价 7462.35,推断为看跌蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v5"]
      }
     ],
     "rejections": []
@@ -479,9 +479,9 @@
        "currency": "USD",
        "combo_strategy": "BUTTERFLY",
        "legs": [
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7500.0, "right": "C", "tradingClass": "SPXW"},
-        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7520.0, "right": "C", "tradingClass": "SPXW"},
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7540.0, "right": "C", "tradingClass": "SPXW"}
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7500, "right": "C", "tradingClass": "SPXW"},
+        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7520, "right": "C", "tradingClass": "SPXW"},
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7540, "right": "C", "tradingClass": "SPXW"}
        ]
       },
       "execution_type": "IMMEDIATE",
@@ -489,8 +489,8 @@
       "account": "DEFAULT",
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 2, "price_mode": "EXPLICIT", "lmtPrice": 2.5, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
-      "confidence": 1.0,
-      "warnings": ["未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
+      "confidence": 1,
+      "warnings": ["未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v5"]
      }
     ],
     "rejections": []
@@ -510,9 +510,9 @@
        "currency": "USD",
        "combo_strategy": "BUTTERFLY",
        "legs": [
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7500.0, "right": "C", "tradingClass": "SPXW"},
-        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7520.0, "right": "C", "tradingClass": "SPXW"},
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7540.0, "right": "C", "tradingClass": "SPXW"}
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7500, "right": "C", "tradingClass": "SPXW"},
+        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7520, "right": "C", "tradingClass": "SPXW"},
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7540, "right": "C", "tradingClass": "SPXW"}
        ]
       },
       "execution_type": "IMMEDIATE",
@@ -520,8 +520,8 @@
       "account": "DEFAULT",
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 2.5, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
-      "confidence": 1.0,
-      "warnings": ["未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
+      "confidence": 1,
+      "warnings": ["未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v5"]
      }
     ],
     "rejections": []
@@ -541,9 +541,9 @@
        "currency": "USD",
        "combo_strategy": "BUTTERFLY",
        "legs": [
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7500.0, "right": "C", "tradingClass": "SPXW"},
-        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7520.0, "right": "C", "tradingClass": "SPXW"},
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7540.0, "right": "C", "tradingClass": "SPXW"}
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7500, "right": "C", "tradingClass": "SPXW"},
+        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7520, "right": "C", "tradingClass": "SPXW"},
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7540, "right": "C", "tradingClass": "SPXW"}
        ]
       },
       "execution_type": "IMMEDIATE",
@@ -551,8 +551,8 @@
       "account": "DEFAULT",
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 10, "price_mode": "EXPLICIT", "lmtPrice": 2.5, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
-      "confidence": 1.0,
-      "warnings": ["未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
+      "confidence": 1,
+      "warnings": ["未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v5"]
      }
     ],
     "rejections": []
@@ -572,18 +572,18 @@
        "currency": "USD",
        "combo_strategy": "BUTTERFLY",
        "legs": [
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7500.0, "right": "C", "tradingClass": "SPXW"},
-        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7520.0, "right": "C", "tradingClass": "SPXW"},
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7540.0, "right": "C", "tradingClass": "SPXW"}
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7500, "right": "C", "tradingClass": "SPXW"},
+        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7520, "right": "C", "tradingClass": "SPXW"},
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7540, "right": "C", "tradingClass": "SPXW"}
        ]
       },
       "execution_type": "IMMEDIATE",
       "trigger": null,
       "account": "DEFAULT",
-      "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 2.0, "tif": "DAY", "outsideRth": false},
+      "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 2, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
-      "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
+      "confidence": 1,
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v5"]
      }
     ],
     "rejections": []
@@ -603,9 +603,9 @@
        "currency": "USD",
        "combo_strategy": "BUTTERFLY",
        "legs": [
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7500.0, "right": "C", "tradingClass": "SPXW"},
-        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7520.0, "right": "C", "tradingClass": "SPXW"},
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7540.0, "right": "C", "tradingClass": "SPXW"}
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7500, "right": "C", "tradingClass": "SPXW"},
+        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7520, "right": "C", "tradingClass": "SPXW"},
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7540, "right": "C", "tradingClass": "SPXW"}
        ]
       },
       "execution_type": "IMMEDIATE",
@@ -613,8 +613,8 @@
       "account": "DEFAULT",
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 2.5, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
-      "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
+      "confidence": 1,
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v5"]
      }
     ],
     "rejections": []
@@ -634,9 +634,9 @@
        "currency": "USD",
        "combo_strategy": "BUTTERFLY",
        "legs": [
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7500.0, "right": "C", "tradingClass": "SPXW"},
-        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7520.0, "right": "C", "tradingClass": "SPXW"},
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7540.0, "right": "C", "tradingClass": "SPXW"}
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7500, "right": "C", "tradingClass": "SPXW"},
+        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7520, "right": "C", "tradingClass": "SPXW"},
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7540, "right": "C", "tradingClass": "SPXW"}
        ]
       },
       "execution_type": "IMMEDIATE",
@@ -644,8 +644,8 @@
       "account": "DEFAULT",
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 2.5, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
-      "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
+      "confidence": 1,
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v5"]
      }
     ],
     "rejections": []
@@ -665,9 +665,9 @@
        "currency": "USD",
        "combo_strategy": "BUTTERFLY",
        "legs": [
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7500.0, "right": "C", "tradingClass": "SPXW"},
-        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7515.0, "right": "C", "tradingClass": "SPXW"},
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7530.0, "right": "C", "tradingClass": "SPXW"}
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7500, "right": "C", "tradingClass": "SPXW"},
+        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7515, "right": "C", "tradingClass": "SPXW"},
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7530, "right": "C", "tradingClass": "SPXW"}
        ]
       },
       "execution_type": "IMMEDIATE",
@@ -675,8 +675,8 @@
       "account": "DEFAULT",
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 1.8, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
-      "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7515 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
+      "confidence": 1,
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7515 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v5"]
      }
     ],
     "rejections": []
@@ -697,7 +697,7 @@
        "combo_strategy": "BUTTERFLY",
        "legs": [
         {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 6902.5, "right": "C", "tradingClass": "SPXW"},
-        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 6915.0, "right": "C", "tradingClass": "SPXW"},
+        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 6915, "right": "C", "tradingClass": "SPXW"},
         {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 6927.5, "right": "C", "tradingClass": "SPXW"}
        ]
       },
@@ -706,8 +706,8 @@
       "account": "DEFAULT",
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 1.8, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
-      "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 6915 高于现价 6907.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
+      "confidence": 1,
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 6915 高于现价 6907.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v5"]
      }
     ],
     "rejections": []
@@ -737,9 +737,9 @@
        "currency": "USD",
        "combo_strategy": "BUTTERFLY",
        "legs": [
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7500.0, "right": "C", "tradingClass": "SPXW"},
-        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7520.0, "right": "C", "tradingClass": "SPXW"},
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7540.0, "right": "C", "tradingClass": "SPXW"}
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7500, "right": "C", "tradingClass": "SPXW"},
+        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7520, "right": "C", "tradingClass": "SPXW"},
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7540, "right": "C", "tradingClass": "SPXW"}
        ]
       },
       "execution_type": "IMMEDIATE",
@@ -747,8 +747,8 @@
       "account": "DEFAULT",
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 3.3, "tif": "DAY", "outsideRth": false},
       "reason": "突破回踩",
-      "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
+      "confidence": 1,
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7520 高于现价 7462.35,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v5"]
      }
     ],
     "rejections": []
@@ -768,9 +768,9 @@
        "currency": "USD",
        "combo_strategy": "BUTTERFLY",
        "legs": [
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7700.0, "right": "P", "tradingClass": "SPXW"},
-        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7715.0, "right": "P", "tradingClass": "SPXW"},
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7730.0, "right": "P", "tradingClass": "SPXW"}
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7700, "right": "P", "tradingClass": "SPXW"},
+        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7715, "right": "P", "tradingClass": "SPXW"},
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7730, "right": "P", "tradingClass": "SPXW"}
        ]
       },
       "execution_type": "IMMEDIATE",
@@ -778,8 +778,8 @@
       "account": "DEFAULT",
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 1.8, "tif": "DAY", "outsideRth": false},
       "reason": "开盘冲高回落",
-      "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "「15蝴蝶」按中心 7715(现价百位+15)理解", "中心 7715 低于现价 7745.2,推断为看跌蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
+      "confidence": 1,
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "「15蝴蝶」按中心 7715(现价百位+15)理解", "中心 7715 低于现价 7745.2,推断为看跌蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v5"]
      }
     ],
     "rejections": []
@@ -804,9 +804,9 @@
        "currency": "USD",
        "combo_strategy": "BUTTERFLY",
        "legs": [
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7700.0, "right": "P", "tradingClass": "SPXW"},
-        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7715.0, "right": "P", "tradingClass": "SPXW"},
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7730.0, "right": "P", "tradingClass": "SPXW"}
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7700, "right": "P", "tradingClass": "SPXW"},
+        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7715, "right": "P", "tradingClass": "SPXW"},
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7730, "right": "P", "tradingClass": "SPXW"}
        ]
       },
       "execution_type": "IMMEDIATE",
@@ -814,8 +814,8 @@
       "account": "DEFAULT",
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 1.8, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
-      "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "「15蝴蝶」按中心 7715(现价百位+15)理解", "中心 7715 低于现价 7745.2,推断为看跌蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
+      "confidence": 1,
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "「15蝴蝶」按中心 7715(现价百位+15)理解", "中心 7715 低于现价 7745.2,推断为看跌蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v5"]
      }
     ],
     "rejections": []
@@ -835,18 +835,18 @@
        "currency": "USD",
        "combo_strategy": "BUTTERFLY",
        "legs": [
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260817", "strike": 7800.0, "right": "C", "tradingClass": "SPXW"},
-        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260817", "strike": 7830.0, "right": "C", "tradingClass": "SPXW"},
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260817", "strike": 7860.0, "right": "C", "tradingClass": "SPXW"}
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260817", "strike": 7800, "right": "C", "tradingClass": "SPXW"},
+        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260817", "strike": 7830, "right": "C", "tradingClass": "SPXW"},
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260817", "strike": 7860, "right": "C", "tradingClass": "SPXW"}
        ]
       },
       "execution_type": "IMMEDIATE",
       "trigger": null,
       "account": "DEFAULT",
-      "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 5.0, "tif": "DAY", "outsideRth": false},
+      "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 5, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
-      "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "「明天」按下一交易日 2026-08-17 处理", "中心 7830 高于现价 7745.2,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
+      "confidence": 1,
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "「明天」按下一交易日 2026-08-17 处理", "中心 7830 高于现价 7745.2,推断为看涨蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v5"]
      }
     ],
     "rejections": []
@@ -866,18 +866,18 @@
        "currency": "USD",
        "combo_strategy": "BUTTERFLY",
        "legs": [
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7675.0, "right": "P", "tradingClass": "SPXW"},
-        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7700.0, "right": "P", "tradingClass": "SPXW"},
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7725.0, "right": "P", "tradingClass": "SPXW"}
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7675, "right": "P", "tradingClass": "SPXW"},
+        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7700, "right": "P", "tradingClass": "SPXW"},
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7725, "right": "P", "tradingClass": "SPXW"}
        ]
       },
       "execution_type": "IMMEDIATE",
       "trigger": null,
       "account": "DEFAULT",
-      "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 5.0, "tif": "DAY", "outsideRth": false},
+      "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 5, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
-      "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7700 低于现价 7745.2,推断为看跌蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
+      "confidence": 1,
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7700 低于现价 7745.2,推断为看跌蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v5"]
      }
     ],
     "rejections": []
@@ -897,18 +897,18 @@
        "currency": "USD",
        "combo_strategy": "BUTTERFLY",
        "legs": [
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7725.0, "right": "P", "tradingClass": "SPXW"},
-        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7745.0, "right": "P", "tradingClass": "SPXW"},
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7765.0, "right": "P", "tradingClass": "SPXW"}
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7725, "right": "P", "tradingClass": "SPXW"},
+        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7745, "right": "P", "tradingClass": "SPXW"},
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7765, "right": "P", "tradingClass": "SPXW"}
        ]
       },
       "execution_type": "IMMEDIATE",
       "trigger": null,
       "account": "DEFAULT",
-      "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 3.0, "tif": "DAY", "outsideRth": false},
+      "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 3, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
-      "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "「45蝴蝶」按中心 7745(现价百位+45)理解", "中心 7745 低于现价 7745.2,推断为看跌蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
+      "confidence": 1,
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "「45蝴蝶」按中心 7745(现价百位+45)理解", "中心 7745 低于现价 7745.2,推断为看跌蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v5"]
      }
     ],
     "rejections": []
@@ -928,9 +928,9 @@
        "currency": "USD",
        "combo_strategy": "BUTTERFLY",
        "legs": [
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7675.0, "right": "P", "tradingClass": "SPXW"},
-        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7700.0, "right": "P", "tradingClass": "SPXW"},
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7725.0, "right": "P", "tradingClass": "SPXW"}
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7675, "right": "P", "tradingClass": "SPXW"},
+        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7700, "right": "P", "tradingClass": "SPXW"},
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7725, "right": "P", "tradingClass": "SPXW"}
        ]
       },
       "execution_type": "IMMEDIATE",
@@ -938,8 +938,8 @@
       "account": "DEFAULT",
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 4.4, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
-      "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "「0蝴蝶」按中心 7700(现价百位+0)理解", "中心 7700 低于现价 7745.2,推断为看跌蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v4"]
+      "confidence": 1,
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "「0蝴蝶」按中心 7700(现价百位+0)理解", "中心 7700 低于现价 7745.2,推断为看跌蝴蝶", "本地速记解析(未经大模型),语法 shorthand-v5"]
      }
     ],
     "rejections": []
@@ -959,9 +959,9 @@
        "currency": "USD",
        "combo_strategy": "BUTTERFLY",
        "legs": [
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260817", "strike": 7810.0, "right": "C", "tradingClass": "SPXW"},
-        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260817", "strike": 7850.0, "right": "C", "tradingClass": "SPXW"},
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260817", "strike": 7890.0, "right": "C", "tradingClass": "SPXW"}
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260817", "strike": 7810, "right": "C", "tradingClass": "SPXW"},
+        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260817", "strike": 7850, "right": "C", "tradingClass": "SPXW"},
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260817", "strike": 7890, "right": "C", "tradingClass": "SPXW"}
        ]
       },
       "execution_type": "IMMEDIATE",
@@ -969,8 +969,8 @@
       "account": "DEFAULT",
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 2.3, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
-      "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "「明天」按下一交易日 2026-08-17 处理", "中心 7850 高于现价 7745.2,推断为看涨蝴蝶", "未写「蝴蝶」,按 cm 行话默认为蝴蝶组合", "本地速记解析(未经大模型),语法 shorthand-v4"]
+      "confidence": 1,
+      "warnings": ["未写张数,已按默认 1 张处理", "「明天」按下一交易日 2026-08-17 处理", "中心 7850 高于现价 7745.2,推断为看涨蝴蝶", "未写「蝴蝶」,按 cm 行话默认为蝴蝶组合", "本地速记解析(未经大模型),语法 shorthand-v5"]
      }
     ],
     "rejections": []
@@ -990,9 +990,9 @@
        "currency": "USD",
        "combo_strategy": "BUTTERFLY",
        "legs": [
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7810.0, "right": "C", "tradingClass": "SPXW"},
-        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7850.0, "right": "C", "tradingClass": "SPXW"},
-        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7890.0, "right": "C", "tradingClass": "SPXW"}
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7810, "right": "C", "tradingClass": "SPXW"},
+        {"action": "SELL", "ratio": 2, "lastTradeDateOrContractMonth": "20260814", "strike": 7850, "right": "C", "tradingClass": "SPXW"},
+        {"action": "BUY", "ratio": 1, "lastTradeDateOrContractMonth": "20260814", "strike": 7890, "right": "C", "tradingClass": "SPXW"}
        ]
       },
       "execution_type": "IMMEDIATE",
@@ -1000,8 +1000,8 @@
       "account": "DEFAULT",
       "order": {"action": "BUY", "orderType": "LMT", "totalQuantity": 1, "price_mode": "EXPLICIT", "lmtPrice": 2.3, "tif": "DAY", "outsideRth": false},
       "reason": "本地速记解析",
-      "confidence": 1.0,
-      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7850 高于现价 7745.2,推断为看涨蝴蝶", "未写「蝴蝶」,按 cm 行话默认为蝴蝶组合", "本地速记解析(未经大模型),语法 shorthand-v4"]
+      "confidence": 1,
+      "warnings": ["未写张数,已按默认 1 张处理", "未写标的,默认按 SPX 处理", "未写到期日,已按默认当日到期处理", "中心 7850 高于现价 7745.2,推断为看涨蝴蝶", "未写「蝴蝶」,按 cm 行话默认为蝴蝶组合", "本地速记解析(未经大模型),语法 shorthand-v5"]
      }
     ],
     "rejections": []

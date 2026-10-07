@@ -18,8 +18,10 @@ import { dateOrdinal, ordinalToDate, weekdayOfDate } from "./tz.js";
 export const LOCAL_MODEL = "local-shorthand";
 /** 语法版本:改语法必须升版本,记录里跟着走。
  * v4(2026-09-27):中心与张数的数字左边加边界,三位数中心(「580蝴蝶」)不再被拆成"权利金 5 + 80蝴蝶",
- * 改为交给大模型——语法只收窄,没有新写法。 */
-export const GRAMMAR_VERSION = "shorthand-v4";
+ * 改为交给大模型——语法只收窄,没有新写法。
+ * v5(2026-10-08):闲字表补了 Charlie 的频道里真实出现过的几种语气词(「一下」「试一下」「试试看」「赌博小彩票」「好贵」),
+ * 都不带交易语义;其余没有变——不认识的词仍然交给大模型。 */
+export const GRAMMAR_VERSION = "shorthand-v5";
 
 type Rec = Record<string, any>;
 
@@ -32,9 +34,9 @@ const CN_NUM: Record<string, number> = {
  * 「买/开/来」这类动词只是"下这单"的意思——方向永远是买入(卖蝴蝶在黑名单拦截)。 */
 const FILLERS = [
   "帮我", "给我", "麻烦", "谢谢", "请",
-  "尝试下", "尝试", "试下", "试试", "考虑下", "考虑", "看看", "意思下",
+  "尝试一下", "尝试下", "尝试", "试一下", "试试看", "试下", "试试", "考虑下", "考虑", "看看", "意思下", "一下", "好贵",
   "能不能挂进去", "能不能进去", "能不能接到", "能不能进", "有没有机会接", "有没有机会进",
-  "接不到拉倒", "进不去就拉倒", "不要追价哦", "不要追价", "不追价", "便宜的", "彩票单", "彩票",
+  "接不到拉倒", "进不去就拉倒", "不要追价哦", "不要追价", "不追价", "便宜的", "赌博小彩票", "小彩票", "赌博", "彩票单", "彩票",
   "来一个", "来一张", "来个", "来", "买入", "买", "开仓", "开个", "开", "挂个", "挂",
   "今天的", "当日到期", "当日", "今日", "今天", "0dte",
 ];
@@ -67,11 +69,19 @@ export function shorthandSymbols(instruction: string): string[] {
   return ["CM", "GTC", "CALL", "PUT", "DTE"].includes(token) ? ["SPX"] : [token];
 }
 
+/** 解析的同时顺带告诉调用方的事;调用方不传就不填。 */
+export interface ShorthandMeta {
+  /** 中心写的是「N蝴蝶」(现价的百位 + N)这种相对写法,而不是写明的行权价。
+   *  现价在两个百位之间时它说不清是哪一个百位:手动下单有人看摘要,跟单没有(见 follow.ts 的 relativeCenterProblem)。 */
+  relativeCenter: boolean;
+}
+
 /** 严格语法命中 → 与大模型同形的 payload;任何不确定 → null(交给大模型)。 */
 export function tryParseShorthand(
   instruction: string,
   snapshot: Record<string, number>,
   moment: EtNow,
+  meta?: ShorthandMeta,
 ): Rec | null {
   // 全角数字/字母/标点统一成半角(中文输入法常见),CJK 本身不受影响
   const full = (instruction ?? "").normalize("NFKC").trim();
@@ -168,6 +178,7 @@ export function tryParseShorthand(
   if (hits.length > 1) return null;
   const centerTail = mC2 !== null ? Number(mC2[1]) : null;
   let centerAbs: number | null = mC2 === null && hits.length ? Number(hits[0]![1]) : null;
+  if (meta !== undefined) meta.relativeCenter = centerTail !== null;
 
   // 标的:一个字母 token;没有 → SPX
   // 只认 2-5 个字母:杂散的单字母(消息结尾误触)不当 ticker,交给大模型

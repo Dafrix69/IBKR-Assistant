@@ -13,6 +13,7 @@ import { TradingEngine } from "../src/engine.js";
 import { Notifier } from "../src/notify.js";
 import { LLMResponse } from "../src/providers.js";
 import { GRAMMAR_VERSION, LOCAL_MODEL, tryParseShorthand } from "../src/shorthand.js";
+import type { ShorthandMeta } from "../src/shorthand.js";
 import { TradeStore } from "../src/store.js";
 import { expectSame, loadGolden, makeSettings } from "./util.js";
 
@@ -162,6 +163,65 @@ describe("shorthand: 数字边界(2026-09-27 审计 V3)", () => {
   });
 
   it("语法收窄,版本号跟着升", () => {
-    expect(GRAMMAR_VERSION).toBe("shorthand-v4");
+    expect(GRAMMAR_VERSION).toBe("shorthand-v5");
+  });
+});
+
+
+// ---------------------------------------------------------------- v5:闲字与相对写法的标记
+// 样本都是 Charlie 的频道里真实出现过的写法(2026-09-17 到 10-07);现价取 7650.2,周五。
+describe("shorthand v5: 闲字表补了真实出现过的语气词", () => {
+  const SPOT = { SPX: 7650.2 };
+  const parse = (text: string, meta?: ShorthandMeta) => tryParseShorthand(text, SPOT, FRIDAY, meta);
+  const order = (text: string) => (parse(text) as any)?.orders?.[0];
+
+  it("「一下」「试一下」「试试看」「赌博小彩票」「好贵」不带交易语义:接住,单子和不带它们时一模一样", () => {
+    const bare = order("7600蝴蝶 25CM 3.1");
+    expect(bare.order.lmtPrice).toBe(3.1);
+    for (const text of [
+      "7600蝴蝶 25CM 3.1 彩票一下",
+      "7600蝴蝶 25CM 3.1 试一下",
+      "7600蝴蝶 25CM 挂3.1试试看",
+      "7600蝴蝶 25CM 3.1 赌博小彩票",
+      "7600蝴蝶 25CM 3.1 好贵",
+    ]) {
+      const o = order(text);
+      expect(o, text).toBeDefined();
+      expect(o.contract.legs.map((l: any) => l.strike), text).toEqual([7575, 7600, 7625]);
+      expect(o.order.lmtPrice, text).toBe(3.1);
+    }
+  });
+
+  it("频道里原样出现过的几句", () => {
+    expect(order("45 10cm蝴蝶 2块钱 赌博小彩票").order.lmtPrice).toBe(2);
+    expect(order("50蝴蝶 20CM 挂个3.9试试 好贵").contract.legs.map((l: any) => l.strike)).toEqual([7630, 7650, 7670]);
+    expect(order("20蝴蝶 25cm 挂个4.5试试").order.lmtPrice).toBe(4.5);
+    expect(order("7770蝴蝶 20CM 4块钱试试").order.lmtPrice).toBe(4);
+  });
+
+  it("仍然不接:不认识的词、带条件的、写不清的——只放行闲字,不放行语义", () => {
+    // 动词不是闲字:「走一下」只吃掉「一下」,「走」留下来,整句交给大模型
+    expect(parse("20蝴蝶 25cm 挂4.5 走一下")).toBeNull();
+    // 止损条件
+    expect(parse("7725蝴蝶 25CM 挂4块钱 不要追价 51.5站稳考虑止损")).toBeNull();
+    // 7605/10:7605 还是 7610,说不清
+    expect(parse("7605/10 蝴蝶 25cm")).toBeNull();
+    // 「2块1」是 2.1 元的另一种写法,语法还不认
+    expect(parse("2块1尝试下 7650 10CM彩票")).toBeNull();
+    // 商榷的口气不是单子
+    expect(parse("你考虑开40左右的蝴蝶")).toBeNull();
+  });
+
+  it("meta.relativeCenter:「N蝴蝶」(百位 + N)是 true,写明中心的是 false;不传 meta 照常", () => {
+    const rel: ShorthandMeta = { relativeCenter: false };
+    expect(parse("20蝴蝶 25cm 挂个4.5试试", rel)).not.toBeNull();
+    expect(rel.relativeCenter).toBe(true);
+    const abs: ShorthandMeta = { relativeCenter: true };
+    expect(parse("7645 蝴蝶 25cm", abs)).not.toBeNull();
+    expect(abs.relativeCenter).toBe(false);
+    const abs2: ShorthandMeta = { relativeCenter: true };
+    expect(parse("7650 10CM彩票 3", abs2)).not.toBeNull();
+    expect(abs2.relativeCenter).toBe(false);
+    expect(parse("20蝴蝶 25cm")).not.toBeNull();
   });
 });

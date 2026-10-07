@@ -4,6 +4,7 @@
 // 用法:
 //   swift desktop/tools/discord-window-follow.swift --channel "charlie的策略" --out "~/Library/Application Support/dafri/follow-inbox.jsonl"
 //   swift desktop/tools/discord-window-follow.swift --channel "charlie的策略" --dump      # 把消息列表的结构倒出来看(调试)
+//   加 --all:解析结果列出列表里载入的全部消息(先在 Discord 里往上翻,历史才会载入)
 //
 // 前提:
 //   * Discord 要用 `open -a Discord --args --force-renderer-accessibility` 启动,否则窗口里的消息对辅助功能不可见;
@@ -22,6 +23,7 @@ var channelWanted = ""
 var outPath = ""
 var intervalSec = 1.5
 var dumpMode = false
+var allMode = false
 var bundleId = "com.hnc.Discord"
 var freshMinutes = 10.0
 var args = Array(CommandLine.arguments.dropFirst())
@@ -34,6 +36,7 @@ while !args.isEmpty {
     case "--fresh-minutes": freshMinutes = Double(args.isEmpty ? "10" : args.removeFirst()) ?? 10
     case "--app": bundleId = args.isEmpty ? bundleId : args.removeFirst()
     case "--dump": dumpMode = true
+    case "--all": allMode = true
     default: fputs("不认识的参数:\(a)\n", stderr); exit(2)
     }
 }
@@ -197,8 +200,9 @@ if dumpMode {
     print("列表项:\(items.count)(倒出最后 3 项)")
     var budget = 300
     for it in items.suffix(3) { dump(it, 0, 10, &budget); print("---") }
-    print("== 解析结果(最后 8 条)==")
-    for m in scan(found.list).suffix(8) { print("\(describe(m))  key=\(m.key)") }
+    let shown = allMode ? 500 : 8
+    print("== 解析结果(\(allMode ? "列表里全部" : "最后 8 条"))==")
+    for m in scan(found.list).suffix(shown) { print("\(describe(m))  key=\(m.key)") }
     exit(0)
 }
 

@@ -22,13 +22,14 @@ import { DiscordGateway } from "../discordGateway.js";
 import type { DiscordMessage, GatewayOptions, GatewayPhase } from "../discordGateway.js";
 import { resolveFanoutAccounts } from "../engine.js";
 import { tryLocalShorthand } from "../engine/localShorthand.js";
-import { decide, outcomeOf, triage } from "../follow.js";
+import { decide, outcomeOf, relativeCenterProblem, triage } from "../follow.js";
 import { FollowInbox, LOCAL_CHANNEL, inboxPath } from "../followInbox.js";
 import type { InboxOptions } from "../followInbox.js";
 import { FOLLOW_TEXT_MAX } from "../followLog.js";
 import { etDayStart } from "../protections.js";
 import { readSecret, secretExists, writeSecret } from "../secrets.js";
 import { LOCAL_MODEL } from "../shorthand.js";
+import type { ShorthandMeta } from "../shorthand.js";
 import { utcIso } from "../tz.js";
 import { ServiceBase } from "./host.js";
 
@@ -280,7 +281,12 @@ export class FollowService extends ServiceBase {
     const cfg = this.settings.follow;
     const at = nowEt();
     const snap: Record<string, number> = {};
-    const payload: unknown = await tryLocalShorthand(engine, text, snap, at);
+    const meta: ShorthandMeta = { relativeCenter: false };
+    const payload: unknown = await tryLocalShorthand(engine, text, snap, at, meta);
+    // 「N蝴蝶」是"现价的百位 + N":现价在两个百位之间时说不清是哪个。手动下单有人看摘要,跟单没有——不跟。
+    // 放在判定之前:只观察时也要照实说"这条跟不了",不能记成"只观察"让人以为打开之后会跟上
+    const edge = meta.relativeCenter ? relativeCenterProblem(payload, snap[parsedSymbol(payload) ?? ""] ?? Number.NaN) : null;
+    if (edge !== null) return this.finish(message, { outcome: "unparsed", detail: edge.detail, summary: edge.summary, record_ids: [] });
     const router = this.router;
     const breaker = engine.killswitch.state();
     const decision = decide(cfg, payload, {

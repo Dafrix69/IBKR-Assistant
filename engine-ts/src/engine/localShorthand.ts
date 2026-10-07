@@ -9,6 +9,7 @@ import type { EtNow } from "../config.js";
 import { publicIndexPrice } from "../macro.js";
 import { pyRound } from "../py.js";
 import { looksLikeShorthand, shorthandSymbols, tryParseShorthand } from "../shorthand.js";
+import type { ShorthandMeta } from "../shorthand.js";
 import type { Rec, TradeStore } from "../store.js";
 
 /** 这一步要用到的引擎那一面(TradingEngine 即符合)。 */
@@ -29,7 +30,7 @@ export interface ShorthandHost {
  * 回 null = 交给大模型。
  */
 export async function tryLocalShorthand(
-  host: ShorthandHost, instruction: string, snap: Record<string, number>, at: EtNow,
+  host: ShorthandHost, instruction: string, snap: Record<string, number>, at: EtNow, meta?: ShorthandMeta,
 ): Promise<Rec | null> {
   let localPayload: Rec | null = null;
   let shorthandNote: string | null = null;
@@ -66,7 +67,7 @@ export async function tryLocalShorthand(
         }
       }
     }
-    localPayload = tryParseShorthand(instruction, snap, at);
+    localPayload = tryParseShorthand(instruction, snap, at, meta);
     if (localPayload !== null && shorthandNote) {
       for (const item of localPayload["orders"] as Rec[]) {
         (item["warnings"] as string[]).push(shorthandNote);

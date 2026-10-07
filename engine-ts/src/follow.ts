@@ -72,6 +72,8 @@ const isObj = (v: unknown): v is Obj => v !== null && typeof v === "object" && !
 
 interface FlyOrder {
   summary: string;
+  /** 中间那条腿(卖两张的那条)的行权价 */
+  center: number;
   quantity: number;
   /** 净权利金上限;没写(AUTO_MID)是 null */
   premium: number | null;
@@ -95,7 +97,30 @@ function readFly(payload: Obj): FlyOrder | null {
   const rawPremium = order["lmtPrice"];
   const premium = rawPremium === null || rawPremium === undefined ? null : Number(rawPremium);
   if (!(wing > 0) || !(quantity >= 1) || (premium !== null && !(premium > 0))) return null;
-  return { summary: String(item["intent_summary"] ?? ""), quantity, premium, wing };
+  return { summary: String(item["intent_summary"] ?? ""), center: strikes[1] ?? Number.NaN, quantity, premium, wing };
+}
+
+/** 「N蝴蝶」是相对写法(中心 = 现价的百位 + N)。算出来的中心离现价这么多点或更远,就说明现价在两个百位之间、
+ *  说的可能是另一个百位:现价 7690 时「00蝴蝶」是 7700 还是 7600,软件没法确定。 */
+export const RELATIVE_CENTER_MAX_POINTS = 50;
+
+/**
+ * 相对写法在百位边上说不清时的说明;没问题回 null。只给跟单用:手动下单有人看摘要,这里没有人,宁可不跟。
+ * `payload` 是本地速记的产出,`spot` 是解析时用的现价。写明完整中心(「7700蝴蝶」)的不走这一步。
+ */
+export function relativeCenterProblem(payload: unknown, spot: number): { detail: string; summary: string } | null {
+  if (!isObj(payload) || !Number.isFinite(spot)) return null;
+  const fly = readFly(payload);
+  if (fly === null || !Number.isFinite(fly.center)) return null;
+  const distance = Math.abs(fly.center - spot);
+  if (distance < RELATIVE_CENTER_MAX_POINTS) return null;
+  // 另一个更可能的百位:往现价那一边挪一百点
+  const other = fly.center + (spot > fly.center ? 100 : -100);
+  return {
+    summary: fly.summary,
+    detail: `「N蝴蝶」按现价的百位算成中心 ${pyG(fly.center)},离现价 ${pyG(Math.round(spot * 100) / 100)} 有 ${pyG(Math.round(distance))} 点;` +
+      `现价在两个百位之间时,说的可能是 ${pyG(other)},没法确定,没有发单(写明完整中心,如 ${pyG(other)}蝴蝶,就能跟)`,
+  };
 }
 
 /** 买入蝴蝶最坏亏多少美元:张数 × 100 × 净权利金上限;没写权利金的按翼宽(和校验层给 AUTO_MID 组合定敞口同一个口径)。 */
