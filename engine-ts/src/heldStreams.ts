@@ -42,6 +42,20 @@ export function quoteSilenceMs(t: TickerData, now: number): number | null {
   return since > 0 ? now - since : null;
 }
 
+/**
+ * TWS 没回合约确认(超时)之后,隔多久再去确认一次。和盘中"这条流没动静就重订"的时限同一个数:
+ * 持仓的行情不通时,半分钟试一次。试一次的代价是 TWS 还没好时白等一个确认超时(12 秒)。
+ */
+export const QUALIFY_RETRY_MS = 30_000;
+
+/**
+ * 会话 → 上一次确认超时之后,到什么时候之前不再去确认。有这一项 = 这个会话正卡着。
+ *
+ * 按会话记、不按键记:不回话的是 TWS,不是某一张合约。一张超时了,这一轮剩下的、另一本账(正股 / 期权腿)的
+ * 都不再各等一个超时——持仓读取一秒一轮,四张合约各等 12 秒就是整条道被占 48 秒(2026-10-05 真机)。
+ */
+const stalledUntil = new WeakMap<IbSession, number>();
+
 const alive = (t: TickerData, silentLimitMs: number, now: number): boolean =>
   !t.error && !(silentLimitMs > 0 && (quoteSilenceMs(t, now) ?? 0) >= silentLimitMs);
 
@@ -100,15 +114,32 @@ export class HeldStreams extends Map<string, HeldStream> {
   /**
    * 这个键上备好一条能用的流(见 usable),回"是不是新订的":新订的要等首笔 tick。
    * @param target 要订的合约,只在需要重订时才拼
-   * @param qualifies 合约确认;认不出回 false,记成 null 不反复重试
+   * @param qualifies 合约确认;认不出回 false,记成 null 不反复重试。TWS 没回话(超时)回 "stalled":
+   *   那不是认不出,**不记账**——记成 null 的话 TWS 好了也不会再订,这个持仓到断开重连为止都没有现价。
+   *   过 QUALIFY_RETRY_MS 再去确认(见 stalledUntil)
    */
   async ensure(
     session: IbSession, key: string, target: () => IbContract,
-    qualifies: (contract: IbContract) => Promise<boolean>, silentLimitMs = 0,
+    qualifies: (contract: IbContract) => Promise<boolean | "stalled">, silentLimitMs = 0,
   ): Promise<boolean> {
     if (this.usable(session, key, silentLimitMs)) return false;
+    const wait = stalledUntil.get(session);
+    if (wait !== undefined) {
+      if (Date.now() < wait) return false;
+      // 这一次试探出结果之前先把时刻往后推:另一路读取(盯盘 / 界面)这时候进来不跟着排队等
+      stalledUntil.set(session, Date.now() + QUALIFY_RETRY_MS);
+    }
     const contract = target();
-    if (!(await qualifies(contract))) {
+    const known = await qualifies(contract);
+    if (known === "stalled") {
+      if (wait === undefined && !stalledUntil.has(session)) {
+        logStderr(`[ibkr] 行情流 ${key}:TWS 没有响应合约确认,持仓的现价暂时订不上;每 ${QUALIFY_RETRY_MS / 1000} 秒再试一次`);
+      }
+      stalledUntil.set(session, Date.now() + QUALIFY_RETRY_MS);
+      return false;
+    }
+    if (stalledUntil.delete(session)) logStderr("[ibkr] 行情流:TWS 恢复响应合约确认,持仓的行情重新订阅");
+    if (!known) {
       this.set(key, { handle: null, contract: null });
       return false;
     }

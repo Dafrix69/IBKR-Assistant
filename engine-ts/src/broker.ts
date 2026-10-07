@@ -660,13 +660,13 @@ export class BrokerRouter {
     }
   }
 
-  /** 确认得了回 true;认不出(BrokerError)回 false,别的错照抛。常驻行情流用(heldStreams.ensure) */
-  private async qualifies(session: IbSession, contract: IbContract): Promise<boolean> {
+  /** 确认得了回 true;认不出回 false;TWS 没回话(超时)回 "stalled"——那不是认不出,过一会儿要再试;别的错照抛。常驻行情流用(heldStreams.ensure) */
+  private async qualifies(session: IbSession, contract: IbContract): Promise<boolean | "stalled"> {
     try {
       await this.qualifyOrRaise(session, contract);
       return true;
     } catch (exc) {
-      if (exc instanceof BrokerError) return false;
+      if (exc instanceof BrokerError) return exc.message === this.stalledMessage() ? "stalled" : false;
       throw exc;
     }
   }

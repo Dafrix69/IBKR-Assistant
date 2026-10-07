@@ -30,6 +30,12 @@ export class FakeTws {
   readonly subs: Sub[] = [];
   readonly book = new Map<number, Quote>();
   held: Held[] = [];
+  /** TWS 不回合约确认(刚睡醒、还在重连 IBKR 时的样子):请求发出去就没有下文,也不报错 */
+  stalled = false;
+  /** TWS 回了话、但查无此合约的标的(回一个空列表) */
+  readonly unlisted = new Set<string>();
+  /** 一共收到过几次合约确认请求 */
+  detailRequests = 0;
   /** 标的 → 历史 K 线,不管请求的时长与周期,原样给(切片是 BrokerRouter 的事) */
   readonly history = new Map<string, LibBar[]>();
   /** 每次历史请求的标的与 whatToShow */
@@ -118,6 +124,9 @@ export class FakeTws {
       getManagedAccounts(): Promise<string[]> { return Promise.resolve([ACCOUNT]); }
       setMarketDataType(): void { /* 离线 */ }
       getContractDetails(c: Wire): Promise<unknown[]> {
+        tws.detailRequests += 1;
+        if (tws.stalled) return new Promise(() => undefined);
+        if (tws.unlisted.has(String(c["symbol"]))) return Promise.resolve([]);
         return Promise.resolve([{ contract: { ...tws.resolve(c), exchange: "SMART" } }]);
       }
       getPositions(): { subscribe(o: { next(u: unknown): void }): { unsubscribe(): void } } {
