@@ -505,7 +505,8 @@ describe("异动监控:循环调度", () => {
     setClock(ET_1100); // 循环按引擎时钟判时段:收盘后本来就不取行情
     s.anomaly.start(40);
     s.anomaly.start(40); // 重复启动不起第二条循环
-    await sleep(700);
+    // 等到跑满三轮再停:按固定时长等在慢机器(CI 的 Windows)上会只跑两轮
+    for (let i = 0; i < 100 && router.calls.length < 3; i++) await sleep(50);
     s.anomaly.stop();
     expect(router.maxInFlight).toBe(1);
     expect(router.calls.length).toBeGreaterThanOrEqual(3);

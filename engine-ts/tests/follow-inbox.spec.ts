@@ -38,7 +38,8 @@ describe("followInbox: 一行 → 一条消息", () => {
   });
 
   it("收件文件放在交易库旁边", () => {
-    expect(inboxPath("/x/y/trades.db")).toBe("/x/y/follow-inbox.jsonl");
+    const db = path.join("x", "y", "trades.db");
+    expect(inboxPath(db)).toBe(path.join("x", "y", "follow-inbox.jsonl"));
   });
 });
 
