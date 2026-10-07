@@ -3,7 +3,7 @@
  * 全部离线:消息直接喂给 onMessage,引擎是真的(校验、落库都走),券商是假的(只记下发了什么),
  * Discord 的 socket 与凭证库都是假的。
  */
-import { mkdtempSync } from "node:fs";
+import { appendFileSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -109,6 +109,51 @@ beforeEach(() => {
 afterEach(() => {
   setClock(null);
   useSecretBackend(null);
+});
+
+describe("follow service: 本地收件", () => {
+  const line = (content: string, key: string): string =>
+    JSON.stringify({ v: 1, key, seen_at: new Date(NOW - 1000).toISOString(), channel: "charlie的策略", author: "老王", time_label: "22:31", content }) + "\n";
+
+  it("开着本地收件、没填频道:不连 Discord,收件文件里信任的人的蝴蝶速记照样发单,来源记成 discord、发送者是显示名", async () => {
+    const { service, host, router, log, modelCalls } = build({ channel_id: "", author_ids: ["local:老王"], local_inbox: true });
+    service.start();
+    await service.sync();
+    let status = await service.status();
+    expect(status.link.state).toBe("off");
+    expect(status.inbox).toMatchObject({ enabled: true, watching: true, received: 0, error: null });
+    expect(status.inbox.path).toBe(path.join(path.dirname(host.settings.db_path), "follow-inbox.jsonl"));
+    appendFileSync(status.inbox.path, line("1.8 挂15蝴蝶 15CM", "m1"));
+    await service.pollInbox();
+    expect(router.placed).toHaveLength(1);
+    expect(modelCalls).toEqual([]);
+    expect(log()[0]).toMatchObject({ outcome: "sent", message_id: "local:m1", author_id: "local:老王", author_name: "老王" });
+    status = await service.status();
+    expect(status.inbox.received).toBe(1);
+    expect(status.seen[0]).toMatchObject({ source: "local", author_id: "local:老王", trusted: true });
+    service.stop();
+    expect((await service.status()).inbox.watching).toBe(false);
+  });
+
+  it("关着本地收件:文件里有什么都不看;陌生显示名只进「最近看到的消息」", async () => {
+    const { service, router, log } = build({ channel_id: "", author_ids: ["local:老王"], local_inbox: false });
+    service.start();
+    await service.sync();
+    expect((await service.status()).inbox.watching).toBe(false);
+    const { service: s2, router: r2, log: log2 } = build({ channel_id: "", author_ids: ["local:老王"], local_inbox: true });
+    s2.start();
+    await s2.sync();
+    const file = (await s2.status()).inbox.path;
+    appendFileSync(file, JSON.stringify({ v: 1, key: "x", seen_at: new Date(NOW - 1000).toISOString(), channel: "c", author: "路人", time_label: "", content: "1.8 挂15蝴蝶 15CM" }) + "\n");
+    await s2.pollInbox();
+    expect(r2.placed).toHaveLength(0);
+    expect(log2()).toHaveLength(0);
+    expect((await s2.status()).seen[0]).toMatchObject({ source: "local", author_id: "local:路人", trusted: false });
+    s2.stop();
+    service.stop();
+    expect(router.placed).toHaveLength(0);
+    expect(log()).toHaveLength(0);
+  });
 });
 
 describe("follow service: 跟一单", () => {

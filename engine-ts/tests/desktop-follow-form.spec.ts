@@ -38,7 +38,14 @@ describe("保存前的检查", () => {
 
   it("打开之前必须有频道、有信任的人", () => {
     const form = { ...mod.toForm(SAVED), enabled: true };
-    expect(mod.formProblems(form)).toEqual(["打开自动跟单之前要先填频道 ID", "打开自动跟单之前至少要信任一个发送者"]);
+    expect(mod.formProblems(form)).toEqual(["打开自动跟单之前要先填频道 ID,或者打开本地收件", "打开自动跟单之前至少要信任一个发送者"]);
+    // 本地收件开着就不必有频道;信任名单里可以是 local:显示名
+    const local = { ...form, localInbox: true, authorIds: ["local:Charlie"] };
+    expect(mod.formProblems(local)).toEqual([]);
+    expect(mod.toConfig(local)).toMatchObject({ enabled: true, channel_id: "", author_ids: ["local:Charlie"], local_inbox: true });
+    expect(mod.isDirty(local, SAVED)).toBe(true);
+    expect(mod.addAuthor(form, "local:老王").authorIds).toEqual(["local:老王"]);
+    expect(mod.addAuthor(form, "local:")).toBe(form);
     expect(mod.formProblems({ ...form, channelId: CHANNEL, authorIds: [FRIEND] })).toEqual([]);
   });
 
@@ -65,7 +72,7 @@ describe("拼出要存的那一份", () => {
     const next = mod.toConfig(form);
     expect(next).toEqual({
       enabled: true, channel_id: CHANNEL, author_ids: [FRIEND], accounts: ["模拟"],
-      max_age_seconds: 30, max_orders_per_day: 3, max_risk_usd: 500,
+      max_age_seconds: 30, max_orders_per_day: 3, max_risk_usd: 500, local_inbox: false,
     });
     expect(fromDict({ ...BASE, follow: next }).follow).toEqual(next);
   });

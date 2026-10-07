@@ -20,6 +20,27 @@ export interface FollowConfig {
   max_orders_per_day: number;
   /** 一单最坏亏多少美元:张数 × 100 × 净权利金上限;没写权利金的按翼宽算。 */
   max_risk_usd: number;
+  /**
+   * 本地收件:除了 bot 读频道,还读本机脚本从屏幕上的 Discord 窗口抄下来、追加到收件文件里的消息。
+   * 对方的私密频道拉不进 bot 时用它。发送者是显示名(`local:名字`),不是用户 ID。默认关。
+   */
+  local_inbox: boolean;
+}
+
+/** 本地收件文件此刻的样子。 */
+export interface FollowInboxState {
+  /** 开关(= 配置里的 local_inbox) */
+  enabled: boolean;
+  /** 收件文件在哪:脚本往这里追加 JSON 行 */
+  path: string;
+  /** 正在读 */
+  watching: boolean;
+  /** 最近一条收到的时刻,ISO 8601(UTC);还没收到过是 null */
+  last_at: string | null;
+  /** 这次启动以来读到的消息条数 */
+  received: number;
+  /** 最近一次读文件的问题,人话;没有是 null */
+  error: string | null;
 }
 
 // ---------------------------------------------------------------- 一条信号的下场
@@ -55,6 +76,8 @@ export interface FollowEntry {
 /** 频道里最近看到的消息(只在内存里):挑「信任谁」时照着它填发送者 ID。 */
 export interface FollowSeen {
   at: string;
+  /** 从哪儿来:bot 读的频道,还是本地收件 */
+  source: "discord" | "local";
   author_id: string;
   author_name: string;
   text: string;
@@ -90,6 +113,8 @@ export interface FollowStatus {
   recent: FollowEntry[];
   /** 频道里最近看到的消息,新的在前 */
   seen: FollowSeen[];
+  /** 本地收件 */
+  inbox: FollowInboxState;
 }
 
 export interface FollowSetTokenParams {

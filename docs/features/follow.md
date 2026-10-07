@@ -2,6 +2,7 @@
 
 一个 Discord bot 读一个频道,信任的发送者在里面发的蝴蝶速记不经确认直接走发单链路。
 界面在「接入 → Discord 跟单」,配置在 `settings.json` 的 `follow` 段,bot token 在系统凭证库。**默认关、默认不连 Discord。**
+消息还有第二个来源「本地收件」(见下),给对方的私密频道拉不进 bot 的情况;两个来源的消息走同一条判定与发单的路。
 
 ## 消息怎么进来
 
@@ -13,6 +14,23 @@
   没开时 Discord 以 4014 关闭连接,软件停下来并说明去哪里开。
 - 连接只收不发:不向 Discord 发送任何消息。引擎不走代理:系统层面连不上 `gateway.discord.gg` 时这里也连不上。
 - 配了频道 ID、凭证库里有 token 才连。没配频道时一个包都不发,也不去碰凭证库。
+
+## 本地收件(`followInbox.ts`)
+
+对方的频道是私密的、拉不进 bot、也不是公告频道时,bot 那条路走不通。本地收件不碰 Discord 的接口:一个本机脚本
+(`desktop/tools/discord-window-follow.swift`)通过 macOS 的辅助功能读**你屏幕上** Discord 窗口里当前频道的消息列表,
+新出现的消息一行一个 JSON 追加到交易库旁边的 `follow-inbox.jsonl`;引擎盯着这个文件,每行变成一条消息,之后和 bot 读来的消息一样过信任名单、
+三个上限、只观察、发单。没有任何 token,Discord 那边什么都收不到,不是自动化账号。
+
+- **从文件此刻的末尾读起**:引擎没在跑时追加的行不补——它们早就过了新鲜期,补进来只会刷一串「太旧」。文件变短(被清空、换了一个)就从头读。
+  认不出的行记原因、跳过,后面的照读;状态写在面板「收件文件」那一行。
+- **消息的时刻是脚本看见它的时刻**:屏幕上只有"几点几分",没有秒。脚本每 1.5 秒看一次,所以到引擎手里时通常只有一两秒,新鲜度那道检查照常。
+- **发送者是显示名**:`author_id` 写成 `local:名字`,信任名单里也这样写(`config.ts` 的 `LOCAL_AUTHOR`)。频道里别人把昵称改成一样的,软件分不出来——
+  风险揭示里写明了,只适合私密小群。消息 ID 是 `local:` 加脚本给每条消息算的 key,去重照旧按 ID。
+- **判定里它是 `local` 频道**:`triage` 对 `channel_id = "local"` 的消息看 `local_inbox` 开关,对别的消息看 `channel_id`;本地收件开着不等于 bot 那条路放宽。
+- 脚本只在窗口标题里是指定的频道时抄(`--channel 名字`),切到别的频道就停;只抄列表末尾新增、时间标签是今天且在几分钟之内的消息,
+  往上翻出来的旧消息、跨天后改了标签的消息都不抄。Discord 的渲染进程默认不建辅助功能树,要用 `open -a Discord --args --force-renderer-accessibility` 启动。
+- 打开本地收件(`local_inbox` 从关到开)在跟单开着时算放宽,要 `gate.follow` 的确认;确认框上写明消息来源与显示名的风险。
 
 ## 一条消息怎么判(`follow.ts`)
 
@@ -83,11 +101,12 @@
 |---|---|---|
 | `enabled` | 关 = 只观察:照样连、照样解析、照样记日志,一张单都不发 | |
 | `channel_id` | 读哪个频道;空 = 不连 Discord | 带引号的 15–21 位数字 |
-| `author_ids` | 信任的发送者(用户 ID,或关注的 webhook ID) | 同上 |
+| `author_ids` | 信任的发送者(用户 ID,或关注的 webhook ID;本地收件的写 `local:显示名`) | 同上,或 `local:` 加 1–80 字 |
 | `accounts` | 发到哪些账户别名;空 = 默认账户 | |
 | `max_age_seconds` | 消息多旧就不跟 | 1–600 |
 | `max_orders_per_day` | 一天(美东)最多跟几单 | 1–100 |
 | `max_risk_usd` | 一单最坏亏多少美元 | ≥ 1 |
+| `local_inbox` | 本地收件:读交易库旁边的 `follow-inbox.jsonl`;可以不填频道只靠它 | 默认关 |
 
 - ID 必须写成字符串:它超过了 JSON 数字能精确表示的范围,写成数字当场报。
 - 三个默认值(30 秒、3 单、300 美元)是保守的起点,没有数据依据,由用户按自己的情况改。
@@ -123,7 +142,8 @@
 ## 当前状态
 
 只有离线测试,**没有在真实的 Discord 连接与真实券商上核对过**。离线测试覆盖:判定规则、配置校验、日志表、Gateway 协议(假 socket)、
-从消息到发单的整趟(真引擎 + 假券商)、主进程的确认凭据(真的 `main.js` + 真的引擎子进程)。
+从消息到发单的整趟(真引擎 + 假券商)、收件文件的读法、主进程的确认凭据(真的 `main.js` + 真的引擎子进程)。
+本地收件的脚本在真机的 Discord 窗口上试过读取;整条路(脚本 → 文件 → 引擎 → 发单)没有在真实券商上核对过。
 第一次真机使用请先只观察,再在纸面账户上打开。
 
 ## 代码与测试
@@ -133,11 +153,13 @@
 | `engine-ts/src/follow.ts` | 判定规则(纯函数) |
 | `engine-ts/src/discordGateway.ts` | Gateway 客户端 |
 | `engine-ts/src/followLog.ts` | 日志表 |
+| `engine-ts/src/followInbox.ts` | 本地收件:收件文件怎么读、一行怎么变成一条消息 |
+| `desktop/tools/discord-window-follow.swift` | 本地收件的脚本:读屏幕上的 Discord 窗口,追加到收件文件 |
 | `engine-ts/src/services/follow.ts` | 连接起停、一条消息的那一趟、状态;`refuseModelWhileFollowing` |
 | `engine-ts/src/rpc/handlers/follow.ts` | `follow.status` / `follow.set_token` / `follow.reconnect` |
 | `engine-ts/src/config.ts` 的 `buildFollow` | 配置段 |
 | `desktop/confirm-grants.js` | `followWidened`、`followBinding`、`followConfirmText` |
 | `desktop/renderer-react/src/lib/FollowPanel.tsx`、`followForm.ts` | 界面与表单逻辑 |
 
-测试:`follow.spec.ts`、`discord-gateway.spec.ts`、`follow-service.spec.ts`、`desktop-follow-form.spec.ts`、
+测试:`follow.spec.ts`、`follow-inbox.spec.ts`、`discord-gateway.spec.ts`、`follow-service.spec.ts`、`desktop-follow-form.spec.ts`、
 `desktop-confirm-grants.spec.ts`、`desktop-consent.spec.ts`、`desktop-main.spec.ts`。

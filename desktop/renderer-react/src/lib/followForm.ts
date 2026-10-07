@@ -15,10 +15,15 @@ export interface FollowForm {
   maxAge: number | null;
   perDay: number | null;
   maxRisk: number | null;
+  localInbox: boolean;
 }
 
 /** Discord 的 ID(频道、用户、webhook 都是):一串 15–21 位数字。和引擎的 config.ts 同一个口径。 */
 export const DISCORD_ID = /^\d{15,21}$/;
+/** 本地收件的发送者:`local:` 加屏幕上的显示名。和引擎的 config.ts 同一个口径。 */
+export const LOCAL_AUTHOR = /^local:[^\r\n]{1,80}$/;
+/** 信任名单里的一项长得对不对。 */
+export const isAuthorId = (id: string): boolean => DISCORD_ID.test(id) || LOCAL_AUTHOR.test(id);
 
 export function toForm(cfg: FollowConfig): FollowForm {
   return {
@@ -29,6 +34,7 @@ export function toForm(cfg: FollowConfig): FollowForm {
     maxAge: cfg.max_age_seconds ?? null,
     perDay: cfg.max_orders_per_day ?? null,
     maxRisk: cfg.max_risk_usd ?? null,
+    localInbox: Boolean(cfg.local_inbox),
   };
 }
 
@@ -37,8 +43,8 @@ export function formProblems(form: FollowForm): string[] {
   const out: string[] = [];
   const channel = form.channelId.trim();
   if (channel && !DISCORD_ID.test(channel)) out.push('频道 ID 是一串 15–21 位数字(Discord 里右键频道 →「复制频道 ID」)');
-  if (form.authorIds.some((id) => !DISCORD_ID.test(id))) out.push('信任名单里有不是 Discord ID 的条目');
-  if (form.enabled && !channel) out.push('打开自动跟单之前要先填频道 ID');
+  if (form.authorIds.some((id) => !isAuthorId(id))) out.push('信任名单里有不是 Discord ID、也不是本地收件显示名的条目');
+  if (form.enabled && !channel && !form.localInbox) out.push('打开自动跟单之前要先填频道 ID,或者打开本地收件');
   if (form.enabled && !form.authorIds.length) out.push('打开自动跟单之前至少要信任一个发送者');
   const range = (value: number | null, label: string, min: number, max: number | null, whole: boolean): void => {
     if (value === null || !Number.isFinite(value)) out.push(`${label}不能空着`);
@@ -61,6 +67,7 @@ export function toConfig(form: FollowForm): FollowConfig {
     max_age_seconds: Number(form.maxAge),
     max_orders_per_day: Number(form.perDay),
     max_risk_usd: Number(form.maxRisk),
+    local_inbox: form.localInbox,
   };
 }
 
@@ -71,13 +78,14 @@ export function isDirty(form: FollowForm, saved: FollowConfig | null): boolean {
   if (saved === null) return false;
   return form.enabled !== saved.enabled || form.channelId.trim() !== saved.channel_id ||
     !same(form.authorIds, saved.author_ids) || !same(form.accounts, saved.accounts) ||
-    form.maxAge !== saved.max_age_seconds || form.perDay !== saved.max_orders_per_day || form.maxRisk !== saved.max_risk_usd;
+    form.maxAge !== saved.max_age_seconds || form.perDay !== saved.max_orders_per_day || form.maxRisk !== saved.max_risk_usd ||
+    form.localInbox !== Boolean(saved.local_inbox);
 }
 
 /** 往信任名单里加一个 ID;形状不对、已经在里面,原样返回。 */
 export function addAuthor(form: FollowForm, id: string): FollowForm {
   const clean = id.trim();
-  if (!DISCORD_ID.test(clean) || form.authorIds.includes(clean)) return form;
+  if (!isAuthorId(clean) || form.authorIds.includes(clean)) return form;
   return { ...form, authorIds: [...form.authorIds, clean] };
 }
 

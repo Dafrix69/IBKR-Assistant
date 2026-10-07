@@ -20,7 +20,7 @@ const FRIDAY = { epochMs: NOW, date: "2026-08-14", minutes: 10 * 60 + 32, second
 function cfg(patch: Partial<FollowConfig> = {}): FollowConfig {
   return {
     enabled: true, channel_id: CHANNEL, author_ids: [FRIEND], accounts: [],
-    max_age_seconds: 30, max_orders_per_day: 3, max_risk_usd: 300, ...patch,
+    max_age_seconds: 30, max_orders_per_day: 3, max_risk_usd: 300, local_inbox: false, ...patch,
   };
 }
 
@@ -39,6 +39,15 @@ describe("follow: triage(不取行情的那一步)", () => {
   it("别的频道、没配频道 → 不看", () => {
     expect(triage(cfg(), message({ channel_id: "1100000000000000009" }), NOW).kind).toBe("other_channel");
     expect(triage(cfg({ channel_id: "" }), message({ channel_id: "" }), NOW).kind).toBe("other_channel");
+  });
+
+  it("本地收件的消息:开关开着才看,信任名单里是显示名", () => {
+    const local = message({ channel_id: "local", author_id: "local:老王" });
+    expect(triage(cfg({ local_inbox: true, author_ids: ["local:老王"] }), local, NOW)).toEqual({ kind: "parse" });
+    expect(triage(cfg({ local_inbox: true }), local, NOW).kind).toBe("untrusted");
+    expect(triage(cfg({ local_inbox: false, author_ids: ["local:老王"] }), local, NOW).kind).toBe("other_channel");
+    // 本地收件开着不等于 bot 那条路放宽:别的频道照样不看
+    expect(triage(cfg({ local_inbox: true }), message({ channel_id: "1100000000000000009" }), NOW).kind).toBe("other_channel");
   });
 
   it("不在信任名单里的人,哪怕写的是一模一样的单 → 不跟", () => {
@@ -170,8 +179,15 @@ describe("follow: 配置段", () => {
   it("不写这一段 = 关着、不连 Discord", () => {
     expect(makeSettings(gc.base_config).follow).toEqual({
       enabled: false, channel_id: "", author_ids: [], accounts: [],
-      max_age_seconds: 30, max_orders_per_day: 3, max_risk_usd: 300,
+      max_age_seconds: 30, max_orders_per_day: 3, max_risk_usd: 300, local_inbox: false,
     });
+  });
+
+  it("信任名单里可以是本地收件的显示名(local:名字);带换行、空名字、太长的不行", () => {
+    expect(makeSettings(gc.base_config, { follow: { author_ids: [FRIEND, "local:Charlie 老王"] } }).follow.author_ids).toEqual([FRIEND, "local:Charlie 老王"]);
+    for (const bad of ["local:", "local:a\nb", `local:${"x".repeat(81)}`, "Charlie"]) {
+      expect(() => makeSettings(gc.base_config, { follow: { author_ids: [bad] } }), bad).toThrow(/follow\.author_ids\[0\] 必须是带引号的 Discord ID/);
+    }
   });
 
   it("ID 必须是带引号的一串数字:写成数字会丢精度,当场报", () => {

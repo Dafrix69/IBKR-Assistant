@@ -1,7 +1,8 @@
 /** Discord 跟单(docs/features/follow.md):bot 读一个频道,信任的人发的蝴蝶速记不经确认直接走发单链路。
  *
- * 这里管三件事:Gateway 连接的起停(配了频道、凭证库里有 token 才连)、每条消息从判定到发单的那一趟、给界面的状态。
- * 规则在 follow.ts(纯函数),协议在 discordGateway.ts。
+ * 这里管三件事:两个来源的起停(Gateway 连接:配了频道、凭证库里有 token 才连;本地收件:开关开着就盯文件)、
+ * 每条消息从判定到发单的那一趟、给界面的状态。规则在 follow.ts(纯函数),协议在 discordGateway.ts,收件文件在 followInbox.ts。
+ * 两个来源的消息走同一条路:信任名单、上限、只观察,一样不少。
  *
  * 几条规矩:
  * * **发单走引擎的同一条路**(`handleInstruction`,channel = "discord"):校验、限额、重复单、保护规则、熔断、落库一样不少;
@@ -16,12 +17,14 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 
 import { nowEt } from "../config.js";
-import type { FollowConfig, FollowEntry, FollowLink, FollowOutcome, FollowSeen, FollowStatus } from "../contract/follow.js";
+import type { FollowConfig, FollowEntry, FollowInboxState, FollowLink, FollowOutcome, FollowSeen, FollowStatus } from "../contract/follow.js";
 import { DiscordGateway } from "../discordGateway.js";
 import type { DiscordMessage, GatewayOptions, GatewayPhase } from "../discordGateway.js";
 import { resolveFanoutAccounts } from "../engine.js";
 import { tryLocalShorthand } from "../engine/localShorthand.js";
 import { decide, outcomeOf, triage } from "../follow.js";
+import { FollowInbox, LOCAL_CHANNEL, inboxPath } from "../followInbox.js";
+import type { InboxOptions } from "../followInbox.js";
 import { FOLLOW_TEXT_MAX } from "../followLog.js";
 import { etDayStart } from "../protections.js";
 import { readSecret, secretExists, writeSecret } from "../secrets.js";
@@ -75,8 +78,11 @@ export function refuseModelWhileFollowing<T extends object>(parser: T): T {
 export class FollowService extends ServiceBase {
   /** 怎么开 Gateway(测试注入假 socket) */
   gatewayOptions: GatewayOptions = {};
+  /** 本地收件多久读一次文件(测试调短) */
+  inboxOptions: InboxOptions = {};
 
   private gateway: DiscordGateway | null = null;
+  private inbox: FollowInbox | null = null;
   private started = false;
   private link: FollowLink = { state: "off", bot: null, error: null, channel_known: null };
   private readonly seen: FollowSeen[] = [];
@@ -96,6 +102,7 @@ export class FollowService extends ServiceBase {
   stop(): void {
     this.started = false;
     this.dropGateway();
+    this.dropInbox();
   }
 
   /**
@@ -111,6 +118,7 @@ export class FollowService extends ServiceBase {
 
   private async syncOnce(restart: boolean): Promise<void> {
     if (!this.started) return;
+    this.syncInbox();
     if (!this.settings.follow.channel_id) {
       this.dropGateway();
       this.setLink({ state: "off", bot: null, error: null });
@@ -145,6 +153,51 @@ export class FollowService extends ServiceBase {
     const old = this.gateway;
     this.gateway = null;
     old?.stop();
+  }
+
+  /** 本地收件:开着就盯文件(路径跟着交易库走),关了就停。和 Discord 连接互不影响。 */
+  private syncInbox(): void {
+    const want = this.settings.follow.local_inbox ? inboxPath(this.settings.db_path) : null;
+    if (this.inbox !== null && this.inbox.path === want) return;
+    this.dropInbox();
+    if (want === null) return;
+    const inbox = new FollowInbox(want, {
+      onMessage: (message) => {
+        if (this.inbox === inbox) void this.onMessage(message);
+      },
+      onError: (error) => {
+        if (this.inbox !== inbox) return;
+        process.stderr.write(`[follow] 本地收件:${error}\n`);
+        this.emit("follow", { kind: "inbox" });
+      },
+    }, this.inboxOptions);
+    this.inbox = inbox;
+    inbox.start();
+    this.emit("follow", { kind: "inbox" });
+  }
+
+  private dropInbox(): void {
+    const old = this.inbox;
+    this.inbox = null;
+    old?.stop();
+  }
+
+  /** 现在就读一次收件文件(测试用)。返回的 promise 在读到的消息都处理完之后落定。 */
+  pollInbox(): Promise<void> {
+    this.inbox?.poll();
+    return this.chain;
+  }
+
+  private inboxView(): FollowInboxState {
+    const inbox = this.inbox;
+    return {
+      enabled: this.settings.follow.local_inbox,
+      path: inboxPath(this.settings.db_path),
+      watching: inbox !== null && inbox.watching,
+      last_at: inbox?.lastAt ?? null,
+      received: inbox?.received ?? 0,
+      error: inbox?.error ?? null,
+    };
   }
 
   private onPhase(phase: GatewayPhase, error: string | null): void {
@@ -208,6 +261,7 @@ export class FollowService extends ServiceBase {
   private remember(message: DiscordMessage, cfg: FollowConfig): void {
     this.seen.unshift({
       at: utcIso(Math.floor(message.sentAtMs / 1000) * 1000),
+      source: message.channel_id === LOCAL_CHANNEL ? "local" : "discord",
       author_id: message.author_id,
       author_name: message.author_name.slice(0, 80),
       text: message.content.slice(0, FOLLOW_TEXT_MAX),
@@ -320,6 +374,7 @@ export class FollowService extends ServiceBase {
       today: { sent: this.sentToday(), max: cfg.max_orders_per_day },
       recent: this.engine.store.follow.recent(30),
       seen: this.seen.map((s) => ({ ...s, trusted: cfg.author_ids.includes(s.author_id) })),
+      inbox: this.inboxView(),
     };
   }
 }

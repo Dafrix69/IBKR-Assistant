@@ -22,7 +22,15 @@ const SETUP_STEPS = [
   { title: '填频道 ID、挑信任的发送者', detail: 'Discord 设置 → 高级 → 开发者模式;之后右键频道 →「复制频道 ID」。存好之后等对方发一条消息,在下面「频道里最近看到的消息」里点「信任」。' },
 ];
 
-function linkText(link: FollowLink, tokenSaved: boolean): { tone: 'ok' | 'warn' | 'bad' | 'info'; text: string } {
+const INBOX_STEPS = [
+  { title: '让 Discord 把消息暴露给辅助功能', detail: '退出 Discord,在终端里用 open -a Discord --args --force-renderer-accessibility 重新打开。不带这个参数时,窗口里的消息读不到(脚本会说明)。' },
+  { title: '给终端辅助功能权限', detail: '系统设置 → 隐私与安全性 → 辅助功能,把你运行脚本用的终端加进去。' },
+  { title: '运行脚本,停在那个频道', detail: '脚本在仓库的 desktop/tools/discord-window-follow.swift:swift 那个文件 --channel 频道名 --out 下面显示的收件文件路径。Discord 要一直开着并停在这个频道,电脑不能锁屏、不能睡。' },
+  { title: '信任显示名', detail: '对方发一条之后,在「频道里最近看到的消息」里点「信任」(条目是 local:显示名)。注意:频道里别人把昵称改成一样的,软件分不出来——只适合私密小群。' },
+];
+
+function linkText(link: FollowLink, tokenSaved: boolean, inboxOn: boolean): { tone: 'ok' | 'warn' | 'bad' | 'info'; text: string } {
+  if (link.state === 'off' && inboxOn) return { tone: 'info', text: '没有填频道 ID,不连 Discord;消息只来自本地收件。' };
   if (link.state === 'ready') {
     if (link.channel_known === false) return { tone: 'warn', text: `已连上(bot:${link.bot ?? '—'}),但 bot 所在的服务器里没有这个频道 ID:它听不到那里的消息。` };
     return { tone: 'ok', text: `已连上(bot:${link.bot ?? '—'}),正在听这个频道。` };
@@ -135,7 +143,13 @@ export function FollowPanel() {
   if (loadError && !status) return <section className="sub-panel active" id="panel-follow"><EmptyState>读取失败:{loadError}</EmptyState></section>;
   if (!status || !form) return <section className="sub-panel active" id="panel-follow"><LoadingBlock rows={4} /></section>;
 
-  const link = linkText(status.link, status.token_configured);
+  const link = linkText(status.link, status.token_configured, form.localInbox);
+  const inbox = status.inbox;
+  const inboxText = inbox.error
+    ? inbox.error
+    : inbox.watching
+      ? `正在读。这次启动以来收到 ${inbox.received} 条${inbox.last_at ? `,最近一条 ${fmtTime(inbox.last_at)}` : ''}`
+      : form.localInbox ? '保存之后开始读' : '关着';
   const strangers = status.seen.filter((s) => !form.authorIds.includes(s.author_id));
 
   return (
@@ -176,24 +190,33 @@ export function FollowPanel() {
             {!form.authorIds.length ? <span className="muted">还没有信任任何人</span> : null}
           </Space>
         </GroupRow>
-        <GroupRow label="手动添加" sub="右键对方头像 →「复制用户 ID」">
+        <GroupRow label="手动添加" sub="右键对方头像 →「复制用户 ID」;本地收件的写成 local:显示名">
           <Space size={6}>
-            <Input style={{ width: 200 }} placeholder="用户 ID" value={newAuthor} onChange={(e) => setNewAuthor(e.target.value)} />
+            <Input style={{ width: 200 }} placeholder="用户 ID 或 local:显示名" value={newAuthor} onChange={(e) => setNewAuthor(e.target.value)} />
             <Button disabled={addAuthor(form, newAuthor) === form} onClick={() => { setForm(addAuthor(form, newAuthor)); setNewAuthor(''); }}>添加</Button>
           </Space>
         </GroupRow>
       </Group>
+      <Group>
+        <SwitchRow icon="sf-doc" tint="teal" label="本地收件" sub="对方的私密频道拉不进 bot 时:本机脚本从你屏幕上的 Discord 窗口把新消息抄进收件文件,软件读文件。不用任何 token,Discord 那边什么都收不到。" checked={form.localInbox} onChange={(v) => patch({ localInbox: v })} />
+        <GroupRow label="收件文件" sub={inboxText} className={`follow-inbox tone-${inbox.error ? 'warn' : inbox.watching ? 'ok' : 'info'}`}>
+          <span className="muted mono" style={{ wordBreak: 'break-all' }}>{inbox.path}</span>
+        </GroupRow>
+      </Group>
+      <Primer id="follow-inbox-setup" summary="本地收件怎么用:四步" defaultOpen={false}>
+        <StepList items={INBOX_STEPS} />
+      </Primer>
       <p className="hint">频道里最近看到的消息(只在内存里,重启引擎就清空):</p>
       {status.seen.length ? (
         <Group>
           {status.seen.slice(0, 8).map((s, i) => (
-            <GroupRow key={`${s.at}-${i}`} label={<>{s.author_name || '(没有名字)'} <span className="muted mono">{s.author_id}</span></>} sub={`${fmtTime(s.at)} · ${s.text || '(没有文字内容)'}`}>
+            <GroupRow key={`${s.at}-${i}`} label={<>{s.author_name || '(没有名字)'} <span className="muted mono">{s.author_id}</span>{s.source === 'local' ? <Tag>本地收件</Tag> : null}</>} sub={`${fmtTime(s.at)} · ${s.text || '(没有文字内容)'}`}>
               {form.authorIds.includes(s.author_id) ? <Tag color="success">已信任</Tag> : <Button size="small" onClick={() => setForm(addAuthor(form, s.author_id))}>信任</Button>}
             </GroupRow>
           ))}
         </Group>
       ) : (
-        <EmptyState compact>{status.link.state === 'ready' ? '连上之后还没有人在这个频道说话' : '连上 Discord 之后,这里会列出频道里的新消息'}</EmptyState>
+        <EmptyState compact>{status.link.state === 'ready' || inbox.watching ? '还没有收到新消息' : '连上 Discord(或打开本地收件)之后,这里会列出频道里的新消息'}</EmptyState>
       )}
       {strangers.length && !form.authorIds.length ? <p className="hint">点某一条右边的「信任」,就把它的发送者加进名单;保存之后才生效。</p> : null}
 

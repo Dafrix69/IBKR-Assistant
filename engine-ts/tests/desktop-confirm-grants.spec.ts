@@ -98,7 +98,7 @@ describe("Discord 跟单:打开与放宽要凭据", () => {
   it("从关到开:要,绑的是补丁落下去之后的整份(信任谁、哪个频道、哪些账户、三个上限)", () => {
     expect(needs({ enabled: true, channel_id: ON.channel_id, author_ids: ON.author_ids }, OFF)).toEqual([{
       purpose: "gate.follow",
-      binding: { channel_id: ON.channel_id, author_ids: ON.author_ids, accounts: [], max_age_seconds: 30, max_orders_per_day: 3, max_risk_usd: 300 },
+      binding: { channel_id: ON.channel_id, author_ids: ON.author_ids, accounts: [], max_age_seconds: 30, max_orders_per_day: 3, max_risk_usd: 300, local_inbox: false },
     }]);
   });
 
@@ -119,6 +119,14 @@ describe("Discord 跟单:打开与放宽要凭据", () => {
     for (const key of ["max_age_seconds", "max_orders_per_day", "max_risk_usd"] as const) {
       expect(needs({ [key]: ON[key] + 1 }, ON), key).toHaveLength(1);
     }
+  });
+
+  it("本地收件:开着时多开它要确认(多了一个消息来源),关掉它不要;只靠它、不填频道也能开", () => {
+    expect(needs({ local_inbox: true }, ON)).toHaveLength(1);
+    expect(needs({ local_inbox: false }, { ...ON, local_inbox: true })).toEqual([]);
+    const localOnly = needs({ enabled: true, channel_id: "", author_ids: ["local:Charlie"], local_inbox: true }, OFF);
+    expect(localOnly).toHaveLength(1);
+    expect(localOnly[0]!.binding).toMatchObject({ channel_id: "", author_ids: ["local:Charlie"], local_inbox: true });
   });
 
   it("开着时往紧了改:少信任一个人、调小上限、少发一个账户,不要", () => {

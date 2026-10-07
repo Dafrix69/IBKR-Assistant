@@ -10,6 +10,7 @@
  */
 import type { FollowConfig, FollowOutcome } from "./contract/follow.js";
 import type { InstructionSubmitResult } from "./contract/instruction.js";
+import { LOCAL_CHANNEL } from "./followInbox.js";
 import { pyG } from "./py.js";
 import { looksLikeShorthand } from "./shorthand.js";
 
@@ -34,7 +35,9 @@ export type Triage =
   | { kind: "parse" };
 
 export function triage(cfg: FollowConfig, message: FollowMessage, nowMs: number): Triage {
-  if (!cfg.channel_id || message.channel_id !== cfg.channel_id) return { kind: "other_channel" };
+  // 本地收件的消息"频道"是 local:开着本地收件才看;bot 读来的只看配置的那个频道
+  const wanted = message.channel_id === LOCAL_CHANNEL ? cfg.local_inbox : Boolean(cfg.channel_id) && message.channel_id === cfg.channel_id;
+  if (!wanted) return { kind: "other_channel" };
   if (!cfg.author_ids.includes(message.author_id)) return { kind: "untrusted" };
   if (!looksLikeShorthand(message.content)) return { kind: "chatter" };
   // 按 Discord 盖的时刻算,不按本机收到的时刻:断线续连后补发来的消息"刚收到",其实是几分钟前的

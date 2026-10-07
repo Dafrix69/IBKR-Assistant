@@ -80,6 +80,7 @@ function followBinding(cfg) {
     max_age_seconds: Number(c.max_age_seconds),
     max_orders_per_day: Number(c.max_orders_per_day),
     max_risk_usd: Number(c.max_risk_usd),
+    local_inbox: c.local_inbox === true,
   };
 }
 
@@ -87,7 +88,8 @@ function followBinding(cfg) {
 const FOLLOW_CAPS = ['max_age_seconds', 'max_orders_per_day', 'max_risk_usd'];
 
 /**
- * 补丁落下去之后,跟单是不是比现在放得更开:从关到开、换了频道、多信任了一个人、发单的账户变了(收窄除外)、上限调大。
+ * 补丁落下去之后,跟单是不是比现在放得更开:从关到开、换了频道、多信任了一个人、发单的账户变了(收窄除外)、上限调大、
+ * 多开了本地收件(多了一个消息来源)。
  * 往紧了改(少信任一个人、调小上限)与关掉都不用确认。现在的值读不出来时按"放开了"算:宁可多问一次。
  * @param {object} next  补丁落下去之后的 follow 段
  * @param {object} now   引擎此刻的 follow 段
@@ -98,6 +100,7 @@ function followWidened(next, now) {
   const a = followBinding(next);
   const b = followBinding(now);
   if (a.channel_id !== b.channel_id) return true;
+  if (a.local_inbox && !b.local_inbox) return true;
   if (a.author_ids.some((id) => !b.author_ids.includes(id))) return true;
   // 账户:空 = 默认账户,所以"变成空"不是收窄;只有两边都点了名、新的全在旧的里面才算收窄
   const sameAccounts = a.accounts.length === b.accounts.length && a.accounts.every((x) => b.accounts.includes(x));
@@ -121,9 +124,10 @@ function followConfirmText(binding, accounts) {
   const live = targets.some((alias) => kindOf(alias) !== '纸面');
   const money = (n) => (Number.isFinite(n) ? n.toLocaleString('en-US', { maximumFractionDigits: 2 }) : '—');
   const detail = [
-    '打开之后,下面这些发送者在这个频道里发的蝴蝶单,软件不再问你,直接发到券商。',
+    '打开之后,下面这些发送者发的蝴蝶单,软件不再问你,直接发到券商。',
     '',
-    `频道 ID:${binding.channel_id || '(没有填)'}`,
+    `频道 ID:${binding.channel_id || (binding.local_inbox ? '(没有填,不连 Discord;消息只来自本地收件)' : '(没有填)')}`,
+    `本地收件:${binding.local_inbox ? '开着——脚本从你屏幕上的 Discord 窗口抄下来的消息也算;发送者按显示名认,频道里别人改昵称冒充得了' : '关着'}`,
     `信任的发送者 ID:${binding.author_ids.join('、') || '(一个都没有)'}`,
     `发到账户:${targets.map((alias) => `${alias}(${kindOf(alias)})`).join('、') || '(没有可用的账户)'}${binding.accounts.length ? '' : ' —— 默认账户'}`,
     `每单最坏亏损上限:$${money(binding.max_risk_usd)}${targets.length > 1 ? '(每个账户各发一份、各算各的)' : ''}`,
