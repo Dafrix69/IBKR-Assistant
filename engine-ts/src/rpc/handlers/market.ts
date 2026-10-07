@@ -4,7 +4,7 @@ import { BrokerError } from "../../broker.js";
 import { nowEt } from "../../config.js";
 import type {
   BookSnapshot, BookSnapshotParams, FlyPlanParams, FlyPlanResult, IvRecorderSetParams, IvRecorderStatus, MacroBoard,
-  MacroBoardParams, OptionWall, OptionsWallParams, PaAnalysis, PaAnalyzeParams, PaAnalyzeResult, PaCommentResult, PaHtfSummary, PaTimeframesResult,
+  MacroBoardParams, OptionWall, OptionsSpot, OptionsSpotParams, OptionsWallParams, PaAnalysis, PaAnalyzeParams, PaAnalyzeResult, PaCommentResult, PaHtfSummary, PaTimeframesResult,
 } from "../../contract/index.js";
 import { liveTickers, macroBoard } from "../../macro.js";
 import { PACommentSchema } from "../../models.js";
@@ -24,6 +24,7 @@ export class MarketHandlers extends HandlerBase {
       "options.fly_plan": (p) => this.optionsFlyPlan(p),
       "options.iv_recorder": () => this.ivRecorderStatus(),
       "options.iv_recorder_set": (p) => this.ivRecorderSet(p),
+      "options.spot": (p) => this.optionsSpot(p),
       "macro.board": (p) => this.macroBoardMethod(p),
       "pa.timeframes": () => this.paTimeframes(),
       "pa.analyze": (p) => this.paAnalyze(p),
@@ -61,6 +62,15 @@ export class MarketHandlers extends HandlerBase {
     const symbol = String(params.symbol ?? "SPX").trim().toUpperCase() || "SPX";
     if (!SYMBOL_RE.test(symbol)) throw new RpcError(-32602, `标的代码不合法:'${params.symbol}'`);
     return this.ctx.flyPlanner.planFor({ ...params, symbol });
+  }
+
+  /** 面板顶上的实时现价。每问一个标的就是一条常驻行情,所以只认配置里的指数,界面递不进别的代码 */
+  async optionsSpot(params: OptionsSpotParams): Promise<OptionsSpot> {
+    const symbol = String(params.symbol ?? "SPX").trim().toUpperCase() || "SPX";
+    if (!SYMBOL_RE.test(symbol) || !this.settings.indexConfig(symbol)) {
+      throw new RpcError(-32602, `实时现价只给配置里的指数,'${params.symbol}' 不是。`);
+    }
+    return this.ctx.flyPlanner.spotFor(symbol);
   }
 
   // ---- 自己攒当日到期期权的 IV ------------------------------------------

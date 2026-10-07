@@ -290,6 +290,18 @@
 .readiness.ant-card { margin-bottom: 16px; }
 
 /* ---- 蝴蝶测算(交易指令页右栏的另一面)---- */
+.fly-spot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin-bottom: 8px; padding: 0 2px; }
+.fly-spot-quote { display: inline-flex; align-items: baseline; gap: 6px; }
+.fly-spot-symbol { font-size: 11px; font-weight: 590; color: var(--label-secondary); }
+.fly-spot-price { font-family: var(--font-display); font-size: 17px; font-weight: 700; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+.fly-spot-price.dim { color: var(--label-secondary); }
+.fly-spot-price.live::after { content: ""; display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--green); margin-left: 5px; vertical-align: middle; }
+.fly-spot-note { font-size: 11px; color: var(--label-secondary); }
+.fly-spot-note.warn { color: var(--orange-text); }
+.fly-spot-levels { display: inline-flex; gap: 6px; }
+.fly-spot-levels .chip-tag.ant-tag { font-variant-numeric: tabular-nums; }
+.fly-spot-gap { margin-left: 6px; color: var(--label-secondary); }
+.fly-spot-alert { margin-left: auto; }
 .fly-form { padding: 10px 12px 12px; border-radius: var(--radius-card); background: var(--bg-fill); margin-bottom: 12px; }
 .fly-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 14px; margin-bottom: 10px; }
 .fly-row label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--label-secondary); }

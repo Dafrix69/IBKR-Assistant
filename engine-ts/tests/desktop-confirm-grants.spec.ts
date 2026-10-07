@@ -6,6 +6,7 @@
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const DESKTOP = path.resolve(__dirname, "..", "..", "desktop");
@@ -25,6 +26,9 @@ interface Grants {
   loosenedLimits(patch: unknown, current: unknown): { key: string; label: string; from: number; to: number }[];
   normalizeBinding(purpose: string, binding: unknown): Record<string, unknown>;
   canonical(value: unknown): string;
+  followBinding(cfg: unknown): Record<string, unknown>;
+  followWidened(next: unknown, now: unknown): boolean;
+  followConfirmText(binding: Record<string, unknown>, accounts: unknown[]): { live: boolean; detail: string };
 }
 const g = require(path.join(DESKTOP, "confirm-grants.js")) as Grants;
 
@@ -82,6 +86,102 @@ describe("哪些调用要凭据", () => {
     for (const m of ["system.status", "breaker.halt", "breaker.resume", "tracker.delete", "tracker.update", "records.list", "llm.patch"]) {
       expect(g.requiredGrants(m, { id: "x" }, CURRENT), m).toEqual([]);
     }
+  });
+});
+
+describe("Discord 跟单:打开与放宽要凭据", () => {
+  const OFF = { enabled: false, channel_id: "", author_ids: [], accounts: [], max_age_seconds: 30, max_orders_per_day: 3, max_risk_usd: 300 };
+  const ON = { ...OFF, enabled: true, channel_id: "1100000000000000001", author_ids: ["220000000000000002"], accounts: ["模拟", "主账户"] };
+  const needs = (follow: Record<string, unknown>, now: Record<string, unknown> | null) =>
+    g.requiredGrants("settings.patch", { patch: { follow } }, now === null ? null : { ...CURRENT, follow: now });
+
+  it("从关到开:要,绑的是补丁落下去之后的整份(信任谁、哪个频道、哪些账户、三个上限)", () => {
+    expect(needs({ enabled: true, channel_id: ON.channel_id, author_ids: ON.author_ids }, OFF)).toEqual([{
+      purpose: "gate.follow",
+      binding: { channel_id: ON.channel_id, author_ids: ON.author_ids, accounts: [], max_age_seconds: 30, max_orders_per_day: 3, max_risk_usd: 300 },
+    }]);
+  });
+
+  it("现在的配置读不到:按关着的算(宁可多问一次)", () => {
+    expect(needs({ ...ON }, null).map((n) => n.purpose)).toEqual(["gate.follow"]);
+  });
+
+  it("关掉、只观察时改配置、开着时原样再存:不要", () => {
+    expect(needs({ enabled: false }, ON)).toEqual([]);
+    expect(needs({ channel_id: "1100000000000000009", author_ids: ["330000000000000003"], max_risk_usd: 9999 }, OFF)).toEqual([]);
+    expect(needs({ ...ON }, ON)).toEqual([]);
+  });
+
+  it("开着时往松了改:换频道、多信任一个人、调大任何一个上限,都要", () => {
+    expect(needs({ channel_id: "1100000000000000009" }, ON)).toHaveLength(1);
+    expect(needs({ author_ids: [...ON.author_ids, "330000000000000003"] }, ON)).toHaveLength(1);
+    expect(needs({ author_ids: ["330000000000000003"] }, ON)).toHaveLength(1); // 换了一个人,不是少了一个人
+    for (const key of ["max_age_seconds", "max_orders_per_day", "max_risk_usd"] as const) {
+      expect(needs({ [key]: ON[key] + 1 }, ON), key).toHaveLength(1);
+    }
+  });
+
+  it("开着时往紧了改:少信任一个人、调小上限、少发一个账户,不要", () => {
+    const two = { ...ON, author_ids: [...ON.author_ids, "330000000000000003"] };
+    expect(needs({ author_ids: ON.author_ids }, two)).toEqual([]);
+    expect(needs({ max_risk_usd: 100, max_orders_per_day: 1, max_age_seconds: 10 }, ON)).toEqual([]);
+    expect(needs({ accounts: ["模拟"] }, ON)).toEqual([]);
+  });
+
+  it("账户:多一个、换一个、清空(= 改发默认账户)都算换了下单出口,要", () => {
+    const one = { ...ON, accounts: ["模拟"] };
+    expect(needs({ accounts: ["模拟", "主账户"] }, one)).toHaveLength(1);
+    expect(needs({ accounts: ["主账户"] }, one)).toHaveLength(1);
+    expect(needs({ accounts: [] }, one)).toHaveLength(1);
+    expect(needs({ accounts: ["模拟"] }, { ...ON, accounts: [] })).toHaveLength(1);
+  });
+
+  it("补丁里的数不是数:按放宽了算", () => {
+    expect(needs({ max_risk_usd: "很多" }, ON)).toHaveLength(1);
+  });
+
+  it("确认的是一份,存的是另一份:不放行;名单的先后不影响", async () => {
+    const book = new g.GrantBook();
+    const shown = { ...ON, author_ids: ["330000000000000003", "220000000000000002"], accounts: ["主账户", "模拟"] };
+    book.issue("gate.follow", shown);
+    // 存的时候多塞了一个人
+    expect(book.consumeAll(needs({ ...shown, author_ids: [...shown.author_ids, "440000000000000004"] }, OFF))).toEqual(["打开 Discord 自动跟单"]);
+    // 原样(名单顺序反过来):放行,用一次作废
+    const same = needs({ ...shown, author_ids: [...shown.author_ids].reverse(), accounts: [...shown.accounts].reverse() }, OFF);
+    expect(book.consumeAll(same)).toEqual([]);
+    expect(book.consumeAll(same)).toEqual(["打开 Discord 自动跟单"]);
+  });
+
+  it("界面表单拼出来的那一份(lib/followForm.ts)和主进程按补丁算的,指纹相同", async () => {
+    const form = (await import(/* @vite-ignore */ pathToFileURL(path.join(DESKTOP, "renderer-react", "src", "lib", "followForm.ts")).href)) as unknown as {
+      toForm(cfg: unknown): Record<string, unknown>;
+      toConfig(form: Record<string, unknown>): Record<string, unknown>;
+    };
+    const next = form.toConfig({ ...form.toForm(ON), maxRisk: 500 });
+    const book = new g.GrantBook();
+    book.issue("gate.follow", next); // 界面递给确认框的 binding
+    expect(book.consumeAll(needs(next, ON))).toEqual([]); // 界面随后 patchSettings({ follow: next })
+  });
+
+  it("确认框上的字:信任谁、哪个频道、发到哪些账户(纸面还是实盘)、三个上限;含实盘时标出来", () => {
+    const accounts = [{ alias: "模拟", is_paper: true, default: true }, { alias: "主账户", is_paper: false, default: false }];
+    const both = g.followConfirmText(g.followBinding(ON), accounts);
+    expect(both.live).toBe(true);
+    expect(both.detail).toContain("频道 ID:1100000000000000001");
+    expect(both.detail).toContain("信任的发送者 ID:220000000000000002");
+    expect(both.detail).toContain("主账户(实盘)、模拟(纸面)");
+    expect(both.detail).toContain("每单最坏亏损上限:$300(每个账户各发一份、各算各的)");
+    expect(both.detail).toContain("每天最多跟:3 单");
+    expect(both.detail).toContain("超过 30 秒不跟");
+    expect(both.detail).toContain("账号被盗");
+    // 没点名账户:写明是默认账户,它是纸面的就不算含实盘
+    const dflt = g.followConfirmText(g.followBinding({ ...ON, accounts: [] }), accounts);
+    expect(dflt.live).toBe(false);
+    expect(dflt.detail).toContain("发到账户:模拟(纸面) —— 默认账户");
+    // 引擎没答话(账户表是空的):类别未知,按含实盘提醒
+    const unknown = g.followConfirmText(g.followBinding(ON), []);
+    expect(unknown.live).toBe(true);
+    expect(unknown.detail).toContain("类别未知");
   });
 });
 
@@ -185,6 +285,17 @@ describe("主进程与界面的接线", () => {
     expect(src("lib/FutuPanel.tsx")).toMatch(/purpose: 'broker\.select',\s*binding: \{ provider: provider\.key \}/);
     const settings = src("pages/Settings.tsx");
     for (const p of ["gate.auto_execute", "gate.allow_live_trading", "limits.loosen"]) expect(settings, p).toContain(`purpose: '${p}'`);
+    expect(src("lib/FollowPanel.tsx")).toMatch(/purpose: 'gate\.follow',\s*binding: next/);
+  });
+
+  it("跟单的确认框:只是往紧了改时不弹框、不发凭据;框上的字出自 confirm-grants", () => {
+    const text = main.slice(main.indexOf("async function boundConfirmText"), main.indexOf("const lines = [message, detail]"));
+    expect(text).toMatch(/if \(!followWidened\(\{ \.\.\.binding, enabled: true \}, current\.follow\)\) return null;/);
+    expect(text).toMatch(/followConfirmText\(binding, accounts\)/);
+    // 这一支排在通用的 gate.* 之前(那一支不看 binding),也排在拼界面文字的那几行之前;
+    // 界面递来的字一个都不上框,由 desktop-main.spec 把主进程真的跑起来核对
+    expect(text.indexOf("purpose === 'gate.follow'")).toBeGreaterThan(-1);
+    expect(text.indexOf("purpose === 'gate.follow'")).toBeLessThan(text.indexOf("purpose.startsWith('gate.')"));
   });
 
   it("界面认的用途和主进程那张表一致", () => {

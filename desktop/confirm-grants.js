@@ -26,6 +26,7 @@ const PURPOSES = {
   'gate.auto_execute': '打开自动执行',
   'gate.allow_live_trading': '允许实盘账户下单',
   'limits.loosen': '放宽风控限额',
+  'gate.follow': '打开 Discord 自动跟单',
 };
 
 /** settings.patch 里从关变开要凭据的闸门。 */
@@ -65,6 +66,76 @@ function loosenedLimits(patchLimits, currentLimits) {
   return out;
 }
 
+/**
+ * Discord 跟单的凭据绑什么:信任谁、读哪个频道、发到哪些账户、三个上限——确认框上摆的就是这几样。
+ * 形状固定、名单排好序:界面递来的和放行时由"现在的配置 + 补丁"算出来的,同一件事得出同一个指纹。
+ */
+function followBinding(cfg) {
+  const c = cfg && typeof cfg === 'object' ? cfg : {};
+  const list = (v) => (Array.isArray(v) ? [...new Set(v.map(String))].sort() : []);
+  return {
+    channel_id: String(c.channel_id ?? ''),
+    author_ids: list(c.author_ids),
+    accounts: list(c.accounts),
+    max_age_seconds: Number(c.max_age_seconds),
+    max_orders_per_day: Number(c.max_orders_per_day),
+    max_risk_usd: Number(c.max_risk_usd),
+  };
+}
+
+/** 跟单的三个上限:调大是放松。 */
+const FOLLOW_CAPS = ['max_age_seconds', 'max_orders_per_day', 'max_risk_usd'];
+
+/**
+ * 补丁落下去之后,跟单是不是比现在放得更开:从关到开、换了频道、多信任了一个人、发单的账户变了(收窄除外)、上限调大。
+ * 往紧了改(少信任一个人、调小上限)与关掉都不用确认。现在的值读不出来时按"放开了"算:宁可多问一次。
+ * @param {object} next  补丁落下去之后的 follow 段
+ * @param {object} now   引擎此刻的 follow 段
+ */
+function followWidened(next, now) {
+  if (!next || next.enabled !== true) return false;
+  if (!now || now.enabled !== true) return true;
+  const a = followBinding(next);
+  const b = followBinding(now);
+  if (a.channel_id !== b.channel_id) return true;
+  if (a.author_ids.some((id) => !b.author_ids.includes(id))) return true;
+  // 账户:空 = 默认账户,所以"变成空"不是收窄;只有两边都点了名、新的全在旧的里面才算收窄
+  const sameAccounts = a.accounts.length === b.accounts.length && a.accounts.every((x) => b.accounts.includes(x));
+  const narrowed = a.accounts.length > 0 && b.accounts.length > 0 && a.accounts.every((x) => b.accounts.includes(x));
+  if (!sameAccounts && !narrowed) return true;
+  return FOLLOW_CAPS.some((key) => !Number.isFinite(b[key]) || !Number.isFinite(a[key]) || a[key] > b[key]);
+}
+
+/**
+ * 「打开 Discord 自动跟单」确认框上的正文。binding 是 confirm-grants 的 followBinding 整理过的那一份;
+ * accounts 是引擎报的账户表(别名、是不是纸面、是不是默认)。没点名账户 = 发到默认账户。
+ */
+function followConfirmText(binding, accounts) {
+  const byAlias = new Map((accounts || []).map((a) => [String(a.alias), a]));
+  const kindOf = (alias) => {
+    const acct = byAlias.get(alias);
+    return acct ? (acct.is_paper ? '纸面' : '实盘') : '类别未知';
+  };
+  const fallback = (accounts || []).find((a) => a.default) || (accounts || [])[0];
+  const targets = binding.accounts.length ? binding.accounts : fallback ? [String(fallback.alias)] : [];
+  const live = targets.some((alias) => kindOf(alias) !== '纸面');
+  const money = (n) => (Number.isFinite(n) ? n.toLocaleString('en-US', { maximumFractionDigits: 2 }) : '—');
+  const detail = [
+    '打开之后,下面这些发送者在这个频道里发的蝴蝶单,软件不再问你,直接发到券商。',
+    '',
+    `频道 ID:${binding.channel_id || '(没有填)'}`,
+    `信任的发送者 ID:${binding.author_ids.join('、') || '(一个都没有)'}`,
+    `发到账户:${targets.map((alias) => `${alias}(${kindOf(alias)})`).join('、') || '(没有可用的账户)'}${binding.accounts.length ? '' : ' —— 默认账户'}`,
+    `每单最坏亏损上限:$${money(binding.max_risk_usd)}${targets.length > 1 ? '(每个账户各发一份、各算各的)' : ''}`,
+    `每天最多跟:${money(binding.max_orders_per_day)} 单`,
+    `消息发出超过 ${money(binding.max_age_seconds)} 秒不跟`,
+    '',
+    '对方发错一条、或者对方的 Discord 账号被盗,都会直接变成你账户里的订单。上面这几个上限,加上「设置」里的限额与保护规则,是仅有的硬保护。',
+    '随时可以在「接入 → Discord 跟单」关掉;关是当场生效的。',
+  ].join('\n');
+  return { live, detail };
+}
+
 /** 键排好序的 JSON:同一份内容不管键的先后,指纹一样。undefined 的键当作没有。 */
 function canonical(value) {
   if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
@@ -90,6 +161,7 @@ function normalizeBinding(purpose, binding) {
   }
   if (purpose === 'tracker.close_now') return { id: String(b.id ?? '') };
   if (purpose === 'broker.select') return { provider: String(b.provider ?? '') };
+  if (purpose === 'gate.follow') return followBinding(b);
   if (purpose.startsWith('gate.')) return {};
   if (purpose === 'limits.loosen') {
     const limits = {};
@@ -134,6 +206,13 @@ function requiredGrants(method, params, current = null) {
     if (loosened.length) {
       needs.push({ purpose: 'limits.loosen', binding: { limits: Object.fromEntries(loosened.map((l) => [l.key, l.to])) } });
     }
+    // Discord 跟单:补丁落下去之后的那一份(引擎也是这么合并的:这一段是平的,名单整个换)
+    const followPatch = p.patch && typeof p.patch === 'object' && p.patch.follow && typeof p.patch.follow === 'object' ? p.patch.follow : null;
+    if (followPatch) {
+      const followNow = current && current.follow && typeof current.follow === 'object' ? current.follow : null;
+      const followNext = { ...(followNow || {}), ...followPatch };
+      if (followWidened(followNext, followNow)) needs.push({ purpose: 'gate.follow', binding: followBinding(followNext) });
+    }
     return needs;
   }
   return [];
@@ -176,4 +255,6 @@ class GrantBook {
   }
 }
 
-module.exports = { PURPOSES, GATES, LIMIT_RULES, TTL_MS, GrantBook, requiredGrants, loosenedLimits, normalizeBinding, canonical };
+module.exports = {
+  PURPOSES, GATES, LIMIT_RULES, TTL_MS, GrantBook, requiredGrants, loosenedLimits, normalizeBinding, canonical, followBinding, followWidened, followConfirmText,
+};

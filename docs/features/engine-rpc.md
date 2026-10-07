@@ -7,8 +7,8 @@ stdout 只传协议,日志一律走 stderr。引擎单线程,请求按方法分�
 
 | 道 | 调度 | 放什么 |
 |---|---|---|
-| 本地道 | 来了就答 | 同步的本地库与配置读写:板块增删、想法列表与检索、记录、设置读取、熔断状态、追踪列表、`tracker.poll` / `tracker.reconcile`(只读引擎最近一轮盯盘的结果)、`quality.*`、`pool.set_watch`、`data.backups` / `data.backup`、`options.iv_recorder*`、`system.status`、`keychain.set` / `futu.set_password`(写系统凭证库,可能等 macOS 弹窗,不该挡住下单) |
-| 读道 | 最多 4 个并发 | 只读的行情、探测与纯计算:`positions.list`、`pa.analyze`、`book.snapshot`、`macro.board`、`screener.*`、`backtest.run` / `sweep`、`options.fly_plan`、`review.performance` / `signals`、`ideas.similar_trades`、`tracker.target_preview`、`tws.*` / `futu.*` 探测 |
+| 本地道 | 来了就答 | 同步的本地库与配置读写:板块增删、想法列表与检索、记录、设置读取、熔断状态、追踪列表、`tracker.poll` / `tracker.reconcile`(只读引擎最近一轮盯盘的结果)、`quality.*`、`pool.set_watch`、`data.backups` / `data.backup`、`options.iv_recorder*`、`system.status`、`keychain.set` / `futu.set_password` / `follow.set_token`(写系统凭证库,可能等 macOS 弹窗,不该挡住下单)、`follow.status` / `follow.reconnect` |
+| 读道 | 最多 4 个并发 | 只读的行情、探测与纯计算:`positions.list`、`pa.analyze`、`book.snapshot`、`macro.board`、`screener.*`、`backtest.run` / `sweep`、`options.fly_plan`、`options.spot`、`review.performance` / `signals`、`ideas.similar_trades`、`tracker.target_preview`、`tws.*` / `futu.*` 探测 |
 | 交易道 | 严格顺序 | 其余全部:`instruction.submit`、`pending.poll`、熔断、连接与切换券商、`settings.patch`,以及调用大模型的 `ideas.analyze` / `ideas.digest` / `backtest.parse_rules` / AI 选股 |
 
 - 只有交易道需要顺序:下单、熔断、连接切换共享引擎状态,并发会让批内熔断、重复单这类检查出现竞态。
@@ -70,7 +70,7 @@ stdout 只传协议,日志一律走 stderr。引擎单线程,请求按方法分�
 | `contract/schema/` | 入参的 zod schema 与总表 `PARAMS_SCHEMAS`;缺一个方法或形状对不上都是编译错 |
 | `rpc/contractMethods.ts` | handler 用它登记方法,方法名、入参、返回三样对着契约检查 |
 
-- **全部 89 个方法都在契约里。** `tests/contract.spec.ts` 的 `LEGACY_METHODS` 是空表,只许变短;引擎里出现不在契约里的方法测试就红。
+- **全部 90 个方法都在契约里。** `tests/contract.spec.ts` 的 `LEGACY_METHODS` 是空表,只许变短;引擎里出现不在契约里的方法测试就红。
 - **类型文件零 import。** 界面的 tsc 会顺着 `bridge.ts` 走进来,而 CI 的界面任务不装引擎依赖。所以类型是源头,
   schema 写成 `ParamsSchema<契约类型>` 去对照它。
 - **schema 只管结构**(有哪些字段、什么 JSON 类型),领域校验(代码形状、上限、阈值范围)留在 handler,报 handler 自己那句话。

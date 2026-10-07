@@ -23,7 +23,7 @@
 - **界面**(`shell/ConsentGate.tsx`):没同意现行条款之前,整个界面挡在同意页后面。三份都点开看过才能勾选,勾了才能点「同意并继续」;
   「不同意,退出」退出应用。
 - **主进程**(`consent.blockedWithoutConsent`,在检查确认凭据之前):没同意之前,`instruction.submit`(`execute: true`)、`tracker.add` / `update` / `close_now`
-  不放行;`settings.patch` 把任何一个执行闸门设成 `true` 也不放行。界面被绕过也过不去。
+  不放行;`settings.patch` 把任何一个执行闸门设成 `true`、或把 Discord 跟单打开(`follow.enabled: true`)也不放行。界面被绕过也过不去。
 - 不挡:只解析不发单、只读的调用、连券商、熔断、关闸门。
 - 引擎不知道条款这件事:已经打开自动执行的用户升级之后,引擎里的追踪照常运行,只是界面要先同意才进得去。
   命令行(`cli.js run`)有自己的 `--i-understand-this-places-real-orders`。

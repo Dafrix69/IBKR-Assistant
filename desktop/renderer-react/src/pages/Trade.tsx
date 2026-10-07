@@ -8,7 +8,7 @@ import { REJECT_CODE_LABEL, REJECT_SOURCE_LABEL, say } from '../lib/labels';
 import { isTicket, OrderTicket } from '../lib/OrderTicket';
 import { SimilarTrades } from '../lib/SimilarTrades';
 import { useLlmCatalog } from '../store/llm';
-import { navigate } from '../store/nav';
+import { clearNavFocus, navigate, useNavFocus } from '../store/nav';
 import { brokerShortName, gatewayName, pickableAccounts, useStatus } from '../store/status';
 import { appendInstruction, clearResult, savePickedAccounts, selectedAccounts, setInstruction, setTradePane, submitInstruction, useComposer, usePickedRevision, type SubmitPayload, type TradePane } from '../store/trade';
 import { dafri, type InstructionOrder } from '../bridge';
@@ -65,6 +65,14 @@ export function TradePage() {
   useEffect(() => {
     areaRef.current?.focus();
   }, []);
+
+  // 带着标的跳到这一页的只有关口提醒的「查看」:把右栏翻到蝴蝶测算那一面
+  const focus = useNavFocus('trade');
+  useEffect(() => {
+    if (!focus) return;
+    setTradePane('fly');
+    clearNavFocus(focus.seq);
+  }, [focus]);
 
   // 账户还是示例里的占位账号(全零):解析得了,但单子发不到任何真的账户上。主进程读配置文件才知道
   const [placeholders, setPlaceholders] = useState<string[]>([]);

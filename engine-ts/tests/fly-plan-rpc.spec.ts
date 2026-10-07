@@ -1,4 +1,5 @@
 /** options.fly_plan 从 RPC 进来的这一段:入参过 schema、现价与三条腿的行情从券商取、没连券商时靠手动给的数离线算。
+ *  面板顶上的实时现价 options.spot 也在这里:它和测算问的是同一路现价。
  *
  * 纯计算在 fly-plan.spec,取行情的那一层在 option-marks.spec;这里钉的是接线:问券商要的是哪几张合约、
  * 夜盘拿到昨收时不算、富途连接下不取期权行情、错误码与文案。全部离线:券商与会话是假的,时钟钉在 2026-09-28 10:00 美东。
@@ -46,6 +47,7 @@ class FakeRouter {
   spot: number | null = 7720;
   info: Rec | null = { price: 7720, source: "index", note: "" };
   askedSpot: string[] = [];
+  upstreamOk = true;
   sessions(): unknown[] { return [this.session]; }
   connectedNames(): string[] { return ["paper"]; }
   marketSession(): FakeSession { return this.session; }
@@ -276,5 +278,68 @@ describe("入参", () => {
 
   it("排在读道上:开着自动刷新时不挡下单", () => {
     expect(RpcServer.READ_METHODS.has("options.fly_plan")).toBe(true);
+  });
+});
+
+// 面板顶上那一行实时现价:界面两秒问一次,拿它判断"走到关口了没有"。取不到不是报错;不会动的价要标出来。
+describe("options.spot:面板上的实时现价", () => {
+  const spot = async (s: RpcServer, params: Rec = {}): Promise<Rec> =>
+    s.handle(JSON.parse(JSON.stringify({ jsonrpc: "2.0", id: 1, method: "options.spot", params })));
+
+  it("常规时段:券商的指数现价,和测算问的是同一路;不带标的就是 SPX", async () => {
+    const { s, router } = makeServer();
+    expect((await spot(s))["result"]).toEqual({ symbol: "SPX", price: 7720, source: "quote", note: "", at: NOW });
+    expect((await spot(s, { symbol: "spx" }))["result"]["symbol"]).toBe("SPX");
+    expect(router.askedSpot).toEqual(["SPX", "SPX"]);
+    // 只读现价,不订期权腿
+    expect(router.session.subscribed).toEqual([]);
+  });
+
+  it("夜盘按期货推算:来源与怎么推的都带出来", async () => {
+    const { s, router } = makeServer();
+    router.spot = 7731.5;
+    router.info = { price: 7731.5, source: "futures", note: "SPX 夜盘不计算,按 ESZ6 7760 − 基差 28.5 推算" };
+    expect((await spot(s))["result"]).toEqual({
+      symbol: "SPX", price: 7731.5, source: "futures", note: "SPX 夜盘不计算,按 ESZ6 7760 − 基差 28.5 推算", at: NOW,
+    });
+  });
+
+  it("不会动的价标成 stale:推算失败退回的昨收、TWS 与服务器断开时的最后一笔", async () => {
+    const a = makeServer();
+    a.router.spot = 7700;
+    a.router.info = { price: 7700, source: "index_stale", note: "SPX 指数只在常规时段计算,这是上一个收盘价,不是现价(期货推算没成功:期货还没报价)" };
+    expect((await spot(a.s))["result"]).toMatchObject({ price: 7700, source: "stale", note: expect.stringContaining("不是现价") });
+
+    const b = makeServer();
+    b.router.upstreamOk = false;
+    expect((await spot(b.s))["result"]).toMatchObject({
+      price: 7720, source: "stale", note: "TWS / IB Gateway 与 IBKR 服务器之间断开了,这是断开前的最后一笔",
+    });
+  });
+
+  it("没连券商、券商没给价、取价抛错:都是 price: null 的回执,带着原因,不是 RPC 报错", async () => {
+    const off = makeServer({ connected: false });
+    expect((await spot(off.s))["result"]).toEqual({ symbol: "SPX", price: null, source: "none", note: "没连 TWS / IB Gateway", at: NOW });
+
+    const none = makeServer();
+    none.router.spot = null;
+    expect((await spot(none.s))["result"]).toMatchObject({ price: null, source: "none", note: "拿不到 SPX 的现价" });
+
+    const boom = makeServer();
+    boom.router.indexPrice = async () => { throw new Error("socket closed"); };
+    expect((await spot(boom.s))["result"]).toMatchObject({ price: null, source: "none" });
+  });
+
+  it("只认配置里的指数:界面递不进别的代码,也递不进别的键", async () => {
+    const { s, router } = makeServer();
+    expect((await spot(s, { symbol: "AAPL" }))["error"]).toEqual({ code: -32602, message: "实时现价只给配置里的指数,'AAPL' 不是。" });
+    expect((await spot(s, { symbol: "sp x" }))["error"]["code"]).toBe(-32602);
+    expect((await spot(s, { symbol: "SPX", force: true }))["error"]["message"]).toMatch(/有不认识的键:force/);
+    expect(router.askedSpot).toEqual([]);
+  });
+
+  it("排在读道上:两秒一次的轮询不挡下单", () => {
+    expect(RpcServer.READ_METHODS.has("options.spot")).toBe(true);
+    expect(RpcServer.LOCAL_METHODS.has("options.spot")).toBe(false);
   });
 });

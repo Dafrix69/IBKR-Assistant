@@ -100,6 +100,10 @@ window.dafri = {
     guide: [{ step: 1, title: '下载并解压 OpenD', detail: '去富途 OpenAPI 官网下载。' }],
     connections: {}, connected: [], active: false, sdk_installed: false }),
   diagnoseFutu: async () => ({ results: [] }),
+  // Discord 跟单:首次启动什么都没配
+  followStatus: async () => ({ config: { enabled:false,channel_id:'',author_ids:[],accounts:[],max_age_seconds:30,max_orders_per_day:3,max_risk_usd:300 }, token_configured: false,
+    link: { state: 'off', bot: null, error: null, channel_known: null }, today: { sent: 0, max: 3 }, recent: [], seen: [] }),
+  setFollowToken: async () => window.dafri.followStatus(), reconnectFollow: async () => window.dafri.followStatus(),
   launchFutu: async () => ({ launched: true }), setFutuPassword: async () => ({ ok: true }),
   unlockFutu: async () => ({ unlocked: [], failed: {} }), installFutuSdk: async () => ({ installed: [] }),
   submit: async () => { throw new Error('尚未连接 TWS / IB Gateway,拒绝执行。'); },
@@ -130,6 +134,7 @@ window.dafri = {
   flyPlan: async () => { throw new Error('没连 TWS / IB Gateway,拿不到现价:先去连接,或者手动填上现价与 IV 再算。'); },
   ivRecorder: async () => ({enabled:true,running:true,symbol:'SPX',interval_seconds:300,dir:'~/Library/Application Support/dafri/fly-iv',days:0,samples:0,first_date:null,last_date:null,last_at:null,idle_reason:'没连券商',last_error:''}),
   setIvRecorder: async (enabled) => ({...{enabled:true,running:true,symbol:'SPX',interval_seconds:300,dir:'~/Library/Application Support/dafri/fly-iv',days:0,samples:0,first_date:null,last_date:null,last_at:null,idle_reason:'没连券商',last_error:''}, enabled, idle_reason: enabled ? '' : '已关闭'}),
+  indexSpot: async (symbol) => ({symbol: symbol || 'SPX', price: null, source: 'none', note: '没连 TWS / IB Gateway', at: Date.now()}),
   listAlerts: async () => ({ watches: [] }),
   createAlert: async () => ({}), deleteAlert: async () => ({}), refreshAlert: async () => ({}),
   pollAlerts: async () => ({ fired: [], checked: [] }),

@@ -246,6 +246,7 @@ describe.runIf(ready)("主进程:钱路径上的三道(条款 → 确认凭据 �
     expect(await failure(rpc("tracker.close_now", { id: "t", __confirmed: true }))).toMatch(/还没有同意/);
     expect(await failure(rpc("tracker.add", { key: "k", auto_close: true, __confirmed: true }))).toMatch(/还没有同意/);
     expect(await failure(rpc("settings.patch", { patch: { policies: { auto_execute: true } }, __confirmed: true }))).toMatch(/还没有同意/);
+    expect(await failure(rpc("settings.patch", { patch: { follow: { enabled: true } }, __confirmed: true }))).toMatch(/不能打开 Discord 自动跟单/);
     // 关闸门照常(引擎回的是改完之后的设置)
     expect((await rpc("settings.patch", { patch: { policies: { auto_execute: false } }, __confirmed: true })).policies.auto_execute).toBe(false);
     expect((await rpc("breaker.state")).engaged).toBe(false);
@@ -312,6 +313,39 @@ describe.runIf(ready)("主进程:钱路径上的三道(条款 → 确认凭据 �
     expect((await rpc("settings.patch", patch)).policies.auto_execute).toBe(true);
     // 关:不用确认,当场生效
     expect((await rpc("settings.patch", { patch: { policies: { auto_execute: false } }, __confirmed: true })).policies.auto_execute).toBe(false);
+  });
+
+  it("Discord 跟单:打开要确认,框上的字由主进程对着要存的那一份写;存的和确认的不是同一份不放行;关与收紧不用确认", async () => {
+    // 不填频道:引擎不会去碰凭证库、不会去连 Discord(测试不许连外面),而"从关到开"这道闸照样要过
+    const follow = { enabled: true, channel_id: "", author_ids: ["220000000000000002"], accounts: [], max_age_seconds: 30, max_orders_per_day: 3, max_risk_usd: 300 };
+    const patch = { patch: { follow }, __confirmed: true };
+    expect(await failure(rpc("settings.patch", patch))).toContain("确认框里点确认(打开 Discord 自动跟单)");
+    boxes.length = 0;
+    answers.push(1);
+    expect(await invoke("confirm", { purpose: "gate.follow", binding: follow, title: "界面给的", message: "界面给的", detail: "界面给的" })).toBe(true);
+    expect(boxes[0]!["message"]).toMatch(/^打开 Discord 自动跟单/);
+    expect(boxes[0]!["detail"]).toContain("信任的发送者 ID:220000000000000002");
+    expect(boxes[0]!["detail"]).toContain("每单最坏亏损上限:$300");
+    expect(boxes[0]!["detail"]).toContain("—— 默认账户");
+    expect(JSON.stringify(boxes[0])).not.toContain("界面给的");
+    // 确认的是信任一个人,存的时候多塞了一个:不放行,凭据还在
+    const sneaky = { patch: { follow: { ...follow, author_ids: [...follow.author_ids, "330000000000000003"] } }, __confirmed: true };
+    expect(await failure(rpc("settings.patch", sneaky))).toContain("确认框里点确认(打开 Discord 自动跟单)");
+    expect((await rpc("settings.patch", patch)).follow).toEqual(follow);
+    expect((await rpc("follow.status")).config.enabled).toBe(true);
+    // 往紧了改:不弹框、不用凭据
+    boxes.length = 0;
+    const tighter = { ...follow, max_risk_usd: 100 };
+    expect(await invoke("confirm", { purpose: "gate.follow", binding: tighter, title: "", message: "" })).toBe(true);
+    expect(boxes).toHaveLength(0);
+    expect((await rpc("settings.patch", { patch: { follow: tighter }, __confirmed: true })).follow.max_risk_usd).toBe(100);
+    // 调大:要
+    expect(await failure(rpc("settings.patch", { patch: { follow: { max_risk_usd: 5000 } }, __confirmed: true }))).toContain("打开 Discord 自动跟单");
+    // 关:不用确认,当场生效;之后没配频道,连接是 off
+    expect((await rpc("settings.patch", { patch: { follow: { enabled: false } }, __confirmed: true })).follow.enabled).toBe(false);
+    expect((await rpc("follow.status")).link.state).toBe("off");
+    // 存 token 是敏感通道:不从桥上走(没有确认标记)不放行
+    expect(await failure(rpc("follow.set_token", { token: "x" }))).toMatch(/缺少界面确认标记/);
   });
 
   it("放宽限额:确认框上从多少到多少由主进程对着引擎现在的设置算;收紧不用确认", async () => {

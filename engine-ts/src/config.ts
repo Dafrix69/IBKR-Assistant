@@ -7,6 +7,7 @@
 import * as fsModule from "node:fs";
 // 限额与策略开关的形状界面也要用,定义在 contract/settings.ts;这里转出,老的 import 不用改。
 export type { Limits, Policies } from "./contract/settings.js";
+import type { FollowConfig } from "./contract/follow.js";
 import type { LLMConfig } from "./contract/llm.js";
 import type { Limits, Policies, RiskBudgetConfig } from "./contract/settings.js";
 import * as path from "node:path";
@@ -209,6 +210,7 @@ export class Settings {
   policies!: Policies;
   protections!: ProtectionsConfig;
   risk_budget!: RiskBudgetConfig;
+  follow!: FollowConfig;
   accounts: AccountConfig[] = [];
   connections: Record<string, ConnectionConfig> = {};
   symbol_aliases: Record<string, string> = {};
@@ -500,6 +502,45 @@ function buildRiskBudget(raw: Raw): RiskBudgetConfig {
   };
 }
 
+// Discord 跟单(见 follow.ts 与 services/follow.ts):默认关、默认不连 Discord。
+// 这里只查形状与范围。「开着却没填频道 / 没填信任的人」不算配置错:没频道就不连,没人可信就一条都不跟——
+// 配置读不进来的后果是引擎起不来、持仓没人盯,不值得为一段跟单配置冒这个险。账户别名同理(账户可能刚改名),发单那一刻再核对。
+const FOLLOW_KEYS = ["enabled", "channel_id", "author_ids", "accounts", "max_age_seconds", "max_orders_per_day", "max_risk_usd"];
+/** Discord 的 ID(snowflake):一串数字。超过了 JSON 数字能精确表示的范围,所以必须写成字符串。 */
+const DISCORD_ID = /^\d{15,21}$/;
+
+function discordId(value: unknown, label: string): string {
+  if (typeof value !== "string" || !DISCORD_ID.test(value.trim())) {
+    throw new Error(`${label} 必须是带引号的 Discord ID(15–21 位数字),收到 ${pyRepr(value)}`);
+  }
+  return value.trim();
+}
+
+function stringList(raw: Raw, key: string, label: string): unknown[] {
+  const value = raw[key] ?? [];
+  if (!Array.isArray(value)) throw new Error(`${label}.${key} 必须是数组,收到 ${pyRepr(value)}`);
+  return value;
+}
+
+function buildFollow(raw: Raw): FollowConfig {
+  rejectUnknown(FOLLOW_KEYS, raw, "follow");
+  const channel = raw["channel_id"] ?? "";
+  const authors = stringList(raw, "author_ids", "follow").map((v, i) => discordId(v, `follow.author_ids[${i}]`));
+  const accounts = stringList(raw, "accounts", "follow").map((v, i) => {
+    if (typeof v !== "string" || !v.trim()) throw new Error(`follow.accounts[${i}] 必须是账户别名,收到 ${pyRepr(v)}`);
+    return v.trim();
+  });
+  return {
+    enabled: flag(raw, "enabled", false, "follow"),
+    channel_id: channel === "" ? "" : discordId(channel, "follow.channel_id"),
+    author_ids: [...new Set(authors)],
+    accounts: [...new Set(accounts)],
+    max_age_seconds: num(raw, "max_age_seconds", "int", 30, "follow", { min: 1, max: 600 })!,
+    max_orders_per_day: num(raw, "max_orders_per_day", "int", 3, "follow", { min: 1, max: 100 })!,
+    max_risk_usd: num(raw, "max_risk_usd", "float", 300.0, "follow", { min: 1.0, minStr: "1.0" })!,
+  };
+}
+
 const LIMIT_KEYS = [
   "max_order_notional", "max_option_contracts", "max_mkt_shares", "min_confidence",
   "max_spread_slippage", "max_orders_per_input", "duplicate_window_minutes",
@@ -777,6 +818,7 @@ export function fromDict(raw: Raw, source: string | null = null): Settings {
   settings.policies = buildPolicies((raw["policies"] as Raw) ?? {});
   settings.protections = buildProtections((raw["protections"] as Raw) ?? {});
   settings.risk_budget = buildRiskBudget((raw["risk_budget"] as Raw) ?? {});
+  settings.follow = buildFollow((raw["follow"] as Raw) ?? {});
   settings.accounts = accounts;
   settings.connections = connections;
   const aliases: Record<string, string> = {};

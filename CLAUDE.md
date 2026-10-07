@@ -26,10 +26,10 @@ cd desktop   && npm run lint && npm run ui:typecheck
 transport     rpc.ts(转出的壳)  rpc/server.ts  rpc/context.ts  rpc/contractMethods.ts  rpc/params.ts  rpc/handlers/*.ts  cli.ts
 orchestrate   engine.ts  engine/*.ts(hosted 托管单、reconcile 执行对账、callbacks 回报落库、clock)  tracker.ts  services/*.ts
 execution     broker.ts  ibContracts.ts(怎么拼一张 IB 合约)  futuBroker.ts  ibSession.ts  ibTypes.ts  tws.ts  futu.ts  futuBridge.ts  optionMarks.ts(蝴蝶测算取行情:自己的流,不碰盯盘的)  heldStreams.ts(持仓的常驻行情订阅:平掉的撤掉)
-parsing       validator.ts  providers.ts  prompts.ts  shorthand.ts  llm.ts  embeddings.ts
+parsing       validator.ts  providers.ts  prompts.ts  shorthand.ts  llm.ts  embeddings.ts  follow.ts(Discord 跟单的判定规则:跟不跟、为什么)
 analysis      backtest backtestLab priceaction screener research ideaRetrieval optionwall anomaly flyexit tradereview tradeOutcomes performance leaders fillsCsv optionTradesCsv optionPositionsCsv tradeSimilar ibtrades macro market alerts maTouch execQuality signalOutcomes trackerDrawdown ivPricing flyPlan flyCalibration flyIvModel(校准出来的参数,脚本生成,不手改)
-domain        config.ts  models.ts  store.ts  storeSafety.ts(库的版本号、完整性、备份)  importedTrades.ts  ideaVectors.ts  signalLog.ts  positions.ts  combos.ts(期权腿 → 组合)  marketdata.ts  ivSamples.ts(自己攒的期权 IV,文件读写)
-util          py.ts  pyjson.ts  tz.ts  notify.ts  keychain.ts  keychainChild.ts(凭证子进程)  secrets.ts(引擎里凭证读写的入口)  killswitch.ts  protections.ts  riskBudget.ts  rpcError.ts  marketCalendar.ts(内置休市日历)
+domain        config.ts  models.ts  store.ts  storeSafety.ts(库的版本号、完整性、备份)  importedTrades.ts  ideaVectors.ts  signalLog.ts  positions.ts  combos.ts(期权腿 → 组合)  marketdata.ts  ivSamples.ts(自己攒的期权 IV,文件读写)  followLog.ts(跟单日志)
+util          py.ts  pyjson.ts  tz.ts  notify.ts  keychain.ts  keychainChild.ts(凭证子进程)  secrets.ts(引擎里凭证读写的入口)  killswitch.ts  protections.ts  riskBudget.ts  rpcError.ts  marketCalendar.ts(内置休市日历)  discordGateway.ts(Discord Gateway 的最小客户端,只读)
 contract      contract/*.ts(纯类型,零 import,谁都能引)  contract/schema/*.ts(入参的 zod 校验,只给 rpc/ 用)
 ```
 
@@ -73,7 +73,7 @@ contract      contract/*.ts(纯类型,零 import,谁都能引)  contract/schema/
   `contract/schema/` 配入参 schema(漏了是编译错)→ 所属域 handler 用 `contractMethods({...})` 实现 → `main.js` 的
   `ALLOWED_RPC`(会发单的还要进 `SENSITIVE_RPC`)→ `preload.js` → `bridge.ts` 的 `DafriBridge` 用 `RpcParams` / `RpcResult` 写签名。
   方法要走本地道 / 读道,还要进 `server.ts` 的道表。`tests/desktop-whitelist.spec.ts` 与 `tests/contract.spec.ts` 少一处会红。
-- `tests/contract.spec.ts` 的 `LEGACY_METHODS` **已于 2026-09-20 空掉**(当时 77 个方法、现在 89 个,全在契约里)。那张表留着是闸门:
+- `tests/contract.spec.ts` 的 `LEGACY_METHODS` **已于 2026-09-20 空掉**(当时 77 个方法、现在 93 个,全在契约里)。那张表留着是闸门:
   想绕过契约就得先往里加一行,而那条用例不让。**只许变短,不许加。**
 - 契约的类型文件(`contract/` 顶层)**不 import 任何东西**:界面的 tsc 会顺着 `bridge.ts` 走进来,而 CI 里界面那一路
   不装引擎的依赖。界面只有 `bridge.ts` 能跨进引擎目录,只许 `import type`,只许进 `contract/` 顶层。

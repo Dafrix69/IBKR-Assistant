@@ -102,6 +102,13 @@ describe("没同意之前挡什么", () => {
     expect(consent.blockedWithoutConsent("settings.patch", {})).toBeNull();
   });
 
+  it("打开 Discord 自动跟单 = 授权软件不经确认发单:挡;关掉、只观察时改配置:不挡", () => {
+    expect(consent.blockedWithoutConsent("settings.patch", { patch: { follow: { enabled: true } } })).toMatch(/不能打开 Discord 自动跟单/);
+    expect(consent.blockedWithoutConsent("settings.patch", { patch: { follow: { enabled: false } } })).toBeNull();
+    expect(consent.blockedWithoutConsent("settings.patch", { patch: { follow: { channel_id: "1100000000000000001" } } })).toBeNull();
+    for (const m of ["follow.status", "follow.set_token", "follow.reconnect"]) expect(consent.blockedWithoutConsent(m, {}), m).toBeNull();
+  });
+
   it("只读的、熔断、连券商:不挡(熔断尤其不能挡)", () => {
     for (const m of ["system.status", "breaker.halt", "breaker.resume", "broker.connect", "tracker.delete", "records.list"]) {
       expect(consent.blockedWithoutConsent(m, {}), m).toBeNull();
@@ -151,10 +158,16 @@ describe("条款文本", () => {
     expect(privacy).toMatch(/大模型服务商/);
     // 引擎里出现的外部域名只有这几个;多了一个,隐私说明就得跟着改
     const hosts = new Set<string>();
-    for (const f of ["macro.ts", "providers.ts", "embeddings.ts", "market.ts", "optionwall.ts", "llm.ts"]) {
-      for (const m of engine(f).matchAll(/https?:\/\/([a-z0-9.-]+)/gi)) hosts.add(String(m[1]).toLowerCase());
+    for (const f of ["macro.ts", "providers.ts", "embeddings.ts", "market.ts", "optionwall.ts", "llm.ts", "discordGateway.ts"]) {
+      for (const m of engine(f).matchAll(/(?:https?|wss?):\/\/([a-z0-9.-]+)/gi)) hosts.add(String(m[1]).toLowerCase());
     }
-    const known = ["cdn.cboe.com", "query1.finance.yahoo.com", "api.deepseek.com", "platform.claude.com", "127.0.0.1", "localhost", "api.example.com"];
+    // Discord 跟单:bot 连的是 Discord 的 Gateway(只收不发),隐私说明里要有它
+    expect(engine("discordGateway.ts")).toMatch(/gateway\.discord\.gg/);
+    expect(privacy).toMatch(/Discord/);
+    const known = [
+      "cdn.cboe.com", "query1.finance.yahoo.com", "api.deepseek.com", "platform.claude.com", "127.0.0.1", "localhost", "api.example.com",
+      "gateway.discord.gg",
+    ];
     expect([...hosts].filter((h) => !known.includes(h))).toEqual([]);
   });
 });

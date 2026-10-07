@@ -115,6 +115,13 @@ contextBridge.exposeInMainWorld('dafri', {
       params: { connection, __confirmed: true },
     }),
 
+  // ---- Discord 跟单:状态只读;bot token 只在这一次调用里存在(引擎写进系统凭证库,不落配置、不进日志)------
+  // 跟单的开关与上限在设置的 follow 段,走 patchSettings;打开、放宽之前先 confirm({ purpose: 'gate.follow', binding })
+  followStatus: () => ipcRenderer.invoke('rpc', { method: 'follow.status', params: {} }),
+  setFollowToken: (token) =>
+    ipcRenderer.invoke('rpc', { method: 'follow.set_token', params: { token: String(token), __confirmed: true } }),
+  reconnectFollow: () => ipcRenderer.invoke('rpc', { method: 'follow.reconnect', params: {} }),
+
   // ---- 会产生后果的操作(主进程会校验 __confirmed)----------------------
   // accounts:界面勾选的目标账户别名;勾两个就同时向两个账户发单(引擎按账户扇出)
   submit: (text, execute, accounts) =>
@@ -178,6 +185,8 @@ contextBridge.exposeInMainWorld('dafri', {
   // 当日到期期权 IV 的记录(给蝴蝶测算重新校准用):状态与开关。只读行情
   ivRecorder: () => ipcRenderer.invoke('rpc', { method: 'options.iv_recorder', params: {} }),
   setIvRecorder: (enabled) => ipcRenderer.invoke('rpc', { method: 'options.iv_recorder_set', params: { enabled } }),
+  // 测算面板上的实时现价(和测算用的是同一路,夜盘按期货推算)。只读行情
+  indexSpot: (symbol) => ipcRenderer.invoke('rpc', { method: 'options.spot', params: { symbol } }),
   listAlerts: () => ipcRenderer.invoke('rpc', { method: 'alerts.list', params: {} }),
   createAlert: (symbol, step) =>
     ipcRenderer.invoke('rpc', { method: 'alerts.create', params: { symbol, step } }),

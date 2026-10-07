@@ -6,10 +6,10 @@
  */
 const L = {
   contractTypes: "^src/contract/[^/]+\\.ts$",
-  util:        "^src/(py|pyjson|tz|notify|keychain|keychainChild|secrets|killswitch|protections|riskBudget|rpcError|marketCalendar)\\.ts$",
-  domain:      "^src/(config|models|store|storeSafety|importedTrades|ideaVectors|signalLog|positions|combos|marketdata|ivSamples)\\.ts$",
+  util:        "^src/(py|pyjson|tz|notify|keychain|keychainChild|secrets|killswitch|protections|riskBudget|rpcError|marketCalendar|discordGateway)\\.ts$",
+  domain:      "^src/(config|models|store|storeSafety|importedTrades|ideaVectors|signalLog|positions|combos|marketdata|ivSamples|followLog)\\.ts$",
   analysis:    "^src/(backtest|priceaction|screener|research|ideaRetrieval|optionwall|anomaly|flyexit|tradereview|tradeOutcomes|performance|leaders|fillsCsv|optionTradesCsv|optionPositionsCsv|tradeSimilar|ibtrades|macro|market|alerts|maTouch|execQuality|backtestLab|signalOutcomes|trackerDrawdown|ivPricing|flyPlan|flyCalibration|flyIvModel)\\.ts$",
-  parsing:     "^src/(validator|providers|prompts|shorthand|llm|embeddings)\\.ts$",
+  parsing:     "^src/(validator|providers|prompts|shorthand|llm|embeddings|follow)\\.ts$",
   execution:   "^src/(broker|ibContracts|ibLink|futuBroker|ibSession|ibTypes|tws|futu|futuBridge|optionMarks|heldStreams)\\.ts$",
   orchestrate: "^src/((engine|tracker)\\.ts|(engine|services)/[^/]+\\.ts)$",
   transport:   "^src/((rpc|cli)\\.ts|rpc/.+\\.ts)$",

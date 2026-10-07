@@ -1,12 +1,13 @@
 import { Segmented } from 'antd';
 import { AccountsPanel } from '../lib/AccountsPanel';
+import { FollowPanel } from '../lib/FollowPanel';
 import { FutuPanel } from '../lib/FutuPanel';
 import { LlmPanel } from '../lib/LlmPanel';
 import { TwsPanel } from '../lib/TwsPanel';
 import { setSubtab, useSubtab } from '../store/nav';
 import { PageHead } from '../ui/kit';
 
-// 接入:TWS、富途 OpenD、账户、大模型。各自一个文件(lib/TwsPanel、lib/FutuPanel、lib/AccountsPanel、lib/LlmPanel),
+// 接入:TWS、富途 OpenD、账户、大模型、Discord 跟单。各自一个文件(lib/TwsPanel、lib/FutuPanel、lib/AccountsPanel、lib/LlmPanel、lib/FollowPanel),
 // 共用的展示构件在 lib/connectBits。这一页自己只剩「在几个子页签之间切」这一件事。
 // 整条路都不接触任何券商的登录密码——登录在券商程序自己的窗口完成。
 
@@ -15,6 +16,7 @@ const SUBTABS = [
   { value: 'futu', label: '富途 OpenD' },
   { value: 'accounts', label: '账户' },
   { value: 'llm', label: '大模型' },
+  { value: 'follow', label: 'Discord 跟单' },
 ];
 
 
@@ -27,6 +29,7 @@ export function AccessPage() {
       {sub === 'futu' ? <FutuPanel /> : null}
       {sub === 'accounts' ? <AccountsPanel /> : null}
       {sub === 'llm' ? <LlmPanel /> : null}
+      {sub === 'follow' ? <FollowPanel /> : null}
     </section>
   );
 }

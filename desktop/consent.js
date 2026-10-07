@@ -17,7 +17,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 /** 现行条款的版本号。docs/legal/ 三份文档开头写的是同一个(tests/desktop-consent.spec.ts 钉着)。 */
-const TERMS_VERSION = '2026-09-28';
+const TERMS_VERSION = '2026-10-01';
 
 /** 没同意条款之前不放行的方法。 */
 const CONSENT_REQUIRED_RPC = new Set([
@@ -82,6 +82,11 @@ function blockedWithoutConsent(method, params) {
     const policies = params && params.patch && typeof params.patch === 'object' ? params.patch.policies : null;
     if (policies && typeof policies === 'object' && CONSENT_GATES.some((g) => policies[g] === true)) {
       return '还没有同意《风险揭示与使用条款》,不能打开自动执行或实盘下单。请在应用里阅读并同意后再试。';
+    }
+    // 打开 Discord 跟单 = 授权软件不经确认发单
+    const follow = params && params.patch && typeof params.patch === 'object' ? params.patch.follow : null;
+    if (follow && typeof follow === 'object' && follow.enabled === true) {
+      return '还没有同意《风险揭示与使用条款》,不能打开 Discord 自动跟单。请在应用里阅读并同意后再试。';
     }
   }
   return null;

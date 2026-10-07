@@ -71,6 +71,7 @@ const PARENT_OF: Record<string, string> = {
   futu: 'access',
   accounts: 'access',
   llm: 'access',
+  follow: 'access',
   alerts: 'sectors',
   // 异动弹窗的「查看」发的是 page:'quality'(主进程里存着的旧条目也是),那一页已经并进板块页——
   // 这一行不能删:少了它,弹窗点「查看」就哪儿也去不了(startMenuNavigation 只认侧栏里真有的页)。

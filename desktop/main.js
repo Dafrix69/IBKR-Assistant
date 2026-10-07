@@ -22,7 +22,9 @@ const { checkForUpdate } = require('./update-check');
 const configGuard = require('./config-guard');
 const storeGuard = require('./store-guard');
 const consent = require('./consent');
-const { GrantBook, PURPOSES, requiredGrants, loosenedLimits, normalizeBinding } = require('./confirm-grants');
+const {
+  GrantBook, PURPOSES, requiredGrants, loosenedLimits, normalizeBinding, followConfirmText, followWidened,
+} = require('./confirm-grants');
 const { createRedactor, accountsFromConfig } = require('./redact');
 const { registerSupportIpc, handleStoreFatal } = require('./support-ipc');
 const { PowerWatch } = require('./power-watch');
@@ -191,6 +193,7 @@ const ALLOWED_RPC = new Set([
   'options.fly_plan',
   'options.iv_recorder',
   'options.iv_recorder_set',
+  'options.spot',
   'alerts.list',
   'alerts.create',
   'alerts.delete',
@@ -225,6 +228,11 @@ const ALLOWED_RPC = new Set([
   // 恢复不在这里——那要停引擎、换库文件,是主进程自己的通道(support-ipc.js 的 backup-restore)
   'data.backups',
   'data.backup',
+  // Discord 跟单:状态只读;存 bot token 写系统凭证库(进 SENSITIVE_RPC);重新连接只是换一条到 Discord 的连接。
+  // 跟单的开关与上限在 settings 的 follow 段,走 settings.patch——打开、放宽要 gate.follow 的确认凭据
+  'follow.status',
+  'follow.set_token',
+  'follow.reconnect',
 ]);
 
 /** 会真的动钱或动配置的通道,额外要求界面已经确认过一次。 */
@@ -242,6 +250,7 @@ const SENSITIVE_RPC = new Set([
   'tracker.add', // 设的是"到价自动发单"的授权,不是一条备忘
   'tracker.update',
   'tracker.close_now', // 直接发平仓单
+  'follow.set_token', // 写系统凭证库
 ]);
 
 /**
@@ -1317,6 +1326,20 @@ const GATE_TEXT = {
  */
 async function boundConfirmText(purpose, binding, { message, detail }) {
   const headline = PURPOSES[purpose];
+  if (purpose === 'gate.follow') {
+    // 只是往紧了改(少信任一个人、调小上限):不弹框、不发凭据,放行那一头也不会要(requiredGrants 是同一个判断)
+    const current = await engine.call('settings.get', {}, { timeoutMs: 8000 });
+    if (!followWidened({ ...binding, enabled: true }, current.follow)) return null;
+    // 框上的每一个字都由这里对着绑定的那一份写:信任谁、读哪个频道、发到哪些账户、上限多少。账户是纸面还是实盘问引擎
+    let accounts = [];
+    try {
+      accounts = (await engine.call('system.status', {}, { timeoutMs: 5000 })).accounts || [];
+    } catch {
+      /* 引擎不答话:账户类别标「未知」 */
+    }
+    const text = followConfirmText(binding, accounts);
+    return { title: headline, message: text.live ? `${headline}(含实盘账户)` : headline, detail: text.detail, binding };
+  }
   if (purpose.startsWith('gate.')) return { title: headline, message: headline, detail: GATE_TEXT[purpose], binding };
   if (purpose === 'limits.loosen') {
     // 从多少改到多少,由这里对着引擎现在的设置算:界面说"只是从 5,000 调到 6,000"不作数

@@ -16,6 +16,7 @@ import {
   BrokerConnectParamsSchema, BrokerSelectParamsSchema, DiagnoseParamsSchema, FutuSetPasswordParamsSchema,
   FutuUnlockParamsSchema, LaunchParamsSchema,
 } from "./connection.js";
+import { FollowSetTokenParamsSchema } from "./follow.js";
 import {
   IdeasAddParamsSchema, IdeasAnalyzeParamsSchema, IdeasDigestParamsSchema, IdeasDigestsParamsSchema, IdeasListParamsSchema,
   IdeasSearchParamsSchema, IdeasSimilarTradesParamsSchema, IdeasUpdateParamsSchema,
@@ -25,7 +26,7 @@ import { NoParamsSchema } from "./kit.js";
 import type { ParamsSchema } from "./kit.js";
 import { LlmPatchParamsSchema, LlmTestParamsSchema } from "./llm.js";
 import { BookSnapshotParamsSchema, MacroBoardParamsSchema } from "./market.js";
-import { FlyPlanParamsSchema, IvRecorderSetParamsSchema, OptionsWallParamsSchema } from "./options.js";
+import { FlyPlanParamsSchema, IvRecorderSetParamsSchema, OptionsSpotParamsSchema, OptionsWallParamsSchema } from "./options.js";
 import { PaAnalyzeParamsSchema } from "./priceaction.js";
 import { PoolSetWatchParamsSchema } from "./pool.js";
 import {
@@ -85,6 +86,10 @@ export const PARAMS_SCHEMAS: { readonly [M in RpcMethodName]: ParamsSchema<RpcPa
   "futu.unlock": FutuUnlockParamsSchema,
   "futu.set_password": FutuSetPasswordParamsSchema,
 
+  "follow.status": NoParamsSchema,
+  "follow.set_token": FollowSetTokenParamsSchema,
+  "follow.reconnect": NoParamsSchema,
+
   "ideas.add": IdeasAddParamsSchema,
   "ideas.list": IdeasListParamsSchema,
   "ideas.update": IdeasUpdateParamsSchema,
@@ -98,6 +103,7 @@ export const PARAMS_SCHEMAS: { readonly [M in RpcMethodName]: ParamsSchema<RpcPa
   "options.fly_plan": FlyPlanParamsSchema,
   "options.iv_recorder": NoParamsSchema,
   "options.iv_recorder_set": IvRecorderSetParamsSchema,
+  "options.spot": OptionsSpotParamsSchema,
 
   "pa.timeframes": NoParamsSchema,
   "pa.analyze": PaAnalyzeParamsSchema,

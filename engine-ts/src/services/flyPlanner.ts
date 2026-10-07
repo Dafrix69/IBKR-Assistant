@@ -4,7 +4,7 @@
  * 连着 IBKR 时三条腿的盘口照取(成本与买卖价要用);手动只给了其中一样,另一样照旧去券商取。
  */
 import { nowEt } from "../config.js";
-import type { FlyPlanParams, FlyPlanResult } from "../contract/options.js";
+import type { FlyPlanParams, FlyPlanResult, OptionsSpot } from "../contract/options.js";
 import { FlyPlanError, markKey, planFly, planSchedule } from "../flyPlan.js";
 import type { LegMark } from "../flyPlan.js";
 import { silenceLimitMs } from "../heldStreams.js";
@@ -89,11 +89,31 @@ export class FlyPlannerService extends ServiceBase {
     return right;
   }
 
-  private async liveSpot(symbol: string): Promise<Spot> {
+  /**
+   * 面板顶上那一行实时现价:和测算用的是同一路(指数走 indexPrice,夜盘按期货推算)。
+   * 界面两秒问一次,所以取不到不抛错,原因写在 note 里;不会动的价(昨收、TWS 与服务器断开时的最后一笔)标成 stale,
+   * 界面照样显示,但不拿它判断"走到关口了没有"。
+   */
+  async spotFor(symbol: string): Promise<OptionsSpot> {
+    const at = nowEt().epochMs;
+    const none = (note: string): OptionsSpot => ({ symbol, price: null, source: "none", note, at });
     const router = this.router;
-    if (router === null || !this.connected()) {
-      throw new RpcError(-32017, `没连${this.gatewayLabel()},拿不到现价:先去连接,或者手动填上现价与 IV 再算。`);
+    if (router === null || !this.connected()) return none(`没连${this.gatewayLabel()}`);
+    const { price, info } = await this.askSpot(symbol);
+    if (price === null || !(price > 0)) return none(`拿不到 ${symbol} 的现价`);
+    if (info?.["source"] === "index_stale") {
+      return { symbol, price, source: "stale", note: String(info["note"] ?? `${symbol} 拿到的是昨收,不是现价`), at };
     }
+    if (router.upstreamOk === false) {
+      return { symbol, price, source: "stale", note: `${gatewayName(this.settings)} 与 IBKR 服务器之间断开了,这是断开前的最后一笔`, at };
+    }
+    return { symbol, price, source: info?.["source"] === "futures" ? "futures" : "quote", note: String(info?.["note"] ?? ""), at };
+  }
+
+  /** 向券商问一次现价,连同它是怎么来的。取价出错当作没有价 */
+  private async askSpot(symbol: string): Promise<{ price: number | null; info: Record<string, unknown> | null }> {
+    const router = this.router;
+    if (router === null) return { price: null, info: null };
     let price: number | null = null;
     try {
       price = this.settings.indexConfig(symbol)
@@ -103,6 +123,14 @@ export class FlyPlannerService extends ServiceBase {
       price = null;
     }
     const info = (router as { spotInfo?: (s: string) => Record<string, unknown> | null }).spotInfo?.(symbol) ?? null;
+    return { price, info };
+  }
+
+  private async liveSpot(symbol: string): Promise<Spot> {
+    if (this.router === null || !this.connected()) {
+      throw new RpcError(-32017, `没连${this.gatewayLabel()},拿不到现价:先去连接,或者手动填上现价与 IV 再算。`);
+    }
+    const { price, info } = await this.askSpot(symbol);
     // 夜盘推算失败时拿到的是昨收:和盯盘同一条规矩,当作没有现价
     if (info?.["source"] === "index_stale") {
       throw new RpcError(-32017, `${String(info["note"] ?? `${symbol} 拿到的是昨收,不是现价`)}。可以手动填上现价再算。`);

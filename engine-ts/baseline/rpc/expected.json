@@ -265,6 +265,15 @@
     "max_risk_pct": 2,
     "max_position_pct": 25
    },
+   "follow": {
+    "enabled": false,
+    "channel_id": "",
+    "author_ids": [],
+    "accounts": [],
+    "max_age_seconds": 30,
+    "max_orders_per_day": 3,
+    "max_risk_usd": 300
+   },
    "symbol_aliases": {
     "苹果": "AAPL",
     "英伟达": "NVDA",
@@ -367,6 +376,15 @@
     "equity_usd": {},
     "max_risk_pct": 2,
     "max_position_pct": 25
+   },
+   "follow": {
+    "enabled": false,
+    "channel_id": "",
+    "author_ids": [],
+    "accounts": [],
+    "max_age_seconds": 30,
+    "max_orders_per_day": 3,
+    "max_risk_usd": 300
    },
    "symbol_aliases": {
     "苹果": "AAPL",

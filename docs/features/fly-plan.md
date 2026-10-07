@@ -271,11 +271,51 @@ EM 与 `switch_k` 由用户定,分布由数据定。
 - 表单改过之后结果仍显示,但压暗并标出"这是改之前的",「写进指令」变灰。
 - 时刻一律用美东时间,结果里另给本地时间。
 
+## 实时现价与关口提醒
+
+面板顶上一行:SPX 的实时现价、现价上下最近的两个关口(25 的整数倍)与各自的距离、「到 25 的整数倍时提醒」的开关。
+蝶的中心落在这些位置上;点关口就是把它填进「中心行权价」。
+
+**现价**(`options.spot`,读道)和测算用的是同一路,所以面板上的数就是测算会用的数:
+
+| 来源 | 什么时候 | 界面 |
+|---|---|---|
+| `quote` | 常规时段:券商的指数现价 | 数字后面一个绿点 |
+| `futures` | 常规时段之外:期货现价 − 基差(见 [持仓追踪](tracker.md)「夜盘的指数现价」) | 绿点,标「期货推算」,悬停看怎么推的 |
+| `stale` | 期货推算失败时退回的上一个收盘价;TWS 与 IBKR 服务器断开时的最后一笔 | 压暗,标「不是现价」,不显示关口,不提醒 |
+| `none` | 没连券商、券商没给价 | 一句原因 |
+
+- 不用顶栏行情带的那一格:它读的是指数流的最新价,常规时段之外停在收盘价上。
+- 取不到价不是 RPC 报错,是 `price: null` 的回执:这是两秒一次的轮询,不该每两秒弹一条错误。
+- 只认配置里的指数。每问一个标的就是一条常驻行情,界面递不进别的代码。
+- 引擎读的是常驻行情流里的那一笔(`indexPrice`),不另订行情。
+
+**提醒**(`lib/spotLevels.ts` 的 `stepLevelWatch`,纯函数):这一笔相对上一笔穿过了关口就报一次。
+
+| 规则 | 理由 |
+|---|---|
+| 碰到就算:上行是「上一笔 < 关口 ≤ 这一笔」,下行反过来 | 7724 → 7725.00 报上穿;接着回落到 7724 不是下破 |
+| 报过的关口静音,直到价格离开它 12.5 点(半个步长) | 离得比这更远,最近的关口已经是另一个,再回来才是"又到了";在关口上来回蹭只报一次 |
+| 第一笔只登记 | 一打开不把现价旁边的关口报一遍 |
+| 两笔隔了 30 秒以上,后一笔只登记 | 电脑睡过、断线重连:中间走过哪儿没人看见 |
+| 换了来源的那一笔只登记 | 09:30 从期货推算换回官方指数,两种量法之间的差不是行情 |
+| `stale` / `none` 不拿来判断 | 不会动的价穿不过任何关口,但它和前后两笔的差是假的 |
+| 一笔跳过几个关口只报最后一个,正文写越过了几个 | 开盘跳空时不连弹三条 |
+
+- 轮询在 `store/spot`,应用启动就开始,与当前在哪一页无关:走到关口正是该回来测算的时候。连着券商、开关开着就两秒问一次;
+  开关关着时只在面板看得见的时候问。
+- 常规时段之外照样提醒,用的是期货推算的价,正文标明「按期货推算」。
+- 提醒走价位提醒的那扇置顶弹窗与提示音,受板块页「提醒方式」两个开关管;弹窗关着或没收下时发系统通知。
+  弹窗的「查看」跳回这块面板。
+- 开关记在本机(`dafri-spot-level-alert`),默认开;静音状态只在内存里,重启后第一笔只登记。
+- 步长 25 是 SPX 蝶中心的间距,写在 `lib/spotLevels.ts`,不是可调参数。
+
 ## 契约
 
 - `options.fly_plan`:入参与返回在 `contract/options.ts`。schema 是 strict 的、数值只认数字,键名写错当场拒绝。
   不发单、不改配置,不在 `SENSITIVE_METHODS` 里,不需要确认凭据。错误码:入参与规则上的错 −32602;取不到现价或行情 −32017。
 - `options.iv_recorder`(状态)与 `options.iv_recorder_set`(开关)在本地道。
+- `options.spot`(读道):入参只有可选的 `symbol`(缺省 SPX),strict。不是配置里的指数 −32602;取不到价是 `price: null` 的回执。
 
 ## 代码与测试
 
@@ -288,13 +328,17 @@ EM 与 `switch_k` 由用户定,分布由数据定。
 | `engine-ts/src/ivSamples.ts` | domain | IV 样本文件的读写 |
 | `engine-ts/src/services/ivRecorder.ts` | orchestrate | 按节拍记录 IV;开关与状态 |
 | `engine-ts/src/optionMarks.ts` | execution | 三条腿的盘口与模型 IV,自己的流 |
-| `engine-ts/src/services/flyPlanner.ts` | orchestrate | 定日程 → 取现价 → 取行情 → 计算 |
+| `engine-ts/src/services/flyPlanner.ts` | orchestrate | 定日程 → 取现价 → 取行情 → 计算;面板上的实时现价(`spotFor`) |
 | `desktop/renderer-react/src/lib/flyPlanForm.ts` | lib | 表单与入参的转换,写成指令 |
 | `desktop/renderer-react/src/lib/FlyPlanner.tsx`、`FlyPlanResult.tsx`、`FlyPlanChart.tsx` | lib | 面板 |
 | `desktop/renderer-react/src/store/flyPlan.ts` | store | 表单、结果、自动刷新 |
+| `desktop/renderer-react/src/lib/spotLevels.ts` | lib | 上下最近的关口、穿没穿过关口(纯函数) |
+| `desktop/renderer-react/src/lib/FlySpot.tsx` | lib | 面板顶上的实时现价那一行 |
+| `desktop/renderer-react/src/store/spot.ts` | store | 实时现价的轮询、关口提醒的开关与发出 |
 
 测试:`fly-plan.spec`(纯计算)、`fly-calibration.spec`(合成数据估得回来;随软件带的参数过得了底线)、`option-marks.spec`(取行情)、
-`fly-plan-rpc.spec`(接线)、`desktop-fly-plan-form.spec`(表单与写进指令)、`iv-recorder.spec`(何时记、何时不记、锚、开关、样本文件)。
+`fly-plan-rpc.spec`(接线,含 `options.spot` 的四种来源)、`desktop-fly-plan-form.spec`(表单与写进指令)、`iv-recorder.spec`(何时记、何时不记、锚、开关、样本文件)、
+`desktop-spot-levels.spec`(穿越判定:碰到就算、来回蹭、隔太久、换来源、一笔跳过几个)、`desktop-popup.spec`(「查看」跳回交易指令页)。
 
 ## 真机核对
 
@@ -304,3 +348,5 @@ EM 与 `switch_k` 由用户定,分布由数据定。
 2. 手里有这只蝶时点「测算」、打开「跟着行情刷新」放几分钟:持仓追踪的价照常在跳。
 3. 开仓时记下测算的数,到目标时刻和实际蝶价比较,这是核对 IV 模型在真实期权上准不准的唯一办法。
 4. 盘中连着 TWS 放半小时:`fly-iv/` 里当天的文件每五分钟多一行,十条腿都有 IV;期间持仓追踪的价照常在跳。
+5. 盘中看面板顶上的 SPX:和 TWS 里的指数是同一个数、两秒一跳;走过一个 25 的整数倍时弹窗一次,在关口上来回蹭不再弹;
+   切到别的页照样弹,「查看」跳回这块面板。夜盘标着「期货推算」,数字跟着 ES 走。

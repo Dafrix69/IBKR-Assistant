@@ -309,3 +309,27 @@ export interface IvRecorderStatus {
 export interface IvRecorderSetParams {
   enabled: boolean;
 }
+
+// ---------------------------------------------------------------- 测算面板上的实时现价(options.spot)
+// 和测算用的是同一路现价(夜盘按期货推算),界面两秒问一次:显示在面板顶上,走到关口时提醒。取不到不是 RPC 报错。
+
+export interface OptionsSpotParams {
+  /** 缺省 SPX。只认配置里的指数 */
+  symbol?: string;
+}
+
+export interface OptionsSpot {
+  symbol: string;
+  /** 取不到是 null,原因在 note */
+  price: number | null;
+  /**
+   * quote = 券商的指数现价(常规时段);futures = 常规时段之外按期货推算;
+   * stale = 这个价没在动(夜盘推算失败时的上一个收盘价、或 TWS 与 IBKR 服务器断开时的最后一笔),只给人看,不当现价用;
+   * none = 没有价
+   */
+  source: "quote" | "futures" | "stale" | "none";
+  /** futures 时写明怎么推算的;stale / none 时写明为什么 */
+  note: string;
+  /** 引擎读到这个价的时刻(epoch 毫秒) */
+  at: number;
+}

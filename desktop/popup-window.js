@@ -41,7 +41,7 @@ const BG_DARK = '#232325';
 
 const KINDS = new Set(['anomaly', 'level']);
 const TONES = new Set(['up', 'down', 'info']);
-const PAGES = new Set(['quality', 'sectors']);
+const PAGES = new Set(['quality', 'sectors', 'trade']);
 const UPDOWNS = new Set(['red-up', 'green-up']);
 
 // C0 / C1 控制字符(含换行、制表)换成空格;零宽与双向控制字符直接去掉——

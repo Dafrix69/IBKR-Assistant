@@ -77,7 +77,7 @@
 
     const bottom = node('div', 'item-bottom');
     bottom.append(node('p', 'body', item.body));
-    const where = item.page === 'sectors' ? '板块页' : '优质股页';
+    const where = item.page === 'sectors' ? '板块页' : item.page === 'trade' ? '蝴蝶测算' : '优质股页';
     bottom.append(button('view', '查看', 'open', `回主窗口的${where}查看`));
 
     li.append(top, bottom);

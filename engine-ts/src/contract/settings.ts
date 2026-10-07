@@ -4,6 +4,8 @@
  * 现在定义搬到这里,那两个文件转出。
  */
 
+import type { FollowConfig } from "./follow.js";
+
 // ---------------------------------------------------------------- 限额与策略
 export interface Limits {
   max_order_notional: number;
@@ -103,6 +105,8 @@ export interface SettingsView {
   policies: Policies;
   protections: ProtectionsConfig;
   risk_budget: RiskBudgetConfig;
+  /** Discord 跟单的配置(见 follow.ts) */
+  follow: FollowConfig;
   symbol_aliases: Record<string, string>;
   accounts: AccountView[];
   /** 只给 host / port:账户与连接不许从界面改(见 settings.patch) */
@@ -110,7 +114,7 @@ export interface SettingsView {
 }
 
 // ---------------------------------------------------------------- settings.patch
-/** 界面「设置」页能改的四段,每段只给要改的键。**只有这四段**:别的顶层段 handler 当场拒(不认识的不再被写进配置文件;
+/** 界面能改的五段(前四段在「设置」页,follow 在「接入 → Discord 跟单」),每段只给要改的键。**只有这五段**:别的顶层段 handler 当场拒(不认识的不再被写进配置文件;
  *  模型配置走 llm.patch——它有自己的字段白名单,券商切换走 broker.select,账户 / 连接 / 库路径只能手改配置文件)。 */
 export interface SettingsPatch {
   policies?: Partial<Policies>;
@@ -122,6 +126,7 @@ export interface SettingsPatch {
     daily_loss?: Partial<DailyLossConfig>;
   };
   risk_budget?: Partial<RiskBudgetConfig>;
+  follow?: Partial<FollowConfig>;
 }
 
 /**

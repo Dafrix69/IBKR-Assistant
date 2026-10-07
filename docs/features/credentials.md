@@ -17,9 +17,9 @@
 
 | 做什么 | 谁在用 | 怎么做 | 会不会弹窗 | 最多等 |
 |---|---|---|---|---|
-| 有没有存过(`secretExists`) | `llm.catalog` 的「已配置」、`broker.catalog` 的「已存密码」 | macOS:`/usr/bin/security find-generic-password -s … -a …`,不带 `-w`,只读属性;Windows:凭证子进程读凭据管理器 | 不会(钥匙串被锁时除外) | 8 秒 |
-| 取出明文(`readSecret`) | 大模型客户端第一次建起来时(解析指令、测试连接、想法分析、AI 选股……)、富途交易解锁 | 凭证子进程 | 可能 | 20 秒 |
-| 写入(`writeSecret`) | `keychain.set`、`futu.set_password` | 凭证子进程,密钥经管道传 | 条目已存在、属于别的签名身份时可能 | 20 秒 |
+| 有没有存过(`secretExists`) | `llm.catalog` 的「已配置」、`broker.catalog` 的「已存密码」、`follow.status` 的「已保存 token」 | macOS:`/usr/bin/security find-generic-password -s … -a …`,不带 `-w`,只读属性;Windows:凭证子进程读凭据管理器 | 不会(钥匙串被锁时除外) | 8 秒 |
+| 取出明文(`readSecret`) | 大模型客户端第一次建起来时(解析指令、测试连接、想法分析、AI 选股……)、富途交易解锁、Discord 跟单起连接时(配了频道才取) | 凭证子进程 | 可能 | 20 秒 |
+| 写入(`writeSecret`) | `keychain.set`、`futu.set_password`、`follow.set_token` | 凭证子进程,密钥经管道传 | 条目已存在、属于别的签名身份时可能 | 20 秒 |
 
 - 界面一打开就问的只有第一行:启动、打开「接入」页都不解密,也就不弹窗。
 - 「有没有存过」的答案记在引擎进程里:自己写过记成有,解密读到 null 记成没有;查不出来(超时、出错)按没存过显示,不记,下次再查。
@@ -44,7 +44,7 @@
 
 - 凭证库的错(`KeychainError`,超时是它的子类)在 `rpc/server.ts` 统一报 −32008,原话给界面。超时那句说明多半是系统弹窗在等人、
   怎么处理、盯盘不受影响。它不算大模型调用失败,不记进连续失败熔断。
-- `keychain.set` 与 `futu.set_password` 在本地道:一个没人点的弹窗不挡后面的下单与立即平仓。
+- `keychain.set`、`futu.set_password` 与 `follow.set_token` 在本地道:一个没人点的弹窗不挡后面的下单与立即平仓。
 - `instruction.submit`、调用大模型的其它方法、`futu.unlock` 仍在交易道。第一次要用 Key 时弹窗没人点,这条请求最多多等 20 秒,
   排在它后面的交易道请求跟着等,和一次慢的模型调用一样。盯盘节拍与托管单对账不走任何一条道,不受影响。
 

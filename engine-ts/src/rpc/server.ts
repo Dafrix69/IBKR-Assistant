@@ -20,6 +20,7 @@ import { AlertsService } from "../services/alerts.js";
 import { AnomalyService } from "../services/anomaly.js";
 import { BrokerLinkService } from "../services/brokerLink.js";
 import { FlyPlannerService } from "../services/flyPlanner.js";
+import { FollowService, refuseModelWhileFollowing } from "../services/follow.js";
 import { IvRecorderService } from "../services/ivRecorder.js";
 import type { Router } from "../services/host.js";
 import { MarketDataService } from "../services/marketData.js";
@@ -43,6 +44,7 @@ import { QualityHandlers } from "./handlers/quality.js";
 import { ReviewHandlers } from "./handlers/review.js";
 import { TrackerHandlers } from "./handlers/tracker.js";
 import { ConnectionHandlers } from "./handlers/connection.js";
+import { FollowHandlers } from "./handlers/follow.js";
 import { SettingsHandlers } from "./handlers/settings.js";
 
 export class RpcServer implements RpcContext {
@@ -75,6 +77,7 @@ export class RpcServer implements RpcContext {
   readonly brokerLink: BrokerLinkService;
   readonly flyPlanner: FlyPlannerService;
   readonly ivRecorder: IvRecorderService;
+  readonly follow: FollowService;
   /** 各域的 handler。方法表在构造时合成一张,之后不变。 */
   readonly domains: {
     system: SystemHandlers;
@@ -90,6 +93,7 @@ export class RpcServer implements RpcContext {
     tracker: TrackerHandlers;
     connection: ConnectionHandlers;
     settings: SettingsHandlers;
+    follow: FollowHandlers;
   };
   private readonly table: MethodTable;
 
@@ -110,6 +114,7 @@ export class RpcServer implements RpcContext {
     // 记 IV 用的是测算那批自己的行情流;测算读到行情时也顺带记一笔
     this.ivRecorder = new IvRecorderService(this, this.flyPlanner.marks);
     this.flyPlanner.onMarks = (sample) => this.ivRecorder.recordPlan(sample);
+    this.follow = new FollowService(this);
     this.domains = {
       system: new SystemHandlers(this),
       trading: new TradingHandlers(this),
@@ -124,6 +129,7 @@ export class RpcServer implements RpcContext {
       tracker: new TrackerHandlers(this),
       connection: new ConnectionHandlers(this),
       settings: new SettingsHandlers(this),
+      follow: new FollowHandlers(this),
     };
     // 无原型的表:请求里的 method 是外来字符串,"constructor" / "toString" 不该从 Object.prototype 上捞到东西
     const table: MethodTable = Object.create(null);
@@ -144,7 +150,8 @@ export class RpcServer implements RpcContext {
       ]);
       this.engineInstance = new TradingEngine({
         settings: this.settings,
-        parser: this.parserFactory(this.settings.llm),
+        // 跟单那一趟里大模型不许出场(services/follow.ts);手动指令不受影响
+        parser: refuseModelWhileFollowing(this.parserFactory(this.settings.llm)),
         store: new TradeStore(this.settings.db_path, { safety: true }),
         notifier,
         killswitch: new KillSwitch(
@@ -184,6 +191,8 @@ export class RpcServer implements RpcContext {
     this.settings = loadSettings(this.settingsPath ?? undefined);
     this.dropEngine();
     if (this.router !== null) void this.engine;
+    // 跟单的频道可能刚填上 / 刚清掉:让 Discord 连接跟上(没起过就什么都不做)
+    void this.follow.sync();
   }
 
   /**
@@ -271,6 +280,8 @@ export class RpcServer implements RpcContext {
     // 存 API Key / 富途解锁密码:写系统凭证库(子进程,可能等 macOS 弹窗,最多 20 秒)。和下单状态无关,
     // 不该让一个没人点的弹窗把排在后面的下单、立即平仓挡住
     "keychain.set", "futu.set_password",
+    // Discord 跟单:状态是读内存与本地库;存 token 写系统凭证库(同上);重新连接只是换一条 WebSocket。都不碰下单状态
+    "follow.status", "follow.set_token", "follow.reconnect",
   ]);
   static readonly READ_METHODS = new Set([
     "positions.list", "sectors.quotes", "pa.analyze", "book.snapshot", "options.wall", "macro.board",
@@ -287,6 +298,8 @@ export class RpcServer implements RpcContext {
     "screener.leaders",
     // 蝴蝶测算:取现价与三条腿的盘口 / IV(自己的行情流,不碰盯盘的),纯计算。开着自动刷新时十秒一次,不该排在交易道上
     "options.fly_plan",
+    // 测算面板上的实时现价:读常驻行情流里的那一笔,界面两秒一次
+    "options.spot",
   ]);
   static readonly READ_CONCURRENCY = 4;
   static readonly SLOW_MS = 1000; // 超过这个时长的请求记到 stderr
@@ -385,6 +398,7 @@ export class RpcServer implements RpcContext {
     }
     this.anomaly.stop();
     this.ivRecorder.stop();
+    this.follow.stop();
     this.flyPlanner.marks.close();
     this.brokerLink.stop();
     return 0;
@@ -470,5 +484,7 @@ export async function main(settingsPath?: string | null): Promise<number> {
   const done = server.serve(); // ready 已经同步发出
   // 启动即连券商(broker.auto_connect)。只在这个真正的入口里起:测试里直接 serve() 的那几条不许连真券商
   server.brokerLink.start();
+  // Discord 跟单同理,只在这里起:配了频道、凭证库里有 bot token 才会去连,没配就一个包都不发
+  server.follow.start();
   return done;
 }

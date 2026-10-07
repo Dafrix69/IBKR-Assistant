@@ -20,6 +20,7 @@ import type { Sector, SectorStock } from "./contract/sectors.js";
 import type { Track } from "./contract/tracker.js";
 import { IdeaVectorStore } from "./ideaVectors.js";
 import { SignalLogStore } from "./signalLog.js";
+import { FollowLogStore } from "./followLog.js";
 import { ImportedTradesStore } from "./importedTrades.js";
 import type { RecentOrder } from "./models.js";
 import type { BackupInfo, BackupReason } from "./contract/settings.js";
@@ -256,6 +257,7 @@ export class TradeStore {
   readonly vectors: IdeaVectorStore;
   /** 价位提醒与盯异动发出的每一条信号(只增不改),见 signalLog.ts */
   readonly signals: SignalLogStore;
+  readonly follow: FollowLogStore; // Discord 跟单的每一条信号(只增不改),见 followLog.ts
 
   /** safety:真应用开库时给 true——拒绝比软件新的库、查完整性、升级前与每天各备份一次、盖结构版本号,
    *  打不开时抛 StoreOpenError(一句人话)。口径见 storeSafety.ts;测试与黄金基线开的库不走这一套。 */
@@ -274,6 +276,7 @@ export class TradeStore {
       this.imports = new ImportedTradesStore(this.db);
       this.vectors = new IdeaVectorStore(this.db);
       this.signals = new SignalLogStore(this.db);
+      this.follow = new FollowLogStore(this.db);
       this.migrate();
       if (safety) stampVersion(this.db);
     } catch (exc) {

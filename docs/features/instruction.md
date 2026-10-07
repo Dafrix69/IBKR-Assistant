@@ -3,6 +3,7 @@
 一句中英混合的指令变成订单:先解析(本地速记或大模型),再由代码逐条校验,最后过执行闸门才发到券商。
 模型只做翻译,限额、方向、账户、结构、时段、重复单全部由代码判定。
 入口是「交易指令」页与 RPC `instruction.submit`;命令行 `node dist/src/cli.js parse | run` 走同一个引擎。
+[Discord 跟单](follow.md) 也走这一条(来源记成 `discord`),但只认本地速记,大模型在那条路上不出场。
 
 ## 流程(`engine.ts` 的 `handleInstruction`)
 

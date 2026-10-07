@@ -422,6 +422,9 @@ describe("弹窗内容清洗(sanitizePopupPayload)", () => {
     expect(b).toMatchObject({ tone: "down", kind: "level", page: "sectors", at: 5 });
     expect(c).toMatchObject({ title: "RKLB", body: "", page: null, at: 1_789_150_800_000 });
     expect(Object.keys(a!).sort()).toEqual(["at", "body", "id", "kind", "page", "symbol", "title", "tone"]);
+    // SPX 走到关口的提醒:「查看」跳回交易指令页(蝴蝶测算在那一页)
+    const [d] = sanitizePopupPayload({ items: [raw("spot:SPX:7725:5", { symbol: "SPX", kind: "level", page: "trade", at: 5 })] }).items;
+    expect(d).toMatchObject({ id: "spot:SPX:7725:5", symbol: "SPX", kind: "level", page: "trade" });
   });
 
   it("幂等:洗过的再洗一遍结果不变", () => {

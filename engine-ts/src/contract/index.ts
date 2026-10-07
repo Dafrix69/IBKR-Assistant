@@ -17,6 +17,7 @@ import type {
   BrokerSelectResult, DiagnoseParams, DiagnoseResults, FutuScanResult, FutuSetPasswordParams, FutuUnlockParams,
   FutuUnlockResult, LaunchParams, LaunchResult, TwsScanResult,
 } from "./connection.js";
+import type { FollowSetTokenParams, FollowStatus } from "./follow.js";
 import type { LlmCatalog, LlmPatchParams, LlmTestParams, LlmTestResult } from "./llm.js";
 import type { MacroBoard, MacroBoardParams } from "./macro.js";
 import type {
@@ -28,7 +29,8 @@ import type {
   IdeasListParams, IdeasSearchParams, IdeasSimilarTradesParams, IdeasSimilarTradesResult, IdeasUpdateParams,
 } from "./ideas.js";
 import type {
-  FlyPlanParams, FlyPlanResult, IvRecorderSetParams, IvRecorderStatus, OptionWall, OptionsWallParams,
+  FlyPlanParams, FlyPlanResult, IvRecorderSetParams, IvRecorderStatus, OptionWall, OptionsSpot, OptionsSpotParams,
+  OptionsWallParams,
 } from "./options.js";
 import type { ReviewPerformanceParams, ReviewPerformanceResult } from "./performance.js";
 import type { ReviewSignalsParams, ReviewSignalsResult } from "./signals.js";
@@ -72,6 +74,7 @@ export type * from "./alerts.js";
 export type * from "./backtest.js";
 export type * from "./book.js";
 export type * from "./connection.js";
+export type * from "./follow.js";
 export type * from "./macro.js";
 export type * from "./ideas.js";
 export type * from "./instruction.js";
@@ -135,6 +138,13 @@ export interface RpcMethods {
   "futu.unlock": { params: FutuUnlockParams; result: FutuUnlockResult };
   "futu.set_password": { params: FutuSetPasswordParams; result: { ok: true } };
 
+  /** Discord 跟单此刻的样子:配置、连接、今天跟了几单、最近的信号、频道里最近看到的消息 */
+  "follow.status": { params: NoParams; result: FollowStatus };
+  /** 存 bot token(系统凭证库)并用它重新连接;回执是之后的 follow.status */
+  "follow.set_token": { params: FollowSetTokenParams; result: FollowStatus };
+  /** 丢掉现在的 Discord 连接重来;回执是之后的 follow.status */
+  "follow.reconnect": { params: NoParams; result: FollowStatus };
+
   "ideas.add": { params: IdeasAddParams; result: { idea: Idea } };
   "ideas.list": { params: IdeasListParams; result: { ideas: Idea[] } };
   "ideas.update": { params: IdeasUpdateParams; result: { id: string; status: string } };
@@ -152,6 +162,8 @@ export interface RpcMethods {
   "options.iv_recorder": { params: NoParams; result: IvRecorderStatus };
   /** 开 / 关那份记录。关掉之后不订任何行情;已经攒下的不删 */
   "options.iv_recorder_set": { params: IvRecorderSetParams; result: IvRecorderStatus };
+  /** 测算面板上那一行实时现价:和测算用的是同一路(夜盘按期货推算)。取不到是 price: null 的回执,不是报错 */
+  "options.spot": { params: OptionsSpotParams; result: OptionsSpot };
 
   "pa.timeframes": { params: NoParams; result: PaTimeframesResult };
   "pa.analyze": { params: PaAnalyzeParams; result: PaAnalyzeResult };
@@ -240,7 +252,7 @@ export type RpcMethodName = keyof RpcMethods;
  * 这是本目录里唯一一个运行时的值——界面只 import type,碰不到它。
  */
 export const SENSITIVE_METHODS = [
-  "broker.connect", "broker.select", "futu.launch", "futu.set_password", "futu.unlock", "instruction.submit",
+  "broker.connect", "broker.select", "follow.set_token", "futu.launch", "futu.set_password", "futu.unlock", "instruction.submit",
   "keychain.set", "llm.patch",
   "settings.patch", "tracker.add", "tracker.close_now", "tracker.update", "tws.launch",
 ] as const satisfies readonly RpcMethodName[];

@@ -42,7 +42,7 @@ export interface UpdateInfo {
 /** 要确认凭据的那几种用途(desktop/confirm-grants.js 的 PURPOSES)。 */
 export type ConfirmPurpose =
   | 'instruction.submit' | 'tracker.close_now' | 'tracker.add' | 'broker.select'
-  | 'gate.auto_execute' | 'gate.allow_live_trading' | 'limits.loosen';
+  | 'gate.auto_execute' | 'gate.allow_live_trading' | 'limits.loosen' | 'gate.follow';
 
 export interface ConfirmOptions {
   /** 带 purpose 时对话框最显眼的那一行由主进程按用途写,这里给的 title 不显示 */
@@ -95,7 +95,7 @@ import type {
   IdeasSimilarTradesParams, IdeasSimilarTradesResult, SimilarExitStat, SimilarTrade,
   EquityPoint, LedgerTrade, PerfGroup, PerformanceFinding, PerformanceKind, PerformanceScope, PerfStats, ReviewPerformanceResult, ExecutionCost, ExecutionGroup, ExecutionRow, ProtectionAdvice, ReviewSignalsResult, SignalEntry, SignalGroup, SignalHorizonStats, SignalSource,
   AnomalyConfig, AnomalyEvent, AnomalyKind, AnomalyMetrics, LevelKind, OptionWall, PoolWatch, PoolWatchPatch, PositionRow,
-  FlyPlanIvMode, FlyPlanLeg, FlyPlanParams, FlyPlanPoint, FlyPlanResult, FlyPlanScenario, FlyPlanTime, FlyPlanValue, IvRecorderStatus,
+  FlyPlanIvMode, FlyPlanLeg, FlyPlanParams, FlyPlanPoint, FlyPlanResult, FlyPlanScenario, FlyPlanTime, FlyPlanValue, IvRecorderStatus, OptionsSpot,
   AccountView, Limits, Policies, ProtectionsConfig, QualityList, QualityMonitor, QualityStock, RpcParams, RpcResult, Sector,
   SectorStock, SettingsPatch, SettingsView, SpotTarget, StockQuote, Targets, Track, Watch, WatchEvent, WatchLevel,
   MaTouchConfig, TouchBook, TouchEpisode, TouchLine, WatchTrigger,
@@ -108,6 +108,7 @@ import type {
   InstructionLlm, InstructionOrder, InstructionRejection, InstructionSubmitResult, OrderTicket, OrderTicketLeg,
   OrderTrigger,
   BackupInfo, DataBackupsResult,
+  FollowConfig, FollowEntry, FollowLink, FollowLinkState, FollowOutcome, FollowSeen, FollowStatus,
 } from '../../../engine-ts/src/contract/index';
 
 export type {
@@ -125,7 +126,7 @@ export type {
   IdeasSimilarTradesParams, IdeasSimilarTradesResult, SimilarExitStat, SimilarTrade,
   EquityPoint, LedgerTrade, PerfGroup, PerformanceFinding, PerformanceKind, PerformanceScope, PerfStats, ReviewPerformanceResult, ExecutionCost, ExecutionGroup, ExecutionRow, ProtectionAdvice, ReviewSignalsResult, SignalEntry, SignalGroup, SignalHorizonStats, SignalSource,
   AnomalyEvent, AnomalyKind, LevelKind, OptionWall, PoolWatch, PoolWatchPatch, PositionRow, QualityList, QualityMonitor,
-  FlyPlanIvMode, FlyPlanLeg, FlyPlanParams, FlyPlanPoint, FlyPlanResult, FlyPlanScenario, FlyPlanTime, FlyPlanValue, IvRecorderStatus,
+  FlyPlanIvMode, FlyPlanLeg, FlyPlanParams, FlyPlanPoint, FlyPlanResult, FlyPlanScenario, FlyPlanTime, FlyPlanValue, IvRecorderStatus, OptionsSpot,
   QualityStock, Sector, SectorStock, SettingsPatch, SpotTarget, StockQuote, Targets, Track, Watch, WatchEvent, WatchLevel,
   MaTouchConfig, TouchBook, TouchEpisode, TouchLine, WatchTrigger,
   BreakerBrief, BreakerState, IndexSpot, ProtectionCooldown, SystemSelftest, SystemStatus, TrackerHeartbeat,
@@ -136,6 +137,7 @@ export type {
   InstructionLlm, InstructionOrder, InstructionRejection, InstructionSubmitResult, OrderTicket, OrderTicketLeg,
   OrderTrigger,
   BackupInfo, DataBackupsResult,
+  FollowConfig, FollowEntry, FollowLink, FollowLinkState, FollowOutcome, FollowSeen, FollowStatus,
 };
 /** 界面这边一直用的名字;引擎契约里分别叫 AccountView / SettingsView / Policies / Limits / ProtectionsConfig。 */
 export type Account = AccountView;
@@ -167,7 +169,7 @@ export interface PopupItem {
   tone?: 'up' | 'down' | 'info';
   /** epoch 毫秒 */
   at?: number;
-  page?: 'quality' | 'sectors';
+  page?: 'quality' | 'sectors' | 'trade';
 }
 
 export type EngineEvent = { event: string; data: any };
@@ -235,6 +237,12 @@ export interface DafriBridge {
   setFutuPassword(password: string, alreadyMd5?: boolean): Rpc<RpcResult<'futu.set_password'>>;
   unlockFutu(connection?: string): Rpc<RpcResult<'futu.unlock'>>;
 
+  /** Discord 跟单此刻的样子:配置、连接、今天跟了几单、最近的信号、频道里最近看到的消息 */
+  followStatus(): Rpc<RpcResult<'follow.status'>>;
+  /** 存 bot token(系统凭证库)并用它重新连接 */
+  setFollowToken(token: string): Rpc<RpcResult<'follow.set_token'>>;
+  reconnectFollow(): Rpc<RpcResult<'follow.reconnect'>>;
+
   /** 一句话 → 解析 → 校验 →(execute 为真时)发单。主进程要求界面已经确认过一次(SENSITIVE_RPC) */
   submit(text: string, execute: boolean, accounts: string[]): Rpc<RpcResult<'instruction.submit'>>;
   /** 回执就是改完之后的那份设置。键名写错引擎会当场拒、不写盘(config 对每一段都查未知键)。 */
@@ -281,6 +289,7 @@ export interface DafriBridge {
   flyPlan(spec: RpcParams<'options.fly_plan'>): Rpc<RpcResult<'options.fly_plan'>>;
   ivRecorder(): Rpc<RpcResult<'options.iv_recorder'>>;
   setIvRecorder(enabled: boolean): Rpc<RpcResult<'options.iv_recorder_set'>>;
+  indexSpot(symbol: string): Rpc<RpcResult<'options.spot'>>;
   listAlerts(): Rpc<RpcResult<'alerts.list'>>;
   createAlert(symbol: string, step: number): Rpc<RpcResult<'alerts.create'>>;
   deleteAlert(id: string): Rpc<RpcResult<'alerts.delete'>>;

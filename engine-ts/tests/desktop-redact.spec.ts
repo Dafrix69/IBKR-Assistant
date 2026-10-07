@@ -56,6 +56,12 @@ describe("脱敏", () => {
 
   it("API Key 与令牌", () => {
     expect(redact("key sk-ant-api03-AbCdEf123456_xyz used")).toBe("key sk-*** used");
+    // Discord bot token(三段式):不带任何键名、孤零零出现在一行报错里也要抹。
+    // 三段在这里拼起来:源码里写成一整串,GitHub 的推送保护会把这个假 token 当成真的拒掉推送
+    const fakeBotToken = ["MTIzNDU2Nzg5MDEyMzQ1Njc4OQ", "GaBcDe", "abcdefghijklmnopqrstuvwxyz0123456789AB"].join(".");
+    expect(redact(`gateway auth failed with ${fakeBotToken}`)).toBe("gateway auth failed with ***.***.***");
+    // 普通的带点的东西不受影响:版本号、文件名、域名
+    expect(redact("engine 0.5.1 at services/follow.spec.ts via gateway.discord.gg")).toBe("engine 0.5.1 at services/follow.spec.ts via gateway.discord.gg");
     expect(redact("Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.payload.sig")).not.toMatch(/eyJhbGci/);
     expect(redact('{"api_key": "abcdef123456"}')).toBe('{"api_key": "***"}');
     expect(redact("x-api-key: 9f8e7d6c5b4a")).toBe("x-api-key: ***");

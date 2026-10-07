@@ -8,7 +8,7 @@
  *
  * 抹什么:
  *  · 配置里写着的真实账号(逐个精确替换),以及长得像 IBKR 账号的串(U / DU / F / DF / I + 数字);
- *  · API Key 与令牌(sk-…、Bearer …、api_key=… 这类键值);
+ *  · API Key 与令牌(sk-…、Bearer …、api_key=… 这类键值、Discord bot token 那样的三段式令牌);
  *  · 家目录路径里的用户名(/Users/张三 → ~);
  *  · 非 macOS 上引擎打到 stderr 的通知行(`[通知] …`):里面是成交与订单摘要,属于交易数据,
  *    "交易数据不进日志"——只留下标题。
@@ -33,6 +33,8 @@ const SECRET_PATTERNS = [
   // sk-…(Anthropic / OpenAI / DeepSeek 一类)
   [/\bsk-[A-Za-z0-9_-]{8,}/g, 'sk-***'],
   [/\b(Bearer)\s+[A-Za-z0-9._~+/=-]{8,}/gi, '$1 ***'],
+  // Discord 的 token:三段 base64url 用点连起来(第一段是 ID,后两段各二十多位)。JWT 也是这个样子,一并抹掉
+  [/\b[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{20,}/g, '***.***.***'],
   // api_key=… / "apiKey": "…" / x-api-key: … / password=… / token=…
   [/\b(x-api-key|api[_-]?key|apikey|authorization|password|passwd|secret|token)(["']?\s*[:=]\s*["']?)([^\s"',;&]{6,})/gi, '$1$2***'],
 ];
