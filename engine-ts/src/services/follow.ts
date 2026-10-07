@@ -22,7 +22,7 @@ import { DiscordGateway } from "../discordGateway.js";
 import type { DiscordMessage, GatewayOptions, GatewayPhase } from "../discordGateway.js";
 import { resolveFanoutAccounts } from "../engine.js";
 import { tryLocalShorthand } from "../engine/localShorthand.js";
-import { decide, outcomeOf, relativeCenterProblem, triage } from "../follow.js";
+import { decide, orderText, outcomeOf, relativeCenterProblem, triage, whyUnparsed } from "../follow.js";
 import { FollowInbox, LOCAL_CHANNEL, inboxPath } from "../followInbox.js";
 import type { InboxOptions } from "../followInbox.js";
 import { FOLLOW_TEXT_MAX } from "../followLog.js";
@@ -275,7 +275,8 @@ export class FollowService extends ServiceBase {
   private async process(message: DiscordMessage, stale: string | null): Promise<void> {
     const engine = this.engine;
     if (engine.store.follow.has(message.id)) return;
-    const text = message.content.normalize("NFKC").trim();
+    // 摘掉 @everyone 这类提及再解析;交给引擎的也是这一份,日志里记原文
+    const text = orderText(message.content);
     if (stale !== null) return this.finish(message, { outcome: "stale", detail: stale, summary: "", record_ids: [] });
 
     const cfg = this.settings.follow;
@@ -295,7 +296,9 @@ export class FollowService extends ServiceBase {
       connected: router !== null && router.sessions().length > 0,
     }, this.sentToday());
     if (decision.outcome !== "send") {
-      return this.finish(message, { outcome: decision.outcome, detail: decision.detail, summary: decision.summary, record_ids: [] });
+      // 整句没接住时,说得出差的是哪一样就说(没写方向的价差);说不出就用通用的那句
+      const detail = payload === null ? whyUnparsed(text) ?? decision.detail : decision.detail;
+      return this.finish(message, { outcome: decision.outcome, detail, summary: decision.summary, record_ids: [] });
     }
 
     let accounts: string[];

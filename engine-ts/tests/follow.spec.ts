@@ -5,7 +5,9 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import type { FollowConfig, FollowEntry } from "../src/contract/follow.js";
-import { RELATIVE_CENTER_MAX_POINTS, decide, outcomeOf, relativeCenterProblem, triage, worstCaseUsd } from "../src/follow.js";
+import {
+  RELATIVE_CENTER_MAX_POINTS, creditWorstCaseUsd, decide, orderText, outcomeOf, relativeCenterProblem, triage, whyUnparsed, worstCaseUsd,
+} from "../src/follow.js";
 import type { FollowGates } from "../src/follow.js";
 import { tryParseShorthand } from "../src/shorthand.js";
 import { TradeStore } from "../src/store.js";
@@ -55,8 +57,24 @@ describe("follow: triage(不取行情的那一步)", () => {
     expect(triage(cfg({ author_ids: [] }), message(), NOW).kind).toBe("untrusted");
   });
 
-  it("信任的人说的不像蝴蝶单 → 闲聊", () => {
+  it("信任的人说的不像单子 → 闲聊;光提到「蝴蝶」两个字的评论也是闲聊", () => {
     expect(triage(cfg(), message({ content: "今天感觉要大跌" }), NOW).kind).toBe("chatter");
+    for (const content of ["@everyone 蝴蝶先走一下", "@everyone 蝴蝶止损了哦", "@everyone 蝴蝶和收租都可以走了", "@everyone 止盈"]) {
+      expect(triage(cfg(), message({ content }), NOW).kind, content).toBe("chatter");
+    }
+  });
+
+  it("带 @everyone 的单子照样认;贷方价差、没写方向的价差都算有单子的骨架(后者去解析、落成没接住)", () => {
+    for (const content of ["@everyone 20蝴蝶 25cm 挂个4.5试试", "@everyone 00 95 bull put 试下 -2 -2.5", "@everyone 75 70 -2 试一下"]) {
+      expect(triage(cfg(), message({ content }), NOW).kind, content).toBe("parse");
+    }
+  });
+
+  it("orderText:摘掉提及,别的原样", () => {
+    expect(orderText("@everyone 20蝴蝶 25cm 挂个4.5试试")).toBe("20蝴蝶 25cm 挂个4.5试试");
+    expect(orderText("少挂点 @everyone")).toBe("少挂点");
+    expect(orderText("<@123456789012345678> <@&223456789012345678> @here 7770 7775 bear call -2 <#323456789012345678>")).toBe("7770 7775 bear call -2");
+    expect(orderText("@everyoneelse 不是提及")).toBe("@everyoneelse 不是提及");
   });
 
   it("按消息自己的时刻算新鲜度:正好在线上跟,过线不跟", () => {
@@ -111,12 +129,51 @@ describe("follow: decide(解析完之后)", () => {
     expect(over.detail).toContain("$300");
   });
 
-  it("没写权利金的按翼宽算最坏亏损(和校验层给 AUTO_MID 组合定敞口同一个口径)", () => {
-    expect(worstCaseUsd({ quantity: 1, premium: null, wing: 15 })).toBe(1500);
+  it("没写权利金的不跟:对方常把价格放在下一条消息里,软件不替人按中间价定价——上限调得再高也不跟", () => {
     const d = decide(cfg(), fly("15蝴蝶 15CM"), OPEN, 0);
-    expect(d.outcome).toBe("capped");
-    expect(d.detail).toContain("按翼宽算");
-    expect(decide(cfg({ max_risk_usd: 1500 }), fly("15蝴蝶 15CM"), OPEN, 0).outcome).toBe("send");
+    expect(d.outcome).toBe("unparsed");
+    expect(d.detail).toContain("没写权利金上限");
+    expect(d.summary).toContain("6900/6915/6930");
+    expect(decide(cfg({ max_risk_usd: 100000 }), fly("15蝴蝶 15CM"), OPEN, 0).outcome).toBe("unparsed");
+    // 只观察时也照实说"没接住",不记成"只观察"
+    expect(decide(cfg({ enabled: false }), fly("15蝴蝶 15CM"), OPEN, 0).outcome).toBe("unparsed");
+  });
+
+  it("贷方价差:最坏亏损 = 张数 × 100 ×(宽度 − 收到的权利金);正好在线上发,过线不发", () => {
+    expect(creditWorstCaseUsd({ quantity: 1, credit: 2.5, width: 5 })).toBe(250);
+    expect(creditWorstCaseUsd({ quantity: 2, credit: 2, width: 5 })).toBe(600);
+    const spread = (text: string): unknown => tryParseShorthand(text, { SPX: 6907.35 }, FRIDAY);
+    const ok = decide(cfg(), spread("6920 6925 bear call 挂个-2-2.5"), OPEN, 0);
+    expect(ok.outcome).toBe("send");
+    expect(ok.summary).toContain("6920/6925 看涨贷方价差");
+    expect(decide(cfg(), spread("6920 6925 bear call -2"), OPEN, 0).outcome).toBe("send"); // 300,正好在线上
+    const over = decide(cfg(), spread("2张 6920 6925 bear call -2.5"), OPEN, 0);
+    expect(over.outcome).toBe("capped");
+    expect(over.detail).toContain("$500");
+    expect(over.detail).toContain("宽 5 点 − 收 2.5");
+    const observed = decide(cfg({ enabled: false }), spread("00 95 bull put 试下 -2 -2.5"), OPEN, 0);
+    expect(observed.outcome).toBe("observed");
+    expect(observed.detail).toContain("$250");
+  });
+
+  it("形状不对的价差不跟:借方的、没写价格的、收的比宽度多的", () => {
+    const base = tryParseShorthand("6920 6925 bear call -2.5", { SPX: 6907.35 }, FRIDAY) as { orders: Array<Record<string, any>> };
+    const debit = structuredClone(base);
+    debit.orders[0]!["order"]["action"] = "BUY";
+    expect(decide(cfg(), debit, OPEN, 0).outcome).toBe("unparsed");
+    const noPrice = structuredClone(base);
+    noPrice.orders[0]!["order"]["lmtPrice"] = null;
+    expect(decide(cfg(), noPrice, OPEN, 0).outcome).toBe("unparsed");
+    const tooMuch = structuredClone(base);
+    tooMuch.orders[0]!["order"]["lmtPrice"] = 5;
+    expect(decide(cfg(), tooMuch, OPEN, 0).outcome).toBe("unparsed");
+  });
+
+  it("whyUnparsed:像价差却没写方向的,说出差的是哪一样;别的回 null", () => {
+    expect(whyUnparsed("75 70 -2 试一下")).toContain("bull put 还是 bear call");
+    expect(whyUnparsed("可以挂单下 7860 7865 -2 -2.5")).toContain("方向猜不得");
+    expect(whyUnparsed("2块1尝试下 7650 10CM彩票")).toBeNull();
+    expect(whyUnparsed("00 95 bull put 试下")).toBeNull();
   });
 
   it("跟单开关关着 → 只观察;超了单笔上限的照样说超了", () => {

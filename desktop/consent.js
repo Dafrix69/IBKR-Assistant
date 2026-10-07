@@ -17,7 +17,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 /** 现行条款的版本号。docs/legal/ 三份文档开头写的是同一个(tests/desktop-consent.spec.ts 钉着)。 */
-const TERMS_VERSION = '2026-10-07';
+const TERMS_VERSION = '2026-10-08';
 
 /** 没同意条款之前不放行的方法。 */
 const CONSENT_REQUIRED_RPC = new Set([

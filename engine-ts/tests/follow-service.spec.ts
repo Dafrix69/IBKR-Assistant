@@ -111,6 +111,58 @@ afterEach(() => {
   useSecretBackend(null);
 });
 
+describe("follow service: 对方频道里真实的写法", () => {
+  it("带 @everyone 的蝴蝶单照样跟;日志里记的是原文", async () => {
+    const { service, router, log, modelCalls } = build();
+    await service.onMessage(message("@everyone 1.8 挂15蝴蝶 15CM"));
+    expect(router.placed).toHaveLength(1);
+    expect(modelCalls).toEqual([]);
+    expect(log()[0]).toMatchObject({ outcome: "sent", text: "@everyone 1.8 挂15蝴蝶 15CM" });
+  });
+
+  it("贷方价差:卖出的垂直价差发到券商,区间取收得多的一头,大模型没有出场", async () => {
+    const { service, engine, router, log, modelCalls } = build();
+    await service.onMessage(message("@everyone 6920 6925 bear call 挂个-2-2.5"));
+    expect(router.placed).toHaveLength(1);
+    const { approved } = router.placed[0]!;
+    expect(approved.order.contract.combo_strategy).toBe("VERTICAL");
+    expect(approved.order.contract.legs.map((l: any) => `${l.action} ${l.strike}${l.right}`)).toEqual(["BUY 6925C", "SELL 6920C"]);
+    expect(approved.order.order).toMatchObject({ action: "SELL", lmtPrice: 2.5, price_mode: "EXPLICIT" });
+    expect(modelCalls).toEqual([]);
+    expect(log()[0]).toMatchObject({ outcome: "sent" });
+    expect(log()[0]!.summary).toContain("6920/6925 看涨贷方价差");
+    const record = engine.store.getRecord(log()[0]!.record_ids[0]!) as any;
+    expect(record.input.input_channel).toBe("discord");
+  });
+
+  it("没写价格的蝴蝶(价格在下一条消息里):不发,记成没接住;下一条孤零零的价格是闲聊", async () => {
+    const { service, router, log } = build({ max_risk_usd: 100000 });
+    await service.onMessage(message("@everyone 15蝴蝶 15CM"));
+    await service.onMessage(message("1.8"));
+    expect(router.placed).toHaveLength(0);
+    expect(log()).toHaveLength(1);
+    expect(log()[0]).toMatchObject({ outcome: "unparsed" });
+    expect(log()[0]!.detail).toContain("没写权利金上限");
+  });
+
+  it("光提到「蝴蝶」的评论:不发、不落日志、不通知", async () => {
+    const { service, router, log, notes } = build();
+    await service.onMessage(message("@everyone 蝴蝶先走一下"));
+    await service.onMessage(message("@everyone 蝴蝶止损了哦"));
+    expect(router.placed).toHaveLength(0);
+    expect(log()).toHaveLength(0);
+    expect(notes).toHaveLength(0);
+  });
+
+  it("没写方向的价差:不发,落成没接住并说出差的是哪一样", async () => {
+    const { service, router, log } = build();
+    await service.onMessage(message("@everyone 20 25可以挂个-2 -2.5"));
+    expect(router.placed).toHaveLength(0);
+    expect(log()[0]).toMatchObject({ outcome: "unparsed" });
+    expect(log()[0]!.detail).toContain("bull put 还是 bear call");
+  });
+});
+
 describe("follow service: 「N蝴蝶」在百位边上", () => {
   it("现价 6990、「00蝴蝶」算成 6900(离 90 点):不发单,记成没接住并写明原因;写明完整中心的照跟", async () => {
     const { service, router, log } = build();

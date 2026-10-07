@@ -1,6 +1,6 @@
 /** follow.*:Discord 跟单(docs/features/follow.md)。类型文件,不 import 任何东西。
  *
- * 一个 Discord bot 读一个频道,信任的发送者发的蝴蝶速记不经确认直接走发单链路。
+ * 一个 Discord bot 读一个频道,信任的发送者发的速记(买入蝴蝶、贷方价差)不经确认直接走发单链路。
  * 配置在 settings 的 `follow` 段(settings.get / settings.patch 读写),bot token 在系统凭证库。
  */
 
@@ -18,7 +18,7 @@ export interface FollowConfig {
   max_age_seconds: number;
   /** 一天(美东)最多跟几单。 */
   max_orders_per_day: number;
-  /** 一单最坏亏多少美元:张数 × 100 × 净权利金上限;没写权利金的按翼宽算。 */
+  /** 一单最坏亏多少美元。蝴蝶:张数 × 100 × 净权利金上限;贷方价差:张数 × 100 ×(宽度 − 收到的权利金)。没写价格的不跟。 */
   max_risk_usd: number;
   /**
    * 本地收件:除了 bot 读频道,还读本机脚本从屏幕上的 Discord 窗口抄下来、追加到收件文件里的消息。
@@ -49,7 +49,7 @@ export interface FollowInboxState {
  * held      过了校验但没发:保护规则拦下
  * observed  只观察:能发,但跟单开关关着
  * stale     消息太旧
- * unparsed  看着像蝴蝶单,本地速记没接住——跟单不交给大模型猜
+ * unparsed  有单子的骨架,但本地速记没接住、没写价格、或没写方向——跟单不猜,也不交给大模型
  * capped    超了跟单自己的上限(单笔风险 / 每日单数)
  * blocked   闸门关着:熔断、自动执行没开、没连券商
  * rejected  校验或券商拒了

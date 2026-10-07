@@ -12,7 +12,7 @@ import type { EtNow } from "../src/config.js";
 import { TradingEngine } from "../src/engine.js";
 import { Notifier } from "../src/notify.js";
 import { LLMResponse } from "../src/providers.js";
-import { GRAMMAR_VERSION, LOCAL_MODEL, tryParseShorthand } from "../src/shorthand.js";
+import { GRAMMAR_VERSION, LOCAL_MODEL, looksLikeOrder, looksLikeShorthand, shorthandSymbols, spreadWithoutType, tryParseShorthand } from "../src/shorthand.js";
 import type { ShorthandMeta } from "../src/shorthand.js";
 import { TradeStore } from "../src/store.js";
 import { expectSame, loadGolden, makeSettings } from "./util.js";
@@ -80,6 +80,16 @@ describe("shorthand: 引擎集成", () => {
     expect(result.llm!.latency_ms).toBe(0);
     expect(result.validated_only).toHaveLength(1); // auto_execute=false → 只校验不发
     expect(result.validated_only[0]!.intent_summary).toContain("6900/6915/6930");
+  });
+
+  it("贷方价差也在本地解:不调大模型,校验层认它(卖出的垂直价差、收的权利金、敞口 = 宽度 − 权利金)", async () => {
+    const { engine, calls } = engineWithRecordingParser();
+    const result = await engine.handleInstruction("6920 6925 bear call 挂个-2-2.5", "manual", FRIDAY, { SPX: 6907.35 });
+    expect(calls).toEqual([]);
+    expect(result.llm!.model).toBe(LOCAL_MODEL);
+    expect(result.rejections).toEqual([]);
+    expect(result.validated_only).toHaveLength(1);
+    expect(result.validated_only[0]!.intent_summary).toContain("6920/6925 看涨贷方价差");
   });
 
   it("非速记指令照旧走大模型", async () => {
@@ -163,7 +173,7 @@ describe("shorthand: 数字边界(2026-09-27 审计 V3)", () => {
   });
 
   it("语法收窄,版本号跟着升", () => {
-    expect(GRAMMAR_VERSION).toBe("shorthand-v5");
+    expect(GRAMMAR_VERSION).toBe("shorthand-v6");
   });
 });
 
@@ -223,5 +233,108 @@ describe("shorthand v5: 闲字表补了真实出现过的语气词", () => {
     expect(parse("7650 10CM彩票 3", abs2)).not.toBeNull();
     expect(abs2.relativeCenter).toBe(false);
     expect(parse("20蝴蝶 25cm")).not.toBeNull();
+  });
+});
+
+
+// ---------------------------------------------------------------- v6:贷方垂直价差
+// 样本是 Charlie 的频道里真实出现过的写法;现价 7712,周五(2026-08-14)。
+describe("shorthand v6: 贷方垂直价差", () => {
+  const SPOT = { SPX: 7712 };
+  const parse = (text: string, snap: Record<string, number> = SPOT) => tryParseShorthand(text, snap, FRIDAY);
+  const order = (text: string, snap: Record<string, number> = SPOT) => (parse(text, snap) as any)?.orders?.[0];
+  const legs = (o: any) => o.contract.legs.map((l: any) => `${l.action} ${l.strike}${l.right}`);
+
+  it("bear call:卖低买高的 call,区间取收得多的一头;整张单的形状和大模型产出的一样", () => {
+    const o = order("7770 7775 bear call 挂个-2-2.5");
+    expect(o.contract).toMatchObject({ secType: "BAG", symbol: "SPX", combo_strategy: "VERTICAL" });
+    expect(legs(o)).toEqual(["BUY 7775C", "SELL 7770C"]);
+    expect(o.contract.legs[0]).toMatchObject({ ratio: 1, lastTradeDateOrContractMonth: "20260814", tradingClass: "SPXW" });
+    expect(o.order).toEqual({ action: "SELL", orderType: "LMT", totalQuantity: 1, price_mode: "EXPLICIT", lmtPrice: 2.5, tif: "DAY", outsideRth: false });
+    expect(o.intent_summary).toBe("卖出(贷方)1 张 2026-08-14 当日到期的 SPX 7770/7775 看涨贷方价差(卖 7770C、买 7775C,宽 5 点),净权利金不低于 2.5");
+    expect(o.warnings.some((w: string) => w.includes("区间 2–2.5") && w.includes("2.5 挂单"))).toBe(true);
+    expect(o.warnings.at(-1)).toContain(GRAMMAR_VERSION);
+  });
+
+  it("bull put:卖高买低的 put,两个行权价谁写在前面无所谓", () => {
+    expect(legs(order("7700 7695 挂个-2试试 BULL PUT"))).toEqual(["BUY 7695P", "SELL 7700P"]);
+    expect(legs(order("7695 7700 bull put -2"))).toEqual(["BUY 7695P", "SELL 7700P"]);
+    expect(order("7700 7695 挂个-2试试 BULL PUT").order.lmtPrice).toBe(2);
+    expect(legs(order("7775 7770 bear call -2"))).toEqual(["BUY 7775C", "SELL 7770C"]);
+  });
+
+  it("两位数是相对写法:取离现价最近的一组;「00 95」是 7700/7695,不是 7700/7795", () => {
+    expect(legs(order("00 95 bull put 试下 -2 -2.5"))).toEqual(["BUY 7695P", "SELL 7700P"]);
+    expect(legs(order("15 20 bull put尝试下 -2 - -2.5"))).toEqual(["BUY 7715P", "SELL 7720P"]);
+    expect(legs(order("10 15 bear call -2 -2.5"))).toEqual(["BUY 7715C", "SELL 7710C"]);
+    // 现价 7790:「00 95」最近的一组是 7800/7795
+    expect(legs(order("00 95 bull put -2", { SPX: 7790 }))).toEqual(["BUY 7795P", "SELL 7800P"]);
+    const o = order("00 95 bull put 试下 -2 -2.5");
+    expect(o.warnings.some((w: string) => w.includes("「00 95」按 7700/7695 理解"))).toBe(true);
+  });
+
+  it("频道里原样出现过的几句(含区间的各种写法、语气词)", () => {
+    expect(order("7650 7655收租 bear call -2 -2.5左右", { SPX: 7640 }).order.lmtPrice).toBe(2.5);
+    expect(order("00 95 BULL put 挂-1.8 -2.5这个区间").order.lmtPrice).toBe(2.5);
+    expect(order("7695 7690 bull put -2.2-2.5左右尝试挂单下").order.lmtPrice).toBe(2.5);
+    expect(order("55 60 bear call -2 到-2.5", { SPX: 7650 }).order.lmtPrice).toBe(2.5);
+    expect(legs(order("7770-7775 bear call -2"))).toEqual(["BUY 7775C", "SELL 7770C"]); // 横线是分隔,不是负号
+    expect(order("2张 7770 7775 bear call -2.5").order.totalQuantity).toBe(2);
+    expect(order("明天的 7770 7775 bear call -2.5").contract.legs[0].lastTradeDateOrContractMonth).toBe("20260817");
+  });
+
+  it("不接:没写方向、没写价格、说不清的、带别的语义的——一律交给大模型", () => {
+    for (const text of [
+      "75 70 -2 试一下",                    // 没写 bull put / bear call
+      "10 05 BULL -2 -2.5试一下",           // 只写了 bull
+      "可以挂单下 7860 7865 -2 -2.5",        // 没写方向
+      "7770 7775 bear call",               // 没写价格
+      "7770 7775 bear call 2.5",           // 权利金要写成负数(收)
+      "7770 bear call -2",                 // 只有一个行权价
+      "7770 7775 7780 bear call -2",       // 三个行权价
+      "7770 75 bear call -2",              // 一个写全、一个两位数
+      "00 50 bull put -2",                 // 差 50 点:谁高谁低说不清
+      "7770 7775 bear call -6",            // 收的比宽度还多
+      "7770 7775 bear call -2 -2.5 -3",    // 三个价格
+      "7770 7775 bear call bull put -2",   // 两个类型词
+      "7725 7740 bull call spread",        // 借方
+      "45 30 bear put 1.6彩票",             // 借方
+      "7770 7775 bear call -2 91破了就平",   // 带条件
+      "收租上移到80 85",
+      "20蝴蝶 25cm bear call -2",           // 两种结构混在一句里
+    ]) {
+      expect(parse(text), text).toBeNull();
+    }
+    // 相对写法:现价 7748 时「00 95」的两组(7700/7695 与 7800/7795)一样远,说不清
+    expect(parse("00 95 bull put -2", { SPX: 7747.5 })).toBeNull();
+    // 相对写法要现价
+    expect(parse("00 95 bull put -2", {})).toBeNull();
+    // 写全的行权价不需要现价;离现价超过 20% 多半是写漏了标的
+    expect(parse("7770 7775 bear call -2", {})).not.toBeNull();
+    expect(parse("230 235 bear call -2")).toBeNull();
+  });
+
+  it("周末:默认当日到期的价差本地直接拒", () => {
+    const out = tryParseShorthand("7770 7775 bear call -2", SPOT, et("2026-08-15")) as any;
+    expect(out.orders).toEqual([]);
+    expect(out.rejections[0].message).toContain("不是交易日");
+  });
+
+  it("像不像:抓现价与跟单分拣用的几个判据", () => {
+    expect(looksLikeShorthand("7770 7775 bear call 挂个-2-2.5")).toBe(true);
+    expect(shorthandSymbols("7770 7775 bear call 挂个-2-2.5")).toEqual(["SPX"]); // bear / call 不是标的
+    expect(shorthandSymbols("QQQ 612 613 bear call -0.3")).toEqual(["QQQ"]);
+    // 单子的骨架:翼宽、类型词、或价差的样子
+    expect(looksLikeOrder("20蝴蝶 25cm 挂个4.5试试")).toBe(true);
+    expect(looksLikeOrder("00 95 bull put 试下 -2 -2.5")).toBe(true);
+    expect(looksLikeOrder("75 70 -2 试一下")).toBe(true);
+    expect(looksLikeOrder("可以挂单下 7860 7865 -2 -2.5")).toBe(true);
+    // 光提到「蝴蝶」的评论不是
+    for (const chat of ["蝴蝶先走一下", "蝴蝶止损了哦", "蝴蝶和收租都可以走了", "蝴蝶可以跑了 今天跌应该破不了 20-15一带", "16 17", "90-120接夹棍 有效期是至少一个财报季", "收租上移到80 85"]) {
+      expect(looksLikeOrder(chat), chat).toBe(false);
+    }
+    expect(spreadWithoutType("75 70 -2 试一下")).toBe(true);
+    expect(spreadWithoutType("00 95 bull put 试下 -2 -2.5")).toBe(false);
+    expect(spreadWithoutType("20蝴蝶 25cm 挂个4.5试试")).toBe(false);
   });
 });

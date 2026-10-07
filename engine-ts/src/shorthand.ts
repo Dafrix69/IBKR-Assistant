@@ -20,8 +20,10 @@ export const LOCAL_MODEL = "local-shorthand";
  * v4(2026-09-27):中心与张数的数字左边加边界,三位数中心(「580蝴蝶」)不再被拆成"权利金 5 + 80蝴蝶",
  * 改为交给大模型——语法只收窄,没有新写法。
  * v5(2026-10-08):闲字表补了 Charlie 的频道里真实出现过的几种语气词(「一下」「试一下」「试试看」「赌博小彩票」「好贵」),
- * 都不带交易语义;其余没有变——不认识的词仍然交给大模型。 */
-export const GRAMMAR_VERSION = "shorthand-v5";
+ * 都不带交易语义;其余没有变——不认识的词仍然交给大模型。
+ * v6(2026-10-08):新增贷方垂直价差(「7770 7775 bear call -2 -2.5」「00 95 bull put 试下 -2」),见 parseCreditSpread;
+ * 蝴蝶的语法没有变。 */
+export const GRAMMAR_VERSION = "shorthand-v6";
 
 type Rec = Record<string, any>;
 
@@ -44,10 +46,32 @@ const FILLERS = [
 /** 翼宽记号:出现它就是这套行话(用户确认:cm 只用于蝴蝶,不写「蝴蝶」二字也认) */
 const WING_HINT = /\d\s*cm|翼宽\s*\d|±\s*\d+(?:\.\d+)?\s*点/i;
 
-/** 这句话像不像蝴蝶速记(用于快照抓取与落网观测,不做任何解析承诺)。 */
+/** 贷方价差的类型词,必须写全:bull put(卖高买低的 put)/ bear call(卖低买高的 call),后面跟不跟 spread 都行。
+ *  只写 bull / bear、只写缩写(BPS、BCS)的不认:是借方还是贷方、put 还是 call,说不清。 */
+const SPREAD_TYPE = /(?<![A-Za-z])(bull\s*put|bear\s*call)(?:\s*spread)?(?![A-Za-z])/i;
+
+/** 这句话像不像本地速记(用于快照抓取与落网观测,不做任何解析承诺)。 */
 export function looksLikeShorthand(text: string): boolean {
   const t = (text ?? "").normalize("NFKC");
-  return t.includes("蝴蝶") || WING_HINT.test(t);
+  return t.includes("蝴蝶") || WING_HINT.test(t) || SPREAD_TYPE.test(t);
+}
+
+/** 价差的样子:两个挨着的行权价,后面跟一个负的权利金(「75 70 -2」「7860 7865 -2 -2.5」)。只用来认"像不像",不解析。 */
+const SPREAD_SHAPE = /(?<![\d.])\d{2,5}\s*[\s/-]\s*\d{2,5}(?![\d.]).*(?<![\d.])-\s*\d/;
+
+/**
+ * 这句话有没有一张单子的骨架:蝴蝶的翼宽记号、贷方价差的类型词,或价差的样子。跟单拿它分"单子"与"闲聊"——
+ * 光有「蝴蝶」两个字不算(「蝴蝶先走一下」「蝴蝶止损了哦」是评论),没有翼宽的蝴蝶本来也解析不出来。
+ */
+export function looksLikeOrder(text: string): boolean {
+  const t = (text ?? "").normalize("NFKC");
+  return WING_HINT.test(t) || SPREAD_TYPE.test(t) || SPREAD_SHAPE.test(t);
+}
+
+/** 长得像贷方价差(两个行权价 + 负的权利金),却没写 bull put / bear call:方向说不清,本地语法不接。 */
+export function spreadWithoutType(text: string): boolean {
+  const t = (text ?? "").normalize("NFKC");
+  return SPREAD_SHAPE.test(t) && !SPREAD_TYPE.test(t) && !WING_HINT.test(t);
 }
 
 function fmt(value: number): string {
@@ -63,8 +87,9 @@ function take(work: string, pattern: RegExp): [string, RegExpMatchArray | null] 
 /** 这条指令若走本地速记,需要谁的现价。引擎把它并进快照抓取列表。 */
 export function shorthandSymbols(instruction: string): string[] {
   const text = (instruction ?? "").normalize("NFKC");
-  if (!text.includes("蝴蝶") && !WING_HINT.test(text)) return [];
-  const m = text.match(/(?!cm\b|CM\b)[A-Za-z]{2,5}/);
+  if (!looksLikeShorthand(text)) return [];
+  // 价差的类型词(bull put / bear call)不是标的:先摘掉再找字母 token
+  const m = text.replace(SPREAD_TYPE, " ").match(/(?!cm\b|CM\b)[A-Za-z]{2,5}/);
   const token = m ? m[0].toUpperCase() : "SPX";
   return ["CM", "GTC", "CALL", "PUT", "DTE"].includes(token) ? ["SPX"] : [token];
 }
@@ -98,6 +123,11 @@ export function tryParseShorthand(
     text = full.slice(0, mReason.index).trim();
   }
   if (!text || text.length > 80) return null;
+  if (SPREAD_TYPE.test(text)) {
+    // 贷方价差是另一套语法;相对写法在百位边上的事它自己管(取最近的一组,说不清就不接)
+    if (meta !== undefined) meta.relativeCenter = false;
+    return parseCreditSpread(full, text, reason, snapshot, moment);
+  }
   const hasButterflyWord = text.includes("蝴蝶");
   if (!hasButterflyWord && !WING_HINT.test(text)) return null;
   // 出现这些词说明还有别的语义(触发条件/卖出/多单拼接),本地不接
@@ -331,6 +361,203 @@ export function tryParseShorthand(
         totalQuantity: qty,
         price_mode: premium !== null ? "EXPLICIT" : "AUTO_MID",
         lmtPrice: premium,
+        tif,
+        outsideRth,
+      },
+      reason,
+      confidence: 1.0,
+      warnings,
+    }],
+    rejections: [],
+  };
+}
+
+// ---------------------------------------------------------------- 贷方垂直价差
+/** 价差行话里多出来的几个闲字。只在价差语法里剥,不放宽蝴蝶的。长的在前。 */
+const SPREAD_FILLERS = ["这个区间", "区间", "收租", "左右", "挂单下", "挂单", "可以"];
+/** 出现这些词说明还有别的语义(条件、平仓、移仓、另一种结构),本地不接 */
+const SPREAD_BLOCK =
+  /[;;\n]|时候|时,|涨到|跌到|突破|跌破|破了|站稳|卖|做空|平仓|取消|理由|止盈|止损|接货|加仓|撤单|上移|下移|日历|正股|海鸥|或者|如果|守不住|翻倍|蝴蝶/;
+/** 两位数的行权价是相对写法(现价的百位 + N):取离现价最近的一组。最近的那组离现价这么远或更远,就说不清是哪个百位。 */
+const RELATIVE_STRIKE_MAX_POINTS = 50;
+
+/**
+ * 贷方垂直价差(Charlie 叫「收租」):两个行权价 + 类型词 + 负的权利金。
+ *
+ *   7770 7775 bear call 挂个-2-2.5      卖 7770C、买 7775C,收 2.5
+ *   00 95 bull put 试下 -2 -2.5         现价 7712 → 卖 7700P、买 7695P,收 2.5
+ *   7700 7695 挂个-2试试 BULL PUT       卖 7700P、买 7695P,收 2
+ *
+ * 规则:
+ * * 类型词决定结构,两个行权价谁写在前面无所谓:bull put 卖高买低,bear call 卖低买高。
+ * * 权利金必须写、必须是负数(收);写的是区间(「-2 -2.5」「-2到-2.5」)时按收得多的一头挂单——
+ *   可能成交不了,但不会比写的差。没写权利金的不接(不用 AUTO_MID 替人定价)。
+ * * 行权价要么都写全(三到五位),要么都是两位数的相对写法;混着写、差 50 点(说不清谁高谁低)的不接。
+ * * 和蝴蝶一样:整句必须被语法完整覆盖,任何剩余成分 → null。
+ */
+function parseCreditSpread(
+  full: string, text: string, reason: string, snapshot: Record<string, number>, moment: EtNow,
+): Rec | null {
+  if (SPREAD_BLOCK.test(text) || WING_HINT.test(text)) return null;
+  let work = text;
+  const warnings: string[] = [];
+
+  let mType: RegExpMatchArray | null;
+  [work, mType] = take(work, SPREAD_TYPE);
+  if (mType === null || SPREAD_TYPE.test(work)) return null; // 两个类型词:是两张单
+  const bullPut = /bull/i.test(mType[1]!);
+
+  let mGtc: RegExpMatchArray | null;
+  [work, mGtc] = take(work, /GTC|一直有效/i);
+  const tif = mGtc ? "GTC" : "DAY";
+  let mOrth: RegExpMatchArray | null;
+  [work, mOrth] = take(work, /盘外|隔夜|夜盘|盘前|盘后/);
+  const outsideRth = mOrth !== null;
+  let mTomorrow: RegExpMatchArray | null;
+  [work, mTomorrow] = take(work, /明天的|明天|明日/);
+
+  // 收到的权利金:负数,一个或一个区间。第一个负号左边不能是数字——「7770-7775」里的横线是分隔,不是负号
+  let mCredit: RegExpMatchArray | null;
+  [work, mCredit] = take(work, /(?<![\d.])-\s*(\d+(?:\.\d+)?)(?:\s*(?:到|至|~|-)?\s*-\s*(\d+(?:\.\d+)?))?/);
+  if (mCredit === null) return null;                 // 没写价格:不猜
+  if (/(?<![\d.])-\s*\d/.test(work)) return null;   // 还有一个负数:说不清哪个是价格
+  const quoted = [Number(mCredit[1])];
+  if (mCredit[2] !== undefined) quoted.push(Number(mCredit[2]));
+  const credit = Math.max(...quoted);
+
+  for (const filler of [...SPREAD_FILLERS, ...FILLERS]) {
+    work = work.split(filler).join(" ");
+  }
+  work = work.replace(/0dte/gi, " ");
+
+  let mQty: RegExpMatchArray | null;
+  [work, mQty] = take(work, /(?<![\d.])(\d{1,3})\s*张/);
+  let qty: number | null = mQty ? Number(mQty[1]) : null;
+  if (qty === null) {
+    let mCn: RegExpMatchArray | null;
+    [work, mCn] = take(work, /([一两二三四五六七八九十])\s*张/);
+    if (mCn) qty = CN_NUM[mCn[1]!]!;
+  }
+  if (qty === null) {
+    qty = 1;
+    warnings.push("未写张数,已按默认 1 张处理");
+  }
+  if (!(qty >= 1 && qty <= 999)) return null;
+
+  let mSym: RegExpMatchArray | null;
+  [work, mSym] = take(work, /[A-Za-z]{2,5}/);
+  const symbol = mSym ? mSym[0].toUpperCase() : "SPX";
+  if (mSym === null) warnings.push("未写标的,默认按 SPX 处理");
+  if (/[A-Za-z]/.test(work)) return null;
+
+  // 语气词、标点、行权价之间的分隔(「7770/7775」「7770-7775」「-2 到 -2.5」里剩下的「到」)
+  work = work.replace(/[的吧哦呢啦呀嘛了个到至]|[,。、~!?():;/-]|\s+/g, " ");
+  const tokens = work.match(/\d+(?:\.\d+)?/g) ?? [];
+  work = work.replace(/\d+(?:\.\d+)?/g, " ");
+  if (work.trim() || tokens.length !== 2) return null; // 恰好两个行权价,别的什么都不剩
+
+  const rawSpot = snapshot[symbol];
+  const spot = rawSpot !== undefined && Number.isFinite(Number(rawSpot)) ? Number(rawSpot) : null;
+  const relative = tokens.every((t) => /^\d{1,2}$/.test(t));
+  const absolute = tokens.every((t) => /^\d{3,5}(?:\.\d+)?$/.test(t));
+  let lo: number;
+  let hi: number;
+  if (relative) {
+    if (spot === null) return null;
+    const a = Number(tokens[0]);
+    const b = Number(tokens[1]);
+    // 第二个比第一个高多少:取 (−50, 50] 里的那个解(「00 95」是低 5 点,不是高 95 点)
+    const diff = ((b - a + 150) % 100) - 50;
+    if (diff === 0 || Math.abs(diff) === 50) return null;
+    const base = Math.floor(spot / 100.0) * 100.0;
+    let first = Number.NaN;
+    let bestDist = Number.POSITIVE_INFINITY;
+    for (const shift of [-100, 0, 100]) {
+      const candidate = base + shift + a;
+      const dist = Math.abs(candidate + diff / 2 - spot);
+      if (dist < bestDist) {
+        bestDist = dist;
+        first = candidate;
+      }
+    }
+    if (!(bestDist < RELATIVE_STRIKE_MAX_POINTS)) return null;
+    lo = Math.min(first, first + diff);
+    hi = Math.max(first, first + diff);
+    warnings.push(`「${tokens[0]} ${tokens[1]}」按 ${fmt(first)}/${fmt(first + diff)} 理解(离现价 ${fmt(spot)} 最近的一组)`);
+  } else if (absolute) {
+    lo = Math.min(Number(tokens[0]), Number(tokens[1]));
+    hi = Math.max(Number(tokens[0]), Number(tokens[1]));
+    // 和蝴蝶同一条:离现价超过 20% 多半是写漏了标的
+    if (spot !== null && Math.abs((lo + hi) / 2 - spot) / spot > 0.2) return null;
+  } else {
+    return null; // 一个写全、一个两位数:说不清
+  }
+  const width = hi - lo;
+  if (!(width > 0 && width <= 500)) return null;
+  if (!(credit > 0 && credit < width)) return null; // 收的不可能多过宽度
+
+  let expiry: string;
+  let expiryLabel: string;
+  if (mTomorrow) {
+    let ordinal = dateOrdinal(moment.date) + 1;
+    while (weekdayOfDate(ordinalToDate(ordinal)) >= 5) ordinal += 1;
+    const day = ordinalToDate(ordinal);
+    expiry = day.replace(/-/g, "");
+    expiryLabel = `${day} 到期`;
+    warnings.push(`「明天」按下一交易日 ${day} 处理`);
+  } else {
+    if (weekdayOfDate(moment.date) >= 5) {
+      const dayName = weekdayOfDate(moment.date) === 5 ? "周六" : "周日";
+      return {
+        orders: [],
+        rejections: [{
+          original_text: full,
+          code: "UNSUPPORTED",
+          message: `今天(${dayName})不是交易日,默认当日到期的价差无法下单;要下周一的写「明天」,或写明到期日。`,
+        }],
+      };
+    }
+    expiry = moment.date.replace(/-/g, "");
+    expiryLabel = `${moment.date} 当日到期`;
+    warnings.push("未写到期日,已按默认当日到期处理");
+  }
+
+  if (quoted.length === 2 && quoted[0] !== quoted[1]) {
+    warnings.push(
+      `权利金写的是区间 ${fmt(Math.min(...quoted))}–${fmt(Math.max(...quoted))},按收得多的一头 ${fmt(credit)} 挂单(可能成交不了,不会比写的差)`,
+    );
+  }
+  warnings.push(`本地速记解析(未经大模型),语法 ${GRAMMAR_VERSION}`);
+
+  const right = bullPut ? "P" : "C";
+  // bull put:卖高买低;bear call:卖低买高。都是卖出离现价近的那条、买入远的那条做保护
+  const sellStrike = bullPut ? hi : lo;
+  const buyStrike = bullPut ? lo : hi;
+  const tradingClass = symbol === "SPX" ? "SPXW" : null;
+  const leg = (action: string, strike: number): Rec => {
+    const out: Rec = { action, ratio: 1, lastTradeDateOrContractMonth: expiry, strike, right };
+    if (tradingClass) out["tradingClass"] = tradingClass;
+    return out;
+  };
+  return {
+    orders: [{
+      intent_summary:
+        `卖出(贷方)${qty} 张 ${expiryLabel}的 ${symbol} ${fmt(lo)}/${fmt(hi)} ${bullPut ? "看跌" : "看涨"}贷方价差` +
+        `(卖 ${fmt(sellStrike)}${right}、买 ${fmt(buyStrike)}${right},宽 ${fmt(width)} 点),净权利金不低于 ${fmt(credit)}`,
+      contract: {
+        secType: "BAG", symbol, exchange: "SMART",
+        currency: "USD", combo_strategy: "VERTICAL",
+        legs: [leg("BUY", buyStrike), leg("SELL", sellStrike)],
+      },
+      execution_type: "IMMEDIATE",
+      trigger: null,
+      account: "DEFAULT",
+      order: {
+        action: "SELL",
+        orderType: "LMT",
+        totalQuantity: qty,
+        price_mode: "EXPLICIT",
+        lmtPrice: credit,
         tif,
         outsideRth,
       },

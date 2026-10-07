@@ -124,13 +124,14 @@ function followConfirmText(binding, accounts) {
   const live = targets.some((alias) => kindOf(alias) !== '纸面');
   const money = (n) => (Number.isFinite(n) ? n.toLocaleString('en-US', { maximumFractionDigits: 2 }) : '—');
   const detail = [
-    '打开之后,下面这些发送者发的蝴蝶单,软件不再问你,直接发到券商。',
+    '打开之后,下面这些发送者发的蝴蝶单与贷方价差(bull put / bear call),软件不再问你,直接发到券商。',
     '',
     `频道 ID:${binding.channel_id || (binding.local_inbox ? '(没有填,不连 Discord;消息只来自本地收件)' : '(没有填)')}`,
     `本地收件:${binding.local_inbox ? '开着——脚本从你屏幕上的 Discord 窗口抄下来的消息也算;发送者按显示名认,频道里别人改昵称冒充得了' : '关着'}`,
     `信任的发送者 ID:${binding.author_ids.join('、') || '(一个都没有)'}`,
     `发到账户:${targets.map((alias) => `${alias}(${kindOf(alias)})`).join('、') || '(没有可用的账户)'}${binding.accounts.length ? '' : ' —— 默认账户'}`,
     `每单最坏亏损上限:$${money(binding.max_risk_usd)}${targets.length > 1 ? '(每个账户各发一份、各算各的)' : ''}`,
+    '  蝴蝶按付出的权利金算;贷方价差按「宽度 − 收到的权利金」算,那是到期时价格穿过两个行权价的亏损。',
     `每天最多跟:${money(binding.max_orders_per_day)} 单`,
     `消息发出超过 ${money(binding.max_age_seconds)} 秒不跟`,
     '',

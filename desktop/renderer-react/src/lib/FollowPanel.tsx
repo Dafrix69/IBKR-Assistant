@@ -154,8 +154,9 @@ export function FollowPanel() {
 
   return (
     <section className="sub-panel active" id="panel-follow">
-      <Notice tone="warn" title="信任的人在频道里发的蝴蝶单,不经确认直接发到券商。">
-        只认本地速记完整接住的写法(如「1.8 挂15蝴蝶 15CM」),接不住的只提醒、不交给大模型猜。开关关着时只观察:照样解析、照样记在下面,但一张单都不发。
+      <Notice tone="warn" title="信任的人在频道里发的蝴蝶单与贷方价差,不经确认直接发到券商。">
+        只认本地速记完整接住的两种写法:写明价格的买入蝴蝶(「1.8 挂15蝴蝶 15CM」)、写明方向与价格的贷方价差(「7770 7775 bear call -2 -2.5」,区间按收得多的一头挂)。
+        没写价格、没写 bull put / bear call、带止损或条件的只提醒、不发,也不交给大模型猜。开关关着时只观察:照样解析、照样记在下面,但一张单都不发。
         <br />
         对方发错一条、或者对方的 Discord 账号被盗,都会变成你账户里的订单——先只观察几天,再打开。
       </Notice>
@@ -229,7 +230,7 @@ export function FollowPanel() {
             options={accounts.map((a) => ({ value: a.alias, label: `${a.alias}(${a.is_paper ? '纸面' : '实盘'}${a.default ? ',默认' : ''})` }))}
           />
         </GroupRow>
-        <NumberRow icon="sf-dollar" tint="red" label="每单最坏亏损上限" sub="USD = 张数 × 100 × 权利金上限;没写权利金的按翼宽算" min={1} step={50} value={form.maxRisk} onChange={(v) => patch({ maxRisk: v })} />
+        <NumberRow icon="sf-dollar" tint="red" label="每单最坏亏损上限" sub="USD。蝴蝶 = 张数 × 100 × 权利金;贷方价差 = 张数 × 100 ×(宽度 − 收到的权利金)" min={1} step={50} value={form.maxRisk} onChange={(v) => patch({ maxRisk: v })} />
         <NumberRow icon="sf-layers" tint="purple" label="每天最多跟几单" sub={`美东一天;今天已跟 ${status.today.sent} 单`} min={1} max={100} step={1} value={form.perDay} onChange={(v) => patch({ perDay: v })} />
         <NumberRow icon="sf-clock" tint="gray" label="消息多旧就不跟" sub="秒。断线之后补到的旧消息不追" min={1} max={600} step={5} value={form.maxAge} onChange={(v) => patch({ maxAge: v })} />
       </Group>
@@ -259,7 +260,7 @@ export function FollowPanel() {
           ))}
         </Group>
       ) : (
-        <EmptyState compact>信任的发送者发来像蝴蝶单的消息之后,每一条跟了没有、为什么,都记在这里</EmptyState>
+        <EmptyState compact>信任的发送者发来像单子的消息之后,每一条跟了没有、为什么,都记在这里</EmptyState>
       )}
     </section>
   );
