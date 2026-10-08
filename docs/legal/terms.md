@@ -62,4 +62,4 @@
 
 9.2 适用法律与争议解决:【发布前填写】。
 
-9.3 发布者与联系方式:【发布前填写】。
+9.3 发布者与联系方式:Dafrix69;问题与反馈请到 https://github.com/Dafrix69/IBKR-Assistant/issues 提出。

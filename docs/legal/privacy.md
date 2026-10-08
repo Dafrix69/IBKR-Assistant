@@ -50,4 +50,4 @@
 
 ## 联系方式
 
-关于本说明的问题,请联系:【发布前填写】。
+关于本说明的问题,请联系 Dafrix69:到 https://github.com/Dafrix69/IBKR-Assistant/issues 提出。

@@ -7,7 +7,7 @@
 `docs/legal/` 下的 `risk-disclosure.md`(风险揭示)、`terms.md`(使用条款)、`privacy.md`(隐私说明)。界面显示的就是这三个文件:
 `lib/legalText.ts` 用 Vite 的 `?raw` 原样引入,打包时也一并拷进 `resources/legal/`。
 
-- 它们是草稿,没有经过律师审阅;发布者、联系方式、适用法律还是 `【发布前填写】`,`npm run release:check` 会拦住带着占位符的正式发布。
+- 它们是草稿,没有经过律师审阅;适用法律与争议解决还是 `【发布前填写】`,`npm run release:check` 会拦住带着占位符的正式发布。
 - 隐私说明里"发给谁、发什么"逐项对过代码。`tests/desktop-consent.spec.ts` 扫描引擎里会联网的六个文件,出现不在已知清单里的外部域名就失败,
   并检查隐私说明提到了 Yahoo Finance、Cboe、GitHub 与大模型服务商;引擎要连新的域名时,先改隐私说明,再把域名加进测试的清单。
 
