@@ -96,6 +96,7 @@ import type {
   EquityPoint, LedgerTrade, PerfGroup, PerformanceFinding, PerformanceKind, PerformanceScope, PerfStats, ReviewPerformanceResult, ExecutionCost, ExecutionGroup, ExecutionRow, ProtectionAdvice, ReviewSignalsResult, SignalEntry, SignalGroup, SignalHorizonStats, SignalSource,
   AnomalyConfig, AnomalyEvent, AnomalyKind, AnomalyMetrics, LevelKind, OptionWall, PoolWatch, PoolWatchPatch, PositionRow,
   FlyPlanIvMode, FlyPlanLeg, FlyPlanParams, FlyPlanPoint, FlyPlanResult, FlyPlanScenario, FlyPlanTime, FlyPlanValue, IvRecorderStatus, OptionsSpot,
+  PlaybookBand, PlaybookEvent, PlaybookSnapshot, PlaybookState,
   AccountView, Limits, Policies, ProtectionsConfig, QualityList, QualityMonitor, QualityStock, RpcParams, RpcResult, Sector,
   SectorStock, SettingsPatch, SettingsView, SpotTarget, StockQuote, Targets, Track, Watch, WatchEvent, WatchLevel,
   MaTouchConfig, TouchBook, TouchEpisode, TouchLine, WatchTrigger,
@@ -127,6 +128,7 @@ export type {
   EquityPoint, LedgerTrade, PerfGroup, PerformanceFinding, PerformanceKind, PerformanceScope, PerfStats, ReviewPerformanceResult, ExecutionCost, ExecutionGroup, ExecutionRow, ProtectionAdvice, ReviewSignalsResult, SignalEntry, SignalGroup, SignalHorizonStats, SignalSource,
   AnomalyEvent, AnomalyKind, LevelKind, OptionWall, PoolWatch, PoolWatchPatch, PositionRow, QualityList, QualityMonitor,
   FlyPlanIvMode, FlyPlanLeg, FlyPlanParams, FlyPlanPoint, FlyPlanResult, FlyPlanScenario, FlyPlanTime, FlyPlanValue, IvRecorderStatus, OptionsSpot,
+  PlaybookBand, PlaybookEvent, PlaybookSnapshot, PlaybookState,
   QualityStock, Sector, SectorStock, SettingsPatch, SpotTarget, StockQuote, Targets, Track, Watch, WatchEvent, WatchLevel,
   MaTouchConfig, TouchBook, TouchEpisode, TouchLine, WatchTrigger,
   BreakerBrief, BreakerState, IndexSpot, ProtectionCooldown, SystemSelftest, SystemStatus, TrackerHeartbeat,
@@ -290,6 +292,8 @@ export interface DafriBridge {
   ivRecorder(): Rpc<RpcResult<'options.iv_recorder'>>;
   setIvRecorder(enabled: boolean): Rpc<RpcResult<'options.iv_recorder_set'>>;
   indexSpot(symbol: string): Rpc<RpcResult<'options.spot'>>;
+  playbook(): Rpc<RpcResult<'options.playbook'>>;
+  setPlaybook(enabled: boolean): Rpc<RpcResult<'options.playbook_set'>>;
   listAlerts(): Rpc<RpcResult<'alerts.list'>>;
   createAlert(symbol: string, step: number): Rpc<RpcResult<'alerts.create'>>;
   deleteAlert(id: string): Rpc<RpcResult<'alerts.delete'>>;

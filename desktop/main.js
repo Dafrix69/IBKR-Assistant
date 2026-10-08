@@ -194,6 +194,8 @@ const ALLOWED_RPC = new Set([
   'options.iv_recorder',
   'options.iv_recorder_set',
   'options.spot',
+  'options.playbook',
+  'options.playbook_set',
   'alerts.list',
   'alerts.create',
   'alerts.delete',

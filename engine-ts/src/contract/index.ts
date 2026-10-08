@@ -30,7 +30,7 @@ import type {
 } from "./ideas.js";
 import type {
   FlyPlanParams, FlyPlanResult, IvRecorderSetParams, IvRecorderStatus, OptionWall, OptionsSpot, OptionsSpotParams,
-  OptionsWallParams,
+  OptionsWallParams, PlaybookSetParams, PlaybookSnapshot,
 } from "./options.js";
 import type { ReviewPerformanceParams, ReviewPerformanceResult } from "./performance.js";
 import type { ReviewSignalsParams, ReviewSignalsResult } from "./signals.js";
@@ -164,6 +164,9 @@ export interface RpcMethods {
   "options.iv_recorder_set": { params: IvRecorderSetParams; result: IvRecorderStatus };
   /** 测算面板上那一行实时现价:和测算用的是同一路(夜盘按期货推算)。取不到是 price: null 的回执,不是报错 */
   "options.spot": { params: OptionsSpotParams; result: OptionsSpot };
+  /** SPX 日内剧本此刻的样子:三条预期波动区间、状态、触发线与目标、加速档。读内存里循环留下的那一份 */
+  "options.playbook": { params: NoParams; result: PlaybookSnapshot };
+  "options.playbook_set": { params: PlaybookSetParams; result: PlaybookSnapshot };
 
   "pa.timeframes": { params: NoParams; result: PaTimeframesResult };
   "pa.analyze": { params: PaAnalyzeParams; result: PaAnalyzeResult };

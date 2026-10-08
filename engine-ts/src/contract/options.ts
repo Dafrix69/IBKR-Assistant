@@ -333,3 +333,94 @@ export interface OptionsSpot {
   /** 引擎读到这个价的时刻(epoch 毫秒) */
   at: number;
 }
+
+// ---------------------------------------------------------------- SPX 日内剧本(options.playbook*)
+// 三条预期波动区间(昨日 / 盘初 / 当前剩余)、区间推出来的剧本状态、期权墙上的加速档。只读,不下单。
+// 设计与口径见 docs/features/playbook.md。
+
+/** 一条预期波动区间:平值跨式(看涨 + 看跌的中间价)× √(π/2),围着锚上下各一份 */
+export interface PlaybookBand {
+  /** 取价的时刻(epoch 毫秒) */
+  at: number;
+  /** 锚:昨日口径是上一个收盘价,另两条是取价那一刻的现价 */
+  anchor: number;
+  /** 取跨式的行权价(离锚最近的那一档) */
+  strike: number;
+  /** 到期日 YYYYMMDD */
+  expiry: string;
+  call: number;
+  put: number;
+  /** 预期波动(点) */
+  em: number;
+  lower: number;
+  upper: number;
+  /** live = 当场读的盘口;backfill = 软件当时没开着,事后拿分钟线的中间价补的 */
+  source: "live" | "backfill";
+}
+
+/** B2 = 站上当前区间上沿(上沿扩展);B3 = 跌破昨日区间下沿(失守续探);R = 两条线之间;none = 线还不全,判不了 */
+export type PlaybookState = "B2" | "B3" | "R" | "none";
+
+export interface PlaybookEvent {
+  at: number;
+  /** enter = 进入 B2 / B3;invalid = 剧本失效(回到触发线另一侧);accel = 穿过加速档 */
+  kind: "enter" | "invalid" | "accel";
+  state: PlaybookState;
+  /** 被穿过的那条线 */
+  level: number;
+  price: number;
+}
+
+/** 负 gamma 最大的那个行权价:做市商在这里顺着行情对冲,穿过它时走势容易加速 */
+export interface PlaybookAccel {
+  strike: number;
+  net_gex: number;
+}
+
+export interface PlaybookWall {
+  /** 这份期权链是什么时候取的(epoch 毫秒) */
+  at: number;
+  expiry: string;
+  call_wall: WallSide | null;
+  put_wall: WallSide | null;
+  gamma_flip: number | null;
+  net_gex: number;
+  regime: "positive" | "negative";
+  strikes: OptionWallStrike[];
+  warnings: string[];
+}
+
+export interface PlaybookSnapshot {
+  symbol: string;
+  /** 这份剧本属于哪个美东交易日;今天不是交易日也给今天的日期 */
+  date: string;
+  enabled: boolean;
+  running: boolean;
+  /** 最近一次读到的现价;不在常规时段、没连券商时是 null */
+  price: number | null;
+  price_at: number | null;
+  bands: { prior: PlaybookBand | null; open: PlaybookBand | null; current: PlaybookBand | null };
+  state: PlaybookState;
+  /** 现在这个状态是哪条线触发的(R / none 时是 null) */
+  trigger: number | null;
+  since: number | null;
+  /** 此刻的两条触发线:b2 = 当前区间上沿,b3 = 昨日区间下沿 */
+  lines: { b2: number | null; b3: number | null };
+  t1: number | null;
+  t2: number | null;
+  accel: PlaybookAccel | null;
+  wall: PlaybookWall | null;
+  /** 今天的事件,从早到晚 */
+  events: PlaybookEvent[];
+  /** 哪条区间为什么还没有(没赶上 16:10、补不到分钟线……) */
+  notes: string[];
+  /** 上一轮为什么没动(没连券商、不在常规交易时段、已关闭……);在跑就是空串 */
+  idle_reason: string;
+  last_error: string;
+  /** 当前区间多久重取一次(秒) */
+  frame_seconds: number;
+}
+
+export interface PlaybookSetParams {
+  enabled: boolean;
+}

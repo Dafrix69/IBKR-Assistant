@@ -1,7 +1,7 @@
 /** options.* 的入参 schema。代码形状、数值范围是领域校验,在 handler 与 flyPlan。 */
 import { z } from "zod";
 
-import type { FlyPlanParams, IvRecorderSetParams, OptionsSpotParams, OptionsWallParams } from "../options.js";
+import type { FlyPlanParams, IvRecorderSetParams, OptionsSpotParams, OptionsWallParams, PlaybookSetParams } from "../options.js";
 import { optional } from "./kit.js";
 import type { ParamsSchema } from "./kit.js";
 
@@ -37,4 +37,8 @@ export const IvRecorderSetParamsSchema: ParamsSchema<IvRecorderSetParams> = z.ob
 
 export const OptionsSpotParamsSchema: ParamsSchema<OptionsSpotParams> = z.object({
   symbol: optional(z.string()),
+}).strict();
+
+export const PlaybookSetParamsSchema: ParamsSchema<PlaybookSetParams> = z.object({
+  enabled: z.boolean(),
 }).strict();

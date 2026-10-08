@@ -3,6 +3,7 @@ import { Button, Input, Segmented, Space, Splitter, Tag } from 'antd';
 import { CheckCircleFilled, ExclamationCircleFilled } from '@ant-design/icons';
 import type { TextAreaRef } from 'antd/es/input/TextArea';
 import { FlyPlanner } from '../lib/FlyPlanner';
+import { PlaybookPanel } from '../lib/PlaybookPanel';
 import { fmtMoney } from '../lib/format';
 import { REJECT_CODE_LABEL, REJECT_SOURCE_LABEL, say } from '../lib/labels';
 import { isTicket, OrderTicket } from '../lib/OrderTicket';
@@ -17,7 +18,7 @@ import { ENTER_KEY, MOD_KEY, SHIFT_KEY } from '../store/appearance';
 import { EmptyState, Meta, PageHead, Primer, StatusCard, StepList, Working, type Tone } from '../ui/kit';
 
 // 交易指令:输入框(⌘Enter 解析)与解析结果并排(可拖分栏);「解析并校验(不下单)」/「发送到 IBKR / 富途」两个按钮。
-// 这是整个软件唯一的主动作,进页就把光标放进输入框。右栏可以切到「蝴蝶测算」(只算不下单,见 lib/FlyPlanner)。
+// 这是整个软件唯一的主动作,进页就把光标放进输入框。右栏可以切到「蝴蝶测算」(只算不下单,见 lib/FlyPlanner)或「日内剧本」(只看不下单,见 lib/PlaybookPanel)。
 
 // 期权速记:内容与提示词的既定偏好逐条同源(§2 铁律 1/5 的用户例外),不在这里发明任何解析器不认识的规则
 const SHORTHAND_CHIPS: [string, string][] = [
@@ -233,7 +234,7 @@ export function TradePage() {
           size="small"
           value={pane}
           onChange={(v) => setTradePane(v as TradePane)}
-          options={[{ label: '解析结果', value: 'result' }, { label: '蝴蝶测算', value: 'fly' }]}
+          options={[{ label: '解析结果', value: 'result' }, { label: '蝴蝶测算', value: 'fly' }, { label: '日内剧本', value: 'playbook' }]}
         />
         {pane === 'result' ? (
           <Button size="small" type="text" onClick={clearResult}>
@@ -243,6 +244,8 @@ export function TradePage() {
       </div>
       {pane === 'fly' ? (
         <FlyPlanner onInstruction={appendInstruction} />
+      ) : pane === 'playbook' ? (
+        <PlaybookPanel />
       ) : (
         <div className="result">
           {working ? (

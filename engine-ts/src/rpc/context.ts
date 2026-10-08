@@ -15,6 +15,7 @@ import type { IvRecorderService } from "../services/ivRecorder.js";
 import { gatewayName, needConnection } from "../services/host.js";
 import type { Rec, Router, ServiceHost } from "../services/host.js";
 import type { MarketDataService } from "../services/marketData.js";
+import type { PlaybookService } from "../services/playbook.js";
 import type { PoolService } from "../services/pool.js";
 import type { StockTripsService } from "../services/stockTrips.js";
 import type { IdeaSemanticService } from "../services/ideaSemantic.js";
@@ -57,6 +58,7 @@ export interface RpcContext extends ServiceHost {
   readonly brokerLink: BrokerLinkService;
   readonly flyPlanner: FlyPlannerService;
   readonly ivRecorder: IvRecorderService;
+  readonly playbook: PlaybookService;
   readonly follow: FollowService;
 }
 

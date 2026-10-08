@@ -136,6 +136,8 @@ window.dafri = {
   ivRecorder: async () => ({enabled:true,running:true,symbol:'SPX',interval_seconds:300,dir:'~/Library/Application Support/dafri/fly-iv',days:0,samples:0,first_date:null,last_date:null,last_at:null,idle_reason:'没连券商',last_error:''}),
   setIvRecorder: async (enabled) => ({...{enabled:true,running:true,symbol:'SPX',interval_seconds:300,dir:'~/Library/Application Support/dafri/fly-iv',days:0,samples:0,first_date:null,last_date:null,last_at:null,idle_reason:'没连券商',last_error:''}, enabled, idle_reason: enabled ? '' : '已关闭'}),
   indexSpot: async (symbol) => ({symbol: symbol || 'SPX', price: null, source: 'none', note: '没连 TWS / IB Gateway', at: Date.now()}),
+  playbook: async () => ({symbol:'SPX',date:'2026-09-28',enabled:true,running:true,price:null,price_at:null,bands:{prior:null,open:null,current:null},state:'none',trigger:null,since:null,lines:{b2:null,b3:null},t1:null,t2:null,accel:null,wall:null,events:[],notes:[],idle_reason:'没连券商',last_error:'',frame_seconds:300}),
+  setPlaybook: async (enabled) => ({...{symbol:'SPX',date:'2026-09-28',enabled:true,running:true,price:null,price_at:null,bands:{prior:null,open:null,current:null},state:'none',trigger:null,since:null,lines:{b2:null,b3:null},t1:null,t2:null,accel:null,wall:null,events:[],notes:[],idle_reason:'没连券商',last_error:'',frame_seconds:300}, enabled}),
   listAlerts: async () => ({ watches: [] }),
   createAlert: async () => ({}), deleteAlert: async () => ({}), refreshAlert: async () => ({}),
   pollAlerts: async () => ({ fired: [], checked: [] }),

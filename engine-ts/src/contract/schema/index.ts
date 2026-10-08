@@ -26,7 +26,7 @@ import { NoParamsSchema } from "./kit.js";
 import type { ParamsSchema } from "./kit.js";
 import { LlmPatchParamsSchema, LlmTestParamsSchema } from "./llm.js";
 import { BookSnapshotParamsSchema, MacroBoardParamsSchema } from "./market.js";
-import { FlyPlanParamsSchema, IvRecorderSetParamsSchema, OptionsSpotParamsSchema, OptionsWallParamsSchema } from "./options.js";
+import { FlyPlanParamsSchema, IvRecorderSetParamsSchema, OptionsSpotParamsSchema, OptionsWallParamsSchema, PlaybookSetParamsSchema } from "./options.js";
 import { PaAnalyzeParamsSchema } from "./priceaction.js";
 import { PoolSetWatchParamsSchema } from "./pool.js";
 import {
@@ -104,6 +104,8 @@ export const PARAMS_SCHEMAS: { readonly [M in RpcMethodName]: ParamsSchema<RpcPa
   "options.iv_recorder": NoParamsSchema,
   "options.iv_recorder_set": IvRecorderSetParamsSchema,
   "options.spot": OptionsSpotParamsSchema,
+  "options.playbook": NoParamsSchema,
+  "options.playbook_set": PlaybookSetParamsSchema,
 
   "pa.timeframes": NoParamsSchema,
   "pa.analyze": PaAnalyzeParamsSchema,

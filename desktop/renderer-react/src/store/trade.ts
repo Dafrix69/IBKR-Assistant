@@ -17,8 +17,8 @@ import { brokerShortName, refreshStatus } from './status';
  *  它是从点下按钮到回执到手的墙钟时间(含界面这一侧),给用户看"这次等了多久"。 */
 export type SubmitPayload = InstructionSubmitResult & { __elapsedMs?: number };
 
-/** 右栏摆的是哪一样:解析结果,还是蝴蝶测算 */
-export type TradePane = 'result' | 'fly';
+/** 右栏摆的是哪一样:解析结果、蝴蝶测算,还是 SPX 日内剧本 */
+export type TradePane = 'result' | 'fly' | 'playbook';
 
 export interface ComposerState {
   text: string;

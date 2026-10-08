@@ -187,6 +187,9 @@ contextBridge.exposeInMainWorld('dafri', {
   setIvRecorder: (enabled) => ipcRenderer.invoke('rpc', { method: 'options.iv_recorder_set', params: { enabled } }),
   // 测算面板上的实时现价(和测算用的是同一路,夜盘按期货推算)。只读行情
   indexSpot: (symbol) => ipcRenderer.invoke('rpc', { method: 'options.spot', params: { symbol } }),
+  // SPX 日内剧本:三条预期波动区间、状态、触发线(引擎里自己的循环在算,这里只读);开关只管那个循环取不取行情
+  playbook: () => ipcRenderer.invoke('rpc', { method: 'options.playbook', params: {} }),
+  setPlaybook: (enabled) => ipcRenderer.invoke('rpc', { method: 'options.playbook_set', params: { enabled } }),
   listAlerts: () => ipcRenderer.invoke('rpc', { method: 'alerts.list', params: {} }),
   createAlert: (symbol, step) =>
     ipcRenderer.invoke('rpc', { method: 'alerts.create', params: { symbol, step } }),

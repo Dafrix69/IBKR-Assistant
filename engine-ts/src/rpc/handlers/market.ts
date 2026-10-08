@@ -4,7 +4,8 @@ import { BrokerError } from "../../broker.js";
 import { nowEt } from "../../config.js";
 import type {
   BookSnapshot, BookSnapshotParams, FlyPlanParams, FlyPlanResult, IvRecorderSetParams, IvRecorderStatus, MacroBoard,
-  MacroBoardParams, OptionWall, OptionsSpot, OptionsSpotParams, OptionsWallParams, PaAnalysis, PaAnalyzeParams, PaAnalyzeResult, PaCommentResult, PaHtfSummary, PaTimeframesResult,
+  MacroBoardParams, OptionWall, OptionsSpot, OptionsSpotParams, OptionsWallParams, PaAnalysis,
+  PlaybookSetParams, PlaybookSnapshot, PaAnalyzeParams, PaAnalyzeResult, PaCommentResult, PaHtfSummary, PaTimeframesResult,
 } from "../../contract/index.js";
 import { liveTickers, macroBoard } from "../../macro.js";
 import { PACommentSchema } from "../../models.js";
@@ -25,6 +26,8 @@ export class MarketHandlers extends HandlerBase {
       "options.iv_recorder": () => this.ivRecorderStatus(),
       "options.iv_recorder_set": (p) => this.ivRecorderSet(p),
       "options.spot": (p) => this.optionsSpot(p),
+      "options.playbook": () => this.ctx.playbook.snapshot(),
+      "options.playbook_set": (p) => this.playbookSet(p),
       "macro.board": (p) => this.macroBoardMethod(p),
       "pa.timeframes": () => this.paTimeframes(),
       "pa.analyze": (p) => this.paAnalyze(p),
@@ -80,6 +83,11 @@ export class MarketHandlers extends HandlerBase {
 
   ivRecorderSet(params: IvRecorderSetParams): IvRecorderStatus {
     return this.ctx.ivRecorder.setEnabled(params.enabled);
+  }
+
+  // ---- SPX 日内剧本 ----------------------------------------------------
+  playbookSet(params: PlaybookSetParams): PlaybookSnapshot {
+    return this.ctx.playbook.setEnabled(params.enabled);
   }
 
   // ---- 实时 K 线 + 价格行为分析 -----------------------------------------

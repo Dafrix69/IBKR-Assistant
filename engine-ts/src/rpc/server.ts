@@ -22,6 +22,7 @@ import { BrokerLinkService } from "../services/brokerLink.js";
 import { FlyPlannerService } from "../services/flyPlanner.js";
 import { FollowService, refuseModelWhileFollowing } from "../services/follow.js";
 import { IvRecorderService } from "../services/ivRecorder.js";
+import { PlaybookService } from "../services/playbook.js";
 import type { Router } from "../services/host.js";
 import { MarketDataService } from "../services/marketData.js";
 import { PoolService } from "../services/pool.js";
@@ -77,6 +78,7 @@ export class RpcServer implements RpcContext {
   readonly brokerLink: BrokerLinkService;
   readonly flyPlanner: FlyPlannerService;
   readonly ivRecorder: IvRecorderService;
+  readonly playbook: PlaybookService;
   readonly follow: FollowService;
   /** 各域的 handler。方法表在构造时合成一张,之后不变。 */
   readonly domains: {
@@ -114,6 +116,8 @@ export class RpcServer implements RpcContext {
     // 记 IV 用的是测算那批自己的行情流;测算读到行情时也顺带记一笔
     this.ivRecorder = new IvRecorderService(this, this.flyPlanner.marks);
     this.flyPlanner.onMarks = (sample) => this.ivRecorder.recordPlan(sample);
+    // 日内剧本的跨式也走测算那批自己的行情流;期权墙走共用的那份缓存
+    this.playbook = new PlaybookService(this, this.flyPlanner.marks, this.market);
     this.follow = new FollowService(this);
     this.domains = {
       system: new SystemHandlers(this),
@@ -277,6 +281,8 @@ export class RpcServer implements RpcContext {
     "pool.set_watch",
     // IV 记录的状态与开关:数一下目录里的文件、写一行偏好;记的那一路是引擎里自己的循环
     "options.iv_recorder", "options.iv_recorder_set",
+    // 日内剧本:读循环留在内存里的那一份、写一行偏好;取行情是循环自己的事
+    "options.playbook", "options.playbook_set",
     // 存 API Key / 富途解锁密码:写系统凭证库(子进程,可能等 macOS 弹窗,最多 20 秒)。和下单状态无关,
     // 不该让一个没人点的弹窗把排在后面的下单、立即平仓挡住
     "keychain.set", "futu.set_password",
@@ -310,6 +316,8 @@ export class RpcServer implements RpcContext {
     this.anomaly.start();
     // 当日到期期权 IV 的记录同理:在引擎里按节拍跑,连着 IBKR、在常规时段里才真的去记
     this.ivRecorder.start();
+    // SPX 日内剧本同理:到点取预期波动区间、盯现价过没过线,都不靠界面开着哪一页
+    this.playbook.start();
     // 预热 SPX 公开现价:本地速记「15蝴蝶」的中心要靠它算,冷取一次约 0.7 秒(实测 790 ms)。
     // 启动就取、之后每 4 分钟后台刷一次(缓存 10 分钟内"旧值先给、后台换新"),让这条 2 毫秒的路径
     // 不因为"第一次"或"十分钟没人用"变成 700 毫秒。取不到就算了,速记自己还会再取。
@@ -398,6 +406,7 @@ export class RpcServer implements RpcContext {
     }
     this.anomaly.stop();
     this.ivRecorder.stop();
+    this.playbook.stop();
     this.follow.stop();
     this.flyPlanner.marks.close();
     this.brokerLink.stop();

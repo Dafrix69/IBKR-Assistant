@@ -302,6 +302,19 @@
 .fly-spot-levels .chip-tag.ant-tag { font-variant-numeric: tabular-nums; }
 .fly-spot-gap { margin-left: 6px; color: var(--label-secondary); }
 .fly-spot-alert { margin-left: auto; }
+.pb-lines { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-bottom: 10px; padding: 0 2px; }
+.pb-line { display: inline-flex; align-items: baseline; gap: 6px; font-size: 12px; }
+.pb-num { font-variant-numeric: tabular-nums; }
+.pb-line .pb-num { font-size: 14px; font-weight: 590; }
+.pb-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.pb-table th { padding: 4px 8px; text-align: left; font-size: 11px; font-weight: 500; color: var(--label-secondary); border-bottom: 1px solid var(--separator); }
+.pb-table td { padding: 5px 8px; border-bottom: 1px solid var(--separator); white-space: nowrap; }
+.pb-scroll { overflow-x: auto; }
+.pb-table tr.dim td { color: var(--label-secondary); }
+.pb-wall { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-bottom: 10px; padding: 0 2px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.pb-notes { margin: 0 0 10px; }
+.pb-events { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; padding: 0 2px; font-size: 12px; }
+.pb-event { display: flex; gap: 10px; }
 .fly-form { padding: 10px 12px 12px; border-radius: var(--radius-card); background: var(--bg-fill); margin-bottom: 12px; }
 .fly-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 14px; margin-bottom: 10px; }
 .fly-row label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--label-secondary); }
