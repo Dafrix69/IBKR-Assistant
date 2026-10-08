@@ -7,7 +7,7 @@
  * 而不是再跑一轮——两处同时判触发就是两张平仓单。
  */
 import type { PositionRow } from "./positions.js";
-import type { SpotTarget, Track } from "./tracker.js";
+import type { SpotStop, SpotTarget, Track } from "./tracker.js";
 import type { TrackerHeartbeat } from "./system.js";
 
 /** 盯盘一轮对某一条追踪算出来的结论(tracker.ts 的 evaluate)。 */
@@ -64,6 +64,8 @@ export type TrackPollRow = Track & Partial<TrackEvaluation> & {
   position?: PositionRow;
   /** 设了标的目标价时,这一轮换算出来的那一份 */
   spot_target?: SpotTarget;
+  /** 设了标的止损价时,这一轮的标的现价与越没越过 */
+  spot_stop?: SpotStop;
   /** 执行归券商托管单(不另发软件单——两张各平一次就是反向开仓) */
   hosted?: boolean;
   /** 正在追价平仓 */

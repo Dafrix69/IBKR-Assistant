@@ -14,6 +14,7 @@ import { HandlerBase } from "../context.js";
 import type { MethodTable, Rec } from "../context.js";
 import { contractMethods } from "../contractMethods.js";
 import { drawdownTiersOf, optFloat } from "../params.js";
+import { underlyingSpot } from "../../engine/spotStop.js";
 import { legInputsOf } from "../../ivPricing.js";
 import type { LegInputs } from "../../ivPricing.js";
 
@@ -143,6 +144,7 @@ export class TrackerHandlers extends HandlerBase {
    *  · 组合托管只放开一张按标的目标价的限价止盈单,且不能再设止损类目标(托管一开引擎就不再
    *    自己发单,止损会没人盯)
    *  · 标的目标价要当场算得出、比现价更有利;开了自动平仓或托管的,还得是市场价算出来的
+   *  · 标的止损价要在标的现价的保护一侧(跌到的在下、涨到的在上);拿不到标的现价就不给设
    */
   private async checkTargets(
     raw: Rec, rows: Record<string, Rec>, position: tkMod.Position, targets: tkMod.Targets, auto: tkMod.AutoClose,
@@ -161,6 +163,14 @@ export class TrackerHandlers extends HandlerBase {
     }
     try {
       tkMod.validate(position, targets, raw["market_price"]);
+      if (targets.spot_stop_below !== null || targets.spot_stop_above !== null) {
+        // 填在现价另一侧的止损,建好的下一秒就把仓平掉:方向当场核对,取价和盯盘同一个口径
+        const symbol = String(raw["symbol"]);
+        const live = this.router === null || raw["sec_type"] === "STK"
+          ? { spot: null } : await underlyingSpot(this.router, symbol);
+        const issue = tkMod.spotStopIssue(targets, String(raw["sec_type"] ?? "STK"), symbol, live.spot);
+        if (issue !== null) throw new tkMod.TrackerError(issue);
+      }
       if (spot !== null) {
         // 现在就算一次:算不出来的目标价不设。一条永远算不出止盈位的追踪在界面上
         // 和"还没到价"长得一模一样,用户会以为它在保护自己。
@@ -256,6 +266,8 @@ export class TrackerHandlers extends HandlerBase {
       profit_drawdown_pct: optFloat(params["profit_drawdown_pct"]),
       ...drawdownTiersOf(params, flyUnitCost(raw)),
       spot_target: flySpot,
+      spot_stop_below: optFloat(params["spot_stop_below"]),
+      spot_stop_above: optFloat(params["spot_stop_above"]),
     });
     const auto = tkMod.makeAutoClose({
       enabled: Boolean(params["auto_close"]),
@@ -328,7 +340,8 @@ export class TrackerHandlers extends HandlerBase {
       }
     }
     if (["take_profit", "stop_loss", "trail_pct", "profit_drawdown_pct", "profit_drawdown_tiers",
-         "profit_drawdown_preset", "profit_drawdown_arm_pct", "spot_target"].some((k) => k in params)) {
+         "profit_drawdown_preset", "profit_drawdown_arm_pct", "spot_target",
+         "spot_stop_below", "spot_stop_above"].some((k) => k in params)) {
       // 改目标和新建走**同一套**校验:以前这里什么都不查,改一下目标价就能绕过
       // 「算出来的价比现价还差、挂上去立刻成交」那道拦——等于绕过了「同意价格后发单」。
       // 持仓先取:蝶式预设按每组成本把金额线换算成倍数
@@ -342,6 +355,8 @@ export class TrackerHandlers extends HandlerBase {
         profit_drawdown_pct: optFloat(params["profit_drawdown_pct"]),
         ...drawdownTiersOf(params, flyUnitCost(raw)),
         spot_target: optFloat(params["spot_target"]),
+        spot_stop_below: optFloat(params["spot_stop_below"]),
+        spot_stop_above: optFloat(params["spot_stop_above"]),
       });
       const auto = tkMod.makeAutoClose((fields["auto_close"] ?? track["auto_close"] ?? {}) as Rec);
       await this.checkTargets(raw, rows, this.positionOf(raw), targets, auto);

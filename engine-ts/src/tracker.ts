@@ -22,9 +22,11 @@ export type { HostedOrderPlan } from "./positions.js";
 export { comboRow, groupLegs, shapeOf, splitStructures, withCombos } from "./combos.js";
 // 利润回撤的几道闸搬到了 trackerDrawdown.ts;这里转出,老的 import 路径不变。
 export { drawdownThreshold } from "./trackerDrawdown.js";
+// 标的止损价的判定与设置校验在 trackerSpotStop.ts(只认 Targets 和几个数);这里转出,引擎与 handler 从一处取。
+export { hasSpotStop, spotStop, spotStopIssue } from "./trackerSpotStop.js";
 // 目标、自动平仓设置、标的目标价的试算结果——这三个形状界面也要用,定义在 contract/tracker.ts;这里转出,老的 import 不用改。
-export type { AutoClose, SpotTarget, Targets } from "./contract/tracker.js";
-import type { AutoClose, SpotTarget, Targets } from "./contract/tracker.js";
+export type { AutoClose, SpotStop, SpotTarget, Targets } from "./contract/tracker.js";
+import type { AutoClose, SpotStop, SpotTarget, Targets } from "./contract/tracker.js";
 
 export const STATE_HOLDING = "holding";
 export const STATE_TAKE_PROFIT = "take_profit";
@@ -93,6 +95,8 @@ export function makeTargets(raw: Partial<Targets> = {}): Targets {
     profit_drawdown_arm: raw.profit_drawdown_arm ?? null,
     profit_drawdown_floor: raw.profit_drawdown_floor ?? null,
     spot_target: raw.spot_target ?? null,
+    spot_stop_below: raw.spot_stop_below ?? null,
+    spot_stop_above: raw.spot_stop_above ?? null,
   };
 }
 
@@ -100,7 +104,7 @@ export function targetsEmpty(t: Targets): boolean {
   return (
     t.take_profit === null && t.stop_loss === null && t.trail_pct === null &&
     t.profit_drawdown_pct === null && !(t.profit_drawdown_tiers ?? []).length &&
-    t.spot_target === null
+    t.spot_target === null && t.spot_stop_below === null && t.spot_stop_above === null
   );
 }
 
@@ -844,6 +848,30 @@ export function evaluate(
   out.to_take_profit_pct = gapPct(p, targets.take_profit);
   out.to_stop_pct = gapPct(p, stop);
   return out;
+}
+
+/**
+ * 把"标的本身到了没有"并进这一轮的结论。两样都以标的为准,不看持仓价:
+ *
+ *  · 标的越过了止损价 → 止损。止损优先于止盈(和 evaluate 同一条规矩:跳空按最坏的那边算);
+ *    已经判成止损 / 利润回撤的不改写,那一句原因更具体。
+ *  · 标的真到了目标价 → 止盈。同一组 σ 下它和"持仓价 ≥ 目标价对应的价"是一回事,可行情口径不一致时
+ *    (退到最近腿 / 时钟 σ)两者会差一点——以标的本身为准:到了就是到了。
+ */
+export function withSpotTriggers(
+  result: EvaluateResult, symbol: string, targets: Targets, target: SpotTarget | null, stop: SpotStop | null,
+): EvaluateResult {
+  if (stop?.hit && (result.state === STATE_HOLDING || result.state === STATE_TAKE_PROFIT)) {
+    return { ...result, state: STATE_STOP_LOSS, reason: stop.reason };
+  }
+  if (result.state === STATE_HOLDING && target?.reached) {
+    return {
+      ...result,
+      state: STATE_TAKE_PROFIT,
+      reason: `${symbol} 到了目标价 ${pyG(Number(targets.spot_target))}(现价 ${target.spot})`,
+    };
+  }
+  return result;
 }
 
 function gapPct(price: number | null, target: number | null): number | null {

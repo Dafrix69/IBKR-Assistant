@@ -8,6 +8,7 @@ import { Alert, Button, Space } from 'antd';
 import { dafri, errorMessage } from '../bridge';
 import { fmtMoney, fmtNum } from './format';
 import { TRACK_STATE_LABEL } from './labels';
+import { spotStopLine, spotStopSummary } from './spotStopFormat';
 import { showBanner } from '../store/banner';
 import { loadRecords } from '../store/records';
 import { gatewayName, useStatus } from '../store/status';
@@ -45,12 +46,15 @@ export function legLabel(symbol: string, secType: string, contract?: Record<stri
 const GAUGE_TINT: Record<'ok' | 'warn' | 'bad', Tint> = { ok: 'green', warn: 'orange', bad: 'red' };
 
 /** 一条"离触发还有多远"的量表。没有现价就不画——画一条假的比不画更坏。 */
-function Gauge({ live, targets }: { live: LiveRow; targets: TrackTargets }) {
+function Gauge({ live, targets, symbol }: { live: LiveRow; targets: TrackTargets; symbol: string }) {
   const price = live.price;
+  // 标的止损看的是标的现价,和这份持仓有没有报价无关:持仓没价的那一轮也照样摆出来
+  const spotStop = live.spot_stop ? <div className="muted">{spotStopLine(symbol, live.spot_stop)}</div> : null;
   if (price == null) {
     return (
       <div className="track-gauge">
         <span className="muted">拿不到现价,本轮不判断</span>
+        {spotStop}
       </div>
     );
   }
@@ -104,7 +108,7 @@ function Gauge({ live, targets }: { live: LiveRow; targets: TrackTargets }) {
       tone: 'bad',
     });
   }
-  if (!rows.length && !pending.length) {
+  if (!rows.length && !pending.length && !spotStop) {
     return (
       <div className="track-gauge">
         <span className="muted">没设任何触发条件,只是挂着看</span>
@@ -118,6 +122,7 @@ function Gauge({ live, targets }: { live: LiveRow; targets: TrackTargets }) {
           {text}
         </div>
       ))}
+      {spotStop}
       {rows.length ? (
         <div className="gauge-rings">
           {rows.map((r) => {
@@ -241,6 +246,7 @@ export function TrackCard({
         items={[
           targets.take_profit ? `止盈 ${fmtMoney(targets.take_profit)}` : null,
           targets.stop_loss ? `止损 ${fmtMoney(targets.stop_loss)}` : null,
+          spotStopSummary(targets.spot_stop_below, targets.spot_stop_above) || null,
           // 分档时阈值每一轮都可能变,显示当前生效的那一档而不是配置里的静态值
           targets.profit_drawdown_pct || ddTiers
             ? (ddTiers ? `利润回撤 分档${now != null ? ` · 当前 ${now}%` : ''}` : `利润回撤 ${targets.profit_drawdown_pct}%`) + (frac && frac < 100 ? ` → 平 ${frac}%` : '')
@@ -286,7 +292,7 @@ export function TrackCard({
         />
       ) : null}
       {/* 盯盘条:离触发还有多远。分档回撤的触发价每轮都会跳,所以取引擎算好的那个 */}
-      {!fired && t.enabled ? <Gauge live={live} targets={targets} /> : null}
+      {!fired && t.enabled ? <Gauge live={live} targets={targets} symbol={t.symbol} /> : null}
       {live.reason ? <div className="reason">{live.reason}</div> : null}
       {/* 追价平仓:追到哪了。轮 = 秒;挂的价只朝成交方向动,让到「最多让到」为止 */}
       {sweeping && live.chase ? (

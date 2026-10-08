@@ -372,6 +372,8 @@ export class HostedOrders {
    */
   onTriggered(args: {
     track: Rec; raw: Rec; position: tk.Position; state: string; reason: string; spotReached: boolean;
+    /** 这次触发是标的止损价:券商侧没有任何单看标的(sl / trail 盯的是持仓自己的价),一定要追价 */
+    spotStop?: boolean;
     row: Rec; out: TrackerPollTick;
   }): void {
     const { track, raw, position, state, reason, spotReached, row, out } = args;
@@ -384,7 +386,7 @@ export class HostedOrders {
     const covered = (HostedOrders.COVERING[state] ?? []).some((k) => live.has(k));
     // 组合只托管止盈单:止损类在券商侧永远没有单,不用等对账就知道。其余品种要对过一次账才作数(见 synced)
     const uncoveredForSure = secType === "BAG" && state !== tk.STATE_TAKE_PROFIT;
-    const sweep = (derivative && spotReached) || uncoveredForSure || (!covered && this.synced.has(tid));
+    const sweep = (derivative && spotReached) || Boolean(args.spotStop) || uncoveredForSure || (!covered && this.synced.has(tid));
     if (sweep && tk.sweepReason(track) === null && !track["fired_at"]) {
       const breaker = this.killswitch.state();
       const blockers = tk.closeBlockers({

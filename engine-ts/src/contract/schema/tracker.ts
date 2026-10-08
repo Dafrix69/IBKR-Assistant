@@ -31,6 +31,8 @@ const targetsInput = {
   profit_drawdown_late: optional(z.object({ after: z.string(), factor: numberField }).strict()),
   profit_drawdown_arm_pct: numberField,
   spot_target: numberField,
+  spot_stop_below: numberField,
+  spot_stop_above: numberField,
 };
 
 export const TrackerAddParamsSchema: ParamsSchema<TrackerAddParams> = z.object({

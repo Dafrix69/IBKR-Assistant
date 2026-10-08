@@ -40,6 +40,11 @@ export interface Targets {
   /** **标的**的目标价。止盈价不由人填,而是每一轮按当前波动率算出「标的走到这里时
    * 这份持仓该值多少」——正股、单腿期权、蝶式/价差都走这一条,见 spotTarget()。 */
   spot_target: number | null;
+  /** **标的**的止损价:标的跌到 spot_stop_below、或涨到 spot_stop_above 就平,记作止损。两个可以只填一个。
+   * 只看标的现价本身,不换算成持仓价、不用波动率(见 trackerSpotStop.ts);只给期权与组合用。
+   * 老记录没有这两个键,读出来是 null,行为不变。 */
+  spot_stop_below: number | null;
+  spot_stop_above: number | null;
 }
 
 export interface AutoClose {
@@ -125,6 +130,21 @@ export interface SpotTarget {
   chase_max_pct?: number;
 }
 
+// ---------------------------------------------------------------- 标的止损价
+/** 标的止损价这一轮的情况(盯盘每一轮给界面):两条线、标的现价、越过了哪一条。 */
+export interface SpotStop {
+  below: number | null;
+  above: number | null;
+  /** 标的现价;这一轮拿不到就是 null,这一轮不判 */
+  spot: number | null;
+  /** 现价是怎么来的(夜盘按期货推算时写明);常规时段的官方价为空串 */
+  spot_note: string;
+  /** 这一轮越过了哪一条;没越过是 null */
+  hit: "below" | "above" | null;
+  /** 没判的时候说清楚为什么——静默不判会让界面看起来和"还没到"一样 */
+  reason: string;
+}
+
 // ---------------------------------------------------------------- 入参
 /**
  * 表单里的一个数。界面发过来的是**字符串**(lib/TrackForm.tsx 用 str(tp) 取表单值),'' 表示不设;数字也认;
@@ -138,7 +158,7 @@ export interface DrawdownTierInput {
   pct: NumberField;
 }
 
-/** 五个目标字段 + 分档那一组。新建与修改共用。 */
+/** 目标字段 + 分档那一组。新建与修改共用。 */
 export interface TargetsInput {
   take_profit?: NumberField;
   stop_loss?: NumberField;
@@ -154,6 +174,9 @@ export interface TargetsInput {
   profit_drawdown_arm_pct?: NumberField;
   /** 和 take_profit 只能选一个 */
   spot_target?: NumberField;
+  /** 标的止损价:标的跌到 / 涨到这里就平。'' / 不给 = 不设 */
+  spot_stop_below?: NumberField;
+  spot_stop_above?: NumberField;
 }
 
 export interface TrackerAddParams extends TargetsInput {
@@ -175,7 +198,7 @@ export interface TrackerAddParams extends TargetsInput {
 
 /**
  * 三种改法,可以一起给:enabled(重新启用会把上一次触发的闩解开)、auto_close(**合并**:只给要改的键,没带的保持原样)、
- * 目标字段(给了任何一个,就按"五个一起给"算——没给的那几个等于被清掉)。
+ * 目标字段(给了任何一个,就按"全部一起给"算——没给的那几个等于被清掉)。
  */
 export interface TrackerUpdateParams extends TargetsInput {
   id: string;

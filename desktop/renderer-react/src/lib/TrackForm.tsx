@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 import { Button, InputNumber, Select, Switch } from 'antd';
 import { dafri, errorMessage, type TrackerAddSpec } from '../bridge';
 import { fmtMoney, fmtNum } from './format';
+import { spotStopConfirmLine } from './spotStopFormat';
 import { showBanner } from '../store/banner';
 import { pickableAccounts, useStatus } from '../store/status';
 import { loadTracker, type Position, type SpotTargetRow } from '../store/tracker';
@@ -22,6 +23,9 @@ const SIGMA_SOURCE_HINT: Record<string, string> = {
   clock: '拿不到市场报价,用的是模型默认波动率(EM×√剩余方差)——不是市场价,只当个参考',
 };
 
+/** 标的止损价那两个格子的说明(悬停可见) */
+const STOP_TITLE = '只看标的现价,不看这份持仓值多少:标的到了这里就平,记作止损(平仓走和别的止损同一条路)。两个可以只填一个;软件关掉就不再盯。';
+
 export function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: string | null) => void }) {
   const status = useStatus();
   const long = p.quantity > 0;
@@ -35,6 +39,9 @@ export function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: strin
   const [ddArm, setDdArm] = useState<number | null>(10);
   const [tiers, setTiers] = useState(false);
   const [spotTarget, setSpotTarget] = useState<number | null>(null);
+  // 标的止损价:标的跌到 / 涨到这里就平。只给期权与组合(正股的标的就是它自己,直接填止损价)
+  const [stopBelow, setStopBelow] = useState<number | null>(null);
+  const [stopAbove, setStopAbove] = useState<number | null>(null);
   // 试算结果和它算的那个目标价绑在一起:改了目标价、防抖还没跑完的那几百毫秒里,
   // 旧结果必须立刻失效——否则用户同意的是上一个目标价的数,发出去的是新的。
   const [preview, setPreview] = useState<{ target: number; row: SpotTargetRow } | null>(null);
@@ -105,6 +112,8 @@ export function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: strin
       profit_drawdown_preset: tiers ? 'fly' : undefined,
       profit_drawdown_arm_pct: tiers || profitDd == null ? '' : str(ddArm),
       spot_target: str(spotTarget),
+      spot_stop_below: str(stopBelow),
+      spot_stop_above: str(stopAbove),
       close_fraction_pct: str(fraction) || undefined,
       chase_max_pct: str(chaseMax) || undefined,
       auto_close: auto,
@@ -157,6 +166,7 @@ export function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: strin
             '直接按各腿当时的买卖价挂立刻成交的价平掉,没成交就每秒再追。\n'
           : '')
       : '';
+    const stopLine = spotStopConfirmLine(p.symbol, stopBelow, stopAbove);
     if (spec.host_at_broker) {
       const ok = await dafri.confirm({
         purpose: 'tracker.add',
@@ -166,7 +176,7 @@ export function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: strin
           ? `${p.symbol} 到 ${fmtNum(spotTarget)} 就走,现在算下来约 ${fmtMoney(quoted.price)}。`
           : `${p.symbol} 的止盈/止损将作为 GTC 单挂在券商服务器上。`,
         detail:
-          priceLine +
+          priceLine + stopLine +
           `数量 ${Math.abs(p.quantity)} · 账户 ${p.account}\n` +
           '这张 GTC 限价单会立刻挂到券商服务器上;软件关闭后它仍然有效,价格停在最后一次调整的位置。\n' +
           '触发由券商实时行情决定,一张成交其余自动撤销(OCA)。',
@@ -182,7 +192,7 @@ export function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: strin
         message: quoted
           ? `${p.symbol} 到 ${fmtNum(spotTarget)} 就走,现在算下来约 ${fmtMoney(quoted.price)}。`
           : `${p.symbol} 到价后会自动发出平仓单,不再询问。`,
-        detail: priceLine +
+        detail: priceLine + stopLine +
           `数量 ${Math.abs(p.quantity)} · 账户 ${p.account} · ${orderType === 'MKT' ? '市价平仓' : '限价平仓'}\n软件关闭后不再盯盘。`,
         confirmLabel: quoted ? '同意这个价,开始追踪' : '我确认',
       });
@@ -201,12 +211,12 @@ export function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: strin
     }
   }
 
-  const num = (props: { label: string; hint: string; value: number | null; onChange: (v: number | null) => void; disabled?: boolean; autoFocus?: boolean }) => (
-    <label className="track-field">
+  const num = (props: { label: string; hint: string; value: number | null; onChange: (v: number | null) => void; disabled?: boolean; autoFocus?: boolean; step?: number; title?: string }) => (
+    <label className="track-field" title={props.title}>
       <span>{props.label}</span>
       <InputNumber
         min={0}
-        step={0.01}
+        step={props.step ?? 0.01}
         placeholder={props.hint}
         value={props.value}
         disabled={props.disabled}
@@ -284,6 +294,9 @@ export function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: strin
         autoFocus: true,
       })}
       {num({ label: '止损价', hint: long ? '低于现价' : '高于现价', value: sl, onChange: setSl })}
+      {/* 标的止损价:只看标的现价,不看这份持仓值多少;到了就平,记作止损。两个可以只填一个 */}
+      {derivative ? num({ label: `标的跌到多少止损(${p.symbol})`, hint: `低于 ${p.symbol} 现价,跌到就平`, value: stopBelow, onChange: setStopBelow, step: 1, title: STOP_TITLE }) : null}
+      {derivative ? num({ label: `标的涨到多少止损(${p.symbol})`, hint: `高于 ${p.symbol} 现价,涨到就平`, value: stopAbove, onChange: setStopAbove, step: 1, title: STOP_TITLE }) : null}
       {/* 两个"追踪"是不同刻度,标签必须自解释:价格回撤 5% 在利润口径上会被成本杠杆放大 */}
       {num({ label: '跟踪止损 %(按价格)', hint: '价格从峰值回落 N%,全平', value: trail, onChange: setTrail })}
       {num({ label: '利润回撤 %(按利润)', hint: '利润从峰值缩水 N%', value: profitDd, onChange: setProfitDd, disabled: tiers })}

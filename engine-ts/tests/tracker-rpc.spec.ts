@@ -121,6 +121,8 @@ describe("tracker.add:界面发来的数值是字符串,'' 是不设", () => {
       profit_drawdown_tiers: null, profit_drawdown_late: null, spot_target: null,
       // 2026-09-26 起多了激活线与最少回吐两个键(只有 fly 预设会设),这里是新增的键,不是改了哪条行为
       profit_drawdown_arm: null, profit_drawdown_floor: null,
+      // 2026-10-08 起多了标的止损价的两个键(填了才有值),同样是新增的键
+      spot_stop_below: null, spot_stop_above: null,
     });
     expect(track["auto_close"]).toMatchObject({
       enabled: false, order_type: "MKT", slippage_pct: 0.3, close_fraction_pct: 100, host_at_broker: false,
@@ -137,6 +139,8 @@ describe("tracker.add:界面发来的数值是字符串,'' 是不设", () => {
       profit_drawdown_tiers: null, profit_drawdown_late: null, spot_target: null,
       // 2026-09-26 起多了激活线与最少回吐两个键(只有 fly 预设会设),这里是新增的键,不是改了哪条行为
       profit_drawdown_arm: null, profit_drawdown_floor: null,
+      // 2026-10-08 起多了标的止损价的两个键(填了才有值),同样是新增的键
+      spot_stop_below: null, spot_stop_above: null,
     });
   });
 
@@ -301,6 +305,8 @@ describe("tracker.update", () => {
       profit_drawdown_tiers: null, profit_drawdown_late: null, spot_target: null,
       // 2026-09-26 起多了激活线与最少回吐两个键(只有 fly 预设会设),这里是新增的键,不是改了哪条行为
       profit_drawdown_arm: null, profit_drawdown_floor: null,
+      // 2026-10-08 起多了标的止损价的两个键(填了才有值),同样是新增的键
+      spot_stop_below: null, spot_stop_above: null,
     });
     // 现状:只给一个目标字段,其余四个按"没填"算,等于被清掉——不是"只改这一个"
     const only = await call("tracker.update", { id, stop_loss: "97" });

@@ -27,7 +27,7 @@ transport     rpc.ts(转出的壳)  rpc/server.ts  rpc/context.ts  rpc/contractM
 orchestrate   engine.ts  engine/*.ts(hosted 托管单、reconcile 执行对账、callbacks 回报落库、clock)  tracker.ts  services/*.ts
 execution     broker.ts  ibContracts.ts(怎么拼一张 IB 合约)  futuBroker.ts  ibSession.ts  ibTypes.ts  tws.ts  futu.ts  futuBridge.ts  optionMarks.ts(蝴蝶测算取行情:自己的流,不碰盯盘的)  heldStreams.ts(持仓的常驻行情订阅:平掉的撤掉)
 parsing       validator.ts  providers.ts  prompts.ts  shorthand.ts  llm.ts  embeddings.ts  follow.ts(Discord 跟单的判定规则:跟不跟、为什么)
-analysis      backtest backtestLab priceaction screener research ideaRetrieval optionwall anomaly flyexit tradereview tradeOutcomes performance leaders fillsCsv optionTradesCsv optionPositionsCsv tradeSimilar ibtrades macro market alerts maTouch execQuality signalOutcomes trackerDrawdown ivPricing playbook(SPX 日内剧本:预期波动区间与状态机) flyPlan flyCalibration flyIvModel(校准出来的参数,脚本生成,不手改)
+analysis      backtest backtestLab priceaction screener research ideaRetrieval optionwall anomaly flyexit tradereview tradeOutcomes performance leaders fillsCsv optionTradesCsv optionPositionsCsv tradeSimilar ibtrades macro market alerts maTouch execQuality signalOutcomes trackerDrawdown trackerSpotStop ivPricing playbook(SPX 日内剧本:预期波动区间与状态机) flyPlan flyCalibration flyIvModel(校准出来的参数,脚本生成,不手改)
 domain        config.ts  models.ts  store.ts  storeSafety.ts(库的版本号、完整性、备份)  importedTrades.ts  ideaVectors.ts  signalLog.ts  positions.ts  combos.ts(期权腿 → 组合)  marketdata.ts  ivSamples.ts(自己攒的期权 IV,文件读写)  playbookLog.ts(日内剧本的底账,文件读写)  followLog.ts(跟单日志)  followInbox.ts(跟单的本地收件:收件文件怎么读)
 util          py.ts  pyjson.ts  tz.ts  notify.ts  keychain.ts  keychainChild.ts(凭证子进程)  secrets.ts(引擎里凭证读写的入口)  killswitch.ts  protections.ts  riskBudget.ts  rpcError.ts  marketCalendar.ts(内置休市日历)  discordGateway.ts(Discord Gateway 的最小客户端,只读)
 contract      contract/*.ts(纯类型,零 import,谁都能引)  contract/schema/*.ts(入参的 zod 校验,只给 rpc/ 用)
@@ -108,7 +108,7 @@ contract      contract/*.ts(纯类型,零 import,谁都能引)  contract/schema/
 真要让某个文件变长,就得去改那个数字——改的那一刻正好回答上面那句话。
 已知超线且待拆的:`engine.ts`(2026-09-20 托管单 → `engine/hosted.ts`、执行对账 → `engine/reconcile.ts`、
 回报落库 → `engine/callbacks.ts`;2026-09-27 本地速记 → `engine/localShorthand.ts`、托管追踪的触发处置 →
-`engine/hosted.ts` 的 `onTriggered`、平仓识别 → `engine/closing.ts`;2026-09-28 `localIsoSeconds` → `engine/clock.ts`,还剩 1,756 行。**另有两个方法超了 150 行的函数预算:
+`engine/hosted.ts` 的 `onTriggered`、平仓识别 → `engine/closing.ts`;2026-09-28 `localIsoSeconds` → `engine/clock.ts`,还剩 1,753 行。**另有两个方法超了 150 行的函数预算:
 `handleInstruction` 230 行、`pollTrackers` 154 行** —— 拆它时要顺带切开,不能只搬不动。
 四簇与建议顺序量在体检报告里)、
 `broker.ts`(2026-09-21 合约工具函数已搬进 `ibContracts.ts`,还剩 2,400 行 —— **大头是 `BrokerRouter`

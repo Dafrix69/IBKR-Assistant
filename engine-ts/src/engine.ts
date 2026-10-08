@@ -36,6 +36,7 @@ import type { ProtectionState } from "./protections.js";
 import { TradeStore, redactAccount } from "./store.js";
 import { localIsoSeconds, nowIsoSecondsEt } from "./engine/clock.js";
 import { HostedOrders } from "./engine/hosted.js";
+import { spotStopFor } from "./engine/spotStop.js";
 import { tryLocalShorthand } from "./engine/localShorthand.js";
 import { reducesPositions } from "./engine/closing.js";
 import { IbCallbacks } from "./engine/callbacks.js";
@@ -911,17 +912,12 @@ export class TradingEngine {
       const [targets, spotTargetRow] = await this.applySpotTarget(
         track, raw, position, tk.makeTargets(track["targets"] ?? {}), positions, at,
       );
-      let result = tk.evaluate(position, targets, raw["market_price"], track["peak"] ?? null,
-        at.minutes);
-      // 标的真到了目标价。同一组 σ 下它和"持仓价 ≥ 目标价对应的价"是一回事,可行情口径不一致时
-      // (退到最近腿 / 时钟 σ)两者会差一点——以标的本身为准:到了就是到了
-      if (result.state === tk.STATE_HOLDING && spotTargetRow?.reached) {
-        result = {
-          ...result,
-          state: tk.STATE_TAKE_PROFIT,
-          reason: `${track["symbol"]} 到了目标价 ${pyG(Number(targets.spot_target))}(现价 ${spotTargetRow.spot})`,
-        };
-      }
+      // 标的止损价只看标的现价(engine/spotStop.ts)。标的越过了止损价、或真到了目标价,都以标的本身为准并进结论
+      const spotStopRow = await spotStopFor(this.router, String(raw["symbol"]), targets, spotTargetRow);
+      const result = tk.withSpotTriggers(
+        tk.evaluate(position, targets, raw["market_price"], track["peak"] ?? null, at.minutes),
+        String(track["symbol"]), targets, spotTargetRow, spotStopRow,
+      );
 
       // 峰值只在变了的时候写
       if (result.peak !== null && result.peak !== track["peak"]) {
@@ -931,6 +927,7 @@ export class TradingEngine {
       // raw 来自券商适配层(那一层的行是松散的 Rec);到了这里它就是界面读的那一行
       const row = { ...track, ...result, position: raw as PositionRow };
       if (spotTargetRow !== null) (row as Rec)["spot_target"] = spotTargetRow;
+      if (spotStopRow !== null) (row as Rec)["spot_stop"] = spotStopRow;
       out["rows"].push(row);
 
       const auto = tk.makeAutoClose(track["auto_close"] ?? {});
@@ -951,7 +948,7 @@ export class TradingEngine {
         // 就是托管单 + 软件单各平一次——双重平仓等于反向开仓
         this.hostedOrders.onTriggered({
           track, raw, position, state: result.state, reason: result.reason,
-          spotReached: Boolean(spotTargetRow?.reached), row: row as Rec, out,
+          spotReached: Boolean(spotTargetRow?.reached), spotStop: Boolean(spotStopRow?.hit), row: row as Rec, out,
         });
         continue;
       }
