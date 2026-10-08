@@ -9,6 +9,7 @@ import type { TradingEngine } from "../engine.js";
 import type { RpcError } from "../rpcError.js";
 import type { AlertsService } from "../services/alerts.js";
 import type { AnomalyService } from "../services/anomaly.js";
+import type { FillSyncService } from "../services/fillSync.js";
 import type { FlyPlannerService } from "../services/flyPlanner.js";
 import type { FollowService } from "../services/follow.js";
 import type { IvRecorderService } from "../services/ivRecorder.js";
@@ -52,6 +53,7 @@ export interface RpcContext extends ServiceHost {
   readonly anomaly: AnomalyService;
   readonly pool: PoolService;
   readonly stockTrips: StockTripsService;
+  readonly fillSync: FillSyncService;
   readonly tradeHistory: TradeHistoryService;
   readonly similarContext: SimilarContextService;
   readonly ideaSemantic: IdeaSemanticService;

@@ -169,7 +169,7 @@ export function ReviewPage() {
 
   const what = kind === 'stock' ? '股票交易' : kind === 'butterfly' ? '蝴蝶' : '蝴蝶或股票交易';
   const emptyOption =
-    available === null ? '加载中…' : available ? `今天的成交里没有${what}(TWS 只给当天的;更早的要在连着时同步过才有)` : '还没有同步到任何 IBKR 成交:先连接 TWS 再点「同步成交」';
+    available === null ? '加载中…' : available ? `库里和 TWS 当天的成交里都没有${what}(更早的:在 TWS 的交易日志里勾上那几天,再点「同步成交」)` : '还没有同步到任何 IBKR 成交:先连接 TWS 再点「同步成交」';
 
   return (
     <section className="tab-panel active" id="page-review">
@@ -201,7 +201,12 @@ export function ReviewPage() {
           <span className="muted">EM</span>
           <InputNumber min={1} max={500} step={0.5} value={em} disabled={selectedKind === 'stock'} onChange={(v) => setEm(v == null ? null : Number(v))} style={{ width: 72 }} aria-label="隐含日内波动 EM" />
         </label>
-        <Button size="small" type="text" title="向 TWS 重新拉取成交明细并刷新列表" onClick={() => void loadCandidates(includeLocal)}>
+        <Button
+          size="small"
+          type="text"
+          title="向 TWS 重新拉取成交明细并刷新列表。连着 TWS 时应用自己也在同步,一般不用点;TWS 只回它自己那个「当天」的成交,要补前几天的,先在 TWS 的交易日志(Trade Log)里勾上那几天(最多 7 天)"
+          onClick={() => void loadCandidates(includeLocal)}
+        >
           同步成交
         </Button>
         <Button type="primary" id="btn-review-run" loading={loading} onClick={() => void run(selected)}>
@@ -214,7 +219,8 @@ export function ReviewPage() {
       <Primer id="intro-review" intro summary="数据来源、结论规则与止盈策略">
         <p className="hint">
           列表来自 <strong>IBKR 的成交明细</strong>:引擎从 TWS 拉取逐笔成交,按订单把三条腿合成一张蝴蝶,并存进本地库累积
-          (TWS 的接口只给当天的成交,所以历史靠每次连着时同步来的那些)。<strong>股票</strong>按"从空仓到空仓"的一段持仓算一笔:中途加仓、分批卖出都在这一笔里,
+          (TWS 的接口只给它自己那个「当天」的成交,按 TWS 登录时选的时区过了午夜就翻篇;应用连着 TWS 时会自己把新成交同步进库,不用开着这一页。
+          应用没开、电脑睡着时漏掉的:在 TWS 的交易日志(Trade Log)里勾上那几天,再点「同步成交」,最多补回最近 7 天)。<strong>股票</strong>按"从空仓到空仓"的一段持仓算一笔:中途加仓、分批卖出都在这一笔里,
           成本按移动平均;期初仓位用当前持仓反推,卖的是更早买的货就只复盘出场、不编成本。股票的结论看的是进场 / 出场落在持有期区间的什么位置、
           最大浮盈浮亏与兑现了多少、卖出之后又走了多远。<strong>蝴蝶</strong>选一张后拉取标的在<strong>开仓前后到平仓 / 到期</strong>的 K 线,
           画出三条行权价与盈利区,并按规则给出结论:开仓位置、开仓前后走势、持有期间离中心多远、曾经的机会、结局与方向对错。

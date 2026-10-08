@@ -66,30 +66,15 @@ export class ReviewHandlers extends HandlerBase {
   // ---- 交易分析:蝴蝶复盘 ------------------------------------------------
   static readonly REVIEW_SCAN_LIMIT = 500; // 往回翻多少条记录找蝴蝶与它的平仓单
 
-  static readonly REVIEW_FILL_TTL_S = 15.0; // 成交明细多久重新向券商要一次
-  private reviewSyncedAt = -Infinity;
-
   /**
    * 券商成交 → 本地库(只增)→ 合成蝴蝶记录。返回 [记录列表, 本次新增成交数或 null]。
+   * 向券商要成交在 services/fillSync(引擎自己也按节拍在要,这里是页面催的那一次,共用一道节流)。
    * 没连券商、或券商不支持成交查询(富途)时只读本地库里已经累积的:交易分析看的是真实成交,
    * 库里没有就是没有,不拿本地记录冒充。
    */
   private async reviewTrades(): Promise<[Rec[], number | null]> {
     const ibt = await import("../../ibtrades.js");
-    let synced: number | null = null;
-    const router: any = this.router;
-    if (router !== null && typeof router.executions === "function" && router.sessions().length) {
-      const now = performance.now() / 1000;
-      if (now - this.reviewSyncedAt >= ReviewHandlers.REVIEW_FILL_TTL_S) {
-        try {
-          synced = this.engine.store.rememberFills(await router.executions());
-        } catch (exc) {
-          if (!(exc instanceof BrokerError)) throw exc;
-          this.engine.store.audit("engine", "fills_failed", { error: String(exc.message).slice(0, 300) });
-        }
-        this.reviewSyncedAt = now;
-      }
-    }
+    const synced = await this.ctx.fillSync.sync();
     const accounts = this.settings.accounts.map((a) => ({ alias: a.alias, account_id: a.account_id, is_paper: a.is_paper }));
     return [ibt.groupButterflies(this.engine.store.listFills(), accounts), synced];
   }
@@ -187,11 +172,10 @@ export class ReviewHandlers extends HandlerBase {
         out.push(ReviewHandlers.reviewCandidate(record, profile, "local"));
       }
     }
-    const router: any = this.router;
     return {
       candidates: out.slice(0, limit),
       synced,
-      ibkr_available: Boolean(router !== null && typeof router.executions === "function" && router.sessions().length),
+      ibkr_available: this.ctx.fillSync.available(),
       fills_stored: this.engine.store.countFills(),
     };
   }

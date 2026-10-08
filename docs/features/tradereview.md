@@ -10,9 +10,23 @@
 
 ## 成交从哪来
 
-- **TWS 只给当天的成交**(`reqExecutions`),所以拉到的都存进本地库 `broker_fills`(只增,按 execId 去重),历史一天天累积。
-  写入的时机:打开交易分析页或点「同步成交」、打开绩效体检页(15 秒内不重复)、执行对账在给出「去向不明」之前问一次当天成交、命令行导入。
-  读的时候读全表(`store.listFills()`,不设上限,按成交时间从早到晚):蝴蝶的开平配对、股票从空仓推到空仓都要完整的历史。
+- **TWS 只给它自己那个"当天"的成交**(`reqExecutions`):按 TWS 登录时选的时区,过了午夜就翻篇;TWS 的交易日志(Trade Log)里
+  勾了前几天的,才连那几天一起回(最多 7 天,IB Gateway 没有这一项)。所以拉到的都存进本地库 `broker_fills`(只增,按 execId 去重),
+  历史一天天累积。
+- **同步在引擎里自己跑**(`services/fillSync.ts`),不靠界面开着哪一页:成交要在它发生的那一天里落库,等人打开页面才去要,
+  TWS 设成东八区时美股盘中的单一过北京时间 0 点就要不到了。
+  - 每 5 秒读一次各会话的持仓(常驻订阅里的快照,不发请求),账户 / 合约 / 数量的指纹变了就去要:成交必然改持仓。
+    变了之后要两次,第二次隔一道节流——一张单分几笔成交时,头一次要的时候后面几笔还没出来。
+  - 持仓没变也每 5 分钟要一次:几秒内买进又卖出的指纹看不出来,持仓读不到的那几轮也靠它兜底。
+  - 刚连上、断开重连回来先要一次。
+  - 两次之间至少隔 15 秒(`reqExecutions` 回的是当天全部,TWS 还会把回报整批重推一遍);连接反复断开时节流不清零。
+    券商 10 秒不答就这一次作罢,下一轮再来;失败写一条 `fills_failed` 审计,同一句报错不重复写。
+  - 页面上的「同步成交」、打开交易分析页、打开绩效体检页走的是同一个入口、同一道节流:后台刚要过,回执里的 `synced` 就是 `null`。
+  - 循环只在真正的入口(`rpc/server.ts` 的 `main`)里起,测试里直接 `serve()` 的不会去要。
+- 另外两处也会写成交表:执行对账在给出「去向不明」之前问一次当天成交(`engine/reconcile.ts`,自己的节流),以及命令行导入。
+- **补不回来的情形**:成交那一刻应用没开或电脑睡着,醒来时 TWS 的"当天"已经翻篇,交易日志里又没勾那一天。
+  用户手册的排障一节写了怎么勾。
+- 读的时候读全表(`store.listFills()`,不设上限,按成交时间从早到晚):蝴蝶的开平配对、股票从空仓推到空仓都要完整的历史。
   页面上的「库内成交 N 笔」数的也是全表(`store.countFills()`)。
 - **之前的历史用导入补**:
   - `node dist/src/cli.js import-fills fills.csv --account <别名> [--dry-run]`(`fillsCsv.ts`):IBKR 账户成交导出,写进 `broker_fills`,按 exec_id 去重、
@@ -104,4 +118,4 @@
 ## 测试
 
 `golden-ibtrades.spec.ts`、`golden-tradereview.spec.ts`、`golden-flyexit.spec.ts`(黄金基线)、`stockreview.spec.ts`(含"只认股票"与"记录不是股票:报 ReviewError")、
-`review-rpc.spec.ts`、`fills-csv.spec.ts`、`option-trades.spec.ts`、`option-positions.spec.ts`、`store-fills.spec.ts`(五千多笔成交全部读得回、最新的在最后)。
+`review-rpc.spec.ts`、`fill-sync.spec.ts`(后台同步:持仓一变就落库、节流、券商不答不堵后面的)、`fills-csv.spec.ts`、`option-trades.spec.ts`、`option-positions.spec.ts`、`store-fills.spec.ts`(五千多笔成交全部读得回、最新的在最后)。

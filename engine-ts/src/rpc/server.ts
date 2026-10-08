@@ -26,6 +26,7 @@ import { PlaybookService } from "../services/playbook.js";
 import type { Router } from "../services/host.js";
 import { MarketDataService } from "../services/marketData.js";
 import { PoolService } from "../services/pool.js";
+import { FillSyncService } from "../services/fillSync.js";
 import { StockTripsService } from "../services/stockTrips.js";
 import { IdeaSemanticService } from "../services/ideaSemantic.js";
 import { SimilarContextService } from "../services/similarContext.js";
@@ -72,6 +73,7 @@ export class RpcServer implements RpcContext {
   readonly anomaly: AnomalyService;
   readonly pool: PoolService;
   readonly stockTrips: StockTripsService;
+  readonly fillSync: FillSyncService;
   readonly tradeHistory: TradeHistoryService;
   readonly similarContext: SimilarContextService;
   readonly ideaSemantic: IdeaSemanticService;
@@ -108,6 +110,7 @@ export class RpcServer implements RpcContext {
     this.anomaly = new AnomalyService(this, this.alerts);
     this.pool = new PoolService(this, this.alerts, this.anomaly);
     this.stockTrips = new StockTripsService(this);
+    this.fillSync = new FillSyncService(this);
     this.tradeHistory = new TradeHistoryService(this, this.market, this.stockTrips);
     this.similarContext = new SimilarContextService(this, this.market);
     this.ideaSemantic = new IdeaSemanticService(this);
@@ -408,6 +411,7 @@ export class RpcServer implements RpcContext {
     this.ivRecorder.stop();
     this.playbook.stop();
     this.follow.stop();
+    this.fillSync.stop();
     this.flyPlanner.marks.close();
     this.brokerLink.stop();
     return 0;
@@ -495,5 +499,7 @@ export async function main(settingsPath?: string | null): Promise<number> {
   server.brokerLink.start();
   // Discord 跟单同理,只在这里起:配了频道、凭证库里有 bot token 才会去连,没配就一个包都不发
   server.follow.start();
+  // 券商成交的后台同步同理,只在这里起:TWS 只给它自己那个"当天"的成交,等人打开交易分析才去要就晚了
+  server.fillSync.start();
   return done;
 }
