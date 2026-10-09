@@ -101,9 +101,9 @@ window.dafri = {
     connections: {}, connected: [], active: false, sdk_installed: false }),
   diagnoseFutu: async () => ({ results: [] }),
   // Discord 跟单:首次启动什么都没配
-  followStatus: async () => ({ config: { enabled:false,channel_id:'',author_ids:[],accounts:[],max_age_seconds:30,max_orders_per_day:3,max_risk_usd:300,local_inbox:false }, token_configured: false,
+  followStatus: async () => ({ config: { enabled:false,channel_id:'',author_ids:[],accounts:[],max_age_seconds:30,max_orders_per_day:3,max_risk_usd:300,local_inbox:false,local_channel:'' }, token_configured: false,
     link: { state: 'off', bot: null, error: null, channel_known: null }, today: { sent: 0, max: 3 }, recent: [], seen: [],
-    inbox:{enabled:false,path:'/Users/you/Library/Application Support/dafri/follow-inbox.jsonl',watching:false,last_at:null,received:0,error:null} }),
+    inbox:{enabled:false,path:'/Users/you/Library/Application Support/dafri/follow-inbox.jsonl',watching:false,last_at:null,received:0,error:null,reader:{state:'off',title:null,error:null}} }),
   setFollowToken: async () => window.dafri.followStatus(), reconnectFollow: async () => window.dafri.followStatus(),
   launchFutu: async () => ({ launched: true }), setFutuPassword: async () => ({ ok: true }),
   unlockFutu: async () => ({ unlocked: [], failed: {} }), installFutuSdk: async () => ({ installed: [] }),

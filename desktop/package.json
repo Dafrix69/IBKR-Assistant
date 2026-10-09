@@ -8,9 +8,9 @@
   "description": "IBKR 交易指令解析引擎的桌面界面(Electron 外壳 + TS 交易引擎子进程)",
   "main": "main.js",
   "scripts": {
-    "prestart": "node tools/ensure_engine_ts.js && npm run ui:build",
+    "prestart": "node tools/ensure_engine_ts.js && node tools/build_inbox_reader.js --if-possible && npm run ui:build",
     "start": "electron .",
-    "predev": "node tools/ensure_engine_ts.js && npm run ui:build",
+    "predev": "node tools/ensure_engine_ts.js && node tools/build_inbox_reader.js --if-possible && npm run ui:build",
     "dev": "DAFRI_DEV=1 electron .",
     "ui:build": "vite build --config renderer-react/vite.config.mts",
     "ui:watch": "vite build --watch --config renderer-react/vite.config.mts",
@@ -123,6 +123,15 @@
     ],
     "mac": {
       "category": "public.app-category.finance",
+      "extraResources": [
+        {
+          "from": "build/inbox-reader",
+          "to": "tools",
+          "filter": [
+            "discord-window-follow"
+          ]
+        }
+      ],
       "icon": "build/icon.icns",
       "identity": "-",
       "hardenedRuntime": true,

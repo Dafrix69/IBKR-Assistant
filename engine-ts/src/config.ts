@@ -505,7 +505,7 @@ function buildRiskBudget(raw: Raw): RiskBudgetConfig {
 // Discord 跟单(见 follow.ts 与 services/follow.ts):默认关、默认不连 Discord。
 // 这里只查形状与范围。「开着却没填频道 / 没填信任的人」不算配置错:没频道就不连,没人可信就一条都不跟——
 // 配置读不进来的后果是引擎起不来、持仓没人盯,不值得为一段跟单配置冒这个险。账户别名同理(账户可能刚改名),发单那一刻再核对。
-const FOLLOW_KEYS = ["enabled", "channel_id", "author_ids", "accounts", "max_age_seconds", "max_orders_per_day", "max_risk_usd", "local_inbox"];
+const FOLLOW_KEYS = ["enabled", "channel_id", "author_ids", "accounts", "max_age_seconds", "max_orders_per_day", "max_risk_usd", "local_inbox", "local_channel"];
 /** Discord 的 ID(snowflake):一串数字。超过了 JSON 数字能精确表示的范围,所以必须写成字符串。 */
 const DISCORD_ID = /^\d{15,21}$/;
 
@@ -518,6 +518,14 @@ function discordId(value: unknown, label: string): string {
 
 /** 本地收件的发送者:`local:` 加屏幕上的显示名(1–80 字,不含换行)。和 followInbox.ts 的 localAuthorId 同一个口径。 */
 export const LOCAL_AUTHOR = /^local:[^\r\n]{1,80}$/;
+
+/** 本地收件读哪个频道:窗口标题里的那个名字,最多 100 字、不含换行(和 followReader.ts 的 CHANNEL_NAME_MAX 一致);空 = 不自动启动。 */
+function localChannel(value: unknown): string {
+  if (typeof value !== "string" || /[\r\n]/.test(value) || value.trim().length > 100) {
+    throw new Error(`follow.local_channel 必须是不超过 100 字、不含换行的频道名,收到 ${pyRepr(value)}`);
+  }
+  return value.trim();
+}
 
 /** 信任名单里的一项:Discord 的用户 / webhook ID,或本地收件的显示名。 */
 function followAuthor(value: unknown, label: string): string {
@@ -548,6 +556,7 @@ function buildFollow(raw: Raw): FollowConfig {
     max_orders_per_day: num(raw, "max_orders_per_day", "int", 3, "follow", { min: 1, max: 100 })!,
     max_risk_usd: num(raw, "max_risk_usd", "float", 300.0, "follow", { min: 1.0, minStr: "1.0" })!,
     local_inbox: flag(raw, "local_inbox", false, "follow"),
+    local_channel: localChannel(raw["local_channel"] ?? ""),
   };
 }
 

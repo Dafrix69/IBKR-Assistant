@@ -6,9 +6,15 @@
 //   swift desktop/tools/discord-window-follow.swift --channel "charlie的策略" --dump      # 把消息列表的结构倒出来看(调试)
 //   加 --all:解析结果列出列表里载入的全部消息(先在 Discord 里往上翻,历史才会载入)
 //
+// 软件自己拉起它时(「接入 → Discord 跟单」填了频道名)用的是编译好的同一份程序,多带 --supervised:
+//   * 标准输出不再打人话,改成状态,一行一个 JSON(`{"state":"reading","title":…,"count":…}`),软件照着显示;
+//     state 有 reading / waiting(窗口不在这个频道)/ no_list(在这个频道但读不到消息列表)/ no_discord / untrusted;
+//   * 标准输入一断(软件退了)就跟着退,不留孤儿进程;
+//   * 没有辅助功能权限时报 untrusted、以退出码 77 退出,由软件隔一会儿再拉起来看;--ask-permission 让系统弹一次授权提示。
+//
 // 前提:
 //   * Discord 要用 `open -a Discord --args --force-renderer-accessibility` 启动,否则窗口里的消息对辅助功能不可见;
-//   * 运行脚本的终端要在「系统设置 → 隐私与安全性 → 辅助功能」里;
+//   * 运行脚本的终端要在「系统设置 → 隐私与安全性 → 辅助功能」里(软件拉起的,要加的是 IBKR-Assistant);
 //   * Discord 停在那个频道;窗口标题里不是这个频道时脚本只等、不抄。
 //
 // 怎么读:Discord 把每条消息放在一个 article 里,它的辅助功能标题是「发送者 服务器标签 , 正文 , 时间」
@@ -26,6 +32,8 @@ var dumpMode = false
 var allMode = false
 var bundleId = "com.hnc.Discord"
 var freshMinutes = 10.0
+var supervised = false
+var askPermission = false
 var args = Array(CommandLine.arguments.dropFirst())
 while !args.isEmpty {
     let a = args.removeFirst()
@@ -37,6 +45,8 @@ while !args.isEmpty {
     case "--app": bundleId = args.isEmpty ? bundleId : args.removeFirst()
     case "--dump": dumpMode = true
     case "--all": allMode = true
+    case "--supervised": supervised = true
+    case "--ask-permission": askPermission = true
     default: fputs("不认识的参数:\(a)\n", stderr); exit(2)
     }
 }
@@ -91,14 +101,23 @@ struct Found {
     let list: AXUIElement
 }
 
-func locate(app: NSRunningApplication) -> Found? {
+/** 找不到时是哪一种:没有窗口停在这个频道,还是窗口在、消息列表读不到(Discord 多半没带 --force-renderer-accessibility 启动)。 */
+enum Located {
+    case found(Found)
+    case noWindow
+    case noList(String)
+}
+
+func locate(app: NSRunningApplication) -> Located {
     let appEl = AXUIElementCreateApplication(app.processIdentifier)
     // Electron 认这个属性;没用 --force-renderer-accessibility 启动时它不够,但设一下没坏处
     AXUIElementSetAttributeValue(appEl, "AXManualAccessibility" as CFString, kCFBooleanTrue)
     let windows = (attr(appEl, kAXWindowsAttribute) as? [AXUIElement]) ?? []
+    var blind: String? = nil
     for w in windows {
         let title = str(w, kAXTitleAttribute)
         if !title.contains(channelWanted) { continue }
+        if blind == nil { blind = title }
         var webs: [AXUIElement] = []
         findAll(w, { role($0) == "AXWebArea" }, &webs)
         guard let web = webs.first else { continue }
@@ -111,9 +130,10 @@ func locate(app: NSRunningApplication) -> Found? {
             return msgKeys.contains { d.contains($0) } && !d.contains("私信")
         } ?? lists.max { children($0).count < children($1).count }
         guard let l = list else { continue }
-        return Found(window: w, title: title, list: l)
+        return .found(Found(window: w, title: title, list: l))
     }
-    return nil
+    if let title = blind { return .noList(title) }
+    return .noWindow
 }
 
 // ---------------------------------------------------------------- 一条消息
@@ -176,10 +196,57 @@ func scan(_ list: AXUIElement) -> [Message] {
 }
 
 // ---------------------------------------------------------------- 主循环
-guard let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleId).first else {
+setvbuf(stdout, nil, _IOLBF, 0)   // 被软件拉起时标准输出是管道:按行送出去,不攒着
+
+/** 人话:手动运行时打在终端里;被软件拉起时不打(那边只认状态行,消息原文也不该进它的日志)。 */
+func say(_ text: String) {
+    if !supervised { print(text) }
+}
+
+var lastStatus = ""
+/** 状态行(只在 --supervised 时):一行一个 JSON,和上一行一样就不重复。 */
+func report(_ state: String, title: String = "", count: Int? = nil) {
+    guard supervised else { return }
+    var obj: [String: Any] = ["state": state]
+    if !title.isEmpty { obj["title"] = title }
+    if let c = count { obj["count"] = c }
+    guard let data = try? JSONSerialization.data(withJSONObject: obj, options: [.sortedKeys, .withoutEscapingSlashes]),
+          let line = String(data: data, encoding: .utf8), line != lastStatus else { return }
+    lastStatus = line
+    print(line)
+}
+
+func discord() -> NSRunningApplication? {
+    return NSRunningApplication.runningApplications(withBundleIdentifier: bundleId).first { !$0.isTerminated }
+}
+
+/** 等一轮。先让系统通知进来一下:Discord 退了、重开了,「正在运行的应用」靠它更新。 */
+func waitRound() {
+    let until = Date().addingTimeInterval(intervalSec)
+    RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.05))
+    let left = until.timeIntervalSinceNow
+    if left > 0 { Thread.sleep(forTimeInterval: left) }
+}
+
+if supervised {
+    // 软件退了(正常退、崩了、被杀)管道就断:读到头跟着退
+    Thread.detachNewThread {
+        var buf = [UInt8](repeating: 0, count: 64)
+        while true {
+            let n = read(0, &buf, 64)
+            if n > 0 || (n < 0 && errno == EINTR) { continue }
+            exit(0)
+        }
+    }
+} else if discord() == nil {
     fputs("Discord 没在运行(\(bundleId))\n", stderr); exit(1)
 }
 if !AXIsProcessTrusted() {
+    if supervised {
+        report("untrusted")
+        if askPermission { _ = AXIsProcessTrustedWithOptions(["AXTrustedCheckOptionPrompt": true] as CFDictionary) }
+        exit(77)
+    }
     fputs("这个终端没有辅助功能权限:系统设置 → 隐私与安全性 → 辅助功能,加进去再运行。\n", stderr)
     _ = AXIsProcessTrustedWithOptions(["AXTrustedCheckOptionPrompt": true] as CFDictionary)
     exit(1)
@@ -191,7 +258,7 @@ func describe(_ m: Message) -> String {
 }
 
 if dumpMode {
-    guard let found = locate(app: app) else {
+    guard let app = discord(), case .found(let found) = locate(app: app) else {
         fputs("没找到标题里带「\(channelWanted)」的窗口,或者窗口里没有消息列表。Discord 是不是没带 --force-renderer-accessibility 启动?\n", stderr)
         exit(1)
     }
@@ -210,6 +277,7 @@ let iso = ISO8601DateFormatter()
 iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
 var known = Set<String>()
 var primed = false
+var primedCount = 0
 var waitingSaid = false
 
 func append(_ m: Message, channel: String) {
@@ -224,22 +292,39 @@ func append(_ m: Message, channel: String) {
         h.write(data)
         h.write("\n".data(using: .utf8)!)
         h.closeFile()
-        print(describe(m))
+        say(describe(m))
     } else {
         fputs("写不进收件文件:\(outPath)\n", stderr)
     }
 }
 
-print("盯着「\(channelWanted)」,新消息追加到 \(outPath)。启动时列表里已有的不抄。Ctrl-C 停。")
+/** 这一轮读不了:忘掉已经见过的(回来之后重新就位,期间漏掉的不补),等下一轮。 */
+func lost(_ words: String) {
+    if !waitingSaid {
+        say(words)
+        waitingSaid = true
+    }
+    primed = false
+    known.removeAll()
+    waitRound()
+}
+
+say("盯着「\(channelWanted)」,新消息追加到 \(outPath)。启动时列表里已有的不抄。Ctrl-C 停。")
 while true {
-    guard let found = locate(app: app) else {
-        if !waitingSaid {
-            print("等窗口切回「\(channelWanted)」…(标题里要有它;Discord 要带 --force-renderer-accessibility 启动)")
-            waitingSaid = true
-        }
-        primed = false
-        known.removeAll()
-        Thread.sleep(forTimeInterval: intervalSec)
+    if supervised && !AXIsProcessTrusted() {
+        // 跑着的时候权限被收回了:照没有权限处理
+        report("untrusted")
+        exit(77)
+    }
+    guard let app = discord() else {
+        report("no_discord")
+        lost("Discord 没在运行,等它打开…")
+        continue
+    }
+    let located = locate(app: app)
+    guard case .found(let found) = located else {
+        if case .noList(let title) = located { report("no_list", title: title) } else { report("waiting") }
+        lost("等窗口切回「\(channelWanted)」…(标题里要有它;Discord 要带 --force-renderer-accessibility 启动)")
         continue
     }
     waitingSaid = false
@@ -248,7 +333,8 @@ while true {
     if !primed {
         known = Set(keys)
         primed = true
-        print("已就位:窗口「\(found.title)」,列表里现有 \(messages.count) 条,之后新出现的才抄。")
+        primedCount = messages.count
+        say("已就位:窗口「\(found.title)」,列表里现有 \(messages.count) 条,之后新出现的才抄。")
     } else {
         let now = Date()
         for m in messages where !known.contains(m.key) {
@@ -261,5 +347,6 @@ while true {
         }
         if known.count > 2000 { known = Set(keys) }
     }
-    Thread.sleep(forTimeInterval: intervalSec)
+    report("reading", title: found.title, count: primedCount)
+    waitRound()
 }

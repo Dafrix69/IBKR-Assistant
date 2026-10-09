@@ -12,7 +12,7 @@ import { showBanner } from '../store/banner';
 import { useStatus } from '../store/status';
 import { EmptyState, Group, GroupRow, LoadingBlock, Notice, NumberRow, Primer, SectionTitle, StepList, SwitchRow } from '../ui/kit';
 import { fmtTime } from './format';
-import { OUTCOME_LABEL, addAuthor, formProblems, isDirty, outcomeTone, toConfig, toForm, type FollowForm } from './followForm';
+import { OUTCOME_LABEL, addAuthor, formProblems, isDirty, outcomeTone, readerText, toConfig, toForm, type FollowForm } from './followForm';
 
 const SETUP_STEPS = [
   { title: '建一个 bot', detail: 'Discord Developer Portal → New Application → 左侧 Bot → Reset Token,把那一整段复制到下面保存。' },
@@ -23,11 +23,14 @@ const SETUP_STEPS = [
 ];
 
 const INBOX_STEPS = [
-  { title: '让 Discord 把消息暴露给辅助功能', detail: '退出 Discord,在终端里用 open -a Discord --args --force-renderer-accessibility 重新打开。不带这个参数时,窗口里的消息读不到(脚本会说明)。' },
-  { title: '给终端辅助功能权限', detail: '系统设置 → 隐私与安全性 → 辅助功能,把你运行脚本用的终端加进去。' },
-  { title: '运行脚本,停在那个频道', detail: '脚本在仓库的 desktop/tools/discord-window-follow.swift:swift 那个文件 --channel 频道名 --out 下面显示的收件文件路径。Discord 要一直开着并停在这个频道,电脑不能锁屏、不能睡。' },
+  { title: '让 Discord 把消息暴露给辅助功能', detail: '退出 Discord,在终端里用 open -a Discord --args --force-renderer-accessibility 重新打开。不带这个参数时,窗口里的消息读不到(「读窗口」那一行会说明)。Discord 每次重开都要这样开。' },
+  { title: '填频道名,打开本地收件,保存', detail: '频道名是 Discord 窗口标题里的那个(不含 #)。保存之后软件自己读这个窗口,以后随软件启动、随软件退出。Discord 要一直开着并停在这个频道,电脑不能锁屏、不能睡。' },
+  { title: '给 IBKR-Assistant 辅助功能权限', detail: '头一次系统会弹提示:系统设置 → 隐私与安全性 → 辅助功能,打开 IBKR-Assistant。授权之后几秒内「读窗口」那一行变成「在读」。' },
   { title: '信任显示名', detail: '对方发一条之后,在「频道里最近看到的消息」里点「信任」(条目是 local:显示名)。注意:频道里别人把昵称改成一样的,软件分不出来——只适合私密小群。' },
+  { title: '不用安装包、或者想自己运行脚本', detail: '频道名留空,自己运行仓库里的 desktop/tools/discord-window-follow.swift:swift 那个文件 --channel 频道名 --out 上面显示的收件文件路径;辅助功能权限给运行它的终端。' },
 ];
+
+const READER_TAG = { ok: ['success', '在读'], warn: ['warning', '没在读'], bad: ['error', '没在读'], info: ['default', '—'] } as const;
 
 function linkText(link: FollowLink, tokenSaved: boolean, inboxOn: boolean): { tone: 'ok' | 'warn' | 'bad' | 'info'; text: string } {
   if (link.state === 'off' && inboxOn) return { tone: 'info', text: '没有填频道 ID,不连 Discord;消息只来自本地收件。' };
@@ -150,6 +153,8 @@ export function FollowPanel() {
     : inbox.watching
       ? `正在读。这次启动以来收到 ${inbox.received} 条${inbox.last_at ? `,最近一条 ${fmtTime(inbox.last_at)}` : ''}`
       : form.localInbox ? '保存之后开始读' : '关着';
+  // 这一行说的是已保存的那一份:表单改了还没存时,在跑的仍是旧的
+  const reader = readerText(inbox.reader, status.config.local_channel);
   const strangers = status.seen.filter((s) => !form.authorIds.includes(s.author_id));
 
   return (
@@ -199,12 +204,18 @@ export function FollowPanel() {
         </GroupRow>
       </Group>
       <Group>
-        <SwitchRow icon="sf-doc" tint="teal" label="本地收件" sub="对方的私密频道拉不进 bot 时:本机脚本从你屏幕上的 Discord 窗口把新消息抄进收件文件,软件读文件。不用任何 token,Discord 那边什么都收不到。" checked={form.localInbox} onChange={(v) => patch({ localInbox: v })} />
+        <SwitchRow icon="sf-doc" tint="teal" label="本地收件" sub="对方的私密频道拉不进 bot 时:从你屏幕上的 Discord 窗口把新消息抄进收件文件,软件读文件。不用任何 token,Discord 那边什么都收不到。" checked={form.localInbox} onChange={(v) => patch({ localInbox: v })} />
+        <GroupRow label="读哪个频道" sub="Discord 窗口标题里的频道名(不含 #)。填了,软件自己读这个窗口,随软件启动和退出;留空就要自己运行脚本。">
+          <Input style={{ width: 230 }} placeholder="例如 charlie的策略" value={form.localChannel} onChange={(e) => patch({ localChannel: e.target.value })} />
+        </GroupRow>
+        <GroupRow label="读窗口" sub={reader.text} className={`follow-reader tone-${reader.tone}`}>
+          {reader.tone === 'info' ? null : <Tag color={READER_TAG[reader.tone][0]}>{READER_TAG[reader.tone][1]}</Tag>}
+        </GroupRow>
         <GroupRow label="收件文件" sub={inboxText} className={`follow-inbox tone-${inbox.error ? 'warn' : inbox.watching ? 'ok' : 'info'}`}>
           <span className="muted mono" style={{ wordBreak: 'break-all' }}>{inbox.path}</span>
         </GroupRow>
       </Group>
-      <Primer id="follow-inbox-setup" summary="本地收件怎么用:四步" defaultOpen={false}>
+      <Primer id="follow-inbox-setup" summary="本地收件怎么用" defaultOpen={false}>
         <StepList items={INBOX_STEPS} />
       </Primer>
       <p className="hint">频道里最近看到的消息(只在内存里,重启引擎就清空):</p>

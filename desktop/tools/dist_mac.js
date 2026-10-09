@@ -121,6 +121,7 @@ if (outDir !== DIST) console.log(`项目在 iCloud 同步目录里,构建输出�
 run('npm', ['run', 'ui:build']);
 run('npm', ['run', 'notices']);   // 第三方许可声明:随包进 resources(tools/gen_notices.js);许可不在白名单里的在这里就失败
 run('npm', ['run', 'stage:engine:mac']);
+run('node', ['tools/build_inbox_reader.js', '--arch', 'arm64']); // 「本地收件」读窗口的程序:随包进 resources/tools
 run('npm', ['run', 'smoke:engine']);
 
 async function main() {
@@ -160,6 +161,14 @@ async function main() {
   }
 
   // ---- 4. 自验:签名完整;签名版再按 Gatekeeper 的口径验 --------------------------------------
+  // 读窗口的程序在不在、能不能执行:少了它软件照常起,只是「本地收件」悄悄退回"自己运行脚本"
+  const reader = path.join(app, 'Contents', 'Resources', 'tools', 'discord-window-follow');
+  try {
+    fs.accessSync(reader, fs.constants.X_OK);
+  } catch {
+    fail(`应用包里没有可执行的读窗口程序:${reader}`);
+  }
+  run('codesign', ['--verify', '--strict', '--verbose=2', reader]);
   run('codesign', ['--verify', '--deep', '--strict', '--verbose=2', app]);
   if (signed) {
     run('spctl', ['--assess', '--type', 'execute', '--verbose=4', app]); // 期望 source=Notarized Developer ID

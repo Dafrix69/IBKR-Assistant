@@ -317,7 +317,7 @@ describe.runIf(ready)("主进程:钱路径上的三道(条款 → 确认凭据 �
 
   it("Discord 跟单:打开要确认,框上的字由主进程对着要存的那一份写;存的和确认的不是同一份不放行;关与收紧不用确认", async () => {
     // 不填频道:引擎不会去碰凭证库、不会去连 Discord(测试不许连外面),而"从关到开"这道闸照样要过
-    const follow = { enabled: true, channel_id: "", author_ids: ["220000000000000002"], accounts: [], max_age_seconds: 30, max_orders_per_day: 3, max_risk_usd: 300, local_inbox: false };
+    const follow = { enabled: true, channel_id: "", author_ids: ["220000000000000002"], accounts: [], max_age_seconds: 30, max_orders_per_day: 3, max_risk_usd: 300, local_inbox: false, local_channel: "" };
     const patch = { patch: { follow }, __confirmed: true };
     expect(await failure(rpc("settings.patch", patch))).toContain("确认框里点确认(打开 Discord 自动跟单)");
     boxes.length = 0;

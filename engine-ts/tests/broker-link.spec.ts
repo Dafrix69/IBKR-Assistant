@@ -165,6 +165,30 @@ function routerWith(sessions: Record<number, StubSession>): BrokerRouter {
   });
 }
 
+describe("会话层:往回要前几天的成交走另一条连接", () => {
+  it("同一个 TWS、自己的 client id(平时那条的 + 9000);TWS 太老回 null,连不上照实抛", async () => {
+    FakeApiNext.twsUp = true;
+    const asked: Rec[] = [];
+    let reply: Rec | Error = { serverVersion: 200, supported: true, details: [{ contract: { symbol: "SPX" }, execution: { execId: "e1" } }] };
+    const session = await createIbApiNextSession(CFG, {
+      mod: FAKE_MOD,
+      fetchHistory: async (request) => {
+        asked.push({ ...request });
+        if (reply instanceof Error) throw reply;
+        return reply as never;
+      },
+    });
+    expect(await session.executionHistory!(7)).toEqual([{ contract: { symbol: "SPX" }, execution: { execId: "e1" } }]);
+    expect(asked).toEqual([{ host: "127.0.0.1", port: 7497, clientId: 9011, days: 7 }]);
+    reply = { serverVersion: 187, supported: false, details: [] };
+    expect(await session.executionHistory!(7)).toBeNull();
+    reply = new Error("往回要成交的连接出错:connect ECONNREFUSED 127.0.0.1:7497");
+    await expect(session.executionHistory!(7)).rejects.toThrow(/ECONNREFUSED/);
+    // 平时那条连接不受影响
+    expect(session.isConnected()).toBe(true);
+  });
+});
+
 describe("router 层:读不到 ≠ 没有", () => {
   it("全断了:读持仓报错,不回空列表(空列表会停掉所有追踪、撤掉托管止损)", async () => {
     const paper = new StubSession(["DU7654321"], []);

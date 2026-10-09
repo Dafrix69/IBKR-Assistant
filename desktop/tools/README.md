@@ -108,6 +108,16 @@ npm run smoke:engine         # tools/smoke_engine_ts.js:Electron 自带 Node + �
 `npm run dist:win` / `dist:mac` 会先构建界面(`ui:build`)再跑这两步。为什么不用 `npm ci --omit=dev`:better-sqlite3 没有 install 脚本,
 npm 见到 binding.gyp 会去跑 node-gyp,没有 C++ 工具链的机器直接失败;而它的 tarball 本来就带了全部平台的预编译二进制。
 
+## 「本地收件」读窗口的程序
+
+```bash
+node tools/build_inbox_reader.js                # tools/discord-window-follow.swift → build/inbox-reader/discord-window-follow
+node tools/build_inbox_reader.js --if-possible  # npm start / npm run dev 之前跑的就是这个:不是 macOS、没装 swiftc 就跳过
+```
+
+软件自己拉起的是编译好的这一份(主进程用 `DAFRI_INBOX_READER` 把位置告诉引擎,打包后在 `resources/tools/`),用户的电脑上不用装 Swift。
+`dist:mac` 会先编它再打包,并在自验里核对它在包里、能执行、签了名。口径见 `docs/features/follow.md`「本地收件」。
+
 ## Mac 安装包与图标
 
 ```bash

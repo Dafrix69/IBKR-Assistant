@@ -56,6 +56,34 @@ class FakeSession {
   }
 }
 
+/** 会往回给 7 天的会话:past 是 TWS 的"前几天"里有的成交(券商那边的字段名);null = TWS 太老给不了。 */
+class DeepSession extends FakeSession {
+  past: Rec[] | null = [];
+  deepAsked: number[] = [];
+  deepFail: Error | null = null;
+  async executionHistory(days: number): Promise<Rec[] | null> {
+    this.deepAsked.push(days);
+    if (this.deepFail) throw this.deepFail;
+    return this.past;
+  }
+}
+
+/** 券商那边的一笔成交(reqExecutions 回的样子),对应上面 fill() 的一行。 */
+function detail(row: Rec): Rec {
+  const c = row["contract"];
+  const stamp = String(row["time"]).replace(/[-:]/g, "").replace("T", "-").slice(0, 15);
+  return {
+    contract: {
+      conId: c["conId"], symbol: c["symbol"], secType: c["secType"], lastTradeDateOrContractMonth: c["expiry"] ?? "", strike: c["strike"] ?? 0,
+      right: c["right"], multiplier: Number(c["multiplier"] ?? 0), exchange: c["exchange"], currency: c["currency"], tradingClass: c["tradingClass"] ?? "",
+    },
+    execution: {
+      execId: row["exec_id"], time: `${stamp.slice(0, 8)}-${stamp.slice(9, 11)}:${stamp.slice(11, 13)}:${stamp.slice(13, 15)}`,
+      acctNumber: row["account_id"], side: row["side"], shares: row["shares"], price: row["price"], permId: row["perm_id"], orderId: 0, orderRef: "",
+    },
+  };
+}
+
 class FakeRouter {
   session = new FakeSession();
   connected = true;
@@ -284,6 +312,114 @@ describe("向券商要成交:节流、不重发、不被堵住", () => {
 
     router.hang = false;
     expect(await sync.sync(30 * SEC)).toBe(2);
+  });
+});
+
+describe("往回要 7 天:当天那一问问不到的成交", () => {
+  function deep(): ReturnType<typeof make> & { session: DeepSession; historyAudits: () => Rec[] } {
+    const made = make();
+    const session = new DeepSession();
+    made.router.session = session;
+    return {
+      ...made, session,
+      historyAudits: () => (made.s.engine.store.exportAll()["audit_log"] as Rec[]).filter((a) => a["action"] === "fills_history_failed"),
+    };
+  }
+
+  it("软件没开着的时候买的蝴蝶,TWS 已经翻篇:刚连上那一趟往回要,它进了库,和当天要到的同一笔不重复存", async () => {
+    const { router, sync, session, stored, s } = deep();
+    // TWS 的"当天"里只剩股票的两笔;前几天里有那张蝴蝶,也有这两笔股票
+    session.past = [...STOCK, ...FLY].map(detail);
+    expect(await sync.tickOnce(0)).toBe(6);
+    expect(session.deepAsked).toEqual([7]);
+    expect(router.asked).toBe(1);
+    expect(stored()).toBe(6);
+    // 往回要到的行和当天要到的长得一样:蝴蝶照常合得出来
+    const stock = s.engine.store.listFills().find((f: Rec) => f["exec_id"] === "s1");
+    expect(stock).toMatchObject({ time: "2026-10-07T13:50:23+00:00", side: "BOT", shares: 5, price: 202.48, perm_id: 11 });
+    const leg = s.engine.store.listFills().find((f: Rec) => f["exec_id"] === "f2");
+    expect(leg).toMatchObject({ time: "2026-10-07T15:59:06+00:00", side: "SLD", shares: 2, contract: { secType: "OPT", strike: 7770, right: "P", expiry: "20261007" } });
+  });
+
+  it("平时每几分钟那一问不往回要;持仓变了的两趟、每小时一次才要", async () => {
+    const { sync, session } = deep();
+    await sync.tickOnce(0);
+    expect(session.deepAsked).toHaveLength(1);
+    await sync.tickOnce(5 * 60 * SEC);
+    await sync.tickOnce(10 * 60 * SEC);
+    expect(session.deepAsked).toHaveLength(1);
+    // 持仓变了:接下来的两趟都往回要(成交正好卡在 TWS 午夜前后时,当天那一问问不到它)
+    session.holdings = [held(6478131, 20), held(101, 1)];
+    await sync.tickOnce(11 * 60 * SEC);
+    await sync.tickOnce(11 * 60 * SEC + 20 * SEC);
+    expect(session.deepAsked).toHaveLength(3);
+    await sync.tickOnce(20 * 60 * SEC);
+    expect(session.deepAsked).toHaveLength(3);
+    // 离上一次往回要满一小时:跟着下一趟同步一起要
+    await sync.tickOnce(72 * 60 * SEC);
+    expect(session.deepAsked).toHaveLength(4);
+  });
+
+  it("往回要没要到:当天的照存,留一条痕,下一趟再要;同一句原因不反复留痕,要到了就清", async () => {
+    const { sync, session, stored, historyAudits } = deep();
+    session.deepFail = new Error("往回要成交的连接被 TWS 关了:326 Unable to connect as the client id is already in use.");
+    expect(await sync.tickOnce(0)).toBe(2);
+    expect(stored()).toBe(2);
+    expect(historyAudits().map((a) => JSON.parse(a["detail"])["error"])).toEqual(["往回要成交的连接被 TWS 关了:326 Unable to connect as the client id is already in use."]);
+    // 欠着的那一趟留着:下一次同步(5 分钟那一问)接着试,原因没变不再留痕
+    await sync.tickOnce(5 * 60 * SEC);
+    expect(session.deepAsked).toHaveLength(2);
+    expect(historyAudits()).toHaveLength(1);
+    session.deepFail = null;
+    session.past = FLY.map(detail);
+    expect(await sync.tickOnce(10 * 60 * SEC)).toBe(4);
+    expect(stored()).toBe(6);
+    // 要到了:不再每趟都要
+    await sync.tickOnce(15 * 60 * SEC);
+    expect(session.deepAsked).toHaveLength(3);
+  });
+
+  it("往回要一直不回话:等满时限作罢,当天的照存", async () => {
+    vi.useFakeTimers();
+    const { sync, session, stored, historyAudits } = deep();
+    session.executionHistory = () => new Promise<Rec[] | null>(() => undefined);
+    const pending = sync.tickOnce(0);
+    await vi.advanceTimersByTimeAsync(FillSyncService.BROKER_TIMEOUT_MS);
+    expect(await pending).toBe(2);
+    expect(stored()).toBe(2);
+    expect(historyAudits()).toHaveLength(1);
+  });
+
+  it("TWS 太老给不了:这次连接里不再试;重连之后再试一次", async () => {
+    const { router, sync, session } = deep();
+    session.past = null;
+    await sync.tickOnce(0);
+    session.holdings = [held(6478131, 20), held(101, 1)];
+    await sync.tickOnce(60 * SEC);
+    await sync.tickOnce(80 * SEC);
+    await sync.tickOnce(3 * 3600 * SEC);
+    expect(session.deepAsked).toHaveLength(1);
+    router.connected = false;
+    await sync.tickOnce(3 * 3600 * SEC + 20 * SEC);
+    router.connected = true;
+    await sync.tickOnce(3 * 3600 * SEC + 40 * SEC);
+    expect(session.deepAsked).toHaveLength(2);
+  });
+
+  it("人点「同步成交」:这一趟连前 7 天的一起要;正赶上节流就记着,循环的下一趟补上", async () => {
+    const { s, sync, session } = deep();
+    const call = async (method: string): Promise<Rec> => s.handle(JSON.parse(JSON.stringify({ jsonrpc: "2.0", id: 1, method, params: {} })));
+    await sync.tickOnce(0);
+    expect(session.deepAsked).toHaveLength(1);
+    // 刚要过(15 秒之内):这一次不发,但记下了
+    session.past = FLY.map(detail);
+    expect((await call("review.candidates"))["result"]["synced"]).toBeNull();
+    expect(session.deepAsked).toHaveLength(1);
+    expect(await sync.tickOnce(20 * SEC)).toBe(4);
+    expect(session.deepAsked).toHaveLength(2);
+    // 过了节流再点:当场往回要
+    await sync.tickOnce(60 * SEC);
+    expect((await call("review.candidates"))["result"]["candidates"][0]).toMatchObject({ kind: "butterfly", symbol: "SPX", strikes: [7750, 7770, 7790] });
   });
 });
 

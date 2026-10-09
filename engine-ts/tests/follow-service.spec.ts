@@ -3,6 +3,7 @@
  * 全部离线:消息直接喂给 onMessage,引擎是真的(校验、落库都走),券商是假的(只记下发了什么),
  * Discord 的 socket 与凭证库都是假的。
  */
+import { EventEmitter } from "node:events";
 import { appendFileSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -12,6 +13,7 @@ import { setClock } from "../src/config.js";
 import type { FollowConfig } from "../src/contract/follow.js";
 import type { DiscordMessage, SocketLike } from "../src/discordGateway.js";
 import { TradingEngine } from "../src/engine.js";
+import type { ReaderChild } from "../src/followReader.js";
 import { Notifier } from "../src/notify.js";
 import { LLMResponse } from "../src/providers.js";
 import { useSecretBackend } from "../src/secrets.js";
@@ -235,6 +237,103 @@ describe("follow service: 本地收件", () => {
     service.stop();
     expect(router.placed).toHaveLength(0);
     expect(log()).toHaveLength(0);
+  });
+});
+
+describe("follow service: 本地收件填了频道名,读窗口的程序跟着起停", () => {
+  class FakeChild extends EventEmitter {
+    stdout = new EventEmitter();
+    stderr = new EventEmitter();
+    killed = false;
+    constructor(readonly program: string, readonly args: string[]) {
+      super();
+    }
+    kill(): boolean {
+      this.killed = true;
+      return true;
+    }
+  }
+  function withReader(follow: Partial<FollowConfig>, program: string | null = "/opt/discord-window-follow") {
+    const built = build({ channel_id: "", author_ids: ["local:老王"], ...follow });
+    const children: FakeChild[] = [];
+    built.service.readerOptions = {
+      program,
+      spawn: (prog, args) => {
+        const child = new FakeChild(prog, args);
+        children.push(child);
+        return child as unknown as ReaderChild;
+      },
+    };
+    return { ...built, children };
+  }
+  const inboxEvents = (events: Array<[string, Record<string, any>]>): number => events.filter(([e, p]) => e === "follow" && p["kind"] === "inbox").length;
+
+  it("本地收件开着、填了频道名:拉起来,参数是频道名与交易库旁边的收件文件;它报在读,界面就看到在读;引擎停它跟着停", async () => {
+    const { service, host, events, children } = withReader({ local_inbox: true, local_channel: "老王的策略" });
+    service.start();
+    await service.sync();
+    expect(children).toHaveLength(1);
+    const out = path.join(path.dirname(host.settings.db_path), "follow-inbox.jsonl");
+    expect(children[0]!.program).toBe("/opt/discord-window-follow");
+    expect(children[0]!.args.slice(0, 5)).toEqual(["--channel", "老王的策略", "--out", out, "--supervised"]);
+    expect((await service.status()).inbox.reader).toEqual({ state: "starting", title: null, error: null });
+    const before = inboxEvents(events);
+    children[0]!.stdout.emit("data", Buffer.from('{"state":"reading","title":"#老王的策略 | 示例 - Discord"}\n'));
+    expect((await service.status()).inbox.reader).toEqual({ state: "reading", title: "#老王的策略 | 示例 - Discord", error: null });
+    expect(inboxEvents(events)).toBe(before + 1);
+    // 配置原样重载:不重启它
+    await service.sync();
+    expect(children).toHaveLength(1);
+    service.stop();
+    expect(children[0]!.killed).toBe(true);
+  });
+
+  it("换了频道名:旧的停掉、按新名字再起一个;清空:停掉,不再自己读", async () => {
+    const { service, host, children } = withReader({ local_inbox: true, local_channel: "老王的策略" });
+    service.start();
+    await service.sync();
+    host.settings.follow.local_channel = "另一个频道";
+    await service.sync();
+    expect(children).toHaveLength(2);
+    expect(children[0]!.killed).toBe(true);
+    expect(children[1]!.args[1]).toBe("另一个频道");
+    host.settings.follow.local_channel = "";
+    await service.sync();
+    expect(children[1]!.killed).toBe(true);
+    expect(children).toHaveLength(2);
+    expect((await service.status()).inbox.reader.state).toBe("no_channel");
+    // 收件文件照读:手动运行的脚本照样管用
+    expect((await service.status()).inbox.watching).toBe(true);
+    service.stop();
+  });
+
+  it("不自己读的三种情况各说各的:本地收件关着、没填频道名、这台机器上没有这个程序", async () => {
+    const off = withReader({ local_inbox: false, local_channel: "老王的策略" });
+    off.service.start();
+    await off.service.sync();
+    expect(off.children).toHaveLength(0);
+    expect((await off.service.status()).inbox.reader.state).toBe("off");
+    off.service.stop();
+
+    const unnamed = withReader({ local_inbox: true });
+    unnamed.service.start();
+    await unnamed.service.sync();
+    expect(unnamed.children).toHaveLength(0);
+    expect((await unnamed.service.status()).inbox.reader.state).toBe("no_channel");
+    unnamed.service.stop();
+
+    const none = withReader({ local_inbox: true, local_channel: "老王的策略" }, null);
+    none.service.start();
+    await none.service.sync();
+    expect(none.children).toHaveLength(0);
+    expect((await none.service.status()).inbox).toMatchObject({ watching: true, reader: { state: "unavailable" } });
+    none.service.stop();
+  });
+
+  it("引擎没有真正起来(没调过 start)时不拉起任何东西", async () => {
+    const { service, children } = withReader({ local_inbox: true, local_channel: "老王的策略" });
+    await service.sync();
+    expect(children).toHaveLength(0);
   });
 });
 

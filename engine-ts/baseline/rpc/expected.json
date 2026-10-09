@@ -273,7 +273,8 @@
     "max_age_seconds": 30,
     "max_orders_per_day": 3,
     "max_risk_usd": 300,
-    "local_inbox": false
+    "local_inbox": false,
+    "local_channel": ""
    },
    "symbol_aliases": {
     "苹果": "AAPL",
@@ -386,7 +387,8 @@
     "max_age_seconds": 30,
     "max_orders_per_day": 3,
     "max_risk_usd": 300,
-    "local_inbox": false
+    "local_inbox": false,
+    "local_channel": ""
    },
    "symbol_aliases": {
     "苹果": "AAPL",

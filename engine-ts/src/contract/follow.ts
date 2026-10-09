@@ -25,6 +25,36 @@ export interface FollowConfig {
    * 对方的私密频道拉不进 bot 时用它。发送者是显示名(`local:名字`),不是用户 ID。默认关。
    */
   local_inbox: boolean;
+  /**
+   * 本地收件读哪个频道:Discord 窗口标题里的那个名字(不含 #)。填了,软件自己拉起读窗口的程序(只有 macOS 的安装包带着它);
+   * 空 = 不自动启动,自己运行脚本。默认空。
+   */
+  local_channel: string;
+}
+
+/**
+ * 读窗口的程序此刻的样子。
+ * off          本地收件关着
+ * no_channel   开着但没填频道名:不自动启动,要自己运行脚本
+ * unavailable  填了频道名,但这台机器上没有可以拉起的程序(不是 macOS,或者这一份软件没带着它):要自己运行脚本
+ * starting     刚拉起,还没报状态
+ * reading      Discord 窗口停在这个频道,正在读
+ * waiting      Discord 开着,但没有窗口停在这个频道
+ * no_list      窗口在这个频道,消息列表读不到(Discord 多半没带 --force-renderer-accessibility 启动)
+ * no_discord   Discord 没在运行
+ * untrusted    软件没有 macOS 的辅助功能权限
+ * failed       程序起不来、或者自己退了,正在等下一次重启(原因在 error)
+ */
+export type FollowReaderPhase =
+  | "off" | "no_channel" | "unavailable"
+  | "starting" | "reading" | "waiting" | "no_list" | "no_discord" | "untrusted" | "failed";
+
+export interface FollowReaderState {
+  state: FollowReaderPhase;
+  /** 正在读的(或读不到列表的)那个窗口的标题;没有是 null */
+  title: string | null;
+  /** failed 时的原因,人话;没有是 null */
+  error: string | null;
 }
 
 /** 本地收件文件此刻的样子。 */
@@ -41,6 +71,8 @@ export interface FollowInboxState {
   received: number;
   /** 最近一次读文件的问题,人话;没有是 null */
   error: string | null;
+  /** 往收件文件里写的那个读窗口的程序(软件自己拉起的那一个;手动运行的脚本软件看不见) */
+  reader: FollowReaderState;
 }
 
 // ---------------------------------------------------------------- 一条信号的下场

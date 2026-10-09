@@ -15,22 +15,42 @@
 - 连接只收不发:不向 Discord 发送任何消息。引擎不走代理:系统层面连不上 `gateway.discord.gg` 时这里也连不上。
 - 配了频道 ID、凭证库里有 token 才连。没配频道时一个包都不发,也不去碰凭证库。
 
-## 本地收件(`followInbox.ts`)
+## 本地收件(`followInbox.ts`、`followReader.ts`)
 
-对方的频道是私密的、拉不进 bot、也不是公告频道时,bot 那条路走不通。本地收件不碰 Discord 的接口:一个本机脚本
+对方的频道是私密的、拉不进 bot、也不是公告频道时,bot 那条路走不通。本地收件不碰 Discord 的接口:一个本机程序
 (`desktop/tools/discord-window-follow.swift`)通过 macOS 的辅助功能读**你屏幕上** Discord 窗口里当前频道的消息列表,
 新出现的消息一行一个 JSON 追加到交易库旁边的 `follow-inbox.jsonl`;引擎盯着这个文件,每行变成一条消息,之后和 bot 读来的消息一样过信任名单、
 三个上限、只观察、发单。没有任何 token,Discord 那边什么都收不到,不是自动化账号。
 
 - **从文件此刻的末尾读起**:引擎没在跑时追加的行不补——它们早就过了新鲜期,补进来只会刷一串「太旧」。文件变短(被清空、换了一个)就从头读。
   认不出的行记原因、跳过,后面的照读;状态写在面板「收件文件」那一行。
-- **消息的时刻是脚本看见它的时刻**:屏幕上只有"几点几分",没有秒。脚本每 1.5 秒看一次,所以到引擎手里时通常只有一两秒,新鲜度那道检查照常。
+- **消息的时刻是程序看见它的时刻**:屏幕上只有"几点几分",没有秒。它每 1.5 秒看一次,所以到引擎手里时通常只有一两秒,新鲜度那道检查照常。
 - **发送者是显示名**:`author_id` 写成 `local:名字`,信任名单里也这样写(`config.ts` 的 `LOCAL_AUTHOR`)。频道里别人把昵称改成一样的,软件分不出来——
   风险揭示里写明了,只适合私密小群。消息 ID 是 `local:` 加脚本给每条消息算的 key,去重照旧按 ID。
 - **判定里它是 `local` 频道**:`triage` 对 `channel_id = "local"` 的消息看 `local_inbox` 开关,对别的消息看 `channel_id`;本地收件开着不等于 bot 那条路放宽。
-- 脚本只在窗口标题里是指定的频道时抄(`--channel 名字`),切到别的频道就停;只抄列表末尾新增、时间标签是今天且在几分钟之内的消息,
-  往上翻出来的旧消息、跨天后改了标签的消息都不抄。Discord 的渲染进程默认不建辅助功能树,要用 `open -a Discord --args --force-renderer-accessibility` 启动。
-- 打开本地收件(`local_inbox` 从关到开)在跟单开着时算放宽,要 `gate.follow` 的确认;确认框上写明消息来源与显示名的风险。
+- 程序只在窗口标题里是指定的频道时抄(`--channel 名字`),切到别的频道就停;只抄列表末尾新增、时间标签是今天且在几分钟之内的消息,
+  往上翻出来的旧消息、跨天后改了标签的消息都不抄。离开那个频道再回来,期间的消息不补:它们到引擎手里时会被当成刚发的。
+  Discord 的渲染进程默认不建辅助功能树,要用 `open -a Discord --args --force-renderer-accessibility` 启动。
+- 打开本地收件(`local_inbox` 从关到开)、开着时填上或换一个频道名(`local_channel`),在跟单开着时算放宽,要 `gate.follow` 的确认;
+  确认框上写明消息来源、读哪个频道与显示名的风险。清空频道名不算:那只是软件不再自己读。
+
+### 读窗口的程序由谁来跑(`followReader.ts`)
+
+- **填了频道名,引擎自己跑。** 本地收件开着、`local_channel` 不空时,引擎把编译好的那一份拉起来(带 `--supervised`),换了频道名就换一个,
+  关掉本地收件、引擎退出时一起停。靠人记得去终端里开脚本,忘了就是一整晚不跟,而且没有任何提示。
+- **程序随 Mac 安装包带着**(`resources/tools/discord-window-follow`,打包前由 `tools/build_inbox_reader.js` 编译,用户的电脑上不用装 Swift);
+  主进程用环境变量 `DAFRI_INBOX_READER` 把位置告诉引擎。不是 macOS、这一份软件没带它、没填频道名,引擎就不跑,用户自己运行脚本。
+  两种跑法往同一个文件里写,引擎读文件那一半不区分;两个同时在跑也不会重复发单,消息按 ID 去重。
+- **它是引擎的子进程,不是独立的后台服务。** 它的标准输入是一根引擎不写的管道:引擎没了(正常退、崩了、被杀)管道就断,它读到头自己退。
+  不装开机启动项,不留孤儿进程。
+- **状态走标准输出,一行一个 JSON**:`reading`、`waiting`(没有窗口停在这个频道)、`no_list`(窗口在、消息列表读不到)、`no_discord`、`untrusted`。
+  引擎只认这五种,别的输出不认、不记:消息原文不经过引擎的日志。界面「读窗口」那一行显示它——这是"到底有没有在读"唯一看得见的地方,
+  所以每一种"没在读"都写明人该做什么(`followForm.ts` 的 `readerText`)。
+- **辅助功能权限算在软件头上**(macOS 按拉起它的那个应用认):要在「系统设置 → 隐私与安全性 → 辅助功能」里打开 IBKR-Assistant。
+  没有权限时程序报 `untrusted`、以退出码 77 退出,引擎每 5 秒再拉起来看一眼,授权之后不用重启软件;系统的授权提示只让头一次拉起的那个弹。
+- 别的退出按 1 秒起步、翻倍、封顶一分钟重启,读上过就从头算;原因写在「读窗口」那一行。
+- **Discord 仍要用户自己带参数启动。** 软件不替人重启别的应用;窗口在这个频道却读不到消息列表时报 `no_list`,界面上写明那条命令。
+- 手动运行的脚本软件看不见:没填频道名时「读窗口」那一行只说要自己运行脚本,它有没有在读看「收件文件」那一行的收到条数。
 
 ## 一条消息怎么判(`follow.ts`)
 
@@ -92,11 +112,12 @@
 |---|---|
 | 从关到开 | 要 |
 | 开着时换频道、多信任一个人、换一个人 | 要 |
+| 开着时打开本地收件、填上或换一个本地收件的频道名 | 要 |
 | 开着时账户变了(多一个、换一个、清空 = 改发默认账户) | 要 |
 | 开着时调大任何一个上限 | 要 |
-| 关掉;只观察时改任何配置;开着时少信任一个人、少发一个账户、调小上限 | 不要 |
+| 关掉;只观察时改任何配置;开着时少信任一个人、少发一个账户、调小上限、关掉本地收件、清空它的频道名 | 不要 |
 
-- 凭据绑的是补丁落下去之后的整份:频道、信任名单、账户、三个上限。确认的是一份、存的是另一份,不放行。
+- 凭据绑的是补丁落下去之后的整份:频道、信任名单、账户、三个上限、本地收件与它的频道名。确认的是一份、存的是另一份,不放行。
 - 确认框上的字全由主进程对着这一份写(`confirm-grants.js` 的 `followConfirmText`),账户是纸面还是实盘问引擎;含实盘账户时标题里写明。
 - 没同意现行条款时不能打开(见 [条款同意](consent.md))。
 - 关是当场生效的,不等「保存」。
@@ -107,7 +128,8 @@
 ```json
 "follow": {
   "enabled": false, "channel_id": "", "author_ids": [], "accounts": [],
-  "max_age_seconds": 30, "max_orders_per_day": 3, "max_risk_usd": 300
+  "max_age_seconds": 30, "max_orders_per_day": 3, "max_risk_usd": 300,
+  "local_inbox": false, "local_channel": ""
 }
 ```
 
@@ -121,6 +143,7 @@
 | `max_orders_per_day` | 一天(美东)最多跟几单 | 1–100 |
 | `max_risk_usd` | 一单最坏亏多少美元 | ≥ 1 |
 | `local_inbox` | 本地收件:读交易库旁边的 `follow-inbox.jsonl`;可以不填频道只靠它 | 默认关 |
+| `local_channel` | 本地收件读哪个频道:Discord 窗口标题里的名字。填了,软件自己跑读窗口的程序;空 = 自己运行脚本 | 0–100 字,不含换行 |
 
 - ID 必须写成字符串:它超过了 JSON 数字能精确表示的范围,写成数字当场报。
 - 三个默认值(30 秒、3 单、300 美元)是保守的起点,没有数据依据,由用户按自己的情况改。
@@ -156,8 +179,10 @@
 ## 当前状态
 
 只有离线测试,**没有在真实的 Discord 连接与真实券商上核对过**。离线测试覆盖:判定规则、配置校验、日志表、Gateway 协议(假 socket)、
-从消息到发单的整趟(真引擎 + 假券商)、收件文件的读法、主进程的确认凭据(真的 `main.js` + 真的引擎子进程)。
+从消息到发单的整趟(真引擎 + 假券商)、收件文件的读法、读窗口程序的看管(假子进程、假时钟)、主进程的确认凭据(真的 `main.js` + 真的引擎子进程)。
 本地收件的脚本在真机的 Discord 窗口上试过读取;整条路(脚本 → 文件 → 引擎 → 发单)没有在真实券商上核对过。
+编译好的读窗口程序在真机上从终端跑过 `--supervised`:四种状态(在读、不在这个频道、Discord 没开、没有权限)与管道一断就退都对;
+由装好的应用拉起它、以及授权提示与权限算在 IBKR-Assistant 头上这一段,没有在真机上核对过。
 解析与判定对着一个真实频道三周的消息离线跑过(114 条里 22 条有单子的骨架,17 条会跟);贷方价差没有在真实券商上发过单。
 第一次真机使用请先只观察,再在纸面账户上打开。
 
@@ -169,12 +194,14 @@
 | `engine-ts/src/discordGateway.ts` | Gateway 客户端 |
 | `engine-ts/src/followLog.ts` | 日志表 |
 | `engine-ts/src/followInbox.ts` | 本地收件:收件文件怎么读、一行怎么变成一条消息 |
-| `desktop/tools/discord-window-follow.swift` | 本地收件的脚本:读屏幕上的 Discord 窗口,追加到收件文件 |
+| `engine-ts/src/followReader.ts` | 本地收件:读窗口的程序怎么起、状态行怎么认、退了之后隔多久再起 |
+| `desktop/tools/discord-window-follow.swift` | 读窗口的程序:读屏幕上的 Discord 窗口,追加到收件文件;手动运行的脚本也是它 |
+| `desktop/tools/build_inbox_reader.js` | 把上面那个文件编译成随包带的程序 |
 | `engine-ts/src/services/follow.ts` | 连接起停、一条消息的那一趟、状态;`refuseModelWhileFollowing` |
 | `engine-ts/src/rpc/handlers/follow.ts` | `follow.status` / `follow.set_token` / `follow.reconnect` |
 | `engine-ts/src/config.ts` 的 `buildFollow` | 配置段 |
 | `desktop/confirm-grants.js` | `followWidened`、`followBinding`、`followConfirmText` |
 | `desktop/renderer-react/src/lib/FollowPanel.tsx`、`followForm.ts` | 界面与表单逻辑 |
 
-测试:`follow.spec.ts`、`follow-inbox.spec.ts`、`discord-gateway.spec.ts`、`follow-service.spec.ts`、`desktop-follow-form.spec.ts`、
-`desktop-confirm-grants.spec.ts`、`desktop-consent.spec.ts`、`desktop-main.spec.ts`。
+测试:`follow.spec.ts`、`follow-inbox.spec.ts`、`follow-reader.spec.ts`、`discord-gateway.spec.ts`、`follow-service.spec.ts`、
+`desktop-follow-form.spec.ts`、`desktop-confirm-grants.spec.ts`、`desktop-consent.spec.ts`、`desktop-main.spec.ts`、`desktop-release.spec.ts`。

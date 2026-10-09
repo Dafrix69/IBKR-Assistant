@@ -109,7 +109,7 @@ import type {
   InstructionLlm, InstructionOrder, InstructionRejection, InstructionSubmitResult, OrderTicket, OrderTicketLeg,
   OrderTrigger,
   BackupInfo, DataBackupsResult,
-  FollowConfig, FollowEntry, FollowLink, FollowLinkState, FollowOutcome, FollowSeen, FollowStatus,
+  FollowConfig, FollowEntry, FollowLink, FollowLinkState, FollowOutcome, FollowReaderState, FollowSeen, FollowStatus,
 } from '../../../engine-ts/src/contract/index';
 
 export type {
@@ -139,7 +139,7 @@ export type {
   InstructionLlm, InstructionOrder, InstructionRejection, InstructionSubmitResult, OrderTicket, OrderTicketLeg,
   OrderTrigger,
   BackupInfo, DataBackupsResult,
-  FollowConfig, FollowEntry, FollowLink, FollowLinkState, FollowOutcome, FollowSeen, FollowStatus,
+  FollowConfig, FollowEntry, FollowLink, FollowLinkState, FollowOutcome, FollowReaderState, FollowSeen, FollowStatus,
 };
 /** 界面这边一直用的名字;引擎契约里分别叫 AccountView / SettingsView / Policies / Limits / ProtectionsConfig。 */
 export type Account = AccountView;

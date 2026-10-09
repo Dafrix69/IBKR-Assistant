@@ -20,6 +20,7 @@ interface Pkg {
   build: {
     files: string[];
     extraResources: Array<{ from: string; to: string }>;
+    mac: { extraResources: Array<{ from: string; to: string; filter: string[] }> };
     electronFuses: Record<string, boolean>;
     asar: boolean;
   };
@@ -38,6 +39,30 @@ describe("安装包里带什么", () => {
     const mac = read("desktop", "tools", "dist_mac.js");
     expect(mac.indexOf("run('npm', ['run', 'notices'])")).toBeGreaterThan(-1);
     expect(mac.indexOf("run('npm', ['run', 'notices'])")).toBeLessThan(mac.indexOf("require('electron-builder')"));
+  });
+
+  it("「本地收件」读窗口的程序:打包前编、只随 Mac 包、主进程告诉引擎的位置和放进去的位置是同一个", () => {
+    // 放在 mac 段里:Windows 的包不带它,也不会去找一个不存在的目录
+    expect(pkg.build.mac.extraResources).toEqual([{ from: "build/inbox-reader", to: "tools", filter: ["discord-window-follow"] }]);
+    expect(pkg.build.extraResources.map((r) => r.to)).not.toContain("tools");
+    const builder = read("desktop", "tools", "build_inbox_reader.js");
+    expect(builder).toContain("path.join(DESKTOP, 'build', 'inbox-reader')");
+    expect(builder).toContain("path.join(OUT_DIR, 'discord-window-follow')");
+    const mac = read("desktop", "tools", "dist_mac.js");
+    expect(mac.indexOf("run('node', ['tools/build_inbox_reader.js', '--arch', 'arm64'])")).toBeGreaterThan(-1);
+    expect(mac.indexOf("tools/build_inbox_reader.js")).toBeLessThan(mac.indexOf("require('electron-builder')"));
+    expect(mac).toContain("path.join(app, 'Contents', 'Resources', 'tools', 'discord-window-follow')");
+    const main = read("desktop", "main.js");
+    expect(main).toContain("path.join(process.resourcesPath, 'tools', 'discord-window-follow')");
+    expect(main).toContain("path.join(__dirname, 'build', 'inbox-reader', 'discord-window-follow')");
+    // 开发时启动前也编一遍,编不了就跳过(不是 macOS、没装 swiftc),不拦着软件起来
+    for (const script of ["prestart", "predev"]) expect(pkg.scripts[script], script).toContain("node tools/build_inbox_reader.js --if-possible");
+    // 引擎那头认的是同一个环境变量、同一个"没有权限"的退出码
+    expect(main).toContain("process.env.DAFRI_INBOX_READER");
+    expect(read("engine-ts", "src", "followReader.ts")).toContain('READER_ENV = "DAFRI_INBOX_READER"');
+    const swift = read("desktop", "tools", "discord-window-follow.swift");
+    expect(swift.match(/exit\(77\)/g)?.length).toBe(2);
+    expect(read("engine-ts", "src", "followReader.ts")).toContain("EXIT_UNTRUSTED = 77");
   });
 
   it("主进程读许可声明的位置,和打包放进去的位置是同一个", () => {

@@ -25,10 +25,10 @@ cd desktop   && npm run lint && npm run ui:typecheck
 ```
 transport     rpc.ts(转出的壳)  rpc/server.ts  rpc/context.ts  rpc/contractMethods.ts  rpc/params.ts  rpc/handlers/*.ts  cli.ts
 orchestrate   engine.ts  engine/*.ts(hosted 托管单、reconcile 执行对账、callbacks 回报落库、clock)  tracker.ts  services/*.ts
-execution     broker.ts  ibContracts.ts(怎么拼一张 IB 合约)  futuBroker.ts  ibSession.ts  ibTypes.ts  tws.ts  futu.ts  futuBridge.ts  optionMarks.ts(蝴蝶测算取行情:自己的流,不碰盯盘的)  heldStreams.ts(持仓的常驻行情订阅:平掉的撤掉)
+execution     broker.ts  ibContracts.ts(怎么拼一张 IB 合约)  futuBroker.ts  ibSession.ts  ibExecHistory.ts(向 TWS 要前几天的成交:另一条只读、用完就关的连接)  ibTypes.ts  tws.ts  futu.ts  futuBridge.ts  optionMarks.ts(蝴蝶测算取行情:自己的流,不碰盯盘的)  heldStreams.ts(持仓的常驻行情订阅:平掉的撤掉)
 parsing       validator.ts  providers.ts  prompts.ts  shorthand.ts  llm.ts  embeddings.ts  follow.ts(Discord 跟单的判定规则:跟不跟、为什么)
 analysis      backtest backtestLab priceaction screener research ideaRetrieval optionwall anomaly flyexit tradereview tradeOutcomes performance leaders fillsCsv optionTradesCsv optionPositionsCsv tradeSimilar ibtrades macro market alerts maTouch execQuality signalOutcomes trackerDrawdown trackerSpotStop ivPricing playbook(SPX 日内剧本:预期波动区间与状态机) flyPlan flyCalibration flyIvModel(校准出来的参数,脚本生成,不手改)
-domain        config.ts  models.ts  store.ts  storeSafety.ts(库的版本号、完整性、备份)  importedTrades.ts  ideaVectors.ts  signalLog.ts  positions.ts  combos.ts(期权腿 → 组合)  marketdata.ts  ivSamples.ts(自己攒的期权 IV,文件读写)  playbookLog.ts(日内剧本的底账,文件读写)  followLog.ts(跟单日志)  followInbox.ts(跟单的本地收件:收件文件怎么读)
+domain        config.ts  models.ts  store.ts  storeSafety.ts(库的版本号、完整性、备份)  importedTrades.ts  ideaVectors.ts  signalLog.ts  positions.ts  combos.ts(期权腿 → 组合)  marketdata.ts  ivSamples.ts(自己攒的期权 IV,文件读写)  playbookLog.ts(日内剧本的底账,文件读写)  followLog.ts(跟单日志)  followInbox.ts(跟单的本地收件:收件文件怎么读)  followReader.ts(跟单的本地收件:读窗口的程序怎么起、怎么看管)
 util          py.ts  pyjson.ts  tz.ts  notify.ts  keychain.ts  keychainChild.ts(凭证子进程)  secrets.ts(引擎里凭证读写的入口)  killswitch.ts  protections.ts  riskBudget.ts  rpcError.ts  marketCalendar.ts(内置休市日历)  discordGateway.ts(Discord Gateway 的最小客户端,只读)
 contract      contract/*.ts(纯类型,零 import,谁都能引)  contract/schema/*.ts(入参的 zod 校验,只给 rpc/ 用)
 ```

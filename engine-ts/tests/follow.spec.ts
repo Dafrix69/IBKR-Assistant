@@ -22,7 +22,7 @@ const FRIDAY = { epochMs: NOW, date: "2026-08-14", minutes: 10 * 60 + 32, second
 function cfg(patch: Partial<FollowConfig> = {}): FollowConfig {
   return {
     enabled: true, channel_id: CHANNEL, author_ids: [FRIEND], accounts: [],
-    max_age_seconds: 30, max_orders_per_day: 3, max_risk_usd: 300, local_inbox: false, ...patch,
+    max_age_seconds: 30, max_orders_per_day: 3, max_risk_usd: 300, local_inbox: false, local_channel: "", ...patch,
   };
 }
 
@@ -236,8 +236,16 @@ describe("follow: 配置段", () => {
   it("不写这一段 = 关着、不连 Discord", () => {
     expect(makeSettings(gc.base_config).follow).toEqual({
       enabled: false, channel_id: "", author_ids: [], accounts: [],
-      max_age_seconds: 30, max_orders_per_day: 3, max_risk_usd: 300, local_inbox: false,
+      max_age_seconds: 30, max_orders_per_day: 3, max_risk_usd: 300, local_inbox: false, local_channel: "",
     });
+  });
+
+  it("本地收件的频道名:掐头去尾存下;不是字符串、带换行、超过 100 字的当场报", () => {
+    expect(makeSettings(gc.base_config, { follow: { local_channel: "  charlie的策略 " } }).follow.local_channel).toBe("charlie的策略");
+    expect(makeSettings(gc.base_config, { follow: { local_channel: "x".repeat(100) } }).follow.local_channel).toHaveLength(100);
+    for (const bad of [7, ["charlie"], "a\nb", "x".repeat(101)]) {
+      expect(() => makeSettings(gc.base_config, { follow: { local_channel: bad } }), String(bad)).toThrow(/follow\.local_channel 必须是不超过 100 字、不含换行的频道名/);
+    }
   });
 
   it("信任名单里可以是本地收件的显示名(local:名字);带换行、空名字、太长的不行", () => {

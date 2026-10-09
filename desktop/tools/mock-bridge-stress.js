@@ -245,9 +245,9 @@ window.dafri = {
     port_open:false,connected:false,error:'端口 11111 拒绝连接',hint:'OpenD 没有在跑,或者它的 API 端口不是 11111。'}]}),
   // Discord 跟单:只观察了一上午,下午打开——一条跟了,一条超上限,一条没接住
   followStatus: async () => ({
-    config:{enabled:true,channel_id:'1100000000000000001',author_ids:['220000000000000002'],accounts:[],max_age_seconds:30,max_orders_per_day:3,max_risk_usd:300,local_inbox:false},
+    config:{enabled:true,channel_id:'1100000000000000001',author_ids:['220000000000000002'],accounts:[],max_age_seconds:30,max_orders_per_day:3,max_risk_usd:300,local_inbox:false,local_channel:''},
     token_configured:true, link:{state:'ready',bot:'follow-bot',error:null,channel_known:true}, today:{sent:1,max:3},
-    inbox:{enabled:false,path:'/Users/you/Library/Application Support/dafri/follow-inbox.jsonl',watching:false,last_at:null,received:0,error:null},
+    inbox:{enabled:false,path:'/Users/you/Library/Application Support/dafri/follow-inbox.jsonl',watching:false,last_at:null,received:0,error:null,reader:{state:'off',title:null,error:null}},
     recent:[
       {at:new Date(Date.now()-6*60e3).toISOString(),message_id:'1400000000000000003',author_id:'220000000000000002',author_name:'老王',text:'1.6 挂15蝴蝶 15CM 2张',outcome:'capped',detail:'这一单最坏亏 $320,超过跟单的单笔上限 $300',summary:'买入 2 张当日到期的 SPX 6900/6915/6930 看涨蝴蝶(翼宽 15 点),净权利金上限 1.6',record_ids:[]},
       {at:new Date(Date.now()-48*60e3).toISOString(),message_id:'1400000000000000002',author_id:'220000000000000002',author_name:'老王',text:'1.8 挂15蝴蝶 15CM',outcome:'sent',detail:'已发出 1 笔(模拟)',summary:'买入 1 张当日到期的 SPX 6900/6915/6930 看涨蝴蝶(翼宽 15 点),净权利金上限 1.8',record_ids:['r-demo']},

@@ -98,7 +98,7 @@ describe("Discord 跟单:打开与放宽要凭据", () => {
   it("从关到开:要,绑的是补丁落下去之后的整份(信任谁、哪个频道、哪些账户、三个上限)", () => {
     expect(needs({ enabled: true, channel_id: ON.channel_id, author_ids: ON.author_ids }, OFF)).toEqual([{
       purpose: "gate.follow",
-      binding: { channel_id: ON.channel_id, author_ids: ON.author_ids, accounts: [], max_age_seconds: 30, max_orders_per_day: 3, max_risk_usd: 300, local_inbox: false },
+      binding: { channel_id: ON.channel_id, author_ids: ON.author_ids, accounts: [], max_age_seconds: 30, max_orders_per_day: 3, max_risk_usd: 300, local_inbox: false, local_channel: "" },
     }]);
   });
 
@@ -127,6 +127,16 @@ describe("Discord 跟单:打开与放宽要凭据", () => {
     const localOnly = needs({ enabled: true, channel_id: "", author_ids: ["local:Charlie"], local_inbox: true }, OFF);
     expect(localOnly).toHaveLength(1);
     expect(localOnly[0]!.binding).toMatchObject({ channel_id: "", author_ids: ["local:Charlie"], local_inbox: true });
+  });
+
+  it("本地收件读哪个频道:开着时填上、换一个要确认(换了消息来源);清空、原样再存、本地收件关着时改不要", () => {
+    const local = { ...ON, local_inbox: true, local_channel: "charlie的策略" };
+    expect(needs({ local_channel: "charlie的策略" }, { ...ON, local_inbox: true })).toHaveLength(1);
+    expect(needs({ local_channel: "别的频道" }, local)).toHaveLength(1);
+    expect(needs({ local_channel: "别的频道" }, local)[0]!.binding).toMatchObject({ local_inbox: true, local_channel: "别的频道" });
+    expect(needs({ local_channel: "" }, local)).toEqual([]);
+    expect(needs({ local_channel: " charlie的策略 " }, local)).toEqual([]);
+    expect(needs({ local_channel: "别的频道" }, ON)).toEqual([]);
   });
 
   it("开着时往紧了改:少信任一个人、调小上限、少发一个账户,不要", () => {
@@ -190,6 +200,15 @@ describe("Discord 跟单:打开与放宽要凭据", () => {
     const unknown = g.followConfirmText(g.followBinding(ON), []);
     expect(unknown.live).toBe(true);
     expect(unknown.detail).toContain("类别未知");
+  });
+
+  it("确认框上的字:本地收件开着时写明读哪个频道、由谁读", () => {
+    const accounts = [{ alias: "模拟", is_paper: true, default: true }];
+    expect(g.followConfirmText(g.followBinding(ON), accounts).detail).not.toContain("读哪个频道");
+    const named = g.followConfirmText(g.followBinding({ ...ON, local_inbox: true, local_channel: "charlie的策略" }), accounts).detail;
+    expect(named).toContain("读哪个频道:窗口标题里带「charlie的策略」的那个,由软件自己读");
+    const manual = g.followConfirmText(g.followBinding({ ...ON, local_inbox: true }), accounts).detail;
+    expect(manual).toContain("读哪个频道:(没有填,软件不自己读;读哪个频道由你运行的脚本定)");
   });
 });
 

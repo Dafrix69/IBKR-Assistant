@@ -19,6 +19,7 @@ const mod = (await import(/* @vite-ignore */ pathToFileURL(path.join(SRC, "lib",
   toConfig(f: Form): Record<string, unknown>;
   isDirty(f: Form, saved: unknown): boolean;
   addAuthor(f: Form, id: string): Form;
+  readerText(reader: { state: string; title: string | null; error: string | null }, channel: string): { tone: string; text: string };
   OUTCOME_LABEL: Record<string, string>;
   outcomeTone(outcome: string): string;
 };
@@ -72,9 +73,22 @@ describe("拼出要存的那一份", () => {
     const next = mod.toConfig(form);
     expect(next).toEqual({
       enabled: true, channel_id: CHANNEL, author_ids: [FRIEND], accounts: ["模拟"],
-      max_age_seconds: 30, max_orders_per_day: 3, max_risk_usd: 500, local_inbox: false,
+      max_age_seconds: 30, max_orders_per_day: 3, max_risk_usd: 500, local_inbox: false, local_channel: "",
     });
     expect(fromDict({ ...BASE, follow: next }).follow).toEqual(next);
+  });
+
+  it("本地收件的频道名:掐头去尾存下,改了算改过;太长、带换行不让存", () => {
+    const form = { ...mod.toForm(SAVED), localInbox: true, localChannel: "  charlie的策略 " };
+    expect(mod.formProblems(form)).toEqual([]);
+    const next = mod.toConfig(form);
+    expect(next).toMatchObject({ local_inbox: true, local_channel: "charlie的策略" });
+    expect(fromDict({ ...BASE, follow: next }).follow).toEqual(next);
+    expect(mod.isDirty(form, SAVED)).toBe(true);
+    expect(mod.isDirty({ ...mod.toForm(next), localChannel: " charlie的策略" }, next)).toBe(false);
+    expect(mod.isDirty({ ...mod.toForm(next), localChannel: "别的频道" }, next)).toBe(true);
+    expect(mod.formProblems({ ...form, localChannel: "x".repeat(101) })).toEqual(["本地收件的频道名最多 100 字,不能换行"]);
+    expect(mod.formProblems({ ...form, localChannel: "a\nb" })).toEqual(["本地收件的频道名最多 100 字,不能换行"]);
   });
 
   it("改过没有:名单只看内容,不看先后", () => {
@@ -109,5 +123,28 @@ describe("下场的标签", () => {
     expect(Object.keys(mod.OUTCOME_LABEL).sort()).toEqual([...outcomes].sort());
     expect(outcomes.filter((o) => mod.outcomeTone(o) === "success")).toEqual(["sent"]);
     expect(mod.outcomeTone("observed")).toBe("default");
+  });
+});
+
+describe("「读窗口」那一行", () => {
+  const view = (state: string, extra: { title?: string; error?: string } = {}) =>
+    mod.readerText({ state, title: extra.title ?? null, error: extra.error ?? null }, "charlie的策略");
+
+  it("只有真的在读才是「在读」;每一种没在读都说清该做什么", () => {
+    expect(view("reading", { title: "#charlie的策略 | 某服务器 - Discord" })).toMatchObject({ tone: "ok" });
+    expect(view("reading", { title: "#charlie的策略 | 某服务器 - Discord" }).text).toContain("#charlie的策略 | 某服务器 - Discord");
+    expect(view("waiting").text).toContain("没有窗口停在「charlie的策略」");
+    expect(view("no_list").text).toContain("--force-renderer-accessibility");
+    expect(view("no_discord").text).toContain("Discord 没在运行");
+    expect(view("untrusted").text).toContain("辅助功能");
+    expect(view("failed", { error: "读窗口的程序退出了(退出码 1),1 秒后重新启动" }).text).toBe("读窗口的程序退出了(退出码 1),1 秒后重新启动");
+    for (const state of ["waiting", "no_list", "no_discord", "untrusted", "failed"]) expect(view(state).tone, state).not.toBe("ok");
+    for (const state of ["waiting", "no_list", "no_discord", "untrusted"]) expect(view(state).text, state).toMatch(/^没在读/);
+  });
+
+  it("不自己读窗口的三种:关着、没填频道名、这一份软件没带程序——后两种提醒要自己运行脚本", () => {
+    expect(view("off")).toEqual({ tone: "info", text: "关着" });
+    expect(view("no_channel").text).toContain("自己运行脚本");
+    expect(view("unavailable").text).toContain("自己运行脚本");
   });
 });

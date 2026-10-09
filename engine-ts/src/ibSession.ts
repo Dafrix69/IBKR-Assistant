@@ -13,6 +13,7 @@ import type {
   IbContract, IbSession, OptChainParam, OrderIntent, PortfolioItemLike, PositionItemLike,
   RawBar, TickerData, TickerHandle, TradeLike,
 } from "./ibTypes.js";
+import { fetchExecutionHistory, historyClientId } from "./ibExecHistory.js";
 import { logStderr } from "./ibLink.js";
 
 type Subscription = { unsubscribe(): void };
@@ -186,7 +187,7 @@ export async function createIbApiNextSession(cfg: {
   port: number;
   clientId: number;
   readonly: boolean;
-}, deps: { mod?: any } = {}): Promise<IbSession> {
+}, deps: { mod?: any; fetchHistory?: typeof fetchExecutionHistory } = {}): Promise<IbSession> {
   const mod: any = deps.mod ?? await import("@stoqey/ib");
   const api = new mod.IBApiNext({ host: cfg.host, port: cfg.port, reconnectInterval: IB_RECONNECT_MS });
 
@@ -630,6 +631,14 @@ export async function createIbApiNextSession(cfg: {
       // 当天(本次会话)的逐笔成交;IBApiNext 的 getExecutionDetails 一次性回全量
       const details = await api.getExecutionDetails({});
       return (details ?? []).map((d: any) => ({ contract: d?.contract ?? {}, execution: d?.execution ?? {} }));
+    },
+
+    async executionHistory(days: number) {
+      // 另开一条只读连接(自己的 client id),要完就关;平时这条连接谈不到带天数的接口版本
+      const got = await (deps.fetchHistory ?? fetchExecutionHistory)({
+        host: cfg.host, port: cfg.port, clientId: historyClientId(cfg.clientId), days,
+      });
+      return got.supported ? got.details : null;
     },
 
     async positions(): Promise<PositionItemLike[]> {

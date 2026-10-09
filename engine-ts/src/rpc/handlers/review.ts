@@ -74,7 +74,8 @@ export class ReviewHandlers extends HandlerBase {
    */
   private async reviewTrades(): Promise<[Rec[], number | null]> {
     const ibt = await import("../../ibtrades.js");
-    const synced = await this.ctx.fillSync.sync();
+    // 页面催的这一次连前 7 天的一起要:人来看的时候,正是发现"少了一笔"的时候
+    const synced = await this.ctx.fillSync.sync(undefined, true);
     const accounts = this.settings.accounts.map((a) => ({ alias: a.alias, account_id: a.account_id, is_paper: a.is_paper }));
     return [ibt.groupButterflies(this.engine.store.listFills(), accounts), synced];
   }

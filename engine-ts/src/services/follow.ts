@@ -1,7 +1,8 @@
 /** Discord 跟单(docs/features/follow.md):bot 读一个频道,信任的人发的蝴蝶速记不经确认直接走发单链路。
  *
- * 这里管三件事:两个来源的起停(Gateway 连接:配了频道、凭证库里有 token 才连;本地收件:开关开着就盯文件)、
- * 每条消息从判定到发单的那一趟、给界面的状态。规则在 follow.ts(纯函数),协议在 discordGateway.ts,收件文件在 followInbox.ts。
+ * 这里管三件事:两个来源的起停(Gateway 连接:配了频道、凭证库里有 token 才连;本地收件:开关开着就盯文件,
+ * 填了频道名还把读窗口的程序拉起来)、每条消息从判定到发单的那一趟、给界面的状态。
+ * 规则在 follow.ts(纯函数),协议在 discordGateway.ts,收件文件在 followInbox.ts,读窗口的程序在 followReader.ts。
  * 两个来源的消息走同一条路:信任名单、上限、只观察,一样不少。
  *
  * 几条规矩:
@@ -17,7 +18,9 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 
 import { nowEt } from "../config.js";
-import type { FollowConfig, FollowEntry, FollowInboxState, FollowLink, FollowOutcome, FollowSeen, FollowStatus } from "../contract/follow.js";
+import type {
+  FollowConfig, FollowEntry, FollowInboxState, FollowLink, FollowOutcome, FollowReaderState, FollowSeen, FollowStatus,
+} from "../contract/follow.js";
 import { DiscordGateway } from "../discordGateway.js";
 import type { DiscordMessage, GatewayOptions, GatewayPhase } from "../discordGateway.js";
 import { resolveFanoutAccounts } from "../engine.js";
@@ -26,6 +29,8 @@ import { decide, orderText, outcomeOf, relativeCenterProblem, triage, whyUnparse
 import { FollowInbox, LOCAL_CHANNEL, inboxPath } from "../followInbox.js";
 import type { InboxOptions } from "../followInbox.js";
 import { FOLLOW_TEXT_MAX } from "../followLog.js";
+import { FollowReader, readerProgram } from "../followReader.js";
+import type { ReaderOptions } from "../followReader.js";
 import { etDayStart } from "../protections.js";
 import { readSecret, secretExists, writeSecret } from "../secrets.js";
 import { LOCAL_MODEL } from "../shorthand.js";
@@ -81,9 +86,12 @@ export class FollowService extends ServiceBase {
   gatewayOptions: GatewayOptions = {};
   /** 本地收件多久读一次文件(测试调短) */
   inboxOptions: InboxOptions = {};
+  /** 读窗口的程序在哪、怎么起(测试注入);program 不给 = 看宿主给的环境变量 */
+  readerOptions: ReaderOptions & { program?: string | null } = {};
 
   private gateway: DiscordGateway | null = null;
   private inbox: FollowInbox | null = null;
+  private reader: FollowReader | null = null;
   private started = false;
   private link: FollowLink = { state: "off", bot: null, error: null, channel_known: null };
   private readonly seen: FollowSeen[] = [];
@@ -104,6 +112,7 @@ export class FollowService extends ServiceBase {
     this.started = false;
     this.dropGateway();
     this.dropInbox();
+    this.dropReader();
   }
 
   /**
@@ -120,6 +129,7 @@ export class FollowService extends ServiceBase {
   private async syncOnce(restart: boolean): Promise<void> {
     if (!this.started) return;
     this.syncInbox();
+    this.syncReader();
     if (!this.settings.follow.channel_id) {
       this.dropGateway();
       this.setLink({ state: "off", bot: null, error: null });
@@ -183,6 +193,48 @@ export class FollowService extends ServiceBase {
     old?.stop();
   }
 
+  /**
+   * 读窗口的程序:本地收件开着、填了频道名、这台机器上有这个程序,就拉起来看着;频道名或收件文件换了就换一个。
+   * 它只往收件文件里写,消息照旧由上面的 inbox 读进来——它没起来、起不来,手动运行的脚本照样管用。
+   */
+  private syncReader(): void {
+    const cfg = this.settings.follow;
+    const program = cfg.local_inbox && cfg.local_channel ? this.readerProgramPath() : null;
+    const out = inboxPath(this.settings.db_path);
+    const old = this.reader;
+    if (old !== null && old.program === program && old.channel === cfg.local_channel && old.out === out) return;
+    this.dropReader();
+    if (program === null) return;
+    const reader = new FollowReader(program, cfg.local_channel, out, {
+      onStatus: () => {
+        if (this.reader === reader) this.emit("follow", { kind: "inbox" });
+      },
+    }, this.readerOptions);
+    this.reader = reader;
+    reader.start();
+    this.emit("follow", { kind: "inbox" });
+  }
+
+  private dropReader(): void {
+    const old = this.reader;
+    this.reader = null;
+    old?.stop();
+  }
+
+  private readerProgramPath(): string | null {
+    return this.readerOptions.program !== undefined ? this.readerOptions.program : readerProgram();
+  }
+
+  private readerView(): FollowReaderState {
+    const cfg = this.settings.follow;
+    if (!cfg.local_inbox) return { state: "off", title: null, error: null };
+    if (!cfg.local_channel) return { state: "no_channel", title: null, error: null };
+    const reader = this.reader;
+    if (reader !== null) return reader.view;
+    // 引擎还没真正起来(started 之前)也落在这里:说"还在起"不如照实说有没有这个程序
+    return { state: this.readerProgramPath() === null ? "unavailable" : "starting", title: null, error: null };
+  }
+
   /** 现在就读一次收件文件(测试用)。返回的 promise 在读到的消息都处理完之后落定。 */
   pollInbox(): Promise<void> {
     this.inbox?.poll();
@@ -198,6 +250,7 @@ export class FollowService extends ServiceBase {
       last_at: inbox?.lastAt ?? null,
       received: inbox?.received ?? 0,
       error: inbox?.error ?? null,
+      reader: this.readerView(),
     };
   }
 

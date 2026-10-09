@@ -182,6 +182,9 @@ export interface IbSession {
   positions(): Promise<PositionItemLike[]>;
   /** 当天逐笔成交(reqExecutions)。真机适配层实现;测试替身可不实现。 */
   executions?(): Promise<Array<{ contract: Record<string, any>; execution: Record<string, any> }>>;
+  /** 最近 days 天(最多 7)的逐笔成交:另开一条只读连接去要(ibExecHistory.ts),不经过平时这条。
+   *  TWS 版本太老给不了回 null;连不上、被拒、超时抛错。真机适配层实现;测试替身可不实现。 */
+  executionHistory?(days: number): Promise<Array<{ contract: Record<string, any>; execution: Record<string, any> }> | null>;
   /** 连接级事件回调:TWS 不带 id 的消息(1100 / 2110 与 IBKR 断开、1101 / 1102 恢复,数据农场的 21xx 等),
    *  以及 error$ 上的错误码。收到什么转什么,挑哪几个码由调用方定。 */
   onConnectivity(cb: (code: number) => void): void;

@@ -85,6 +85,13 @@ const TS_ENGINE_ROOT = PACKAGED
 if (PACKAGED && !process.env.DAFRI_PROMPT_DIR) {
   process.env.DAFRI_PROMPT_DIR = path.join(process.resourcesPath, 'engine', 'prompts');
 }
+// 「本地收件」读窗口的程序(只有 macOS):打包版在 resources/tools,开发时是 tools/build_inbox_reader.js 编出来的那一份。
+// 引擎照这个环境变量找它(engine-ts/src/followReader.ts);文件不在,引擎就不自己读窗口,用户照旧可以自己运行脚本
+if (process.platform === 'darwin' && !process.env.DAFRI_INBOX_READER) {
+  process.env.DAFRI_INBOX_READER = PACKAGED
+    ? path.join(process.resourcesPath, 'tools', 'discord-window-follow')
+    : path.join(__dirname, 'build', 'inbox-reader', 'discord-window-follow');
+}
 // 打包后配置放 userData(应用包只读);开发时沿用仓库里的 config/
 const CONFIG_PATH =
   process.env.DAFRI_CONFIG ||
