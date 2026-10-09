@@ -32,9 +32,27 @@ describe("到期时刻", () => {
     expect(expiryEpochMs("SPX", EXPIRY, "SPXW")).toBe(CLOSE);
     expect(expiryEpochMs("AAPL", EXPIRY, "")).toBe(CLOSE);
   });
-  it("月度 SPX(交易类别就是 SPX):开盘价结算,09:30 就到期", () => {
-    expect(expiryEpochMs("SPX", EXPIRY, "SPX")).toBe(Date.parse("2026-09-25T09:30:00-04:00"));
+  it("月度 SPX(交易类别就是 SPX):合约上记的是最后交易日,按下一个工作日的开盘价结算", () => {
+    // IBKR 给 9 月的月度合约记 20260917(周四);它周四收盘后停止交易,周五 09:30 结算
+    expect(expiryEpochMs("SPX", "20260917", "SPX")).toBe(Date.parse("2026-09-18T09:30:00-04:00"));
+    // 最后交易日的盘中,它还有一整个下午加一个隔夜的时间价值
+    expect(expiryEpochMs("SPX", "20260917", "SPX")!).toBeGreaterThan(Date.parse("2026-09-17T16:00:00-04:00"));
+    // 别的指数同理:NDX 的 20260917 也是周五开盘结算
+    expect(expiryEpochMs("NDX", "20260917", "NDX")).toBe(Date.parse("2026-09-18T09:30:00-04:00"));
+    // 提前收盘日不影响开盘结算的合约
+    expect(expiryEpochMs("SPX", "20260917", "SPX", true)).toBe(Date.parse("2026-09-18T09:30:00-04:00"));
   });
+  it("月度合约的日期已经是结算日本身的两种写法:带着时刻的、落在周五的——不再往后挪", () => {
+    // TWS 有时给带时刻的串:那个时刻就是周五的开盘(08:30 芝加哥 = 09:30 美东)
+    expect(expiryEpochMs("SPX", "20260918 08:30 US/Central", "SPX")).toBe(Date.parse("2026-09-18T09:30:00-04:00"));
+    // 光日期落在周五:最后交易日不会是周五,这只能是结算日
+    expect(expiryEpochMs("SPX", "20260918", "SPX")).toBe(Date.parse("2026-09-18T09:30:00-04:00"));
+    // 周五休市的那一周(2027-03-26 耶稣受难日):最后交易日周三 → 周四 09:30
+    expect(expiryEpochMs("SPX", "20270324", "SPX")).toBe(Date.parse("2027-03-25T09:30:00-04:00"));
+    // 收盘结算的那一类不受这条影响:带不带时刻都是当天 16:00
+    expect(expiryEpochMs("SPX", "20260918 15:00 US/Central", "SPXW")).toBe(Date.parse("2026-09-18T16:00:00-04:00"));
+  });
+
   it("SPX / NDX / RUT 没带交易类别:认不出是周度还是月度,不给(退回按报价反解)", () => {
     expect(expiryEpochMs("SPX", EXPIRY, "")).toBeNull();
     expect(expiryEpochMs("NDX", EXPIRY, "")).toBeNull();

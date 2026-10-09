@@ -20,15 +20,23 @@ cd desktop   && npm run lint && npm run ui:typecheck
 黄金基线红了不等于代码错了,等于**行为变了**。先判断是不是刻意的:是,`npm run golden:update` 并在 commit
 信息里说明改了哪个口径;不是,改代码。绝不为了让基线过而改基线。
 
+基线分两层,红了先分清是哪一层:
+
+- **参数层** `golden-params.spec.ts`(`baseline/golden/params.json`):进了钱路径或定价的那些数此刻是多少——止盈策略的倍数与钟点、
+  校准出来的 IV 模型、追价节奏、跳动、各段配置的默认值。它红 = 参数变了(重新校准、改了默认值),机制层里用到它的用例跟着红是预期的。
+- **机制层** 其余 `golden-*.spec.ts`:同样的输入、同样的参数,算出来的是什么。参数层绿、它红 = 机制自己变了,这才是要查的。
+- 基线只能说"和上次不一样",说不了"是对的"(期望值由这份代码自己重生成)。定价对不对由 `pricing-identities.spec.ts` 管:
+  平价关系、σ → 0 退化成内在价值、蝶价出不了 [0, 翼宽]、反解回得去——每一条都有独立于实现的答案。动定价函数先看它。
+
 ## 引擎分层(依赖只能往下)
 
 ```
 transport     rpc.ts(转出的壳)  rpc/server.ts  rpc/context.ts  rpc/contractMethods.ts  rpc/params.ts  rpc/handlers/*.ts  cli.ts
 orchestrate   engine.ts  engine/*.ts(hosted 托管单、reconcile 执行对账、callbacks 回报落库、clock)  tracker.ts  services/*.ts
-execution     broker.ts  ibContracts.ts(怎么拼一张 IB 合约)  futuBroker.ts  ibSession.ts  ibExecHistory.ts(向 TWS 要前几天的成交:另一条只读、用完就关的连接)  ibTypes.ts  tws.ts  futu.ts  futuBridge.ts  optionMarks.ts(蝴蝶测算取行情:自己的流,不碰盯盘的)  heldStreams.ts(持仓的常驻行情订阅:平掉的撤掉)
-parsing       validator.ts  providers.ts  prompts.ts  shorthand.ts  llm.ts  embeddings.ts  follow.ts(Discord 跟单的判定规则:跟不跟、为什么)
-analysis      backtest backtestLab priceaction screener research ideaRetrieval optionwall anomaly flyexit tradereview tradeOutcomes performance leaders fillsCsv optionTradesCsv optionPositionsCsv tradeSimilar ibtrades macro market alerts maTouch execQuality signalOutcomes trackerDrawdown trackerSpotStop ivPricing playbook(SPX 日内剧本:预期波动区间与状态机) flyPlan flyCalibration flyIvModel(校准出来的参数,脚本生成,不手改)
-domain        config.ts  models.ts  store.ts  storeSafety.ts(库的版本号、完整性、备份)  importedTrades.ts  ideaVectors.ts  signalLog.ts  positions.ts  combos.ts(期权腿 → 组合)  marketdata.ts  ivSamples.ts(自己攒的期权 IV,文件读写)  playbookLog.ts(日内剧本的底账,文件读写)  followLog.ts(跟单日志)  followInbox.ts(跟单的本地收件:收件文件怎么读)  followReader.ts(跟单的本地收件:读窗口的程序怎么起、怎么看管)
+execution     broker.ts  ibContracts.ts(怎么拼一张 IB 合约、期权链订哪些行权价)  futuBroker.ts  ibSession.ts  ibExecHistory.ts(向 TWS 要前几天的成交:另一条只读、用完就关的连接)  ibTypes.ts  tws.ts  futu.ts  futuBridge.ts  optionMarks.ts(蝴蝶测算取行情:自己的流,不碰盯盘的)  heldStreams.ts(持仓的常驻行情订阅:平掉的撤掉)  accountFeeds.ts(账户当日盈亏与净值:哪条会话管这个账号、是不是美元)  autoMid.ts(AUTO_MID 按盘口价差的一份让价)
+parsing       validator.ts  providers.ts  prompts.ts  shorthand.ts  llm.ts  embeddings.ts  follow.ts(Discord 跟单的判定规则、盘口的换算、成交后建追踪的入参与核对规则)
+analysis      backtest backtestLab priceaction screener research ideaRetrieval optionwall anomaly flyexit tradereview tradeOutcomes performance leaders fillsCsv optionTradesCsv optionPositionsCsv tradeSimilar ibtrades macro market alerts maTouch execQuality signalOutcomes trackerDrawdown trackerSpotStop trackerExits(到点平仓、分批止盈、止损类的追价节奏、标的止损的确认) openRisk(账户在手的期权敞口) assignmentRisk(到期日空头腿在不在实值里) sessionEm(从日内剧本的底账取当天的 EM) ivPricing playbook(SPX 日内剧本:预期波动区间与状态机) flyPlan flyCalibration flyIvModel(校准出来的参数,脚本生成,不手改) inference(小样本的区间与检验:Wilson / t / Welch / 秩和 / 中位数区间,按天成簇;纯数学,零 import)
+domain        config.ts  models.ts  store.ts  storeSafety.ts(库的版本号、完整性、备份)  importedTrades.ts  ideaVectors.ts  signalLog.ts  positions.ts  combos.ts(期权腿 → 组合)  marketdata.ts  ivSamples.ts(自己攒的期权 IV,文件读写)  playbookLog.ts(日内剧本的底账,文件读写)  followLog.ts(跟单日志与盘口表)  followInbox.ts(跟单的本地收件:收件文件怎么读)  followReader.ts(跟单的本地收件:读窗口的程序怎么起、怎么看管)  riskQueries.ts(重复单防抖与保护规则从库里现算的那几样,只读) flyExitSweep flyExitSweepSpec flyExitSweepStats flyExitSweepReport(蝶式出场参数的离线扫描:只用记下来的盘口,判定函数由调用方递进来)
 util          py.ts  pyjson.ts  tz.ts  notify.ts  keychain.ts  keychainChild.ts(凭证子进程)  secrets.ts(引擎里凭证读写的入口)  killswitch.ts  protections.ts  riskBudget.ts  rpcError.ts  marketCalendar.ts(内置休市日历)  discordGateway.ts(Discord Gateway 的最小客户端,只读)
 contract      contract/*.ts(纯类型,零 import,谁都能引)  contract/schema/*.ts(入参的 zod 校验,只给 rpc/ 用)
 ```

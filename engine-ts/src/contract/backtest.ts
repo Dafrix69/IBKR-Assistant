@@ -63,14 +63,14 @@ export interface CustomRulesInput {
 // ---------------------------------------------------------------- 交易品种
 export type BacktestInstrumentType = "stock" | "call" | "put" | "call_spread" | "put_spread" | "butterfly";
 
-/** 拿什么去执行信号。期权用 Black-Scholes(r=0、已实现波动率)估价,只是研究口径。正股时后四项用不上,但补齐了默认值。 */
+/** 拿什么去执行信号。期权用 Black-Scholes(r=0、逐日重估的已实现波动率)估价,只是研究口径。正股时后四项用不上,但补齐了默认值。 */
 export interface BacktestInstrument {
   type: BacktestInstrumentType;
   /** 开仓时距到期的天数,1~365 */
   dte: number;
-  /** 行权价相对现价偏移百分之几,-30~30 */
+  /** 行权价相对现价偏移百分之几,-30~30;算出来的价再贴到标准挂牌间隔上 */
   offset_pct: number;
-  /** 价差 / 蝴蝶的翼宽占现价百分之几 */
+  /** 价差 / 蝴蝶的翼宽占现价百分之几;贴档之后不足一档按一档 */
   width_pct: number;
   /** 每笔投入占净值百分之几 */
   risk_pct: number;
@@ -86,23 +86,27 @@ export interface BacktestInstrumentInput {
 
 // ---------------------------------------------------------------- 回测结果
 export interface BacktestTrade {
+  /** 成交那一天:信号在前一根收盘,成交在这一根开盘 */
   entry_date: string;
   /** 区间结束时还没平的那一笔是 null */
   exit_date: string | null;
-  /** 正股是收盘价;期权是整个结构的理论价 */
+  /** 正股是成交那天的开盘价(没平的那笔,exit_price 是最后一根的收盘价);期权是整个结构的理论价 */
   entry_price: number;
   exit_price: number;
+  /** 扣了成交成本的净收益;期权是对投入的权利金而言 */
   return_pct: number;
   closed: boolean;
   /** 只有期权品种才有:到期 / 信号消失 / 区间结束时还开着 */
   exit_reason?: "expiry" | "signal" | "open";
+  /** 只有期权品种才有:各条腿贴档之后的行权价,按腿的次序(价差是 买的 / 卖的,蝴蝶是 低 / 中 / 高,单腿就一个) */
+  strikes?: number[];
 }
 
-/** 净值曲线上的一个点(最多抽 300 个,首尾必在);净值与基准都从 1 起。 */
+/** 净值曲线上的一个点(最多抽 300 个,首尾必在);净值与基准都从 1 起。只给图用——统计都是引擎拿逐日全量净值算的。 */
 export interface BacktestCurvePoint {
   date: string;
   equity: number;
-  /** 买入持有 */
+  /** 买入持有(同一个成交口径:第 0 根收盘决定、第 1 根开盘买进;不扣成本) */
   bench: number;
 }
 
@@ -119,21 +123,47 @@ export interface BacktestReport {
   /** 实际的首尾日线日期(不一定等于请求的起止) */
   start: string;
   end: string;
+  /** 首尾两根日线之间的日历天数。不满 365 天时,带"年化"的那几项(年化收益、年化波动、Sharpe、Sortino)都是把这一段外推到一年 */
+  days: number;
   total_return_pct: number;
   buy_hold_return_pct: number;
+  /** 策略收益 − 买入持有(百分点) */
+  excess_return_pct: number;
   annualized_pct: number;
   max_drawdown_pct: number;
+  /** 日收益的年化波动率(%):样本标准差 × √252,逐日全量净值算。日线不到 3 根是 null */
+  volatility_pct: number | null;
+  /** 年化 Sharpe:日收益均值 ÷ 标准差 × √252,无风险利率按 0(空仓那些天收益是 0,不计利息)。净值一动没动是 null */
+  sharpe: number | null;
+  /** 年化 Sortino:日收益均值 ÷ 下行偏差 × √252,目标收益 0、分母按全部天数;没有下跌的日子是 null */
+  sortino: number | null;
+  /** 在场的天数:相对上一根的涨跌里带着仓位的日线根数(隔夜带着,或当天开盘之后带着) */
+  held_days: number;
+  /** 在场那些天净值单日变动的均方根(%):在场时一个典型的单日波动。没持过仓是 null。参数扫描拿它 × √held_days 当回撤的下限 */
+  held_day_move_pct: number | null;
   /** 总笔数(含还没平的那一笔) */
   trades: number;
   closed_trades: number;
-  /** 一笔都没有时是 null */
+  /** 以下六项**只数已平仓的**(还开着的那笔没有结果);一笔已平仓的都没有时是 null。胜率 = 净收益为正的占比 */
   win_rate_pct: number | null;
-  /** 持仓天数占比 */
+  /** 盈利那几笔的平均收益(%);没有盈利的是 null */
+  avg_win_pct: number | null;
+  /** 亏损那几笔的平均收益(%,负数);没有亏损的是 null */
+  avg_loss_pct: number | null;
+  /** 盈亏比 = 平均盈利 ÷ |平均亏损|;缺一边是 null */
+  payoff_ratio: number | null;
+  /** 盈利因子 = 盈利合计 ÷ |亏损合计|,按每笔收益率算(等于每笔下同样大的注);没有亏损的笔是 null */
+  profit_factor: number | null;
+  /** 期望 = 每笔的平均收益(%) */
+  expectancy_pct: number | null;
+  /** 收盘时有仓的日线占比 */
   exposure_pct: number;
   /** 最近 100 笔(扣了成交成本的,如果给了) */
   trade_list: BacktestTrade[];
   curve: BacktestCurvePoint[];
-  /** 每边成交成本(%);只有给了、且大于 0 才有——没有这个键就是不扣成本的老口径 */
+  /** 这次结果的口径与已知偏差,一条一句,界面原样摆。只有整段回测(runBacktest)补齐;结算一截时只带品种自己的那几条 */
+  notes?: string[];
+  /** 每边成交成本(%);只有给了、且大于 0 才有——没有这个键就是没扣成本 */
   cost_pct?: number;
   /** 只有 custom 策略才有 */
   rules?: CustomRules;
@@ -142,8 +172,8 @@ export interface BacktestReport {
   symbol?: string;
 }
 
-/** backtest.run 的回执:instrument 与 symbol 一定有。 */
-export type BacktestRunResult = BacktestReport & { instrument: BacktestInstrument; symbol: string };
+/** backtest.run 的回执:instrument、symbol 与 notes 一定有。 */
+export type BacktestRunResult = BacktestReport & { instrument: BacktestInstrument; symbol: string; notes: string[] };
 
 // ---------------------------------------------------------------- 入参
 /** 界面照这个给(bridge.ts 的 runBacktest 用它标签名)。 */
@@ -159,7 +189,7 @@ export interface BacktestRunSpec {
   rules?: CustomRulesInput;
   /** 不给 = 正股 */
   instrument?: BacktestInstrumentInput;
-  /** 每边成交成本(%,0~10):佣金 + 滑点;不给 = 0。绩效体检的执行损耗中位数可以直接填 */
+  /** 每边成交成本(%,0~10):佣金 + 滑点,占成交额(期权是占权利金)的百分比;不给 = 0 */
   cost_pct?: number | string;
 }
 
@@ -181,7 +211,7 @@ export interface BacktestParseRulesParams {
 
 // ---------------------------------------------------------------- backtest.sweep:参数扫描 + 样本外
 
-/** 挑参数按什么排:总收益,或 Calmar(年化 ÷ 最大回撤,回撤为 0 时按年化算) */
+/** 挑参数按什么排:总收益,或收益回撤比(SegmentStats.return_over_dd:Calmar 的不年化版本,总有定义) */
 export type SweepObjective = "return" | "calmar";
 
 /** 界面照这个给(bridge.ts 的 sweepBacktest 用它标签名)。 */
@@ -219,15 +249,32 @@ export interface BacktestSweepParams {
 
 /** 一段(样本内 / 样本外 / 前推的一折)的成绩;多只标的时是各只的平均。 */
 export interface SegmentStats {
+  /** 这一段首尾的日历天数。不满 365 天时 annualized_pct / calmar / sharpe 是外推的,只作参考 */
+  days: number;
   return_pct: number;
   annualized_pct: number;
   max_drawdown_pct: number;
-  /** 年化 ÷ |最大回撤|;回撤为 0 时是 null */
+  /** 年化 ÷ |最大回撤|;回撤为 0 时是 null。只作展示,不拿来排名 */
   calmar: number | null;
+  /**
+   * objective = calmar 时排名用的数:总收益 ÷ max(|最大回撤|, 回撤下限),总有定义、不年化(同一段里各组的天数相同)。
+   * 回撤下限 = 在场那些天净值单日变动的均方根 × √在场天数:这么大的日波动、在场这么多天,净值本来就该有这个量级的起落。
+   * 只进过几次场、恰好没怎么回撤的组,不能拿"回撤小"当本事。一直空仓的是 0。多只标的时是各只的平均
+   */
+  return_over_dd: number;
+  /** 回撤被下限顶替了(观察到的回撤比按日波动与在场天数推出来的量级还小)。赢家多半如此,它不是警报;多只标的时任何一只如此就是 true */
+  dd_floored: boolean;
+  /** 观察到的回撤还不到在场时**一天**的典型波动:基本没经历过回撤,多半只进过一两次场。这才是"这个名次不可靠"的标记;多只标的同上 */
+  dd_under_one_day: boolean;
+  /** 年化 Sharpe(无风险利率按 0);任何一只没有定义就是 null */
+  sharpe: number | null;
   trades: number;
+  /** 只数已平仓的 */
   win_rate_pct: number | null;
   /** 同一段买入持有 */
   bench_return_pct: number;
+  /** return_pct − bench_return_pct(百分点) */
+  excess_return_pct: number;
 }
 
 export interface SweepRow {
@@ -236,7 +283,7 @@ export interface SweepRow {
   score: number;
   is: SegmentStats;
   oos: SegmentStats;
-  /** 样本外的得分在全部组合里排第几(1 = 最好) */
+  /** 样本外的得分在全部合法组合里排第几(1 = 最好):1 + 样本外得分比它高的组数,同分同名次 */
   oos_rank: number;
 }
 
@@ -247,6 +294,10 @@ export interface WalkForwardFold {
   test_end: string;
   /** 训练段里得分最高的那组参数 */
   params: Record<string, number>;
+  /** 这一折挑出来的那组,在训练段的得分是不是靠回撤下限算出来的(SegmentStats.dd_floored);按总收益挑时恒为 false */
+  dd_floored: boolean;
+  /** 那组在训练段的回撤还不到在场时一天的典型波动(SegmentStats.dd_under_one_day):这一折的参数多半是撞出来的;按总收益挑时恒为 false */
+  dd_under_one_day: boolean;
   test_return_pct: number;
   bench_return_pct: number;
 }
@@ -272,12 +323,23 @@ export interface BacktestSweepResult {
   /** 试了多少组、有几组不合法被跳过(比如快线 ≥ 慢线) */
   combos: number;
   skipped: Array<{ params: Record<string, number>; reason: string }>;
+  /** 进了排名的组数(= combos − skipped);名次的分母是它,不是 rows 的长度 */
+  ranked: number;
   /** 样本内得分最高的前 20 组 */
   rows: SweepRow[];
   /** 样本内第一名;全部不合法时是 null */
   best: SweepRow | null;
   /** 全部组合样本内与样本外得分的秩相关(Spearman,-1~1):接近 0 或为负 = 样本内的排名在样本外不作数,多半是过拟合 */
   rank_corr: number | null;
+  /**
+   * 秩相关的单侧 p 值(置换检验):样本内外的排名要是毫无关系,碰巧得到这么高或更高的相关的概率。
+   * 相邻参数的结果彼此相关,它只回答"排名延续了没有",不回答"策略有没有用"。rank_corr 是 null 时也是 null
+   */
+  rank_corr_p: number | null;
+  /** 随手挑一组,样本外得分不比样本内第一名差的概率 = 样本外得分 ≥ 它的组数 ÷ ranked。越接近 1,样本内的"第一"越不值钱 */
+  pick_p: number | null;
+  /** 全部合法组合样本外收益的中位数(%):不挑、随便拿一组的水平。样本内第一名的样本外收益该和它比 */
+  oos_median_return_pct: number | null;
   walk_forward: WalkForward | null;
   notes: string[];
 }

@@ -8,11 +8,13 @@
  *   decide  拿到解析结果之后:结构对不对、超没超跟单的上限、闸门开没开;
  *   outcome 引擎走完之后:四个桶 → 这条信号的下场。
  */
-import type { FollowConfig, FollowOutcome } from "./contract/follow.js";
+import type { FollowConfig, FollowOutcome, FollowQuote } from "./contract/follow.js";
 import type { InstructionSubmitResult } from "./contract/instruction.js";
+import type { Track, TrackerAddParams } from "./contract/tracker.js";
 import { LOCAL_CHANNEL } from "./followInbox.js";
-import { pyG } from "./py.js";
+import { pyG, pyRound } from "./py.js";
 import { looksLikeOrder, spreadWithoutType } from "./shorthand.js";
+import { ET, dateOrdinal, dateStrAt, ordinalToDate } from "./tz.js";
 
 /** 判定一条消息只用到这几样(discordGateway 的 DiscordMessage 即符合)。 */
 export interface FollowMessage {
@@ -254,4 +256,204 @@ export function outcomeOf(
     detail: rejected[0] ?? result.warnings[0] ?? "没有产生订单",
     record_ids: result.rejections.flatMap((r) => (typeof r.record_id === "string" ? [r.record_id] : [])),
   };
+}
+
+// ---------------------------------------------------------------- 延迟的代价:对方写的价对着此刻的盘口
+/** 对方写的那个价:付(买入蝴蝶)还是收(贷方价差)、多少。 */
+export interface LeaderPrice {
+  side: FollowQuote["side"];
+  price: number;
+}
+
+/**
+ * 一张单是不是跟单认的那两种、对方写了什么价:买入蝴蝶 → 付多少,贷方垂直价差 → 收多少;别的结构、没写价回 null。
+ * 只看结构与限价,所以速记的产出和落了库的交易记录都能喂(两边的 contract / order 是同一个形状)。
+ */
+export function leaderPrice(
+  contract: { combo_strategy?: string | null }, order: { action?: string; lmtPrice?: number | null },
+): LeaderPrice | null {
+  const price = Number(order.lmtPrice ?? Number.NaN);
+  if (!(price > 0)) return null;
+  if (contract.combo_strategy === "BUTTERFLY" && order.action === "BUY") return { side: "debit", price };
+  if (contract.combo_strategy === "VERTICAL" && order.action === "SELL") return { side: "credit", price };
+  return null;
+}
+
+/**
+ * 把带符号的组合净价(broker.comboMidPrice / autoMid.comboNaturalPrice 的约定:正 = 付、负 = 收)换成和对方那个价同一个方向的正数。
+ * 中间价的方向和这张单对不上(买入的蝴蝶算出来是收钱、贷方价差算出来是付钱)说明盘口是坏的,不记(回 null)。
+ * 立刻成交的价不设这道检查:盘口很宽时贷方价差"立刻卖出"可能一分钱都收不到,那正是该让人看见的。
+ */
+export function followQuote(
+  leader: LeaderPrice, signed: { mid: number; natural: number }, lagMs: number, paper: boolean,
+): FollowQuote | null {
+  const sign = leader.side === "debit" ? 1 : -1;
+  const mid = sign * signed.mid, natural = sign * signed.natural;
+  if (!(mid > 0) || !Number.isFinite(natural) || !Number.isFinite(lagMs)) return null;
+  return {
+    side: leader.side, leader: leader.price, mid: pyRound(mid, 4), natural: pyRound(natural, 4),
+    lag_s: Math.max(0, Math.round(lagMs / 1000)), paper,
+  };
+}
+
+// ---------------------------------------------------------------- 跟进来的蝴蝶:成交之后自动建追踪
+/** 自动建的那条追踪的备注:在「持仓追踪」里看得出它是谁建的。 */
+export const FOLLOW_TRACK_NOTE = "Discord 跟单自动建立";
+
+/**
+ * 给一只跟进来的蝴蝶建追踪时交给 tracker.add 的入参。`key` 是持仓行的 key,`exitAt` 是配置里的 track_exit_at("" = 不设)。
+ *
+ * **和界面那张表单逐键相同**:在「持仓追踪」页给一只组合勾「分档利润回撤(蝶式)」与「到价自动平仓」、别的一样不动,
+ * lib/TrackForm.tsx + lib/trackExitForm.ts 拼出来的就是这一份(数值是字符串,'' = 不设;组合的平仓单是限价;不托管;
+ * 止损类按中间价判)。多出来的只有到点平仓的钟点与一句备注。追踪的规则一条都不在这里:档位、起算线、追价都是 tracker.add 那条路自己的。
+ */
+export function flyTrackParams(key: string, exitAt: string): TrackerAddParams {
+  const params: TrackerAddParams = {
+    key,
+    take_profit: "", stop_loss: "", trail_pct: "",
+    profit_drawdown_pct: "", profit_drawdown_preset: "fly", profit_drawdown_arm_pct: "",
+    spot_target: "", spot_stop_below: "", spot_stop_above: "",
+    auto_close: true, order_type: "LMT", host_at_broker: false,
+    exit_at: exitAt.trim(), spot_stop_confirm_s: "", take_profit_tiers: "", stop_basis: "mid",
+    note: FOLLOW_TRACK_NOTE,
+  };
+  return params;
+}
+
+/** 一只已经跟进去、在等成交之后建追踪的蝴蝶(存在库的偏好表里,引擎重启不丢)。 */
+export interface PendingTrack {
+  /** 这张跟单的交易记录:有没有成交、走没走完,看它 */
+  record_id: string;
+  message_id: string;
+  /** 账户别名 */
+  account: string;
+  symbol: string;
+  /** 这张单开出来的那份持仓的腿身份(engine/closing.ts 的 orderLegId,和组合持仓行的 leg 同一种写法) */
+  leg: string;
+  /** 订单摘要,通知里用 */
+  summary: string;
+  /** 登记的时刻(毫秒) */
+  at_ms: number;
+  /**
+   * 这只蝶的追踪已经有了着落(建好了,或者沿用了已有的),而这张单还没走完(部分成交、剩下的还挂着):
+   * 那一刻这张单已经有几条成交回报。之后它再成交、那条追踪却已经触发过,后成交的那部分没有人盯——要说一声(见 remainderVerdict)。
+   * 没有这个键 = 还在等建追踪。
+   */
+  settled_fills?: number;
+}
+
+/** 从偏好表里读回来的那一份:形状不对的条目丢掉(偏好坏了就当没有,不为它炸掉跟单)。 */
+export function pendingTracksOf(raw: unknown): PendingTrack[] {
+  if (!Array.isArray(raw)) return [];
+  const out: PendingTrack[] = [];
+  for (const item of raw) {
+    if (!isObj(item)) continue;
+    const text = (key: string): string => (typeof item[key] === "string" ? String(item[key]) : "");
+    const at = Number(item["at_ms"]);
+    const row: PendingTrack = {
+      record_id: text("record_id"), message_id: text("message_id"), account: text("account"), symbol: text("symbol"),
+      leg: text("leg"), summary: text("summary"), at_ms: at,
+    };
+    const settled = item["settled_fills"];
+    if (typeof settled === "number" && Number.isFinite(settled) && settled >= 0) row.settled_fills = settled;
+    if (row.record_id && row.account && row.symbol && row.leg && Number.isFinite(at)) out.push(row);
+  }
+  return out;
+}
+
+/**
+ * 这一条等到哪一天(美东日历日)为止。当日有效的单最晚在下一个常规时段收盘时失效:
+ * 登记当天到期的蝶,等到当天;到期日在后面的(夜盘里下的次日到期的蝶),多等一天。过了这一天还没等到成交就不等了——
+ * 留着只会让核对一直空转,而且隔了夜的持仓未必还是当初那张单开出来的。
+ */
+export function pendingLastDay(item: Pick<PendingTrack, "leg" | "at_ms">): string {
+  const created = dateStrAt(item.at_ms, ET);
+  const raw = item.leg.slice(0, 8);
+  const expiry = /^\d{8}$/.test(raw) ? `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}` : created;
+  return expiry > created ? ordinalToDate(dateOrdinal(created) + 1) : created;
+}
+
+/** 这一轮看到的事实。 */
+export interface PendingFacts {
+  nowMs: number;
+  /** 这张单有成交的证据:记录里有成交回报,或者它的终态是成交 / 部分成交 */
+  filled: boolean;
+  /** 这张单走完了(成交完、撤了、被拒、失效) */
+  final: boolean;
+  /** 账户里有没有这只蝶(买入方向的组合行);这一轮读不到这个账户的持仓是 null */
+  held: boolean | null;
+  /** 这只蝶上已有的追踪:没有 / 正在盯 / 有一条但已经停用或触发过 */
+  track: "none" | "active" | "idle";
+  /** 成交了、单子也走完了,却已经连续这么多轮在持仓里找不到这只蝶 */
+  misses: number;
+}
+
+/**
+ * wait        再等一轮
+ * create      建追踪
+ * expired     隔了日还没等到,不等了
+ * unfilled    单子走完了、一张都没成交(撤了、被拒、失效):没有持仓可追踪
+ * covered     这只蝶上已经有一条正在盯的追踪:不另建(同一份持仓只能有一条),数量由那一条按当时的持仓平
+ * idle_track  这只蝶上留着一条停用 / 触发过的旧追踪:建不了新的,也不替人删
+ * no_position 成交了,持仓里却找不到这只蝶(已经平掉了,或者腿和别的持仓并在了一起)
+ */
+export type PendingVerdict = "wait" | "create" | "expired" | "unfilled" | "covered" | "idle_track" | "no_position";
+
+/** 单子走完之后,在持仓里连续找不到这只蝶多少轮才下"找不到"的结论:成交回报比持仓更新早一拍,各腿的持仓也不是同一刻到。 */
+export const PENDING_MISS_ROUNDS = 5;
+
+/**
+ * 一只在等的蝶这一轮怎么办。**先要有成交的证据,再看持仓**:账户里本来就有一只一模一样、没设追踪的蝶时,
+ * 跟单的单还挂着没成交,不能因为"持仓里有这只蝶"就给它套上自动平仓——那一只是用户自己的,没有授权过。
+ */
+export function pendingVerdict(item: Pick<PendingTrack, "leg" | "at_ms">, facts: PendingFacts): PendingVerdict {
+  if (dateStrAt(facts.nowMs, ET) > pendingLastDay(item)) return "expired";
+  if (!facts.filled) return facts.final ? "unfilled" : "wait";
+  if (facts.held === null) return "wait";
+  if (!facts.held) return facts.final && facts.misses >= PENDING_MISS_ROUNDS ? "no_position" : "wait";
+  if (facts.track === "active") return "covered";
+  return facts.track === "idle" ? "idle_track" : "create";
+}
+
+/**
+ * 追踪有了着落之后、这张单走完之前,这一轮怎么办(部分成交就建了追踪的单才会走到这里):
+ * wait      还挂着,没有新的成交
+ * absorbed  又成交了,追踪还在盯:它触发时平的是当时的全部持仓,新成交的也在里面;记下新的条数接着看
+ * late_fill 又成交了,那条追踪却已经触发过(或停了、被删了):后成交的部分没有追踪在盯
+ * done      单子走完了(或隔了日),没有要说的:不再看
+ */
+export type RemainderVerdict = "wait" | "absorbed" | "late_fill" | "done";
+
+export function remainderVerdict(
+  item: Pick<PendingTrack, "leg" | "at_ms" | "settled_fills">,
+  facts: { nowMs: number; final: boolean; fills: number; track: PendingFacts["track"] },
+): RemainderVerdict {
+  const grew = facts.fills > (item.settled_fills ?? 0);
+  // 先看有没有"成交了却没人盯"的:哪怕这一轮单子正好走完,也要说
+  if (grew && facts.track !== "active") return "late_fill";
+  if (facts.final || dateStrAt(facts.nowMs, ET) > pendingLastDay(item)) return "done";
+  return grew ? "absorbed" : "wait";
+}
+
+/** 建好的那条追踪带着哪些出场规则,一句话(通知与审计里用)。数从追踪行里读,不在这里重写一遍预设。 */
+export function trackExitsText(track: Pick<Track, "targets" | "auto_close">, nowMs: number): string {
+  const t = track.targets, parts: string[] = [];
+  const tiers = t.profit_drawdown_tiers ?? [];
+  if (tiers.length) {
+    const arm = t.profit_drawdown_arm;
+    const armText = typeof arm === "number" && Number.isFinite(arm) ? `浮盈到过成本的 ${pyG(pyRound(arm * 100, 1))}% 起算,` : "";
+    const late = t.profit_drawdown_late;
+    parts.push(
+      `蝶式预设:${armText}从峰值回撤 ${tiers.map((tier) => pyG(tier.pct)).join(" / ")}% 就平` +
+      (late ? `,美东 ${late.after} 之后阈值乘 ${pyG(late.factor)}` : ""),
+    );
+  }
+  if (t.exit_at) {
+    const at = typeof t.exit_at_ms === "number" && Number.isFinite(t.exit_at_ms) ? t.exit_at_ms : null;
+    // 建的时候这个钟点已经过了,它就落在下一次:照实写是哪一天,别让人以为今天还会到点走
+    const later = at !== null && dateStrAt(at, ET) !== dateStrAt(nowMs, ET);
+    parts.push(`到点平仓:美东 ${later && at !== null ? `${dateStrAt(at, ET).slice(5)} ` : ""}${t.exit_at}${later ? "(今天的这个钟点已经过了)" : ""}`);
+  }
+  parts.push(track.auto_close.enabled ? "到价由软件自动发平仓单" : "只提醒,不自动平仓");
+  return parts.join(";");
 }

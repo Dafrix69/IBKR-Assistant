@@ -13,9 +13,9 @@ import type { TrackPatch } from "../../store.js";
 import { HandlerBase } from "../context.js";
 import type { MethodTable, Rec } from "../context.js";
 import { contractMethods } from "../contractMethods.js";
-import { drawdownTiersOf, optFloat } from "../params.js";
+import { drawdownTiersOf, exitSettingsOf, optFloat, stopSettingsOf } from "../params.js";
 import { underlyingSpot } from "../../engine/spotStop.js";
-import { legInputsOf } from "../../ivPricing.js";
+import { expiryEpochMs, legInputsOf } from "../../ivPricing.js";
 import type { LegInputs } from "../../ivPricing.js";
 
 /** 券商没报盈亏(positions() 兜底路径只有成本)时,用追踪器同一套口径本地算(对应 Python _fill_pnl)。 */
@@ -163,6 +163,7 @@ export class TrackerHandlers extends HandlerBase {
     }
     try {
       tkMod.validate(position, targets, raw["market_price"]);
+      await this.checkExits(raw, rows, position, targets, auto);
       if (targets.spot_stop_below !== null || targets.spot_stop_above !== null) {
         // 填在现价另一侧的止损,建好的下一秒就把仓平掉:方向当场核对,取价和盯盘同一个口径
         const symbol = String(raw["symbol"]);
@@ -199,6 +200,65 @@ export class TrackerHandlers extends HandlerBase {
     }
   }
 
+  /**
+   * 出场细则的校验(到点平仓的钟点在取参数时已经查过):
+   *  · 分批止盈:各档一档比一档有利、第一档在现价的有利一侧;托管的追踪不能设(托管单是一组 OCA,一张成交券商就撤掉其余的)
+   *  · 标的止损的确认秒数:要先有标的止损价
+   *  · 止损按可成交价判:只给期权与组合;止损价要在此刻可成交价的保护一侧(拿得到才核对,和按现价判同一条规矩)
+   */
+  private async checkExits(
+    raw: Rec, rows: Record<string, Rec>, position: tkMod.Position, targets: tkMod.Targets, auto: tkMod.AutoClose,
+  ): Promise<void> {
+    const tiers = targets.take_profit_tiers ?? [];
+    if (tiers.length) {
+      if (auto.host_at_broker) throw new tkMod.TrackerError(tkMod.TIERS_HOSTED_ISSUE);
+      const issue = tkMod.tiersIssue(tiers, tkMod.isLong(position), raw["market_price"]);
+      if (issue !== null) throw new tkMod.TrackerError(issue);
+    }
+    if (targets.spot_stop_confirm_s !== null && !tkMod.hasSpotStop(targets)) {
+      throw new tkMod.TrackerError("确认秒数是给标的止损价用的:先填「标的跌到」或「标的涨到」。");
+    }
+    this.checkExitTime(raw, rows, targets);
+    if (auto.peak_confirm && raw["sec_type"] === "STK") {
+      throw new tkMod.TrackerError("「峰值要连续两秒确认」只给期权与组合用:正股的现价不是几条腿拼出来的。");
+    }
+    if (auto.stop_basis !== "natural") return;
+    if (raw["sec_type"] === "STK") {
+      throw new tkMod.TrackerError("「止损按可成交价判」只给期权与组合用:正股的现价就是成交价。");
+    }
+    if (typeof (this.router as { optionQuotes?: unknown } | null)?.optionQuotes !== "function") {
+      throw new tkMod.TrackerError("这条券商通道取不到各腿的买卖价,用不了「止损按可成交价判」:改回按中间价判。");
+    }
+    const natural = this.router === null ? null : await this.engine.naturalCloseFor(raw, position, rows);
+    const stop = targets.stop_loss;
+    if (natural !== null && stop !== null && (tkMod.isLong(position) ? stop >= natural : stop <= natural)) {
+      throw new tkMod.TrackerError(
+        `止损按可成交价判:止损价 ${stop} ${tkMod.isLong(position) ? "不低于" : "不高于"}此刻立刻能成交的价 ${natural}——建好就会触发。`
+        + "把止损价放到可成交价的另一侧,或改回按中间价判。",
+      );
+    }
+  }
+
+  /**
+   * 到点平仓的时刻要落在这份合约到期之前。钟点今天已经过了的,换算出来是明天的——当日到期的蝶 15:46 填 15:45、
+   * 把下午三点四十五写成 3:45,存下来的都是一个永远到不了的时刻,而卡片上看着和设好了一样。认不出到期时刻的(正股、没带交易类的指数期权)不查。
+   */
+  private checkExitTime(raw: Rec, rows: Record<string, Rec>, targets: tkMod.Targets): void {
+    const at = targets.exit_at_ms;
+    if (at === null || raw["sec_type"] === "STK") return;
+    const first = raw["sec_type"] === "BAG" ? rows[((raw["legs"] ?? []) as string[])[0] ?? ""] : raw;
+    const c = (first?.["contract"] ?? {}) as Rec;
+    const ymd = String(c["lastTradeDateOrContractMonth"] ?? "").trim().slice(0, 8);
+    const early = this.settings.early_close_days.includes(`${ymd.slice(0, 4)}-${ymd.slice(4, 6)}-${ymd.slice(6, 8)}`);
+    const expiry = expiryEpochMs(String(raw["symbol"] ?? ""), String(c["lastTradeDateOrContractMonth"] ?? ""), String(c["tradingClass"] ?? ""), early);
+    if (expiry === null || at < expiry) return;
+    const when = new Intl.DateTimeFormat("zh-CN", { timeZone: "America/New_York", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false });
+    throw new tkMod.TrackerError(
+      `到点平仓「${String(targets.exit_at ?? "")}」下一次到点是美东 ${when.format(at)},而这份持仓 ${when.format(expiry)} 就到期了——那时它已经不在了。`
+      + "今天这个钟点已经过了的话,换算出来的是明天的;钟点按 24 小时写(下午三点四十五是 15:45)。",
+    );
+  }
+
   private positionOf(raw: Rec): tkMod.Position {
     return tkMod.makePosition({
       account: raw["account"], symbol: raw["symbol"], sec_type: raw["sec_type"],
@@ -207,11 +267,19 @@ export class TrackerHandlers extends HandlerBase {
     });
   }
 
+  /** 峰值从哪个价起步:止损按可成交价判的期权 / 组合取此刻立刻能成交的价(拿不到是 null,盯盘头两轮自己立起来),别的取现价。 */
+  private async peakSeed(
+    raw: Rec, rows: Record<string, Rec>, position: tkMod.Position, auto: tkMod.AutoClose,
+  ): Promise<number | null> {
+    if (auto.stop_basis !== "natural" || raw["sec_type"] === "STK" || this.router === null) return raw["market_price"] ?? null;
+    return this.engine.naturalCloseFor(raw, position, rows);
+  }
+
   /** 算预计价位要的三样行情:标的现价、持仓报价、各腿报价。拿不到就是 null,不编。 */
   private async spotInputs(
     raw: Rec, rows: Record<string, Rec>, structure: tkMod.TargetStructure,
   ): Promise<LegInputs & {
-    spot: number | null; markPrice: number | null; minute: number; spotNote: string; nowMs: number;
+    spot: number | null; markPrice: number | null; minute: number; spotNote: string; nowMs: number; em: number | null;
   }> {
     let spot: number | null = null;
     if (structure.kind === "stock") {
@@ -233,9 +301,10 @@ export class TrackerHandlers extends HandlerBase {
       spot,
       markPrice: (raw["market_price"] ?? null) as number | null,
       // 各腿报价、IBKR 模型 IV、到期:和盯盘同一个函数拼,试算与实盘不分叉
-      ...legInputsOf(raw, rows, tkMod.legPriceKey),
+      ...legInputsOf(raw, rows, tkMod.legPriceKey, (d) => this.settings.early_close_days.includes(d)),
       minute: now.minutes,
       nowMs: now.epochMs,
+      em: this.engine.sessionEm.today(now),
       spotNote: String(info?.["note"] ?? ""),
     };
   }
@@ -268,6 +337,7 @@ export class TrackerHandlers extends HandlerBase {
       spot_target: flySpot,
       spot_stop_below: optFloat(params["spot_stop_below"]),
       spot_stop_above: optFloat(params["spot_stop_above"]),
+      ...exitSettingsOf(params, nowEt().epochMs),
     });
     const auto = tkMod.makeAutoClose({
       enabled: Boolean(params["auto_close"]),
@@ -277,6 +347,7 @@ export class TrackerHandlers extends HandlerBase {
       host_at_broker: Boolean(params["host_at_broker"]),
       // 追价让价上限:0 也是合法值(至少两跳),所以不能用 || 兜底
       chase_max_pct: optFloat(params["chase_max_pct"]) ?? undefined,
+      ...stopSettingsOf(params),
     });
     requireAutoCloseForHosting(auto.host_at_broker, auto.enabled);
     if (auto.host_at_broker) this.requireHostingSupported(String(raw["account"]));
@@ -294,7 +365,8 @@ export class TrackerHandlers extends HandlerBase {
         account: raw["account"], symbol: raw["symbol"], sec_type: raw["sec_type"],
         leg: raw["leg"] ?? "",
         contract: raw["contract"], targets, auto_close: auto,
-        peak: raw["market_price"], note: String(params["note"] ?? "").slice(0, 200),
+        // 峰值从哪个价起步跟着止损的口径走:按可成交价判的,拿中间价起步会一建好就读成回撤
+        peak: await this.peakSeed(raw, rows, position, auto), note: String(params["note"] ?? "").slice(0, 200),
       });
     } catch (exc) {
       throw new RpcError(-32602, (exc as Error).message);
@@ -320,6 +392,26 @@ export class TrackerHandlers extends HandlerBase {
       // 重新启用等于"再给一次机会":把上一次触发的闩解开
       if (fields["enabled"]) {
         Object.assign(fields, { fired_at: null, fired_state: "", fired_record: "" });
+        const stored = tkMod.makeTargets(track["targets"] ?? {});
+        let next = stored;
+        // 分批止盈里"在等成交"的那一档:看它那张平仓单的下场。成交了 → 这一档做完;撤了 / 被拒 / 没发出去 → 解开,可以再触发;
+        // 还没有终态 → 不许恢复:它还挂在券商那边,现在解开,它一成交同一档会再平一次
+        const waiting = tkMod.pendingTier(stored.take_profit_tiers);
+        if (waiting >= 0) {
+          const recordId = String(track["fired_record"] ?? "");
+          const record = recordId ? this.engine.store.getRecord(recordId) : null;
+          if (record !== null && !record["final_status"]) {
+            throw new RpcError(-32602, `分批止盈第 ${waiting + 1} 档的平仓单还没有终态,它可能还挂在券商那边。等它成交,或先在 TWS 里撤掉它,再点恢复——`
+              + "现在恢复,它成交之后同一档会再平一次。");
+          }
+          next = { ...next, take_profit_tiers: tkMod.markTier(stored.take_profit_tiers ?? [], waiting, record?.["final_status"] === "filled" ? { done: true } : {}) };
+        }
+        // 到点平仓的时刻已经过了(触发过、或者过期作废了):换成下一次到这个钟点的时刻。不换的话,恢复的下一秒它又到点
+        const nowMs = nowEt().epochMs;
+        if (next.exit_at && (next.exit_at_ms === null || next.exit_at_ms <= nowMs)) {
+          next = { ...next, exit_at_ms: tkMod.nextOccurrenceMs(next.exit_at, nowMs) };
+        }
+        if (next !== stored) fields["targets"] = next;
       }
     }
     if ("auto_close" in params) {
@@ -328,6 +420,7 @@ export class TrackerHandlers extends HandlerBase {
       // "悄悄换了下单方式"比报错危险。过了 schema 的入参里不会有值是 undefined 的键(里面的键不收 null,没带的键 zod 不产出);
       // 这道过滤是给绕过 schema 直接调 handler 的人留的:undefined 盖上去,JSON 落库时那个键就没了,等于又回到"替换"。
       const given = Object.entries(params["auto_close"] ?? {}).filter(([, value]) => value !== undefined);
+      stopSettingsOf(Object.fromEntries(given)); // 范围不对当场拒;值照原样合并
       fields["auto_close"] = { ...(track["auto_close"] ?? {}), ...Object.fromEntries(given) };
       // 查的是合并之后的那一份:只关「到价自动平仓」、托管留着,和新建时两个一起填是同一件事
       requireAutoCloseForHosting(Boolean((fields["auto_close"] as Rec)["host_at_broker"]), Boolean((fields["auto_close"] as Rec)["enabled"]));
@@ -338,17 +431,30 @@ export class TrackerHandlers extends HandlerBase {
         const issue = tkMod.closeContractIssue(track);
         if (issue !== null) throw new RpcError(-32602, issue);
       }
+      // 只改自动平仓设置、不带目标的那种改法,下面那套目标校验不跑:托管与分批止盈不能并存这一条在这里补上
+      if ((fields["auto_close"] as Rec)["host_at_broker"] && (tkMod.makeTargets(track["targets"] ?? {}).take_profit_tiers ?? []).length) {
+        throw new RpcError(-32602, tkMod.TIERS_HOSTED_ISSUE);
+      }
     }
-    if (["take_profit", "stop_loss", "trail_pct", "profit_drawdown_pct", "profit_drawdown_tiers",
+    const basisBefore = tkMod.makeAutoClose(track["auto_close"] ?? {}).stop_basis;
+    const basisAfter = tkMod.makeAutoClose((fields["auto_close"] ?? track["auto_close"] ?? {}) as Rec).stop_basis;
+    const targetsGiven = ["take_profit", "stop_loss", "trail_pct", "profit_drawdown_pct", "profit_drawdown_tiers",
          "profit_drawdown_preset", "profit_drawdown_arm_pct", "spot_target",
-         "spot_stop_below", "spot_stop_above"].some((k) => k in params)) {
+         "spot_stop_below", "spot_stop_above", "spot_stop_confirm_s", "exit_at", "take_profit_tiers"].some((k) => k in params);
+    if (targetsGiven || basisBefore !== basisAfter) {
       // 改目标和新建走**同一套**校验:以前这里什么都不查,改一下目标价就能绕过
       // 「算出来的价比现价还差、挂上去立刻成交」那道拦——等于绕过了「同意价格后发单」。
       // 持仓先取:蝶式预设按每组成本把金额线换算成倍数
       const rows = Object.fromEntries(tkMod.withCombos(await this.livePositions()).map((r) => [r["key"], r]));
       const raw = rows[tkMod.trackKey(track)];
       if (raw === undefined) throw new RpcError(-32602, "找不到这个持仓(可能已经平掉了),改不了目标。");
-      const targets = tkMod.makeTargets({
+      // 分批止盈有一档的平仓单在等成交时不改目标:改完那一档的记号就没了,单成交之后追踪接不上
+      const before = (fields["targets"] as tkMod.Targets | undefined) ?? tkMod.makeTargets(track["targets"] ?? {});
+      if (targetsGiven && tkMod.pendingTier(before.take_profit_tiers) >= 0) {
+        throw new RpcError(-32602, "分批止盈有一档的平仓单还在等成交,这时不能改目标:等它成交(追踪会自己接着盯),或先撤掉那张单、点恢复,再改。");
+      }
+      // 只换了止损的口径(没带目标字段):目标照库里那份重新核对一遍,不清掉
+      const targets = targetsGiven ? tkMod.makeTargets({
         take_profit: optFloat(params["take_profit"]),
         stop_loss: optFloat(params["stop_loss"]),
         trail_pct: optFloat(params["trail_pct"]),
@@ -357,10 +463,15 @@ export class TrackerHandlers extends HandlerBase {
         spot_target: optFloat(params["spot_target"]),
         spot_stop_below: optFloat(params["spot_stop_below"]),
         spot_stop_above: optFloat(params["spot_stop_above"]),
-      });
+        ...exitSettingsOf(params, nowEt().epochMs),
+      }) : before;
+      // 档位没变的,做完的那几档照旧算做完(只改了止损价,不该让第一档回落之后再触发一次)
+      if (targetsGiven) targets.take_profit_tiers = tkMod.carryTierMarks(targets.take_profit_tiers, before.take_profit_tiers);
       const auto = tkMod.makeAutoClose((fields["auto_close"] ?? track["auto_close"] ?? {}) as Rec);
       await this.checkTargets(raw, rows, this.positionOf(raw), targets, auto);
-      fields["targets"] = targets;
+      if (targetsGiven) fields["targets"] = targets;
+      // 换了口径:峰值按新口径从此刻起步——中间价记下的峰值拿可成交价去比,一换就是一次假回撤
+      if (basisBefore !== basisAfter) fields["peak"] = await this.peakSeed(raw, rows, this.positionOf(raw), auto);
     }
     if (!Object.keys(fields).length) throw new RpcError(-32602, "没有要改的字段");
     this.engine.store.updateTrack(trackId, fields);
@@ -447,6 +558,13 @@ export class TrackerHandlers extends HandlerBase {
     });
     const auto = tkMod.makeAutoClose(track["auto_close"] ?? {});
     auto.enabled = true; // 手动平仓不看"自动平仓"那个开关,是你在点
+    // 正挂着分批止盈某一档的平仓单:那张单只有这一档的数量,把它说成"已改成追价平仓"是骗人——它成交之后剩下的仓还在。
+    // 不另发一张(两张的数量各按当时的持仓算,加起来会平过头),照实说:等它成交再点一次
+    const waiting = tkMod.pendingTier(tkMod.makeTargets(track["targets"] ?? {}).take_profit_tiers);
+    if (waiting >= 0 && !auto.host_at_broker && tkMod.sweepReason(track) !== null) {
+      throw new RpcError(-32019, `分批止盈第 ${waiting + 1} 档的平仓单正在追价成交,它只平这一档的数量。等它成交(通常几秒)之后再点一次「立即平仓」平掉剩下的;`
+        + "等不及就先在 TWS 里撤掉那张单,再点。");
+    }
     // 按合约自己的时段判,和到价自动平仓同一口径:以前用正股日历,01:10 的 0DTE 蝶手动平不了
     // (自动止损同一时刻却发得出去),16:15 反倒放行一张合约早已收盘的单
     const marketStatus = await this.engine.marketStatusFor(raw, nowEt());

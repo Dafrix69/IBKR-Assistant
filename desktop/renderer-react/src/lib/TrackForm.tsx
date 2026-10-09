@@ -9,6 +9,8 @@ import { Button, InputNumber, Select, Switch } from 'antd';
 import { dafri, errorMessage, type TrackerAddSpec } from '../bridge';
 import { fmtMoney, fmtNum } from './format';
 import { spotStopConfirmLine } from './spotStopFormat';
+import { TrackExitFields } from './TrackExitFields';
+import { emptyExitFields, exitConfirmLines, exitProblems, exitSpec, type ExitFields } from './trackExitForm';
 import { showBanner } from '../store/banner';
 import { pickableAccounts, useStatus } from '../store/status';
 import { loadTracker, type Position, type SpotTargetRow } from '../store/tracker';
@@ -55,6 +57,8 @@ export function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: strin
   const auto = autoPicked ?? Boolean(status?.auto_execute);
   const [orderType, setOrderType] = useState<'MKT' | 'LMT'>(isCombo ? 'LMT' : 'MKT');
   const [host, setHost] = useState(false);
+  // 到点平仓、分批止盈、止损的口径与追价(lib/TrackExitFields.tsx):不填 = 和以前一样
+  const [exits, setExits] = useState<ExitFields>(emptyExitFields);
   const [saving, setSaving] = useState(false);
 
   const acct = pickableAccounts(status).find((a) => a.alias === p.account);
@@ -119,7 +123,10 @@ export function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: strin
       auto_close: auto,
       order_type: orderType,
       host_at_broker: hostOn,
+      ...exitSpec(exits, derivative),
     };
+    const problems = exitProblems(exits, { hosted: hostOn, hasSpotStop: stopBelow !== null || stopAbove !== null });
+    if (problems.length) return showBanner(problems[0] ?? '', false);
     if (spec.host_at_broker && !spec.auto_close) {
       // 托管单就是授权发单——没有总开关的托管是自相矛盾的设置
       showBanner('托管到券商需先打开「到价自动平仓」:挂托管单即发单授权。', false);
@@ -166,7 +173,7 @@ export function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: strin
             '直接按各腿当时的买卖价挂立刻成交的价平掉,没成交就每秒再追。\n'
           : '')
       : '';
-    const stopLine = spotStopConfirmLine(p.symbol, stopBelow, stopAbove);
+    const stopLine = spotStopConfirmLine(p.symbol, stopBelow, stopAbove) + exitConfirmLines(exits, derivative);
     if (spec.host_at_broker) {
       const ok = await dafri.confirm({
         purpose: 'tracker.add',
@@ -322,6 +329,7 @@ export function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: strin
       {p.sec_type !== 'STK'
         ? num({ label: '追价最多让价 %', hint: '默认 10;触发后先挂立刻成交价等两秒,之后每秒再让一跳,让到这里为止(至少两跳)', value: chaseMax, onChange: setChaseMax })
         : null}
+      <TrackExitFields symbol={p.symbol} long={long} derivative={derivative} hosted={hostOn} value={exits} onChange={setExits} />
       <label className="switch-row">
         <span className="group-label">
           到价自动平仓

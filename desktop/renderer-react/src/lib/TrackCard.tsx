@@ -9,6 +9,7 @@ import { dafri, errorMessage } from '../bridge';
 import { fmtMoney, fmtNum } from './format';
 import { TRACK_STATE_LABEL } from './labels';
 import { spotStopLine, spotStopSummary } from './spotStopFormat';
+import { exitSummary, tierLabel } from './trackExitForm';
 import { showBanner } from '../store/banner';
 import { loadRecords } from '../store/records';
 import { gatewayName, useStatus } from '../store/status';
@@ -170,7 +171,7 @@ export function TrackCard({
   const fired = Boolean(t.fired_at);
   const sweeping = String(t.fired_state || '').startsWith('sweep:');
   // 止盈绿、止损类红;人点的「立即平仓」不分好坏,用中性色
-  const firedTone: [Tone, Tint] = t.fired_state === 'take_profit' ? ['ok', 'green'] : t.fired_state === 'manual' ? ['info', 'gray'] : ['bad', 'red'];
+  const firedTone: [Tone, Tint] = t.fired_state === 'take_profit' ? ['ok', 'green'] : t.fired_state === 'manual' || t.fired_state === 'time_exit' ? ['info', 'gray'] : ['bad', 'red'];
   const kind: Tone = sweeping ? 'warn' : fired ? firedTone[0] : t.enabled ? 'info' : 'warn';
   const targets = t.targets || {};
   const autoClose = t.auto_close || {};
@@ -254,9 +255,16 @@ export function TrackCard({
           ddTiers && live.profit_peak != null ? `峰值利润 ${fmtMoney(live.profit_peak)}` : null,
           targets.trail_pct ? `跟踪 ${targets.trail_pct}%${live.trail_stop ? ` → ${fmtMoney(live.trail_stop)}` : ''}` : null,
           t.peak ? `最有利价 ${fmtMoney(t.peak)}` : null,
+          ...exitSummary(targets, autoClose),
           <span className={autoClose.enabled ? 'tag live' : 'tag paper'}>{autoClose.enabled ? '自动平仓已开' : '仅提醒'}</span>,
         ]}
       />
+      {/* 分批止盈:每一档到了没有、成交了没有 */}
+      {targets.take_profit_tiers?.length ? <Meta items={targets.take_profit_tiers.map((tier, i) => tierLabel(tier, i))} /> : null}
+      {/* 止损按可成交价判的:把这一轮拿来判的那个价摆出来(null = 这一轮拿不到各腿买卖价,止损没判) */}
+      {!fired && autoClose.stop_basis === 'natural' && live.stop_price !== undefined ? (
+        <div className="muted">{live.stop_fallback || live.stop_price === null ? '这一轮拿不到可成交价(腿没有报价,或盘口太宽),止损类退回按中间价判' : `止损按可成交价判:此刻立刻平掉约 ${fmtMoney(live.stop_price)}`}</div>
+      ) : null}
 
       {autoClose.host_at_broker ? (
         <Meta

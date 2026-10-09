@@ -95,23 +95,79 @@
    "spot": 69.9,
    "bars": {"$bars": "354c69374319"},
    "expect": [
-    {"price": 68.95, "label": "20日均线", "source": "ma20", "kind": "support", "priority": 2},
-    {"price": 66.95, "label": "60日均线", "source": "ma60", "kind": "support", "priority": 2},
-    {"price": 63.95, "label": "120日均线", "source": "ma120", "kind": "support", "priority": 2},
-    {"price": 59.95, "label": "200日均线", "source": "ma200", "kind": "support", "priority": 2},
+    {
+     "price": 69.045,
+     "label": "20日均线",
+     "source": "ma20",
+     "kind": "support",
+     "ma": {"period": 20, "prior_sum": 1311},
+     "priority": 2
+    },
+    {
+     "price": 67.0483,
+     "label": "60日均线",
+     "source": "ma60",
+     "kind": "support",
+     "ma": {"period": 60, "prior_sum": 3953},
+     "priority": 2
+    },
+    {
+     "price": 64.0492,
+     "label": "120日均线",
+     "source": "ma120",
+     "kind": "support",
+     "ma": {"period": 120, "prior_sum": 7616},
+     "priority": 2
+    },
+    {
+     "price": 60.0495,
+     "label": "200日均线",
+     "source": "ma200",
+     "kind": "support",
+     "ma": {"period": 200, "prior_sum": 11940},
+     "priority": 2
+    },
     {"price": 45, "label": "52周低点", "source": "low_52w", "kind": "support", "priority": 2},
     {"price": 69.9, "label": "52周高点", "source": "high_52w", "kind": "pivot", "priority": 2}
    ],
-   "snapshot": {"ma20": 68.95, "ma60": 66.95, "ma120": 63.95, "ma200": 59.95, "low_52w": 45, "high_52w": 69.9, "range_pos_pct": 100, "bars": 300}
+   "snapshot": {"ma20": 69.045, "ma60": 67.0483, "ma120": 64.0492, "ma200": 60.0495, "low_52w": 45, "high_52w": 69.9, "range_pos_pct": 100, "bars": 300}
   },
   {
    "spot": 50,
    "bars": {"$bars": "f12160edc9e2"},
    "expect": [
-    {"price": 50, "label": "20日均线", "source": "ma20", "kind": "pivot", "priority": 2},
-    {"price": 50.1833, "label": "60日均线", "source": "ma60", "kind": "resistance", "priority": 2},
-    {"price": 50.0917, "label": "120日均线", "source": "ma120", "kind": "resistance", "priority": 2},
-    {"price": 50.055, "label": "200日均线", "source": "ma200", "kind": "resistance", "priority": 2},
+    {
+     "price": 50,
+     "label": "20日均线",
+     "source": "ma20",
+     "kind": "pivot",
+     "ma": {"period": 20, "prior_sum": 950},
+     "priority": 2
+    },
+    {
+     "price": 50.1833,
+     "label": "60日均线",
+     "source": "ma60",
+     "kind": "resistance",
+     "ma": {"period": 60, "prior_sum": 2961},
+     "priority": 2
+    },
+    {
+     "price": 50.0917,
+     "label": "120日均线",
+     "source": "ma120",
+     "kind": "resistance",
+     "ma": {"period": 120, "prior_sum": 5961},
+     "priority": 2
+    },
+    {
+     "price": 50.055,
+     "label": "200日均线",
+     "source": "ma200",
+     "kind": "resistance",
+     "ma": {"period": 200, "prior_sum": 9961},
+     "priority": 2
+    },
     {"price": 41.58, "label": "52周低点", "source": "low_52w", "kind": "support", "priority": 2},
     {"price": 61.61, "label": "52周高点", "source": "high_52w", "kind": "resistance", "priority": 2}
    ],
@@ -121,12 +177,26 @@
    "spot": 34,
    "bars": {"$bars": "e0d6e838a0d2"},
    "expect": [
-    {"price": 33.475, "label": "20日均线", "source": "ma20", "kind": "support", "priority": 2},
-    {"price": 32.475, "label": "60日均线", "source": "ma60", "kind": "support", "priority": 2},
+    {
+     "price": 33.525,
+     "label": "20日均线",
+     "source": "ma20",
+     "kind": "support",
+     "ma": {"period": 20, "prior_sum": 636.5},
+     "priority": 2
+    },
+    {
+     "price": 32.525,
+     "label": "60日均线",
+     "source": "ma60",
+     "kind": "support",
+     "ma": {"period": 60, "prior_sum": 1917.5},
+     "priority": 2
+    },
     {"price": 30, "label": "历史低点", "source": "low_52w", "kind": "support", "priority": 2},
     {"price": 33.95, "label": "历史高点", "source": "high_52w", "kind": "support", "priority": 2}
    ],
-   "snapshot": {"ma20": 33.475, "ma60": 32.475, "low_52w": 30, "high_52w": 33.95, "range_pos_pct": 101.3, "bars": 80}
+   "snapshot": {"ma20": 33.525, "ma60": 32.525, "low_52w": 30, "high_52w": 33.95, "range_pos_pct": 101.3, "bars": 80}
   },
   {
    "spot": 30,
@@ -140,7 +210,7 @@
   "step": 5,
   "bars": {"$bars": "3deed36794a5"},
   "expect": [
-   {"price": 40, "label": "20日均线 + 60日均线 + 120日均线 + 200日均线 + 52周低点 + 52周高点 + 整数关口 40", "source": "ma20", "kind": "support", "priority": 2},
+   {"price": 40, "label": "52周低点 + 52周高点 + 整数关口 40 + 200日均线 + 120日均线 + 60日均线 + 20日均线", "source": "low_52w", "kind": "support", "priority": 2},
    {"price": 45, "label": "整数关口 45", "source": "round", "kind": "pivot", "priority": 0}
   ]
  },
@@ -164,11 +234,11 @@
     "at": 1755000060,
     "events": [],
     "states": {
-     "440.0000": {"armed": true, "last_fired_at": null},
-     "445.0000": {"armed": true, "last_fired_at": null},
-     "447.3000": {"armed": true, "last_fired_at": null},
-     "450.0000": {"armed": true, "last_fired_at": null},
-     "455.0000": {"armed": true, "last_fired_at": null}
+     "call_vol_wall@450.0000": {"armed": true, "last_fired_at": null},
+     "call_wall@455.0000": {"armed": true, "last_fired_at": null},
+     "gamma_flip": {"armed": true, "last_fired_at": null},
+     "put_vol_wall@440.0000": {"armed": true, "last_fired_at": null},
+     "put_wall@445.0000": {"armed": true, "last_fired_at": null}
     }
    },
    {
@@ -178,11 +248,11 @@
      {"price": 450, "label": "上方成交墙 + 最大痛点 + 整数关口 450", "source": "call_vol_wall", "kind": "resistance", "direction": "up", "from": 449, "to": 450.5, "at": 1755000120, "text": "上方成交墙 + 最大痛点 + 整数关口 450 上穿 450(现价 450.5)"}
     ],
     "states": {
-     "440.0000": {"armed": true, "last_fired_at": null},
-     "445.0000": {"armed": true, "last_fired_at": null},
-     "447.3000": {"armed": true, "last_fired_at": null},
-     "450.0000": {"armed": false, "last_fired_at": 1755000120},
-     "455.0000": {"armed": true, "last_fired_at": null}
+     "call_vol_wall@450.0000": {"armed": false, "last_fired_at": 1755000120},
+     "call_wall@455.0000": {"armed": true, "last_fired_at": null},
+     "gamma_flip": {"armed": true, "last_fired_at": null},
+     "put_vol_wall@440.0000": {"armed": true, "last_fired_at": null},
+     "put_wall@445.0000": {"armed": true, "last_fired_at": null}
     }
    },
    {
@@ -190,11 +260,11 @@
     "at": 1755000180,
     "events": [],
     "states": {
-     "440.0000": {"armed": true, "last_fired_at": null},
-     "445.0000": {"armed": true, "last_fired_at": null},
-     "447.3000": {"armed": true, "last_fired_at": null},
-     "450.0000": {"armed": false, "last_fired_at": 1755000120},
-     "455.0000": {"armed": true, "last_fired_at": null}
+     "call_vol_wall@450.0000": {"armed": false, "last_fired_at": 1755000120},
+     "call_wall@455.0000": {"armed": true, "last_fired_at": null},
+     "gamma_flip": {"armed": true, "last_fired_at": null},
+     "put_vol_wall@440.0000": {"armed": true, "last_fired_at": null},
+     "put_wall@445.0000": {"armed": true, "last_fired_at": null}
     }
    },
    {
@@ -202,11 +272,11 @@
     "at": 1755000240,
     "events": [],
     "states": {
-     "440.0000": {"armed": true, "last_fired_at": null},
-     "445.0000": {"armed": true, "last_fired_at": null},
-     "447.3000": {"armed": true, "last_fired_at": null},
-     "450.0000": {"armed": false, "last_fired_at": 1755000120},
-     "455.0000": {"armed": true, "last_fired_at": null}
+     "call_vol_wall@450.0000": {"armed": false, "last_fired_at": 1755000120},
+     "call_wall@455.0000": {"armed": true, "last_fired_at": null},
+     "gamma_flip": {"armed": true, "last_fired_at": null},
+     "put_vol_wall@440.0000": {"armed": true, "last_fired_at": null},
+     "put_wall@445.0000": {"armed": true, "last_fired_at": null}
     }
    },
    {
@@ -214,11 +284,11 @@
     "at": 1755000300,
     "events": [],
     "states": {
-     "440.0000": {"armed": true, "last_fired_at": null},
-     "445.0000": {"armed": true, "last_fired_at": null},
-     "447.3000": {"armed": true, "last_fired_at": null},
-     "450.0000": {"armed": false, "last_fired_at": 1755000120},
-     "455.0000": {"armed": true, "last_fired_at": null}
+     "call_vol_wall@450.0000": {"armed": false, "last_fired_at": 1755000120},
+     "call_wall@455.0000": {"armed": true, "last_fired_at": null},
+     "gamma_flip": {"armed": true, "last_fired_at": null},
+     "put_vol_wall@440.0000": {"armed": true, "last_fired_at": null},
+     "put_wall@445.0000": {"armed": true, "last_fired_at": null}
     }
    },
    {
@@ -228,11 +298,11 @@
      {"price": 455, "label": "上方持仓墙 + 整数关口 455", "source": "call_wall", "kind": "resistance", "direction": "up", "from": 452, "to": 456, "at": 1755000360, "text": "上方持仓墙 + 整数关口 455 上穿 455(现价 456)"}
     ],
     "states": {
-     "440.0000": {"armed": true, "last_fired_at": null},
-     "445.0000": {"armed": true, "last_fired_at": null},
-     "447.3000": {"armed": true, "last_fired_at": null},
-     "450.0000": {"armed": false, "last_fired_at": 1755000120},
-     "455.0000": {"armed": false, "last_fired_at": 1755000360}
+     "call_vol_wall@450.0000": {"armed": false, "last_fired_at": 1755000120},
+     "call_wall@455.0000": {"armed": false, "last_fired_at": 1755000360},
+     "gamma_flip": {"armed": true, "last_fired_at": null},
+     "put_vol_wall@440.0000": {"armed": true, "last_fired_at": null},
+     "put_wall@445.0000": {"armed": true, "last_fired_at": null}
     }
    },
    {
@@ -240,11 +310,11 @@
     "at": 1755000420,
     "events": [],
     "states": {
-     "440.0000": {"armed": true, "last_fired_at": null},
-     "445.0000": {"armed": true, "last_fired_at": null},
-     "447.3000": {"armed": true, "last_fired_at": null},
-     "450.0000": {"armed": true, "last_fired_at": 1755000120},
-     "455.0000": {"armed": false, "last_fired_at": 1755000360}
+     "call_vol_wall@450.0000": {"armed": true, "last_fired_at": 1755000120},
+     "call_wall@455.0000": {"armed": false, "last_fired_at": 1755000360},
+     "gamma_flip": {"armed": true, "last_fired_at": null},
+     "put_vol_wall@440.0000": {"armed": true, "last_fired_at": null},
+     "put_wall@445.0000": {"armed": true, "last_fired_at": null}
     }
    },
    {
@@ -256,11 +326,11 @@
      {"price": 450, "label": "上方成交墙 + 最大痛点 + 整数关口 450", "source": "call_vol_wall", "kind": "resistance", "direction": "down", "from": 452, "to": 444, "at": 1755000480, "text": "上方成交墙 + 最大痛点 + 整数关口 450 下破 450(现价 444)"}
     ],
     "states": {
-     "440.0000": {"armed": true, "last_fired_at": null},
-     "445.0000": {"armed": false, "last_fired_at": 1755000480},
-     "447.3000": {"armed": false, "last_fired_at": 1755000480},
-     "450.0000": {"armed": false, "last_fired_at": 1755000480},
-     "455.0000": {"armed": false, "last_fired_at": 1755000360}
+     "call_vol_wall@450.0000": {"armed": false, "last_fired_at": 1755000480},
+     "call_wall@455.0000": {"armed": false, "last_fired_at": 1755000360},
+     "gamma_flip": {"armed": false, "last_fired_at": 1755000480},
+     "put_vol_wall@440.0000": {"armed": true, "last_fired_at": null},
+     "put_wall@445.0000": {"armed": false, "last_fired_at": 1755000480}
     }
    },
    {
@@ -268,11 +338,11 @@
     "at": 1755000540,
     "events": [],
     "states": {
-     "440.0000": {"armed": true, "last_fired_at": null},
-     "445.0000": {"armed": false, "last_fired_at": 1755000480},
-     "447.3000": {"armed": false, "last_fired_at": 1755000480},
-     "450.0000": {"armed": false, "last_fired_at": 1755000480},
-     "455.0000": {"armed": false, "last_fired_at": 1755000360}
+     "call_vol_wall@450.0000": {"armed": false, "last_fired_at": 1755000480},
+     "call_wall@455.0000": {"armed": false, "last_fired_at": 1755000360},
+     "gamma_flip": {"armed": false, "last_fired_at": 1755000480},
+     "put_vol_wall@440.0000": {"armed": true, "last_fired_at": null},
+     "put_wall@445.0000": {"armed": false, "last_fired_at": 1755000480}
     }
    }
   ]

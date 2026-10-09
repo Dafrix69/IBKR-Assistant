@@ -82,6 +82,63 @@ describe("哪些调用要凭据", () => {
     ]);
   });
 
+  it("0 = 不设的那两条上限:从有到没有、调大是放松;从没有到有、调小是收紧", () => {
+    const now = { ...CURRENT.limits, max_open_risk_usd: 2000, max_underlying_contracts: 0, auto_mid_spread_share: 0 };
+    const keys = (patch: Record<string, unknown>) => g.loosenedLimits(patch, now).map((l) => l.key);
+    expect(keys({ max_open_risk_usd: 0 })).toEqual(["max_open_risk_usd"]);       // 撤掉上限
+    expect(keys({ max_open_risk_usd: 3000 })).toEqual(["max_open_risk_usd"]);    // 调大
+    expect(keys({ max_open_risk_usd: 1000 })).toEqual([]);                        // 调小
+    expect(keys({ max_underlying_contracts: 10 })).toEqual([]);                   // 从没有到有
+    expect(keys({ max_underlying_contracts: 0 })).toEqual([]);                    // 本来就没有
+    expect(keys({ auto_mid_spread_share: 0.5 })).toEqual(["auto_mid_spread_share"]);
+    expect(g.loosenedLimits({ max_open_risk_usd: 0 }, now)).toEqual([
+      { key: "max_open_risk_usd", label: "在手期权的最坏亏损上限(USD)", from: 2000, to: 0 },
+    ]);
+  });
+
+  it("按账户覆盖:比的是这个账户实际生效的值;键名带上账户", () => {
+    const now = { ...CURRENT.limits, max_order_notional: 5000, max_option_contracts: 5, max_open_risk_usd: 0, by_account: { 主账户: { max_order_notional: 2000 } } };
+    const keys = (patch: Record<string, unknown>) => g.loosenedLimits(patch, now).map((l) => l.key);
+    // 覆盖值调大:放松;调小:收紧
+    expect(keys({ by_account: { 主账户: { max_order_notional: 3000 } } })).toEqual(["by_account.主账户.max_order_notional"]);
+    expect(keys({ by_account: { 主账户: { max_order_notional: 1000 } } })).toEqual([]);
+    // 清掉覆盖(null)而全局更松:放松
+    expect(g.loosenedLimits({ by_account: { 主账户: { max_order_notional: null } } }, now)).toEqual([
+      { key: "by_account.主账户.max_order_notional", label: "主账户:单笔名义金额上限(USD)", from: 2000, to: 5000 },
+    ]);
+    // 新加一条比全局紧的覆盖:收紧;比全局松的:放松
+    expect(keys({ by_account: { 模拟: { max_option_contracts: 2 } } })).toEqual([]);
+    expect(keys({ by_account: { 模拟: { max_option_contracts: 20 } } })).toEqual(["by_account.模拟.max_option_contracts"]);
+    // 没覆盖过、这次也不覆盖(界面每次保存都带着一排 null):跟着全局走,不单列
+    expect(keys({ by_account: { 模拟: { max_order_notional: null, max_option_contracts: null } } })).toEqual([]);
+    expect(keys({ max_order_notional: 9000, by_account: { 模拟: { max_order_notional: null } } })).toEqual(["max_order_notional"]);
+    // 给账户单独设一条在手风险上限:从没有到有,收紧
+    expect(keys({ by_account: { 主账户: { max_open_risk_usd: 1500 } } })).toEqual([]);
+    // 放行那一头绑的是同一份(键名摊平)
+    // 引擎的深合并把 null 当"删掉":整条覆盖、整段 by_account 写成 null,和逐项写 null 是同一件事,照样认得出放宽
+    expect(keys({ by_account: { 主账户: null } })).toEqual(["by_account.主账户.max_order_notional"]);
+    expect(keys({ by_account: null })).toEqual(["by_account.主账户.max_order_notional"]);
+    expect(keys({ by_account: { 模拟: null } })).toEqual([]);              // 本来就没有覆盖
+    const tight = { ...now, max_open_risk_usd: 0, max_underlying_contracts: 0, by_account: { 主账户: { max_order_notional: 300, max_option_contracts: 1, max_open_risk_usd: 1000, max_underlying_contracts: 2 } } };
+    expect(g.loosenedLimits({ by_account: { 主账户: null } }, tight).map((l: { key: string }) => l.key)).toEqual([
+      "by_account.主账户.max_open_risk_usd", "by_account.主账户.max_option_contracts", "by_account.主账户.max_order_notional", "by_account.主账户.max_underlying_contracts",
+    ]);
+    // 整段 limits 写成 null(引擎会全部恢复默认):按放宽算,而且这份凭据要不到——过不了主进程
+    expect(g.loosenedLimits(null, now).map((l: { key: string }) => l.key)).toEqual(["*"]);
+    expect(g.requiredGrants("settings.patch", { patch: { limits: null } }, { ...CURRENT, limits: now }).map((n: { purpose: string }) => n.purpose)).toEqual(["limits.loosen"]);
+    expect(g.loosenedLimits(g.normalizeBinding("limits.loosen", { limits: null }).limits, now)).toEqual([]);
+    // 界面递来的补丁原样过一遍 normalizeBinding(确认框那一头就是这么做的):按账户的那一段不能丢
+    const viaUi = (limits: Record<string, unknown>): string[] => g.loosenedLimits(g.normalizeBinding("limits.loosen", { limits }).limits, now).map((l: { key: string }) => l.key);
+    expect(viaUi({ by_account: { 主账户: { max_order_notional: "3000" } } })).toEqual(["by_account.主账户.max_order_notional"]);
+    expect(viaUi({ by_account: { 主账户: { max_order_notional: null } } })).toEqual(["by_account.主账户.max_order_notional"]);
+    expect(viaUi({ max_order_notional: 9000, by_account: { 主账户: null } })).toEqual(["max_order_notional", "by_account.主账户.max_order_notional"]);
+    // 发出去的凭据绑的是摊平的那一份:再过一遍 normalizeBinding 不变
+    expect(g.normalizeBinding("limits.loosen", { limits: { "by_account.主账户.max_order_notional": 3000 } })).toEqual({ limits: { "by_account.主账户.max_order_notional": 3000 } });
+    expect(g.requiredGrants("settings.patch", { patch: { limits: { by_account: { 主账户: { max_order_notional: 3000 } } } } }, { ...CURRENT, limits: now })).toEqual([
+      { purpose: "limits.loosen", binding: { limits: { "by_account.主账户.max_order_notional": 3000 } } },
+    ]);
+  });
+
   it("只读的、熔断、删追踪不要", () => {
     for (const m of ["system.status", "breaker.halt", "breaker.resume", "tracker.delete", "tracker.update", "records.list", "llm.patch"]) {
       expect(g.requiredGrants(m, { id: "x" }, CURRENT), m).toEqual([]);
@@ -95,10 +152,13 @@ describe("Discord 跟单:打开与放宽要凭据", () => {
   const needs = (follow: Record<string, unknown>, now: Record<string, unknown> | null) =>
     g.requiredGrants("settings.patch", { patch: { follow } }, now === null ? null : { ...CURRENT, follow: now });
 
-  it("从关到开:要,绑的是补丁落下去之后的整份(信任谁、哪个频道、哪些账户、三个上限)", () => {
+  it("从关到开:要,绑的是补丁落下去之后的整份(信任谁、哪个频道、哪些账户、三个上限、成交后建不建追踪)", () => {
     expect(needs({ enabled: true, channel_id: ON.channel_id, author_ids: ON.author_ids }, OFF)).toEqual([{
       purpose: "gate.follow",
-      binding: { channel_id: ON.channel_id, author_ids: ON.author_ids, accounts: [], max_age_seconds: 30, max_orders_per_day: 3, max_risk_usd: 300, local_inbox: false, local_channel: "" },
+      binding: {
+        channel_id: ON.channel_id, author_ids: ON.author_ids, accounts: [], max_age_seconds: 30, max_orders_per_day: 3, max_risk_usd: 300,
+        local_inbox: false, local_channel: "", track_fly: false, track_exit_at: "",
+      },
     }]);
   });
 
@@ -137,6 +197,39 @@ describe("Discord 跟单:打开与放宽要凭据", () => {
     expect(needs({ local_channel: "" }, local)).toEqual([]);
     expect(needs({ local_channel: " charlie的策略 " }, local)).toEqual([]);
     expect(needs({ local_channel: "别的频道" }, ON)).toEqual([]);
+  });
+
+  it("成交后自动建追踪:开着时打开它要确认(软件多了一样会自己做的事:发平仓单);关掉它、只观察时改它不要", () => {
+    expect(needs({ track_fly: true }, ON)).toHaveLength(1);
+    expect(needs({ track_fly: true }, ON)[0]!.binding).toMatchObject({ track_fly: true, track_exit_at: "" });
+    expect(needs({ track_fly: true, track_exit_at: "15:45" }, ON)[0]!.binding).toMatchObject({ track_fly: true, track_exit_at: "15:45" });
+    const tracking = { ...ON, track_fly: true, track_exit_at: "15:45" };
+    expect(needs({ track_fly: false }, tracking)).toEqual([]);
+    expect(needs({ ...tracking }, tracking)).toEqual([]);
+    expect(needs({ track_fly: true, track_exit_at: "15:45" }, OFF)).toEqual([]);
+    // 从关到开时带着它:还是那一次确认,绑的那一份里有它
+    const first = needs({ ...tracking }, OFF);
+    expect(first).toHaveLength(1);
+    expect(first[0]!.binding).toMatchObject({ track_fly: true, track_exit_at: "15:45" });
+  });
+
+  it("到点平仓的钟点:追踪开着时填上、换一个要确认(多了、换了一个软件自己平仓的时刻);清空、原样再存、追踪关着时改不要", () => {
+    const tracking = { ...ON, track_fly: true, track_exit_at: "" };
+    expect(needs({ track_exit_at: "15:45" }, tracking)).toHaveLength(1);
+    expect(needs({ track_exit_at: "15:30" }, { ...tracking, track_exit_at: "15:45" })).toHaveLength(1);
+    expect(needs({ track_exit_at: "" }, { ...tracking, track_exit_at: "15:45" })).toEqual([]);
+    expect(needs({ track_exit_at: " 15:45 " }, { ...tracking, track_exit_at: "15:45" })).toEqual([]);
+    expect(needs({ track_exit_at: "15:45" }, ON)).toEqual([]);
+    // 关掉追踪的同时换钟点:是在减少自动化,不要
+    expect(needs({ track_fly: false, track_exit_at: "10:00" }, { ...tracking, track_exit_at: "15:45" })).toEqual([]);
+  });
+
+  it("停掉、减少自动化绝不比打开它难:关跟单、关追踪、清钟点,任何一种组合都不要凭据", () => {
+    const tracking = { ...ON, track_fly: true, track_exit_at: "15:45" };
+    for (const patch of [
+      { enabled: false }, { track_fly: false }, { track_exit_at: "" }, { track_fly: false, track_exit_at: "" },
+      { enabled: false, track_fly: false, track_exit_at: "" }, { enabled: false, track_fly: true, track_exit_at: "09:31" },
+    ]) expect(needs(patch, tracking), JSON.stringify(patch)).toEqual([]);
   });
 
   it("开着时往紧了改:少信任一个人、调小上限、少发一个账户,不要", () => {
@@ -200,6 +293,34 @@ describe("Discord 跟单:打开与放宽要凭据", () => {
     const unknown = g.followConfirmText(g.followBinding(ON), []);
     expect(unknown.live).toBe(true);
     expect(unknown.detail).toContain("类别未知");
+  });
+
+  it("确认的是不建追踪、存的时候带上了自动建追踪(或换了钟点):不放行", () => {
+    const book = new g.GrantBook();
+    book.issue("gate.follow", { ...ON, track_fly: false });
+    expect(book.consumeAll(needs({ ...ON, track_fly: true }, OFF))).toEqual(["打开 Discord 自动跟单"]);
+    book.issue("gate.follow", { ...ON, track_fly: true, track_exit_at: "15:45" });
+    expect(book.consumeAll(needs({ ...ON, track_fly: true, track_exit_at: "09:35" }, OFF))).toEqual(["打开 Discord 自动跟单"]);
+    expect(book.consumeAll(needs({ ...ON, track_fly: true, track_exit_at: "15:45" }, OFF))).toEqual([]);
+  });
+
+  it("确认框上的字:成交后自动建追踪开着时写明它会自己发平仓单、按什么规则、到点平仓的钟点、只管蝴蝶、对方的平仓仍然不知道", () => {
+    const accounts = [{ alias: "模拟", is_paper: true, default: true }];
+    const on = g.followConfirmText(g.followBinding({ ...ON, track_fly: true, track_exit_at: "15:45" }), accounts).detail;
+    expect(on).toContain("成交后自动建追踪:开着");
+    expect(on).toContain("到价自动平仓");
+    expect(on).toContain("蝶式预设(分档利润回撤)");
+    expect(on).toContain("由软件直接发平仓单,不再问你");
+    expect(on).toContain("到点平仓:美东 15:45");
+    expect(on).toContain("只管买入的蝴蝶;贷方价差不建追踪");
+    expect(on).toContain("对方自己什么时候平仓,软件仍然不知道");
+    const untimed = g.followConfirmText(g.followBinding({ ...ON, track_fly: true }), accounts).detail;
+    expect(untimed).toContain("到点平仓:不设");
+    // 关着:也写明,免得人以为跟进来的持仓有人管;关着时不提钟点(那个钟点没有用)
+    const off = g.followConfirmText(g.followBinding({ ...ON, track_exit_at: "15:45" }), accounts).detail;
+    expect(off).toContain("成交后自动建追踪:关着——跟进来的持仓软件不会替你平");
+    expect(off).not.toContain("15:45");
+    expect(off).not.toContain("蝶式预设");
   });
 
   it("确认框上的字:本地收件开着时写明读哪个频道、由谁读", () => {

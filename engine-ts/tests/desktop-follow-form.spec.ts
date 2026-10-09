@@ -9,6 +9,7 @@ import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { fromDict } from "../src/config.js";
+import { clockMinutes } from "../src/trackerExits.js";
 
 const SRC = path.resolve(__dirname, "..", "..", "desktop", "renderer-react", "src");
 type Form = Record<string, any>;
@@ -20,6 +21,8 @@ const mod = (await import(/* @vite-ignore */ pathToFileURL(path.join(SRC, "lib",
   isDirty(f: Form, saved: unknown): boolean;
   addAuthor(f: Form, id: string): Form;
   readerText(reader: { state: string; title: string | null; error: string | null }, channel: string): { tone: string; text: string };
+  isClock(text: string): boolean;
+  quoteLine(entry: { message_id: string; quote?: Record<string, unknown> }): string | null;
   OUTCOME_LABEL: Record<string, string>;
   outcomeTone(outcome: string): string;
 };
@@ -74,8 +77,39 @@ describe("拼出要存的那一份", () => {
     expect(next).toEqual({
       enabled: true, channel_id: CHANNEL, author_ids: [FRIEND], accounts: ["模拟"],
       max_age_seconds: 30, max_orders_per_day: 3, max_risk_usd: 500, local_inbox: false, local_channel: "",
+      track_fly: false, track_exit_at: "",
     });
     expect(fromDict({ ...BASE, follow: next }).follow).toEqual(next);
+  });
+
+  it("成交后自动建追踪:开关与钟点原样进要存的那一份,改了算改过;钟点掐头去尾,写得不对不让存", () => {
+    const form = { ...mod.toForm(SAVED), trackFly: true, trackExitAt: " 15:45 " };
+    expect(mod.formProblems(form)).toEqual([]);
+    const next = mod.toConfig(form);
+    expect(next).toMatchObject({ track_fly: true, track_exit_at: "15:45" });
+    expect(fromDict({ ...BASE, follow: next }).follow).toEqual(next);
+    expect(mod.isDirty(form, SAVED)).toBe(true);
+    expect(mod.isDirty(mod.toForm(next), next)).toBe(false);
+    expect(mod.isDirty({ ...mod.toForm(next), trackExitAt: "15:30" }, next)).toBe(true);
+    expect(mod.isDirty({ ...mod.toForm(next), trackFly: false }, next)).toBe(true);
+    // 空着 = 不设,可以存;开关关着时钟点写错了一样不让存(存进去引擎也会拒)
+    expect(mod.formProblems({ ...form, trackExitAt: "" })).toEqual([]);
+    expect(mod.formProblems({ ...form, trackExitAt: "3点45" })).toEqual(["到点平仓的钟点要写成美东时间的 HH:MM(如 15:45),或者空着"]);
+    expect(mod.formProblems({ ...form, trackFly: false, trackExitAt: "25:00" })).toHaveLength(1);
+  });
+
+  it("钟点的写法:界面认的、引擎配置认的、持仓追踪认的,三处一个不多一个不少", () => {
+    for (const text of ["15:45", "9:30", "09:30", "0:00", "23:59", " 3:05 ", "24:00", "12:60", "1545", "15:4", "15:455", "15:45 ET", "15：45", "ab:cd", "15:45:00", "１５:４５"]) {
+      const engine = clockMinutes(text) !== null;
+      expect(mod.isClock(text), JSON.stringify(text)).toBe(engine);
+      let config = true;
+      try {
+        fromDict({ ...BASE, follow: { track_exit_at: text } });
+      } catch {
+        config = false;
+      }
+      expect(config, JSON.stringify(text)).toBe(engine);
+    }
   });
 
   it("本地收件的频道名:掐头去尾存下,改了算改过;太长、带换行不让存", () => {
@@ -146,5 +180,40 @@ describe("「读窗口」那一行", () => {
     expect(view("off")).toEqual({ tone: "info", text: "关着" });
     expect(view("no_channel").text).toContain("自己运行脚本");
     expect(view("unavailable").text).toContain("自己运行脚本");
+  });
+});
+
+describe("最近的信号里那一行盘口(延迟的代价)", () => {
+  const line = (quote: Record<string, unknown>, messageId = "1400000000000000002"): string | null => mod.quoteLine({ message_id: messageId, quote });
+
+  it("买入蝴蝶(付钱):中间价比对方高 = 比对方贵;低 = 便宜;一样就说一样", () => {
+    expect(line({ side: "debit", leader: 2.5, mid: 2.8, natural: 3.05, lag_s: 6, paper: false }))
+      .toBe("对方 2.50 · 此刻中间价 2.80(比对方贵 0.30) · 立刻成交要付 3.05 · 消息发出 6 秒后");
+    expect(line({ side: "debit", leader: 2.5, mid: 2.4, natural: 2.6, lag_s: 2, paper: false })).toContain("此刻中间价 2.40(比对方便宜 0.10)");
+    expect(line({ side: "debit", leader: 2.5, mid: 2.5, natural: 2.7, lag_s: 2, paper: false })).toContain("此刻中间价 2.50(和对方一样)");
+    // 浮点:1.9 − 1.8 不该显示成 0.0999…
+    expect(line({ side: "debit", leader: 1.8, mid: 1.9, natural: 2.4, lag_s: 1, paper: false })).toContain("(比对方贵 0.10)");
+    expect(line({ side: "debit", leader: 1.8, mid: 1.8125, natural: 2.4, lag_s: 1, paper: false })).toContain("此刻中间价 1.8125(比对方贵 0.0125)");
+  });
+
+  it("贷方价差(收钱)反过来:中间价比对方低 = 比对方少收,高 = 多收;每个价都写明是「收」", () => {
+    expect(line({ side: "credit", leader: 2.5, mid: 2.2, natural: 1.8, lag_s: 3, paper: false }))
+      .toBe("对方收 2.50 · 此刻中间价收 2.20(比对方少收 0.30) · 立刻成交能收 1.80 · 消息发出 3 秒后");
+    expect(line({ side: "credit", leader: 2.5, mid: 2.6, natural: 2.3, lag_s: 3, paper: false })).toContain("此刻中间价收 2.60(比对方多收 0.10)");
+    // 盘口很宽:立刻卖出一分钱都收不到,照实说,不写成"能收 −0.30"
+    expect(line({ side: "credit", leader: 2.5, mid: 0.4, natural: -0.3, lag_s: 3, paper: false })).toContain("立刻成交一分钱都收不到(要倒付 0.30)");
+  });
+
+  it("纸面会话的行情写明可能是延迟的;本地收件的消息说的是「读到消息」多久之后;没取到盘口就没有这一行", () => {
+    expect(line({ side: "debit", leader: 1.8, mid: 1.9, natural: 2.4, lag_s: 4, paper: true })).toMatch(/ · 消息发出 4 秒后 · 纸面账户的行情,可能是延迟的$/);
+    expect(line({ side: "debit", leader: 1.8, mid: 1.9, natural: 2.4, lag_s: 2, paper: false }, "local:m1")).toMatch(/ · 读到消息 2 秒后$/);
+    expect(mod.quoteLine({ message_id: "1400000000000000002" })).toBeNull();
+  });
+
+  it("只摆数、不下结论:这一行里没有好坏的评语,面板也不按差多少上色", () => {
+    const text = line({ side: "debit", leader: 1.8, mid: 3.9, natural: 4.4, lag_s: 25, paper: false })!;
+    for (const word of ["太", "不值", "建议", "别跟", "风险", "⚠", "!"]) expect(text, word).not.toContain(word);
+    const panel = readFileSync(path.join(SRC, "lib", "FollowPanel.tsx"), "utf-8");
+    expect(panel).toMatch(/\{e\.quote \? <><br \/>\{quoteLine\(e\)\}<\/> : null\}/);
   });
 });

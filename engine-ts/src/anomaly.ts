@@ -9,6 +9,8 @@
  *  · 全天量比、大涨大跌按档报,每档一天一次,换日重置;
  *  · 窗口放量、急涨急跌走滞回 + 冷却:报一次 → 落防 → 回落到阈值一半以下且过了冷却 → 重新上膛。
  */
+import { OPEN_MINUTE, remainingShare } from "./flyCalibration.js";
+import { FLY_IV_MODEL } from "./flyIvModel.js";
 import { fmtF, fmtSF, pyRound } from "./py.js";
 // 量价快照的形状搬到了 marketdata.ts(券商适配层填它,这里读它);转出以保持老的 import 路径。
 export type { VolumeSnapshot } from "./marketdata.js";
@@ -32,6 +34,7 @@ export const DEFAULT_ANOMALY_CONFIG: AnomalyConfig = {
   day_sigma_tiers: [2, 3, 4],
   day_fixed_tiers: [3, 5, 8],
   cooldown_min: 10,
+  market_adjust: false,
 };
 
 const WINDOW_CHOICES: readonly number[] = [3, 5, 10];
@@ -124,6 +127,11 @@ export function normalizeAnomalyConfig(raw: unknown, base: AnomalyConfig = DEFAU
     raw, "day_fixed_tiers", out.day_fixed_tiers, 0.5, 50, "无历史波动率时的大涨大跌档位", "0.5%~50%",
   );
   out.cooldown_min = scalarField(raw, "cooldown_min", out.cooldown_min, 1, 240, "冷却时间", "1~240 分钟");
+  const adjust = raw["market_adjust"];
+  if (adjust !== undefined && adjust !== null) {
+    if (typeof adjust !== "boolean") throw new AnomalyError(`「扣掉大盘」的开关要是 true / false(收到 ${shown(adjust)})`);
+    out.market_adjust = adjust;
+  }
   return out;
 }
 
@@ -190,6 +198,21 @@ export function cumVolumeFraction(minute: number, sessionMinutes: number = RTH_M
   const slot = Math.min(SLOT_FRACTIONS.length - 1, Math.floor(m / SLOT_MINUTES));
   const within = (m - slot * SLOT_MINUTES) / SLOT_MINUTES;
   return SLOT_CUM[slot]! + (SLOT_FRACTIONS[slot]! / SLOT_TOTAL) * within;
+}
+
+// ---------------------------------------------------------------- 日内方差曲线
+/**
+ * 开盘后 fromMinute ~ toMinute 这一段占常规时段方差的几成(开盘前、收盘后的部分不算)。
+ *
+ * 用的是蝴蝶测算校准出来的那一份(FLY_IV_MODEL.variance_weights:13 个半小时桶,桶内按匀速):
+ * 开盘头半小时占 15%、午间每半小时约 5%、最后半小时 10%。**它是拿 SPY 估的**,个股的日内形状同样是两头高中间低,
+ * 但没有逐只校准过。上面那条 SLOT_FRACTIONS 是成交量的分布,不是波动的,不能拿来缩放 σ。
+ * 半日市按同一个钟点取(校准样本里没有半日市):13:00 收盘前那半小时按平常午后的份额算,不按收盘前的。
+ */
+export function varianceShare(fromMinute: number, toMinute: number): number {
+  const weights = FLY_IV_MODEL.variance_weights;
+  const share = remainingShare(weights, OPEN_MINUTE + fromMinute) - remainingShare(weights, OPEN_MINUTE + toMinute);
+  return share > 0 ? share : 0; // 连 NaN 一起挡掉
 }
 
 // ---------------------------------------------------------------- 快照与样本
@@ -299,13 +322,6 @@ export function coerceState(raw: unknown, date: string): AnomalyState {
 // ---------------------------------------------------------------- 判定
 
 
-/** 年化历史波动率统一成小数。IB 给的是 0.319 这种小数;> 5(500%)只可能是有人按百分数传了。 */
-function annualized(v: unknown): number | null {
-  const x = positive(v);
-  if (x === null) return null;
-  return x > 5 ? x / 100 : x;
-}
-
 function streamWindowVolume(snap: VolumeSnapshot, windowMin: number): number | null {
   const v = windowMin === 3 ? snap.vol_3m : windowMin === 5 ? snap.vol_5m : windowMin === 10 ? snap.vol_10m : null;
   const n = finiteNum(v);
@@ -321,6 +337,49 @@ function windowAnchor(samples: Sample[] | null | undefined, nowMs: number, windo
     if (best === null || s.t > best.t) best = s;
   }
   return best !== null && best.t >= target - WINDOW_STALE_MS ? best : null;
+}
+
+/** 样本序列在近 windowMin 分钟里的涨跌幅(%)。起点规则同个股的窗口(windowAnchor);凑不出窗口回 null。 */
+export function windowReturnPct(samples: Sample[] | null | undefined, nowMs: number, windowMin: number): number | null {
+  const s0 = windowAnchor(samples, nowMs, windowMin);
+  const from = s0 !== null ? positive(s0.last) : null;
+  let last: number | null = null;
+  for (const s of Array.isArray(samples) ? samples : []) if (s && s.t === nowMs) last = positive(s.last);
+  return from !== null && last !== null ? (last / from - 1) * 100 : null;
+}
+
+/** 大盘(标普 500 指数)同期的涨跌 %,由调用方给:change_pct = 较昨收,ret_window_pct = 近 W 分钟。没有的给 null。 */
+export interface MarketMove {
+  change_pct: number | null;
+  ret_window_pct: number | null;
+}
+
+/**
+ * 一段涨跌算多大(%,不带符号)。adjust 关着、或者没有大盘参照:就是它自己的幅度。
+ * 开着:扣掉大盘之后还算数的幅度。扣法是事件研究里的"市场调整收益":个股涨跌 − 大盘同期涨跌,
+ * 不估 beta(等于按 beta = 1)——beta 要每只股自己的日线才估得出,这条流里没有。
+ * 两个口径都得够:自己的涨跌、扣完之后的涨跌,取小的那个;扣完反了向(大盘走得比它还多)就是 0。
+ */
+function moveSize(own: number, market: number | null, adjust: boolean): number {
+  if (!adjust || market === null) return Math.abs(own);
+  const rel = own - market;
+  return rel * own <= 0 ? 0 : Math.min(Math.abs(own), Math.abs(rel));
+}
+
+/** 提醒里交代大盘的那半句:有参照就写;幅度是按扣完之后算的,把扣完的数也写出来。
+ *  开着「扣掉大盘」却没有参照(没有指数行情权限、流冻住了、这只是延迟行情):照自己的幅度判了,得说出来。 */
+function marketNote(own: number, market: number | null, size: number, adjust: boolean): string {
+  if (market === null) return adjust ? ",无大盘参照、未扣" : "";
+  const net = size < Math.abs(own) - EPS ? `、扣掉后 ${signedPct(own - market, 2)}%` : "";
+  return `,标普同期 ${signedPct(market, 2)}%${net}`;
+}
+
+/** 光是开盘那一下(开盘价较昨收)就够这一档:写明是跳空,不是盘中一路走出来的。open 得是**今天的**开盘价(见 evaluateAnomalies 的 snap)。 */
+function gapNote(open: number | null, close: number | null, changePct: number, threshold: number): string {
+  const gapPct = open !== null && close !== null ? (open / close - 1) * 100 : null;
+  return gapPct !== null && gapPct * changePct > 0 && Math.abs(gapPct) >= threshold - EPS
+    ? `(开盘跳空 ${signedPct(gapPct, 2)}%)`
+    : "";
 }
 
 /**
@@ -403,6 +462,7 @@ function priceText(x: number | null): string {
  * 不在 [0, session) 里时只算指标不报。休市日(周末/假日)由调用方把 minute 放到区间外——这里不认日历。 */
 export function evaluateAnomalies(args: {
   symbol: string;
+  /** snap.open 只拿来写「开盘跳空」那半句,得是今天的开盘价:流里那个字段开盘前是昨天的,调用方认出是今天的才给,认不出给 null */
   snap: VolumeSnapshot;
   samples: Sample[];
   state: AnomalyState | null;
@@ -414,6 +474,11 @@ export function evaluateAnomalies(args: {
   /** 只算指标、这一轮不报也不动状态:刚订上的流(tick 23 历史波动率往往要等第二轮才到,
    * 拿固定阈值先报一次会把档位占掉)、或者行情已经不新鲜时,由调用方打开 */
   suppress?: boolean;
+  /** 大盘同期的涨跌;取不到、或者和这只股对不上钟点(它是延迟行情)就不给 */
+  market?: MarketMove | null;
+  /** 这只股今天的常规时段开出来没有(调用方看到它在时段里成交过 / 动过 / 正式开盘价到了)。false = 大涨大跌先不判:
+   * 钟过了 09:30、开盘那一笔还没进来时,手上的现价是盘前的,拿它较昨收报一次会把当天这一档占掉。不给当作开了 */
+  opened?: boolean;
 }): { events: AnomalyEvent[]; state: AnomalyState; metrics: Metrics } {
   const cfg = args.config;
   const symbol = args.symbol;
@@ -433,7 +498,9 @@ export function evaluateAnomalies(args: {
   const close = positive(snap.close);
   const volume = positive(snap.volume);
   const avgVolume = positive(snap.avg_volume);
-  const histVol = annualized(snap.hist_vol);
+  // 年化、小数(0.32 = 32%):单位在 VolumeSnapshot 上写死,填它的一方负责换算。这里不猜——
+  // 妖股的 30 日历史波动率真有 500% 以上的,按"太大了一定是百分数"除以 100 会把它的 σ 缩成百分之一
+  const histVol = positive(snap.hist_vol);
   const changePct = last !== null && close !== null ? (last / close - 1) * 100 : null;
 
   const suppress = args.suppress === true;
@@ -522,9 +589,17 @@ export function evaluateAnomalies(args: {
   const s0Last = s0 !== null ? positive(s0.last) : null;
   const retPct = s0Last !== null && last !== null ? (last / s0Last - 1) * 100 : null;
   const retSpan = s0 !== null ? (nowMs - s0.t) / 60_000 : W;
-  const sigmaWindowPct = histVol !== null ? histVol * Math.sqrt(retSpan / (252 * RTH_MINUTES)) * 100 : null;
+  // 日 σ:30 日收盘对收盘的历史波动率折到一天(含隔夜缺口——大涨大跌比的也是较昨收,口径对得上)。
+  // 窗口 σ:日 σ × √(这一段占常规时段方差的几成),份额取校准过的日内方差曲线,不按"每分钟一样多"摊。
+  // 隔夜那一份没有拆出去(要每只股自己的开盘价序列才估得出),窗口 σ 因此偏大、偏少报。
   const sigmaDayPct = histVol !== null ? (histVol / Math.sqrt(252)) * 100 : null;
+  const windowShare = minute !== null ? varianceShare(minute - retSpan, minute) : 0;
+  const sigmaWindowPct = sigmaDayPct !== null && windowShare > 0 ? sigmaDayPct * Math.sqrt(windowShare) : null;
   const basisSigma: "hist_vol" | "fixed" = histVol !== null ? "hist_vol" : "fixed";
+
+  // 大盘同期:关着「扣掉大盘」时只写进提醒的那句话;开着时幅度按扣完之后的算(moveSize)
+  const marketWindow = finiteNum(args.market?.ret_window_pct);
+  const marketDay = finiteNum(args.market?.change_pct);
 
   const events: AnomalyEvent[] = [];
   const emit = (e: Omit<AnomalyEvent, "id" | "at" | "symbol" | "price" | "change_pct">): void => {
@@ -556,6 +631,7 @@ export function evaluateAnomalies(args: {
     if (tier !== null) {
       state.rvol_fired = tier;
       const chg = changePct !== null ? `(${signedPct(changePct, 2)}%)` : "";
+      // 方向只是标签,取量所在的那一段的涨跌:全天的量配当日涨跌(下面窗口的量配窗口涨跌)
       emit({
         kind: "rvol", direction: directionOf(changePct), value: r4(rvol)!, threshold: tier, tier, sigma: null,
         basis: "avg_volume",
@@ -588,7 +664,7 @@ export function evaluateAnomalies(args: {
   const spikeThreshold =
     sigmaWindowPct !== null ? Math.max(cfg.spike_sigma * sigmaWindowPct, cfg.spike_min_pct) : cfg.spike_fixed_pct;
   if (retPct !== null && inSession && minute! >= SPIKE_MIN_MINUTE) {
-    const size = Math.abs(retPct);
+    const size = moveSize(retPct, marketWindow, cfg.market_adjust);
     const arm = state.spike;
     if (!arm.armed && size < spikeThreshold / 2 && cooled(arm, nowS, cfg.cooldown_min)) {
       state.spike = { armed: true, last_fired_at: arm.last_fired_at };
@@ -604,15 +680,17 @@ export function evaluateAnomalies(args: {
         kind: "spike", direction: up ? "up" : "down", value: r4(retPct)!, threshold: r4(spikeThreshold)!, tier: null,
         sigma: sigmaWindowPct !== null ? r4(size / sigmaWindowPct) : null, basis: basisSigma,
         title: `${symbol} ${W}分钟${up ? "急涨" : "急跌"} ${signedPct(retPct, 1)}%`,
-        text: `${W} 分钟 ${signedPct(retPct, 2)}%${how},现价 ${priceText(last)}`,
+        text: `${W} 分钟 ${signedPct(retPct, 2)}%${marketNote(retPct, marketWindow, size, cfg.market_adjust)}${how},现价 ${priceText(last)}`,
       });
     }
   }
 
-  // ---- day_move:盘中任意时刻都判(含开盘第一分钟——跳空就是这个);上下各记各的档序号
-  if (changePct !== null && inSession) {
+  // ---- day_move:这只股今天开出来之后任意时刻都判(开盘第一分钟就判——跳空就是这个);上下各记各的档序号。
+  // 跳空值得报一次,也只报一次:档序号按方向记在状态里(跟着落库,重启不丢),回补之后再回到同一档不重报,
+  // 之后只有走到更高一档才再报。
+  if (changePct !== null && inSession && args.opened !== false) {
     const thresholds = sigmaDayPct !== null ? cfg.day_sigma_tiers.map((k) => k * sigmaDayPct) : [...cfg.day_fixed_tiers];
-    const size = Math.abs(changePct);
+    const size = moveSize(changePct, marketDay, cfg.market_adjust);
     const tier = highestTier(thresholds, size);
     const up = changePct > 0;
     const fired = up ? state.day_up_fired : state.day_down_fired;
@@ -624,11 +702,12 @@ export function evaluateAnomalies(args: {
       const how = sigmaDayPct !== null
         ? `,约 ${times(size / sigmaDayPct)}σ(第 ${tier} 档,阈值 ${thr}%)`
         : `(第 ${tier} 档,阈值 ${thr}%)`;
+      const gap = gapNote(positive(snap.open), close, changePct, threshold);
       emit({
         kind: "day_move", direction: up ? "up" : "down", value: r4(changePct)!, threshold: r4(threshold)!, tier,
         sigma: sigmaDayPct !== null ? r4(size / sigmaDayPct) : null, basis: basisSigma,
         title: `${symbol} ${up ? "大涨" : "大跌"} ${signedPct(changePct, 1)}%`,
-        text: `较昨收 ${signedPct(changePct, 2)}%${how},现价 ${priceText(last)}`,
+        text: `较昨收 ${signedPct(changePct, 2)}%${gap}${marketNote(changePct, marketDay, size, cfg.market_adjust)}${how},现价 ${priceText(last)}`,
       });
     }
   }

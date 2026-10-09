@@ -1,5 +1,7 @@
 /** review.*:交易分析——蝴蝶复盘、股票复盘、止盈策略回放。
  *  整个域已经在契约里(contract/review.ts):入参过了 schema 才到这里,返回对着契约类型检查。 */
+import * as path from "node:path";
+
 import { BrokerError } from "../../broker.js";
 import { nowEt } from "../../config.js";
 import { pyRound } from "../../py.js";
@@ -8,6 +10,7 @@ import type {
   ReviewCandidatesResult, ReviewPerformanceParams, ReviewPerformanceResult, ReviewSignalsParams, ReviewSignalsResult, StockCandidate,
 } from "../../contract/index.js";
 import { RpcError } from "../../rpcError.js";
+import { MarketDataService } from "../../services/marketData.js";
 import { HandlerBase } from "../context.js";
 import type { MethodTable, Rec } from "../context.js";
 import { contractMethods } from "../contractMethods.js";
@@ -40,27 +43,52 @@ export class ReviewHandlers extends HandlerBase {
     });
   }
 
-  /** 信号成绩单(signalOutcomes.ts):信号日志 × 各标的日线。取不到日线的标的记进 missing_symbols,不让整个请求失败。 */
+  /**
+   * 信号成绩单(signalOutcomes.ts):信号日志 × 各标的日线。取不到日线的标的记进 missing_symbols,不让整个请求失败。
+   * 日线要往回取到最早那条信号之前一整年(基线只用信号之前的日线)。最后一根只有在**它那天收盘之后取的**才交给打分:
+   * 盘中取的是半根;对着"现在几点"判不行——缓存的新旧按单调钟算,合盖睡过去再醒来,收盘前取的那份照样算新鲜。
+   */
   async reviewSignals(params: ReviewSignalsParams): Promise<ReviewSignalsResult> {
     const days = params.days ?? null;
     if (days !== null && (!Number.isInteger(days) || days < 1 || days > ReviewHandlers.PERFORMANCE_MAX_DAYS)) {
       throw new RpcError(-32602, `天数要是 1 到 ${ReviewHandlers.PERFORMANCE_MAX_DAYS} 之间的整数,收到:${days}`);
     }
-    const { scoreSignals } = await import("../../signalOutcomes.js");
-    const since = days === null ? null : new Date(Date.now() - days * 86_400_000).toISOString();
+    const { closeEpoch, scoreSignals } = await import("../../signalOutcomes.js");
+    const moment = nowEt();
+    const since = days === null ? null : new Date(moment.epochMs - days * 86_400_000).toISOString();
     const signals = this.engine.store.signals.list(since);
+    const earlyCloses = new Set(this.settings.early_close_days);
+    const oldest = new Map<string, number>();
+    for (const s of signals) {
+      const at = Date.parse(s.at);
+      if (Number.isFinite(at)) oldest.set(s.symbol, Math.min(oldest.get(s.symbol) ?? Infinity, at));
+    }
     const bars = new Map<string, Array<{ date: string; close: number }>>();
     for (const symbol of new Set(signals.map((s) => s.symbol))) {
+      const age = Math.max(0, Math.ceil((moment.epochMs - (oldest.get(symbol) ?? moment.epochMs)) / 86_400_000)) + 1;
       try {
-        const rows = await this.ctx.market.dailyHistory(symbol);
-        bars.set(symbol, rows
-          .map((r) => ({ date: String(r["date"] ?? ""), close: Number(r["close"]) }))
-          .filter((r) => /^\d{4}-\d{2}-\d{2}$/.test(r.date) && Number.isFinite(r.close) && r.close > 0));
+        const rows = (await this.signalHistory(symbol, MarketDataService.HIST_SPAN_DAYS + age))
+          .map((r) => ({ date: String(r["date"] ?? r["time"] ?? "").slice(0, 10), close: Number(r["close"]) }))
+          .filter((r) => /^\d{4}-\d{2}-\d{2}$/.test(r.date) && Number.isFinite(r.close) && r.close > 0);
+        // 前面的每一根后面都还有一根,取的时候必然已经收了;只有最后一根要问:是它那天收盘之后取的吗
+        const last = rows[rows.length - 1];
+        const askedAt = this.ctx.market.dailyHistoryAskedAt(symbol);
+        if (last !== undefined && !(askedAt !== null && askedAt >= closeEpoch(last.date, earlyCloses))) rows.pop();
+        bars.set(symbol, rows);
       } catch {
         // 没连券商 / 没有这只的行情权限:这只的信号不进成绩,结果里列出来
       }
     }
-    return scoreSignals(signals, bars, days);
+    return scoreSignals(signals, bars, days, { earlyCloses });
+  }
+
+  /** 成绩单要的那段日线。更长的那段取不到(刚取过同一只、被券商按超频拒了)就退回平常那一段:收益照算,基线可能没有。 */
+  private async signalHistory(symbol: string, spanDays: number): Promise<Array<Record<string, unknown>>> {
+    try {
+      return await this.ctx.market.dailyHistory(symbol, spanDays);
+    } catch {
+      return this.ctx.market.dailyHistory(symbol);
+    }
   }
 
   // ---- 交易分析:蝴蝶复盘 ------------------------------------------------
@@ -287,9 +315,26 @@ export class ReviewHandlers extends HandlerBase {
   ): Promise<void> {
     const fx = await import("../../flyexit.js");
     const tr = await import("../../tradereview.js");
-    const exitParams: Rec = params["exit"] && typeof params["exit"] === "object" ? params["exit"] : {};
+    const exitParams: Rec = params["exit"] && typeof params["exit"] === "object" ? { ...params["exit"] } : {};
     const entryDay = String(result["entry"]["time_et"]).slice(0, 10);
     const notes: string[] = [];
+    // EM:没手动填就取开仓那天日内剧本记下的期权定价(sessionEm.ts);那天没记到才用默认值,并照实说
+    const earlyClose = this.settings.early_close_days.includes(entryDay);
+    let emNote: string;
+    if (exitParams["em"] !== undefined && exitParams["em"] !== null && exitParams["em"] !== "") {
+      emNote = `EM 取 ${exitParams["em"]} 点(手动填的)`;
+    } else {
+      const { PlaybookLog } = await import("../../playbookLog.js");
+      const { sessionEmOf } = await import("../../sessionEm.js");
+      const found = sessionEmOf(new PlaybookLog(path.join(path.dirname(this.settings.db_path), "playbook")).read(entryDay), earlyClose);
+      if (found !== null) {
+        exitParams["em"] = found.em;
+        emNote = `EM 取 ${found.em} 点:开仓那天${found.kind === "open" ? "盘初" : ` ${found.at} `}的平值跨式 × √(π/2),折回常规时段全天(日内剧本的底账)`;
+      } else {
+        emNote = `开仓那天的底账里没有记到期权的定价,EM 用默认的 ${fx.DEFAULTS["em"]} 点——那是某一天的数,不是这一天的。知道那天开盘时的平值跨式就手动填(跨式 × 1.25)`;
+      }
+    }
+    if (earlyClose) notes.push("开仓那天提前收盘(13:00):日内方差分布与阶段切换是照 16:00 收盘估的,这一天的阶段与模型价不可靠");
     let spx1m: Rec[] = bars;
     if (timeframe !== "1m") {
       try {
@@ -322,7 +367,7 @@ export class ReviewHandlers extends HandlerBase {
     const entryBar = idx === null ? String(result["entry"]["bar_time"]) : String(spx1m[idx]!["time"]);
     const outcome = result["outcome"];
     const actual = { kind: outcome["kind"], price: outcome["price"], pnl: outcome["pnl"], time_et: outcome["time_et"] };
-    const plan = fx.plan(profile, entryBar, spx1m, flyBars, exitParams, actual);
+    const plan = fx.plan(profile, entryBar, spx1m, flyBars, exitParams, actual, emNote);
     (plan["notes"] as string[]).push(...notes);
     result["exit_plan"] = plan;
     // 有真实蝶价就用它说"曾有的机会":到期内在价值在持有期间是卖不到的数

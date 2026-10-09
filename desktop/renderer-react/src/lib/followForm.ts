@@ -5,7 +5,7 @@
  * 和「设置」页同一条教训:输入框清空是 null,`Number(null)` 是 0——上限那几格空着就存,等于把上限写成 0 或者被引擎拒掉。
  * 所以空着的格子不让存,而且一律写明是哪一格。
  */
-import type { FollowConfig, FollowOutcome, FollowReaderState } from '../bridge';
+import type { FollowConfig, FollowEntry, FollowOutcome, FollowReaderState } from '../bridge';
 
 export interface FollowForm {
   enabled: boolean;
@@ -17,6 +17,10 @@ export interface FollowForm {
   maxRisk: number | null;
   localInbox: boolean;
   localChannel: string;
+  /** 跟进来的蝴蝶成交后自动建追踪 */
+  trackFly: boolean;
+  /** 自动建的追踪到点平仓的钟点,美东 "HH:MM";空 = 不设 */
+  trackExitAt: string;
 }
 
 /** Discord 的 ID(频道、用户、webhook 都是):一串 15–21 位数字。和引擎的 config.ts 同一个口径。 */
@@ -25,6 +29,8 @@ export const DISCORD_ID = /^\d{15,21}$/;
 export const LOCAL_AUTHOR = /^local:[^\r\n]{1,80}$/;
 /** 本地收件的频道名最长多少字。和引擎的 config.ts 同一个口径。 */
 export const LOCAL_CHANNEL_MAX = 100;
+/** 到点平仓的钟点:美东 "HH:MM"。和引擎的 config.ts(FOLLOW_CLOCK)、持仓追踪那张表单(trackExitForm.ts)认的是同一种写法。 */
+export const isClock = (text: string): boolean => /^([01]?\d|2[0-3]):[0-5]\d$/.test(text.trim());
 /** 信任名单里的一项长得对不对。 */
 export const isAuthorId = (id: string): boolean => DISCORD_ID.test(id) || LOCAL_AUTHOR.test(id);
 
@@ -39,6 +45,8 @@ export function toForm(cfg: FollowConfig): FollowForm {
     maxRisk: cfg.max_risk_usd ?? null,
     localInbox: Boolean(cfg.local_inbox),
     localChannel: cfg.local_channel ?? '',
+    trackFly: Boolean(cfg.track_fly),
+    trackExitAt: cfg.track_exit_at ?? '',
   };
 }
 
@@ -52,6 +60,7 @@ export function formProblems(form: FollowForm): string[] {
   if (localChannel.length > LOCAL_CHANNEL_MAX || /[\r\n]/.test(form.localChannel)) out.push(`本地收件的频道名最多 ${LOCAL_CHANNEL_MAX} 字,不能换行`);
   if (form.enabled && !channel && !form.localInbox) out.push('打开自动跟单之前要先填频道 ID,或者打开本地收件');
   if (form.enabled && !form.authorIds.length) out.push('打开自动跟单之前至少要信任一个发送者');
+  if (form.trackExitAt.trim() && !isClock(form.trackExitAt)) out.push('到点平仓的钟点要写成美东时间的 HH:MM(如 15:45),或者空着');
   const range = (value: number | null, label: string, min: number, max: number | null, whole: boolean): void => {
     if (value === null || !Number.isFinite(value)) out.push(`${label}不能空着`);
     else if (value < min || (max !== null && value > max)) out.push(`${label}要在 ${min}${max !== null ? `–${max}` : ' 以上'}`);
@@ -75,6 +84,8 @@ export function toConfig(form: FollowForm): FollowConfig {
     max_risk_usd: Number(form.maxRisk),
     local_inbox: form.localInbox,
     local_channel: form.localChannel.trim(),
+    track_fly: form.trackFly,
+    track_exit_at: form.trackExitAt.trim(),
   };
 }
 
@@ -86,7 +97,8 @@ export function isDirty(form: FollowForm, saved: FollowConfig | null): boolean {
   return form.enabled !== saved.enabled || form.channelId.trim() !== saved.channel_id ||
     !same(form.authorIds, saved.author_ids) || !same(form.accounts, saved.accounts) ||
     form.maxAge !== saved.max_age_seconds || form.perDay !== saved.max_orders_per_day || form.maxRisk !== saved.max_risk_usd ||
-    form.localInbox !== Boolean(saved.local_inbox) || form.localChannel.trim() !== (saved.local_channel ?? '');
+    form.localInbox !== Boolean(saved.local_inbox) || form.localChannel.trim() !== (saved.local_channel ?? '') ||
+    form.trackFly !== Boolean(saved.track_fly) || form.trackExitAt.trim() !== (saved.track_exit_at ?? '');
 }
 
 /** 往信任名单里加一个 ID;形状不对、已经在里面,原样返回。 */
@@ -131,4 +143,40 @@ export function outcomeTone(outcome: FollowOutcome): 'success' | 'default' | 'wa
   if (outcome === 'sent') return 'success';
   if (outcome === 'observed') return 'default';
   return outcome === 'rejected' ? 'error' : 'warning';
+}
+
+/** 价:最多四位小数,去掉末尾的 0;至少留两位(2.5 → 2.50),和消息里写价的习惯一样。 */
+function price(v: number): string {
+  const fixed = Math.abs(v).toFixed(4).replace(/0{1,2}$/, '');
+  return v < 0 ? `-${fixed}` : fixed;
+}
+
+/**
+ * 一条信号处理完之后取的那一次盘口,写成一行:对方写的价、当时的中间价与立刻成交的价、隔了多久。没取到回 null。
+ *
+ * 只摆数,不下结论:没有"贵了多少算多"的线,也不按大小上色——晚几秒值多少钱,要攒够了条数由人自己看。
+ * 差多少总是说成"对我是好是坏":买入蝴蝶(付钱)中间价比对方高 = 比对方贵;贷方价差(收钱)中间价比对方低 = 比对方少收。
+ */
+export function quoteLine(entry: Pick<FollowEntry, 'message_id' | 'quote'>): string | null {
+  const q = entry.quote;
+  if (!q) return null;
+  const debit = q.side === 'debit';
+  const gap = Number((q.mid - q.leader).toFixed(4));
+  const versus = gap === 0
+    ? '和对方一样'
+    : debit
+      ? `比对方${gap > 0 ? '贵' : '便宜'} ${price(Math.abs(gap))}`
+      : `比对方${gap < 0 ? '少收' : '多收'} ${price(Math.abs(gap))}`;
+  const natural = debit
+    ? `立刻成交要付 ${price(q.natural)}`
+    : q.natural > 0 ? `立刻成交能收 ${price(q.natural)}` : `立刻成交一分钱都收不到(要倒付 ${price(Math.abs(q.natural))})`;
+  // 本地收件的消息没有"发出的时刻",只有读窗口的程序看见它的时刻
+  const since = entry.message_id.startsWith('local:') ? '读到消息' : '消息发出';
+  return [
+    `对方${debit ? '' : '收'} ${price(q.leader)}`,
+    `此刻中间价${debit ? '' : '收'} ${price(q.mid)}(${versus})`,
+    natural,
+    `${since} ${q.lag_s} 秒后`,
+    ...(q.paper ? ['纸面账户的行情,可能是延迟的'] : []),
+  ].join(' · ');
 }

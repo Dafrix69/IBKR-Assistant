@@ -44,13 +44,31 @@ const LIMIT_RULES = {
   max_orders_per_input: { label: '一条指令最多几笔订单', loosen: 'up' },
   min_confidence: { label: '最低置信度', loosen: 'down' },
   duplicate_window_minutes: { label: '重复防抖窗口(分钟)', loosen: 'down' },
+  // cap = 0 表示"不设"的上限:从有到没有、或者调大,是放松;从没有到有是收紧
+  max_open_risk_usd: { label: '在手期权的最坏亏损上限(USD)', loosen: 'cap' },
+  max_underlying_contracts: { label: '同标的同到期的张数上限', loosen: 'cap' },
+  auto_mid_spread_share: { label: 'AUTO_MID 按价差让价的份额', loosen: 'up' },
 };
+
+/** 能按账户覆盖的那几项(引擎 config.ts 的 ACCOUNT_LIMIT_KEYS)。 */
+const ACCOUNT_LIMIT_KEYS = ['max_mkt_shares', 'max_open_risk_usd', 'max_option_contracts', 'max_order_notional', 'max_underlying_contracts'];
+
+/** 从 from 改到 to 是不是放松。现在的值读不出来时按"放松了"算:宁可多问一次。 */
+function isLooser(rule, from, to) {
+  if (!Number.isFinite(from)) return true;
+  if (rule === 'cap') return from > 0 && (to === 0 || to > from);
+  return rule === 'up' ? to > from : to < from;
+}
 
 /**
  * 补丁里哪些限额比现在松。
  * @returns {{ key: string, label: string, from: number, to: number }[]} 按键名排好序
  */
 function loosenedLimits(patchLimits, currentLimits) {
+  // 整段写成 null:引擎会把限额全部恢复成默认值,按账户另设的与两条累计上限一并清掉。这里不知道默认值是多少,
+  // 列不出"从多少改到多少"——一律按放宽算,而且这份凭据界面要不到(确认框那一头对着同一个函数,列不出明细就不弹框),
+  // 所以整段置空的补丁过不了主进程。界面自己从不发这种补丁
+  if (patchLimits === null) return [{ key: '*', label: '整段风控限额恢复成默认值', from: Number.NaN, to: Number.NaN }];
   const next = patchLimits && typeof patchLimits === 'object' ? patchLimits : {};
   const now = currentLimits && typeof currentLimits === 'object' ? currentLimits : {};
   const out = [];
@@ -59,15 +77,41 @@ function loosenedLimits(patchLimits, currentLimits) {
     const to = Number(next[key]);
     const from = Number(now[key]);
     if (!Number.isFinite(to)) continue; // 不是数:引擎的校验会拒,轮不到这里
-    // 现在的值读不出来时按"放松了"算:宁可多问一次
-    const loosened = !Number.isFinite(from) || (LIMIT_RULES[key].loosen === 'up' ? to > from : to < from);
-    if (loosened) out.push({ key, label: LIMIT_RULES[key].label, from, to });
+    if (isLooser(LIMIT_RULES[key].loosen, from, to)) out.push({ key, label: LIMIT_RULES[key].label, from, to });
+  }
+  // 按账户覆盖的限额(limits.by_account):比的是这个账户**实际生效**的值——覆盖了用覆盖的,没覆盖用全局的
+  // (全局的以这次补丁之后的为准)。清掉一项覆盖(null)而全局更松,同样是放松
+  const nowBy = now.by_account && typeof now.by_account === 'object' ? now.by_account : {};
+  // 引擎的深合并把 null 当"删掉":by_account 整个是 null = 所有账户的覆盖都清掉;某个账户是 null = 它那一条清掉。
+  // 两种都摊成"每一项都清掉"再比,和逐项写 null 是同一件事
+  const cleared = Object.fromEntries(ACCOUNT_LIMIT_KEYS.map((key) => [key, null]));
+  let nextBy = {};
+  if (next.by_account === null) nextBy = Object.fromEntries(Object.keys(nowBy).map((alias) => [alias, null]));
+  else if (next.by_account && typeof next.by_account === 'object') nextBy = next.by_account;
+  const given = (v) => v !== null && v !== undefined;
+  for (const alias of Object.keys(nextBy).sort()) {
+    const own = nextBy[alias] === null ? cleared : nextBy[alias];
+    if (!own || typeof own !== 'object') continue;
+    const before = nowBy[alias] && typeof nowBy[alias] === 'object' ? nowBy[alias] : {};
+    for (const key of ACCOUNT_LIMIT_KEYS) {
+      if (!(key in own)) continue;
+      // 之前没覆盖、现在也不覆盖:它跟着全局走,全局那一条已经算过了
+      if (!given(own[key]) && !given(before[key])) continue;
+      const globalNext = key in next && Number.isFinite(Number(next[key])) ? Number(next[key]) : Number(now[key]);
+      const to = given(own[key]) ? Number(own[key]) : globalNext;
+      const from = given(before[key]) ? Number(before[key]) : Number(now[key]);
+      if (!Number.isFinite(to)) continue;
+      if (isLooser(LIMIT_RULES[key].loosen, from, to)) {
+        out.push({ key: `by_account.${alias}.${key}`, label: `${alias}:${LIMIT_RULES[key].label}`, from, to });
+      }
+    }
   }
   return out;
 }
 
 /**
- * Discord 跟单的凭据绑什么:信任谁、读哪个频道、发到哪些账户、三个上限——确认框上摆的就是这几样。
+ * Discord 跟单的凭据绑什么:信任谁、读哪个频道、发到哪些账户、三个上限、成交后要不要自动建追踪(与它到点平仓的钟点)
+ * ——确认框上摆的就是这几样。
  * 形状固定、名单排好序:界面递来的和放行时由"现在的配置 + 补丁"算出来的,同一件事得出同一个指纹。
  */
 function followBinding(cfg) {
@@ -82,6 +126,8 @@ function followBinding(cfg) {
     max_risk_usd: Number(c.max_risk_usd),
     local_inbox: c.local_inbox === true,
     local_channel: String(c.local_channel ?? '').trim(),
+    track_fly: c.track_fly === true,
+    track_exit_at: String(c.track_exit_at ?? '').trim(),
   };
 }
 
@@ -90,8 +136,11 @@ const FOLLOW_CAPS = ['max_age_seconds', 'max_orders_per_day', 'max_risk_usd'];
 
 /**
  * 补丁落下去之后,跟单是不是比现在放得更开:从关到开、换了频道、多信任了一个人、发单的账户变了(收窄除外)、上限调大、
- * 多开了本地收件(多了一个消息来源)、本地收件换了要读的频道(换了一个消息来源;清空不算,那只是不再自动启动)。
- * 往紧了改(少信任一个人、调小上限)与关掉都不用确认。现在的值读不出来时按"放开了"算:宁可多问一次。
+ * 多开了本地收件(多了一个消息来源)、本地收件换了要读的频道(换了一个消息来源;清空不算,那只是不再自动启动)、
+ * 打开了「成交后自动建追踪」(软件多了一样会自己做的事:替跟进来的蝴蝶发平仓单)、它开着时填上或换了到点平仓的钟点
+ * (多了、或换了一个软件自己平仓的时刻)。
+ * 往紧了改(少信任一个人、调小上限、关掉自动建追踪、清空到点平仓的钟点)与关掉都不用确认:停掉、减少自动化绝不比打开它难。
+ * 现在的值读不出来时按"放开了"算:宁可多问一次。
  * @param {object} next  补丁落下去之后的 follow 段
  * @param {object} now   引擎此刻的 follow 段
  */
@@ -103,6 +152,8 @@ function followWidened(next, now) {
   if (a.channel_id !== b.channel_id) return true;
   if (a.local_inbox && !b.local_inbox) return true;
   if (a.local_inbox && a.local_channel && a.local_channel !== b.local_channel) return true;
+  if (a.track_fly && !b.track_fly) return true;
+  if (a.track_fly && a.track_exit_at && a.track_exit_at !== b.track_exit_at) return true;
   if (a.author_ids.some((id) => !b.author_ids.includes(id))) return true;
   // 账户:空 = 默认账户,所以"变成空"不是收窄;只有两边都点了名、新的全在旧的里面才算收窄
   const sameAccounts = a.accounts.length === b.accounts.length && a.accounts.every((x) => b.accounts.includes(x));
@@ -140,6 +191,15 @@ function followConfirmText(binding, accounts) {
     `每天最多跟:${money(binding.max_orders_per_day)} 单`,
     `消息发出超过 ${money(binding.max_age_seconds)} 秒不跟`,
     '',
+    ...(binding.track_fly
+      ? [
+        '成交后自动建追踪:开着——跟进来的蝴蝶成交之后,软件自己给它建一条持仓追踪并打开「到价自动平仓」:',
+        '  按蝶式预设(分档利润回撤)盯着,触发了由软件直接发平仓单,不再问你;软件关着、电脑睡着时不盯。',
+        `  到点平仓:${binding.track_exit_at ? `美东 ${binding.track_exit_at},到了这个钟点持仓还在就平(建追踪时这个钟点已经过了,就落在下一次)` : '不设'}`,
+        '  只管买入的蝴蝶;贷方价差不建追踪。对方自己什么时候平仓,软件仍然不知道。',
+      ]
+      : ['成交后自动建追踪:关着——跟进来的持仓软件不会替你平,要你自己管,或者自己设持仓追踪。']),
+    '',
     '对方发错一条、或者对方的 Discord 账号被盗,都会直接变成你账户里的订单。上面这几个上限,加上「设置」里的限额与保护规则,是仅有的硬保护。',
     '随时可以在「接入 → Discord 跟单」关掉;关是当场生效的。',
   ].join('\n');
@@ -174,9 +234,21 @@ function normalizeBinding(purpose, binding) {
   if (purpose === 'gate.follow') return followBinding(b);
   if (purpose.startsWith('gate.')) return {};
   if (purpose === 'limits.loosen') {
+    // 两种形状都从这里过:界面递来的是补丁里的 limits(by_account 是嵌套的,值可以是 null = 清掉);
+    // 发出去的凭据绑的是摊平的「键 → 新值」(by_account.<账户>.<项>)。嵌套的那一段原样留着结构,不能一把 Number() 抹成 NaN
     const limits = {};
     const given = b.limits && typeof b.limits === 'object' ? b.limits : {};
-    for (const key of Object.keys(given).sort()) limits[key] = Number(given[key]);
+    const numbers = (obj) => Object.fromEntries(Object.keys(obj).sort().map((k) => [k, obj[k] === null ? null : Number(obj[k])]));
+    for (const key of Object.keys(given).sort()) {
+      const value = given[key];
+      if (key !== 'by_account') limits[key] = Number(value);
+      else if (value === null) limits[key] = null;
+      else if (value && typeof value === 'object') {
+        limits[key] = Object.fromEntries(Object.keys(value).sort().map((alias) => [
+          alias, value[alias] && typeof value[alias] === 'object' ? numbers(value[alias]) : null,
+        ]));
+      }
+    }
     return { limits };
   }
   return b;

@@ -26,6 +26,7 @@ import { PlaybookService } from "../services/playbook.js";
 import type { Router } from "../services/host.js";
 import { MarketDataService } from "../services/marketData.js";
 import { PoolService } from "../services/pool.js";
+import { AssignmentWatchService } from "../services/assignmentWatch.js";
 import { FillSyncService } from "../services/fillSync.js";
 import { StockTripsService } from "../services/stockTrips.js";
 import { IdeaSemanticService } from "../services/ideaSemantic.js";
@@ -74,6 +75,7 @@ export class RpcServer implements RpcContext {
   readonly pool: PoolService;
   readonly stockTrips: StockTripsService;
   readonly fillSync: FillSyncService;
+  readonly assignmentWatch: AssignmentWatchService;
   readonly tradeHistory: TradeHistoryService;
   readonly similarContext: SimilarContextService;
   readonly ideaSemantic: IdeaSemanticService;
@@ -111,6 +113,7 @@ export class RpcServer implements RpcContext {
     this.pool = new PoolService(this, this.alerts, this.anomaly);
     this.stockTrips = new StockTripsService(this);
     this.fillSync = new FillSyncService(this);
+    this.assignmentWatch = new AssignmentWatchService(this);
     this.tradeHistory = new TradeHistoryService(this, this.market, this.stockTrips);
     this.similarContext = new SimilarContextService(this, this.market);
     this.ideaSemantic = new IdeaSemanticService(this);
@@ -138,6 +141,8 @@ export class RpcServer implements RpcContext {
       settings: new SettingsHandlers(this),
       follow: new FollowHandlers(this),
     };
+    // 跟单建追踪走 tracker.add 的同一个 handler,记盘口用蝴蝶测算那批自己的行情流:services 不认识 handler,在这里接上
+    this.follow.attach({ addTrack: (params) => this.domains.tracker.trackerAdd(params), marks: this.flyPlanner.marks });
     // 无原型的表:请求里的 method 是外来字符串,"constructor" / "toString" 不该从 Object.prototype 上捞到东西
     const table: MethodTable = Object.create(null);
     for (const domain of Object.values(this.domains) as HandlerBase[]) {
@@ -412,6 +417,7 @@ export class RpcServer implements RpcContext {
     this.playbook.stop();
     this.follow.stop();
     this.fillSync.stop();
+    this.assignmentWatch.stop();
     this.flyPlanner.marks.close();
     this.brokerLink.stop();
     return 0;
@@ -501,5 +507,7 @@ export async function main(settingsPath?: string | null): Promise<number> {
   server.follow.start();
   // 券商成交的后台同步同理,只在这里起:TWS 只给它自己那个"当天"的成交,等人打开交易分析才去要就晚了
   server.fillSync.start();
+  // 到期日空头腿的指派提醒同理,只在这里起:它要读真的持仓与现价
+  server.assignmentWatch.start();
   return done;
 }

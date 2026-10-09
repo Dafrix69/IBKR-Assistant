@@ -30,6 +30,14 @@ export interface FollowConfig {
    * 空 = 不自动启动,自己运行脚本。默认空。
    */
   local_channel: string;
+  /**
+   * 跟进来的**买入蝴蝶**成交之后,软件自己给它建一条持仓追踪:蝶式预设(分档利润回撤)+ 到价自动平仓,
+   * 和在「持仓追踪」页勾「蝶式预设」「到价自动平仓」建出来的是同一条。贷方价差不建。默认关。
+   * 它会自动发平仓单,所以属于打开跟单时的那一次确认(见 desktop/confirm-grants.js)。
+   */
+  track_fly: boolean;
+  /** 自动建的那条追踪带不带到点平仓:美东 "HH:MM"(下一次到这个钟点时持仓还在就平);空 = 不带。只在 track_fly 开着时有用。默认空。 */
+  track_exit_at: string;
 }
 
 /**
@@ -88,6 +96,26 @@ export interface FollowInboxState {
  */
 export type FollowOutcome = "sent" | "held" | "observed" | "stale" | "unparsed" | "capped" | "blocked" | "rejected";
 
+/**
+ * 这条信号处理完之后取的一次盘口,对着对方写的价:事后看得出"晚了这几秒"值多少钱。
+ * 三个价都是正数、同一个方向:debit 是要付的净权利金,credit 是能收的净权利金。
+ * 只记不判:没有阈值、没有结论,也不回流到任何决策。
+ */
+export interface FollowQuote {
+  /** debit = 买入蝴蝶(付权利金);credit = 贷方价差(收权利金) */
+  side: "debit" | "credit";
+  /** 对方消息里写的价 */
+  leader: number;
+  /** 取报价那一刻的组合中间价 */
+  mid: number;
+  /** 那一刻立刻能成交的价:debit 是要付的(各腿买在卖价、卖在买价),credit 是能收的 */
+  natural: number;
+  /** 从消息发出到取到报价过了多少秒。本地收件的消息没有发出的时刻,按读窗口的程序看见它的那一刻算 */
+  lag_s: number;
+  /** 报价取自纸面账户的会话:纸面会话没有实时行情权限时给的是延迟行情 */
+  paper: boolean;
+}
+
 export interface FollowEntry {
   /** 处理这条消息的时刻,ISO 8601(UTC) */
   at: string;
@@ -103,6 +131,8 @@ export interface FollowEntry {
   summary: string;
   /** 落了哪几条交易记录 */
   record_ids: string[];
+  /** 处理完之后取的那一次盘口;没取到(没连券商、盘口不全、不是恰好一张写明价格的单)就没有这个键 */
+  quote?: FollowQuote;
 }
 
 /** 频道里最近看到的消息(只在内存里):挑「信任谁」时照着它填发送者 ID。 */
@@ -147,6 +177,8 @@ export interface FollowStatus {
   seen: FollowSeen[];
   /** 本地收件 */
   inbox: FollowInboxState;
+  /** 已经跟进去、在等成交之后自动建追踪的蝴蝶有几只(track_fly 开着时才会有) */
+  tracks_pending: number;
 }
 
 export interface FollowSetTokenParams {

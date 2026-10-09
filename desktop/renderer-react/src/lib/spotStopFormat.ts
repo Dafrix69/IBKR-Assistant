@@ -13,6 +13,8 @@ export interface SpotStopView {
   spot: number | null;
   spot_note?: string;
   reason?: string;
+  /** 设了确认秒数、已经在线外但还没待够(引擎给) */
+  pending?: { side: 'below' | 'above'; held_s: number; need_s: number };
 }
 
 /** 价位照人填的样子写:7700 不写成 7700.00,7790.5 不丢掉那半点 */
@@ -37,7 +39,11 @@ export function spotStopLine(symbol: string, row: SpotStopView): string {
   const parts: string[] = [];
   if (row.below != null) parts.push(`跌到 ${level(row.below)} 就平(还差 ${(row.spot - row.below).toFixed(2)} 点)`);
   if (row.above != null) parts.push(`涨到 ${level(row.above)} 就平(还差 ${(row.above - row.spot).toFixed(2)} 点)`);
-  return `标的止损:${symbol} 现价 ${row.spot.toFixed(2)},${parts.join(',')}${row.spot_note ? ` · ${row.spot_note}` : ''}`;
+  // 已经越线、在等确认:这是最要紧的一句,放在最前面
+  const waiting = row.pending
+    ? `已${row.pending.side === 'below' ? '跌破' : '涨破'}止损线,持续 ${row.pending.held_s} 秒,满 ${row.pending.need_s} 秒才平 · `
+    : '';
+  return `标的止损:${waiting}${symbol} 现价 ${row.spot.toFixed(2)},${parts.join(',')}${row.spot_note ? ` · ${row.spot_note}` : ''}`;
 }
 
 /** 确认框里的那一行(带换行);没设回空串。这条线会让软件自己发平仓单,所以要写在人点「确认」的那个框里 */

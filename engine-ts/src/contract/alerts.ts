@@ -12,13 +12,26 @@ export interface WatchLevel {
   /** 来源键:call_wall / put_wall / call_vol_wall / put_vol_wall / max_pain / gamma_flip / round / ma20… / low_52w / high_52w */
   source: string;
   kind: LevelKind;
+  /**
+   * 只有均线有:最近 period − 1 根完整日线的收盘之和。盘中这条线在 (prior_sum + 现价) / period,
+   * 和「反复碰均线」的底账是同一个式子;price 是算出来那一刻的值(alerts.list 给的是按最近一次取价换算过的)。
+   */
+  ma?: { period: number; prior_sum: number };
 }
+
+/** 穿越怎么才算数:immediate = 两次取价之间跨过就报;bar_close = 等那一分钟走完,收盘还在价位另一侧才报。 */
+export type CrossConfirm = "immediate" | "bar_close";
 
 /** 一个价位的报警状态:报过就落防,离开得够远且过了冷却才重新上膛。 */
 export interface LevelState {
   armed: boolean;
   /** 秒 */
   last_fired_at: number | null;
+  /**
+   * 等 1 分钟收盘确认的那一次穿越(CrossConfirm = bar_close 才有):方向、穿之前的价、穿过的那一笔是几点取的(at,秒)、
+   * 在等哪一分钟收盘(minute,epoch 分钟)、那一分钟里穿过之后最后取到的价与它的时刻(close / close_at;还没再取到价时没有)。
+   */
+  pending?: { direction: "up" | "down"; from: number; at: number; minute: number; close?: number; close_at?: number };
 }
 
 /** 一条提醒是怎么来的:穿越一个价位,还是短期内反复碰同一条日均线(见 docs/features/ma-touch.md)。 */
@@ -51,15 +64,16 @@ export interface Watch {
   created_at: string;
   updated_at: string;
   symbol: string;
-  /** 整数关口的步长 */
+  /** 整数关口的步长。0 = 自动(按现价分档,alerts.autoStep);正数 = 就用这个步长 */
   step: number;
   /** 回执与列表一个口径(2026-09-20 之前 alerts.create 的回执里是数字 1:回的是刚插入的那一行,没过读库的转换)。 */
   enabled: boolean;
   /** 期权墙用的到期日;还没算过是空串 */
   expiry: string;
   levels: WatchLevel[];
-  /** 价位(按价格做键)→ 报警状态。引擎自己的状态机,界面不用读。 */
+  /** 价位(键见 alerts.levelKey:会漂的线按来源,行权价与整数关口按 来源@价)→ 报警状态。引擎自己的状态机,界面不用读。 */
   states: Record<string, LevelState>;
+  /** 最近一次取到的价(给界面摆价位条)。判穿越用的"上一笔"在引擎内存里,不读这一列 */
   last_price: number | null;
   /** 最近一次算出来的期权墙;取不到链时是 null(价位照给,只是少了墙那几条) */
   wall: OptionWall | null;
@@ -121,11 +135,14 @@ export interface TouchBook {
 
 export interface AlertsSetTouchConfigParams {
   config: MaTouchConfigInput;
+  /** 顺带改穿越的确认方式(CrossConfirm);不给就不动。和碰均线的口径一样是「价位提醒怎么报」的设置,走同一个方法 */
+  cross_confirm?: unknown;
 }
 
 export interface AlertsList {
   watches: Watch[];
   touch_config: MaTouchConfig;
+  cross_confirm: CrossConfirm;
 }
 
 /** 趋势摘要:各条均线的值(ma20 / ma60 / …)、low_52w / high_52w、range_pos_pct(现价在一年区间里的位置,0 = 贴着低点)、bars。 */
@@ -133,7 +150,7 @@ export type TrendSnapshot = Record<string, number>;
 
 export interface AlertsCreateParams {
   symbol: string;
-  /** 整数关口步长,缺省 5;数字串也认 */
+  /** 整数关口步长,缺省 0 = 自动;数字串也认 */
   step?: number | string;
 }
 
@@ -145,6 +162,8 @@ export interface AlertsRefreshParams {
   id: string;
   /** 不给就沿用盯单上记着的那个 */
   expiry?: string;
+  /** 给了就先把盯单的步长改成它再算(0 = 自动);数字串也认。不给就不动 */
+  step?: number | string;
 }
 
 /** 重算的回执。墙和趋势位都是加分项——降级可以,不能悄悄降级,所以原因带回来。 */

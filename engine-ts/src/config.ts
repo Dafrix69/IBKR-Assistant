@@ -9,7 +9,7 @@ import * as fsModule from "node:fs";
 export type { Limits, Policies } from "./contract/settings.js";
 import type { FollowConfig } from "./contract/follow.js";
 import type { LLMConfig } from "./contract/llm.js";
-import type { Limits, Policies, RiskBudgetConfig } from "./contract/settings.js";
+import type { AccountLimits, Limits, Policies, RiskBudgetConfig } from "./contract/settings.js";
 import * as path from "node:path";
 import * as os from "node:os";
 import { fileURLToPath } from "node:url";
@@ -223,6 +223,16 @@ export class Settings {
   config_warnings: string[] = [];
   /** 没写 is_paper、因此按实盘处理的账户别名(见 paperFlag)。 */
   paper_flag_missing: string[] = [];
+
+  /** 这个账户实际生效的限额:全局的,再盖上 limits.by_account 里给它写的那几项。 */
+  limitsFor(alias: string): Limits {
+    const own = this.limits.by_account[alias] ?? {};
+    const out: Limits = { ...this.limits };
+    for (const [key, value] of Object.entries(own) as Array<[keyof AccountLimits, number | null | undefined]>) {
+      if (value !== null && value !== undefined) out[key] = value;
+    }
+    return out;
+  }
 
   accountByAlias(alias: string): AccountConfig | null {
     if (alias === "DEFAULT") return this.defaultAccount();
@@ -443,8 +453,18 @@ function flag(raw: Raw, key: string, dflt: boolean, label: string): boolean {
 const PROTECTION_KEYS = ["stoploss_guard", "max_drawdown", "cooldown", "daily_loss"];
 const STOPLOSS_GUARD_KEYS = ["enabled", "lookback_minutes", "trigger_count", "pause_minutes"];
 const MAX_DRAWDOWN_KEYS = ["enabled", "lookback_minutes", "max_drawdown_usd", "pause_minutes"];
-const COOLDOWN_KEYS = ["enabled", "minutes"];
-const DAILY_LOSS_KEYS = ["enabled", "max_loss_usd"];
+const COOLDOWN_KEYS = ["enabled", "minutes", "scope"];
+const DAILY_LOSS_KEYS = ["enabled", "max_loss_usd", "basis"];
+
+/** 几选一的字符串配置项;写了别的当场报。 */
+function choice(raw: Raw, key: string, allowed: readonly string[], dflt: string, label: string): string {
+  if (!(key in raw)) return dflt;
+  const value = raw[key];
+  if (typeof value !== "string" || !allowed.includes(value)) {
+    throw new Error(`${label}.${key} 只能是 ${allowed.join("、")},收到 ${pyRepr(value)}`);
+  }
+  return value;
+}
 
 function buildProtections(raw: Raw): ProtectionsConfig {
   rejectUnknown(PROTECTION_KEYS, raw, "protections");
@@ -473,10 +493,12 @@ function buildProtections(raw: Raw): ProtectionsConfig {
     cooldown: {
       enabled: flag(cool, "enabled", false, "protections.cooldown"),
       minutes: num(cool, "minutes", "int", 30, "protections.cooldown", { min: one, minStr: "1" })!,
+      scope: choice(cool, "scope", ["symbol", "position"], "symbol", "protections.cooldown"),
     },
     daily_loss: {
       enabled: flag(daily, "enabled", false, "protections.daily_loss"),
       max_loss_usd: num(daily, "max_loss_usd", "float", 500.0, "protections.daily_loss", { min: 0.0, minStr: "0.0" })!,
+      basis: choice(daily, "basis", ["realized", "account"], "realized", "protections.daily_loss"),
     },
   };
 }
@@ -505,7 +527,10 @@ function buildRiskBudget(raw: Raw): RiskBudgetConfig {
 // Discord 跟单(见 follow.ts 与 services/follow.ts):默认关、默认不连 Discord。
 // 这里只查形状与范围。「开着却没填频道 / 没填信任的人」不算配置错:没频道就不连,没人可信就一条都不跟——
 // 配置读不进来的后果是引擎起不来、持仓没人盯,不值得为一段跟单配置冒这个险。账户别名同理(账户可能刚改名),发单那一刻再核对。
-const FOLLOW_KEYS = ["enabled", "channel_id", "author_ids", "accounts", "max_age_seconds", "max_orders_per_day", "max_risk_usd", "local_inbox", "local_channel"];
+const FOLLOW_KEYS = [
+  "enabled", "channel_id", "author_ids", "accounts", "max_age_seconds", "max_orders_per_day", "max_risk_usd", "local_inbox", "local_channel",
+  "track_fly", "track_exit_at",
+];
 /** Discord 的 ID(snowflake):一串数字。超过了 JSON 数字能精确表示的范围,所以必须写成字符串。 */
 const DISCORD_ID = /^\d{15,21}$/;
 
@@ -525,6 +550,23 @@ function localChannel(value: unknown): string {
     throw new Error(`follow.local_channel 必须是不超过 100 字、不含换行的频道名,收到 ${pyRepr(value)}`);
   }
   return value.trim();
+}
+
+/**
+ * 美东的一个钟点 "HH:MM"(时 0–23,可以只写一位;分两位)。和持仓追踪「到点平仓」认的是同一种写法
+ * (trackerExits.ts 的 clockMinutes;这一层引不到分析层,所以照着写一份,tests/follow.spec.ts 拿同一批写法对着两边)。
+ */
+export const FOLLOW_CLOCK = /^(\d{1,2}):(\d{2})$/;
+
+/** 自动建的追踪到点平仓的钟点:空 = 不设。写得不对在这里就拒——留到成交之后建追踪那一刻才发现,那只蝶就没有追踪了。 */
+function followExitAt(value: unknown): string {
+  const text = typeof value === "string" ? value.trim() : null;
+  if (text === "") return "";
+  const m = text === null ? null : FOLLOW_CLOCK.exec(text);
+  if (m === null || Number(m[1]) > 23 || Number(m[2]) > 59) {
+    throw new Error(`follow.track_exit_at 必须是美东时间的 HH:MM(如 "15:45"),或者空着,收到 ${pyRepr(value)}`);
+  }
+  return text ?? "";
 }
 
 /** 信任名单里的一项:Discord 的用户 / webhook ID,或本地收件的显示名。 */
@@ -557,14 +599,46 @@ function buildFollow(raw: Raw): FollowConfig {
     max_risk_usd: num(raw, "max_risk_usd", "float", 300.0, "follow", { min: 1.0, minStr: "1.0" })!,
     local_inbox: flag(raw, "local_inbox", false, "follow"),
     local_channel: localChannel(raw["local_channel"] ?? ""),
+    track_fly: flag(raw, "track_fly", false, "follow"),
+    track_exit_at: followExitAt(raw["track_exit_at"] ?? ""),
   };
 }
 
 const LIMIT_KEYS = [
   "max_order_notional", "max_option_contracts", "max_mkt_shares", "min_confidence",
   "max_spread_slippage", "max_orders_per_input", "duplicate_window_minutes",
-  "duplicate_qty_tolerance",
+  "duplicate_qty_tolerance", "max_open_risk_usd", "max_underlying_contracts", "auto_mid_spread_share", "by_account",
 ];
+
+/** 能按账户覆盖的那几项,以及各自的类型与下限(和全局的同一个范围;两个"0 = 不设"的上限下限是 0)。 */
+const ACCOUNT_LIMIT_KEYS: Array<[keyof AccountLimits, "int" | "float", number, string]> = [
+  ["max_order_notional", "float", 0.01, "0.01"], ["max_option_contracts", "int", 1, "1"], ["max_mkt_shares", "int", 1, "1"],
+  ["max_open_risk_usd", "float", 0.0, "0.0"], ["max_underlying_contracts", "int", 0, "0"],
+];
+
+/** limits.by_account:账户别名 → 要覆盖的那几项。null = 不覆盖(界面清掉一项时写的就是它);别名不在别名表里不报错(账户可能刚改名,只是用不上)。 */
+function buildAccountLimits(raw: unknown): Record<string, AccountLimits> {
+  if (raw === undefined || raw === null) return {};
+  if (typeof raw !== "object" || Array.isArray(raw)) {
+    throw new Error(`limits.by_account 必须是 {账户别名: {限额项: 数值}},收到 ${pyRepr(raw)}`);
+  }
+  const out: Record<string, AccountLimits> = {};
+  for (const [alias, value] of Object.entries(raw as Raw)) {
+    if (value === null || value === undefined) continue;
+    if (typeof value !== "object" || Array.isArray(value)) {
+      throw new Error(`limits.by_account.${alias} 必须是 {限额项: 数值},收到 ${pyRepr(value)}`);
+    }
+    const label = `limits.by_account.${alias}`;
+    rejectUnknown(ACCOUNT_LIMIT_KEYS.map(([key]) => key), value as Raw, label);
+    const one: AccountLimits = {};
+    for (const [key, kind, min, minStr] of ACCOUNT_LIMIT_KEYS) {
+      if ((value as Raw)[key] === null || (value as Raw)[key] === undefined) continue;
+      one[key] = num(value as Raw, key, kind, null, label, { min, minStr });
+    }
+    if (Object.keys(one).length) out[alias] = one;
+  }
+  return out;
+}
 
 function buildLimits(raw: Raw): Limits {
   rejectUnknown(LIMIT_KEYS, raw, "limits");
@@ -577,6 +651,11 @@ function buildLimits(raw: Raw): Limits {
     max_orders_per_input: num(raw, "max_orders_per_input", "int", 5, "limits", { min: 1, minStr: "1" })!,
     duplicate_window_minutes: num(raw, "duplicate_window_minutes", "int", 10, "limits", { min: 0, minStr: "0" })!,
     duplicate_qty_tolerance: num(raw, "duplicate_qty_tolerance", "float", 0.2, "limits", { min: 0.0, minStr: "0.0" })!,
+    // 下面四项默认都是"不设":老配置升级后行为一字不变
+    max_open_risk_usd: num(raw, "max_open_risk_usd", "float", 0.0, "limits", { min: 0.0, minStr: "0.0" })!,
+    max_underlying_contracts: num(raw, "max_underlying_contracts", "int", 0, "limits", { min: 0, minStr: "0" })!,
+    auto_mid_spread_share: num(raw, "auto_mid_spread_share", "float", 0.0, "limits", { min: 0.0, minStr: "0.0", max: 1.0, maxStr: "1.0" })!,
+    by_account: buildAccountLimits(raw["by_account"]),
   };
 }
 

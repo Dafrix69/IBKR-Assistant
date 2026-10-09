@@ -6,10 +6,10 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { BrokerRouter } from "../src/broker.js";
-import { nowEt } from "../src/config.js";
+import { nowEt, setClock } from "../src/config.js";
 import type { DailyBarIn } from "../src/leaders.js";
 import {
-  cleanDaily, contractions, detectVcp, distributionDays, marketRegime, ratings, rsScore, screenLeaders,
+  cleanDaily, contractions, detectVcp, distributionDays, marketRegime, newStage2, ratings, rsScore, screenLeaders,
 } from "../src/leaders.js";
 import { RpcServer } from "../src/rpc.js";
 import { FakeTws, connect } from "./fakeTws.js";
@@ -136,6 +136,35 @@ describe("趋势模板", () => {
   });
 });
 
+// 倒数第二根砸到 100(跌破 50 日线),最后一根回到原位:截到昨天不是 8 条全过,今天是
+const FRESH = LEADER.map((b, i) => (i === 298 ? { ...b, close: 100, high: 100.5, low: 99.5 } : b));
+// 同一件事早一天发生,而且今天那根还没取到:它是昨天进来的,不是今天
+const STALE = LEADER.slice(0, 299).map((b, i) => (i === 297 ? { ...b, close: 100, high: 100.5, low: 99.5 } : b));
+
+describe("今天新进第二阶段的(信号成绩单记的那一下)", () => {
+  const members = [
+    { symbol: "LEAD", bars: LEADER }, { symbol: "FRESH", bars: FRESH }, { symbol: "LAG", bars: LAGGARD }, { symbol: "STALE", bars: STALE },
+  ];
+  const today = screenLeaders(members, BENCH, "SPY");
+
+  it("今天 8 条全过、截到上一根还没全过的才算;一直在里面的、最新一根不是今天的都不算", () => {
+    expect(today.rows.filter((r) => r.stage2).map((r) => r.symbol).sort()).toEqual(["FRESH", "LEAD", "STALE"]);
+    const yesterday = screenLeaders(members.map((m) => ({ ...m, bars: m.bars.slice(0, 299) })), BENCH.slice(0, 299), "SPY");
+    const before = yesterday.rows.find((r) => r.symbol === "FRESH")!;
+    expect(before.stage2).toBe(false);
+    expect(before.checks.find((c) => c.key === "above_50")?.ok).toBe(false);
+    const fresh = newStage2(members, BENCH, "SPY", today.rows);
+    expect(fresh.day).toBe(String(BENCH.at(-1)!.date));
+    expect(fresh.rows.map((r) => r.symbol)).toEqual(["FRESH"]);
+  });
+
+  it("今天没有一只在第二阶段、基准没有日线:空", () => {
+    const none = [{ symbol: "LAG", bars: LAGGARD }];
+    expect(newStage2(none, BENCH, "SPY", screenLeaders(none, BENCH, "SPY").rows).rows).toEqual([]);
+    expect(newStage2(members, [], "SPY", today.rows)).toEqual({ day: "", rows: [] });
+  });
+});
+
 describe("大盘方向:派发日", () => {
   it("跌 ≥ 0.2% 且量比前一天大才算;之后涨回 5% 的作废", () => {
     const closes = [100, 100, 99.7, 99.9, 99.85, 100, 99, 99.5];
@@ -168,6 +197,7 @@ describe("大盘方向:派发日", () => {
 const servers: RpcServer[] = [];
 const dirs: string[] = [];
 afterEach(() => {
+  setClock(null);
   for (const s of servers.splice(0)) {
     s.anomaly.stop();
     s.engineBuilt?.stopTrackerLoop();
@@ -217,6 +247,48 @@ describe("screener.leaders:RPC", () => {
     expect(r["rows"].map((x: Rec) => [x["symbol"], x["passed"]])).toEqual([["LEAD", 8], ["LAG", 0], ["NOPE", 0]]);
     expect(r["rows"][2]["error"]).toBe("没有 NOPE");
     expect(r["sector"]).toBe("测试");
+  });
+
+  it("今天新进第二阶段的记进信号日志(押涨);同一根日线上再扫几遍、周末再扫都不重复,日线往前走了一根才再记", async () => {
+    const friday = Date.parse("2026-09-11T12:00:00-04:00");
+    setClock(friday);
+    const [s, call] = newServer();
+    const router = Object.create(BrokerRouter.prototype) as Rec;
+    router["sessions"] = () => [{}];
+    s.router = router as never;
+    // 假日线的日期是从 2025-06-02 排起的,平移到最后一根正好是"今天"
+    const shift = (bars: readonly DailyBarIn[], endMs: number): DailyBarIn[] => bars.map((b, i) => ({
+      ...b, date: new Date(endMs - (bars.length - 1 - i) * 86_400_000).toISOString().slice(0, 10),
+    }));
+    const today = Date.parse("2026-09-11T00:00:00Z");
+    let data: Record<string, DailyBarIn[]> = { SPY: shift(BENCH, today), LEAD: shift(LEADER, today), FRESH: shift(FRESH, today), LAG: shift(LAGGARD, today) };
+    (s.market as unknown as Rec)["dailyHistory"] = async (sym: string) => data[sym];
+    const sector = (await call("sectors.add", { name: "测试" }))["result"]["sector"];
+    for (const symbol of ["LEAD", "FRESH", "LAG"]) await call("sectors.add_stock", { id: sector["id"], symbol });
+    const logged = (): Rec[] => s.engine.store.signals.list().filter((x) => x.source === "leaders");
+
+    const r = (await call("screener.leaders", { sector: sector["id"] }))["result"];
+    const fresh = r["rows"].find((x: Rec) => x["symbol"] === "FRESH");
+    expect(fresh["stage2"]).toBe(true);
+    // 一直在第二阶段的 LEAD 不记:那是状态,不是今天发生的事
+    expect(logged()).toEqual([{
+      at: new Date(friday).toISOString(), source: "leaders", symbol: "FRESH", expect: "up", price: fresh["close"], label: fresh["verdict"], variant: null,
+    }]);
+    await call("screener.leaders", { sector: sector["id"] });
+    await call("screener.leaders", {});
+    setClock(friday + 86_400_000); // 周六:最新一根还是周五那根
+    await call("screener.leaders", { sector: sector["id"] });
+    setClock(Date.parse("2026-09-14T08:00:00-04:00")); // 周一盘前:还是周五那根
+    await call("screener.leaders", { sector: sector["id"] });
+    expect(logged()).toHaveLength(1);
+    // 周一收盘:日线多了一根。LEAD 周五那根砸了下去、周一回来 → 这一根上新进的是它;FRESH 周五就在里面了
+    const grow = (bars: readonly DailyBarIn[], close: number): DailyBarIn[] =>
+      [...bars, { date: "2026-09-14", open: close, high: close * 1.005, low: close * 0.995, close, volume: 1_000_000 }];
+    const dipped = shift(LEADER, today).map((b, i) => (i === 299 ? { ...b, close: 100, high: 100.5, low: 99.5 } : b));
+    data = { SPY: grow(data["SPY"]!, 480), LEAD: grow(dipped, 114), FRESH: grow(data["FRESH"]!, 114), LAG: grow(data["LAG"]!, 60) };
+    setClock(Date.parse("2026-09-14T16:30:00-04:00"));
+    await call("screener.leaders", { sector: sector["id"] });
+    expect(logged().map((x) => x.symbol)).toEqual(["FRESH", "LEAD"]);
   });
 
   it("基准不认识、池子空、没连券商:各报各的", async () => {

@@ -12,7 +12,7 @@ import type { TrackerHeartbeat } from "./system.js";
 
 /** 盯盘一轮对某一条追踪算出来的结论(tracker.ts 的 evaluate)。 */
 export interface TrackEvaluation {
-  /** holding / take_profit / stop_loss / trail_stop / profit_drawdown / closed;
+  /** holding / take_profit / stop_loss / profit_trail / time_exit / manual / closed;
    *  `sweep:` 开头 = 正在追价平仓 */
   state: string;
   /** 判断用的那个价;这一轮拿不到就是 null */
@@ -35,6 +35,13 @@ export interface TrackEvaluation {
   stop_effective?: number | null;
   to_take_profit_pct?: number | null;
   to_stop_pct?: number | null;
+  /** 止损按可成交价判的追踪(auto_close.stop_basis = natural):这一轮拿来判止损类的那个价;null = 这一轮拿不到各腿买卖价,止损类没判。
+   *  按中间价判的没有这一项 */
+  stop_price?: number | null;
+  /** stop_basis = natural 的追踪这一轮拿不到可成交价(腿没报价,或者算出来不是正数):止损类退回按中间价判,峰值不推 */
+  stop_fallback?: boolean;
+  /** 这一轮触发的是分批止盈的第几档(从 0 数);不是分批止盈的触发没有这一项 */
+  tier?: number;
   [extra: string]: unknown;
 }
 

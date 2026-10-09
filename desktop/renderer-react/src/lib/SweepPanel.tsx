@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { Button, Input, InputNumber, Segmented, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { dafri, errorMessage } from '../bridge';
-import type { BacktestRunSpec, BacktestStrategy, BacktestSweepResult, BacktestSweepSpec, SweepObjective, SweepRow } from '../bridge';
+import type { BacktestRunSpec, BacktestStrategy, BacktestSweepResult, BacktestSweepSpec, SweepObjective, SweepRow, WalkForward } from '../bridge';
 import { Group, GroupRow, Meta, StatTile, StatusCard, Working } from '../ui/kit';
 
 const pct = (v: number | null | undefined): string => (v == null ? '—' : `${v > 0 ? '+' : ''}${v}%`);
@@ -23,11 +23,20 @@ function defaultGrid(strategy: BacktestStrategy | null): Record<string, string> 
   return Object.fromEntries(Object.entries(strategy?.params || {}).map(([k, v]) => [k, [Math.max(1, Math.round(v / 2)), v, Math.round(v * 1.5)].join(', ')]));
 }
 
+/** 概率:0.1234 → 12.3% */
+const prob = (v: number | null | undefined): string => (v == null ? '—' : `${Math.round(v * 1000) / 10}%`);
+
+type Fold = WalkForward['folds'][number];
+
+/** 按收益回撤比挑的时候,回撤还不到在场时一天的典型波动的那一组:基本没经历过回撤,名次不可靠(引擎标的,界面只摆) */
+const UNTESTED = ' · 几乎没回撤过';
+
 const rowCols: ColumnsType<SweepRow> = [
-  { title: '参数', dataIndex: 'params', key: 'params', render: (p: Record<string, number>) => paramText(p) },
+  { title: '参数', key: 'params', render: (_: unknown, r) => <span title={r.is.dd_under_one_day ? '样本内的回撤还不到它在场时一天的典型波动:基本没经历过回撤(多半只进过一两次场),名次不可靠' : undefined}>{paramText(r.params)}{r.is.dd_under_one_day ? <span className="muted">{UNTESTED}</span> : null}</span> },
   { title: '样本内', key: 'is', align: 'right', render: (_: unknown, r) => <span className={`perf-num ${tone(r.is.return_pct)}`}>{pct(r.is.return_pct)}</span> },
   { title: '样本外', key: 'oos', align: 'right', render: (_: unknown, r) => <span className={`perf-num ${tone(r.oos.return_pct)}`}>{pct(r.oos.return_pct)}</span> },
   { title: '样本外买入持有', key: 'bench', align: 'right', render: (_: unknown, r) => pct(r.oos.bench_return_pct) },
+  { title: '样本外超额', key: 'excess', align: 'right', render: (_: unknown, r) => <span className={`perf-num ${tone(r.oos.excess_return_pct)}`}>{pct(r.oos.excess_return_pct)}</span> },
   { title: '样本外回撤', key: 'dd', align: 'right', render: (_: unknown, r) => pct(r.oos.max_drawdown_pct) },
   { title: '样本外名次', dataIndex: 'oos_rank', key: 'rank', align: 'right', width: 90 },
 ];
@@ -85,7 +94,11 @@ export function SweepPanel({ ctx }: { ctx: SweepContext }) {
   if (!sweepable) return <p className="hint">选一个带参数的预置策略(均线交叉、RSI、N 日突破)才能扫参数。</p>;
   const best = result?.best ?? null;
   const wf = result?.walk_forward ?? null;
-  const corrTone = result?.rank_corr == null ? 'info' : result.rank_corr < 0.3 ? 'warn' : 'ok';
+  // 名次的分母是进了排名的全部组合,不是表里列出来的前 20 组
+  const ranked = result ? result.ranked ?? result.rows.length : 0;
+  // 不设"相关多少算好"的线,所以没有绿灯;只在两件不用拍脑袋的事上亮黄:排名的相关不为正,或挑出来的那组在样本外连中位数都不如
+  const worseThanMedian = best != null && result?.oos_median_return_pct != null && best.oos.return_pct < result.oos_median_return_pct;
+  const corrTone = result != null && ((result.rank_corr != null && result.rank_corr <= 0) || worseThanMedian) ? 'warn' : 'info';
   return (
     <>
       <Group hint="参数只在样本内挑,成绩看样本外;滚动前推每一折只用之前的数据挑参数,连起来的收益才是不偷看未来的数。">
@@ -105,7 +118,7 @@ export function SweepPanel({ ctx }: { ctx: SweepContext }) {
         </GroupRow>
         <GroupRow label="挑参数按">
           <Segmented size="small" value={objective} onChange={(v) => setObjective(v as SweepObjective)}
-            options={[{ label: '总收益', value: 'return' }, { label: 'Calmar(年化 ÷ 回撤)', value: 'calmar' }]} />
+            options={[{ label: '总收益', value: 'return' }, { label: '收益回撤比(总收益 ÷ 最大回撤)', value: 'calmar' }]} />
         </GroupRow>
       </Group>
       <div className="row tight">
@@ -121,8 +134,11 @@ export function SweepPanel({ ctx }: { ctx: SweepContext }) {
               <StatTile label="样本内第一名" value={best ? paramText(best.params) : '—'} />
               <StatTile label="它在样本内" value={pct(best?.is.return_pct)} tone={tone(best?.is.return_pct)} />
               <StatTile label="它在样本外" value={pct(best?.oos.return_pct)} tone={tone(best?.oos.return_pct)} />
-              <StatTile label="样本外名次" value={best ? `${best.oos_rank} / ${result.rows.length}` : '—'} />
+              <StatTile label="全部组合样本外的中位数" value={pct(result.oos_median_return_pct)} tone={tone(result.oos_median_return_pct)} />
+              <StatTile label="样本外名次" value={best ? `${best.oos_rank} / ${ranked}` : '—'} />
+              <StatTile label="随手挑一组不比它差的概率" value={prob(result.pick_p)} />
               <StatTile label="样本内外排名相关" value={result.rank_corr == null ? '—' : String(result.rank_corr)} />
+              <StatTile label="相关的 p 值(置换检验)" value={result.rank_corr_p == null ? '—' : result.rank_corr_p < 0.001 ? '< 0.001' : String(result.rank_corr_p)} />
               {wf ? <StatTile label={`滚动前推 ${wf.folds.length} 折`} value={pct(wf.total_return_pct)} tone={tone(wf.total_return_pct)} /> : null}
               {wf ? <StatTile label="同期买入持有" value={pct(wf.bench_return_pct)} /> : null}
             </div>
@@ -135,11 +151,11 @@ export function SweepPanel({ ctx }: { ctx: SweepContext }) {
           <Table<SweepRow> className="review-table" size="small" rowKey={(r) => paramText(r.params)} columns={rowCols}
             dataSource={result.rows} pagination={{ pageSize: 10, size: 'small', hideOnSinglePage: true }} />
           {wf ? (
-            <Table className="review-table" size="small" rowKey="test_start" pagination={false} dataSource={wf.folds}
+            <Table<Fold> className="review-table" size="small" rowKey="test_start" pagination={false} dataSource={wf.folds}
               columns={[
                 { title: '训练到', dataIndex: 'train_end', key: 'train_end' },
-                { title: '测试段', key: 'test', render: (_: unknown, f: { test_start: string; test_end: string }) => `${f.test_start} → ${f.test_end}` },
-                { title: '当时选的参数', dataIndex: 'params', key: 'params', render: (p: Record<string, number>) => paramText(p) },
+                { title: '测试段', key: 'test', render: (_: unknown, f) => `${f.test_start} → ${f.test_end}` },
+                { title: '当时选的参数', key: 'params', render: (_: unknown, f) => <span>{paramText(f.params)}{f.dd_under_one_day ? <span className="muted">{UNTESTED}</span> : null}</span> },
                 { title: '测试段收益', dataIndex: 'test_return_pct', key: 'ret', align: 'right', render: (v: number) => <span className={`perf-num ${tone(v)}`}>{pct(v)}</span> },
                 { title: '买入持有', dataIndex: 'bench_return_pct', key: 'bench', align: 'right', render: (v: number) => pct(v) },
               ]} />

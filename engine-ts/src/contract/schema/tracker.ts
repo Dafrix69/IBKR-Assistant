@@ -33,6 +33,14 @@ const targetsInput = {
   spot_target: numberField,
   spot_stop_below: numberField,
   spot_stop_above: numberField,
+  spot_stop_confirm_s: numberField,
+  exit_at: optional(z.string()),
+  take_profit_tiers: optional(z.union([
+    z.literal(""),
+    z.array(z.object({
+      price: z.union([z.number(), z.string(), z.null()]), fraction_pct: z.union([z.number(), z.string(), z.null()]),
+    }).strict()),
+  ])),
 };
 
 export const TrackerAddParamsSchema: ParamsSchema<TrackerAddParams> = z.object({
@@ -45,6 +53,11 @@ export const TrackerAddParamsSchema: ParamsSchema<TrackerAddParams> = z.object({
   close_fraction_pct: numberField,
   host_at_broker: optional(z.boolean()),
   chase_max_pct: numberField,
+  stop_basis: optional(z.string()),
+  stop_chase_grace: numberField,
+  stop_chase_step: numberField,
+  stop_chase_max_pct: numberField,
+  peak_confirm: optional(z.boolean()),
   note: optional(z.string()),
 }).strict();
 
@@ -58,6 +71,12 @@ export const TrackerUpdateParamsSchema: ParamsSchema<TrackerUpdateParams> = z.ob
     close_fraction_pct: z.number(),
     host_at_broker: z.boolean(),
     chase_max_pct: z.number(),
+    stop_basis: z.string(),
+    // 这三项收 null:null = 回到"和止盈同一套"(别的键不收 null,见 contract/tracker.ts)
+    stop_chase_grace: z.number().nullable(),
+    stop_chase_step: z.number().nullable(),
+    stop_chase_max_pct: z.number().nullable(),
+    peak_confirm: z.boolean(),
   }).partial().strict()),
   ...targetsInput,
 }).strict();

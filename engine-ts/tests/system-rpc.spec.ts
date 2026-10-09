@@ -159,7 +159,8 @@ describe("system.status", () => {
   it("protections:五项摘要,没触发时 paused 假、冷却表空——到点自己解除,所以带解除时刻", async () => {
     const { call } = makeServer();
     const p = (await call("system.status"))["result"]["protections"];
-    expect(Object.keys(p).sort()).toEqual(["cooldowns", "paused", "reason", "rule", "until_ms"]);
+    expect(Object.keys(p).sort()).toEqual(["accounts", "cooldowns", "paused", "reason", "rule", "until_ms"]);
+    expect(p["accounts"]).toEqual([]);
     expect(p["paused"]).toBe(false);
     expect(p["until_ms"]).toBeNull();
     expect(p["cooldowns"]).toEqual([]);

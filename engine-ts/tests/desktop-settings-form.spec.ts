@@ -79,7 +79,7 @@ describe("拼补丁", () => {
   it("空着的格子照已保存的值送回去,绝不送 0", () => {
     const form = { ...mod.toForm(SAVED), dailyOn: false, dailyUsd: null, ddUsd: null, slLookback: null, coolMinutes: null, rbRisk: null };
     const patch = mod.toPatch(form, SAVED);
-    expect(patch.protections.daily_loss).toEqual({ enabled: false, max_loss_usd: SAVED.protections.daily_loss.max_loss_usd });
+    expect(patch.protections.daily_loss).toEqual({ enabled: false, basis: "realized", max_loss_usd: SAVED.protections.daily_loss.max_loss_usd });
     expect(patch.protections.max_drawdown.max_drawdown_usd).toBe(SAVED.protections.max_drawdown.max_drawdown_usd);
     expect(patch.protections.stoploss_guard.lookback_minutes).toBe(SAVED.protections.stoploss_guard.lookback_minutes);
     expect(patch.protections.cooldown.minutes).toBe(SAVED.protections.cooldown.minutes);
@@ -89,7 +89,47 @@ describe("拼补丁", () => {
 
   it("没有已保存的值可退:那个键不送(由引擎的默认值管)", () => {
     const patch = mod.toPatch({ ...mod.toForm(SAVED), coolMinutes: null }, { ...SAVED, protections: { ...SAVED.protections, cooldown: { enabled: false } } });
-    expect(patch.protections.cooldown).toEqual({ enabled: false });
+    expect(patch.protections.cooldown).toEqual({ enabled: false, scope: "symbol" });
+  });
+
+  it("新加的三项上限:空着 = 不设(引擎的 0),填了送数;按价差让价的百分比换成份额", () => {
+    const empty = mod.toPatch(mod.toForm(SAVED), SAVED);
+    expect(empty.limits).toMatchObject({ max_open_risk_usd: 0, max_underlying_contracts: 0, auto_mid_spread_share: 0 });
+    expect("by_account" in empty.limits).toBe(false);
+    const set = mod.toPatch({ ...mod.toForm(SAVED), openRisk: 2000, underlying: 6, midShare: 50 }, SAVED);
+    expect(set.limits).toMatchObject({ max_open_risk_usd: 2000, max_underlying_contracts: 6, auto_mid_spread_share: 0.5 });
+    // 读回来:0 摆成空格子,份额摆成百分比
+    const back = mod.toForm({ ...SAVED, limits: { ...SAVED.limits, max_open_risk_usd: 2000, max_underlying_contracts: 0, auto_mid_spread_share: 0.25 } });
+    expect([back.openRisk, back.underlying, back.midShare]).toEqual([2000, null, 25]);
+    expect(mod.formProblems({ ...mod.toForm(SAVED), midShare: 120 })).toEqual(["「AUTO_MID 按价差让价」要在 0 到 100 之间(百分比)"]);
+  });
+
+  it("按账户覆盖:填了的送数;空着的不送;已保存的那份里有、这次清空的送 null(深合并里只有这样清得掉)", () => {
+    const live = { alias: "主账户", account_masked: "U***567", is_paper: false, connection: "live", broker: "ibkr", default: false };
+    const saved = { ...SAVED, accounts: [...SAVED.accounts, live], limits: { ...SAVED.limits, by_account: { 主账户: { max_order_notional: 2000, max_option_contracts: 2 } } } };
+    const form = mod.toForm(saved);
+    expect(form.byAccount["主账户"]).toEqual({ notional: 2000, contracts: 2, openRisk: null, underlying: null });
+    expect(form.byAccount["模拟"]).toEqual({ notional: null, contracts: null, openRisk: null, underlying: null });
+    // 原样存回去:只带已经有的那两项,别的账户不出现
+    expect(mod.toPatch(form, saved).limits.by_account).toEqual({ 主账户: { max_order_notional: 2000, max_option_contracts: 2 } });
+    const edited = { ...form, byAccount: { ...form.byAccount, 主账户: { notional: null, contracts: 3, openRisk: 1500, underlying: null }, 模拟: { notional: 20000, contracts: null, openRisk: null, underlying: null } } };
+    expect(mod.toPatch(edited, saved).limits.by_account).toEqual({
+      主账户: { max_order_notional: null, max_option_contracts: 3, max_open_risk_usd: 1500 }, 模拟: { max_order_notional: 20000 },
+    });
+    expect(mod.formProblems({ ...form, byAccount: { ...form.byAccount, 主账户: { notional: 0, contracts: 0, openRisk: null, underlying: null } } })).toEqual([
+      "「主账户」的单笔名义金额上限要大于 0;想用全局的就空着", "「主账户」的期权 / 价差单笔上限至少是 1 张;想用全局的就空着",
+    ]);
+  });
+
+  it("冷却挡什么、日内亏损拿什么算:读得进、存得回", () => {
+    const saved = { ...SAVED, protections: { ...SAVED.protections, cooldown: { ...SAVED.protections.cooldown, scope: "position" }, daily_loss: { ...SAVED.protections.daily_loss, basis: "account" } } };
+    const form = mod.toForm(saved);
+    expect([form.coolScope, form.dailyBasis]).toEqual(["position", "account"]);
+    const patch = mod.toPatch(form, saved);
+    expect(patch.protections.cooldown.scope).toBe("position");
+    expect(patch.protections.daily_loss.basis).toBe("account");
+    // 老引擎回的设置里没有这两个键:按原来的口径
+    expect([mod.toForm(SAVED).coolScope, mod.toForm(SAVED).dailyBasis]).toEqual(["symbol", "realized"]);
   });
 
   it("拼出来的补丁引擎收得下(逐段过 config 的校验)", () => {
@@ -105,7 +145,7 @@ describe("拼补丁", () => {
     });
     expect(merged.policies.auto_execute).toBe(true);
     expect(merged.limits.max_order_notional).toBe(8000);
-    expect(merged.protections.daily_loss).toEqual({ enabled: true, max_loss_usd: 300 });
+    expect(merged.protections.daily_loss).toEqual({ enabled: true, max_loss_usd: 300, basis: "realized" });
     expect(merged.risk_budget.equity_usd).toEqual({ 模拟: 100000 });
   });
 

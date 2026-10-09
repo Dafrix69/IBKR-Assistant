@@ -9,6 +9,7 @@ import {
 } from "./flyexit.js";
 import { finiteOrNull, fmtF, pyFloat, pyG, pyRound } from "./py.js";
 import { drawdownArmed, drawdownFloorMet, drawdownThreshold } from "./trackerDrawdown.js";
+import { STATE_TIME_EXIT, chaseProfile } from "./trackerExits.js";
 import { ibkrLegSigmas } from "./ivPricing.js";
 import { makeKey } from "./positions.js";
 import type { HostedOrderPlan } from "./positions.js";
@@ -24,6 +25,12 @@ export { comboRow, groupLegs, shapeOf, splitStructures, withCombos } from "./com
 export { drawdownThreshold } from "./trackerDrawdown.js";
 // 标的止损价的判定与设置校验在 trackerSpotStop.ts(只认 Targets 和几个数);这里转出,引擎与 handler 从一处取。
 export { hasSpotStop, spotStop, spotStopIssue } from "./trackerSpotStop.js";
+// 到点平仓、分批止盈、止损类的追价节奏、标的止损的确认在 trackerExits.ts(纯函数);这里转出,引擎与 handler 从一处取。
+export {
+  CHASE_GRACE_ROUNDS, CHASE_STEP_TICKS, STATE_TIME_EXIT, TIERS_HOSTED_ISSUE, carryTierMarks, chaseProfile, confirmSpotStop, dueTier, isStopReason, markTier,
+  nextOccurrenceMs, pendingTier, tiersIssue, timeExitDue, timeExitLapsed, withTier, withTimeExit,
+} from "./trackerExits.js";
+export type { BreachClock } from "./trackerExits.js";
 // 目标、自动平仓设置、标的目标价的试算结果——这三个形状界面也要用,定义在 contract/tracker.ts;这里转出,老的 import 不用改。
 export type { AutoClose, SpotStop, SpotTarget, Targets } from "./contract/tracker.js";
 import type { AutoClose, SpotStop, SpotTarget, Targets } from "./contract/tracker.js";
@@ -97,6 +104,10 @@ export function makeTargets(raw: Partial<Targets> = {}): Targets {
     spot_target: raw.spot_target ?? null,
     spot_stop_below: raw.spot_stop_below ?? null,
     spot_stop_above: raw.spot_stop_above ?? null,
+    spot_stop_confirm_s: raw.spot_stop_confirm_s ?? null,
+    exit_at: raw.exit_at ?? null,
+    exit_at_ms: raw.exit_at_ms ?? null,
+    take_profit_tiers: raw.take_profit_tiers ?? null,
   };
 }
 
@@ -104,7 +115,8 @@ export function targetsEmpty(t: Targets): boolean {
   return (
     t.take_profit === null && t.stop_loss === null && t.trail_pct === null &&
     t.profit_drawdown_pct === null && !(t.profit_drawdown_tiers ?? []).length &&
-    t.spot_target === null && t.spot_stop_below === null && t.spot_stop_above === null
+    t.spot_target === null && t.spot_stop_below === null && t.spot_stop_above === null &&
+    t.exit_at_ms === null && !(t.take_profit_tiers ?? []).length
   );
 }
 
@@ -435,16 +447,14 @@ export function naturalClosePrice(
   return out > 0 ? out : null;
 }
 
-/** 追价平仓的让价节奏(见 chaseLimit)。轮 = 引擎节拍,一秒一轮。 */
-export const CHASE_GRACE_ROUNDS = 2; // 先在自然价上等这么多轮
-export const CHASE_STEP_TICKS = 1;   // 之后每轮再让一跳
+/** 追价平仓的让价节奏在 trackerExits.chaseProfile(止损类可以另填一套)。轮 = 引擎节拍,一秒一轮。 */
 export const CHASE_WARN_ROUNDS = 30; // 追了这么多轮还没成交,提醒一次
 
 /** 追价最多让到哪(相对自然价的最大让价,已按跳动取整为整数跳)。
  * 上限取 chase_max_pct 与「至少两跳」中的大者:很便宜的组合按百分比算连一跳都不到,等于不追。 */
-export function chaseMaxSteps(position: Position, natural: number, auto: AutoClose): number {
+export function chaseMaxSteps(position: Position, natural: number, auto: AutoClose, reason?: string | null): number {
   const tick = closeTick(position, natural);
-  const pct = Math.max(0, finiteOrNull(auto.chase_max_pct) ?? 0) / 100;
+  const pct = chaseProfile(auto, reason).maxPct / 100;
   const cap = Math.max(2 * tick, natural * pct);
   return Math.floor(cap / tick + 1e-9);
 }
@@ -465,12 +475,14 @@ export function chaseMaxSteps(position: Position, natural: number, auto: AutoClo
  *  · 按这个价所在那一档的跳动(closeTick)朝成交方向取整,至少一跳。
  */
 export function chaseLimit(
-  position: Position, natural: number, prev: number | null, rounds: number, auto: AutoClose,
+  position: Position, natural: number, prev: number | null, rounds: number, auto: AutoClose, reason?: string | null,
 ): number {
   const tick = closeTick(position, natural);
+  // 触发原因决定节奏:止损类用户可以另填一套(更早开始让、每轮多让几跳、让得更深),别的照默认
+  const pace = chaseProfile(auto, reason);
   const steps = Math.min(
-    Math.max(0, rounds - CHASE_GRACE_ROUNDS) * CHASE_STEP_TICKS,
-    chaseMaxSteps(position, natural, auto),
+    Math.max(0, rounds - pace.grace) * pace.step,
+    chaseMaxSteps(position, natural, auto, reason),
   );
   const long = isLong(position);
   const raw = long ? natural - steps * tick : natural + steps * tick;
@@ -486,8 +498,8 @@ export function chaseLimit(
 }
 
 /** 追价最多会让到的价(自然价让满上限):试算时摆出来,人才知道"最坏卖到哪"。 */
-export function chaseFloor(position: Position, natural: number, auto: AutoClose): number {
-  return chaseLimit(position, natural, null, Number.MAX_SAFE_INTEGER, auto);
+export function chaseFloor(position: Position, natural: number, auto: AutoClose, reason?: string | null): number {
+  return chaseLimit(position, natural, null, Number.MAX_SAFE_INTEGER, auto, reason);
 }
 
 /**
@@ -759,15 +771,27 @@ export interface EvaluateResult extends UnrealizedResult {
   stop_effective?: number | null;
   to_take_profit_pct?: number | null;
   to_stop_pct?: number | null;
+  /** 止损类这一轮是拿哪个价判的(只在它和 price 不是同一个时才有:stop_basis = natural) */
+  stop_price?: number | null;
+}
+
+/** evaluate 的可选项。都不给 = 三样用同一个价(加这两项之前的行为)。 */
+export interface EvaluateOpts {
+  /** 判止损类(止损 / 跟踪止损 / 利润回撤)用的价。null = 这一轮拿不到,止损类不判(止盈照判) */
+  stopPrice?: number | null;
+  /** 推峰值用的价。null = 这一轮不推。不给 = 和判止损类的同一个 */
+  peakPrice?: number | null;
 }
 
 /** 现价 + 设置 + 峰值 → 当前状态。止损优先于止盈(跳空按最坏的那一边算)。 */
 export function evaluate(
   position: Position, targets: Targets, price: number | null, peak: number | null = null,
-  minute: number | null = null,
+  minute: number | null = null, opts: EvaluateOpts = {},
 ): EvaluateResult {
   const p = finiteOrNull(price);
-  const newPeak = advancePeak(position, p, peak);
+  // 止损类看的价:默认就是现价;stop_basis = natural 时是此刻立刻能成交的价(引擎给)
+  const sp = opts.stopPrice === undefined ? p : finiteOrNull(opts.stopPrice);
+  const newPeak = advancePeak(position, opts.peakPrice === undefined ? sp : finiteOrNull(opts.peakPrice), peak);
   const trail = trailStopPrice(position, newPeak, targets.trail_pct);
 
   const out: EvaluateResult = {
@@ -789,7 +813,7 @@ export function evaluate(
   const stops = [targets.stop_loss, trail].filter((s): s is number => s !== null);
   const stop = stops.length ? (long ? Math.max(...stops) : Math.min(...stops)) : null;
 
-  const hitStop = stop !== null && (long ? p <= stop : p >= stop);
+  const hitStop = stop !== null && sp !== null && (long ? sp <= stop : sp >= stop);
   const hitTake =
     targets.take_profit !== null && (long ? p >= targets.take_profit : p <= targets.take_profit);
 
@@ -803,7 +827,7 @@ export function evaluate(
   if ((targets.profit_drawdown_pct !== null || (targets.profit_drawdown_tiers ?? []).length)
       && newPeak !== null) {
     const basis = costBasis(position);
-    const valueNow = marketValue(position, p);
+    const valueNow = marketValue(position, sp);
     const valuePeak = marketValue(position, newPeak);
     if (valueNow !== null && valuePeak !== null) {
       profitNow = valueNow - basis;
@@ -815,7 +839,7 @@ export function evaluate(
         if (!drawdownArmed(targets, profitPeak, basis)) threshold = null;
         if (threshold !== null) {
           hitProfitTrail = profitNow <= profitPeak * (1.0 - threshold / 100.0)
-            && drawdownFloorMet(targets, newPeak, p);
+            && drawdownFloorMet(targets, newPeak, sp);
         }
       }
     }
@@ -832,7 +856,7 @@ export function evaluate(
   if (hitStop) {
     out.state = STATE_STOP_LOSS;
     const which = trail !== null && stop === trail ? "跟踪止损" : "止损";
-    out.reason = `${which}触发:现价 ${fmtF(p, 4)} ${long ? "跌破" : "涨破"} ${fmtF(stop!, 4)}`;
+    out.reason = `${which}触发:${sp === p ? "现价" : "可成交价"} ${fmtF(sp!, 4)} ${long ? "跌破" : "涨破"} ${fmtF(stop!, 4)}`;
   } else if (hitProfitTrail) {
     out.state = STATE_PROFIT_TRAIL;
     out.reason =
@@ -846,7 +870,8 @@ export function evaluate(
 
   out.stop_effective = stop === null ? null : pyRound(stop, 4);
   out.to_take_profit_pct = gapPct(p, targets.take_profit);
-  out.to_stop_pct = gapPct(p, stop);
+  out.to_stop_pct = gapPct(sp, stop);
+  if (opts.stopPrice !== undefined) out.stop_price = sp;
   return out;
 }
 
@@ -906,6 +931,11 @@ export function makeAutoClose(raw: Partial<AutoClose> = {}): AutoClose {
     close_fraction_pct: raw.close_fraction_pct ?? 100.0,
     host_at_broker: raw.host_at_broker ?? false,
     chase_max_pct: raw.chase_max_pct ?? 10.0,
+    stop_basis: raw.stop_basis === "natural" ? "natural" : "mid",
+    stop_chase_grace: raw.stop_chase_grace ?? null,
+    stop_chase_step: raw.stop_chase_step ?? null,
+    stop_chase_max_pct: raw.stop_chase_max_pct ?? null,
+    peak_confirm: raw.peak_confirm === true,
   };
 }
 
@@ -1104,7 +1134,8 @@ export function buildCloseOrder(
   const qtyFull = Math.trunc(Math.abs(position.quantity));
   const side = closeSide(position);
   const why =
-    state === STATE_TAKE_PROFIT ? "止盈" : state === STATE_PROFIT_TRAIL ? "利润回撤" : state === STATE_MANUAL ? "手动" : "止损";
+    state === STATE_TAKE_PROFIT ? "止盈" : state === STATE_PROFIT_TRAIL ? "利润回撤" : state === STATE_MANUAL ? "手动"
+      : state === STATE_TIME_EXIT ? "到点" : "止损";
   const extended = EXTENDED_SESSIONS.includes(marketStatus);
   // 组合一律不发市价单:BAG 的 MKT 会让每条腿各吃一次价差,0DTE 蝶的三条腿加起来
   // 能吃掉大半个净价。宁可挂一张让了滑点的限价单,也不把"成交价随缘"当成平仓。

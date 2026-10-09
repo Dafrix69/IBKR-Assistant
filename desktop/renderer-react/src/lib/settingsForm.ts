@@ -8,7 +8,20 @@
  *  · 重复防抖窗口同理:清空 = 0 = 关掉重复单防抖。
  * 所以:开着的规则必须填了正数才让存;没开的规则那几格空着,就照原值送回去,不送 0。
  */
-import type { Settings, SettingsPatch, SettingsProtections } from '../bridge';
+import type { AccountLimits, Settings, SettingsPatch, SettingsProtections } from '../bridge';
+
+/** 一个账户能单独覆盖的那几项限额(表单里的样子);空着 = 用全局的 */
+export interface AccountLimitFields {
+  notional: number | null;
+  contracts: number | null;
+  openRisk: number | null;
+  underlying: number | null;
+}
+
+const ACCOUNT_KEYS: Array<[keyof AccountLimitFields, keyof AccountLimits]> = [
+  ['notional', 'max_order_notional'], ['contracts', 'max_option_contracts'],
+  ['openRisk', 'max_open_risk_usd'], ['underlying', 'max_underlying_contracts'],
+];
 
 export interface SettingsForm {
   autoExecute: boolean;
@@ -19,6 +32,13 @@ export interface SettingsForm {
   mktShares: number | null;
   slippage: number | null;
   dupe: number | null;
+  // 账户在手的两条累计上限:空着 = 不设(引擎里是 0)
+  openRisk: number | null;
+  underlying: number | null;
+  /** AUTO_MID 按盘口价差让价的百分比(0–100);空着 = 不用它,照上面的固定滑点 */
+  midShare: number | null;
+  /** 按账户覆盖的限额:账户别名 → 那几项 */
+  byAccount: Record<string, AccountLimitFields>;
   // 保护规则(见 engine-ts/src/protections.ts)。默认全关,老配置升级上来行为不变。
   slGuard: boolean;
   slLookback: number | null;
@@ -30,8 +50,12 @@ export interface SettingsForm {
   ddPause: number | null;
   coolOn: boolean;
   coolMinutes: number | null;
+  /** 冷却挡什么:这只标的的一切新单,还是只挡同一个结构 */
+  coolScope: 'symbol' | 'position';
   dailyOn: boolean;
   dailyUsd: number | null;
+  /** 今天亏了多少拿什么算:引擎发的单的已实现盈亏,还是券商报的账户当日盈亏(含浮亏) */
+  dailyBasis: 'realized' | 'account';
   // 单笔风险预算(见 engine-ts/src/riskBudget.ts):只告警、不拦单。权益按账户别名填
   rbOn: boolean;
   rbRisk: number | null;
@@ -57,6 +81,14 @@ export function toForm(s: Settings): SettingsForm {
     mktShares: l.max_mkt_shares ?? null,
     slippage: l.max_spread_slippage ?? null,
     dupe: l.duplicate_window_minutes ?? null,
+    // 0 = 不设:表单里摆成空格子,不摆一个会被读成"上限 0"的 0
+    openRisk: l.max_open_risk_usd ? l.max_open_risk_usd : null,
+    underlying: l.max_underlying_contracts ? l.max_underlying_contracts : null,
+    midShare: l.auto_mid_spread_share ? Math.round(l.auto_mid_spread_share * 1000) / 10 : null,
+    byAccount: Object.fromEntries((s.accounts || []).map((a) => {
+      const own = l.by_account?.[a.alias] ?? {};
+      return [a.alias, Object.fromEntries(ACCOUNT_KEYS.map(([field, key]) => [field, own[key] ?? null])) as unknown as AccountLimitFields];
+    })),
     slGuard: Boolean(sg.enabled),
     slLookback: sg.lookback_minutes ?? null,
     slCount: sg.trigger_count ?? null,
@@ -67,8 +99,10 @@ export function toForm(s: Settings): SettingsForm {
     ddPause: dd.pause_minutes ?? null,
     coolOn: Boolean(cd.enabled),
     coolMinutes: cd.minutes ?? null,
+    coolScope: cd.scope === 'position' ? 'position' : 'symbol',
     dailyOn: Boolean(dl.enabled),
     dailyUsd: dl.max_loss_usd ?? null,
+    dailyBasis: dl.basis === 'account' ? 'account' : 'realized',
     rbOn: Boolean(s.risk_budget?.enabled),
     rbRisk: s.risk_budget?.max_risk_pct ?? null,
     rbPosition: s.risk_budget?.max_position_pct ?? null,
@@ -93,6 +127,11 @@ export function formProblems(f: SettingsForm): string[] {
   need(filled(f.mktShares) && f.mktShares >= 1, '「市价单股数上限」至少是 1 股');
   need(filled(f.slippage) && f.slippage >= 0, '「AUTO_MID 滑点上限」要填一个不小于 0 的数');
   need(filled(f.dupe) && f.dupe >= 0, '「重复防抖窗口」不能空着:空着会被存成 0,等于关掉重复单防抖。确实要关就填 0');
+  need(f.midShare === null || (f.midShare >= 0 && f.midShare <= 100), '「AUTO_MID 按价差让价」要在 0 到 100 之间(百分比)');
+  for (const [alias, own] of Object.entries(f.byAccount)) {
+    need(own.notional === null || own.notional > 0, `「${alias}」的单笔名义金额上限要大于 0;想用全局的就空着`);
+    need(own.contracts === null || own.contracts >= 1, `「${alias}」的期权 / 价差单笔上限至少是 1 张;想用全局的就空着`);
+  }
   if (f.slGuard) {
     need(positive(f.slLookback) && positive(f.slPause), '「止损护栏」开着:往回看与暂停多久都要填大于 0 的分钟数');
     need(filled(f.slCount) && f.slCount >= 1, '「止损护栏」开着:几次止损算数至少是 1');
@@ -133,6 +172,11 @@ export function toPatch(f: SettingsForm, saved: Settings | null): SettingsPatch 
       ...keep(l, 'max_mkt_shares', f.mktShares),
       ...keep(l, 'max_spread_slippage', f.slippage),
       ...keep(l, 'duplicate_window_minutes', f.dupe),
+      // 这三项的格子上写着"空着 = 不设":空就是引擎的 0。和上面那些不一样——它们没有另外的开关,数本身就是开关
+      max_open_risk_usd: positive(f.openRisk) ? f.openRisk : 0,
+      max_underlying_contracts: positive(f.underlying) ? Math.trunc(f.underlying) : 0,
+      auto_mid_spread_share: positive(f.midShare) ? Math.min(f.midShare, 100) / 100 : 0,
+      ...accountLimitsPatch(f, l?.by_account),
     },
     protections: {
       stoploss_guard: {
@@ -147,8 +191,8 @@ export function toPatch(f: SettingsForm, saved: Settings | null): SettingsPatch 
         ...keep(pr?.max_drawdown, 'max_drawdown_usd', f.ddUsd),
         ...keep(pr?.max_drawdown, 'pause_minutes', f.ddPause),
       },
-      cooldown: { enabled: f.coolOn, ...keep(pr?.cooldown, 'minutes', f.coolMinutes) },
-      daily_loss: { enabled: f.dailyOn, ...keep(pr?.daily_loss, 'max_loss_usd', f.dailyUsd) },
+      cooldown: { enabled: f.coolOn, scope: f.coolScope, ...keep(pr?.cooldown, 'minutes', f.coolMinutes) },
+      daily_loss: { enabled: f.dailyOn, basis: f.dailyBasis, ...keep(pr?.daily_loss, 'max_loss_usd', f.dailyUsd) },
     },
     risk_budget: {
       enabled: f.rbOn,
@@ -157,6 +201,25 @@ export function toPatch(f: SettingsForm, saved: Settings | null): SettingsPatch 
       equity_usd: equity,
     },
   };
+}
+
+/**
+ * 按账户覆盖的那一段。填了的送数;空着的分两种:已保存的那份里本来就没有 → 这个键不送;
+ * 本来有 → 送 null(引擎读作"这个账户不再覆盖这一项"。配置是深合并的,不送就清不掉)。从不送 0。
+ * 一项都没有时整段不送。
+ */
+function accountLimitsPatch(f: SettingsForm, saved: Record<string, AccountLimits> | undefined): { by_account?: Record<string, AccountLimits> } {
+  const out: Record<string, AccountLimits> = {};
+  for (const [alias, own] of Object.entries(f.byAccount)) {
+    const one: AccountLimits = {};
+    for (const [field, key] of ACCOUNT_KEYS) {
+      const value = own[field];
+      if (filled(value)) one[key] = value;
+      else if (saved?.[alias]?.[key] !== null && saved?.[alias]?.[key] !== undefined) one[key] = null;
+    }
+    if (Object.keys(one).length) out[alias] = one;
+  }
+  return Object.keys(out).length ? { by_account: out } : {};
 }
 
 /** 表单和已保存的那一份不一样(有没存的修改)。 */

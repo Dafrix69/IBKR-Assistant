@@ -26,9 +26,10 @@ describe("golden: priceaction", () => {
         return;
       }
       const result = pa.analyze(c.rows, c.symbol, c.timeframe, pa.SWING_STRENGTH, now, c.extended_hours);
-      expectSame(result, c.expect, c.name);
-      expect(pa.factsText(result)).toBe(c.facts_text);
-      expectSame(pa.htfSummary(result), c.htf_summary, `${c.name}.htf_summary`);
+      // 整条用例一起比:facts_text 是一个字符串,单独 toBe 的话 golden:update 改不动它(只能回写对象 / 数组)
+      expectSame(
+        { ...c, expect: result, facts_text: pa.factsText(result), htf_summary: pa.htfSummary(result) }, c, c.name,
+      );
     });
   }
 

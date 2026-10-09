@@ -195,7 +195,9 @@ describe("store: TS 写入路径行为", () => {
     expect(store.setIdeaStatus(idea["id"], "archived")).toBe(true);
     expect(() => store.listIdeas("nope")).toThrowError("未知想法状态:nope");
     expect(() => store.addWatch("")).toThrowError("标的代码为空");
-    expect(() => store.addWatch("SPY", 0)).toThrowError("整数关口步长必须在 0~1000 之间");
+    expect(() => store.addWatch("SPY", -1)).toThrowError("整数关口步长必须在 0~1000 之间");
+    expect(() => store.addWatch("SPY", 1001)).toThrowError("整数关口步长必须在 0~1000 之间");
+    expect(store.addWatch("SPY")["step"]).toBe(0); // 0 = 自动步长(按现价分档),不给就是它
     expect(() => store.addSector("x".repeat(51))).toThrowError("板块名称太长(超过 50 字)");
   });
 

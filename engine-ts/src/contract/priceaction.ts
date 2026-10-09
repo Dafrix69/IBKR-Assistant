@@ -2,6 +2,9 @@
  *
  * 数字与结构判定**全是代码按 K 线算的事实**(摆动结构、BOS/CHoCH、关键位、FVG、扫单、形态、ATR);
  * 模型只做解读,不许自己推算价格(见 pa.comment)。数值口径由 golden-analysis 钉着,这里只定形状。
+ *
+ * **判定只用已收盘的 K 线。** 最后一根还没走完时,它单独放在 `forming` 里,只作提示;除了 `forming`、画图用的
+ * `bars` / `ma`、现价 `last` 与新鲜度 `last_bar` / `age_seconds`,其余每一项都只算到 `closed_bar` 那一根。
  */
 
 /** 画图用的一根 K 线。 */
@@ -39,15 +42,16 @@ export interface PaEvent {
   text: string;
 }
 
-/** 关键位:几个摆动点聚在一起的价格带。 */
+/** 关键位:几个摆动点聚在一起的价格带(一簇里最高与最低相差不超过容差)。 */
 export interface PaLevel {
   price: number;
   /** 这一簇里有几个摆动点 */
   swings: number;
   /** 有多少根 K 线的高或低碰过它 */
   touches: number;
-  /** 在现价上方是阻力,下方是支撑 */
+  /** 在最后一根收盘价上方是阻力,下方是支撑 */
   side: string;
+  /** 距最后一根收盘价百分之几 */
   distance_pct: number;
 }
 
@@ -61,7 +65,7 @@ export interface PaFvg {
   filled_pct: number;
 }
 
-/** 订单块:最后一根反向 K 线。mitigated = 价格已经回来碰过它。 */
+/** 订单块:最后一根反向 K 线。mitigated = 那次突破之后价格回来碰过它。 */
 export interface PaOrderBlock {
   side: string;
   time: string;
@@ -97,12 +101,13 @@ export interface PaPattern {
   direction: string;
   note: string;
   time: string;
-  /** 距最后一根几根 */
+  /** 距最后一根已收盘的 K 线几根(0 = 刚收盘的那一根) */
   bars_ago: number;
 }
 
-/** 环境:波动率、位置、量能。数据不够的项直接没有。 */
+/** 环境:波动率、位置、量能。数据不够的项直接没有。全部只用已收盘的 K 线。 */
 export interface PaContext {
+  /** 最后一根已收盘 K 线的收盘价:本页所有判定对着它算 */
   last: number;
   atr: number;
   atr_pct: number | null;
@@ -118,7 +123,7 @@ export interface PaContext {
   range_bars: number;
   /** 收盘落在区间的百分之几处 */
   range_pos_pct: number | null;
-  /** 最后一根的量比近 20 根均量;没有成交量数据时整项不给 */
+  /** 最后一根已收盘 K 线的量比近 20 根均量;没有成交量数据时整项不给 */
   rel_volume?: number | null;
   /** 最后一根所在那一天的开高低(日内周期才有意义);当天不足 2 根时不给 */
   session?: { date: string; bars: number; open: number; high: number; low: number };
@@ -126,9 +131,42 @@ export interface PaContext {
 
 /** 打分表上的一条。weight 为正是看涨方向,为负是看跌。 */
 export interface PaEvidence {
+  /** 归哪一个子分:structure 结构 / location 位置 / confirm 确认 */
+  group: "structure" | "location" | "confirm";
   label: string;
   detail: string;
   weight: number;
+}
+
+/** 子分:同一类依据的权重之和。三个子分并排看,互相不抵消;总分 score 仍是全部依据相加、再夹在 ±100 之内(子分自己不夹)。 */
+export interface PaSubScore {
+  key: "structure" | "location" | "confirm";
+  /** 结构 / 位置 / 确认 */
+  label: string;
+  /** 这一组依据的权重之和,正 = 看涨 */
+  score: number;
+  /** 这一组全部同向时能到的上限(绝对值) */
+  max: number;
+  /** 这一组里同时有看涨与看跌的依据 */
+  mixed: boolean;
+}
+
+/** 正在形成的那一根:最后一根 K 线还没走完时才有。只作提示,不确认突破、扫单与形态,不进打分。 */
+export interface PaForming {
+  time: string;
+  /** 这一根按钟点几点走完(美东 'YYYY-MM-DD HH:MM');算不出是 null */
+  closes_at: string | null;
+  /** 钟点上已经走完、却仍不让它进判定的原因:delayed 行情是延迟的(晚 15–20 分钟),它的数据可能还没到齐;
+   *  unknown 还说不准这个标的的行情是不是延迟的,先按延迟对待。钟点没到(真的还在走)是 null */
+  waiting: "delayed" | "unknown" | null;
+  open: number;
+  high: number;
+  low: number;
+  /** 这一根此刻的价 */
+  close: number;
+  volume: number;
+  /** 这一根若此刻收盘会成立的突破 / 扫单,每条一句中文;收盘之前都不算数 */
+  hints: string[];
 }
 
 /** 怎么算确认、什么情况下这个判断就错了。 */
@@ -158,11 +196,13 @@ export interface PaHtfSummary {
   last_event: string | null;
   resistance: number | null;
   support: number | null;
+  /** 高周期的判断算到哪一根收盘为止 */
+  closed_bar: string;
 }
 
 /** 低周期与高周期合不合。 */
 export interface PaAgreement {
-  /** aligned 顺势 / conflict 逆势 / unclear 高周期方向不明 / unknown 没有高周期数据可对照 */
+  /** aligned 顺势 / conflict 逆势 / unclear 两个周期里有一个方向不明,谈不上顺逆(哪一个见 text)/ unknown 没有高周期数据可对照 */
   state: string;
   text: string;
 }
@@ -172,15 +212,22 @@ export interface PaAnalysis {
   symbol: string;
   timeframe: string;
   timeframe_label: string;
+  /** 进判定的 K 线根数(已收盘的) */
   bar_count: number;
   first_bar: string;
+  /** 拿到的最新一根的时间(可能还没收盘);新鲜度看它 */
   last_bar: string;
-  /** 最后一根 K 线距今多少秒;算不出是 null */
+  /** 判定算到哪一根为止:最后一根已收盘的 K 线。没有正在形成的那一根时等于 last_bar */
+  closed_bar: string;
+  /** 正在形成的那一根;最后一根已经收盘时是 null */
+  forming: PaForming | null;
+  /** 最新一根 K 线距今多少秒;算不出是 null */
   age_seconds: number | null;
+  /** 现价:最新一根的收盘价(那一根还在形成时就是此刻的价)。判定用的收盘价在 context.last */
   last: number;
   atr: number;
   swing_strength: number;
-  /** -100 ~ 100 */
+  /** -100 ~ 100:全部依据的权重相加。只由已收盘的 K 线决定,同一根 K 线走完之前不变 */
   score: number;
   /** bullish / lean_bull / neutral / lean_bear / bearish */
   bias: string;
@@ -202,8 +249,10 @@ export interface PaAnalysis {
   context: PaContext;
   /** 打分的依据:每条是"哪一项、什么情况、加减多少分" */
   evidence: PaEvidence[];
+  /** 结构 / 位置 / 确认三个子分,顺序固定 */
+  sub_scores: PaSubScore[];
   plan: PaPlan;
-  /** 画图用的最近若干根 */
+  /** 画图用的最近若干根;正在形成的那一根也在里面(最后一个) */
   bars: PaBar[];
   /** 均线序列,键是周期;每条和 bars 一样长,不足周期的位置是 null */
   ma: Record<string, Array<number | null>>;

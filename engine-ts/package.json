@@ -17,7 +17,8 @@
     "golden": "vitest run golden-",
     "golden:update": "node scripts/update-golden.mjs",
     "probe": "node scripts/tws-probe.mjs",
-    "calibrate:fly": "node scripts/calibrate-fly-iv.mjs"
+    "calibrate:fly": "node scripts/calibrate-fly-iv.mjs",
+    "sweep:fly": "node scripts/sweep-fly-exit.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

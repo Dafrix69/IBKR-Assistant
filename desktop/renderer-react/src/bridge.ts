@@ -99,7 +99,7 @@ import type {
   PlaybookBand, PlaybookEvent, PlaybookSnapshot, PlaybookState,
   AccountView, Limits, Policies, ProtectionsConfig, QualityList, QualityMonitor, QualityStock, RpcParams, RpcResult, Sector,
   SectorStock, SettingsPatch, SettingsView, SpotTarget, StockQuote, Targets, Track, Watch, WatchEvent, WatchLevel,
-  MaTouchConfig, TouchBook, TouchEpisode, TouchLine, WatchTrigger,
+  CrossConfirm, MaTouchConfig, TouchBook, TouchEpisode, TouchLine, WatchTrigger,
   BreakerBrief, BreakerState, IndexSpot, ProtectionCooldown, ProtectionsSummary, SystemSelftest, SystemStatus,
   TrackerHeartbeat,
   PendingItem, PendingPollResult, RecordAccount, RecordFill, RecordIbkr, RecordInput, RecordLlm, RecordStatusEvent,
@@ -130,7 +130,7 @@ export type {
   FlyPlanIvMode, FlyPlanLeg, FlyPlanParams, FlyPlanPoint, FlyPlanResult, FlyPlanScenario, FlyPlanTime, FlyPlanValue, IvRecorderStatus, OptionsSpot,
   PlaybookBand, PlaybookEvent, PlaybookSnapshot, PlaybookState,
   QualityStock, Sector, SectorStock, SettingsPatch, SpotTarget, StockQuote, Targets, Track, Watch, WatchEvent, WatchLevel,
-  MaTouchConfig, TouchBook, TouchEpisode, TouchLine, WatchTrigger,
+  CrossConfirm, MaTouchConfig, TouchBook, TouchEpisode, TouchLine, WatchTrigger,
   BreakerBrief, BreakerState, IndexSpot, ProtectionCooldown, SystemSelftest, SystemStatus, TrackerHeartbeat,
   PendingItem, PendingPollResult, RecordAccount, RecordFill, RecordIbkr, RecordInput, RecordLlm, RecordStatusEvent,
   TradeRecord, TradeRecordSummary,
@@ -141,6 +141,10 @@ export type {
   BackupInfo, DataBackupsResult,
   FollowConfig, FollowEntry, FollowLink, FollowLinkState, FollowOutcome, FollowReaderState, FollowSeen, FollowStatus,
 };
+// 出场细则与账户级风控的几个类型:单列一段,不挤进上面那两张长名单
+export type {
+  AccountLimits, AutoClose, ProtectionAccountPause, SpotStop, TakeProfitTier, TrackerAddParams,
+} from '../../../engine-ts/src/contract/index';
 /** 界面这边一直用的名字;引擎契约里分别叫 AccountView / SettingsView / Policies / Limits / ProtectionsConfig。 */
 export type Account = AccountView;
 export type Settings = SettingsView;
@@ -297,10 +301,13 @@ export interface DafriBridge {
   listAlerts(): Rpc<RpcResult<'alerts.list'>>;
   createAlert(symbol: string, step: number): Rpc<RpcResult<'alerts.create'>>;
   deleteAlert(id: string): Rpc<RpcResult<'alerts.delete'>>;
-  refreshAlert(id: string, expiry?: string): Rpc<RpcResult<'alerts.refresh'>>;
+  /** step 给了就先把这条盯单的整数关口步长改成它再算(0 = 自动) */
+  refreshAlert(id: string, expiry?: string, step?: number): Rpc<RpcResult<'alerts.refresh'>>;
   pollAlerts(): Rpc<RpcResult<'alerts.poll'>>;
   /** 短期内反复碰均线的口径(本地道,存 app_prefs)。一次只给要改的那几项。 */
   setTouchConfig(config: Partial<MaTouchConfig>): Rpc<RpcResult<'alerts.set_touch_config'>>;
+  /** 穿越的确认方式(跨过就报 / 等 1 分钟收盘)。和碰均线的口径走同一个方法,只带这一项 */
+  setCrossConfirm(mode: CrossConfirm): Rpc<RpcResult<'alerts.set_touch_config'>>;
 
   paTimeframes(): Rpc<RpcResult<'pa.timeframes'>>;
   paAnalyze(spec: RpcParams<'pa.analyze'>): Rpc<RpcResult<'pa.analyze'>>;

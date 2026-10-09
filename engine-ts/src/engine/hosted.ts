@@ -42,8 +42,10 @@ export interface HostedHost {
   ): Promise<[tk.Targets, tk.SpotTarget | null, boolean]>;
   chaseQuote(
     raw: Rec, position: tk.Position, positions: Record<string, Rec>, auto: tk.AutoClose,
-    prev: number | null, rounds: number,
+    prev: number | null, rounds: number, reason?: string | null,
   ): Promise<{ natural: number; limit: number; floor: number } | null>;
+  /** 推峰值用的价(engine/exits.ts):期权与组合要连续两轮都见到才算 */
+  readonly exits: { nextRound(): void; peakMark(tid: string, position: tk.Position, price: number | null, confirm?: boolean): number | null };
   chaseWarnIfStuck(track: Rec, entry: Rec, limit: number, natural: number): void;
   baseRecord(instruction: string, channel: string, response: null): Rec;
   onIbError(reqId: unknown, errorCode: unknown, errorString: unknown): void;
@@ -140,6 +142,8 @@ export class HostedOrders {
     const tracks = this.store.listTracks();
     const wantsHosting = tracks.some((t) => Boolean((t["auto_close"] ?? {})["host_at_broker"]));
     if (!wantsHosting && this.hosted.size === 0) return out;
+    // 单独跑的对账(不是盯盘那一轮带着持仓叫的)自己算一轮;同一轮里问到的是盯盘算好的那个价
+    if (rows === undefined || rows === null) this.host.exits.nextRound();
     const covered: Set<string> | null = router.coveredAccounts?.() ?? null;
     const prev = this.lastCovered;
     if (covered !== null && prev !== null && [...covered].some((a) => !prev.has(a))) this.hostedAdopted = false;
@@ -226,7 +230,7 @@ export class HostedOrders {
         continue;
       }
 
-      const peak = tk.advancePeak(position, raw["market_price"], track["peak"] ?? null);
+      const peak = tk.advancePeak(position, this.host.exits.peakMark(tid, position, raw["market_price"], auto.peak_confirm), track["peak"] ?? null);
       if (peak !== null && peak !== track["peak"]) {
         this.store.updateTrack(tid, { peak });
       }
@@ -244,6 +248,7 @@ export class HostedOrders {
         const tp = current.get(tk.HOSTED_KIND_TP);
         chase = await this.chaseQuote(
           raw, position, positions, auto, finiteOrNull(tp?.["chase_limit"] ?? null), Number(tp?.["chase_rounds"] ?? 0),
+          tk.sweepReason(track),
         );
         if (chase === null) {
           // 拿不到腿的买卖价:这一轮不动那张单(更不能把它改回模型价),下一轮再追
@@ -412,7 +417,7 @@ export class HostedOrders {
       }
       const firedState = `${tk.SWEEP_PREFIX}${state}`;
       this.store.updateTrack(tid, { fired_at: nowIsoSecondsEt(), fired_state: firedState });
-      this.store.audit("engine", "hosted_sweep", { track: tid, symbol: track["symbol"], state, reason, mark: position.market_price, record: this.tpEntry(tid)?.["record_id"] ?? null });
+      this.store.audit("engine", "hosted_sweep", { track: tid, symbol: track["symbol"], leg: track["leg"] ?? "", state, reason, mark: position.market_price, record: this.tpEntry(tid)?.["record_id"] ?? null });
       // 该出手了:上一次被拒留下的退避不再等
       this.clearBackoff(tid);
       this.notifier.notify(
@@ -697,7 +702,7 @@ export class HostedOrders {
   };
   /** 触发状态 → 给人看的名字。追价平仓那一路(还在 engine.ts)也读它。 */
   static readonly STATE_LABEL: Record<string, string> = {
-    take_profit: "止盈", stop_loss: "止损", profit_trail: "利润回撤", manual: "手动平仓",
+    take_profit: "止盈", stop_loss: "止损", profit_trail: "利润回撤", manual: "手动平仓", time_exit: "到点平仓",
   };
 
   /** 托管单的终态处理:成交 → 追踪落闩;撤销 → 丢缓存。
@@ -723,7 +728,7 @@ export class HostedOrders {
       // 保护规则按审计表数"最近几次止损"、算同一标的的冷却(store.recentCloses)。追价平仓触发时已经记过 hosted_sweep,
       // 这里只记券商自己触发的那些——以前一笔都不记,股票最主要的止损路径(券商侧 STP)在保护规则眼里等于不存在
       if (sweep === null) {
-        this.store.audit("engine", "hosted_fill", { track: tid, symbol, state: HostedOrders.HOSTED_FIRED_STATE[kind] ?? kind, record: entry["record_id"] ?? null });
+        this.store.audit("engine", "hosted_fill", { track: tid, symbol, leg: track ? track["leg"] ?? "" : "", state: HostedOrders.HOSTED_FIRED_STATE[kind] ?? kind, record: entry["record_id"] ?? null });
       }
       this.notifier.notify("托管单已成交", `${symbol}:${entry["label"] ?? kind}`);
       // 整组落闩:OCA 兄弟单券商会自己撤,这里直接清缓存

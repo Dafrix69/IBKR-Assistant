@@ -32,6 +32,9 @@ export const DEFAULTS: Rec = {
   trail_late: "15:00", trail_late_factor: 0.5,
   zone_hold: 0.45, zone_half: 0.55, zone_stop: 0.8, stop_var: 0.3,
   cutoff_a: "14:00", switch_k: 1.6, otm_band: 10.0,
+  // 阶段 A → B 的另一种切法:全天方差还剩不到这么大一份就进 B(0–1)。不给(null)= 按 cutoff_a 的钟点切。
+  // B → C 本来就是按剩余方差切的;两处想用同一种口径、不想让它跟着钟点走的,填这一项
+  cutoff_a_share: null,
 };
 
 /** 取 "HH:MM" 而不是数字的参数。 */
@@ -73,8 +76,18 @@ export function sigmaRemaining(em: number, minute: number): number {
   return pyRound(em * Math.sqrt(remainingVariance(minute)), 4);
 }
 
+/** 阶段 A 到哪一分钟为止:填了 cutoff_a_share 的,是剩余方差第一次不超过它的那一分钟;否则就是 cutoff_a 的钟点。 */
+export function cutoffMinute(params: Rec): number {
+  const share = params["cutoff_a_share"];
+  if (share === null || share === undefined) return minutesOf(params["cutoff_a"]);
+  for (let minute = OPEN_MIN; minute <= CLOSE_MIN; minute += 1) {
+    if (remainingVariance(minute) <= Number(share)) return minute;
+  }
+  return CLOSE_MIN;
+}
+
 export function phaseAt(minute: number, width: number, params: Rec): string {
-  if (minute < minutesOf(params["cutoff_a"])) return "A";
+  if (minute < cutoffMinute(params)) return "A";
   if (sigmaRemaining(params["em"], minute) < width / params["switch_k"]) return "C";
   return "B";
 }
@@ -268,8 +281,10 @@ export function impliedSigmaLeg(
  * 从**蝶价**反解 σ(点)。解得出来时它最好用:反解回去正好还原当前蝶价,
  * 所以「标的到 X 时值多少」在 X → 当前标的时会平滑地收敛到现价,不会跳。
  *
- * 只在标的落在两翼之间(|S − K| < W,内在价值为正)才有效。那时蝶价对 σ 严格单调
- * 递减,根唯一;标的一旦跑到翼外,内在价值是 0,蝶价对 σ **先升后降**——同一个价格
+ * 只在标的落在两翼之间(|S − K| < W,内在价值为正)、并且蝶价**低于内在价值**时才有解:那一段上根唯一。
+ * (翼内靠近翼的地方,σ 很小时蝶价会先略高于内在价值再往下走——买入的那条翼比两条中心腿离得近;
+ * 不低于内在价值的价对应两个 σ 或一个都没有,二分的边界检查把它们挡在外面,回 null。)
+ * 标的一旦跑到翼外,内在价值是 0,蝶价对 σ **先升后降**——同一个价格
  * 对应两个 σ,差出来的钱能到一倍(实测 7725/7750/7775 蝶、标的 7720、蝶价 4.50:
  * σ≈19.5 与 σ≈42.6 都对得上,拿它们算 7740 分别是 10.20 和 5.54)。这种时候返回 null,
  * 让调用方退到单腿反解,而不是从两个根里猜一个。
@@ -533,11 +548,13 @@ export function simulate(
 export function plan(
   profile: Rec, entryBarTime: string, spxBars: Rec[], flyBars: Rec[], rawParams: Rec | null | undefined,
   actual: Rec | null = null,
+  /** EM 是从哪来的那句话(调用方知道:底账里那天的、手动填的、还是默认值);不给就用下面那句通用的 */
+  emNote: string | null = null,
 ): Rec {
   const params = paramsFrom(rawParams);
   const w = profile["width"];
   const sw = switchMinute(w, params);
-  const cutoff = minutesOf(params["cutoff_a"]);
+  const cutoff = cutoffMinute(params);
   // simulation 要先算 sim 才有,所以局部用「还差 simulation 的那一份」;别为了类型去挪代码顺序
   const out: Omit<ExitPlan, "simulation"> & { simulation?: ExitSimulation } = {
     params,
@@ -552,7 +569,7 @@ export function plan(
       wing_in_sigma: params["em"] ? pyRound(w / params["em"], 2) : null,
     },
     notes: [
-      `EM 取 ${pyG(params["em"])} 点(文档默认;应每日从 ATM straddle 取,EM = straddle × 0.85)`,
+      emNote ?? `EM 取 ${pyG(params["em"])} 点。EM 是常规时段一个标准差的点数 = 平值跨式 × √(π/2)(约 1.25),应取开仓那一天的`,
       "触发判断用组合分钟线的中间价,文档要求按 bid,回放结果略偏乐观",
       `止盈按浮盈回撤追踪:蝶价 ≥ ${fmtF(params["trail_arm"], 2)}×D 后记高水位,浮盈 < ${pyG(params["trail_loose_below"])}×D 让 ${fmtF(params["trail_loose"] * 100, 0)}%、${pyG(params["trail_loose_below"])}–${pyG(params["trail_tight_at"])}×D 让 ${fmtF(params["trail"] * 100, 0)}%、≥ ${pyG(params["trail_tight_at"])}×D 让 ${fmtF(params["trail_tight"] * 100, 0)}%,${params["trail_late"]} 之后再乘 ${pyG(params["trail_late_factor"])};回吐不足 ${pyG(params["trail_floor"])} 点不触发。阶段 C 交给区间规则。`,
     ],

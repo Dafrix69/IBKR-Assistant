@@ -1,25 +1,34 @@
-/** Discord 跟单的服务:一条频道消息从判定到发单的那一趟,以及 Discord 连接的起停。
+/** Discord 跟单的服务:一条频道消息从判定到发单的那一趟、处理完之后记的那一次盘口、跟进去的蝴蝶成交后建追踪,以及 Discord 连接的起停。
  *
- * 全部离线:消息直接喂给 onMessage,引擎是真的(校验、落库都走),券商是假的(只记下发了什么),
+ * 全部离线:消息直接喂给 onMessage,引擎是真的(校验、落库、成交回报都走),券商是假的(只记下发了什么),
  * Discord 的 socket 与凭证库都是假的。
  */
 import { EventEmitter } from "node:events";
-import { appendFileSync, mkdtempSync } from "node:fs";
+import { appendFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { BrokerError } from "../src/broker.js";
 import { setClock } from "../src/config.js";
 import type { FollowConfig } from "../src/contract/follow.js";
+import type { Track, TrackerAddParams } from "../src/contract/tracker.js";
 import type { DiscordMessage, SocketLike } from "../src/discordGateway.js";
 import { TradingEngine } from "../src/engine.js";
+import { FOLLOW_TRACK_NOTE, PENDING_MISS_ROUNDS, flyTrackParams } from "../src/follow.js";
 import type { ReaderChild } from "../src/followReader.js";
 import { Notifier } from "../src/notify.js";
+import { OptionMarkStreams } from "../src/optionMarks.js";
+import { makeKey } from "../src/positions.js";
 import { LLMResponse } from "../src/providers.js";
+import { RpcServer } from "../src/rpc.js";
+import { RpcError } from "../src/rpcError.js";
 import { useSecretBackend } from "../src/secrets.js";
 import { FOLLOW_KEYCHAIN_ACCOUNT, FOLLOW_KEYCHAIN_SERVICE, FollowService, refuseModelWhileFollowing } from "../src/services/follow.js";
 import type { ServiceHost } from "../src/services/host.js";
 import { TradeStore } from "../src/store.js";
+import { ET, stampAt } from "../src/tz.js";
+import { FakeTws, connect, optionLeg, positions as twsPositions } from "./fakeTws.js";
 import { loadGolden, makeSettings } from "./util.js";
 
 const gc = loadGolden("config");
@@ -43,11 +52,59 @@ class FakeRouter {
   }
   async place(recordId: string, approved: any, limitOverride: number | null = null) {
     this.placed.push({ recordId, approved });
-    return { record_id: recordId, order_id: 1024 + this.placed.length, perm_id: 7788, status: "Submitted", limit_price: limitOverride, detail: {} };
+    const n = this.placed.length;
+    return { record_id: recordId, order_id: 1024 + n, perm_id: 7700 + n, status: "Submitted", limit_price: limitOverride, detail: {} };
   }
-  async legQuotes() { return []; }
-  async positions() { return []; }
+  /** 引擎给没写价的组合定价用的那条路(现订现撤):跟单不许走它,被叫到就记一笔 */
+  legQuoteCalls = 0;
+  async legQuotes() { this.legQuoteCalls += 1; return []; }
+  /** 账户里的持仓(券商那一层的样子:一条腿一行) */
+  rows: Array<Record<string, unknown>> = [];
+  positionsFail = false;
+  positionReads = 0;
+  async positions() {
+    this.positionReads += 1;
+    if (this.positionsFail) throw new BrokerError("TWS 断了,读不到持仓");
+    return this.rows.map((r) => ({ ...r }));
+  }
+  /** 取盘口用的那条会话:只用到它管着哪些账号(DU… = 纸面) */
+  managed = ["DU7654321"];
+  marketSession() { return { managedAccounts: () => this.managed }; }
 }
+
+/** 假的行情流:按行权价给盘口,记下每次是在发了几张单之后读的。 */
+class FakeMarks {
+  calls: Array<{ strikes: number[]; delayedOk: boolean; placedBefore: number }> = [];
+  book: Record<number, { bid: number | null; ask: number | null }> = {
+    6900: { bid: 19.9, ask: 20.3 }, 6915: { bid: 10.9, ask: 11.1 }, 6930: { bid: 3.7, ask: 3.9 },
+    6920: { bid: 9.0, ask: 9.4 }, 6925: { bid: 6.8, ask: 7.2 },
+  };
+  fail: Error | null = null;
+  /** 卡住不回(TWS 迟迟不给盘口):放行之前 read 一直不落定 */
+  gate: Promise<void> | null = null;
+  constructor(private readonly router: FakeRouter) {}
+  async read(_session: unknown, legs: Array<{ strike: number; right: string }>, delayedOk: boolean) {
+    this.calls.push({ strikes: legs.map((l) => l.strike), delayedOk, placedBefore: this.router.placed.length });
+    if (this.gate !== null) await this.gate;
+    if (this.fail !== null) throw this.fail;
+    return legs.map((l) => ({
+      strike: l.strike, right: l.right, bid: this.book[l.strike]?.bid ?? null, ask: this.book[l.strike]?.ask ?? null, iv: null, error: null,
+    }));
+  }
+}
+
+const EXPIRY = "20260814";
+const FLY_LEG = `${EXPIRY}|+1x6900C,-2x6915C,+1x6930C`;
+const FLY_KEY = makeKey("模拟", "SPX", "BAG", FLY_LEG);
+/** 一条期权腿的持仓行 */
+const legRow = (strike: number, quantity: number, avgCost: number, price: number, account = "模拟"): Record<string, unknown> => ({
+  key: makeKey(account, "SPX", "OPT", `${EXPIRY}|${strike}|C`), account, symbol: "SPX", sec_type: "OPT", leg: `${EXPIRY}|${strike}|C`,
+  label: `SPX ${strike}C`, quantity, multiplier: 100, currency: "USD", avg_cost: avgCost, market_price: price, market_value: null, unrealized_pnl: null,
+  contract: { secType: "OPT", symbol: "SPX", lastTradeDateOrContractMonth: EXPIRY, strike, right: "C", multiplier: "100", tradingClass: "SPXW", exchange: "SMART" },
+});
+/** 6900/6915/6930 看涨蝶 lots 张的三条腿(每组净成本 $180,净价 1.90) */
+const flyRows = (lots = 1, account = "模拟"): Array<Record<string, unknown>> =>
+  [legRow(6900, lots, 2000, 20.1, account), legRow(6915, -2 * lots, 1100, 11.0, account), legRow(6930, lots, 380, 3.8, account)];
 
 let serial = 0;
 /** 一条频道消息;ageMs = 它是多久之前发的。 */
@@ -64,7 +121,9 @@ function message(content: string, patch: { author?: string; channel?: string; ag
   };
 }
 
-function build(follow: Partial<FollowConfig> = {}, policies: Record<string, unknown> = { auto_execute: true }) {
+function build(
+  follow: Partial<FollowConfig> = {}, policies: Record<string, unknown> = { auto_execute: true }, routerOverride: unknown = null,
+) {
   const dir = mkdtempSync(path.join(tmpdir(), "dafri-follow-"));
   const settings = makeSettings(gc.base_config, {
     storage: { db_path: path.join(dir, "f.db") },
@@ -92,18 +151,59 @@ function build(follow: Partial<FollowConfig> = {}, policies: Record<string, unkn
   const notes: Array<[string, string, string]> = [];
   const engine = new TradingEngine({
     settings, parser: parser as any, store: new TradeStore(settings.db_path),
-    notifier: new Notifier(false, [(title, subtitle, body) => notes.push([title, subtitle, body])]), router: router as any,
+    notifier: new Notifier(false, [(title, subtitle, body) => notes.push([title, subtitle, body])]), router: (routerOverride ?? router) as any,
   });
   engine.publicPriceFn = async () => null;
   const events: Array<[string, Record<string, any>]> = [];
   const host = {
-    settings, router: router as any, engine,
+    settings, router: (routerOverride ?? router) as any, engine,
     emit: (event: string, payload: Record<string, any>) => { events.push([event, payload]); },
   };
   const service = new FollowService(host as ServiceHost);
   const log = () => engine.store.follow.recent(50);
   return { service, engine, router, host, events, notes, modelCalls, log };
 }
+
+/** 接上假的行情流与假的建追踪通道(真应用里这一步在 rpc/server.ts)。addTrack 记下收到的入参,回一条像样的追踪行。 */
+function wire(built: ReturnType<typeof build>) {
+  const marks = new FakeMarks(built.router);
+  const added: TrackerAddParams[] = [];
+  const control: { fail: Error | null } = { fail: null };
+  built.service.attach({
+    marks: marks as never,
+    addTrack: async (params) => {
+      added.push(params);
+      if (control.fail !== null) throw control.fail;
+      const track: Track = {
+        id: `t${added.length}`, created_at: "", updated_at: "", account: "模拟", symbol: "SPX", sec_type: "BAG", leg: FLY_LEG, contract: {},
+        targets: {
+          profit_drawdown_tiers: [{ above: 0, pct: 40 }, { above: 1.111111, pct: 30 }, { above: 3, pct: 20 }],
+          profit_drawdown_arm: 0.555556, profit_drawdown_late: { after: "15:00", factor: 0.5 },
+          exit_at: params.exit_at || null, exit_at_ms: params.exit_at ? Date.UTC(2026, 7, 14, 19, 45, 0) : null,
+        },
+        auto_close: { enabled: params.auto_close === true }, enabled: true, peak: null, fired_at: null, fired_state: "", fired_record: "",
+        note: params.note ?? "",
+      };
+      return { track };
+    },
+  });
+  return { marks, added, control };
+}
+
+/** 券商回报:第 n 张单(从 1 数)成交了 qty 张;done = 这张单走完了(Filled)。走的是引擎真的回报入口。 */
+function fill(engine: TradingEngine, n: number, qty: number, done: boolean): void {
+  const order = { orderId: 1024 + n, permId: 7700 + n };
+  engine.onExecDetails({ order }, { execution: { execId: `exec-${n}-${qty}-${done}`, price: 1.8, shares: qty }, contract: { secType: "BAG" } });
+  if (done) engine.onOrderStatus({ order, orderStatus: { status: "Filled", filled: qty, remaining: 0 } });
+}
+
+/** 第 n 张单走完了(券商报 Filled),不带新的成交回报。 */
+function engineDone(engine: TradingEngine, n: number): void {
+  engine.onOrderStatus({ order: { orderId: 1024 + n, permId: 7700 + n }, orderStatus: { status: "Filled", filled: 2, remaining: 0 } });
+}
+
+const auditOf = (engine: TradingEngine, action: string): Array<Record<string, any>> =>
+  (engine.store.exportAll()["audit_log"] as Array<Record<string, any>>).filter((row) => row["action"] === action);
 
 beforeEach(() => {
   setClock(NOW);
@@ -667,5 +767,706 @@ describe("follow service: Discord 连接的起停", () => {
     expect(sockets[0]!.closed).toBe(true);
     expect((await service.status()).link.state).toBe("off");
     service.stop();
+  });
+});
+
+describe("follow service: 延迟的代价(处理完之后记一次盘口)", () => {
+  it("跟了一单:发单之后取一次盘口,和对方写的价一起记在这条信号上", async () => {
+    const built = build();
+    const { marks } = wire(built);
+    await built.service.onMessage(message("1.8 挂15蝴蝶 15CM"));
+    await built.service.settled();
+    expect(built.router.placed).toHaveLength(1);
+    // 6900/6915/6930:中间价 20.1 − 2 × 11.0 + 3.8 = 1.9;立刻成交要付 20.3 − 2 × 10.9 + 3.9 = 2.4;消息是 1 秒前发的
+    expect(built.log()[0]).toMatchObject({
+      outcome: "sent", quote: { side: "debit", leader: 1.8, mid: 1.9, natural: 2.4, lag_s: 1, paper: true },
+    });
+    expect(marks.calls).toEqual([{ strikes: [6900, 6915, 6930], delayedOk: true, placedBefore: 1 }]);
+    // 不走引擎定价那条现订现撤的路(它撤的可能是盯盘的流)
+    expect(built.router.legQuoteCalls).toBe(0);
+    expect(built.events.some(([event, payload]) => event === "follow" && payload["kind"] === "quote")).toBe(true);
+    expect((await built.service.status()).recent[0]!.quote).toMatchObject({ leader: 1.8, mid: 1.9 });
+  });
+
+  it("只观察的也记:一张单都没发,盘口照取", async () => {
+    const built = build({ enabled: false });
+    const { marks } = wire(built);
+    await built.service.onMessage(message("1.8 挂15蝴蝶 15CM", { ageMs: 6400 }));
+    await built.service.settled();
+    expect(built.router.placed).toEqual([]);
+    expect(built.log()[0]).toMatchObject({ outcome: "observed", quote: { side: "debit", leader: 1.8, mid: 1.9, natural: 2.4, lag_s: 6 } });
+    expect(marks.calls).toHaveLength(1);
+  });
+
+  it("超上限、闸门关着的也记(解析出了恰好一张写明价格的单);没接住的、太旧的、闲聊不取盘口", async () => {
+    const built = build();
+    const { marks } = wire(built);
+    await built.service.onMessage(message("1.6 挂15蝴蝶 15CM 2张"));            // 超上限
+    built.engine.killswitch.engage("手动熔断");
+    await built.service.onMessage(message("1.8 挂15蝴蝶 15CM"));                // 闸门关着
+    built.engine.killswitch.release("test");
+    await built.service.settled();
+    expect(built.log().map((e) => [e.outcome, e.quote?.leader])).toEqual([["blocked", 1.8], ["capped", 1.6]]);
+    const before = marks.calls.length;
+    await built.service.onMessage(message("15蝴蝶 15CM"));                       // 没写价
+    await built.service.onMessage(message("1.8 挂15蝴蝶 15CM 跌破 6880 止损"));  // 速记没接住
+    await built.service.onMessage(message("1.8 挂15蝴蝶 15CM", { ageMs: 5 * 60_000 })); // 太旧
+    await built.service.onMessage(message("蝴蝶先走一下"));                      // 闲聊
+    await built.service.settled();
+    expect(marks.calls).toHaveLength(before);
+    expect(built.log().slice(0, 3).every((e) => e.quote === undefined)).toBe(true);
+  });
+
+  it("贷方价差:对方写的是收多少,中间价与立刻成交的价也换成「收多少」;实盘会话不标纸面", async () => {
+    const built = build();
+    const { marks } = wire(built);
+    built.router.managed = ["U1234567"];
+    await built.service.onMessage(message("@everyone 6920 6925 bear call 挂个-2-2.5"));
+    await built.service.settled();
+    // 买 6925C、卖 6920C:中间价 7.0 − 9.2 = −2.2(收 2.2);立刻成交 7.2 − 9.0 = −1.8(收 1.8)
+    expect(built.log()[0]).toMatchObject({
+      outcome: "sent", quote: { side: "credit", leader: 2.5, mid: 2.2, natural: 1.8, lag_s: 1, paper: false },
+    });
+    expect(marks.calls[0]).toMatchObject({ strikes: [6925, 6920], delayedOk: false });
+  });
+
+  it("盘口没取到(TWS 不答话、断了、有一条腿没有买价、出了意料之外的错):单子照发、日志原样、不多发一条通知", async () => {
+    const failures: Array<(marks: FakeMarks) => void> = [
+      (marks) => { marks.fail = new BrokerError("引擎未连接 TWS。"); },
+      (marks) => { marks.fail = new Error("意料之外的错"); },
+      (marks) => { marks.book[6930] = { bid: 0, ask: 0.05 }; },       // 远翼没人出价:拿它算出来的不是价
+      (marks) => { marks.book[6915] = { bid: null, ask: null }; },
+    ];
+    for (const breakIt of failures) {
+      const built = build();
+      const { marks } = wire(built);
+      breakIt(marks);
+      await built.service.onMessage(message("1.8 挂15蝴蝶 15CM"));
+      await built.service.settled();
+      expect(built.router.placed).toHaveLength(1);
+      expect(built.log()).toHaveLength(1);
+      expect(built.log()[0]).toMatchObject({ outcome: "sent" });
+      expect(built.log()[0]!.quote).toBeUndefined();
+      expect(marks.calls).toHaveLength(1); // 不重试
+      expect(built.notes.map(([title]) => title).filter((t) => t.startsWith("Discord 跟单"))).toEqual(["Discord 跟单:已跟单"]);
+    }
+  });
+
+  it("没连券商、没接上行情流:不取,什么都不影响", async () => {
+    const offline = build({ enabled: false });
+    const { marks } = wire(offline);
+    offline.router.connected = false;
+    await offline.service.onMessage(message("1.8 挂15蝴蝶 15CM"));
+    await offline.service.settled();
+    expect(marks.calls).toEqual([]);
+    expect(offline.log()[0]).toMatchObject({ outcome: "observed" });
+    const unwired = build();
+    await unwired.service.onMessage(message("1.8 挂15蝴蝶 15CM"));
+    await unwired.service.settled();
+    expect(unwired.log()[0]!.quote).toBeUndefined();
+    expect(unwired.router.placed).toHaveLength(1);
+  });
+
+  it("取盘口不占消息的队:它卡着的时候,这一单早已发出,下一条消息照常处理、照常发单", async () => {
+    const built = build();
+    const { marks } = wire(built);
+    let release: () => void = () => undefined;
+    marks.gate = new Promise<void>((resolve) => { release = resolve; });
+    await built.service.onMessage(message("1.8 挂15蝴蝶 15CM"));
+    // 盘口还卡着:单子已经在券商那边了,日志也落了
+    expect(built.router.placed).toHaveLength(1);
+    expect(marks.calls).toEqual([{ strikes: [6900, 6915, 6930], delayedOk: true, placedBefore: 1 }]);
+    expect(built.log()[0]).toMatchObject({ outcome: "sent" });
+    expect(built.log()[0]!.quote).toBeUndefined();
+    await built.service.onMessage(message("@everyone 6920 6925 bear call 挂个-2-2.5"));
+    expect(built.router.placed).toHaveLength(2);
+    expect(marks.calls[1]!.placedBefore).toBe(2);
+    release();
+    await built.service.settled();
+    expect(built.log().map((e) => e.quote?.side)).toEqual(["credit", "debit"]);
+  });
+
+  it("行情走自己那批流:持仓腿的常驻订阅一条都没被撤,盯盘的价照常更新(真的会话 + 真的 OptionMarkStreams,底下是假 TWS)", async () => {
+    const tws = new FakeTws();
+    const conId = (strike: number): number => tws.conId("SPX", EXPIRY, strike, "C", "SPXW");
+    tws.held = [optionLeg(tws, 6900, 1, "SPXW", EXPIRY), optionLeg(tws, 6915, -2, "SPXW", EXPIRY), optionLeg(tws, 6930, 1, "SPXW", EXPIRY)];
+    tws.book.set(conId(6900), { bid: 19.9, ask: 20.3 });
+    tws.book.set(conId(6915), { bid: 10.9, ask: 11.1 });
+    tws.book.set(conId(6930), { bid: 3.7, ask: 3.9 });
+    const real = await connect(tws);
+    await twsPositions(real.router); // 盯盘那一头把三条腿的常驻行情订上了
+    const held = (strike: number) => tws.open(conId(strike)).filter((sub) => sub.generic === "");
+    expect([6900, 6915, 6930].map((k) => held(k).length)).toEqual([1, 1, 1]);
+
+    // 跟单看到的 router:会话与持仓是真的那一份,现价给一个固定的数
+    const hybrid = {
+      BROKER: "ibkr", sessions: () => real.router.sessions(), marketSession: () => real.router.marketSession(),
+      positions: () => real.router.positions(), indexPrice: async () => 6907.35,
+    };
+    const built = build({ enabled: false }, { auto_execute: true }, hybrid);
+    const marks = new OptionMarkStreams();
+    built.service.attach({ marks, addTrack: async () => { throw new Error("这条用例不建追踪"); } });
+    await built.service.onMessage(message("1.8 挂15蝴蝶 15CM"));
+    await built.service.settled();
+    expect(built.log()[0]).toMatchObject({ outcome: "observed", quote: { side: "debit", leader: 1.8, mid: 1.9, natural: 2.4, paper: true } });
+    // 盯盘那三条流还在(同一条订阅,没被撤过);取盘口用的是另外三条(带 generic ticks)
+    expect([6900, 6915, 6930].map((k) => held(k).length)).toEqual([1, 1, 1]);
+    expect([6900, 6915, 6930].map((k) => tws.open(conId(k)).filter((sub) => sub.generic !== "").length)).toEqual([1, 1, 1]);
+    tws.book.set(conId(6915), { bid: 11.9, ask: 12.1 });
+    const rows = await twsPositions(real.router);
+    expect(rows.find((r) => (r["contract"] as Record<string, unknown>)["strike"] === 6915)?.["market_price"]).toBe(12);
+    marks.close();
+  });
+});
+
+describe("follow service: 跟进来的蝴蝶成交后自动建追踪(track_fly)", () => {
+  const FLY = "1.8 挂15蝴蝶 15CM";
+  const titles = (notes: Array<[string, string, string]>): string[] => notes.map(([title]) => title).filter((t) => t.startsWith("Discord 跟单"));
+
+  it("默认关:跟了、成交了,也不登记、不建", async () => {
+    const built = build();
+    const { added } = wire(built);
+    await built.service.onMessage(message(FLY));
+    fill(built.engine, 1, 1, true);
+    built.router.rows = flyRows();
+    await built.service.trackTick();
+    expect(added).toEqual([]);
+    expect((await built.service.status()).tracks_pending).toBe(0);
+    expect(built.log()[0]!.detail).not.toContain("追踪");
+    expect(built.router.positionReads).toBe(0); // 没有在等的,连持仓都不读
+  });
+
+  it("开着:发出去的蝴蝶登记成「等成交」,日志里写明;没成交之前不建,账户里本来就有一模一样的蝶也不套", async () => {
+    const built = build({ track_fly: true, track_exit_at: "15:45" });
+    const { added } = wire(built);
+    await built.service.onMessage(message(FLY));
+    expect(built.log()[0]).toMatchObject({ outcome: "sent" });
+    expect(built.log()[0]!.detail).toContain("成交后自动建持仓追踪(蝶式预设、到价自动平仓、美东 15:45 到点平仓)");
+    expect((await built.service.status()).tracks_pending).toBe(1);
+    // 这张单还挂着;账户里有一只一模一样、用户自己的蝶
+    built.router.rows = flyRows();
+    await built.service.trackTick();
+    await built.service.trackTick();
+    expect(added).toEqual([]);
+    expect((await built.service.status()).tracks_pending).toBe(1);
+  });
+
+  it("成交回报到了、持仓出来了:建一条,入参就是界面那张表单发的那一份;建好了通知、留痕,不再等", async () => {
+    const built = build({ track_fly: true, track_exit_at: "15:45" });
+    const { added } = wire(built);
+    const m = message(FLY);
+    await built.service.onMessage(m);
+    fill(built.engine, 1, 1, true);
+    built.router.rows = flyRows();
+    await built.service.trackTick();
+    expect(added).toEqual([{
+      key: FLY_KEY,
+      take_profit: "", stop_loss: "", trail_pct: "",
+      profit_drawdown_pct: "", profit_drawdown_preset: "fly", profit_drawdown_arm_pct: "",
+      spot_target: "", spot_stop_below: "", spot_stop_above: "",
+      auto_close: true, order_type: "LMT", host_at_broker: false,
+      exit_at: "15:45", spot_stop_confirm_s: "", take_profit_tiers: "", stop_basis: "mid",
+      note: "Discord 跟单自动建立",
+    }]);
+    expect(added[0]).toEqual(flyTrackParams(FLY_KEY, "15:45"));
+    expect((await built.service.status()).tracks_pending).toBe(0);
+    const note = built.notes.find(([title]) => title === "Discord 跟单:已建持仓追踪");
+    expect(note![2]).toContain("6900/6915/6930");
+    expect(note![2]).toContain("这只蝶现在持有 1 张,追踪管的是这一整份");
+    expect(note![2]).toContain("蝶式预设:浮盈到过成本的 55.6% 起算,从峰值回撤 40 / 30 / 20% 就平");
+    expect(note![2]).toContain("到点平仓:美东 15:45");
+    expect(note![2]).toContain("到价由软件自动发平仓单");
+    expect(note![2]).toContain("对方自己什么时候走,软件仍然不知道");
+    const trail = auditOf(built.engine, "follow_track");
+    expect(trail).toHaveLength(1);
+    expect(JSON.parse(trail[0]!["detail"])).toMatchObject({
+      message: m.id, record: built.router.placed[0]!.recordId, account: "模拟", symbol: "SPX", leg: FLY_LEG, track: "t1",
+      targets: { exit_at: "15:45" }, auto_close: { enabled: true },
+    });
+    expect(built.events.some(([event, payload]) => event === "follow" && payload["kind"] === "track")).toBe(true);
+    // 之后再核对多少轮都不会再建
+    await built.service.trackTick();
+    await built.service.trackTick();
+    expect(added).toHaveLength(1);
+  });
+
+  it("部分成交、单子还挂着:已经有持仓了,当场建", async () => {
+    const built = build({ track_fly: true, max_risk_usd: 1000 });
+    const { added } = wire(built);
+    await built.service.onMessage(message("0.5 挂15蝴蝶 15CM 2张"));
+    expect(built.router.placed).toHaveLength(1);
+    fill(built.engine, 1, 1, false); // 2 张成交了 1 张
+    built.router.rows = flyRows(1);
+    await built.service.trackTick();
+    expect(added.map((p) => p.key)).toEqual([FLY_KEY]);
+    expect(added[0]!.exit_at).toBe(""); // 没设钟点:和表单里空着一样,给空串
+    expect((await built.service.status()).tracks_pending).toBe(0);
+  });
+
+  it("部分成交就建了追踪、剩下的后来也成交了:追踪还在盯就不用说什么,单子走完不再看", async () => {
+    const built = build({ track_fly: true, max_risk_usd: 1000 });
+    const { added } = wire(built);
+    await built.service.onMessage(message("0.5 挂15蝴蝶 15CM 2张"));
+    fill(built.engine, 1, 1, false);
+    built.router.rows = flyRows(1);
+    // 别的账户上同一只蝶的追踪不算数:追踪按「账户 + 标的 + 腿」认
+    built.engine.store.addTrack({ account: "别的账户", symbol: "SPX", sec_type: "BAG", leg: FLY_LEG, contract: {}, targets: {}, auto_close: {}, peak: null, note: "" });
+    await built.service.trackTick();
+    expect(added).toHaveLength(1);
+    const pending = () => built.engine.store.getPref("follow.pending_tracks") as Array<Record<string, unknown>>;
+    expect(pending()).toHaveLength(1);                                   // 单子还挂着:留着看
+    expect(pending()[0]).toMatchObject({ settled_fills: 1 });
+    expect((await built.service.status()).tracks_pending).toBe(0);       // 界面上不算"在等成交"
+    // 这条用例里建追踪的通道是假的,库里没有那条追踪;放一条真的、在盯的进去,当作刚才建的那条
+    built.engine.store.addTrack({ account: "模拟", symbol: "SPX", sec_type: "BAG", leg: FLY_LEG, contract: {}, targets: {}, auto_close: { enabled: true }, peak: null, note: "" });
+    const reads = built.router.positionReads;
+    fill(built.engine, 1, 2, false);                                     // 又成交了一张,还没报 Filled
+    await built.service.trackTick();
+    expect(pending()[0]).toMatchObject({ settled_fills: 2 });
+    engineDone(built.engine, 1);
+    await built.service.trackTick();
+    expect(pending()).toEqual([]);
+    expect(added).toHaveLength(1);
+    expect(built.router.positionReads).toBe(reads);                       // 这一段只看记录与追踪表,不读持仓
+    expect(titles(built.notes)).toEqual(["Discord 跟单:已跟单", "Discord 跟单:已建持仓追踪"]);
+  });
+
+  it("部分成交就建了追踪、追踪触发平掉之后剩下的才成交:后成交的那部分没有人盯,说一次", async () => {
+    const built = build({ track_fly: true, max_risk_usd: 1000 });
+    wire(built);
+    await built.service.onMessage(message("0.5 挂15蝴蝶 15CM 2张"));
+    fill(built.engine, 1, 1, false);
+    built.router.rows = flyRows(1);
+    await built.service.trackTick();
+    // 那条追踪后来触发、平掉了(已触发、停用,留在表里)
+    const track = built.engine.store.addTrack({ account: "模拟", symbol: "SPX", sec_type: "BAG", leg: FLY_LEG, contract: {}, targets: {}, auto_close: { enabled: true }, peak: null, note: "" });
+    built.engine.store.updateTrack(track.id, { enabled: false, fired_at: "2026-08-14T11:05:00", fired_state: "profit_trail" });
+    await built.service.trackTick();
+    expect(titles(built.notes)).toEqual(["Discord 跟单:已跟单", "Discord 跟单:已建持仓追踪"]); // 没有新的成交:没什么要说
+    fill(built.engine, 1, 2, true);                                      // 剩下的那一张这时候成交了
+    await built.service.trackTick();
+    await built.service.trackTick();
+    const late = built.notes.filter(([title]) => title === "Discord 跟单:后成交的部分没有追踪");
+    expect(late).toHaveLength(1);
+    expect(late[0]![2]).toContain("后成交的部分现在没有追踪在盯");
+    expect(built.engine.store.getPref("follow.pending_tracks")).toEqual([]);
+    expect(JSON.parse(auditOf(built.engine, "follow_track_dropped")[0]!["detail"])).toMatchObject({ reason: "late_fill" });
+  });
+
+  it("成交回报到了、持仓还没出来(回报早一拍):等;出来了再建", async () => {
+    const built = build({ track_fly: true });
+    const { added } = wire(built);
+    await built.service.onMessage(message(FLY));
+    fill(built.engine, 1, 1, true);
+    await built.service.trackTick();
+    expect(added).toEqual([]);
+    expect((await built.service.status()).tracks_pending).toBe(1);
+    built.router.rows = flyRows();
+    await built.service.trackTick();
+    expect(added).toHaveLength(1);
+  });
+
+  it("贷方价差:照跟,不登记、不建追踪,日志里写明平仓由自己管", async () => {
+    const built = build({ track_fly: true });
+    const { added } = wire(built);
+    await built.service.onMessage(message("@everyone 6920 6925 bear call 挂个-2-2.5"));
+    expect(built.router.placed).toHaveLength(1);
+    expect(built.log()[0]).toMatchObject({ outcome: "sent" });
+    expect(built.log()[0]!.detail).toContain("不是买入的蝴蝶,不自动建追踪,平仓由你自己管");
+    expect((await built.service.status()).tracks_pending).toBe(0);
+    fill(built.engine, 1, 1, true);
+    await built.service.trackTick();
+    expect(added).toEqual([]);
+  });
+
+  it("只观察、超上限、被拒的不登记", async () => {
+    const built = build({ track_fly: true, enabled: false });
+    wire(built);
+    await built.service.onMessage(message(FLY));
+    expect(built.log()[0]).toMatchObject({ outcome: "observed" });
+    expect(built.log()[0]!.detail).not.toContain("追踪");
+    expect((await built.service.status()).tracks_pending).toBe(0);
+  });
+
+  it("单子撤了(一张没成交):不建、不再等,也不为此提醒", async () => {
+    const built = build({ track_fly: true });
+    const { added } = wire(built);
+    await built.service.onMessage(message(FLY));
+    built.engine.onOrderStatus({ order: { orderId: 1025, permId: 7701 }, orderStatus: { status: "Cancelled", filled: 0, remaining: 1 } });
+    built.router.rows = flyRows(); // 账户里碰巧有一只一样的:单子没成交过,不是它开出来的
+    await built.service.trackTick();
+    expect(added).toEqual([]);
+    expect((await built.service.status()).tracks_pending).toBe(0);
+    expect(titles(built.notes)).toEqual(["Discord 跟单:已跟单"]);
+    expect(JSON.parse(auditOf(built.engine, "follow_track_dropped")[0]!["detail"])).toMatchObject({ reason: "unfilled", leg: FLY_LEG });
+  });
+
+  it("引擎重启(换一个服务实例、库还是那一个):在等的那只还在,成交之后照建", async () => {
+    const built = build({ track_fly: true });
+    wire(built);
+    await built.service.onMessage(message(FLY));
+    const again = new FollowService(built.host as ServiceHost);
+    const added: TrackerAddParams[] = [];
+    again.attach({ marks: new FakeMarks(built.router) as never, addTrack: async (params) => { added.push(params); return { track: { targets: {}, auto_close: { enabled: true }, id: "t9" } as Track }; } });
+    expect((await again.status()).tracks_pending).toBe(1);
+    fill(built.engine, 1, 1, true);
+    built.router.rows = flyRows();
+    await again.trackTick();
+    expect(added.map((p) => p.key)).toEqual([FLY_KEY]);
+    expect((await again.status()).tracks_pending).toBe(0);
+    expect((await built.service.status()).tracks_pending).toBe(0);
+  });
+
+  it("读不到持仓(断线、这个账户的会话没连上):先等,不下结论;连回来再建", async () => {
+    const built = build({ track_fly: true });
+    const { added } = wire(built);
+    await built.service.onMessage(message(FLY));
+    fill(built.engine, 1, 1, true);
+    built.router.rows = flyRows();
+    built.router.positionsFail = true;
+    for (let i = 0; i < PENDING_MISS_ROUNDS + 2; i += 1) await built.service.trackTick();
+    expect(added).toEqual([]);
+    expect((await built.service.status()).tracks_pending).toBe(1);
+    built.router.positionsFail = false;
+    (built.router as unknown as { coveredAccounts: () => Set<string> }).coveredAccounts = () => new Set(["主账户"]);
+    await built.service.trackTick();
+    expect(added).toEqual([]); // 「模拟」这个账户此刻读不到:持仓表里没有它不等于它没仓
+    (built.router as unknown as { coveredAccounts: () => Set<string> }).coveredAccounts = () => new Set(["模拟", "主账户"]);
+    await built.service.trackTick();
+    expect(added).toHaveLength(1);
+    expect(titles(built.notes)).toEqual(["Discord 跟单:已跟单", "Discord 跟单:已建持仓追踪"]);
+  });
+
+  it("tracker.add 拒了(入参校验那一类):说明原因,只说一次,不再试", async () => {
+    const built = build({ track_fly: true });
+    const { added, control } = wire(built);
+    await built.service.onMessage(message(FLY));
+    fill(built.engine, 1, 1, true);
+    built.router.rows = flyRows();
+    control.fail = new RpcError(-32602, "找不到这个持仓(可能刚刚被平掉了),请刷新持仓列表。");
+    await built.service.trackTick();
+    await built.service.trackTick();
+    expect(added).toHaveLength(1);
+    expect((await built.service.status()).tracks_pending).toBe(0);
+    const failed = built.notes.filter(([title]) => title === "Discord 跟单:没有建追踪");
+    expect(failed).toHaveLength(1);
+    expect(failed[0]![2]).toContain("找不到这个持仓");
+    expect(failed[0]![2]).toContain("现在没有追踪在盯");
+    expect(auditOf(built.engine, "follow_track_failed")).toHaveLength(1);
+    expect(auditOf(built.engine, "follow_track")).toEqual([]);
+  });
+
+  it("到点平仓的钟点对这只蝶已经用不上(tracker.add 因它而拒):追踪照建、不带到点平仓,通知里照实说", async () => {
+    const built = build({ track_fly: true, track_exit_at: "15:45" });
+    const marks = new FakeMarks(built.router);
+    const added: TrackerAddParams[] = [];
+    built.service.attach({
+      marks: marks as never,
+      addTrack: async (params) => {
+        added.push(params);
+        if (params.exit_at) throw new RpcError(-32602, "到点平仓「15:45」下一次到点是美东 08/15 15:45,而这份持仓 08/14 16:00 就到期了——那时它已经不在了。");
+        return { track: { id: "t1", targets: { exit_at: null, exit_at_ms: null }, auto_close: { enabled: true } } as Track };
+      },
+    });
+    await built.service.onMessage(message(FLY));
+    fill(built.engine, 1, 1, true);
+    built.router.rows = flyRows();
+    await built.service.trackTick();
+    expect(added.map((p) => p.exit_at)).toEqual(["15:45", ""]);
+    expect({ ...added[1], exit_at: "15:45" }).toEqual(added[0]);            // 除了钟点,入参一字不差
+    const made = built.notes.filter(([title]) => title === "Discord 跟单:已建持仓追踪");
+    expect(made).toHaveLength(1);
+    expect(made[0]![2]).toContain("美东 15:45 的到点平仓对这只蝶用不上");
+    expect(built.notes.filter(([title]) => title === "Discord 跟单:没有建追踪")).toEqual([]);
+    expect(auditOf(built.engine, "follow_track")).toHaveLength(1);
+  });
+
+  it("建的那一下断了线(不是入参的问题):下一轮再试,成了就建成;一直不成,试够了说清楚、不再试", async () => {
+    const built = build({ track_fly: true });
+    const { added, control } = wire(built);
+    await built.service.onMessage(message(FLY));
+    fill(built.engine, 1, 1, true);
+    built.router.rows = flyRows();
+    control.fail = new RpcError(-32018, "读取持仓需要 TWS / IB Gateway");
+    await built.service.trackTick();
+    expect((await built.service.status()).tracks_pending).toBe(1);
+    expect(titles(built.notes)).toEqual(["Discord 跟单:已跟单"]);
+    control.fail = null;
+    await built.service.trackTick();
+    expect(added).toHaveLength(2);
+    expect(titles(built.notes)).toEqual(["Discord 跟单:已跟单", "Discord 跟单:已建持仓追踪"]);
+
+    const stuck = build({ track_fly: true });
+    const second = wire(stuck);
+    await stuck.service.onMessage(message(FLY));
+    fill(stuck.engine, 1, 1, true);
+    stuck.router.rows = flyRows();
+    second.control.fail = new Error("意料之外的错");
+    for (let i = 0; i < 30; i += 1) await stuck.service.trackTick();
+    expect(second.added).toHaveLength(10);
+    expect((await stuck.service.status()).tracks_pending).toBe(0);
+    const failed = stuck.notes.filter(([title]) => title === "Discord 跟单:没有建追踪");
+    expect(failed).toHaveLength(1);
+    expect(failed[0]![2]).toContain("试了 10 次都没建成(意料之外的错)");
+  });
+
+  it("这只蝶上已经有一条在盯的追踪:不另建,说明沿用它;同一只蝶连跟两次也只有一条", async () => {
+    const built = build({ track_fly: true });
+    const { added } = wire(built);
+    built.engine.store.addTrack({
+      account: "模拟", symbol: "SPX", sec_type: "BAG", leg: FLY_LEG, contract: {},
+      targets: { stop_loss: 0.9 }, auto_close: { enabled: true }, peak: null, note: "自己设的",
+    });
+    await built.service.onMessage(message(FLY));
+    fill(built.engine, 1, 1, true);
+    built.router.rows = flyRows(2);
+    await built.service.trackTick();
+    expect(added).toEqual([]);
+    expect((await built.service.status()).tracks_pending).toBe(0);
+    const note = built.notes.find(([title]) => title === "Discord 跟单:沿用已有的追踪");
+    expect(note![2]).toContain("没有另建");
+    expect(note![2]).toContain("到价由软件自动发平仓单");
+    expect(JSON.parse(auditOf(built.engine, "follow_track_dropped")[0]!["detail"])).toMatchObject({ reason: "covered" });
+  });
+
+  it("这只蝶上留着一条停用 / 触发过的旧追踪:建不了新的,照实说这一单没有追踪在盯,软件不替人删", async () => {
+    const built = build({ track_fly: true });
+    const { added } = wire(built);
+    const old = built.engine.store.addTrack({
+      account: "模拟", symbol: "SPX", sec_type: "BAG", leg: FLY_LEG, contract: {}, targets: {}, auto_close: { enabled: true }, peak: null, note: "",
+    });
+    built.engine.store.updateTrack(old.id, { enabled: false, fired_at: "2026-08-14T09:50:00", fired_state: "profit_trail" });
+    await built.service.onMessage(message(FLY));
+    fill(built.engine, 1, 1, true);
+    built.router.rows = flyRows();
+    await built.service.trackTick();
+    expect(added).toEqual([]);
+    expect(built.engine.store.listTracks()).toHaveLength(1); // 旧的那条还在,没被动过
+    const note = built.notes.find(([title]) => title === "Discord 跟单:没有建追踪");
+    expect(note![2]).toContain("旧追踪");
+    expect(note![2]).toContain("现在没有追踪在盯");
+    expect((await built.service.status()).tracks_pending).toBe(0);
+  });
+
+  it("成交了、单子也走完了,持仓里却一直找不到这只蝶(腿和别的持仓并在了一起,或者已经平掉):等几轮之后说清楚", async () => {
+    const built = build({ track_fly: true });
+    const { added } = wire(built);
+    await built.service.onMessage(message(FLY));
+    fill(built.engine, 1, 1, true);
+    // 账户里还有一只 6915/6930/6945:四个行权价并在一起,认不成两只蝶
+    built.router.rows = [legRow(6900, 1, 2000, 20.1), legRow(6915, -1, 1100, 11), legRow(6930, -1, 380, 3.8), legRow(6945, 1, 90, 0.9)];
+    for (let i = 0; i < PENDING_MISS_ROUNDS - 1; i += 1) await built.service.trackTick();
+    expect((await built.service.status()).tracks_pending).toBe(1);
+    expect(titles(built.notes)).toEqual(["Discord 跟单:已跟单"]);
+    await built.service.trackTick();
+    expect(added).toEqual([]);
+    expect((await built.service.status()).tracks_pending).toBe(0);
+    expect(built.notes.find(([title]) => title === "Discord 跟单:没有建追踪")![2]).toContain("持仓里找不到这只蝶");
+  });
+
+  it("关掉自动跟单、或关掉这一项:在等的一律不建(收回授权不比给出难),说一声", async () => {
+    for (const off of [{ enabled: false }, { track_fly: false }] as Array<Partial<FollowConfig>>) {
+      const built = build({ track_fly: true });
+      const { added } = wire(built);
+      await built.service.onMessage(message(FLY));
+      Object.assign(built.host.settings.follow, off);
+      fill(built.engine, 1, 1, true);
+      built.router.rows = flyRows();
+      await built.service.trackTick();
+      expect(added).toEqual([]);
+      expect((await built.service.status()).tracks_pending).toBe(0);
+      expect(built.notes.find(([title]) => title === "Discord 跟单:不再自动建追踪")![2]).toContain("1 只蝴蝶");
+      expect(JSON.parse(auditOf(built.engine, "follow_track_dropped")[0]!["detail"])).toMatchObject({ reason: "switched_off" });
+    }
+  });
+
+  it("隔了一天还没等到成交回报:不再等,说清楚之后成交也不会自动建", async () => {
+    const built = build({ track_fly: true });
+    const { added } = wire(built);
+    await built.service.onMessage(message(FLY));
+    setClock(NOW + 24 * 3600_000);
+    built.router.rows = flyRows();
+    await built.service.trackTick();
+    expect(added).toEqual([]);
+    expect((await built.service.status()).tracks_pending).toBe(0);
+    expect(built.notes.find(([title]) => title === "Discord 跟单:没有建追踪")![2]).toContain("隔了一天");
+  });
+
+  it("引擎真正起来之后自己隔几秒核对一轮:有在等的才接着定时,建完就停;重启后起来的第一轮把上次留下的接上", async () => {
+    useSecretBackend({ exists: async () => false, read: async () => null, write: async () => undefined });
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      const built = build({ track_fly: true });
+      const { added } = wire(built);
+      built.service.start();
+      await built.service.sync();
+      await vi.advanceTimersByTimeAsync(10_000);
+      expect(built.router.positionReads).toBe(0); // 没有在等的:第一轮看一眼库就不再跑,更不读持仓
+      await built.service.onMessage(message(FLY));
+      await built.service.settled();
+      const quiet = built.events.length;
+      await vi.advanceTimersByTimeAsync(10_000);
+      expect(built.router.positionReads).toBe(0);  // 单子还挂着、没有成交回报:只看它的记录,不读持仓
+      expect(built.events.length).toBe(quiet);     // 名单没变:不写库、不惊动界面
+      expect(added).toEqual([]);
+      fill(built.engine, 1, 1, false);             // 成交了一部分,持仓还没出来
+      await vi.advanceTimersByTimeAsync(7_000);
+      expect(built.router.positionReads).toBeGreaterThanOrEqual(2); // 有成交了:一轮一轮地看持仓
+      expect(added).toEqual([]);
+      built.router.rows = flyRows();
+      await vi.advanceTimersByTimeAsync(4_000);
+      expect(added).toHaveLength(1);
+      const after = built.router.positionReads;
+      await vi.advanceTimersByTimeAsync(30_000);
+      expect(built.router.positionReads).toBe(after); // 建完了:不再定时
+      built.service.stop();
+
+      // 另一条:登记之后软件退了;再起来(新的服务实例),不用等新消息,自己接着核对
+      const first = build({ track_fly: true });
+      wire(first);
+      await first.service.onMessage(message(FLY));
+      const again = new FollowService(first.host as ServiceHost);
+      const later: TrackerAddParams[] = [];
+      again.attach({ marks: new FakeMarks(first.router) as never, addTrack: async (params) => { later.push(params); return { track: { targets: {}, auto_close: { enabled: true }, id: "t9" } as Track }; } });
+      fill(first.engine, 1, 1, true);
+      first.router.rows = flyRows();
+      again.start();
+      await again.sync();
+      await vi.advanceTimersByTimeAsync(4_000);
+      expect(later.map((p) => p.key)).toEqual([FLY_KEY]);
+      again.stop();
+      // 停了之后不再跑
+      const idle = first.router.positionReads;
+      await vi.advanceTimersByTimeAsync(30_000);
+      expect(first.router.positionReads).toBe(idle);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("发到两个账户:各登记各的,哪个账户成交了给哪个建", async () => {
+    const built = build({ track_fly: true, accounts: ["模拟", "主账户"] }, { auto_execute: true, allow_live_trading: true });
+    const { added } = wire(built);
+    await built.service.onMessage(message(FLY));
+    expect(built.router.placed.map((p) => p.approved.account.alias)).toEqual(["模拟", "主账户"]);
+    expect((await built.service.status()).tracks_pending).toBe(2);
+    fill(built.engine, 2, 1, true); // 只有主账户那张成交了
+    built.router.rows = flyRows(1, "主账户");
+    await built.service.trackTick();
+    expect(added.map((p) => p.key)).toEqual([makeKey("主账户", "SPX", "BAG", FLY_LEG)]);
+    expect((await built.service.status()).tracks_pending).toBe(1);
+  });
+});
+
+describe("follow service: 建追踪走的是 tracker.add 的同一个 handler(真的 RpcServer)", () => {
+  class RpcRouter {
+    SUPPORTS_HOSTED_CLOSE = true;
+    SUPPORTS_NATIVE_CONDITIONS = true;
+    BROKER = "ibkr";
+    upstreamOk = true;
+    rows: Array<Record<string, unknown>> = [];
+    placed: Array<Record<string, any>> = [];
+    sessions(): unknown[] { return [{}]; }
+    connectedNames(): string[] { return ["paper"]; }
+    async positions() { return this.rows.map((r) => ({ ...r })); }
+    async indexPrice(): Promise<number | null> { return 6907.35; }
+    async optionQuotes(): Promise<Record<string, unknown>> { return {}; }
+    async listHostedOpen(): Promise<unknown[]> { return []; }
+    async place(recordId: string, approved: Record<string, any>) {
+      this.placed.push(approved);
+      return { record_id: recordId, order_id: 990, perm_id: null, status: "Submitted", limit_price: null, detail: {} };
+    }
+    async legQuotes(): Promise<unknown[]> { return []; }
+    async cancelAllOpen(): Promise<number> { return 0; }
+    async contractHours(): Promise<null> { return null; }
+    cachedContractHours(): null { return null; }
+  }
+  const servers: RpcServer[] = [];
+  const dirs: string[] = [];
+
+  function server(follow: Record<string, unknown>) {
+    const dir = mkdtempSync(path.join(tmpdir(), "dafri-follow-rpc-"));
+    dirs.push(dir);
+    const base = JSON.parse(readFileSync(path.resolve(__dirname, "..", "baseline", "rpc", "base_config.json"), "utf-8"));
+    const settingsPath = path.join(dir, "settings.json");
+    writeFileSync(settingsPath, JSON.stringify({
+      ...base, policies: { ...base.policies, auto_execute: true }, storage: { db_path: path.join(dir, "t.db") }, follow,
+    }));
+    const s = new RpcServer(settingsPath, () => undefined);
+    const router = new RpcRouter();
+    s.router = router as never;
+    servers.push(s);
+    return { s, router };
+  }
+
+  afterEach(() => {
+    for (const s of servers.splice(0)) {
+      s.anomaly.stop();
+      s.follow.stop();
+      s.flyPlanner.marks.close();
+      s.engineBuilt?.stopTrackerLoop();
+    }
+    for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
+  });
+
+  it("跟了一只 2 张的蝴蝶、成交之后:库里多出一条追踪,和在「持仓追踪」页用界面的载荷建出来的那条目标与平仓设置一字不差", async () => {
+    const { s, router } = server({ enabled: true, channel_id: CHANNEL, author_ids: [FRIEND], max_risk_usd: 1000, track_fly: true, track_exit_at: "15:45" });
+    await s.follow.onMessage(message("0.5 挂15蝴蝶 15CM 2张"));
+    expect(router.placed).toHaveLength(1);
+    expect((await s.follow.status()).tracks_pending).toBe(1);
+    s.engine.onExecDetails({ order: { orderId: 990 } }, { execution: { execId: "x1", price: 0.5, shares: 2 }, contract: { secType: "BAG" } });
+    s.engine.onOrderStatus({ order: { orderId: 990 }, orderStatus: { status: "Filled", filled: 2, remaining: 0 } });
+    router.rows = flyRows(2);
+    await s.follow.trackTick();
+
+    const tracks = s.engine.store.listTracks();
+    expect(tracks).toHaveLength(1);
+    const track = tracks[0]!;
+    expect(track).toMatchObject({ account: "模拟", symbol: "SPX", sec_type: "BAG", leg: FLY_LEG, enabled: true, note: FOLLOW_TRACK_NOTE, peak: 1.9 });
+    // 每组成本 $180:$100 起算 = 0.555556 倍,$200 收紧 = 1.111111 倍(flyexit.drawdownUsdPreset)
+    expect(track.targets).toMatchObject({
+      take_profit: null, stop_loss: null, trail_pct: null, profit_drawdown_pct: null, spot_target: null,
+      profit_drawdown_tiers: [{ above: 0, pct: 40 }, { above: 1.111111, pct: 30 }, { above: 3, pct: 20 }],
+      profit_drawdown_arm: 0.555556, profit_drawdown_late: { after: "15:00", factor: 0.5 }, profit_drawdown_floor: 0.2,
+      exit_at: "15:45", take_profit_tiers: null,
+    });
+    // 到点平仓换成了「下一次到美东 15:45」的那一刻(tracker.add 自己按本机时钟算的,这里只看它确实是个 15:45)
+    const clockOf = (ms: unknown): string => stampAt(Number(ms), ET).slice(11);
+    expect(clockOf(track.targets.exit_at_ms)).toBe("15:45");
+    expect(track.auto_close).toMatchObject({ enabled: true, order_type: "LMT", host_at_broker: false, close_fraction_pct: 100, stop_basis: "mid" });
+    expect((await s.follow.status()).tracks_pending).toBe(0);
+
+    // 对照:另一份一样的持仓上,走 RPC、用界面那张表单的载荷(蝶式预设 + 自动平仓 + 15:45)建一条
+    const other = server({});
+    other.router.rows = flyRows(2);
+    const ui = {
+      key: FLY_KEY, take_profit: "", stop_loss: "", trail_pct: "", profit_drawdown_pct: "", profit_drawdown_preset: "fly",
+      profit_drawdown_arm_pct: "", spot_target: "", spot_stop_below: "", spot_stop_above: "", auto_close: true, order_type: "LMT",
+      host_at_broker: false, exit_at: "15:45", spot_stop_confirm_s: "", take_profit_tiers: "", stop_basis: "mid",
+    };
+    const reply = await other.s.handle({ jsonrpc: "2.0", id: 1, method: "tracker.add", params: ui });
+    expect(reply["error"]).toBeUndefined();
+    const byHand = reply["result"]["track"] as Track;
+    const { exit_at_ms: mine, ...targets } = track.targets;
+    const { exit_at_ms: theirs, ...targetsByHand } = byHand.targets;
+    expect(targets).toEqual(targetsByHand);
+    expect(clockOf(theirs)).toBe(clockOf(mine));
+    expect(track.auto_close).toEqual(byHand.auto_close);
+    expect(track.contract).toEqual(byHand.contract);
+  });
+
+  it("没设钟点、只有 1 张:同一条路,追踪不带到点平仓", async () => {
+    const { s, router } = server({ enabled: true, channel_id: CHANNEL, author_ids: [FRIEND], track_fly: true });
+    await s.follow.onMessage(message("1.8 挂15蝴蝶 15CM"));
+    s.engine.onExecDetails({ order: { orderId: 990 } }, { execution: { execId: "x1", price: 1.8, shares: 1 }, contract: { secType: "BAG" } });
+    router.rows = flyRows(1);
+    await s.follow.trackTick();
+    const [track] = s.engine.store.listTracks();
+    expect(track).toMatchObject({ leg: FLY_LEG, note: FOLLOW_TRACK_NOTE });
+    expect(track!.targets).toMatchObject({ exit_at: null, exit_at_ms: null, profit_drawdown_arm: 0.555556 });
+    expect(track!.auto_close).toMatchObject({ enabled: true, order_type: "LMT" });
+    // 第二轮:已经有这条在盯的追踪了,不会再建一条、也不报错
+    await s.follow.trackTick();
+    expect(s.engine.store.listTracks()).toHaveLength(1);
   });
 });

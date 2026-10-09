@@ -248,6 +248,26 @@ describe("FutuRouter: K 线与盘口", () => {
     await expect(router.intradayBars("AAPL", "2m")).rejects.toThrowError(/最小档位是 1 分钟/);
   });
 
+  it("第一段取回来正好 30 根也改取长的那一段:分析要 30 根已收盘的,最后一根常常没走完", async () => {
+    const rows = (n: number): Array<Record<string, unknown>> => Array.from({ length: n }, (_, i) => ({
+      time_key: `2026-08-13 ${String(10 + Math.floor(i / 12)).padStart(2, "0")}:${String((i % 12) * 5).padStart(2, "0")}:00`,
+      open: 10, high: 11, low: 9, close: 10.5, volume: 100,
+    }));
+    for (const [count, asked] of [[29, 2], [30, 2], [31, 1]] as const) {
+      const [router, quote] = makeRouter();
+      await router.connect("opend");
+      quote.history = rows(count);
+      let calls = 0;
+      const pull = quote.request_history_kline.bind(quote);
+      quote.request_history_kline = (opts) => {
+        calls += 1;
+        return pull(opts);
+      };
+      expect(await router.intradayBars("AAPL", "5m")).toHaveLength(count);
+      expect(calls, `取回 ${count} 根`).toBe(asked);
+    }
+  });
+
   it("日线历史按日期排序并按区间裁剪、带成交量;空结果提到额度", async () => {
     const [router, quote] = makeRouter();
     await router.connect("opend");

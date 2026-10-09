@@ -1,8 +1,7 @@
-/** 回测结果那一节:总览、净值曲线、成交明细。
+/** 回测结果那一节:总览、交易统计、净值曲线、成交明细、口径与偏差。
  *
- * 2026-09-21 从 pages/Backtest.tsx 搬出来(函数体逐字未改)。
- * 数字全是引擎算的(backtest.ts,黄金基线钉着),这里只负责摆——尤其是「跑赢买入持有多少」
- * 那一项:界面不自己减,减法也在引擎那边。
+ * 数字全是引擎算的(backtest.ts,黄金基线钉着),这里只负责摆:超额、Sharpe、Sortino、胜率、盈亏比都是引擎拿逐日全量
+ * 净值与已平仓的交易算好的(图上那条抽样过的曲线算不准),界面不自己减、不自己除。「注意」那一栏是引擎回执里的 notes。
  */
 import { useMemo } from 'react';
 import { List } from 'antd';
@@ -15,7 +14,11 @@ import { fmtCond } from './RuleBuilder';
 import { Meta, StatTile, StatusCard } from '../ui/kit';
 
 export function BacktestResult({ r, strategyLabel }: { r: BacktestRunResult; strategyLabel?: string }) {
-  const beat = r.total_return_pct - r.buy_hold_return_pct;
+  // 回执里没有这一项时是 NaN,照样显示,不拿界面自己的减法顶
+  const beat = Number(r.excess_return_pct);
+  const notes = r.notes || [];
+  const num = (v: number | null | undefined, suffix = ''): string => (v == null ? '—' : `${v}${suffix}`);
+  const signed = (v: number | null | undefined): string => (v == null ? '—' : `${v > 0 ? '+' : ''}${v}%`);
   const instLabel = r.instrument && r.instrument.type !== 'stock' ? ` · ${BT_INST_LABELS[r.instrument.type] || r.instrument.type}(DTE ${r.instrument.dte},投入 ${r.instrument.risk_pct}%)` : '';
   // 兜底的空数组也要稳定:图表按 spec 的引用决定要不要重新灌数据
   const curve = useMemo((): BacktestCurvePoint[] => r.curve || [], [r.curve]);
@@ -58,10 +61,26 @@ export function BacktestResult({ r, strategyLabel }: { r: BacktestRunResult; str
           <StatTile label="超额" value={`${beat >= 0 ? '+' : ''}${beat.toFixed(2)}%`} tone={sign(beat)} />
           <StatTile label="年化" value={`${r.annualized_pct}%`} />
           <StatTile label="最大回撤" value={`${r.max_drawdown_pct}%`} tone="neg" />
-          <StatTile label="交易次数" value={String(r.trades)} />
-          {r.win_rate_pct != null ? <StatTile label="胜率" value={`${r.win_rate_pct}%`} /> : null}
+          <StatTile label="年化波动" value={num(r.volatility_pct, '%')} />
+          <StatTile label="Sharpe" value={num(r.sharpe)} />
+          <StatTile label="Sortino" value={num(r.sortino)} />
           <StatTile label="持仓时间占比" value={`${r.exposure_pct}%`} />
         </div>
+        <Meta items={['Sharpe / Sortino 按逐日净值算,无风险利率按 0、一年 252 个交易日']} />
+      </StatusCard>
+      <StatusCard title={`交易统计(已平仓 ${r.closed_trades} 笔 / 共 ${r.trades} 笔)`}>
+        {r.closed_trades ? (
+          <div className="stat-grid">
+            <StatTile label="胜率" value={num(r.win_rate_pct, '%')} />
+            <StatTile label="平均盈利" value={signed(r.avg_win_pct)} tone={r.avg_win_pct != null ? 'pos' : ''} />
+            <StatTile label="平均亏损" value={signed(r.avg_loss_pct)} tone={r.avg_loss_pct != null ? 'neg' : ''} />
+            <StatTile label="盈亏比" value={num(r.payoff_ratio)} />
+            <StatTile label="盈利因子" value={num(r.profit_factor)} />
+            <StatTile label="每笔期望" value={signed(r.expectancy_pct)} tone={sign(r.expectancy_pct ?? 0)} />
+          </div>
+        ) : (
+          <div className="muted">还没有已平仓的交易:胜率、盈亏比这些要有了结的交易才算,没平的那一笔不算数。</div>
+        )}
       </StatusCard>
       {r.rules ? (
         <StatusCard title="本次使用的条件">
@@ -85,7 +104,7 @@ export function BacktestResult({ r, strategyLabel }: { r: BacktestRunResult; str
             dataSource={trades}
             renderItem={(t, i) => (
               <List.Item key={i} className="stock-row">
-                <span className="stock-sub">{`${t.entry_date} → ${t.exit_date || '持有中'}`}</span>
+                <span className="stock-sub">{`${t.entry_date} → ${t.exit_date || '持有中'}${t.strikes?.length ? ` · 行权价 ${t.strikes.join(' / ')}` : ''}`}</span>
                 <span className="stock-price">{`${fmtMoney(t.entry_price)} → ${fmtMoney(t.exit_price)}`}</span>
                 <span className={`status ${t.return_pct >= 0 ? 'filled' : 'rejected'}`}>{`${t.return_pct >= 0 ? '+' : ''}${t.return_pct}%`}</span>
               </List.Item>
@@ -94,7 +113,10 @@ export function BacktestResult({ r, strategyLabel }: { r: BacktestRunResult; str
         </StatusCard>
       ) : null}
       <StatusCard tone="warn" title="注意">
-        <div>收盘价成交、未计滑点与成本、单标的全仓。历史收益不代表未来;参数越漂亮越要怀疑过拟合。</div>
+        <div>收盘出信号、下一根开盘成交,单标的{r.instrument && r.instrument.type !== 'stock' ? '、每笔按净值的固定比例投入' : '全仓'}。历史收益不代表未来;参数越漂亮越要怀疑过拟合。</div>
+        {notes.map((n, i) => (
+          <div key={i}>{`· ${n}`}</div>
+        ))}
       </StatusCard>
     </>
   );

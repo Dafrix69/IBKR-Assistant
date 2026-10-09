@@ -4,6 +4,7 @@ import { dafri, errorMessage, type Settings } from '../bridge';
 import { showBanner } from '../store/banner';
 import { refreshStatus } from '../store/status';
 import { applyGlassTint, applyTheme, applyUpDown, useGlassTint, useThemeMode, useUpDown, type ThemeMode, type UpDown } from '../store/appearance';
+import { AccountLimitsRows } from '../lib/AccountLimitsRows';
 import { DataPanel } from '../lib/DataPanel';
 import { formProblems, isDirty, toForm, toPatch, type SettingsForm } from '../lib/settingsForm';
 import { Group, GroupRow, LoadingBlock, Notice, NumberRow, PageHead, SectionTitle, SwitchRow } from '../ui/kit';
@@ -13,6 +14,8 @@ const THEME_OPTIONS: { label: string; value: ThemeMode }[] = [
   { label: '浅色', value: 'light' },
   { label: '深色', value: 'dark' },
 ];
+const COOL_SCOPE_OPTIONS = [{ label: '这只标的', value: 'symbol' }, { label: '同一个结构', value: 'position' }];
+const DAILY_BASIS_OPTIONS = [{ label: '已实现盈亏', value: 'realized' }, { label: '账户当日盈亏', value: 'account' }];
 const UPDOWN_OPTIONS: { label: string; value: UpDown }[] = [
   { label: '绿涨红跌', value: 'green-up' },
   { label: '红涨绿跌', value: 'red-up' },
@@ -149,8 +152,20 @@ export function SettingsPage() {
             <NumberRow icon="sf-layers" tint="purple" label="期权 / 价差单笔上限" sub="张" min={1} step={1} value={form.contracts} onChange={(v) => patch({ contracts: v })} />
             <NumberRow icon="sf-gauge" tint="orange" label="市价单股数上限" sub="无法估价时" min={1} step={10} value={form.mktShares} onChange={(v) => patch({ mktShares: v })} />
             <NumberRow icon="sf-scan" tint="teal" label="AUTO_MID 滑点上限" sub="美元 / 张" min={0} step={0.01} value={form.slippage} onChange={(v) => patch({ slippage: v })} />
+            <NumberRow icon="sf-scan" tint="teal" label="AUTO_MID 按价差让价" sub="%:中间价到立刻成交价那一段让多少。空着 = 不用它,照上面的固定滑点" min={0} max={100} step={5} placeholder="不用" value={form.midShare} onChange={(v) => patch({ midShare: v })} />
             <NumberRow icon="sf-clock" tint="gray" label="重复防抖窗口" sub="分钟" min={0} step={1} value={form.dupe} onChange={(v) => patch({ dupe: v })} />
+            <NumberRow icon="sf-shield" tint="red" label="在手期权的最坏亏损上限" sub="USD,每个账户各算:在手的 + 这一单超过就拒;平仓不拦。空着 = 不设" min={0} step={100} placeholder="不设" value={form.openRisk} onChange={(v) => patch({ openRisk: v })} />
+            <NumberRow icon="sf-layers" tint="purple" label="同标的同到期的张数上限" sub="张,组合按组数:在手的 + 这一单超过就拒。空着 = 不设" min={0} step={1} placeholder="不设" value={form.underlying} onChange={(v) => patch({ underlying: v })} />
           </Group>
+          {Object.keys(form.byAccount).length > 1 ? (
+            <Group hint="只填要和上面不一样的那几项,空着的用上面的;往松了改同样要确认。">
+              <AccountLimitsRows
+                value={form.byAccount}
+                paper={Object.fromEntries((saved?.accounts ?? []).map((a) => [a.alias, a.is_paper]))}
+                onChange={(byAccount) => patch({ byAccount })}
+              />
+            </Group>
+          ) : null}
 
           <SectionTitle>保护规则</SectionTitle>
           <p className="hint">
@@ -176,23 +191,33 @@ export function SettingsPage() {
             ) : null}
             <SwitchRow icon="sf-pulse" tint="teal" label="同标的冷却" sub="刚平过仓的标的,一段时间内不再下新单" checked={form.coolOn} onChange={(v) => patch({ coolOn: v })} />
             {form.coolOn ? (
-              <NumberRow icon="sf-clock" tint="gray" label="冷却多久" sub="分钟" min={1} step={5} value={form.coolMinutes} onChange={(v) => patch({ coolMinutes: v })} />
+              <>
+                <NumberRow icon="sf-clock" tint="gray" label="冷却多久" sub="分钟" min={1} step={5} value={form.coolMinutes} onChange={(v) => patch({ coolMinutes: v })} />
+                <GroupRow icon="sf-layers" tint="teal" label="冷却挡什么" sub="只做一个标的的人选「同一个结构」:只挡和刚平掉的那份持仓同到期、同行权价的单,别的照发">
+                  <Segmented size="small" options={COOL_SCOPE_OPTIONS} value={form.coolScope} onChange={(v) => patch({ coolScope: v === 'position' ? 'position' : 'symbol' })} />
+                </GroupRow>
+              </>
             ) : null}
             <SwitchRow icon="sf-gauge" tint="red" label="日内亏损上限" sub="当天(美东)净亏到线,当天不再下新单;第二天零点自己解除" checked={form.dailyOn} onChange={(v) => patch({ dailyOn: v })} />
             {form.dailyOn ? (
-              <NumberRow icon="sf-dollar" tint="red" label="当天最多亏" sub="USD,已实现盈亏以券商报的为准" min={0} step={100} value={form.dailyUsd} onChange={(v) => patch({ dailyUsd: v })} />
+              <>
+                <NumberRow icon="sf-dollar" tint="red" label="当天最多亏" sub="USD,盈亏以券商报的为准" min={0} step={100} value={form.dailyUsd} onChange={(v) => patch({ dailyUsd: v })} />
+                <GroupRow icon="sf-gauge" tint="red" label="拿什么算" sub="已实现盈亏:只数软件发的单、平了才算。账户当日盈亏:券商报的,含没平的浮亏和在 TWS 里手动做的单,每个账户各算各的(只认美元账户;券商没报时退回已实现盈亏)">
+                  <Segmented size="small" options={DAILY_BASIS_OPTIONS} value={form.dailyBasis} onChange={(v) => patch({ dailyBasis: v === 'account' ? 'account' : 'realized' })} />
+                </GroupRow>
+              </>
             ) : null}
           </Group>
 
           <SectionTitle>单笔风险预算</SectionTitle>
-          <Group hint="一单占账户权益太多时,在订单卡片上多一句提醒;只提醒,不拦单,平仓单不受影响。权益自己填,引擎不向券商要。">
+          <Group hint="一单占账户权益太多时,在订单卡片上多一句提醒;只提醒,不拦单,平仓单不受影响。权益填了就用填的;空着的 IBKR 美元账户用券商报的净值。">
             <SwitchRow icon="sf-gauge" tint="orange" label="按账户权益提醒" sub="期权 / 组合看最坏亏损,股票看名义金额" checked={form.rbOn} onChange={(v) => patch({ rbOn: v })} />
             {form.rbOn ? (
               <>
                 <NumberRow icon="sf-xmark" tint="red" label="期权 / 组合最坏亏损" sub="占权益 %,冠军们多在 0.5–2" min={0.1} max={100} step={0.5} value={form.rbRisk} onChange={(v) => patch({ rbRisk: v })} />
                 <NumberRow icon="sf-layers" tint="purple" label="股票仓位" sub="名义金额占权益 %" min={0.1} max={1000} step={5} value={form.rbPosition} onChange={(v) => patch({ rbPosition: v })} />
                 {Object.keys(form.rbEquity).map((alias) => (
-                  <NumberRow key={alias} icon="sf-dollar" tint="green" label={`${alias} 的权益`} sub="USD,空着 = 这个账户不提醒" min={0} step={1000}
+                  <NumberRow key={alias} icon="sf-dollar" tint="green" label={`${alias} 的权益`} sub="USD,空着 = 用券商报的净值(拿不到就不提醒)" min={0} step={1000}
                     value={form.rbEquity[alias] ?? null} onChange={(v) => patch({ rbEquity: { ...form.rbEquity, [alias]: v } })} />
                 ))}
               </>

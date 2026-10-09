@@ -18,6 +18,19 @@ export interface DrawdownLate {
   factor: number;
 }
 
+/** 分批止盈的一档:持仓价到 price(多头 ≥、空头 ≤)时平掉**此刻持仓**的 fraction_pct%(至少 1 张 / 股)。
+ * 每一档只触发一次;它的平仓单成交之后追踪自己接着盯剩下的仓(见 trackerExits.ts 与 engine/exits.ts)。 */
+export interface TakeProfitTier {
+  price: number;
+  fraction_pct: number;
+  /** 这一档的平仓单已经发出、还没确认成交(引擎写) */
+  pending?: boolean;
+  /** 发这一档的平仓单时持仓有多少张(绝对值,引擎写):成交之后要等读到的持仓真的比它少了,才接着盯剩下的 */
+  pending_qty?: number;
+  /** 这一档做完了(引擎写) */
+  done?: boolean;
+}
+
 export interface Targets {
   take_profit: number | null;
   stop_loss: number | null;
@@ -45,6 +58,16 @@ export interface Targets {
    * 老记录没有这两个键,读出来是 null,行为不变。 */
   spot_stop_below: number | null;
   spot_stop_above: number | null;
+  /** 标的止损价的确认:标的要在线外**连续**待够这么多秒才算触发。null / 0 = 触线即算。
+   * 计时只在内存里:引擎重启后从头数。 */
+  spot_stop_confirm_s: number | null;
+  /** 到点平仓:美东 "HH:MM"。到了这个时刻持仓还在就平,记作 time_exit(不算止损)。只给人看与改;判定用下面那个时刻 */
+  exit_at: string | null;
+  /** exit_at 换算出来的那一刻(毫秒):设置时取**下一次**到这个钟点的时刻,到了就触发一次。夜盘里设"03:00"是今晚的 03:00,
+   * 不会因为"现在 21:00 已经晚于 03:00"当场触发 */
+  exit_at_ms: number | null;
+  /** 分批止盈;老记录没有这个键,读出来是 null */
+  take_profit_tiers: TakeProfitTier[] | null;
 }
 
 export interface AutoClose {
@@ -58,6 +81,15 @@ export interface AutoClose {
   host_at_broker: boolean;
   /** 追价平仓最多让到自然价的百分之几(见 chaseLimit)。只管期权与组合;正股不追价。 */
   chase_max_pct: number;
+  /** 止损类(止损 / 跟踪止损 / 利润回撤)拿哪个价判:"mid" = 持仓的中间价(默认);
+   * "natural" = 此刻立刻能成交的价(各腿买卖价合成,见 naturalClosePrice),峰值也按它记。只管期权与组合;止盈始终看中间价 */
+  stop_basis: string;
+  /** 止损类触发之后的追价节奏。null = 和止盈同一套(先在立刻成交价上等 2 轮、每轮让 1 跳、上限 chase_max_pct) */
+  stop_chase_grace: number | null;
+  stop_chase_step: number | null;
+  stop_chase_max_pct: number | null;
+  /** 峰值要连续两轮都见到才往有利方向推(期权与组合;见 engine/exits.ts 的 peakMark)。默认关 = 每一轮的价都能推峰值 */
+  peak_confirm: boolean;
 }
 
 // ---------------------------------------------------------------- 追踪行
@@ -139,8 +171,10 @@ export interface SpotStop {
   spot: number | null;
   /** 现价是怎么来的(夜盘按期货推算时写明);常规时段的官方价为空串 */
   spot_note: string;
-  /** 这一轮越过了哪一条;没越过是 null */
+  /** 这一轮越过了哪一条;没越过是 null。设了确认秒数时,待够了才有值 */
   hit: "below" | "above" | null;
+  /** 设了确认秒数、标的已经在线外但还没待够:在哪一侧、待了多少秒、要多少秒 */
+  pending?: { side: "below" | "above"; held_s: number; need_s: number };
   /** 没判的时候说清楚为什么——静默不判会让界面看起来和"还没到"一样 */
   reason: string;
 }
@@ -177,6 +211,12 @@ export interface TargetsInput {
   /** 标的止损价:标的跌到 / 涨到这里就平。'' / 不给 = 不设 */
   spot_stop_below?: NumberField;
   spot_stop_above?: NumberField;
+  /** 标的止损价的确认秒数;'' / 不给 / 0 = 触线即算 */
+  spot_stop_confirm_s?: NumberField;
+  /** 到点平仓,美东 "HH:MM";'' / 不给 = 不设 */
+  exit_at?: string;
+  /** 分批止盈;'' / 不给 = 不设。price 与 fraction_pct 都不能空 */
+  take_profit_tiers?: Array<{ price: NumberField; fraction_pct: NumberField }> | "";
 }
 
 export interface TrackerAddParams extends TargetsInput {
@@ -192,6 +232,14 @@ export interface TrackerAddParams extends TargetsInput {
   host_at_broker?: boolean;
   /** 0 是合法值(至少让两跳),所以不能拿 0 当"没填" */
   chase_max_pct?: NumberField;
+  /** 止损类拿哪个价判:"mid"(默认)/ "natural" */
+  stop_basis?: string;
+  /** 止损类的追价节奏;'' / 不给 = 和止盈同一套。0 是合法值(grace 0 = 不等,直接开始让) */
+  stop_chase_grace?: NumberField;
+  stop_chase_step?: NumberField;
+  stop_chase_max_pct?: NumberField;
+  /** 峰值要连续两轮都见到才推(期权与组合) */
+  peak_confirm?: boolean;
   /** 截到 200 字 */
   note?: string;
 }

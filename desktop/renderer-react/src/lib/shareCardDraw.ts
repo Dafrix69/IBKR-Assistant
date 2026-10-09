@@ -71,8 +71,8 @@ function ymd(d: Date): string {
 export function cardSubtitle(r: ReviewPerformanceResult, o: Pick<ShareCardOptions, 'scope' | 'kind' | 'days'>): string {
   let scope = SCOPE_LABEL[o.scope];
   if (o.scope === 'all') {
-    const paper = r.trades.some((t) => t.paper);
-    const live = r.trades.some((t) => !t.paper);
+    const paper = r.mix.paper > 0;
+    const live = r.mix.live > 0;
     scope = paper && live ? '实盘 + 模拟盘' : paper ? '模拟盘' : '实盘';
   }
   const span = o.days ? `最近 ${o.days} 天` : '全部时间';
@@ -236,7 +236,10 @@ export function drawShareCard(r: ReviewPerformanceResult, o: ShareCardOptions): 
   stat(ctx, P + col, heroY, '盈亏比', num(s.payoff_ratio), fonts, 96, fit);
   if (r.r_stats.expectancy_r !== null && r.r_stats.trades > 0) {
     const e = r.r_stats.expectancy_r;
-    stat(ctx, P + 2 * col, heroY, '每笔期望', `${e > 0 ? '+' : ''}${num(e)}R`, fonts, 96, fit, e > 0 ? up : e < 0 ? down : C.label);
+    // 区间跨着 0(正负还没分清)的不上色,和页面上同一条规矩
+    const ci = r.r_stats.expectancy_ci;
+    const clear = ci !== null && (ci.lo > 0 || ci.hi < 0);
+    stat(ctx, P + 2 * col, heroY, '每笔期望', `${e > 0 ? '+' : ''}${num(e)}R`, fonts, 96, fit, !clear ? C.label : e > 0 ? up : down);
   } else {
     const pf = s.profit_factor;
     stat(ctx, P + 2 * col, heroY, '利润因子', num(pf), fonts, 96, fit, pf === null ? C.label : pf >= 1 ? up : down);

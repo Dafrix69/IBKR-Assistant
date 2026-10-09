@@ -7,10 +7,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Descriptions, Input, Select, Space } from 'antd';
 import { dafri, errorMessage, errorWithPrefix } from '../bridge';
-import type { PaAnalyzeResult, PaComment, PaEvent, PaEvidence, PaLevel, PaPattern, PaSwing } from '../bridge';
+import type { PaAnalyzeResult, PaComment, PaEvent, PaLevel, PaPattern, PaSwing } from '../bridge';
 import { CanvasChart } from './Chart';
 import { paSpec } from './chart/paSpec';
 import { BookBody, read, write, type Books } from './marketBits';
+import { EvidenceCard, FormingNote, SubScores } from './PaVerdict';
 import { showBanner } from '../store/banner';
 import { useStatus } from '../store/status';
 import { EmptyState, Group, Meta, Primer, StatusCard, SwitchRow, Working, type Tone } from '../ui/kit';
@@ -20,12 +21,12 @@ export const PA_SIDE_LABEL: Record<string, string> = { bull: '看涨', bear: '�
 
 export function paFreshness(r: PaAnalyzeResult): string {
   if (!r) return '—';
-  const parts = [`最后一根 ${r.last_bar}`];
+  const parts = [`最后一根 ${r.last_bar}${r.forming ? '(正在形成)' : ''}`];
   if (r.age_seconds != null) {
     const mins = Math.round(r.age_seconds / 60);
     parts.push(mins < 1 ? '刚刚' : `${mins} 分钟前`);
   }
-  parts.push(`${r.bar_count} 根`);
+  parts.push(`${r.forming ? '已收盘 ' : ''}${r.bar_count} 根`);
   if (!r.rth) parts.push('含盘前盘后');
   if (r.cached) parts.push('引擎缓存');
   return parts.join(' · ');
@@ -203,8 +204,9 @@ export function PaPanel({ books, pick }: { books: Books; pick: { symbol: string;
       </Group>
       <Primer id="intro-pa" intro summary="数据来源与判断方式">
         <p className="hint">
-          K 线走 TWS 历史数据接口,需行情权限;仅延迟权限也能出图,最后一根约落后 15 分钟,
-          新鲜度见标题右侧,超 30 分钟会告警。方向判断<strong>全部由规则计算</strong>,权重公开在「判断依据」里;
+          K 线走 TWS 历史数据接口,需行情权限;仅延迟权限也能出图,数据晚 15–20 分钟,判定会退到数据确定到齐的那一根;
+          新鲜度见标题右侧,行情停了超 30 分钟会告警。方向判断<strong>全部由规则计算、只用已收盘的 K 线</strong>(正在形成的那一根只作提示),
+          权重公开在「判断依据」里;
           「AI 解读」只叙述这些事实,不看图。图下面是同一标的的盘口,只读展示、不参与定价与下单,
           无 Level 2 订阅时只有一档;指数没有盘口,看对应 ETF。已连网关时 K 线与盘口每 20 秒自动刷新。
           <strong>仅供研究参考,不接下单链路。</strong>
@@ -226,6 +228,8 @@ export function PaPanel({ books, pick }: { books: Books; pick: { symbol: string;
                 <span className={`pa-score ${r.score > 0 ? 'up' : r.score < 0 ? 'down' : 'flat'}`}>{`${r.score > 0 ? '+' : ''}${r.score}`}</span>
                 <span className="muted">{`打分区间 −100 ~ +100 · 置信度 ${r.confidence}`}</span>
               </div>
+              <SubScores r={r} />
+              <FormingNote r={r} />
               <Readout lines={r.readout || []} />
             </StatusCard>
             <StatusCard title={`K 线(${r.timeframe_label})`}>{(r.bars || []).length ? <PaChart result={r} /> : null}</StatusCard>
@@ -249,16 +253,7 @@ export function PaPanel({ books, pick }: { books: Books; pick: { symbol: string;
             >
               <BookBody snapshot={books.data[shown]} loading={books.loading.has(shown)} />
             </StatusCard>
-            <StatusCard title="判断依据(加权求和,正=看涨)">
-              {(r.evidence || []).map((item: PaEvidence, i: number) => (
-                <div className="pa-ev" key={i}>
-                  <span className="pa-ev-label">{item.label}</span>
-                  <span className="pa-ev-detail">{item.detail}</span>
-                  <span className={`pa-ev-w ${item.weight > 0 ? 'up' : item.weight < 0 ? 'down' : 'flat'}`}>{`${item.weight > 0 ? '+' : ''}${item.weight}`}</span>
-                </div>
-              ))}
-              <div className="reason">权重固定在引擎里,不随行情浮动;不认同某条,可从总分中减去再看结论。</div>
-            </StatusCard>
+            <EvidenceCard r={r} />
             <StatusCard title={`结构:${r.trend_label}`}>
               {(r.swings || []).length ? <div className="reason">{`摆动序列(旧→新):${r.swings.map((s: PaSwing) => `${s.label}@${s.price}`).join(' → ')}`}</div> : null}
               {(r.events || []).slice(-3).map((ev: PaEvent, i: number) => (
@@ -268,7 +263,7 @@ export function PaPanel({ books, pick }: { books: Books; pick: { symbol: string;
                 <div className="pa-lv" key={i}>
                   <span className={`status ${level.side === 'resistance' ? 'rejected' : 'filled'}`}>{level.side === 'resistance' ? '阻力' : '支撑'}</span>
                   <span className="pa-lv-price">{String(level.price)}</span>
-                  <span className="muted">{`${level.touches} 次触碰 · ${level.swings} 个摆动点 · 距现价 ${level.distance_pct > 0 ? '+' : ''}${level.distance_pct}%`}</span>
+                  <span className="muted">{`${level.touches} 次触碰 · ${level.swings} 个摆动点 · 距收盘 ${level.distance_pct > 0 ? '+' : ''}${level.distance_pct}%`}</span>
                 </div>
               ))}
             </StatusCard>
@@ -284,7 +279,7 @@ export function PaPanel({ books, pick }: { books: Books; pick: { symbol: string;
             </StatusCard>
             {r.htf ? (
               <StatusCard tone={r.agreement?.state === 'aligned' ? 'ok' : r.agreement?.state === 'conflict' ? 'bad' : 'warn'} title={`高周期 ${r.htf.timeframe_label}:${r.htf.bias_label}`}>
-                <div className="reason">{r.htf.trend_label}</div>
+                <div className="reason">{`${r.htf.trend_label}${r.htf.closed_bar ? `(算到 ${r.htf.closed_bar} 那根收盘)` : ''}`}</div>
                 {r.htf.last_event ? <div className="reason">{r.htf.last_event}</div> : null}
                 <div className="reason">{`支撑 ${r.htf.support == null ? '该样本内无' : r.htf.support} / 阻力 ${r.htf.resistance == null ? '该样本内无' : r.htf.resistance}`}</div>
                 {r.agreement?.text ? <div className="reason">{r.agreement.text}</div> : null}
@@ -346,6 +341,7 @@ export function PaPanel({ books, pick }: { books: Books; pick: { symbol: string;
           <li>虚线是关键位:支撑用涨色、阻力用跌色;价格标签放在右侧价格轴上,挤在一起时会被推开并画引线回到真实价位。</li>
           <li>半透明色块是未回补的 FVG(缺口),灰色虚线框是订单块;它们从产生那根 K 线画到最后一根,不铺到轴上。</li>
           <li>点 + 小字是最近的摆动点(HH / HL / LH / LL);蓝色点线是现价。鼠标悬停显示十字光标与那一根的开高低收量。</li>
+          <li>最后一根还没走完时,它上面有一条标着「形成中」的竖线(延迟行情下数据还没到齐的标「未到齐」):这一根照常画,但不进任何判定。</li>
           <li>滚轮缩放、按住拖动平移,拖价格轴或时间轴也能缩放;双击轴复位。每 20 秒的自动刷新不会把缩放到的位置刷掉。</li>
         </ul>
       </Primer>
@@ -362,7 +358,7 @@ export function FlowCard({ r }: { r: PaAnalyzeResult }) {
   }
   for (const sweep of r.sweeps || []) rows.push(sweep.text);
   for (const eq of r.equal_levels || []) rows.push(eq.text);
-  for (const p of (r.patterns || []).filter((p: PaPattern) => p.bars_ago <= 2)) rows.push(`${p.name}(${p.bars_ago} 根前):${p.note}`);
+  for (const p of (r.patterns || []).filter((p: PaPattern) => p.bars_ago <= 2)) rows.push(`${p.name}(${p.time.slice(11) || p.time} 那根):${p.note}`);
   return (
     <StatusCard title="流动性与形态">
       {rows.length ? rows.map((t, i) => <div className="reason" key={i}>{t}</div>) : <div className="reason">这一段没有留下未回补缺口、扫单或明显形态。</div>}

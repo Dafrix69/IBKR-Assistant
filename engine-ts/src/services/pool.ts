@@ -23,8 +23,8 @@ export class PoolService extends ServiceBase {
   static readonly MAX_WATCH = 30;
   /** 新股进池子时的默认:两个开关都开(用户定的)。 */
   static readonly POOL_DEFAULTS: { price: boolean; anomaly: boolean } = { price: true, anomaly: true };
-  /** 新建价位提醒的整数关口步长,与 alerts.create 的缺省一致(alerts.DEFAULT_STEP)。 */
-  static readonly DEFAULT_WATCH_STEP = 5.0;
+  /** 新建价位提醒的整数关口步长,与 alerts.create 的缺省一致:0 = 自动,按现价分档(alerts.AUTO_STEP)。 */
+  static readonly DEFAULT_WATCH_STEP = 0;
   /** 一次性迁移的标记键。 */
   static readonly POOL_MIGRATED_PREF = "pool.migrated_v1";
   /** 孤儿股(有开关却不在任何板块)并进这个板块。它只是一个普通板块,没有特殊语义。 */

@@ -13,6 +13,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { BrokerError } from "../src/broker.js";
 import { setClock } from "../src/config.js";
+import { tagFeed } from "../src/marketdata.js";
 import { RpcServer } from "../src/rpc.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -21,10 +22,11 @@ type Rec = Record<string, any>;
 /** 2026-09-11(周五,交易日)美东 12:00,盘中。 */
 const NOON = Date.parse("2026-09-11T12:00:00-04:00");
 
-/** 5 分钟线:走一段上升结构(高点抬高、低点抬高),够 analyze 读出摆动点与 BOS。 */
+/** 5 分钟线:走一段上升结构(高点抬高、低点抬高),够 analyze 读出摆动点与 BOS。
+ *  时间戳是美东墙钟(券商适配层给的就是这个口径),最后一根 2026-09-11 09:25,09:30 走完。 */
 function intraday(count = 240, step = 0.25): Rec[] {
   const out: Rec[] = [];
-  let t = Date.parse("2026-09-11T09:30:00-04:00") - count * 300_000;
+  let t = Date.parse("2026-09-11T09:30:00Z") - count * 300_000;
   for (let i = 0; i < count; i++, t += 300_000) {
     // 上行 + 小幅波动:制造一串抬高的摆动高低点
     const close = Math.round((100 + i * step + 3 * Math.sin(i / 7)) * 100) / 100;
@@ -39,12 +41,18 @@ function intraday(count = 240, step = 0.25): Rec[] {
 class FakeRouter {
   asked: Array<[string, string, boolean]> = [];
   failFor = new Set<string>();
+  /** 把最后一根换个样子(它还没走完时,长成什么样都不该改判定) */
+  lastBar: Rec | null = null;
+  /** 券商在这组 K 线上记的行情档位:true 延迟 / false 实时 / null 说不准;不给 = 券商没有这个概念(富途) */
+  delayed: boolean | null | undefined = undefined;
   sessions(): unknown[] { return [{}]; }
   connectedNames(): string[] { return ["paper"]; }
   async intradayBars(symbol: string, timeframe: string, rth: boolean): Promise<Rec[]> {
     this.asked.push([symbol, timeframe, rth]);
     if (this.failFor.has(timeframe)) throw new BrokerError(`没有 ${symbol} 的 ${timeframe} 行情权限`);
-    return intraday();
+    const bars = intraday();
+    if (this.lastBar) Object.assign(bars[bars.length - 1]!, this.lastBar);
+    return tagFeed(bars, this.delayed);
   }
 }
 
@@ -95,9 +103,9 @@ afterEach(() => {
 
 /** analyze 的回执里,界面画图与列表要读的键。 */
 const PA_KEYS = [
-  "age_seconds", "agreement", "atr", "bar_count", "bars", "bias", "bias_label", "cached", "confidence", "context",
-  "equal_levels", "events", "evidence", "extended_hours", "fetched_at", "first_bar", "fvgs", "htf", "last", "last_bar",
-  "levels", "ma", "order_block", "patterns", "plan", "readout", "rth", "score", "sweeps", "swing_strength", "swings",
+  "age_seconds", "agreement", "atr", "bar_count", "bars", "bias", "bias_label", "cached", "closed_bar", "confidence", "context",
+  "equal_levels", "events", "evidence", "extended_hours", "fetched_at", "first_bar", "forming", "fvgs", "htf", "last", "last_bar",
+  "levels", "ma", "order_block", "patterns", "plan", "readout", "rth", "score", "sub_scores", "sweeps", "swing_strength", "swings",
   "symbol", "timeframe", "timeframe_label", "trend", "trend_label", "warnings",
 ];
 
@@ -125,7 +133,8 @@ describe("pa.analyze:界面的载荷", () => {
     expect(Object.keys(r).sort()).toEqual(PA_KEYS);
     expect(r).toMatchObject({ symbol: "SPY", timeframe: "5m", timeframe_label: "5 分钟", rth: false, cached: false, extended_hours: true });
     expect(r["fetched_at"]).toBe(new Date(NOON).toISOString());
-    expect(r["bar_count"]).toBe(240);
+    // 12:00 时最后一根(09:25 那根)早已收盘:240 根全进判定,没有正在形成的
+    expect(r).toMatchObject({ bar_count: 240, forming: null, last_bar: "2026-09-11 09:25:00", closed_bar: "2026-09-11 09:25:00" });
 
     // 结构判定
     expect(["bullish", "lean_bull", "neutral", "lean_bear", "bearish"]).toContain(r["bias"]);
@@ -133,6 +142,10 @@ describe("pa.analyze:界面的载荷", () => {
     expect(typeof r["score"]).toBe("number");
     expect(r["confidence"]).toBeGreaterThanOrEqual(0);
     expect(r["confidence"]).toBeLessThanOrEqual(1);
+    // 三个子分并排给,每条依据标着归哪一个
+    expect(r["sub_scores"].map((s: Rec) => s["key"])).toEqual(["structure", "location", "confirm"]);
+    for (const s of r["sub_scores"]) expect(Object.keys(s).sort()).toEqual(["key", "label", "max", "mixed", "score"]);
+    for (const e of r["evidence"]) expect(Object.keys(e).sort()).toEqual(["detail", "group", "label", "weight"]);
 
     // 这份数据是一路抬高的:必有摆动点与 BOS 事件
     expect(r["swings"].length).toBeGreaterThan(0);
@@ -159,12 +172,65 @@ describe("pa.analyze:界面的载荷", () => {
     expect(Array.isArray(r["warnings"])).toBe(true);
   });
 
+  it("读出方向就记进信号日志:同一标的、周期、方向在两个收盘之间只记一次,刷多少遍都一样;高周期那份不记", async () => {
+    setClock(NOON);
+    const { s, call, router } = makeServer();
+    const logged = (): Rec[] => s.engine.store.signals.list().filter((x) => x.source === "pa");
+    const r = (await call("pa.analyze", { symbol: "SPY", timeframe: "5m" }))["result"];
+    // 押的方向只认 priceaction 自己给的 bias;读成中性就不记
+    const expected = String(r["bias"]).includes("bull") ? "up" : String(r["bias"]).includes("bear") ? "down" : null;
+    if (expected === null) {
+      expect(logged()).toEqual([]);
+      return;
+    }
+    expect(logged()).toEqual([{
+      at: new Date(NOON).toISOString(), source: "pa", symbol: "SPY", expect: expected, price: r["last"],
+      label: `5 分钟 ${r["bias_label"]}(${r["score"]})`, variant: "5m",
+    }]);
+    // 图每 20 秒刷一遍、强制重取、让模型解读:都还是那一条
+    await call("pa.analyze", { symbol: "SPY", timeframe: "5m" });
+    await call("pa.analyze", { symbol: "SPY", timeframe: "5m", force: true });
+    await call("pa.comment", { symbol: "SPY", timeframe: "5m" });
+    expect(logged()).toHaveLength(1);
+    expect(router.asked.some((a) => a[1] === "1h")).toBe(true); // 高周期取了、分析了,但没有它的行
+    // 换一个周期、换一只标的:各记各的
+    await call("pa.analyze", { symbol: "SPY", timeframe: "15m" });
+    await call("pa.analyze", { symbol: "QQQ", timeframe: "5m" });
+    expect(logged().map((x) => [x.symbol, x.variant])).toEqual([["SPY", "5m"], ["SPY", "15m"], ["QQQ", "5m"]]);
+  });
+
+  it("只记一次的那一段是「两个收盘之间」,不是日历日:这一段里发的信号打分时进场是同一根", async () => {
+    const { s, call } = makeServer();
+    const logged = (): Rec[] => s.engine.store.signals.list().filter((x) => x.source === "pa");
+    const seen = new Set<string>();
+    /** 在那一刻读一次;`entry` 是这一刻发的信号进场落在哪一天的收盘。同一个进场日、同一个方向只该有一条。 */
+    const read = async (iso: string, entry: string): Promise<void> => {
+      setClock(Date.parse(iso));
+      const r = (await call("pa.analyze", { symbol: "SPY", timeframe: "5m", force: true }))["result"];
+      const dir = String(r["bias"]).includes("bull") ? "up" : String(r["bias"]).includes("bear") ? "down" : null;
+      if (dir !== null) seen.add(`${entry}|${dir}`);
+      expect(logged()).toHaveLength(seen.size);
+    };
+    // 周四收盘后、周五凌晨、周五盘中:进场都是周五收盘。按日历日分会在周五凌晨再记一条
+    await read("2026-09-10T21:00:00-04:00", "09-11");
+    await read("2026-09-11T02:00:00-04:00", "09-11");
+    await read("2026-09-11T11:00:00-04:00", "09-11");
+    await read("2026-09-11T15:59:00-04:00", "09-11");
+    // 周五收盘那一刻起、整个周末、周一盘前与盘中:进场都是周一收盘
+    await read("2026-09-11T16:00:00-04:00", "09-14");
+    await read("2026-09-12T10:00:00-04:00", "09-14");
+    await read("2026-09-14T09:00:00-04:00", "09-14");
+    await read("2026-09-14T12:00:00-04:00", "09-14");
+    // 周一收盘后:进场是周二
+    await read("2026-09-14T16:30:00-04:00", "09-15");
+  });
+
   it("高周期:htf 是摘要不是全量;agreement 说低周期和它合不合", async () => {
     const { call } = makeServer();
     const r = (await call("pa.analyze", { symbol: "SPY", timeframe: "5m" }))["result"];
     expect(r["htf"]).not.toBeNull();
     // 摘要只有这几项(全量有三十几项)
-    expect(Object.keys(r["htf"]).sort()).toEqual(["bias", "bias_label", "last_event", "resistance", "score", "support", "timeframe", "timeframe_label", "trend_label"]);
+    expect(Object.keys(r["htf"]).sort()).toEqual(["bias", "bias_label", "closed_bar", "last_event", "resistance", "score", "support", "timeframe", "timeframe_label", "trend_label"]);
     expect(Object.keys(r["agreement"]).sort()).toEqual(["state", "text"]);
     expect(typeof r["agreement"]["text"]).toBe("string");
   });
@@ -241,6 +307,96 @@ describe("pa.analyze:界面的载荷", () => {
     const err = (await call("pa.analyze", { symbol: "SPY", timeframe: "5m" }))["error"];
     expect(err["code"]).toBe(-32015);
     expect(err["message"]).toContain("没有 SPY 的 5m 行情权限");
+  });
+});
+
+describe("pa.analyze:最后一根还没走完", () => {
+  /** 2026-09-11 美东 09:27:09:25 那根走了两分钟。 */
+  const INSIDE = Date.parse("2026-09-11T09:27:00-04:00");
+
+  it("它单独放在 forming 里,判定只算到上一根;它长成什么样都不改分数与事件", async () => {
+    setClock(INSIDE);
+    const calm = makeServer();
+    const r = (await calm.call("pa.analyze", { symbol: "SPY", timeframe: "5m" }))["result"];
+    expect(r).toMatchObject({ bar_count: 239, last_bar: "2026-09-11 09:25:00", closed_bar: "2026-09-11 09:20:00", age_seconds: 120 });
+    expect(r["forming"]).toMatchObject({ time: "2026-09-11 09:25:00", closes_at: "2026-09-11 09:30" });
+    expect(Object.keys(r["forming"]).sort()).toEqual(["close", "closes_at", "high", "hints", "low", "open", "time", "volume", "waiting"]);
+    expect(r["last"]).toBe(r["forming"]["close"]); // 现价照旧是最新那一根
+    expect(r["bars"]).toHaveLength(140);
+    expect(r["bars"][139]["time"]).toBe("2026-09-11 09:25:00"); // 图照旧画到最新一根
+    // 高周期也只算到它自己已收盘的那一根(假券商给的是同一组时间戳:09:25 起的那根 1 小时线没走完)
+    expect(r["htf"]["closed_bar"]).toBe("2026-09-11 09:20:00");
+
+    // 同一时刻、最后一根换成一根放量长阳:分数、方向、事件、形态一个不变
+    const wild = makeServer();
+    wild.router.lastBar = { open: 150, high: 400, low: 149, close: 399, volume: 9e9 };
+    const w = (await wild.call("pa.analyze", { symbol: "SPY", timeframe: "5m" }))["result"];
+    expect(w["forming"]["close"]).toBe(399);
+    for (const key of ["score", "bias", "events", "sweeps", "patterns", "evidence", "sub_scores", "levels", "context", "plan"]) {
+      expect(w[key]).toEqual(r[key]);
+    }
+  });
+
+  it("缓存里的那一份:钟点过了它也还是半根——收没收盘对着取数那一刻判,新鲜度对着现在算", async () => {
+    setClock(INSIDE);
+    const { call } = makeServer();
+    const first = (await call("pa.analyze", { symbol: "SPY", timeframe: "5m" }))["result"];
+    expect(first).toMatchObject({ cached: false, bar_count: 239 });
+
+    setClock(INSIDE + 10 * 60_000); // 09:37:按钟点那一根早该收了,但手里这份是 09:27 取的
+    const again = (await call("pa.analyze", { symbol: "SPY", timeframe: "5m" }))["result"];
+    expect(again).toMatchObject({ cached: true, bar_count: 239, closed_bar: "2026-09-11 09:20:00", age_seconds: 720 });
+    expect(again["forming"]["time"]).toBe("2026-09-11 09:25:00");
+    expect(again["score"]).toBe(first["score"]);
+  });
+});
+
+describe("pa.analyze:延迟行情与指数的日线", () => {
+  /** 2026-09-11 美东 09:42:09:25 那根按钟点 09:30 就走完了,过去 12 分钟。 */
+  const LATER = Date.parse("2026-09-11T09:42:00-04:00");
+
+  it("券商说这组 K 线出自延迟档:钟点到了也先不让最新一根进判定,缓存里拿出来的那一份照旧;实时档与富途只看钟点", async () => {
+    setClock(LATER);
+    const delayed = makeServer();
+    delayed.router.delayed = true;
+    delayed.router.lastBar = { open: 150, high: 400, low: 149, close: 399, volume: 9e9 }; // 那半根是一次"突破"
+    const r = (await delayed.call("pa.analyze", { symbol: "SPY", timeframe: "5m" }))["result"];
+    expect(r).toMatchObject({ bar_count: 239, closed_bar: "2026-09-11 09:20:00", cached: false });
+    expect(r["forming"]).toMatchObject({ time: "2026-09-11 09:25:00", closes_at: "2026-09-11 09:30", waiting: "delayed" });
+    expect(r["events"].some((e: Rec) => e["index"] === 239)).toBe(false);
+    expect(r["warnings"][0]).toContain("行情是延迟的");
+    const again = (await delayed.call("pa.analyze", { symbol: "SPY", timeframe: "5m" }))["result"];
+    expect(again).toMatchObject({ cached: true, bar_count: 239 });
+    expect(again["forming"]["waiting"]).toBe("delayed");
+
+    // 会话还没见过这张合约的成交价:说不准,按延迟对待,但不说它是延迟的
+    const unknown = makeServer();
+    unknown.router.delayed = null;
+    const u = (await unknown.call("pa.analyze", { symbol: "SPY", timeframe: "5m" }))["result"];
+    expect(u["forming"]["waiting"]).toBe("unknown");
+    expect(u["warnings"].join("")).not.toContain("行情是延迟的");
+
+    // 实时档,以及不带这个记号的券商:钟点到了就是收盘
+    for (const feed of [false, undefined]) {
+      const live = makeServer();
+      live.router.delayed = feed;
+      const l = (await live.call("pa.analyze", { symbol: "SPY", timeframe: "5m" }))["result"];
+      expect(l).toMatchObject({ bar_count: 240, forming: null, closed_bar: "2026-09-11 09:25:00" });
+    }
+  });
+
+  it("指数没有盘前盘后:默认全时段口径下,它的日线 16:00 就走完,正股要等到 20:00;日线作高周期时也一样", async () => {
+    setClock(Date.parse("2026-09-11T16:20:00-04:00"));
+    const { call } = makeServer();
+    const spx = (await call("pa.analyze", { symbol: "SPX", timeframe: "1d" }))["result"];
+    expect(spx).toMatchObject({ rth: false, extended_hours: true, forming: null, bar_count: 240 });
+    const spy = (await call("pa.analyze", { symbol: "SPY", timeframe: "1d" }))["result"];
+    expect(spy).toMatchObject({ rth: false, bar_count: 239 });
+    expect(spy["forming"]).toMatchObject({ closes_at: "2026-09-11 20:00", waiting: null });
+    // 1 小时线的高周期是日线:SPX 的那份算到今天,SPY 的还停在上一根
+    const last = "2026-09-11 09:25:00";
+    expect((await call("pa.analyze", { symbol: "SPX", timeframe: "1h" }))["result"]["htf"]["closed_bar"]).toBe(last);
+    expect((await call("pa.analyze", { symbol: "SPY", timeframe: "1h" }))["result"]["htf"]["closed_bar"]).not.toBe(last);
   });
 });
 

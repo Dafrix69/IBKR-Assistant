@@ -24,19 +24,35 @@ const AM_SETTLED_ROOTS = new Set(["SPX", "NDX", "RUT"]);
 const YEAR_MS = 365 * 24 * 3600 * 1000;
 
 /** 这张期权最后一刻还有时间价值的时刻(毫秒)。到期日取前 8 位 YYYYMMDD——TWS 有时带着时间后缀
- * ("20260918 08:30 US/Central"),整串匹配会把它判成认不出;认不出回 null。 */
-export function expiryEpochMs(symbol: string, expiry: string, tradingClass: string): number | null {
+ * ("20260918 08:30 US/Central"),整串匹配会把它判成认不出;认不出回 null。
+ * `earlyClose`:到期那一天提前收盘(感恩节次日、平安夜……,日历由调用方给)。收盘结算的合约那天 13:00 就到期——
+ * 照 16:00 算,当日到期的蝶多出来三个小时的时间价值,那是它全部的时间价值。开盘结算的月度合约不受影响。
+ *
+ * **开盘结算的月度合约:合约上记的日期是最后交易日,不是结算日。** IBKR 给 SPX 月度类记的是第三个周五的前一个交易日
+ * (20260917 是周四,真机核对过,见 validator.isIndexMonthlyExpiry);它周四收盘后停止交易,按**下一个交易日**(周五)的开盘价结算。
+ * 所以到期时刻是合约日期之后那个工作日的 09:30——拿合约日期当天的 09:30 算,最后交易日一开盘它就"到期"了,
+ * 一整天的时间价值加一个隔夜全算成 0。合约日期按定义是结算日的前一个交易日,所以"下一个工作日"不会落在假日上。
+ * 两种写法里的日期已经是**结算日本身**,不再往后挪:带着时刻的("20260918 08:30 US/Central",那个时刻就是开盘),
+ * 和落在周五的光日期(最后交易日不会是周五——周五休市的那一周,结算在周四、最后交易日是周三)。 */
+export function expiryEpochMs(symbol: string, expiry: string, tradingClass: string, earlyClose = false): number | null {
   const m = /^(\d{4})(\d{2})(\d{2})(?!\d)/.exec(String(expiry ?? "").trim());
   if (m === null) return null;
   const sym = String(symbol ?? "").toUpperCase();
   const tc = String(tradingClass ?? "").toUpperCase();
-  let hour = 16, minute = 0;
+  let day = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+  let hour = earlyClose ? 13 : 16, minute = 0;
   if (AM_SETTLED_ROOTS.has(sym)) {
     if (!tc) return null;
-    if (tc === sym) [hour, minute] = [9, 30];
+    if (tc === sym) {
+      [hour, minute] = [9, 30];
+      const settlesThatDay = /^\d{8}\s+\d{1,2}:\d{2}/.test(String(expiry ?? "").trim()) || day.getUTCDay() === 5;
+      if (!settlesThatDay) {
+        do day = new Date(day.getTime() + 86_400_000); while (day.getUTCDay() === 0 || day.getUTCDay() === 6);
+      }
+    }
   }
   return wallToEpoch(
-    { year: Number(m[1]), month: Number(m[2]), day: Number(m[3]), hour, minute, second: 0 }, ET,
+    { year: day.getUTCFullYear(), month: day.getUTCMonth() + 1, day: day.getUTCDate(), hour, minute, second: 0 }, ET,
   );
 }
 
@@ -73,6 +89,8 @@ type Row = Record<string, unknown>;
 /** 持仓行来自券商适配层(松散记录)或契约里的 PositionRow,这里只按键读,两种都收。 */
 export function legInputsOf(
   rawRow: object, positionRows: Record<string, object>, keyOf: (leg: { strike: number; right: string }) => string,
+  /** 这一天(YYYY-MM-DD)是不是提前收盘日;不给就都按正常收盘 */
+  isEarlyClose: (date: string) => boolean = () => false,
 ): LegInputs {
   const raw = rawRow as Row;
   const positions = positionRows as Record<string, Row>;
@@ -91,9 +109,10 @@ export function legInputsOf(
     out.legPrices[key] = (leg["market_price"] ?? null) as number | null;
     out.legIvs[key] = (leg["model_iv"] ?? null) as number | null;
     if (out.expiryMs === null) {
+      const ymd = String(c["lastTradeDateOrContractMonth"] ?? "").trim().slice(0, 8);
       out.expiryMs = expiryEpochMs(
         String(raw["symbol"] ?? c["symbol"] ?? ""), String(c["lastTradeDateOrContractMonth"] ?? ""),
-        String(c["tradingClass"] ?? ""),
+        String(c["tradingClass"] ?? ""), isEarlyClose(`${ymd.slice(0, 4)}-${ymd.slice(4, 6)}-${ymd.slice(6, 8)}`),
       );
     }
   }

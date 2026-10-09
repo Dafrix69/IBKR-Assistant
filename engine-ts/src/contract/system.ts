@@ -49,10 +49,18 @@ export interface ProtectionsSummary {
   /** 解除时刻(epoch 毫秒);没暂停时 null */
   until_ms: number | null;
   cooldowns: ProtectionCooldown[];
+  /** 只停了某个账户的(日内亏损上限按账户当日盈亏算时):账户别名、原因、解除时刻。没有就是空数组 */
+  accounts: ProtectionAccountPause[];
 }
 
 export interface ProtectionCooldown {
   symbol: string;
+  until_ms: number;
+  reason: string;
+}
+
+export interface ProtectionAccountPause {
+  account: string;
   until_ms: number;
   reason: string;
 }

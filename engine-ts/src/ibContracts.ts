@@ -84,16 +84,22 @@ export function streamContract(symbol: string): IbContract {
  * 所以先按 "这个到期日在不在这条链上" 筛,再按 标的同名 → 配置里的月度/日到期类 →
  * 到期日最多的一条 排序。同名优先是关键:20260917 两条链都有,同名的 'SPX' 才是
  * 用户要的 AM 结算月度,挑 'SPXW' 会把结算方式悄悄换掉。
+ *
+ * `prefer`:调用方点名要哪一类。只有它自己知道要的是哪种结算时才给——日内剧本要的是「今天到期」的那条,
+ * 也就是日到期类;月度合约记的那个日期(周四)两条链都列着,不点名就会按上面的同名优先挑到明早才结算的月度。
+ * 点名的那一类不列这个到期日就当没点。
  */
 export function pickTradingClass(
   symbol: string,
   cfg: { daily_trading_class: string; monthly_trading_class: string } | null,
   byClass: Record<string, { expiries?: string[]; strikes?: number[] }>,
   expiry: string,
+  prefer = "",
 ): string {
   const names = Object.keys(byClass);
   if (!names.length) return "";
   const onExpiry = names.filter((n) => (byClass[n]!.expiries ?? []).includes(expiry));
+  if (prefer && onExpiry.includes(prefer)) return prefer;
   const pool = onExpiry.length ? onExpiry : names;
   const rank = (name: string): number => {
     if (name === symbol.toUpperCase()) return 0;
@@ -108,6 +114,48 @@ export function pickTradingClass(
     const n = (byClass[b]!.expiries ?? []).length - (byClass[a]!.expiries ?? []).length;
     return n !== 0 ? n : a.localeCompare(b);
   })[0]!;
+}
+
+/** 整数档的阶梯:每个十进位里的 1、2.5、5(…5、10、25、50、100、250…),从大到小 */
+const ROUND_STEPS: readonly number[] = [5, 4, 3, 2, 1, 0, -1, -2].flatMap((e) => [5, 2.5, 1].map((m) => m * 10 ** e));
+
+/** 一个行权价有多"整":它能被阶梯里多大的一档整除(6725 → 25,6750 → 250,6800 → 100,6705 → 5) */
+export function strikeRoundness(strike: number): number {
+  for (const step of ROUND_STEPS) {
+    const q = strike / step;
+    if (Math.abs(q - Math.round(q)) < 1e-6) return step;
+  }
+  return ROUND_STEPS[ROUND_STEPS.length - 1] ?? 0.01;
+}
+
+/**
+ * 一条期权链订哪些行权价(纯函数)。行情线路是有配额的(每个用户约 100 条,持仓盯盘要占它自己的),
+ * 所以档数有上限:最多 2 × width + 1 档,每档看涨看跌各一条。
+ *
+ * * 不给 span:离现价最近的那一档上下各 width 档。
+ * * 给了 span(调用方要看到现价上下各多少点):那个窗口已经盖住 ±span 就原样用它;盖不住就只在 ±span 里挑,
+ *   档数不超过上限——放得下全取,放不下就**近处每档都留、越远只留越整的档**:按「离现价的距离 ÷ 这一档有多整」
+ *   从小到大取满(离现价最近的那一档无条件留)。墙与大的未平仓量本来就堆在整数档上;这条规则里没有调出来的数,
+ *   档数上限是唯一的约束。最远取到 ±span 之内最整的那几档,不保证正好取到 ±span 的边上。
+ */
+export function chainStrikes(grid: readonly number[], spot: number, width: number, span: number | null = null): number[] {
+  const sorted = [...new Set(grid)].filter((k) => Number.isFinite(k) && k > 0).sort((a, b) => a - b);
+  if (!sorted.length) return [];
+  const dist = (k: number): number => Math.abs(k - spot);
+  let nearest = 0;
+  for (let i = 1; i < sorted.length; i++) {
+    if (dist(sorted[i] ?? Infinity) < dist(sorted[nearest] ?? Infinity)) nearest = i;
+  }
+  const plain = sorted.slice(Math.max(0, nearest - width), nearest + width + 1);
+  if (span === null || !(span > 0)) return plain;
+  const wanted = sorted.filter((k) => dist(k) <= span);
+  const covered = (k: number | undefined): boolean => k === undefined || (k >= (plain[0] ?? Infinity) && k <= (plain[plain.length - 1] ?? -Infinity));
+  if (covered(wanted[0]) && covered(wanted[wanted.length - 1])) return plain;
+  const budget = 2 * width + 1;
+  if (wanted.length <= budget) return wanted;
+  const atm = sorted[nearest] ?? spot;
+  const reach = (k: number): number => (k === atm ? -1 : dist(k) / strikeRoundness(k));
+  return [...wanted].sort((a, b) => reach(a) - reach(b) || dist(a) - dist(b) || a - b).slice(0, budget).sort((a, b) => a - b);
 }
 
 export function optionContract(

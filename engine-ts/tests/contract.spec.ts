@@ -305,8 +305,9 @@ describe("契约:结构错由 schema 报,领域错由 handler 报", () => {
     expect(out["result"]["protections"]).toEqual({
       stoploss_guard: { enabled: true, lookback_minutes: 60, trigger_count: 3, pause_minutes: 30 },
       max_drawdown: { enabled: false, lookback_minutes: 120, max_drawdown_usd: 500, pause_minutes: 60 },
-      cooldown: { enabled: true, minutes: 10 },
-      daily_loss: { enabled: true, max_loss_usd: 800 },
+      // scope / basis 是后加的两个键,没给时是默认值(按标的冷却、按已实现盈亏算):行为和加之前一样
+      cooldown: { enabled: true, minutes: 10, scope: "symbol" },
+      daily_loss: { enabled: true, max_loss_usd: 800, basis: "realized" },
     });
     // 引擎这头立刻生效(不是只改了文件),文件里也是这份
     expect(fresh.settings.policies.auto_execute).toBe(true);

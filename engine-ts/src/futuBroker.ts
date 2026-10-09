@@ -986,7 +986,7 @@ export class FutuRouter {
     const startIso = (days: number): string =>
       new Date((todayOrd - days) * 86_400_000).toISOString().slice(0, 10);
     let raw = await this.history(code, ktype, startIso(span), null, !rth);
-    if (raw.length < MIN_BARS) {
+    if (raw.length <= MIN_BARS) { // 分析要 MIN_BARS 根已收盘的,最后一根常常没走完:正好 MIN_BARS 根也不够
       raw = (await this.history(code, ktype, startIso(span * 2), null, !rth)) ?? raw;
     }
 

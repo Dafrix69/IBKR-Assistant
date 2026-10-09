@@ -204,7 +204,7 @@ async function main() {
       `export const FLY_IV_MODEL: FlyIvModel = ${JSON.stringify(model, null, 2)};\n`;
     fs.writeFileSync(target, body);
     console.log(`\n已写入 ${target}。接着跑:npm run build && npx vitest run fly-`);
-    console.log("止盈策略用的也是这份日内分布(flyexit.VARIANCE_WEIGHTS):golden-flyexit 会红,核对过再 npm run golden:update -- golden-flyexit");
+    console.log("止盈策略用的也是这份日内分布(flyexit.VARIANCE_WEIGHTS):参数层的基线(golden-params)与 golden-flyexit 会红,核对过再 npm run golden:update -- golden-params golden-flyexit");
   } else {
     console.log("\n没有写任何文件(要写进 src/flyIvModel.ts 加 --write)。");
   }

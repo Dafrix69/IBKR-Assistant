@@ -4,7 +4,7 @@
  * 且要同时满足:校验通过、熔断未触发、auto_execute=true、账户允许。
  */
 import type { AccountConfig, EtNow, Settings } from "./config.js";
-import { hoursStatus, nowEt } from "./config.js";
+import { nowEt } from "./config.js";
 import type { PositionRow } from "./contract/positions.js";
 import type {
   InstructionLlm, InstructionOrder, InstructionRejection, OrderTicket,
@@ -19,6 +19,7 @@ import {
   BrokerError, PendingTrigger, PlacementResult, autoMidLimit, comboMidPrice, shouldFire,
   strikeWidth,
 } from "./broker.js";
+import { autoMidShareLimit } from "./autoMid.js";
 import { KillSwitch } from "./killswitch.js";
 import { LLMError, LLMResponse } from "./providers.js";
 import { extractSymbols } from "./market.js";
@@ -30,21 +31,26 @@ import { Notifier } from "./notify.js";
 import type { PromptBundle } from "./prompts.js";
 import { fingerprint, loadPromptBundle, renderUser } from "./prompts.js";
 import {
-  NO_PROTECTION, evaluateProtections, needsPnlEvents, protectionBlock, protectionsEnabled, protectionsSince,
+  NO_PROTECTION, needsPnlEvents, protectionBlock, protectionsEnabled, protectionsSince,
 } from "./protections.js";
 import type { ProtectionState } from "./protections.js";
 import { TradeStore, redactAccount } from "./store.js";
 import { localIsoSeconds, nowIsoSecondsEt } from "./engine/clock.js";
 import { HostedOrders } from "./engine/hosted.js";
 import { spotStopFor } from "./engine/spotStop.js";
+import { TrackExits } from "./engine/exits.js";
+import { AccountGuard } from "./engine/accountGuard.js";
+import { SessionEmCache } from "./engine/sessionEm.js";
+import { autoOutsideRth, marketStatusFor, orderMarketStatus, prewarmContractHours } from "./engine/sessionHours.js";
+import type { HoursRouter } from "./engine/sessionHours.js";
 import { tryLocalShorthand } from "./engine/localShorthand.js";
-import { reducesPositions } from "./engine/closing.js";
+import { orderLegId, reducesPositions } from "./engine/closing.js";
 import { IbCallbacks } from "./engine/callbacks.js";
 import type { SentOrder } from "./engine/callbacks.js";
 import { Reconciler } from "./engine/reconcile.js";
 import * as tk from "./tracker.js";
 import type { ApprovedOrder, RejectedOrder } from "./validator.js";
-import { EXTENDED_STATUSES, Validator, primaryCode, rejectionMessage } from "./validator.js";
+import { Validator, primaryCode, rejectionMessage } from "./validator.js";
 import { finiteOrNull, fmtF, pyG, pyRound } from "./py.js";
 import * as path from "node:path";
 import { performance } from "node:perf_hooks";
@@ -70,7 +76,7 @@ export interface ParserLike {
 }
 
 /** 引擎依赖的 router 面(BrokerRouter / FutuRouter 都符合;测试注入假实现)。 */
-export interface RouterLike {
+export interface RouterLike extends HoursRouter {
   BROKER?: string;
   SUPPORTS_NATIVE_CONDITIONS?: boolean;
   sessionHook?: unknown;
@@ -197,6 +203,12 @@ export class TradingEngine {
   /** 券商托管的止盈/止损单(整块在 engine/hosted.ts);它自己管 hosted / hostedIndex 那几样状态。
    *  不加 private:engine/callbacks.ts 落库前要先让它过一手(CallbackHost)。 */
   readonly hostedOrders = new HostedOrders(this);
+  /** 推峰值用的价、标的止损的确认计时、分批止盈的档位(engine/exits.ts)。托管对账也要问它峰值该拿哪个价推 */
+  readonly exits = new TrackExits(this);
+  /** 账户级的风控输入:在手敞口、券商报的当日盈亏与净值(engine/accountGuard.ts) */
+  private readonly accounts = new AccountGuard(this);
+  /** 今天的 EM(日内剧本底账里的那一条);clock 档与试算用。不加 private:tracker 的 handler 试算时也读 */
+  readonly sessionEm = new SessionEmCache(() => this.settings);
   /** 执行对账(整块在 engine/reconcile.ts) */
   private readonly reconciler = new Reconciler(this);
   /** 券商回报 → 落库(整块在 engine/callbacks.ts) */
@@ -379,14 +391,15 @@ export class TradingEngine {
     // 先把期权/组合的合约时段问一遍(按天缓存,一天只有一次网络往返)。
     // 校验链路是同步的,读不到缓存就只能退回正股日历——而首次下单恰恰是缓存空的时候,
     // 那正是"隔夜下单被误告休市"发生的场景。所以在这里预热,而不是指望缓存碰巧有。
-    await this.prewarmContractHours(orders);
+    await prewarmContractHours(this, orders);
     const priced = this.autoOutsideRth(orders, at);
     const validator = new Validator(
       this.settings,
       at,
       snap,
-      this.store.recentOrders(this.settings.limits.duplicate_window_minutes, at.epochMs),
-      (o) => this.orderMarketStatus(o, at),
+      this.store.risk.recentOrderDetails(this.settings.limits.duplicate_window_minutes, at.epochMs),
+      (o) => orderMarketStatus(this, o, at),
+      await this.accounts.validatorExtras(),
     );
     const outcome = validator.validateAll(priced, Math.max(priced.length, 1));
     parsed.orders.slice(cap).forEach((order, i) => outcome.rejected.push({
@@ -460,6 +473,7 @@ export class TradingEngine {
       // 不落终态——保护期过了原样再发一次就行,不像熔断那样判死。
       let guard = protectionBlock(
         this.protectionState(), String(approved.order.contract.symbol ?? ""), Date.now(),
+        { account: approved.account.alias, leg: orderLegId(approved.order) },
       );
       // 只挡新单、永不挡平仓:每条腿都在减已有持仓的单照发(engine/closing.ts)。读不到持仓就认不准,照旧挡
       if (guard !== null && this.router !== null) {
@@ -539,7 +553,7 @@ export class TradingEngine {
         ? "(纸面账户:无实时期权订阅时按延迟盘口定价,成交价参考性有限)"
         : "";
       this.store.appendEvent(recordId, "warning", {
-        message: `AUTO_MID 定价:盘口中间价 ± 滑点上限 → 限价 ${fmtF(limitOverride, 4)}${note}`,
+        message: `AUTO_MID 定价:盘口中间价 ± ${this.settings.limits.auto_mid_spread_share > 0 ? "价差的一份" : "滑点上限"} → 限价 ${fmtF(limitOverride, 4)}${note}`,
       });
     }
 
@@ -575,8 +589,9 @@ export class TradingEngine {
       if (pending.fired) continue;
       const blocked = protectionBlock(
         guard, String(pending.approved.order.contract.symbol ?? ""), Date.now(),
+        { account: pending.approved.account.alias, leg: orderLegId(pending.approved.order) },
       );
-      if (blocked !== null) continue;
+      if (blocked !== null && !(await this.accounts.isReduceOnly(pending.approved))) continue; // 只挡新单:排着的平仓单照发
       const price = prices[pending.trigger.symbol];
       if (price === undefined || price === null || !shouldFire(pending, Number(price))) continue;
       pending.fired = true; // 先落闩
@@ -633,6 +648,9 @@ export class TradingEngine {
   private async priceAutoMid(approved: ApprovedOrder): Promise<number> {
     const contract = approved.order.contract;
     const quotes = await this.router!.legQuotes(contract, approved.account as AccountConfig);
+    // 让价两种算法二选一:盘口价差的一份(auto_mid_spread_share > 0,autoMid.ts),或固定金额(max_spread_slippage)
+    const share = this.settings.limits.auto_mid_spread_share;
+    if (share > 0) return autoMidShareLimit(quotes, approved.order.order.action, share, strikeWidth(contract));
     const mid = comboMidPrice(quotes);
     return autoMidLimit(
       mid, approved.order.order.action, this.settings.limits.max_spread_slippage,
@@ -814,7 +832,7 @@ export class TradingEngine {
       }
     }
     // 各腿报价、IBKR 模型 IV、到期(ibkr 档用 IV,缺了退到按报价反解;见 ivPricing.ts),与试算同一个函数拼
-    const legs = legInputsOf(raw, positions, tk.legPriceKey);
+    const legs = legInputsOf(raw, positions, tk.legPriceKey, (d) => this.settings.early_close_days.includes(d));
 
     const info = structure.kind === "stock" ? null : this.router!.spotInfo?.(String(raw["symbol"])) ?? null;
     const spotNote = String(info?.["note"] ?? "");
@@ -824,7 +842,7 @@ export class TradingEngine {
     const st = tk.spotTarget({
       structure, position, spotTarget: target, spot,
       markPrice: (raw["market_price"] ?? null) as number | null,
-      ...legs, minute: at.minutes, nowMs: at.epochMs, spotNote,
+      ...legs, minute: at.minutes, nowMs: at.epochMs, spotNote, em: this.sessionEm.today(at),
     });
     const tid = String(track["id"]);
     const last = this.flyMark.get(tid) ?? null;
@@ -866,6 +884,7 @@ export class TradingEngine {
     }
 
     if (!this.closeChaseAdopted) await this.adoptCloseChase(tracks);
+    this.exits.nextRound();
     const breaker = this.killswitch.state();
     const covered = this.router.coveredAccounts?.() ?? null;
     for (const track of tracks) {
@@ -912,12 +931,19 @@ export class TradingEngine {
       const [targets, spotTargetRow] = await this.applySpotTarget(
         track, raw, position, tk.makeTargets(track["targets"] ?? {}), positions, at,
       );
-      // 标的止损价只看标的现价(engine/spotStop.ts)。标的越过了止损价、或真到了目标价,都以标的本身为准并进结论
-      const spotStopRow = await spotStopFor(this.router, String(raw["symbol"]), targets, spotTargetRow);
-      const result = tk.withSpotTriggers(
-        tk.evaluate(position, targets, raw["market_price"], track["peak"] ?? null, at.minutes),
-        String(track["symbol"]), targets, spotTargetRow, spotStopRow,
+      // 标的止损价只看标的现价(engine/spotStop.ts);设了确认秒数的,越线之后待够了才算(engine/exits.ts)
+      const spotStopRow = this.exits.confirmSpot(
+        String(track["id"]), targets, await spotStopFor(this.router, String(raw["symbol"]), targets, spotTargetRow), at.epochMs,
       );
+      const auto = tk.makeAutoClose(track["auto_close"] ?? {});
+      const derivative = raw["sec_type"] === "BAG" || raw["sec_type"] === "OPT" || raw["sec_type"] === "FOP";
+      // 止损类按可成交价判的(stop_basis = natural):这一轮的立刻成交价现取;拿不到(null)这一轮止损类不判
+      const natural = derivative && auto.stop_basis === "natural"
+        ? await this.naturalCloseFor(raw, position, positions) : undefined;
+      // 价格触发 → 标的触发 → 分批止盈 → 到点平仓(engine/exits.ts 的 judge)
+      const result = this.exits.judge({
+        track, position, targets, auto, price: raw["market_price"], natural, at, spotTarget: spotTargetRow, spotStop: spotStopRow,
+      });
 
       // 峰值只在变了的时候写
       if (result.peak !== null && result.peak !== track["peak"]) {
@@ -930,7 +956,6 @@ export class TradingEngine {
       if (spotStopRow !== null) (row as Rec)["spot_stop"] = spotStopRow;
       out["rows"].push(row);
 
-      const auto = tk.makeAutoClose(track["auto_close"] ?? {});
       // 没开托管、平仓单已经发出去的:每轮按最新买卖价追那张单,直到成交(或持仓没了)。
       // 追踪本身已经落闩、停用,不看 enabled——那张单是它发的,追完才算完
       if (this.closeChase.has(String(track["id"]))) {
@@ -941,6 +966,8 @@ export class TradingEngine {
         continue;
       }
 
+      // 分批止盈的一档成交了:划掉这一档、解开闩,下一轮起接着盯剩下的仓
+      if (this.exits.rearmTier(track, position)) continue;
       if (!track["enabled"] || result.state === tk.STATE_HOLDING) continue;
 
       if (auto.host_at_broker && this.router.SUPPORTS_HOSTED_CLOSE) {
@@ -970,11 +997,9 @@ export class TradingEngine {
       });
       if (blockers.length) {
         // 到价了但发不出去,必须当场说。只提醒一次,不刷屏。
-        if (!track["fired_state"]) {
-          this.store.updateTrack(track["id"], { fired_state: "blocked" });
-          this.notifier.warning(
-            `${track["symbol"]} ${result.reason},但没有平仓:${blockers.join("、")}`,
-          );
+        if (!track["fired_state"]) this.store.updateTrack(track["id"], { fired_state: "blocked" });
+        if (this.exits.warnBlocked(track, result.state)) {
+          this.notifier.warning(`${track["symbol"]} ${result.reason},但没有平仓:${blockers.join("、")}`);
         }
         (row as Rec)["blocked"] = blockers;
         out["blocked"].push({
@@ -986,133 +1011,26 @@ export class TradingEngine {
       // 组合与期权的平仓单挂在各腿买卖价算出的立刻成交价上;拿不到才退回"现价让一点滑点"。
       // 夜盘蝶的买卖价差能有一块多,按中间价让 0.3% 挂出去的平仓单常常就那么挂着
       let closeResult: Rec = result;
-      const secType = String(raw["sec_type"] ?? "");
-      if (secType === "BAG" || secType === "OPT" || secType === "FOP") {
-        const natural = await this.naturalCloseFor(raw, position, positions);
-        if (natural !== null) closeResult = { ...result, price: natural };
+      if (derivative) {
+        const quote = natural ?? await this.naturalCloseFor(raw, position, positions);
+        if (quote !== null) closeResult = { ...result, price: quote };
       }
-      const fired = await this.closePosition(track, position, auto, closeResult, marketStatus);
+      // 分批止盈:这一档先记成在等成交,平的比例换成这一档的(不是分批的触发,auto 原样)
+      const fired = await this.closePosition(track, position, this.exits.tierAuto(track, targets, result, auto, position), closeResult, marketStatus);
       if (fired) out["fired"].push(fired);
+      else this.exits.tierNotSent(track);
     }
     return out;
   }
 
-  /** 合约此刻在盘外时段能交易时,自动给订单打上 outsideRth。
-   *
-   * 不打这个标志,IBKR 只会把单子挂着、等常规时段才送交易所(TWS 原话:"您的委托单在
-   * 08:30:00 美国/中部前不会被下达交易所")。而 SPX 期权 20:15–次日 09:25 本来就能成交——
-   * 在那个时段按下发送的人要的是现在就成交,不是等明早开盘。
-   *
-   * 两条不碰:市价单不自动打(盘外只收限价单,打上反而从"挂到开盘"变成"当场被拒");
-   * 用户已经显式写了 outsideRth 的不动——显式永远压过自动。 */
+  // ---- 交易时段:合约自己的时段、盘外标志、时段预热(整块在 engine/sessionHours.ts)----
   private autoOutsideRth(orders: ParsedOrder[], at: EtNow): ParsedOrder[] {
-    if (!this.settings.policies.auto_outside_rth) return [...orders];
-    return orders.map((order) => {
-      const spec: any = (order as any).order;
-      const status = this.orderMarketStatus(order, at) ?? this.settings.marketStatus(at);
-      if (!EXTENDED_STATUSES.includes(status) || spec.outsideRth || spec.orderType === "MKT") {
-        return order;
-      }
-      return {
-        ...order,
-        order: { ...spec, outsideRth: true },
-        warnings: [
-          ...((order as any).warnings ?? []),
-          `当前为${status},已自动打上盘外标志(outsideRth=true):不打的话这张单会挂着,` +
-          "等常规时段才送交易所。不想在盘外成交就把 policies.auto_outside_rth 关掉。",
-        ],
-      } as ParsedOrder;
-    });
-  }
-
-  /** 把这批订单里期权/组合的合约时段问一遍,填进 router 的按日缓存。
-   * 失败一律忽略:查不到时段只是退回正股日历,不该让整条下单链路失败。 */
-  private async prewarmContractHours(orders: ParsedOrder[]): Promise<void> {
-    const getter = (this.router as any)?.contractHours;
-    if (typeof getter !== "function") return;
-    const seen = new Set<string>();
-    for (const order of orders) {
-      const contract: any = (order as any).contract;
-      const secType = String(contract?.secType ?? "");
-      if (secType !== "OPT" && secType !== "FOP" && secType !== "BAG") continue;
-      const legs = contract?.legs ?? [];
-      const leg = secType === "BAG" ? legs[0] : contract;
-      if (!leg?.lastTradeDateOrContractMonth) continue;
-      const key = `${contract.symbol}|${leg.lastTradeDateOrContractMonth}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      const account = this.settings.accountByAlias(String(order.account ?? "")) ??
-        this.settings.defaultAccount();
-      if (account === null) continue;
-      const row = {
-        account: account.alias, symbol: contract.symbol, sec_type: secType,
-        contract: secType === "BAG"
-          ? { secType: "BAG", symbol: contract.symbol, legs: [{
-              lastTradeDateOrContractMonth: leg.lastTradeDateOrContractMonth,
-              strike: leg.strike, right: leg.right, ratio: 1.0 }] }
-          : { secType, symbol: contract.symbol,
-              lastTradeDateOrContractMonth: contract.lastTradeDateOrContractMonth,
-              strike: contract.strike, right: contract.right },
-      };
-      try {
-        await getter.call(this.router, row, account);
-      } catch {
-        /* 查不到就退回正股表 */
-      }
-    }
-  }
-
-  /** 一张**待下单**的期权/组合此刻面对的时段(拿不到回 null,让校验退回正股表)。
-   *
-   * 和持仓那条路(marketStatusFor)同一个来源:合约自己的 tradingHours。下单与平仓
-   * 用同一张时段表,否则会出现"能平不能开"或反过来的荒唐结果。
-   *
-   * 注意这是**同步**的:校验链路不是 async,所以只读已缓存的时段(轮询那条路每天
-   * 会填上),没缓存就回 null 退回正股表——宁可保守,不为了一张单去阻塞校验。 */
-  private orderMarketStatus(order: ParsedOrder, at: EtNow): string | null {
-    const contract: any = (order as any).contract;
-    const secType = String(contract?.secType ?? "");
-    if (secType !== "OPT" && secType !== "FOP" && secType !== "BAG") return null;
-    const cached = (this.router as any)?.cachedContractHours;
-    if (typeof cached !== "function") return null;
-    let expiry: any, hours: [string, string, string] | null = null;
-    if (secType === "BAG") {
-      const legs = contract?.legs ?? [];
-      if (!legs.length) return null;
-      expiry = legs[0].lastTradeDateOrContractMonth;
-    } else {
-      expiry = contract?.lastTradeDateOrContractMonth;
-    }
-    try {
-      hours = cached.call(this.router, String(contract.symbol), String(expiry));
-    } catch {
-      return null;
-    }
-    if (!hours) return null;
-    const status = hoursStatus(hours[0], hours[2], at.epochMs, hours[1]);
-    // 与正股表一致时回 null:让 validator 用它自己那个,少一次无谓的分歧
-    return !status || status === this.settings.marketStatus(at) ? null : status;
+    return autoOutsideRth(this, orders, at);
   }
 
   /** 这条持仓此刻能不能交易。期权/组合优先用合约的真实时段,拿不到就退回正股表。 */
   async marketStatusFor(raw: Rec, at: EtNow): Promise<string> {
-    const secType = String(raw["sec_type"] ?? "");
-    if (secType !== "OPT" && secType !== "FOP" && secType !== "BAG") {
-      return this.settings.marketStatus(at);
-    }
-    const getter = (this.router as any)?.contractHours;
-    if (typeof getter !== "function") return this.settings.marketStatus(at);
-    const account = this.settings.accountByAlias(String(raw["account"] ?? ""));
-    if (account === null) return this.settings.marketStatus(at);
-    let hours: [string, string, string] | null = null;
-    try {
-      hours = await getter.call(this.router, raw, account);
-    } catch {
-      hours = null;                      // 查时段失败不该炸掉轮询
-    }
-    if (!hours) return this.settings.marketStatus(at);
-    const [trading, liquid, tzId] = hours;
-    return hoursStatus(trading, tzId, at.epochMs, liquid) || this.settings.marketStatus(at);
+    return marketStatusFor(this, raw, at);
   }
 
   /**
@@ -1235,7 +1153,7 @@ export class TradingEngine {
     // 平仓留一条只增的痕:保护规则按它数"最近几次止损"、算同一只标的的冷却期(见 protections.ts)。
     // 追踪表的 fired_state 顶不了这个用——它就地更新,平第二次就把第一次盖掉了。mark 是触发那一刻的持仓现价,绩效体检拿它对成交均价算执行损耗(execQuality.ts)。
     this.store.audit("engine", "auto_close", {
-      track: track["id"], symbol: track["symbol"], state: result["state"], record: recordId, mark: position.market_price,
+      track: track["id"], symbol: track["symbol"], leg: track["leg"] ?? "", state: result["state"], record: recordId, mark: position.market_price,
     });
     this.killswitch.recordSuccess("broker");
     // 期权 / 组合的限价平仓单发出去只是开始:挂在自然价上未必立刻成交,之后每轮按最新买卖价
@@ -1276,7 +1194,7 @@ export class TradingEngine {
   /** 同上 */
   async chaseQuote(
     raw: Rec, position: tk.Position, positions: Record<string, Rec>, auto: tk.AutoClose,
-    prev: number | null, rounds: number,
+    prev: number | null, rounds: number, reason: string | null = null,
   ): Promise<{ natural: number; limit: number; floor: number } | null> {
     // 正股没有腿的买卖价可合成:"立刻成交价"取现价朝成交方向让 slippage_pct(和市价平仓转限价同一口径)。
     // 以前正股这里一律回 null,托管的正股一旦要追价平仓(手动平仓、止损单不在券商侧)就每轮"拿不到报价"、永远平不掉
@@ -1286,8 +1204,9 @@ export class TradingEngine {
     if (natural === null) return null;
     return {
       natural,
-      limit: tk.chaseLimit(position, natural, prev, rounds, auto),
-      floor: tk.chaseFloor(position, natural, auto),
+      // 触发原因决定追价节奏:止损类可以另填一套(trackerExits.chaseProfile)
+      limit: tk.chaseLimit(position, natural, prev, rounds, auto, reason),
+      floor: tk.chaseFloor(position, natural, auto, reason),
     };
   }
 
@@ -1309,7 +1228,7 @@ export class TradingEngine {
     const tid = String(track["id"]);
     const entry = this.closeChase.get(tid);
     if (entry === undefined) return null;
-    const q = await this.chaseQuote(raw, position, positions, auto, entry["limit"] ?? null, Number(entry["rounds"] ?? 0));
+    const q = await this.chaseQuote(raw, position, positions, auto, entry["limit"] ?? null, Number(entry["rounds"] ?? 0), tk.sweepReason(track));
     if (q === null) return null;
     entry["natural"] = q.natural;
     entry["floor"] = q.floor;
@@ -1428,7 +1347,7 @@ export class TradingEngine {
     if (!auto.host_at_broker || !this.router?.SUPPORTS_HOSTED_CLOSE) return false;
     if (tk.sweepReason(track) === null) {
       this.store.updateTrack(tid, { fired_at: nowIsoSecondsEt(), fired_state: `${tk.SWEEP_PREFIX}${tk.STATE_MANUAL}` });
-      this.store.audit("engine", "hosted_sweep", { track: tid, symbol: track["symbol"], state: tk.STATE_MANUAL, reason });
+      this.store.audit("engine", "hosted_sweep", { track: tid, symbol: track["symbol"], leg: track["leg"] ?? "", state: tk.STATE_MANUAL, reason });
       this.notifier.notify("追价平仓", `${track["symbol"]}:${reason}。在托管单那一组里改到立刻成交的价,没成交就每秒再追`);
     }
     // 人点了平仓:上一次被拒留下的退避不再等
@@ -1486,11 +1405,10 @@ export class TradingEngine {
     if (!protectionsEnabled(cfg)) return NO_PROTECTION;
     const sinceMs = protectionsSince(cfg, nowMs);
     try {
-      return evaluateProtections(
-        cfg,
-        this.store.recentCloses(sinceMs, nowMs),
-        needsPnlEvents(cfg) ? this.store.realizedPnlEvents(sinceMs, nowMs) : [],
-        nowMs,
+      // 日内亏损上限按账户当日盈亏算时,券商报的数由 accountGuard 现取;今天到过线的账户停到美东零点
+      return this.accounts.protections(
+        cfg, this.store.recentCloses(sinceMs, nowMs),
+        needsPnlEvents(cfg) ? this.store.realizedPnlEvents(sinceMs, nowMs) : [], nowMs,
       );
     } catch (exc) {
       // 算不出来就放行:保护规则误拦是妨碍交易,而它本身避免不了任何已经发生的亏损

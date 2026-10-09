@@ -317,7 +317,10 @@ describe.runIf(ready)("主进程:钱路径上的三道(条款 → 确认凭据 �
 
   it("Discord 跟单:打开要确认,框上的字由主进程对着要存的那一份写;存的和确认的不是同一份不放行;关与收紧不用确认", async () => {
     // 不填频道:引擎不会去碰凭证库、不会去连 Discord(测试不许连外面),而"从关到开"这道闸照样要过
-    const follow = { enabled: true, channel_id: "", author_ids: ["220000000000000002"], accounts: [], max_age_seconds: 30, max_orders_per_day: 3, max_risk_usd: 300, local_inbox: false, local_channel: "" };
+    const follow = {
+      enabled: true, channel_id: "", author_ids: ["220000000000000002"], accounts: [], max_age_seconds: 30, max_orders_per_day: 3, max_risk_usd: 300,
+      local_inbox: false, local_channel: "", track_fly: false, track_exit_at: "",
+    };
     const patch = { patch: { follow }, __confirmed: true };
     expect(await failure(rpc("settings.patch", patch))).toContain("确认框里点确认(打开 Discord 自动跟单)");
     boxes.length = 0;
@@ -327,6 +330,7 @@ describe.runIf(ready)("主进程:钱路径上的三道(条款 → 确认凭据 �
     expect(boxes[0]!["detail"]).toContain("信任的发送者 ID:220000000000000002");
     expect(boxes[0]!["detail"]).toContain("每单最坏亏损上限:$300");
     expect(boxes[0]!["detail"]).toContain("—— 默认账户");
+    expect(boxes[0]!["detail"]).toContain("成交后自动建追踪:关着");
     expect(JSON.stringify(boxes[0])).not.toContain("界面给的");
     // 确认的是信任一个人,存的时候多塞了一个:不放行,凭据还在
     const sneaky = { patch: { follow: { ...follow, author_ids: [...follow.author_ids, "330000000000000003"] } }, __confirmed: true };
@@ -341,6 +345,29 @@ describe.runIf(ready)("主进程:钱路径上的三道(条款 → 确认凭据 �
     expect((await rpc("settings.patch", { patch: { follow: tighter }, __confirmed: true })).follow.max_risk_usd).toBe(100);
     // 调大:要
     expect(await failure(rpc("settings.patch", { patch: { follow: { max_risk_usd: 5000 } }, __confirmed: true }))).toContain("打开 Discord 自动跟单");
+    // 成交后自动建追踪(软件会替跟进来的蝴蝶发平仓单):开着跟单时打开它,要的还是这同一次确认;框上写明它会做什么、到点平仓的钟点
+    const tracking = { ...tighter, track_fly: true, track_exit_at: "15:45" };
+    expect(await failure(rpc("settings.patch", { patch: { follow: { track_fly: true } }, __confirmed: true }))).toContain("打开 Discord 自动跟单");
+    boxes.length = 0;
+    answers.push(1);
+    expect(await invoke("confirm", { purpose: "gate.follow", binding: tracking, title: "界面给的", message: "界面给的" })).toBe(true);
+    expect(boxes[0]!["detail"]).toContain("成交后自动建追踪:开着");
+    expect(boxes[0]!["detail"]).toContain("由软件直接发平仓单,不再问你");
+    expect(boxes[0]!["detail"]).toContain("到点平仓:美东 15:45");
+    expect(JSON.stringify(boxes[0])).not.toContain("界面给的");
+    // 确认的是 15:45,存的时候换成了别的钟点:不放行;原样存:放行
+    expect(await failure(rpc("settings.patch", { patch: { follow: { ...tracking, track_exit_at: "09:35" } }, __confirmed: true }))).toContain("打开 Discord 自动跟单");
+    expect((await rpc("settings.patch", { patch: { follow: tracking }, __confirmed: true })).follow).toMatchObject({ track_fly: true, track_exit_at: "15:45" });
+    expect((await rpc("follow.status")).tracks_pending).toBe(0);
+    // 换一个钟点:要;清空钟点、关掉自动建追踪:不弹框、不用凭据(停掉自动化不比打开它难)
+    expect(await failure(rpc("settings.patch", { patch: { follow: { track_exit_at: "15:30" } }, __confirmed: true }))).toContain("打开 Discord 自动跟单");
+    boxes.length = 0;
+    expect(await invoke("confirm", { purpose: "gate.follow", binding: { ...tracking, track_exit_at: "" }, title: "", message: "" })).toBe(true);
+    expect(boxes).toHaveLength(0);
+    expect((await rpc("settings.patch", { patch: { follow: { track_exit_at: "" } }, __confirmed: true })).follow.track_exit_at).toBe("");
+    expect((await rpc("settings.patch", { patch: { follow: { track_fly: false } }, __confirmed: true })).follow.track_fly).toBe(false);
+    // 钟点写得不对:引擎的配置校验当场拒,配置不动
+    expect(await failure(rpc("settings.patch", { patch: { follow: { track_exit_at: "3点45" } }, __confirmed: true }))).toContain("follow.track_exit_at");
     // 关:不用确认,当场生效;之后没配频道,连接是 off
     expect((await rpc("settings.patch", { patch: { follow: { enabled: false } }, __confirmed: true })).follow.enabled).toBe(false);
     expect((await rpc("follow.status")).link.state).toBe("off");
@@ -363,11 +390,36 @@ describe.runIf(ready)("主进程:钱路径上的三道(条款 → 确认凭据 �
     // 没有放宽任何一项时去确认:不弹框,直接回 true
     expect(await invoke("confirm", { purpose: "limits.loosen", binding: { limits: { max_order_notional: 2000 } }, title: "", message: "" })).toBe(true);
     expect(boxes).toHaveLength(0);
+    // 按账户另设:给某个账户设一条比全局紧的覆盖不用确认;把它调松、或者整条清掉(回到更松的全局值)要确认,框上写的是那个账户
+    const alias = String((await rpc("settings.get")).accounts[0].alias);
+    const own = (value: unknown): Rec => ({ patch: { limits: { by_account: { [alias]: value } } }, __confirmed: true });
+    expect((await rpc("settings.patch", own({ max_order_notional: 1000 }))).limits.by_account[alias]).toEqual({ max_order_notional: 1000 });
+    expect(await failure(rpc("settings.patch", own({ max_order_notional: 2500 })))).toContain("确认框里点确认(放宽风控限额)");
+    boxes.length = 0;
+    answers.push(1);
+    expect(await invoke("confirm", { purpose: "limits.loosen", binding: { limits: own({ max_order_notional: 2500 }).patch.limits }, title: "", message: "" })).toBe(true);
+    expect(boxes[0]!["detail"]).toContain(`${alias}:单笔名义金额上限(USD):1,000 → 2,500`);
+    expect((await rpc("settings.patch", own({ max_order_notional: 2500 }))).limits.by_account[alias]).toEqual({ max_order_notional: 2500 });
+    // 整条清掉(null):全局是 3,000,比 2,500 松——同样要确认,凭据绑着这一次
+    expect(await failure(rpc("settings.patch", own(null)))).toContain("确认框里点确认(放宽风控限额)");
+    boxes.length = 0;
+    answers.push(1);
+    expect(await invoke("confirm", { purpose: "limits.loosen", binding: { limits: own(null).patch.limits }, title: "", message: "" })).toBe(true);
+    expect(boxes[0]!["detail"]).toContain(`${alias}:单笔名义金额上限(USD):2,500 → 3,000`);
+    expect((await rpc("settings.patch", own(null))).limits.by_account).toEqual({});
+    // 整段限额置空(引擎会全部恢复默认):过不了主进程——这份凭据要不到
+    expect(await failure(rpc("settings.patch", { patch: { limits: null }, __confirmed: true }))).toContain("确认框里点确认(放宽风控限额)");
+    boxes.length = 0;
+    expect(await invoke("confirm", { purpose: "limits.loosen", binding: { limits: null }, title: "", message: "" })).toBe(true);
+    expect(boxes).toHaveLength(0);
+    expect(await failure(rpc("settings.patch", { patch: { limits: null }, __confirmed: true }))).toContain("确认框里点确认(放宽风控限额)");
   });
 
   it("配置是原子写的,改之前那一份在 .bak 里", () => {
+    // 上一条用例最后一次写盘是"清掉那条按账户的覆盖":现在这一份里没有它了,.bak 里是清掉之前的那一份
     expect(JSON.parse(readFileSync(configPath, "utf-8")).limits.max_order_notional).toBe(3000);
-    expect(JSON.parse(readFileSync(`${configPath}.bak`, "utf-8")).limits.max_order_notional).toBe(50000);
+    expect(Object.values(JSON.parse(readFileSync(configPath, "utf-8")).limits.by_account ?? {}).filter((v) => v !== null)).toEqual([]);
+    expect(Object.values(JSON.parse(readFileSync(`${configPath}.bak`, "utf-8")).limits.by_account)).toEqual([{ max_order_notional: 2500 }]);
     expect(readdirSync(dir).filter((f) => f.includes(".tmp-"))).toEqual([]);
   });
 });

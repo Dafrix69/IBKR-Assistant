@@ -103,6 +103,7 @@ export function TradePage() {
   // 保护规则暂停不算发送条件:它只挡新单、不挡平仓,而一条指令是开是平要对着持仓认(引擎 engine/closing.ts)。
   // 这里灰掉「发送」,手敲的平仓指令就发不出去了——照发,由引擎判:新单停在「仅校验未发送」,平仓照发
   const guard = status?.protections?.paused ? status.protections : null;
+  const accountPauses = status?.protections?.accounts ?? [];
 
   function insertSnippet(snippet: string) {
     const box = areaRef.current?.resizableTextArea?.textArea;
@@ -205,6 +206,12 @@ export function TradePage() {
       {guard ? (
         <div className="live-gate">
           <span>{`保护规则暂停中:${guard.reason || '规则已触发'}。新开仓的单会被引擎拦下(停在「仅校验未发送」,到点后可再发);对着持仓认得出是在减仓的单照发。`}</span>
+        </div>
+      ) : null}
+      {/* 只停了某个账户的:发到别的账户的单照发,所以单列一行、不和上面那条混在一起 */}
+      {!guard && accountPauses.length ? (
+        <div className="live-gate">
+          <span>{`${accountPauses.map((a) => a.reason).join(';')}。发到这${accountPauses.length > 1 ? '几个' : '个'}账户的新开仓单会被拦下,别的账户与平仓不受影响。`}</span>
         </div>
       ) : null}
       {/* 速记片段是"可点的词",不是胶囊按钮:填充底、无边框,和 Mail 收件人 token 同一族 */}

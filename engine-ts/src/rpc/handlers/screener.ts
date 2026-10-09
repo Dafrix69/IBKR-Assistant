@@ -88,10 +88,12 @@ export class ScreenerHandlers extends HandlerBase {
     };
   }
 
-  /** 强势股筛选:趋势模板 + VCP + RS 评级 + 大盘方向(leaders.ts)。日线与 RS 强度同一条 10 分钟缓存,先扫过 RS 就不再拉。 */
+  /** 强势股筛选:趋势模板 + VCP + RS 评级 + 大盘方向(leaders.ts)。日线与 RS 强度同一条 10 分钟缓存,先扫过 RS 就不再拉。
+   *  只读行情;唯一的落库是把今天新进第二阶段的记进信号日志。 */
   async screenerLeaders(params: ScreenerLeadersParams): Promise<RpcResult<"screener.leaders">> {
     const { RS_BENCHMARKS } = await import("../../screener.js");
-    const { screenLeaders } = await import("../../leaders.js");
+    const { newStage2, screenLeaders } = await import("../../leaders.js");
+    const { etDayStart, signalFromLeader } = await import("../../signalOutcomes.js");
     const benchmark = String(params["benchmark"] ?? "SPY").trim().toUpperCase();
     if (!RS_BENCHMARKS.includes(benchmark)) {
       throw new RpcError(-32602, `基准只能是 ${RS_BENCHMARKS.join(" / ")}`);
@@ -114,10 +116,18 @@ export class ScreenerHandlers extends HandlerBase {
         scanned.push({ ...member, symbol: String(member["symbol"]), bars: [], error: errText(exc) });
       }
     }
+    const result = screenLeaders(scanned, bench, benchmark);
+    // 今天新进第二阶段的记一笔,之后按 1 / 5 / 20 天的走势打分(信号成绩单)。同一只在同一根日线上只记一次:
+    // 一天里扫几遍、周末或下周一盘前(最新一根还是周五)再扫,都不重复
+    const moment = nowEt();
+    const fresh = newStage2(scanned, bench, benchmark, result.rows);
+    if (fresh.rows.length && /^\d{4}-\d{2}-\d{2}$/.test(fresh.day)) {
+      this.engine.store.signals.logOnce(fresh.rows.map((row) => signalFromLeader(row, moment.epochMs)), etDayStart(fresh.day));
+    }
     return {
-      ...screenLeaders(scanned, bench, benchmark),
+      ...result,
       sector: label,
-      fetched_at: new Date(nowEt().epochMs).toISOString(),
+      fetched_at: new Date(moment.epochMs).toISOString(),
     };
   }
 

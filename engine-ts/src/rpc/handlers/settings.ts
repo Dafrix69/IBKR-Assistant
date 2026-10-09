@@ -139,7 +139,7 @@ export class SettingsHandlers extends HandlerBase {
     return {
       path: String(s.source_path),
       llm: { model: s.llm.model, effort: s.llm.effort, max_tokens: s.llm.max_tokens },
-      limits: { ...s.limits },
+      limits: { ...s.limits, by_account: Object.fromEntries(Object.entries(s.limits.by_account).map(([alias, own]) => [alias, { ...own }])) },
       policies: { ...s.policies },
       protections: {
         stoploss_guard: { ...s.protections.stoploss_guard },

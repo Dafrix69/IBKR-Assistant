@@ -73,11 +73,16 @@ IBKR 的 `ADJUSTED_LAST` 日线是否带量还没在真机上核对:盘中运行
 
 8 条过了几条 → VCP 状态(放量突破 > 临近枢轴 > 突破量不足 > 收缩中 > 不成形)→ RS 评级。拉不到日线的那一只带着错误沉底,不拖累别的。
 
+## 进信号成绩单
+
+表里的"8 条全过"是一个状态。成绩单要的是事件,所以每次扫描把**今天新进第二阶段**的记一笔(押涨),之后按 1 / 5 / 20 个交易日打分,
+判定与去重见 [signal-scorecard.md](signal-scorecard.md)。这是这张表唯一的落库;扫描本身照旧只读。
+
 ## 代码与测试
 
 `engine-ts/src/leaders.ts`(纯计算)、`rpc/handlers/screener.ts`;界面 `lib/LeadersSection.tsx`。
 测试 `leaders.spec.ts`:教科书 VCP 的三次收缩、枢轴、缩量与临近枢轴;放量与缩量越过枢轴;回撤不收缩与贴着新高两种不成形;高点更高时的并段;
 IBD 权重与池内百分位;第二阶段 8 条全过、一路下跌一条不过、日线不够时判断不了;派发日的算与不算、涨回 5% 作废;大盘三种状态;
-RPC 的逐只拉取、单只失败不拖累、基准 / 空池子 / 没连券商三种报错;最后一组只替换 `@stoqey/ib`(`tests/fakeTws.ts`),
+今天新进第二阶段的判定与落库;RPC 的逐只拉取、单只失败不拖累、基准 / 空池子 / 没连券商三种报错;最后一组只替换 `@stoqey/ib`(`tests/fakeTws.ts`),
 走真的会话层、`BrokerRouter`、`dailyHistory` 与 `screener.leaders`,四条量的规则都要算得出来、指数的量归零。
 富途那一侧在 `broker-futu.spec.ts`。

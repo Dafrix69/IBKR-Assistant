@@ -16,7 +16,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { DEFAULT_ANOMALY_CONFIG } from "../src/anomaly.js";
 import { setClock } from "../src/config.js";
+import { liveTickers } from "../src/macro.js";
 import { RpcServer } from "../src/rpc.js";
+import { AnomalyService } from "../src/services/anomaly.js";
 
 type Rec = Record<string, any>;
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -28,6 +30,7 @@ const ET_1055 = Date.parse("2026-09-11T10:55:00-04:00");
 const ET_PRE = Date.parse("2026-09-11T08:00:00-04:00");
 /** 开盘前 5 分钟:量能流开盘前 10 分钟就订上 */
 const ET_WARM = Date.parse("2026-09-11T09:25:00-04:00");
+const ET_OPEN = Date.parse("2026-09-11T09:30:00-04:00");
 const ET_POST = Date.parse("2026-09-11T17:00:00-04:00");
 const SAT_0000 = Date.parse("2026-09-12T00:00:00-04:00");
 const SAT_1100 = Date.parse("2026-09-12T11:00:00-04:00");
@@ -156,7 +159,7 @@ describe("quality.*:本地道与增删改", () => {
     expect(listed["stocks"].map((r: Rec) => r["symbol"])).toEqual(["RKLB"]);
     expect(listed["config"]).toEqual(DEFAULT_ANOMALY_CONFIG);
     expect(Object.keys(listed["monitor"]).sort()).toEqual(
-      ["connected", "interval_ms", "last_at", "last_error", "last_ms", "note", "running", "session", "supported", "ticks"],
+      ["connected", "interval_ms", "last_at", "last_error", "last_ms", "market_ref", "note", "running", "session", "supported", "ticks"],
     );
 
     const upd = (await call(s, "quality.update", { id: stock["id"], enabled: false, note: "先观察" }))["result"]["stock"];
@@ -229,6 +232,211 @@ describe("quality.*:本地道与增删改", () => {
     expect((await call(s, "quality.set_config", { config: [1] }))["error"]["code"]).toBe(-32602);
     expect((await call(s, "quality.set_config", {}))["error"]["code"]).toBe(-32602);
     expect((await call(s, "quality.list"))["result"]["config"]).toMatchObject({ burst_ratio: 6, window_min: 10 });
+  });
+});
+
+// ---------------------------------------------------------------- 大盘参照
+/** 带着宏观带那条常驻报价路的假券商:大盘参照(标普 500 指数)从这里读。 */
+class FakeMarketRouter extends FakeVolumeRouter {
+  spx: Rec | null = { last: 6600, close: 6680, change_pct: -1.2 };
+  streamCalls: string[][] = [];
+  streamFail = false;
+  async streamQuotes(symbols: string[]): Promise<Record<string, Rec>> {
+    this.streamCalls.push([...symbols]);
+    if (this.streamFail) throw new Error("行情线路满了");
+    return this.spx === null ? {} : { [AnomalyService.MARKET_REF]: { ...this.spx } };
+  }
+}
+
+describe("异动监控:大盘同期的涨跌", () => {
+  const dayMove = (events: Rec[]): Rec => events.find((e) => e["kind"] === "day_move")!;
+
+  it("大盘参照就是顶栏宏观带的那条标普 500 指数流(同一个键,不另占行情线路)", () => {
+    expect(liveTickers()).toContain(AnomalyService.MARKET_REF);
+  });
+
+  it("读得到:提醒里写明标普同期涨跌(默认不影响报不报);每轮只问这一个键", async () => {
+    const { s, router } = withRouter(new FakeMarketRouter());
+    const market = router as FakeMarketRouter;
+    s.domains.quality.qualityAdd({ symbol: "RKLB" });
+    router.quotes["RKLB"] = quote();
+    await s.anomaly.tickOnce(ET_1100 - 5000);
+    market.spx = { last: 6599.8, close: 6680, change_pct: -1.2 }; // 指数在跳:这一轮起有数
+    const out = await s.anomaly.tickOnce(ET_1100);
+    expect(dayMove(out["events"])["text"]).toBe("较昨收 +9.09%,标普同期 −1.20%(第 3 档,阈值 8%),现价 48");
+    expect(market.streamCalls).toEqual([[AnomalyService.MARKET_REF], [AnomalyService.MARKET_REF]]);
+    expect(s.anomaly.monitor()["market_ref"]).toBe(true);
+  });
+
+  it("开了「扣掉大盘」:大盘涨 7%,跟着涨 9% 的不报;大盘窗口的涨跌来自这条流自己攒的样本", async () => {
+    const { s, router } = withRouter(new FakeMarketRouter());
+    const market = router as FakeMarketRouter;
+    await call(s, "quality.set_config", { config: { market_adjust: true } });
+    s.domains.quality.qualityAdd({ symbol: "RKLB" });
+    router.quotes["RKLB"] = quote({ volume: null, avg_volume: null });
+    market.spx = { last: 7147, close: 6680, change_pct: 6.99 };
+    await s.anomaly.tickOnce(ET_1055 - 5000);
+    market.spx = { last: 7147.6, close: 6680, change_pct: 7 };
+    expect((await s.anomaly.tickOnce(ET_1055))["events"]).toEqual([]); // 扣完 +2.09%,不到第 1 档(3%)
+    // 5 分钟后:RKLB 又涨 2%(48 → 48.96),标普同时涨 1.5%:扣完 0.5%,急涨不报
+    router.quotes["RKLB"] = quote({ last: 48.96, volume: null, avg_volume: null });
+    market.spx = { last: 7254.8, close: 6680, change_pct: 8.6 };
+    expect((await s.anomaly.tickOnce(ET_1100))["events"]).toEqual([]);
+    // 关掉:同样的数,急涨与大涨都报,并写明大盘
+    await call(s, "quality.set_config", { config: { market_adjust: false } });
+    market.spx = { last: 7254.9, close: 6680, change_pct: 8.6 };
+    const out = (await s.anomaly.tickOnce(ET_1100 + 5000))["events"] as Rec[];
+    expect(out.map((e) => e["kind"]).sort()).toEqual(["day_move", "spike"]);
+    expect(out.find((e) => e["kind"] === "spike")!["text"]).toContain("标普同期 +1.50%");
+  });
+
+  it("参照今天还没在常规时段里跳起来(流里还是昨天的收盘):不给大盘这个数,不把它当「标普同期 0%」", async () => {
+    const { s, router } = withRouter(new FakeMarketRouter());
+    const market = router as FakeMarketRouter;
+    s.domains.quality.qualityAdd({ symbol: "RKLB" });
+    router.quotes["RKLB"] = quote({ last: 47.9 });
+    market.spx = { last: 6680, close: 6680, change_pct: 0 }; // 一动不动:开盘前留下的那个数
+    await s.anomaly.tickOnce(ET_OPEN - 60_000);
+    expect(s.anomaly.monitor()["market_ref"]).toBeNull(); // 开盘前没在判:不说读到没读到
+    await s.anomaly.tickOnce(ET_OPEN + 5000);
+    router.quotes["RKLB"] = quote(); // 这只股开出来了(价动了)
+    const out = await s.anomaly.tickOnce(ET_OPEN + 10_000);
+    expect(dayMove(out["events"])["text"]).toBe("较昨收 +9.09%(开盘跳空 +9.09%)(第 3 档,阈值 8%),现价 48");
+    expect(s.anomaly.monitor()["market_ref"]).toBe(false);
+    // 指数开始跳了:从这一轮起有数;窗口涨跌从它跳起来那一刻起攒,不拿开盘前那个数当起点
+    market.spx = { last: 6612, close: 6680, change_pct: -1.02 };
+    await s.anomaly.tickOnce(ET_OPEN + 15_000);
+    expect(s.anomaly.monitor()["market_ref"]).toBe(true);
+  });
+
+  it("参照冻住了(比行情停更的那条线还久没变过):不给数;开着「扣掉大盘」时照自己的幅度判,并写明没扣", async () => {
+    const { s, router } = withRouter(new FakeMarketRouter());
+    const market = router as FakeMarketRouter;
+    await call(s, "quality.set_config", { config: { market_adjust: true } });
+    s.domains.quality.qualityAdd({ symbol: "RKLB" });
+    router.quotes["RKLB"] = quote({ last: 44.2, volume: null, avg_volume: null }); // +0.45%:还没到档
+    market.spx = { last: 7147, close: 6680, change_pct: 6.99 };
+    await s.anomaly.tickOnce(ET_1055 - 5000);
+    market.spx = { last: 7147.6, close: 6680, change_pct: 7 };
+    await s.anomaly.tickOnce(ET_1055);
+    expect(s.anomaly.monitor()["market_ref"]).toBe(true);
+    // 之后 16 分钟这条流一个字没变(被撤了 / 指数行情断了),个股这时涨到 +9%
+    const later = ET_1055 + AnomalyService.QUOTE_STALE_MS + 60_000;
+    router.quotes["RKLB"] = quote({ volume: null, avg_volume: null });
+    const out = await s.anomaly.tickOnce(later);
+    // 拿那个不动的 +7% 去扣的话,扣完 +2.09% 不到档,这只股自己的大涨就被压掉了
+    expect(dayMove(out["events"])["text"]).toBe("较昨收 +9.09%,无大盘参照、未扣(第 3 档,阈值 8%),现价 48");
+    expect(s.anomaly.monitor()["market_ref"]).toBe(false);
+    setClock(later);
+    expect((await call(s, "quality.list"))["result"]["monitor"]["market_ref"]).toBe(false);
+  });
+
+  it("断过线再连上:流里留着的可能是断之前的数,要重新看到它动过才用", async () => {
+    const { s, router } = withRouter(new FakeMarketRouter());
+    const market = router as FakeMarketRouter;
+    s.domains.quality.qualityAdd({ symbol: "RKLB" });
+    router.quotes["RKLB"] = quote({ last: 44.2, volume: null, avg_volume: null });
+    await s.anomaly.tickOnce(ET_1055 - 5000);
+    market.spx = { last: 6599.8, close: 6680, change_pct: -1.2 };
+    await s.anomaly.tickOnce(ET_1055);
+    expect(s.anomaly.monitor()["market_ref"]).toBe(true);
+    const sessions = router.sessions;
+    router.sessions = () => []; // 断线的那一轮
+    await s.anomaly.tickOnce(ET_1055 + 5000);
+    expect(s.anomaly.monitor()["market_ref"]).toBeNull();
+    router.sessions = sessions; // 连回来:指数那条流还是断之前的 6599.8
+    router.quotes["RKLB"] = quote({ volume: null, avg_volume: null });
+    await s.anomaly.tickOnce(ET_1055 + 10_000); // 这只股重新订上的第一轮只算指标
+    const out = await s.anomaly.tickOnce(ET_1055 + 15_000);
+    expect(dayMove(out["events"])["text"]).toBe("较昨收 +9.09%(第 3 档,阈值 8%),现价 48");
+    expect(s.anomaly.monitor()["market_ref"]).toBe(false);
+  });
+
+  it("读不到(没有指数行情权限、那条路抛错、券商没有这条路):个股照自己的幅度判,不带那半句", async () => {
+    for (const setup of [
+      (r: FakeMarketRouter) => { r.spx = null; },
+      (r: FakeMarketRouter) => { r.streamFail = true; },
+      (r: FakeMarketRouter) => { r.spx = { last: null, close: 6680, change_pct: null }; },
+    ]) {
+      const { s, router } = withRouter(new FakeMarketRouter());
+      setup(router as FakeMarketRouter);
+      s.domains.quality.qualityAdd({ symbol: "RKLB" });
+      router.quotes["RKLB"] = quote();
+      await s.anomaly.tickOnce(ET_1100 - 5000);
+      const out = await s.anomaly.tickOnce(ET_1100);
+      expect(dayMove(out["events"])["text"]).toBe("较昨收 +9.09%(第 3 档,阈值 8%),现价 48");
+      expect(s.anomaly.monitor()["last_error"]).toBe("");
+      expect(s.anomaly.monitor()["market_ref"]).toBe(false);
+    }
+    const plain = withRouter(); // FakeVolumeRouter 没有 streamQuotes
+    plain.s.domains.quality.qualityAdd({ symbol: "RKLB" });
+    plain.router.quotes["RKLB"] = quote();
+    await plain.s.anomaly.tickOnce(ET_1100 - 5000);
+    expect(dayMove((await plain.s.anomaly.tickOnce(ET_1100))["events"])["text"]).toBe("较昨收 +9.09%(第 3 档,阈值 8%),现价 48");
+  });
+
+  it("延迟行情的股不带大盘:它看到的是 15 分钟前的自己,大盘是此刻的", async () => {
+    const { s, router } = withRouter(new FakeMarketRouter());
+    s.domains.quality.qualityAdd({ symbol: "RKLB" });
+    router.quotes["RKLB"] = quote({ delayed: true });
+    await s.anomaly.tickOnce(ET_1100 - 5000);
+    const out = await s.anomaly.tickOnce(ET_1100);
+    expect(dayMove(out["events"])["text"]).toBe("较昨收 +9.09%(第 3 档,阈值 8%),现价 48");
+  });
+});
+
+// ---------------------------------------------------------------- 开盘那一下
+describe("异动监控:钟过了 09:30 不等于这只股开了", () => {
+  const dayMoves = (out: Rec): Rec[] => (out["events"] as Rec[]).filter((e) => e["kind"] === "day_move");
+  /** 开盘前 5 分钟就在看着的一只股:盘前最后一笔 47(较昨收 44 是 +6.8%),流里的开盘价 40 是**昨天的** */
+  async function watched(over: Rec = {}): Promise<{ s: RpcServer; router: FakeVolumeRouter }> {
+    const { s, router } = withRouter();
+    s.domains.quality.qualityAdd({ symbol: "RKLB" });
+    router.quotes["RKLB"] = quote({ last: 47, open: 40, volume: null, avg_volume: null, ...over });
+    await s.anomaly.tickOnce(ET_WARM);
+    return { s, router };
+  }
+
+  it("开盘那一笔还没进来(价没动、开盘价还是昨天的):大涨大跌先不判,不拿盘前的价把当天这一档占掉", async () => {
+    const { s, router } = await watched();
+    expect(dayMoves(await s.anomaly.tickOnce(ET_OPEN + 5000))).toEqual([]);
+    expect(dayMoves(await s.anomaly.tickOnce(ET_OPEN + 10_000))).toEqual([]);
+    // 开出来了:第一笔 48。昨天的开盘价 40 还留在流里——提醒里的跳空用这一轮看到的价算,不拿那个 40 去算成 −9%
+    router.quotes["RKLB"] = quote({ last: 48, open: 40, volume: null, avg_volume: null });
+    const out = dayMoves(await s.anomaly.tickOnce(ET_OPEN + 15_000));
+    expect(out.map((e) => [e["tier"], e["text"]])).toEqual([[3, "较昨收 +9.09%(开盘跳空 +9.09%)(第 3 档,阈值 8%),现价 48"]]);
+    // 当天这一档只报这一次
+    router.quotes["RKLB"] = quote({ last: 48.1, open: 47.5, volume: null, avg_volume: null });
+    expect(dayMoves(await s.anomaly.tickOnce(ET_OPEN + 20_000))).toEqual([]);
+  });
+
+  it("正式的开盘价到了(流里那个字段变了)就用它;成交时刻过了 09:30 也算开了", async () => {
+    const official = await watched();
+    official.router.quotes["RKLB"] = quote({ last: 47, open: 47.6, volume: null, avg_volume: null });
+    expect(dayMoves(await official.s.anomaly.tickOnce(ET_OPEN + 5000)).map((e) => e["text"])).toEqual([
+      "较昨收 +6.82%(开盘跳空 +8.18%)(第 2 档,阈值 5%),现价 47",
+    ]);
+
+    const traded = await watched({ last_trade_at: (ET_OPEN - 20_000) / 1000 });
+    expect(dayMoves(await traded.s.anomaly.tickOnce(ET_OPEN + 5000))).toEqual([]); // 最后一笔成交还在开盘前
+    traded.router.quotes["RKLB"] = quote({ last: 47, open: 40, volume: null, avg_volume: null, last_trade_at: (ET_OPEN + 3000) / 1000 });
+    expect(dayMoves(await traded.s.anomaly.tickOnce(ET_OPEN + 10_000)).map((e) => e["text"])).toEqual([
+      "较昨收 +6.82%(开盘跳空 +6.82%)(第 2 档,阈值 5%),现价 47",
+    ]);
+  });
+
+  it("开盘之后才开始看的(盘中才启动):照常判,但认不出哪个是开盘价,不写跳空那半句", async () => {
+    const { s, router } = withRouter();
+    s.domains.quality.qualityAdd({ symbol: "RKLB" });
+    router.quotes["RKLB"] = quote({ open: 47.9, volume: null, avg_volume: null }); // 流里的开盘价看着像跳空,但没法确认是今天的
+    await s.anomaly.tickOnce(ET_1100 - 5000);
+    expect(dayMoves(await s.anomaly.tickOnce(ET_1100)).map((e) => e["text"])).toEqual(["较昨收 +9.09%(第 3 档,阈值 8%),现价 48"]);
+    // 流里带着成交时刻、而且还在开盘前:它确实还没开,等
+    const early = withRouter();
+    early.s.domains.quality.qualityAdd({ symbol: "RKLB" });
+    early.router.quotes["RKLB"] = quote({ volume: null, avg_volume: null, last_trade_at: (ET_OPEN - 20_000) / 1000 });
+    await early.s.anomaly.tickOnce(ET_OPEN + 2000);
+    expect(dayMoves(await early.s.anomaly.tickOnce(ET_OPEN + 7000))).toEqual([]);
   });
 });
 

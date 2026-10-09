@@ -204,6 +204,10 @@ export async function createIbApiNextSession(cfg: {
   const fillCbs: Array<(trade: any, fill: any) => void> = [];
   const commissionCbs: Array<(trade: any, fill: any, report: any) => void> = [];
   const tickers = new Map<string, LiveTicker>();
+  // 正股 / 指数(不分 generic ticks)→ 成交价最近一次出自延迟档(true)还是实时档(false)。流撤了也留着:
+  // 取历史 K 线的那一处要知道这张合约是不是延迟行情,而它不该为了问这一句去订、去撤一条流——
+  // 同一张合约的流是各处共用的(见 subscribeTicker),撤一次就把盯盘手里那条也撤了。见 quoteDelayed。
+  const lastFeed = new Map<string, boolean>();
 
   // 订单级错误(reqId = orderId,如 200 证券定义、110 价格跳动、201 拒单)从 error$ 流上来。
   // 订单级的必须转给引擎落库,否则被 TWS 当场拒掉的单会永远停在 Submitted——模拟盘实测(2026-09-03)。
@@ -299,6 +303,51 @@ export async function createIbApiNextSession(cfg: {
       positionsSub = null;
     }
   };
+  // 账户净值(账户摘要的 NetLiquidation)与当日盈亏(reqPnL):常驻订阅,读最新一笔。和持仓一样,断线时作废、重连后库自己重订。
+  // 没在真机上核对过:TWS 给不给、多久给一次、非美元账户报什么货币,见 docs/features/protections.md「当前状态」
+  const netLiq = new Map<string, { amount: number; currency: string }>();
+  let summarySub: Subscription | null = null;
+  const ensureSummary = (): void => {
+    if (summarySub !== null) return;
+    try {
+      summarySub = api.getAccountSummary("All", "NetLiquidation").subscribe({
+        next: (update: any) => {
+          for (const [account, tags] of (update?.all ?? new Map()) as Map<string, Map<string, Map<string, { value: string }>>>) {
+            for (const [currency, item] of tags?.get?.("NetLiquidation") ?? new Map()) {
+              const amount = realNumber(item?.value);
+              if (amount !== null) netLiq.set(String(account), { amount, currency: String(currency) });
+            }
+          }
+        },
+        error: () => {
+          summarySub = null;
+          netLiq.clear();
+        },
+      });
+    } catch {
+      summarySub = null;
+    }
+  };
+  const pnlLatest = new Map<string, { daily: number | null; unrealized: number | null; realized: number | null; atMs: number }>();
+  const pnlSubs = new Map<string, Subscription>();
+  const ensurePnl = (accountId: string): void => {
+    if (pnlSubs.has(accountId)) return;
+    try {
+      pnlSubs.set(accountId, api.getPnL(accountId).subscribe({
+        next: (p: any) => {
+          pnlLatest.set(accountId, {
+            daily: realNumber(p?.dailyPnL), unrealized: realNumber(p?.unrealizedPnL), realized: realNumber(p?.realizedPnL), atMs: Date.now(),
+          });
+        },
+        error: () => {
+          pnlSubs.delete(accountId);
+          pnlLatest.delete(accountId);
+        },
+      }));
+    } catch {
+      /* 订不上就当没有,调用方退回原来的口径 */
+    }
+  };
   // 本机到 TWS 的通断。库断线后按 IB_RECONNECT_MS 自己重连,重连回来会把持仓、行情这些常驻订阅原样重订;
   // 这里只做三件事:isConnected() 说真话(router 据此不把断着的会话当活的)、断开时作废冻住的快照与报价
   // (不拿断线前的数冒充现价)、重连后把会话级的行情类型基线补回去(那是 per-connection 的设置)。
@@ -320,6 +369,8 @@ export async function createIbApiNextSession(cfg: {
     } else if (state === S.Disconnected && connected) {
       connected = false;
       positionsLatest = null;
+      pnlLatest.clear();
+      netLiq.clear();
       for (const live of tickers.values()) live.data = emptyTicker();
       for (const cb of linkCbs) cb(false);
     }
@@ -439,7 +490,11 @@ export async function createIbApiNextSession(cfg: {
           const observable = api.getMarketData(toIbContract(contract), genericTicks, false, false);
           const entry = live;
           live.sub = observable.subscribe({
-            next: (update: any) => applyTicks(mod, entry.data, update),
+            next: (update: any) => {
+              applyTicks(mod, entry.data, update);
+              const plain = contract.secType === "STK" || contract.secType === "IND";
+              if (plain && entry.data.last !== null) lastFeed.set(tickerKey(contract), entry.data.delayed === true);
+            },
             // 订阅被拒(10197 实盘会话占着实时行情、354 没订阅……)之后这条流就死了。以前把它原样
             // 留在缓存里,同一个合约再订拿到的永远是这条死流——2026-09-10 真机:连接刚建好时第一条
             // 行情请求吃了 10197,之后那只 ES 期货怎么订都是空的。现在出错就摘掉,下次重新订。
@@ -481,6 +536,8 @@ export async function createIbApiNextSession(cfg: {
         tickers.delete(key);
       }
     },
+
+    quoteDelayed: (contract) => lastFeed.get(tickerKey(contract)) ?? null,
 
     settle: (ms) => sleep(ms),
 
@@ -674,6 +731,20 @@ export async function createIbApiNextSession(cfg: {
       return out;
     },
 
+    accountPnl(accountId) {
+      if (!connected) return null;
+      ensureSummary();
+      ensurePnl(accountId);
+      const latest = pnlLatest.get(accountId);
+      return latest === undefined ? null : { ...latest, currency: netLiq.get(accountId)?.currency ?? "" };
+    },
+
+    netLiquidation(accountId) {
+      if (!connected) return null;
+      ensureSummary();
+      return netLiq.get(accountId) ?? null;
+    },
+
     onConnectivity(cb) {
       connectivityCbs.push(cb);
     },
@@ -698,6 +769,13 @@ export async function createIbApiNextSession(cfg: {
     },
   };
   return session;
+}
+
+/** 券商报来的一个数:不是数、或者是"没有值"的哨兵大数(1.7976931348623157e308)时回 null。 */
+export function realNumber(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) && Math.abs(n) < 1e300 ? n : null;
 }
 
 /** 算"盘口还在来"的 tick:买卖价与量、成交价与量,实时与延迟两组。昨收、模型 IV、generic 的统计量都不算 */

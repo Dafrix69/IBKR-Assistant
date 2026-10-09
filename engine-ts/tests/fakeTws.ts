@@ -42,6 +42,18 @@ export class FakeTws {
   readonly histRequests: Array<{ symbol: string; whatToShow: string }> = [];
   private readonly ids = new Map<string, number>();
   private readonly positionObservers: Array<(u: unknown) => void> = [];
+  /** 账户当日盈亏(reqPnL)与账户摘要的订阅者;pushPnl / pushNetLiq 推一笔 */
+  readonly pnlObservers = new Map<string, Array<(u: unknown) => void>>();
+  readonly summaryObservers: Array<(u: unknown) => void> = [];
+
+  pushPnl(account: string, pnl: { dailyPnL?: number; unrealizedPnL?: number; realizedPnL?: number }): void {
+    for (const next of this.pnlObservers.get(account) ?? []) next(pnl);
+  }
+
+  pushNetLiq(account: string, currency: string, value: string): void {
+    const all = new Map([[account, new Map([["NetLiquidation", new Map([[currency, { value, ingressTm: Date.now() }]])]])]]);
+    for (const next of this.summaryObservers) next({ all });
+  }
 
   conId(symbol: string, expiry = "", strike = 0, right = "", tradingClass = ""): number {
     const key = [symbol, expiry, strike, right, tradingClass].join("|");
@@ -144,6 +156,22 @@ export class FakeTws {
             const sub: Sub = { contract, generic, next: o.next, closed: false };
             tws.subs.push(sub);
             return { unsubscribe: () => { sub.closed = true; } };
+          },
+        };
+      }
+      getPnL(account: string): { subscribe(o: { next(u: unknown): void }): { unsubscribe(): void } } {
+        return {
+          subscribe: (o) => {
+            tws.pnlObservers.set(account, [...(tws.pnlObservers.get(account) ?? []), o.next]);
+            return { unsubscribe: () => undefined };
+          },
+        };
+      }
+      getAccountSummary(): { subscribe(o: { next(u: unknown): void }): { unsubscribe(): void } } {
+        return {
+          subscribe: (o) => {
+            tws.summaryObservers.push(o.next);
+            return { unsubscribe: () => undefined };
           },
         };
       }

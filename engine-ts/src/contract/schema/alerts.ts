@@ -20,6 +20,8 @@ export const AlertsDeleteParamsSchema: ParamsSchema<AlertsDeleteParams> = z.obje
 export const AlertsRefreshParamsSchema: ParamsSchema<AlertsRefreshParams> = z.object({
   id: z.string(),
   expiry: optional(z.string()),
+  // 同 alerts.create:数字串也认,范围由 handler 报
+  step: optional(z.union([z.number(), z.string()])),
 });
 
 /**
@@ -28,4 +30,6 @@ export const AlertsRefreshParamsSchema: ParamsSchema<AlertsRefreshParams> = z.ob
  */
 export const AlertsSetTouchConfigParamsSchema: ParamsSchema<AlertsSetTouchConfigParams> = z.object({
   config: z.record(z.string(), z.unknown()),
+  // 认哪两个值由 handler 报(给中文原因)
+  cross_confirm: optional(z.unknown()),
 });

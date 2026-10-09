@@ -141,6 +141,9 @@ export interface IbSession {
   subscribeTicker(contract: IbContract, genericTicks?: string): TickerHandle;
   /** 传 genericTicks 只撤那一条流;不传撤这个合约的所有变体(期权链那处靠它不漏撤)。 */
   cancelTicker(contract: IbContract, genericTicks?: string): void;
+  /** 这张合约(正股 / 指数)的成交价最近一次出自延迟档(true)还是实时档(false);这个会话还没见过它的成交价是 null。
+   *  只读会话记下的,不为了回答去订阅:历史 K 线是不是延迟的,只能从同一张合约的行情流上看出来。 */
+  quoteDelayed?(contract: IbContract): boolean | null;
   /** 事件泵(对应 ib.sleep):等行情落地。 */
   settle(ms: number): Promise<void>;
   historicalData(contract: IbContract, opts: {
@@ -180,6 +183,10 @@ export interface IbSession {
   }>>;
   portfolio(): Promise<PortfolioItemLike[]>;
   positions(): Promise<PositionItemLike[]>;
+  /** 账户当日盈亏(reqPnL,常驻订阅,读最新一笔)。还没来第一笔、订阅断了、断着线:null。真机适配层实现 */
+  accountPnl?(accountId: string): AccountPnl | null;
+  /** 账户净值(账户摘要的 NetLiquidation,常驻订阅)与它的货币。没来:null。真机适配层实现 */
+  netLiquidation?(accountId: string): { amount: number; currency: string } | null;
   /** 当天逐笔成交(reqExecutions)。真机适配层实现;测试替身可不实现。 */
   executions?(): Promise<Array<{ contract: Record<string, any>; execution: Record<string, any> }>>;
   /** 最近 days 天(最多 7)的逐笔成交:另开一条只读连接去要(ibExecHistory.ts),不经过平时这条。
@@ -208,3 +215,13 @@ export type IbSessionFactory = (cfg: {
   clientId: number;
   readonly: boolean;
 }) => Promise<IbSession>;
+
+/** 账户当日盈亏的最新一笔(reqPnL)。券商没给的那一项是 null;currency 是账户的基础货币(从账户摘要认,没认出来是空串)。 */
+export interface AccountPnl {
+  daily: number | null;
+  unrealized: number | null;
+  realized: number | null;
+  currency: string;
+  /** 本机收到这一笔的时刻 */
+  atMs: number;
+}

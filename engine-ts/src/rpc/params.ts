@@ -1,5 +1,5 @@
 /** 入参的小工具:各域 handler 共用的取数与校验。 */
-import type { DrawdownLate, DrawdownTier, Targets } from "../contract/tracker.js";
+import type { AutoClose, DrawdownLate, DrawdownTier, TakeProfitTier, Targets } from "../contract/tracker.js";
 import {
   drawdownArm as fxDrawdownArm, drawdownFloor as fxDrawdownFloor, drawdownLate as fxDrawdownLate,
   drawdownUsdPreset as fxDrawdownUsdPreset,
@@ -7,6 +7,7 @@ import {
 } from "../flyexit.js";
 import { pyG } from "../py.js";
 import { RpcError } from "../rpcError.js";
+import { MAX_TP_TIERS, nextOccurrenceMs } from "../trackerExits.js";
 import type { Rec } from "./context.js";
 
 export const SYMBOL_RE = /^[A-Z][A-Z0-9.-]{0,11}$/;
@@ -107,4 +108,70 @@ export function drawdownTiersOf(params: Rec, flyUnitCostUsd: number | null = nul
     late = { after: String((lateRaw as Rec)["after"]), factor };
   }
   return { profit_drawdown_tiers: tiers, profit_drawdown_late: late, ...none };
+}
+
+// ---------------------------------------------------------------------- 出场细则(tracker.add / update 共用)
+/** 到点平仓、标的止损的确认、分批止盈:键名就是 Targets 上的键,handler 直接摊进 makeTargets。 */
+export type ExitSettings = Pick<Targets, "exit_at" | "exit_at_ms" | "spot_stop_confirm_s" | "take_profit_tiers">;
+
+/**
+ * 到点平仓的钟点换成下一次到这个钟点的时刻(trackerExits.nextOccurrenceMs);确认秒数与各档只查形状与范围,
+ * 方向(档位在现价的哪一侧)要现价,留给 handler 的 checkTargets。范围只是挡手误,不是建议值。
+ */
+export function exitSettingsOf(params: Rec, nowMs: number): ExitSettings {
+  const clock = String(params["exit_at"] ?? "").trim();
+  let exitAtMs: number | null = null;
+  if (clock) {
+    exitAtMs = nextOccurrenceMs(clock, nowMs);
+    if (exitAtMs === null) throw new RpcError(-32602, `到点平仓的时刻要写成美东时间的 HH:MM(如 15:45),收到「${clock}」。`);
+  }
+  const confirm = optFloat(params["spot_stop_confirm_s"]);
+  if (confirm !== null && !(confirm >= 0 && confirm <= 600)) {
+    throw new RpcError(-32602, `标的止损的确认秒数要在 0 到 600 之间,当前 ${pyG(confirm)}`);
+  }
+  const raw = params["take_profit_tiers"];
+  let tiers: TakeProfitTier[] | null = null;
+  if (raw !== null && raw !== undefined && raw !== "") {
+    if (!Array.isArray(raw) || !raw.length) throw new RpcError(-32602, "take_profit_tiers 要是一个非空数组");
+    if (raw.length > MAX_TP_TIERS) throw new RpcError(-32602, `分批止盈最多 ${MAX_TP_TIERS} 档。`);
+    tiers = raw.map((item: unknown) => {
+      if (typeof item !== "object" || item === null || Array.isArray(item)) {
+        throw new RpcError(-32602, "分批止盈的每一项要是 {price, fraction_pct} 对象");
+      }
+      const price = optFloat((item as Rec)["price"]), fraction = optFloat((item as Rec)["fraction_pct"]);
+      if (price === null || fraction === null) throw new RpcError(-32602, "分批止盈的 price 与 fraction_pct 都不能空");
+      return { price, fraction_pct: fraction };
+    });
+  }
+  return {
+    exit_at: clock || null, exit_at_ms: exitAtMs,
+    spot_stop_confirm_s: confirm !== null && confirm > 0 ? confirm : null, take_profit_tiers: tiers,
+  };
+}
+
+type StopSettings = Partial<Pick<AutoClose, "stop_basis" | "stop_chase_grace" | "stop_chase_step" | "stop_chase_max_pct" | "peak_confirm">>;
+
+/** 止损类拿哪个价判、止损类的追价节奏、峰值要不要两轮确认。没给的键不出现在结果里(update 是合并,不该把库里那份盖成默认值)。 */
+export function stopSettingsOf(params: Rec): StopSettings {
+  const out: StopSettings = {};
+  if (typeof params["peak_confirm"] === "boolean") out.peak_confirm = params["peak_confirm"];
+  if (params["stop_basis"] !== undefined && params["stop_basis"] !== null && params["stop_basis"] !== "") {
+    const basis = String(params["stop_basis"]);
+    if (basis !== "mid" && basis !== "natural") throw new RpcError(-32602, `stop_basis 只能是 mid 或 natural,收到「${basis}」`);
+    out.stop_basis = basis;
+  }
+  const ranges: Array<["stop_chase_grace" | "stop_chase_step" | "stop_chase_max_pct", number, number, string, boolean]> = [
+    ["stop_chase_grace", 0, 60, "止损追价先等的轮数", true],
+    ["stop_chase_step", 1, 20, "止损追价每轮让的跳数", true],
+    ["stop_chase_max_pct", 0, 100, "止损追价的让价上限(%)", false],
+  ];
+  for (const [key, lo, hi, label, whole] of ranges) {
+    if (!(key in params)) continue;
+    const value = optFloat(params[key]);
+    if (value !== null && (!(value >= lo && value <= hi) || (whole && !Number.isInteger(value)))) {
+      throw new RpcError(-32602, `${label}要是 ${lo} 到 ${hi} 之间的${whole ? "整数" : "数"},当前 ${pyG(value)}`);
+    }
+    out[key] = value;
+  }
+  return out;
 }

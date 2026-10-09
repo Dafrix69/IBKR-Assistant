@@ -3,10 +3,11 @@
  *
  * 状态机与价位算法在 alerts.ts、碰均线在 maTouch.ts(都是纯计算);这里是它们的编排:取行情、落库、推事件、按标的退避。
  */
-import type { AlertLevel } from "../alerts.js";
+import type { AlertLevel, PriceSample } from "../alerts.js";
 import { etNowFromEpoch, nowEt } from "../config.js";
 import type {
-  AlertsPollResult, AlertsRefreshParams, AlertsRefreshResult, LevelState, MaTouchConfig, TouchBook, Watch, WatchEvent,
+  AlertsPollResult, AlertsRefreshParams, AlertsRefreshResult, CrossConfirm, LevelState, MaTouchConfig, TouchBook, Watch,
+  WatchEvent, WatchLevel,
 } from "../contract/alerts.js";
 import type { OptionWall } from "../contract/options.js";
 import {
@@ -19,6 +20,56 @@ import { utcIso } from "../tz.js";
 import { ServiceBase } from "./host.js";
 import type { Rec, ServiceHost } from "./host.js";
 import type { MarketDataService } from "./marketData.js";
+
+/** 步长:0 = 自动,正数 = 固定步长(上限同 store.addWatch)。数字串也认。 */
+function stepOrRaise(raw: unknown): number {
+  const step = typeof raw === "string" && raw.trim() !== "" ? Number(raw) : raw;
+  if (typeof step !== "number" || !(step >= 0 && step <= 1000)) {
+    throw new RpcError(-32602, "整数关口步长必须在 0~1000 之间(0 = 自动)");
+  }
+  return step;
+}
+
+/** 库里读回来的一个价位:类型上是 WatchLevel,运行时照旧逐项兜底(老库、手改过的行)。 */
+function storedLevel(l: WatchLevel): AlertLevel {
+  const ma = l["ma"];
+  const live = ma && Number.isFinite(Number(ma["period"])) && Number.isFinite(Number(ma["prior_sum"]))
+    ? { ma: { period: Number(ma["period"]), prior_sum: Number(ma["prior_sum"]) } }
+    : {};
+  return {
+    price: Number(l["price"]),
+    label: String(l["label"] ?? ""),
+    source: String(l["source"] ?? "round"),
+    kind: l["kind"] === "resistance" || l["kind"] === "support" ? l["kind"] : "pivot",
+    priority: 0,
+    ...live,
+  };
+}
+
+/**
+ * 均线价位的收盘和以碰均线的底账为准——只要底账是上一个交易日收盘的(as_of = prevDay)。
+ * 开盘后价位还没轮到重算的那几分钟,底账往往已经补成今天的了:两边各用各的和,同一条线就有了两个位置。
+ * 底账旧了、没有这条线,就用价位自己带的那个和。
+ */
+function withBookSums<L extends WatchLevel>(levels: L[], book: TouchBook | null, prevDay: string): L[] {
+  if (!book || book.as_of !== prevDay) return levels;
+  return levels.map((l) => {
+    const line = l.ma ? book.lines.find((x) => x.period === l.ma?.period) : undefined;
+    return line && l.ma ? { ...l, ma: { period: l.ma.period, prior_sum: line.prior_sum } } : l;
+  });
+}
+
+/** 库里读回来的一个价位状态;待确认的那一笔四样都对才带着(收盘那两样成对才带)。 */
+function storedState(v: LevelState): LevelState {
+  const out: LevelState = { armed: Boolean(v["armed"] ?? true), last_fired_at: v["last_fired_at"] ?? null };
+  const p = v["pending"];
+  const num = (x: unknown): x is number => typeof x === "number" && Number.isFinite(x);
+  if (p && (p["direction"] === "up" || p["direction"] === "down") && num(p["from"]) && num(p["at"]) && num(p["minute"])) {
+    out.pending = { direction: p["direction"], from: p["from"], at: p["at"], minute: p["minute"] };
+    if (num(p["close"]) && num(p["close_at"])) Object.assign(out.pending, { close: p["close"], close_at: p["close_at"] });
+  }
+  return out;
+}
 
 export class AlertsService extends ServiceBase {
   constructor(host: ServiceHost, private readonly market: MarketDataService) {
@@ -33,6 +84,9 @@ export class AlertsService extends ServiceBase {
     const watch = this.engine.store.getWatch(String(params["id"] ?? ""));
     if (watch === null) throw new RpcError(-32602, "没有这个警告");
     const expiry = String(params["expiry"] ?? watch["expiry"] ?? "").trim() || null;
+    // 顺带改步长(0 = 自动):这一次按新步长算,和算出来的价位一起落库——现价都取不到的那一次什么都不写,
+    // 步长也不该先改掉(界面上那个选择框跟着库走,库里改了、价位没换,两边就对不上)
+    const step = params["step"] === undefined ? Number(watch["step"]) : stepOrRaise(params["step"]);
 
     let wall: OptionWall | null = null;
     let wallError: string | null = null;
@@ -62,8 +116,11 @@ export class AlertsService extends ServiceBase {
         exc instanceof RpcError ? exc.message : String((exc as Error).message).slice(0, 300);
     }
 
-    const levels = buildLevels(spot, wall, Number(watch["step"]), undefined, undefined, history);
+    // 今天(美东)那根日线不算完整日线:和碰均线的底账(saveTouchBook)用同一天,两边的收盘和才是同一个数
+    const today = nowEt().date;
+    const levels = buildLevels(spot, wall, step, undefined, undefined, history, today);
     this.engine.store.updateWatch(watch["id"], {
+      step,
       levels: levels.map(levelDict),
       wall,
       expiry: wall?.expiry ?? "",
@@ -71,12 +128,12 @@ export class AlertsService extends ServiceBase {
       levels_at: utcIso(nowMs - (nowMs % 1000)), // 到秒,和库里别的时刻一个写法
     });
     // 日线已经在手上了,碰均线的底账顺手算掉,不再为它单独拉一次
-    if (history) this.saveTouchBook(watch["id"], history, nowEt().date);
+    if (history) this.saveTouchBook(watch["id"], history, today);
     return {
       watch: this.engine.store.getWatch(watch["id"]),
       wall_error: wallError,
       history_error: historyError,
-      trend: history ? trendSnapshot(history, spot) : null,
+      trend: history ? trendSnapshot(history, spot, undefined, undefined, today) : null,
     };
   }
 
@@ -140,6 +197,29 @@ export class AlertsService extends ServiceBase {
     const note = this.levelNotes.get(symbol);
     if (note) return `error:${note}`;
     return (watch["levels"] ?? []).length ? "ok" : "pending";
+  }
+
+  // ---- 穿越:上一笔价、确认方式 --------------------------------------------
+  static readonly CROSS_CONFIRM_PREF = "alerts.cross_confirm";
+  /** symbol → 上一轮取到的价。只在内存里:判穿越要的是"紧挨着的上一笔",库里那个 last_price 可能是昨天的、
+   *  也可能是引擎重启之前的——隔夜跳空、关了一上午再打开,都不是穿越。接不接得上由 alerts.linkSample 判。 */
+  private readonly lastSamples = new Map<string, PriceSample>();
+
+  /** 穿越怎么才算数。没设过、存坏了都是 immediate(跨过就报)。 */
+  crossConfirm(): CrossConfirm {
+    return this.engine.store.getPref(AlertsService.CROSS_CONFIRM_PREF) === "bar_close" ? "bar_close" : "immediate";
+  }
+
+  /** 给界面的盯单:均线价位换成按最近一次取价算的那个值(价位条上画的和判穿越用的是同一条线)。不写库。 */
+  async listWatches(): Promise<Watch[]> {
+    const { levelPriceAt } = await import("../alerts.js");
+    const prevDay = this.prevDay(nowEt().date);
+    return this.engine.store.listWatches().map((w) => {
+      const spot = w["last_price"];
+      if (!spot || !w["levels"].some((l) => l["ma"])) return w;
+      const levels = withBookSums(w["levels"], w["touch"], prevDay);
+      return { ...w, levels: levels.map((l) => (l["ma"] ? { ...l, price: pyRound(levelPriceAt(l, spot), 4) } : l)) };
+    });
   }
 
   // ---- 短期内反复碰均线 --------------------------------------------------
@@ -220,21 +300,23 @@ export class AlertsService extends ServiceBase {
   /**
    * 一只股这一轮碰没碰均线。报了就把「报过哪段」写回底账,并把同一条均线这一轮的穿越并掉——
    * 第三次碰 20 日线时价格往往也正好穿过 20 日线,同一件事不说两遍。
+   *
+   * **谁认领是定死的**:这一轮碰均线报了哪条线(来源键 maX),那条线的穿越就归它,哪怕价已经穿到线的另一侧。
+   * 成绩单(signalOutcomes)因此一件事只记一笔:碰均线押回头(从哪边来回哪边去),没被认领的穿越押顺势。
+   * 碰均线不判的时候(关着、盘前盘后、底账旧了、这一段报过了、次数没凑够)不认领,穿越照自己的规矩报。
    */
   private touchEvents(
     watch: Watch, price: number, crossings: WatchEvent[], session: { config: MaTouchConfig; today: string; prevDay: string },
+    at: number, book: TouchBook | null,
   ): { events: WatchEvent[]; book: TouchBook | null } {
     const symbol = String(watch["symbol"]);
     const prev = this.sessionPrices.get(symbol);
     const prevPrice = prev !== undefined && prev.date === session.today ? prev.price : null;
     this.sessionPrices.set(symbol, { date: session.today, price });
-    // 现读一次:前面等行情那一下,tickTouch 可能刚把底账换成今天的
-    const book = this.engine.store.getWatch(watch["id"])?.["touch"] ?? null;
     if (!bookUsable(book, session.config, session.prevDay)) return { events: crossings, book: null };
     const { hits, fired } = evaluateTouches(book, session.config, price, prevPrice, session.today);
     if (!hits.length) return { events: crossings, book: null };
     const merged = new Set(hits.map((h) => `ma${h.period}`));
-    const at = Date.now() / 1000;
     const touches: WatchEvent[] = hits.map((h) => ({
       symbol,
       trigger: "touch",
@@ -253,44 +335,55 @@ export class AlertsService extends ServiceBase {
 
   /** 把每个在盯的标的走一遍状态机,触发的价位推成通知。 */
   async poll(): Promise<AlertsPollResult> {
-    const { evaluate, levelKey } = await import("../alerts.js");
+    const { evaluate, levelKey, linkSample, reroundLevels } = await import("../alerts.js");
 
     const fired: WatchEvent[] = [];
     const checked: AlertsPollResult["checked"] = [];
-    const watches = this.engine.store.listWatches().filter((w) => w["enabled"] && w["levels"].length);
-    // 一轮的价一次取齐(spotsOf):逐只取每只要等一拍,23 只就是 3.5 秒占着交易道
-    const prices = await this.market.spotsOf(watches.map((w) => w["symbol"]));
+    const watching = this.engine.store.listWatches().filter((w) => w["enabled"] && w["levels"].length);
+    // 一轮的价一次取齐(quotesOf):逐只取每只要等一拍,23 只就是 3.5 秒占着交易道
+    const quotes = await this.market.quotesOf(watching.map((w) => w["symbol"]));
     const session = this.touchSession();
-    for (const watch of watches) {
-      const price = prices.get(watch["symbol"]) ?? null;
-      if (!price) {
-        checked.push({ symbol: watch["symbol"], price: null });
+    // 这一轮的时刻:事件的 at、冷却、"那一分钟收完没有"、上一笔接不接得上,用的是同一个钟
+    const now = nowEt();
+    const nowTs = now.epochMs / 1000;
+    const confirm = this.crossConfirm();
+    const prevDay = this.prevDay(now.date);
+    for (const listed of watching) {
+      const symbol = listed["symbol"];
+      const quote = quotes.get(symbol) ?? null;
+      if (quote === null) {
+        checked.push({ symbol, price: null });
         continue;
       }
+      const price = quote.price;
+      // 盯单现读一次:前面等行情那一下,价位可能刚被重算、底账可能刚换成今天的,盯单也可能被删了。
+      // 从这里到写回之间没有 await,不会和重算交错
+      const watch = this.engine.store.getWatch(listed["id"]);
+      if (watch === null || !watch["levels"].length) continue;
 
-      // 价位与状态是库里读回来的 JSON:类型上是 WatchLevel,运行时照旧逐项兜底(老库、手改过的行)
-      const levels: AlertLevel[] = watch["levels"].map((l) => ({
-        price: Number(l["price"]),
-        label: String(l["label"] ?? ""),
-        source: String(l["source"] ?? "round"),
-        kind: l["kind"] === "resistance" || l["kind"] === "support" ? l["kind"] : "pivot",
-        priority: 0,
-      }));
+      const book = watch["touch"];
+      const levels = withBookSums(watch["levels"].map(storedLevel), book, prevDay);
       const states: Record<string, LevelState> = {};
-      for (const [k, v] of Object.entries(watch["states"] ?? {})) {
-        states[k] = {
-          armed: Boolean(v["armed"] ?? true),
-          last_fired_at: v["last_fired_at"] ?? null,
-        };
-      }
-      const nowTs = Date.now() / 1000;
-      const [crossings, nextStates] = evaluate(levels, states, watch["last_price"] ?? null, price, nowTs);
+      for (const [k, v] of Object.entries(watch["states"] ?? {})) states[k] = storedState(v);
+      // 这个价属于哪一段:券商给了最后成交的时刻就按那一刻认(钟过了 09:30,手上的价可能还是盘前的),没给按此刻认;
+      // 指数再加价的出处——期货推算和官方指数是两个数,换出处的那一下不是行情在走
+      const when = quote.tradedAt !== null ? etNowFromEpoch(quote.tradedAt * 1000) : now;
+      const label = `${when.date}|${this.settings.marketStatus(when)}${quote.source ? `|${quote.source}` : ""}`;
+      // 上一笔接得上、而且是这一段里的真价才比穿越;否则这一笔只登记(alerts.linkSample)
+      const { sample, prevPrice } = linkSample(
+        this.lastSamples.get(symbol), { at: nowTs, price, session: label, tradedAt: quote.tradedAt },
+      );
+      this.lastSamples.set(symbol, sample);
+      const [crossings, nextStates] = evaluate(levels, states, prevPrice, price, nowTs, undefined, undefined, confirm);
       const history: WatchEvent[] = watch["events"] ?? [];
-      let events: WatchEvent[] = crossings.map((c) => ({ ...c, symbol: watch["symbol"], trigger: "cross" as const }));
+      let events: WatchEvent[] = crossings.map((c) => ({ ...c, symbol, trigger: "cross" as const }));
       let touchBook: TouchBook | null = null;
-      if (session !== null) ({ events, book: touchBook } = this.touchEvents(watch, price, events, session));
-      // 碰均线在容差以内就报了,价格往往几轮之后才真穿过那条线:把那条线的穿越落防,免得隔几十秒再报一遍。
-      // 落防不是删掉——离开够远、过了冷却照常重新上膛(alerts.ts 的状态机)
+      // 碰均线同样只拿坐实了的价判:开盘那一笔还没进来时手上是盘前的价,它贴着均线不等于今天碰到了
+      if (session !== null && sample.settled) {
+        ({ events, book: touchBook } = this.touchEvents(watch, price, events, session, nowTs, book));
+      }
+      // 碰均线在容差以内就报了,价格往往几轮之后才真穿过那条线:把那条线的穿越落防(等确认的那一笔一起作废),
+      // 免得隔几十秒再报一遍。落防不是删掉——离开够远、过了冷却照常重新上膛(alerts.ts 的状态机)
       const touched = new Set(events.filter((e) => e["trigger"] === "touch").map((e) => e["source"]));
       for (const level of levels) {
         if (touched.has(level.source)) nextStates[levelKey(level)] = { armed: false, last_fired_at: nowTs };
@@ -299,18 +392,26 @@ export class AlertsService extends ServiceBase {
         // 只进通知流(订单看板下面那条),不走系统通知:穿越的"弹"由桌面端的置顶弹窗负责,
         // 两边都弹就是同一件事说两遍(macOS 上尤其明显)
         const title = event["trigger"] === "touch"
-          ? `${watch["symbol"]} 反复碰 ${event["label"]}`
-          : `${watch["symbol"]} ${event["direction"] === "up" ? "上穿" : "下破"}`;
+          ? `${symbol} 反复碰 ${event["label"]}`
+          : `${symbol} ${event["direction"] === "up" ? "上穿" : "下破"}`;
         this.engine.notifier.notify(title, String(event["text"]), "", { os: false });
+      }
+      // 现价走出了上下两个整数关口之间:这一对跟着换(刚穿过的那个留着,状态按键原样带着)。
+      // 放在判完这一轮之后:穿过旧的那个关口先按旧的一对报
+      const rerounded = reroundLevels(watch["levels"], price, Number(watch["step"]));
+      if (rerounded !== null) {
+        const keep = new Set(rerounded.map((l) => levelKey(l)));
+        for (const key of Object.keys(nextStates)) if (!keep.has(key)) delete nextStates[key];
       }
       this.engine.store.updateWatch(watch["id"], {
         last_price: price,
         states: nextStates,
         events: [...history, ...events].slice(-50),
+        ...(rerounded !== null ? { levels: rerounded } : {}),
         ...(touchBook !== null ? { touch: touchBook } : {}),
       });
       fired.push(...events);
-      checked.push({ symbol: watch["symbol"], price });
+      checked.push({ symbol, price });
     }
 
     if (fired.length) {
@@ -327,5 +428,6 @@ export class AlertsService extends ServiceBase {
     this.levelNotes.delete(symbol);
     this.touchTried.delete(symbol);
     this.sessionPrices.delete(symbol);
+    this.lastSamples.delete(symbol);
   }
 }

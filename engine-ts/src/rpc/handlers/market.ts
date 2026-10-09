@@ -8,10 +8,13 @@ import type {
   PlaybookSetParams, PlaybookSnapshot, PaAnalyzeParams, PaAnalyzeResult, PaCommentResult, PaHtfSummary, PaTimeframesResult,
 } from "../../contract/index.js";
 import { liveTickers, macroBoard } from "../../macro.js";
+import type { BarsFeed } from "../../marketdata.js";
 import { PACommentSchema } from "../../models.js";
+import type { PaClock } from "../../priceaction.js";
 import { loadSchemaAsset } from "../../providers.js";
 import { RpcError } from "../../rpcError.js";
 import { MarketDataService } from "../../services/marketData.js";
+import { entrySessionStart, signalFromPa } from "../../signalOutcomes.js";
 import { HandlerBase } from "../context.js";
 import type { MethodTable } from "../context.js";
 import { contractMethods } from "../contractMethods.js";
@@ -127,12 +130,16 @@ export class MarketHandlers extends HandlerBase {
     }
 
     const moment = nowEt();
+    // 最后一根收没收盘:对着这份 K 线取数的那一刻判(缓存里的那一份早于现在),延迟档再往前退(feed);
+    // 日线几点走完看这个标的有没有盘前盘后——指数没有,16:00 就走完,不等到 20:00
+    const extendedSession = !rth && this.settings.indexConfig(symbol) === null;
+    const clock = (barsAsOfMs: number, feed: BarsFeed | undefined): PaClock => ({ epochMs: moment.epochMs, barsAsOfMs, feed, extendedSession });
     let analysis: PaAnalysis;
     let cached: boolean;
     try {
-      const [bars, hit] = await this.ctx.market.paBars(symbol, timeframe, rth, Boolean(params["force"]));
+      const [bars, hit, askedAt, feed] = await this.ctx.market.paBars(symbol, timeframe, rth, Boolean(params["force"]));
       cached = hit;
-      analysis = analyze(bars, symbol, timeframe, undefined, moment.epochMs, !rth);
+      analysis = analyze(bars, symbol, timeframe, undefined, clock(askedAt, feed), !rth);
     } catch (exc) {
       if (exc instanceof BrokerError || exc instanceof PriceActionError) {
         throw new RpcError(-32015, (exc as Error).message);
@@ -140,13 +147,24 @@ export class MarketHandlers extends HandlerBase {
       throw exc;
     }
 
+    // 读出方向就记一笔,之后按 1 / 5 / 20 天的走势打分(信号成绩单)。同一标的、周期、方向,在两个收盘之间只记一次:
+    // 这一段里发出的信号进场都是下一个收盘,打分时是同一笔(周四收盘后与周五盘前不是两笔)。图每 20 秒刷一遍,
+    // 记的是这一段里第一次读出这个方向的那一刻。高周期那一份只是背景,不记
+    const signal = signalFromPa(analysis, moment.epochMs);
+    if (signal !== null) {
+      const since = entrySessionStart(
+        moment.epochMs, (date) => this.settings.isTradingDay(date), new Set(this.settings.early_close_days),
+      );
+      this.engine.store.signals.logOnce([signal], since);
+    }
+
     // 高周期只是背景:它拿不到不该毁掉整次分析
     let higher: PaHtfSummary | null = null;
     const htfKey = TIMEFRAMES[timeframe]!["htf"] as string | null;
     if (htfKey) {
       try {
-        const [htfBars] = await this.ctx.market.paBars(symbol, htfKey, rth);
-        higher = htfSummary(analyze(htfBars, symbol, htfKey, undefined, moment.epochMs, !rth));
+        const [htfBars, , htfAskedAt, htfFeed] = await this.ctx.market.paBars(symbol, htfKey, rth);
+        higher = htfSummary(analyze(htfBars, symbol, htfKey, undefined, clock(htfAskedAt, htfFeed), !rth));
       } catch {
         higher = null;
       }
@@ -163,7 +181,7 @@ export class MarketHandlers extends HandlerBase {
   }
 
   paAnalyze(params: PaAnalyzeParams): Promise<PaAnalyzeResult> {
-    // 刻意不写审计:每 20 秒被自动调一次,逐条落库只会把审计表冲成噪音
+    // 刻意不写审计:每 20 秒被自动调一次,逐条落库只会把审计表冲成噪音。信号日志那一笔两个收盘之间只记一次,见 paResult
     return this.paResult(params);
   }
 

@@ -3,6 +3,11 @@
  * 纯计算在 playbook.ts,底账在 playbookLog.ts;口径见 docs/features/playbook.md。几条规矩:
  * * **三条区间各有各的时刻。** 昨日口径在收盘后十分钟取(那时今天的期权已经收了,取的是下一个交易日到期的跨式),
  *   写进下一个交易日的底账;盘初口径在 09:35 取一次;当前口径从 09:35 起每五分钟取一次。
+ * * **今日区间不另取**:它是 09:35 的锚 ± 最近一次取到的当前剩余预期波动(playbook.todayBand),每一轮现拼。
+ *   锚单独记一条:它只要 09:35 的指数价,盘初的跨式补不到的日子也有。
+ * * **09:35 的锚与盘初区间只认 09:35 那一刻的价。** 循环在 09:35:00 之后的头两拍里读到的现价算数;
+ *   过了就不拿迟到的现价顶替——等 09:35 那根分钟线走完,取它的开盘价(标成补的)。
+ * * **状态每变一次落一条盘**(machine):静默期里没报出来的那一次、重新上膛那一下都不在事件里,重启要接着判得靠它。
  * * **没赶上的补。** 软件在 16:10 或 09:35 没开着,就拿那一分钟的历史中间价补一份,标成 backfill。补不到就空着并写明原因,不拿别的时刻的价顶替。
  * * **只在连着 IBKR、常规时段里动。** 别的时候一条行情都不订,原因写在 idle_reason 里。
  * * 出了错吞掉、记进 last_error,循环不停。默认开着;开关存在库的偏好表里。
@@ -13,15 +18,18 @@ import { barTimestamp } from "../broker.js";
 import { etNowFromEpoch, nowEt } from "../config.js";
 import type { EtNow } from "../config.js";
 import type {
-  OptionWall, PlaybookAccel, PlaybookBand, PlaybookEvent, PlaybookSnapshot, PlaybookWall,
+  OptionWall, PlaybookAccel, PlaybookAnchor, PlaybookBand, PlaybookEvent, PlaybookSnapshot, PlaybookWall,
 } from "../contract/options.js";
 import { silenceLimitMs } from "../heldStreams.js";
 import { indexContract, optionContract } from "../ibContracts.js";
 import type { IbSession } from "../ibTypes.js";
 import type { OptionMarkStreams } from "../optionMarks.js";
-import { accelerator, atmStrike, legMid, makeBand, newMachine, stepMachine, targets } from "../playbook.js";
+import {
+  accelerator, atmStrike, legMid, makeBand, newMachine, quietKey, restoreMachine, stepMachine, targets, todayBand, wallSpan,
+} from "../playbook.js";
 import type { PlaybookMachine } from "../playbook.js";
 import { PlaybookLog } from "../playbookLog.js";
+import type { PlaybookMachineMark } from "../playbookLog.js";
 import { dateOrdinal, ET, ibEndUtc, ordinalToDate, pad2, wallToEpoch } from "../tz.js";
 import { ServiceBase } from "./host.js";
 import type { ServiceHost } from "./host.js";
@@ -35,11 +43,13 @@ interface PlaybookBroker {
   historicalBars(symbol: string, start: string, end: string): Promise<Array<Record<string, unknown>>>;
 }
 
-type BandKind = "prior" | "open" | "current" | "wall";
+type BandKind = "prior" | "anchor" | "open" | "current" | "wall";
 
 interface Day {
   date: string;
   prior: PlaybookBand | null;
+  /** 今日区间的锚:09:35 的指数价。和盘初那一条区间分开记——它不要期权的价 */
+  anchor: PlaybookAnchor | null;
   open: PlaybookBand | null;
   current: PlaybookBand | null;
   machine: PlaybookMachine;
@@ -63,13 +73,16 @@ export class PlaybookService extends ServiceBase {
   static readonly FRAME_MIN = 5;
   /** 盘初口径的时刻(美东当日分钟数) */
   static readonly OPEN_MIN = 9 * 60 + 35;
+  /** 09:35:00 之后这么久之内读到的现价算「09:35 的价」:循环的两拍。再迟就不是那一刻的价了,改用那根分钟线 */
+  static readonly LIVE_ANCHOR_MS = 2 * PlaybookService.TICK_MS;
   /** 昨日口径:收盘后多少分钟取,以及这个窗口开多久(SPX 期权比指数晚收一刻钟) */
   static readonly PRIOR_DELAY_MIN = 10;
   static readonly PRIOR_WINDOW_MIN = 5;
   /** 取盘口失败后隔多久再试;补历史价失败后隔多久再试(历史请求有频率限制) */
   static readonly RETRY_MS = 30_000;
   static readonly BACKFILL_RETRY_MS = 10 * 60_000;
-  /** 期权墙取现价上下各多少档(券商那边的上限,见 BrokerRouter.CHAIN_MAX_WIDTH) */
+  /** 期权墙最多取现价上下各多少档(券商那边的上限,见 BrokerRouter.CHAIN_MAX_WIDTH):行情线路就这么多,
+   *  要盖住剧本的几条线只能在这些档数里抽着取,不加档 */
   static readonly WALL_WIDTH = 15;
   static readonly MAX_EVENTS = 50;
 
@@ -172,22 +185,23 @@ export class PlaybookService extends ServiceBase {
   private dayFor(date: string): Day {
     if (this.day?.date === date) return this.day;
     const day: Day = {
-      date, prior: null, open: null, current: null, machine: newMachine(), events: [],
+      date, prior: null, anchor: null, open: null, current: null, machine: newMachine(), events: [],
       wall: null, accel: null, notes: {}, frameSlot: null, triedAt: {},
     };
+    let mark: PlaybookMachineMark | null = null;
     for (const record of this.log().read(date)) {
-      if (record.kind === "event") {
-        day.events.push(record.event);
-        continue;
-      }
-      if (record.kind === "prior") day.prior = record.band;
+      if (record.kind === "event") day.events.push(record.event);
+      else if (record.kind === "anchor") day.anchor = record.anchor;
+      else if (record.kind === "machine") mark = record.machine;
+      else if (record.kind === "prior") day.prior = record.band;
       else if (record.kind === "open") day.open = record.band;
       else day.current = record.band;
     }
-    // 重启之后接着上一条进入 / 失效往下判,不然每次重启都把同一个「进入 B3」再报一遍
-    const last = [...day.events].reverse().find((e) => e.kind !== "accel");
-    if (last?.kind === "enter") day.machine = { ...day.machine, state: last.state, trigger: last.level, since: last.at };
-    for (const e of day.events) day.machine.fired[`${e.kind}|${e.state}|${e.level}`] = e.at;
+    // 没有单独记锚的底账(加这一种记录之前写的):盘初那一条区间的锚就是它
+    if (day.anchor === null && day.open !== null) day.anchor = { at: day.open.at, price: day.open.anchor, source: day.open.source };
+    // 重启之后接着判:状态以落盘的那一条为准,不然每次重启都把同一个「进入 B3」再报一遍、或者把静默期里进的 B2 丢掉
+    day.machine = { ...day.machine, ...restoreMachine(mark, day.events) };
+    for (const e of day.events) day.machine.fired[quietKey(e)] = e.at;
     day.events = day.events.slice(-PlaybookService.MAX_EVENTS);
     this.day = day;
     this.price = null;
@@ -218,40 +232,61 @@ export class PlaybookService extends ServiceBase {
 
       const day = this.dayFor(et.date);
       if (day.prior === null) await this.backfillPrior(broker, day, nowMs);
-      if (et.minutes < PlaybookService.OPEN_MIN) return this.idle("等 09:35 的盘初定价");
 
+      // 开盘起就读现价(09:35 之前只读不用):指数那条流刚订上时,第一笔成交到之前读到的是昨收;
+      // 到取锚的那一刻它已经跳了五分钟
       const spot = await broker.indexPrice(symbol);
       const info = broker.spotInfo(symbol);
+      if (et.minutes < PlaybookService.OPEN_MIN) return this.idle("等 09:35 的盘初定价");
       if (spot === null || !(spot > 0) || info?.["source"] !== "index") return this.idle("拿不到现价");
+      // 券商那一层分不出「今天的成交」和「垫底的昨收」。手上有昨收时,一分不差的那个价不当现价用
+      if (day.prior !== null && spot === day.prior.anchor) return this.idle("现价和昨收一分不差:分不清是不是还没跳的昨收,等下一笔");
       this.price = spot;
       this.priceAt = nowMs;
 
+      // et.seconds 是当日的秒数:离 09:35:00 过了多久
+      const onTime = (et.seconds - PlaybookService.OPEN_MIN * 60) * 1000 <= PlaybookService.LIVE_ANCHOR_MS;
+      // 那根分钟线走完了才去要:09:35:59 之前它还在走
+      const barDone = et.minutes > PlaybookService.OPEN_MIN;
+      if (day.anchor === null) {
+        if (onTime) this.setAnchor(day, { at: nowMs, price: spot, source: "live" });
+        else if (barDone) await this.backfillAnchor(broker, day, nowMs);
+      }
+      if (day.open === null && !onTime && barDone) await this.backfillOpen(broker, day, nowMs);
+
       const slot = Math.floor(et.minutes / PlaybookService.FRAME_MIN);
-      const firstSlot = slot === Math.floor(PlaybookService.OPEN_MIN / PlaybookService.FRAME_MIN);
-      if (day.open === null && !firstSlot) await this.backfillOpen(broker, day, nowMs);
+      let frame = false;
       if (day.frameSlot !== slot && this.due(day, "current", nowMs, PlaybookService.RETRY_MS)) {
         const band = await this.liveBand(broker, et.date.replace(/-/g, ""), spot, nowMs, "盘中");
         if (typeof band === "string") {
           day.notes.current = `当前区间没取到:${band}`;
         } else {
+          frame = true;
           day.frameSlot = slot;
           day.current = band;
           delete day.notes.current;
           this.log().append(day.date, { kind: "frame", band });
-          if (day.open === null && firstSlot) {
+          // 盘初区间只认 09:35 那一刻当场读到的这一份(锚也是这一笔现价);迟了的由分钟线补
+          if (day.open === null && onTime && day.anchor?.price === band.anchor) {
             day.open = band;
             delete day.notes.open;
             this.log().append(day.date, { kind: "open", band });
           }
-          await this.refreshWall(day, nowMs);
+          await this.refreshWall(day, nowMs, spot);
         }
       }
 
-      const { next, events } = stepMachine(day.machine, {
-        at: nowMs, price: spot, b3: day.prior?.lower ?? null, b2: day.current?.upper ?? null,
-        accelStrike: day.accel?.strike ?? null,
+      const before = day.machine;
+      const { next, events } = stepMachine(before, {
+        at: nowMs, price: spot, b3: day.prior?.lower ?? null, b2: todayBand(day.anchor, day.current)?.upper ?? null,
+        frame, accelStrike: day.accel?.strike ?? null,
       });
       day.machine = next;
+      if (next.state !== before.state || next.trigger !== before.trigger || next.lost !== before.lost) {
+        this.log().append(day.date, {
+          kind: "machine", machine: { at: nowMs, state: next.state, trigger: next.trigger, since: next.since, lost: next.lost },
+        });
+      }
       if (events.length) {
         for (const event of events) this.log().append(day.date, { kind: "event", event });
         day.events = [...day.events, ...events].slice(-PlaybookService.MAX_EVENTS);
@@ -264,6 +299,12 @@ export class PlaybookService extends ServiceBase {
       this.lastError = (exc as Error).message.slice(0, 200);
       return this.idle("上一轮出错了");
     }
+  }
+
+  private setAnchor(day: Day, anchor: PlaybookAnchor): void {
+    day.anchor = anchor;
+    delete day.notes.anchor;
+    this.log().append(day.date, { kind: "anchor", anchor });
   }
 
   /** 这一样现在该不该试:上次试过之后要隔够久 */
@@ -346,16 +387,31 @@ export class PlaybookService extends ServiceBase {
     }
   }
 
-  private async backfillOpen(broker: PlaybookBroker, day: Day, nowMs: number): Promise<void> {
-    if (!this.due(day, "open", nowMs, PlaybookService.BACKFILL_RETRY_MS)) return;
+  /** 没赶上 09:35 那一刻:锚取指数 09:35 那根分钟线的开盘价(只要指数,不要期权) */
+  private async backfillAnchor(broker: PlaybookBroker, day: Day, nowMs: number): Promise<void> {
+    if (!this.due(day, "anchor", nowMs, PlaybookService.BACKFILL_RETRY_MS)) return;
     const minute = PlaybookService.OPEN_MIN;
     try {
       const cfg = this.settings.indexConfig(PlaybookService.SYMBOL);
       const index = indexContract(PlaybookService.SYMBOL, cfg ? cfg.exchange : "CBOE");
-      const anchor = await this.minuteOpen(broker.marketSession(), index, day.date, minute, "TRADES", true);
-      const band = anchor === null ? null : await this.historicBand(broker, day.date.replace(/-/g, ""), anchor, day.date, minute);
+      const price = await this.minuteOpen(broker.marketSession(), index, day.date, minute, "TRADES", true);
+      if (price === null) {
+        day.notes.anchor = "今日区间的锚补不了:09:35 那一分钟没有指数的历史价";
+        return;
+      }
+      this.setAnchor(day, { at: minuteEpoch(day.date, minute), price, source: "backfill" });
+    } catch (exc) {
+      day.notes.anchor = `今日区间的锚补不了:${(exc as Error).message.slice(0, 120)}`;
+    }
+  }
+
+  /** 盘初那一条区间没当场取到:围着 09:35 的锚,拿平值跨式 09:35 那根分钟线的中间价补。锚还没有就先不补(缺的原因在锚那一条上) */
+  private async backfillOpen(broker: PlaybookBroker, day: Day, nowMs: number): Promise<void> {
+    if (day.anchor === null || !this.due(day, "open", nowMs, PlaybookService.BACKFILL_RETRY_MS)) return;
+    try {
+      const band = await this.historicBand(broker, day.date.replace(/-/g, ""), day.anchor.price, day.date, PlaybookService.OPEN_MIN);
       if (band === null) {
-        day.notes.open = "盘初区间补不了:09:35 那一分钟没有指数或平值跨式的历史价";
+        day.notes.open = "盘初区间补不了:09:35 那一分钟没有平值跨式的历史价";
         return;
       }
       day.open = band;
@@ -381,9 +437,7 @@ export class PlaybookService extends ServiceBase {
       if (mid === null) return null;
       mids.push(mid);
     }
-    const [year, month, dayOfMonth] = date.split("-").map(Number) as [number, number, number];
-    const at = wallToEpoch({ year, month, day: dayOfMonth, hour: Math.floor(minute / 60), minute: minute % 60, second: 0 }, ET);
-    return makeBand({ at, anchor, strike, expiry, call: mids[0] ?? 0, put: mids[1] ?? 0, source: "backfill" });
+    return makeBand({ at: minuteEpoch(date, minute), anchor, strike, expiry, call: mids[0] ?? 0, put: mids[1] ?? 0, source: "backfill" });
   }
 
   /** 一张合约在某一天某一分钟那根分钟线的开盘价;那一根没有就是 null */
@@ -404,13 +458,25 @@ export class PlaybookService extends ServiceBase {
   }
 
   // ---- 期权墙 ----------------------------------------------------------------
-  /** 换了当前区间就顺手换一份期权墙(取不到留着上一份,原因写进 notes) */
-  private async refreshWall(day: Day, nowMs: number): Promise<void> {
+  /**
+   * 换了当前区间就顺手换一份期权墙(取不到留着上一份,原因写进 notes)。窗口要盖住剧本画出来的每一条线:
+   * 目标位与加速档都是在这份链里找的,链比区间窄的话找到的只是「窗口里」的,不是区间里的。
+   */
+  private async refreshWall(day: Day, nowMs: number, spot: number): Promise<void> {
     try {
-      const wall: OptionWall = await this.market.wallFor(PlaybookService.SYMBOL, day.date.replace(/-/g, ""), PlaybookService.WALL_WIDTH);
+      const span = wallSpan(spot, [
+        day.prior?.lower, day.open?.lower, day.open?.upper, day.current?.lower, day.current?.upper,
+        todayBand(day.anchor, day.current)?.upper,
+      ]);
+      // 剧本看的是「今天到期」的那条链:日到期类。月度合约记的日期那一天两条链都列着它,不指定就会挑到月度那条
+      const daily = this.settings.indexConfig(PlaybookService.SYMBOL)?.daily_trading_class ?? "";
+      const wall: OptionWall = await this.market.wallFor(
+        PlaybookService.SYMBOL, day.date.replace(/-/g, ""), PlaybookService.WALL_WIDTH, span, daily,
+      );
       day.wall = {
         at: nowMs, expiry: wall.expiry, call_wall: wall.call_wall, put_wall: wall.put_wall, gamma_flip: wall.gamma_flip,
-        net_gex: wall.net_gex, regime: wall.regime, strikes: wall.strikes, warnings: wall.warnings,
+        net_gex: wall.net_gex, net_gex_ratio: wall.net_gex_ratio, regime: wall.regime, strikes: wall.strikes,
+        coverage: wall.coverage, oi_missing: wall.oi_missing, warnings: wall.warnings,
       };
       delete day.notes.wall;
     } catch (exc) {
@@ -430,13 +496,14 @@ export class PlaybookService extends ServiceBase {
     }
     const enabled = this.enabled();
     const machine = day?.machine ?? newMachine();
+    const today = todayBand(day?.anchor ?? null, day?.current ?? null);
     const { t1, t2 } = targets(machine.state, machine.trigger, day?.open ?? null, day?.wall?.strikes ?? []);
     return {
       symbol: PlaybookService.SYMBOL, date, enabled, running: this.running,
       price: this.price, price_at: this.priceAt,
-      bands: { prior: day?.prior ?? null, open: day?.open ?? null, current: day?.current ?? null },
+      bands: { prior: day?.prior ?? null, open: day?.open ?? null, current: day?.current ?? null, day: today },
       state: machine.state, trigger: machine.trigger, since: machine.since,
-      lines: { b2: day?.current?.upper ?? null, b3: day?.prior?.lower ?? null },
+      lines: { b2: today?.upper ?? null, b3: day?.prior?.lower ?? null }, b2_lost: machine.lost,
       t1, t2, accel: day?.accel ?? null, wall: day?.wall ?? null,
       events: day?.events ?? [],
       notes: Object.values(day?.notes ?? {}),
@@ -444,4 +511,10 @@ export class PlaybookService extends ServiceBase {
       frame_seconds: PlaybookService.FRAME_MIN * 60,
     };
   }
+}
+
+/** 美东某一天某一分钟整的时刻(epoch 毫秒) */
+function minuteEpoch(date: string, minute: number): number {
+  const [year, month, dayOfMonth] = date.split("-").map(Number) as [number, number, number];
+  return wallToEpoch({ year, month, day: dayOfMonth, hour: Math.floor(minute / 60), minute: minute % 60, second: 0 }, ET);
 }

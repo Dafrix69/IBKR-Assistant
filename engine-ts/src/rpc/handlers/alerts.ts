@@ -3,6 +3,7 @@
 import type {
   AlertsCreateParams, AlertsDeleteParams, AlertsSetTouchConfigParams, MaTouchConfig, RpcResult, Watch,
 } from "../../contract/index.js";
+import { AUTO_STEP } from "../../alerts.js";
 import { MaTouchError, normalizeTouchConfig } from "../../maTouch.js";
 import { RpcError } from "../../rpcError.js";
 import { AlertsService } from "../../services/alerts.js";
@@ -24,16 +25,21 @@ export class AlertsHandlers extends HandlerBase {
   }
 
   // ---- 警告 ------------------------------------------------------------
-  alertsList(): RpcResult<"alerts.list"> {
+  async alertsList(): Promise<RpcResult<"alerts.list">> {
     this.ctx.pool.ensureMigrated();
-    return { watches: this.engine.store.listWatches(), touch_config: this.ctx.alerts.touchConfig() };
+    return {
+      watches: await this.ctx.alerts.listWatches(),
+      touch_config: this.ctx.alerts.touchConfig(),
+      cross_confirm: this.ctx.alerts.crossConfirm(),
+    };
   }
 
   alertsCreate(params: AlertsCreateParams): RpcResult<"alerts.create"> {
     const symbol = symbolOrRaise(params);
     let watch: Watch;
     try {
-      watch = this.engine.store.addWatch(symbol, Number(params["step"] ?? 5.0) || 5.0);
+      // 不给步长(或给了个不成数的)= 自动:按现价分档
+      watch = this.engine.store.addWatch(symbol, Number(params["step"] ?? AUTO_STEP) || AUTO_STEP);
     } catch (exc) {
       throw new RpcError(-32602, (exc as Error).message);
     }
@@ -59,9 +65,21 @@ export class AlertsHandlers extends HandlerBase {
       if (exc instanceof MaTouchError) throw new RpcError(-32602, exc.message);
       throw exc;
     }
-    this.engine.store.setPref(AlertsService.TOUCH_CONFIG_PREF, config);
-    this.engine.store.audit("ui", "alert_touch_config", { config });
-    this.ctx.alerts.touchConfigChanged();
+    // 穿越的确认方式搭这一趟:不给就不动;认不出来的值在落任何东西之前拒掉
+    const confirm = params["cross_confirm"];
+    if (confirm !== undefined && confirm !== "immediate" && confirm !== "bar_close") {
+      throw new RpcError(-32602, "穿越的确认方式只能是 immediate(跨过就报)或 bar_close(等 1 分钟收盘确认)");
+    }
+    if (confirm !== undefined && confirm !== this.ctx.alerts.crossConfirm()) {
+      this.engine.store.setPref(AlertsService.CROSS_CONFIRM_PREF, confirm);
+      this.engine.store.audit("ui", "alert_cross_confirm", { confirm });
+    }
+    // 只改确认方式的那一趟(config 是空的)不碰碰均线的口径:不白记一条审计,也不清底账的退避
+    if (confirm === undefined || Object.keys(params["config"]).length > 0) {
+      this.engine.store.setPref(AlertsService.TOUCH_CONFIG_PREF, config);
+      this.engine.store.audit("ui", "alert_touch_config", { config });
+      this.ctx.alerts.touchConfigChanged();
+    }
     return { config };
   }
 }

@@ -11,6 +11,9 @@ import { weekdayOfDate } from "./tz.js";
 export type { RecentOrder } from "./models.js";
 import type { RecentOrder } from "./models.js";
 import { riskBudgetWarning } from "./riskBudget.js";
+import type { Limits } from "./contract/settings.js";
+import { contractsKey } from "./openRisk.js";
+import type { OpenRisk } from "./openRisk.js";
 
 export const VALIDATOR_CODES = new Set([
   "LOW_CONFIDENCE", "UNKNOWN_ACCOUNT", "LIVE_TRADING_DISABLED", "EXCEEDS_LIMIT",
@@ -54,6 +57,20 @@ export interface ValidationOutcome {
   rejected: RejectedOrder[];
 }
 
+/** 校验要用到、但不在配置与快照里的那几样(都由引擎现取;不给 = 这一块不查,离线校验与黄金基线就是这样)。 */
+export interface ValidatorExtras {
+  /** 账户在手的敞口(openRisk.ts)。null = 这一次读不到持仓;不给 = 调用方没接这一块 */
+  exposure?: OpenRisk | null;
+  /** 这笔单是不是只在减已有的持仓(engine/closing.ts):两条累计上限不拦减仓 */
+  isReduction?: (order: ParsedOrder, alias: string) => boolean;
+  /** 一张认成减仓的单放行之后叫一次:把它从这一批用的持仓里扣掉,后一张对着扣过的判 */
+  consumeReduction?: (order: ParsedOrder, alias: string) => void;
+  /** 设了累计上限、但这条通道根本核对不了(富途读不出期权持仓):不查,把这句话写进订单的警告 */
+  capNote?: string;
+  /** 券商报的账户净值(美元,按别名):单笔风险预算在人没填权益时用它 */
+  equity?: Record<string, number>;
+}
+
 /** 能交易、但交易所只收限价单的时段。"盘外"来自合约自己的交易时段
  * (config.hoursStatus):SPX 期权的隔夜段既不是正股口径的"盘前"也不是"盘后"。
  * 与 tracker.EXTENDED_SESSIONS 同一套语义,两边都改才不会一边放行一边拦。 */
@@ -66,6 +83,10 @@ export class Validator {
   readonly recentOrders: RecentOrder[];
   readonly marketStatus: string;
   private readonly marketStatusFn: ((order: ParsedOrder) => string | null) | null;
+  private readonly extras: ValidatorExtras;
+  /** 这一批里前面已经放行的:账户 → 最坏亏损合计;账户|标的|到期 → 张数。累计上限要把它们算进去 */
+  private readonly batchRisk: Record<string, number> = {};
+  private readonly batchContracts: Record<string, number> = {};
 
   constructor(
     settings: Settings,
@@ -73,7 +94,9 @@ export class Validator {
     snapshot?: Record<string, number> | null,
     recentOrders?: RecentOrder[] | null,
     marketStatusFn?: ((order: ParsedOrder) => string | null) | null,
+    extras?: ValidatorExtras | null,
   ) {
+    this.extras = extras ?? {};
     this.settings = settings;
     this.nowEt = nowEt;
     this.snapshot = {};
@@ -189,9 +212,12 @@ export class Validator {
       issues.push(...this.checkTrigger(order, warnings));
     }
 
-    // 6. 限额复算(§5.2)
-    const [notional, limitIssues] = this.checkLimits(order);
+    // 6. 限额复算(§5.2):这个账户实际生效的那一份(全局的,再盖上 limits.by_account 里给它写的)
+    const limits = account === null ? this.settings.limits : this.settings.limitsFor(account.alias);
+    const [notional, limitIssues] = this.checkLimits(order, limits);
     issues.push(...limitIssues);
+    // 6b. 账户在手的两条累计上限(默认不设)
+    if (account !== null && !limitIssues.length) issues.push(...this.checkOpenLimits(order, account.alias, limits, notional, warnings));
 
     // 7. 交易时段(§5.5)
     issues.push(...this.checkSession(order, warnings));
@@ -207,9 +233,10 @@ export class Validator {
 
     if (issues.length || account === null) return [issues, null];
 
-    // 10. 单笔风险预算:占账户权益的比例,只告警
-    const budget = riskBudgetWarning(this.settings.risk_budget, account.alias, order.contract.secType, notional);
+    // 10. 单笔风险预算:占账户权益的比例,只告警。权益以人填的为准;没填(或填 0)的账户用券商报的净值
+    const budget = riskBudgetWarning(this.budgetConfig(), account.alias, order.contract.secType, notional);
     if (budget !== null) warnings.push(budget);
+    this.countInBatch(order, account.alias, notional);
 
     const merged = [...order.warnings, ...warnings];
     return [[], { order, account, notional, signature, warnings: merged }];
@@ -439,9 +466,79 @@ export class Validator {
     return [];
   }
 
+  /** 单笔风险预算用的那一份:人填的权益优先,没填的账户补上券商报的净值。 */
+  private budgetConfig(): Settings["risk_budget"] {
+    const cfg = this.settings.risk_budget;
+    if (!this.extras.equity) return cfg;
+    const filled = Object.fromEntries(Object.entries(cfg.equity_usd).filter(([, v]) => v > 0));
+    return { ...cfg, equity_usd: { ...this.extras.equity, ...filled } };
+  }
+
+  /** 放行的这一单记进本批的累计(同一句话里的第二张单要把第一张算进去)。 */
+  private countInBatch(order: ParsedOrder, alias: string, notional: number): void {
+    const secType = order.contract.secType;
+    if (secType !== "OPT" && secType !== "BAG") return;
+    if (this.extras.isReduction?.(order, alias)) {
+      this.extras.consumeReduction?.(order, alias);
+      return;
+    }
+    this.batchRisk[alias] = (this.batchRisk[alias] ?? 0) + notional;
+    const key = contractsKey(alias, order.contract.symbol, orderExpiry(order.contract));
+    this.batchContracts[key] = (this.batchContracts[key] ?? 0) + order.order.totalQuantity;
+  }
+
+  /**
+   * 账户在手的两条累计上限:期权 / 组合的最坏亏损合计(max_open_risk_usd)、同一标的同一到期的张数
+   * (max_underlying_contracts)。单笔上限管的是"这一单多大",它们管的是"账户上一共压了多少"——一天开十只各 5 张的蝶,
+   * 每一单都合规,账户上是 50 张。只管期权与组合(正股最坏亏多少取决于止损);在减已有持仓的单不拦:
+   * 账户已经到线的时候,平仓恰恰是该放行的那一种。读不到持仓时开仓的单拒:核对不了的上限等于没有。
+   * "在手"里含今天发出去还没有终态的开仓单(engine/accountGuard.ts 的 withWorkingOrders)。
+   */
+  private checkOpenLimits(
+    order: ParsedOrder, alias: string, limits: Limits, notional: number, warnings: string[],
+  ): ValidationIssue[] {
+    const secType = order.contract.secType;
+    if (secType !== "OPT" && secType !== "BAG") return [];
+    if (!(limits.max_open_risk_usd > 0) && !(limits.max_underlying_contracts > 0)) return [];
+    if (this.extras.capNote) warnings.push(this.extras.capNote);
+    const exposure = this.extras.exposure;
+    if (exposure === undefined || this.extras.isReduction?.(order, alias)) return [];
+    if (exposure === null) {
+      return [{
+        code: "UNPRICEABLE",
+        message: `读不到账户 ${alias} 的持仓,核对不了在手的累计上限(在手风险 / 同标的张数),已拒绝。连上券商后重试。`,
+      }];
+    }
+    const issues: ValidationIssue[] = [];
+    if (limits.max_open_risk_usd > 0) {
+      const held = (exposure.riskUsd[alias] ?? 0) + (this.batchRisk[alias] ?? 0);
+      if (held + notional > limits.max_open_risk_usd) {
+        issues.push({
+          code: "EXCEEDS_LIMIT",
+          message:
+            `账户 ${alias} 在手期权的最坏亏损合计约 ${fmtF(held, 2)} USD,加上这一单 ${fmtF(notional, 2)} USD,` +
+            `超过在手风险上限 ${fmtF(limits.max_open_risk_usd, 2)} USD。`,
+        });
+      }
+    }
+    if (limits.max_underlying_contracts > 0) {
+      const expiry = orderExpiry(order.contract);
+      const key = contractsKey(alias, order.contract.symbol, expiry);
+      const held = (exposure.contracts[key] ?? 0) + (this.batchContracts[key] ?? 0);
+      if (held + order.order.totalQuantity > limits.max_underlying_contracts) {
+        issues.push({
+          code: "EXCEEDS_LIMIT",
+          message:
+            `账户 ${alias} 在 ${order.contract.symbol} ${expiry} 到期上已有 ${pyG(held)} 张,加上这一单 ${order.order.totalQuantity} 张,` +
+            `超过同一标的同一到期的上限 ${limits.max_underlying_contracts} 张。`,
+        });
+      }
+    }
+    return issues;
+  }
+
   // ---- 限额 ---------------------------------------------------------
-  private checkLimits(order: ParsedOrder): [number, ValidationIssue[]] {
-    const limits = this.settings.limits;
+  private checkLimits(order: ParsedOrder, limits: Limits): [number, ValidationIssue[]] {
     const contract = order.contract;
     const spec = order.order;
     const qty = spec.totalQuantity;
@@ -596,15 +693,26 @@ export class Validator {
     for (const recent of this.recentOrders) {
       if (recent.signature !== signature) continue;
       if (this.nowEt.epochMs - recent.createdAtMs > windowMs) continue;
-      if (qtyClose(qty, recent.quantity, limits.duplicate_qty_tolerance)) {
+      if (!qtyClose(qty, recent.quantity, limits.duplicate_qty_tolerance)) continue;
+      // 那一张已经**撤掉**,这一次的限价和它差到一分钱以上:不是手滑重复,是没成交、撤了、换个价再来。
+      // 只认撤掉这一种终态:成交了的再来一张是加仓(照旧拦,真要加就改数量或等窗口过去);被拒、出错的终态
+      // 有过记错的先例(单其实还活着,见 engine/callbacks.ts),不能凭它放第二张。还没有终态的更不放:它可能还挂在券商那边
+      if (recent.finalStatus === "cancelled" && differentPrice(order.order.lmtPrice, recent.limitPrice)) continue;
+      if (recent.finalStatus === null) {
         return [{
           code: "DUPLICATE_ORDER",
           message:
-            `${limits.duplicate_window_minutes} 分钟内已提交过高度相似的订单` +
-            `(${signature},数量 ${pyG(recent.quantity)}),已拦截以防重复下单。` +
-            "如确需再下一笔,请等待窗口结束或改变数量。",
+            `${limits.duplicate_window_minutes} 分钟内提交过的同一张单(${signature},数量 ${pyG(recent.quantity)})还没有终态:` +
+            "它可能还挂在券商那边,再发一张两张都可能成交。先撤掉那一张(或等它成交),再发新的;确要两张都留,改变数量。",
         }];
       }
+      return [{
+        code: "DUPLICATE_ORDER",
+        message:
+          `${limits.duplicate_window_minutes} 分钟内已提交过高度相似的订单` +
+          `(${signature},数量 ${pyG(recent.quantity)}),已拦截以防重复下单。` +
+          "如确需再下一笔,请等待窗口结束或改变数量。",
+      }];
     }
     return [];
   }
@@ -757,6 +865,17 @@ function mixedTradingClass(contract: ContractSpec): ValidationIssue[] {
     "不同(如 SPX 为次日开盘 AM 结算、SPXW 为当天收盘 PM 结算),混在一张组合里不支持。" +
     "请把各腿统一写成同一类后重试。",
   )];
+}
+
+/** 两个限价是不是差到了一分钱以上。任何一边没有写明的限价(AUTO_MID、市价)都说不清,当成没差。 */
+function differentPrice(a: number | null | undefined, b: number | null | undefined): boolean {
+  if (a === null || a === undefined || b === null || b === undefined) return false;
+  return Number.isFinite(a) && Number.isFinite(b) && Math.abs(a - b) >= 0.005;
+}
+
+/** 这张单的到期日(YYYYMMDD):单腿取合约的,组合取第一条腿的(各腿同到期由结构校验保证)。 */
+function orderExpiry(contract: ContractSpec): string {
+  return String(contract.lastTradeDateOrContractMonth ?? contract.legs?.[0]?.lastTradeDateOrContractMonth ?? "").slice(0, 8);
 }
 
 function qtyClose(a: number, b: number, tolerance: number): boolean {

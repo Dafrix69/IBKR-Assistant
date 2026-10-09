@@ -1,7 +1,8 @@
-/** 接入页「Discord 跟单」那一节:存 bot token、选频道与信任的发送者、定上限、开关,以及最近的信号。
+/** 接入页「Discord 跟单」那一节:存 bot token、选频道与信任的发送者、定上限、成交后要不要自动建追踪、开关,以及最近的信号。
  *
  * 表单的检查与拼装在 lib/followForm.ts(纯逻辑,引擎那边的测试直接跑)。
- * 打开、放宽都要过主进程的原生确认框(purpose: gate.follow):框上的字由主进程对着要存的那一份写,这里改不了。
+ * 打开、放宽(含打开「成交后自动建追踪」、填上或换一个到点平仓的钟点)都要过主进程的原生确认框(purpose: gate.follow):
+ * 框上的字由主进程对着要存的那一份写,这里改不了。
  * 关是当场生效的,不等「保存」。bot token 只往 follow.set_token 送(它写系统凭证库),不落在这一层。
  */
 import { useCallback, useEffect, useState } from 'react';
@@ -12,7 +13,7 @@ import { showBanner } from '../store/banner';
 import { useStatus } from '../store/status';
 import { EmptyState, Group, GroupRow, LoadingBlock, Notice, NumberRow, Primer, SectionTitle, StepList, SwitchRow } from '../ui/kit';
 import { fmtTime } from './format';
-import { OUTCOME_LABEL, addAuthor, formProblems, isDirty, outcomeTone, readerText, toConfig, toForm, type FollowForm } from './followForm';
+import { OUTCOME_LABEL, addAuthor, formProblems, isDirty, outcomeTone, quoteLine, readerText, toConfig, toForm, type FollowForm } from './followForm';
 
 const SETUP_STEPS = [
   { title: '建一个 bot', detail: 'Discord Developer Portal → New Application → 左侧 Bot → Reset Token,把那一整段复制到下面保存。' },
@@ -126,7 +127,8 @@ export function FollowPanel() {
     }
     const next = toConfig(form);
     if (next.enabled) {
-      // 从关到开、换频道、多信任一个人、换账户、调大上限,主进程都要一张确认凭据;只是往紧了改时它不弹框、直接回 true
+      // 从关到开、换频道、多信任一个人、换账户、调大上限、打开成交后自动建追踪(或换它到点平仓的钟点),主进程都要一张确认凭据;
+      // 只是往紧了改时它不弹框、直接回 true
       const ok = await dafri.confirm({ purpose: 'gate.follow', binding: next, title: '打开 Discord 自动跟单', message: '', confirmLabel: '我明白,打开跟单' });
       if (!ok) return;
     }
@@ -246,7 +248,20 @@ export function FollowPanel() {
         <NumberRow icon="sf-clock" tint="gray" label="消息多旧就不跟" sub="秒。断线之后补到的旧消息不追" min={1} max={600} step={5} value={form.maxAge} onChange={(v) => patch({ maxAge: v })} />
       </Group>
 
-      <SectionTitle>4 · 开关</SectionTitle>
+      <SectionTitle>4 · 成交之后</SectionTitle>
+      <Group hint="软件只跟对方的开仓:他什么时候走、止盈止损设在哪,软件不知道。上面这一项是用你自己的规则替跟进来的蝴蝶收尾,不是跟着他平。">
+        <SwitchRow icon="sf-target" tint="green" label="成交后自动建追踪(只管蝴蝶)" sub="跟进来的蝴蝶成交之后,软件自己给它建一条持仓追踪并打开「到价自动平仓」:按蝶式预设(分档利润回撤)盯着,触发了直接发平仓单,不再问你。贷方价差不建。软件关着、电脑睡着时不盯。" checked={form.trackFly} onChange={(v) => patch({ trackFly: v })} />
+        <GroupRow icon="sf-clock" tint="gray" label="到点平仓(美东)" sub="自动建的那条追踪到这个钟点持仓还在就平,写成 HH:MM(如 15:45);留空 = 不设。建追踪时这个钟点已经过了,就落在下一次(第二天)。只在上面那一项开着时有用。">
+          <Input style={{ width: 110 }} placeholder="如 15:45" disabled={!form.trackFly} value={form.trackExitAt} onChange={(e) => patch({ trackExitAt: e.target.value })} />
+        </GroupRow>
+        {status.tracks_pending > 0 ? (
+          <GroupRow label="在等成交" sub={`有 ${status.tracks_pending} 只跟进去的蝴蝶还没成交(或刚成交):成交之后几秒内自动建追踪,建好、建不了都会发通知。`}>
+            <Tag>{status.tracks_pending} 只</Tag>
+          </GroupRow>
+        ) : null}
+      </Group>
+
+      <SectionTitle>5 · 开关</SectionTitle>
       <Group>
         <SwitchRow icon="sf-bolt" tint="orange" label="自动跟单" sub="关着 = 只观察。关是当场生效的,开要点保存并在确认框里确认" checked={form.enabled} onChange={(v) => void setEnabled(v)} />
       </Group>
@@ -265,13 +280,20 @@ export function FollowPanel() {
       {status.recent.length ? (
         <Group>
           {status.recent.map((e) => (
-            <GroupRow key={e.message_id} label={<>{e.summary || e.text}</>} sub={`${fmtTime(e.at)} · ${e.author_name || e.author_id} ·「${e.text}」${e.detail ? ` · ${e.detail}` : ''}`}>
+            <GroupRow
+              key={e.message_id}
+              label={<>{e.summary || e.text}</>}
+              sub={<>
+                {`${fmtTime(e.at)} · ${e.author_name || e.author_id} ·「${e.text}」${e.detail ? ` · ${e.detail}` : ''}`}
+                {e.quote ? <><br />{quoteLine(e)}</> : null}
+              </>}
+            >
               <Tag color={outcomeTone(e.outcome)}>{OUTCOME_LABEL[e.outcome]}</Tag>
             </GroupRow>
           ))}
         </Group>
       ) : (
-        <EmptyState compact>信任的发送者发来像单子的消息之后,每一条跟了没有、为什么,都记在这里</EmptyState>
+        <EmptyState compact>信任的发送者发来像单子的消息之后,每一条跟了没有、为什么,都记在这里;连着 TWS 时还会记下处理完那一刻的盘口,对着对方写的价</EmptyState>
       )}
     </section>
   );

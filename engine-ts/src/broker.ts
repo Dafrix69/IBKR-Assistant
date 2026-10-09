@@ -14,7 +14,7 @@ import type { AccountConfig, EtNow, IndexConfig, Settings } from "./config.js";
 import type { ContractSpec, OrderSpec, TriggerSpec } from "./models.js";
 import type { HostedOrderPlan } from "./positions.js";
 import { legOf, makeKey, positionLabel } from "./positions.js";
-import { MIN_BARS, TIMEFRAMES } from "./marketdata.js";
+import { MIN_BARS, TIMEFRAMES, tagFeed } from "./marketdata.js";
 import type { BookL1, BookLevel, BookLiquidity, BookSnapshot } from "./contract/book.js";
 import type { StockQuote } from "./contract/sectors.js";
 import type { PositionRow } from "./contract/positions.js";
@@ -25,7 +25,7 @@ import {
   ET, dateOrdinal, ibEndUtc, ibWallTime, ordinalToDate, pad2, utcIso, wallParts, wallToEpoch, zonedEpoch,
 } from "./tz.js";
 import {
-  describeContract, frontQuarterly, indexContract, optionContract, pickTradingClass, stockContract, streamContract,
+  chainStrikes, describeContract, frontQuarterly, indexContract, optionContract, pickTradingClass, stockContract, streamContract,
 } from "./ibContracts.js";
 import type {
   IbContract, IbSession, IbSessionFactory, OptChainParam, OrderIntent, PortfolioItemLike, PositionItemLike,
@@ -1216,7 +1216,7 @@ export class BrokerRouter {
       const close = cleanPrice(t.close);
       const change = last && close ? pyRound(((last - close) / close) * 100.0, 2) : null;
       if (last === null) continue; // 没订阅/没数据 → 交给公开源兜底
-      out[symbol] = { last, close, change_pct: change };
+      out[symbol] = { last, close, change_pct: change, last_trade_at: cleanPrice(t.lastTradeAt) };
     }
     return out;
   }
@@ -1379,7 +1379,7 @@ export class BrokerRouter {
       session.reqMarketDataType(3); // 没订阅退延迟;有订阅仍是实时
       raw = await pull(spec["duration"] as string);
       // IBKR 的 durationStr 数的是交易日,全时段口径下刚翻篇时第一档只有十几根
-      if ((raw ?? []).length < MIN_BARS && spec["fallback"]) {
+      if ((raw ?? []).length <= MIN_BARS && spec["fallback"]) { // 分析要 MIN_BARS 根已收盘的,最后一根常常没走完:正好 MIN_BARS 根也不够
         raw = (await pull(spec["fallback"] as string)) ?? raw;
       }
     } catch (exc) {
@@ -1405,10 +1405,11 @@ export class BrokerRouter {
         `${symbol} 没有返回 ${spec["label"]} K 线(标的代码是否正确?是否刚好整段休市?)`,
       );
     }
-    return bars;
+    return tagFeed(bars, session.quoteDelayed?.(target)); // 这组 K 线出自实时还是延迟档:看这张合约的行情流(会话记着)
   }
 
   // ---- 期权链(只读,不进下单链路)---------------------------------------
+  /** 一条链最多 (2 × 15 + 1) 档 × 看涨看跌 = 62 条行情线路(账户约 100 条,盯盘另占):要看得更宽只能抽稀,不能加档 */
   static readonly CHAIN_MAX_WIDTH = 15;
   static readonly CHAIN_WAIT_MS = 4000;
 
@@ -1458,7 +1459,7 @@ export class BrokerRouter {
     };
   }
 
-  async optionChain(symbol: string, expiry: string | null = null, width = 10): Promise<Record<string, any>> {
+  async optionChain(symbol: string, expiry: string | null = null, width = 10, span: number | null = null, preferClass = ""): Promise<Record<string, any>> {
     width = Math.max(3, Math.min(Math.trunc(width), BrokerRouter.CHAIN_MAX_WIDTH));
     const meta = await this.optionExpiries(symbol);
     if (!meta["expiries"].length) throw new BrokerError(`${symbol} 没有可用的到期日`);
@@ -1473,17 +1474,14 @@ export class BrokerRouter {
     if (!spot) throw new BrokerError(`拿不到 ${symbol} 的现价,无法判断该取哪些行权价。`);
 
     const cfg = this.settings.indexConfig(symbol);
-    const tradingClass = pickTradingClass(symbol, cfg, meta["by_class"] ?? {}, targetExpiry);
+    const tradingClass = pickTradingClass(symbol, cfg, meta["by_class"] ?? {}, targetExpiry, preferClass);
     // 行权价也按挑中的那条链取:两条链的网格粒度不同(SPXW 比 SPX 密),
     // 用并集选出来的价位可能在这条链上根本不存在。
     const grid: number[] =
       (meta["by_class"]?.[tradingClass]?.strikes as number[] | undefined) ?? meta["strikes"];
     if (!grid.length) throw new BrokerError(`${symbol} 的行权价网格为空`);
-    let nearest = 0;
-    for (let i = 1; i < grid.length; i++) {
-      if (Math.abs(grid[i]! - spot) < Math.abs(grid[nearest]! - spot)) nearest = i;
-    }
-    const band = grid.slice(Math.max(0, nearest - width), nearest + width + 1);
+    // 订哪些档是纯函数(ibContracts.chainStrikes):给了 span 也不超过 2 × width + 1 档,行情线路不比不给时多
+    const band = chainStrikes(grid, spot, width, span);
 
     const session = this.marketSession();
     const exchange = cfg ? cfg.exchange : "SMART";
@@ -1524,7 +1522,7 @@ export class BrokerRouter {
         rows.push({
           strike: Number(contract.strike),
           right: contract.right,
-          oi: cleanPrice(oi) ?? 0.0,
+          oi: oi === null || oi === undefined ? null : cleanPrice(oi) ?? 0.0, // 没等到这一笔是不知道,不是 0 张
           volume: cleanPrice(vol) ?? 0.0,
           gamma: greeks ? cleanPrice(greeks.gamma) : null,
           iv: greeks ? cleanPrice(greeks.impliedVol) : null,
@@ -1550,6 +1548,8 @@ export class BrokerRouter {
       rows,
       multiplier: 100.0,
       strike_count: band.length,
+      trading_class: tradingClass,
+      grid_count: grid.filter((k) => k >= (band[0] ?? 0) && k <= (band[band.length - 1] ?? 0)).length,
     };
   }
 

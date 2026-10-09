@@ -79,7 +79,9 @@ export function ReviewPage() {
   const [candidates, setCandidates] = useState<any[]>([]);
   const [selected, setSelected] = useState(() => read('dafri-review-record') || '');
   const [timeframe, setTimeframe] = useState(() => read('dafri-review-timeframe') || 'auto');
-  const [em, setEm] = useState<number | null>(() => Number(read('dafri-review-em')) || 36);
+  // EM 空着 = 自动:引擎取开仓那天日内剧本记下的期权定价(没记到才用默认值,并在结果里写明)。键名换过一次:
+  // 老键里存的是那个写死的 36,留着它等于永远不走自动
+  const [em, setEm] = useState<number | null>(() => Number(read('dafri-review-em-manual')) || null);
   const [includeLocal, setIncludeLocal] = useState(false);
   const [kind, setKind] = useState(() => read('dafri-review-kind') || 'all');
   const [freshness, setFreshness] = useState('—');
@@ -120,10 +122,10 @@ export function ReviewPage() {
       }
       write('dafri-review-record', id);
       write('dafri-review-timeframe', timeframe);
-      write('dafri-review-em', String(em || 36));
+      write('dafri-review-em-manual', em ? String(em) : '');
       setLoading(true);
       try {
-        const r = await dafri.reviewAnalyze({ id, timeframe, exit: { em: em || 36 } });
+        const r = await dafri.reviewAnalyze({ id, timeframe, exit: em ? { em } : {} });
         setData(r);
         setError(null);
         setFreshness(`${r.timeframe_label} · ${r.series.bars.length} 根 · ${REVIEW_KIND[r.outcome.kind] || ''}`);
@@ -197,9 +199,9 @@ export function ReviewPage() {
           aria-label="选择一笔交易"
         />
         <Select value={timeframe} options={TF_OPTIONS} onChange={setTimeframe} style={{ width: 110 }} aria-label="K 线周期" />
-        <label className="row tight m0" title="当日 0DTE 隐含日内波动(点):策略文档要求每日从 ATM straddle 取,EM = straddle × 0.85;默认 36。只用于蝴蝶的止盈策略回放,股票用不到">
+        <label className="row tight m0" title="常规时段一个标准差的点数(= 开盘时的平值跨式 × 1.25)。空着 = 自动:取开仓那天日内剧本记下的期权定价,那天没记到才用默认的 36 并在结果里写明。只用于蝴蝶的止盈策略回放,股票用不到">
           <span className="muted">EM</span>
-          <InputNumber min={1} max={500} step={0.5} value={em} disabled={selectedKind === 'stock'} onChange={(v) => setEm(v == null ? null : Number(v))} style={{ width: 72 }} aria-label="隐含日内波动 EM" />
+          <InputNumber min={1} max={500} step={0.5} value={em} placeholder="自动" disabled={selectedKind === 'stock'} onChange={(v) => setEm(v == null ? null : Number(v))} style={{ width: 72 }} aria-label="隐含日内波动 EM" />
         </label>
         <Button
           size="small"

@@ -96,11 +96,11 @@ export function BacktestPage() {
   // ---- 流程图文案 ----
   const entryText = strategy?.key === 'custom' ? rules.entry.map(fmtCond).join(' 且 ') || '(未设置)' : strategy?.desc || '';
   const exitText = strategy?.key === 'custom' ? (rules.exit.length ? rules.exit.map(fmtCond).join(' 且 ') : null) : strategy?.key === 'buy_hold' ? null : '策略离场信号触发';
-  const buyBody = isOption ? `${BT_INST_LABELS[instType]} · DTE ${inst.dte} · 偏移 ${inst.offset}% · 投入 ${inst.risk}% 净值` : '全仓买入正股(收盘价成交)';
+  const buyBody = isOption ? `${BT_INST_LABELS[instType]} · DTE ${inst.dte} · 偏移 ${inst.offset}% · 投入 ${inst.risk}% 净值 · 下一根开盘按模型价` : '全仓买入正股(下一根开盘价成交)';
 
   return (
     <section className="tab-panel active" id="page-backtest">
-      <PageHead title="回测" extra={<span className="muted">日线 · 收盘成交 · 全仓进出</span>} />
+      <PageHead title="回测" extra={<span className="muted">日线 · 收盘出信号、下一根开盘成交 · 全仓进出</span>} />
       <Group hint={strategy?.desc}>
         <GroupRow label="标的">
           <Input id="bt-symbol" placeholder="如 NVDA、SPX" maxLength={12} value={symbol} onChange={(e) => setSymbol(e.target.value)} style={{ width: 190 }} />
@@ -147,12 +147,14 @@ export function BacktestPage() {
         {isOption ? <NumberRow label="行权价偏移" sub="% 相对入场价" min={-30} max={30} step={0.5} value={inst.offset} onChange={(v) => setInst((i) => ({ ...i, offset: v }))} /> : null}
         {isOption ? <NumberRow label="宽度 / 翼宽" sub="% 相对入场价" min={0.5} max={20} step={0.5} value={inst.width} onChange={(v) => setInst((i) => ({ ...i, width: v }))} /> : null}
         {isOption ? <NumberRow label="单笔投入" sub="% 净值" min={1} max={100} step={1} value={inst.risk} onChange={(v) => setInst((i) => ({ ...i, risk: v }))} /> : null}
-        <NumberRow label="每边成交成本" sub="%,佣金 + 滑点;绩效体检的执行损耗中位数可以填这里" min={0} max={10} step={0.05} value={cost} onChange={setCost} />
+        <NumberRow label="每边成交成本" sub={isOption ? '%,占权利金:佣金 + 半个买卖价差' : '%,占成交额:佣金 + 半个买卖价差'} min={0} max={10} step={0.05} value={cost} onChange={setCost} />
       </Group>
       {isOption ? (
         <p className="hint">
-          期权按标的历史走势 + Black-Scholes 理论价模拟(近 20 日已实现波动率,r=0,无偏度与价差);
-          信号出场按模型价,到期按内在价值结算,信号持续则续仓。仅用于比较相对优劣。
+          期权按标的历史走势 + Black-Scholes 理论价模拟:波动率用近 20 日已实现波动率、每天重估(r=0,无偏斜与买卖价差),
+          时间按交易日计,行权价贴标准挂牌间隔。已实现波动率通常低于市场的隐含波动率,单腿买方会被算便宜;
+          前 20 根日线只用来算波动率,不开仓;理论价不到 0.01 美元的也不开仓。
+          信号出场按下一根开盘的模型价,到期按内在价值结算,信号持续则下一根开盘续仓。仅用于比较相对优劣。
         </p>
       ) : null}
 
@@ -174,7 +176,7 @@ export function BacktestPage() {
               <>
                 <FlowCard kind="cond" title="出场条件是否满足?" body={exitText} />
                 <span className="flow-arrow">—是→</span>
-                <FlowCard kind="action" title="平仓" body={isOption ? '按模型价卖出;到期按内在价值结算' : '全仓卖出(收盘价成交)'} />
+                <FlowCard kind="action" title="平仓" body={isOption ? '下一根开盘按模型价卖出;到期按内在价值结算' : '全仓卖出(下一根开盘价成交)'} />
               </>
             ) : (
               <FlowCard kind="action" title="继续持有" body={isOption ? '持有至到期,按内在价值结算' : '持有到区间结束'} />

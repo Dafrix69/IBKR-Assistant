@@ -16,7 +16,22 @@ export interface Limits {
   max_orders_per_input: number;
   duplicate_window_minutes: number;
   duplicate_qty_tolerance: number;
+  /** 在手期权 / 组合的最坏亏损合计上限(美元,每个账户各算各的):在手的 + 这一单超过就拒。0 = 不设。
+   *  正股不计(它最坏亏多少取决于止损);在减已有持仓的单不受它限制 */
+  max_open_risk_usd: number;
+  /** 同一账户、同一标的、同一到期日在手的期权张数上限(组合按组数、不在组合里的单腿按张数):在手的 + 这一单超过就拒。0 = 不设 */
+  max_underlying_contracts: number;
+  /** AUTO_MID 的限价朝成交方向让多少:中间价到「立刻成交的价」那一段的这么大一份(0–1;1 = 直接挂到立刻成交的价)。
+   *  0 = 不用它,照 max_spread_slippage 让一个固定的金额 */
+  auto_mid_spread_share: number;
+  /** 按账户覆盖:账户别名 → 只写要和全局不一样的那几项。没写的、写成 null 的用全局的 */
+  by_account: Record<string, AccountLimits>;
 }
+
+/** 能按账户覆盖的那几项限额(纸面账户与实盘账户不该被迫用同一套)。null = 这个账户不覆盖这一项 */
+export type AccountLimits = {
+  [K in "max_order_notional" | "max_option_contracts" | "max_mkt_shares" | "max_open_risk_usd" | "max_underlying_contracts"]?: number | null;
+};
 
 export interface Policies {
   auto_execute: boolean;
@@ -56,6 +71,9 @@ export interface CooldownConfig {
   enabled: boolean;
   /** 一只标的平仓后,多少分钟内不再对它下新单。 */
   minutes: number;
+  /** 冷却挡的是什么:"symbol" = 这只标的的一切新单(默认);"position" = 只挡和刚平掉的那份持仓同一个结构的单
+   *  (同到期、同行权价、同方向)——只做一个标的的人,按标的冷却等于整体暂停 */
+  scope: string;
 }
 
 /** 日内亏损上限:当天(美东)已实现盈亏亏到线,当天剩下的时间不再下新单。 */
@@ -63,6 +81,9 @@ export interface DailyLossConfig {
   enabled: boolean;
   /** 当天已实现亏损达到多少美元算触发(填正数)。 */
   max_loss_usd: number;
+  /** 拿什么算"今天亏了多少":"realized" = 引擎发的单的已实现盈亏(默认);"account" = 券商报的账户当日盈亏
+   *  (含未平仓的浮亏、含在 TWS 里手动做的单,每个账户各算各的;券商没报时退回 realized) */
+  basis: string;
 }
 
 export interface ProtectionsConfig {

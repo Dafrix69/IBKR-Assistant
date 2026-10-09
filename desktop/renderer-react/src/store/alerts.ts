@@ -3,7 +3,7 @@
  * 唯一特别的地方:警告轮询**不挂在当前页上**——切走了还得报,不然就没用了。
  */
 import { create } from 'zustand';
-import { dafri, errorMessage, type MaTouchConfig, type OptionWall, type PopupItem, type Watch, type WatchEvent, type WatchLevel } from '../bridge';
+import { dafri, errorMessage, type CrossConfirm, type MaTouchConfig, type OptionWall, type PopupItem, type Watch, type WatchEvent, type WatchLevel } from '../bridge';
 import { toneDirection } from '../lib/alertRules';
 import { showBanner } from './banner';
 import { showAlertPopup } from './popup';
@@ -24,6 +24,8 @@ export interface AlertsSnapshot {
   lastCheck: string;
   /** 短期内反复碰均线的口径;还没读到是 null */
   touchConfig: MaTouchConfig | null;
+  /** 穿越怎么才算数:跨过就报(immediate),还是等那一分钟收完(bar_close) */
+  crossConfirm: CrossConfirm;
 }
 
 export const ALERT_SOURCE_LABEL: Record<string, string> = {
@@ -42,7 +44,7 @@ export const ALERT_SOURCE_SHORT: Record<string, string> = {
 };
 
 const useStore = create<{ snap: AlertsSnapshot; soundOn: boolean }>(() => ({
-  snap: { watches: [], feed: [], busy: [], lastCheck: '—', touchConfig: null },
+  snap: { watches: [], feed: [], busy: [], lastCheck: '—', touchConfig: null, crossConfirm: 'immediate' },
   soundOn: ((): boolean => {
     try {
       return localStorage.getItem('dafri-alert-sound') !== '0';
@@ -173,7 +175,11 @@ async function announce(events: AlertEvent[]): Promise<void> {
 export async function loadAlerts(): Promise<void> {
   try {
     const result = await dafri.listAlerts();
-    set({ watches: result?.watches || [], touchConfig: result?.touch_config || null });
+    set({
+      watches: result?.watches || [],
+      touchConfig: result?.touch_config || null,
+      crossConfirm: result?.cross_confirm === 'bar_close' ? 'bar_close' : 'immediate',
+    });
   } catch (err) {
     showBanner(`警告列表读取失败:${errorMessage(err)}`, false);
   }
@@ -192,17 +198,20 @@ export async function createWatch(symbol: string, step: number): Promise<boolean
   }
 }
 
-export async function refreshWatch(id: string, expiry?: string): Promise<void> {
+/** 重算一条盯单的价位。step 给了就先把整数关口的步长改成它(0 = 自动),这一次算出来的就是新步长的。 */
+export async function refreshWatch(id: string, expiry?: string, step?: number): Promise<void> {
   busySet.add(id);
   set({ busy: [...busySet] });
   try {
-    const result = await dafri.refreshAlert(id, expiry || '');
+    const result = await dafri.refreshAlert(id, expiry || '', step);
     await loadAlerts();
     // 期权墙/日线历史失败时降级继续——降级可以,但必须说出来
     if (result?.wall_error) showBanner(`期权墙没算出来,已降级:${result.wall_error}`, true);
     if (result?.history_error) showBanner(`均线/52周位没算出来,已降级:${result.history_error}`, true);
   } catch (err) {
     showBanner(`计算期权墙失败:${errorMessage(err)}`, false);
+    // 没算成时引擎什么都没写(步长也没改):重读一遍,行上显示的回到引擎真正在用的那份
+    await loadAlerts();
   } finally {
     busySet.delete(id);
     set({ busy: [...busySet] });
@@ -222,6 +231,17 @@ export async function saveTouchConfig(partial: Partial<MaTouchConfig>): Promise<
     showBanner(`碰均线提醒的设置没存上:${errorMessage(err)}`, false);
     await loadAlerts();
     return false;
+  }
+}
+
+/** 存穿越的确认方式。存不上就重读:开关要退回引擎真正在用的那一档。 */
+export async function saveCrossConfirm(mode: CrossConfirm): Promise<void> {
+  set({ crossConfirm: mode });
+  try {
+    await dafri.setCrossConfirm(mode);
+  } catch (err) {
+    showBanner(`穿越确认方式没存上:${errorMessage(err)}`, false);
+    await loadAlerts();
   }
 }
 

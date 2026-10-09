@@ -1,11 +1,11 @@
 /**
- * SPX 日内剧本:三条预期波动区间、此刻的剧本状态、两条触发线离现价多远、期权墙上的加速档、今天报过的事件。
+ * SPX 日内剧本:预期波动区间(三条取价的与拼出来的今日区间)、此刻的剧本状态、两条触发线离现价多远、期权墙上的加速档、今天报过的事件。
  *
  * 只看不下单。区间与状态是引擎里的循环算的(切走页面照常算、照常提醒),这里只显示;口径见 docs/features/playbook.md。
  */
 import { useEffect } from 'react';
 import { Switch, Tag } from 'antd';
-import { bandRows, etTime, eventTitle, fmtGap, fmtLevel, STATE_HINT, STATE_LABEL } from './playbookFormat';
+import { bandRows, coverageText, etTime, eventTitle, fmtGap, fmtLevel, GEX_ASSUMPTION, GEX_ASSUMPTION_HINT, gexText, rearmText, STATE_HINT, STATE_LABEL } from './playbookFormat';
 import type { PlaybookSnapshot } from '../bridge';
 import { showBanner } from '../store/banner';
 import { setPlaybookAlert, setPlaybookEnabled, setPlaybookVisible, usePlaybook } from '../store/playbook';
@@ -32,15 +32,15 @@ function Bands({ snap }: { snap: PlaybookSnapshot }) {
         </tr>
       </thead>
       <tbody>
-        {bandRows(snap).map(({ key, label, when, band }) => (
+        {bandRows(snap).map(({ key, label, when, band, derived }) => (
           <tr key={key} className={cx(!band && 'dim')}>
             <td>{label}</td>
             <td className="muted">
-              {band ? `${etTime(band.at)} · ${band.strike}` : when}
-              {band?.source === 'backfill' ? <span className="fly-spot-note warn" title="软件当时没开着,这一条是事后拿那一分钟的历史中间价补的"> 补</span> : null}
+              {band && !derived ? `${etTime(band.at)} · ${band.strike}` : when}
+              {band?.source === 'backfill' ? <span className="fly-spot-note warn" title="软件当时没开着,这一条(或拼出它的那一条)是事后拿那一分钟的历史中间价补的"> 补</span> : null}
             </td>
             <td>{fmtLevel(band?.anchor)}</td>
-            <td>{band ? `${band.call.toFixed(2)} + ${band.put.toFixed(2)}` : '—'}</td>
+            <td>{band && !derived ? `${band.call.toFixed(2)} + ${band.put.toFixed(2)}` : '—'}</td>
             <td>{band ? `±${band.em.toFixed(2)}` : '—'}</td>
             <td>{band ? `${fmtLevel(band.lower)} – ${fmtLevel(band.upper)}` : '—'}</td>
           </tr>
@@ -58,10 +58,10 @@ function Wall({ snap }: { snap: PlaybookSnapshot }) {
     <div className="pb-wall">
       <span title="现价上方未平仓量最大的看涨行权价">{`看涨墙 ${wall.call_wall ? wall.call_wall.strike : '—'}`}</span>
       <span title="现价下方未平仓量最大的看跌行权价">{`看跌墙 ${wall.put_wall ? wall.put_wall.strike : '—'}`}</span>
-      <span title="净 gamma 由负转正的价位">{`Gamma 翻转 ${wall.gamma_flip === null ? '—' : fmtLevel(wall.gamma_flip)}`}</span>
-      <span>{wall.regime === 'positive' ? '正 gamma(波动受压)' : '负 gamma(波动放大)'}</span>
-      <span title="当前区间里负 gamma 最大的行权价:穿过它时走势容易加速">{`加速档 ${accel ? accel.strike : '—'}`}</span>
-      <span className="muted">{`期权墙取于美东 ${etTime(wall.at)}`}</span>
+      <span title="净 gamma 变号的价位里离现价最近的那个:越过它,正负 gamma 换边。取到的行权价范围里不变号、或推算它的那条曲线在现价处的正负和净 gamma 对不上,就不给">{`Gamma 翻转 ${wall.gamma_flip === null ? '—' : fmtLevel(wall.gamma_flip)}`}</span>
+      <span title={GEX_ASSUMPTION_HINT}>{`${gexText(wall)} · ${GEX_ASSUMPTION}`}</span>
+      <span title="当前剩余区间(现价 ± 剩余预期波动)里负 gamma 最大的行权价:穿过它时走势容易加速">{`加速档 ${accel ? accel.strike : '—'}`}</span>
+      <span className="muted" title="行情线路有限:要盖住剧本的每一条线,远处的行权价只取整数档">{`期权墙取于美东 ${etTime(wall.at)} · ${coverageText(wall.coverage, wall.oi_missing)}`}</span>
     </div>
   );
 }
@@ -107,14 +107,15 @@ export function PlaybookPanel() {
       <div className="pb-lines">
         {active ? (
           <>
-            <Line label="触发线" level={snap.trigger} price={snap.price} hint="现在这个状态是穿过这条线触发的;回到线的另一侧就失效" />
+            <Line label="触发线" level={snap.trigger} price={snap.price} hint={snap.state === 'B2' ? '进入时的那条线:取到新一格(每 5 分钟)时现价在它下方就失效;格子中间刺下去又回来不算' : '进入时的那条线:现价收回它上方就失效'} />
             <Line label="T1" level={snap.t1} price={snap.price} hint="盘初区间的边:B2 是上沿,B3 是下沿" />
             <Line label="T2" level={snap.t2} price={snap.price} hint="B2:T1 上方最近的正 gamma 行权价;B3:T1 下方的下一档行权价" />
           </>
         ) : (
           <>
-            <Line label="B2 触发:站上" level={snap.lines.b2} price={snap.price} hint="当前剩余区间的上沿" />
-            <Line label="B3 触发:跌破" level={snap.lines.b3} price={snap.price} hint="昨日定价区间的下沿" />
+            <Line label="B2 触发:站上" level={snap.lines.b2} price={snap.price} hint="今日区间的上沿:09:35 的锚 + 当前剩余的预期波动。锚整天不动,半宽每 5 分钟按最新的跨式重取;B2 也是每次取到新一格时判一次(那一刻现价在它之上才算),格子中间刺上去又回来不算" />
+            <Line label="B3 触发:跌破" level={snap.lines.b3} price={snap.price} hint="昨日定价区间的下沿:每一笔现价都判" />
+            {snap.b2_lost != null ? <span className="muted" title="今日区间随剩余时间收窄,B2 失效的那一格现价多半还在新的上沿之上">{rearmText(snap.b2_lost)}</span> : null}
           </>
         )}
       </div>
@@ -143,7 +144,9 @@ export function PlaybookPanel() {
         <ul className="hint-list">
           <li>预期波动 = 平值跨式(看涨 + 看跌的中间价)× √(π/2);区间 = 锚 ± 预期波动。</li>
           <li>昨日定价在上一个收盘后 10 分钟取,盘初定价在 09:35 取,当前剩余每 5 分钟重取。软件当时没开着的那一条,拿那一分钟的历史中间价补,标「补」。</li>
-          <li>站上当前区间上沿 = B2,跌破昨日区间下沿 = B3;进去之后记住的是当时那条线,回到线的另一侧才失效。</li>
+          <li>今日区间 = 09:35 的指数价 ± 当前剩余的预期波动:锚整天不动,半宽是期权市场此刻给剩下这段时间定的价,所以越到尾盘越窄。</li>
+          <li>站上今日区间上沿 = B2(现价高出 09:35 那个价的幅度超过了剩余的预期波动),每 5 分钟取到新一格时判一次,格子中间刺上去、刺下来又回来的不算。跌破昨日区间下沿 = B3,每一笔现价都判,而且压过 B2。</li>
+          <li>进去之后记住的是当时那条线,回到线的另一侧才失效。尾盘区间很窄,那时的 B2 只说明收盘多半在 09:35 那个价上方。</li>
           <li>止损位与概率分流还没有:没有能反推出算法的样本,不编数。</li>
           <li>只读行情、只提醒,不下单。</li>
         </ul>

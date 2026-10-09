@@ -689,6 +689,13 @@ code {
 .pa-ev-w.up { color: var(--up-text); }
 .pa-ev-w.down { color: var(--down-text); }
 .pa-ev-w.flat { color: var(--label-tertiary); }
+/* 判断依据按子分分组:组头一行是名字 + 小计 */
+.pa-ev-group + .pa-ev-group { margin-top: 8px; }
+.pa-ev-head { display: flex; align-items: baseline; gap: 8px; padding: 2px 0; font-size: 11.5px; font-weight: 590; }
+.pa-ev-head .muted { font-weight: 400; }
+.pa-ev-head .pa-ev-w { margin-left: auto; min-width: 84px; }
+.pa-subs { margin: 10px 0 4px; }
+.pa-forming.notice.ant-alert { margin: 10px 0 0; }
 .pa-readout .reason { margin-top: 6px; }
 .pa-readout-grid { margin-top: 8px; }
 .pa-lv { display: flex; gap: 8px; align-items: baseline; font-size: 11.5px; padding: 3px 0; }
@@ -858,3 +865,18 @@ kbd {
 .scan-detail-step .muted { margin-right: 4px; }
 .dev-readout { margin: 8px 0 0; padding-left: 18px; font-size: 12px; line-height: 1.6; }
 .dev-readout li { margin: 2px 0; }
+
+/* 新建追踪表单里折着的「更多出场规则」(lib/TrackExitFields.tsx) */
+.track-form > .track-more { grid-column: 1 / -1; }
+.track-more > summary { cursor: pointer; font-size: 12px; color: var(--label-secondary); padding: 4px 0; }
+.track-more-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px 12px; margin-top: 6px; }
+.track-more-grid .ant-input, .track-more-grid .ant-input-number, .track-more-grid .ant-select { width: 100%; }
+.track-tiers { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; font-size: 11.5px; line-height: 1.5; }
+.track-tiers > .ant-btn { align-self: flex-start; }
+.track-tier-row { display: flex; align-items: center; gap: 8px; }
+.track-tier-row .ant-input-number { width: 130px; }
+
+/* 「设置 → 风控限额」按账户覆盖的那几行(lib/AccountLimitsRows.tsx) */
+.account-limits { display: flex; flex-wrap: wrap; gap: 6px 10px; justify-content: flex-end; }
+.account-limits > label { display: flex; flex-direction: column; gap: 2px; font-size: 11px; }
+.account-limits .ant-input-number { width: 104px; }

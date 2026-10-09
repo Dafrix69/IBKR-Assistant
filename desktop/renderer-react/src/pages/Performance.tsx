@@ -13,7 +13,7 @@ import { EmptyState, Notice, PageHead, Primer, SectionTitle, Working } from '../
 // 数字与结论全来自引擎的 review.performance(performance.ts,离线规则、不调模型);这里只负责选范围和摆。
 
 const SCOPE_OPTIONS: { label: string; value: PerformanceScope }[] = [
-  { label: '全部', value: 'all' },
+  { label: '实盘 + 模拟', value: 'all' },
   { label: '实盘', value: 'live' },
   { label: '模拟', value: 'paper' },
 ];
@@ -104,12 +104,21 @@ export function PerformancePage() {
           Andrea Unger(四届 World Cup 期货冠军)的时段过滤,Kevin Davey 的"样本够多才谈优势",以及期货实盘大赛把回撤算进排名的做法。
           它们只描述已经发生的事与一条可以对照的规矩,不是买卖建议。
         </p>
+        <p>
+          几十笔交易算出来的数本身就在晃:期望值、胜率旁边给 95% 区间,区间跨着 0 的数不上色;拿两组来比的结论(亏完马上再进、时段、亏后加码……)要差别出了噪声才说。
+          R 只代表设了初始风险的那一部分交易,盖住几笔、没盖住的为什么,写在核心数字下面。
+        </p>
       </Primer>
 
       {error ? <Notice tone="bad" title="算不出来">{error}</Notice> : null}
       {loading && !data ? <Working>正在翻账本…</Working> : null}
       {data && !data.stats.trades ? (
         <EmptyState>这个范围里还没有已了结的交易。连上 TWS 打开一次「交易分析」同步成交,或用命令行导入 Flex 期权仓位。</EmptyState>
+      ) : null}
+      {data && data.mix.live && data.mix.paper ? (
+        <Notice tone="warn" title="实盘和模拟盘混在一起算">
+          这个范围里实盘 {data.mix.live} 笔、模拟 {data.mix.paper} 笔,下面的数字、结论和保护规则建议都是两边合起来算的。模拟盘的成交与滑点不是真的;要看真实水平,右上角切到「实盘」。
+        </Notice>
       ) : null}
       {data && data.stats.trades ? (
         <>

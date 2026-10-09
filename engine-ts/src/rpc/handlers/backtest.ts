@@ -86,7 +86,7 @@ export class BacktestHandlers extends HandlerBase {
       throw exc;
     }
     // runBacktest 回的 instrument 就是传进去那份的拷贝;这里照原位盖回去,键的顺序不变,类型上则是补齐过的那一个
-    const result: BacktestRunResult = { ...report, instrument: instParsed.data, symbol };
+    const result: BacktestRunResult = { ...report, instrument: instParsed.data, symbol, notes: report.notes ?? [] };
     this.engine.store.audit("ui", "backtest_run", {
       symbol, strategy: result["strategy"], start: result["start"], end: result["end"],
     });

@@ -3,6 +3,7 @@ import { Button, Card, Input, Space, Tooltip } from 'antd';
 import { AlertMethods } from '../lib/AlertMethods';
 import { fmtWhen } from '../lib/anomalyFormat';
 import { Conditions } from '../lib/Conditions';
+import { CrossConfirmSetting } from '../lib/CrossConfirm';
 import { fmtTime, fmtTimeShort } from '../lib/format';
 import { MonitorLine } from '../lib/MonitorLine';
 import { PoolStock } from '../lib/PoolStock';
@@ -35,7 +36,7 @@ export function SectorsPage() {
   const sectors = useSectors();
   const status = useStatus();
   const q = useQuality();
-  const { touchConfig } = useAlerts();
+  const { touchConfig, crossConfirm } = useAlerts();
   const connected = Boolean(status?.broker_connected);
   const [name, setName] = useState('');
   const focus = useNavFocus('sectors');
@@ -142,7 +143,10 @@ export function SectorsPage() {
       />
 
       <SectionTitle>触发条件</SectionTitle>
-      <Conditions config={q.config} />
+      <Conditions config={q.config} marketRef={q.monitor?.market_ref ?? null} />
+
+      <SectionTitle>价位穿越</SectionTitle>
+      <CrossConfirmSetting mode={crossConfirm} />
 
       <SectionTitle>反复碰均线</SectionTitle>
       <TouchConfig config={touchConfig} />

@@ -16,6 +16,8 @@ import type { QualityConfig, QualityMetrics, QualityStock } from '../bridge';
 import { burstVerdict } from './alertRules';
 import { fmtPrice, fmtSigned, fmtWhen, lastEvent, shortTitle } from './anomalyFormat';
 import { LevelStrip } from './LevelStrip';
+import { GEX_ASSUMPTION, GEX_ASSUMPTION_HINT, gexText } from './playbookFormat';
+import { StepPicker } from './StepPicker';
 import { setPoolWatch } from '../store/pool';
 import { toggleQuality } from '../store/quality';
 import { refreshWatch, useAlerts, type Watch } from '../store/alerts';
@@ -265,9 +267,13 @@ function Levels({ watch, quality, spot, computing }: { watch: Watch; quality: Qu
         ))
     : [];
   const meta = [
-    `整数关口步长 ${watch.step}`,
+    <StepPicker watch={watch} disabled={computing} />,
     watch.expiry ? `到期 ${watch.expiry}` : null,
-    wall ? `净 GEX ${wall.net_gex >= 0 ? '正' : '负'} · ${wall.regime === 'positive' ? '压波动' : '放大波动'}` : null,
+    wall ? (
+      <Tooltip title={GEX_ASSUMPTION_HINT}>
+        <span>{`${gexText(wall)} · ${GEX_ASSUMPTION}`}</span>
+      </Tooltip>
+    ) : null,
     wall?.max_pain ? `最大痛点 ${wall.max_pain.strike}` : null,
     wall?.pc_ratio_oi != null ? `P/C ${wall.pc_ratio_oi}` : null,
     // 富途拿不到指数现价,这个价是从期权链用平价关系算出来的。不标出来的话,用户会以为它和真实报价是一回事。

@@ -25,6 +25,8 @@ export function Topbar() {
   const engaged = Boolean(status?.breaker.engaged);
   // 保护规则的暂停:比熔断轻一档,到点自己解除(见 engine-ts/src/protections.ts)
   const guarded = Boolean(status?.protections?.paused);
+  // 只停了某个账户的(日内亏损上限按账户当日盈亏算):别的账户照发,所以不占「保护暂停」那一格,只在悬停里说
+  const accountPauses = status?.protections?.accounts ?? [];
 
   // 引擎不答话时,手上这份状态是它最后一次答话时的样子:不能再照着它写「已连接」
   const stale = engineOk === false;
@@ -68,6 +70,10 @@ export function Topbar() {
     modeText = status.allow_live_trading ? '自动执行(含实盘)' : '自动执行(仅纸面)';
     modeDot = 'warning';
     modeTip = status.allow_live_trading ? '解析通过的订单会直接发出,实盘账户也不拦' : '解析通过的订单会直接发出;指向实盘账户的会被拦下';
+  }
+  if (!engaged && !guarded && accountPauses.length) {
+    modeText = `${modeText} · ${accountPauses.map((a) => a.account).join('、')} 暂停`;
+    modeTip = `${modeTip}。${accountPauses.map((a) => a.reason).join(';')}。平仓不受影响。`;
   }
 
   // 时间和市场时段合成一格,只留时分——秒在这里没有决策价值,却让这一格每秒都在跳

@@ -21,6 +21,8 @@ import type { Track } from "./contract/tracker.js";
 import { IdeaVectorStore } from "./ideaVectors.js";
 import { SignalLogStore } from "./signalLog.js";
 import { FollowLogStore } from "./followLog.js";
+import { RiskQueries } from "./riskQueries.js";
+import type { CloseRow } from "./riskQueries.js";
 import { ImportedTradesStore } from "./importedTrades.js";
 import type { RecentOrder } from "./models.js";
 import type { BackupInfo, BackupReason } from "./contract/settings.js";
@@ -258,6 +260,7 @@ export class TradeStore {
   /** 价位提醒与盯异动发出的每一条信号(只增不改),见 signalLog.ts */
   readonly signals: SignalLogStore;
   readonly follow: FollowLogStore; // Discord 跟单的每一条信号(只增不改),见 followLog.ts
+  readonly risk: RiskQueries; // 重复单防抖、保护规则要现算的那几样(只读),见 riskQueries.ts
 
   /** safety:真应用开库时给 true——拒绝比软件新的库、查完整性、升级前与每天各备份一次、盖结构版本号,
    *  打不开时抛 StoreOpenError(一句人话)。口径见 storeSafety.ts;测试与黄金基线开的库不走这一套。 */
@@ -277,6 +280,7 @@ export class TradeStore {
       this.vectors = new IdeaVectorStore(this.db);
       this.signals = new SignalLogStore(this.db);
       this.follow = new FollowLogStore(this.db);
+      this.risk = new RiskQueries(this.db);
       this.migrate();
       if (safety) stampVersion(this.db);
     } catch (exc) {
@@ -464,10 +468,10 @@ export class TradeStore {
   }
 
   // ---- 价位警告 --------------------------------------------------------
-  addWatch(symbol: string, step = 5.0): Watch {
+  addWatch(symbol: string, step = 0): Watch { // 步长 0 = 自动(alerts.autoStep);正数 = 固定步长
     symbol = (symbol || "").trim().toUpperCase();
     if (!symbol) throw new Error("标的代码为空");
-    if (!(step > 0 && step <= 1000)) throw new Error("整数关口步长必须在 0~1000 之间");
+    if (!(step >= 0 && step <= 1000)) throw new Error("整数关口步长必须在 0~1000 之间");
     const watch: Watch = {
       id: crypto.randomUUID(),
       created_at: nowIso(),
@@ -1123,33 +1127,9 @@ export class TradeStore {
     return out;
   }
 
-  /** 重复防抖候选集:只统计真正提交过或进过盯盘队列的记录(ValidatedOnly 不算)。
-   * 时间过滤在代码里做,不在 SQL 里做字符串比较——混合时区偏移下字典序不是时间序。 */
+  // ---- 校验与保护规则现算的三样:整块在 riskQueries.ts,这里转一手(测试与引擎仍从 store 取)----
   recentOrders(windowMinutes: number, nowMs: number): RecentOrder[] {
-    const windowMs = windowMinutes * 60_000;
-    const rows = this.db
-      .prepare(
-        "SELECT signature, quantity, created_at FROM trade_records t" +
-        " WHERE signature != ''" +
-        " AND EXISTS (" +
-        "   SELECT 1 FROM record_events e" +
-        "   WHERE e.record_id = t.id AND (e.kind = 'submit_intent'" +
-        "     OR (e.kind = 'status' AND e.payload NOT LIKE '%ValidatedOnly%'))" +
-        " )" +
-        " ORDER BY rowid DESC LIMIT 1000",
-      )
-      .all() as Array<{ signature: string; quantity: number; created_at: string }>;
-    const out: RecentOrder[] = [];
-    for (const row of rows) {
-      // Date.parse:带偏移的 ISO 直接换算;naive 字符串按本机时区解释,
-      // 与 Python 版"老记录若是 naive 按本机时钟补全"的语义一致
-      const created = Date.parse(row.created_at);
-      if (Number.isNaN(created)) continue;
-      const delta = nowMs - created;
-      if (delta > windowMs || delta < -windowMs) continue;
-      out.push({ signature: row.signature, quantity: row.quantity, createdAtMs: created });
-    }
-    return out;
+    return this.risk.recentOrders(windowMinutes, nowMs);
   }
 
   /** 在途记录:回报过状态(或留过发单的痕,见 markSubmitIntent)、还没有终态的那些。对账用(见 engine.reconcileOrders)——
@@ -1204,35 +1184,8 @@ export class TradeStore {
     return out;
   }
 
-  /** 窗口内的平仓事件(保护规则用,见 protections.ts)。
-   * 取的是 audit_log 里 engine 写的 auto_close / hosted_sweep:两条平仓路径各一个,都是只增的。
-   * position_tracks 的 fired_state 不行——它一行一个持仓、就地更新,同一只标的平第二次就把第一次盖掉了。 */
-  recentCloses(sinceMs: number, nowMs: number): Array<{ atMs: number; symbol: string; state: string }> {
-    const rows = this.db
-      .prepare(
-        "SELECT at, detail FROM audit_log" +
-        // hosted_fill:券商侧自己触发的托管单成交(engine/hosted.ts)。股票最主要的止损路径就是它,以前不算
-        " WHERE actor='engine' AND action IN ('auto_close','hosted_sweep','hosted_fill')" +
-        " ORDER BY seq DESC LIMIT 2000",
-      )
-      .all() as Array<{ at: string; detail: string }>;
-    const out: Array<{ atMs: number; symbol: string; state: string }> = [];
-    for (const row of rows) {
-      const at = Date.parse(row.at);
-      if (Number.isNaN(at) || at <= sinceMs || at > nowMs) continue;
-      let detail: Rec;
-      try {
-        detail = JSON.parse(row.detail) as Rec;
-      } catch {
-        continue;
-      }
-      out.push({
-        atMs: at,
-        symbol: String(detail["symbol"] ?? ""),
-        state: String(detail["state"] ?? ""),
-      });
-    }
-    return out;
+  recentCloses(sinceMs: number, nowMs: number): CloseRow[] {
+    return this.risk.recentCloses(sinceMs, nowMs);
   }
 
   /** 自动平仓的痕 + 它指向的那张单(绩效体检的执行损耗,见 execQuality.ts)。
@@ -1293,39 +1246,8 @@ export class TradeStore {
     return out;
   }
 
-  /** 窗口内的已实现盈亏(保护规则的回撤护栏用)。券商的佣金回报里带 realizedPNL,
-   * 平仓那一笔才有值——这是全仓库唯一"券商认的"盈亏口径(见 tracker.md 盈亏以券商报的为准)。
-   *
-   * 同一 exec_id 只算**先到的那一条**,与 foldEvents 同口径。库里真有重复(2026-09-10 模拟盘 #89 一条佣金落了
-   * 三次;引擎一重建 seenCommissions 就空了,交易分析一同步当天的佣金回报又会重推一遍),而这里以前逐行相加:
-   * 亏 300 按 600 算,日内亏损上限被假触发,当天所有新单都被拦(2026-09-27 审计 H4)。
-   * 先去重再按窗口筛:昨天落过、今天又被重推的那笔不许算进今天。没有 exec_id 的认不出是不是同一笔,照旧都算。 */
   realizedPnlEvents(sinceMs: number, nowMs: number): Array<{ atMs: number; pnl: number }> {
-    const rows = this.db
-      .prepare(
-        "SELECT at, payload FROM record_events WHERE kind='commission' ORDER BY seq DESC LIMIT 2000",
-      )
-      .all() as Array<{ at: string; payload: string }>;
-    const anonymous: Array<{ atMs: number; pnl: number }> = [];
-    // 行是新的在前:同一 exec_id 后读到的更早,覆盖下来,留下的就是先到的那条
-    const firstByExec = new Map<string, { atMs: number; pnl: number }>();
-    for (const row of rows) {
-      const at = Date.parse(row.at);
-      if (Number.isNaN(at)) continue;
-      let payload: Rec;
-      try {
-        payload = JSON.parse(row.payload) as Rec;
-      } catch {
-        continue;
-      }
-      const item = { atMs: at, pnl: Number(payload["realized_pnl"]) };
-      const execId = String(payload["exec_id"] ?? "");
-      if (execId) firstByExec.set(execId, item);
-      else anonymous.push(item);
-    }
-    // IBKR 对开仓的佣金回报给一个哨兵大数(1.7976931348623157e308),不是真盈亏
-    return [...anonymous, ...firstByExec.values()].filter((p) =>
-      p.atMs > sinceMs && p.atMs <= nowMs && Number.isFinite(p.pnl) && Math.abs(p.pnl) < 1e307);
+    return this.risk.realizedPnlEvents(sinceMs, nowMs);
   }
 
   // ---- 导出 / 删除(§9.3 可携带权与删除权)------------------------------

@@ -21,6 +21,9 @@
    - 条件单用 AUTO_MID 定价,或券商没有原生条件单(富途):进软件盯盘队列(`PendingTrigger`),软件关着就不会触发;
    - 其余条件单挂在 IBKR 服务器上,软件关着照样有效;
    - AUTO_MID 的组合按盘口中间价 ± `limits.max_spread_slippage`(默认 0.10)定限价,按组合跳动取整;买入限价不超过翼宽,贷方限价必须仍为负数,否则拒绝发单。
+     `limits.auto_mid_spread_share`(0–1,默认 0 = 不用)填了之后改成让**盘口价差的一份**:限价 = 中间价 + 份额 ×(立刻成交的价 − 中间价),
+     0.5 就是挂在中间价与对手价的正中(`autoMid.ts`)。固定让 0.10 对 0.30 的蝶是三分之一、对 12 块的价差不到百分之一;份额跟着盘口宽窄走。
+     份额是用户填的,没有默认建议值;其余三道检查(腿方向与订单方向一致、借方不超过宽度、贷方仍为负)两种让法相同。
 
 ## 本地速记(`shorthand.ts`、`engine/localShorthand.ts`)
 
@@ -79,9 +82,10 @@
 | 3 | 合约 | `EXPIRED_CONTRACT` / `BAD_SPREAD` / `UNSUPPORTED` | 到期日不早于今天且是交易日;指数期权的交易类按到期日复核(下文);组合各腿交易类必须一致;期权乘数只认 100 |
 | 4 | 价差结构 | `BAD_SPREAD` | 见下表 |
 | 5 | 触发条件 | `AMBIGUOUS_TRIGGER` / `TRIGGER_MISMATCH` | 用现价快照复核方向;没有快照时按 `require_trigger_price_verification`(默认开)拒绝;现价离触发价不到 `trigger_min_gap_bps`(默认 5 个基点)拒绝 |
-| 6 | 限额 | `EXCEEDS_LIMIT` / `UNSUPPORTED` / `UNPRICEABLE` | 名义金额不超过 `max_order_notional`(默认 5,000 USD);期权与组合不超过 `max_option_contracts`(默认 5 张) |
+| 6 | 限额 | `EXCEEDS_LIMIT` / `UNSUPPORTED` / `UNPRICEABLE` | 名义金额不超过 `max_order_notional`(默认 5,000 USD);期权与组合不超过 `max_option_contracts`(默认 5 张)。可以按账户另设(下文「按账户的限额」) |
+| 6b | 账户在手的累计上限 | `EXCEEDS_LIMIT` / `UNPRICEABLE` | 默认不设。见下文「账户在手的累计上限」 |
 | 7 | 交易时段 | `MARKET_CLOSED` / `UNSUPPORTED` | 休市按 `closed_market_policy`(默认 `reject_market_orders`);盘外时段带 `outsideRth` 的市价单拒绝,不带的提醒"会等到常规时段才送交易所" |
-| 8 | 重复单 | `DUPLICATE_ORDER` | 指纹(账户 + 方向 + 合约要素)相同、数量差在 20% 以内,出现在同一批或 `duplicate_window_minutes`(默认 10 分钟)内 |
+| 8 | 重复单 | `DUPLICATE_ORDER` | 指纹(账户 + 方向 + 合约要素)相同、数量差在 20% 以内,出现在同一批或 `duplicate_window_minutes`(默认 10 分钟)内。前一张已经了结、这一次换了限价的放行(下文「重复单」) |
 | 9 | 原因 | 只提醒 | 没写原因提醒补上 |
 | 10 | 单笔风险预算 | 只提醒 | 见 [单笔风险预算](risk-budget.md) |
 
@@ -104,6 +108,36 @@
 | 借方组合 | 张数 × 100 × 净权利金 |
 | 贷方组合 | 张数 × 100 × (宽度 − 收的权利金) |
 | AUTO_MID 的组合 | 张数 × 100 × 结构宽度(借方、贷方都这样算) |
+
+**按账户的限额。** `limits.by_account.<别名>` 可以给某个账户另设四项:`max_order_notional`、`max_option_contracts`、`max_open_risk_usd`、
+`max_underlying_contracts`;没写的那一项用全局的(`Settings.limitsFor`)。纸面账户放宽、实盘收紧是它的本意,所以覆盖值可以比全局的松,也可以更紧。
+界面上放宽任何一项(全局或某个账户的,包括新加一条比全局松的覆盖、删掉一条比全局紧的覆盖)都要过主进程的确认框,见 [确认凭据](confirm-grants.md)。
+
+**账户在手的累计上限。** 单笔上限管"这一单多大",这两条管"账户上一共压了多少"——一天开十只各 5 张的蝶,每一单都合规,账户上是 50 张。
+
+| 键 | 含义 |
+|---|---|
+| `max_open_risk_usd` | 这个账户在手的期权与组合的最坏亏损合计(美元),加上这一单的名义金额,不超过它。0 = 不设 |
+| `max_underlying_contracts` | 同一账户、同一标的、同一到期日上的张数(标准组合按组数),加上这一单,不超过它。0 = 不设 |
+
+- 在手的最坏亏损由 `openRisk.ts` 从持仓现算,**不靠认结构**:同一账户、同一标的、同一到期日的期权腿放在一起,直接算到期那一刻的盈亏在哪个价位最差
+  (到期盈亏对标的价分段线性,最差的点只可能在 0、某个行权价、或往上的无穷远处)。标准结构算出来和上面「名义金额」那张表是同一个数:
+  买入的期权、借方组合、买入的蝶 = 付出的成本;贷方价差、铁鹰 = 宽的那一侧 × 乘数 × 张数 − 收到的权利金。两侧张数不等的"铁鹰"、分腿建起来净成本为正的贷方价差、
+  和别的结构挤在同一天到期的,照认结构那张表会少算,这样算不会。净卖出的看涨往上没有对冲时没有上限:有限的那一段照算,再加 最高行权价 × 乘数 × 净卖出张数,并写明。
+  没有估计、没有参数。只算同一到期日之内的对冲,日历价差的两条腿各算各的(偏大)。
+- 只管期权与组合。正股最坏亏多少取决于止损,不在这两条里。
+- **"在手"含今天发出去还没有终态的开仓单**(挂着没成交的、排队中的条件单;`riskQueries.workingOrders` + `accountGuard.withWorkingOrders`):
+  它们成交之前持仓里看不见,不加的话连发两张各自合规的单,两张都过。部分成交的整张都算(成交的那一部分同时也在持仓里,偏大不偏小)。
+- **在减已有持仓的单不拦**(`engine/closing.ts` 的 `reducesPositions`):账户已经到线的时候,平仓恰恰是该放行的那一种。
+  同一条指令里的几张减仓单逐张扣着认:持有 2 组,「卖 2 组」「再卖 1 组」,后一张不是平仓,是反向开仓。
+- 一条指令里的几张单累加着算:第二张看得见第一张。
+- 设了上限而读不到持仓:**开仓的**单拒(`UNPRICEABLE`),核对不了的上限等于没有;减仓的单拿这个引擎最近一次读到的持仓认,照发。两条都没设时不读持仓。
+- 富途通道读不出期权持仓(持仓行不分期权与正股):两条累计上限不查,订单的警告里写明「没有核对」。
+
+**重复单。** 窗口内指纹相同、数量相近的第二张单拒绝;指纹不含价格。例外只有一种:前一张已经**撤掉**,
+而这一次的限价和它差到一分钱以上——没成交、撤了、换个价再来,是有意的,放行。前一张成交了的照旧拦(那是加仓,真要加就改数量或等窗口过去);
+被拒、出错的终态有过记错的先例(单其实还活着),不凭它放第二张;还没有终态的更不放,并且明说原因:它可能还挂在券商那边,两张都可能成交。
+同一条输入里重复的两张照旧拦第二张。
 
 **盘外时段。** 盘前、盘后,以及 SPX 期权自己的隔夜时段都能交易,但交易所只收限价单。`auto_outside_rth`(默认开)
 给这些时段里的限价单自动加 `outsideRth`。期权的时段按合约自己的交易时段判定(按天缓存),取不到才用正股日历。
@@ -145,9 +179,14 @@
 | `engine-ts/src/engine/localShorthand.ts`、`shorthand.ts` | 本地速记 |
 | `engine-ts/src/providers.ts`、`prompts.ts`、`models.ts` | 大模型调用、提示词渲染、回包复校验 |
 | `engine-ts/src/validator.ts` | 校验 |
+| `engine-ts/src/openRisk.ts`、`engine/accountGuard.ts`、`riskQueries.ts` | 账户在手的敞口(纯函数)、校验要的账户级输入从哪取、重复单防抖从库里现算的那几样 |
+| `engine-ts/src/autoMid.ts` | AUTO_MID 按盘口价差的一份让价 |
 | `engine-ts/src/killswitch.ts` | 熔断 |
 | `engine-ts/src/broker.ts` | AUTO_MID 定价、发单 |
 
 测试:`golden-core.spec.ts`(校验结果与拒绝原文的黄金基线)、`golden-prompts.spec.ts`(提示词渲染与账号检查)、
 `shorthand.spec.ts`(速记语法,命中时不调用大模型)、`fix-validator-limits.spec.ts`(名义金额、乘数、交易类)、
-`fix-validator-qualify.spec.ts`(合约确认)、`fanout.spec.ts`(按账户扇出)。
+`fix-validator-qualify.spec.ts`(合约确认)、`fanout.spec.ts`(按账户扇出)、`account-limits.spec.ts`(按账户的限额、在手的累计上限、重复单的例外)、
+`auto-mid-share.spec.ts`(按价差让价)。
+
+按账户的限额、累计上限、按价差让价只有离线测试,没有在真机上发过单。

@@ -7,7 +7,7 @@ import { useState } from 'react';
 import { Button, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { dafri, errorMessage } from '../bridge';
-import type { ExecutionRow, ProtectionAdvice, ReviewPerformanceResult, SettingsPatch } from '../bridge';
+import type { ExecutionGroup, ExecutionRow, ProtectionAdvice, ReviewPerformanceResult, SettingsPatch } from '../bridge';
 import { showBanner } from '../store/banner';
 import { refreshStatus } from '../store/status';
 import { fmtTimeShort } from './format';
@@ -23,21 +23,27 @@ const execCols: ColumnsType<ExecutionRow> = [
   // 「立即平仓」走的是同两条路,触发原因记成 manual:标出来,和到价触发的分开看
   { title: '路径', dataIndex: 'path', key: 'path', render: (v: ExecutionRow['path'], r) => (r.state === 'manual' ? `手动 · ${v === 'hosted_sweep' ? '托管追价' : '立即平仓'}` : PATH_LABEL[v]) },
   { title: '触发价 → 成交', key: 'px', align: 'right', render: (_: unknown, r) => `${r.mark} → ${r.fill}` },
-  { title: '让出', dataIndex: 'cost_usd', key: 'cost', align: 'right', render: (v: number, r) => `${usd(-v)}(${r.cost_pct}%)` },
+  { title: '让出(不含佣金)', dataIndex: 'cost_usd', key: 'cost', align: 'right', render: (v: number, r) => `${usd(-v)}(${r.cost_pct}%)` },
+  { title: '佣金', dataIndex: 'commission_usd', key: 'commission', align: 'right', render: (v: number | null) => (v == null ? '—' : `$${v.toFixed(2)}`) },
 ];
+
+/** 一种合约的中位数:区间定不出来(不到 6 笔)时写明样本还不够,不让人把两三笔的中位数当成本去用。 */
+function groupValue(g: ExecutionGroup): string {
+  if (g.median_pct == null) return '—';
+  return g.median_ci ? `${g.median_pct}%(${g.median_ci.lo}% ~ ${g.median_ci.hi}%)` : `${g.median_pct}% · 样本少`;
+}
 
 export function ExecutionSection({ r }: { r: ReviewPerformanceResult }) {
   const e = r.execution;
   if (!e.samples && !e.missing) return null;
   return (
-    <StatusCard title={`自动平仓的执行损耗(${e.samples} 笔)`} tone={e.median_pct != null && e.median_pct > 3 ? 'warn' : 'info'}>
+    <StatusCard title={`自动平仓的执行损耗(${e.samples} 笔)`} tone={e.by_sec_type.some((g) => g.median_pct != null && g.median_pct > 3) ? 'warn' : 'info'}>
       <div className="stat-grid">
-        <StatTile label="合计让出" value={usd(e.total_usd == null ? null : -e.total_usd)} tone={e.total_usd != null && e.total_usd > 0 ? 'neg' : ''} />
-        <StatTile label="每笔平均" value={usd(e.avg_usd == null ? null : -e.avg_usd)} />
-        <StatTile label="占触发价 · 中位数" value={e.median_pct == null ? '—' : `${e.median_pct}%`} />
-        <StatTile label="占触发价 · 平均" value={e.avg_pct == null ? '—' : `${e.avg_pct}%`} />
+        <StatTile label="合计让出(不含佣金)" value={usd(e.total_usd == null ? null : -e.total_usd)} tone={e.total_usd != null && e.total_usd > 0 ? 'neg' : ''} />
+        <StatTile label="每笔平均让出" value={usd(e.avg_usd == null ? null : -e.avg_usd)} />
+        <StatTile label="这些平仓单的佣金" value={e.commission_usd == null ? '—' : usd(-e.commission_usd)} />
         {e.by_sec_type.map((g) => (
-          <StatTile key={g.sec_type} label={`${SEC_LABEL[g.sec_type] ?? g.sec_type} · ${g.samples} 笔`} value={g.median_pct == null ? '—' : `${g.median_pct}%`} />
+          <StatTile key={g.sec_type} label={`${SEC_LABEL[g.sec_type] ?? g.sec_type} · ${g.samples} 笔 · ${g.sec_type === 'STK' ? '占股价' : '占权利金'}的中位数`} value={groupValue(g)} />
         ))}
       </div>
       {e.rows.length ? (
@@ -46,7 +52,10 @@ export function ExecutionSection({ r }: { r: ReviewPerformanceResult }) {
       ) : null}
       <Meta
         items={[
-          '触发价是那一刻的持仓现价(中间价口径),让出 = 平多头卖低了、平空头买高了的部分。中位数可以填进回测的「每次成交成本」',
+          '触发价是那一刻的持仓现价(中间价口径),让出 = 平多头卖低了、平空头买高了的部分,只是滑点,佣金另算',
+          '百分比按合约分开看:股票的是占股价,组合与期权的是占权利金,不能合成一个数。括号里是中位数的 95% 区间',
+          '回测的「每边成交成本」是佣金 + 滑点:填对应那一类的中位数,再加上佣金占成交额的比例;标着「样本少」的先别用',
+          e.paper ? `其中 ${e.paper} 笔是模拟账户的:模拟盘的成交是撮合出来的,不代表真实滑点,要看真实水平切到「实盘」` : null,
           e.missing ? `${e.missing} 条平仓痕算不出:2026-09-26 之前没记触发价,或单子没成交` : null,
         ]}
       />

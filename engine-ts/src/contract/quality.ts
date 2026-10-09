@@ -28,6 +28,11 @@ export interface AnomalyConfig {
   day_fixed_tiers: number[];
   /** burst / spike 报过之后的冷却(分钟) */
   cooldown_min: number;
+  /**
+   * 急涨急跌、大涨大跌只报扣掉大盘同期涨跌之后还够档的(大盘 = 标普 500 指数,按 beta = 1 直接相减)。
+   * 默认关:指数 ETF 扣完自己等于零,开了它们的涨跌就不报了。关着时提醒里照样写出大盘同期的涨跌。
+   */
+  market_adjust: boolean;
 }
 
 // ---------------------------------------------------------------- 指标与事件
@@ -45,7 +50,9 @@ export interface AnomalyMetrics {
   block_share: number | null;
   /** 窗口涨跌幅 % */
   ret_window_pct: number | null;
+  /** 窗口 σ(%)= 日 σ × √(这一段占常规时段方差的几成,anomaly.varianceShare);没有历史波动率、或窗口不在常规时段里是 null */
   sigma_window_pct: number | null;
+  /** 日 σ(%)= 30 日历史波动率(年化、小数,收盘对收盘)÷ √252 × 100 */
   sigma_day_pct: number | null;
   /** 窗口量比的基准 */
   basis_volume: "avg_volume" | "session_pace" | null;
@@ -61,6 +68,8 @@ export interface AnomalyEvent {
   at: number;
   symbol: string;
   kind: AnomalyKind;
+  /** 这一段价格往哪走,只是标签:全天放量取当日涨跌,窗口放量与急涨急跌取同一个窗口的涨跌,大涨大跌取较昨收的涨跌。
+   *  量是在哪一段上量的,方向就取哪一段的;成绩单里放量不押方向(signalOutcomes) */
   direction: "up" | "down" | null;
   /** rvol / burst 的倍数;spike / day_move 的涨跌幅 %(带符号) */
   value: number;
@@ -68,7 +77,7 @@ export interface AnomalyEvent {
   threshold: number;
   /** rvol 档(倍数)或 day_move 档序号;其它 null */
   tier: number | null;
-  /** spike / day_move 折成几个 σ(幅度,basis=hist_vol 时),否则 null */
+  /** spike / day_move 折成几个 σ(幅度,basis=hist_vol 时),否则 null。开着「扣掉大盘」时是扣完之后的幅度 */
   sigma: number | null;
   price: number | null;
   change_pct: number | null;
@@ -121,6 +130,11 @@ export interface QualityMonitor {
   supported: boolean;
   /** 给人看的一句话("休市:开盘后开始检测" 之类),没有就是空串 */
   note: string;
+  /**
+   * 大盘参照(标普 500 指数)上一轮读没读到:true = 有数;false = 没有(没有指数行情权限、今天还没开始跳、冻住了)——
+   * 开着「扣掉大盘」时这一轮就是没扣;null = 上一轮没在判(时段外、没连上、还没跑过)。
+   */
+  market_ref: boolean | null;
 }
 
 // ---------------------------------------------------------------- 方法

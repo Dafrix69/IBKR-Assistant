@@ -2,17 +2,34 @@
  *
  * 为什么要落盘:昨日口径是**前一天**收盘后取的,引擎一重启内存里就没了;盘初口径一天只有一次机会。
  * 每五分钟的当前区间与事件也记着,回头核对「收盘落在区间里的比例」「触发之后到没到目标」用的就是它。
+ * 状态机每变一次也记一条:重启之后接着判,靠的是它,不是把事件重放一遍(静默期里没报的那一次不在事件里)。
  *
  * 和 ivSamples.ts 同一条规矩:只有行情(时刻、现价、行权价、中间价),没有账号、持仓、订单;只追加,坏的行跳过。
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import type { PlaybookBand, PlaybookEvent } from "./contract/options.js";
+import type { PlaybookAnchor, PlaybookBand, PlaybookEvent, PlaybookState } from "./contract/options.js";
 
+/** 状态机那几样要落盘的:每变一次记一条,重启时拿最后一条接着判(静默期里没报出来的那一次也在里面) */
+export interface PlaybookMachineMark {
+  at: number;
+  state: PlaybookState;
+  trigger: number | null;
+  since: number | null;
+  /** B2 失效时丢掉的那条线(还没重新上膛);没有是 null */
+  lost: number | null;
+}
+
+/**
+ * prior / open / frame 是取价的三种区间,event 是报出来的事件——这四种的样子不变,只读它们的地方照旧。
+ * anchor(09:35 的锚,不靠盘初那一条区间也在)与 machine(状态)是后加的两种:不认识它们的读法会跳过。
+ */
 export type PlaybookRecord =
   | { kind: "prior" | "open" | "frame"; band: PlaybookBand }
-  | { kind: "event"; event: PlaybookEvent };
+  | { kind: "event"; event: PlaybookEvent }
+  | { kind: "anchor"; anchor: PlaybookAnchor }
+  | { kind: "machine"; machine: PlaybookMachineMark };
 
 const FILE_RE = /^(\d{4}-\d{2}-\d{2})\.jsonl$/;
 const num = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
@@ -31,10 +48,27 @@ function validEvent(raw: unknown): raw is PlaybookEvent {
     (e["kind"] === "enter" || e["kind"] === "invalid" || e["kind"] === "accel");
 }
 
+const numOrNull = (v: unknown): boolean => v === null || num(v);
+
+function validAnchor(raw: unknown): raw is PlaybookAnchor {
+  if (raw === null || typeof raw !== "object") return false;
+  const a = raw as Record<string, unknown>;
+  return num(a["at"]) && num(a["price"]) && a["price"] > 0 && (a["source"] === "live" || a["source"] === "backfill");
+}
+
+function validMachine(raw: unknown): raw is PlaybookMachineMark {
+  if (raw === null || typeof raw !== "object") return false;
+  const m = raw as Record<string, unknown>;
+  return num(m["at"]) && (m["state"] === "B2" || m["state"] === "B3" || m["state"] === "R" || m["state"] === "none") &&
+    numOrNull(m["trigger"]) && numOrNull(m["since"]) && numOrNull(m["lost"]);
+}
+
 function validRecord(raw: unknown): raw is PlaybookRecord {
   if (raw === null || typeof raw !== "object") return false;
   const r = raw as Record<string, unknown>;
   if (r["kind"] === "event") return validEvent(r["event"]);
+  if (r["kind"] === "anchor") return validAnchor(r["anchor"]);
+  if (r["kind"] === "machine") return validMachine(r["machine"]);
   return (r["kind"] === "prior" || r["kind"] === "open" || r["kind"] === "frame") && validBand(r["band"]);
 }
 

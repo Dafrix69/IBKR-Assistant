@@ -9,8 +9,12 @@
 import { describe, expect, it } from "vitest";
 
 import * as an from "../src/anomaly.js";
+import { FLY_IV_MODEL } from "../src/flyIvModel.js";
 
 type Snap = an.VolumeSnapshot;
+/** 日内方差分布的 13 个半小时桶:校准出来的那一份。重新校准之后数会变,下面的期望值都从它算,不写死。 */
+const VAR_W = FLY_IV_MODEL.variance_weights as readonly number[];
+const bucket = (i: number): number => VAR_W[i] ?? Number.NaN;
 type Result = ReturnType<typeof an.evaluateAnomalies>;
 
 const CFG = an.DEFAULT_ANOMALY_CONFIG;
@@ -257,6 +261,7 @@ describe("normalizeAnomalyConfig", () => {
     expect(CFG).toEqual({
       rvol_tiers: [2, 3, 5], burst_ratio: 4, window_min: 5, spike_sigma: 4, spike_min_pct: 1.0,
       spike_fixed_pct: 1.5, day_sigma_tiers: [2, 3, 4], day_fixed_tiers: [3, 5, 8], cooldown_min: 10,
+      market_adjust: false,
     });
     const a = an.normalizeAnomalyConfig(null);
     const b = an.normalizeAnomalyConfig(undefined);
@@ -639,18 +644,24 @@ describe("burst:近 W 分钟放量,滞回 + 冷却", () => {
 // ---------------------------------------------------------------- 急涨急跌
 describe("spike:窗口涨跌幅对 σ 阈值,滞回 + 冷却", () => {
   const RKLB_HV = 0.9;
-  const sigmaW = (hv: number, span = 5): number => hv * Math.sqrt(span / (252 * 390)) * 100;
+  /** 窗口 σ = 日 σ × √(这一段占常规时段方差的几成);minute 是窗口的终点 */
+  const sigmaW = (hv: number, minute = 120, span = 5): number =>
+    (hv / Math.sqrt(252)) * Math.sqrt(an.varianceShare(minute - span, minute)) * 100;
 
   it("有历史波动率:阈值 = spike_sigma × 窗口 σ", () => {
     const thr = 4 * sigmaW(RKLB_HV);
-    expect(thr).toBeCloseTo(2.5678, 3);
+    // 11:25–11:30 落在 11:00–11:30 那个半小时桶里(第 4 桶,占全天方差约 8%),5 分钟是它的六分之一
+    expect(an.varianceShare(115, 120)).toBeCloseTo(bucket(3) / 6, 9);
+    expect(thr).toBeCloseTo(4 * (0.9 / Math.sqrt(252)) * Math.sqrt(bucket(3) / 6) * 100, 9);
+    expect(thr).toBeGreaterThan(2.5);
+    expect(thr).toBeLessThan(2.9);
     const r = run({ minute: 120, ...moveCase(120, 100, 102.9, RKLB_HV) });
     expect(kindsOf(r)).toEqual(["spike"]);
     const e = r.events[0]!;
     expect(e).toMatchObject({
       id: `RKLB:spike:up:-:${secAt(120)}`, direction: "up", tier: null, basis: "hist_vol",
       title: "RKLB 5分钟急涨 +2.9%",
-      text: "5 分钟 +2.90%,约 4.5σ(阈值 2.57%),现价 102.9",
+      text: `5 分钟 +2.90%,约 ${(2.9 / sigmaW(RKLB_HV)).toFixed(1)}σ(阈值 ${Number(thr.toFixed(2))}%),现价 102.9`,
     });
     expect(e.value).toBeCloseTo(2.9, 4);
     expect(e.threshold).toBeCloseTo(thr, 4);
@@ -679,10 +690,26 @@ describe("spike:窗口涨跌幅对 σ 阈值,滞回 + 冷却", () => {
     expect(r.metrics.basis_sigma).toBe("fixed");
   });
 
-  it("hist_vol > 5 视为百分数", () => {
-    const pct = run({ minute: 120, ...moveCase(120, 100, 102.9, 90) });
-    const dec = run({ minute: 120, ...moveCase(120, 100, 102.9, 0.9) });
-    expect(pct).toEqual(dec);
+  it("历史波动率一律是小数,不猜单位:6.0 就是 600%(妖股真有),不是 6%", () => {
+    const r = run({ minute: 120, ...moveCase(120, 100, 102.9, 6) });
+    expect(r.metrics.sigma_window_pct).toBeCloseTo(sigmaW(6), 4);
+    expect(r.metrics.sigma_window_pct!).toBeGreaterThan(4); // 5 分钟一个 σ 就是 4% 多
+    expect(r.events).toEqual([]); // 2.9% 连一个 σ 都不到;当成 6% 的话这里会报成几十个 σ
+    expect(run({ minute: 60, snap: { last: 110, close: 100, hist_vol: 6 } }).events).toEqual([]);
+  });
+
+  it("窗口 σ 跟着日内的波动走:开盘头半小时比午间大,同样的幅度午间报、开盘不报", () => {
+    // 09:55–10:00 在头半小时(第 1 桶,约 15%);12:25–12:30 在午间那一桶(第 6 桶,约 5%)
+    const open = sigmaW(RKLB_HV, 30);
+    const noon = sigmaW(RKLB_HV, 180);
+    expect(open / noon).toBeCloseTo(Math.sqrt(bucket(0) / bucket(5)), 6);
+    expect(run({ minute: 30, ...moveCase(30, 100, 102.6, RKLB_HV) }).metrics.sigma_window_pct).toBeCloseTo(open, 4);
+    expect(4 * noon).toBeLessThan(2.6);
+    expect(4 * open).toBeGreaterThan(2.6);
+    expect(kindsOf(run({ minute: 180, ...moveCase(180, 100, 102.6, RKLB_HV) }))).toEqual(["spike"]);
+    expect(run({ minute: 30, ...moveCase(30, 100, 102.6, RKLB_HV) }).events).toEqual([]);
+    // 半日市按同一个钟点取,不压缩
+    expect(run({ minute: 180, session: 210, ...moveCase(180, 100, 102.6, RKLB_HV) }).metrics.sigma_window_pct).toBeCloseTo(noon, 4);
   });
 
   it("开盘 15 分钟内不报(半日市同样是真实的 15 分钟)", () => {
@@ -945,5 +972,195 @@ describe("综合:单位不变性、时段、事件格式、入参不动", () => 
     });
     expect(second.events).toEqual([]);
     expect(JSON.stringify(second.state)).toBe(JSON.stringify(first.state));
+  });
+});
+
+// ---------------------------------------------------------------- 日内方差曲线
+describe("varianceShare:一段时间占常规时段方差的几成", () => {
+  it("用的是蝴蝶测算校准出来的那 13 个半小时桶;全天加起来是 1;可以首尾相加;时段外不算", () => {
+    expect(VAR_W).toHaveLength(13);
+    expect(an.varianceShare(0, 390)).toBeCloseTo(1, 3); // 校准结果四舍五入到四位小数
+    expect(an.varianceShare(0, 30)).toBeCloseTo(bucket(0), 9);
+    expect(an.varianceShare(360, 390)).toBeCloseTo(bucket(12), 9);
+    expect(an.varianceShare(45, 75)).toBeCloseTo(bucket(1) / 2 + bucket(2) / 2, 9); // 桶内按匀速
+    expect(an.varianceShare(100, 130) + an.varianceShare(130, 200)).toBeCloseTo(an.varianceShare(100, 200), 9);
+    expect(an.varianceShare(-20, 0)).toBe(0);
+    expect(an.varianceShare(-5, 5)).toBeCloseTo(an.varianceShare(0, 5), 9); // 开盘前那 5 分钟不算
+    expect(an.varianceShare(390, 400)).toBe(0);
+    expect(an.varianceShare(120, 120)).toBe(0);
+    expect(an.varianceShare(Number.NaN, 120)).toBe(0);
+  });
+
+  it("两头高中间低:同样 5 分钟,开盘与收盘前比午间占得多", () => {
+    const open = an.varianceShare(15, 20), noon = an.varianceShare(180, 185), close = an.varianceShare(380, 385);
+    expect(open).toBeGreaterThan(noon * 2);
+    expect(close).toBeGreaterThan(noon * 1.5);
+    expect(noon).toBeLessThan(5 / 390); // 午间不到"每分钟一样多"的那个数
+  });
+});
+
+// ---------------------------------------------------------------- 大盘同期
+describe("大盘同期的涨跌:默认只写进提醒;开了「扣掉大盘」才影响报不报", () => {
+  const ADJ: an.AnomalyConfig = { ...CFG, market_adjust: true };
+  const day = (last: number, market: an.MarketMove | null, config: an.AnomalyConfig = CFG, hv: number | null = null): Result =>
+    an.evaluateAnomalies({
+      symbol: "AAPL", snap: snapOf({ last, close: 100, hist_vol: hv }), samples: [], state: null,
+      nowMs: msAt(60), etDate: DAY, minute: 60, config, market,
+    });
+  const mkt = (change: number | null, window: number | null = null): an.MarketMove => ({ change_pct: change, ret_window_pct: window });
+
+  it("关着(默认):照自己的幅度报,提醒里多半句大盘同期;没有大盘参照就没有这半句", () => {
+    const r = day(96.4, mkt(-3));
+    expect(r.events.map((e) => [e.kind, e.tier, e.value])).toEqual([["day_move", 1, -3.6]]);
+    expect(r.events[0]!.text).toBe("较昨收 −3.60%,标普同期 −3.00%(第 1 档,阈值 3%),现价 96.4");
+    expect(day(96.4, null).events[0]!.text).toBe("较昨收 −3.60%(第 1 档,阈值 3%),现价 96.4");
+    expect(day(96.4, mkt(null)).events[0]!.text).toBe("较昨收 −3.60%(第 1 档,阈值 3%),现价 96.4");
+  });
+
+  it("开着却没有大盘参照(没有指数行情权限、流冻住了、这只是延迟行情):照自己的幅度判,提醒里写明没扣", () => {
+    for (const market of [null, mkt(null)]) {
+      const r = day(96.4, market, ADJ);
+      expect(r.events.map((e) => [e.tier, e.value])).toEqual([[1, -3.6]]);
+      expect(r.events[0]!.text).toBe("较昨收 −3.60%,无大盘参照、未扣(第 1 档,阈值 3%),现价 96.4");
+    }
+    // 急涨急跌同理:只给了全天的大盘涨跌、没有窗口的,窗口这一段就是没扣
+    const r = an.evaluateAnomalies({
+      symbol: "AAPL", ...moveCase(120, 100, 98.2), snap: snapOf({ last: 98.2, close: 98.2, hist_vol: null }), state: null,
+      nowMs: msAt(120), etDate: DAY, minute: 120, config: ADJ, market: mkt(-3, null),
+    });
+    expect(r.events[0]!.text).toBe("5 分钟 −1.80%,无大盘参照、未扣(无历史波动率,按固定 1.5%),现价 98.2");
+  });
+
+  it("开着:大盘 −3% 的日子,跟着跌 3.6% 的不报;自己多跌出一档的才报,档位按扣完之后的算", () => {
+    expect(day(96.4, mkt(-3), ADJ).events).toEqual([]);
+    const r = day(93.5, mkt(-3), ADJ); // 自己 −6.5%(第 2 档),扣完 −3.5%(第 1 档)
+    expect(r.events.map((e) => [e.tier, e.value, e.direction])).toEqual([[1, -6.5, "down"]]);
+    expect(r.events[0]!.text).toBe("较昨收 −6.50%,标普同期 −3.00%、扣掉后 −3.50%(第 1 档,阈值 3%),现价 93.5");
+    expect(r.events[0]!.title).toBe("AAPL 大跌 −6.5%");
+    expect(r.state.day_down_fired).toBe(1);
+  });
+
+  it("开着:大盘反着走,扣完更大——还是按自己的幅度,不因为大盘跌就把它的涨算大", () => {
+    const r = day(103.5, mkt(-2), ADJ);
+    expect(r.events.map((e) => [e.tier, e.value])).toEqual([[1, 3.5]]);
+    expect(r.events[0]!.text).toBe("较昨收 +3.50%,标普同期 −2.00%(第 1 档,阈值 3%),现价 103.5");
+    // 大盘走得比它还多(扣完反了向):不是它的异动
+    expect(day(103.5, mkt(4), ADJ).events).toEqual([]);
+  });
+
+  it("开着:σ 倍数是扣完之后的幅度除出来的", () => {
+    const sigmaD = (0.32 / Math.sqrt(252)) * 100;
+    const r = day(93.5, mkt(-2), ADJ, 0.32); // 扣完 −4.5%,2.2σ
+    expect(r.events[0]!.sigma).toBeCloseTo(4.5 / sigmaD, 3);
+    expect(r.events[0]!.text).toBe("较昨收 −6.50%,标普同期 −2.00%、扣掉后 −4.50%,约 2.2σ(第 1 档,阈值 4.03%),现价 93.5");
+  });
+
+  it("开着的代价:跟着指数走的 ETF 扣完自己等于零,大盘大跌那天它不报(所以默认关)", () => {
+    expect(day(96.9, mkt(-3.1), ADJ).events).toEqual([]);
+    expect(day(96.9, mkt(-3.1)).events).toHaveLength(1);
+  });
+
+  it("急涨急跌用窗口那一段的大盘涨跌:关着只标注,开着扣掉;滞回也按扣完之后的幅度", () => {
+    const spike = (to: number, market: an.MarketMove | null, config: an.AnomalyConfig, state: an.AnomalyState | null = null): Result =>
+      an.evaluateAnomalies({
+        symbol: "AAPL", ...moveCase(120, 100, to), snap: snapOf({ last: to, close: to, hist_vol: null }), state,
+        nowMs: msAt(120), etDate: DAY, minute: 120, config, market,
+      });
+    const off = spike(98.2, mkt(null, -1.2), CFG);
+    expect(off.events.map((e) => e.kind)).toEqual(["spike"]);
+    expect(off.events[0]!.text).toBe("5 分钟 −1.80%,标普同期 −1.20%(无历史波动率,按固定 1.5%),现价 98.2");
+    expect(spike(98.2, mkt(null, -1.2), ADJ).events).toEqual([]); // 扣完 −0.6%
+    const on = spike(97.2, mkt(null, -1.2), ADJ); // 扣完 −1.6%
+    expect(on.events[0]!.text).toBe("5 分钟 −2.80%,标普同期 −1.20%、扣掉后 −1.60%(无历史波动率,按固定 1.5%),现价 97.2");
+    expect(on.events[0]!.value).toBeCloseTo(-2.8, 4);
+    // 较昨收的那个数不拿来扣窗口:只给了全天的大盘涨跌时,急涨急跌照自己的幅度
+    expect(spike(98.2, mkt(-3, null), ADJ).events.map((e) => e.kind)).toEqual(["spike"]);
+  });
+
+  it("windowReturnPct:起点规则同个股的窗口;凑不出窗口回 null", () => {
+    const samples: an.Sample[] = [
+      { t: msAt(115), volume: null, last: 6700 }, { t: msAt(118), volume: null, last: 6690 }, { t: msAt(120), volume: null, last: 6633 },
+    ];
+    expect(an.windowReturnPct(samples, msAt(120), 5)).toBeCloseTo(-1, 6);
+    expect(an.windowReturnPct(samples.slice(1), msAt(120), 5)).toBeNull(); // 5 分钟前没有样本
+    expect(an.windowReturnPct([], msAt(120), 5)).toBeNull();
+    expect(an.windowReturnPct(samples, msAt(121), 5)).toBeNull(); // 这一刻没有样本
+  });
+
+  it("开关只认布尔;不传取 base", () => {
+    expect(an.normalizeAnomalyConfig({ market_adjust: true }).market_adjust).toBe(true);
+    expect(an.normalizeAnomalyConfig({ burst_ratio: 6 }, ADJ).market_adjust).toBe(true);
+    expect(an.normalizeAnomalyConfig({ market_adjust: null }, ADJ).market_adjust).toBe(true);
+    for (const bad of ["true", 1, 0, []]) {
+      expect(() => an.normalizeAnomalyConfig({ market_adjust: bad }), JSON.stringify(bad)).toThrow(/扣掉大盘/);
+    }
+  });
+});
+
+// ---------------------------------------------------------------- 跳空
+describe("day_move:开盘跳空报一次,不重报", () => {
+  /** open 在这里是**调用方认过的今天的开盘价**(流里那个字段开盘前是昨天的;怎么认见 quality-rpc.spec「钟过了 09:30 不等于这只股开了」) */
+  const gap = (minute: number, last: number, state: an.AnomalyState | null, open: number | null = 95): Result =>
+    run({ minute, state, snap: { last, close: 100, open } });
+
+  it("这只股今天还没开出来(opened = false):大涨大跌不判、不占档;开出来之后照报", () => {
+    const waiting = an.evaluateAnomalies({
+      symbol: "RKLB", snap: snapOf({ last: 95, close: 100, open: null }), samples: [], state: null,
+      nowMs: msAt(0), etDate: DAY, minute: 0, config: CFG, opened: false,
+    });
+    expect(waiting.events).toEqual([]);
+    expect(waiting.state.day_down_fired).toBe(0);
+    expect(waiting.metrics.change_pct).toBeCloseTo(-5, 4);
+    const opened = an.evaluateAnomalies({
+      symbol: "RKLB", snap: snapOf({ last: 94, close: 100, open: 94 }), samples: [], state: waiting.state,
+      nowMs: msAt(0.2), etDate: DAY, minute: 0.2, config: CFG, opened: true,
+    });
+    expect(opened.events.map((e) => e.text)).toEqual(["较昨收 −6.00%(开盘跳空 −6.00%)(第 2 档,阈值 5%),现价 94"]);
+  });
+
+  it("开盘第一轮就报,写明是跳空;之后每一轮、回补一半再回来,都不重报", () => {
+    const first = gap(0, 95, null);
+    expect(first.events.map((e) => [e.kind, e.tier, e.direction])).toEqual([["day_move", 2, "down"]]);
+    expect(first.events[0]!.text).toBe("较昨收 −5.00%(开盘跳空 −5.00%)(第 2 档,阈值 5%),现价 95");
+    let state = first.state;
+    for (const [minute, last] of [[0.1, 95], [1, 94.8], [30, 97.5], [90, 95], [200, 94.9]] as Array<[number, number]>) {
+      const r = gap(minute, last, state);
+      expect(r.events, `${minute}`).toEqual([]);
+      state = r.state;
+    }
+    expect(state.day_down_fired).toBe(2);
+  });
+
+  it("状态落库再读回来(重启):今天报过的那一档还记着", () => {
+    const first = gap(0, 95, null);
+    const restored = an.coerceState(JSON.parse(JSON.stringify(first.state)), DAY);
+    expect(gap(5, 95, restored).events).toEqual([]);
+    // 第二天换日重置:同样的跳空照报
+    expect(run({ minute: 0, state: restored, etDate: "2026-09-14", snap: { last: 95, close: 100, open: 95 } }).events).toHaveLength(1);
+  });
+
+  it("跳空之后盘中接着走到更高一档:再报一次,这一档不是光靠跳空到的,不写跳空", () => {
+    const first = gap(0, 95, null);
+    const more = gap(120, 91.5, first.state);
+    expect(more.events.map((e) => e.tier)).toEqual([3]);
+    expect(more.events[0]!.text).toBe("较昨收 −8.50%(第 3 档,阈值 8%),现价 91.5");
+  });
+
+  it("没有开盘价、跳空方向反着、跳空不够这一档:都不写跳空", () => {
+    expect(gap(0, 95, null, null).events[0]!.text).toBe("较昨收 −5.00%(第 2 档,阈值 5%),现价 95");
+    expect(gap(60, 95, null, 101).events[0]!.text).toBe("较昨收 −5.00%(第 2 档,阈值 5%),现价 95");
+    expect(gap(60, 95, null, 97).events[0]!.text).toBe("较昨收 −5.00%(第 2 档,阈值 5%),现价 95");
+  });
+});
+
+// ---------------------------------------------------------------- 方向标签
+describe("放量信号的方向:量在哪一段上量的,方向就取哪一段的涨跌", () => {
+  it("全天放量取当日涨跌;窗口放量取同一个窗口的涨跌(当日是涨的,这 5 分钟在跌 → down)", () => {
+    const rvol = run({ minute: 120, snap: { last: 97, close: 100, volume: volumeAt(120, 2.2), avg_volume: AVG } });
+    expect(ofKind(rvol, "rvol").map((e) => e.direction)).toEqual(["down"]);
+    const w = windowCase(120, 6, { from: 104, to: 102 });
+    const burst = run({ minute: 120, ...w, snap: { ...w.snap, close: 100 } }); // 较昨收 +2%,窗口 −1.9%
+    expect(ofKind(burst, "burst").map((e) => e.direction)).toEqual(["down"]);
+    expect(burst.metrics.change_pct).toBeCloseTo(2, 4);
   });
 });

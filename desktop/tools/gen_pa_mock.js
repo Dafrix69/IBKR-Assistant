@@ -41,10 +41,13 @@ if (!testCase) {
   process.exit(1);
 }
 const rows = testCase.rows;
-const nowIso = String(testCase.now).replace(' ', 'T');
-const nowMs = Date.parse(nowIso);
 const symbol = 'NVDA';
 const timeframe = testCase.timeframe;
+// "现在"放在最后一根走到一半的时候:预览台要看得到「正在形成」那一块(判定只算到上一根收盘)。
+// 黄金用例自己的 now 在收盘之后,那里最后一根早就走完了。
+const lastCloses = pa.barCloseEpochMs(rows[rows.length - 1].time, timeframe, true);
+const nowMs = lastCloses - pa.TIMEFRAMES[timeframe].seconds * 500;
+const nowIso = new Date(nowMs).toISOString();
 
 /** n 根合成 1 根(高周期背景用);凑不满 n 根的尾巴丢掉。 */
 function aggregate(source, n) {

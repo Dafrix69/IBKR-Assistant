@@ -96,8 +96,10 @@ const ui = (over: Rec = {}): Rec => ({
 });
 
 const REPORT_KEYS = [
-  "annualized_pct", "bars", "buy_hold_return_pct", "closed_trades", "curve", "end", "exposure_pct", "instrument", "max_drawdown_pct",
-  "params", "start", "strategy", "symbol", "total_return_pct", "trade_list", "trades", "win_rate_pct",
+  "annualized_pct", "avg_loss_pct", "avg_win_pct", "bars", "buy_hold_return_pct", "closed_trades", "curve", "days", "end", "excess_return_pct",
+  "expectancy_pct", "exposure_pct", "held_day_move_pct", "held_days", "instrument", "max_drawdown_pct", "notes", "params", "payoff_ratio",
+  "profit_factor",
+  "sharpe", "sortino", "start", "strategy", "symbol", "total_return_pct", "trade_list", "trades", "volatility_pct", "win_rate_pct",
 ];
 
 describe("backtest.strategies", () => {
@@ -124,15 +126,25 @@ describe("backtest.run:界面的载荷", () => {
       start: router.bars[0]!["date"], end: router.bars[299]!["date"],
       instrument: { type: "stock", dte: 30, offset_pct: 0, width_pct: 2, risk_pct: 10 },
     });
-    for (const k of ["total_return_pct", "buy_hold_return_pct", "annualized_pct", "max_drawdown_pct", "exposure_pct", "win_rate_pct"]) {
+    for (const k of [
+      "total_return_pct", "buy_hold_return_pct", "excess_return_pct", "annualized_pct", "max_drawdown_pct", "exposure_pct", "win_rate_pct",
+      "volatility_pct", "sharpe", "sortino", "avg_win_pct", "avg_loss_pct", "payoff_ratio", "profit_factor", "expectancy_pct", "days",
+    ]) {
       expect(typeof r[k], k).toBe("number");
     }
+    expect(r["excess_return_pct"]).toBeCloseTo(r["total_return_pct"] - r["buy_hold_return_pct"], 2);
+    // 口径与偏差随回执带回来,界面原样摆:没扣成本、幸存者偏差每次都有
+    expect(r["notes"].some((n: string) => n.includes("没扣成交成本"))).toBe(true);
+    expect(r["notes"].some((n: string) => n.includes("幸存者偏差"))).toBe(true);
     expect(r["trades"]).toBeGreaterThan(2);
     expect(r["trade_list"]).toHaveLength(r["trades"]);
     expect(r["closed_trades"]).toBe(r["trade_list"].filter((t: Rec) => t["closed"]).length);
     // 正股的一笔:没有 exit_reason;没平的那笔 exit_date 是 null
     expect(Object.keys(r["trade_list"][0]).sort()).toEqual(["closed", "entry_date", "entry_price", "exit_date", "exit_price", "return_pct"]);
     expect(r["trade_list"][0]).toMatchObject({ closed: true, entry_date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/), exit_date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) });
+    // 成交在信号的下一根开盘:进场价是那一天的开盘价
+    const entryBar = router.bars.find((b) => b["date"] === r["trade_list"][0]["entry_date"])!;
+    expect(r["trade_list"][0]["entry_price"]).toBe(entryBar["open"]);
     // 曲线:首尾都在,净值从 1 起
     expect(r["curve"][0]).toEqual({ date: router.bars[0]!["date"], equity: 1, bench: 1 });
     expect(r["curve"][r["curve"].length - 1]["date"]).toBe(router.bars[299]!["date"]);
@@ -194,8 +206,13 @@ describe("backtest.run:界面的载荷", () => {
     const r = (await call("backtest.run", ui({ instrument })))["result"];
     expect(r["instrument"]).toEqual(instrument);
     expect(Object.keys(r).sort()).toEqual(REPORT_KEYS);
-    expect(Object.keys(r["trade_list"][0]).sort()).toEqual(["closed", "entry_date", "entry_price", "exit_date", "exit_price", "exit_reason", "return_pct"]);
-    for (const t of r["trade_list"]) expect(["expiry", "signal", "open"]).toContain(t["exit_reason"]);
+    expect(Object.keys(r["trade_list"][0]).sort()).toEqual(["closed", "entry_date", "entry_price", "exit_date", "exit_price", "exit_reason", "return_pct", "strikes"]);
+    for (const t of r["trade_list"]) {
+      expect(["expiry", "signal", "open"]).toContain(t["exit_reason"]);
+      expect(t["strikes"]).toHaveLength(1);
+      expect(t["strikes"][0] % 5).toBe(0); // 100 上下的价位:贴 5 一档
+    }
+    expect(r["notes"].some((n: string) => n.includes("Black-Scholes") && n.includes("方差风险溢价"))).toBe(true);
     // 不给 instrument = 正股
     expect((await call("backtest.run", ui({ instrument: undefined })))["result"]["instrument"]["type"]).toBe("stock");
   });
@@ -278,9 +295,19 @@ describe("backtest.sweep", () => {
     expect(r["best"]["oos"]).toHaveProperty("return_pct");
     expect(r["walk_forward"]["folds"]).toHaveLength(2);
     expect(Object.keys(r).sort()).toEqual([
-      "best", "combos", "cost_pct", "end", "instrument", "notes", "objective", "rank_corr", "rows", "skipped", "split_date",
-      "start", "strategy", "symbols", "walk_forward",
+      "best", "combos", "cost_pct", "end", "instrument", "notes", "objective", "oos_median_return_pct", "pick_p", "rank_corr", "rank_corr_p",
+      "ranked", "rows", "skipped", "split_date", "start", "strategy", "symbols", "walk_forward",
     ]);
+    expect(r["ranked"]).toBe(4);
+    expect(Object.keys(r["best"]["oos"]).sort()).toEqual([
+      "annualized_pct", "bench_return_pct", "calmar", "days", "dd_floored", "dd_under_one_day", "excess_return_pct", "max_drawdown_pct",
+      "return_over_dd", "return_pct", "sharpe", "trades", "win_rate_pct",
+    ]);
+    // 每一折:当时挑的参数、测试段的成绩,以及那组参数在训练段是不是靠回撤下限 / 几乎没经历过回撤(按总收益挑时都是 false)
+    expect(Object.keys(r["walk_forward"]["folds"][0]).sort()).toEqual([
+      "bench_return_pct", "dd_floored", "dd_under_one_day", "params", "test_end", "test_return_pct", "test_start", "train_end",
+    ]);
+    expect(r["walk_forward"]["folds"].every((f: Rec) => f["dd_floored"] === false && f["dd_under_one_day"] === false)).toBe(true);
   });
 
   it("入参:代码、日期、网格、标准、比例都报人话;没连券商报 -32012", async () => {

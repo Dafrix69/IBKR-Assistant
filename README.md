@@ -48,7 +48,7 @@
 
 ![回测](docs/screenshots/backtest.png)
 
-**回测** 五种策略,日线收盘成交、全仓进出,只作研究;可以扣每边成交成本,参数扫描看样本外与滚动前推。见 [回测成本与参数扫描](docs/features/backtest-lab.md)。
+**回测** 五种策略,日线收盘出信号、下一根开盘成交,全仓进出,只作研究;可以扣每边成交成本,参数扫描看样本外与滚动前推。见 [回测:成交口径、统计、期权估价与参数扫描](docs/features/backtest-lab.md)。
 
 ![交易分析](docs/screenshots/tradereview.png)
 

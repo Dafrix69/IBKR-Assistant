@@ -1,7 +1,8 @@
 /** Discord 跟单(docs/features/follow.md):bot 读一个频道,信任的人发的蝴蝶速记不经确认直接走发单链路。
  *
- * 这里管三件事:两个来源的起停(Gateway 连接:配了频道、凭证库里有 token 才连;本地收件:开关开着就盯文件,
- * 填了频道名还把读窗口的程序拉起来)、每条消息从判定到发单的那一趟、给界面的状态。
+ * 这里管五件事:两个来源的起停(Gateway 连接:配了频道、凭证库里有 token 才连;本地收件:开关开着就盯文件,
+ * 填了频道名还把读窗口的程序拉起来)、每条消息从判定到发单的那一趟、处理完之后记一次盘口(延迟的代价)、
+ * 跟进去的蝴蝶成交之后建追踪、给界面的状态。
  * 规则在 follow.ts(纯函数),协议在 discordGateway.ts,收件文件在 followInbox.ts,读窗口的程序在 followReader.ts。
  * 两个来源的消息走同一条路:信任名单、上限、只观察,一样不少。
  *
@@ -14,24 +15,48 @@
  * * **只观察也是全程在跑**:跟单开关关着时照样连、照样解析、照样记日志,只是一张单都不发。
  * * 消息一条一条处理(排队):两条挨着来的单子不并发进引擎,重复单检查才看得见前一条。
  * * 出了错吞掉、记日志,连接与后面的消息不受影响。
+ * * **记盘口排在发单之后、不占消息的队**:它只是记一笔,取不到就不记,任何情况下都不该让一张单晚发一毫秒。
+ *   行情走蝴蝶测算那批自己的流(optionMarks.ts),不碰盯盘的流——引擎定价用的 legQuotes 是现订现撤,
+ *   撤的可能正是持仓那条腿的常驻流,盯盘那一轮就得重订、多等一秒半。
+ * * **建追踪不在这里写规则**:成交之后调的是装配时接进来的 tracker.add 那条路,入参和界面那张表单发的逐键相同。
  */
 import { AsyncLocalStorage } from "node:async_hooks";
 
+import { comboNaturalPrice } from "../autoMid.js";
+import { BrokerError, comboMidPrice } from "../broker.js";
+import type { LegQuote } from "../broker.js";
+import { withCombos } from "../combos.js";
 import { nowEt } from "../config.js";
 import type {
   FollowConfig, FollowEntry, FollowInboxState, FollowLink, FollowOutcome, FollowReaderState, FollowSeen, FollowStatus,
 } from "../contract/follow.js";
+import type { InstructionOrder } from "../contract/instruction.js";
+import type { PositionRow } from "../contract/positions.js";
+import type { Track, TrackerAddParams } from "../contract/tracker.js";
 import { DiscordGateway } from "../discordGateway.js";
 import type { DiscordMessage, GatewayOptions, GatewayPhase } from "../discordGateway.js";
 import { resolveFanoutAccounts } from "../engine.js";
+import { orderLegId } from "../engine/closing.js";
 import { tryLocalShorthand } from "../engine/localShorthand.js";
-import { decide, orderText, outcomeOf, relativeCenterProblem, triage, whyUnparsed } from "../follow.js";
+import {
+  decide, flyTrackParams, followQuote, leaderPrice, orderText, outcomeOf, pendingTracksOf, pendingVerdict, relativeCenterProblem,
+  remainderVerdict, trackExitsText, triage, whyUnparsed,
+} from "../follow.js";
+import type { LeaderPrice, PendingFacts, PendingTrack } from "../follow.js";
 import { FollowInbox, LOCAL_CHANNEL, inboxPath } from "../followInbox.js";
 import type { InboxOptions } from "../followInbox.js";
 import { FOLLOW_TEXT_MAX } from "../followLog.js";
 import { FollowReader, readerProgram } from "../followReader.js";
 import type { ReaderOptions } from "../followReader.js";
+import { silenceLimitMs } from "../heldStreams.js";
+import type { IbSession } from "../ibTypes.js";
+import { ContractSpecSchema, OrderSpecSchema } from "../models.js";
+import type { ContractSpec } from "../models.js";
+import { OptionMarksError } from "../optionMarks.js";
+import type { OptionMarkStreams } from "../optionMarks.js";
+import { makeKey } from "../positions.js";
 import { etDayStart } from "../protections.js";
+import { RpcError } from "../rpcError.js";
 import { readSecret, secretExists, writeSecret } from "../secrets.js";
 import { LOCAL_MODEL } from "../shorthand.js";
 import type { ShorthandMeta } from "../shorthand.js";
@@ -46,6 +71,29 @@ export const FOLLOW_KEYCHAIN_ACCOUNT = "token";
 const SEEN_MAX = 30;
 /** 处理过的消息 ID 记多少个(进程内去重;跨重启的去重在库里)。 */
 const HANDLED_MAX = 2000;
+/** 在等成交之后建追踪的蝴蝶存在偏好表的哪个键下。 */
+const PENDING_PREF = "follow.pending_tracks";
+/** 有蝴蝶在等的时候,隔多久核对一轮(成交了没有、持仓出来了没有)。只是核对的节拍,不进任何判断。 */
+const TRACK_POLL_MS = 3_000;
+/** 建追踪那一下不是因为入参被拒而失败(读持仓那一瞬间断了线之类),最多再试几轮;之后说清楚、不再试。 */
+const TRACK_ADD_ATTEMPTS = 10;
+
+/** 下场是这几种的信号才记盘口:解析出了恰好一张写明价格的单。没接住的、太旧的没有可比的价。 */
+const QUOTED_OUTCOMES: ReadonlySet<FollowOutcome> = new Set(["sent", "held", "observed", "capped", "blocked", "rejected"]);
+
+/** 一条信号里那张单:合约(取盘口、认持仓用)与对方写的价。 */
+interface Signal {
+  contract: ContractSpec;
+  leader: LeaderPrice;
+}
+
+/** 装配时接进来的两样(rpc/server.ts):服务自己够不着 handler,行情流要和蝴蝶测算共用同一批。 */
+export interface FollowWiring {
+  /** tracker.add 的那个 handler:建追踪只走这一条路,和界面点出来的是同一条 */
+  addTrack: (params: TrackerAddParams) => Promise<{ track: Track }>;
+  /** 蝴蝶测算 / IV 记录共用的那批行情流(不碰盯盘的流) */
+  marks: Pick<OptionMarkStreams, "read">;
+}
 
 const OUTCOME_LABEL: Record<FollowOutcome, string> = {
   sent: "已跟单",
@@ -88,6 +136,8 @@ export class FollowService extends ServiceBase {
   inboxOptions: InboxOptions = {};
   /** 读窗口的程序在哪、怎么起(测试注入);program 不给 = 看宿主给的环境变量 */
   readerOptions: ReaderOptions & { program?: string | null } = {};
+  /** 建追踪走哪条路、盘口从哪批行情流取(见 attach);没接上 = 不建追踪、不记盘口 */
+  private wiring: FollowWiring | null = null;
 
   private gateway: DiscordGateway | null = null;
   private inbox: FollowInbox | null = null;
@@ -100,12 +150,27 @@ export class FollowService extends ServiceBase {
   private chain: Promise<void> = Promise.resolve();
   /** 起停排队:配置重载和重存 token 可能挨着来 */
   private syncChain: Promise<void> = Promise.resolve();
+  /** 发单之后在后台做的事(记盘口):不占消息的队,这里只是让人等得到它们落定 */
+  private readonly background = new Set<Promise<void>>();
+  /** 核对在等的蝴蝶:同一时刻只跑一轮 */
+  private trackRun: Promise<void> = Promise.resolve();
+  private trackTimer: ReturnType<typeof setTimeout> | null = null;
+  /** 记录 id → 单子走完之后已经连续几轮在持仓里找不到那只蝶 / 建追踪已经失败了几次(只在内存里,重启后从头数) */
+  private readonly trackMisses = new Map<string, number>();
+  private readonly trackFailures = new Map<string, number>();
+
+  /** 装配(rpc/server.ts 调一次;测试注入假的)。 */
+  attach(wiring: FollowWiring): void {
+    this.wiring = wiring;
+  }
 
   // ---- 连接的起停 ------------------------------------------------------
   /** 引擎真正的入口里调一次;没调过它,sync 什么都不做(测试里直接起的 server 不许去连 Discord)。 */
   start(): void {
     this.started = true;
     void this.sync();
+    // 上次退出时还在等成交的蝴蝶存在库里:起来之后接着核对(没有在等的,这一轮之后就不再跑)
+    this.armTrackTimer();
   }
 
   stop(): void {
@@ -113,6 +178,8 @@ export class FollowService extends ServiceBase {
     this.dropGateway();
     this.dropInbox();
     this.dropReader();
+    if (this.trackTimer !== null) clearTimeout(this.trackTimer);
+    this.trackTimer = null;
   }
 
   /**
@@ -241,6 +308,12 @@ export class FollowService extends ServiceBase {
     return this.chain;
   }
 
+  /** 排着队的消息、以及它们之后在后台做的事(记盘口)都落定(测试用)。 */
+  async settled(): Promise<void> {
+    await this.chain;
+    while (this.background.size) await Promise.all([...this.background]);
+  }
+
   private inboxView(): FollowInboxState {
     const inbox = this.inbox;
     return {
@@ -330,7 +403,7 @@ export class FollowService extends ServiceBase {
     if (engine.store.follow.has(message.id)) return;
     // 摘掉 @everyone 这类提及再解析;交给引擎的也是这一份,日志里记原文
     const text = orderText(message.content);
-    if (stale !== null) return this.finish(message, { outcome: "stale", detail: stale, summary: "", record_ids: [] });
+    if (stale !== null) return this.conclude(message, { outcome: "stale", detail: stale, summary: "", record_ids: [] }, null);
 
     const cfg = this.settings.follow;
     const at = nowEt();
@@ -340,7 +413,7 @@ export class FollowService extends ServiceBase {
     // 「N蝴蝶」是"现价的百位 + N":现价在两个百位之间时说不清是哪个。手动下单有人看摘要,跟单没有——不跟。
     // 放在判定之前:只观察时也要照实说"这条跟不了",不能记成"只观察"让人以为打开之后会跟上
     const edge = meta.relativeCenter ? relativeCenterProblem(payload, snap[parsedSymbol(payload) ?? ""] ?? Number.NaN) : null;
-    if (edge !== null) return this.finish(message, { outcome: "unparsed", detail: edge.detail, summary: edge.summary, record_ids: [] });
+    if (edge !== null) return this.conclude(message, { outcome: "unparsed", detail: edge.detail, summary: edge.summary, record_ids: [] }, null);
     const router = this.router;
     const breaker = engine.killswitch.state();
     const decision = decide(cfg, payload, {
@@ -351,22 +424,22 @@ export class FollowService extends ServiceBase {
     if (decision.outcome !== "send") {
       // 整句没接住时,说得出差的是哪一样就说(没写方向的价差);说不出就用通用的那句
       const detail = payload === null ? whyUnparsed(text) ?? decision.detail : decision.detail;
-      return this.finish(message, { outcome: decision.outcome, detail, summary: decision.summary, record_ids: [] });
+      return this.conclude(message, { outcome: decision.outcome, detail, summary: decision.summary, record_ids: [] }, payload);
     }
 
     let accounts: string[];
     try {
       accounts = resolveFanoutAccounts(this.settings, cfg.accounts);
     } catch (exc) {
-      return this.finish(message, { outcome: "blocked", detail: (exc as Error).message, summary: decision.summary, record_ids: [] });
+      return this.conclude(message, { outcome: "blocked", detail: (exc as Error).message, summary: decision.summary, record_ids: [] }, payload);
     }
     // 这一遍必须拿到了标的现价:速记靠它核对"中心离现价太远 = 多半写错了",手动下单时这一步有人看着,跟单没有
     const symbol = parsedSymbol(payload);
     if (symbol === null || snap[symbol] === undefined) {
-      return this.finish(message, {
+      return this.conclude(message, {
         outcome: "unparsed", summary: decision.summary, record_ids: [],
         detail: "拿不到这张单的标的现价,没法核对中心与方向,没有发单",
-      });
+      }, null);
     }
 
     try {
@@ -379,19 +452,54 @@ export class FollowService extends ServiceBase {
         this.engine.store.audit("engine", "follow_model_used", { message: message.id, model: result.llm.model });
       }
       const placed = [...result.submitted, ...result.queued, ...result.validated_only][0];
-      return this.finish(message, { ...outcomeOf(result), summary: placed?.intent_summary ?? decision.summary });
+      // 从这里往下引擎已经返回:单子发出去了(或者没发),后面做什么都不会让它晚
+      return this.conclude(message, { ...outcomeOf(result), summary: placed?.intent_summary ?? decision.summary }, payload, result.submitted);
     } catch (exc) {
       const detail = exc instanceof FollowLocalOnlyError ? exc.message : `发单过程出错:${(exc as Error).message}`;
-      return this.finish(message, {
+      return this.conclude(message, {
         outcome: exc instanceof FollowLocalOnlyError ? "unparsed" : "rejected", detail, summary: decision.summary, record_ids: [],
+      }, payload);
+    }
+  }
+
+  /**
+   * 一条信号的收尾:落日志、发通知(finish),然后两件"之后的事"——
+   * 发出去的蝴蝶登记成"等成交之后建追踪"(track_fly 开着时),以及在后台记一次盘口。
+   * `payload` 是这里自己那一遍速记的产出;`submitted` 是引擎真发出去的那几笔(没走到发单就是空的)。
+   */
+  private conclude(
+    message: DiscordMessage,
+    result: { outcome: FollowOutcome; detail: string; summary: string; record_ids: string[] },
+    payload: unknown,
+    submitted: InstructionOrder[] = [],
+  ): void {
+    // 这两件事出了错只落一行日志:单子的下场已经定了,不能因为它们把一张发出去的单记成"出错"
+    const quietly = <T>(what: string, fn: () => T): T | null => {
+      try {
+        return fn();
+      } catch (exc) {
+        process.stderr.write(`[follow] ${what}出错(不影响这条信号的下场):${String((exc as Error).message ?? exc)}\n`);
+        return null;
+      }
+    };
+    const tracking = result.outcome === "sent" ? quietly("登记待建的追踪", () => this.trackPlan(message, submitted)) : null;
+    const entry = this.finish(message, tracking === null ? result : { ...result, detail: `${result.detail};${tracking.note}` });
+    if (entry === null) return;
+    if (tracking !== null && tracking.items.length) {
+      quietly("登记待建的追踪", () => {
+        this.savePending([...this.pendingList(), ...tracking.items]);
+        this.armTrackTimer();
       });
     }
+    if (!QUOTED_OUTCOMES.has(entry.outcome)) return;
+    const signal = quietly("记盘口", () => this.signalFor(entry.record_ids, payload));
+    if (signal !== null) this.later(() => this.recordQuote(message, signal));
   }
 
   private finish(
     message: DiscordMessage,
     result: { outcome: FollowOutcome; detail: string; summary: string; record_ids: string[] },
-  ): void {
+  ): FollowEntry | null {
     const entry: FollowEntry = {
       at: utcIso(Math.floor(nowEt().epochMs / 1000) * 1000),
       message_id: message.id,
@@ -401,7 +509,7 @@ export class FollowService extends ServiceBase {
       ...result,
     };
     const store = this.engine.store;
-    if (!store.follow.add(entry)) return;
+    if (!store.follow.add(entry)) return null;
     store.audit("engine", "follow_signal", {
       message: entry.message_id, author: entry.author_id, outcome: entry.outcome, records: entry.record_ids,
     });
@@ -411,6 +519,7 @@ export class FollowService extends ServiceBase {
       `${entry.summary || entry.text}${entry.detail ? ` —— ${entry.detail}` : ""}`,
       entry.author_name,
     );
+    return entry;
   }
 
   private notify(title: string, body: string, subtitle = ""): void {
@@ -437,8 +546,343 @@ export class FollowService extends ServiceBase {
       recent: this.engine.store.follow.recent(30),
       seen: this.seen.map((s) => ({ ...s, trusted: cfg.author_ids.includes(s.author_id) })),
       inbox: this.inboxView(),
+      tracks_pending: this.pendingList().filter((item) => item.settled_fills === undefined).length,
     };
   }
+
+  // ---- 延迟的代价:处理完之后记一次盘口 -----------------------------------
+  /** 在后台跑一件事:不占消息的队,出什么错都只落一行日志。 */
+  private later(task: () => Promise<void>): void {
+    const run: Promise<void> = task()
+      .catch((exc: unknown) => {
+        process.stderr.write(`[follow] 记盘口出错(不影响跟单):${String((exc as Error).message ?? exc)}\n`);
+      })
+      .finally(() => {
+        this.background.delete(run);
+      });
+    this.background.add(run);
+  }
+
+  /** 这条信号里的那张单。发出去的(或落了库的)以引擎那一遍为准,取它的交易记录;没落库的用这里自己解析的那一份。 */
+  private signalFor(recordIds: string[], payload: unknown): Signal | null {
+    for (const id of recordIds) {
+      const signal = signalOf(this.engine.store.getRecord(id));
+      if (signal !== null) return signal;
+    }
+    const orders = payload !== null && typeof payload === "object" ? (payload as { orders?: unknown }).orders : null;
+    return Array.isArray(orders) && orders.length === 1 ? signalOf(orders[0]) : null;
+  }
+
+  /**
+   * 取一次这张单各腿的盘口,和对方写的价一起记下。只在连着 IBKR 时做;没连、盘口不全、TWS 不答话,一律不记、不重试、不提醒——
+   * 它只是事后看"晚了这几秒值多少钱"的一笔记录。行情取自盯盘用的同一条会话(sessions 的第一条),所以"是不是纸面"说的是这条会话。
+   */
+  private async recordQuote(message: DiscordMessage, signal: Signal): Promise<void> {
+    const wiring = this.wiring, router = this.router;
+    if (wiring === null || router === null || !router.sessions().length || this.settings.broker.provider !== "ibkr") return;
+    const market = (router as { marketSession?: () => IbSession }).marketSession;
+    if (typeof market !== "function") return;
+    const legs = signal.contract.legs ?? [];
+    if (!legs.length) return;
+    let quotes: LegQuote[];
+    let paper: boolean;
+    try {
+      const session = market.call(router);
+      const managed = session.managedAccounts();
+      // 和蝴蝶测算同一个口径:这条会话管的全是纸面账号(DU…)才按"可以退到延迟行情"订
+      paper = managed.length > 0 && managed.every((id) => id.startsWith("D"));
+      const got = await wiring.marks.read(
+        session,
+        legs.map((leg) => ({
+          symbol: signal.contract.symbol, expiry: leg.lastTradeDateOrContractMonth, strike: leg.strike, right: leg.right,
+          exchange: signal.contract.exchange, tradingClass: leg.tradingClass ?? "",
+        })),
+        paper, silenceLimitMs(this.settings.marketStatus(nowEt())),
+      );
+      quotes = legs.map((leg, i) => ({
+        action: leg.action, ratio: leg.ratio, bid: got[i]?.bid ?? Number.NaN, ask: got[i]?.ask ?? Number.NaN,
+      }));
+    } catch (exc) {
+      // 没连上、TWS 没回合约确认:就是"取不到",不算出错
+      if (exc instanceof BrokerError || exc instanceof OptionMarksError) return;
+      throw exc;
+    }
+    const at = nowEt().epochMs;
+    let signed: { mid: number; natural: number };
+    try {
+      signed = { mid: comboMidPrice(quotes), natural: comboNaturalPrice(quotes) };
+    } catch (exc) {
+      if (exc instanceof BrokerError) return; // 有一条腿没有买价或卖价:拿它算出来的不是价
+      throw exc;
+    }
+    const quote = followQuote(signal.leader, signed, at - message.sentAtMs, paper);
+    if (quote === null) return;
+    if (this.engine.store.follow.addQuote(message.id, utcIso(Math.floor(at / 1000) * 1000), quote)) {
+      this.emit("follow", { kind: "quote", message_id: message.id });
+    }
+  }
+
+  // ---- 跟进来的蝴蝶:成交之后建追踪 ---------------------------------------
+  /** 现在在等的那几只(每次从库里读:引擎会重建、软件会重启,内存里不留一份会过期的)。 */
+  private pendingList(): PendingTrack[] {
+    return pendingTracksOf(this.engine.store.getPref(PENDING_PREF));
+  }
+
+  private savePending(items: PendingTrack[]): void {
+    this.engine.store.setPref(PENDING_PREF, items);
+    const live = new Set(items.map((item) => item.record_id));
+    for (const book of [this.trackMisses, this.trackFailures]) {
+      for (const id of [...book.keys()]) if (!live.has(id)) book.delete(id);
+    }
+    this.emit("follow", { kind: "track" });
+  }
+
+  /**
+   * 刚发出去的这几笔里,哪些要在成交之后建追踪,以及日志那一行该补哪句话。track_fly 关着回 null(什么都不补)。
+   * 只管买入的蝴蝶;贷方价差照发、不建——蝶式预设不是给贷方结构定的,套上去的线没有意义。
+   */
+  private trackPlan(message: DiscordMessage, submitted: InstructionOrder[]): { items: PendingTrack[]; note: string } | null {
+    const cfg = this.settings.follow;
+    if (!cfg.track_fly || !submitted.length) return null;
+    const items: PendingTrack[] = [];
+    for (const order of submitted) {
+      const signal = signalOf(this.engine.store.getRecord(order.record_id));
+      if (signal === null || signal.leader.side !== "debit") continue;
+      items.push({
+        record_id: order.record_id, message_id: message.id, account: order.account, symbol: signal.contract.symbol,
+        leg: orderLegId({ contract: signal.contract }), summary: order.intent_summary, at_ms: nowEt().epochMs,
+      });
+    }
+    const note = items.length
+      ? `成交后自动建持仓追踪(蝶式预设、到价自动平仓${cfg.track_exit_at ? `、美东 ${cfg.track_exit_at} 到点平仓` : ""})`
+      : "这一单不是买入的蝴蝶,不自动建追踪,平仓由你自己管";
+    return { items, note };
+  }
+
+  /** 有蝴蝶在等就定一个下一轮(只在引擎真正起来之后;测试里直接调 trackTick)。 */
+  private armTrackTimer(): void {
+    if (!this.started || this.trackTimer !== null) return;
+    const timer = setTimeout(() => {
+      this.trackTimer = null;
+      void this.trackTick().then(() => {
+        if (this.pendingCount() > 0) this.armTrackTimer();
+      });
+    }, TRACK_POLL_MS);
+    timer.unref?.();
+    this.trackTimer = timer;
+  }
+
+  private pendingCount(): number {
+    try {
+      return this.pendingList().length;
+    } catch {
+      return 0; // 库这一下读不了:不为核对追踪把别的拖下水,下一条跟单会重新定时
+    }
+  }
+
+  /** 核对一轮在等的蝴蝶。返回的 promise 在这一轮走完之后落定;出了错只落一行日志。 */
+  trackTick(): Promise<void> {
+    this.trackRun = this.trackRun.then(() => this.trackOnce()).catch((exc: unknown) => {
+      process.stderr.write(`[follow] 核对待建的追踪出错:${String((exc as Error).stack ?? exc)}\n`);
+    });
+    return this.trackRun;
+  }
+
+  private async trackOnce(): Promise<void> {
+    const items = this.pendingList();
+    if (!items.length) return;
+    const cfg = this.settings.follow;
+    if (!cfg.enabled || !cfg.track_fly) {
+      // 授权收回了(跟单关了,或者这一项关了):在等的一律不建。关掉自动化不该比打开它难
+      const waiting = items.filter((item) => item.settled_fills === undefined);
+      for (const item of waiting) this.auditDropped(item, "switched_off");
+      this.savePending([]);
+      if (waiting.length) {
+        this.notify(
+          "Discord 跟单:不再自动建追踪",
+          `自动跟单或「成交后自动建追踪」已经关掉:还在等成交的 ${waiting.length} 只蝴蝶,成交之后不会自动建追踪,平仓由你自己管。`,
+        );
+      }
+      return;
+    }
+    const nowMs = nowEt().epochMs;
+    const store = this.engine.store;
+    const orders = new Map(items.map((item) => [item.record_id, orderFacts(store.getRecord(item.record_id))]));
+    // 持仓只在有还没建追踪的单子成交了的时候才读:一张限价单可能挂上几个小时,这段时间里每几秒读一遍持仓没有用处
+    const needRows = items.some((item) => item.settled_fills === undefined && orders.get(item.record_id)?.filled === true);
+    const rows = needRows ? await this.positionRows() : null;
+    const router = this.router;
+    const covered = (router as { coveredAccounts?: () => Set<string> } | null)?.coveredAccounts?.() ?? null;
+    const keep: PendingTrack[] = [];
+    for (const item of items) {
+      try {
+        const order = orders.get(item.record_id) ?? { filled: false, final: true, fills: 0 };
+        const next = await this.settleOne(item, order, cfg.track_exit_at, nowMs, rows, covered);
+        if (next !== null) keep.push(next);
+      } catch (exc) {
+        // 这一只这一轮没看成(库这一下读不了之类):留着下一轮再看,别的照常
+        process.stderr.write(`[follow] 核对待建的追踪 ${item.record_id} 出错:${String((exc as Error).message ?? exc)}\n`);
+        keep.push(item);
+      }
+    }
+    // 这一轮里又有新的蝴蝶登记进来(消息不等这里):留着它们。名单没变就不写库、不惊动界面
+    const known = new Set(items.map((item) => item.record_id));
+    const next = [...keep, ...this.pendingList().filter((item) => !known.has(item.record_id))];
+    if (JSON.stringify(next) !== JSON.stringify(items)) this.savePending(next);
+  }
+
+  /**
+   * 一只在等的蝶这一轮怎么办;回要留到下一轮的那一条(可能改过),不留回 null。
+   * `order` 是它那张单此刻的样子,`rows` 是这一轮读到的持仓(没读、读不到是 null)。
+   */
+  private async settleOne(
+    item: PendingTrack, order: OrderFacts, exitAt: string, nowMs: number, rows: PositionRow[] | null, covered: Set<string> | null,
+  ): Promise<PendingTrack | null> {
+    const store = this.engine.store;
+    const key = makeKey(item.account, item.symbol, "BAG", item.leg);
+    const existing = store.listTracks().find((t) => makeKey(t.account, t.symbol, t.sec_type || "STK", t.leg || "") === key);
+    const track: PendingFacts["track"] = existing === undefined ? "none" : existing.enabled && !existing.fired_at ? "active" : "idle";
+    // 追踪已经有了着落、单子还没走完:只看它后来有没有再成交
+    if (item.settled_fills !== undefined) {
+      const verdict = remainderVerdict(item, { nowMs, final: order.final, fills: order.fills, track });
+      if (verdict === "wait") return item;
+      if (verdict === "absorbed") return { ...item, settled_fills: order.fills };
+      if (verdict === "late_fill") {
+        this.auditDropped(item, verdict);
+        this.notify(
+          "Discord 跟单:后成交的部分没有追踪",
+          `${item.summary} —— 这张单后来又有成交,而这只蝶上的追踪已经触发过(或已停用、被删掉):后成交的部分现在没有追踪在盯,请自己到「持仓追踪」里处理。`,
+        );
+      }
+      return null;
+    }
+    const readable = rows !== null && (covered === null || covered.has(item.account));
+    const row = readable ? (rows ?? []).find((r) => r.key === key && r.quantity > 0) : undefined;
+    const held = readable ? row !== undefined : null;
+    // 单子走完了、有成交,持仓里却没有:数着,连续几轮都这样才下结论;别的情形清零
+    const misses = order.filled && order.final && held === false ? (this.trackMisses.get(item.record_id) ?? 0) + 1 : 0;
+    this.trackMisses.set(item.record_id, misses);
+    const verdict = pendingVerdict(item, { nowMs, filled: order.filled, final: order.final, held, misses, track });
+    if (verdict === "wait") return item;
+    // 追踪有了着落(建好了 / 沿用已有的)而单子还挂着:留着看它后来的成交
+    const settled = order.final ? null : { ...item, settled_fills: order.fills };
+    if (verdict === "create") {
+      const outcome = await this.createTrack(item, key, exitAt, nowMs, row?.quantity ?? 0);
+      return outcome === "retry" ? item : outcome === "created" ? settled : null;
+    }
+    this.auditDropped(item, verdict);
+    const why = DROP_TEXT[verdict];
+    if (verdict === "covered" && existing !== undefined) {
+      this.notify("Discord 跟单:沿用已有的追踪", `${item.summary} —— ${why}(${trackExitsText(existing, nowMs)})`);
+      return settled;
+    }
+    if (why) this.notify("Discord 跟单:没有建追踪", `${item.summary} —— ${why}`);
+    return null;
+  }
+
+  /** 此刻的持仓行(带组合行);没连券商、读不到回 null——读不到不等于没有。读法和「持仓追踪」页那一头相同。 */
+  private async positionRows(): Promise<PositionRow[] | null> {
+    const router = this.router;
+    if (router === null || !router.sessions().length) return null;
+    try {
+      return withCombos(await router.positions());
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * 建一条追踪。retry = 这一轮没建成、下一轮再试;refused = 建不了,已经说明原因,不再试。
+   * 入参被拒(同一条 tracker.add 的校验)当场算 refused。`held` 是持仓里这只蝶现在有几张:追踪管的是整份持仓,
+   * 账户里本来就有同一只蝶时比跟进来的多,通知里照实写。
+   */
+  private async createTrack(
+    item: PendingTrack, key: string, exitAt: string, nowMs: number, held: number,
+  ): Promise<"created" | "retry" | "refused"> {
+    const store = this.engine.store;
+    try {
+      const add = this.wiring?.addTrack;
+      if (add === undefined) throw new Error("建追踪的通道没有接上");
+      // 到点平仓的钟点对这只蝶已经用不上(今天的已经过了,下一次落在它到期之后):tracker.add 会拒。这时追踪照建、只是不带到点平仓——
+      // 因为一个用不上的钟点让整条追踪建不成,那份持仓就什么保护都没有了
+      let dropped = "";
+      const { track } = await add(flyTrackParams(key, exitAt)).catch((exc: unknown) => {
+        if (!exitAt || !(exc instanceof RpcError) || exc.code !== -32602 || !exc.message.startsWith("到点平仓")) throw exc;
+        dropped = `;美东 ${exitAt} 的到点平仓对这只蝶用不上(下一次到点已经在它到期之后),这条追踪没有带`;
+        return add(flyTrackParams(key, ""));
+      });
+      const exits = `${trackExitsText(track, nowMs)}${dropped}`;
+      store.audit("engine", "follow_track", {
+        message: item.message_id, record: item.record_id, account: item.account, symbol: item.symbol, leg: item.leg,
+        track: track.id, targets: track.targets, auto_close: track.auto_close,
+      });
+      this.notify(
+        "Discord 跟单:已建持仓追踪",
+        `${item.summary} —— 这只蝶现在持有 ${held} 张,追踪管的是这一整份:${exits}。对方自己什么时候走,软件仍然不知道。`,
+      );
+      return "created";
+    } catch (exc) {
+      const reason = String((exc as Error).message ?? exc);
+      const refused = exc instanceof RpcError && exc.code === -32602;
+      const failures = (this.trackFailures.get(item.record_id) ?? 0) + 1;
+      this.trackFailures.set(item.record_id, failures);
+      if (!refused && failures < TRACK_ADD_ATTEMPTS) return "retry";
+      store.audit("engine", "follow_track_failed", { message: item.message_id, record: item.record_id, leg: item.leg, error: reason.slice(0, 300) });
+      this.notify(
+        "Discord 跟单:没有建追踪",
+        `${item.summary} —— ${refused ? reason : `试了 ${failures} 次都没建成(${reason})`}。这只蝶现在没有追踪在盯,请自己到「持仓追踪」里设。`,
+      );
+      return "refused";
+    }
+  }
+
+  private auditDropped(item: PendingTrack, reason: string): void {
+    this.engine.store.audit("engine", "follow_track_dropped", {
+      message: item.message_id, record: item.record_id, account: item.account, leg: item.leg, reason,
+    });
+  }
+}
+
+/** 不建追踪的几种下场各说什么(空串 = 不提醒:单子没成交,本来就没有持仓)。 */
+const DROP_TEXT: Record<"expired" | "unfilled" | "covered" | "idle_track" | "no_position", string> = {
+  unfilled: "",
+  expired: "隔了一天仍没有等到这张单的成交回报,不再等;它之后成交的话不会自动建追踪,请自己到「持仓追踪」里设",
+  covered: "这只蝶已经有一条在盯的追踪,没有另建:同一份持仓只能有一条,加进来的数量由它按触发那一刻的持仓一起平",
+  idle_track: "同一只蝶上留着一条已停用(或已触发过)的旧追踪,同一份持仓只能有一条,软件不替你删。这一单现在没有追踪在盯:" +
+    "请到「持仓追踪」删掉旧的再建,或重新启用它",
+  no_position: "这张单成交了,但持仓里找不到这只蝶(已经平掉了,或者它的腿和同一到期日的别的持仓并在了一起),没有建追踪,请自己到「持仓追踪」里看",
+};
+
+/** 一条交易记录(或速记产出里的一张单)里的合约与对方写的价;不是跟单认的那两种、形状不对回 null。 */
+function signalOf(item: unknown): Signal | null {
+  if (item === null || typeof item !== "object") return null;
+  const contract = ContractSpecSchema.safeParse((item as { contract?: unknown }).contract);
+  const order = OrderSpecSchema.safeParse((item as { order?: unknown }).order);
+  if (!contract.success || !order.success) return null;
+  const leader = leaderPrice(contract.data, order.data);
+  return leader === null ? null : { contract: contract.data, leader };
+}
+
+/** 一条交易记录此刻说的三件事:有没有成交过、走没走完、已经有几条成交回报(只增不减,用来认"后来又成交了")。 */
+interface OrderFacts {
+  filled: boolean;
+  final: boolean;
+  fills: number;
+}
+
+/** 记录读不到(库被换了)按"走完了、没成交"算:没有可等的。 */
+function orderFacts(record: unknown): OrderFacts {
+  if (record === null || typeof record !== "object") return { filled: false, final: true, fills: 0 };
+  const status = (record as { final_status?: unknown }).final_status;
+  const ibkr = (record as { ibkr?: { fills?: unknown; status_timeline?: unknown } }).ibkr;
+  const fills = Array.isArray(ibkr?.fills) ? ibkr.fills.length : 0;
+  const timeline: unknown[] = Array.isArray(ibkr?.status_timeline) ? ibkr.status_timeline : [];
+  const reported = timeline.some((row) => row !== null && typeof row === "object" && (row as { status?: unknown }).status === "Filled");
+  return {
+    filled: fills > 0 || reported || status === "filled" || status === "partially_filled",
+    final: typeof status === "string" && status !== "",
+    fills,
+  };
 }
 
 /** 速记产出里那张单的标的;形状不对回 null。 */

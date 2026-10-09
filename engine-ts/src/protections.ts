@@ -29,6 +29,8 @@ export interface CloseEvent {
   symbol: string;
   /** tracker 的 STATE_*:take_profit / stop_loss / profit_trail(可能带 sweep: 前缀)。 */
   state: string;
+  /** 平掉的那份持仓的腿身份(到期|各腿);正股是空串。冷却按「同一个结构」算时用;不给按空串 */
+  leg?: string;
 }
 
 /** 一笔已实现盈亏(来自 record_events 的 commission 事件)。 */
@@ -46,11 +48,18 @@ export interface ProtectionPause {
 export interface ProtectionState {
   /** 全局暂停(止损护栏 / 回撤护栏)。没有就是 null。 */
   pause: ProtectionPause | null;
-  /** 按标的的冷却期。键是标的代码。 */
+  /** 冷却期。键是标的代码(cooldown.scope = symbol),或 cooldownKey(标的, 腿身份)(scope = position)。 */
   cooldowns: Record<string, ProtectionPause>;
+  /** 只停某个账户的暂停(日内亏损上限按账户当日盈亏算时)。键是账户别名。 */
+  accountPauses: Record<string, ProtectionPause>;
 }
 
-export const NO_PROTECTION: ProtectionState = { pause: null, cooldowns: {} };
+export const NO_PROTECTION: ProtectionState = { pause: null, cooldowns: {}, accountPauses: {} };
+
+/** 冷却按「同一个结构」算时的键:标的 + 那份持仓的腿身份。标的代码里不会有 |,和按标的的键撞不上。 */
+export function cooldownKey(symbol: string, leg: string): string {
+  return `${symbol}|${leg}`;
+}
 
 /** 止损类的平仓状态:止损、跟踪止损、利润回撤。止盈不算——赚着钱离场不是"今天不顺"。
  * 追价平仓会给状态加 sweep: 前缀(tracker.SWEEP_PREFIX),按后缀认。 */
@@ -89,9 +98,18 @@ export function protectionsSince(cfg: ProtectionsConfig, nowMs: number): number 
   return cfg.daily_loss.enabled ? Math.min(since, etDayStart(nowMs) - 1) : since;
 }
 
-/** 现算一遍当前的保护状态。纯函数:同样的输入永远同样的输出,时间也由调用方给。 */
+/**
+ * 现算一遍当前的保护状态。纯函数:同样的输入永远同样的输出,时间也由调用方给。
+ *
+ * `accountDaily`:券商报的账户当日盈亏(账户别名 → 美元,含未平仓的浮亏、含手动做的单)。日内亏损上限的
+ * basis = account 时用它,每个账户各比各的、只停亏到线的那个账户;一个账户都没报(没连券商、富途、订阅还没来)
+ * 就退回按已实现盈亏算的那一条——宁可用窄一点的口径,不让这条规则因为缺一个数就不生效。
+ * `accountsExpected`:该有这个数的账户(别名)。有的账户报了、有的没报(基础货币不是美元、订阅还没来、数太旧)时,
+ * 没报的那几个各自退回已实现盈亏那一条:不能因为别的账户报了数,它就哪一条都不查。
+ */
 export function evaluateProtections(
   cfg: ProtectionsConfig, closes: CloseEvent[], pnl: PnlEvent[], nowMs: number,
+  accountDaily: Record<string, number> | null = null, accountsExpected: readonly string[] = [],
 ): ProtectionState {
   const pauses: ProtectionPause[] = [];
 
@@ -151,17 +169,50 @@ export function evaluateProtections(
   }
 
   const daily = cfg.daily_loss;
-  if (daily.enabled && daily.max_loss_usd > 0) {
-    // 当天(美东)累计已实现盈亏;亏到线就停到第二天零点。不看峰值:这条管的是"今天最多亏多少",
-    // 上午赚了 300、下午亏回 800 的那天,净亏 500 才算到线——从峰值算的是回撤护栏的事
+  const accountPauses: Record<string, ProtectionPause> = {};
+  const reported = daily.basis === "account" && accountDaily !== null
+    ? Object.entries(accountDaily).filter(([, v]) => Number.isFinite(v)) : [];
+  // 当天(美东)累计已实现盈亏。不看峰值:这条管的是"今天最多亏多少",上午赚了 300、下午亏回 800 的那天,
+  // 净亏 500 才算到线——从峰值算的是回撤护栏的事
+  const realizedLoss = (): number | null => {
     const start = etDayStart(nowMs);
     const today = pnl.filter((p) => p.atMs >= start && p.atMs <= nowMs && Number.isFinite(p.pnl));
     const total = today.reduce((acc, p) => acc + p.pnl, 0);
-    if (today.length && -total >= daily.max_loss_usd) {
+    return today.length && -total >= daily.max_loss_usd ? -total : null;
+  };
+  if (daily.enabled && daily.max_loss_usd > 0 && reported.length) {
+    for (const [alias, value] of reported) {
+      if (-value < daily.max_loss_usd) continue;
+      accountPauses[alias] = {
+        rule: "daily_loss",
+        reason:
+          `账户 ${alias} 今天的盈亏(券商报的,含未平仓)是 ${value.toFixed(2)} 美元,到了日内亏损上限 ${daily.max_loss_usd},` +
+          "今天这个账户不再下新单",
+        untilMs: etDayStart(nowMs, 1),
+      };
+    }
+    // 没报数的账户:各自退回已实现盈亏那一条(那个数是引擎发的单合在一起的,不分账户——偏严)
+    const missing = accountsExpected.filter((alias) => !reported.some(([name]) => name === alias));
+    const loss = missing.length ? realizedLoss() : null;
+    if (loss !== null) {
+      for (const alias of missing) {
+        accountPauses[alias] = {
+          rule: "daily_loss",
+          reason:
+            `账户 ${alias} 券商没有报当日盈亏,退回按已实现算:今天(美东)已实现亏损 ${loss.toFixed(2)} 美元,` +
+            `到了日内亏损上限 ${daily.max_loss_usd},今天这个账户不再下新单`,
+          untilMs: etDayStart(nowMs, 1),
+        };
+      }
+    }
+  } else if (daily.enabled && daily.max_loss_usd > 0) {
+    // 亏到线就停到第二天零点
+    const loss = realizedLoss();
+    if (loss !== null) {
       pauses.push({
         rule: "daily_loss",
         reason:
-          `今天(美东)已实现亏损 ${(-total).toFixed(2)} 美元,到了日内亏损上限 ${daily.max_loss_usd},` +
+          `今天(美东)已实现亏损 ${loss.toFixed(2)} 美元,到了日内亏损上限 ${daily.max_loss_usd},` +
           "今天不再下新单",
         untilMs: etDayStart(nowMs, 1),
       });
@@ -175,11 +226,16 @@ export function evaluateProtections(
       if (!close.symbol) continue;
       const untilMs = close.atMs + cool.minutes * 60_000;
       if (untilMs <= nowMs) continue;
-      const cur = cooldowns[close.symbol];
+      // 按标的:这只标的的一切新单都停;按结构:只停和刚平掉的那份持仓同一个结构的单
+      const byPosition = cool.scope === "position";
+      const key = byPosition ? cooldownKey(close.symbol, close.leg ?? "") : close.symbol;
+      const cur = cooldowns[key];
       if (cur !== undefined && cur.untilMs >= untilMs) continue;
-      cooldowns[close.symbol] = {
+      cooldowns[key] = {
         rule: "cooldown",
-        reason: `${close.symbol} 刚平过仓,冷却 ${cool.minutes} 分钟内不再下新单`,
+        reason: byPosition
+          ? `${close.symbol} 的这一份持仓刚平过,冷却 ${cool.minutes} 分钟内不再开同样的仓`
+          : `${close.symbol} 刚平过仓,冷却 ${cool.minutes} 分钟内不再下新单`,
         untilMs,
       };
     }
@@ -187,17 +243,22 @@ export function evaluateProtections(
 
   // 同时触发就取解除得最晚的那条:两条规则都说该停,听更保守的
   pauses.sort((a, b) => b.untilMs - a.untilMs);
-  return { pause: pauses[0] ?? null, cooldowns };
+  return { pause: pauses[0] ?? null, cooldowns, accountPauses };
 }
 
 /** 这张单现在能不能发。返回拦截原因(给用户看的话),放行是 null。 */
 export function protectionBlock(
-  state: ProtectionState, symbol: string, nowMs: number,
+  state: ProtectionState, symbol: string, nowMs: number, order: { account?: string; leg?: string } = {},
 ): string | null {
   if (state.pause !== null && state.pause.untilMs > nowMs) {
     return `${state.pause.reason},${remaining(state.pause.untilMs, nowMs)}后自动恢复`;
   }
-  const cool = symbol ? state.cooldowns[symbol] : undefined;
+  const account = order.account ? state.accountPauses[order.account] : undefined;
+  if (account !== undefined && account.untilMs > nowMs) {
+    return `${account.reason},${remaining(account.untilMs, nowMs)}后自动恢复`;
+  }
+  // 两种键都查:按标的冷却时键是标的,按结构冷却时键带着腿身份(这张单的腿身份由调用方给)
+  const cool = symbol ? state.cooldowns[symbol] ?? state.cooldowns[cooldownKey(symbol, order.leg ?? "")] : undefined;
   if (cool !== undefined && cool.untilMs > nowMs) {
     return `${cool.reason},${remaining(cool.untilMs, nowMs)}后自动恢复`;
   }
@@ -213,8 +274,12 @@ function remaining(untilMs: number, nowMs: number): string {
 export function protectionsSummary(state: ProtectionState, nowMs: number): ProtectionsSummary {
   const cooling = Object.entries(state.cooldowns)
     .filter(([, p]) => p.untilMs > nowMs)
-    .map(([symbol, p]) => ({ symbol, until_ms: p.untilMs, reason: p.reason }))
+    .map(([key, p]) => ({ symbol: key.split("|")[0] ?? key, until_ms: p.untilMs, reason: p.reason }))
     .sort((a, b) => a.symbol.localeCompare(b.symbol));
+  const accounts = Object.entries(state.accountPauses)
+    .filter(([, p]) => p.untilMs > nowMs)
+    .map(([account, p]) => ({ account, until_ms: p.untilMs, reason: p.reason }))
+    .sort((a, b) => a.account.localeCompare(b.account));
   const pause = state.pause !== null && state.pause.untilMs > nowMs ? state.pause : null;
   return {
     paused: pause !== null,
@@ -222,5 +287,6 @@ export function protectionsSummary(state: ProtectionState, nowMs: number): Prote
     reason: pause?.reason ?? "",
     until_ms: pause?.untilMs ?? null,
     cooldowns: cooling,
+    accounts,
   };
 }

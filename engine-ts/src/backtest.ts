@@ -1,8 +1,8 @@
-/** 策略回测(对应 Python backtest.py):纯计算,离线可对拍。
+/** 策略回测:纯计算,离线可对拍。口径见 docs/features/backtest-lab.md。
  *
- * 刻意保持朴素与透明:日线、收盘出信号、当日收盘价成交、全仓进出、无杠杆。
- * 期权模拟用 Black-Scholes 理论价(r=0,无偏度),erf 用 Cody 有理逼近实现到
- * double 精度——黄金对拍的净值曲线容差是 1e-9,教科书级的 1e-7 近似过不了。
+ * 刻意保持朴素与透明:日线、收盘出信号、**下一根开盘成交**、全仓进出、无杠杆。
+ * 期权模拟用 Black-Scholes 理论价(r=0,无偏度),波动率是逐日重估的近 20 日已实现波动率,时间按交易日计;erf 用 Cody 有理逼近
+ * 实现到 double 精度——黄金对拍的净值曲线容差是 1e-9,教科书级的 1e-7 近似过不了。
  */
 import type { BacktestCurvePoint, BacktestReport, BacktestTrade, CustomRules } from "./contract/backtest.js";
 import { dateOrdinal, ordinalToDate } from "./tz.js";
@@ -68,10 +68,12 @@ type Instrument = Record<string, any>;
 
 /** 每边成交成本的上限(%):再高就不是成本假设,是填错了。 */
 export const MAX_COST_PCT = 10;
+/** 年化用的交易日数(波动率、Sharpe、Sortino 同一个口径)。 */
+export const TRADING_DAYS = 252;
 
 /**
- * `costPct` 是**每一边**(开、平各一次)的成交成本占成交额的百分比:佣金 + 滑点。默认 0 = 老口径,数值一位不差
- * (golden-backtest 钉着)。执行损耗(execQuality)的中位数就是给它填的。
+ * 整段跑一次。`costPct` 是**每一边**(开、平各一次)的成交成本占成交额的百分比:佣金 + 滑点,默认 0。
+ * 回执里的 `notes` 是这次结果的口径与已知偏差,界面原样摆出来。
  */
 export function runBacktest(
   bars: Bar[],
@@ -84,31 +86,69 @@ export function runBacktest(
   const { positions, usedParams } = signalPositions(bars, strategy, params, rules);
   const inst: Instrument = { ...(instrument ?? {}) };
   if (inst["type"] === undefined || inst["type"] === null) inst["type"] = "stock";
-  const result = evaluateSegment(bars, positions, strategy, usedParams, inst, costPct);
+  const result = evaluateSegment({ bars, held: heldAfterOpen(positions), strategy, params: usedParams, inst, costPct });
   if (rules) result["rules"] = rules;
   result["instrument"] = inst;
+  result.notes = runNotes(bars, positions, result, costPct);
   return result;
 }
 
-/** 拿一段日线与对齐好的持仓序列结算(参数扫描按段切,见 backtestLab.ts)。`inst.type` 要已经补齐。 */
-export function evaluateSegment(
-  bars: Bar[], positions: number[], strategy: string, usedParams: Record<string, number>,
-  inst: Instrument, costPct = 0,
-): BacktestReport {
+/**
+ * 信号是收盘后才有的,成交在下一根开盘:第 i 根收盘时手里有没有仓 = 第 i−1 根收盘的信号。
+ * 第 0 根之前没有信号,所以第 0 根一定空仓;最后一根收盘的信号不成交(没有下一根)。
+ */
+export function heldAfterOpen(signal: number[]): number[] {
+  return signal.map((_, i) => (i === 0 ? 0 : signal[i - 1] ?? 0));
+}
+
+/** 结算要的东西。日线与持仓给**整段**的,要算哪一截用 lo / hi 指:期权的波动率要用到 lo 之前的历史。 */
+export interface SegmentInput {
+  bars: Bar[];
+  /** 整段上每根收盘时手里有没有仓(1 / 0),heldAfterOpen 的产出 */
+  held: number[];
+  strategy: string;
+  /** 实际用的参数,原样进回执 */
+  params: Record<string, number>;
+  /** `type` 要已经补齐 */
+  inst: Instrument;
+  costPct?: number;
+  /** 结算 [lo, hi):lo 那一根是起点(收盘时净值 = 1;那一刻已经持有的,按它的收盘价建仓、付一次成本)。不给 = 整段 */
+  lo?: number;
+  hi?: number;
+  /** 整段的逐日已实现波动率(trailingVol 的产出),只有期权品种用;不给就现算。扫描时一只标的算一次 */
+  vol?: Array<number | null>;
+  /** 整段的逐日"开盘到收盘占一个交易日方差的多少"(trailingSessionShare 的产出),同上 */
+  sessionShare?: Array<number | null>;
+}
+
+/** 结算一截(整段回测是它,参数扫描的样本内 / 样本外 / 每一折也是它,见 backtestLab.ts)。 */
+export function evaluateSegment(seg: SegmentInput): BacktestReport {
+  const costPct = seg.costPct ?? 0;
   if (!(costPct >= 0 && costPct <= MAX_COST_PCT)) {
     throw new BacktestError(`每边成交成本要在 0~${MAX_COST_PCT}% 之间`);
   }
-  const cost = costPct / 100;
-  const report = inst["type"] === "stock"
-    ? evaluateStock(bars, positions, strategy, usedParams, cost)
-    : evaluateOptions(bars, positions, strategy, usedParams, inst, cost);
-  if (cost > 0) report["cost_pct"] = costPct;
+  const lo = seg.lo ?? 0;
+  const hi = seg.hi ?? seg.bars.length;
+  if (!(lo >= 0 && hi <= seg.bars.length && hi - lo >= 2)) {
+    throw new BacktestError(`这一截只有 ${Math.max(hi - lo, 0)} 根日线,没法结算`);
+  }
+  for (let i = lo; i < hi; i++) {
+    const bar = seg.bars[i]!;
+    if (!(bar.open > 0) || !(bar.close > 0)) {
+      throw new BacktestError(`${bar.date} 这根日线没有有效的开盘价 / 收盘价,没法按开盘成交结算`);
+    }
+  }
+  const win: Span = { bars: seg.bars, held: seg.held, lo, hi, cost: costPct / 100 };
+  const settled = seg.inst["type"] === "stock" ? settleStock(win) : settleOptions(win, seg.inst, seg.vol, seg.sessionShare);
+  const report = summarize(win, seg.strategy, seg.params, settled);
+  if (costPct > 0) report["cost_pct"] = costPct;
   return report;
 }
 
 /**
- * 信号 → 每根日线收盘后的持仓(1 / 0)与实际用的参数。指标全是因果的(只看当根及以前),
- * 所以在整段上算一次、再按日期切成样本内 / 样本外,和只在那一段上算相比只多了指标的预热,不多看未来。
+ * 信号 → 每根日线收盘后**想要**的持仓(1 / 0)与实际用的参数;真正成交在下一根开盘(heldAfterOpen)。
+ * 指标全是因果的(只看当根及以前),所以在整段上算一次、再按日期切成样本内 / 样本外,
+ * 和只在那一段上算相比只多了指标的预热,不多看未来。
  */
 export function signalPositions(
   bars: Bar[], strategy: string, params?: Record<string, unknown> | null, rules?: CustomRules | null,
@@ -382,7 +422,7 @@ function rsiValue(avgGain: number, avgLoss: number): number {
   return 100.0 - 100.0 / (1.0 + avgGain / avgLoss);
 }
 
-// ---------------------------------------------------------------- 期权模拟
+// ---------------------------------------------------------------- 期权定价
 export const OPTION_TYPES: Record<string, string> = {
   call: "买入看涨",
   put: "买入看跌",
@@ -393,148 +433,54 @@ export const OPTION_TYPES: Record<string, string> = {
 
 type LegSpec = [number, string, number]; // ratio, right, strike
 
-function evaluateOptions(
-  bars: Bar[], positions: number[], strategy: string,
-  params: Record<string, number>, inst: Instrument, cost = 0,
-): BacktestReport {
-  if (!(inst["type"] in OPTION_TYPES)) {
-    throw new BacktestError(`未知交易品种:${inst["type"]}`);
-  }
-  // 用 is-null 判缺省:0 是非法值,不能被 `?? 默认值` 之外的写法吞掉
-  const dte = inst["dte"] !== null && inst["dte"] !== undefined ? Math.trunc(Number(inst["dte"])) : 30;
-  const offsetPct =
-    inst["offset_pct"] !== null && inst["offset_pct"] !== undefined ? Number(inst["offset_pct"]) : 0.0;
-  const widthPct =
-    inst["width_pct"] !== null && inst["width_pct"] !== undefined ? Number(inst["width_pct"]) : 2.0;
-  const risk =
-    (inst["risk_pct"] !== null && inst["risk_pct"] !== undefined ? Number(inst["risk_pct"]) : 10.0) / 100.0;
-  if (!(dte >= 1 && dte <= 365)) throw new BacktestError("到期天数 dte 必须在 1~365");
-  if (!(risk > 0 && risk <= 1)) throw new BacktestError("单笔投入占比必须在 0~100%");
-  if (!(widthPct > 0 && widthPct <= 20) || Math.abs(offsetPct) > 30) {
-    throw new BacktestError("行权价偏移/宽度超出合理范围");
-  }
+/** 已实现波动率的窗口(日收益的个数)。 */
+export const VOL_WINDOW = 20;
+/** 期权的最小报价单位(美元)。理论价比它还低的结构挂不出买单:按那个价"买进"只会造出几十万倍的假收益。 */
+export const MIN_OPTION_TICK = 0.01;
 
-  const n = bars.length;
-  const closes = bars.map((b) => b.close);
-  const dates = bars.map((b) => dateOrdinal(b.date));
-
-  let cash = 1.0;
-  const equity: number[] = [];
-  const bench: number[] = [1.0];
-  interface Holding {
-    entry_i: number;
-    legs: LegSpec[];
-    cost: number;
-    sigma: number;
-    expiry: number;
-  }
-  // 用容器对象而不是裸 let:闭包里的赋值会让 TS 的流分析把裸变量窄化成 never
-  const pos: { h: Holding | null } = { h: null };
-  const trades: BacktestTrade[] = [];
-  let heldBars = 0;
-
-  // 成交成本:开仓多付、平仓少收各 cost(按权利金算)。cost = 0 时原样返回,数值一位不差
-  const paid = (c: number): number => (cost > 0 ? c * (1 + cost) : c);
-  const got = (v: number): number => (cost > 0 ? v * (1 - cost) : v);
-  const closePosition = (i: number, proceeds: number, why: "expiry" | "signal"): void => {
-    const h = pos.h!;
-    const ret = got(proceeds) / paid(h.cost) - 1.0;
-    cash *= 1.0 + risk * ret;
-    trades.push({
-      entry_date: bars[h.entry_i]!.date,
-      exit_date: bars[i]!.date,
-      entry_price: pyRound(h.cost, 4),
-      exit_price: pyRound(proceeds, 4),
-      return_pct: pyRound(ret * 100, 2),
-      closed: true,
-      exit_reason: why,
-    });
-    pos.h = null;
-  };
-
-  const openPosition = (i: number): void => {
-    const s0 = closes[i]!;
-    const sigma = realizedVol(closes.slice(0, i + 1));
-    const legs = optionLegs(inst["type"], s0, offsetPct, widthPct);
-    const cost = structureValue(legs, s0, dte / 365.0, sigma);
-    if (cost <= 0) return; // 理论上借方结构恒为正,防御除零
-    pos.h = { entry_i: i, legs, cost, sigma, expiry: dates[i]! + dte };
-  };
-
-  for (let i = 0; i < n; i++) {
-    if (i > 0) bench.push(bench[bench.length - 1]! * (closes[i]! / closes[i - 1]!));
-
-    const held = pos.h;
-    if (held !== null) {
-      const expired = dates[i]! >= held.expiry;
-      const tLeft = Math.max(held.expiry - dates[i]!, 0) / 365.0;
-      if (expired) {
-        closePosition(i, structureValue(held.legs, closes[i]!, 0.0, held.sigma), "expiry");
-        if (positions[i] === 1) openPosition(i); // 信号仍在 → 以新行权价续仓
-      } else if (positions[i] === 0) {
-        closePosition(i, structureValue(held.legs, closes[i]!, tLeft, held.sigma), "signal");
-      }
-    }
-    if (pos.h === null && positions[i] === 1) openPosition(i);
-
-    const h = pos.h;
-    if (h !== null) {
-      heldBars += 1;
-      const tLeft = Math.max(h.expiry - dates[i]!, 0) / 365.0;
-      const value = structureValue(h.legs, closes[i]!, tLeft, h.sigma);
-      equity.push(cash * (1.0 + risk * (got(value) / paid(h.cost) - 1.0)));
-    } else {
-      equity.push(cash);
-    }
-  }
-
-  if (pos.h !== null) {
-    const h = pos.h;
-    const tLeft = Math.max(h.expiry - dates[n - 1]!, 0) / 365.0;
-    const value = structureValue(h.legs, closes[n - 1]!, tLeft, h.sigma);
-    trades.push({
-      entry_date: bars[h.entry_i]!.date,
-      exit_date: null,
-      entry_price: pyRound(h.cost, 4),
-      exit_price: pyRound(value, 4),
-      return_pct: pyRound((got(value) / paid(h.cost) - 1.0) * 100, 2),
-      closed: false,
-      exit_reason: "open",
-    });
-  }
-
-  const closed = trades.filter((t) => t["closed"]);
-  const wins = trades.filter((t) => (t["return_pct"] as number) > 0);
-  const days = Math.max(dates[n - 1]! - dates[0]!, 1);
-  const final = equity[equity.length - 1]!;
-
-  return {
-    strategy,
-    params,
-    bars: n,
-    start: bars[0]!.date,
-    end: bars[n - 1]!.date,
-    total_return_pct: pyRound((final - 1.0) * 100, 2),
-    buy_hold_return_pct: pyRound((bench[bench.length - 1]! - 1.0) * 100, 2),
-    annualized_pct: final > 0 ? pyRound((Math.pow(final, 365.0 / days) - 1.0) * 100, 2) : -100.0,
-    max_drawdown_pct: pyRound(maxDrawdown(equity) * 100, 2),
-    trades: trades.length,
-    closed_trades: closed.length,
-    win_rate_pct: trades.length ? pyRound((wins.length / trades.length) * 100, 1) : null,
-    exposure_pct: pyRound((heldBars / n) * 100, 1),
-    trade_list: trades.slice(-100),
-    curve: sampleCurve(bars, equity, bench),
-  };
+/**
+ * 美股期权的标准行权价间隔(交易所挂牌规则里最粗的那一档):价位 ≤ 25 美元 2.5、≤ 200 美元 5、再往上 10。
+ * 实际挂牌往往更密(1 美元档、周期权),这是每只标的都有的那几档。
+ */
+export function strikeStep(price: number): number {
+  if (price <= 25) return 2.5;
+  if (price <= 200) return 5;
+  return 10;
 }
 
-function optionLegs(instType: string, s0: number, offsetPct: number, widthPct: number): LegSpec[] {
-  const k = s0 * (1.0 + offsetPct / 100.0);
-  const w = (s0 * widthPct) / 100.0;
-  if (instType === "call") return [[1, "C", k]];
-  if (instType === "put") return [[1, "P", k]];
-  if (instType === "call_spread") return [[1, "C", k], [-1, "C", k + w]];
-  if (instType === "put_spread") return [[1, "P", k], [-1, "P", k - w]];
-  return [[1, "C", k - w], [-2, "C", k], [1, "C", k + w]]; // butterfly
+/** 腿的行权价贴到挂牌间隔上;宽度不足一档按一档。搭不出来(有腿的行权价 ≤ 0)回 null。 */
+function optionLegs(instType: string, s0: number, offsetPct: number, widthPct: number, step: number): LegSpec[] | null {
+  const snap = (x: number): number => Math.round(x / step) * step;
+  const k = snap(s0 * (1.0 + offsetPct / 100.0));
+  const w = Math.max(snap((s0 * widthPct) / 100.0), step);
+  let legs: LegSpec[];
+  if (instType === "call") legs = [[1, "C", k]];
+  else if (instType === "put") legs = [[1, "P", k]];
+  else if (instType === "call_spread") legs = [[1, "C", k], [-1, "C", k + w]];
+  else if (instType === "put_spread") legs = [[1, "P", k], [-1, "P", k - w]];
+  else legs = [[1, "C", k - w], [-2, "C", k], [1, "C", k + w]]; // butterfly
+  return legs.every((leg) => leg[2] > 0) ? legs : null;
+}
+
+/** 一笔期权哪天到期:到期那一根日线的下标;数据在那之前就结束时是 null,另给"数据结束之后还有多少个交易日"。 */
+interface Expiry {
+  idx: number | null;
+  beyond: number;
+}
+
+/**
+ * 到期日 = 建仓日 + dte 天;那天不是交易日(周末、假日)就往前挪到最近的一个交易日——没有期权在周末到期,
+ * 拖到下周一结算等于白送一个周末的敞口。只看日历(日线的日期),不看价格。
+ * 数据在那之前就结束时无从知道中间有几个交易日:按这段日线自己"每个日历日折多少个交易日"的比例折算(只影响最后那笔没平的)。
+ */
+function listedExpiry(dates: number[], i: number, dte: number): Expiry {
+  const target = dates[i]! + dte;
+  const last = dates.length - 1;
+  let k = i;
+  while (k < last && dates[k + 1]! <= target) k += 1;
+  if (k < last || dates[k] === target) return { idx: k, beyond: 0 };
+  const span = dates[last]! - dates[0]!;
+  return { idx: null, beyond: span > 0 ? ((target - dates[last]!) * last) / span : 0 };
 }
 
 function structureValue(legs: LegSpec[], s: number, t: number, sigma: number): number {
@@ -543,7 +489,7 @@ function structureValue(legs: LegSpec[], s: number, t: number, sigma: number): n
   return total;
 }
 
-/** Black-Scholes(r=0,无股息)。t<=0 时退化为内在价值。 */
+/** Black-Scholes(r=0,无股息)。t<=0 或 sigma<=0 时退化为内在价值。 */
 export function bsPrice(s: number, k: number, t: number, sigma: number, right: string): number {
   if (t <= 0 || sigma <= 0) {
     return right === "C" ? Math.max(s - k, 0.0) : Math.max(k - s, 0.0);
@@ -555,7 +501,57 @@ export function bsPrice(s: number, k: number, t: number, sigma: number, right: s
   return k * cdf(-d2) - s * cdf(-d1);
 }
 
-/** 近 window 日已实现波动率(年化),数据不足给保守默认值。 */
+/**
+ * 逐日的近 window 日已实现波动率(年化):收盘对收盘的对数收益,样本标准差 × √252。第 i 个只用到第 i 根收盘为止。
+ * 凑不满 window 个日收益的位置是 null——期权估价拿不到波动率就不估,不拿一个默认值顶。
+ */
+export function trailingVol(closes: number[], window = VOL_WINDOW): Array<number | null> {
+  const out: Array<number | null> = [];
+  for (let i = 0; i < closes.length; i++) {
+    const rets: number[] = [];
+    for (let k = i - window + 1; k >= 1 && k <= i; k++) {
+      const a = closes[k - 1]!;
+      const b = closes[k]!;
+      if (a > 0 && b > 0) rets.push(Math.log(b / a));
+    }
+    if (rets.length < window) {
+      out.push(null);
+      continue;
+    }
+    const mean = rets.reduce((x, y) => x + y, 0) / rets.length;
+    let variance = 0.0;
+    for (const r of rets) variance += (r - mean) ** 2;
+    out.push(Math.sqrt((variance / (rets.length - 1)) * TRADING_DAYS));
+  }
+  return out;
+}
+
+/**
+ * 逐日的"开盘到收盘那一段占一个交易日方差的多少":近 window 根日线上 Σ ln(收 ÷ 开)² ÷ Σ ln(收 ÷ 前收)²,第 i 个只用到第 i 根为止。
+ * 波动率是按"每个交易日一份方差"量的,开盘成交的期权在成交那天只剩开盘到收盘这一段——这一段占多少拿同一批日线量,
+ * 不按钟点折(隔夜十七个半小时的波动远没有盘中六个半小时大)。隔夜与盘中反向时可以大于 1,照实用。
+ * 凑不满 window 根是 null;前收到收盘一动没动时是 0(那时波动率也是 0,用不上)。
+ */
+export function trailingSessionShare(bars: Bar[], window = VOL_WINDOW): Array<number | null> {
+  const out: Array<number | null> = [];
+  for (let i = 0; i < bars.length; i++) {
+    let session = 0.0;
+    let whole = 0.0;
+    let count = 0;
+    for (let k = i - window + 1; k >= 1 && k <= i; k++) {
+      const prev = bars[k - 1]!.close;
+      const { open, close } = bars[k]!;
+      if (!(prev > 0 && open > 0 && close > 0)) break;
+      session += Math.log(close / open) ** 2;
+      whole += Math.log(close / prev) ** 2;
+      count += 1;
+    }
+    out.push(count < window ? null : whole > 0 ? session / whole : 0.0);
+  }
+  return out;
+}
+
+/** 近 window 日已实现波动率(年化),数据不足给保守默认值。只给 research.ts 的量价摘要用(展示,不进定价);回测用 trailingVol。 */
 export function realizedVol(closes: number[], window = 20): number {
   const tail = closes.slice(-(window + 1));
   if (tail.length < 6) return 0.25;
@@ -571,75 +567,383 @@ export function realizedVol(closes: number[], window = 20): number {
 }
 
 // ---------------------------------------------------------------- 结算
-function evaluateStock(
-  bars: Bar[], positions: number[], strategy: string, params: Record<string, number>, cost = 0,
-): BacktestReport {
+/** 要结算的那一截。bars 与 held 都是整段的,下标不平移。 */
+interface Span {
+  bars: Bar[];
+  held: number[];
+  lo: number;
+  hi: number;
+  /** 每边成本,小数(0.001 = 0.1%) */
+  cost: number;
+}
+
+/** 一截结算完的原料。净值是逐日全量的(不抽样),统计都从它算。 */
+interface Settled {
+  equity: number[];
+  bench: number[];
+  /** 与 equity 对齐:这一根相对上一根的涨跌里有没有仓位(隔夜带着,或当天开盘之后带着) */
+  exposed: boolean[];
+  trades: BacktestTrade[];
+  /** 与 trades 一一对应的每笔净收益(小数,没舍入) */
+  tradeReturns: number[];
+  /** 收盘时有仓的根数 */
+  heldBars: number;
+  notes: string[];
+}
+
+/**
+ * 基准 = 同一个成交口径下的买入持有:整段第 0 根收盘决定、第 1 根开盘买进,之后一直拿着,不扣成本。
+ * 这样「买入持有」策略不扣成本时和基准逐位相同;算式的次序也和 settleStock 里一样。
+ */
+function benchFactor(bars: Bar[], i: number): number {
+  const bar = bars[i]!;
+  const overnight = i >= 2 ? bar.open / bars[i - 1]!.close : 1.0;
+  return overnight * (bar.close / bar.open);
+}
+
+function settleStock(w: Span): Settled {
+  const { bars, held, lo, hi, cost } = w;
+  const carried = held[lo] === 1;
+  const out: Settled = {
+    // 起点那一刻已经持有 = 按它的收盘价买进,付一次
+    equity: [carried && cost > 0 ? 1.0 - cost : 1.0], bench: [1.0], exposed: [false],
+    trades: [], tradeReturns: [], heldBars: carried ? 1 : 0, notes: [],
+  };
+  const book = (entryIdx: number, entryPx: number, exitIdx: number, exitPx: number, closed: boolean): void => {
+    // 扣成本的口径和净值一致:买进付一次,平掉再付一次;还开着的那笔只扣进场那一次
+    const net = (exitPx / entryPx) * (1.0 - cost) * (closed ? 1.0 - cost : 1.0);
+    out.trades.push({
+      entry_date: bars[entryIdx]!.date,
+      exit_date: closed ? bars[exitIdx]!.date : null,
+      entry_price: entryPx,
+      exit_price: exitPx,
+      return_pct: pyRound((net - 1.0) * 100, 2),
+      closed,
+    });
+    out.tradeReturns.push(net - 1.0);
+  };
+  let entry: { i: number; px: number } | null = carried ? { i: lo, px: bars[lo]!.close } : null;
+  for (let i = lo + 1; i < hi; i++) {
+    const bar = bars[i]!;
+    const was = held[i - 1] === 1;
+    const now = held[i] === 1;
+    let f = 1.0;
+    if (was) f *= bar.open / bars[i - 1]!.close; // 隔夜
+    if (now) f *= bar.close / bar.open; // 开盘之后
+    if (was !== now) {
+      // 开盘换仓:买进或卖出,付一次
+      if (cost > 0) f *= 1.0 - cost;
+      if (now) {
+        entry = { i, px: bar.open };
+      } else if (entry !== null) {
+        book(entry.i, entry.px, i, bar.open, true);
+        entry = null;
+      }
+    }
+    out.equity.push(out.equity[out.equity.length - 1]! * f);
+    out.bench.push(out.bench[out.bench.length - 1]! * benchFactor(bars, i));
+    out.exposed.push(was || now);
+    if (now) out.heldBars += 1;
+  }
+  if (entry !== null) book(entry.i, entry.px, hi - 1, bars[hi - 1]!.close, false);
+  return out;
+}
+
+interface OptionSpec {
+  type: string;
+  dte: number;
+  offsetPct: number;
+  widthPct: number;
+  /** 每笔投入占净值的比例,小数 */
+  risk: number;
+}
+
+function optionSpec(inst: Instrument): OptionSpec {
+  if (!(inst["type"] in OPTION_TYPES)) {
+    throw new BacktestError(`未知交易品种:${inst["type"]}`);
+  }
+  // 用 is-null 判缺省:0 是非法值,不能被 `?? 默认值` 之外的写法吞掉
+  const pick = (key: string, dflt: number): number =>
+    inst[key] !== null && inst[key] !== undefined ? Number(inst[key]) : dflt;
+  const dte = Math.trunc(pick("dte", 30));
+  const offsetPct = pick("offset_pct", 0.0);
+  const widthPct = pick("width_pct", 2.0);
+  const risk = pick("risk_pct", 10.0) / 100.0;
+  if (!(dte >= 1 && dte <= 365)) throw new BacktestError("到期天数 dte 必须在 1~365");
+  if (!(risk > 0 && risk <= 1)) throw new BacktestError("单笔投入占比必须在 0~100%");
+  if (!(widthPct > 0 && widthPct <= 20) || Math.abs(offsetPct) > 30) {
+    throw new BacktestError("行权价偏移/宽度超出合理范围");
+  }
+  return { type: String(inst["type"]), dte, offsetPct, widthPct, risk };
+}
+
+/** 一笔期权持仓。sigma / share 是建仓时用的波动率与开盘到收盘的占比,只在当天的值缺失时兜底(价格都有效时不会缺)。 */
+interface Holding {
+  entry_i: number;
+  legs: LegSpec[];
+  cost: number;
+  expiry: Expiry;
+  sigma: number;
+  share: number;
+}
+
+function optionTrade(
+  bars: Bar[], h: Holding, exitDate: string | null, exitPx: number, ret: number, why: "expiry" | "signal" | "open",
+): BacktestTrade {
+  return {
+    entry_date: bars[h.entry_i]!.date,
+    exit_date: exitDate,
+    entry_price: pyRound(h.cost, 4),
+    exit_price: pyRound(exitPx, 4),
+    return_pct: pyRound(ret * 100, 2),
+    closed: exitDate !== null,
+    exit_reason: why,
+    strikes: h.legs.map((leg) => leg[2]),
+  };
+}
+
+/**
+ * 期权品种的结算。每根日线两步:开盘按上一根收盘的信号开 / 平(用到上一根收盘为止的波动率),
+ * 收盘先让到期的按内在价值结算,再按**当天**的波动率给还在的持仓重估。到期后信号还在,下一根开盘按新的行权价再开。
+ *
+ * 时间按交易日计:还剩几根日线 ÷ 252,和波动率(日收益的标准差 × √252)是同一个口径——按日历天 ÷ 365 算的话,
+ * 一两天到期的期权拿到的 σ²T 只有波动率自己那个数所说的一半上下,买方凭空赚钱。开盘成交时再加上当天开盘到收盘那一段(sessionShare)。
+ */
+function settleOptions(
+  w: Span, inst: Instrument, volIn?: Array<number | null>, shareIn?: Array<number | null>,
+): Settled {
+  const spec = optionSpec(inst);
+  const { bars, held, lo, hi, cost } = w;
   const n = bars.length;
-  const equity = [1.0];
-  const bench = [1.0];
-  // 第 0 根收盘就持有 = 那一刻买进,也要付一次
-  if (cost > 0 && positions[0] === 1) equity[0] = 1.0 - cost;
-  for (let i = 1; i < n; i++) {
-    const ret = bars[i]!.close / bars[i - 1]!.close;
-    let next = equity[i - 1]! * (positions[i - 1] === 1 ? ret : 1.0);
-    // 收盘成交:这一根的持仓和上一根不一样就付一次(买进或卖出)
-    if (cost > 0 && (positions[i] ?? 0) !== (positions[i - 1] ?? 0)) next *= 1.0 - cost;
-    equity.push(next);
-    bench.push(bench[i - 1]! * ret);
+  const dates = bars.map((b) => dateOrdinal(b.date));
+  const vol = volIn ?? trailingVol(bars.map((b) => b.close));
+  const share = shareIn ?? trailingSessionShare(bars);
+  if (!vol.some((v) => v !== null)) {
+    throw new BacktestError(
+      `期权估价要用近 ${VOL_WINDOW} 日已实现波动率,这里只有 ${n} 根日线,一个值都算不出来` +
+      `(至少 ${VOL_WINDOW + 1} 根)。把开始日期往前挪`,
+    );
+  }
+  // 成交成本:开仓多付、平仓少收各 cost(按权利金算)
+  const paid = (c: number): number => c * (1.0 + cost);
+  const got = (v: number): number => v * (1.0 - cost);
+  /** 第 i 根收盘时离到期还有几个交易日 */
+  const barsLeft = (e: Expiry, i: number): number => (e.idx ?? n - 1) - i + e.beyond;
+  const out: Settled = { equity: [], bench: [], exposed: [], trades: [], tradeReturns: [], heldBars: 0, notes: [] };
+  const missed: Missed = { vol: 0, build: 0, tick: 0 };
+  const steps = new Set<number>();
+  let cash = 1.0;
+
+  /** atOpen:开盘成交,比当天收盘多"开盘到收盘"那一段;否则是起点那一根的收盘 */
+  const tryOpen = (i: number, s0: number, sigma: number | null, session: number | null, atOpen: boolean): Holding | null => {
+    if (sigma === null || session === null) {
+      missed.vol += 1;
+      return null;
+    }
+    const step = strikeStep(s0);
+    const legs = optionLegs(spec.type, s0, spec.offsetPct, spec.widthPct, step);
+    if (legs === null) {
+      missed.build += 1;
+      return null;
+    }
+    const expiry = listedExpiry(dates, i, spec.dte);
+    const price = structureValue(legs, s0, (barsLeft(expiry, i) + (atOpen ? session : 0.0)) / TRADING_DAYS, sigma);
+    if (!(price >= MIN_OPTION_TICK)) {
+      missed.tick += 1;
+      return null;
+    }
+    steps.add(step);
+    return { entry_i: i, legs, cost: price, expiry, sigma, share: session };
+  };
+  const settle = (h: Holding, i: number, proceeds: number, why: "expiry" | "signal"): void => {
+    const ret = got(proceeds) / paid(h.cost) - 1.0;
+    cash *= 1.0 + spec.risk * ret;
+    out.trades.push(optionTrade(bars, h, bars[i]!.date, proceeds, ret, why));
+    out.tradeReturns.push(ret);
+  };
+  /** 第 i 根收盘时这笔持仓的理论价(当天的波动率) */
+  const markAtClose = (h: Holding, i: number): number =>
+    structureValue(h.legs, bars[i]!.close, barsLeft(h.expiry, i) / TRADING_DAYS, vol[i] ?? h.sigma);
+
+  let pos: Holding | null = null;
+  for (let i = lo; i < hi; i++) {
+    const bar = bars[i]!;
+    const want = held[i] === 1;
+    const carriedIn = pos !== null;
+    if (i === lo) {
+      // 起点没有"开盘"这一步:那一刻已经持有的,按起点的收盘价建仓
+      if (want) pos = tryOpen(i, bar.close, vol[i] ?? null, share[i] ?? null, false);
+    } else if (pos !== null && !want) {
+      const t = (barsLeft(pos.expiry, i) + (share[i - 1] ?? pos.share)) / TRADING_DAYS;
+      settle(pos, i, structureValue(pos.legs, bar.open, t, vol[i - 1] ?? pos.sigma), "signal");
+      pos = null;
+    } else if (pos === null && want) {
+      pos = tryOpen(i, bar.open, vol[i - 1] ?? null, share[i - 1] ?? null, true);
+    }
+    const heldToday: boolean = carriedIn || pos !== null;
+    if (pos !== null && pos.expiry.idx !== null && i >= pos.expiry.idx) {
+      settle(pos, i, structureValue(pos.legs, bar.close, 0.0, 0.0), "expiry");
+      pos = null;
+    }
+    if (pos !== null) {
+      out.heldBars += 1;
+      out.equity.push(cash * (1.0 + spec.risk * (got(markAtClose(pos, i)) / paid(pos.cost) - 1.0)));
+    } else {
+      out.equity.push(cash);
+    }
+    out.bench.push(i === lo ? 1.0 : out.bench[out.bench.length - 1]! * benchFactor(bars, i));
+    out.exposed.push(i > lo && heldToday);
   }
 
-  const trades: BacktestTrade[] = [];
-  let entryIdx: number | null = null;
-  for (let i = 0; i < n; i++) {
-    if (positions[i] === 1 && entryIdx === null) {
-      entryIdx = i;
-    } else if (positions[i] === 0 && entryIdx !== null) {
-      trades.push(makeTrade(bars, entryIdx, i, true, cost));
-      entryIdx = null;
+  if (pos !== null) {
+    const value = markAtClose(pos, hi - 1);
+    out.trades.push(optionTrade(bars, pos, null, value, got(value) / paid(pos.cost) - 1.0, "open"));
+    out.tradeReturns.push(got(value) / paid(pos.cost) - 1.0);
+  }
+  out.notes = optionNotes([...steps].sort((a, b) => a - b), missed);
+  return out;
+}
+
+/** 策略要持仓却没开成的根数,按原因分。 */
+interface Missed {
+  /** 历史不满窗口,算不出波动率 */
+  vol: number;
+  /** 贴档之后搭不出这个结构(有腿的行权价 ≤ 0) */
+  build: number;
+  /** 理论价不到最小报价单位 */
+  tick: number;
+}
+
+/** 期权品种这次结果里要说在前面的:估价口径、它往哪边偏、行权价贴了哪一档、有多少根想开却没开成。 */
+function optionNotes(steps: number[], missed: Missed): string[] {
+  const notes = [
+    `期权价是 Black-Scholes 理论价,波动率用近 ${VOL_WINDOW} 日已实现波动率、每天按当天的重估。` +
+      "市场上的隐含波动率通常高于已实现(方差风险溢价),所以单腿买方在这里被算便宜了,收益偏乐观;价差与蝴蝶往哪边偏不一定",
+    `时间按交易日计(还剩几根日线 ÷ ${TRADING_DAYS},和波动率同一个口径),开盘成交那天只算开盘到收盘那一段,占比按近 ${VOL_WINDOW} 根日线估。` +
+      "每个交易日当作波动一样大、周末与假日不计:财报、数据公布这类事件日前后,和跨长假的期权,实际比这里贵",
+    `波动率和这个占比都只用 ${VOL_WINDOW} 根日线估,有抽样误差:在波动恒定的模拟行情上量过,平值单腿因此被算便宜约 1%,窄的平值蝴蝶被算贵约 3%~5%`,
+    "没进模型的:利率(r=0,看涨偏便宜、看跌偏贵)、股息、偏斜、期权自己的买卖价差(只能靠每边成本补)",
+  ];
+  if (steps.length) {
+    notes.push(`行权价贴到标准挂牌间隔(这次用到 ${steps.join(" / ")} 一档),宽度不足一档按一档;实际挂牌可能更密`);
+  }
+  if (missed.vol > 0) {
+    notes.push(`有 ${missed.vol} 根日线策略要持仓却没开成:前面的历史不满 ${VOL_WINDOW} 根,算不出波动率,不估价`);
+  }
+  if (missed.tick > 0) {
+    notes.push(`有 ${missed.tick} 根日线策略要持仓却没开成:理论价不到 ${MIN_OPTION_TICK} 美元(期权的最小报价单位),这个价买不到`);
+  }
+  if (missed.build > 0) {
+    notes.push(`有 ${missed.build} 根日线策略要持仓却没开成:贴档之后搭不出这个结构`);
+  }
+  return notes;
+}
+
+// ---------------------------------------------------------------- 统计
+type DailyStats = Pick<BacktestReport, "volatility_pct" | "sharpe" | "sortino" | "held_days" | "held_day_move_pct">;
+
+/** 逐日净值 → 年化波动、Sharpe、Sortino(无风险利率与目标收益都按 0),以及在场的天数与那些天单日变动的均方根。 */
+function dailyStats(equity: number[], exposed: boolean[]): DailyStats {
+  const rets: number[] = [];
+  let heldSq = 0.0;
+  let heldN = 0;
+  for (let j = 1; j < equity.length; j++) {
+    const prev = equity[j - 1]!;
+    const r = prev > 0 ? equity[j]! / prev - 1.0 : 0.0;
+    rets.push(r);
+    if (exposed[j]) {
+      heldSq += r * r;
+      heldN += 1;
     }
   }
-  if (entryIdx !== null) trades.push(makeTrade(bars, entryIdx, n - 1, false, cost));
+  const heldMove = heldN > 0 ? pyRound(Math.sqrt(heldSq / heldN) * 100, 4) : null;
+  const n = rets.length;
+  if (n < 2) return { volatility_pct: null, sharpe: null, sortino: null, held_days: heldN, held_day_move_pct: heldMove };
+  const mean = rets.reduce((a, b) => a + b, 0) / n;
+  let variance = 0.0;
+  let downside = 0.0;
+  for (const r of rets) {
+    variance += (r - mean) ** 2;
+    if (r < 0) downside += r * r;
+  }
+  const sd = Math.sqrt(variance / (n - 1));
+  const down = Math.sqrt(downside / n);
+  const ann = Math.sqrt(TRADING_DAYS);
+  return {
+    volatility_pct: pyRound(sd * ann * 100, 2),
+    sharpe: sd > 0 ? pyRound((mean / sd) * ann, 2) : null,
+    sortino: down > 0 ? pyRound((mean / down) * ann, 2) : null,
+    held_days: heldN,
+    held_day_move_pct: heldMove,
+  };
+}
 
-  const closed = trades.filter((t) => t["closed"]);
-  const wins = trades.filter((t) => (t["return_pct"] as number) > 0);
+type TradeStats = Pick<BacktestReport,
+  "closed_trades" | "win_rate_pct" | "avg_win_pct" | "avg_loss_pct" | "payoff_ratio" | "profit_factor" | "expectancy_pct">;
 
-  const days = Math.max(dateOrdinal(bars[n - 1]!.date) - dateOrdinal(bars[0]!.date), 1);
-  const total = equity[n - 1]! - 1.0;
-  const annualized = equity[n - 1]! > 0 ? Math.pow(equity[n - 1]!, 365.0 / days) - 1.0 : -1.0;
+/** 只数已平仓的:还开着的那一笔没有结果,算进胜率等于拿浮盈充数。 */
+function tradeStats(trades: BacktestTrade[], returns: number[]): TradeStats {
+  const closed = returns.filter((_, i) => trades[i]?.closed === true);
+  const wins = closed.filter((r) => r > 0);
+  const losses = closed.filter((r) => r < 0);
+  const sum = (xs: number[]): number => xs.reduce((a, b) => a + b, 0);
+  const avgWin = wins.length ? sum(wins) / wins.length : null;
+  const avgLoss = losses.length ? sum(losses) / losses.length : null;
+  return {
+    closed_trades: closed.length,
+    win_rate_pct: closed.length ? pyRound((wins.length / closed.length) * 100, 1) : null,
+    avg_win_pct: avgWin !== null ? pyRound(avgWin * 100, 2) : null,
+    avg_loss_pct: avgLoss !== null ? pyRound(avgLoss * 100, 2) : null,
+    payoff_ratio: avgWin !== null && avgLoss !== null ? pyRound(avgWin / -avgLoss, 2) : null,
+    profit_factor: losses.length ? pyRound(sum(wins) / -sum(losses), 2) : null,
+    expectancy_pct: closed.length ? pyRound((sum(closed) / closed.length) * 100, 2) : null,
+  };
+}
 
+function summarize(w: Span, strategy: string, params: Record<string, number>, s: Settled): BacktestReport {
+  const { bars, lo, hi } = w;
+  const n = hi - lo;
+  const final = s.equity[n - 1]!;
+  const days = Math.max(dateOrdinal(bars[hi - 1]!.date) - dateOrdinal(bars[lo]!.date), 1);
+  const total = pyRound((final - 1.0) * 100, 2);
+  const benchTotal = pyRound((s.bench[n - 1]! - 1.0) * 100, 2);
   return {
     strategy,
     params,
     bars: n,
-    start: bars[0]!.date,
-    end: bars[n - 1]!.date,
-    total_return_pct: pyRound(total * 100, 2),
-    buy_hold_return_pct: pyRound((bench[n - 1]! - 1.0) * 100, 2),
-    annualized_pct: pyRound(annualized * 100, 2),
-    max_drawdown_pct: pyRound(maxDrawdown(equity) * 100, 2),
-    trades: trades.length,
-    closed_trades: closed.length,
-    win_rate_pct: trades.length ? pyRound((wins.length / trades.length) * 100, 1) : null,
-    exposure_pct: pyRound((positions.reduce((a, b) => a + b, 0) / n) * 100, 1),
-    trade_list: trades.slice(-100),
-    curve: sampleCurve(bars, equity, bench),
+    start: bars[lo]!.date,
+    end: bars[hi - 1]!.date,
+    days,
+    total_return_pct: total,
+    buy_hold_return_pct: benchTotal,
+    excess_return_pct: pyRound(total - benchTotal, 2),
+    annualized_pct: final > 0 ? pyRound((Math.pow(final, 365.0 / days) - 1.0) * 100, 2) : -100.0,
+    max_drawdown_pct: pyRound(maxDrawdown(s.equity) * 100, 2),
+    ...dailyStats(s.equity, s.exposed),
+    trades: s.trades.length,
+    ...tradeStats(s.trades, s.tradeReturns),
+    exposure_pct: pyRound((s.heldBars / n) * 100, 1),
+    trade_list: s.trades.slice(-100),
+    curve: sampleCurve(bars.slice(lo, hi), s.equity, s.bench),
+    notes: s.notes,
   };
 }
 
-function makeTrade(bars: Bar[], entry: number, exit: number, closed: boolean, cost = 0): BacktestTrade {
-  const entryPx = bars[entry]!.close;
-  const exitPx = bars[exit]!.close;
-  // 扣成本的口径和净值一致:买进付一次,平掉再付一次;还开着的那笔只扣进场那一次
-  const gross = exitPx / entryPx;
-  const net = cost > 0 ? gross * (1.0 - cost) * (closed ? 1.0 - cost : 1.0) : gross;
-  return {
-    entry_date: bars[entry]!.date,
-    exit_date: closed ? bars[exit]!.date : null,
-    entry_price: entryPx,
-    exit_price: exitPx,
-    return_pct: pyRound((net - 1.0) * 100, 2),
-    closed,
-  };
+/** 整段回测要说在前面的口径与偏差(界面原样摆)。品种自己的那几条(期权)夹在中间。 */
+function runNotes(bars: Bar[], signal: number[], r: BacktestReport, costPct: number): string[] {
+  const notes: string[] = [];
+  const n = bars.length;
+  const last = signal[n - 1] ?? 0;
+  if (last !== (signal[n - 2] ?? 0)) {
+    notes.push(`${bars[n - 1]!.date} 收盘出了${last === 1 ? "买入" : "卖出"}信号,要到下一个交易日开盘才成交,不在这次的结果里`);
+  }
+  if (costPct === 0) notes.push("没扣成交成本(佣金、买卖价差):换手越多,实际比这里差得越多");
+  if (r.days < 365) {
+    notes.push(`区间只有 ${r.days} 天,不满一年:年化收益、年化波动、Sharpe、Sortino 都是把这一段外推到一年,只作参考`);
+  }
+  notes.push(...(r.notes ?? []));
+  notes.push("标的是现在挑的:它活到了今天,退市、被并购、跌没了的不会被拿来回测,结果偏乐观(幸存者偏差)");
+  return notes;
 }
 
 function maxDrawdown(equity: number[]): number {

@@ -9,7 +9,7 @@ import { Segmented } from 'antd';
 import type { QualityConfig } from '../bridge';
 import { round2 } from './anomalyFormat';
 import { saveQualityConfig } from '../store/quality';
-import { EmptyState, Group, GroupRow, NumberRow } from '../ui/kit';
+import { EmptyState, Group, GroupRow, NumberRow, SwitchRow } from '../ui/kit';
 
 const WINDOW_OPTIONS = [
   { value: 3, label: '3 分钟' },
@@ -17,7 +17,8 @@ const WINDOW_OPTIONS = [
   { value: 10, label: '10 分钟' },
 ];
 
-export function Conditions({ config }: { config: QualityConfig | null }) {
+/** marketRef:监控上一轮读没读到大盘参照(QualityMonitor.market_ref);没在判是 null。 */
+export function Conditions({ config, marketRef = null }: { config: QualityConfig | null; marketRef?: boolean | null }) {
   const [draft, setDraft] = useState<QualityConfig | null>(config);
   const pending = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dirty = useRef<Partial<QualityConfig>>({});
@@ -128,6 +129,20 @@ export function Conditions({ config }: { config: QualityConfig | null }) {
           if (v == null || !(v >= 1)) return;
           patch({ cooldown_min: Math.round(Math.min(240, v)) });
         }}
+      />
+      <SwitchRow
+        key="market"
+        label="急涨急跌、大涨大跌:扣掉大盘同期涨跌"
+        sub={
+          <>
+            开:只报扣掉标普 500 同期涨跌之后还够档的(直接相减,不按每只股的 beta);跟着指数走的 ETF 会因此不报。关:照自己的涨跌报,提醒里注明标普同期
+            {draft.market_adjust && marketRef === false ? (
+              <span className="warn-text"> · 这一轮读不到标普 500 指数的行情(没有权限、今天还没开始跳、或者停更了):没有在扣,提醒里会写「无大盘参照、未扣」</span>
+            ) : null}
+          </>
+        }
+        checked={Boolean(draft.market_adjust)}
+        onChange={(v) => patch({ market_adjust: v })}
       />
     </Group>
   );

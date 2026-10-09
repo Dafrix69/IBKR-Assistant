@@ -1,28 +1,35 @@
-/** 价格行为(Price Action)实时分析(对应 Python priceaction.py)——纯计算。
+/** 价格行为(Price Action)实时分析——纯计算。
  *
  * 数字由代码算,叙事才交给 LLM。突破一律用收盘价确认;影线穿透归「扫单」。
  * 打分权重全部摆在模块顶部,结论怎么来的必须能被逐条质疑。
- * 所有中文 readout / facts 字符串与 Python 版逐字节一致(浮点走 pyFloat)。
+ *
+ * 两条不许破的规矩:
+ *  · 判定只用已收盘的 K 线。最后一根还没走完时把它摘出来单独报(forming),它不确认突破、扫单、形态,不进打分。
+ *    收没收盘对着调用方给的时刻算,这个模块自己不读钟;行情是延迟档时,钟点到了数据也未必到齐,再往前退(见 PaClock)。
+ *  · 历史上的事件按当时看得到的东西算。第 i 根上的突破 / 扫单只用到第 i 根为止已经确认的摆动点与当时的 ATR,
+ *    后来的摆动点不回头改它(见 structureHistory)。
  */
 import { ema } from "./backtest.js";
 import { fmtF, fmtSF, pyFloat, pyRound } from "./py.js";
+import { ET, stampAt, wallToEpoch } from "./tz.js";
 
 import type {
-  PaAgreement, PaAnalysis, PaEqualLevel, PaEvent, PaFvg, PaHtfSummary, PaLevel, PaOrderBlock, PaPattern, PaPlan,
-    PaAnalyzeResult, PaContext, PaEvidence, PaSweep, PaSwing,
+  PaAgreement, PaAnalysis, PaEqualLevel, PaEvent, PaForming, PaFvg, PaHtfSummary, PaLevel, PaOrderBlock, PaPattern,
+    PaPlan, PaAnalyzeResult, PaContext, PaEvidence, PaSubScore, PaSweep, PaSwing,
 } from "./contract/priceaction.js";
 
 export class PriceActionError extends Error {}
 
 // K 线周期表与最少根数搬到了 marketdata.ts(下单层也要用);这里转出,老的 import 路径不变。
 export { MIN_BARS, TIMEFRAMES } from "./marketdata.js";
-import { MIN_BARS, TIMEFRAMES } from "./marketdata.js";
+import { DELAYED_FEED_MAX_MS, MIN_BARS, TIMEFRAMES } from "./marketdata.js";
+import type { BarsFeed } from "./marketdata.js";
 export const SWING_STRENGTH = 2;
 export const CHART_BARS = 140;
 /** 图上叠的均线周期(富途默认那三条);只作图,不进打分。 */
 export const MA_PERIODS = [5, 10, 20];
 
-// 打分权重。正 = 看涨,负 = 看跌。
+// 打分权重。正 = 看涨,负 = 看跌。数是手定的,没有拿成绩单校过:成绩单攒够样本之前不动它们。
 const W = {
   trend: 30.0,
   choch: 25.0,
@@ -78,12 +85,54 @@ export function trueRange(bar: PABar, prev: PABar | null): number {
   return Math.max(span(bar), Math.abs(bar.high - prev.close), Math.abs(bar.low - prev.close));
 }
 
-export function atr(bars: PABar[], period = 14): number {
-  if (bars.length < 2) return 0.0;
+/** trs[k] 是第 k + 1 根的真实波幅(第一根没有前收,不算)。 */
+function trueRanges(bars: PABar[]): number[] {
   const trs: number[] = [];
   for (let i = 1; i < bars.length; i++) trs.push(trueRange(bars[i]!, bars[i - 1]!));
-  const tail = trs.slice(-period);
+  return trs;
+}
+
+/** trs 里 end 之前最多 period 个的简单平均。 */
+function meanBefore(trs: number[], end: number, period: number): number {
+  const tail = trs.slice(Math.max(0, end - period), end);
   return tail.length ? tail.reduce((a, b) => a + b, 0) / tail.length : 0.0;
+}
+
+/** 最近 period 个真实波幅的简单平均(不是 Wilder 平滑)。 */
+export function atr(bars: PABar[], period = 14): number {
+  if (bars.length < 2) return 0.0;
+  const trs = trueRanges(bars);
+  return meanBefore(trs, trs.length, period);
+}
+
+/** 每一根收盘时的 ATR:out[i] 只用到第 i 根为止,最后一项等于 atr(bars)。 */
+export function atrSeries(bars: PABar[], period = 14): number[] {
+  const trs = trueRanges(bars);
+  return bars.map((_, i) => meanBefore(trs, i, period));
+}
+
+/** 容差:小于它的价差当噪音。ATR 的 0.35 倍;没有 ATR 时退到价格的万分之五。 */
+function tolOf(atrValue: number, close: number): number {
+  return atrValue > 0 ? atrValue * 0.35 : Math.abs(close) * 0.0005;
+}
+
+// ---------------------------------------------------------------- 最后一根收没收盘
+/** 日线几点算走完(美东小时):只看盘中是常规收盘 16:00,含盘前盘后是盘后结束 20:00。
+ *  提前收盘日实际更早,按这两个点算只会偏晚,不会把没走完的当成走完的。 */
+const DAILY_CLOSE_HOUR_ET = { rth: 16, extended: 20 };
+
+/** 这根 K 线几点走完(epoch 毫秒)。周期不认识或时间戳读不懂,返回 null。
+ *  日内的时间戳按「这一根的起点」读(IBKR 的口径):起点 + 周期。时间戳是终点的数据源按同一条算,
+ *  只会晚一个周期才认它收盘,不会早。 */
+export function barCloseEpochMs(time: string, timeframe: string, extendedHours = false): number | null {
+  const seconds = Number(TIMEFRAMES[timeframe]?.["seconds"]);
+  const stamp = parseBarTime(time);
+  if (!(seconds > 0) || stamp === null) return null;
+  if (seconds >= 86_400) {
+    const hour = extendedHours ? DAILY_CLOSE_HOUR_ET.extended : DAILY_CLOSE_HOUR_ET.rth;
+    return wallToEpoch({ ...stamp, hour, minute: 0, second: 0 }, ET);
+  }
+  return wallToEpoch(stamp, ET) + seconds * 1000;
 }
 
 // ---------------------------------------------------------------- 摆动结构
@@ -111,21 +160,24 @@ export function findSwings(bars: PABar[], strength = SWING_STRENGTH): Swing[] {
   return out;
 }
 
+/** 把新确认的摆动点折进交替序列:方向换了就接上,同向只在更极端时顶掉上一个。返回它有没有进序列。 */
+function adopt(seq: Swing[], swing: Swing): boolean {
+  const last = seq[seq.length - 1];
+  if (last === undefined || last.kind !== swing.kind) {
+    seq.push(swing);
+    return true;
+  }
+  if (swing.kind === "high" ? swing.price > last.price : swing.price < last.price) {
+    seq[seq.length - 1] = swing;
+    return true;
+  }
+  return false;
+}
+
 /** 整理成严格高低交替:相邻同向只留更极端的那个。 */
 export function zigzag(swings: Swing[]): Swing[] {
   const out: Swing[] = [];
-  for (const swing of swings) {
-    if (!out.length) {
-      out.push(swing);
-      continue;
-    }
-    const last = out[out.length - 1]!;
-    if (last.kind !== swing.kind) {
-      out.push(swing);
-    } else if (swing.kind === "high" ? swing.price > last.price : swing.price < last.price) {
-      out[out.length - 1] = swing;
-    }
-  }
+  for (const swing of swings) adopt(out, swing);
   return out;
 }
 
@@ -167,21 +219,34 @@ export function readTrend(points: Swing[]): { trend: string; label: string } {
 
 export type PAEvent = PaEvent;
 
-/** 顺时间推进找收盘突破:同向记 BOS,反向记 CHoCH。 */
-export function breakEvents(
-  bars: PABar[], points: Swing[], strength = SWING_STRENGTH, keep = 6,
-): PAEvent[] {
-  const confirmed = new Map<number, Swing[]>();
-  for (const swing of points) {
-    const at = swing.index + strength;
-    if (!confirmed.has(at)) confirmed.set(at, []);
-    confirmed.get(at)!.push(swing);
-  }
+/** 一段 K 线从头走到尾留下的结构:截至最后一根的交替摆动序列、收盘突破、扫单。 */
+export interface StructureHistory {
+  /** 截至最后一根的交替序列(还没打 HH / HL 标签) */
+  points: Swing[];
+  /** 收盘突破,旧 → 新 */
+  events: PAEvent[];
+  /** 扫单,旧 → 新 */
+  sweeps: PaSweep[];
+}
 
+/** 顺时间走一遍,每一根只用它收盘时已经看得到的东西,后来的摆动点不回头改之前的判断:
+ *  · 分形要等右边 strength 根走完才算确认;同向相邻只留更极端的那个,也是确认一个折一个。
+ *  · 收盘越过当时还没被越过的那个前高 / 前低 → 结构事件:同向记 BOS,反向记 CHoCH。
+ *  · 影线刺穿当时序列里的某个摆动点(超过那一根自己的容差 tolAt(i))又收了回来 → 扫单;只查最后 sweepWindow 根。
+ *  同一段 K 线截短了再算,截断处之前的事件与扫单一条不变(priceaction.spec 钉着)。 */
+export function structureHistory(
+  bars: PABar[], tolAt: (index: number) => number, strength = SWING_STRENGTH,
+  keepEvents = 6, sweepWindow = 40, keepSweeps = 3,
+): StructureHistory {
+  const fractals = findSwings(bars, strength);
+  const seq: Swing[] = [];
   const events: PAEvent[] = [];
+  const sweeps: PaSweep[] = [];
+  let next = 0;
   let direction: string | null = null;
   let pendingHigh: Swing | null = null;
   let pendingLow: Swing | null = null;
+  const sweepFrom = Math.max(0, bars.length - sweepWindow);
 
   for (let i = 0; i < bars.length; i++) {
     const bar = bars[i]!;
@@ -197,12 +262,19 @@ export function breakEvents(
       events.push(makeEvent(kind, "down", i, bar, pendingLow));
       pendingLow = null;
     }
-    for (const swing of confirmed.get(i) ?? []) {
+    if (i >= sweepFrom) {
+      // 此刻的 seq 只有上一根为止确认的摆动点:这一根才确认的还没折进来
+      const sweep = sweepAt(bar, i, seq, tolAt(i));
+      if (sweep !== null) sweeps.push(sweep);
+    }
+    for (; next < fractals.length && fractals[next]!.index + strength <= i; next++) {
+      const swing = fractals[next]!;
+      if (!adopt(seq, swing)) continue;
       if (swing.kind === "high" && swing.price > bar.close) pendingHigh = swing;
       else if (swing.kind === "low" && swing.price < bar.close) pendingLow = swing;
     }
   }
-  return events.slice(-keep);
+  return { points: seq, events: events.slice(-keepEvents), sweeps: sweeps.slice(-keepSweeps) };
 }
 
 function makeEvent(kind: string, direction: string, index: number, bar: PABar, swing: Swing): PaEvent {
@@ -228,10 +300,12 @@ export function clusterLevels(
   const prices = points.map((s) => s.price).sort((a, b) => a - b);
   if (!prices.length || tol <= 0 || !last) return [];
 
+  // 对着这一簇最低的那个比,不对着上一个比:一个挨一个接下去,一簇能被接得比容差宽出好几倍,
+  // 画出来的那条线(簇的均价)上可能一个摆动点都没有
   const clusters: number[][] = [[prices[0]!]];
   for (const price of prices.slice(1)) {
     const lastCluster = clusters[clusters.length - 1]!;
-    if (price - lastCluster[lastCluster.length - 1]! <= tol) lastCluster.push(price);
+    if (price - lastCluster[0]! <= tol) lastCluster.push(price);
     else clusters.push([price]);
   }
 
@@ -306,7 +380,7 @@ export function findFvgs(bars: PABar[], tol: number, keep = 4): PaFvg[] {
   return out.slice(-keep);
 }
 
-/** 推动最近一次突破之前的最后一根反向 K 线,以及它是否已被回踩。 */
+/** 推动最近一次突破之前的最后一根反向 K 线,以及突破之后它有没有被回踩。 */
 export function orderBlock(
   bars: PABar[], event: PAEvent | null, lookback = 25,
 ): PaOrderBlock | null {
@@ -316,7 +390,9 @@ export function orderBlock(
   for (let i = end; i > Math.max(-1, end - lookback); i--) {
     const bar = bars[i]!;
     if (body(bar) > 0 && bullish(bar) === wantBullish) {
-      const after = bars.slice(i + 2);
+      // 回踩从突破之后那一根数起:突破之前的那几根是把价格推出去的那一段,还没离开谈不上回来。
+      // 紧挨着它的下一根不算(开盘价接着它的收盘价,必然落在它的范围里)。
+      const after = bars.slice(Math.max(i + 2, end + 1));
       const mitigated = after.some((b) => b.low <= bar.high && b.high >= bar.low);
       return {
         side: wantBullish ? "bear" : "bull",
@@ -330,27 +406,18 @@ export function orderBlock(
   return null;
 }
 
-/** 影线刺穿前高/前低但收了回来 —— 止损被扫。 */
-export function findSweeps(
-  bars: PABar[], points: Swing[], tol: number,
-  strength = SWING_STRENGTH, window = 40, keep = 3,
-): PaSweep[] {
-  const out: PaSweep[] = [];
-  for (let j = Math.max(0, bars.length - window); j < bars.length; j++) {
-    const bar = bars[j]!;
-    for (const swing of points) {
-      if (swing.index + strength >= j || j - swing.index > 60) continue;
-      if (swing.kind === "high" && bar.high > swing.price + tol && bar.close < swing.price) {
-        out.push(makeSweep("bear", bar, j, swing));
-        break;
-      }
-      if (swing.kind === "low" && bar.low < swing.price - tol && bar.close > swing.price) {
-        out.push(makeSweep("bull", bar, j, swing));
-        break;
-      }
+/** 影线刺穿前高/前低但收了回来 —— 止损被扫。seq 是这一根之前确认的交替序列,从旧到新找,认第一个;60 根以前的不看。 */
+function sweepAt(bar: PABar, index: number, seq: readonly Swing[], tol: number): PaSweep | null {
+  for (const swing of seq) {
+    if (index - swing.index > 60) continue;
+    if (swing.kind === "high" && bar.high > swing.price + tol && bar.close < swing.price) {
+      return makeSweep("bear", bar, index, swing);
+    }
+    if (swing.kind === "low" && bar.low < swing.price - tol && bar.close > swing.price) {
+      return makeSweep("bull", bar, index, swing);
     }
   }
-  return out.slice(-keep);
+  return null;
 }
 
 function makeSweep(direction: string, bar: PABar, index: number, swing: Swing): PaSweep {
@@ -492,6 +559,31 @@ export function marketContext(bars: PABar[], atrValue: number): PaContext {
 }
 
 // ---------------------------------------------------------------- 打分
+type EvidenceGroup = PaEvidence["group"];
+
+/** 三个子分各管哪几条依据、全部同向时能到多少。结构:摆动结构 + 最近一次结构事件 + 均线排列;
+ *  位置:区间位置 + 贴近关键位;确认:扫单 + 近端形态 + 量能。只是把同一张权重表分开摆,没有新的权重。 */
+const SUB_SCORES: Array<{ key: EvidenceGroup; label: string; max: number }> = [
+  { key: "structure", label: "结构", max: W.trend + Math.max(W.choch, W.bos) + W.ema },
+  { key: "location", label: "位置", max: W.position + W.level },
+  { key: "confirm", label: "确认", max: W.sweep + W.pattern + W.volume },
+];
+
+/** 把打分表按子分分开加。三个数并排看:位置好不能抵掉结构坏。子分不夹:三个加起来可以超过 ±100,总分才夹在 ±100 之内。 */
+export function subScores(evidence: PaEvidence[]): PaSubScore[] {
+  return SUB_SCORES.map(({ key, label, max }) => {
+    const items = evidence.filter((e) => e.group === key);
+    return {
+      key,
+      label,
+      score: pyRound(items.reduce((acc, e) => acc + e.weight, 0), 1),
+      max,
+      mixed: items.some((e) => e.weight > 0) && items.some((e) => e.weight < 0),
+    };
+  });
+}
+
+/** 打分只看已收盘的 K 线:bars 的最后一根就是最后一根收盘的。 */
 function score(
   trend: { trend: string; label: string },
   events: PAEvent[],
@@ -500,26 +592,28 @@ function score(
   patterns: PaPattern[],
   levels: PaLevel[],
   atrValue: number,
-  last: number,
+  lastBar: PABar,
 ): [number, PaEvidence[]] {
+  const last = lastBar.close;
   const evidence: PaEvidence[] = [];
-  const add = (label: string, detail: string, weight: number) =>
-    evidence.push({ label, detail, weight: pyRound(weight, 1) });
+  const add = (group: EvidenceGroup, label: string, detail: string, weight: number) =>
+    evidence.push({ group, label, detail, weight: pyRound(weight, 1) });
 
-  if (trend.trend === "up") add("摆动结构", trend.label, W.trend);
-  else if (trend.trend === "down") add("摆动结构", trend.label, -W.trend);
-  else add("摆动结构", trend.label, 0.0);
+  if (trend.trend === "up") add("structure", "摆动结构", trend.label, W.trend);
+  else if (trend.trend === "down") add("structure", "摆动结构", trend.label, -W.trend);
+  else add("structure", "摆动结构", trend.label, 0.0);
 
   if (events.length) {
     const latest = events[events.length - 1]!;
     const sign = latest["direction"] === "up" ? 1.0 : -1.0;
     const weight = latest["kind"] === "CHoCH" ? W.choch : W.bos;
-    add("最近一次结构事件", latest["text"] as string, sign * weight);
+    add("structure", "最近一次结构事件", latest["text"] as string, sign * weight);
   }
 
   const pos = ctx["range_pos_pct"] as number | null | undefined;
   if (pos !== null && pos !== undefined) {
     add(
+      "location",
       "区间位置",
       `收盘位于近 ${ctx["range_bars"]} 根区间的 ${fmtF(pos, 0)}%` +
       `(${pyFloat(ctx["range_low"] as number)} ~ ${pyFloat(ctx["range_high"] as number)})`,
@@ -530,6 +624,7 @@ function score(
   if (ctx["ema_stack"]) {
     const bullishStack = ctx["ema_stack"] === "多头排列";
     add(
+      "structure",
       "均线动能",
       `EMA20 ${bullishStack ? "在上" : "在下"} EMA50(${ctx["ema_stack"]}),` +
       `收盘相对 EMA20 ${fmtSF((ctx["vs_ema20_pct"] as number) || 0.0, 2)}%`,
@@ -540,6 +635,7 @@ function score(
   if (sweeps.length) {
     const latestSweep = sweeps[sweeps.length - 1]!;
     add(
+      "confirm",
       "流动性扫单",
       latestSweep["text"] as string,
       W.sweep * (latestSweep["direction"] === "bull" ? 1.0 : -1.0),
@@ -553,6 +649,7 @@ function score(
     const net = fresh.reduce((acc, p) => acc + (p["direction"] === "bull" ? 1 : -1), 0);
     if (net) {
       add(
+        "confirm",
         "近端形态",
         `${fresh.map((p) => p["name"]).join("、")}(${newest} 根之前)`,
         W.pattern * (net > 0 ? 1.0 : -1.0),
@@ -570,21 +667,25 @@ function score(
     if (Math.abs((near["price"] as number) - last) <= atrValue * 0.35) {
       const atResistance = near["side"] === "resistance";
       add(
+        "location",
         "贴近关键位",
-        `现价紧贴${atResistance ? "阻力" : "支撑"} ${pyFloat(near["price"] as number)}` +
+        `收盘紧贴${atResistance ? "阻力" : "支撑"} ${pyFloat(near["price"] as number)}` +
         `(${near["touches"]} 次触碰)`,
         atResistance ? -W.level : W.level,
       );
     }
   }
 
+  // 放量算谁的,看放量的那一根自己收阳还是收阴;不看它在均线哪一边(那是「均线动能」已经算过的事)
   const rel = ctx["rel_volume"] as number | null | undefined;
   if (rel !== null && rel !== undefined && rel >= 1.5) {
-    const up = ((ctx["vs_ema20_pct"] as number) || 0.0) >= 0;
+    const sign = lastBar.close > lastBar.open ? 1.0 : lastBar.close < lastBar.open ? -1.0 : 0.0;
     add(
+      "confirm",
       "量能",
-      `最后一根量能是近 20 根均量的 ${fmtF(rel, 2)} 倍,价格${up ? "在" : "跌破"}均线`,
-      W.volume * (up ? 1.0 : -1.0),
+      `最后一根收盘的 K 线量能是近 20 根均量的 ${fmtF(rel, 2)} 倍,这一根` +
+      `${sign > 0 ? "收阳" : sign < 0 ? "收阴" : "开收同价,不记方向"}`,
+      W.volume * sign,
     );
   }
 
@@ -601,7 +702,6 @@ export function biasOf(scoreValue: number): { bias: string; label: string } {
 }
 
 // ---------------------------------------------------------------- 总装
-/** 一段 K 线 → 完整 PA 读盘结果。纯函数。now 传 epochMs(视作美东墙钟直接比较)。 */
 /** 收盘价简单均线,与 result.bars(最后 count 根)逐根对齐;历史不够一个周期处为 null。
  *  显式切片求和(与 Python 版同一加法顺序),再 pyRound 4 位,保证两侧逐字节一致。 */
 export function movingAverages(
@@ -626,39 +726,116 @@ export function movingAverages(
   return out;
 }
 
+/** 调用方给的时刻,以及它对这组 K 线知道的三件事(都只影响「最后一根收没收盘」):
+ *  · barsAsOfMs:这组 K 线是什么时候从券商取的。缓存里拿出来的一份早于 epochMs:取的时候最后一根没走完,
+ *    现在钟点过了它也还是半根,所以收没收盘对着它判;不给就当成刚取的。
+ *  · feed:出自哪一档行情(券商给的)。delayed = 延迟档,数据本身的时刻比取数时刻最多晚 DELAYED_FEED_MAX_MS,
+ *    钟点到了数据未必到齐,所以再往前退这么多;unknown = 券商说不准,按延迟对待;live 或不给 = 只看钟点。
+ *  · extendedSession:这个标的有没有盘前盘后(日线几点走完用)。不给就跟 extendedHours 走;指数没有,给 false。 */
+export interface PaClock {
+  epochMs: number;
+  barsAsOfMs?: number;
+  feed?: BarsFeed;
+  extendedSession?: boolean;
+}
+
+interface Split {
+  bars: PABar[];
+  /** 没进判定的那一根;最后一根已收盘是 null */
+  open: PABar | null;
+  /** 最新一根按钟点几点走完 */
+  closesAt: number | null;
+  /** 钟点到了却仍没让它进判定的原因(延迟档 / 说不准);钟点没到是 null */
+  waiting: PaForming["waiting"];
+}
+
+/** 把最后一根没走完的摘出来。不给 now = 这是一段历史切片,全部按已收盘;
+ *  给了 now 但算不出最后一根几点走完(周期不认识、时间戳读不懂),拿不准就不让它进判定。 */
+function splitForming(all: PABar[], timeframe: string, clock: PaClock | null, extendedHours: boolean): Split {
+  const newest = all[all.length - 1];
+  if (clock === null || newest === undefined) return { bars: all, open: null, closesAt: null, waiting: null };
+  const closesAt = barCloseEpochMs(newest.time, timeframe, clock.extendedSession ?? extendedHours);
+  const asOf = clock.barsAsOfMs ?? clock.epochMs;
+  const lagging = clock.feed === "delayed" || clock.feed === "unknown" ? clock.feed : null;
+  const dataAsOf = asOf - (lagging ? DELAYED_FEED_MAX_MS : 0);
+  if (closesAt !== null && closesAt <= dataAsOf) return { bars: all, open: null, closesAt, waiting: null };
+  const waiting = closesAt !== null && closesAt <= asOf ? lagging : null;
+  return { bars: all.slice(0, -1), open: newest, closesAt, waiting };
+}
+
+/** 正在形成的那一根:把它当成已经收盘再走一遍同一套规则,落在它身上的突破 / 扫单就是「若此刻收盘会成立的」。只作提示。 */
+function formingBar(all: PABar[], split: Split & { open: PABar }, strength: number): PaForming {
+  const { open, closesAt, waiting } = split;
+  const atrs = atrSeries(all);
+  const live = structureHistory(all, (i) => tolOf(atrs[i] ?? 0.0, all[i]!.close), strength);
+  const index = all.length - 1;
+  const hints: string[] = [];
+  for (const event of live.events) {
+    if (event.index !== index) continue;
+    const up = event.direction === "up";
+    hints.push(
+      `若此刻收盘会记一次 ${event.kind}:现价 ${pyFloat(event.close)} 在前${up ? "高" : "低"} ` +
+      `${pyFloat(event.level)} 之${up ? "上" : "下"}`,
+    );
+  }
+  for (const sweep of live.sweeps) {
+    if (sweep.index !== index) continue;
+    const bear = sweep.direction === "bear";
+    hints.push(
+      `若此刻收盘会记一次扫单:影线${bear ? "上破前高" : "下破前低"} ${pyFloat(sweep.level)},` +
+      `现价回到了它${bear ? "下" : "上"}方`,
+    );
+  }
+  return {
+    time: open.time,
+    closes_at: closesAt === null ? null : stampAt(closesAt, ET),
+    waiting,
+    open: open.open, high: open.high, low: open.low, close: open.close, volume: open.volume,
+    hints,
+  };
+}
+
+/** 一段 K 线 → 完整 PA 读盘结果。纯函数:现在几点由 now 给(epoch 毫秒,或带上这组 K 线取数时刻的 PaClock)。 */
 export function analyze(
   rows: Array<Record<string, unknown>>,
   symbol = "",
   timeframe = "",
   strength = SWING_STRENGTH,
-  now: { epochMs: number; etWallMinutes?: number } | number | null = null,
+  now: PaClock | number | null = null,
   extendedHours = false,
 ): PaAnalysis {
-  const bars = toBars(rows);
+  const all = toBars(rows);
+  const clock = typeof now === "number" ? { epochMs: now } : now;
+  const split = splitForming(all, timeframe, clock, extendedHours);
+  const { bars, open } = split;
   if (bars.length < MIN_BARS) {
     throw new PriceActionError(
-      `只有 ${bars.length} 根 K 线,不足以读出结构(至少需要 ${MIN_BARS} 根)。` +
+      `只有 ${bars.length} 根${open ? "已收盘的" : ""} K 线,不足以读出结构(至少需要 ${MIN_BARS} 根)。` +
       "换个更长的周期试试;如果这是刚开盘、K 线还在一根根长出来,过一会儿再看。",
     );
   }
 
-  const atrValue = atr(bars);
-  const last = bars[bars.length - 1]!.close;
-  const tol = atrValue > 0 ? atrValue * 0.35 : Math.abs(last) * 0.0005;
+  // 从这里往下,bars 全是已收盘的:最后一根就是判定算到的那一根
+  const lastBar = bars[bars.length - 1]!;
+  const atrs = atrSeries(bars);
+  const atrValue = atrs[atrs.length - 1] ?? 0.0;
+  const last = lastBar.close;
+  const tol = tolOf(atrValue, last);
 
-  const points = labelSwings(zigzag(findSwings(bars, strength)));
+  const history = structureHistory(bars, (i) => tolOf(atrs[i] ?? 0.0, bars[i]!.close), strength);
+  const points = labelSwings(history.points);
   const trend = readTrend(points);
-  const events = breakEvents(bars, points, strength);
+  const { events, sweeps } = history;
   const levels = clusterLevels(bars, points, tol, last);
   const gaps = findFvgs(bars, tol);
-  const sweeps = findSweeps(bars, points, tol, strength);
   const patterns = detectPatterns(bars, atrValue);
   const ctx = marketContext(bars, atrValue);
   const block = orderBlock(bars, events.length ? events[events.length - 1]! : null);
   const equals = equalLevels(points, tol);
 
-  const [scoreValue, evidence] = score(trend, events, ctx, sweeps, patterns, levels, atrValue, last);
+  const [scoreValue, evidence] = score(trend, events, ctx, sweeps, patterns, levels, atrValue, lastBar);
   const bias = biasOf(scoreValue);
+  const newest = all[all.length - 1]!;
 
   // 最后四项(age_seconds / extended_hours / warnings / readout)要等前面都算完才能填,所以这里先松着,返回处认成契约类型
   const result: Record<string, any> = {
@@ -667,8 +844,10 @@ export function analyze(
     timeframe_label: (TIMEFRAMES[timeframe]?.["label"] as string) ?? timeframe,
     bar_count: bars.length,
     first_bar: bars[0]!.time,
-    last_bar: bars[bars.length - 1]!.time,
-    last: pyRound(last, 4),
+    last_bar: newest.time,
+    closed_bar: lastBar.time,
+    forming: open ? formingBar(all, { ...split, open }, strength) : null,
+    last: pyRound(newest.close, 4),
     atr: pyRound(atrValue, 4),
     swing_strength: strength,
     score: pyRound(scoreValue, 1),
@@ -687,14 +866,16 @@ export function analyze(
     patterns,
     context: ctx,
     evidence,
+    sub_scores: subScores(evidence),
     plan: makePlan(bias.bias, points, levels, gaps, block, atrValue, ctx),
-    bars: bars.slice(-CHART_BARS).map((b) => ({
+    // 图照旧画到最新一根:正在形成的那一根也在里面,均线跟着它走(只作图)
+    bars: all.slice(-CHART_BARS).map((b) => ({
       time: b.time, open: b.open, high: b.high, low: b.low, close: b.close, volume: b.volume,
     })),
-    ma: movingAverages(bars),
+    ma: movingAverages(all),
   };
   result["extended_hours"] = extendedHours;
-  result["warnings"] = makeWarnings(result, typeof now === "number" ? now : now?.epochMs ?? null, extendedHours);
+  result["warnings"] = makeWarnings(result, clock, split.closesAt, extendedHours);
   result["readout"] = makeReadout(result);
   return result as PaAnalysis;
 }
@@ -725,7 +906,7 @@ function makePlan(
       "才算突破成立;只有影线穿过按扫单处理";
   } else if (isBull) {
     plan["confirm"] =
-      `上方在这段样本里没有留下前高:现价已是近 ${ctx["range_bars"] ?? 0} 根的高位` +
+      `上方在这段样本里没有留下前高:收盘已是近 ${ctx["range_bars"] ?? 0} 根的高位` +
       `(区间上沿 ${pyFloat(ctx["range_high"] as number)}),` +
       "没有可参照的突破确认位,追高缺少结构依据";
   } else if (isBear && support) {
@@ -734,7 +915,7 @@ function makePlan(
       "才算破位成立;只有影线穿过按扫单处理";
   } else if (isBear) {
     plan["confirm"] =
-      `下方在这段样本里没有留下前低:现价已是近 ${ctx["range_bars"] ?? 0} 根的低位` +
+      `下方在这段样本里没有留下前低:收盘已是近 ${ctx["range_bars"] ?? 0} 根的低位` +
       `(区间下沿 ${pyFloat(ctx["range_low"] as number)}),` +
       "没有可参照的破位确认位";
   } else {
@@ -790,7 +971,7 @@ function makePlan(
     if (near) {
       plan["watch"].push(
         `关键位 ${pyFloat(near["price"] as number)}(${near["touches"]} 次触碰,` +
-        `距现价 ${fmtSF(near["distance_pct"] as number, 2)}%)`,
+        `距收盘 ${fmtSF(near["distance_pct"] as number, 2)}%)`,
       );
     }
   }
@@ -802,9 +983,16 @@ function makePlan(
 }
 
 function makeWarnings(
-  result: Record<string, any>, nowEpochMs: number | null, extendedHours = false,
+  result: Record<string, any>, clock: PaClock | null, closesAt: number | null, extendedHours = false,
 ): string[] {
+  const nowEpochMs = clock?.epochMs ?? null;
   const out: string[] = [];
+  if (clock?.feed === "delayed") {
+    out.push(
+      "行情是延迟的:券商给的是 15–20 分钟前的数据,现价与最新一根都不是此刻的;" +
+      "判定只算到数据确定到齐的那一根。",
+    );
+  }
   if (extendedHours) {
     out.push(
       "含盘前盘后:那几段成交稀薄,ATR 会偏小、摆动点会偏碎," +
@@ -826,11 +1014,17 @@ function makeWarnings(
   }
 
   const age = barAgeSeconds(result["last_bar"], nowEpochMs);
-  if (age !== null) {
+  if (age !== null && nowEpochMs !== null) {
     result["age_seconds"] = Math.trunc(age);
-    if (age > 1800) {
+    // 「行情停了」从最新一根走完那一刻起算:它还在走的时候,起点离现在多远都不说明什么。
+    // 日线不报这一条:走完之后隔一夜才有下一根,半小时没有新 K 线是常态。
+    const daily = Number(TIMEFRAMES[result["timeframe"]]?.["seconds"]) >= 86_400;
+    const idle = closesAt === null ? age : (nowEpochMs - closesAt) / 1000.0;
+    if (!daily && idle > 1800) {
       out.push(
-        `最后一根 K 线停在 ${result["last_bar"]},距现在 ${Math.trunc(age / 60)} 分钟` +
+        (closesAt === null
+          ? `最后一根 K 线停在 ${result["last_bar"]},距现在 ${Math.trunc(age / 60)} 分钟`
+          : `最后一根 K 线(${result["last_bar"]})走完之后已经 ${Math.trunc(idle / 60)} 分钟没有新的 K 线`) +
         "——可能是休市,也可能是行情延迟或订阅缺失。",
       );
     }
@@ -848,8 +1042,6 @@ export function barAgeSeconds(lastBar: string, nowEpochMs: number | null): numbe
   // 这里从 nowEpochMs 反推 ET 墙钟,再做墙钟差。
   return (nowEpochMs - etWallToEpochMs(stamp)) / 1000.0;
 }
-
-import { ET, wallToEpoch } from "./tz.js";
 
 function etWallToEpochMs(p: {
   year: number; month: number; day: number; hour: number; minute: number; second: number;
@@ -916,13 +1108,37 @@ function makeReadout(result: Record<string, any>): string[] {
 export function factsText(result: PaAnalysis & Partial<Pick<PaAnalyzeResult, "htf" | "agreement">>): string {
   const ctx = result["context"] ?? {};
   const plan = result["plan"] ?? {};
+  const forming = result["forming"] ?? null;
   const lines: string[] = [
     `标的:${result["symbol"] || "-"};周期:${result["timeframe_label"] || "-"};` +
-    `K 线 ${result["bar_count"] ?? 0} 根,最后一根 ${result["last_bar"] || "-"};` +
+    `${forming ? "已收盘 " : ""}K 线 ${result["bar_count"] ?? 0} 根,` +
+    `最后一根 ${result["closed_bar"] || result["last_bar"] || "-"};` +
     `现价 ${pyFloat(result["last"])};ATR ${pyFloat(result["atr"])}。`,
+  ];
+  if (forming) {
+    lines.push(
+      (forming["waiting"]
+        ? `数据未到齐:${forming["time"]} 那根按钟点 ${forming["closes_at"]} 已经走完,但` +
+          `${forming["waiting"] === "delayed" ? "行情是延迟的" : "还说不准行情是不是延迟的"}` +
+          "(延迟档晚 15–20 分钟),它的数据可能还没到齐,先当作没走完;现价取自它。"
+        : `正在形成:${forming["time"]} 那根还没收盘` +
+          `${forming["closes_at"] ? `(${forming["closes_at"]} 收盘)` : ""},现价取自它。`) +
+      "下面的判定全部只算到已收盘的那一根,这一根只作提示。",
+    );
+    for (const hint of forming["hints"] ?? []) lines.push(`未确认:${hint}(收盘之前不算数)。`);
+  }
+  lines.push(
     `软件判定:${result["bias_label"]}(打分 ${fmtSF(result["score"] ?? 0.0, 0)}/100);` +
     `结构:${result["trend_label"]}。`,
-  ];
+  );
+  const subs = result["sub_scores"] ?? [];
+  if (subs.length) {
+    lines.push(
+      `子分(各自相加,互不抵消):${subs
+        .map((sub) => `${sub["label"]} ${sub["score"] > 0 ? "+" : ""}${sub["score"]}/${sub["max"]}${sub["mixed"] ? "(组内多空都有)" : ""}`)
+        .join(";")}。`,
+    );
+  }
   if (result["swings"]?.length) {
     lines.push(
       `摆动序列(旧→新):${result["swings"]
@@ -940,7 +1156,7 @@ export function factsText(result: PaAnalysis & Partial<Pick<PaAnalyzeResult, "ht
         .map(
           (l: any) =>
             `${l["side"] === "resistance" ? "阻力" : "支撑"} ${pyFloat(l["price"])}` +
-            `(${l["touches"]} 次触碰,距现价 ${fmtSF(l["distance_pct"], 2)}%)`,
+            `(${l["touches"]} 次触碰,距收盘 ${fmtSF(l["distance_pct"], 2)}%)`,
         )
         .join(";")}。`,
     );
@@ -983,7 +1199,7 @@ export function factsText(result: PaAnalysis & Partial<Pick<PaAnalyzeResult, "ht
     );
   }
   if (ctx["rel_volume"] !== null && ctx["rel_volume"] !== undefined) {
-    lines.push(`量能:最后一根是近 20 根均量的 ${fmtF(ctx["rel_volume"], 2)} 倍。`);
+    lines.push(`量能:最后一根收盘的 K 线是近 20 根均量的 ${fmtF(ctx["rel_volume"], 2)} 倍。`);
   }
   if (ctx["session"]) {
     const session = ctx["session"];
@@ -997,7 +1213,8 @@ export function factsText(result: PaAnalysis & Partial<Pick<PaAnalyzeResult, "ht
     const sup = higher["support"];
     const res = higher["resistance"];
     lines.push(
-      `高周期(${higher["timeframe_label"]}):${higher["bias_label"]},${higher["trend_label"]};` +
+      `高周期(${higher["timeframe_label"]},算到 ${higher["closed_bar"] || "-"} 那根收盘):` +
+      `${higher["bias_label"]},${higher["trend_label"]};` +
       `支撑 ${sup !== null && sup !== undefined ? pyFloat(sup) : "该样本内无"} / ` +
       `阻力 ${res !== null && res !== undefined ? pyFloat(res) : "该样本内无"}。` +
       `${result["agreement"]?.["text"] || ""}`,
@@ -1027,6 +1244,7 @@ export function htfSummary(result: PaAnalysis): PaHtfSummary {
       : null) ?? null,
     resistance: plan["resistance"]?.["price"] ?? null,
     support: plan["support"]?.["price"] ?? null,
+    closed_bar: result["closed_bar"],
   };
 }
 
@@ -1044,10 +1262,17 @@ export function agreement(
 
   const a = sign(primary["bias"]);
   const b = sign(higher["bias"] as string);
-  if (a === 0 || b === 0) {
+  if (b === 0) {
     return {
       state: "unclear",
       text: `${higher["timeframe_label"]} 方向不明,低周期信号缺少高周期背书。`,
+    };
+  }
+  if (a === 0) {
+    // 不明的是本周期自己:别把这句话安到高周期头上
+    return {
+      state: "unclear",
+      text: `本周期自己方向不明,谈不上顺势逆势;${higher["timeframe_label"]} 是${higher["bias_label"]}。`,
     };
   }
   if (a === b) {

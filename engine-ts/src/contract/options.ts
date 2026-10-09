@@ -1,6 +1,6 @@
 /** 期权墙(optionwall.analyze 的结果)。价位提醒把整份存在盯单上,所以先于 options.wall 进了契约。类型文件,不 import 任何东西。 */
 
-/** 某一侧最大的那堵墙:现价上方的 call / 下方的 put。 */
+/** 某一侧最大的那堵墙:现价上方的 call / 下方的 put。正好在现价上的那一档两边都不算;一样大取离现价近的。 */
 export interface WallSide {
   strike: number;
   /** 未平仓量或成交量(张) */
@@ -15,9 +15,16 @@ export interface OptionWallStrike {
   put_oi: number;
   call_vol: number;
   put_vol: number;
-  /** 这个行权价上的净 gamma 敞口(美元 / 每 1% 波动) */
+  /** 这个行权价上的净 gamma 敞口(美元 / 每 1% 波动);这一档既没有模型 gamma 也没有隐含波动率就是 0 */
   net_gex: number;
 }
+
+/**
+ * gamma 环境。符号建立在「做市商持有看涨、卖出看跌」这个假设上。
+ * positive / negative = 净 GEX 的正负;neutral = 有分量而且正好抵消;
+ * unknown = 什么都没称出来(总量为 0:没有隐含波动率与模型 gamma,或者没有未平仓量),不是 0,更不是「抵消」
+ */
+export type GexRegime = "positive" | "negative" | "neutral" | "unknown";
 
 /** 所有未平仓期权内在价值之和最小的行权价。统计量,不是预言。 */
 export interface MaxPain {
@@ -40,16 +47,23 @@ export interface OptionWallCore {
   put_vol_wall: WallSide | null;
   /** 行权价太少(< 5 个)时不给 */
   max_pain: MaxPain | null;
-  net_gex: number;
-  /** 净 GEX 由负转正的价位;跨不过零就是 null,不外推 */
+  /** 净 gamma 敞口(美元 / 每 1% 波动):看涨记正、看跌记负。什么都没称出来(总量为 0)时是 null */
+  net_gex: number | null;
+  /** 不分正负加起来的总量;算不出是 null */
+  gross_gex: number | null;
+  /** 净 ÷ 总(−1 … 1):离 0 越近,看涨与看跌的 gamma 越接近抵消。「算不算中性」由看的人按这个数判,这里不设门槛 */
+  net_gex_ratio: number | null;
+  /** 净 GEX 变号的价位里离现价最近的那个。取到的行权价范围里不变号、或那条曲线在现价处的正负和 net_gex 对不上,都是 null */
   gamma_flip: number | null;
-  regime: "positive" | "negative";
+  regime: GexRegime;
   total_call_oi: number;
   total_put_oi: number;
   pc_ratio_oi: number | null;
   pc_ratio_volume: number | null;
-  /** 链上有没有隐含波动率:没有就算不了 gamma 那几样 */
+  /** 链上有没有隐含波动率:没有就算不了 gamma 翻转位(净 GEX 还可以靠券商的模型 gamma) */
   has_greeks: boolean;
+  /** 有几行没等到未平仓量(券商在等待时间里没推那一笔):这些行不在墙、净 GEX、最大痛点里。0 = 都到了 */
+  oi_missing: number;
   warnings: string[];
   readout: string[];
 }
@@ -62,12 +76,26 @@ export interface OptionsWallParams {
   width?: number | string;
 }
 
-/** 取链的那一层(services/marketData 的 wallFor)再补两样。 */
+/** 这份链取了哪一段行权价。行情线路有限,要看得宽就得抽着取:近处每档都取,越远只取越整的档 */
+export interface WallCoverage {
+  /** 取到的最低与最高一档 */
+  lower: number;
+  upper: number;
+  /** 取到数的有多少档 */
+  strikes: number;
+  /** 这一段里链上一共有多少档。券商没给就是 null */
+  grid_strikes: number | null;
+  /** 是不是抽着取的:要订的档数比这一段里链上的档数少(个别档合约确认不了不算) */
+  thinned: boolean;
+}
+
+/** 取链的那一层(services/marketData 的 wallFor)再补三样。 */
 export interface OptionWall extends OptionWallCore {
   /** 这个标的可选的到期日 */
   expiries: string[];
   /** 现价是怎么来的:quote = 标的的报价;parity = 拿不到报价,用期权的买卖权平价反推的(富途),界面要标出来 */
   spot_source: "quote" | "parity";
+  coverage: WallCoverage;
 }
 
 // ---------------------------------------------------------------- 蝴蝶测算(options.fly_plan)
@@ -335,14 +363,14 @@ export interface OptionsSpot {
 }
 
 // ---------------------------------------------------------------- SPX 日内剧本(options.playbook*)
-// 三条预期波动区间(昨日 / 盘初 / 当前剩余)、区间推出来的剧本状态、期权墙上的加速档。只读,不下单。
+// 预期波动区间(昨日 / 盘初 / 当前剩余,以及由后两条拼出来的今日区间)、区间推出来的剧本状态、期权墙上的加速档。只读,不下单。
 // 设计与口径见 docs/features/playbook.md。
 
 /** 一条预期波动区间:平值跨式(看涨 + 看跌的中间价)× √(π/2),围着锚上下各一份 */
 export interface PlaybookBand {
   /** 取价的时刻(epoch 毫秒) */
   at: number;
-  /** 锚:昨日口径是上一个收盘价,另两条是取价那一刻的现价 */
+  /** 锚:昨日口径是上一个收盘价;盘初与当前剩余是取价那一刻的现价;今日区间是盘初定价的那个锚 */
   anchor: number;
   /** 取跨式的行权价(离锚最近的那一档) */
   strike: number;
@@ -358,7 +386,17 @@ export interface PlaybookBand {
   source: "live" | "backfill";
 }
 
-/** B2 = 站上当前区间上沿(上沿扩展);B3 = 跌破昨日区间下沿(失守续探);R = 两条线之间;none = 线还不全,判不了 */
+/** 今日区间的锚:09:35 的指数价。live = 09:35 那一刻当场读的;backfill = 没赶上那一刻,取的是 09:35 那根分钟线的开盘价 */
+export interface PlaybookAnchor {
+  at: number;
+  price: number;
+  source: "live" | "backfill";
+}
+
+/**
+ * B2 = 站上今日区间上沿(上沿扩展;每取到新一格判一次);B3 = 跌破昨日区间下沿(失守续探;每一笔现价都判,压过 B2);
+ * R = 两条线之间;none = 线还不全,判不了
+ */
 export type PlaybookState = "B2" | "B3" | "R" | "none";
 
 export interface PlaybookEvent {
@@ -384,9 +422,12 @@ export interface PlaybookWall {
   call_wall: WallSide | null;
   put_wall: WallSide | null;
   gamma_flip: number | null;
-  net_gex: number;
-  regime: "positive" | "negative";
+  net_gex: number | null;
+  net_gex_ratio: number | null;
+  regime: GexRegime;
   strikes: OptionWallStrike[];
+  coverage: WallCoverage;
+  oi_missing: number;
   warnings: string[];
 }
 
@@ -399,13 +440,22 @@ export interface PlaybookSnapshot {
   /** 最近一次读到的现价;不在常规时段、没连券商时是 null */
   price: number | null;
   price_at: number | null;
-  bands: { prior: PlaybookBand | null; open: PlaybookBand | null; current: PlaybookBand | null };
+  /**
+   * current = 当前剩余:围着取价那一刻的现价;day = 今日区间:09:35 的锚 ± 当前剩余的预期波动(B2 判的是它的上沿)。
+   * day 是由那个锚与 current 拼出来的,缺一样就是 null;它不要 open(盘初的跨式补不到的日子照样有)
+   */
+  bands: { prior: PlaybookBand | null; open: PlaybookBand | null; current: PlaybookBand | null; day: PlaybookBand | null };
   state: PlaybookState;
   /** 现在这个状态是哪条线触发的(R / none 时是 null) */
   trigger: number | null;
   since: number | null;
-  /** 此刻的两条触发线:b2 = 当前区间上沿,b3 = 昨日区间下沿 */
+  /** 此刻的两条触发线:b2 = 今日区间上沿,b3 = 昨日区间下沿 */
   lines: { b2: number | null; b3: number | null };
+  /**
+   * B2 失效时丢掉的那条线;不是 null = 还没重新上膛:回到今日区间里再站上去、或重新站回这条线之上,才算新的一次
+   * (区间随时间收窄,失效那一格现价多半还在新的上沿之上)
+   */
+  b2_lost: number | null;
   t1: number | null;
   t2: number | null;
   accel: PlaybookAccel | null;

@@ -1,6 +1,7 @@
 // K线 PA:把引擎 pa.analyze 的结果翻译成 spec。图上每条线都对应引擎算出的一个字段:
 //   bars → 蜡烛与量能   ma → 均线(与 bars 逐根对齐)   levels → 关键位虚线(支撑绿 / 阻力红)
 //   fvgs → FVG 色块      order_block → 订单块         swings → 摆动点(最近 8 个)   last → 现价
+//   forming → 最后一根没进判定时,在它上面画一条竖线:还在走是「形成中」,延迟行情数据没到齐是「未到齐」
 import type { ChartSpec } from './spec';
 
 const MA_STYLE: Record<number, string> = { 5: 'orange', 10: 'blue', 20: 'purple' };
@@ -47,6 +48,7 @@ export function paSpec(r: any): ChartSpec {
           ]
         : []),
     ],
+    vlines: r?.forming ? [{ time: r.forming.time, color: 'orange', dash: [2, 2], label: r.forming.waiting ? '未到齐' : '形成中' }] : [],
     markers: (r?.swings || []).slice(-8).map((s: any) => ({
       time: s.time,
       price: s.price,

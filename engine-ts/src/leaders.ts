@@ -417,3 +417,30 @@ export function screenLeaders(members: readonly LeaderMember[], benchBars: reado
     notes,
   };
 }
+
+// ---------------------------------------------------------------- 今天新进第二阶段的
+
+function dayOf(bar: DailyBarIn | undefined): string {
+  return String(bar?.date ?? bar?.time ?? "").slice(0, 10);
+}
+
+/**
+ * 最新那根日线上**新进**第二阶段的行:今天 8 条全过,而截到上一根为止还没全过。信号成绩单记的就是这一下
+ * (docs/features/signal-scorecard.md)——"在表里"是一个状态,天天都在;"今天进来"才是一个有时刻的事件。
+ *
+ * "上一根"按基准最新一根的日期切:每只成员去掉那一天的日线,整池再筛一遍(RS 评级是池内百分位,要按那天的池子重排)。
+ * 最新一根不是那一天的成员(停牌、今天的还没取到)不算新进。`rows` 是今天这一遍 screenLeaders 的结果。
+ * `day` 是这件事发生在哪一根日线上(基准最新一根的日期);没有基准日线时是空串。
+ */
+export function newStage2(
+  members: readonly LeaderMember[], benchBars: readonly DailyBarIn[], benchmark: string, rows: readonly LeaderRow[],
+): { day: string; rows: LeaderRow[] } {
+  const day = dayOf(benchBars[benchBars.length - 1]);
+  const now = rows.filter((r) => r.stage2);
+  if (!day || !now.length) return { day, rows: [] };
+  const before = (bars: readonly DailyBarIn[]): DailyBarIn[] => bars.filter((b) => dayOf(b) < day);
+  const previous = screenLeaders(members.map((m) => ({ ...m, bars: before(m.bars) })), before(benchBars), benchmark);
+  const already = new Set(previous.rows.filter((r) => r.stage2).map((r) => r.symbol));
+  const current = new Set(members.filter((m) => dayOf(m.bars[m.bars.length - 1]) === day).map((m) => m.symbol));
+  return { day, rows: now.filter((r) => current.has(r.symbol) && !already.has(r.symbol)) };
+}

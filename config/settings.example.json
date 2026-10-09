@@ -32,8 +32,13 @@
     "max_spread_slippage": 0.1,
     "max_orders_per_input": 5,
     "duplicate_window_minutes": 10,
-    "duplicate_qty_tolerance": 0.2
+    "duplicate_qty_tolerance": 0.2,
+    "max_open_risk_usd": 0,
+    "max_underlying_contracts": 0,
+    "auto_mid_spread_share": 0,
+    "by_account": {}
   },
+  "_limits_comment": "后四项默认不设(0 / 空):max_open_risk_usd = 账户在手期权的最坏亏损合计上限;max_underlying_contracts = 同一标的同一到期的张数上限;auto_mid_spread_share = AUTO_MID 让盘口价差的几成(0–1);by_account 按账户别名另设前两项与这两条累计上限,如 {\"主账户\": {\"max_order_notional\": 2000}}。",
   "policies": {
     "auto_execute": false,
     "allow_live_trading": false,
@@ -48,8 +53,8 @@
   "protections": {
     "stoploss_guard": { "enabled": false, "lookback_minutes": 120, "trigger_count": 3, "pause_minutes": 60 },
     "max_drawdown": { "enabled": false, "lookback_minutes": 1440, "max_drawdown_usd": 500.0, "pause_minutes": 120 },
-    "cooldown": { "enabled": false, "minutes": 30 },
-    "daily_loss": { "enabled": false, "max_loss_usd": 500.0 }
+    "cooldown": { "enabled": false, "minutes": 30, "scope": "symbol" },
+    "daily_loss": { "enabled": false, "max_loss_usd": 500.0, "basis": "realized" }
   },
   "risk_budget": { "enabled": false, "equity_usd": {}, "max_risk_pct": 2.0, "max_position_pct": 25.0 },
   "follow": { "enabled": false, "channel_id": "", "author_ids": [], "accounts": [], "max_age_seconds": 30, "max_orders_per_day": 3, "max_risk_usd": 300.0 },

@@ -427,4 +427,8 @@ export interface RecentOrder {
   signature: string;
   quantity: number;
   createdAtMs: number;
+  /** 那张单写明的限价;AUTO_MID(发单那一刻才定价)与市价单是 null。不给 = 不知道,按老规矩只比数量 */
+  limitPrice?: number | null;
+  /** 那张单的终态(filled / cancelled / ibkr_error ……);null = 还没有终态,可能还挂在券商那边。不给 = 不知道 */
+  finalStatus?: string | null;
 }

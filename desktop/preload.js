@@ -194,11 +194,13 @@ contextBridge.exposeInMainWorld('dafri', {
   createAlert: (symbol, step) =>
     ipcRenderer.invoke('rpc', { method: 'alerts.create', params: { symbol, step } }),
   deleteAlert: (id) => ipcRenderer.invoke('rpc', { method: 'alerts.delete', params: { id } }),
-  refreshAlert: (id, expiry) =>
-    ipcRenderer.invoke('rpc', { method: 'alerts.refresh', params: { id, expiry } }),
+  refreshAlert: (id, expiry, step) =>
+    ipcRenderer.invoke('rpc', { method: 'alerts.refresh', params: { id, expiry, step } }),
   pollAlerts: () => ipcRenderer.invoke('rpc', { method: 'alerts.poll', params: {} }),
   setTouchConfig: (config) =>
     ipcRenderer.invoke('rpc', { method: 'alerts.set_touch_config', params: { config } }),
+  setCrossConfirm: (mode) =>
+    ipcRenderer.invoke('rpc', { method: 'alerts.set_touch_config', params: { config: {}, cross_confirm: mode } }),
 
   paTimeframes: () => ipcRenderer.invoke('rpc', { method: 'pa.timeframes', params: {} }),
   paAnalyze: (spec) => ipcRenderer.invoke('rpc', { method: 'pa.analyze', params: spec }),

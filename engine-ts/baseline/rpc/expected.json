@@ -50,7 +50,8 @@
     "rule": "",
     "reason": "",
     "until_ms": null,
-    "cooldowns": []
+    "cooldowns": [],
+    "accounts": []
    },
    "broker_provider": "ibkr",
    "broker_connected": false,
@@ -225,7 +226,11 @@
     "max_spread_slippage": 0.1,
     "max_orders_per_input": 5,
     "duplicate_window_minutes": 10,
-    "duplicate_qty_tolerance": 0.2
+    "duplicate_qty_tolerance": 0.2,
+    "max_open_risk_usd": 0,
+    "max_underlying_contracts": 0,
+    "auto_mid_spread_share": 0,
+    "by_account": {}
    },
    "policies": {
     "auto_execute": false,
@@ -252,11 +257,13 @@
     },
     "cooldown": {
      "enabled": false,
-     "minutes": 30
+     "minutes": 30,
+     "scope": "symbol"
     },
     "daily_loss": {
      "enabled": false,
-     "max_loss_usd": 500
+     "max_loss_usd": 500,
+     "basis": "realized"
     }
    },
    "risk_budget": {
@@ -274,7 +281,9 @@
     "max_orders_per_day": 3,
     "max_risk_usd": 300,
     "local_inbox": false,
-    "local_channel": ""
+    "local_channel": "",
+    "track_fly": false,
+    "track_exit_at": ""
    },
    "symbol_aliases": {
     "苹果": "AAPL",
@@ -339,7 +348,11 @@
     "max_spread_slippage": 0.1,
     "max_orders_per_input": 5,
     "duplicate_window_minutes": 10,
-    "duplicate_qty_tolerance": 0.2
+    "duplicate_qty_tolerance": 0.2,
+    "max_open_risk_usd": 0,
+    "max_underlying_contracts": 0,
+    "auto_mid_spread_share": 0,
+    "by_account": {}
    },
    "policies": {
     "auto_execute": false,
@@ -366,11 +379,13 @@
     },
     "cooldown": {
      "enabled": false,
-     "minutes": 30
+     "minutes": 30,
+     "scope": "symbol"
     },
     "daily_loss": {
      "enabled": false,
-     "max_loss_usd": 500
+     "max_loss_usd": 500,
+     "basis": "realized"
     }
    },
    "risk_budget": {
@@ -388,7 +403,9 @@
     "max_orders_per_day": 3,
     "max_risk_usd": 300,
     "local_inbox": false,
-    "local_channel": ""
+    "local_channel": "",
+    "track_fly": false,
+    "track_exit_at": ""
    },
    "symbol_aliases": {
     "苹果": "AAPL",
@@ -1395,7 +1412,8 @@
     "window_days": 10,
     "min_touches": 3,
     "band_pct": 0.3
-   }
+   },
+   "cross_confirm": "immediate"
   }
  },
  {
