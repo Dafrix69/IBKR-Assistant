@@ -1406,7 +1406,13 @@ describe("follow service: 建追踪走的是 tracker.add 的同一个 handler(�
       s.flyPlanner.marks.close();
       s.engineBuilt?.stopTrackerLoop();
     }
-    for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
+    for (const d of dirs.splice(0)) {
+      try {
+        rmSync(d, { recursive: true, force: true });
+      } catch {
+        /* Windows 上 sqlite 句柄可能还占着 */
+      }
+    }
   });
 
   it("跟了一只 2 张的蝴蝶、成交之后:库里多出一条追踪,和在「持仓追踪」页用界面的载荷建出来的那条目标与平仓设置一字不差", async () => {

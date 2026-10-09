@@ -141,7 +141,13 @@ afterEach(() => {
     s.anomaly.stop();
     s.engineBuilt?.stopTrackerLoop();
   }
-  for (const d of dirs.splice(0)) fs.rmSync(d, { recursive: true, force: true });
+  for (const d of dirs.splice(0)) {
+    try {
+      fs.rmSync(d, { recursive: true, force: true });
+    } catch {
+      /* Windows 上 sqlite 句柄可能还占着 */
+    }
+  }
 });
 
 describe("界面拼出来的载荷,引擎收得下", () => {
