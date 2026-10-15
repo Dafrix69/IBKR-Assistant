@@ -105,7 +105,7 @@ afterEach(() => {
 const PA_KEYS = [
   "age_seconds", "agreement", "atr", "bar_count", "bars", "bias", "bias_label", "cached", "closed_bar", "confidence", "context",
   "equal_levels", "events", "evidence", "extended_hours", "fetched_at", "first_bar", "forming", "fvgs", "htf", "last", "last_bar",
-  "levels", "ma", "order_block", "patterns", "plan", "readout", "rth", "score", "sub_scores", "sweeps", "swing_strength", "swings",
+  "levels", "ma", "order_block", "overnight", "patterns", "plan", "readout", "rth", "score", "sub_scores", "sweeps", "swing_strength", "swings",
   "symbol", "timeframe", "timeframe_label", "trend", "trend_label", "warnings",
 ];
 

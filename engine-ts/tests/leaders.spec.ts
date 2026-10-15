@@ -342,7 +342,7 @@ describe("screener.leaders:券商日线的量一路带到规则里", () => {
     expect(index).toHaveLength(BENCH.length);
     expect(index.every((b) => b["volume"] === 0)).toBe(true);
     expect(tws.histRequests).toEqual([
-      { symbol: "VCP", whatToShow: "ADJUSTED_LAST" }, { symbol: "SPX", whatToShow: "TRADES" },
+      { symbol: "VCP", whatToShow: "ADJUSTED_LAST", exchange: "SMART" }, { symbol: "SPX", whatToShow: "TRADES", exchange: "SMART" },
     ]);
   });
 

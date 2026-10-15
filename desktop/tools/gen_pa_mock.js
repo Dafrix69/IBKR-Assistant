@@ -77,6 +77,7 @@ result.htf = higher;
 result.agreement = pa.agreement(result, higher);
 result.cached = false;
 result.rth = false;
+result.overnight = true;
 result.fetched_at = nowIso;
 
 if (stress) {

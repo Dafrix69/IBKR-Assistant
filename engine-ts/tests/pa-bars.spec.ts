@@ -5,6 +5,7 @@
  *     会话记着每张正股 / 指数的成交价最近一次出自哪一档(quoteDelayed),取 K 线时记在那组 K 线上(tagFeed)。
  *     只读、不为了问这一句去订流或撤流——同一张合约的流是各处共用的。
  *  2. 第一档时长取回来不到「最少根数 + 1」就改取长的那一档:分析要 30 根已收盘的,最后一根常常没走完。
+ *  3. 个股的夜盘是另一个交易所(OVERNIGHT),另要一次拼上;指数、只看常规时段、日线不要。哪条线留着不重取见 session-bars.spec。
  */
 import { describe, expect, it } from "vitest";
 
@@ -31,10 +32,10 @@ async function connect(): Promise<{ tws: FakeTws; session: IbSession; router: Br
 }
 
 /** n 根 5 分钟线,TWS 的时间格式。 */
-function libBars(n: number): LibBar[] {
+function libBars(n: number, start = Date.UTC(2026, 7, 14, 9, 30)): LibBar[] {
   const out: LibBar[] = [];
   for (let i = 0; i < n; i++) {
-    const t = new Date(Date.UTC(2026, 7, 14, 9, 30) + i * 300_000).toISOString();
+    const t = new Date(start + i * 300_000).toISOString();
     out.push({ time: `${t.slice(0, 10).replace(/-/g, "")}  ${t.slice(11, 19)}`, open: 100 + i, high: 101 + i, low: 99 + i, close: 100.5 + i, volume: 1000 });
   }
   return out;
@@ -100,16 +101,53 @@ describe("这组 K 线出自哪一档行情", () => {
 });
 
 describe("第一档时长不够就取长的那一档", () => {
-  const requests = (tws: FakeTws, symbol: string): number => tws.histRequests.filter((r) => r.symbol === symbol).length;
+  const requests = (tws: FakeTws, symbol: string, exchange: string): number =>
+    tws.histRequests.filter((r) => r.symbol === symbol && r.exchange === exchange).length;
 
   it.each([
     [MIN_BARS - 1, 2, "不到最少根数"],
     [MIN_BARS, 2, "正好最少根数:最后一根没走完的话,已收盘的只有 29 根,分析会拒掉"],
     [MIN_BARS + 1, 1, "多一根就够"],
-  ])("取回 %i 根 → 一共问 %i 次(%s)", async (count, asked) => {
+  ])("取回 %i 根 → 日盘问 %i 次,夜盘跟着问同样多次(%s)", async (count, asked) => {
     const { tws, router } = await connect();
     tws.history.set("NVDA", libBars(count));
     expect(await router.intradayBars("NVDA", "5m")).toHaveLength(count);
-    expect(requests(tws, "NVDA")).toBe(asked);
+    expect(requests(tws, "NVDA", "SMART")).toBe(asked);
+    expect(requests(tws, "NVDA", "OVERNIGHT")).toBe(asked); // 改取长的那一档时夜盘也取长的,两条线时长一致
+  });
+});
+
+describe("夜盘另要一次拼上", () => {
+  /** 2026-08-13 20:00 起的 n 根 5 分钟线:前一晚的夜盘 */
+  const night = (n: number): LibBar[] => libBars(n, Date.UTC(2026, 7, 13, 20, 0));
+
+  it("个股默认全时段:SMART 与 OVERNIGHT 各问一次,拼好按时间排", async () => {
+    const { tws, router } = await connect();
+    tws.history.set("NVDA", libBars(40));
+    tws.history.set("NVDA@OVERNIGHT", night(6));
+    const bars = await router.intradayBars("NVDA", "5m");
+    expect(bars).toHaveLength(46);
+    expect(bars[0]!["time"]).toBe("2026-08-13 20:00");
+    expect(bars[6]!["time"]).toBe("2026-08-14 09:30");
+    expect(tws.histRequests.filter((r) => r.symbol === "NVDA").map((r) => r.exchange).sort()).toEqual(["OVERNIGHT", "SMART"]);
+  });
+
+  it("指数、只看常规时段、日线都不要夜盘", async () => {
+    const { tws, router } = await connect();
+    for (const symbol of ["SPX", "NVDA"]) {
+      tws.history.set(symbol, libBars(40));
+      tws.history.set(`${symbol}@OVERNIGHT`, night(6));
+    }
+    expect(await router.intradayBars("SPX", "5m")).toHaveLength(40);
+    expect(await router.intradayBars("NVDA", "5m", true)).toHaveLength(40);
+    expect(await router.intradayBars("NVDA", "1d")).toHaveLength(40);
+    expect(tws.histRequests.some((r) => r.exchange === "OVERNIGHT")).toBe(false);
+  });
+
+  it("夜盘要不到只少夜盘,日盘照给", async () => {
+    const { tws, router } = await connect();
+    tws.history.set("NVDA", libBars(40));
+    tws.history.set("NVDA@OVERNIGHT", new Error("No security definition has been found for the request"));
+    expect(await router.intradayBars("NVDA", "5m")).toHaveLength(40);
   });
 });

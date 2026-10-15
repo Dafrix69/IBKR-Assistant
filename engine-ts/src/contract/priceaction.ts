@@ -273,6 +273,8 @@ export interface PaAnalyzeResult extends PaAnalysis {
   cached: boolean;
   /** 这次只看盘中 */
   rth: boolean;
+  /** 这次的 K 线接了夜盘(IBKR 的隔夜交易时段,美东 20:00–04:00):全时段、日内周期、个股或 ETF 才有;指数没有夜盘 */
+  overnight: boolean;
   fetched_at: string;
 }
 

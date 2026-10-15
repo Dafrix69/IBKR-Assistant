@@ -37,9 +37,10 @@ export class FakeTws {
   /** 一共收到过几次合约确认请求 */
   detailRequests = 0;
   /** 标的 → 历史 K 线,不管请求的时长与周期,原样给(切片是 BrokerRouter 的事) */
-  readonly history = new Map<string, LibBar[]>();
+  /** 历史 K 线:SMART 那条按标的给;别的交易所(夜盘 OVERNIGHT)按 `标的@交易所` 给,没备就是空的;备成 Error 就拒。 */
+  readonly history = new Map<string, LibBar[] | Error>();
   /** 每次历史请求的标的与 whatToShow */
-  readonly histRequests: Array<{ symbol: string; whatToShow: string }> = [];
+  readonly histRequests: Array<{ symbol: string; whatToShow: string; exchange: string }> = [];
   private readonly ids = new Map<string, number>();
   private readonly positionObservers: Array<(u: unknown) => void> = [];
   /** 账户当日盈亏(reqPnL)与账户摘要的订阅者;pushPnl / pushNetLiq 推一笔 */
@@ -180,8 +181,10 @@ export class FakeTws {
       }
       getHistoricalData(contract: Wire, _end: unknown, _duration: string, _barSize: string, whatToShow: string): Promise<LibBar[]> {
         const symbol = String(contract["symbol"]);
-        tws.histRequests.push({ symbol, whatToShow });
-        return Promise.resolve(tws.history.get(symbol) ?? []);
+        const exchange = String(contract["exchange"] ?? "");
+        tws.histRequests.push({ symbol, whatToShow, exchange });
+        const got = tws.history.get(`${symbol}@${exchange}`) ?? (exchange === "OVERNIGHT" ? [] : tws.history.get(symbol) ?? []);
+        return got instanceof Error ? Promise.reject(got) : Promise.resolve(got);
       }
     }
     return {

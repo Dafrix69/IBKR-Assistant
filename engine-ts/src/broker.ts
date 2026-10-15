@@ -21,9 +21,7 @@ import type { PositionRow } from "./contract/positions.js";
 import type { VolumeSnapshot } from "./marketdata.js";
 import type { ApprovedOrder } from "./validator.js";
 import { fmtF, pyRound } from "./py.js";
-import {
-  ET, dateOrdinal, ibEndUtc, ibWallTime, ordinalToDate, pad2, utcIso, wallParts, wallToEpoch, zonedEpoch,
-} from "./tz.js";
+import { ET, dateOrdinal, ibEndUtc, ibWallTime, ordinalToDate, utcIso, wallToEpoch, zonedEpoch } from "./tz.js";
 import {
   chainStrikes, describeContract, frontQuarterly, indexContract, optionContract, pickTradingClass, stockContract, streamContract,
 } from "./ibContracts.js";
@@ -33,7 +31,11 @@ import type {
 } from "./ibTypes.js";
 import { UpstreamWatch, coveredAccounts, liveSessions, logStderr, redactForLog } from "./ibLink.js";
 import { HeldStreams, silenceLimitMs } from "./heldStreams.js";
+import { SessionBars, barTimestamp } from "./ibBars.js";
+import type { SessionBar } from "./ibBars.js";
 export { logStderr, redactForLog } from "./ibLink.js";
+// K 线时间戳的归一化搬去了 ibBars.ts;老的 import 路径不变。
+export { barTimestamp } from "./ibBars.js";
 
 // IB 适配层的接口住在 ibTypes.ts;这里转出,老的 import 路径不变。
 export type {
@@ -197,39 +199,6 @@ export function barsError(symbol: string, label: string, exc: Error): string {
     );
   }
   return `获取 ${symbol} 的 ${label} K 线失败:${text.slice(0, 300)}`;
-}
-
-/** IBKR 的 bar.date 归一化成 'YYYY-MM-DD HH:MM'(日线为 'YYYY-MM-DD')。 */
-export function barTimestamp(value: unknown): string {
-  const text = String(value ?? "").trim();
-  const digits = text.replace(/-/g, "").replace(/:/g, "").split(/\s+/).filter(Boolean);
-  if (digits.length && digits[0]!.length === 8 && /^\d{8}$/.test(digits[0]!)) {
-    const d = digits[0]!;
-    const day = `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`;
-    if (digits.length > 1 && digits[1]!.length >= 4 && /^\d{6}/.test(digits[1]!.slice(0, 6))) {
-      // IBKR 的 K 线时间是**交易所时区**(SPX 在 Cboe → 美中,比美东慢一小时),
-      // 带时区名时换成美东再落字符串;否则 K 线看起来永远"落后一小时",新鲜度告警误报。
-      const tz = digits.length > 2 && digits[2]!.includes("/") ? digits[2]! : null;
-      const hour = Number(digits[1]!.slice(0, 2));
-      const minute = Number(digits[1]!.slice(2, 4));
-      const second = Number(digits[1]!.slice(4, 6));
-      if (tz) {
-        try {
-          const epoch = wallToEpoch({
-            year: Number(d.slice(0, 4)), month: Number(d.slice(4, 6)), day: Number(d.slice(6, 8)),
-            hour, minute, second,
-          }, tz);
-          const p = wallParts(epoch, ET);
-          return `${p.year}-${pad2(p.month)}-${pad2(p.day)} ${pad2(p.hour)}:${pad2(p.minute)}`;
-        } catch {
-          /* 时区名认不出就走下面的老路径,不编 */
-        }
-      }
-      return `${day} ${digits[1]!.slice(0, 2)}:${digits[1]!.slice(2, 4)}`;
-    }
-    return day;
-  }
-  return text;
 }
 
 /** 把 IBKR 的报价字段清洗成可用数字:NaN / 非正 / 非数字都归 null。 */
@@ -581,6 +550,8 @@ export class BrokerRouter {
   private readonly conIdCache = new Map<string, number>();
   /** 合约交易时段缓存:键 "标的|到期日",值 [查询日, tradingHours, liquidHours, tzId]。
    * 追踪轮询每 8 秒一轮,不能每轮都问券商;时段表一天只变一次,按日缓存足够。 */
+  /** K 线的日盘与夜盘两条线,闲着的那条留着不重取(ibBars.ts) */
+  private readonly sessionBars = new SessionBars();
   private readonly hoursCache = new Map<string, [string, string, string, string]>();
 
   private conIdKey(c: IbContract): string {
@@ -1365,22 +1336,28 @@ export class BrokerRouter {
 
     const daily = spec["bar_size"] === "1 day";
     const show = daily && cfg === null ? "ADJUSTED_LAST" : "TRADES";
-    const pull = (duration: string): Promise<RawBar[]> =>
-      session.historicalData(target, {
+    // 夜盘是另一个交易所,另要一次拼上(ibBars.ts):只看常规时段、日线(夜盘不另成一天)、指数(没有夜盘)都不要
+    const overnight = !rth && !daily && cfg === null;
+    const nowMs = nowEt().epochMs;
+    const pull = (duration: string): Promise<SessionBar[]> =>
+      this.sessionBars.fetch(session, {
+        target,
         endDateTime: endDay ? ibEndUtc(endDay) : "",
         durationStr: duration,
         barSizeSetting: spec["bar_size"] as string,
         whatToShow: show,
         useRTH: rth,
+        overnight,
+        nowMs,
       });
 
-    let raw: RawBar[];
+    let bars: SessionBar[];
     try {
       session.reqMarketDataType(3); // 没订阅退延迟;有订阅仍是实时
-      raw = await pull(spec["duration"] as string);
+      bars = await pull(spec["duration"] as string);
       // IBKR 的 durationStr 数的是交易日,全时段口径下刚翻篇时第一档只有十几根
-      if ((raw ?? []).length <= MIN_BARS && spec["fallback"]) { // 分析要 MIN_BARS 根已收盘的,最后一根常常没走完:正好 MIN_BARS 根也不够
-        raw = (await pull(spec["fallback"] as string)) ?? raw;
+      if (bars.length <= MIN_BARS && spec["fallback"]) { // 分析要 MIN_BARS 根已收盘的,最后一根常常没走完:正好 MIN_BARS 根也不够
+        bars = await pull(spec["fallback"] as string);
       }
     } catch (exc) {
       throw new BrokerError(barsError(symbol, spec["label"] as string, exc as Error));
@@ -1388,18 +1365,6 @@ export class BrokerRouter {
       session.reqMarketDataType(1);
     }
 
-    const bars: Array<Record<string, any>> = [];
-    for (const bar of raw ?? []) {
-      bars.push({
-        time: barTimestamp(bar.date),
-        open: bar.open,
-        high: bar.high,
-        low: bar.low,
-        close: bar.close,
-        // 指数没有成交量,IBKR 回 -1;归零免得被当成"缩量"读
-        volume: Math.max(Number(bar.volume ?? 0) || 0, 0.0),
-      });
-    }
     if (!bars.length) {
       throw new BrokerError(
         `${symbol} 没有返回 ${spec["label"]} K 线(标的代码是否正确?是否刚好整段休市?)`,

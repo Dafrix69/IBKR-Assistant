@@ -133,6 +133,8 @@ export class MarketHandlers extends HandlerBase {
     // 最后一根收没收盘:对着这份 K 线取数的那一刻判(缓存里的那一份早于现在),延迟档再往前退(feed);
     // 日线几点走完看这个标的有没有盘前盘后——指数没有,16:00 就走完,不等到 20:00
     const extendedSession = !rth && this.settings.indexConfig(symbol) === null;
+    // 夜盘只接在日内周期上(日线里夜盘不另成一天),指数没有夜盘;回执里写明,界面的新鲜度一行据此写
+    const overnight = extendedSession && Number(TIMEFRAMES[timeframe]!["seconds"]) < 86_400;
     const clock = (barsAsOfMs: number, feed: BarsFeed | undefined): PaClock => ({ epochMs: moment.epochMs, barsAsOfMs, feed, extendedSession });
     let analysis: PaAnalysis;
     let cached: boolean;
@@ -176,6 +178,7 @@ export class MarketHandlers extends HandlerBase {
       agreement: agreement(analysis, higher),
       cached,
       rth,
+      overnight,
       fetched_at: new Date(moment.epochMs).toISOString(),
     };
   }
