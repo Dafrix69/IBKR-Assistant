@@ -129,13 +129,13 @@ function readFly(payload: Obj): FlyOrder | null {
 interface CreditOrder {
   summary: string;
   quantity: number;
-  /** 收到的净权利金(限价) */
-  credit: number;
+  /** 收到的净权利金(限价);没写(AUTO_MID)是 null */
+  credit: number | null;
   /** 两个行权价之间的宽度 */
   width: number;
 }
 
-/** 速记产出的 payload 里那一张贷方垂直价差(卖出、两条腿、写明了收多少);不是回 null。 */
+/** 速记产出的 payload 里那一张贷方垂直价差(卖出、两条腿);不是回 null。没写收多少的照样读出来(credit 为 null),拒不拒由调用方说。 */
 function readCredit(payload: Obj): CreditOrder | null {
   const orders = payload["orders"];
   if (!Array.isArray(orders) || orders.length !== 1 || !isObj(orders[0])) return null;
@@ -150,9 +150,8 @@ function readCredit(payload: Obj): CreditOrder | null {
   const width = Math.abs((strikes[1] ?? Number.NaN) - (strikes[0] ?? Number.NaN));
   const quantity = Number(order["totalQuantity"]);
   const rawCredit = order["lmtPrice"];
-  if (rawCredit === null || rawCredit === undefined) return null;
-  const credit = Number(rawCredit);
-  if (!(width > 0) || !(quantity >= 1) || !(credit > 0 && credit < width)) return null;
+  const credit = rawCredit === null || rawCredit === undefined ? null : Number(rawCredit);
+  if (!(width > 0) || !(quantity >= 1) || (credit !== null && !(credit > 0 && credit < width))) return null;
   return { summary: String(item["intent_summary"] ?? ""), quantity, credit, width };
 }
 
@@ -214,9 +213,14 @@ export function decide(cfg: FollowConfig, payload: unknown, gates: FollowGates, 
   if (fly !== null && fly.premium === null) {
     return { outcome: "unparsed", summary, detail: "这条消息没写权利金上限(对方可能把价格放在了下一条里),软件不替人定价,没有发单" };
   }
-  const risk = fly !== null ? worstCaseUsd(fly) : spread !== null ? creditWorstCaseUsd(spread) : 0;
+  // 贷方价差同理:本地速记对手动下单会按 AUTO_MID 接(语法 v7 起),这里照旧不跟
+  const credit = spread !== null && spread.credit !== null ? { ...spread, credit: spread.credit } : null;
+  if (spread !== null && credit === null) {
+    return { outcome: "unparsed", summary, detail: "这条消息没写收的权利金(对方可能把价格放在了下一条里),软件不替人定价,没有发单" };
+  }
+  const risk = fly !== null ? worstCaseUsd(fly) : credit !== null ? creditWorstCaseUsd(credit) : 0;
   if (risk > cfg.max_risk_usd) {
-    const how = spread !== null ? `(宽 ${pyG(spread.width)} 点 − 收 ${pyG(spread.credit)})` : "";
+    const how = credit !== null ? `(宽 ${pyG(credit.width)} 点 − 收 ${pyG(credit.credit)})` : "";
     return {
       outcome: "capped", summary,
       detail: `这一单最坏亏 $${pyG(risk)}${how},超过跟单的单笔上限 $${pyG(cfg.max_risk_usd)}`,

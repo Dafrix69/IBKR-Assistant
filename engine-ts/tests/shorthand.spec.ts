@@ -92,6 +92,16 @@ describe("shorthand: 引擎集成", () => {
     expect(result.validated_only[0]!.intent_summary).toContain("6920/6925 看涨贷方价差");
   });
 
+  it("没写权利金的贷方价差:本地按 AUTO_MID 接,校验层认它(敞口按宽度算)", async () => {
+    const { engine, calls } = engineWithRecordingParser();
+    const result = await engine.handleInstruction("6920 6925 bear call", "manual", FRIDAY, { SPX: 6907.35 });
+    expect(calls).toEqual([]);
+    expect(result.llm!.model).toBe(LOCAL_MODEL);
+    expect(result.rejections).toEqual([]);
+    expect(result.validated_only).toHaveLength(1);
+    expect(result.validated_only[0]!.intent_summary).toContain("净权利金按下单时盘口中间价确定");
+  });
+
   it("非速记指令照旧走大模型", async () => {
     const { engine, calls } = engineWithRecordingParser();
     const result = await engine.handleInstruction(
@@ -173,7 +183,7 @@ describe("shorthand: 数字边界(2026-09-27 审计 V3)", () => {
   });
 
   it("语法收窄,版本号跟着升", () => {
-    expect(GRAMMAR_VERSION).toBe("shorthand-v6");
+    expect(GRAMMAR_VERSION).toBe("shorthand-v7");
   });
 });
 
@@ -283,12 +293,20 @@ describe("shorthand v6: 贷方垂直价差", () => {
     expect(order("明天的 7770 7775 bear call -2.5").contract.legs[0].lastTradeDateOrContractMonth).toBe("20260817");
   });
 
-  it("不接:没写方向、没写价格、说不清的、带别的语义的——一律交给大模型", () => {
+  it("v7:没写权利金的也接,按 AUTO_MID(和蝴蝶同一条规矩;跟单那条路自己拒没写价的)", () => {
+    const o = order("7840 7845 bear call");
+    expect(legs(o)).toEqual(["BUY 7845C", "SELL 7840C"]);
+    expect(o.order).toEqual({ action: "SELL", orderType: "LMT", totalQuantity: 1, price_mode: "AUTO_MID", lmtPrice: null, tif: "DAY", outsideRth: false });
+    expect(o.intent_summary).toBe("卖出(贷方)1 张 2026-08-14 当日到期的 SPX 7840/7845 看涨贷方价差(卖 7840C、买 7845C,宽 5 点),净权利金按下单时盘口中间价确定");
+    expect(o.warnings.some((w: string) => w.includes("AUTO_MID"))).toBe(true);
+    expect(order("00 95 bull put 试下").order).toMatchObject({ price_mode: "AUTO_MID", lmtPrice: null });
+  });
+
+  it("不接:没写方向、说不清的、带别的语义的——一律交给大模型", () => {
     for (const text of [
       "75 70 -2 试一下",                    // 没写 bull put / bear call
       "10 05 BULL -2 -2.5试一下",           // 只写了 bull
       "可以挂单下 7860 7865 -2 -2.5",        // 没写方向
-      "7770 7775 bear call",               // 没写价格
       "7770 7775 bear call 2.5",           // 权利金要写成负数(收)
       "7770 bear call -2",                 // 只有一个行权价
       "7770 7775 7780 bear call -2",       // 三个行权价

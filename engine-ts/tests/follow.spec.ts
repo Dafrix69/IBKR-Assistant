@@ -174,6 +174,7 @@ describe("follow: decide(解析完之后)", () => {
     const noPrice = structuredClone(base);
     noPrice.orders[0]!["order"]["lmtPrice"] = null;
     expect(decide(cfg(), noPrice, OPEN, 0).outcome).toBe("unparsed");
+    expect(decide(cfg(), noPrice, OPEN, 0).detail).toContain("没写收的权利金");
     const tooMuch = structuredClone(base);
     tooMuch.orders[0]!["order"]["lmtPrice"] = 5;
     expect(decide(cfg(), tooMuch, OPEN, 0).outcome).toBe("unparsed");

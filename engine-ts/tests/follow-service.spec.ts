@@ -263,6 +263,14 @@ describe("follow service: 对方频道里真实的写法", () => {
     expect(log()[0]).toMatchObject({ outcome: "unparsed" });
     expect(log()[0]!.detail).toContain("bull put 还是 bear call");
   });
+
+  it("没写价格的贷方价差:手动下单会按中间价接,跟单不接,落成没接住", async () => {
+    const { service, router, log } = build({ max_risk_usd: 100000 });
+    await service.onMessage(message("@everyone 7770 7775 bear call"));
+    expect(router.placed).toHaveLength(0);
+    expect(log()[0]).toMatchObject({ outcome: "unparsed" });
+    expect(log()[0]!.detail).toContain("没写收的权利金");
+  });
 });
 
 describe("follow service: 「N蝴蝶」在百位边上", () => {

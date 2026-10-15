@@ -22,8 +22,9 @@ export const LOCAL_MODEL = "local-shorthand";
  * v5(2026-10-08):闲字表补了 Charlie 的频道里真实出现过的几种语气词(「一下」「试一下」「试试看」「赌博小彩票」「好贵」),
  * 都不带交易语义;其余没有变——不认识的词仍然交给大模型。
  * v6(2026-10-08):新增贷方垂直价差(「7770 7775 bear call -2 -2.5」「00 95 bull put 试下 -2」),见 parseCreditSpread;
- * 蝴蝶的语法没有变。 */
-export const GRAMMAR_VERSION = "shorthand-v6";
+ * 蝴蝶的语法没有变。
+ * v7(2026-10-12):贷方价差没写权利金的也接,按 AUTO_MID(和蝴蝶同一条规矩);Discord 跟单那条路自己拒没写价的(follow.ts)。 */
+export const GRAMMAR_VERSION = "shorthand-v7";
 
 type Rec = Record<string, any>;
 
@@ -390,8 +391,9 @@ const RELATIVE_STRIKE_MAX_POINTS = 50;
  *
  * 规则:
  * * 类型词决定结构,两个行权价谁写在前面无所谓:bull put 卖高买低,bear call 卖低买高。
- * * 权利金必须写、必须是负数(收);写的是区间(「-2 -2.5」「-2到-2.5」)时按收得多的一头挂单——
- *   可能成交不了,但不会比写的差。没写权利金的不接(不用 AUTO_MID 替人定价)。
+ * * 权利金写成负数(收);写的是区间(「-2 -2.5」「-2到-2.5」)时按收得多的一头挂单——
+ *   可能成交不了,但不会比写的差。没写权利金的按 AUTO_MID(下单时按盘口中间价),和蝴蝶同一条规矩;
+ *   跟单那条路不接没写价的,那道拒绝在 follow.ts,不在这里。
  * * 行权价要么都写全(三到五位),要么都是两位数的相对写法;混着写、差 50 点(说不清谁高谁低)的不接。
  * * 和蝴蝶一样:整句必须被语法完整覆盖,任何剩余成分 → null。
  */
@@ -419,11 +421,11 @@ function parseCreditSpread(
   // 收到的权利金:负数,一个或一个区间。第一个负号左边不能是数字——「7770-7775」里的横线是分隔,不是负号
   let mCredit: RegExpMatchArray | null;
   [work, mCredit] = take(work, /(?<![\d.])-\s*(\d+(?:\.\d+)?)(?:\s*(?:到|至|~|-)?\s*-\s*(\d+(?:\.\d+)?))?/);
-  if (mCredit === null) return null;                 // 没写价格:不猜
   if (/(?<![\d.])-\s*\d/.test(work)) return null;   // 还有一个负数:说不清哪个是价格
-  const quoted = [Number(mCredit[1])];
-  if (mCredit[2] !== undefined) quoted.push(Number(mCredit[2]));
-  const credit = Math.max(...quoted);
+  const quoted: number[] = mCredit === null ? [] : [Number(mCredit[1])];
+  if (mCredit?.[2] !== undefined) quoted.push(Number(mCredit[2]));
+  // 没写权利金:按 AUTO_MID(下单时按盘口中间价),和蝴蝶同一条规矩
+  const credit: number | null = quoted.length ? Math.max(...quoted) : null;
 
   for (const filler of [...SPREAD_FILLERS, ...FILLERS]) {
     work = work.split(filler).join(" ");
@@ -494,7 +496,7 @@ function parseCreditSpread(
   }
   const width = hi - lo;
   if (!(width > 0 && width <= 500)) return null;
-  if (!(credit > 0 && credit < width)) return null; // 收的不可能多过宽度
+  if (credit !== null && !(credit > 0 && credit < width)) return null; // 收的不可能多过宽度
 
   let expiry: string;
   let expiryLabel: string;
@@ -524,8 +526,11 @@ function parseCreditSpread(
 
   if (quoted.length === 2 && quoted[0] !== quoted[1]) {
     warnings.push(
-      `权利金写的是区间 ${fmt(Math.min(...quoted))}–${fmt(Math.max(...quoted))},按收得多的一头 ${fmt(credit)} 挂单(可能成交不了,不会比写的差)`,
+      `权利金写的是区间 ${fmt(Math.min(...quoted))}–${fmt(Math.max(...quoted))},按收得多的一头 ${fmt(Math.max(...quoted))} 挂单(可能成交不了,不会比写的差)`,
     );
+  }
+  if (credit === null) {
+    warnings.push("未写收的权利金,将在下单时按盘口中间价定价(AUTO_MID);若对收多少敏感,请写成负数,如 '-2.5'");
   }
   warnings.push(`本地速记解析(未经大模型),语法 ${GRAMMAR_VERSION}`);
 
@@ -543,7 +548,8 @@ function parseCreditSpread(
     orders: [{
       intent_summary:
         `卖出(贷方)${qty} 张 ${expiryLabel}的 ${symbol} ${fmt(lo)}/${fmt(hi)} ${bullPut ? "看跌" : "看涨"}贷方价差` +
-        `(卖 ${fmt(sellStrike)}${right}、买 ${fmt(buyStrike)}${right},宽 ${fmt(width)} 点),净权利金不低于 ${fmt(credit)}`,
+        `(卖 ${fmt(sellStrike)}${right}、买 ${fmt(buyStrike)}${right},宽 ${fmt(width)} 点),` +
+        (credit !== null ? `净权利金不低于 ${fmt(credit)}` : "净权利金按下单时盘口中间价确定"),
       contract: {
         secType: "BAG", symbol, exchange: "SMART",
         currency: "USD", combo_strategy: "VERTICAL",
@@ -556,7 +562,7 @@ function parseCreditSpread(
         action: "SELL",
         orderType: "LMT",
         totalQuantity: qty,
-        price_mode: "EXPLICIT",
+        price_mode: credit !== null ? "EXPLICIT" : "AUTO_MID",
         lmtPrice: credit,
         tif,
         outsideRth,
