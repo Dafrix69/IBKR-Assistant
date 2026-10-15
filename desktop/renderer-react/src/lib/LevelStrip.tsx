@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { ALERT_SOURCE_LABEL, ALERT_SOURCE_SHORT, type AlertLevel } from '../store/alerts';
+import { isOwnLine } from './trackLevels';
 
 /**
  * 价位条(SVG):一只股票的墙、均线、整数关口、52 周高低和现价摆在一条横轴上。
@@ -147,14 +148,16 @@ export function buildLevelStripSvg(levels: AlertLevel[], spot: number | null | u
   const { xOf, breaks } = scale(pts.map((p) => p.price), spotNum, width, margin);
   const gap = 6;
   const items: Item[] = pts.map((pt) => {
-    const kind = pt.spot ? 'spot' : pt.level?.kind === 'resistance' ? 'resistance' : pt.level?.kind === 'support' ? 'support' : 'neutral';
-    const name = pt.spot ? '现价' : ALERT_SOURCE_SHORT[pt.level?.source || ''] || ALERT_SOURCE_LABEL[pt.level?.source || ''] || '价位';
+    // 持仓追踪里自己设的线(止损、止盈、标的止损):另一种颜色,摆在它所在的那一侧(lib/trackLevels.ownLines)
+    const own = pt.level ? isOwnLine(pt.level) : false;
+    const kind = pt.spot ? 'spot' : own ? 'own' : pt.level?.kind === 'resistance' ? 'resistance' : pt.level?.kind === 'support' ? 'support' : 'neutral';
+    const name = pt.spot ? '现价' : own ? pt.level?.label || '我的线' : ALERT_SOURCE_SHORT[pt.level?.source || ''] || ALERT_SOURCE_LABEL[pt.level?.source || ''] || '价位';
     const text = fmtLevelPrice(pt.price);
     const w = measure(name, false, 500) + 3 + measure(text, true, 600) + 6;
     const gapPct = spotNum != null && !pt.spot ? (pt.price / spotNum - 1) * 100 : null;
     return {
       price: pt.price, level: pt.level, spot: pt.spot, kind, name, text, w, x: xOf(pt.price), lx: 0, lane: 0,
-      side: kind === 'support' || kind === 'spot' ? 'below' : 'above',
+      side: kind === 'support' || kind === 'spot' || (own && spotNum != null && pt.price < spotNum) ? 'below' : 'above',
       tip: `${pt.spot ? '现价' : pt.level?.label || name} ${text}${gapPct != null ? ` · 距现价 ${gapPct > 0 ? '+' : ''}${gapPct.toFixed(2)}%` : ''}`,
     };
   });

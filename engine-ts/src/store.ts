@@ -238,7 +238,7 @@ export type TrackPatch = Partial<Pick<Track, "targets" | "auto_close" | "enabled
 
 /** alert_watches 里允许改的列(id / symbol / created_at / updated_at 不许动)。levels_at 由写价位的那一方给,
  *  时刻来自它自己的时钟:updated_at 这里一律盖成此刻,说明不了价位是哪天算的。 */
-export type WatchPatch = Partial<Pick<Watch, "step" | "enabled" | "expiry" | "levels" | "states" | "last_price" | "wall" | "events" | "touch" | "levels_at">>;
+export type WatchPatch = Partial<Pick<Watch, "step" | "enabled" | "expiry" | "levels" | "states" | "last_price" | "wall" | "events" | "touch" | "levels_at" | "origin">>;
 
 /** quality_stocks 里允许改的列:note / enabled 是用户写的,states / events 是异动监控写的。 */
 export interface QualityStockPatch {
@@ -322,6 +322,10 @@ export class TradeStore {
     // 价位算出来的时刻(2026-09-29):老行补空串,读的一方当作没算过,开盘后重算一遍
     if (wcols.size && !wcols.has("levels_at")) {
       this.db.exec("ALTER TABLE alert_watches ADD COLUMN levels_at TEXT NOT NULL DEFAULT ''");
+    }
+    // 谁建的(2026-10-15):持仓追踪自动建的盯单记 "tracker",追踪删掉时只删这种;老行补空串 = 用户 / 股票池建的
+    if (wcols.size && !wcols.has("origin")) {
+      this.db.exec("ALTER TABLE alert_watches ADD COLUMN origin TEXT NOT NULL DEFAULT ''");
     }
     this.ideasFts = this.ensureIdeasFts();
 
@@ -468,7 +472,8 @@ export class TradeStore {
   }
 
   // ---- 价位警告 --------------------------------------------------------
-  addWatch(symbol: string, step = 0): Watch { // 步长 0 = 自动(alerts.autoStep);正数 = 固定步长
+  /** 步长 0 = 自动(alerts.autoStep);正数 = 固定步长。origin:谁建的(空串 = 用户 / 股票池,"tracker" = 持仓追踪)。 */
+  addWatch(symbol: string, step = 0, origin = ""): Watch {
     symbol = (symbol || "").trim().toUpperCase();
     if (!symbol) throw new Error("标的代码为空");
     if (!(step >= 0 && step <= 1000)) throw new Error("整数关口步长必须在 0~1000 之间");
@@ -487,13 +492,14 @@ export class TradeStore {
       events: [],
       touch: null,
       levels_at: "",
+      origin,
     };
     try {
       this.db
         .prepare(
-          "INSERT INTO alert_watches (id, created_at, updated_at, symbol, step) VALUES (?,?,?,?,?)",
+          "INSERT INTO alert_watches (id, created_at, updated_at, symbol, step, origin) VALUES (?,?,?,?,?,?)",
         )
-        .run(watch["id"], watch["created_at"], watch["updated_at"], symbol, step);
+        .run(watch["id"], watch["created_at"], watch["updated_at"], symbol, step, origin);
     } catch (exc) {
       if (isUniqueViolation(exc)) throw new Error(`已经在盯 ${symbol} 了`, { cause: exc });
       throw exc;
@@ -517,7 +523,7 @@ export class TradeStore {
   /** 只允许改这几列。列名是白名单,不接受任意字段拼 SQL。 */
   updateWatch(watchId: string, fields: WatchPatch): boolean {
     const allowed = new Set([
-      "step", "enabled", "expiry", "levels", "states", "last_price", "wall", "events", "touch", "levels_at",
+      "step", "enabled", "expiry", "levels", "states", "last_price", "wall", "events", "touch", "levels_at", "origin",
     ]);
     const sets: string[] = [];
     const values: unknown[] = [];

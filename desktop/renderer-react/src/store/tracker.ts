@@ -231,6 +231,11 @@ export function startTrackerLoops(): void {
   setInterval(reconcileHosted, 1_000);
 }
 
+/** 此刻的追踪与盯盘结果(价位弹窗要说"这只在追踪里、离止损多远")。 */
+export function getTrackerSnapshot(): TrackerSnapshot {
+  return snapshot();
+}
+
 export function useTracker(): TrackerSnapshot {
   return useStore((s) => s.snap);
 }

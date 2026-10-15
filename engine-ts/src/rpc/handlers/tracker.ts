@@ -96,7 +96,11 @@ export class TrackerHandlers extends HandlerBase {
   }
 
   trackerList(): RpcResult<"tracker.list"> {
-    return { tracks: this.engine.store.listTracks() };
+    const tracks = this.engine.store.listTracks();
+    // 这条联动加上之前建的追踪:这次运行第一次列追踪时补上盯价位(同 alerts.list 里股票池的一次性迁移,幂等)
+    const notes = this.ctx.alerts.adoptTracked(tracks.map((t) => String(t["symbol"])));
+    if (notes.length) this.engine.notifier.warning(notes[0] ?? "");
+    return { tracks };
   }
 
   /**
@@ -168,7 +172,7 @@ export class TrackerHandlers extends HandlerBase {
         // 填在现价另一侧的止损,建好的下一秒就把仓平掉:方向当场核对,取价和盯盘同一个口径
         const symbol = String(raw["symbol"]);
         const live = this.router === null || raw["sec_type"] === "STK"
-          ? { spot: null } : await underlyingSpot(this.router, symbol);
+          ? { spot: null } : await underlyingSpot(this.router, symbol, Boolean(this.settings.indexConfig(symbol)));
         const issue = tkMod.spotStopIssue(targets, String(raw["sec_type"] ?? "STK"), symbol, live.spot);
         if (issue !== null) throw new tkMod.TrackerError(issue);
       }
@@ -216,7 +220,17 @@ export class TrackerHandlers extends HandlerBase {
       if (issue !== null) throw new tkMod.TrackerError(issue);
     }
     if (targets.spot_stop_confirm_s !== null && !tkMod.hasSpotStop(targets)) {
-      throw new tkMod.TrackerError("确认秒数是给标的止损价用的:先填「标的跌到」或「标的涨到」。");
+      // 正股的标的就是它自己:确认秒数管的是它的止损价 / 跟踪止损(trackerExits.confirmStockStop)。
+      // 托管的止损由券商触线即发,软件这边等多久都拦不住那张单,所以托管时不收
+      if (raw["sec_type"] !== "STK") {
+        throw new tkMod.TrackerError("确认秒数是给标的止损价用的:先填「标的跌到」或「标的涨到」。");
+      }
+      if (targets.stop_loss === null && targets.trail_pct === null) {
+        throw new tkMod.TrackerError("正股的止损确认要先填止损价或跟踪止损。");
+      }
+      if (auto.host_at_broker) {
+        throw new tkMod.TrackerError("托管到券商的止损由券商触线即发,确认秒数只在软件自己盯时有用:要用它就别托管。");
+      }
     }
     this.checkExitTime(raw, rows, targets);
     if (auto.peak_confirm && raw["sec_type"] === "STK") {
@@ -281,15 +295,11 @@ export class TrackerHandlers extends HandlerBase {
   ): Promise<LegInputs & {
     spot: number | null; markPrice: number | null; minute: number; spotNote: string; nowMs: number; em: number | null;
   }> {
-    let spot: number | null = null;
-    if (structure.kind === "stock") {
-      spot = (raw["market_price"] ?? null) as number | null; // 正股自己就是标的
-    } else {
-      try {
-        spot = this.router === null ? null : await this.router.indexPrice(String(raw["symbol"]));
-      } catch {
-        spot = null;
-      }
+    const symbol = String(raw["symbol"]);
+    let spot = (raw["market_price"] ?? null) as number | null; // 正股自己就是标的
+    if (structure.kind !== "stock") {
+      // 和盯盘同一个取法(engine.applySpotTarget):指数走 indexPrice,个股期权的标的走报价流(不认昨收)
+      spot = this.router === null ? null : (await underlyingSpot(this.router, symbol, Boolean(this.settings.indexConfig(symbol)))).spot;
     }
     const info = structure.kind === "stock" || this.router === null
       ? null
@@ -375,6 +385,10 @@ export class TrackerHandlers extends HandlerBase {
     this.engine.store.audit("ui", "tracker_add", {
       symbol: raw["symbol"], account: raw["account"], sec_type: raw["sec_type"], targets, auto_close: auto,
     });
+    // 追踪什么,就盯什么的价位:期权墙 / 均线 / 整数关口进追踪卡片,穿越照常弹窗(services/alerts.adoptForTrack)。
+    // 建不成只提醒,追踪照建
+    const note = this.ctx.alerts.adoptForTrack(String(raw["symbol"]));
+    if (note !== null) this.engine.notifier.warning(note);
     return { track };
   }
 
@@ -487,9 +501,12 @@ export class TrackerHandlers extends HandlerBase {
   }
 
   private trackerDeleteLocked(params: TrackerDeleteParams): RpcResult<"tracker.delete"> {
-    if (!this.engine.store.deleteTrack(String(params["id"] ?? ""))) {
+    const store = this.engine.store;
+    if (!store.deleteTrack(String(params["id"] ?? ""))) {
       throw new RpcError(-32602, "没有这个追踪");
     }
+    // 只因为追踪才盯着价位的标的,追踪没了盯单也没了(在股票池里的交给池子管)
+    this.ctx.alerts.releaseForTrack(new Set(store.listTracks().map((t) => String(t["symbol"]))));
     return { deleted: true };
   }
 

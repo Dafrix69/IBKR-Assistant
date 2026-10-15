@@ -70,10 +70,10 @@ describe("store: 兼容性对拍(Python 生成的库文件)", () => {
   });
 
   it("watches / tracks / sectors / ideas 列表一致", () => {
-    // alert_watches 比 Python 那一代的库多两列,打开时 migrate 补上:touch(碰均线的底账,2026-09-25)读回是 null,
-    // levels_at(价位算出来的时刻,2026-09-29)读回是空串。刻意的不同只有这两处——期望值不改文件,在这里写明
+    // alert_watches 比 Python 那一代的库多三列,打开时 migrate 补上:touch(碰均线的底账,2026-09-25)读回是 null,
+    // levels_at(价位算出来的时刻,2026-09-29)与 origin(谁建的,2026-10-15)读回是空串。刻意的不同只有这三处——期望值不改文件,在这里写明
     const withNewColumns = (expected.watches as Array<Record<string, unknown>>)
-      .map((w) => ({ ...w, touch: null, levels_at: "" }));
+      .map((w) => ({ ...w, touch: null, levels_at: "", origin: "" }));
     expectSame(store.listWatches(), withNewColumns, "watches");
     expectSame(store.listTracks(), expected.tracks, "tracks");
     expectSame(store.listSectors(), expected.sectors, "sectors");

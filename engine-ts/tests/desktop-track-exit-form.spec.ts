@@ -23,9 +23,9 @@ const {
   MAX_TIERS: number;
   emptyExitFields: ExitFields;
   exitConfirmLines(f: ExitFields, derivative: boolean): string;
-  exitProblems(f: ExitFields, opts: { hosted: boolean; hasSpotStop: boolean }): string[];
+  exitProblems(f: ExitFields, opts: { hosted: boolean; hasSpotStop: boolean; stock?: boolean; hasStockStop?: boolean }): string[];
   exitSpec(f: ExitFields, derivative: boolean): Record<string, unknown>;
-  exitSummary(targets: object, auto: object): string[];
+  exitSummary(targets: object, auto: object, stock?: boolean): string[];
   tierLabel(tier: Tier, index: number): string;
 };
 const { spotStopLine } = (await load("spotStopFormat.ts")) as {
@@ -60,10 +60,10 @@ describe("表单 → 载荷", () => {
     expect(exitConfirmLines(F({ peakConfirm: true }), false)).toBe("");
   });
 
-  it("正股:可成交价、追价、确认秒数这几项一律不带(引擎会拒);到点平仓与分批止盈照带", () => {
+  it("正股:可成交价、追价这几项一律不带(引擎会拒);确认秒数、到点平仓、分批止盈照带(确认秒数管正股自己的止损价)", () => {
     const spec = exitSpec(F({ exitAt: "15:45", stopConfirm: 3, stopBasis: "natural", chaseStep: 2, peakConfirm: true, tiers: [{ price: 130, fraction: 50 }] }), false);
     expect(spec).toEqual({
-      exit_at: "15:45", spot_stop_confirm_s: "", stop_basis: undefined, stop_chase_grace: undefined, stop_chase_step: undefined,
+      exit_at: "15:45", spot_stop_confirm_s: "3", stop_basis: undefined, stop_chase_grace: undefined, stop_chase_step: undefined,
       stop_chase_max_pct: undefined, peak_confirm: undefined, take_profit_tiers: [{ price: "130", fraction_pct: "50" }],
     });
   });
@@ -82,6 +82,15 @@ describe("表单 → 载荷", () => {
     expect(check({ tiers: [{ price: 6, fraction: 34 }] }, true)).toEqual(["分批止盈只支持软件盯盘:托管到券商时不能设。"]);
     expect(check({ stopConfirm: 3 }, false, false)).toEqual(["确认秒数是给标的止损价用的:先填「标的跌到」或「标的涨到」。"]);
     expect(check({ stopConfirm: 0 }, false, false)).toEqual([]);
+    // 正股:确认秒数管它自己的止损价 / 跟踪止损;托管时券商触线即发
+    const stock = (f: Partial<ExitFields>, hasStockStop: boolean, hosted = false): string[] =>
+      exitProblems(F(f), { hosted, hasSpotStop: false, stock: true, hasStockStop });
+    expect(stock({ stopConfirm: 3 }, true)).toEqual([]);
+    expect(stock({ stopConfirm: 3 }, false)).toEqual(["正股的止损确认要先填止损价或跟踪止损。"]);
+    expect(stock({ stopConfirm: 3 }, true, true)).toEqual(["托管到券商的止损由券商触线即发,确认秒数只在软件自己盯时有用:要用它就别托管。"]);
+    expect(exitConfirmLines(F({ stopConfirm: 3 }), false)).toBe("止损要现价在线外连续待满 3 秒才平(一笔打穿又弹回的不算)。\n");
+    expect(exitSummary({ spot_stop_confirm_s: 3 }, {}, true)).toEqual(["止损确认 3 秒"]);
+    expect(exitSummary({ spot_stop_confirm_s: 3 }, {})).toEqual(["标的止损确认 3 秒"]);
   });
 
   it("档数上限和引擎的是同一个数", () => {

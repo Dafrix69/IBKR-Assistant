@@ -197,8 +197,8 @@ contextBridge.exposeInMainWorld('dafri', {
   playbook: () => ipcRenderer.invoke('rpc', { method: 'options.playbook', params: {} }),
   setPlaybook: (enabled) => ipcRenderer.invoke('rpc', { method: 'options.playbook_set', params: { enabled } }),
   listAlerts: () => ipcRenderer.invoke('rpc', { method: 'alerts.list', params: {} }),
-  createAlert: (symbol, step) =>
-    ipcRenderer.invoke('rpc', { method: 'alerts.create', params: { symbol, step } }),
+  createAlert: (symbol, step, origin) =>
+    ipcRenderer.invoke('rpc', { method: 'alerts.create', params: { symbol, step, ...(origin ? { origin } : {}) } }),
   deleteAlert: (id) => ipcRenderer.invoke('rpc', { method: 'alerts.delete', params: { id } }),
   refreshAlert: (id, expiry, step) =>
     ipcRenderer.invoke('rpc', { method: 'alerts.refresh', params: { id, expiry, step } }),

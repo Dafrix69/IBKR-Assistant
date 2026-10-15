@@ -3,6 +3,7 @@ import { Button, Collapse } from 'antd';
 import { fmtMoney } from '../lib/format';
 import { legLabel, TrackCard } from '../lib/TrackCard';
 import { TrackForm } from '../lib/TrackForm';
+import { clearNavFocus, clearNavFocusFor, useNavFocus } from '../store/nav';
 import { gatewayName, useStatus } from '../store/status';
 import { loadTracker, refreshPositions, useTracker, type Position } from '../store/tracker';
 import { Pill, SymBadge } from '../ui/graphics';
@@ -18,6 +19,20 @@ export function TrackerPage() {
   const [openKey, setOpenKey] = useState<string | null>(null);
   const [flashId, setFlashId] = useState<string | null>(null);
   const trackersHead = useRef<HTMLHeadingElement>(null);
+  // 价位弹窗的「查看」跳过来(这只在追踪里):滚到「正在追踪」,把那只标的的卡片闪一下
+  const focus = useNavFocus('tracker');
+  useEffect(() => {
+    if (!focus) return;
+    const hit = snap.tracks.find((t) => t.symbol === focus.symbol);
+    trackersHead.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (hit) setFlashId(hit.id);
+    const timer = setTimeout(() => {
+      clearNavFocus(focus.seq);
+      setFlashId((v) => (v === hit?.id ? null : v));
+    }, 2200);
+    return () => clearTimeout(timer);
+  }, [focus, snap.tracks]);
+  useEffect(() => () => clearNavFocusFor('tracker'), []);
 
   // 进页即刷;停留期间持仓的现价与盈亏跟着行情走:IBKR 每秒读一次(读的是引擎里常驻订阅的缓存),
   // 富途每次是真的查询,5 秒一次。只读持仓,追踪列表不用跟着每秒重取

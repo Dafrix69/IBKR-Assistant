@@ -5,9 +5,11 @@
 import { create } from 'zustand';
 import { dafri, errorMessage, type CrossConfirm, type MaTouchConfig, type OptionWall, type PopupItem, type Watch, type WatchEvent, type WatchLevel } from '../bridge';
 import { toneDirection } from '../lib/alertRules';
+import { trackContext } from '../lib/trackLevels';
 import { showBanner } from './banner';
 import { showAlertPopup } from './popup';
 import { getStatus } from './status';
+import { getTrackerSnapshot } from './tracker';
 
 // 形状在引擎契约里(engine-ts/src/contract/alerts.ts、options.ts),这里只转出——页面一直从这个文件 import 这几个名字。
 // 以前这里手写过一份,猜错了两处:价位的 kind 写成了 'support' | 'resistance' | 'neutral'(引擎给的是 pivot,
@@ -133,19 +135,26 @@ function alertTitle(event: AlertEvent): string {
   return `${event.symbol || ''} ${event.direction === 'up' ? '上穿' : '下破'} ${event.price}`;
 }
 
+/** 这只在持仓追踪里:正文末尾补一句离止损还有多远,「查看」落到持仓追踪页(lib/trackLevels.trackContext)。不在追踪里是 null */
+function trackNote(symbol: string): string | null {
+  const { tracks, rows } = getTrackerSnapshot();
+  return trackContext(symbol, tracks, rows);
+}
+
 function toPopupItem(event: AlertEvent): PopupItem {
   const symbol = event.symbol || '';
   const at = event.at || Math.floor(Date.now() / 1000);
+  const note = trackNote(symbol);
   return {
     id: `${event.trigger === 'touch' ? 'touch' : 'level'}:${symbol}:${event.price}:${at}`,
     kind: 'level',
     symbol,
     title: alertTitle(event),
-    body: event.text || '',
+    body: note ? `${event.text || ''} · ${note}` : event.text || '',
     // 碰均线是"又回到这条线上了",不是涨跌:不着涨跌色
     tone: event.trigger === 'touch' ? 'info' : event.direction === 'up' ? 'up' : event.direction === 'down' ? 'down' : 'info',
     at: at * 1000,
-    page: 'sectors',
+    page: note ? 'tracker' : 'sectors',
   };
 }
 
@@ -186,9 +195,10 @@ export async function loadAlerts(): Promise<void> {
 }
 
 /** 建一个提醒并立刻算一次墙,不用再点一下。板块行里的「盯」和提醒区手填标的走同一条路。 */
-export async function createWatch(symbol: string, step: number): Promise<boolean> {
+export async function createWatch(symbol: string, step: number, origin = ''): Promise<boolean> {
   try {
-    const { watch } = await dafri.createAlert(symbol, step);
+    // origin = 'tracker':持仓追踪页建的,追踪删掉时引擎会收回去(股票池里的不动)
+    const { watch } = await dafri.createAlert(symbol, step, origin || undefined);
     await loadAlerts();
     if (watch?.id) await refreshWatch(watch.id);
     return true;

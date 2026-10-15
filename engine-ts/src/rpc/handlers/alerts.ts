@@ -38,12 +38,13 @@ export class AlertsHandlers extends HandlerBase {
     const symbol = symbolOrRaise(params);
     let watch: Watch;
     try {
-      // 不给步长(或给了个不成数的)= 自动:按现价分档
-      watch = this.engine.store.addWatch(symbol, Number(params["step"] ?? AUTO_STEP) || AUTO_STEP);
+      // 不给步长(或给了个不成数的)= 自动:按现价分档。origin 只认 "tracker"(持仓追踪表单上建的),别的当用户建的
+      const origin = params["origin"] === AlertsService.ORIGIN_TRACKER ? AlertsService.ORIGIN_TRACKER : "";
+      watch = this.engine.store.addWatch(symbol, Number(params["step"] ?? AUTO_STEP) || AUTO_STEP, origin);
     } catch (exc) {
       throw new RpcError(-32602, (exc as Error).message);
     }
-    this.engine.store.audit("ui", "alert_watch_add", { symbol });
+    this.engine.store.audit("ui", "alert_watch_add", { symbol, ...(watch["origin"] ? { origin: watch["origin"] } : {}) });
     return { watch };
   }
 

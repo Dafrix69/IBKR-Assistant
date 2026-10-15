@@ -10,6 +10,7 @@ import { fmtMoney, fmtNum } from './format';
 import { TRACK_STATE_LABEL } from './labels';
 import { spotStopLine, spotStopSummary } from './spotStopFormat';
 import { exitSummary, tierLabel } from './trackExitForm';
+import { TrackLevelsPanel } from './TrackKeyLevels';
 import { showBanner } from '../store/banner';
 import { loadRecords } from '../store/records';
 import { gatewayName, useStatus } from '../store/status';
@@ -255,7 +256,7 @@ export function TrackCard({
           ddTiers && live.profit_peak != null ? `峰值利润 ${fmtMoney(live.profit_peak)}` : null,
           targets.trail_pct ? `跟踪 ${targets.trail_pct}%${live.trail_stop ? ` → ${fmtMoney(live.trail_stop)}` : ''}` : null,
           t.peak ? `最有利价 ${fmtMoney(t.peak)}` : null,
-          ...exitSummary(targets, autoClose),
+          ...exitSummary(targets, autoClose, t.sec_type === 'STK'),
           <span className={autoClose.enabled ? 'tag live' : 'tag paper'}>{autoClose.enabled ? '自动平仓已开' : '仅提醒'}</span>,
         ]}
       />
@@ -301,6 +302,8 @@ export function TrackCard({
       ) : null}
       {/* 盯盘条:离触发还有多远。分档回撤的触发价每轮都会跳,所以取引擎算好的那个 */}
       {!fired && t.enabled ? <Gauge live={live} targets={targets} symbol={t.symbol} /> : null}
+      {/* 关键价位:期权墙 / 均线 / 整数关口和自己设的线摆在一根轴上,止损贴着哪个价位;穿越时弹窗(lib/TrackKeyLevels) */}
+      {!fired && t.enabled ? <TrackLevelsPanel t={t} live={live} /> : null}
       {live.reason ? <div className="reason">{live.reason}</div> : null}
       {/* 追价平仓:追到哪了。轮 = 秒;挂的价只朝成交方向动,让到「最多让到」为止 */}
       {sweeping && live.chase ? (

@@ -11,6 +11,8 @@ export const AlertsCreateParamsSchema: ParamsSchema<AlertsCreateParams> = z.obje
   symbol: z.string(),
   // 老 handler 是 Number(step) || 5:数字串也认,所以这里不写死 z.number()
   step: optional(z.union([z.number(), z.string()])),
+  // 认哪个值由 handler 定("tracker" 之外一律当空串)
+  origin: optional(z.string()),
 });
 
 export const AlertsDeleteParamsSchema: ParamsSchema<AlertsDeleteParams> = z.object({

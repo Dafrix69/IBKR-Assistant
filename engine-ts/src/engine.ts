@@ -37,7 +37,7 @@ import type { ProtectionState } from "./protections.js";
 import { TradeStore, redactAccount } from "./store.js";
 import { localIsoSeconds, nowIsoSecondsEt } from "./engine/clock.js";
 import { HostedOrders } from "./engine/hosted.js";
-import { spotStopFor } from "./engine/spotStop.js";
+import { spotStopFor, stockSpot, underlyingSpot } from "./engine/spotStop.js";
 import { TrackExits } from "./engine/exits.js";
 import { AccountGuard } from "./engine/accountGuard.js";
 import { SessionEmCache } from "./engine/sessionEm.js";
@@ -821,15 +821,12 @@ export class TradingEngine {
     const structure = tk.structureOf(String(raw["sec_type"] ?? "STK"), raw["contract"] as Rec);
     if (structure === null) return [targets, null, false];
 
-    let spot: number | null = null;
-    if (structure.kind === "stock") {
-      spot = (raw["market_price"] ?? null) as number | null; // 正股自己就是标的
-    } else {
-      try {
-        spot = await this.router!.indexPrice(String(raw["symbol"]));
-      } catch {
-        spot = null; // 行情失败不该炸掉轮询;下面会退到上一轮的价
-      }
+    let spot = (raw["market_price"] ?? null) as number | null; // 正股自己就是标的
+    if (structure.kind !== "stock") {
+      // 指数走 indexPrice(夜盘要期货推算);个股期权的标的走报价流,只认成交价、不认昨收(engine/spotStop.ts)。
+      // 行情失败不炸掉这一轮,下面会退到上一轮的价
+      const sym = String(raw["symbol"]);
+      spot = (await underlyingSpot(this.router!, sym, Boolean(this.settings.indexConfig(sym)))).spot;
     }
     // 各腿报价、IBKR 模型 IV、到期(ibkr 档用 IV,缺了退到按报价反解;见 ivPricing.ts),与试算同一个函数拼
     const legs = legInputsOf(raw, positions, tk.legPriceKey, (d) => this.settings.early_close_days.includes(d));
@@ -905,20 +902,11 @@ export class TradingEngine {
         continue;
       }
 
-      // 持仓行里的现价来自 TWS 的 portfolio 推送,盘前/盘后常常是空的——
-      // 追踪要全时段有效,拿不到就退到行情接口再要一次(只对股票;
-      // 期权腿的价格接口不同,拿不到就照实说"本轮不判断")。
+      // 持仓行里的现价来自 TWS 的 portfolio 推送(正股另有常驻流兜着),盘前/盘后仍可能是空的——追踪要全时段有效,
+      // 退到报价流再要一次(engine/spotStop.ts 的 stockSpot:只认成交价,不认昨收);期权腿拿不到就照实说"本轮不判断"
       if ((raw["market_price"] ?? null) === null && raw["sec_type"] === "STK") {
-        let fallback: number | null = null;
-        try {
-          fallback = await this.router.indexPrice(raw["symbol"]);
-        } catch {
-          fallback = null; // 行情失败不该炸掉轮询
-        }
-        if (fallback !== null) {
-          raw["market_price"] = fallback;
-          raw["price_source"] = "quote";
-        }
+        const fallback = await stockSpot(this.router, String(raw["symbol"]));
+        if (fallback !== null) Object.assign(raw, { market_price: fallback, price_source: "quote" });
       }
 
       const position = tk.makePosition({
@@ -933,7 +921,9 @@ export class TradingEngine {
       );
       // 标的止损价只看标的现价(engine/spotStop.ts);设了确认秒数的,越线之后待够了才算(engine/exits.ts)
       const spotStopRow = this.exits.confirmSpot(
-        String(track["id"]), targets, await spotStopFor(this.router, String(raw["symbol"]), targets, spotTargetRow), at.epochMs,
+        String(track["id"]), targets,
+        await spotStopFor(this.router, String(raw["symbol"]), targets, spotTargetRow, Boolean(this.settings.indexConfig(String(raw["symbol"])))),
+        at.epochMs,
       );
       const auto = tk.makeAutoClose(track["auto_close"] ?? {});
       const derivative = raw["sec_type"] === "BAG" || raw["sec_type"] === "OPT" || raw["sec_type"] === "FOP";
@@ -1199,7 +1189,7 @@ export class TradingEngine {
     // 正股没有腿的买卖价可合成:"立刻成交价"取现价朝成交方向让 slippage_pct(和市价平仓转限价同一口径)。
     // 以前正股这里一律回 null,托管的正股一旦要追价平仓(手动平仓、止损单不在券商侧)就每轮"拿不到报价"、永远平不掉
     const natural = String(raw["sec_type"] ?? "") === "STK"
-      ? tk.closeLimitPrice(position, position.market_price ?? (await this.router?.indexPrice(String(raw["symbol"] ?? "")).catch(() => null)) ?? null, auto.slippage_pct)
+      ? tk.closeLimitPrice(position, position.market_price ?? (this.router ? await stockSpot(this.router, String(raw["symbol"] ?? "")) : null), auto.slippage_pct)
       : await this.naturalCloseFor(raw, position, positions);
     if (natural === null) return null;
     return {

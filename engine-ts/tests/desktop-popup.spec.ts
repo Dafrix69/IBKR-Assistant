@@ -425,6 +425,9 @@ describe("弹窗内容清洗(sanitizePopupPayload)", () => {
     // SPX 走到关口的提醒:「查看」跳回交易指令页(蝴蝶测算在那一页)
     const [d] = sanitizePopupPayload({ items: [raw("spot:SPX:7725:5", { symbol: "SPX", kind: "level", page: "trade", at: 5 })] }).items;
     expect(d).toMatchObject({ id: "spot:SPX:7725:5", symbol: "SPX", kind: "level", page: "trade" });
+    // 在持仓追踪里的标的穿过价位:「查看」落到持仓追踪页
+    const [tr] = sanitizePopupPayload({ items: [raw("level:SPX:7700:5", { symbol: "SPX", kind: "level", page: "tracker", at: 5 })] }).items;
+    expect(tr).toMatchObject({ symbol: "SPX", kind: "level", page: "tracker" });
   });
 
   it("幂等:洗过的再洗一遍结果不变", () => {

@@ -51,12 +51,13 @@ type ExitSpec = Pick<TrackerAddParams,
 /**
  * 表单 → tracker.add 载荷里的那几个键。数值照界面的老规矩给字符串,'' = 不设。
  * 正股没有「可成交价」与追价(引擎会拒),所以不是期权 / 组合时这几项一律不带。
+ * 确认秒数两边都带:期权与组合管标的止损价,正股管它自己的止损价与跟踪止损。
  */
 export function exitSpec(f: ExitFields, derivative: boolean): ExitSpec {
   const tiers = filledTiers(f.tiers);
   return {
     exit_at: f.exitAt.trim(),
-    spot_stop_confirm_s: derivative ? str(f.stopConfirm) : '',
+    spot_stop_confirm_s: str(f.stopConfirm),
     take_profit_tiers: tiers.length ? tiers : '',
     stop_basis: derivative ? f.stopBasis : undefined,
     stop_chase_grace: derivative ? str(f.chaseGrace) || undefined : undefined,
@@ -67,12 +68,20 @@ export function exitSpec(f: ExitFields, derivative: boolean): ExitSpec {
 }
 
 /** 提交之前在界面这头就能看出来的毛病(引擎会再查一遍,话以引擎为准);没有回空数组 */
-export function exitProblems(f: ExitFields, opts: { hosted: boolean; hasSpotStop: boolean }): string[] {
+export function exitProblems(
+  f: ExitFields, opts: { hosted: boolean; hasSpotStop: boolean; stock?: boolean; hasStockStop?: boolean },
+): string[] {
   const out: string[] = [];
   if (f.exitAt.trim() && !clockOk(f.exitAt)) out.push('到点平仓的时刻要写成美东时间的 HH:MM,如 15:45。');
   if (f.tiers.some((t) => (t.price === null) !== (t.fraction === null))) out.push('分批止盈的每一档要把价和比例都填上。');
   if (filledTiers(f.tiers).length && opts.hosted) out.push('分批止盈只支持软件盯盘:托管到券商时不能设。');
-  if (f.stopConfirm !== null && f.stopConfirm > 0 && !opts.hasSpotStop) out.push('确认秒数是给标的止损价用的:先填「标的跌到」或「标的涨到」。');
+  if (f.stopConfirm !== null && f.stopConfirm > 0) {
+    // 正股的标的就是它自己:确认秒数管它的止损价 / 跟踪止损;托管的止损券商触线即发,等多久都拦不住
+    if (opts.stock) {
+      if (!opts.hasStockStop) out.push('正股的止损确认要先填止损价或跟踪止损。');
+      else if (opts.hosted) out.push('托管到券商的止损由券商触线即发,确认秒数只在软件自己盯时有用:要用它就别托管。');
+    } else if (!opts.hasSpotStop) out.push('确认秒数是给标的止损价用的:先填「标的跌到」或「标的涨到」。');
+  }
   return out;
 }
 
@@ -84,7 +93,11 @@ export function exitConfirmLines(f: ExitFields, derivative: boolean): string {
   if (tiers.length) {
     lines.push(`分批止盈:${tiers.map((t, i) => `第 ${i + 1} 档到 ${t.price} 平 ${t.fraction_pct}%`).join(',')}。每一档成交之后接着盯剩下的仓。`);
   }
-  if (derivative && f.stopConfirm !== null && f.stopConfirm > 0) lines.push(`标的止损要标的在线外连续待满 ${f.stopConfirm} 秒才平。`);
+  if (f.stopConfirm !== null && f.stopConfirm > 0) {
+    lines.push(derivative
+      ? `标的止损要标的在线外连续待满 ${f.stopConfirm} 秒才平。`
+      : `止损要现价在线外连续待满 ${f.stopConfirm} 秒才平(一笔打穿又弹回的不算)。`);
+  }
   if (derivative && f.stopBasis === 'natural') lines.push('止损、跟踪止损、利润回撤按「此刻立刻能成交的价」判(盘口变宽时会比按中间价判更早触发)。');
   if (derivative && (f.chaseGrace !== null || f.chaseStep !== null || f.chaseMax !== null)) {
     lines.push(
@@ -115,7 +128,7 @@ export function exitMoment(ms: number): string {
 }
 
 /** 卡片摘要里的几项:到点平仓、分批止盈、止损的口径、止损类的追价。没设的不出现 */
-export function exitSummary(targets: Partial<Targets>, auto: Partial<AutoClose>): string[] {
+export function exitSummary(targets: Partial<Targets>, auto: Partial<AutoClose>, stock = false): string[] {
   const out: string[] = [];
   if (targets.exit_at) {
     // 时刻被清掉了 = 到点那天没平掉、这一次已经作废(引擎当时提醒过);点「恢复」或重新设置才有下一次
@@ -125,7 +138,7 @@ export function exitSummary(targets: Partial<Targets>, auto: Partial<AutoClose>)
   }
   const tiers = targets.take_profit_tiers ?? [];
   if (tiers.length) out.push(`分批止盈 ${tiers.filter((t) => t.done).length}/${tiers.length} 档`);
-  if (targets.spot_stop_confirm_s) out.push(`标的止损确认 ${targets.spot_stop_confirm_s} 秒`);
+  if (targets.spot_stop_confirm_s) out.push(`${stock ? '止损确认' : '标的止损确认'} ${targets.spot_stop_confirm_s} 秒`);
   if (auto.stop_basis === 'natural') out.push('止损按可成交价判');
   if (auto.peak_confirm) out.push('峰值两秒确认');
   const chase = [auto.stop_chase_grace, auto.stop_chase_step, auto.stop_chase_max_pct];

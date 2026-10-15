@@ -35,12 +35,15 @@ export function TrackExitFields({
           <span>到点平仓(美东 HH:MM)</span>
           <Input placeholder="如 15:45;不填 = 不设" value={value.exitAt} onChange={(e) => set({ exitAt: e.target.value })} />
         </label>
-        {derivative ? (
-          <label className="track-field" title={`${symbol} 越过标的止损价之后,要在线外连续待满这么多秒才平;中途回到线内就从头数。不填 = 一碰线就平。`}>
-            <span>标的止损确认(秒)</span>
-            <InputNumber min={0} max={600} step={1} placeholder="不填 = 触线即算" value={value.stopConfirm} onChange={(v) => set({ stopConfirm: num(v) })} />
-          </label>
-        ) : null}
+        <label
+          className="track-field"
+          title={derivative
+            ? `${symbol} 越过标的止损价之后,要在线外连续待满这么多秒才平;中途回到线内就从头数。不填 = 一碰线就平。`
+            : `${symbol} 的现价越过止损价(或跟踪止损线)之后,要在线外连续待满这么多秒才平;一笔打穿又弹回的不算,中途回到线内就从头数。不填 = 一碰线就平。托管到券商时用不了:券商触线即发。`}
+        >
+          <span>{derivative ? '标的止损确认(秒)' : '止损确认(秒)'}</span>
+          <InputNumber min={0} max={600} step={1} placeholder="不填 = 触线即算" value={value.stopConfirm} onChange={(v) => set({ stopConfirm: num(v) })} />
+        </label>
         {derivative ? (
           <label className="track-field" title={STOP_BASIS_TITLE}>
             <span>止损按哪个价判</span>

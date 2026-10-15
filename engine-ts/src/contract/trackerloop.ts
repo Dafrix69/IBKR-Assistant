@@ -40,6 +40,8 @@ export interface TrackEvaluation {
   stop_price?: number | null;
   /** stop_basis = natural 的追踪这一轮拿不到可成交价(腿没报价,或者算出来不是正数):止损类退回按中间价判,峰值不推 */
   stop_fallback?: boolean;
+  /** 正股设了止损确认(spot_stop_confirm_s)、已经越过止损线但还没待够:待了多少秒、要多少秒(trackerExits.confirmStockStop) */
+  stop_pending?: { held_s: number; need_s: number };
   /** 这一轮触发的是分批止盈的第几档(从 0 数);不是分批止盈的触发没有这一项 */
   tier?: number;
   [extra: string]: unknown;

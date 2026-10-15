@@ -9,6 +9,7 @@ import type { AutoClose, SpotStop, SpotTarget, Targets } from "../contract/track
 import type { Notifier } from "../notify.js";
 import type { Rec, TradeStore } from "../store.js";
 import * as tk from "../tracker.js";
+import { confirmStockStop } from "../trackerExits.js";
 
 export interface ExitsHost {
   readonly store: TradeStore;
@@ -62,6 +63,17 @@ export class TrackExits {
     return out;
   }
 
+  // ---- 正股止损的确认 ------------------------------------------------------
+  private readonly stockBreaches = new Map<string, tk.BreachClock>();
+
+  /** 正股的标的就是它自己:同一个确认秒数管它的止损价 / 跟踪止损(trackerExits.confirmStockStop)。没设的原样返回。 */
+  private confirmStock<T extends tk.EvaluateResult>(tid: string, result: T, long: boolean, targets: Targets, nowMs: number): T {
+    const [out, clock] = confirmStockStop(result, long, targets.spot_stop_confirm_s, this.stockBreaches.get(tid) ?? null, nowMs);
+    if (clock === null) this.stockBreaches.delete(tid);
+    else this.stockBreaches.set(tid, clock);
+    return out;
+  }
+
   // ---- 这一轮的结论 ------------------------------------------------------
   /**
    * 一条追踪这一轮的结论:价格触发 → 标的触发 → 分批止盈 → 到点平仓,后面的只在前面都没触发时生效。
@@ -85,7 +97,10 @@ export class TrackExits {
       tk.evaluate(position, targets, price, track["peak"] ?? null, at.minutes, opts),
       String(track["symbol"]), targets, args.spotTarget, args.spotStop,
     );
-    const out = tk.withTimeExit(tk.withTier(byPrice, targets, tk.isLong(position)), targets, at.epochMs);
+    // 正股的止损确认:止损类判成触发之后要连续待够秒数(期权与组合的确认在标的那一路,上面 confirmSpot 已经做过)
+    const confirmed = position.sec_type === "STK"
+      ? this.confirmStock(tid, byPrice, tk.isLong(position), targets, at.epochMs) : byPrice;
+    const out = tk.withTimeExit(tk.withTier(confirmed, targets, tk.isLong(position)), targets, at.epochMs);
     return fallback ? { ...out, stop_fallback: true } : out;
   }
 
@@ -189,6 +204,7 @@ export class TrackExits {
   forget(alive: Set<string>): void {
     for (const tid of [...this.marks.keys()]) if (!alive.has(tid)) this.marks.delete(tid);
     for (const tid of [...this.breaches.keys()]) if (!alive.has(tid)) this.breaches.delete(tid);
+    for (const tid of [...this.stockBreaches.keys()]) if (!alive.has(tid)) this.stockBreaches.delete(tid);
     for (const tid of [...this.blockedSeen.keys()]) if (!alive.has(tid)) this.blockedSeen.delete(tid);
   }
 }

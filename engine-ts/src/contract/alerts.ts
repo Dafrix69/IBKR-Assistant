@@ -84,6 +84,8 @@ export interface Watch {
   /** 价位最近一次算出来的时刻(UTC ISO,到秒);还没算过是空串。价位新不新只看它:
    *  updated_at 每一轮 poll 写现价时都会被盖掉。 */
   levels_at: string;
+  /** 谁建的:空串 = 用户 / 股票池;"tracker" = 持仓追踪自动建的(追踪删掉、又不在股票池里时跟着删,见 services/alerts.releaseForTrack) */
+  origin: string;
 }
 
 // ---------------------------------------------------------------- 短期内反复碰均线
@@ -152,6 +154,8 @@ export interface AlertsCreateParams {
   symbol: string;
   /** 整数关口步长,缺省 0 = 自动;数字串也认 */
   step?: number | string;
+  /** "tracker" = 持仓追踪那一页建的(追踪表单上的「算关键价位」):追踪删掉、标的又不在股票池里时跟着删。别的值当空串 */
+  origin?: string;
 }
 
 export interface AlertsDeleteParams {

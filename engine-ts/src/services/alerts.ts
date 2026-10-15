@@ -430,4 +430,76 @@ export class AlertsService extends ServiceBase {
     this.sessionPrices.delete(symbol);
     this.lastSamples.delete(symbol);
   }
+
+  // ---- 持仓追踪的联动:追踪什么,就盯什么的价位 --------------------------------
+  /** 盯价位的上限(股票池里开的、持仓追踪自动建的都算在内):每只盘中都要取价,行情线路总共约 100 条。 */
+  static readonly MAX_WATCH = 30;
+  /** 持仓追踪自动建的盯单在 origin 列上记的值;用户 / 股票池建的是空串。 */
+  static readonly ORIGIN_TRACKER = "tracker";
+
+  /**
+   * 一条追踪建好了:它的标的从此也盯价位(期权墙 / 均线 / 整数关口进追踪卡片,穿越照常弹窗)。已经在盯的原样用;
+   * 没在盯的建一条,origin 记成 tracker——追踪删掉之后只有这种才跟着删,用户在股票池里自己开的不动。
+   * 建不了(到了上限、代码不合法)回一句原因,追踪本身照建:价位是加分项,不能因为它建不成就拦下一条止损。
+   */
+  adoptForTrack(symbol: string): string | null {
+    const store = this.engine.store;
+    const sym = String(symbol ?? "").trim().toUpperCase();
+    if (!sym) return null;
+    const watches = store.listWatches();
+    if (watches.some((w) => String(w["symbol"]) === sym)) return null;
+    if (watches.length >= AlertsService.MAX_WATCH) {
+      return `价位已达 ${AlertsService.MAX_WATCH} 只上限,没有为 ${sym} 算关键价位:在「板块」页关掉几只不看的,再点追踪卡片上的「算关键价位」。`;
+    }
+    try {
+      store.addWatch(sym, 0, AlertsService.ORIGIN_TRACKER);
+    } catch (exc) {
+      return `没有为 ${sym} 算关键价位:${errText(exc)}`;
+    }
+    this.levelTried.delete(sym); // 刚被删过又建回来的:别让退避把它拦上 10 分钟
+    store.audit("engine", "alert_watch_adopt", { symbol: sym, by: AlertsService.ORIGIN_TRACKER });
+    return null;
+  }
+
+  private trackedAdopted = false;
+
+  /**
+   * 已有的追踪(这条联动加上之前建的)一次补齐:引擎这次运行里第一次列追踪时,每个追踪着的标的没在盯价位的都建一条。
+   * 每次启动补一遍是幂等的;建不成的原因(到了上限)这次运行只说一次。回建不成的原因。
+   */
+  adoptTracked(symbols: Iterable<string>): string[] {
+    if (this.trackedAdopted) return [];
+    this.trackedAdopted = true;
+    const notes: string[] = [];
+    for (const symbol of new Set([...symbols].map((s) => String(s ?? "").trim().toUpperCase()).filter(Boolean))) {
+      const note = this.adoptForTrack(symbol);
+      if (note !== null) notes.push(note);
+    }
+    return notes;
+  }
+
+  /**
+   * 追踪删掉了:只因为追踪才盯着(origin = tracker)、此刻没有别的追踪用它、又不在股票池里的盯单一起删;
+   * 在股票池里的改成由池子管(origin 清空),之后在板块页关掉才删。`tracked` = 此刻还有追踪的那些标的。
+   * 表单上点了「算关键价位」却没建追踪的也在这里收拾(它们同样记着 tracker)。回删掉了哪几只。
+   */
+  releaseForTrack(tracked: ReadonlySet<string>): string[] {
+    const store = this.engine.store;
+    const inPool = store.symbolsInSectors();
+    const dropped: string[] = [];
+    for (const watch of store.listWatches()) {
+      if (String(watch["origin"] ?? "") !== AlertsService.ORIGIN_TRACKER) continue;
+      const sym = String(watch["symbol"]);
+      if (tracked.has(sym)) continue;
+      if (inPool.has(sym)) {
+        store.updateWatch(String(watch["id"]), { origin: "" });
+        continue;
+      }
+      store.deleteWatch(String(watch["id"]));
+      this.forget(sym);
+      dropped.push(sym);
+    }
+    if (dropped.length) store.audit("engine", "alert_watch_release", { symbols: dropped });
+    return dropped;
+  }
 }

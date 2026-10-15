@@ -175,7 +175,7 @@ export interface PopupItem {
   tone?: 'up' | 'down' | 'info';
   /** epoch 毫秒 */
   at?: number;
-  page?: 'quality' | 'sectors' | 'trade';
+  page?: 'quality' | 'sectors' | 'trade' | 'tracker';
 }
 
 export type EngineEvent = { event: string; data: any };
@@ -302,7 +302,8 @@ export interface DafriBridge {
   playbook(): Rpc<RpcResult<'options.playbook'>>;
   setPlaybook(enabled: boolean): Rpc<RpcResult<'options.playbook_set'>>;
   listAlerts(): Rpc<RpcResult<'alerts.list'>>;
-  createAlert(symbol: string, step: number): Rpc<RpcResult<'alerts.create'>>;
+  /** origin = 'tracker':持仓追踪那一页建的(追踪删掉、标的又不在股票池里时跟着删) */
+  createAlert(symbol: string, step: number, origin?: string): Rpc<RpcResult<'alerts.create'>>;
   deleteAlert(id: string): Rpc<RpcResult<'alerts.delete'>>;
   /** step 给了就先把这条盯单的整数关口步长改成它再算(0 = 自动) */
   refreshAlert(id: string, expiry?: string, step?: number): Rpc<RpcResult<'alerts.refresh'>>;

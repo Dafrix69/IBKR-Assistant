@@ -34,7 +34,7 @@ const SCOPES = [
  */
 const OVER_BUDGET: Record<string, number> = {
   "engine-ts/src/broker.ts": 2345,
-  "engine-ts/src/engine.ts": 1671,
+  "engine-ts/src/engine.ts": 1661,
   "engine-ts/src/futuBroker.ts": 1740,
   "desktop/renderer-react/src/lib/chart/engine.ts": 535,
   "desktop/renderer-react/src/lib/chart/overlays.ts": 483,

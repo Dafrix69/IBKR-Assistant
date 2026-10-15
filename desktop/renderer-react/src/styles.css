@@ -534,6 +534,10 @@ code {
 .lstrip-text.resistance .lstrip-name { fill: var(--down-text); }
 .lstrip-text.support .lstrip-name { fill: var(--up-text); }
 .lstrip-text.spot .lstrip-name, .lstrip-text.spot .lstrip-price { fill: var(--blue); }
+/* 持仓追踪里自己设的线(止损、止盈、标的止损):橙色,和墙 / 均线分得开 */
+.lstrip-tick.own { stroke: var(--orange); stroke-width: 3; }
+.lstrip-lead.own { stroke: var(--orange); }
+.lstrip-text.own .lstrip-name { fill: var(--orange-text); font-weight: 600; }
 
 /* 期权墙的价位梯子:一根竖轴,行按价格定位;支撑绿、阻力红、现价蓝点 */
 .ladder { position: relative; margin: 8px 0 2px; font-size: 11.5px; font-variant-numeric: tabular-nums; }
@@ -932,6 +936,18 @@ kbd {
 
 /* 新建追踪表单里折着的「更多出场规则」(lib/TrackExitFields.tsx) */
 .track-form > .track-more { grid-column: 1 / -1; }
+/* 关键价位:追踪卡片上的一块、新建追踪表单顶上的一排(lib/TrackKeyLevels.tsx) */
+.track-levels { margin: 8px 0 2px; padding: 6px 8px 5px; background: var(--bg-fill); border-radius: 6px; }
+.track-levels.muted { font-size: 11px; padding: 4px 8px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.track-levels-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: 12px; }
+.track-levels-head .muted { font-size: 11px; }
+.track-levels-head .strong { color: var(--label); font-weight: 600; }
+.track-levels .hint { margin-top: 3px; }
+.track-levels .card-meta { margin-top: 4px; }
+.track-form > .track-levels { grid-column: 1 / -1; margin-top: 0; }
+.level-picks { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-top: 5px; font-size: 11px; }
+.level-picks > .muted { margin-right: 2px; }
+.level-chip.ant-btn { height: 22px; padding: 0 7px; font-size: 11px; font-variant-numeric: tabular-nums; }
 .track-more > summary { cursor: pointer; font-size: 12px; color: var(--label-secondary); padding: 4px 0; }
 .track-more-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px 12px; margin-top: 6px; }
 .track-more-grid .ant-input, .track-more-grid .ant-input-number, .track-more-grid .ant-select { width: 100%; }

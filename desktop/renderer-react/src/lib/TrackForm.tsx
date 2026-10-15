@@ -10,6 +10,7 @@ import { dafri, errorMessage, type TrackerAddSpec } from '../bridge';
 import { fmtMoney, fmtNum } from './format';
 import { spotStopConfirmLine } from './spotStopFormat';
 import { TrackExitFields } from './TrackExitFields';
+import { TrackLevelPicker } from './TrackKeyLevels';
 import { emptyExitFields, exitConfirmLines, exitProblems, exitSpec, type ExitFields } from './trackExitForm';
 import { showBanner } from '../store/banner';
 import { pickableAccounts, useStatus } from '../store/status';
@@ -125,7 +126,7 @@ export function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: strin
       host_at_broker: hostOn,
       ...exitSpec(exits, derivative),
     };
-    const problems = exitProblems(exits, { hosted: hostOn, hasSpotStop: stopBelow !== null || stopAbove !== null });
+    const problems = exitProblems(exits, { hosted: hostOn, hasSpotStop: stopBelow !== null || stopAbove !== null, stock: !derivative, hasStockStop: sl !== null || trail !== null });
     if (problems.length) return showBanner(problems[0] ?? '', false);
     if (spec.host_at_broker && !spec.auto_close) {
       // 托管单就是授权发单——没有总开关的托管是自相矛盾的设置
@@ -235,6 +236,8 @@ export function TrackForm({ p, onCreated }: { p: Position; onCreated: (id: strin
 
   return (
     <div className="track-form">
+      <TrackLevelPicker p={p} long={long} derivative={derivative} onTarget={(v) => (derivative ? setSpotTarget(v) : setTp(v))}
+        onStop={(v, side) => (derivative ? (side === 'below' ? setStopBelow(v) : setStopAbove(v)) : setSl(v))} />
       {/* 标的目标价:人心里想的止盈位是**标的**走到哪儿,不是这份持仓值多少。
           换算成价格由引擎每轮现算——同一个目标位,上午和尾盘对应的期权价差着一倍。 */}
       <label className="track-field">

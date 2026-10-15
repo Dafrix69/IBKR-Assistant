@@ -213,6 +213,41 @@ export interface BreachClock {
  *  · 回到线内:计时清掉,下次越线从头数。
  *  · 换了一侧(从跌破变成涨破):从头数。
  */
+/** 一轮结论里这里用到的几样(tracker.EvaluateResult 的子集;不 import tracker.ts,那边 import 这里)。 */
+export interface StopVerdict {
+  state: string;
+  price: number | null;
+  reason: string;
+  /** 正股设了止损确认、已经越过止损线但还没待够:待了多少秒、要多少秒 */
+  stop_pending?: { held_s: number; need_s: number };
+}
+/** 和 tracker.ts 的 STATE_STOP_LOSS / STATE_HOLDING 同一个字面量(那边 import 这里,不能反过来引)。 */
+const STATE_STOP_LOSS = "stop_loss";
+const STATE_HOLDING = "holding";
+
+/**
+ * 正股的止损确认:标的止损的确认(上面那个)搬到正股自己的止损线上——正股的标的就是它自己,它的止损价 / 跟踪止损
+ * 判成触发之后,要连续待够 confirmS 秒才算。规矩同 confirmSpotStop:没设原样;拿不到现价计时留着;回到线内清零。
+ * 止盈、利润回撤、到点平仓不经这里:确认管的是"一笔打穿止损线的成交就把仓平掉"这一件事。
+ */
+export function confirmStockStop<T extends StopVerdict>(
+  result: T, long: boolean, confirmS: number | null | undefined, clock: BreachClock | null, nowMs: number,
+): [T, BreachClock | null] {
+  const need = finiteOrNull(confirmS);
+  if (need === null || !(need > 0)) return [result, null];
+  if (result.price === null) return [result, clock];
+  if (result.state !== STATE_STOP_LOSS) return [result, null];
+  const side: BreachClock["side"] = long ? "below" : "above";
+  const next: BreachClock = clock !== null && clock.side === side ? clock : { side, sinceMs: nowMs };
+  const held = Math.max(0, (nowMs - next.sinceMs) / 1000);
+  if (held >= need) return [result, next];
+  return [{
+    ...result, state: STATE_HOLDING,
+    stop_pending: { held_s: Math.floor(held), need_s: need },
+    reason: `${result.reason},已持续 ${Math.floor(held)} 秒,满 ${pyG(need)} 秒才平`,
+  }, next];
+}
+
 export function confirmSpotStop(
   row: SpotStop, confirmS: number | null | undefined, clock: BreachClock | null, nowMs: number,
 ): [SpotStop, BreachClock | null] {

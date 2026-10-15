@@ -7,7 +7,7 @@
  */
 import type { PoolWatch, PoolWatchPatch } from "../contract/pool.js";
 import { errText } from "../rpcError.js";
-import type { AlertsService } from "./alerts.js";
+import { AlertsService } from "./alerts.js";
 import { AnomalyService } from "./anomaly.js";
 import { ServiceBase } from "./host.js";
 import type { ServiceHost } from "./host.js";
@@ -19,8 +19,8 @@ export class PoolService extends ServiceBase {
     super(host);
   }
 
-  /** 盯价位的上限,和异动同一个数:每只股盘中都要取价,行情线路总共约 100 条。 */
-  static readonly MAX_WATCH = 30;
+  /** 盯价位的上限,和异动同一个数;持仓追踪自动建的盯单也算在内,所以数在 AlertsService 上。 */
+  static readonly MAX_WATCH = AlertsService.MAX_WATCH;
   /** 新股进池子时的默认:两个开关都开(用户定的)。 */
   static readonly POOL_DEFAULTS: { price: boolean; anomaly: boolean } = { price: true, anomaly: true };
   /** 新建价位提醒的整数关口步长,与 alerts.create 的缺省一致:0 = 自动,按现价分档(alerts.AUTO_STEP)。 */
@@ -139,7 +139,9 @@ export class PoolService extends ServiceBase {
     try {
       const inPool = store.symbolsInSectors();
       const orphans: string[] = [];
-      for (const row of [...store.listWatches(), ...store.listQualityStocks()]) {
+      // 持仓追踪自动建的盯单不是孤儿:它归追踪管,追踪删掉时自己会走(AlertsService.releaseForTrack)
+      const watches = store.listWatches().filter((w) => String(w["origin"] ?? "") !== AlertsService.ORIGIN_TRACKER);
+      for (const row of [...watches, ...store.listQualityStocks()]) {
         const symbol = String(row["symbol"] ?? "").trim().toUpperCase();
         if (!symbol || inPool.has(symbol) || orphans.includes(symbol)) continue;
         orphans.push(symbol);
