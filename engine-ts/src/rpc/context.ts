@@ -10,6 +10,7 @@ import type { RpcError } from "../rpcError.js";
 import type { AlertsService } from "../services/alerts.js";
 import type { AnomalyService } from "../services/anomaly.js";
 import type { EventsService } from "../services/events.js";
+import type { IntelService } from "../services/intel.js";
 import type { FillSyncService } from "../services/fillSync.js";
 import type { FlyPlannerService } from "../services/flyPlanner.js";
 import type { FollowService } from "../services/follow.js";
@@ -64,6 +65,7 @@ export interface RpcContext extends ServiceHost {
   readonly playbook: PlaybookService;
   readonly follow: FollowService;
   readonly events: EventsService;
+  readonly intel: IntelService;
 }
 
 /** handler 的基类:把上下文里最常用的几样摊成 this.settings / this.router / this.engine,

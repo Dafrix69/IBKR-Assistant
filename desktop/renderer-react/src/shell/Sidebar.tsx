@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Badge, Menu, type MenuProps } from 'antd';
 import { NAV_GROUPS, NAV_ITEMS, groupOf, type NavGroup } from './nav';
 import { useQualityUnread } from '../store/quality';
+import { useIntelUnread } from '../store/intel';
 import { IconTile } from '../ui/graphics';
 
 interface Props {
@@ -45,6 +46,7 @@ function useNarrow(): boolean {
 export function Sidebar({ active, onSelect, pendingCount }: Props) {
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const anomalyUnread = useQualityUnread();
+  const intelUnread = useIntelUnread();
   const narrow = useNarrow();
 
   const setGroup = useCallback((key: string, open: boolean) => {
@@ -66,7 +68,7 @@ export function Sidebar({ active, onSelect, pendingCount }: Props) {
     if (g && collapsed[g.key]) setGroup(g.key, true);
   }, [active, collapsed, setGroup]);
 
-  const badgeOf = (badge?: 'pending' | 'anomaly') => (badge === 'pending' ? pendingCount : badge === 'anomaly' ? anomalyUnread : 0);
+  const badgeOf = (badge?: 'pending' | 'anomaly' | 'intel') => (badge === 'pending' ? pendingCount : badge === 'anomaly' ? anomalyUnread : badge === 'intel' ? intelUnread : 0);
 
   const buildItems = useCallback(
     (groups: NavGroup[]): MenuItem[] => {
@@ -94,7 +96,7 @@ export function Sidebar({ active, onSelect, pendingCount }: Props) {
       }));
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [narrow, pendingCount, anomalyUnread],
+    [narrow, pendingCount, anomalyUnread, intelUnread],
   );
 
   const top = useMemo(() => buildItems(NAV_GROUPS.filter((g) => !g.bottom)), [buildItems]);

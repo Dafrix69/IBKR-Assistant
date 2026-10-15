@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BookWall, useBooks } from '../lib/BookWall';
 import { PaPanel } from '../lib/PaPanel';
+import { clearNavFocus, useNavFocus } from '../store/nav';
 import { PageHead } from '../ui/kit';
 
 // 行情:一页看一个标的——K 线 + 价格行为读盘(判断由引擎算、权重公开),图下面就是它的盘口(深度梯子,只读);
@@ -11,6 +12,13 @@ export function MarketPage() {
   const books = useBooks();
   // 盘口墙上点了哪个代码:带序号,同一个代码连点两次也算两次
   const [pick, setPick] = useState<{ symbol: string; seq: number } | null>(null);
+  // 从标的档案的「K 线」跳过来:把那只换到上面
+  const focus = useNavFocus('market');
+  useEffect(() => {
+    if (!focus) return;
+    setPick((p) => ({ symbol: focus.symbol, seq: (p?.seq || 0) + 1 }));
+    clearNavFocus(focus.seq);
+  }, [focus]);
   return (
     <section className="tab-panel active" id="page-market">
       <PageHead title="行情" />

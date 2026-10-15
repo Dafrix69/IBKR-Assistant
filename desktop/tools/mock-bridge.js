@@ -16,6 +16,34 @@
 })();
 
 
+// ---- 信息链路的时间线 ----------------------------------------------------------
+// 时刻按"现在"往回推,截图里永远是"几分钟前"
+function INTEL_ITEMS() {
+  const now = Date.now();
+  const m = (min) => now - min * 60e3;
+  const held = (syms) => syms.filter((s) => ['SPX', 'NVDA', 'TSLA', 'AAPL'].includes(s));
+  const item = (o) => Object.assign({ guesses: [], tone: 'info', body: '' }, o, { held: held(o.symbols) });
+  return [
+    item({ id: 'message:9', kind: 'message', at: m(2), symbols: ['SPX'], title: '@everyone 7720 7725 bear call -2 -2.5', source: 'Charlie', trusted: true, ref: '9',
+      outcome: 'observed', body: '只观察:能发,但跟单开关关着', instruction: '7720 7725 bear call -2 -2.5', move: { symbol: 'SPX', then: 7708.2, now: 7712.4, pct: 0.05 } }),
+    item({ id: 'message:8', kind: 'message', at: m(6), symbols: ['NVDA'], guesses: ['CRWV'], title: '英伟达 盘中放量了,CRWV 发债那波别忘了', source: 'Charlie', trusted: true, ref: '8',
+      move: { symbol: 'NVDA', then: 216.1, now: 219.74, pct: 1.68 } }),
+    item({ id: 'signal:41', kind: 'signal', at: m(20), symbols: ['NVDA'], title: 'NVDA 上穿 关口 220', body: '价位穿越 · 押涨 · 当时 220.05', tone: 'up', source: 'cross', ref: '41' }),
+    item({ id: 'order:r9', kind: 'order', at: m(30), symbols: ['NVDA'], title: '限价 205 买入 50 股 NVDA', body: '在途:Submitted', tone: 'up', source: '模拟', ref: 'r9' }),
+    item({ id: 'signal:40', kind: 'signal', at: m(40), symbols: ['NVDA'], title: 'NVDA 全天放量 3.2×', body: '全天放量 · 不带方向 · 当时 218.5', source: 'rvol', ref: '40' }),
+    item({ id: 'message:7', kind: 'message', at: m(55), symbols: ['SPX'], title: '@everyone 1.8 挂15蝴蝶 15CM', source: 'Charlie', trusted: true, ref: '7', outcome: 'sent',
+      body: '已跟单:发到 模拟', instruction: '1.8 挂15蝴蝶 15CM', tone: 'up', move: { symbol: 'SPX', then: 7701.5, now: 7712.4, pct: 0.14 } }),
+    item({ id: 'message:6', kind: 'message', at: m(70), symbols: ['TSLA'], title: '特斯拉 交付数据不及预期,别抄底', source: '路人甲', trusted: false, ref: '6',
+      move: { symbol: 'TSLA', then: 418.9, now: 412.3, pct: -1.58 } }),
+    item({ id: 'signal:39', kind: 'signal', at: m(95), symbols: ['TSLA'], title: 'TSLA 下破 MA20', body: '价位穿越 · 押跌 · 当时 414.2', tone: 'down', source: 'cross', ref: '39' }),
+    item({ id: 'event:builtin:cpi', kind: 'event', at: now + 5 * 3600e3, symbols: ['SPX'], title: '将公布:CPI(9月)', body: '美东 2026-10-16 08:30 · 预期 0.3% · 前值 0.4%', tone: 'warn', source: 'cpi', ref: 'cpi' }),
+    item({ id: 'event:custom:nvda', kind: 'event', at: now + 26 * 3600e3, symbols: ['NVDA'], title: '将公布:NVDA 财报', body: '美东 2026-10-17 16:05 · 盘后', source: 'custom', ref: 'nvda' }),
+    item({ id: 'idea:i1', kind: 'idea', at: m(3 * 1440), symbols: ['NVDA'], title: 'NVDA 回调到 MA20 附近想加一点,财报前不追', body: '进行中', source: 'active', ref: 'i1' }),
+    item({ id: 'order:r7', kind: 'order', at: m(1500), symbols: ['AAPL'], title: '限价 5.5 买入 2 张 AAPL 20260918 320 Call', body: '已成交 · 均价 5.52', tone: 'up', source: '模拟', ref: 'r7' }),
+    item({ id: 'message:5', kind: 'message', at: m(1530), symbols: ['AAPL'], title: '$AAPL 新机发布前可以小仓位 call', source: 'Charlie', trusted: true, ref: '5', move: { symbol: 'AAPL', then: 316.2, now: 321.8, pct: 1.77 } }),
+  ].sort((a, b) => b.at - a.at); // 引擎给的是新的在前
+}
+
 // ---- 假的 contextBridge:形状照着真的来,数据挑典型值 ----------------------
 const RECORDS = [
   {id:'r1', symbol:'NVDA', action:'BUY', quantity:2, account:'模拟', account_masked:'DU***321', is_paper:true, status:'Submitted',
@@ -476,6 +504,37 @@ window.dafri = {
   setEventsConfig: async (config) => ({ config: { enabled: true, feed: true, medium: false, lead_minutes: [60, 15], sector_min_stocks: 3, sector_share: 0.6, sector_move_pct: 3, cross_market: true, cross_market_pct: 1.5, cross_lag_pct: 1, ...config } }),
   addEvent: async (spec) => ({ event: { id: 'custom:new', kind: 'custom', title: spec.title, at: Date.now() + 3600_000, date_et: spec.date_et, time_et: spec.time_et, impact: 'high', source: 'custom', linger_min: 90 } }),
   removeEvent: async (id) => ({ deleted: id }),
+  // 信息链路:Charlie 的频道 + 盯价位 / 异动的信号 + 宏观事件 + 自己的单子 + 想法,按标的串成一条线
+  intelFeed: async (spec) => {
+    const all = INTEL_ITEMS();
+    const kinds = spec && Array.isArray(spec.kinds) && spec.kinds.length ? new Set(spec.kinds) : null;
+    const items = all.filter((i) => (!kinds || kinds.has(i.kind)) && (!spec || !spec.held_only || i.held.length) && (!spec || !spec.symbol || i.symbols.includes(String(spec.symbol).toUpperCase())));
+    return { items, held: ['SPX', 'NVDA', 'TSLA', 'AAPL'], total_messages: 412, at: Date.now(), connected: true };
+  },
+  intelDossier: async (symbol) => {
+    const s = String(symbol || '').toUpperCase();
+    const now = Date.now();
+    const timeline = INTEL_ITEMS().filter((i) => i.symbols.includes(s));
+    const nvda = s === 'NVDA';
+    return {
+      symbol: s, at: now, connected: true, held: ['SPX', 'NVDA', 'TSLA', 'AAPL'].includes(s),
+      quote: s === 'SPX' ? { price: 7712.4, change_pct: null, source: 'index' } : nvda ? { price: 219.74, change_pct: 2.31, source: 'quote' } : { price: 412.3, change_pct: -1.12, source: 'quote' },
+      positions: nvda ? [{ key: '模拟|NVDA|STK', account: '模拟', symbol: 'NVDA', sec_type: 'STK', leg: '', label: 'NVDA', quantity: 100, multiplier: 1, currency: 'USD', avg_cost: 180, market_price: 219.74, market_value: 21974, unrealized_pnl: 3974, unrealized_pct: 22.08, contract: { secType: 'STK', symbol: 'NVDA' } }]
+        : s === 'SPX' ? [{ key: '模拟|SPX|BAG|20261008|+1x7725C,-2x7750C,+1x7775C', account: '模拟', symbol: 'SPX', sec_type: 'BAG', leg: '20261008|+1x7725C,-2x7750C,+1x7775C', label: '买入看涨蝴蝶 7725/7750/7775', quantity: 1, multiplier: 100, currency: 'USD', avg_cost: 450, market_price: 5.23, market_value: 523, unrealized_pnl: 73, unrealized_pct: 16.2, contract: { secType: 'BAG', symbol: 'SPX' } }] : [],
+      tracks: nvda ? [{ id: 'tk1', created_at: '', updated_at: '', account: '模拟', symbol: 'NVDA', sec_type: 'STK', leg: '', contract: { secType: 'STK', symbol: 'NVDA' }, targets: { take_profit: 240, stop_loss: 200 }, auto_close: { enabled: true }, enabled: true, peak: 225, fired_at: null, fired_state: '', fired_record: '', note: '' }] : [],
+      working: nvda ? [{ id: 'r9', at: new Date(now - 30 * 60e3).toISOString(), status: 'Submitted', summary: '限价 205 买入 50 股 NVDA', account: '模拟' }] : [],
+      sectors: nvda ? ['数据中心', '半导体'] : [],
+      watch: nvda ? { enabled: true, last_price: 219.74, events: [], levels: [
+        { price: 225, label: 'C 墙', source: 'call_wall', kind: 'resistance' }, { price: 220, label: '关口', source: 'round', kind: 'pivot' },
+        { price: 212.4, label: 'MA20', source: 'ma20', kind: 'support' }, { price: 200, label: 'P 墙', source: 'put_wall', kind: 'support' }] } : null,
+      quality: nvda ? { enabled: true, change_pct: 2.31, events: [{ id: 'q1', at: Math.floor(now / 1000) - 40 * 60, symbol: 'NVDA', kind: 'rvol', direction: 'up', value: 3.2, threshold: 3, tier: 3, sigma: null, price: 218.5, change_pct: 1.9, basis: 'avg_volume', title: 'NVDA 全天放量 3.2×', text: '' }] } : null,
+      ideas: nvda ? [{ id: 'i1', created_at: new Date(now - 3 * 86400e3).toISOString(), updated_at: '', text: 'NVDA 回调到 MA20 附近想加一点,财报前不追', symbols: ['NVDA'], status: 'active', analysis: null }] : [],
+      events: [{ id: 'builtin:cpi:x', kind: 'cpi', title: 'CPI(9月)', at: now + 5 * 3600e3, date_et: '2026-10-16', time_et: '08:30', impact: 'high', source: 'builtin', linger_min: 90 }],
+      signals: nvda ? [{ source: 'cross', n: 6, last_at: new Date(now - 20 * 60e3).toISOString() }, { source: 'rvol', n: 3, last_at: new Date(now - 40 * 60e3).toISOString() }, { source: 'pa', n: 2, last_at: new Date(now - 2 * 3600e3).toISOString() }] : [],
+      mentions_7d: timeline.filter((i) => i.kind === 'message').length + 7,
+      timeline,
+    };
+  },
   // 持仓追踪:一多一空、一个正股一个期权、一只在追踪的 SPX 蝴蝶,覆盖盈亏正负两侧
   listPositions: async () => ({positions:[
     {key:'模拟|SPX|BAG|20261008|+1x7725C,-2x7750C,+1x7775C', account:'模拟', symbol:'SPX', sec_type:'BAG',

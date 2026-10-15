@@ -428,6 +428,9 @@ describe("弹窗内容清洗(sanitizePopupPayload)", () => {
     // 在持仓追踪里的标的穿过价位:「查看」落到持仓追踪页
     const [tr] = sanitizePopupPayload({ items: [raw("level:SPX:7700:5", { symbol: "SPX", kind: "level", page: "tracker", at: 5 })] }).items;
     expect(tr).toMatchObject({ symbol: "SPX", kind: "level", page: "tracker" });
+    // 信息链路:持仓的票被提到,「查看」回情报页并打开它的档案
+    const [intel] = sanitizePopupPayload({ items: [raw("intel:1", { symbol: "NVDA", kind: "event", page: "intel", at: 5 })] }).items;
+    expect(intel).toMatchObject({ id: "intel:1", symbol: "NVDA", kind: "event", page: "intel" });
   });
 
   it("幂等:洗过的再洗一遍结果不变", () => {

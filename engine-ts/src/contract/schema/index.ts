@@ -18,6 +18,7 @@ import {
 } from "./connection.js";
 import { EventsAddParamsSchema, EventsListParamsSchema, EventsRemoveParamsSchema, EventsSetConfigParamsSchema } from "./events.js";
 import { FollowSetTokenParamsSchema } from "./follow.js";
+import { IntelDossierParamsSchema, IntelFeedParamsSchema } from "./intel.js";
 import {
   IdeasAddParamsSchema, IdeasAnalyzeParamsSchema, IdeasDigestParamsSchema, IdeasDigestsParamsSchema, IdeasListParamsSchema,
   IdeasSearchParamsSchema, IdeasSimilarTradesParamsSchema, IdeasUpdateParamsSchema,
@@ -71,6 +72,9 @@ export const PARAMS_SCHEMAS: { readonly [M in RpcMethodName]: ParamsSchema<RpcPa
   "events.set_config": EventsSetConfigParamsSchema,
   "events.add": EventsAddParamsSchema,
   "events.remove": EventsRemoveParamsSchema,
+
+  "intel.feed": IntelFeedParamsSchema,
+  "intel.dossier": IntelDossierParamsSchema,
 
   "backtest.strategies": NoParamsSchema,
   "backtest.run": BacktestRunParamsSchema,

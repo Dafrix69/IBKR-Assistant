@@ -127,6 +127,9 @@ contextBridge.exposeInMainWorld('dafri', {
   setEventsConfig: (config) => ipcRenderer.invoke('rpc', { method: 'events.set_config', params: { config } }),
   addEvent: (spec) => ipcRenderer.invoke('rpc', { method: 'events.add', params: spec }),
   removeEvent: (id) => ipcRenderer.invoke('rpc', { method: 'events.remove', params: { id } }),
+  // 信息链路:时间线与标的档案(只读)
+  intelFeed: (spec) => ipcRenderer.invoke('rpc', { method: 'intel.feed', params: spec || {} }),
+  intelDossier: (symbol, limit) => ipcRenderer.invoke('rpc', { method: 'intel.dossier', params: limit ? { symbol, limit } : { symbol } }),
 
   // ---- 会产生后果的操作(主进程会校验 __confirmed)----------------------
   // accounts:界面勾选的目标账户别名;勾两个就同时向两个账户发单(引擎按账户扇出)

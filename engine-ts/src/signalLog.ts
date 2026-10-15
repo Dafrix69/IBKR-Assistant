@@ -90,6 +90,22 @@ export class SignalLogStore {
     return tx(entries);
   }
 
+  /** 同 list,每条带上库里的序号(信息链路拿它当稳定的 id)。 */
+  listWithSeq(since: string | null = null, limit = 20_000): Array<SignalEntry & { seq: number }> {
+    const rows = (since === null
+      ? this.db.prepare(`SELECT seq, ${COLUMNS} FROM signal_log ORDER BY seq DESC LIMIT ?`).all(limit)
+      : this.db.prepare(`SELECT seq, ${COLUMNS} FROM signal_log WHERE at >= ? ORDER BY seq DESC LIMIT ?`).all(since, limit)
+    ) as Array<SignalRow & { seq: number }>;
+    rows.reverse();
+    return rows.flatMap((r) => (SOURCES.has(r.source as SignalSource)
+      ? [{
+        seq: r.seq, at: r.at, source: r.source as SignalSource, symbol: r.symbol,
+        expect: r.expect === "up" || r.expect === "down" ? r.expect : null,
+        price: r.price, label: r.label, variant: r.variant,
+      }]
+      : []));
+  }
+
   /** `since`(ISO)之后的,从早到晚;超过 `limit` 条时留最新的那些。不认识的来源(更新的版本写的 / 手改过的库)跳过。 */
   list(since: string | null = null, limit = 20_000): SignalEntry[] {
     const rows = (since === null

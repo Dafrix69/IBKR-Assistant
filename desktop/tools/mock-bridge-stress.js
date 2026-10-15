@@ -386,6 +386,8 @@ window.dafri = {
   setEventsConfig: async (config) => ({ config: { enabled: true, feed: true, medium: false, lead_minutes: [60, 15], sector_min_stocks: 3, sector_share: 0.6, sector_move_pct: 3, cross_market: true, cross_market_pct: 1.5, cross_lag_pct: 1, ...config } }),
   addEvent: async (spec) => ({ event: { id: 'custom:new', kind: 'custom', title: spec.title, at: Date.now() + 3600_000, date_et: spec.date_et, time_et: spec.time_et, impact: 'high', source: 'custom', linger_min: 90 } }),
   removeEvent: async (id) => ({ deleted: id }),
+  intelFeed: async () => ({ items: [], held: [], total_messages: 0, at: Date.now(), connected: false }),
+  intelDossier: async (symbol) => ({ symbol: String(symbol || '').toUpperCase(), quote: null, held: false, positions: [], tracks: [], working: [], sectors: [], watch: null, quality: null, ideas: [], events: [], signals: [], mentions_7d: 0, timeline: [], at: Date.now(), connected: false }),
   // 持仓追踪:一多一空、一个正股一个期权,覆盖盈亏正负两侧
   listPositions: async () => ({positions:[
     {key:'模拟|NVDA|STK', account:'模拟', symbol:'NVDA', sec_type:'STK',

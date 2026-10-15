@@ -1,7 +1,7 @@
 /**
- * 侧栏三组、14 项,按"多久用一次"分层(docs/features/ui.md)。
+ * 侧栏三组、15 项,按"多久用一次"分层(docs/features/ui.md)。
  * 图标是 ui/Icons.tsx 里按 SF Symbols 几何手绘的线稿,这里只引名字。
- * 徽标:board 显示排队等待触发的订单数,sectors(股票池)显示没看过的异动条数。
+ * 徽标:board 显示排队等待触发的订单数,sectors(股票池)显示没看过的异动条数,intel 显示没看过的"持仓的票被提到"。
  *
  * 「优质股」这一项已经并进「板块」:一只股登记一次(板块成分股 = 股票池),盯价位 / 盯异动是它身上的两个开关,
  * 所以侧栏不再为"盯异动的那几只"单开一项。旧的 quality 页名仍要能跳(见下面的 PARENT_OF)。
@@ -10,7 +10,7 @@ export interface NavItem {
   key: string;
   label: string;
   icon: string;
-  badge?: 'pending' | 'anomaly';
+  badge?: 'pending' | 'anomaly' | 'intel';
 }
 
 export interface NavGroup {
@@ -42,6 +42,8 @@ export const NAV_GROUPS: NavGroup[] = [
       { key: 'backtest', label: '回测', icon: 'sf-chart' },
       { key: 'review', label: '交易分析', icon: 'sf-review' },
       { key: 'performance', label: '绩效体检', icon: 'sf-gauge' },
+      // 放在研究组末尾:⌘1…9 按侧栏顺序切页,前九项不动;随时可以 ⌘K 查标的
+      { key: 'intel', label: '情报', icon: 'sf-antenna', badge: 'intel' },
     ],
   },
   {

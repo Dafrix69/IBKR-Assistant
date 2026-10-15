@@ -110,6 +110,22 @@ export class FollowLogStore {
     return info.changes > 0;
   }
 
+  /** 这几条消息各自的下场(只有像单子的才有日志;没有的就不在返回里)。信息链路把它接到消息底账上用。 */
+  verdictsFor(messageIds: readonly string[]): Map<string, { outcome: FollowOutcome; detail: string; summary: string }> {
+    const out = new Map<string, { outcome: FollowOutcome; detail: string; summary: string }>();
+    const ids = [...new Set(messageIds)].filter((id) => id);
+    for (let i = 0; i < ids.length; i += 500) {
+      const batch = ids.slice(i, i + 500);
+      const rows = this.db
+        .prepare(`SELECT message_id, outcome, detail, summary FROM follow_log WHERE message_id IN (${batch.map(() => "?").join(",")})`)
+        .all(...batch) as Array<{ message_id: string; outcome: string; detail: string; summary: string }>;
+      for (const r of rows) {
+        if (OUTCOMES.has(r.outcome as FollowOutcome)) out.set(r.message_id, { outcome: r.outcome as FollowOutcome, detail: r.detail, summary: r.summary });
+      }
+    }
+    return out;
+  }
+
   /** `since`(ISO)起发出去了几单。 */
   sentSince(since: string): number {
     const row = this.db

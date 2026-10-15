@@ -7,6 +7,7 @@ import { statusLabel } from '../lib/labels';
 import { BUCKET_LABEL, BUCKET_TINT, SidePill, StatusPill, statusBucket, type StatusBucket } from '../lib/OrderStatus';
 import { RecordDetail } from '../lib/RecordDetail';
 import { showBanner } from '../store/banner';
+import { openDossier } from '../store/intel';
 import { loadRecords, useRecords, useRecordsError, type RecordSummary } from '../store/records';
 import { SegBar, SymBadge } from '../ui/graphics';
 import { EmptyState, PageHead } from '../ui/kit';
@@ -119,7 +120,9 @@ export function RecordsPage() {
       sorter: (a, b) => String(a.symbol || '').localeCompare(String(b.symbol || '')),
       render: (_: unknown, r) => (
         <span className="record-sym-cell">
-          <SymBadge small symbol={r.symbol || '—'} tint={r.action === 'SELL' ? 'down' : r.action === 'BUY' ? 'up' : 'gray'} />
+          <button type="button" className="sym-link" title={r.symbol ? `打开 ${r.symbol} 的档案` : undefined} onClick={(e) => { e.stopPropagation(); if (r.symbol) openDossier(r.symbol); }}>
+            <SymBadge small symbol={r.symbol || '—'} tint={r.action === 'SELL' ? 'down' : r.action === 'BUY' ? 'up' : 'gray'} />
+          </button>
           <SidePill action={r.action} />
         </span>
       ),

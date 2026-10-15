@@ -97,6 +97,7 @@ import type {
   AnomalyConfig, AnomalyEvent, AnomalyKind, AnomalyMetrics, LevelKind, OptionWall, PoolWatch, PoolWatchPatch, PositionRow,
   FlyPlanIvMode, FlyPlanLeg, FlyPlanParams, FlyPlanPoint, FlyPlanResult, FlyPlanScenario, FlyPlanTime, FlyPlanValue, IvRecorderStatus, OptionsSpot,
   PlaybookBand, PlaybookEvent, PlaybookSnapshot, PlaybookState, EconEvent, EventsConfig, EventsList,
+  IntelDossier, IntelFeed, IntelFeedParams, IntelItem, IntelKind, IntelMove, IntelQuote, IntelSignalCount, IntelWorkingOrder, Mention, MentionHow,
   AccountView, Limits, Policies, ProtectionsConfig, QualityList, QualityMonitor, QualityStock, RpcParams, RpcResult, Sector,
   SectorStock, SettingsPatch, SettingsView, SpotTarget, StockQuote, Targets, Track, Watch, WatchEvent, WatchLevel,
   CrossConfirm, MaTouchConfig, TouchBook, TouchEpisode, TouchLine, WatchTrigger,
@@ -129,6 +130,7 @@ export type {
   AnomalyEvent, AnomalyKind, LevelKind, OptionWall, PoolWatch, PoolWatchPatch, PositionRow, QualityList, QualityMonitor,
   FlyPlanIvMode, FlyPlanLeg, FlyPlanParams, FlyPlanPoint, FlyPlanResult, FlyPlanScenario, FlyPlanTime, FlyPlanValue, IvRecorderStatus, OptionsSpot,
   PlaybookBand, PlaybookEvent, PlaybookSnapshot, PlaybookState, EconEvent, EventsConfig, EventsList,
+  IntelDossier, IntelFeed, IntelFeedParams, IntelItem, IntelKind, IntelMove, IntelQuote, IntelSignalCount, IntelWorkingOrder, Mention, MentionHow,
   QualityStock, Sector, SectorStock, SettingsPatch, SpotTarget, StockQuote, Targets, Track, Watch, WatchEvent, WatchLevel,
   CrossConfirm, MaTouchConfig, TouchBook, TouchEpisode, TouchLine, WatchTrigger,
   BreakerBrief, BreakerState, IndexSpot, ProtectionCooldown, SystemSelftest, SystemStatus, TrackerHeartbeat,
@@ -175,7 +177,7 @@ export interface PopupItem {
   tone?: 'up' | 'down' | 'info';
   /** epoch 毫秒 */
   at?: number;
-  page?: 'quality' | 'sectors' | 'trade' | 'tracker';
+  page?: 'quality' | 'sectors' | 'trade' | 'intel' | 'tracker';
 }
 
 export type EngineEvent = { event: string; data: any };
@@ -251,6 +253,8 @@ export interface DafriBridge {
   listEvents(force?: boolean): Rpc<RpcResult<'events.list'>>; // 重要事件(docs/features/events.md);force = 用户点了刷新
   setEventsConfig(config: RpcParams<'events.set_config'>['config']): Rpc<RpcResult<'events.set_config'>>;
   addEvent(spec: RpcParams<'events.add'>): Rpc<RpcResult<'events.add'>>; removeEvent(id: string): Rpc<RpcResult<'events.remove'>>;
+  intelFeed(spec: RpcParams<'intel.feed'>): Rpc<RpcResult<'intel.feed'>>; // 信息链路:时间线与标的档案,只读
+  intelDossier(symbol: string, limit?: number): Rpc<RpcResult<'intel.dossier'>>;
 
   /** 一句话 → 解析 → 校验 →(execute 为真时)发单。主进程要求界面已经确认过一次(SENSITIVE_RPC) */
   submit(text: string, execute: boolean, accounts: string[]): Rpc<RpcResult<'instruction.submit'>>;

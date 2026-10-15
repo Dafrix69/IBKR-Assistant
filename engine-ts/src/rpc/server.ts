@@ -19,6 +19,7 @@ import { KeychainError } from "../secrets.js";
 import { AlertsService } from "../services/alerts.js";
 import { AnomalyService } from "../services/anomaly.js";
 import { EventsService } from "../services/events.js";
+import { IntelService } from "../services/intel.js";
 import { BrokerLinkService } from "../services/brokerLink.js";
 import { FlyPlannerService } from "../services/flyPlanner.js";
 import { FollowService, refuseModelWhileFollowing } from "../services/follow.js";
@@ -49,6 +50,7 @@ import { ReviewHandlers } from "./handlers/review.js";
 import { TrackerHandlers } from "./handlers/tracker.js";
 import { ConnectionHandlers } from "./handlers/connection.js";
 import { EventsHandlers } from "./handlers/events.js";
+import { IntelHandlers } from "./handlers/intel.js";
 import { FollowHandlers } from "./handlers/follow.js";
 import { SettingsHandlers } from "./handlers/settings.js";
 
@@ -87,6 +89,7 @@ export class RpcServer implements RpcContext {
   readonly playbook: PlaybookService;
   readonly follow: FollowService;
   readonly events: EventsService;
+  readonly intel: IntelService;
   /** 各域的 handler。方法表在构造时合成一张,之后不变。 */
   readonly domains: {
     system: SystemHandlers;
@@ -104,6 +107,7 @@ export class RpcServer implements RpcContext {
     settings: SettingsHandlers;
     follow: FollowHandlers;
     events: EventsHandlers;
+    intel: IntelHandlers;
   };
   private readonly table: MethodTable;
 
@@ -131,6 +135,9 @@ export class RpcServer implements RpcContext {
     this.follow = new FollowService(this);
     // 重要事件:内置日程 + 公开日历 + 自定义,只给界面一份清单;提醒的节拍在界面里
     this.events = new EventsService(this);
+    // 信息链路:频道里看到的每一条消息落底账、认标的;时间线与档案现算。取价只走已订着的行情
+    this.intel = new IntelService(this, this.market, this.events, this.anomaly);
+    this.follow.onSeen = (message, trusted) => void this.intel.record(message, trusted);
     this.domains = {
       system: new SystemHandlers(this),
       trading: new TradingHandlers(this),
@@ -147,6 +154,7 @@ export class RpcServer implements RpcContext {
       settings: new SettingsHandlers(this),
       follow: new FollowHandlers(this),
       events: new EventsHandlers(this),
+      intel: new IntelHandlers(this),
     };
     // 跟单建追踪走 tracker.add 的同一个 handler,记盘口用蝴蝶测算那批自己的行情流:services 不认识 handler,在这里接上
     this.follow.attach({ addTrack: (params) => this.domains.tracker.trackerAdd(params), marks: this.flyPlanner.marks });
@@ -325,6 +333,8 @@ export class RpcServer implements RpcContext {
     "options.spot",
     // 重要事件的清单:从没拉到过日历源时同步等它(最多 8 秒),不该挡下单
     "events.list",
+    // 信息链路:读本地库合成时间线,消息上"此刻的价"按批读已订着的行情;档案多读一次持仓(常驻缓存)
+    "intel.feed", "intel.dossier",
   ]);
   static readonly READ_CONCURRENCY = 4;
   static readonly SLOW_MS = 1000; // 超过这个时长的请求记到 stderr

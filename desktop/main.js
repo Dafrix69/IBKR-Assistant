@@ -247,6 +247,8 @@ const ALLOWED_RPC = new Set([
   'events.set_config',
   'events.add',
   'events.remove',
+  'intel.feed',
+  'intel.dossier',
 ]);
 
 /** 会真的动钱或动配置的通道,额外要求界面已经确认过一次。 */

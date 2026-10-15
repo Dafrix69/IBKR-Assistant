@@ -138,6 +138,8 @@ export class FollowService extends ServiceBase {
   readerOptions: ReaderOptions & { program?: string | null } = {};
   /** 建追踪走哪条路、盘口从哪批行情流取(见 attach);没接上 = 不建追踪、不记盘口 */
   private wiring: FollowWiring | null = null;
+  /** 频道里看到的每一条消息(信任与否都给)都递给它:信息链路落底账、认标的(rpc/server.ts 装配时接上);没接 = 不记 */
+  onSeen: ((message: DiscordMessage, trusted: boolean) => void) | null = null;
 
   private gateway: DiscordGateway | null = null;
   private inbox: FollowInbox | null = null;
@@ -396,6 +398,7 @@ export class FollowService extends ServiceBase {
     });
     if (this.seen.length > SEEN_MAX) this.seen.length = SEEN_MAX;
     this.emit("follow", { kind: "seen" });
+    this.onSeen?.(message, cfg.author_ids.includes(message.author_id));
   }
 
   private async process(message: DiscordMessage, stale: string | null): Promise<void> {

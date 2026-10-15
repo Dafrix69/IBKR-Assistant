@@ -21,6 +21,7 @@ import type {
   EconEvent, EventsAddParams, EventsConfig, EventsList, EventsListParams, EventsRemoveParams, EventsSetConfigParams,
 } from "./events.js";
 import type { FollowSetTokenParams, FollowStatus } from "./follow.js";
+import type { IntelDossier, IntelDossierParams, IntelFeed, IntelFeedParams } from "./intel.js";
 import type { LlmCatalog, LlmPatchParams, LlmTestParams, LlmTestResult } from "./llm.js";
 import type { MacroBoard, MacroBoardParams } from "./macro.js";
 import type {
@@ -78,6 +79,7 @@ export type * from "./backtest.js";
 export type * from "./book.js";
 export type * from "./connection.js";
 export type * from "./events.js";
+export type * from "./intel.js";
 export type * from "./follow.js";
 export type * from "./macro.js";
 export type * from "./ideas.js";
@@ -125,6 +127,11 @@ export interface RpcMethods {
   "events.set_config": { params: EventsSetConfigParams; result: { config: EventsConfig } };
   "events.add": { params: EventsAddParams; result: { event: EconEvent } };
   "events.remove": { params: EventsRemoveParams; result: { deleted: string } };
+
+  /** 信息链路(docs/features/intel.md):消息、信号、事件、单子、想法按标的串成一条时间线;只读,取价只走已订着的行情 */
+  "intel.feed": { params: IntelFeedParams; result: IntelFeed };
+  /** 一只标的的档案:现价、持仓、追踪、在途单、价位、异动、板块、想法、接下来的事件、信号条数、时间线 */
+  "intel.dossier": { params: IntelDossierParams; result: IntelDossier };
 
   "backtest.strategies": { params: NoParams; result: { strategies: BacktestStrategy[] } };
   "backtest.run": { params: BacktestRunParams; result: BacktestRunResult };

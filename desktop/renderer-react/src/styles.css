@@ -960,3 +960,70 @@ kbd {
 .account-limits { display: flex; flex-wrap: wrap; gap: 6px 10px; justify-content: flex-end; }
 .account-limits > label { display: flex; flex-direction: column; gap: 2px; font-size: 11px; }
 .account-limits .ant-input-number { width: 104px; }
+
+/* ---- 情报:信息链路的时间线与标的档案(docs/features/intel.md) ---- */
+.intel-actions { display: flex; gap: 8px; }
+.intel-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 10px 0 8px; }
+.intel-held { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--label-secondary); cursor: pointer; }
+.intel-search.ant-input-affix-wrapper { width: 200px; }
+.intel-count { margin-left: auto; font-size: 11px; color: var(--label-tertiary); font-variant-numeric: tabular-nums; }
+.intel-hot { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; font-size: 11px; color: var(--label-secondary); }
+.intel-hot .chip-tag b { font-weight: 650; margin-left: 2px; color: var(--label-secondary); }
+.intel-hot .chip-tag.held, .lookup-row .chip-tag.held { background: color-mix(in srgb, var(--blue) 14%, transparent); }
+.intel-timeline { display: flex; flex-direction: column; gap: 14px; }
+.intel-day-label { margin: 0 0 6px; font-size: 11px; font-weight: 600; color: var(--label-secondary); letter-spacing: 0.02em; }
+.intel-day-label span { margin-left: 6px; color: var(--label-tertiary); font-weight: 500; }
+.intel-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.intel-row {
+  display: flex; gap: 10px; align-items: flex-start; padding: 9px 12px; border-radius: var(--radius-tile);
+  background: var(--bg-elevated); box-shadow: var(--shadow-card);
+}
+.intel-row.held { box-shadow: var(--shadow-card), inset 3px 0 0 color-mix(in srgb, var(--blue) 70%, transparent); }
+.intel-row.tone-warn .intel-title { color: var(--orange-text); }
+.intel-icon { flex-shrink: 0; margin-top: 1px; }
+.intel-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.intel-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 11px; color: var(--label-secondary); }
+.intel-kind { font-weight: 600; color: var(--label); }
+.intel-source { display: inline-flex; align-items: center; gap: 4px; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.intel-trusted { width: 6px; height: 6px; border-radius: 50%; background: var(--green); display: inline-block; }
+.intel-time { margin-left: auto; color: var(--label-tertiary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.intel-syms { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.intel-sym {
+  border: 0; cursor: pointer; font: inherit; font-family: var(--font-mono); font-size: 10.5px; font-weight: 600; line-height: 1.5;
+  padding: 0 6px; border-radius: 6px; background: var(--bg-fill); color: var(--label);
+}
+.intel-sym:hover { background: var(--bg-fill-strong); }
+.intel-sym.held { background: color-mix(in srgb, var(--blue) 16%, transparent); color: var(--blue); }
+.intel-sym.current { outline: 1px solid color-mix(in srgb, var(--blue) 45%, transparent); }
+.intel-sym.guess { background: transparent; color: var(--label-tertiary); border: 1px dashed var(--separator); }
+.intel-title { font-size: 13px; line-height: 1.45; word-break: break-word; white-space: pre-wrap; }
+.intel-foot { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 11.5px; color: var(--label-secondary); }
+.intel-move { font-family: var(--font-mono); font-size: 11px; }
+.intel-move.up { color: var(--up-text); }
+.intel-move.down { color: var(--down-text); }
+.intel-body { min-width: 0; }
+.intel-write.ant-btn { height: 22px; padding-inline: 8px; font-size: 11px; margin-left: auto; }
+.sym-link { border: 0; padding: 0; background: none; cursor: pointer; display: inline-flex; }
+.dossier-title { font-family: var(--font-display); font-size: 20px; font-weight: 700; }
+.dossier-sub { margin-left: 8px; font-size: 12px; font-weight: 500; color: var(--label-secondary); font-family: var(--font); }
+.dossier { display: flex; flex-direction: column; gap: 10px; }
+.dossier-head { display: flex; flex-direction: column; gap: 8px; padding-bottom: 6px; }
+.dossier-price { display: flex; align-items: baseline; gap: 10px; }
+.dossier-chg { font-weight: 600; font-variant-numeric: tabular-nums; }
+.dossier-chg.up { color: var(--up-text); }
+.dossier-chg.down { color: var(--down-text); }
+.dossier-src { font-size: 11px; color: var(--label-tertiary); }
+.dossier-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.dossier-facts { display: flex; flex-direction: column; gap: 4px; }
+.dossier-list { list-style: none; margin: 0 0 6px; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.dossier-list li { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; padding: 5px 10px; border-radius: 10px; background: var(--bg-fill); }
+.dossier-list li.high .dossier-k { font-weight: 600; }
+.dossier-k { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dossier-k.wrap { white-space: normal; }
+.dossier-v { flex-shrink: 0; color: var(--label-secondary); font-variant-numeric: tabular-nums; }
+.dossier-levels { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.dossier-levels .chip-tag.level-resistance { color: var(--down-text); }
+.dossier-levels .chip-tag.level-support { color: var(--up-text); }
+.lookup-hint { margin: 8px 0 10px; font-size: 11.5px; color: var(--label-secondary); }
+.lookup-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 6px; font-size: 11px; color: var(--label-tertiary); }
+.lookup-row > span:first-child { width: 30px; }

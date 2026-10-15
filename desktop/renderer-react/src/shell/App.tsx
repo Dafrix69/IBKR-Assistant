@@ -13,6 +13,7 @@ import { useDark } from '../store/appearance';
 import { useAntdTheme } from '../theme/antd';
 import { Toasts } from './Toasts';
 import { ConsentGate } from './ConsentGate';
+import { DossierHost } from './DossierHost';
 import { ErrorBoundary } from '../ui/ErrorBoundary';
 import { exportDiagnostics } from '../lib/SupportPanel';
 
@@ -87,6 +88,8 @@ export function App({ nonce }: { nonce: string }) {
             </ErrorBoundary>
           </main>
         </div>
+        {/* 标的档案的抽屉与 ⌘K 查标的:哪一页都能开 */}
+        <DossierHost />
         <ConsentGate />
       </AntdApp>
     </ConfigProvider>

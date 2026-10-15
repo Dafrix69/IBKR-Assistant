@@ -17,6 +17,7 @@ import { PerformancePage } from './Performance';
 import { AccessPage } from './Access';
 import { TradePage } from './Trade';
 import { MarketPage } from './Market';
+import { IntelPage } from './Intel';
 
 export const PAGES: Record<string, ComponentType> = {
   trade: TradePage,
@@ -26,6 +27,7 @@ export const PAGES: Record<string, ComponentType> = {
   backtest: BacktestPage,
   review: ReviewPage,
   performance: PerformancePage,
+  intel: IntelPage,
   access: AccessPage,
   records: RecordsPage,
   tracker: TrackerPage,

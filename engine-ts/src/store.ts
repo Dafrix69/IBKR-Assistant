@@ -21,6 +21,7 @@ import type { Track } from "./contract/tracker.js";
 import { IdeaVectorStore } from "./ideaVectors.js";
 import { SignalLogStore } from "./signalLog.js";
 import { FollowLogStore } from "./followLog.js";
+import { MessageLogStore } from "./messageLog.js";
 import { RiskQueries } from "./riskQueries.js";
 import type { CloseRow } from "./riskQueries.js";
 import { ImportedTradesStore } from "./importedTrades.js";
@@ -260,6 +261,7 @@ export class TradeStore {
   /** 价位提醒与盯异动发出的每一条信号(只增不改),见 signalLog.ts */
   readonly signals: SignalLogStore;
   readonly follow: FollowLogStore; // Discord 跟单的每一条信号(只增不改),见 followLog.ts
+  readonly messages: MessageLogStore; // 频道里看到的每一条消息与它提到的标的(只增不改),见 messageLog.ts
   readonly risk: RiskQueries; // 重复单防抖、保护规则要现算的那几样(只读),见 riskQueries.ts
 
   /** safety:真应用开库时给 true——拒绝比软件新的库、查完整性、升级前与每天各备份一次、盖结构版本号,
@@ -280,6 +282,7 @@ export class TradeStore {
       this.vectors = new IdeaVectorStore(this.db);
       this.signals = new SignalLogStore(this.db);
       this.follow = new FollowLogStore(this.db);
+      this.messages = new MessageLogStore(this.db);
       this.risk = new RiskQueries(this.db);
       this.migrate();
       if (safety) stampVersion(this.db);
