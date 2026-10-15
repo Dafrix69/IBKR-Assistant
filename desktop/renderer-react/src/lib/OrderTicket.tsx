@@ -42,12 +42,13 @@ export function isTicket(v: unknown): v is Ticket {
   return Boolean(v && typeof v === 'object' && typeof (v as Ticket).symbol === 'string' && typeof (v as Ticket).action === 'string');
 }
 
-/** 票据上的各腿 → 损益图的腿。整单是 SELL 时每条腿的方向整体反过来。 */
+/** 票据上的各腿 → 损益图的腿。单腿期权:整单 SELL 就是卖出这条腿。
+ *  组合:各腿写的就是实际要做的方向(引擎的约定:组合一律按 BUY 提交给券商,`action = SELL` 只表示这是贷方、限价取负,
+ *  见 broker.ts 的 bagSignedLimit 与 validator.ts 的 checkVertical),所以**不**跟着整单的方向再反一次——反了就把贷方价差画成借方的。 */
 function payoffLegs(t: Ticket): PayoffLeg[] {
-  const flip = t.action === 'SELL' ? -1 : 1;
-  if (t.sec_type === 'OPT' && t.strike != null && t.right) return [{ sign: flip as 1 | -1, right: t.right, strike: t.strike }];
+  if (t.sec_type === 'OPT' && t.strike != null && t.right) return [{ sign: t.action === 'SELL' ? -1 : 1, right: t.right, strike: t.strike }];
   if (t.sec_type !== 'BAG') return [];
-  return (t.legs || []).map((l) => ({ sign: ((l.action === 'BUY' ? 1 : -1) * flip) as 1 | -1, right: l.right, strike: l.strike, ratio: l.ratio }));
+  return (t.legs || []).map((l) => ({ sign: l.action === 'BUY' ? 1 : -1, right: l.right, strike: l.strike, ratio: l.ratio }));
 }
 
 function priceText(t: Ticket): string {
