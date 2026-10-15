@@ -96,8 +96,7 @@ import type {
   EquityPoint, LedgerTrade, PerfGroup, PerformanceFinding, PerformanceKind, PerformanceScope, PerfStats, ReviewPerformanceResult, ExecutionCost, ExecutionGroup, ExecutionRow, ProtectionAdvice, ReviewSignalsResult, SignalEntry, SignalGroup, SignalHorizonStats, SignalSource,
   AnomalyConfig, AnomalyEvent, AnomalyKind, AnomalyMetrics, LevelKind, OptionWall, PoolWatch, PoolWatchPatch, PositionRow,
   FlyPlanIvMode, FlyPlanLeg, FlyPlanParams, FlyPlanPoint, FlyPlanResult, FlyPlanScenario, FlyPlanTime, FlyPlanValue, IvRecorderStatus, OptionsSpot,
-  PlaybookBand, PlaybookEvent, PlaybookSnapshot, PlaybookState,
-  EconEvent, EventsConfig, EventsList,
+  PlaybookBand, PlaybookEvent, PlaybookSnapshot, PlaybookState, EconEvent, EventsConfig, EventsList,
   AccountView, Limits, Policies, ProtectionsConfig, QualityList, QualityMonitor, QualityStock, RpcParams, RpcResult, Sector,
   SectorStock, SettingsPatch, SettingsView, SpotTarget, StockQuote, Targets, Track, Watch, WatchEvent, WatchLevel,
   CrossConfirm, MaTouchConfig, TouchBook, TouchEpisode, TouchLine, WatchTrigger,
@@ -129,8 +128,7 @@ export type {
   EquityPoint, LedgerTrade, PerfGroup, PerformanceFinding, PerformanceKind, PerformanceScope, PerfStats, ReviewPerformanceResult, ExecutionCost, ExecutionGroup, ExecutionRow, ProtectionAdvice, ReviewSignalsResult, SignalEntry, SignalGroup, SignalHorizonStats, SignalSource,
   AnomalyEvent, AnomalyKind, LevelKind, OptionWall, PoolWatch, PoolWatchPatch, PositionRow, QualityList, QualityMonitor,
   FlyPlanIvMode, FlyPlanLeg, FlyPlanParams, FlyPlanPoint, FlyPlanResult, FlyPlanScenario, FlyPlanTime, FlyPlanValue, IvRecorderStatus, OptionsSpot,
-  PlaybookBand, PlaybookEvent, PlaybookSnapshot, PlaybookState,
-  EconEvent, EventsConfig, EventsList,
+  PlaybookBand, PlaybookEvent, PlaybookSnapshot, PlaybookState, EconEvent, EventsConfig, EventsList,
   QualityStock, Sector, SectorStock, SettingsPatch, SpotTarget, StockQuote, Targets, Track, Watch, WatchEvent, WatchLevel,
   CrossConfirm, MaTouchConfig, TouchBook, TouchEpisode, TouchLine, WatchTrigger,
   BreakerBrief, BreakerState, IndexSpot, ProtectionCooldown, SystemSelftest, SystemStatus, TrackerHeartbeat,
@@ -250,12 +248,9 @@ export interface DafriBridge {
   /** 存 bot token(系统凭证库)并用它重新连接 */
   setFollowToken(token: string): Rpc<RpcResult<'follow.set_token'>>;
   reconnectFollow(): Rpc<RpcResult<'follow.reconnect'>>;
-
-  /** 重要事件:从昨天到两周后的清单(内置日程 + 公开日历 + 自定义)、口径、日历源的状态。force = 用户点了刷新 */
-  listEvents(force?: boolean): Rpc<RpcResult<'events.list'>>;
+  listEvents(force?: boolean): Rpc<RpcResult<'events.list'>>; // 重要事件(docs/features/events.md);force = 用户点了刷新
   setEventsConfig(config: RpcParams<'events.set_config'>['config']): Rpc<RpcResult<'events.set_config'>>;
-  addEvent(spec: RpcParams<'events.add'>): Rpc<RpcResult<'events.add'>>;
-  removeEvent(id: string): Rpc<RpcResult<'events.remove'>>;
+  addEvent(spec: RpcParams<'events.add'>): Rpc<RpcResult<'events.add'>>; removeEvent(id: string): Rpc<RpcResult<'events.remove'>>;
 
   /** 一句话 → 解析 → 校验 →(execute 为真时)发单。主进程要求界面已经确认过一次(SENSITIVE_RPC) */
   submit(text: string, execute: boolean, accounts: string[]): Rpc<RpcResult<'instruction.submit'>>;

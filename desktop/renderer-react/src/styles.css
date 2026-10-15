@@ -608,6 +608,10 @@ code {
 .event-item.live .event-dot, .event-item.soon .event-dot { background: var(--red); }
 .event-item.live .event-dot { animation: event-pulse 1.2s ease-in-out infinite; }
 .event-item.after .event-dot { background: var(--label-tertiary); }
+.event-item.cross { background: color-mix(in srgb, var(--red) 10%, var(--glass-bg)); }
+.event-item.cross .event-dot { background: var(--red); animation: event-pulse 1.2s ease-in-out infinite; }
+.event-p0 { font-size: 9.5px; font-weight: 700; letter-spacing: 0.04em; color: #fff; background: var(--red); border-radius: 4px; padding: 1px 4px; }
+.event-cross-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .event-item.sector { cursor: pointer; }
 .event-item.sector.down .event-dot { background: var(--red); }
 .event-item.sector.up .event-dot { background: var(--green); }

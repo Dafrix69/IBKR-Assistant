@@ -438,12 +438,18 @@ window.dafri = {
         mk('custom:x', 'custom', 'CRWV 发债', now + 25 * H, { source: 'custom', note: '数据中心板块都要看' }),
         mk('builtin:fomc:x', 'fomc', 'FOMC 利率决议', now + 8 * 24 * H, { source: 'builtin', linger_min: 150 }),
       ],
-      config: { enabled: true, feed: true, medium: false, lead_minutes: [60, 15], sector_min_stocks: 3, sector_share: 0.6, sector_move_pct: 3, cross_market: true, cross_market_pct: 1.5 },
+      config: { enabled: true, feed: true, medium: false, lead_minutes: [60, 15], sector_min_stocks: 3, sector_share: 0.6, sector_move_pct: 3, cross_market: true, cross_market_pct: 1.5, cross_lag_pct: 1 },
+      cross: mk('cross:x:down', 'cross', '美股 −2.5%,韩股 ETF 没跟跌:开盘可能补跌', now + 3 * H, {
+        source: 'builtin', linger_min: 150,
+        note: '韩股 EWY −0.4%(差 2.1 点)。开盘前做空这些 ETF(EWY / KORU)是套利区间;3 倍杠杆的一天能走 10% 以上,先看 TWS 里的盘后价。',
+        cross: { direction: 'down', us_pct: -2.5, markets: [{ key: 'kr', name: '韩股', symbol: 'EWY', etf_pct: -0.4, gap: 2.1, open_at: now + 3 * H, instruments: [{ symbol: 'EWY', change_pct: -0.4, last: 60.1 }, { symbol: 'KORU', change_pct: -1.3, last: 28.6 }] }] },
+      }),
+      cross_status: { in_window: true, at: now - 30_000, error: null },
       feed: { at: now - 40 * 60_000, error: null, count: 2 },
       at: now,
     };
   },
-  setEventsConfig: async (config) => ({ config: { enabled: true, feed: true, medium: false, lead_minutes: [60, 15], sector_min_stocks: 3, sector_share: 0.6, sector_move_pct: 3, cross_market: true, cross_market_pct: 1.5, ...config } }),
+  setEventsConfig: async (config) => ({ config: { enabled: true, feed: true, medium: false, lead_minutes: [60, 15], sector_min_stocks: 3, sector_share: 0.6, sector_move_pct: 3, cross_market: true, cross_market_pct: 1.5, cross_lag_pct: 1, ...config } }),
   addEvent: async (spec) => ({ event: { id: 'custom:new', kind: 'custom', title: spec.title, at: Date.now() + 3600_000, date_et: spec.date_et, time_et: spec.time_et, impact: 'high', source: 'custom', linger_min: 90 } }),
   removeEvent: async (id) => ({ deleted: id }),
   // 持仓追踪:一多一空、一个正股一个期权、一只在追踪的 SPX 蝴蝶,覆盖盈亏正负两侧

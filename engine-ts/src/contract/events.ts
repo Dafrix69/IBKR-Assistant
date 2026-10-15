@@ -10,7 +10,9 @@ export type EventSource = "builtin" | "feed" | "custom";
 
 /** 事件家族:界面按它起中文名、决定过去多久算过期;日历源上同一时刻的几条(CPI m/m、Core CPI y/y…)合成一条。 */
 export type EventKind =
-  | "cpi" | "ppi" | "nfp" | "fomc" | "fomc_minutes" | "pce" | "gdp" | "retail" | "claims" | "fed_speech" | "ism" | "other" | "custom";
+  | "cpi" | "ppi" | "nfp" | "fomc" | "fomc_minutes" | "pce" | "gdp" | "retail" | "claims" | "fed_speech" | "ism" | "other" | "custom"
+  /** 跨市场跟跌套利(P0):美股大动而韩股 / A 股的美股 ETF 没同步,挂在它们开盘上 */
+  | "cross";
 
 export interface EconEvent {
   /** 稳定的 id:内置 "builtin:<kind>:<date>";日历 "feed:<kind>:<epoch>";自定义 "custom:<随机串>" */
@@ -32,6 +34,31 @@ export interface EconEvent {
   items?: Array<{ title: string; forecast: string; previous: string }>;
   /** 自定义事件的备注 */
   note?: string;
+  /** 只有 kind = cross 有:差了几个点、哪些 ETF */
+  cross?: CrossMarketDetail;
+}
+
+/** 一个没跟上的市场 */
+export interface CrossMarketLag {
+  /** kr / cn */
+  key: string;
+  name: string;
+  /** 量跟没跟的那只不带杠杆的 ETF(EWY / ASHR)与它当日的涨跌 % */
+  symbol: string;
+  etf_pct: number;
+  /** 比指数少跌(少涨)了几个点,正数 */
+  gap: number;
+  /** 这个市场下一次开盘(epoch 毫秒) */
+  open_at: number;
+  /** 可以拿来做的 ETF 与它们当日的涨跌 */
+  instruments: Array<{ symbol: string; change_pct: number | null; last: number | null }>;
+}
+
+export interface CrossMarketDetail {
+  direction: "up" | "down";
+  /** 标普 500 当日涨跌 % */
+  us_pct: number;
+  markets: CrossMarketLag[];
 }
 
 /** 偏好表里的那份口径(app_prefs,不进 settings.json,和异动阈值一样)。 */
@@ -53,6 +80,8 @@ export interface EventsConfig {
   cross_market: boolean;
   /** 标普 500 当日涨跌幅 % 超过它才算 */
   cross_market_pct: number;
+  /** ETF 比指数少跌(少涨)这么多个点才算没跟 */
+  cross_lag_pct: number;
 }
 
 /** 入参:键同 EventsConfig,值由引擎校验(数字与数字串都认),同 AnomalyConfigInput。 */
@@ -67,9 +96,22 @@ export interface EventsFeedStatus {
   count: number;
 }
 
+/** 跨市场那一路的状态 */
+export interface EventsCrossStatus {
+  /** 此刻在不在"美股收完、亚洲还没开完"的窗口里(在窗口里界面一分钟问一次) */
+  in_window: boolean;
+  /** 最近一次判断的时刻;没判过是 null */
+  at: number | null;
+  /** 取不到报价的原因;没有是 null */
+  error: string | null;
+}
+
 export interface EventsList {
   /** 从昨天到两周后,按时间排好 */
   events: EconEvent[];
+  /** 跨市场跟跌套利的那条(P0);没有是 null。不在 events 里:它不是日历上的事 */
+  cross: EconEvent | null;
+  cross_status: EventsCrossStatus;
   config: EventsConfig;
   feed: EventsFeedStatus;
   /** 生成时刻(毫秒) */

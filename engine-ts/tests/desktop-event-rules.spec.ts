@@ -29,8 +29,6 @@ const mod = (await import(/* @vite-ignore */ pathToFileURL(path.join(SRC, "lib",
   sectorMoves(sectors: Array<{ name: string; symbols: string[] }>, changes: Record<string, number | null | undefined>, rule: { min_stocks: number; share: number; move_pct: number }): Move[];
   sectorMoveBody(m: Move, movePct: number): string;
   hedgeInstruction(spec: { symbol: string; spot: number | null; kind: "put_spread" | "bear_call" | "short_stock"; width: number; qty: number; expiry: string; todayEt: string; reason: string; price?: number | null; outside?: boolean }): { text: string; legs: string; problem: string | null };
-  nextOpen(now: number, offset: string, open: string, graceMs?: number): number;
-  crossMarketEvent(usPct: number | null, now: number, pct: number): (Ev & { cross: { direction: "up" | "down"; us_pct: number; opens: Array<{ key: string; name: string; at: number; symbols: readonly string[] }> } }) | null;
   hedgeExpiryFor(e: { date_et: string }, todayEt: string): string;
   strikeStep(symbol: string, spot: number): number;
 };
@@ -90,6 +88,13 @@ describe("挂在顶上", () => {
     expect(events.map((e) => e.title)).toEqual(["CPI(9月)"]);
     expect(more).toBe(0);
     expect(mod.pinnedEvents([claims], CPI_AT - 30 * MIN).events.map((e) => e.title)).toEqual(["初请失业金"]);
+  });
+
+  it("跨市场跟跌(P0)只要没过期就挂:周五盘中就挂着周一开盘的那条", () => {
+    const now = Date.parse("2026-10-16T11:00:00-04:00");
+    const cross = ev({ id: "cross:2026-10-16:down", kind: "cross", title: "美股 −2.5%,韩股 ETF 没跟跌:开盘可能补跌", at: Date.parse("2026-10-19T09:00:00+09:00"), date_et: "2026-10-18", time_et: "20:00", linger_min: 150 });
+    expect(mod.pinnedEvents([cross], now).events.map((e) => e.id)).toEqual(["cross:2026-10-16:down"]);
+    expect(mod.pinnedEvents([cross], Date.parse("2026-10-18T23:00:00-04:00")).events).toEqual([]);
   });
 
   it("最多三条,其余报个数,按时间排", () => {
@@ -216,54 +221,5 @@ describe("卖空正股 / ETF", () => {
     expect(mod.hedgeInstruction({ ...base, kind: "short_stock", price: 28.5, outside: false, reason: "" }).text).toBe("限价 28.5 卖出 100 股 KORU");
     expect(mod.hedgeInstruction({ ...base, kind: "short_stock", price: null, outside: true }).problem).toMatch(/限价/);
     expect(mod.hedgeInstruction({ ...base, kind: "short_stock", price: 28.5, qty: 0 }).problem).toMatch(/股数/);
-  });
-});
-
-describe("跨市场:美股大动,亚洲还没开", () => {
-  const KR = "+09:00";
-  const CN = "+08:00";
-
-  it("下一次开盘:当天还没到就是当天,过了就是明天,周末顺延到周一", () => {
-    const wedNoonKst = Date.parse("2026-10-14T12:00:00+09:00");
-    expect(mod.nextOpen(wedNoonKst, KR, "09:00")).toBe(Date.parse("2026-10-15T09:00:00+09:00"));
-    expect(mod.nextOpen(Date.parse("2026-10-14T08:00:00+09:00"), KR, "09:00")).toBe(Date.parse("2026-10-14T09:00:00+09:00"));
-    expect(mod.nextOpen(Date.parse("2026-10-17T10:00:00+09:00"), KR, "09:00")).toBe(Date.parse("2026-10-19T09:00:00+09:00"));
-    // 宽限:开盘过了一小时之内还算"这一次"
-    expect(mod.nextOpen(Date.parse("2026-10-14T09:30:00+08:00"), CN, "09:30", 60 * MIN)).toBe(Date.parse("2026-10-14T09:30:00+08:00"));
-  });
-
-  it("美股周三 15:30 跌 2.1%:挂在韩股开盘(美东 20:00)上,A 股开盘后一小时过期", () => {
-    const now = Date.parse("2026-10-14T15:30:00-04:00");
-    const e = mod.crossMarketEvent(-2.1, now, 1.5);
-    expect(e).not.toBeNull();
-    expect(e!.id).toBe("cross:2026-10-14:down");
-    expect(e!.title).toBe("美股大跌 −2.1%,亚洲还没开");
-    expect(e!.at).toBe(Date.parse("2026-10-15T09:00:00+09:00"));
-    expect(`${e!.date_et} ${e!.time_et}`).toBe("2026-10-14 20:00");
-    expect(e!.cross.opens.map((o) => `${o.name}@${new Date(o.at).toISOString()}`)).toEqual([
-      "韩股@2026-10-15T00:00:00.000Z", "A 股@2026-10-15T01:30:00.000Z",
-    ]);
-    expect(e!.linger_min).toBe(90 + 60);
-    expect(e!.note).toContain("KORU / EWY");
-    expect(e!.note).toContain("做空");
-    expect(mod.pinnedEvents([e!], now).events.map((x) => x.id)).toEqual(["cross:2026-10-14:down"]);
-    expect(mod.countdownText(e!, now)).toBe("还有 4 小时 30 分");
-  });
-
-  it("13:00 还早、A 股开了一个多小时就过去了;涨 2% 报大涨做多;没超线不报", () => {
-    expect(mod.crossMarketEvent(-2.1, Date.parse("2026-10-14T13:00:00-04:00"), 1.5)).toBeNull();
-    expect(mod.crossMarketEvent(-2.1, Date.parse("2026-10-14T20:30:00-04:00"), 1.5)?.id).toBe("cross:2026-10-14:down");
-    expect(mod.crossMarketEvent(-2.1, Date.parse("2026-10-14T23:00:00-04:00"), 1.5)).toBeNull();
-    const up = mod.crossMarketEvent(2.0, Date.parse("2026-10-14T16:30:00-04:00"), 1.5);
-    expect(up?.title).toBe("美股大涨 +2.0%,亚洲还没开");
-    expect(up?.cross.direction).toBe("up");
-    expect(up?.note).toContain("做多");
-    expect(mod.crossMarketEvent(-1.2, Date.parse("2026-10-14T16:30:00-04:00"), 1.5)).toBeNull();
-    expect(mod.crossMarketEvent(null, Date.parse("2026-10-14T16:30:00-04:00"), 1.5)).toBeNull();
-  });
-
-  it("周五的跌隔着周末:不报", () => {
-    expect(mod.crossMarketEvent(-3, Date.parse("2026-10-16T15:30:00-04:00"), 1.5)).toBeNull();
-    expect(mod.crossMarketEvent(-3, Date.parse("2026-10-17T10:00:00-04:00"), 1.5)).toBeNull();
   });
 });

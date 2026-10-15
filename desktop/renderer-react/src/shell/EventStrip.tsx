@@ -11,11 +11,11 @@ import { useEvents, type RuleEvent } from '../store/events';
  * 没有事的时候整条收起。「应对」打开对冲助手(只写指令,不发单);「全部」打开两周的清单与自定义事件。
  */
 export function EventStrip() {
-  const { list, now, moves, cross } = useEvents();
+  const { list, now, moves } = useEvents();
   const [acting, setActing] = useState<RuleEvent | null>(null);
   const [listOpen, setListOpen] = useState(false);
   const enabled = list?.config.enabled ?? true;
-  const all: RuleEvent[] = list ? (cross ? [...list.events, cross] : list.events) : [];
+  const all: RuleEvent[] = list ? (list.cross ? [...list.events, list.cross] : list.events) : [];
   const pinned = list && enabled ? pinnedEvents(all, now) : { events: [] as RuleEvent[], more: 0 };
   const hidden = !enabled || (pinned.events.length === 0 && moves.length === 0);
 
@@ -41,12 +41,13 @@ export function EventStrip() {
           const phase = phaseOf(e, now);
           const fact = (e.items ?? []).find((i) => i.forecast || i.previous);
           return (
-            <div key={e.id} className={`event-item ${phase} ${e.impact}`}>
+            <div key={e.id} className={`event-item ${phase} ${e.impact}${e.kind === 'cross' ? ' cross' : ''}`}>
               <span className="event-dot" />
+              {e.kind === 'cross' ? <span className="event-p0" title="跨市场跟跌套利:美股大动而韩股 / A 股的美股 ETF 没同步,开盘会补">P0</span> : null}
               <span className="event-title" title={e.note || (e.items ?? []).map((i) => i.title).join('、') || e.title}>{e.title}</span>
               <span className="event-meta">{whenText(e.at, now)}(美东 {e.time_et}) · {countdownText(e, now)}</span>
               {fact ? <span className="event-fact">预期 {fact.forecast || '—'} · 前值 {fact.previous || '—'}</span> : null}
-              {/* 跨市场那条在亚洲开盘之后还有用(A 股比韩股晚半小时),挂着就能应对 */}
+              {/* 跨市场那条从美股盘中起就能做,亚洲开盘之后还有用(A 股比韩股晚半小时),挂着就能应对 */}
               {phase === 'upcoming' || phase === 'soon' || e.kind === 'cross' ? (
                 <Button size="small" type="primary" ghost onClick={() => setActing(e)}>应对</Button>
               ) : null}

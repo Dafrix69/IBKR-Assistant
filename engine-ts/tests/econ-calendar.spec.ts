@@ -137,7 +137,7 @@ describe("口径", () => {
   it("默认开着、拉日历、不要中等的、提前 60 与 15 分钟、跨市场 1.5%", () => {
     expect(normalizeEventsConfig(null)).toEqual(DEFAULT_EVENTS_CONFIG);
     expect(DEFAULT_EVENTS_CONFIG.lead_minutes).toEqual([60, 15]);
-    expect(DEFAULT_EVENTS_CONFIG).toMatchObject({ cross_market: true, cross_market_pct: 1.5 });
+    expect(DEFAULT_EVENTS_CONFIG).toMatchObject({ cross_market: true, cross_market_pct: 1.5, cross_lag_pct: 1 });
   });
 
   it("一次只改一两项,在当前那份上合并;数字串也认;提前档去重并从大到小排", () => {
@@ -155,5 +155,7 @@ describe("口径", () => {
     expect(() => normalizeEventsConfig({ sector_move_pct: "abc" })).toThrow("必须是数字");
     expect(() => normalizeEventsConfig({ cross_market_pct: 12 })).toThrow("0.3% ~ 10%");
     expect(normalizeEventsConfig({ cross_market: 0, cross_market_pct: "2" })).toMatchObject({ cross_market: false, cross_market_pct: 2 });
+    expect(() => normalizeEventsConfig({ cross_lag_pct: 0.1 })).toThrow("0.2 ~ 10");
+    expect(normalizeEventsConfig({ cross_lag_pct: "1.5" }).cross_lag_pct).toBe(1.5);
   });
 });

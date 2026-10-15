@@ -24,17 +24,18 @@ export const DEFAULT_EVENTS_CONFIG: EventsConfig = {
   sector_move_pct: 3,
   cross_market: true,
   cross_market_pct: 1.5,
+  cross_lag_pct: 1,
 };
 
 /** 过了公布时刻还挂多久(分钟),按家族 */
 export const LINGER_MIN: Record<EventKind, number> = {
   cpi: 90, ppi: 90, nfp: 90, fomc: 150, fomc_minutes: 60, pce: 90, gdp: 90, retail: 90, claims: 60, fed_speech: 60, ism: 60,
-  other: 60, custom: 90,
+  other: 60, custom: 90, cross: 60,
 };
 
 export const KIND_LABEL: Record<EventKind, string> = {
   cpi: "CPI", ppi: "PPI", nfp: "非农就业", fomc: "FOMC 利率决议", fomc_minutes: "FOMC 会议纪要", pce: "PCE 物价",
-  gdp: "GDP", retail: "零售销售", claims: "初请失业金", fed_speech: "美联储讲话", ism: "ISM 指数", other: "", custom: "",
+  gdp: "GDP", retail: "零售销售", claims: "初请失业金", fed_speech: "美联储讲话", ism: "ISM 指数", other: "", custom: "", cross: "跨市场",
 };
 
 interface Release {
@@ -338,6 +339,11 @@ export function normalizeEventsConfig(input: unknown, base: EventsConfig = DEFAU
     const p = numberOf(raw["cross_market_pct"], "跨市场的涨跌幅");
     if (p < 0.3 || p > 10) throw new EventsConfigError("跨市场的涨跌幅必须在 0.3% ~ 10% 之间");
     out.cross_market_pct = p;
+  }
+  if (raw["cross_lag_pct"] !== undefined) {
+    const p = numberOf(raw["cross_lag_pct"], "跨市场的差距");
+    if (p < 0.2 || p > 10) throw new EventsConfigError("跨市场的差距必须在 0.2 ~ 10 个点之间");
+    out.cross_lag_pct = p;
   }
   return out;
 }

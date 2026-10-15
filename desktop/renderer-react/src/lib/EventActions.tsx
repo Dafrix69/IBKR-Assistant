@@ -6,7 +6,7 @@
  */
 import { useEffect, useState } from 'react';
 import { Button, Input, InputNumber, Modal, Segmented, Space } from 'antd';
-import { CROSS_MARKETS, countdownText, hedgeExpiryFor, hedgeInstruction, whenText, type CrossMarketEvent, type HedgeKind } from './eventRules';
+import { countdownText, hedgeExpiryFor, hedgeInstruction, whenText, type HedgeKind } from './eventRules';
 import { showBanner } from '../store/banner';
 import { etToday, useEvents, type RuleEvent } from '../store/events';
 import { navigate } from '../store/nav';
@@ -34,16 +34,20 @@ export function EventActions({ event, onClose }: { event: RuleEvent; onClose: ()
   const { now, list } = useEvents();
   const spot = useSpot();
   const today = etToday(now);
-  // 跨市场那条:默认做空韩股的 3 倍 ETF(用户原话「做空 KORU」);跌是做空,涨是做多——做多正股助手不写,人自己改
-  const cross = event.kind === 'cross' ? (event as CrossMarketEvent).cross : null;
-  const [symbol, setSymbol] = useState(cross ? 'KORU' : 'SPX');
+  // 跨市场那条:默认做差距最大的那个市场、带杠杆的那只(韩股 KORU、A 股 YINN);跌是做空,涨是做多——做多正股助手不写,人自己改
+  const cross = event.kind === 'cross' ? event.cross ?? null : null;
+  const worst = cross ? [...cross.markets].sort((a, b) => b.gap - a.gap)[0] ?? null : null;
+  const leveraged = worst?.instruments.find((i) => i.symbol === 'KORU' || i.symbol === 'YINN')?.symbol ?? worst?.symbol ?? 'KORU';
+  const [symbol, setSymbol] = useState(cross ? leveraged : 'SPX');
   const [manualSpot, setManualSpot] = useState('');
   const [kind, setKind] = useState<HedgeKind>(cross ? 'short_stock' : 'put_spread');
   const [width, setWidth] = useState<number | null>(25);
   const [qty, setQty] = useState<number | null>(cross ? 100 : 1);
   const [price, setPrice] = useState<number | null>(null);
   const [expiry, setExpiry] = useState(() => hedgeExpiryFor(event, today));
-  const [reason, setReason] = useState(cross ? `美股${cross.direction === 'down' ? '大跌' : '大涨'} ${cross.us_pct}%,亚洲开盘前跟${cross.direction === 'down' ? '跌' : '涨'}` : `${event.title} 前对冲`);
+  const [reason, setReason] = useState(cross && worst
+    ? `美股 ${cross.us_pct}% 而 ${worst.symbol} 只 ${worst.etf_pct}%,${worst.name}开盘补${cross.direction === 'down' ? '跌' : '涨'}`
+    : `${event.title} 前对冲`);
   const outside = outsideRth(now);
 
   // 换到别的标的:现价得自己填;宽度按常见档距换
@@ -85,11 +89,13 @@ export function EventActions({ event, onClose }: { event: RuleEvent; onClose: ()
           </ul>
         ) : null}
         {cross ? (
-          <Notice tone="warn" title="跟跌 / 跟涨常有时间差,但不是一定">
+          <Notice tone="warn" title="P0:ETF 的价还停在高处,开盘会补——但跟跌有时间差是经验,不是规律">
             {event.note} 下面这句只写进指令框,不会自己发出去;卖空的限价自己看 TWS 的盘口填。
             <div className="event-cross-chips">
-              {CROSS_MARKETS.flatMap((m) => m.symbols.map((s) => (
-                <Button key={s} size="small" type={symbol.toUpperCase() === s ? 'primary' : 'default'} onClick={() => { setSymbol(s); setKind('short_stock'); }}>{m.name} {s}</Button>
+              {cross.markets.flatMap((m) => m.instruments.map((i) => (
+                <Button key={i.symbol} size="small" type={symbol.toUpperCase() === i.symbol ? 'primary' : 'default'} onClick={() => { setSymbol(i.symbol); setKind('short_stock'); }}>
+                  {m.name} {i.symbol}{i.change_pct === null ? '' : ` ${i.change_pct > 0 ? '+' : ''}${i.change_pct}%`}
+                </Button>
               )))}
             </div>
           </Notice>

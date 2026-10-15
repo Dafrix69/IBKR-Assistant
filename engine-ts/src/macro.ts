@@ -193,6 +193,19 @@ export async function publicIndexPrice(
   return last === null || last === undefined ? null : Number(last);
 }
 
+/** 几只正股 / ETF 的公开源现价与当日涨跌(60 秒缓存,同步等,不后台换新)。
+ *  给跨市场跟跌那一路没连 TWS 时用;清单由调用方写死在代码里(crossMarket.CROSS_SYMBOLS),界面不可注入任意符号。 */
+export async function publicQuotes(
+  symbols: readonly string[], timeout = 4.0, fetcher: Fetcher = defaultFetcher,
+): Promise<Record<string, { last: number | null; change_pct: number | null; error?: string }>> {
+  const out: Record<string, { last: number | null; change_pct: number | null; error?: string }> = {};
+  await Promise.all(symbols.map(async (symbol) => {
+    const row = await cachedFetch({ key: symbol, label: symbol, fmt: "price" }, timeout, 60.0, fetcher, () => Date.now() / 1000, false);
+    out[symbol] = { last: row.last, change_pct: row.change_pct, ...(row.error ? { error: row.error } : {}) };
+  }));
+  return out;
+}
+
 /** 带缓存的单格取数。取失败时保留上一次的值并标记陈旧。
  * background=true 时过期的旧值先返回(标 refreshing),新值后台去取;
  * 只有从没取到过、或旧得超过 MAX_STALE 的才同步等。 */

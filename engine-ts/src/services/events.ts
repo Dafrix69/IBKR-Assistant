@@ -5,10 +5,13 @@
  *    它只给本周,所以一天拉几次没有意义;内置日程在断网时照样有。
  *  · 提醒的节拍不在这里:弹窗、声音、倒计时都在界面(store/events.ts),和关口提醒同一扇窗。引擎只负责"有哪些事"。
  */
-import type { EconEvent, EventsConfig, EventsFeedStatus, EventsList } from "../contract/events.js";
+import type { EconEvent, EventsConfig, EventsCrossStatus, EventsFeedStatus, EventsList } from "../contract/events.js";
+import { CROSS_SYMBOLS, crossWindow, evaluateCrossMarket } from "../crossMarket.js";
+import type { CrossQuote } from "../crossMarket.js";
 import {
   DEFAULT_EVENTS_CONFIG, LINGER_MIN, builtinEvents, etEpoch, mergeEvents, normalizeEventsConfig, parseFeed,
 } from "../econCalendar.js";
+import { liveTickers, macroBoard, publicQuotes } from "../macro.js";
 import { RpcError } from "../rpcError.js";
 import { ServiceBase } from "./host.js";
 import type { ServiceHost } from "./host.js";
@@ -62,6 +65,12 @@ export class EventsService extends ServiceBase {
   private feedTriedAt: number | null = null;
   private feedError: string | null = null;
   private inflight: Promise<void> | null = null;
+  /** 跨市场:最近一次判断的结果与时刻;在窗口里一分钟判一次 */
+  private crossEvent: EconEvent | null = null;
+  private crossAt: number | null = null;
+  private crossError: string | null = null;
+  private crossInflight: Promise<void> | null = null;
+  static readonly CROSS_TTL_MS = 60_000;
 
   constructor(host: ServiceHost, public fetcher: Fetcher = defaultFetcher, private readonly now: () => number = () => Date.now()) {
     super(host);
@@ -177,12 +186,69 @@ export class EventsService extends ServiceBase {
     return this.inflight;
   }
 
+  // ---- 跨市场跟跌套利 --------------------------------------------------------------
+  /** 美股当日涨跌从行情带那一路读(连着 TWS 是流式,否则公开源);ETF 的报价连着券商问券商,否则走公开源。都失败时原因记下来,不炸。 */
+  private refreshCross(now: number, config: EventsConfig): Promise<void> {
+    if (this.crossInflight) return this.crossInflight;
+    this.crossInflight = (async () => {
+      try {
+        const router = this.router !== null && this.router.sessions().length ? this.router : null;
+        // macroBoard 的 router 面是同步的:异步的流式报价先取好再交给它(同 handlers/market.macroBoardMethod);取不到就这一轮走公开源
+        let live: Record<string, { last?: number | null; change_pct?: number | null }> = {};
+        if (router !== null) {
+          try {
+            live = await router.streamQuotes(liveTickers());
+          } catch {
+            live = {};
+          }
+        }
+        const board = await macroBoard({ router: router === null ? null : { streamQuotes: () => live }, fetcher: this.fetcher, timeout: 4, now: () => this.now() / 1000 });
+        const spx = board.rows.find((r) => r.key === "^GSPC");
+        const usPct = spx?.change_pct ?? null;
+        const quotes: Record<string, CrossQuote> = {};
+        if (router !== null) {
+          const got = await router.stockQuotes([...CROSS_SYMBOLS]);
+          for (const [symbol, q] of Object.entries(got)) quotes[symbol] = { symbol, last: q.last, change_pct: q.change_pct };
+        } else {
+          const got = await publicQuotes(CROSS_SYMBOLS, 4, this.fetcher);
+          for (const [symbol, q] of Object.entries(got)) quotes[symbol] = { symbol, last: q.last, change_pct: q.change_pct };
+        }
+        if (usPct === null) throw new Error(spx?.error ? `标普 500 的涨跌取不到:${spx.error}` : "标普 500 的涨跌取不到");
+        const missing = CROSS_SYMBOLS.filter((s) => quotes[s]?.change_pct === null || quotes[s]?.change_pct === undefined);
+        this.crossEvent = evaluateCrossMarket(usPct, quotes, now, { pct: config.cross_market_pct, lag_pct: config.cross_lag_pct });
+        this.crossError = missing.length ? `这几只的报价取不到:${missing.join("、")}` : null;
+      } catch (exc) {
+        this.crossError = String((exc as Error).message ?? exc).slice(0, 200);
+      } finally {
+        this.crossAt = this.now();
+        this.crossInflight = null;
+      }
+    })();
+    return this.crossInflight;
+  }
+
+  private async cross(now: number, config: EventsConfig): Promise<{ event: EconEvent | null; status: EventsCrossStatus }> {
+    const inWindow = config.cross_market && crossWindow(now) !== null;
+    if (!inWindow) {
+      this.crossEvent = null;
+      return { event: null, status: { in_window: false, at: this.crossAt, error: null } };
+    }
+    if (this.crossAt === null || now - this.crossAt >= EventsService.CROSS_TTL_MS) {
+      // 还没判过、或上次没判出事:同步等这一次(有时限);判出过事的旧值先给、新值后台取——界面在窗口里一分钟问一次
+      if (this.crossAt === null || this.crossEvent === null) await this.refreshCross(now, config);
+      else void this.refreshCross(now, config);
+    }
+    return { event: this.crossEvent, status: { in_window: true, at: this.crossAt, error: this.crossError } };
+  }
+
   // ---- 清单 ------------------------------------------------------------------
   async list(force = false): Promise<EventsList> {
     const config = this.config();
     const now = this.now();
     // 整个功能关着:一条都不给(界面上就什么都不挂),日历源也不拉
-    if (!config.enabled) return { events: [], config, feed: { at: this.feedAt, error: null, count: 0 }, at: now };
+    if (!config.enabled) {
+      return { events: [], cross: null, cross_status: { in_window: false, at: null, error: null }, config, feed: { at: this.feedAt, error: null, count: 0 }, at: now };
+    }
     if (config.feed) {
       if (force || this.feedAt === null) {
         // 用户点了刷新、或从没拉到过:同步等这一次(有时限),让第一眼就有本周的事
@@ -200,6 +266,7 @@ export class EventsService extends ServiceBase {
       error: config.feed ? this.feedError : null,
       count: events.filter((e) => e.source === "feed").length,
     };
-    return { events, config, feed: status, at: now };
+    const cross = await this.cross(now, config);
+    return { events, cross: cross.event, cross_status: cross.status, config, feed: status, at: now };
   }
 }

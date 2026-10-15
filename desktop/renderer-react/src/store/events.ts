@@ -10,16 +10,14 @@
 import { create } from 'zustand';
 import { dafri, errorMessage, type EconEvent, type EventsConfig, type EventsList, type PopupItem, type Sector } from '../bridge';
 import {
-  crossMarketEvent, etDateOf, leadBody, leadTitle, leadsDue, sectorMoveBody, sectorMoveTitle, sectorMoves, type CrossMarketEvent,
-  type RuleEvent, type SectorMove,
+  etDateOf, leadBody, leadTitle, leadsDue, sectorMoveBody, sectorMoveTitle, sectorMoves, type RuleEvent, type SectorMove,
 } from '../lib/eventRules';
 import { playAlertTone } from './alerts';
-import { getMacroRows } from './macro';
 import { pushNotification } from './notify';
 import { showAlertPopup } from './popup';
 import { getStatus } from './status';
 
-export type { CrossMarketEvent, EconEvent, EventsConfig, EventsList, RuleEvent, SectorMove };
+export type { EconEvent, EventsConfig, EventsList, RuleEvent, SectorMove };
 
 export const LIST_REFRESH_MS = 5 * 60_000;
 export const TICK_MS = 15_000;
@@ -36,12 +34,10 @@ export interface EventsState {
   now: number;
   /** 正在集体走的板块,以及它们最后一次满足条件的时刻 */
   moves: Array<SectorMove & { since: number; seenAt: number }>;
-  /** 美股收大阴 / 大阳而亚洲还没开:从行情带的标普当日涨跌算出来的一条事件;没有是 null */
-  cross: CrossMarketEvent | null;
 }
 
 const useStore = create<{ events: EventsState }>(() => ({
-  events: { list: null, failure: null, now: Date.now(), moves: [], cross: null },
+  events: { list: null, failure: null, now: Date.now(), moves: [] },
 }));
 
 function set(part: Partial<EventsState>): void {
@@ -70,7 +66,15 @@ export async function loadEvents(force = false): Promise<void> {
   inFlight = true;
   try {
     const list = await dafri.listEvents(force);
+    const before = useStore.getState().events.list?.cross?.id ?? null;
     set({ list, failure: null });
+    // 跨市场跟跌(P0):引擎在美股盘中判出来一条新的,当场弹窗响铃;之后由挂顶与提前提醒接手
+    const cross = list.cross;
+    if (cross && cross.id !== before && !fired.has(`${cross.id}:new`)) {
+      fired.add(`${cross.id}:new`);
+      const direction = cross.cross?.direction ?? 'down';
+      void announce({ id: `event:${cross.id}`, kind: 'event', symbol: cross.cross?.markets[0]?.symbol ?? '', title: `P0 ${cross.title}`, body: leadBody(cross, 0, Date.now()), tone: direction, at: Date.now(), page: 'trade' }, direction);
+    }
   } catch (err) {
     set({ failure: errorMessage(err) });
   } finally {
@@ -93,25 +97,9 @@ async function announce(item: PopupItem, direction: 'up' | 'down' | null): Promi
 
 /** 清单里的事 + 跨市场那一条(有的话):挂顶与提前提醒都看这一份 */
 export function allEvents(): RuleEvent[] {
-  const { list, cross } = useStore.getState().events;
+  const list = useStore.getState().events.list;
   const base: RuleEvent[] = list?.events ?? [];
-  return cross ? [...base, cross] : base;
-}
-
-/**
- * 跨市场:美股当日涨跌从行情带的标普那一格读(TWS 流式或公开源都行,夜盘停在收盘的涨跌上正合适)。
- * 条件在 eventRules.crossMarketEvent 里;这里只管换了一条新的就弹一次窗,之后由挂顶与提前提醒接手。
- */
-function checkCross(now: number): void {
-  const { list, cross } = useStore.getState().events;
-  const cfg = list?.config;
-  const spx = getMacroRows().find((r) => r.key === '^GSPC');
-  const next = cfg?.enabled && cfg.cross_market ? crossMarketEvent(spx?.change_pct ?? null, now, cfg.cross_market_pct) : null;
-  if ((next?.id ?? null) === (cross?.id ?? null)) return;
-  set({ cross: next });
-  if (!next || fired.has(`${next.id}:new`)) return;
-  fired.add(`${next.id}:new`);
-  void announce({ id: `event:${next.id}`, kind: 'event', symbol: next.cross.opens[0]?.symbols[0] ?? '', title: next.title, body: leadBody(next, 0, now), tone: next.cross.direction, at: now, page: 'trade' }, next.cross.direction);
+  return list?.cross ? [...base, list.cross] : base;
 }
 
 function checkLeads(now: number): void {
@@ -176,8 +164,9 @@ async function sweepSectors(now: number): Promise<void> {
 function tick(): void {
   const now = Date.now();
   set({ now });
-  if (now - loadedAt >= LIST_REFRESH_MS) void loadEvents();
-  checkCross(now);
+  // 跨市场的窗口里(美股盘中到 A 股开盘后一小时)一分钟问一次:差距在盘中随时会出现;平时五分钟
+  const every = useStore.getState().events.list?.cross_status.in_window ? SECTOR_SWEEP_MS : LIST_REFRESH_MS;
+  if (now - loadedAt >= every) void loadEvents();
   checkLeads(now);
   const cfg = getEventsConfig();
   if (cfg?.enabled && getStatus()?.broker_connected && inSession(now) && now - sweepAt >= SECTOR_SWEEP_MS) {

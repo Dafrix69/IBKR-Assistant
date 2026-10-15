@@ -55,11 +55,6 @@ export function startMacroLoop(): void {
   }, 1_000);
 }
 
-/** 别的 store 读行情带(跨市场提醒要美股当日涨跌) */
-export function getMacroRows(): MacroRow[] {
-  return useStore.getState().rows;
-}
-
 export function useMacroRows(): MacroRow[] {
   return useStore((s) => s.rows);
 }
