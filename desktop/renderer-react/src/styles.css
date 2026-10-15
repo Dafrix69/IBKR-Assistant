@@ -619,6 +619,7 @@ code {
 .event-item.sector { cursor: pointer; }
 .event-item.sector.down .event-dot { background: var(--red); }
 .event-item.sector.up .event-dot { background: var(--green); }
+.event-stars { color: var(--orange-text); font-size: 9.5px; letter-spacing: -0.06em; white-space: nowrap; }
 .event-title { font-weight: 590; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
 .event-item.live .event-title, .event-item.soon .event-title { color: var(--orange-text); }
 .event-meta { color: var(--label-secondary); white-space: nowrap; }

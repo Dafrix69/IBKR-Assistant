@@ -7,6 +7,11 @@
 
 export const ET = 'America/New_York';
 
+/** 星级画成实心星:4 → ★★★★;没有星级的(老引擎)不画 */
+export function starText(stars: number | undefined): string {
+  return typeof stars === 'number' && stars >= 1 ? '★'.repeat(Math.min(5, Math.round(stars))) : '';
+}
+
 /** 事件在清单里的样子(和引擎契约 EconEvent 同形,这里只认用得到的字段) */
 export interface RuleEvent {
   id: string;
@@ -17,6 +22,8 @@ export interface RuleEvent {
   date_et: string;
   time_et: string;
   impact: 'high' | 'medium';
+  /** 1 ~ 5 星(引擎按家族定,仿照金十的分档) */
+  stars?: number;
   source: 'builtin' | 'feed' | 'custom';
   linger_min: number;
   items?: Array<{ title: string; forecast: string; previous: string }>;

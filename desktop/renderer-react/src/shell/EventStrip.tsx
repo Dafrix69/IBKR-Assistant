@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button, Tooltip } from 'antd';
 import { EventActions } from '../lib/EventActions';
 import { EventList } from '../lib/EventList';
-import { countdownText, phaseOf, pinnedEvents, whenText } from '../lib/eventRules';
+import { countdownText, phaseOf, pinnedEvents, starText, whenText } from '../lib/eventRules';
 import { navigate } from '../store/nav';
 import { useEvents, type RuleEvent } from '../store/events';
 
@@ -44,6 +44,7 @@ export function EventStrip() {
             <div key={e.id} className={`event-item ${phase} ${e.impact}${e.kind === 'cross' ? ' cross' : ''}`}>
               <span className="event-dot" />
               {e.kind === 'cross' ? <span className="event-p0" title="跨市场跟跌套利:美股大动而韩股 / A 股的美股 ETF 没同步,开盘会补">P0</span> : null}
+              {e.kind === 'cross' ? null : <span className="event-stars" title={`${e.stars ?? ''} 星`}>{starText(e.stars)}</span>}
               <span className="event-title" title={e.note || (e.items ?? []).map((i) => i.title).join('、') || e.title}>{e.title}</span>
               <span className="event-meta">{whenText(e.at, now)}(美东 {e.time_et}) · {countdownText(e, now)}</span>
               {fact ? <span className="event-fact">预期 {fact.forecast || '—'} · 前值 {fact.previous || '—'}</span> : null}

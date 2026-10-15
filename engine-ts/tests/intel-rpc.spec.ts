@@ -204,9 +204,13 @@ describe("intel.feed", () => {
     const rvol = items.find((i) => i["kind"] === "signal" && i["symbols"][0] === "TSLA")!;
     expect(rvol).toMatchObject({ tone: "info", held: [] });
     const macro = items.filter((i) => i["kind"] === "event" && i["source"] !== "custom");
-    expect(macro.map((i) => i["title"])).toEqual(["将公布:PPI(9月)", "将公布:CPI(9月)"]);
+    // 每周四的初请失业金(4 星)也是宏观事件:内置日程每周一份
+    expect(macro.map((i) => i["title"])).toEqual([
+      "将公布:初请失业金(截至 10-17 当周)", "将公布:初请失业金(截至 10-10 当周)", "将公布:PPI(9月)", "将公布:CPI(9月)",
+    ]);
     expect(macro.every((i) => i["symbols"][0] === "SPX")).toBe(true);
-    expect(macro[1]).toMatchObject({ tone: "warn" }); // 24 小时之内的高影响事件
+    expect(macro[3]).toMatchObject({ tone: "warn" }); // CPI:24 小时之内的高影响事件
+    expect(macro[0]).toMatchObject({ tone: "info" }); // 下周的初请:还远
     const custom = items.find((i) => i["kind"] === "event" && i["source"] === "custom")!;
     expect(custom).toMatchObject({ symbols: ["NVDA"], held: ["NVDA"], title: "将公布:NVDA 财报" });
     expect(custom["body"]).toContain("盘后");
@@ -223,7 +227,7 @@ describe("intel.feed", () => {
     await seed(s, intel, events);
     const spx = (await s.call("intel.feed", { symbol: "spx" })) as Rec;
     expect((spx["items"] as Rec[]).every((i) => (i["symbols"] as string[]).includes("SPX"))).toBe(true);
-    expect((spx["items"] as Rec[]).map((i) => i["kind"]).sort()).toEqual(["event", "event", "message"]);
+    expect((spx["items"] as Rec[]).map((i) => i["kind"]).sort()).toEqual(["event", "event", "event", "event", "message"]);
     const msgs = (await s.call("intel.feed", { kinds: ["message"] })) as Rec;
     expect((msgs["items"] as Rec[]).map((i) => i["kind"])).toEqual(["message", "message"]);
     const mine = (await s.call("intel.feed", { held_only: true })) as Rec;
@@ -278,7 +282,7 @@ describe("intel.dossier", () => {
     const spx = (await s.call("intel.dossier", { symbol: "SPX" })) as Rec;
     expect(spx["quote"]).toEqual({ price: 7700, change_pct: null, source: "index" });
     expect(spx["held"]).toBe(false);
-    expect((spx["events"] as Rec[]).map((e) => e["title"])).toEqual(["CPI(9月)", "PPI(9月)"]);
+    expect((spx["events"] as Rec[]).map((e) => e["title"])).toEqual(["CPI(9月)", "初请失业金(截至 10-10 当周)", "PPI(9月)", "初请失业金(截至 10-17 当周)"]);
     const asked = router.asked.length;
     const tsla = (await s.call("intel.dossier", { symbol: "TSLA" })) as Rec;
     expect(tsla["quote"]).toBeNull(); // 假券商没有日线;要紧的是没为它订行情

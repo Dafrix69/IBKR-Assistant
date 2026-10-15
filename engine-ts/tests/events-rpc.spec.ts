@@ -5,7 +5,7 @@
  *     拉失败不炸,原因在 feed.error 里,内置的照给。
  *  2. 关了日历源一个包都不发;关了整个功能清单里只剩空。
  *  3. 自定义事件:加、删、校验(坏日期、空名字);重启(新 server 同一个库)还在。
- *  4. events.set_config 在当前那份上合并,越界拒;中等影响的开关一变,日历源那份当场按新口径重解。
+ *  4. events.set_config 在当前那份上合并,越界拒;最低星级当场生效(初请默认就在:它按家族定成 4 星),自己记的不筛。
  *  5. 跨市场跟跌(P0):美股盘中的时刻,标普与 ETF 的当日涨跌从公开源取(没连券商),差够了就在 cross 里给一条;一分钟内不重取;窗口外不取。
  */
 import * as fs from "node:fs";
@@ -77,12 +77,15 @@ describe("events.list", () => {
     const { calls } = fakeFeed(s, FEED);
     const res = (await s.call("events.list", {})) as Rec;
     expect(calls.length).toBe(1);
-    expect(res["feed"]).toMatchObject({ error: null, count: 2 });
+    expect(res["feed"]).toMatchObject({ error: null, count: 3 });
     expect(res["feed"]["at"]).toBe(NOW);
-    expect((res["events"] as Rec[]).map((e) => `${e["date_et"]} ${e["time_et"]} ${e["title"]} [${e["source"]}]`)).toEqual([
-      "2026-10-14 08:30 CPI(9月) [feed]",
-      "2026-10-15 08:30 PPI(9月) [builtin]",
-      "2026-10-15 23:30 美联储讲话(Warsh) [feed]",
+    // 初请在日历源上只是中等影响,按家族定成 4 星,默认四星以上就进来;每周四还有内置的一份
+    expect((res["events"] as Rec[]).map((e) => `${e["date_et"]} ${e["time_et"]} ${e["title"]} [${e["source"]}] ${e["stars"]}`)).toEqual([
+      "2026-10-14 08:30 CPI(9月) [feed] 5",
+      "2026-10-15 08:30 初请失业金(截至 10-10 当周) [feed] 4",
+      "2026-10-15 08:30 PPI(9月) [builtin] 4",
+      "2026-10-15 23:30 美联储讲话(Warsh) [feed] 5",
+      "2026-10-22 08:30 初请失业金(截至 10-17 当周) [builtin] 4",
     ]);
     expect((res["events"] as Rec[])[0]!["items"]).toHaveLength(2);
     await s.call("events.list", {});
@@ -97,7 +100,7 @@ describe("events.list", () => {
     const { calls } = fakeFeed(s, () => new Error("日历源返回 HTTP 503"));
     const res = (await s.call("events.list", {})) as Rec;
     expect(res["feed"]).toEqual({ at: null, error: "日历源返回 HTTP 503", count: 0 });
-    expect((res["events"] as Rec[]).map((e) => e["title"])).toEqual(["CPI(9月)", "PPI(9月)"]);
+    expect((res["events"] as Rec[]).map((e) => e["title"])).toEqual(["CPI(9月)", "初请失业金(截至 10-10 当周)", "PPI(9月)", "初请失业金(截至 10-17 当周)"]);
     await s.call("events.list", {});
     expect(calls.length).toBe(1);
   });
@@ -136,7 +139,7 @@ describe("自定义事件", () => {
     expect(id).toMatch(/^custom:/);
 
     let list = (await s.call("events.list", {})) as Rec;
-    expect((list["events"] as Rec[]).map((e) => e["title"])).toEqual(["CRWV 发债", "CPI(9月)", "PPI(9月)"]);
+    expect((list["events"] as Rec[]).map((e) => e["title"])).toEqual(["CRWV 发债", "CPI(9月)", "初请失业金(截至 10-10 当周)", "PPI(9月)", "初请失业金(截至 10-17 当周)"]);
 
     const again = makeServer(dir);
     fakeFeed(again.s, []);
@@ -152,15 +155,17 @@ describe("自定义事件", () => {
 });
 
 describe("events.set_config", () => {
-  it("在当前那份上合并;越界拒;中等影响的开关一变,日历源那份按新口径重解", async () => {
+  it("在当前那份上合并;越界拒;最低星级当场生效,自己记的不筛", async () => {
     const { s } = makeServer();
     fakeFeed(s, FEED);
+    await s.call("events.add", { title: "CRWV 发债", date_et: "2026-10-14", time_et: "07:00" });
     let res = (await s.call("events.list", {})) as Rec;
-    expect((res["events"] as Rec[]).some((e) => e["title"] === "初请失业金")).toBe(false);
-    const cfg = (await s.call("events.set_config", { config: { medium: true, lead_minutes: ["30"] } })) as Rec;
-    expect(cfg["config"]).toMatchObject({ enabled: true, feed: true, medium: true, lead_minutes: [30], sector_move_pct: 3 });
+    expect((res["events"] as Rec[]).some((e) => String(e["title"]).startsWith("初请失业金"))).toBe(true);
+    const cfg = (await s.call("events.set_config", { config: { min_stars: 5, lead_minutes: ["30"] } })) as Rec;
+    expect(cfg["config"]).toMatchObject({ enabled: true, feed: true, min_stars: 5, lead_minutes: [30], sector_move_pct: 3 });
     res = (await s.call("events.list", {})) as Rec;
-    expect((res["events"] as Rec[]).some((e) => e["title"] === "初请失业金")).toBe(true);
+    expect((res["events"] as Rec[]).map((e) => e["title"])).toEqual(["CRWV 发债", "CPI(9月)", "美联储讲话(Warsh)"]);
+    await expect(s.call("events.set_config", { config: { min_stars: 6 } })).rejects.toThrow("1 ~ 5");
     await expect(s.call("events.set_config", { config: { sector_share: 2 } })).rejects.toThrow("0.3 ~ 1");
     // 拒了的那一次什么都没改
     expect(((await s.call("events.list", {})) as Rec)["config"]["sector_share"]).toBe(0.6);

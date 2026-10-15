@@ -151,8 +151,8 @@ window.dafri = {
   paComment: async () => ({}),
   macroBoard: async () => ({ rows: [], fetched_at: null }),
   // ---- 重要事件:什么都没配时清单是空的(内置日程两周内也可能一条都没有) ----
-  listEvents: async () => ({ events: [], cross: null, cross_status: { in_window: false, at: null, error: null }, config: { enabled: true, feed: true, medium: false, lead_minutes: [60, 15], sector_min_stocks: 3, sector_share: 0.6, sector_move_pct: 3, cross_market: true, cross_market_pct: 1.5, cross_lag_pct: 1 }, feed: { at: null, error: null, count: 0 }, at: Date.now() }),
-  setEventsConfig: async (config) => ({ config: { enabled: true, feed: true, medium: false, lead_minutes: [60, 15], sector_min_stocks: 3, sector_share: 0.6, sector_move_pct: 3, cross_market: true, cross_market_pct: 1.5, cross_lag_pct: 1, ...config } }),
+  listEvents: async () => ({ events: [], cross: null, cross_status: { in_window: false, at: null, error: null }, config: { enabled: true, feed: true, min_stars: 4, lead_minutes: [60, 15], sector_min_stocks: 3, sector_share: 0.6, sector_move_pct: 3, cross_market: true, cross_market_pct: 1.5, cross_lag_pct: 1 }, feed: { at: null, error: null, count: 0 }, at: Date.now() }),
+  setEventsConfig: async (config) => ({ config: { enabled: true, feed: true, min_stars: 4, lead_minutes: [60, 15], sector_min_stocks: 3, sector_share: 0.6, sector_move_pct: 3, cross_market: true, cross_market_pct: 1.5, cross_lag_pct: 1, ...config } }),
   addEvent: async (spec) => ({ event: { id: 'custom:new', kind: 'custom', title: spec.title, at: Date.now() + 3600_000, date_et: spec.date_et, time_et: spec.time_et, impact: 'high', source: 'custom', linger_min: 90 } }),
   removeEvent: async (id) => ({ deleted: id }),
   intelFeed: async () => ({ items: [], held: [], total_messages: 0, at: Date.now(), connected: false }),

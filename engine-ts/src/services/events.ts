@@ -9,7 +9,7 @@ import type { EconEvent, EventsConfig, EventsCrossStatus, EventsFeedStatus, Even
 import { CROSS_SYMBOLS, crossWindow, evaluateCrossMarket } from "../crossMarket.js";
 import type { CrossQuote } from "../crossMarket.js";
 import {
-  DEFAULT_EVENTS_CONFIG, LINGER_MIN, builtinEvents, etEpoch, mergeEvents, normalizeEventsConfig, parseFeed,
+  DEFAULT_EVENTS_CONFIG, LINGER_MIN, builtinEvents, etEpoch, impactOfStars, mergeEvents, normalizeEventsConfig, parseFeed,
 } from "../econCalendar.js";
 import { liveTickers, macroBoard, publicQuotes } from "../macro.js";
 import { RpcError } from "../rpcError.js";
@@ -60,7 +60,6 @@ export class EventsService extends ServiceBase {
   static readonly MAX_CUSTOM = 50;
 
   private feedRows: EconEvent[] = [];
-  private feedRaw: unknown = null;
   private feedAt: number | null = null;
   private feedTriedAt: number | null = null;
   private feedError: string | null = null;
@@ -90,8 +89,6 @@ export class EventsService extends ServiceBase {
     const config = normalizeEventsConfig(input, this.config());
     this.engine.store.setPref(EventsService.CONFIG_PREF, config);
     this.engine.store.audit("ui", "events_config", { config });
-    // 中等影响的开关变了,日历源那份要重新按新口径解析
-    if (this.feedRaw !== null) this.feedRows = parseFeed(this.feedRaw, config.medium);
     return config;
   }
 
@@ -118,8 +115,9 @@ export class EventsService extends ServiceBase {
     for (const r of this.customRows()) {
       const at = etEpoch(r.date_et, r.time_et);
       if (at === null) continue;
+      const stars = r.impact === "medium" ? 3 : 4;
       out.push({
-        id: r.id, kind: "custom", title: r.title, at, date_et: r.date_et, time_et: r.time_et, impact: r.impact, source: "custom",
+        id: r.id, kind: "custom", title: r.title, at, date_et: r.date_et, time_et: r.time_et, stars, impact: impactOfStars(stars), source: "custom",
         linger_min: r.linger_min, ...(r.note ? { note: r.note } : {}),
       });
     }
@@ -165,16 +163,14 @@ export class EventsService extends ServiceBase {
     return this.feedTriedAt === null || now - this.feedTriedAt >= EventsService.RETRY_MS;
   }
 
-  private refreshFeed(medium: boolean): Promise<void> {
+  private refreshFeed(): Promise<void> {
     if (this.inflight) return this.inflight; // 单飞
     this.feedTriedAt = this.now();
     this.inflight = (async () => {
       try {
         const payload = await this.fetcher(EventsService.FEED_URL, EventsService.TIMEOUT_MS);
-        const rows = parseFeed(payload, medium);
         if (!Array.isArray(payload)) throw new Error("日历源返回的不是清单");
-        this.feedRaw = payload;
-        this.feedRows = rows;
+        this.feedRows = parseFeed(payload);
         this.feedAt = this.now();
         this.feedError = null;
       } catch (exc) {
@@ -252,15 +248,17 @@ export class EventsService extends ServiceBase {
     if (config.feed) {
       if (force || this.feedAt === null) {
         // 用户点了刷新、或从没拉到过:同步等这一次(有时限),让第一眼就有本周的事
-        if (force || this.feedStale(now)) await this.refreshFeed(config.medium);
+        if (force || this.feedStale(now)) await this.refreshFeed();
       } else if (this.feedStale(now)) {
-        void this.refreshFeed(config.medium); // 旧值先给,新值后台取
+        void this.refreshFeed(); // 旧值先给,新值后台取
       }
     }
     const from = now - EventsService.LOOKBACK_MS;
     const to = now + EventsService.HORIZON_MS;
     const feed = config.feed ? this.feedRows : [];
-    const events = mergeEvents(builtinEvents(from, to), feed, this.customEvents()).filter((e) => e.at >= from && e.at <= to);
+    // 官方日程与日历源按「最低星级」筛;自己记的不筛——记下来就是要看的
+    const events = mergeEvents(builtinEvents(from, to), feed, this.customEvents())
+      .filter((e) => e.at >= from && e.at <= to && (e.source === "custom" || e.stars >= config.min_stars));
     const status: EventsFeedStatus = {
       at: this.feedAt,
       error: config.feed ? this.feedError : null,

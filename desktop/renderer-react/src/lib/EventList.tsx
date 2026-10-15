@@ -3,8 +3,8 @@
  * 口径(提前几分钟、要不要中等影响的、板块联动的线)在「设置 → 重要事件」。
  */
 import { useState } from 'react';
-import { Button, Drawer, Input, Space, Tag } from 'antd';
-import { countdownText, phaseOf, whenText } from './eventRules';
+import { Button, Drawer, Input, Space } from 'antd';
+import { countdownText, phaseOf, starText, whenText } from './eventRules';
 import { showBanner } from '../store/banner';
 import { addCustomEvent, loadEvents, removeCustomEvent, useEvents, type EconEvent } from '../store/events';
 import { navigate } from '../store/nav';
@@ -74,7 +74,7 @@ export function EventList({ onClose }: { onClose: () => void }) {
                     <span className="event-row-when">{whenText(e.at, now)}</span>
                     <span className="event-row-title">
                       {e.title}
-                      {e.impact === 'medium' ? <Tag bordered={false}>中</Tag> : null}
+                      <span className="event-stars"> {starText(e.stars)}</span>
                       <span className="muted"> {SOURCE_LABEL[e.source]}</span>
                     </span>
                     <span className="event-row-count muted">{countdownText(e, now)}</span>

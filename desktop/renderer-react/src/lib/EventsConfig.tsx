@@ -1,5 +1,5 @@
 /**
- * 「重要事件」的口径(设置页):开不开、拉不拉公开日历、要不要中等影响的、提前几分钟、板块联动的线。
+ * 「重要事件」的口径(设置页):开不开、拉不拉公开日历、几星以上才算、提前几分钟、板块联动与跨市场的线。
  * 存在引擎的偏好表里(events.set_config),越界由引擎拒绝并给中文原因。数字改完 600ms 防抖再存,同 TouchConfig。
  */
 import { useEffect, useRef, useState } from 'react';
@@ -59,7 +59,7 @@ export function EventsConfig() {
     <Group hint="今天要公布的数(CPI、非农、FOMC…)一直挂在顶栏下面,直到公布过了一阵;公布前弹窗提醒,「应对」能把一句对冲指令写进指令框。板块联动:一个板块里多数成分股同向走出一大截时也挂上去。">
       <SwitchRow icon="sf-bell" tint="orange" label="重要事件" sub="关了就不挂、不提醒、不拉日历" checked={draft.enabled} onChange={(v) => patch({ enabled: v }, true)} />
       <SwitchRow icon="sf-scan" tint="blue" label="公开日历" sub="Forex Factory 的本周日历(faireconomy.media),几小时拉一次;关了只剩内置的官方日程(CPI、PPI、非农、FOMC、PCE、GDP)" checked={draft.feed} disabled={!draft.enabled} onChange={(v) => patch({ feed: v }, true)} />
-      <SwitchRow icon="sf-layers" tint="gray" label="中等影响的也算" sub="初请失业金、费城联储这类;只在公布前一小时内上顶,提前提醒只报公布那一刻" checked={draft.medium} disabled={!draft.enabled} onChange={(v) => patch({ medium: v }, true)} />
+      <NumberRow icon="sf-layers" tint="orange" label="最低星级" sub="仿照金十的分档(本软件自己定,不是金十的数据):5 星 CPI / 非农 / FOMC 决议 / 联储主席讲话,4 星 PPI / 零售 / 初请失业金 / PCE / GDP / ISM / JOLTS / ADP;3 星以下只在公布前一小时上顶" min={1} max={5} step={1} value={draft.min_stars} disabled={!draft.enabled} onChange={(v) => { if (v !== null) patch({ min_stars: v }); }} />
       <NumberRow icon="sf-clock" tint="orange" label="第一次提前提醒" sub="分钟;空着 = 不要这一档" min={1} max={1440} step={5} placeholder="不要" value={lead1} disabled={!draft.enabled} onChange={(v) => setLeads(v, lead2)} />
       <NumberRow icon="sf-clock" tint="orange" label="第二次提前提醒" sub="分钟" min={1} max={1440} step={5} placeholder="不要" value={lead2} disabled={!draft.enabled} onChange={(v) => setLeads(lead1, v)} />
       <SwitchRow icon="sf-antenna" tint="purple" label="跨市场跟跌套利(P0)" sub="美股大动而韩股(EWY)、A 股(ASHR)的美股 ETF 没同步时,从美股盘中起挂到顶上并弹窗,到 A 股开盘后一小时;「应对」默认卖空 KORU / YINN" checked={draft.cross_market} disabled={!draft.enabled} onChange={(v) => patch({ cross_market: v }, true)} />

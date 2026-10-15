@@ -1,8 +1,8 @@
 /** 重要事件的日历:内置的官方发布日程、公开日历源的解析与合并(纯计算,不联网、不读库)。
  *
  * 为什么要内置一张表:公开日历源只给**本周**,而「下周三有 FOMC」这种事得提前知道;官方日程(BLS、美联储、BEA)
- * 一年前就公布了,抄进来之后断网也有。表里只有真正会让指数跳空的几项:CPI、PPI、非农、FOMC 决议、PCE、GDP 初值。
- * 讲话、初请、零售这些靠日历源补,用户自己要盯的(某只股发债、财报)自己记。
+ * 一年前就公布了,抄进来之后断网也有。表里只有真正会让指数跳空的几项:CPI、PPI、非农、FOMC 决议、PCE、GDP 初值;
+ * 初请失业金每周四一次,按规则生成(周四是联邦假日就提前到周三)。讲话、零售、ISM 这些靠日历源补,用户自己要盯的(某只股发债、财报)自己记。
  *
  * 口径:
  *  · 时刻一律按美东墙钟换成 epoch(tz.wallToEpoch 管夏令时),界面再换成本机时间显示——用户在北京,CPI 的 08:30 是晚上 20:30。
@@ -10,6 +10,8 @@
  *  · 内置日程与日历源撞上同一天同一家族时以日历源为准(它带预期与前值),名字沿用内置的(带参考月)。
  *  · 公布之后还挂多久:数据类 90 分钟(开盘前公布的数,开盘后一小时才算消化完);FOMC 决议 150 分钟(14:00 声明、14:30 发布会);
  *    讲话 60 分钟。这些是估的,不是量出来的;用户可以在自定义事件上自己填。
+ *  · 星级 1 ~ 5:用户要的是「金十四星以上」。金十的日历要登录、条款不许未经授权的商业使用,所以不抓它,
+ *    按同样的分档自己定(STARS):家族定死的按家族,日历源上认不出家族的按它的影响档位(High 4、Medium 3、Low 2)。
  */
 import type { EconEvent, EventImpact, EventKind, EventsConfig } from "./contract/events.js";
 import { ET, wallToEpoch, weekdayOfDate } from "./tz.js";
@@ -17,7 +19,7 @@ import { ET, wallToEpoch, weekdayOfDate } from "./tz.js";
 export const DEFAULT_EVENTS_CONFIG: EventsConfig = {
   enabled: true,
   feed: true,
-  medium: false,
+  min_stars: 4,
   lead_minutes: [60, 15],
   sector_min_stocks: 3,
   sector_share: 0.6,
@@ -30,12 +32,27 @@ export const DEFAULT_EVENTS_CONFIG: EventsConfig = {
 /** 过了公布时刻还挂多久(分钟),按家族 */
 export const LINGER_MIN: Record<EventKind, number> = {
   cpi: 90, ppi: 90, nfp: 90, fomc: 150, fomc_minutes: 60, pce: 90, gdp: 90, retail: 90, claims: 60, fed_speech: 60, ism: 60,
-  other: 60, custom: 90, cross: 60,
+  jolts: 60, adp: 60, other: 60, custom: 90, cross: 60,
 };
+
+/**
+ * 家族定死的星级(null = 看日历源的影响档位)。仿照金十的分档:5 星是会让指数当场跳空的(CPI、非农、FOMC 决议),
+ * 4 星是常让指数动一下的(PPI、零售、初请、PCE、GDP、ISM、JOLTS、ADP、FOMC 纪要)。联储主席讲话 5 星,别的官员看档位。
+ */
+export const STARS: Record<EventKind, number | null> = {
+  cpi: 5, nfp: 5, fomc: 5, ppi: 4, pce: 4, gdp: 4, retail: 4, claims: 4, ism: 4, jolts: 4, adp: 4, fomc_minutes: 4,
+  fed_speech: null, other: null, custom: 4, cross: 5,
+};
+
+/** stars → impact:4 星以上整天挂着、提前提醒 */
+export function impactOfStars(stars: number): EventImpact {
+  return stars >= 4 ? "high" : "medium";
+}
 
 export const KIND_LABEL: Record<EventKind, string> = {
   cpi: "CPI", ppi: "PPI", nfp: "非农就业", fomc: "FOMC 利率决议", fomc_minutes: "FOMC 会议纪要", pce: "PCE 物价",
-  gdp: "GDP", retail: "零售销售", claims: "初请失业金", fed_speech: "美联储讲话", ism: "ISM 指数", other: "", custom: "", cross: "跨市场",
+  gdp: "GDP", retail: "零售销售", claims: "初请失业金", fed_speech: "美联储讲话", ism: "ISM 指数", jolts: "JOLTS 职位空缺",
+  adp: "ADP 就业", other: "", custom: "", cross: "跨市场",
 };
 
 interface Release {
@@ -121,20 +138,54 @@ export function etEpoch(date: string, time: string): number | null {
 function builtinEvent(r: Release): EconEvent {
   const at = etEpoch(r.date, r.time);
   if (at === null) throw new Error(`内置日程里有坏日期:${r.kind} ${r.date} ${r.time}`);
+  const stars = STARS[r.kind] ?? 4;
   return {
     id: `builtin:${r.kind}:${r.date}`, kind: r.kind, title: r.title, at, date_et: r.date, time_et: r.time,
-    impact: "high", source: "builtin", linger_min: LINGER_MIN[r.kind],
+    stars, impact: impactOfStars(stars), source: "builtin", linger_min: LINGER_MIN[r.kind],
   };
 }
 
-/** 内置日程里落在 [from, to](epoch 毫秒,含)之间的事件。 */
+const DAY_MS = 86_400_000;
+const ymd = (t: number): string => new Date(t).toISOString().slice(0, 10);
+
+/**
+ * 周四是不是联邦假日(劳工部那一周的初请就提前到周三公布):元旦、六月节(2021 起)、独立日、退伍军人节、感恩节、圣诞。
+ * 落在周四的只有这几个会碰上;观察日挪到周五的那种(元旦落周六)不影响周四。
+ */
+export function thursdayIsFederalHoliday(date: string): boolean {
+  const [y, m, d] = date.split("-").map(Number) as [number, number, number];
+  if (m === 1 && d === 1) return true;
+  if (m === 6 && d === 19 && y >= 2021) return true;
+  if (m === 7 && d === 4) return true;
+  if (m === 11 && d === 11) return true;
+  if (m === 11 && d >= 22 && d <= 28) return true; // 十一月第四个周四 = 感恩节
+  if (m === 12 && d === 25) return true;
+  return false;
+}
+
+/** [from, to] 之间每周的初请失业金:周四 08:30 美东;那个周四是联邦假日就是周三。标题带它统计的那一周(截至上周六)。 */
+export function claimsReleases(from: number, to: number): Release[] {
+  const out: Release[] = [];
+  // 从 from 那天往前退到周四,一周一周往后走;多走一周,周三公布的那种也盖住
+  let t = Date.parse(`${ymd(from - 7 * DAY_MS)}T12:00:00Z`);
+  while (new Date(t).getUTCDay() !== 4) t += DAY_MS;
+  for (; t <= to + 7 * DAY_MS; t += 7 * DAY_MS) {
+    const thursday = ymd(t);
+    const date = thursdayIsFederalHoliday(thursday) ? ymd(t - DAY_MS) : thursday;
+    const weekEnd = ymd(t - 5 * DAY_MS).slice(5);
+    out.push({ kind: "claims", date, time: "08:30", title: `初请失业金(截至 ${weekEnd} 当周)` });
+  }
+  return out;
+}
+
+/** 内置日程里落在 [from, to](epoch 毫秒,含)之间的事件:抄下来的那张表 + 按规则生成的每周初请。 */
 export function builtinEvents(from: number, to: number): EconEvent[] {
   const out: EconEvent[] = [];
-  for (const r of BUILTIN_RELEASES) {
+  for (const r of [...BUILTIN_RELEASES, ...claimsReleases(from, to)]) {
     const e = builtinEvent(r);
     if (e.at >= from && e.at <= to) out.push(e);
   }
-  return out.sort((a, b) => a.at - b.at);
+  return out.sort((a, b) => a.at - b.at || a.id.localeCompare(b.id));
 }
 
 // ---------------------------------------------------------------- 公开日历源(Forex Factory 本周 JSON)
@@ -155,6 +206,9 @@ export interface FeedRow {
 const FAMILY_RULES: Array<[RegExp, EventKind]> = [
   [/\bCPI\b/i, "cpi"],
   [/\bPPI\b/i, "ppi"],
+  // ADP 的标题里也有 Non-Farm,得排在非农前面
+  [/\bADP\b/i, "adp"],
+  [/JOLTS|Job Openings/i, "jolts"],
   [/Non-?Farm|Unemployment Rate|Average Hourly Earnings/i, "nfp"],
   [/FOMC Meeting Minutes/i, "fomc_minutes"],
   [/FOMC Statement|Federal Funds Rate|FOMC Press Conference|FOMC Economic Projections/i, "fomc"],
@@ -186,11 +240,21 @@ function feedTitle(kind: EventKind, rows: FeedRow[]): string {
   return KIND_LABEL[kind];
 }
 
-function impactOf(raw: string): EventImpact | null {
+/** 日历源的影响档位 → 星级:High 4、Medium 3、Low 2;Holiday 与认不出的不要 */
+function starsOfImpact(raw: string): number | null {
   const s = raw.trim().toLowerCase();
-  if (s === "high") return "high";
-  if (s === "medium") return "medium";
-  return null; // Low / Holiday / 别的都不要
+  if (s === "high") return 4;
+  if (s === "medium") return 3;
+  if (s === "low") return 2;
+  return null;
+}
+
+/** 一条日历源事件的星级:家族定死的用家族的;联储主席讲话 5 星;别的看档位 */
+export function starsFor(kind: EventKind, title: string, feedStars: number): number {
+  const fixed = STARS[kind];
+  if (fixed !== null) return fixed;
+  if (kind === "fed_speech" && /Fed Chair|Fed Chairman/i.test(title)) return 5;
+  return feedStars;
 }
 
 function num(value: unknown): number | null {
@@ -206,23 +270,25 @@ function etTimeOf(epoch: number): string {
 }
 
 /**
- * 日历源的载荷 → 事件。只要美国(USD)的、影响够档的;同一时刻同一家族合成一条(other 按原文标题分)。
+ * 日历源的载荷 → 事件。只要美国(USD)的;同一时刻同一家族合成一条(other 按原文标题分),星级取这一组里最高的。
+ * 不在这里按星级筛:筛在合并之后(services/events),这样改了「最低星级」不用重新解析。
  * 载荷形状不对就当空的:日历源挂了不该把提醒整个弄挂。
  */
-export function parseFeed(payload: unknown, medium: boolean): EconEvent[] {
+export function parseFeed(payload: unknown): EconEvent[] {
   if (!Array.isArray(payload)) return [];
-  const groups = new Map<string, { kind: EventKind; at: number; impact: EventImpact; rows: FeedRow[] }>();
+  const groups = new Map<string, { kind: EventKind; at: number; stars: number; rows: FeedRow[] }>();
   for (const raw of payload) {
     if (!raw || typeof raw !== "object") continue;
     const row = raw as Partial<FeedRow>;
     if (String(row.country ?? "").toUpperCase() !== "USD") continue;
-    const impact = impactOf(String(row.impact ?? ""));
-    if (impact === null || (impact === "medium" && !medium)) continue;
+    const feedStars = starsOfImpact(String(row.impact ?? ""));
+    if (feedStars === null) continue;
     const title = String(row.title ?? "").trim();
     if (!title) continue;
     const at = num(Date.parse(String(row.date ?? "")));
     if (at === null) continue;
     const kind = familyOf(title);
+    const stars = starsFor(kind, title, feedStars);
     const key = `${kind === "other" ? title : kind}@${at}`;
     const clean: FeedRow = {
       title, country: "USD", date: String(row.date), impact: String(row.impact),
@@ -231,9 +297,9 @@ export function parseFeed(payload: unknown, medium: boolean): EconEvent[] {
     const g = groups.get(key);
     if (g) {
       g.rows.push(clean);
-      if (impact === "high") g.impact = "high"; // 同一家族里有一条是高影响,整条就是高影响
+      g.stars = Math.max(g.stars, stars); // 同一组里有一条星级高,整条就按它
     } else {
-      groups.set(key, { kind, at, impact, rows: [clean] });
+      groups.set(key, { kind, at, stars, rows: [clean] });
     }
   }
   const out: EconEvent[] = [];
@@ -241,7 +307,7 @@ export function parseFeed(payload: unknown, medium: boolean): EconEvent[] {
     out.push({
       id: `feed:${g.kind === "other" ? slug(g.rows[0]?.title ?? "") : g.kind}:${g.at}`,
       kind: g.kind, title: feedTitle(g.kind, g.rows), at: g.at, date_et: etDateOf(g.at), time_et: etTimeOf(g.at),
-      impact: g.impact, source: "feed", linger_min: LINGER_MIN[g.kind],
+      stars: g.stars, impact: impactOfStars(g.stars), source: "feed", linger_min: LINGER_MIN[g.kind],
       items: g.rows.map((r) => ({ title: r.title, forecast: r.forecast, previous: r.previous })),
     });
   }
@@ -266,7 +332,8 @@ export function mergeEvents(builtin: EconEvent[], feed: EconEvent[], custom: Eco
     const b = f.kind === "other" ? undefined : byKey.get(key);
     if (b) {
       replaced.add(key);
-      out.push({ ...f, id: b.id, title: b.title, linger_min: b.linger_min });
+      const stars = Math.max(f.stars, b.stars);
+      out.push({ ...f, id: b.id, title: b.title, linger_min: b.linger_min, stars, impact: impactOfStars(stars) });
     } else {
       out.push(f);
     }
@@ -310,8 +377,15 @@ function numberOf(raw: unknown, name: string): number {
 export function normalizeEventsConfig(input: unknown, base: EventsConfig = DEFAULT_EVENTS_CONFIG): EventsConfig {
   const raw = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
   const out: EventsConfig = { ...base, lead_minutes: [...base.lead_minutes] };
-  for (const key of ["enabled", "feed", "medium", "cross_market"] as const) {
+  for (const key of ["enabled", "feed", "cross_market"] as const) {
     if (raw[key] !== undefined) out[key] = Boolean(raw[key]);
+  }
+  // 老口径:「中等影响的也算」开着 = 三星起
+  if (raw["min_stars"] === undefined && raw["medium"] === true) out.min_stars = 3;
+  if (raw["min_stars"] !== undefined) {
+    const n = numberOf(raw["min_stars"], "最低星级");
+    if (n < 1 || n > 5 || n !== Math.round(n)) throw new EventsConfigError("最低星级必须是 1 ~ 5 的整数");
+    out.min_stars = n;
   }
   if (raw["lead_minutes"] !== undefined) {
     const list = raw["lead_minutes"];

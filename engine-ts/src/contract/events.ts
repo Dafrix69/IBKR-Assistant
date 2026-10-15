@@ -10,7 +10,8 @@ export type EventSource = "builtin" | "feed" | "custom";
 
 /** 事件家族:界面按它起中文名、决定过去多久算过期;日历源上同一时刻的几条(CPI m/m、Core CPI y/y…)合成一条。 */
 export type EventKind =
-  | "cpi" | "ppi" | "nfp" | "fomc" | "fomc_minutes" | "pce" | "gdp" | "retail" | "claims" | "fed_speech" | "ism" | "other" | "custom"
+  | "cpi" | "ppi" | "nfp" | "fomc" | "fomc_minutes" | "pce" | "gdp" | "retail" | "claims" | "fed_speech" | "ism" | "jolts" | "adp"
+  | "other" | "custom"
   /** 跨市场跟跌套利(P0):美股大动而韩股 / A 股的美股 ETF 没同步,挂在它们开盘上 */
   | "cross";
 
@@ -26,6 +27,9 @@ export interface EconEvent {
   date_et: string;
   /** 美东钟点 HH:MM */
   time_et: string;
+  /** 1 ~ 5 星(仿照金十的分档,由本软件按家族定,不是金十的数据;见 econCalendar.STARS)。挂顶与提醒按 events_config.min_stars 筛 */
+  stars: number;
+  /** stars ≥ 4 是 high(整天挂着、提前提醒);更低的是 medium(公布前一小时才上顶、只在公布那一刻提醒) */
   impact: EventImpact;
   source: EventSource;
   /** 公布之后多少分钟内还挂在顶上(市场消化这个数的时间) */
@@ -66,8 +70,8 @@ export interface EventsConfig {
   enabled: boolean;
   /** 拉公开日历(Forex Factory 本周 JSON):内置日程只有几个大项,讲话、初请、零售这些靠它 */
   feed: boolean;
-  /** 中等影响的也算 */
-  medium: boolean;
+  /** 几星以上才算(1 ~ 5,默认 4):官方日程与日历源都按它筛;自己记的不筛 */
+  min_stars: number;
   /** 公布前多少分钟提醒,最多 4 档;空数组 = 只在公布那一刻提醒 */
   lead_minutes: number[];
   /** 板块联动:一个板块里至少这么多只有行情的成分股 */

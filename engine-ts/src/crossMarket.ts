@@ -134,6 +134,7 @@ export function evaluateCrossMarket(
     at,
     date_et: date,
     time_et: time,
+    stars: 5,
     impact: "high",
     source: "builtin",
     linger_min: Math.round((window.last - at) / 60_000) + CROSS_LINGER_MIN,

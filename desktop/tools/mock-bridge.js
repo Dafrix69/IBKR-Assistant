@@ -476,21 +476,22 @@ window.dafri = {
       date_et: new Date(t).toLocaleDateString('en-CA', { timeZone: 'America/New_York' }),
       time_et: new Date(t).toLocaleTimeString('en-GB', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', hour12: false }),
     });
-    const mk = (id, kind, title, at, over) => ({ id, kind, title, at, ...et(at), impact: 'high', source: 'feed', linger_min: 90, ...(over || {}) });
+    const mk = (id, kind, title, at, over) => ({ id, kind, title, at, ...et(at), stars: 4, impact: 'high', source: 'feed', linger_min: 90, ...(over || {}) });
     return {
       events: [
         mk('builtin:ppi:x', 'ppi', 'PPI(9月)', now - 2.5 * H, { source: 'builtin' }),
-        mk('builtin:cpi:x', 'cpi', 'CPI(9月)', now + 2 * H + 13 * 60_000, {
+        mk('builtin:claims:x', 'claims', '初请失业金(截至 10-10 当周)', now + 2 * H + 13 * 60_000, { items: [{ title: 'Unemployment Claims', forecast: '199K', previous: '197K' }] }),
+        mk('builtin:cpi:x', 'cpi', 'CPI(9月)', now + 2 * H + 13 * 60_000, { stars: 5,
           items: [
             { title: 'Core CPI m/m', forecast: '0.2%', previous: '0.3%' }, { title: 'Core CPI y/y', forecast: '2.5%', previous: '2.4%' },
             { title: 'CPI m/m', forecast: '0.6%', previous: '0.4%' }, { title: 'CPI y/y', forecast: '3.6%', previous: '3.4%' },
           ],
         }),
-        mk('feed:fed_speech:x', 'fed_speech', '美联储讲话(Warsh)', now + 6 * H, { linger_min: 60, items: [{ title: 'Fed Chairman Warsh Speaks', forecast: '', previous: '' }] }),
+        mk('feed:fed_speech:x', 'fed_speech', '美联储讲话(Warsh)', now + 6 * H, { stars: 5, linger_min: 60, items: [{ title: 'Fed Chairman Warsh Speaks', forecast: '', previous: '' }] }),
         mk('custom:x', 'custom', 'CRWV 发债', now + 25 * H, { source: 'custom', note: '数据中心板块都要看' }),
-        mk('builtin:fomc:x', 'fomc', 'FOMC 利率决议', now + 8 * 24 * H, { source: 'builtin', linger_min: 150 }),
+        mk('builtin:fomc:x', 'fomc', 'FOMC 利率决议', now + 8 * 24 * H, { stars: 5, source: 'builtin', linger_min: 150 }),
       ],
-      config: { enabled: true, feed: true, medium: false, lead_minutes: [60, 15], sector_min_stocks: 3, sector_share: 0.6, sector_move_pct: 3, cross_market: true, cross_market_pct: 1.5, cross_lag_pct: 1 },
+      config: { enabled: true, feed: true, min_stars: 4, lead_minutes: [60, 15], sector_min_stocks: 3, sector_share: 0.6, sector_move_pct: 3, cross_market: true, cross_market_pct: 1.5, cross_lag_pct: 1 },
       cross: mk('cross:x:down', 'cross', '美股 −2.5%,韩股 ETF 没跟跌:开盘可能补跌', now + 3 * H, {
         source: 'builtin', linger_min: 150,
         note: '韩股 EWY −0.4%(差 2.1 点)。开盘前做空这些 ETF(EWY / KORU)是套利区间;3 倍杠杆的一天能走 10% 以上,先看 TWS 里的盘后价。',
@@ -501,7 +502,7 @@ window.dafri = {
       at: now,
     };
   },
-  setEventsConfig: async (config) => ({ config: { enabled: true, feed: true, medium: false, lead_minutes: [60, 15], sector_min_stocks: 3, sector_share: 0.6, sector_move_pct: 3, cross_market: true, cross_market_pct: 1.5, cross_lag_pct: 1, ...config } }),
+  setEventsConfig: async (config) => ({ config: { enabled: true, feed: true, min_stars: 4, lead_minutes: [60, 15], sector_min_stocks: 3, sector_share: 0.6, sector_move_pct: 3, cross_market: true, cross_market_pct: 1.5, cross_lag_pct: 1, ...config } }),
   addEvent: async (spec) => ({ event: { id: 'custom:new', kind: 'custom', title: spec.title, at: Date.now() + 3600_000, date_et: spec.date_et, time_et: spec.time_et, impact: 'high', source: 'custom', linger_min: 90 } }),
   removeEvent: async (id) => ({ deleted: id }),
   // 信息链路:Charlie 的频道 + 盯价位 / 异动的信号 + 宏观事件 + 自己的单子 + 想法,按标的串成一条线

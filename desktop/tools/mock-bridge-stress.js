@@ -362,7 +362,7 @@ window.dafri = {
       date_et: new Date(t).toLocaleDateString('en-CA', { timeZone: 'America/New_York' }),
       time_et: new Date(t).toLocaleTimeString('en-GB', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', hour12: false }),
     });
-    const mk = (id, kind, title, at, over) => ({ id, kind, title, at, ...et(at), impact: 'high', source: 'feed', linger_min: 90, ...(over || {}) });
+    const mk = (id, kind, title, at, over) => ({ id, kind, title, at, ...et(at), stars: 4, impact: 'high', source: 'feed', linger_min: 90, ...(over || {}) });
     return {
       events: [
         mk('builtin:ppi:x', 'ppi', 'PPI(9月)', now - 2.5 * H, { source: 'builtin' }),
@@ -376,14 +376,14 @@ window.dafri = {
         mk('custom:x', 'custom', 'CRWV 发债', now + 25 * H, { source: 'custom', note: '数据中心板块都要看' }),
         mk('builtin:fomc:x', 'fomc', 'FOMC 利率决议', now + 8 * 24 * H, { source: 'builtin', linger_min: 150 }),
       ],
-      config: { enabled: true, feed: true, medium: false, lead_minutes: [60, 15], sector_min_stocks: 3, sector_share: 0.6, sector_move_pct: 3, cross_market: true, cross_market_pct: 1.5, cross_lag_pct: 1 },
+      config: { enabled: true, feed: true, min_stars: 4, lead_minutes: [60, 15], sector_min_stocks: 3, sector_share: 0.6, sector_move_pct: 3, cross_market: true, cross_market_pct: 1.5, cross_lag_pct: 1 },
       cross: null,
       cross_status: { in_window: false, at: null, error: null },
       feed: { at: now - 40 * 60_000, error: null, count: 2 },
       at: now,
     };
   },
-  setEventsConfig: async (config) => ({ config: { enabled: true, feed: true, medium: false, lead_minutes: [60, 15], sector_min_stocks: 3, sector_share: 0.6, sector_move_pct: 3, cross_market: true, cross_market_pct: 1.5, cross_lag_pct: 1, ...config } }),
+  setEventsConfig: async (config) => ({ config: { enabled: true, feed: true, min_stars: 4, lead_minutes: [60, 15], sector_min_stocks: 3, sector_share: 0.6, sector_move_pct: 3, cross_market: true, cross_market_pct: 1.5, cross_lag_pct: 1, ...config } }),
   addEvent: async (spec) => ({ event: { id: 'custom:new', kind: 'custom', title: spec.title, at: Date.now() + 3600_000, date_et: spec.date_et, time_et: spec.time_et, impact: 'high', source: 'custom', linger_min: 90 } }),
   removeEvent: async (id) => ({ deleted: id }),
   intelFeed: async () => ({ items: [], held: [], total_messages: 0, at: Date.now(), connected: false }),
