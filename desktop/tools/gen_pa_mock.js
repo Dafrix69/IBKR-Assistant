@@ -78,6 +78,8 @@ result.agreement = pa.agreement(result, higher);
 result.cached = false;
 result.rth = false;
 result.overnight = true;
+result.off_hours = 'stock';
+result.proxy = null;
 result.fetched_at = nowIso;
 
 if (stress) {

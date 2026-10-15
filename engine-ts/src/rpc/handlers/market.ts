@@ -5,9 +5,10 @@ import { nowEt } from "../../config.js";
 import type {
   BookSnapshot, BookSnapshotParams, FlyPlanParams, FlyPlanResult, IvRecorderSetParams, IvRecorderStatus, MacroBoard,
   MacroBoardParams, OptionWall, OptionsSpot, OptionsSpotParams, OptionsWallParams, PaAnalysis,
-  PlaybookSetParams, PlaybookSnapshot, PaAnalyzeParams, PaAnalyzeResult, PaCommentResult, PaHtfSummary, PaTimeframesResult,
+  PlaybookSetParams, PlaybookSnapshot, PaAnalyzeParams, PaAnalyzeResult, PaCommentResult, PaHtfSummary, PaProxy, PaTimeframesResult,
 } from "../../contract/index.js";
 import { liveTickers, macroBoard } from "../../macro.js";
+import { proxyOf } from "../../marketdata.js";
 import type { BarsFeed } from "../../marketdata.js";
 import { PACommentSchema } from "../../models.js";
 import type { PaClock } from "../../priceaction.js";
@@ -134,14 +135,19 @@ export class MarketHandlers extends HandlerBase {
     // 日线几点走完看这个标的有没有盘前盘后——指数没有,16:00 就走完,不等到 20:00
     const extendedSession = !rth && this.settings.indexConfig(symbol) === null;
     // 夜盘只接在日内周期上(日线里夜盘不另成一天),指数没有夜盘;回执里写明,界面的新鲜度一行据此写
-    const overnight = extendedSession && Number(TIMEFRAMES[timeframe]!["seconds"]) < 86_400;
+    const intraday = Number(TIMEFRAMES[timeframe]!["seconds"]) < 86_400;
+    const overnight = extendedSession && intraday;
     const clock = (barsAsOfMs: number, feed: BarsFeed | undefined): PaClock => ({ epochMs: moment.epochMs, barsAsOfMs, feed, extendedSession });
     let analysis: PaAnalysis;
     let cached: boolean;
+    let proxy: PaProxy | null = null;
     try {
-      const [bars, hit, askedAt, feed] = await this.ctx.market.paBars(symbol, timeframe, rth, Boolean(params["force"]));
+      // 最后一个参数:指数的盘外按期货推算(ibBars.ts)。只有这一页要;交易分析、扫描取的照旧是指数自己的 K 线
+      const [bars, hit, askedAt, feed] = await this.ctx.market.paBars(symbol, timeframe, rth, Boolean(params["force"]), true);
       cached = hit;
-      analysis = analyze(bars, symbol, timeframe, undefined, clock(askedAt, feed), !rth);
+      proxy = proxyOf(bars) ?? null;
+      // 「含盘前盘后」那一条警告(成交稀薄、跨隔夜的缺口)只说个股:指数没有盘前盘后,推算出来的盘外是期货,另有一条说明
+      analysis = analyze(bars, symbol, timeframe, undefined, clock(askedAt, feed), extendedSession);
     } catch (exc) {
       if (exc instanceof BrokerError || exc instanceof PriceActionError) {
         throw new RpcError(-32015, (exc as Error).message);
@@ -165,20 +171,31 @@ export class MarketHandlers extends HandlerBase {
     const htfKey = TIMEFRAMES[timeframe]!["htf"] as string | null;
     if (htfKey) {
       try {
-        const [htfBars, , htfAskedAt, htfFeed] = await this.ctx.market.paBars(symbol, htfKey, rth);
-        higher = htfSummary(analyze(htfBars, symbol, htfKey, undefined, clock(htfAskedAt, htfFeed), !rth));
+        const [htfBars, , htfAskedAt, htfFeed] = await this.ctx.market.paBars(symbol, htfKey, rth, false, true);
+        higher = htfSummary(analyze(htfBars, symbol, htfKey, undefined, clock(htfAskedAt, htfFeed), extendedSession));
       } catch {
         higher = null;
       }
     }
 
+    // 盘外那一段从哪来:个股自己的;指数按期货推算的;或者没有(只看常规时段、指数推算不了)
+    const offHours: PaAnalyzeResult["off_hours"] =
+      rth ? "none" : extendedSession ? "stock" : proxy !== null && proxy.derived > 0 ? "proxy" : "none";
+    const warnings = [...analysis.warnings];
+    if (proxy !== null) warnings.push(proxy.note);
+    else if (!rth && !extendedSession && intraday) {
+      warnings.push(`${symbol} 是指数,只在常规时段计算,没有盘外的 K 线;配置里给它填了期货代码(index_symbols 的 futures)才能按期货推算盘外。`);
+    }
     return {
       ...analysis,
+      warnings,
       htf: higher,
       agreement: agreement(analysis, higher),
       cached,
       rth,
       overnight,
+      off_hours: offHours,
+      proxy,
       fetched_at: new Date(moment.epochMs).toISOString(),
     };
   }

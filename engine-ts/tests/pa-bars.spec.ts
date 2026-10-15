@@ -13,7 +13,8 @@ import { BrokerRouter } from "../src/broker.js";
 import type { IbSession } from "../src/broker.js";
 import { indexContract, stockContract } from "../src/ibContracts.js";
 import { createIbApiNextSession } from "../src/ibSession.js";
-import { MIN_BARS, feedOf } from "../src/marketdata.js";
+import { setClock } from "../src/config.js";
+import { MIN_BARS, feedOf, proxyOf } from "../src/marketdata.js";
 import { CFG, FakeTws, TICK } from "./fakeTws.js";
 import type { LibBar } from "./fakeTws.js";
 import { loadGolden, makeSettings } from "./util.js";
@@ -130,6 +131,37 @@ describe("夜盘另要一次拼上", () => {
     expect(bars[0]!["time"]).toBe("2026-08-13 20:00");
     expect(bars[6]!["time"]).toBe("2026-08-14 09:30");
     expect(tws.histRequests.filter((r) => r.symbol === "NVDA").map((r) => r.exchange).sort()).toEqual(["OVERNIGHT", "SMART"]);
+  });
+
+  it("指数要了盘外推算(「行情」页):另问一次期货(ES,CME),收盘之后的期货减基差接上;不要就不问", async () => {
+    setClock(Date.parse("2026-08-14T20:00:00-04:00"));
+    try {
+      const { tws, router } = await connect();
+      tws.history.set("SPX", libBars(40)); // 09:30 → 12:45,最后一根 close 139.5
+      // 期货:12:45 那根比指数高 50(基差),之后 6 根
+      tws.history.set("ES@CME", Array.from({ length: 7 }, (_, i) => {
+        const t = new Date(Date.UTC(2026, 7, 14, 12, 45) + i * 300_000).toISOString();
+        return { time: `${t.slice(0, 10).replace(/-/g, "")}  ${t.slice(11, 19)}`, open: 189.5 + i, high: 190 + i, low: 189 + i, close: 189.5 + i, volume: 500 };
+      }));
+      const bars = await router.intradayBars("SPX", "5m", false, undefined, true);
+      expect(bars).toHaveLength(46);
+      expect(bars.slice(-2)).toEqual([
+        { time: "2026-08-14 13:10", open: 144.5, high: 145, low: 144, close: 144.5, volume: 0 },
+        { time: "2026-08-14 13:15", open: 145.5, high: 146, low: 145, close: 145.5, volume: 0 },
+      ]);
+      expect(proxyOf(bars)).toMatchObject({ futures: "ES 202609", derived: 6 });
+      expect(tws.histRequests.filter((r) => r.symbol === "ES").map((r) => r.exchange)).toEqual(["CME"]);
+
+      // 不要推算(交易分析、扫描)、只看常规时段、日线:都不问期货
+      const plain = await connect();
+      plain.tws.history.set("SPX", libBars(40));
+      await plain.router.intradayBars("SPX", "5m");
+      await plain.router.intradayBars("SPX", "5m", true, undefined, true);
+      await plain.router.intradayBars("SPX", "1d", false, undefined, true);
+      expect(plain.tws.histRequests.some((r) => r.symbol === "ES")).toBe(false);
+    } finally {
+      setClock(null);
+    }
   });
 
   it("指数、只看常规时段、日线都不要夜盘", async () => {

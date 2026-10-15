@@ -264,7 +264,19 @@ export interface PaAnalysis {
   readout: string[];
 }
 
-/** pa.analyze 的回执:分析本身 + handler 补的四项。 */
+/** 指数的盘外按期货推算(ibBars.ts):指数只在常规时段计算,盘外的 K 线是期货减基差,不是指数本身。 */
+export interface PaProxy {
+  /** 用的哪张期货,如「ES 202512」 */
+  futures: string;
+  /** 推算出来的 K 线有几根(0 = 这次没推出来) */
+  derived: number;
+  /** 给人看的一句:怎么推算的、基差取自哪一刻;没推出来时写原因 */
+  note: string;
+  /** 推算段:连着的推算 K 线的首尾时刻(图上画成竖带) */
+  spans: Array<{ from: string; to: string }>;
+}
+
+/** pa.analyze 的回执:分析本身 + handler 补的几项。 */
 export interface PaAnalyzeResult extends PaAnalysis {
   /** 高周期背景;那一路拿不到(或本来就没有高周期)是 null——背景缺了不毁掉整次分析 */
   htf: PaHtfSummary | null;
@@ -275,6 +287,11 @@ export interface PaAnalyzeResult extends PaAnalysis {
   rth: boolean;
   /** 这次的 K 线接了夜盘(IBKR 的隔夜交易时段,美东 20:00–04:00):全时段、日内周期、个股或 ETF 才有;指数没有夜盘 */
   overnight: boolean;
+  /** 常规时段之外的那一段从哪来:stock = 个股自己的盘前盘后(overnight 为真时还有夜盘);proxy = 指数没有盘外,按期货减基差推算;
+   *  none = 只有常规时段(只看常规时段,或指数推算不了 / 没配期货) */
+  off_hours: "stock" | "proxy" | "none";
+  /** 指数盘外的推算(只有指数、全时段、日内周期才有;推不出来时 derived 为 0、note 写原因) */
+  proxy: PaProxy | null;
   fetched_at: string;
 }
 

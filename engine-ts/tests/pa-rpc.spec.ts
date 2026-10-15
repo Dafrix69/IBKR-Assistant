@@ -13,7 +13,8 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { BrokerError } from "../src/broker.js";
 import { setClock } from "../src/config.js";
-import { tagFeed } from "../src/marketdata.js";
+import type { PaProxy } from "../src/contract/priceaction.js";
+import { tagFeed, tagProxy } from "../src/marketdata.js";
 import { RpcServer } from "../src/rpc.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -45,13 +46,19 @@ class FakeRouter {
   lastBar: Rec | null = null;
   /** 券商在这组 K 线上记的行情档位:true 延迟 / false 实时 / null 说不准;不给 = 券商没有这个概念(富途) */
   delayed: boolean | null | undefined = undefined;
+  /** 券商在指数 K 线上记的盘外推算(ibBars.ts);只有调用方要了(indexProxy)才记 */
+  proxy: PaProxy | null = null;
+  /** 每次取数要没要指数的盘外推算 */
+  proxyAsked: boolean[] = [];
   sessions(): unknown[] { return [{}]; }
   connectedNames(): string[] { return ["paper"]; }
-  async intradayBars(symbol: string, timeframe: string, rth: boolean): Promise<Rec[]> {
+  async intradayBars(symbol: string, timeframe: string, rth: boolean, _endDay?: string, indexProxy = false): Promise<Rec[]> {
     this.asked.push([symbol, timeframe, rth]);
+    this.proxyAsked.push(indexProxy);
     if (this.failFor.has(timeframe)) throw new BrokerError(`没有 ${symbol} 的 ${timeframe} 行情权限`);
     const bars = intraday();
     if (this.lastBar) Object.assign(bars[bars.length - 1]!, this.lastBar);
+    if (this.proxy !== null && indexProxy) tagProxy(bars, this.proxy);
     return tagFeed(bars, this.delayed);
   }
 }
@@ -105,7 +112,8 @@ afterEach(() => {
 const PA_KEYS = [
   "age_seconds", "agreement", "atr", "bar_count", "bars", "bias", "bias_label", "cached", "closed_bar", "confidence", "context",
   "equal_levels", "events", "evidence", "extended_hours", "fetched_at", "first_bar", "forming", "fvgs", "htf", "last", "last_bar",
-  "levels", "ma", "order_block", "overnight", "patterns", "plan", "readout", "rth", "score", "sub_scores", "sweeps", "swing_strength", "swings",
+  "levels", "ma", "off_hours", "order_block", "overnight", "patterns", "plan", "proxy", "readout", "rth", "score", "sub_scores", "sweeps",
+  "swing_strength", "swings",
   "symbol", "timeframe", "timeframe_label", "trend", "trend_label", "warnings",
 ];
 
@@ -389,7 +397,8 @@ describe("pa.analyze:延迟行情与指数的日线", () => {
     setClock(Date.parse("2026-09-11T16:20:00-04:00"));
     const { call } = makeServer();
     const spx = (await call("pa.analyze", { symbol: "SPX", timeframe: "1d" }))["result"];
-    expect(spx).toMatchObject({ rth: false, extended_hours: true, forming: null, bar_count: 240 });
+    // 指数没有盘前盘后:extended_hours 为假(「含盘前盘后」那条警告只说个股),日线也不按期货推算盘外
+    expect(spx).toMatchObject({ rth: false, extended_hours: false, off_hours: "none", proxy: null, forming: null, bar_count: 240 });
     const spy = (await call("pa.analyze", { symbol: "SPY", timeframe: "1d" }))["result"];
     expect(spy).toMatchObject({ rth: false, bar_count: 239 });
     expect(spy["forming"]).toMatchObject({ closes_at: "2026-09-11 20:00", waiting: null });
@@ -397,6 +406,46 @@ describe("pa.analyze:延迟行情与指数的日线", () => {
     const last = "2026-09-11 09:25:00";
     expect((await call("pa.analyze", { symbol: "SPX", timeframe: "1h" }))["result"]["htf"]["closed_bar"]).toBe(last);
     expect((await call("pa.analyze", { symbol: "SPY", timeframe: "1h" }))["result"]["htf"]["closed_bar"]).not.toBe(last);
+  });
+});
+
+describe("pa.analyze:盘外那一段从哪来", () => {
+  const PROXY: PaProxy = {
+    futures: "ES 202612", derived: 12, spans: [{ from: "2026-09-10 16:00:00", to: "2026-09-11 09:25:00" }],
+    note: "SPX 只在常规时段计算;盘外的 K 线按 ES 202612 减基差推算,不是指数本身。",
+  };
+
+  it("指数:要了推算(这一页,连同高周期);推出来了 → off_hours proxy,说明进警告;「含盘前盘后」那条不出现", async () => {
+    setClock(NOON);
+    const { call, router } = makeServer();
+    router.proxy = PROXY;
+    const r = (await call("pa.analyze", { symbol: "SPX", timeframe: "5m" }))["result"];
+    expect(router.proxyAsked).toEqual([true, true]);
+    expect(r).toMatchObject({ off_hours: "proxy", proxy: PROXY, overnight: false, extended_hours: false });
+    expect(r["warnings"]).toContain(PROXY.note);
+    expect(r["warnings"].join("")).not.toContain("含盘前盘后");
+  });
+
+  it("指数推不出来(没配期货、期货要不到):off_hours none,警告说它只有常规时段;推算失败的原因照写", async () => {
+    setClock(NOON);
+    const none = makeServer();
+    const r = (await none.call("pa.analyze", { symbol: "SPX", timeframe: "5m" }))["result"];
+    expect(r).toMatchObject({ off_hours: "none", proxy: null });
+    expect(r["warnings"].join("")).toContain("SPX 是指数,只在常规时段计算");
+    const failed = makeServer();
+    failed.router.proxy = { ...PROXY, derived: 0, spans: [], note: "SPX 只在常规时段计算;盘外本该按 ES 202612 推算,这次没取到期货 K 线(没有权限)" };
+    const f = (await failed.call("pa.analyze", { symbol: "SPX", timeframe: "5m" }))["result"];
+    expect(f["off_hours"]).toBe("none");
+    expect(f["warnings"].join("")).toContain("没取到期货 K 线(没有权限)");
+  });
+
+  it("个股是 stock(它自己的盘前盘后);只看常规时段一律 none", async () => {
+    setClock(NOON);
+    const { call } = makeServer();
+    expect((await call("pa.analyze", { symbol: "SPY", timeframe: "5m" }))["result"]).toMatchObject({ off_hours: "stock", proxy: null });
+    const rth = makeServer();
+    rth.router.proxy = PROXY;
+    expect((await rth.call("pa.analyze", { symbol: "SPX", timeframe: "5m", rth: true }))["result"]["off_hours"]).toBe("none");
   });
 });
 

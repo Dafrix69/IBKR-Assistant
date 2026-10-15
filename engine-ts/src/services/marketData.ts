@@ -57,7 +57,7 @@ function spotQuoteOf(quote: Rec | undefined): SpotQuote | null {
 }
 
 export class MarketDataService extends ServiceBase {
-  // (symbol|timeframe|rth) → [取回时刻(单调钟,管 TTL), K 线, 取回时刻(引擎的钟,管"最后一根收没收盘")]
+  // (symbol|timeframe|rth|indexProxy) → [取回时刻(单调钟,管 TTL), K 线, 取回时刻(引擎的钟,管"最后一根收没收盘")]
   private readonly paCache = new Map<string, [number, Rec[], number]>();
   // (symbol|expiry|width|给没给 span|点名的交易类) → [取回时刻, 墙, 取的时候要的 span]
   private readonly wallCache = new Map<string, [number, OptionWall, number | null]>();
@@ -204,19 +204,19 @@ export class MarketDataService extends ServiceBase {
    *  第四项是它出自哪一档行情(券商取的时候记的,见 marketdata.tagFeed;没记是 undefined):延迟档的最后一根,
    *  钟点到了数据也未必到齐。 */
   async paBars(
-    symbol: string, timeframe: string, rth: boolean, force = false,
+    symbol: string, timeframe: string, rth: boolean, force = false, indexProxy = false,
   ): Promise<[Rec[], boolean, number, BarsFeed | undefined]> {
     const { TIMEFRAMES } = await import("../priceaction.js");
     const spec = TIMEFRAMES[timeframe]!;
     const ttlS = force
       ? MarketDataService.PA_MIN_INTERVAL
       : Math.max(MarketDataService.PA_MIN_INTERVAL, Math.min((spec["seconds"] as number) / 10.0, 60.0));
-    const key = `${symbol}|${timeframe}|${rth}`;
+    const key = `${symbol}|${timeframe}|${rth}|${indexProxy}`;
     const now = performance.now();
     const hit = this.paCache.get(key);
     if (hit && now - hit[0] < ttlS * 1000) return [hit[1], true, hit[2], feedOf(hit[1])];
     const askedAt = nowEt().epochMs;
-    const bars = await this.router!.intradayBars(symbol, timeframe, rth);
+    const bars = await this.router!.intradayBars(symbol, timeframe, rth, undefined, indexProxy);
     this.paCache.set(key, [now, bars, askedAt]);
     return [bars, false, askedAt, feedOf(bars)];
   }

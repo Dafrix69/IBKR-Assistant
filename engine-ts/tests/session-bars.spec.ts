@@ -2,12 +2,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  OVERNIGHT_EXCHANGE, OVERNIGHT_RETRY_MS, SessionBars, barTimestamp, legClosedSince, legOpen, mergeSessionBars, overnightContract, toSessionBar,
+  OVERNIGHT_EXCHANGE, OVERNIGHT_RETRY_MS, SessionBars, barTimestamp, legClosedSince, legOpen, mergeSessionBars, overnightContract,
+  proxyIndexBars, toSessionBar,
 } from "../src/ibBars.js";
 import type { SessionBar } from "../src/ibBars.js";
 import type { IbContract, IbSession, RawBar } from "../src/ibTypes.js";
-import { stockContract } from "../src/ibContracts.js";
-import { DELAYED_FEED_MAX_MS } from "../src/marketdata.js";
+import { indexContract, indexFuturesContract, stockContract } from "../src/ibContracts.js";
+import { DELAYED_FEED_MAX_MS, feedOf, proxyOf } from "../src/marketdata.js";
 import { ET, wallToEpoch } from "../src/tz.js";
 
 /** 美东墙钟 → 时刻。2026-10-12 是周一(夏令时);2026-01-12 也是周一(冬令时)。 */
@@ -202,5 +203,140 @@ describe("取两条线", () => {
 
     s.byExchange.set("SMART", new Error("pacing violation"));
     await expect(sb.fetch(s.as(), request(now + OVERNIGHT_RETRY_MS + 1000))).rejects.toThrow("pacing violation");
+  });
+});
+
+// ---------------------------------------------------------------- 指数:盘外按期货推算
+describe("指数与期货推算两条线的时段", () => {
+  it.each([
+    ["2026-10-12", "09:29", false, true, "周一开盘前:期货那段"],
+    ["2026-10-12", "09:30", true, false, "09:30 起是指数"],
+    ["2026-10-12", "15:59", true, false, "收盘前一分钟"],
+    ["2026-10-12", "16:00", false, true, "16:00 起又是期货"],
+    ["2026-10-15", "23:00", false, true, "周四夜里"],
+    ["2026-10-16", "03:00", false, true, "周五凌晨"],
+    ["2026-10-16", "16:30", false, true, "周五收盘后、期货 17:00 收之前"],
+    ["2026-10-16", "17:30", false, false, "周五 17:00 后期货也收了"],
+    ["2026-10-17", "12:00", false, false, "周六"],
+    ["2026-10-18", "17:59", false, false, "周日 18:00 之前"],
+    ["2026-10-18", "18:00", false, true, "周日 18:00 期货开"],
+  ])("%s %s → 指数 %s 期货推算 %s(%s)", (date, hhmm, index, proxy) => {
+    const now = et(date, hhmm);
+    expect(legOpen("index", now)).toBe(index);
+    expect(legOpen("proxy", now)).toBe(proxy);
+  });
+
+  it("关着的那条从几点起关着:指数是上一个 16:00;期货推算是上一个 09:30,周末是周五 17:00", () => {
+    expect(legClosedSince("index", et("2026-10-12", "08:00"))).toBe(et("2026-10-09", "16:00"));
+    expect(legClosedSince("index", et("2026-10-13", "20:00"))).toBe(et("2026-10-13", "16:00"));
+    expect(legClosedSince("proxy", et("2026-10-12", "10:00"))).toBe(et("2026-10-12", "09:30"));
+    expect(legClosedSince("proxy", et("2026-10-17", "12:00"))).toBe(et("2026-10-16", "17:00"));
+    expect(legClosedSince("proxy", et("2026-10-18", "17:00"))).toBe(et("2026-10-16", "17:00"));
+    expect(legClosedSince("index", et("2026-10-12", "10:00"))).toBeNull();
+  });
+});
+
+describe("指数的盘外按期货推算(proxyIndexBars)", () => {
+  const ohlc = (time: string, close: number): SessionBar => ({ time, open: close - 1, high: close + 2, low: close - 3, close, volume: 7 });
+
+  it("基差 = 收盘最后一根的期货 − 指数;收盘之后到下一个开盘之前的期货减去它;常规时段里的不推算", () => {
+    const index = [ohlc("2026-10-09 15:50", 7700), ohlc("2026-10-09 15:55", 7710), ohlc("2026-10-12 09:30", 7720), ohlc("2026-10-12 09:35", 7725)];
+    const futures = [
+      ohlc("2026-10-09 15:55", 7760), ohlc("2026-10-09 16:00", 7765), ohlc("2026-10-11 18:00", 7770),
+      ohlc("2026-10-12 09:25", 7775), ohlc("2026-10-12 09:30", 7778),
+    ];
+    const r = proxyIndexBars(index, futures);
+    expect(r.bars.map((b) => [b.time, b.close])).toEqual([
+      ["2026-10-09 15:50", 7700], ["2026-10-09 15:55", 7710],
+      ["2026-10-09 16:00", 7715], ["2026-10-11 18:00", 7720], ["2026-10-12 09:25", 7725],
+      ["2026-10-12 09:30", 7720], ["2026-10-12 09:35", 7725],
+    ]);
+    expect(r.bars[2]).toEqual({ time: "2026-10-09 16:00", open: 7714, high: 7717, low: 7712, close: 7715, volume: 0 });
+    expect(r).toMatchObject({ derived: 3, newestDerived: false, latestBasis: { basis: 50, time: "2026-10-09 15:55" } });
+    expect(r.spans).toEqual([{ from: "2026-10-09 16:00", to: "2026-10-12 09:25" }]);
+  });
+
+  it("前面没有算得出基差的收盘就不推算:第一个收盘之前的、那一段收盘最后一刻没有期货 K 线的,都不拿别的基差往上套", () => {
+    const index = [ohlc("2026-10-08 15:55", 7600), ohlc("2026-10-09 15:55", 7700)];
+    const futures = [ohlc("2026-10-08 10:00", 7000), ohlc("2026-10-08 15:55", 7640), ohlc("2026-10-08 16:00", 7650), ohlc("2026-10-09 16:00", 7760)];
+    const r = proxyIndexBars(index, futures);
+    // 10-08 10:00 在第一个收盘之前;10-09 收盘那一刻没有期货 K 线,10-09 16:00 不推算(不拿 10-08 的 40 往上套)
+    expect(r.bars.map((b) => b.time)).toEqual(["2026-10-08 15:55", "2026-10-08 16:00", "2026-10-09 15:55"]);
+    expect(r.bars[1]!.close).toBe(7610);
+  });
+
+  it("常规时段中间缺了几根不拿期货补;今晚的推算在最后 → newestDerived", () => {
+    const index = [ohlc("2026-10-12 09:30", 7720), ohlc("2026-10-12 09:40", 7730)];
+    const futures = [ohlc("2026-10-12 09:35", 7790), ohlc("2026-10-12 09:40", 7780), ohlc("2026-10-12 09:45", 7785)];
+    const r = proxyIndexBars(index, futures);
+    expect(r.bars.map((b) => b.time)).toEqual(["2026-10-12 09:30", "2026-10-12 09:40", "2026-10-12 09:45"]);
+    expect(r.bars[2]!.close).toBe(7735);
+    expect(r.newestDerived).toBe(true);
+    expect(proxyIndexBars(index, []).derived).toBe(0);
+  });
+});
+
+/** 按交易所回 K 线的假会话,另带「这张合约的成交价出自哪一档」 */
+class IndexSession extends FakeSession {
+  readonly feeds = new Map<string, boolean | null>([["IND", true], ["FUT", false]]);
+  quoteDelayed(contract: IbContract): boolean | null {
+    return this.feeds.get(contract.secType) ?? null;
+  }
+}
+
+describe("取指数 + 期货推算(SessionBars)", () => {
+  const SPX = { ...indexContract("SPX", "CBOE"), conId: 416904 };
+  const ES = indexFuturesContract({ futures: "ES", futures_exchange: "CME" }, "2026-10-12");
+  function spxSession(): IndexSession {
+    const s = new IndexSession();
+    s.byExchange.set("CBOE", [raw("20261009 14:55:00 US/Central", 7710)]);
+    s.byExchange.set("CME", [raw("20261009 14:55:00 US/Central", 7760), raw("20261012 02:30:00 US/Central", 7790)]);
+    return s;
+  }
+  const req = (nowMs: number, futures: IbContract | null = ES) => ({
+    target: SPX, endDateTime: "", durationStr: "5 D", barSizeSetting: "5 mins", whatToShow: "TRADES", useRTH: false,
+    overnight: false, futures, nowMs,
+  });
+
+  it("夜里:指数与期货各问一次,期货那张是最近季月;拼好的 K 线上记着怎么推算的,档位看期货那条流", async () => {
+    expect(ES).toMatchObject({ secType: "FUT", symbol: "ES", exchange: "CME", lastTradeDateOrContractMonth: "202612" });
+    const s = spxSession();
+    const bars = await new SessionBars().fetch(s.as(), req(et("2026-10-12", "03:35")));
+    expect(s.asked.sort()).toEqual(["CBOE", "CME"]);
+    expect(bars.map((b) => [b.time, b.close])).toEqual([["2026-10-09 15:55", 7710], ["2026-10-12 03:30", 7740]]);
+    const proxy = proxyOf(bars)!;
+    expect(proxy).toMatchObject({ futures: "ES 202612", derived: 1, spans: [{ from: "2026-10-12 03:30", to: "2026-10-12 03:30" }] });
+    expect(proxy.note).toContain("按 ES 202612 减基差推算");
+    expect(proxy.note).toContain("最近一个 50 点(2026-10-09 15:55)");
+    expect(feedOf(bars)).toBe("live"); // 最后一根是推算的:看期货(实时),不看指数(延迟)
+  });
+
+  it("盘中:指数每次重取,期货那份留着(它关着、而且是开盘 20 分钟后取的);夜里反过来", async () => {
+    const s = spxSession();
+    s.byExchange.set("CBOE", [raw("20261009 14:55:00 US/Central", 7710), raw("20261012 08:30:00 US/Central", 7745)]);
+    const sb = new SessionBars();
+    await sb.fetch(s.as(), req(et("2026-10-12", "10:00")));
+    const day = await sb.fetch(s.as(), req(et("2026-10-12", "10:01")));
+    expect(s.asked).toEqual(["CBOE", "CME", "CBOE"]);
+    expect(feedOf(day)).toBe("delayed"); // 最后一根是指数自己的
+    const n = spxSession();
+    const night = new SessionBars();
+    await night.fetch(n.as(), req(et("2026-10-12", "22:00")));
+    await night.fetch(n.as(), req(et("2026-10-12", "22:01")));
+    expect(n.asked).toEqual(["CBOE", "CME", "CME"]);
+  });
+
+  it("期货要不到:只给指数,说明里写原因,半小时内不再问;不给期货就是老样子(不记推算)", async () => {
+    const s = spxSession();
+    s.byExchange.set("CME", new Error("No market data permissions for CME FUT"));
+    const sb = new SessionBars();
+    const now = et("2026-10-12", "03:35");
+    const bars = await sb.fetch(s.as(), req(now));
+    expect(bars.map((b) => b.time)).toEqual(["2026-10-09 15:55"]);
+    expect(proxyOf(bars)).toMatchObject({ derived: 0, spans: [] });
+    expect(proxyOf(bars)!.note).toContain("没取到期货 K 线(No market data permissions for CME FUT)");
+    await sb.fetch(s.as(), req(now + 60_000));
+    expect(s.asked.filter((x) => x === "CME")).toHaveLength(1);
+    expect(proxyOf(await new SessionBars().fetch(spxSession().as(), req(now, null)))).toBeUndefined();
   });
 });

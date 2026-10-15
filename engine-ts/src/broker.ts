@@ -14,7 +14,7 @@ import type { AccountConfig, EtNow, IndexConfig, Settings } from "./config.js";
 import type { ContractSpec, OrderSpec, TriggerSpec } from "./models.js";
 import type { HostedOrderPlan } from "./positions.js";
 import { legOf, makeKey, positionLabel } from "./positions.js";
-import { MIN_BARS, TIMEFRAMES, tagFeed } from "./marketdata.js";
+import { MIN_BARS, TIMEFRAMES } from "./marketdata.js";
 import type { BookL1, BookLevel, BookLiquidity, BookSnapshot } from "./contract/book.js";
 import type { StockQuote } from "./contract/sectors.js";
 import type { PositionRow } from "./contract/positions.js";
@@ -23,7 +23,8 @@ import type { ApprovedOrder } from "./validator.js";
 import { fmtF, pyRound } from "./py.js";
 import { ET, dateOrdinal, ibEndUtc, ibWallTime, ordinalToDate, utcIso, wallToEpoch, zonedEpoch } from "./tz.js";
 import {
-  chainStrikes, describeContract, frontQuarterly, indexContract, optionContract, pickTradingClass, stockContract, streamContract,
+  chainStrikes, describeContract, frontQuarterly, indexContract, indexFuturesContract, optionContract, pickTradingClass, stockContract,
+  streamContract,
 } from "./ibContracts.js";
 import type {
   IbContract, IbSession, IbSessionFactory, OptChainParam, OrderIntent, PortfolioItemLike, PositionItemLike,
@@ -31,11 +32,11 @@ import type {
 } from "./ibTypes.js";
 import { UpstreamWatch, coveredAccounts, liveSessions, logStderr, redactForLog } from "./ibLink.js";
 import { HeldStreams, silenceLimitMs } from "./heldStreams.js";
-import { SessionBars, barTimestamp } from "./ibBars.js";
+import { SessionBars, barTimestamp, barsError } from "./ibBars.js";
 import type { SessionBar } from "./ibBars.js";
 export { logStderr, redactForLog } from "./ibLink.js";
-// K 线时间戳的归一化搬去了 ibBars.ts;老的 import 路径不变。
-export { barTimestamp } from "./ibBars.js";
+// K 线时间戳的归一化与取数报错的翻译搬去了 ibBars.ts;老的 import 路径不变。
+export { barTimestamp, barsError } from "./ibBars.js";
 
 // IB 适配层的接口住在 ibTypes.ts;这里转出,老的 import 路径不变。
 export type {
@@ -181,24 +182,6 @@ export function bookLiquidity(book: Partial<BookSnapshot>): BookLiquidity {
     }
   }
   return out;
-}
-
-/** 把 IBKR 的取数报错翻译成"下一步该做什么"。 */
-export function barsError(symbol: string, label: string, exc: Error): string {
-  const text = String(exc.message ?? exc);
-  const lowered = text.toLowerCase();
-  if (
-    text.includes("162") || text.includes("354") ||
-    lowered.includes("permission") || lowered.includes("subscri")
-  ) {
-    return (
-      `${symbol} 没有 ${label} 的行情权限。IBKR 的历史数据同样要订阅,连延迟数据也要账户里` +
-      "先开通对应交易所。去 IBKR 账户管理 → Settings → User Settings → " +
-      "Market Data Subscriptions 里订阅该标的所属交易所(美股至少要一档 Level 1;" +
-      `SPX / VIX / RUT 这类指数属于 Cboe,要单独订阅)。原始报错:${text.slice(0, 200)}`
-    );
-  }
-  return `获取 ${symbol} 的 ${label} K 线失败:${text.slice(0, 300)}`;
 }
 
 /** 把 IBKR 的报价字段清洗成可用数字:NaN / 非正 / 非数字都归 null。 */
@@ -1016,10 +999,7 @@ export class BrokerRouter {
     session: IbSession, cfg: IndexConfig, now: EtNow,
   ): Promise<Record<string, unknown> | null> {
     const month = frontQuarterly(now.date);
-    const fut: IbContract = {
-      secType: "FUT", symbol: cfg.futures, exchange: cfg.futures_exchange || "CME",
-      currency: "USD", lastTradeDateOrContractMonth: month, conId: 0,
-    };
+    const fut = indexFuturesContract(cfg, now.date);
     await this.qualifyOrRaise(session, fut);
 
     const [sessionDate, closeMin] = lastRthSession(now, this.settings);
@@ -1319,8 +1299,9 @@ export class BrokerRouter {
     return released;
   }
 
-  /** 按周期拉 K 线(PA 分析用;给了 endDay = 取到那个美东日收盘为止)。历史数据同样要行情权限;先切延迟再切回实时。 */
-  async intradayBars(symbol: string, timeframe: string, rth = false, endDay?: string): Promise<Array<Record<string, any>>> {
+  /** 按周期拉 K 线(PA 分析用;给了 endDay = 取到那个美东日收盘为止;indexProxy = 指数的盘外按期货推算,只有「行情」页要)。
+   *  历史数据同样要行情权限;先切延迟再切回实时。 */
+  async intradayBars(symbol: string, timeframe: string, rth = false, endDay?: string, indexProxy = false): Promise<Array<Record<string, any>>> {
     const spec = TIMEFRAMES[timeframe];
     if (spec === undefined) {
       throw new BrokerError(`未知 K 线周期:${timeframe}(可选:${Object.keys(TIMEFRAMES).join("、")})`);
@@ -1336,8 +1317,9 @@ export class BrokerRouter {
 
     const daily = spec["bar_size"] === "1 day";
     const show = daily && cfg === null ? "ADJUSTED_LAST" : "TRADES";
-    // 夜盘是另一个交易所,另要一次拼上(ibBars.ts):只看常规时段、日线(夜盘不另成一天)、指数(没有夜盘)都不要
+    // 个股的夜盘是另一个交易所,另要一次拼上;指数没有盘外,要的时候按期货推算(ibBars.ts)。只看常规时段、日线都不要
     const overnight = !rth && !daily && cfg === null;
+    const futures = cfg && cfg.futures && indexProxy && !rth && !daily ? indexFuturesContract(cfg, nowEt().date) : null;
     const nowMs = nowEt().epochMs;
     const pull = (duration: string): Promise<SessionBar[]> =>
       this.sessionBars.fetch(session, {
@@ -1348,6 +1330,7 @@ export class BrokerRouter {
         whatToShow: show,
         useRTH: rth,
         overnight,
+        futures,
         nowMs,
       });
 
@@ -1370,7 +1353,7 @@ export class BrokerRouter {
         `${symbol} 没有返回 ${spec["label"]} K 线(标的代码是否正确?是否刚好整段休市?)`,
       );
     }
-    return tagFeed(bars, session.quoteDelayed?.(target)); // 这组 K 线出自实时还是延迟档:看这张合约的行情流(会话记着)
+    return bars; // 出自实时还是延迟档、指数盘外怎么推算的,SessionBars 已经记在这组 K 线上
   }
 
   // ---- 期权链(只读,不进下单链路)---------------------------------------

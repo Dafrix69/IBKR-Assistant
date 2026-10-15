@@ -1,8 +1,9 @@
 /** 行情数据的领域形状:K 线周期表、量价快照、一组 K 线出自哪一档行情。
  *
  * 分析模块(priceaction / anomaly)按这些算,券商适配层(broker / futuBroker)按这些取。
- * 两边都要 import,所以它不能住在任何一边。只有常量、类型,和「K 线出自哪一档」那张小登记表。
+ * 两边都要 import,所以它不能住在任何一边。只有常量、类型,和「K 线出自哪一档」「指数盘外怎么推算」两张小登记表。
  */
+import type { PaProxy } from "./contract/priceaction.js";
 
 export const TIMEFRAMES: Record<string, Record<string, unknown>> = {
   "1m": { bar_size: "1 min", duration: "2 D", fallback: "4 D", seconds: 60, label: "1 分钟", htf: "15m" },
@@ -35,6 +36,19 @@ export function tagFeed<T extends object>(bars: T, delayed: boolean | null | und
 /** 这组 K 线出自哪一档;券商没记就是 undefined(按实时对待)。认的是 tagFeed 记过的那个数组对象,拷一份就没有了。 */
 export function feedOf(bars: object): BarsFeed | undefined {
   return feeds.get(bars);
+}
+
+const proxies = new WeakMap<object, PaProxy>();
+
+/** 券商适配层在一组指数 K 线上记一笔:盘外是按哪张期货推算的(ibBars.ts)。和 tagFeed 一样记在旁边,不改数组本身。 */
+export function tagProxy<T extends object>(bars: T, proxy: PaProxy): T {
+  proxies.set(bars, proxy);
+  return bars;
+}
+
+/** 这组 K 线的盘外推算;没推算(个股、没给期货、只看常规时段)是 undefined。认的是那个数组对象,拷一份就没有了。 */
+export function proxyOf(bars: object): PaProxy | undefined {
+  return proxies.get(bars);
 }
 
 /** 异动监控订的那条流的一帧(券商适配层填,anomaly 读)。 */

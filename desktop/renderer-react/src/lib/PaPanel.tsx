@@ -27,7 +27,12 @@ export function paFreshness(r: PaAnalyzeResult): string {
     parts.push(mins < 1 ? '刚刚' : `${mins} 分钟前`);
   }
   parts.push(`${r.forming ? '已收盘 ' : ''}${r.bar_count} 根`);
-  if (!r.rth) parts.push(r.overnight ? '含盘前盘后与夜盘' : '含盘前盘后');
+  // 盘外那一段从哪来(引擎给的 off_hours):个股自己的;指数按期货推算的;指数推不出来就只有常规时段
+  if (!r.rth) {
+    if (r.off_hours === 'proxy') parts.push(`盘外按 ${r.proxy?.futures || '期货'} 推算`);
+    else if (r.off_hours === 'stock') parts.push(r.overnight ? '含盘前盘后与夜盘' : '含盘前盘后');
+    else parts.push('指数只有常规时段');
+  }
   if (r.cached) parts.push('引擎缓存');
   return parts.join(' · ');
 }
@@ -194,7 +199,7 @@ export function PaPanel({ books, pick }: { books: Books; pick: { symbol: string;
       <Group>
         <SwitchRow
           label="只看正常交易时段"
-          sub="默认含盘前盘后,个股与 ETF 还接上夜盘(美东 20:00–04:00);打开只取 09:30–16:00"
+          sub="默认含盘前盘后,个股与 ETF 还接上夜盘(美东 20:00–04:00),指数的盘外按期货推算;打开只取 09:30–16:00"
           checked={rth}
           onChange={(v) => {
             setRth(v);
@@ -204,7 +209,7 @@ export function PaPanel({ books, pick }: { books: Books; pick: { symbol: string;
       </Group>
       <Primer id="intro-pa" intro summary="数据来源与判断方式">
         <p className="hint">
-          K 线走 TWS 历史数据接口,需行情权限;个股与 ETF 的夜盘(IBKR 的隔夜交易时段,美东 20:00–04:00)是向券商另要一次接在盘后后面,指数没有夜盘;仅延迟权限也能出图,数据晚 15–20 分钟,判定会退到数据确定到齐的那一根;
+          K 线走 TWS 历史数据接口,需行情权限;个股与 ETF 的夜盘(IBKR 的隔夜交易时段,美东 20:00–04:00)是向券商另要一次接在盘后后面;指数(SPX)只在常规时段计算,盘外那几段按期货(ES)减基差推算、和顶栏夜里的指数现价同一个口径,图上用灰色竖带标出,不是指数本身;仅延迟权限也能出图,数据晚 15–20 分钟,判定会退到数据确定到齐的那一根;
           新鲜度见标题右侧,行情停了超 30 分钟会告警。方向判断<strong>全部由规则计算、只用已收盘的 K 线</strong>(正在形成的那一根只作提示),
           权重公开在「判断依据」里;
           「AI 解读」只叙述这些事实,不看图。图下面是同一标的的盘口,只读展示、不参与定价与下单,

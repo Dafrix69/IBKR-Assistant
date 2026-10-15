@@ -39,6 +39,14 @@ export function indexContract(symbol: string, exchange: string): IbContract {
   return { secType: "IND", symbol, exchange, currency: "USD", conId: 0 };
 }
 
+/** 指数配置里那张期货(SPX → ES):到期日严格晚于 date 的最近季月。夜里推算指数现价、给指数的 K 线补盘外,用的都是这一张。 */
+export function indexFuturesContract(cfg: { futures: string; futures_exchange: string }, date: string): IbContract {
+  return {
+    secType: "FUT", symbol: cfg.futures, exchange: cfg.futures_exchange || "CME",
+    currency: "USD", lastTradeDateOrContractMonth: frontQuarterly(date), conId: 0,
+  };
+}
+
 /** 加密货币现货(IBKR 走 PAXOS,行情免订阅;2026-09-08 真机实测 BTC 两秒内到价)。 */
 export function cryptoContract(symbol: string): IbContract {
   return { secType: "CRYPTO", symbol, exchange: "PAXOS", currency: "USD", conId: 0 };

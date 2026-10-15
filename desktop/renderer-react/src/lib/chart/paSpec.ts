@@ -2,6 +2,7 @@
 //   bars → 蜡烛与量能   ma → 均线(与 bars 逐根对齐)   levels → 关键位虚线(支撑绿 / 阻力红)
 //   fvgs → FVG 色块      order_block → 订单块         swings → 摆动点(最近 8 个)   last → 现价
 //   forming → 最后一根没进判定时,在它上面画一条竖线:还在走是「形成中」,延迟行情数据没到齐是「未到齐」
+//   proxy.spans → 指数的盘外按期货推算的那几段:灰色竖带,写「ES 推算」(不是指数本身)
 import type { ChartSpec } from './spec';
 
 const MA_STYLE: Record<number, string> = { 5: 'orange', 10: 'blue', 20: 'purple' };
@@ -24,6 +25,15 @@ export function paSpec(r: any): ChartSpec {
       fit: false,
     })),
     bands: [
+      // 推算段铺在最底下:FVG、订单块照常画在它上面
+      ...(r?.off_hours === 'proxy' ? r?.proxy?.spans || [] : []).map((s: any) => ({
+        v: true,
+        from: s.from,
+        to: s.to,
+        color: 'label2',
+        fill: 0.07,
+        label: `${String(r?.proxy?.futures || '期货').split(' ')[0]} 推算`,
+      })),
       ...(r?.fvgs || []).map((g: any) => ({
         from: g.time,
         top: g.top,
@@ -68,6 +78,7 @@ export function paSpec(r: any): ChartSpec {
       ['▮', 'up', 'FVG'],
       ['▯', 'label2', '订单块'],
       ['·', 'blue', '现价'],
+      ...(r?.off_hours === 'proxy' ? [['▮', 'label2', `${String(r?.proxy?.futures || '期货').split(' ')[0]} 推算`] as [string, string, string]] : []),
     ],
     header: periods.length
       ? (i, h) =>

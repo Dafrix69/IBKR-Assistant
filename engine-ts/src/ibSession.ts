@@ -492,7 +492,8 @@ export async function createIbApiNextSession(cfg: {
           live.sub = observable.subscribe({
             next: (update: any) => {
               applyTicks(mod, entry.data, update);
-              const plain = contract.secType === "STK" || contract.secType === "IND";
+              // 期货也记:指数盘外的 K 线按期货推算,那几根出自哪一档看期货这条流(ibBars.ts)
+              const plain = contract.secType === "STK" || contract.secType === "IND" || contract.secType === "FUT";
               if (plain && entry.data.last !== null) lastFeed.set(tickerKey(contract), entry.data.delayed === true);
             },
             // 订阅被拒(10197 实盘会话占着实时行情、354 没订阅……)之后这条流就死了。以前把它原样
