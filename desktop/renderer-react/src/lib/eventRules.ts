@@ -184,6 +184,28 @@ export interface SectorMove {
   movers: Array<{ symbol: string; pct: number }>;
 }
 
+/** 异动循环算出来的涨跌幅这么久之内的才算现在的:循环 5 秒一轮,收盘后、开盘前它不再算,留着的是上一轮的数 */
+export const SECTOR_FRESH_MS = 3 * 60_000;
+
+/**
+ * 每只股此刻的涨跌幅;算的时刻(ISO)离现在超过 maxAgeMs、或没有时刻的当作没有。
+ * 异动循环在常规时段之外(美东 09:20 之前、16:20 之后)不再算,手里的是最后一轮的数——拿它判板块联动,
+ * 第二天盘前就会把昨天的集体下跌当成现在的再报一次。
+ */
+export function freshChanges(
+  stocks: Array<{ symbol: string; change_pct: number | null | undefined; at: string | null | undefined }>,
+  now: number,
+  maxAgeMs = SECTOR_FRESH_MS,
+): Record<string, number | null> {
+  const out: Record<string, number | null> = {};
+  for (const s of stocks) {
+    const at = s.at ? Date.parse(s.at) : NaN;
+    const fresh = Number.isFinite(at) && now - at <= maxAgeMs && at <= now + 60_000;
+    out[s.symbol] = fresh && typeof s.change_pct === 'number' && Number.isFinite(s.change_pct) ? s.change_pct : null;
+  }
+  return out;
+}
+
 export interface SectorRule {
   min_stocks: number;
   share: number;

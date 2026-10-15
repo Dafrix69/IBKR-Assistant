@@ -28,6 +28,8 @@ const mod = (await import(/* @vite-ignore */ pathToFileURL(path.join(SRC, "lib",
   leadBody(e: Ev, lead: number, now: number, tz?: string): string;
   sectorMoves(sectors: Array<{ name: string; symbols: string[] }>, changes: Record<string, number | null | undefined>, rule: { min_stocks: number; share: number; move_pct: number }): Move[];
   sectorMoveBody(m: Move, movePct: number): string;
+  SECTOR_FRESH_MS: number;
+  freshChanges(stocks: Array<{ symbol: string; change_pct: number | null | undefined; at: string | null | undefined }>, now: number, maxAgeMs?: number): Record<string, number | null>;
   hedgeInstruction(spec: { symbol: string; spot: number | null; kind: "put_spread" | "bear_call" | "short_stock"; width: number; qty: number; expiry: string; todayEt: string; reason: string; price?: number | null; outside?: boolean }): { text: string; legs: string; problem: string | null };
   hedgeExpiryFor(e: { date_et: string }, todayEt: string): string;
   strikeStep(symbol: string, spot: number): number;
@@ -162,6 +164,25 @@ describe("板块联动", () => {
     // 有行情的只剩 3 只(CRWV、IREN、NBIS),2 只超线:要 max(3, ceil(3×0.6)=2) = 3 只,不够
     expect(mod.sectorMoves(sectors, { CRWV: -5, IREN: -4, NBIS: 0 }, rule)).toEqual([]);
     expect(mod.sectorMoves(sectors, { CRWV: -5, IREN: -4, NBIS: -3 }, rule)).toHaveLength(1);
+  });
+
+  it("只认 3 分钟之内算出来的涨跌幅:收盘后留着的旧数、没有时刻的、坏时刻的都当没有", () => {
+    const now = Date.parse("2026-10-15T04:05:00-04:00"); // 第二天盘前:异动循环昨天 16:20 就停了
+    const yesterday = "2026-10-14T20:19:55.000Z";
+    const fresh = new Date(now - 60_000).toISOString();
+    const out = mod.freshChanges([
+      { symbol: "CRWV", change_pct: -12.1, at: yesterday },
+      { symbol: "IREN", change_pct: -8.3, at: fresh },
+      { symbol: "NBIS", change_pct: -6.0, at: null },
+      { symbol: "APLD", change_pct: -4.4, at: "not a time" },
+      { symbol: "WULF", change_pct: null, at: fresh },
+    ], now);
+    expect(out).toEqual({ CRWV: null, IREN: -8.3, NBIS: null, APLD: null, WULF: null });
+    expect(mod.SECTOR_FRESH_MS).toBe(3 * 60_000);
+    // 昨天的集体下跌第二天盘前不再报
+    const sectors = [{ name: "数据中心", symbols: ["CRWV", "IREN", "NBIS", "APLD"] }];
+    const stale = mod.freshChanges(["CRWV", "IREN", "NBIS", "APLD"].map((symbol) => ({ symbol, change_pct: -8, at: yesterday })), now);
+    expect(mod.sectorMoves(sectors, stale, { min_stocks: 3, share: 0.6, move_pct: 3 })).toEqual([]);
   });
 
   it("两个方向都看,同一个板块只报多数的那个", () => {

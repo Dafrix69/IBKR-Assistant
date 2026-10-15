@@ -4,13 +4,14 @@
  * 三个节拍,都不看当前在哪一页(循环只能在 store 里):
  *  · 清单 5 分钟拉一次(引擎那边日历源 4 小时一拉,这里只是把它拿过来);引擎重启、口径改了、加了自定义事件时当场重拉。
  *  · 15 秒一拍:倒计时跟着走,到了提前提醒的点就弹窗 / 响铃 / 系统通知。报过的记在内存里,每档只报一次。
- *  · 板块联动 60 秒一轮,只在连着券商、美东 04:00 ~ 20:00 里跑:成分股的涨跌幅从异动循环留在引擎里的那一份读(quality.list,本地道),
- *    不另订行情。一个板块的集体涨跌报一次,之后它还在就一直挂着,直到条件消失 30 分钟。
+ *  · 板块联动 60 秒一轮,只在连着券商、美东 04:00 ~ 20:00 里问:成分股的涨跌幅从异动循环留在引擎里的那一份读(quality.list,本地道),
+ *    不另订行情,只认 3 分钟之内算出来的(异动循环只在 09:20 ~ 16:20 算,别的时候是旧数)。一个板块的集体涨跌报一次,
+ *    之后它还在就一直挂着,直到条件消失 30 分钟。
  */
 import { create } from 'zustand';
 import { dafri, errorMessage, type EconEvent, type EventsConfig, type EventsList, type PopupItem, type Sector } from '../bridge';
 import {
-  etDateOf, leadBody, leadTitle, leadsDue, sectorMoveBody, sectorMoveTitle, sectorMoves, type RuleEvent, type SectorMove,
+  etDateOf, freshChanges, leadBody, leadTitle, leadsDue, sectorMoveBody, sectorMoveTitle, sectorMoves, type RuleEvent, type SectorMove,
 } from '../lib/eventRules';
 import { playAlertTone } from './alerts';
 import { pushNotification } from './notify';
@@ -113,7 +114,7 @@ function checkLeads(now: number): void {
   }
 }
 
-/** 美东 04:00 ~ 20:00(盘前到盘后)才看板块:别的时候涨跌幅是昨天的 */
+/** 美东 04:00 ~ 20:00 才去问;真正有没有数看 freshChanges:异动循环只在 09:20 ~ 16:20 算涨跌幅,别的时候手里是最后一轮的旧数 */
 function inSession(now: number): boolean {
   const hour = Number(new Date(now).toLocaleTimeString('en-GB', { timeZone: 'America/New_York', hour: '2-digit', hour12: false }));
   return hour >= 4 && hour < 20;
@@ -131,8 +132,7 @@ async function sweepSectors(now: number): Promise<void> {
     const cfg = getEventsConfig();
     if (!cfg || !sectors.some((s) => s.stocks.length >= cfg.sector_min_stocks)) return;
     const quality = await dafri.listQuality();
-    const changes: Record<string, number | null> = {};
-    for (const stock of quality.stocks) changes[stock.symbol] = stock.metrics?.change_pct ?? null;
+    const changes = freshChanges(quality.stocks.map((s) => ({ symbol: s.symbol, change_pct: s.metrics?.change_pct, at: s.metrics_at })), now);
     const found = sectorMoves(
       sectors.map((s) => ({ name: s.name, symbols: s.stocks.map((x) => x.symbol) })),
       changes,
