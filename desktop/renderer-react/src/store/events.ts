@@ -10,14 +10,16 @@
 import { create } from 'zustand';
 import { dafri, errorMessage, type EconEvent, type EventsConfig, type EventsList, type PopupItem, type Sector } from '../bridge';
 import {
-  etDateOf, leadBody, leadTitle, leadsDue, sectorMoveBody, sectorMoveTitle, sectorMoves, type SectorMove,
+  crossMarketEvent, etDateOf, leadBody, leadTitle, leadsDue, sectorMoveBody, sectorMoveTitle, sectorMoves, type CrossMarketEvent,
+  type RuleEvent, type SectorMove,
 } from '../lib/eventRules';
 import { playAlertTone } from './alerts';
+import { getMacroRows } from './macro';
 import { pushNotification } from './notify';
 import { showAlertPopup } from './popup';
 import { getStatus } from './status';
 
-export type { EconEvent, EventsConfig, EventsList, SectorMove };
+export type { CrossMarketEvent, EconEvent, EventsConfig, EventsList, RuleEvent, SectorMove };
 
 export const LIST_REFRESH_MS = 5 * 60_000;
 export const TICK_MS = 15_000;
@@ -34,10 +36,12 @@ export interface EventsState {
   now: number;
   /** 正在集体走的板块,以及它们最后一次满足条件的时刻 */
   moves: Array<SectorMove & { since: number; seenAt: number }>;
+  /** 美股收大阴 / 大阳而亚洲还没开:从行情带的标普当日涨跌算出来的一条事件;没有是 null */
+  cross: CrossMarketEvent | null;
 }
 
 const useStore = create<{ events: EventsState }>(() => ({
-  events: { list: null, failure: null, now: Date.now(), moves: [] },
+  events: { list: null, failure: null, now: Date.now(), moves: [], cross: null },
 }));
 
 function set(part: Partial<EventsState>): void {
@@ -87,10 +91,33 @@ async function announce(item: PopupItem, direction: 'up' | 'down' | null): Promi
   }
 }
 
+/** 清单里的事 + 跨市场那一条(有的话):挂顶与提前提醒都看这一份 */
+export function allEvents(): RuleEvent[] {
+  const { list, cross } = useStore.getState().events;
+  const base: RuleEvent[] = list?.events ?? [];
+  return cross ? [...base, cross] : base;
+}
+
+/**
+ * 跨市场:美股当日涨跌从行情带的标普那一格读(TWS 流式或公开源都行,夜盘停在收盘的涨跌上正合适)。
+ * 条件在 eventRules.crossMarketEvent 里;这里只管换了一条新的就弹一次窗,之后由挂顶与提前提醒接手。
+ */
+function checkCross(now: number): void {
+  const { list, cross } = useStore.getState().events;
+  const cfg = list?.config;
+  const spx = getMacroRows().find((r) => r.key === '^GSPC');
+  const next = cfg?.enabled && cfg.cross_market ? crossMarketEvent(spx?.change_pct ?? null, now, cfg.cross_market_pct) : null;
+  if ((next?.id ?? null) === (cross?.id ?? null)) return;
+  set({ cross: next });
+  if (!next || fired.has(`${next.id}:new`)) return;
+  fired.add(`${next.id}:new`);
+  void announce({ id: `event:${next.id}`, kind: 'event', symbol: next.cross.opens[0]?.symbols[0] ?? '', title: next.title, body: leadBody(next, 0, now), tone: next.cross.direction, at: now, page: 'trade' }, next.cross.direction);
+}
+
 function checkLeads(now: number): void {
   const { list } = useStore.getState().events;
   if (!list || !list.config.enabled) return;
-  for (const due of leadsDue(list.events, now, list.config.lead_minutes, fired)) {
+  for (const due of leadsDue(allEvents(), now, list.config.lead_minutes, fired)) {
     fired.add(due.key);
     const title = leadTitle(due.event, due.lead);
     const body = leadBody(due.event, due.lead, now);
@@ -150,6 +177,7 @@ function tick(): void {
   const now = Date.now();
   set({ now });
   if (now - loadedAt >= LIST_REFRESH_MS) void loadEvents();
+  checkCross(now);
   checkLeads(now);
   const cfg = getEventsConfig();
   if (cfg?.enabled && getStatus()?.broker_connected && inSession(now) && now - sweepAt >= SECTOR_SWEEP_MS) {

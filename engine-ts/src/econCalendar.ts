@@ -22,6 +22,8 @@ export const DEFAULT_EVENTS_CONFIG: EventsConfig = {
   sector_min_stocks: 3,
   sector_share: 0.6,
   sector_move_pct: 3,
+  cross_market: true,
+  cross_market_pct: 1.5,
 };
 
 /** 过了公布时刻还挂多久(分钟),按家族 */
@@ -307,7 +309,7 @@ function numberOf(raw: unknown, name: string): number {
 export function normalizeEventsConfig(input: unknown, base: EventsConfig = DEFAULT_EVENTS_CONFIG): EventsConfig {
   const raw = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
   const out: EventsConfig = { ...base, lead_minutes: [...base.lead_minutes] };
-  for (const key of ["enabled", "feed", "medium"] as const) {
+  for (const key of ["enabled", "feed", "medium", "cross_market"] as const) {
     if (raw[key] !== undefined) out[key] = Boolean(raw[key]);
   }
   if (raw["lead_minutes"] !== undefined) {
@@ -331,6 +333,11 @@ export function normalizeEventsConfig(input: unknown, base: EventsConfig = DEFAU
     const p = numberOf(raw["sector_move_pct"], "板块联动的涨跌幅");
     if (p < 0.5 || p > 50) throw new EventsConfigError("板块联动的涨跌幅必须在 0.5% ~ 50% 之间");
     out.sector_move_pct = p;
+  }
+  if (raw["cross_market_pct"] !== undefined) {
+    const p = numberOf(raw["cross_market_pct"], "跨市场的涨跌幅");
+    if (p < 0.3 || p > 10) throw new EventsConfigError("跨市场的涨跌幅必须在 0.3% ~ 10% 之间");
+    out.cross_market_pct = p;
   }
   return out;
 }

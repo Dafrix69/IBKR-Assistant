@@ -224,12 +224,15 @@ export function sectorMoveBody(m: SectorMove, movePct: number): string {
 
 // ---- 对冲指令 ----------------------------------------------------------------
 
-export type HedgeKind = 'put_spread' | 'bear_call';
+export type HedgeKind = 'put_spread' | 'bear_call' | 'short_stock';
 
 export interface HedgeSpec {
   symbol: string;
   spot: number | null;
   kind: HedgeKind;
+  /** 卖空正股 / ETF:限价(正股的限价单必须有价,助手不知道盘口,由人填)与此刻是不是常规时段之外(要加「盘外」) */
+  price?: number | null;
+  outside?: boolean;
   /** 两个行权价隔多少点 */
   width: number;
   qty: number;
@@ -263,6 +266,7 @@ function plain(n: number): string {
 export function hedgeInstruction(spec: HedgeSpec): { text: string; legs: string; problem: string | null } {
   const symbol = spec.symbol.trim().toUpperCase();
   if (!symbol) return { text: '', legs: '', problem: '先填标的' };
+  if (spec.kind === 'short_stock') return shortStockInstruction(symbol, spec);
   if (spec.spot === null || !Number.isFinite(spec.spot) || spec.spot <= 0) return { text: '', legs: '', problem: '没有现价:连上券商,或自己填一个' };
   if (!(spec.width > 0)) return { text: '', legs: '', problem: '宽度要大于 0' };
   if (!(spec.qty >= 1) || spec.qty !== Math.round(spec.qty)) return { text: '', legs: '', problem: '张数要是正整数' };
@@ -296,7 +300,96 @@ export function hedgeInstruction(spec: HedgeSpec): { text: string; legs: string;
   };
 }
 
+/**
+ * 卖空正股 / ETF(跨市场那条用:做空 KORU、EWY、ASHR 这类)。正股的限价单必须写价,市价单在常规时段之外会被拒,
+ * 所以一律写限价;常规时段之外加「盘外」(指令规则:盘前盘后要成交得写明,且必须是限价)。卖出没有持仓的股就是卖空,由券商的融券决定成不成交。
+ */
+function shortStockInstruction(symbol: string, spec: HedgeSpec): { text: string; legs: string; problem: string | null } {
+  if (!(spec.qty >= 1) || spec.qty !== Math.round(spec.qty)) return { text: '', legs: '', problem: '股数要是正整数' };
+  const price = spec.price ?? null;
+  if (price === null || !Number.isFinite(price) || price <= 0) return { text: '', legs: '', problem: '卖空要写限价:看一眼 TWS 里的盘口填进来' };
+  const reason = spec.reason.trim() ? `,理由:${spec.reason.trim()}` : '';
+  return {
+    text: `${spec.outside ? '盘外 ' : ''}限价 ${plain(price)} 卖出 ${spec.qty} 股 ${symbol}${reason}`,
+    legs: `卖空 ${spec.qty} 股 ${symbol} @ ${plain(price)}${spec.outside ? ',盘外限价' : ''};亏损没有上限,3 倍 ETF 一天能走 10% 以上`,
+    problem: null,
+  };
+}
+
 /** 对冲默认到哪天到期:事件那天(事件在今天之后时),不早于今天 */
 export function hedgeExpiryFor(e: Pick<RuleEvent, 'date_et'>, todayEt: string): string {
   return e.date_et > todayEt ? e.date_et : todayEt;
+}
+
+// ---- 跨市场:美股收大阴 / 大阳,亚洲市场还没开 ----------------------------------------------------
+
+/** 两个市场的开盘(本地墙钟,都没有夏令时)与美股上市的对应标的 */
+export const CROSS_MARKETS = [
+  { key: 'kr', name: '韩股', offset: '+09:00', open: '09:00', symbols: ['KORU', 'EWY'] },
+  { key: 'cn', name: 'A 股', offset: '+08:00', open: '09:30', symbols: ['ASHR', 'FXI', 'KWEB', 'YINN'] },
+] as const;
+
+/** 美股当天 15:00 起算"大势已定":A 股开盘(21:30 / 20:30 美东)往前 7.5 小时盖住夏令时与冬令时两种 */
+export const CROSS_LEAD_MS = 7.5 * 60 * 60_000;
+/** A 股开了一小时之后这件事就过去了 */
+export const CROSS_LINGER_MIN = 60;
+
+export interface CrossMarketEvent extends RuleEvent {
+  kind: 'cross';
+  cross: {
+    direction: 'up' | 'down';
+    us_pct: number;
+    /** 各市场的开盘时刻(epoch 毫秒)与对应标的 */
+    opens: Array<{ key: string; name: string; at: number; symbols: readonly string[] }>;
+  };
+}
+
+/** 下一次 open(HH:MM,固定偏移 offset 的墙钟)在 now − grace 之后的那一天;落在周六日的顺延到周一 */
+export function nextOpen(now: number, offset: string, open: string, graceMs = 0): number {
+  const dayStr = (t: number): string => new Date(t + offsetMs(offset)).toISOString().slice(0, 10);
+  let day = dayStr(now - graceMs);
+  for (let i = 0; i < 8; i += 1) {
+    const at = Date.parse(`${day}T${open}:00${offset}`);
+    const dow = new Date(`${day}T12:00:00Z`).getUTCDay();
+    if (at >= now - graceMs && dow !== 0 && dow !== 6) return at;
+    day = dayStr(Date.parse(`${day}T12:00:00Z`) + 86_400_000);
+  }
+  return Date.parse(`${day}T${open}:00${offset}`);
+}
+
+function offsetMs(offset: string): number {
+  const m = /^([+-])(\d{2}):(\d{2})$/.exec(offset);
+  if (!m) return 0;
+  return (m[1] === '-' ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3])) * 60_000;
+}
+
+/**
+ * 美股收大阴(或大阳)而韩股、A 股还没开:这段时间差里做空(做多)对应的美股上市 ETF 是用户要的提醒。
+ * 条件:|美股当日涨跌| ≥ pct,且此刻在「A 股开盘前 7.5 小时」到「A 股开盘后 1 小时」之间(美股 15:00 起、到北京 10:30 止)。
+ * 周五的跌要到周一才有亚洲开盘,隔了一个周末,不报。事件挂在韩股开盘的时刻上(先开的那个),提前提醒跟着它走。
+ */
+export function crossMarketEvent(usPct: number | null, now: number, pct: number): CrossMarketEvent | null {
+  if (usPct === null || !Number.isFinite(usPct) || Math.abs(usPct) < pct) return null;
+  const grace = CROSS_LINGER_MIN * 60_000;
+  const opens = CROSS_MARKETS.map((m) => ({ key: m.key, name: m.name, at: nextOpen(now, m.offset, m.open, grace), symbols: m.symbols }));
+  const last = Math.max(...opens.map((o) => o.at));
+  const first = Math.min(...opens.map((o) => o.at));
+  if (now < last - CROSS_LEAD_MS || now > last + grace) return null;
+  const direction = usPct < 0 ? 'down' : 'up';
+  const date = new Date(first).toLocaleDateString('en-CA', { timeZone: ET });
+  const time = new Date(first).toLocaleTimeString('en-GB', { timeZone: ET, hour: '2-digit', minute: '2-digit', hour12: false });
+  const pctText = `${usPct > 0 ? '+' : '−'}${Math.abs(usPct).toFixed(1)}%`;
+  return {
+    id: `cross:${date}:${direction}`,
+    kind: 'cross',
+    title: `美股${direction === 'down' ? '大跌' : '大涨'} ${pctText},亚洲还没开`,
+    at: first,
+    date_et: date,
+    time_et: time,
+    impact: 'high',
+    source: 'builtin',
+    linger_min: Math.round((last - first) / 60_000) + CROSS_LINGER_MIN,
+    note: `${opens.map((o) => `${o.name} ${o.symbols.join(' / ')}`).join(';')}。跟${direction === 'down' ? '跌' : '涨'}常有时间差:${direction === 'down' ? '做空' : '做多'}这些美股上市的 ETF。3 倍杠杆的一天能走 10% 以上,先看 TWS 里的盘后价。`,
+    cross: { direction, us_pct: usPct, opens },
+  };
 }

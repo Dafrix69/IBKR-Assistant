@@ -49,6 +49,10 @@ export interface EventsConfig {
   sector_share: number;
   /** 较昨收的涨跌幅 %,同向超过它才算 */
   sector_move_pct: number;
+  /** 跨市场:美股收大阴 / 大阳而韩股、A 股还没开时提醒(做空 / 做多美股上市的对应 ETF 有时间差) */
+  cross_market: boolean;
+  /** 标普 500 当日涨跌幅 % 超过它才算 */
+  cross_market_pct: number;
 }
 
 /** 入参:键同 EventsConfig,值由引擎校验(数字与数字串都认),同 AnomalyConfigInput。 */

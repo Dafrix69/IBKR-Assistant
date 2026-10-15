@@ -4,18 +4,19 @@ import { EventActions } from '../lib/EventActions';
 import { EventList } from '../lib/EventList';
 import { countdownText, phaseOf, pinnedEvents, whenText } from '../lib/eventRules';
 import { navigate } from '../store/nav';
-import { useEvents, type EconEvent } from '../store/events';
+import { useEvents, type RuleEvent } from '../store/events';
 
 /**
  * 顶栏下面那条常驻的「今日重要事件」:今天(或 18 小时内)要公布的数、正在集体走的板块,一直挂着,直到过期自己消失。
  * 没有事的时候整条收起。「应对」打开对冲助手(只写指令,不发单);「全部」打开两周的清单与自定义事件。
  */
 export function EventStrip() {
-  const { list, now, moves } = useEvents();
-  const [acting, setActing] = useState<EconEvent | null>(null);
+  const { list, now, moves, cross } = useEvents();
+  const [acting, setActing] = useState<RuleEvent | null>(null);
   const [listOpen, setListOpen] = useState(false);
   const enabled = list?.config.enabled ?? true;
-  const pinned = list && enabled ? pinnedEvents(list.events, now) : { events: [] as EconEvent[], more: 0 };
+  const all: RuleEvent[] = list ? (cross ? [...list.events, cross] : list.events) : [];
+  const pinned = list && enabled ? pinnedEvents(all, now) : { events: [] as RuleEvent[], more: 0 };
   const hidden = !enabled || (pinned.events.length === 0 && moves.length === 0);
 
   return (
@@ -45,7 +46,8 @@ export function EventStrip() {
               <span className="event-title" title={e.note || (e.items ?? []).map((i) => i.title).join('、') || e.title}>{e.title}</span>
               <span className="event-meta">{whenText(e.at, now)}(美东 {e.time_et}) · {countdownText(e, now)}</span>
               {fact ? <span className="event-fact">预期 {fact.forecast || '—'} · 前值 {fact.previous || '—'}</span> : null}
-              {phase === 'upcoming' || phase === 'soon' ? (
+              {/* 跨市场那条在亚洲开盘之后还有用(A 股比韩股晚半小时),挂着就能应对 */}
+              {phase === 'upcoming' || phase === 'soon' || e.kind === 'cross' ? (
                 <Button size="small" type="primary" ghost onClick={() => setActing(e)}>应对</Button>
               ) : null}
             </div>
