@@ -8,7 +8,7 @@ const L = {
   contractTypes: "^src/contract/[^/]+\\.ts$",
   util:        "^src/(py|pyjson|tz|notify|keychain|keychainChild|secrets|killswitch|protections|riskBudget|rpcError|marketCalendar|discordGateway)\\.ts$",
   domain:      "^src/(config|models|store|storeSafety|importedTrades|ideaVectors|signalLog|positions|combos|marketdata|ivSamples|playbookLog|followLog|followInbox|followReader|riskQueries)\\.ts$",
-  analysis:    "^src/(backtest|priceaction|screener|research|ideaRetrieval|optionwall|anomaly|flyexit|tradereview|tradeOutcomes|performance|leaders|fillsCsv|optionTradesCsv|optionPositionsCsv|tradeSimilar|ibtrades|macro|market|alerts|maTouch|execQuality|backtestLab|signalOutcomes|trackerDrawdown|trackerSpotStop|trackerExits|openRisk|assignmentRisk|sessionEm|ivPricing|playbook|flyPlan|flyCalibration|flyIvModel|inference|flyExitSweep|flyExitSweepSpec|flyExitSweepStats|flyExitSweepReport)\\.ts$",
+  analysis:    "^src/(backtest|priceaction|screener|research|ideaRetrieval|optionwall|anomaly|flyexit|tradereview|tradeOutcomes|performance|leaders|fillsCsv|optionTradesCsv|optionPositionsCsv|tradeSimilar|ibtrades|macro|market|alerts|maTouch|execQuality|backtestLab|signalOutcomes|trackerDrawdown|trackerSpotStop|trackerExits|openRisk|assignmentRisk|sessionEm|ivPricing|playbook|flyPlan|flyCalibration|flyIvModel|inference|flyExitSweep|flyExitSweepSpec|flyExitSweepStats|flyExitSweepReport|econCalendar)\\.ts$",
   parsing:     "^src/(validator|providers|prompts|shorthand|llm|embeddings|follow)\\.ts$",
   execution:   "^src/(broker|ibContracts|ibLink|futuBroker|ibSession|ibExecHistory|ibTypes|tws|futu|futuBridge|optionMarks|heldStreams|accountFeeds|autoMid)\\.ts$",
   orchestrate: "^src/((engine|tracker)\\.ts|(engine|services)/[^/]+\\.ts)$",

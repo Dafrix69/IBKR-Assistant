@@ -97,6 +97,7 @@ import type {
   AnomalyConfig, AnomalyEvent, AnomalyKind, AnomalyMetrics, LevelKind, OptionWall, PoolWatch, PoolWatchPatch, PositionRow,
   FlyPlanIvMode, FlyPlanLeg, FlyPlanParams, FlyPlanPoint, FlyPlanResult, FlyPlanScenario, FlyPlanTime, FlyPlanValue, IvRecorderStatus, OptionsSpot,
   PlaybookBand, PlaybookEvent, PlaybookSnapshot, PlaybookState,
+  EconEvent, EventsConfig, EventsList,
   AccountView, Limits, Policies, ProtectionsConfig, QualityList, QualityMonitor, QualityStock, RpcParams, RpcResult, Sector,
   SectorStock, SettingsPatch, SettingsView, SpotTarget, StockQuote, Targets, Track, Watch, WatchEvent, WatchLevel,
   CrossConfirm, MaTouchConfig, TouchBook, TouchEpisode, TouchLine, WatchTrigger,
@@ -129,6 +130,7 @@ export type {
   AnomalyEvent, AnomalyKind, LevelKind, OptionWall, PoolWatch, PoolWatchPatch, PositionRow, QualityList, QualityMonitor,
   FlyPlanIvMode, FlyPlanLeg, FlyPlanParams, FlyPlanPoint, FlyPlanResult, FlyPlanScenario, FlyPlanTime, FlyPlanValue, IvRecorderStatus, OptionsSpot,
   PlaybookBand, PlaybookEvent, PlaybookSnapshot, PlaybookState,
+  EconEvent, EventsConfig, EventsList,
   QualityStock, Sector, SectorStock, SettingsPatch, SpotTarget, StockQuote, Targets, Track, Watch, WatchEvent, WatchLevel,
   CrossConfirm, MaTouchConfig, TouchBook, TouchEpisode, TouchLine, WatchTrigger,
   BreakerBrief, BreakerState, IndexSpot, ProtectionCooldown, SystemSelftest, SystemStatus, TrackerHeartbeat,
@@ -168,7 +170,7 @@ export type QualityMetrics = AnomalyMetrics;
 /** 交给主进程置顶弹窗的一条。主进程会逐字段清洗,这里照契约给。 */
 export interface PopupItem {
   id: string;
-  kind: 'anomaly' | 'level';
+  kind: 'anomaly' | 'level' | 'event';
   symbol: string;
   title: string;
   body?: string;
@@ -248,6 +250,12 @@ export interface DafriBridge {
   /** 存 bot token(系统凭证库)并用它重新连接 */
   setFollowToken(token: string): Rpc<RpcResult<'follow.set_token'>>;
   reconnectFollow(): Rpc<RpcResult<'follow.reconnect'>>;
+
+  /** 重要事件:从昨天到两周后的清单(内置日程 + 公开日历 + 自定义)、口径、日历源的状态。force = 用户点了刷新 */
+  listEvents(force?: boolean): Rpc<RpcResult<'events.list'>>;
+  setEventsConfig(config: RpcParams<'events.set_config'>['config']): Rpc<RpcResult<'events.set_config'>>;
+  addEvent(spec: RpcParams<'events.add'>): Rpc<RpcResult<'events.add'>>;
+  removeEvent(id: string): Rpc<RpcResult<'events.remove'>>;
 
   /** 一句话 → 解析 → 校验 →(execute 为真时)发单。主进程要求界面已经确认过一次(SENSITIVE_RPC) */
   submit(text: string, execute: boolean, accounts: string[]): Rpc<RpcResult<'instruction.submit'>>;

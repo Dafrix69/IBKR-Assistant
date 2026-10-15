@@ -122,6 +122,12 @@ contextBridge.exposeInMainWorld('dafri', {
     ipcRenderer.invoke('rpc', { method: 'follow.set_token', params: { token: String(token), __confirmed: true } }),
   reconnectFollow: () => ipcRenderer.invoke('rpc', { method: 'follow.reconnect', params: {} }),
 
+  // ---- 重要事件(内置日程 + 公开日历 + 自定义;只提醒,不下单)--------------------------
+  listEvents: (force) => ipcRenderer.invoke('rpc', { method: 'events.list', params: { force: Boolean(force) } }),
+  setEventsConfig: (config) => ipcRenderer.invoke('rpc', { method: 'events.set_config', params: { config } }),
+  addEvent: (spec) => ipcRenderer.invoke('rpc', { method: 'events.add', params: spec }),
+  removeEvent: (id) => ipcRenderer.invoke('rpc', { method: 'events.remove', params: { id } }),
+
   // ---- 会产生后果的操作(主进程会校验 __confirmed)----------------------
   // accounts:界面勾选的目标账户别名;勾两个就同时向两个账户发单(引擎按账户扇出)
   submit: (text, execute, accounts) =>

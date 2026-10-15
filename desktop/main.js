@@ -242,6 +242,11 @@ const ALLOWED_RPC = new Set([
   'follow.status',
   'follow.set_token',
   'follow.reconnect',
+  // 重要事件:读一份日历(内置日程 + 公开日历源)、写本地偏好与自定义事件。只提醒、不下单,所以不进 SENSITIVE_RPC
+  'events.list',
+  'events.set_config',
+  'events.add',
+  'events.remove',
 ]);
 
 /** 会真的动钱或动配置的通道,额外要求界面已经确认过一次。 */

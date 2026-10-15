@@ -158,15 +158,18 @@ describe("条款文本", () => {
     expect(privacy).toMatch(/大模型服务商/);
     // 引擎里出现的外部域名只有这几个;多了一个,隐私说明就得跟着改
     const hosts = new Set<string>();
-    for (const f of ["macro.ts", "providers.ts", "embeddings.ts", "market.ts", "optionwall.ts", "llm.ts", "discordGateway.ts"]) {
+    for (const f of ["macro.ts", "providers.ts", "embeddings.ts", "market.ts", "optionwall.ts", "llm.ts", "discordGateway.ts", "services/events.ts"]) {
       for (const m of engine(f).matchAll(/(?:https?|wss?):\/\/([a-z0-9.-]+)/gi)) hosts.add(String(m[1]).toLowerCase());
     }
     // Discord 跟单:bot 连的是 Discord 的 Gateway(只收不发),隐私说明里要有它
     expect(engine("discordGateway.ts")).toMatch(/gateway\.discord\.gg/);
     expect(privacy).toMatch(/Discord/);
+    // 重要事件的公开日历:Forex Factory 的本周 JSON(faireconomy.media),隐私说明里要有它
+    expect(engine("services/events.ts")).toMatch(/nfs\.faireconomy\.media/);
+    expect(privacy).toMatch(/Forex Factory/);
     const known = [
       "cdn.cboe.com", "query1.finance.yahoo.com", "api.deepseek.com", "platform.claude.com", "127.0.0.1", "localhost", "api.example.com",
-      "gateway.discord.gg",
+      "gateway.discord.gg", "nfs.faireconomy.media",
     ];
     expect([...hosts].filter((h) => !known.includes(h))).toEqual([]);
   });

@@ -39,7 +39,7 @@ const POPUP_URL_SUFFIX = '/popup/popup.html';
 const BG_LIGHT = '#f2f2f4';
 const BG_DARK = '#232325';
 
-const KINDS = new Set(['anomaly', 'level']);
+const KINDS = new Set(['anomaly', 'level', 'event']);
 const TONES = new Set(['up', 'down', 'info']);
 const PAGES = new Set(['quality', 'sectors', 'trade']);
 const UPDOWNS = new Set(['red-up', 'green-up']);

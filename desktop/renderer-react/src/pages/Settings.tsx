@@ -6,6 +6,7 @@ import { refreshStatus } from '../store/status';
 import { applyGlassTint, applyTheme, applyUpDown, useGlassTint, useThemeMode, useUpDown, type ThemeMode, type UpDown } from '../store/appearance';
 import { AccountLimitsRows } from '../lib/AccountLimitsRows';
 import { DataPanel } from '../lib/DataPanel';
+import { EventsConfig } from '../lib/EventsConfig';
 import { formProblems, isDirty, toForm, toPatch, type SettingsForm } from '../lib/settingsForm';
 import { Group, GroupRow, LoadingBlock, Notice, NumberRow, PageHead, SectionTitle, SwitchRow } from '../ui/kit';
 
@@ -244,6 +245,9 @@ export function SettingsPage() {
           </p>
         </>
       )}
+
+      <SectionTitle>重要事件</SectionTitle>
+      <EventsConfig />
 
       <SectionTitle>数据与备份</SectionTitle>
       <DataPanel />

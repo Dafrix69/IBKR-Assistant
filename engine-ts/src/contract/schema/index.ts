@@ -16,6 +16,7 @@ import {
   BrokerConnectParamsSchema, BrokerSelectParamsSchema, DiagnoseParamsSchema, FutuSetPasswordParamsSchema,
   FutuUnlockParamsSchema, LaunchParamsSchema,
 } from "./connection.js";
+import { EventsAddParamsSchema, EventsListParamsSchema, EventsRemoveParamsSchema, EventsSetConfigParamsSchema } from "./events.js";
 import { FollowSetTokenParamsSchema } from "./follow.js";
 import {
   IdeasAddParamsSchema, IdeasAnalyzeParamsSchema, IdeasDigestParamsSchema, IdeasDigestsParamsSchema, IdeasListParamsSchema,
@@ -65,6 +66,11 @@ export const PARAMS_SCHEMAS: { readonly [M in RpcMethodName]: ParamsSchema<RpcPa
   "llm.test": LlmTestParamsSchema,
 
   "macro.board": MacroBoardParamsSchema,
+
+  "events.list": EventsListParamsSchema,
+  "events.set_config": EventsSetConfigParamsSchema,
+  "events.add": EventsAddParamsSchema,
+  "events.remove": EventsRemoveParamsSchema,
 
   "backtest.strategies": NoParamsSchema,
   "backtest.run": BacktestRunParamsSchema,

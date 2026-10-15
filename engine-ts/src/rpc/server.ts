@@ -18,6 +18,7 @@ import { RpcError } from "../rpcError.js";
 import { KeychainError } from "../secrets.js";
 import { AlertsService } from "../services/alerts.js";
 import { AnomalyService } from "../services/anomaly.js";
+import { EventsService } from "../services/events.js";
 import { BrokerLinkService } from "../services/brokerLink.js";
 import { FlyPlannerService } from "../services/flyPlanner.js";
 import { FollowService, refuseModelWhileFollowing } from "../services/follow.js";
@@ -47,6 +48,7 @@ import { QualityHandlers } from "./handlers/quality.js";
 import { ReviewHandlers } from "./handlers/review.js";
 import { TrackerHandlers } from "./handlers/tracker.js";
 import { ConnectionHandlers } from "./handlers/connection.js";
+import { EventsHandlers } from "./handlers/events.js";
 import { FollowHandlers } from "./handlers/follow.js";
 import { SettingsHandlers } from "./handlers/settings.js";
 
@@ -84,6 +86,7 @@ export class RpcServer implements RpcContext {
   readonly ivRecorder: IvRecorderService;
   readonly playbook: PlaybookService;
   readonly follow: FollowService;
+  readonly events: EventsService;
   /** 各域的 handler。方法表在构造时合成一张,之后不变。 */
   readonly domains: {
     system: SystemHandlers;
@@ -100,6 +103,7 @@ export class RpcServer implements RpcContext {
     connection: ConnectionHandlers;
     settings: SettingsHandlers;
     follow: FollowHandlers;
+    events: EventsHandlers;
   };
   private readonly table: MethodTable;
 
@@ -125,6 +129,8 @@ export class RpcServer implements RpcContext {
     // 日内剧本的跨式也走测算那批自己的行情流;期权墙走共用的那份缓存
     this.playbook = new PlaybookService(this, this.flyPlanner.marks, this.market);
     this.follow = new FollowService(this);
+    // 重要事件:内置日程 + 公开日历 + 自定义,只给界面一份清单;提醒的节拍在界面里
+    this.events = new EventsService(this);
     this.domains = {
       system: new SystemHandlers(this),
       trading: new TradingHandlers(this),
@@ -140,6 +146,7 @@ export class RpcServer implements RpcContext {
       connection: new ConnectionHandlers(this),
       settings: new SettingsHandlers(this),
       follow: new FollowHandlers(this),
+      events: new EventsHandlers(this),
     };
     // 跟单建追踪走 tracker.add 的同一个 handler,记盘口用蝴蝶测算那批自己的行情流:services 不认识 handler,在这里接上
     this.follow.attach({ addTrack: (params) => this.domains.tracker.trackerAdd(params), marks: this.flyPlanner.marks });
@@ -296,6 +303,8 @@ export class RpcServer implements RpcContext {
     "keychain.set", "futu.set_password",
     // Discord 跟单:状态是读内存与本地库;存 token 写系统凭证库(同上);重新连接只是换一条 WebSocket。都不碰下单状态
     "follow.status", "follow.set_token", "follow.reconnect",
+    // 重要事件的口径与自定义事件:一次 app_prefs 写
+    "events.set_config", "events.add", "events.remove",
   ]);
   static readonly READ_METHODS = new Set([
     "positions.list", "sectors.quotes", "pa.analyze", "book.snapshot", "options.wall", "macro.board",
@@ -314,6 +323,8 @@ export class RpcServer implements RpcContext {
     "options.fly_plan",
     // 测算面板上的实时现价:读常驻行情流里的那一笔,界面两秒一次
     "options.spot",
+    // 重要事件的清单:从没拉到过日历源时同步等它(最多 8 秒),不该挡下单
+    "events.list",
   ]);
   static readonly READ_CONCURRENCY = 4;
   static readonly SLOW_MS = 1000; // 超过这个时长的请求记到 stderr

@@ -8,6 +8,7 @@ import { useEffect } from 'react';
 import { Button, Input, Segmented, Space, Switch, Tag } from 'antd';
 import { etClock, formProblems, instructionFor, minutesFromNow, type FlyForm } from './flyPlanForm';
 import { FlyPlanResultView } from './FlyPlanResult';
+import { EventWarning } from './EventWarning';
 import { FlySpotLine } from './FlySpot';
 import type { FlyPlanIvMode } from '../bridge';
 import { showBanner } from '../store/banner';
@@ -71,6 +72,7 @@ export function FlyPlanner({ onInstruction }: { onInstruction: (text: string) =>
   return (
     <div className="fly-planner">
       <FlySpotLine />
+      <EventWarning />
       <div className="fly-form">
         <div className="fly-row">
           <Field label="中心行权价">{text('center', '7750')}</Field>

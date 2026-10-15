@@ -17,6 +17,9 @@ import type {
   BrokerSelectResult, DiagnoseParams, DiagnoseResults, FutuScanResult, FutuSetPasswordParams, FutuUnlockParams,
   FutuUnlockResult, LaunchParams, LaunchResult, TwsScanResult,
 } from "./connection.js";
+import type {
+  EconEvent, EventsAddParams, EventsConfig, EventsList, EventsListParams, EventsRemoveParams, EventsSetConfigParams,
+} from "./events.js";
 import type { FollowSetTokenParams, FollowStatus } from "./follow.js";
 import type { LlmCatalog, LlmPatchParams, LlmTestParams, LlmTestResult } from "./llm.js";
 import type { MacroBoard, MacroBoardParams } from "./macro.js";
@@ -74,6 +77,7 @@ export type * from "./alerts.js";
 export type * from "./backtest.js";
 export type * from "./book.js";
 export type * from "./connection.js";
+export type * from "./events.js";
 export type * from "./follow.js";
 export type * from "./macro.js";
 export type * from "./ideas.js";
@@ -115,6 +119,12 @@ export interface RpcMethods {
   "llm.test": { params: LlmTestParams; result: LlmTestResult };
 
   "macro.board": { params: MacroBoardParams; result: MacroBoard };
+
+  /** 重要事件:内置日程 + 公开日历 + 自定义(docs/features/events.md)。只读;口径与自定义事件存本地偏好表 */
+  "events.list": { params: EventsListParams; result: EventsList };
+  "events.set_config": { params: EventsSetConfigParams; result: { config: EventsConfig } };
+  "events.add": { params: EventsAddParams; result: { event: EconEvent } };
+  "events.remove": { params: EventsRemoveParams; result: { deleted: string } };
 
   "backtest.strategies": { params: NoParams; result: { strategies: BacktestStrategy[] } };
   "backtest.run": { params: BacktestRunParams; result: BacktestRunResult };

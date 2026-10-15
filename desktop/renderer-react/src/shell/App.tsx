@@ -4,6 +4,7 @@ import zhCN from 'antd/locale/zh_CN';
 import { Topbar } from './Topbar';
 import { Sidebar } from './Sidebar';
 import { MacroStrip } from './MacroStrip';
+import { EventStrip } from './EventStrip';
 import { NAV_ITEMS } from './nav';
 import { LEAF_TABS, PAGES } from '../pages';
 import { navigate, pendingNavFocus, useTab } from '../store/nav';
@@ -68,6 +69,8 @@ export function App({ nonce }: { nonce: string }) {
       <AntdApp notification={{ maxCount: 3 }}>
         <Toasts />
         <Topbar />
+        {/* 今天要公布的重要数据与正在集体走的板块:一直挂着,直到过期;没有事时整条收起 */}
+        <EventStrip />
         <MacroStrip />
         <div className="shell">
           <Sidebar active={tab} onSelect={navigate} pendingCount={status?.pending_count || 0} />

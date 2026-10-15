@@ -590,6 +590,66 @@ code {
 .rule-group > .ant-btn { margin-top: 4px; }
 
 /* ================= 全局宏观行情带(仿富途顶部指数条) ================= */
+/* ---- 今日重要事件:顶栏下面常驻的一条,直到过期自己消失 -------------------------------- */
+#event-strip { flex-shrink: 0; }
+.event-strip {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 4px 12px 6px; font-size: 11.5px; font-variant-numeric: tabular-nums;
+}
+.event-strip[hidden] { display: none; }
+.event-strip-head { color: var(--label-secondary); font-size: 10.5px; font-weight: 510; flex-shrink: 0; }
+.event-item {
+  display: inline-flex; align-items: center; gap: 7px; min-width: 0;
+  padding: 4px 10px 4px 8px; border-radius: var(--radius-tile);
+  background: var(--glass-bg); box-shadow: var(--glass-edge-small); border: 0; color: inherit; font: inherit; text-align: left;
+}
+.event-item .event-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--orange); flex-shrink: 0; }
+.event-item.medium .event-dot { background: var(--label-tertiary); }
+.event-item.live .event-dot, .event-item.soon .event-dot { background: var(--red); }
+.event-item.live .event-dot { animation: event-pulse 1.2s ease-in-out infinite; }
+.event-item.after .event-dot { background: var(--label-tertiary); }
+.event-item.sector { cursor: pointer; }
+.event-item.sector.down .event-dot { background: var(--red); }
+.event-item.sector.up .event-dot { background: var(--green); }
+.event-title { font-weight: 590; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+.event-item.live .event-title, .event-item.soon .event-title { color: var(--orange-text); }
+.event-meta { color: var(--label-secondary); white-space: nowrap; }
+.event-fact { color: var(--label-tertiary); font-family: var(--font-mono); font-size: 10.5px; white-space: nowrap; }
+.event-item .ant-btn { height: 22px; padding-inline: 8px; font-size: 11px; }
+.event-more { color: var(--label-secondary); }
+.event-all.ant-btn { height: 22px; padding-inline: 8px; font-size: 11px; margin-left: auto; }
+@keyframes event-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+/* 「应对」对冲助手 */
+.event-actions-when { margin: 0 0 8px; }
+.event-actions-facts { margin: 0 0 8px; padding-left: 18px; color: var(--label-secondary); font-size: 12px; }
+.event-hedge { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.event-hedge .fly-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+.event-hedge label { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: var(--label-secondary); }
+.event-hedge-reason { flex: 1; min-width: 160px; }
+.event-hedge-legs { margin: 0; }
+.event-hedge-text {
+  margin: 0; padding: 8px 10px; border-radius: var(--radius-tile); background: var(--glass-bg); box-shadow: var(--glass-edge-small);
+  font-family: var(--font-mono); font-size: 12.5px; white-space: pre-wrap; user-select: text;
+}
+.event-actions-foot { margin-top: 14px; display: flex; justify-content: flex-end; width: 100%; }
+
+/* 「全部」清单 */
+.event-list { display: flex; flex-direction: column; gap: 14px; }
+.event-list-status { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+.event-day h4, .event-add h4 { margin: 0 0 6px; font-size: 12px; color: var(--label-secondary); font-weight: 590; }
+.event-row { display: grid; grid-template-columns: 96px 1fr auto; column-gap: 10px; row-gap: 2px; padding: 6px 0; border-top: 1px solid var(--separator, rgba(128,128,128,0.2)); font-size: 12.5px; }
+.event-row.expired { opacity: 0.55; }
+.event-row-when { color: var(--label-secondary); font-variant-numeric: tabular-nums; }
+.event-row-title { font-weight: 590; }
+.event-row-count { white-space: nowrap; }
+.event-row-items, .event-row p { grid-column: 2 / span 2; margin: 0; padding-left: 16px; font-size: 11.5px; }
+.event-row .ant-btn { grid-column: 3; justify-self: end; }
+.event-add .fly-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-top: 6px; }
+.event-add label { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: var(--label-secondary); }
+.event-add-note { flex: 1; min-width: 200px; }
+.event-warning.ant-alert { margin: 0 0 8px; }
+
 .macro-strip {
   display: flex;
   gap: 8px;

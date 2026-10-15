@@ -11,6 +11,7 @@ import './graphics.css';
 import { App } from './shell/App';
 import { startAlertsLoop } from './store/alerts';
 import { startEngineLog } from './store/engineLog';
+import { startEventsLoop } from './store/events';
 import { startLlmFeed } from './store/llm';
 import { startMacroLoop } from './store/macro';
 import { startMenuNavigation } from './store/nav';
@@ -62,6 +63,7 @@ startAlertsLoop();    // 价位警告 10 秒一轮,同样不看当前在哪一�
 startSpotLoop();      // SPX 走到 25 的整数倍时提醒:两秒一轮,不看当前在哪一页(开关在蝴蝶测算面板上)
 startPlaybookFeed();  // SPX 日内剧本:引擎报出过线事件时弹窗 / 响铃,同样不看当前在哪一页(开关在日内剧本面板上)
 startQualityFeed();   // 异动检测在引擎里 5 秒一轮;这里只订阅它的 anomaly 事件,弹窗 / 响铃同样不看当前在哪一页
+startEventsLoop();    // 重要事件:清单 5 分钟一拉,倒计时与提前提醒 15 秒一拍,板块联动 60 秒一轮,同样不看当前在哪一页
 startMenuNavigation(); // 弹窗的「查看」经主进程的 menu 通道跳回对应页
 startUpdateChecks();    // 新版本检查:启动 30 秒后问一次 GitHub,之后 12 小时一次;「关于」页可关
 createRoot(document.getElementById('root')!).render(<App nonce={nonce} />);
