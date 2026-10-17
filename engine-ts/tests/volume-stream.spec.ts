@@ -320,11 +320,13 @@ describe("BrokerRouter.volumeQuotes:异动监控的常驻量能流", () => {
     expect(s.qualifyCalls).toBe(1);                 // 第一只超时,第二只不再去等
     expect(out["AAPL"]?.error).toMatch(/没有响应/);
     s.qualifyMode = "ok";
-    await router.volumeQuotes(["AAPL", "MSFT"]);    // 退避期内:AAPL 不重试,MSFT 这一轮补上
-    expect(s.subscribed).toEqual([["MSFT", VOL]]);
+    // 退避期内:AAPL 不重试;MSFT 也不去等——这个会话半分钟前刚超时过,只读的确认当场答没回应(qualifyGate.ts)
+    await router.volumeQuotes(["AAPL", "MSFT"]);
+    expect(s.qualifyCalls).toBe(1);
+    expect(s.subscribed).toEqual([]);
     vi.setSystemTime(new Date(Date.now() + BrokerRouter.VOLUME_RETRY_MS + 1));
     const later = await router.volumeQuotes(["AAPL", "MSFT"]);
-    expect(s.subscribed).toEqual([["MSFT", VOL], ["AAPL", VOL]]);
+    expect(s.subscribed).toEqual([["AAPL", VOL], ["MSFT", VOL]]);
     expect(later["AAPL"]?.error).toBeUndefined();
   });
 

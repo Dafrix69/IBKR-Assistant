@@ -1,7 +1,8 @@
 /** 盯盘停过(engine/wakeGuard.ts):合盖睡着、维护唤醒、醒后先不判断、一整段停完只报一次。
  *
  * 钉的是:
- *  1. 墙钟两轮之间超过 30 秒才算停摆;墙钟减单调时钟分得开"睡着了"与"卡住了",只有睡着的要等连接稳住;
+ *  1. 墙钟两轮之间超过 30 秒才算停摆;墙钟减"醒着的时钟"分得开"睡着了"与"卡住了",只有睡着的要等连接稳住;
+ *     那个时钟在 macOS 上是各核的时间片计数,不是 performance.now()(它在睡眠里也走,见 awakeClockMs);
  *  2. 醒后等券商连接连续稳住 20 秒,连接一变就重新计时,最长 2 分钟;
  *  3. 2026-09-29 那一下午原样回放(12:58 合盖、每 15 分钟一次几秒的维护唤醒、13:24 醒来那次断线重连、16:40 开盖):
  *     维护唤醒里一轮都不判断,开盖一分钟后只报一次;
@@ -16,7 +17,7 @@ import { etNowFromEpoch } from "../src/config.js";
 import type { Track } from "../src/contract/tracker.js";
 import { TradingEngine } from "../src/engine.js";
 import {
-  GAP_MS, HOLD_REASON, QUIET_MS, SETTLE_MAX_MS, SETTLE_MS, WakeGuard, durationText, episodeNotice, linkOf,
+  GAP_MS, HOLD_REASON, QUIET_MS, SETTLE_MAX_MS, SETTLE_MS, WakeGuard, awakeClockMs, durationText, episodeNotice, linkOf,
   liveTracksOf, reportWake, spanText,
 } from "../src/engine/wakeGuard.js";
 import type { LiveTracks, WakeSample, WakeStep } from "../src/engine/wakeGuard.js";
@@ -147,6 +148,33 @@ describe("WakeGuard:认停摆", () => {
     expect(steps.every((s) => s.gap === null)).toBe(true);
     expect(steps[0]!.hold).toBe(""); // 连接稳住的时长早就够了
     expect(steps.filter((s) => s.episode !== null)).toHaveLength(1);
+  });
+});
+
+describe("醒着的时钟(awakeClockMs)", () => {
+  const cpu = (user: number, sys: number, idle: number): { times: { user: number; nice: number; sys: number; idle: number; irq: number } } =>
+    ({ times: { user, nice: 0, sys, idle, irq: 0 } });
+
+  it("macOS:取时间片总和最大的那个核,不看 performance.now()", () => {
+    expect(awakeClockMs(() => [cpu(10, 5, 100), cpu(20, 5, 120)], "darwin", () => -1)).toBe(145);
+  });
+
+  it("别的系统、或者一个核都读不到:用调用方给的时钟", () => {
+    expect(awakeClockMs(() => [cpu(10, 5, 100)], "win32", () => 7)).toBe(7);
+    expect(awakeClockMs(() => [], "darwin", () => 7)).toBe(7);
+  });
+
+  it("2026-10-17 那一夜:墙钟过了 16 分钟、各核只走了维护唤醒那 5 秒 → 算睡着了,醒来先不判断", () => {
+    // performance.now() 在这一段里跟着墙钟走了 16 分钟,原来的判法得出"电脑没睡、引擎卡住"
+    const g = new WakeGuard();
+    let wall = et("11:04:41"), ticks = 497_000_000;
+    const at = (): WakeSample => ({ wall, mono: awakeClockMs(() => [cpu(0, 0, ticks)], "darwin"), link: "live", live: ONE });
+    g.step(at());
+    wall += 16 * 60_000;
+    ticks += 5_000;
+    const step = g.step(at());
+    expect(step.gap?.kind).toBe("sleep");
+    expect(step.hold).toBe(HOLD_REASON);
   });
 });
 

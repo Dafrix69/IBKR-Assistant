@@ -2,6 +2,7 @@
  *
  * 黄金基线只能发现"和上次不一样",证明不了"是对的"——它的期望值最初来自 Python 参考实现,现在由这份代码自己重生成。
  * 这里的每一条都有独立于实现的正确答案:平价关系、σ → 0 退化成内在价值、蝶价出不了 [0, 翼宽]、反解回得去。
+ * 最后一组的答案连这份代码都不经过:标准正态分布表(Abramowitz & Stegun 表 26.1)与 Black–Scholes 的平值解析解。
  * 哪一条红了,就是定价错了,和基线有没有更新无关。
  */
 import { describe, expect, it } from "vitest";
@@ -10,6 +11,7 @@ import { comboNaturalPrice } from "../src/autoMid.js";
 import { comboMidPrice } from "../src/broker.js";
 import * as fx from "../src/flyexit.js";
 import { FLY_IV_MODEL } from "../src/flyIvModel.js";
+import { ibkrLegSigmas } from "../src/ivPricing.js";
 import { remainingShare } from "../src/flyCalibration.js";
 import { EM_FACTOR, expectedMove } from "../src/playbook.js";
 import * as tk from "../src/tracker.js";
@@ -218,5 +220,27 @@ describe("时间与方差", () => {
       const call = fx.bachelierCall(7750, 7750, sigma), put = fx.bachelierPut(7750, 7750, sigma);
       expect(expectedMove(call, put)).toBeCloseTo(sigma, 9);
     }
+  });
+});
+
+describe("外部参照:不由这份代码算出来的数", () => {
+  // Abramowitz & Stegun《Handbook of Mathematical Functions》表 26.1 的标准正态分布值(10 位),和 erf 用的是哪个库无关:
+  // Φ(1) = 0.8413447461,φ(1) = 0.2419707245,Φ(0.1) = 0.5398278373
+  const PHI_1 = 0.8413447461, PDF_1 = 0.2419707245, PHI_01 = 0.5398278373;
+  const YEAR_MS = 365 * 24 * 3600 * 1000;
+
+  it("Bachelier 看涨:S − K = σ 处是 σ·(Φ(1) + φ(1)),S − K = −σ 处是 σ·(φ(1) − (1 − Φ(1)))", () => {
+    for (const sigma of [1, 20, 36]) {
+      expect(fx.bachelierCall(7750 + sigma, 7750, sigma)).toBeCloseTo(sigma * (PHI_1 + PDF_1), 6);
+      expect(fx.bachelierCall(7750 - sigma, 7750, sigma)).toBeCloseTo(sigma * (PDF_1 - (1 - PHI_1)), 6);
+    }
+  });
+
+  it("ibkr 档的换算在平值处和 Black–Scholes 差不到 0.2%:S = K = 100、IV 20%、一年,BS 精确值 100·(2Φ(0.1) − 1) = 7.9656", () => {
+    const sigmas = ibkrLegSigmas([{ strike: 100, right: "C" }], 100, { k: 0.2 }, YEAR_MS, 0, () => "k");
+    const bachelier = fx.bachelierCall(100, 100, sigmas?.["k"] ?? 0);
+    const blackScholes = 100 * (2 * PHI_01 - 1);
+    expect(blackScholes).toBeCloseTo(7.9656, 4);
+    expect(Math.abs(bachelier - blackScholes) / blackScholes).toBeLessThan(0.002);
   });
 });

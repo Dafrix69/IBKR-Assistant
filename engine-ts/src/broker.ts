@@ -32,6 +32,7 @@ import type {
 } from "./ibTypes.js";
 import { UpstreamWatch, coveredAccounts, liveSessions, logStderr, redactForLog } from "./ibLink.js";
 import { HeldStreams, silenceLimitMs } from "./heldStreams.js";
+import { qualifyGated } from "./qualifyGate.js";
 import { SessionBars, barTimestamp, barsError } from "./ibBars.js";
 import type { SessionBar } from "./ibBars.js";
 export { logStderr, redactForLog } from "./ibLink.js";
@@ -549,7 +550,7 @@ export class BrokerRouter {
     const session = await this.forAccount(account);
     if (contract.secType === "STK") {
       const target = stockContract(contract.symbol, contract.exchange, contract.currency);
-      await this.qualifyOrRaise(session, target);
+      await this.qualifyOrRaise(session, target, true);
       return target;
     }
     if (contract.secType === "OPT") {
@@ -558,7 +559,7 @@ export class BrokerRouter {
         contract.right!, contract.exchange, contract.currency, contract.multiplier,
         contract.tradingClass ?? "",
       );
-      await this.qualifyOrRaise(session, target);
+      await this.qualifyOrRaise(session, target, true);
       return target;
     }
     return this.buildBag(session, contract);
@@ -597,11 +598,9 @@ export class BrokerRouter {
     // 键必须在 qualify 之前算:qualify 会原地改写合约字段,
     // 事后算键与下次查询的"改写前"键对不上,缓存就永远 miss。
     const needKeys = need.map((opt) => this.conIdKey(opt));
-    try {
-      await session.qualifyContracts(need, BrokerRouter.QUALIFY_TIMEOUT_MS);
-    } catch (exc) {
-      if (isTimeout(exc)) throw new BrokerError(this.stalledMessage());
-      throw exc;
+    // 只有下单路径用它(组合的腿、AUTO_MID 定价):刚超时过也照样去问
+    if (await qualifyGated(session, need, BrokerRouter.QUALIFY_TIMEOUT_MS, true) === "stalled") {
+      throw new BrokerError(this.stalledMessage());
     }
     for (const [i, opt] of need.entries()) {
       if (!opt.conId) {
@@ -631,19 +630,17 @@ export class BrokerRouter {
     return (hours && hoursStatus(hours[0], hours[2], now.epochMs, hours[1])) || this.settings.marketStatus(now);
   }
 
-  /** 合约确认必须有硬超时:TWS 上游断开时 socket 还活着,请求会永远等不到回应。 */
-  async qualifyOrRaise(session: IbSession, contract: IbContract): Promise<void> {
+  /** 合约确认必须有硬超时:TWS 上游断开时 socket 还活着,请求会永远等不到回应。
+   *  只读的取数刚超时过就当场报,不再各等一个超时;wait = true 的(下单路径)照样去问(见 qualifyGate.ts)。 */
+  async qualifyOrRaise(session: IbSession, contract: IbContract, wait = false): Promise<void> {
     const key = this.conIdKey(contract);
     const hit = this.conIdCache.get(key);
     if (hit) {
       contract.conId = hit;
       return;
     }
-    try {
-      await session.qualifyContracts([contract], BrokerRouter.QUALIFY_TIMEOUT_MS);
-    } catch (exc) {
-      if (isTimeout(exc)) throw new BrokerError(this.stalledMessage());
-      throw exc;
+    if (await qualifyGated(session, [contract], BrokerRouter.QUALIFY_TIMEOUT_MS, wait) === "stalled") {
+      throw new BrokerError(this.stalledMessage());
     }
     if (!contract.conId) {
       throw new BrokerError(
@@ -2001,7 +1998,7 @@ export class BrokerRouter {
       trigger.secType === "IND"
         ? indexContract(trigger.symbol, cfg ? cfg.exchange : "CBOE")
         : stockContract(trigger.symbol);
-    await this.qualifyOrRaise(session, target);
+    await this.qualifyOrRaise(session, target, true);
     return {
       type: "price",
       conId: target.conId,
@@ -2313,11 +2310,6 @@ async function pollTicker(
     await session.settle(Math.min(100, waitMs - waited));
     waited += 100;
   }
-}
-
-export function isTimeout(exc: unknown): boolean {
-  const msg = String((exc as Error)?.message ?? exc).toLowerCase();
-  return msg.includes("timeout") || (exc as Error)?.name === "TimeoutError";
 }
 
 /** 默认会话工厂:IBApiNext 适配层(真机联调前不会被离线测试触达)。 */

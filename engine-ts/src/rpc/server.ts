@@ -35,7 +35,10 @@ import { IdeaSemanticService } from "../services/ideaSemantic.js";
 import { SimilarContextService } from "../services/similarContext.js";
 import { TradeHistoryService } from "../services/tradeHistory.js";
 import { TradeStore } from "../store.js";
+import { takeQualifyGateStats } from "../qualifyGate.js";
 import { PROTOCOL_VERSION } from "./context.js";
+import { FLUSH_MS, RpcTimings, slowLine } from "./perfLog.js";
+import type { Lane } from "./perfLog.js";
 import type { HandlerBase, MethodTable, Rec, RpcContext } from "./context.js";
 import { SystemHandlers } from "./handlers/system.js";
 import { TradingHandlers } from "./handlers/trading.js";
@@ -69,6 +72,9 @@ export class RpcServer implements RpcContext {
     return run;
   };
   private readonly out: (line: string) => void;
+  /** 每个请求排了多久、执行了多久(perfLog.ts);收到请求的时刻按请求对象记 */
+  readonly timings = new RpcTimings();
+  private readonly receivedAt = new WeakMap<Rec, number>();
   /** 测试可注入的解析器工厂。真的那一个带着账号闸(guardAccountIds):每一次外发都查一遍真实账号。 */
   parserFactory: (cfg: LLMConfig) => any = (cfg) => guardAccountIds(buildParser(cfg), () => this.settings.accounts);
 
@@ -353,6 +359,12 @@ export class RpcServer implements RpcContext {
     const warmSpot = (): void => { publicIndexPrice("SPX").catch(() => null); };
     warmSpot();
     setInterval(warmSpot, 4 * 60 * 1000).unref();
+    // 每十分钟一行各方法的排队 / 执行分位数,外加合约确认那道闸这十分钟里超时、跳过、试探了几次
+    const flushPerf = (): void => {
+      const line = this.timings.flush(Date.now(), { qualify: takeQualifyGateStats() });
+      if (line !== null) process.stderr.write(`${line}\n`);
+    };
+    setInterval(flushPerf, FLUSH_MS).unref();
     const rl = readline.createInterface({ input, crlfDelay: Infinity });
     const BAD: Rec = { __bad_json__: true };
     const normal: Rec[] = [];
@@ -401,6 +413,7 @@ export class RpcServer implements RpcContext {
         return;
       }
       const method = String(request["method"] ?? "");
+      this.receivedAt.set(request, performance.now());
       if (RpcServer.LOCAL_METHODS.has(method)) {
         runDetached(request); // 本地道:来了就答
         return;
@@ -433,6 +446,7 @@ export class RpcServer implements RpcContext {
       }
       await this.handle(request);
     }
+    flushPerf();
     this.anomaly.stop();
     this.ivRecorder.stop();
     this.playbook.stop();
@@ -449,11 +463,18 @@ export class RpcServer implements RpcContext {
     try {
       return await this.handleInner(request);
     } finally {
-      const elapsed = performance.now() - started;
-      if (elapsed >= RpcServer.SLOW_MS) {
-        process.stderr.write(`[rpc] 慢请求 ${String(request["method"] ?? "")} ${Math.round(elapsed)} ms\n`);
-      }
+      const method = String(request["method"] ?? "");
+      const run = performance.now() - started;
+      const wait = started - (this.receivedAt.get(request) ?? started);
+      this.timings.record(method, RpcServer.laneOf(method), wait, run);
+      const slow = slowLine(method, wait, run, RpcServer.SLOW_MS);
+      if (slow !== null) process.stderr.write(`${slow}\n`);
     }
+  }
+
+  static laneOf(method: string): Lane {
+    if (RpcServer.LOCAL_METHODS.has(method)) return "local";
+    return RpcServer.READ_METHODS.has(method) ? "read" : "trade";
   }
 
   /** 直接调一个方法:不包 JSON-RPC 信封、不写 stdout,失败原样抛(RpcError 带码)。 */

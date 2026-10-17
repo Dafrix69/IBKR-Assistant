@@ -16,6 +16,7 @@
 import { quoteSilenceMs } from "./heldStreams.js";
 import { describeContract, optionContract } from "./ibContracts.js";
 import type { IbContract, IbSession, TickerHandle } from "./ibTypes.js";
+import { qualifyGated } from "./qualifyGate.js";
 
 export class OptionMarksError extends Error {}
 
@@ -127,9 +128,10 @@ export class OptionMarkStreams {
       else need.push(i);
     });
     if (!need.length) return;
-    try {
-      await session.qualifyContracts(need.map((i) => contracts[i]!), OptionMarkStreams.QUALIFY_TIMEOUT_MS);
-    } catch {
+    // 只读:TWS 刚超时过就当场报,不再每十秒等满一个超时(qualifyGate.ts)。任何错都按"没回应"报,同以前
+    const answered = await qualifyGated(session, need.map((i) => contracts[i]!), OptionMarkStreams.QUALIFY_TIMEOUT_MS, false)
+      .catch(() => "stalled" as const);
+    if (answered === "stalled") {
       throw new OptionMarksError(
         `TWS 在 ${OptionMarkStreams.QUALIFY_TIMEOUT_MS / 1000} 秒内没有回应合约确认请求。多半是 TWS 和 IBKR 服务器之间断了,` +
         "请看 TWS 窗口右下角的连接状态。",

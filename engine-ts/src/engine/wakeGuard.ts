@@ -3,7 +3,7 @@
  * 用电池时合上笔记本,macOS 直接睡眠,应用挡不住。进程在睡眠里被冻住,节拍器的计时器也不走:醒来只是接着排下一轮,
  * 引擎自己看不出中间过了多久——只有墙钟看得出(见 docs/journal/stale-streams-after-sleep.md)。
  *
- *  · 相邻两轮开始的墙钟差超过 GAP_MS,算一次停摆。墙钟差减单调时钟差 = 其间睡着的时长(macOS 的单调时钟在睡眠里不走):
+ *  · 相邻两轮开始的墙钟差超过 GAP_MS,算一次停摆。墙钟差减"醒着的时钟"差 = 其间睡着的时长(时钟见 awakeClockMs):
  *    占一半以上算"电脑睡着了",否则是"引擎卡住了"(进程被挂起、一轮卡在券商那头、事件循环被占住)。
  *  · 睡着过的,醒来先不判断:醒来那一秒 TWS 给新订阅的可能是睡前的缓存盘口,紧接着又断线重连。跟踪止损的峰值是落库的,
  *    一轮旧价、或新旧腿拼出来的净价,就能把峰值抬上去,之后拿真价一比就是一次假回撤。券商连接(连着的连接名不变、不为空)
@@ -13,9 +13,32 @@
  *
  * 判断全在 WakeGuard 里,时钟与连接由调用方每一轮给,离线测试直接喂数。
  */
+import * as os from "node:os";
 import type { Track } from "../contract/tracker.js";
 import { logStderr } from "../ibLink.js";
 import { ET, pad2, wallParts } from "../tz.js";
+
+type CpuTimes = Pick<os.CpuInfo, "times">;
+
+/**
+ * 只在电脑醒着时走的时钟(毫秒),给 WakeSample.mono。
+ *
+ * performance.now() 不行:macOS 上 Node 与 Electron 的 libuv(1.52)用 mach_continuous_time,睡眠里照走
+ * (本机 2026-10-18:hrtime 1,340,848 秒 = mach_continuous_time;开机以来醒着的 mach_absolute_time 只有 497,841 秒)。
+ * 拿它和墙钟比,睡眠永远算出 0:一次合盖报成"电脑没睡、引擎卡住",醒后那段等待也跟着没了
+ * (main.log 09-30 起 1,130 次停摆里 1,126 次和主进程记下的睡眠重叠,全被说成"电脑没睡";desktop/tools/log_report.js 重算)。
+ * 每个核的时间片计数(os.cpus() 的 user + nice + sys + idle + irq)只在醒着时累加:取最大的那个核,同一刻 497,743 秒,
+ * 和 mach_absolute_time 差不到 100 秒;一次 8 µs。粒度 10 毫秒,分得清"停了 30 秒以上"。
+ * 只在 macOS 上换:别的系统没有在真机上量过,留着原来的 performance.now()。
+ */
+export function awakeClockMs(
+  cpus: () => CpuTimes[] = os.cpus, platform: string = process.platform, fallback: () => number = () => performance.now(),
+): number {
+  if (platform !== "darwin") return fallback();
+  let best = 0;
+  for (const { times: t } of cpus()) best = Math.max(best, t.user + t.nice + t.sys + t.idle + t.irq);
+  return best > 0 ? best : fallback();
+}
 
 /** 两轮开始之间超过这么久算停摆。正常是 1 秒;一轮卡在券商那头二十几秒的见过,不算 */
 export const GAP_MS = 30_000;
@@ -46,7 +69,7 @@ export interface LiveTracks {
 export interface WakeSample {
   /** 这一轮开始时的墙钟(Date.now()) */
   wall: number;
-  /** 同一刻的单调时钟(performance.now()) */
+  /** 同一刻只在醒着时走的时钟(awakeClockMs()) */
   mono: number;
   /** 此刻连着的连接名,排好序拼成一串;一条都没连是空串 */
   link: string;

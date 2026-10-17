@@ -128,6 +128,26 @@ swift tools/make_icon.swift  # 重画图标 → build/icon.icns / icon.ico / ico
 
 两者的设计口径在 `docs/features/ui.md` 的「Mac 版」一节。
 
+## 慢在哪:从原始日志重算
+
+```bash
+node tools/log_report.js                                    # 默认读 ~/Library/Logs/IBKR-Assistant/main.log
+pmset -g log > /tmp/pmset.txt && node tools/log_report.js --pmset /tmp/pmset.txt   # 再拿系统自己的睡眠记录对照
+node tools/log_report.js --json
+```
+
+各方法慢请求的分位数、正好等满 12 秒的次数按天分布、「节拍停了」有几次其实是电脑在睡。只读原始记录,不读任何整理过的结论;
+口径见 `docs/features/perf-log.md`。
+
+## 量一次正在运行的应用
+
+```bash
+node tools/perf_snapshot.js --samples 30 --out ../docs/reports/perf/$(date +%F)-electron.json
+```
+
+每类进程的常驻内存与 CPU(多次采样的中位数、最小、最大)、安装包与 DMG 多大、引擎起来到连上券商多久。要在自己的终端里跑
+(沙箱不让跑 `ps`),应用要开着、连着 TWS。重写的基线与对比都用它。
+
 ## 解析链路时延压测
 
 ```bash

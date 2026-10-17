@@ -12,7 +12,7 @@ import type {
 import type { TrackerHeartbeat } from "./contract/system.js";
 import type { Track } from "./contract/tracker.js";
 import { LoopMeter, heartbeatOf } from "./engine/heartbeat.js";
-import { WakeGuard, linkOf, liveTracksOf, reportWake } from "./engine/wakeGuard.js";
+import { WakeGuard, awakeClockMs, linkOf, liveTracksOf, reportWake } from "./engine/wakeGuard.js";
 import { legInputsOf } from "./ivPricing.js";
 import type { TrackFired, TrackerPollTick, TrackerSyncHostedTick } from "./contract/trackerloop.js";
 import {
@@ -53,7 +53,6 @@ import type { ApprovedOrder, RejectedOrder } from "./validator.js";
 import { Validator, primaryCode, rejectionMessage } from "./validator.js";
 import { finiteOrNull, fmtF, pyG, pyRound } from "./py.js";
 import * as path from "node:path";
-import { performance } from "node:perf_hooks";
 
 type Rec = Record<string, any>;
 
@@ -727,7 +726,7 @@ export class TradingEngine {
   /** 一轮盯盘:读一次持仓 → 判触发 → 托管对账。任何异常都不许让节拍器停下。 */
   async trackerTickOnce(moment?: EtNow | null): Promise<void> {
     const state = this.trackerLoop;
-    const t0 = Date.now(), mono = performance.now();
+    const t0 = Date.now(), mono = awakeClockMs();
     try {
       await this.withTrackerLock(async () => {
         // 执行对账与盯盘无关(没有追踪也要对),但同用一把锁:它会改 orderIndex 与终态

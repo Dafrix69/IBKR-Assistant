@@ -10,7 +10,7 @@ const L = {
   domain:      "^src/(config|models|store|storeSafety|importedTrades|ideaVectors|signalLog|positions|combos|marketdata|ivSamples|playbookLog|followLog|followInbox|followReader|riskQueries|messageLog)\\.ts$",
   analysis:    "^src/(backtest|priceaction|screener|research|ideaRetrieval|optionwall|anomaly|flyexit|tradereview|tradeOutcomes|performance|leaders|fillsCsv|optionTradesCsv|optionPositionsCsv|tradeSimilar|ibtrades|macro|market|alerts|maTouch|execQuality|backtestLab|signalOutcomes|trackerDrawdown|trackerSpotStop|trackerExits|openRisk|assignmentRisk|sessionEm|ivPricing|playbook|flyPlan|flyCalibration|flyIvModel|inference|flyExitSweep|flyExitSweepSpec|flyExitSweepStats|flyExitSweepReport|econCalendar|crossMarket|symbolMentions|intelItems)\\.ts$",
   parsing:     "^src/(validator|providers|prompts|shorthand|llm|embeddings|follow)\\.ts$",
-  execution:   "^src/(broker|ibContracts|ibLink|futuBroker|ibSession|ibExecHistory|ibBars|ibTypes|tws|futu|futuBridge|optionMarks|heldStreams|accountFeeds|autoMid)\\.ts$",
+  execution:   "^src/(broker|ibContracts|ibLink|futuBroker|ibSession|ibExecHistory|ibBars|ibTypes|tws|futu|futuBridge|optionMarks|heldStreams|qualifyGate|accountFeeds|autoMid)\\.ts$",
   orchestrate: "^src/((engine|tracker)\\.ts|(engine|services)/[^/]+\\.ts)$",
   transport:   "^src/((rpc|cli)\\.ts|rpc/.+\\.ts)$",
 };

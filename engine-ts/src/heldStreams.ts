@@ -20,6 +20,7 @@
  */
 import { logStderr } from "./ibLink.js";
 import { tickerKey } from "./ibSession.js";
+import { QUALIFY_RETRY_MS } from "./qualifyGate.js";
 import type { IbContract, IbSession, TickerData, TickerHandle } from "./ibTypes.js";
 
 /** handle 为 null = 合约确认不了,记下来不反复重试。session 是订它的那个会话:撤要撤在同一个会话上 */
@@ -42,11 +43,8 @@ export function quoteSilenceMs(t: TickerData, now: number): number | null {
   return since > 0 ? now - since : null;
 }
 
-/**
- * TWS 没回合约确认(超时)之后,隔多久再去确认一次。和盘中"这条流没动静就重订"的时限同一个数:
- * 持仓的行情不通时,半分钟试一次。试一次的代价是 TWS 还没好时白等一个确认超时(12 秒)。
- */
-export const QUALIFY_RETRY_MS = 30_000;
+/** TWS 没回合约确认(超时)之后,隔多久再去确认一次:和只读取数的那道闸同一个数(qualifyGate.ts)。 */
+export { QUALIFY_RETRY_MS };
 
 /**
  * 会话 → 上一次确认超时之后,到什么时候之前不再去确认。有这一项 = 这个会话正卡着。
