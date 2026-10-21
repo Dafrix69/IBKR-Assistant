@@ -16,13 +16,13 @@ const ps = require("../../desktop/tools/perf_snapshot.js") as {
   startupTimes(log: string): number[];
 };
 
-const APP = "/Users/u/Desktop/ibkr/IBKR-Assistant/desktop/dist/mac-arm64/IBKR-Assistant.app/Contents";
+const APP = "/Users/u/Desktop/ibkr/IBKR-Assistant/desktop/dist/mac-arm64/Datrix.app/Contents";
 const PS = [
-  `  501 204800  3.0 ${APP}/MacOS/IBKR-Assistant`,
-  `  502 307200 12.5 ${APP}/Frameworks/IBKR-Assistant Helper (Renderer).app/Contents/MacOS/IBKR-Assistant Helper (Renderer) --type=renderer`,
-  `  503 102400  1.0 ${APP}/Frameworks/IBKR-Assistant Helper (GPU).app/Contents/MacOS/IBKR-Assistant Helper (GPU) --type=gpu-process`,
-  `  504  51200  0.0 ${APP}/Frameworks/IBKR-Assistant Helper.app/Contents/MacOS/IBKR-Assistant Helper --type=utility`,
-  `  505 153600  2.0 ${APP}/MacOS/IBKR-Assistant ${APP}/Resources/engine-ts/dist/src/cli.js serve`,
+  `  501 204800  3.0 ${APP}/MacOS/Datrix`,
+  `  502 307200 12.5 ${APP}/Frameworks/Datrix Helper (Renderer).app/Contents/MacOS/Datrix Helper (Renderer) --type=renderer`,
+  `  503 102400  1.0 ${APP}/Frameworks/Datrix Helper (GPU).app/Contents/MacOS/Datrix Helper (GPU) --type=gpu-process`,
+  `  504  51200  0.0 ${APP}/Frameworks/Datrix Helper.app/Contents/MacOS/Datrix Helper --type=utility`,
+  `  505 153600  2.0 ${APP}/MacOS/Datrix ${APP}/Resources/engine-ts/dist/src/cli.js serve`,
   "  600  99999  9.9 /Applications/Safari.app/Contents/MacOS/Safari",
 ].join("\n");
 

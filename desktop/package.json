@@ -1,6 +1,6 @@
 {
   "name": "dafri-desktop",
-  "productName": "IBKR-Assistant",
+  "productName": "Datrix",
   "version": "0.5.1",
   "license": "MIT",
   "author": "Dafrix69",
@@ -52,7 +52,7 @@
   },
   "build": {
     "appId": "com.dafri.trading",
-    "productName": "IBKR-Assistant",
+    "productName": "Datrix",
     "asar": true,
     "files": [
       "main.js",
@@ -139,7 +139,7 @@
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.plist",
       "notarize": false,
-      "artifactName": "IBKR-Assistant-${version}-mac-${arch}.${ext}",
+      "artifactName": "Datrix-${version}-mac-${arch}.${ext}",
       "electronLanguages": [
         "zh_CN",
         "zh_TW",
@@ -147,20 +147,20 @@
       ]
     },
     "dmg": {
-      "title": "IBKR-Assistant",
+      "title": "Datrix",
       "format": "ULFO",
       "writeUpdateInfo": false
     },
     "win": {
       "target": "nsis",
       "icon": "build/icon.ico",
-      "artifactName": "IBKR-Assistant-${version}-win-${arch}.${ext}"
+      "artifactName": "Datrix-${version}-win-${arch}.${ext}"
     },
     "nsis": {
       "include": "build/installer.nsh",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "shortcutName": "IBKR-Assistant"
+      "shortcutName": "Datrix"
     },
     "electronLanguages": [
       "zh-CN",

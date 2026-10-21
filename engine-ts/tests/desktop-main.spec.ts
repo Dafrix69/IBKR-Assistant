@@ -72,11 +72,11 @@ const showMessageBox = async (...args: any[]): Promise<{ response: number }> => 
 const fakeElectron = {
   app: {
     isPackaged: false,
-    name: "IBKR-Assistant",
+    name: "Datrix",
     getPath: (what: string) => (what === "userData" ? userData : path.join(dir, what)),
     setPath: () => undefined,
     getVersion: () => "9.9.9-test",
-    getName: () => "IBKR-Assistant",
+    getName: () => "Datrix",
     getLocale: () => "zh-CN",
     requestSingleInstanceLock: () => true,
     whenReady: () => Promise.resolve(),
@@ -441,7 +441,7 @@ describe.runIf(ready)("主进程:支持与数据", () => {
     savePath = null;
     expect(await invoke("diagnostics-export")).toEqual({ ok: false, canceled: true });
     await invoke("diagnostics-copy");
-    expect(clipboardText).toContain("IBKR-Assistant 9.9.9-test");
+    expect(clipboardText).toContain("Datrix 9.9.9-test");
   });
 
   it("打开所在位置:只认那几个固定的地方", async () => {

@@ -217,7 +217,7 @@ function main() {
 
   const rule = '='.repeat(78);
   const lines = [
-    'IBKR-Assistant · 第三方许可声明(THIRD-PARTY NOTICES)',
+    'Datrix · 第三方许可声明(THIRD-PARTY NOTICES)',
     '',
     `本软件 ${desktopPkg.version} 版的安装包里带有下列开源组件。它们各自沿用原有的许可,不因本软件而改变。`,
     'Chromium 及其所带组件的许可另见同目录下的 LICENSES.chromium.html。',

@@ -59,7 +59,7 @@ function stamp(epochMs) {
 }
 
 function defaultFileName(now = Date.now()) {
-  return `IBKR-Assistant-诊断-${stamp(now)}.txt`;
+  return `Datrix-诊断-${stamp(now)}.txt`;
 }
 
 /**
@@ -82,7 +82,7 @@ function buildReport(input) {
   const clip = (line) => (line.length > MAX_LINE_CHARS ? `${line.slice(0, MAX_LINE_CHARS)} …(截断)` : line);
 
   const parts = [];
-  parts.push('IBKR-Assistant 诊断信息');
+  parts.push('Datrix 诊断信息');
   parts.push(`生成时间:${new Date(now).toISOString()}`);
   parts.push('这份文件不含交易记录、成交、持仓、API Key;真实账号已打码。发出去之前仍建议自己看一遍。');
 
@@ -133,7 +133,7 @@ function buildSummary(input) {
   const engine = input.engine || {};
   const status = engine.status || {};
   const lines = [
-    `IBKR-Assistant ${app.version || '?'}(${app.platform || '?'} ${app.arch || ''},系统 ${app.os || '?'})`,
+    `Datrix ${app.version || '?'}(${app.platform || '?'} ${app.arch || ''},系统 ${app.os || '?'})`,
     `Electron ${app.electron || '?'} · Node ${app.node || '?'}`,
     `引擎:${engine.running ? '运行中' : '未运行'}${engine.restarts ? `,本次启动后自动重启过 ${engine.restarts} 次` : ''}`,
   ];

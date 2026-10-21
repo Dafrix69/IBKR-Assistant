@@ -11,7 +11,7 @@
 // 图标改了就重跑一遍,把 build/ 下三个产物一起提交——打包不依赖这个脚本。
 //
 // 造型(docs/features/ui.md「应用图标」):Mac 的连续圆角方形 + 深海蓝渐变 + 玻璃边,
-// 三根逐级走高的 K 线,右上一颗暖金色四角星("助手")。颜色克制:蓝、白、一点金。
+// 一个白色粗笔画的 D(Datrix),D 里三根逐级走高的柱子,最高那根是暖金色。颜色克制:蓝、白、一点金。
 import AppKit
 
 // ---- 几何:都在 1024 的画布坐标里,原点左上 --------------------------------------------
@@ -46,29 +46,37 @@ func squircle(_ r: CGRect, n: CGFloat = 5) -> CGPath {
   return p
 }
 
-/// 四角星:四个尖,边是往里凹的二次曲线
-func sparkle(_ c: CGPoint, _ r: CGFloat, pinch: CGFloat = 0.14) -> CGPath {
+// D 与柱子:在"底板单位坐标"里定义(0…1,左上为原点),换底板大小时整体跟着缩放
+struct Mark { let left: CGFloat; let top: CGFloat; let bottom: CGFloat; let right: CGFloat; let stroke: CGFloat }
+struct Bar { let x: CGFloat; let width: CGFloat; let height: CGFloat; let gold: Bool; let alpha: CGFloat }
+let mark = Mark(left: 0.238, top: 0.218, bottom: 0.782, right: 0.762, stroke: 0.083)
+let barBase: CGFloat = 0.684
+let bars = [
+  Bar(x: 0.342, width: 0.070, height: 0.136, gold: false, alpha: 0.58),
+  Bar(x: 0.449, width: 0.070, height: 0.226, gold: false, alpha: 0.85),
+  Bar(x: 0.556, width: 0.070, height: 0.325, gold: true, alpha: 1.00),
+]
+// 32px 及以下:笔画加粗、只留两根柱子,不然糊成一片
+let smallMark = Mark(left: 0.238, top: 0.218, bottom: 0.782, right: 0.762, stroke: 0.115)
+let smallBarBase: CGFloat = 0.670
+let smallBars = [
+  Bar(x: 0.365, width: 0.095, height: 0.180, gold: false, alpha: 0.85),
+  Bar(x: 0.505, width: 0.095, height: 0.330, gold: true, alpha: 1.00),
+]
+
+/// D:竖笔 + 右边一个半圆,描边沿路径居中
+func letterD(_ m: Mark, _ u: (CGFloat, CGFloat) -> CGPoint, _ s: CGFloat) -> CGPath {
+  let r = (m.bottom - m.top) / 2 * s
+  let top = u(m.left, m.top), bottom = u(m.left, m.bottom)
+  let center = CGPoint(x: u(m.right, 0).x - r, y: (top.y + bottom.y) / 2)
   let p = CGMutablePath()
-  let tips = [CGPoint(x: c.x, y: c.y - r), CGPoint(x: c.x + r, y: c.y),
-              CGPoint(x: c.x, y: c.y + r), CGPoint(x: c.x - r, y: c.y)]
-  let k = r * pinch
-  let ctrls = [CGPoint(x: c.x + k, y: c.y - k), CGPoint(x: c.x + k, y: c.y + k),
-               CGPoint(x: c.x - k, y: c.y + k), CGPoint(x: c.x - k, y: c.y - k)]
-  p.move(to: tips[0])
-  for i in 0..<4 { p.addQuadCurve(to: tips[(i + 1) % 4], control: ctrls[i]) }
+  p.move(to: top)
+  p.addLine(to: CGPoint(x: center.x, y: top.y))
+  p.addArc(center: center, radius: r, startAngle: -.pi / 2, endAngle: .pi / 2, clockwise: false)
+  p.addLine(to: bottom)
   p.closeSubpath()
   return p
 }
-
-// K 线:在"底板单位坐标"里定义(0…1,左上为原点),换底板大小时整体跟着缩放
-struct Candle { let x: CGFloat; let top: CGFloat; let bottom: CGFloat; let high: CGFloat; let low: CGFloat; let alpha: CGFloat }
-let candles = [
-  Candle(x: 0.245, top: 0.600, bottom: 0.780, high: 0.545, low: 0.835, alpha: 0.58),
-  Candle(x: 0.425, top: 0.470, bottom: 0.670, high: 0.410, low: 0.735, alpha: 0.80),
-  Candle(x: 0.605, top: 0.310, bottom: 0.545, high: 0.240, low: 0.620, alpha: 1.00),
-]
-let candleWidth: CGFloat = 0.118
-let wickWidth: CGFloat = 0.020
 
 // ---- 绘制 -------------------------------------------------------------------------------
 
@@ -105,38 +113,34 @@ func drawIcon(_ ctx: CGContext, _ L: Layout) {
   let dusk = CGGradient(colorsSpace: nil, colors: [rgb(0x020A24, 0), rgb(0x020A24, 0.30)] as CFArray, locations: [0, 1])!
   ctx.drawLinearGradient(dusk, start: u(0.5, 0.55), end: u(0.5, 1.0), options: [])
 
-  // 3. K 线:先垫一层柔影把它们托离底板,再画白色实体(越往右越实,读作"在涨")
-  for c in candles {
-    let bodyRect = CGRect(x: body.minX + (c.x - candleWidth / 2) * s, y: body.minY + c.top * s,
-                          width: candleWidth * s, height: (c.bottom - c.top) * s)
-    let wick = CGRect(x: body.minX + (c.x - wickWidth / 2) * s, y: body.minY + c.high * s,
-                      width: wickWidth * s, height: (c.low - c.high) * s)
-    let bodyPath = CGPath(roundedRect: bodyRect, cornerWidth: s * 0.024, cornerHeight: s * 0.024, transform: nil)
-    let wickPath = CGPath(roundedRect: wick, cornerWidth: wickWidth * s / 2, cornerHeight: wickWidth * s / 2, transform: nil)
-    ctx.saveGState()
-    setShadow(ctx, dy: s * 0.012, blur: s * 0.030, color: rgb(0x020A24, 0.35))
-    // 影线和实体合成一个形状一次填:分两次填的话,半透明的那两根会在重叠处叠出一道亮条
-    ctx.setFillColor(rgb(0xFFFFFF, c.alpha))
-    ctx.addPath(wickPath); ctx.addPath(bodyPath); ctx.fillPath()
-    ctx.restoreGState()
-  }
+  // 3. D:白色粗笔画,垫一层柔影托离底板
+  let small = deviceScale * 1024 <= 32
+  let m = small ? smallMark : mark
+  ctx.saveGState()
+  setShadow(ctx, dy: s * 0.012, blur: s * 0.030, color: rgb(0x020A24, 0.35))
+  ctx.addPath(letterD(m, u, s)); ctx.setLineWidth(m.stroke * s); ctx.setLineJoin(.round)
+  ctx.setStrokeColor(rgb(0xFFFFFF)); ctx.strokePath()
+  ctx.restoreGState()
 
-  // 4. 四角星:暖金渐变,一大一小
-  func drawSparkle(_ c: CGPoint, _ r: CGFloat) {
-    let path = sparkle(c, r)
+  // 4. D 里的柱子:越往右越高越实(读作"在涨"),最高那根暖金渐变
+  let base = small ? smallBarBase : barBase
+  for b in small ? smallBars : bars {
+    let rect = CGRect(x: body.minX + b.x * s, y: body.minY + (base - b.height) * s, width: b.width * s, height: b.height * s)
+    let path = CGPath(roundedRect: rect, cornerWidth: b.width * s * 0.3, cornerHeight: b.width * s * 0.3, transform: nil)
     ctx.saveGState()
-    setShadow(ctx, dy: 0, blur: r * 0.45, color: rgb(0xFFD36B, 0.55))
-    ctx.addPath(path); ctx.setFillColor(rgb(0xFFD36B)); ctx.fillPath()
-    ctx.restoreGState()
-    ctx.saveGState()
-    ctx.addPath(path); ctx.clip()
-    let gold = CGGradient(colorsSpace: nil, colors: [rgb(0xFFF4CF), rgb(0xFFD063), rgb(0xF5A524)] as CFArray,
-                          locations: [0, 0.5, 1])!
-    ctx.drawLinearGradient(gold, start: CGPoint(x: c.x, y: c.y - r), end: CGPoint(x: c.x, y: c.y + r), options: [])
+    if b.gold {
+      setShadow(ctx, dy: 0, blur: s * 0.035, color: rgb(0xFFD36B, 0.45))
+      ctx.addPath(path); ctx.setFillColor(rgb(0xFFD36B)); ctx.fillPath()
+      ctx.restoreGState(); ctx.saveGState()
+      ctx.addPath(path); ctx.clip()
+      let gold = CGGradient(colorsSpace: nil, colors: [rgb(0xFFF4CF), rgb(0xFFD063), rgb(0xF5A524)] as CFArray,
+                            locations: [0, 0.45, 1])!
+      ctx.drawLinearGradient(gold, start: CGPoint(x: rect.midX, y: rect.minY), end: CGPoint(x: rect.midX, y: rect.maxY), options: [])
+    } else {
+      ctx.addPath(path); ctx.setFillColor(rgb(0xFFFFFF, b.alpha)); ctx.fillPath()
+    }
     ctx.restoreGState()
   }
-  drawSparkle(u(0.775, 0.285), s * 0.098)
-  drawSparkle(u(0.680, 0.165), s * 0.038)
 
   // 5. 玻璃边:上沿亮、下沿几乎看不见的一道内描边
   ctx.addPath(shape); ctx.setLineWidth(s * 0.0075)

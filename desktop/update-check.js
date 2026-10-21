@@ -66,7 +66,7 @@ function compareVersions(a, b) {
 
 /**
  * 这台机器该下哪个安装包。命名见 desktop/package.json 的 artifactName:
- * IBKR-Assistant-<版本>-mac-arm64.dmg / IBKR-Assistant-<版本>-win-x64.exe。
+ * Datrix-<版本>-mac-arm64.dmg / Datrix-<版本>-win-x64.exe。
  * .blockmap、latest.yml 之类的附带文件不算。找不到(比如 Intel Mac 没有对应的包)就返回 null,界面只给下载页。
  */
 function assetFor(assets, platform, arch) {
@@ -135,7 +135,7 @@ async function checkForUpdate({ current, platform, arch, fetchImpl, timeoutMs = 
       headers: {
         Accept: 'application/vnd.github+json',
         // GitHub 的 API 不带 User-Agent 直接 403;只报应用名与版本,不带任何账户或机器信息
-        'User-Agent': `IBKR-Assistant/${current}`,
+        'User-Agent': `Datrix/${current}`,
       },
       signal: ctrl.signal,
     });

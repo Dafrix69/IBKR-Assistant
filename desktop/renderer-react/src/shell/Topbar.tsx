@@ -100,7 +100,7 @@ export function Topbar() {
             <AppMark size={24} />
             <i className={`engine-dot ${engineDot}`} />
           </span>
-          <strong>IBKR-Assistant</strong>
+          <strong>Datrix</strong>
         </div>
       </Tooltip>
       <div className="status-chips glass-capsule">

@@ -1,4 +1,4 @@
-# IBKR-Assistant
+# Datrix
 
 用自然语言下单到 Interactive Brokers 的桌面交易台。大模型只负责把"买入 AAPL 100 股 limit 230,理由:回调到位"这样的中英混合指令翻译成结构化订单;限额、方向、账户、价差结构、时段、重复单的校验全部由代码完成,再经三道执行闸门才会发到券商。围绕下单之外,还带持仓追踪自动平仓、K 线价格行为分析、期权墙价位提醒、板块扫描、回测与交易复盘。
 
@@ -78,10 +78,10 @@ Electron 桌面端 ──stdio JSON-RPC──▶ 交易引擎(Node 子进程,eng
 
 两个平台的安装包都在 [Releases](https://github.com/Dafrix69/IBKR-Assistant/releases) 里。装的机器上**不需要 Node 或 Python**,引擎打在包里。
 
-**Windows** x64:下载 `IBKR-Assistant-<版本>-win-x64.exe`。未签名,SmartScreen 会拦,「更多信息 → 仍要运行」。
+**Windows** x64:下载 `Datrix-<版本>-win-x64.exe`。未签名,SmartScreen 会拦,「更多信息 → 仍要运行」。
 
-**macOS** Apple Silicon(需 macOS 12 以上,Intel Mac 不支持):下载 `IBKR-Assistant-<版本>-mac-arm64.dmg`。
-ad-hoc 签名、未公证,首次打开会提示无法验证开发者:到「系统设置 → 隐私与安全性」点「仍要打开」,或在终端执行 `xattr -dr com.apple.quarantine "/Applications/IBKR-Assistant.app"`。
+**macOS** Apple Silicon(需 macOS 12 以上,Intel Mac 不支持):下载 `Datrix-<版本>-mac-arm64.dmg`。
+ad-hoc 签名、未公证,首次打开会提示无法验证开发者:到「系统设置 → 隐私与安全性」点「仍要打开」,或在终端执行 `xattr -dr com.apple.quarantine "/Applications/Datrix.app"`。
 在 Mac 上本地打也行:`cd desktop && npm run dist:mac`。有 Developer ID 证书时改用 `npm run dist:mac:signed`
 (签名 + 公证,双击即开;要哪些环境变量、缺了会怎么提示,见 `desktop/tools/dist_mac.js` 开头),
 CI 上在仓库 Secrets 里配好证书也会自动走这条路(见 `.github/workflows/package.yml` 的 `dmg` 任务)。
@@ -139,7 +139,7 @@ cd engine-ts && npm run probe                        # 真机只读联调:临时
 
 每一段配置背后的规则写在对应的功能文档里,目录见 [docs/features](docs/features/README.md)。
 
-出问题要现场:主进程、引擎 stderr、渲染层报错都写进一份滚动日志 `main.log`(单份 4 MB;macOS 在 `~/Library/Logs/IBKR-Assistant/`,Windows 在 `userData/logs/`),落盘前抹掉账号、密钥与用户名。路径在「关于」页;「关于 → 支持 → 导出诊断信息…」把它连同版本、引擎状态、脱敏后的配置收成一份可以直接发出去的文件。
+出问题要现场:主进程、引擎 stderr、渲染层报错都写进一份滚动日志 `main.log`(单份 4 MB;macOS 在 `~/Library/Logs/Datrix/`,Windows 在 `userData/logs/`),落盘前抹掉账号、密钥与用户名。路径在「关于」页;「关于 → 支持 → 导出诊断信息…」把它连同版本、引擎状态、脱敏后的配置收成一份可以直接发出去的文件。
 
 ## 仓库布局
 

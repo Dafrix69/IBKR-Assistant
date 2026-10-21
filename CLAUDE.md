@@ -1,4 +1,4 @@
-# CLAUDE.md — IBKR-Assistant 的工作规矩
+# CLAUDE.md — Datrix 的工作规矩
 
 这个文件只写**约束**,不写说明。项目是什么、怎么跑、每个功能怎么设计,看 `README.md` 与 `docs/features/`
 (目录在 `docs/features/README.md`);动某个功能之前先读它对应的那份 feature 文档,改完把文档改成改动之后的样子。

@@ -1,4 +1,4 @@
-# 任务:把 IBKR-Assistant 从 Electron + TypeScript 重写为 Qt 6 + C++
+# 任务:把 Datrix 从 Electron + TypeScript 重写为 Qt 6 + C++
 
 ## 为什么,以及能指望它快在哪
 
@@ -32,7 +32,7 @@
 
 仍然是两个进程,中间仍然是 stdio 上的 JSON-RPC,契约一个字不改:
 
-- **`IBKR-Assistant`**(Qt Quick 应用):现在 Electron 主进程 + 渲染进程的全部职责合在一个进程里——
+- **`Datrix`**(Qt Quick 应用):现在 Electron 主进程 + 渲染进程的全部职责合在一个进程里——
   窗口、菜单、弹窗、通知、引擎的生与死、确认框与放行凭据(`confirm-grants`)、日志脱敏(`redact`)、条款同意、
   合盖与电源监视、诊断导出、更新检查,以及 16 个页面。
 - **`ibkr-engine`**(C++,只用 Qt Core / Network / WebSockets,没有界面):现在 `engine-ts` 的全部。

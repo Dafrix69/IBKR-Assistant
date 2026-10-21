@@ -102,7 +102,7 @@ npm run ui:preview && npx electron tools/chart_interaction_check.js renderer-rea
 npm run stage:engine:win     # tools/stage_engine_ts.js → build/engine-ts/(按 package-lock 生产依赖闭包,只带本平台 better-sqlite3)
 npm run smoke:engine         # tools/smoke_engine_ts.js:Electron 自带 Node + 只有 System32 的 PATH,拉起暂存引擎发 system.status
 # 验打出来的安装包:--runner 给应用本体路径,DAFRI_PROMPT_DIR 指到包里的提示词(安装包工作流就是这么验的)
-#   DAFRI_PROMPT_DIR="<App>/Contents/Resources/engine/prompts" node tools/smoke_engine_ts.js "<App>/Contents/Resources/engine-ts" --runner "<App>/Contents/MacOS/IBKR-Assistant"
+#   DAFRI_PROMPT_DIR="<App>/Contents/Resources/engine/prompts" node tools/smoke_engine_ts.js "<App>/Contents/Resources/engine-ts" --runner "<App>/Contents/MacOS/Datrix"
 ```
 
 `npm run dist:win` / `dist:mac` 会先构建界面(`ui:build`)再跑这两步。为什么不用 `npm ci --omit=dev`:better-sqlite3 没有 install 脚本,
@@ -131,7 +131,7 @@ swift tools/make_icon.swift  # 重画图标 → build/icon.icns / icon.ico / ico
 ## 慢在哪:从原始日志重算
 
 ```bash
-node tools/log_report.js                                    # 默认读 ~/Library/Logs/IBKR-Assistant/main.log
+node tools/log_report.js                                    # 默认读 ~/Library/Logs/Datrix/main.log
 pmset -g log > /tmp/pmset.txt && node tools/log_report.js --pmset /tmp/pmset.txt   # 再拿系统自己的睡眠记录对照
 node tools/log_report.js --json
 ```

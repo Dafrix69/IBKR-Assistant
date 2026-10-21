@@ -128,13 +128,14 @@ describe("加固", () => {
     expect(main).not.toMatch(/if \(\/\^https:\\\/\\\/\/\.test\(url\)\) shell\.openExternal\(url\)/);
   });
 
-  it("Windows 安装器:先请旧版自己退出,再强制结束;新旧两个进程名都认", () => {
+  it("Windows 安装器:先请旧版自己退出,再强制结束;现在的与两个旧的进程名都认", () => {
     const nsh = read("desktop", "build", "installer.nsh");
-    for (const name of ["IBKR-Assistant.exe", "Dafri Trading.exe"]) {
+    for (const name of ["Datrix.exe", "IBKR-Assistant.exe", "Dafri Trading.exe"]) {
       expect(nsh).toContain(`taskkill /IM "${name}" /T`);
       expect(nsh).toContain(`taskkill /F /IM "${name}" /T`);
     }
     expect(nsh.indexOf('taskkill /IM "IBKR-Assistant.exe"')).toBeLessThan(nsh.indexOf('taskkill /F /IM "IBKR-Assistant.exe"'));
+    expect(nsh.indexOf('taskkill /IM "Datrix.exe"')).toBeLessThan(nsh.indexOf('taskkill /F /IM "Datrix.exe"'));
   });
 
   it("Electron 停在 41:42 起 macOS 的系统通知要求正式签名,ad-hoc 的包发不出通知", () => {

@@ -148,7 +148,8 @@
 `build/icon.png`(开发态 `npm start` 的 Dock 图标)。
 
 - 造型:Mac 图标网格(1024 画布、824 底板、四周留 100、自带落影),底板是 n = 5 的超椭圆;深海蓝渐变、左上漫射光、上沿亮的玻璃内描边;
-  三根逐级走高、越往右越实的白色 K 线,右上一大一小两颗暖金四角星。颜色只有蓝、白、一点金。Windows 版不带落影,底板四周留 32。
+  白色粗笔画的 D(Datrix),D 里三根逐级走高、越往右越实的柱子,最高那根暖金渐变。颜色只有蓝、白、一点金。Windows 版不带落影,底板四周留 32。
+  32px 及以下另有一套几何:笔画加粗、只留两根柱子,16px 的 Dock 列表与任务栏里还认得出 D。
 - 用 Swift:渐变、柔和投影、抗锯齿的矢量渲染 CoreGraphics 本机就有。`.icns` 由脚本按格式拼出(每个尺寸一段 PNG),不调用 `iconutil`。
 - CoreGraphics 的阴影偏移与模糊按设备像素计算,不受坐标变换影响,要自己换算;半透明的 K 线把影线和实体合成一个形状一次填充。
 - 顶栏左上角的品牌标与分享卡片的角标画的是同一枚图标:`renderer-react/src/ui/AppMark.tsx` 把脚本的几何与配色抄成常量
@@ -167,8 +168,11 @@
 
 ## 命名
 
-产品名是 IBKR-Assistant(窗口标题、顶栏、安装包名、快捷方式)。`appId`、`window.dafri`、`DAFRI_*` 环境变量、localStorage 的 `dafri-*` 键沿用旧名,
-改了会丢用户的偏好;userData 目录按产品名取,旧目录在、新目录里还没有 `settings.json` 时继续用旧目录(`main.js` 开头)。
+产品名是 Datrix(窗口标题、顶栏、安装包名、快捷方式)。`appId`、`window.dafri`、`DAFRI_*` 环境变量、localStorage 的 `dafri-*` 键沿用旧名,
+改了会丢用户的偏好(`appId` 还连着 macOS 的辅助功能授权与钥匙串的访问记录);GitHub 仓库名 `Dafrix69/IBKR-Assistant` 也没改:
+装好的旧版检查更新认的是这个仓库的地址,安装包只按 `-mac-arm64.dmg` / `-win-x64.exe` 结尾认,所以新名字的包旧版也找得到。
+userData 目录按产品名取:新目录里还没有 `settings.json` 时继续用有配置的旧目录(IBKR-Assistant 优先于更早的 Dafri Trading,
+`config-guard.js` 的 `legacyUserDataDir`)。
 
 ## 验证
 

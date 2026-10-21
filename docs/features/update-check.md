@@ -24,7 +24,7 @@
 - 交给界面的链接只认本仓库 releases 下的地址:发布页必须以 `https://github.com/Dafrix69/IBKR-Assistant/releases/` 开头,安装包必须在它的 `download/` 下;
   不是的一律丢掉,发布页换成固定的 `releases/latest`,安装包直链不给。
 - 发布说明按纯文本交出去(去掉 Markdown 的标题、粗体、链接与图片语法,截断到 1,200 字),界面当文本显示;内容取自 CHANGELOG,见 [发版](release.md)。
-- 请求头只有 `Accept` 与 `User-Agent: IBKR-Assistant/<版本>`(GitHub 不带 UA 直接 403),不带账户或机器信息。
+- 请求头只有 `Accept` 与 `User-Agent: Datrix/<版本>`(GitHub 不带 UA 直接 403),不带账户或机器信息。
 - 打开链接走外链白名单:只开 `github.com` 与 `www.tradingview.com` 的 https 链接,交给系统浏览器。
 
 ## 失败

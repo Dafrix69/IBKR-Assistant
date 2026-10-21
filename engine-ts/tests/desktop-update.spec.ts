@@ -44,7 +44,7 @@ const mod = require(path.join(DESKTOP, "update-check.js")) as UpdateModule;
 const REPO = "https://github.com/Dafrix69/IBKR-Assistant/releases/";
 
 function asset(version: string, tail: string, size = 1000): Asset {
-  const name = `IBKR-Assistant-${version}-${tail}`;
+  const name = `Datrix-${version}-${tail}`;
   return { name, browser_download_url: `${REPO}download/v${version}/${name}`, size };
 }
 
@@ -95,8 +95,8 @@ describe("挑安装包", () => {
   const assets = release("0.6.0").assets;
 
   it("mac arm64 → dmg;win x64 → exe;不挑 blockmap / latest.yml", () => {
-    expect(mod.assetFor(assets, "darwin", "arm64")?.name).toBe("IBKR-Assistant-0.6.0-mac-arm64.dmg");
-    expect(mod.assetFor(assets, "win32", "x64")?.name).toBe("IBKR-Assistant-0.6.0-win-x64.exe");
+    expect(mod.assetFor(assets, "darwin", "arm64")?.name).toBe("Datrix-0.6.0-mac-arm64.dmg");
+    expect(mod.assetFor(assets, "win32", "x64")?.name).toBe("Datrix-0.6.0-win-x64.exe");
     expect(mod.assetFor(assets, "win32", "x64")?.size).toBe(96_000_000);
   });
 
@@ -107,9 +107,9 @@ describe("挑安装包", () => {
   });
 
   it("下载地址不在本仓库 releases/download 下的,一律不认", () => {
-    const evil = [{ name: "IBKR-Assistant-0.6.0-mac-arm64.dmg", browser_download_url: "https://evil.example/IBKR-Assistant-0.6.0-mac-arm64.dmg" }];
+    const evil = [{ name: "Datrix-0.6.0-mac-arm64.dmg", browser_download_url: "https://evil.example/Datrix-0.6.0-mac-arm64.dmg" }];
     expect(mod.assetFor(evil, "darwin", "arm64")).toBeNull();
-    const lookalike = [{ name: "IBKR-Assistant-0.6.0-mac-arm64.dmg", browser_download_url: "https://github.com/Dafrix69/IBKR-Assistant-evil/releases/download/x.dmg" }];
+    const lookalike = [{ name: "Datrix-0.6.0-mac-arm64.dmg", browser_download_url: "https://github.com/Dafrix69/IBKR-Assistant-evil/releases/download/x.dmg" }];
     expect(mod.assetFor(lookalike, "darwin", "arm64")).toBeNull();
   });
 });
@@ -125,7 +125,7 @@ describe("整理一条 release", () => {
       publishedAt: "2026-09-28T02:00:00Z",
       checkedAt: 42,
     });
-    expect(s.download?.name).toBe("IBKR-Assistant-0.6.0-mac-arm64.dmg");
+    expect(s.download?.name).toBe("Datrix-0.6.0-mac-arm64.dmg");
     expect(s.notes).toBe("修复\n- 追价平仓:部分成交后不缩量\n- 详见 文档");
   });
 
@@ -166,7 +166,7 @@ describe("checkForUpdate:只发一个请求,失败给人话", () => {
     expect(calls).toHaveLength(1);
     expect(calls[0]?.url).toBe(mod.LATEST_API);
     expect(calls[0]?.url.startsWith("https://api.github.com/repos/Dafrix69/IBKR-Assistant/")).toBe(true);
-    expect(calls[0]?.headers).toEqual({ Accept: "application/vnd.github+json", "User-Agent": "IBKR-Assistant/0.5.1" });
+    expect(calls[0]?.headers).toEqual({ Accept: "application/vnd.github+json", "User-Agent": "Datrix/0.5.1" });
   });
 
   it("404 / 403 / 500 / 网络错误 / 超时 / 坏 JSON 各有一句人话", async () => {

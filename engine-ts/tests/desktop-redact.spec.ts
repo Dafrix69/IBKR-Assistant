@@ -129,7 +129,7 @@ describe("诊断包", () => {
   });
 
   const input = (): Record<string, unknown> => ({
-    app: { version: "0.5.1", platform: "darwin", arch: "arm64", os: "Darwin 27.0.0", electron: "40.0.0", node: "24.0.0", user_data: "/Users/zhangsan/Library/Application Support/IBKR-Assistant" },
+    app: { version: "0.5.1", platform: "darwin", arch: "arm64", os: "Darwin 27.0.0", electron: "40.0.0", node: "24.0.0", user_data: "/Users/zhangsan/Library/Application Support/Datrix" },
     configPath,
     logPath,
     homedir: "/Users/zhangsan",
@@ -192,14 +192,14 @@ describe("诊断包", () => {
   it("概要:几行字,不带日志", () => {
     const text = diag.buildSummary(input());
     expect(text.split("\n").length).toBeLessThanOrEqual(8);
-    expect(text).toContain("IBKR-Assistant 0.5.1");
+    expect(text).toContain("Datrix 0.5.1");
     expect(text).toContain("券商:ibkr 已连接");
     expect(text).toContain("自动执行 开 · 实盘 关");
     expect(text).not.toContain("启动引擎");
   });
 
   it("默认文件名带时间", () => {
-    expect(diag.defaultFileName(new Date(2026, 8, 28, 9, 5, 7).getTime())).toBe("IBKR-Assistant-诊断-20260928-090507.txt");
+    expect(diag.defaultFileName(new Date(2026, 8, 28, 9, 5, 7).getTime())).toBe("Datrix-诊断-20260928-090507.txt");
   });
 });
 

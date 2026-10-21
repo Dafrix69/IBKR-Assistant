@@ -24,6 +24,7 @@ interface Guard {
   };
   fatalLine(detail: string): { kind: string; message: string } | null;
   restoreBackup(p: string, opts?: { now?: number }): { brokenCopy: string | null; closedGates: string[] };
+  legacyUserDataDir(appData: string, userData: string, exists?: (p: string) => boolean): string | null;
 }
 const guard = require(path.join(DESKTOP, "config-guard.js")) as Guard;
 
@@ -141,5 +142,30 @@ describe("restoreBackup", () => {
     expect(() => guard.restoreBackup(file)).toThrow(/没有可用的备份/);
     expect(readFileSync(file, "utf-8")).toBe("坏的");
     expect(readdirSync(dir)).toEqual(["settings.json"]);
+  });
+});
+
+describe("改名之后老用户的 userData 目录", () => {
+  const appData = "/AS";
+  const pick = (present: string[]): string | null =>
+    guard.legacyUserDataDir(appData, path.join(appData, "Datrix"), (p) => present.includes(p));
+  const cfg = (name: string): string => path.join(appData, name, "settings.json");
+  const dirOf = (name: string): string => path.join(appData, name);
+
+  it("现在的目录里有配置就用它,不看旧的", () => {
+    expect(pick([cfg("Datrix"), cfg("IBKR-Assistant"), dirOf("IBKR-Assistant")])).toBeNull();
+  });
+
+  it("两个旧目录都有配置时用 IBKR-Assistant 的(Dafri Trading 那份更早)", () => {
+    expect(pick([dirOf("IBKR-Assistant"), cfg("IBKR-Assistant"), dirOf("Dafri Trading"), cfg("Dafri Trading")])).toBe(dirOf("IBKR-Assistant"));
+  });
+
+  it("只有 Dafri Trading 里有配置就用它,哪怕 IBKR-Assistant 目录也在", () => {
+    expect(pick([dirOf("IBKR-Assistant"), dirOf("Dafri Trading"), cfg("Dafri Trading")])).toBe(dirOf("Dafri Trading"));
+  });
+
+  it("旧目录都没有配置时认在不在;一个都没有就用现在的", () => {
+    expect(pick([dirOf("Dafri Trading")])).toBe(dirOf("Dafri Trading"));
+    expect(pick([])).toBeNull();
   });
 });

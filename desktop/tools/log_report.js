@@ -1,7 +1,7 @@
 // 从原始 main.log 重算"慢在哪":各方法慢请求的分位数、12 秒超时按天的分布、「节拍停了」有几次其实是电脑在睡。
 // 只读两份原始记录,不读任何人整理过的结论:
 //
-//   node tools/log_report.js                                   # 默认 ~/Library/Logs/IBKR-Assistant/main.log
+//   node tools/log_report.js                                   # 默认 ~/Library/Logs/Datrix/main.log
 //   node tools/log_report.js path/to/main.log --pmset pmset.txt # 再拿系统自己的睡眠记录对照(pmset -g log > pmset.txt)
 //   node tools/log_report.js --json                             # 机器读的那一份
 //
@@ -150,7 +150,7 @@ function main() {
   const args = process.argv.slice(2);
   const flag = (n) => { const i = args.indexOf('--' + n); return i >= 0 ? args[i + 1] : null; };
   const file = args.find((a, i) => !a.startsWith('--') && args[i - 1] !== '--pmset') ??
-    path.join(os.homedir(), 'Library', 'Logs', 'IBKR-Assistant', 'main.log');
+    path.join(os.homedir(), 'Library', 'Logs', 'Datrix', 'main.log');
   const pmset = flag('pmset');
   const parsed = parseMainLog(fs.readFileSync(file, 'utf8'));
   const r = report(parsed, pmset ? parsePmset(fs.readFileSync(pmset, 'utf8')) : []);

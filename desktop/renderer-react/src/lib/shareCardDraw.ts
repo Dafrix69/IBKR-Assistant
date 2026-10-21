@@ -212,7 +212,7 @@ export function drawShareCard(r: ReviewPerformanceResult, o: ShareCardOptions): 
   ctx.font = `600 32px ${fonts.ui}`;
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  ctx.fillText('IBKR-Assistant', P + 76, 100);
+  ctx.fillText('Datrix', P + 76, 100);
   ctx.fillStyle = C.tertiary;
   ctx.font = `500 28px ${fonts.ui}`;
   ctx.textAlign = 'right';

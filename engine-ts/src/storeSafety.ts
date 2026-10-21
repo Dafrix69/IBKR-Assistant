@@ -52,7 +52,7 @@ export function describeOpenFailure(exc: unknown, dbPath: string): unknown {
     return new StoreOpenError("corrupt", dbPath, `交易库文件已损坏,读不出来(${detail})。可以从备份恢复。`);
   }
   if (code.startsWith("SQLITE_BUSY") || code.startsWith("SQLITE_LOCKED")) {
-    return new StoreOpenError("locked", dbPath, "交易库正被另一个程序占用(多半是另一个 IBKR-Assistant 还没退干净)。请先退出它再试。");
+    return new StoreOpenError("locked", dbPath, "交易库正被另一个程序占用(多半是另一个 Datrix 还没退干净)。请先退出它再试。");
   }
   if (
     code.startsWith("SQLITE_CANTOPEN") || code.startsWith("SQLITE_READONLY") || code.startsWith("SQLITE_IOERR") ||

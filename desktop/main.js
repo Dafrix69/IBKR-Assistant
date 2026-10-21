@@ -30,13 +30,11 @@ const { registerSupportIpc, handleStoreFatal } = require('./support-ipc');
 const { PowerWatch } = require('./power-watch');
 const lidGuardLib = require('./lid-guard');
 
-// 2026-09-17 产品改名 Dafri Trading → IBKR-Assistant。userData 目录是按产品名取的:不处理的话,老用户升级后
-// 配置、交易库、日志全都"不见了"(其实还躺在旧目录里)。旧目录在、新目录还没建过,就继续用旧的。
+// 产品改过两次名:Dafri Trading → IBKR-Assistant(2026-09-17)→ Datrix(2026-10-22)。userData 目录是按产品名取的:
+// 不处理的话,老用户升级后配置、交易库、日志全都"不见了"(其实还躺在旧目录里)。新目录还没有配置,就继续用旧的
 if (app.isPackaged) {
-  const legacyUserData = path.join(app.getPath('appData'), 'Dafri Trading');
-  if (fs.existsSync(legacyUserData) && !fs.existsSync(path.join(app.getPath('userData'), 'settings.json'))) {
-    app.setPath('userData', legacyUserData);
-  }
+  const legacyUserData = configGuard.legacyUserDataDir(app.getPath('appData'), app.getPath('userData'));
+  if (legacyUserData) app.setPath('userData', legacyUserData);
 }
 
 // 日志落盘(electron-log)。Windows 上 Electron 是 GUI 子系统:没有控制台,stderr 也重定向不出来——
@@ -448,7 +446,7 @@ function hideMainWindow() {
   mainWindow.hide();
   if (!hiddenHintShown) {
     hiddenHintShown = true;
-    notifySystem('IBKR-Assistant 仍在运行', '追踪、提醒与自动执行照常在后台工作。点 Dock 图标打开窗口,⌘Q 退出。');
+    notifySystem('Datrix 仍在运行', '追踪、提醒与自动执行照常在后台工作。点 Dock 图标打开窗口,⌘Q 退出。');
   }
 }
 
@@ -611,7 +609,7 @@ function createWindow() {
     ...(saved.x !== undefined ? { x: saved.x, y: saved.y } : {}),
     minWidth: 900,             // 1000 以下侧栏收成图标栏,内容区仍有 840 以上
     minHeight: 700,
-    title: 'IBKR-Assistant',
+    title: 'Datrix',
     // 透明底 + 材质:让 macOS 的模糊背景透出来(不透明背景会把 vibrancy 盖掉)
     backgroundColor: process.platform === 'darwin' ? '#00000000' : '#f5f5f7',
     vibrancy: process.platform === 'darwin' ? 'under-window' : undefined,
@@ -1407,7 +1405,7 @@ async function boundConfirmText(purpose, binding, { message, detail }) {
 async function offerMoveToApplications() {
   if (process.platform !== 'darwin' || !PACKAGED) return false;
   if (process.env.DAFRI_SKIP_MOVE === '1') return false;
-  const bundle = path.resolve(process.execPath, '..', '..', '..'); // .../IBKR-Assistant.app
+  const bundle = path.resolve(process.execPath, '..', '..', '..'); // .../Datrix.app
   // 判断"从 DMG 运行"不能只看 /Volumes/ 前缀(挂载点可以是任意路径)。
   // 可靠信号:应用包所在卷不可写(UDZO 镜像只读)或被 Gatekeeper 挪进了随机路径。
   const translocated = bundle.includes('/AppTranslocation/');
@@ -1425,7 +1423,7 @@ async function offerMoveToApplications() {
     buttons: ['移动到「应用程序」并打开', '暂不,直接运行'],
     defaultId: 0,
     cancelId: 1,
-    message: '要把 IBKR-Assistant 移到「应用程序」文件夹吗?',
+    message: '要把 Datrix 移到「应用程序」文件夹吗?',
     detail: fs.existsSync(target)
       ? '检测到「应用程序」里已有一个版本,将用当前版本替换它。'
       : '从磁盘映像直接运行无法保存更新,建议移动后再使用。',
@@ -1489,7 +1487,7 @@ if (!gotLock) {
           buttons: ['退出此版本', '取消'],
           defaultId: 0,
           cancelId: 1,
-          message: '检测到另一个 IBKR-Assistant 正在尝试启动',
+          message: '检测到另一个 Datrix 正在尝试启动',
           detail:
             '可能你正在安装/打开新版本。同一时间只能运行一个实例——' +
             '点「退出此版本」后再打开新版本即可完成替换。',
@@ -1537,7 +1535,7 @@ if (!gotLock) {
       // 数据目录写不进去(权限、磁盘满):以前是一个未捕获异常,窗口不开、也没有任何提示
       log.error('[boot] 创建配置文件失败', err);
       dialog.showErrorBox(
-        'IBKR-Assistant 无法启动',
+        'Datrix 无法启动',
         `写不进配置文件:${CONFIG_PATH}\n${String(err && err.message ? err.message : err)}\n\n请检查这个文件夹的权限与磁盘剩余空间后重试。`,
       );
       app.quit();

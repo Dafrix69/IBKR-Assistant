@@ -18,7 +18,7 @@ const fs = require('node:fs');
 /** 没有追踪在盯满这么久才恢复合盖睡眠 */
 const OFF_DELAY_MS = 10 * 60_000;
 
-const PROMPT = 'IBKR-Assistant 要在盯盘期间阻止合盖睡眠:合上盖子时持仓追踪照常运行。';
+const PROMPT = 'Datrix 要在盯盘期间阻止合盖睡眠:合上盖子时持仓追踪照常运行。';
 
 /** `pmset -g` 的输出里读 SleepDisabled。读不出来回 null(按不知道处理,什么都不做)。 */
 function parseSleepDisabled(text) {

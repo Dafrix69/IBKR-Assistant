@@ -3,7 +3,7 @@
 //
 //   node tools/perf_snapshot.js                          # 采 10 次、每秒一次,打到终端
 //   node tools/perf_snapshot.js --samples 30 --out ../docs/reports/perf/2026-10-18-electron.json
-//   node tools/perf_snapshot.js --app /Applications/IBKR-Assistant.app
+//   node tools/perf_snapshot.js --app /Applications/Datrix.app
 //
 // 要在自己的终端里跑:Claude 的沙箱不让跑 ps。只读进程表、安装包目录与 main.log,不碰应用本身。
 // 每个数取多次采样的中位数,并给出最小与最大:单次采样受 GC、页面切换影响太大。
@@ -20,7 +20,7 @@ function roleOf(command) {
   if (command.includes('Helper (GPU)')) return 'gpu';
   if (command.includes('Helper (Plugin)')) return 'plugin';
   if (command.includes('Helper')) return 'utility';
-  if (/IBKR-Assistant\.app[/\\]Contents[/\\]MacOS[/\\]IBKR-Assistant(\s|$)/.test(command)) return 'main';
+  if (/Datrix\.app[/\\]Contents[/\\]MacOS[/\\]Datrix(\s|$)/.test(command)) return 'main';
   if (/discord-window-follow|inbox-reader/.test(command)) return 'reader';
   return null;
 }
@@ -91,15 +91,15 @@ async function main() {
   const args = process.argv.slice(2);
   const flag = (n, d) => { const i = args.indexOf('--' + n); return i >= 0 ? args[i + 1] : d; };
   const n = Number(flag('samples', '10'));
-  const app = flag('app', path.resolve(__dirname, '..', 'dist', 'mac-arm64', 'IBKR-Assistant.app'));
-  const log = path.join(os.homedir(), 'Library', 'Logs', 'IBKR-Assistant', 'main.log');
+  const app = flag('app', path.resolve(__dirname, '..', 'dist', 'mac-arm64', 'Datrix.app'));
+  const log = path.join(os.homedir(), 'Library', 'Logs', 'Datrix', 'main.log');
   const samples = [];
   for (let i = 0; i < n; i += 1) {
     samples.push(parsePs(execFileSync('ps', ['-axo', 'pid=,rss=,%cpu=,command='], { encoding: 'utf8', maxBuffer: 32 << 20 })));
     if (i + 1 < n) await new Promise((r) => setTimeout(r, 1000));
   }
   if (!samples.some((rows) => rows.length)) {
-    process.stderr.write('没找到在运行的 IBKR-Assistant。先把应用打开、连上 TWS,再量。\n');
+    process.stderr.write('没找到在运行的 Datrix。先把应用打开、连上 TWS,再量。\n');
     process.exit(1);
   }
   const dmg = fs.existsSync(path.dirname(app)) ? fs.readdirSync(path.resolve(path.dirname(app), '..')).find((f) => f.endsWith('.dmg')) : null;

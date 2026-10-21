@@ -3,7 +3,7 @@
 //
 //   node tools/smoke_engine_ts.js [engineRoot=build/engine-ts] [--runner electron|node|<可执行文件路径>]
 //
-// --runner 给一个可执行文件路径(打包出来的应用本体,如 "IBKR-Assistant.app/Contents/MacOS/IBKR-Assistant"),
+// --runner 给一个可执行文件路径(打包出来的应用本体,如 "Datrix.app/Contents/MacOS/Datrix"),
 // 就用它 + ELECTRON_RUN_AS_NODE 拉引擎——验的是装进安装包的那一份 Electron 与引擎,而不是 node_modules 里的。
 // 提示词目录默认取仓库的 prompts/;验安装包时用环境变量 DAFRI_PROMPT_DIR 指到包里那份。
 //

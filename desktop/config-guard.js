@@ -18,6 +18,7 @@
  * 这里只认得出 JSON 语法;字段对不对(校验)是引擎的事,恢复之后由引擎启动时再验。
  */
 const fs = require('node:fs');
+const path = require('node:path');
 
 /** 与 engine-ts/src/config.ts 的 EXIT_CONFIG 是同一个数(tests/desktop-config-guard.spec.ts 钉着)。 */
 const EXIT_CONFIG = 78;
@@ -143,4 +144,17 @@ function restoreBackup(configPath, { now = Date.now() } = {}) {
   return { brokenCopy, closedGates };
 }
 
-module.exports = { EXIT_CONFIG, GATES, backupPath, inspectConfig, fatalLine, restoreBackup };
+/** 产品用过的旧名,新的在前。userData 目录按产品名取,改名之后老用户的配置、交易库、日志还在旧目录里。 */
+const LEGACY_USER_DATA_NAMES = ['IBKR-Assistant', 'Dafri Trading'];
+
+/**
+ * 打包版该用哪个 userData 目录。现在的目录里有配置就用它;没有就找有配置的那个旧目录
+ * (两个旧目录都在时,Dafri Trading 里那份是更早的);都没有配置,再认旧目录在不在;一个都没有返回 null(用现在的)。
+ */
+function legacyUserDataDir(appData, userData, exists = fs.existsSync) {
+  if (exists(path.join(userData, 'settings.json'))) return null;
+  const dirs = LEGACY_USER_DATA_NAMES.map((name) => path.join(appData, name));
+  return dirs.find((dir) => exists(path.join(dir, 'settings.json'))) || dirs.find((dir) => exists(dir)) || null;
+}
+
+module.exports = { EXIT_CONFIG, GATES, LEGACY_USER_DATA_NAMES, backupPath, inspectConfig, fatalLine, restoreBackup, legacyUserDataDir };
