@@ -26,7 +26,7 @@ const SETUP_STEPS = [
 const INBOX_STEPS = [
   { title: '让 Discord 把消息暴露给辅助功能', detail: '退出 Discord,在终端里用 open -a Discord --args --force-renderer-accessibility 重新打开。不带这个参数时,窗口里的消息读不到(「读窗口」那一行会说明)。Discord 每次重开都要这样开。' },
   { title: '填频道名,打开本地收件,保存', detail: '频道名是 Discord 窗口标题里的那个(不含 #)。保存之后软件自己读这个窗口,以后随软件启动、随软件退出。Discord 要一直开着并停在这个频道,电脑不能锁屏、不能睡。' },
-  { title: '给 Datrix 辅助功能权限', detail: '头一次系统会弹提示:系统设置 → 隐私与安全性 → 辅助功能,打开 Datrix。授权之后几秒内「读窗口」那一行变成「在读」。' },
+  { title: '给 Datrix 辅助功能权限', detail: '头一次系统会弹提示:系统设置 → 隐私与安全性 → 辅助功能,打开 Datrix。授权之后几秒内「读窗口」那一行变成「在读」。换了新版本之后要重新授权一次,做法写在「读窗口」那一行里。' },
   { title: '信任显示名', detail: '对方发一条之后,在「频道里最近看到的消息」里点「信任」(条目是 local:显示名)。注意:频道里别人把昵称改成一样的,软件分不出来——只适合私密小群。' },
   { title: '不用安装包、或者想自己运行脚本', detail: '频道名留空,自己运行仓库里的 desktop/tools/discord-window-follow.swift:swift 那个文件 --channel 频道名 --out 上面显示的收件文件路径;辅助功能权限给运行它的终端。' },
 ];

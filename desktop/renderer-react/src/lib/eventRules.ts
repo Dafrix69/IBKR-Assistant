@@ -1,5 +1,6 @@
 /**
- * 重要事件的判定:哪些事今天该挂在顶上、过没过期、倒计时怎么说、该不该提前提醒、板块是不是在集体走、对冲指令怎么写。
+ * 重要事件的判定:哪些事今天该挂在顶上、过没过期、倒计时怎么说、该不该提前提醒、板块是不是在集体走、盘前拉涨回没回吐、
+ * 每天固定钟点的时段提醒、对冲指令怎么写。
  *
  * 单独放成一个**不 import 任何东西、不碰 DOM 的纯模块**,引擎那套 vitest 直接跑它(desktop-event-rules.spec)。
  * 轮询与发提醒在 store/events;口径见 docs/features/events.md。
@@ -252,14 +253,161 @@ export function sectorMoves(
   return out;
 }
 
-export function sectorMoveTitle(m: SectorMove): string {
-  return `板块联动:${m.sector} 集体${m.direction === 'down' ? '下跌' : '上涨'}`;
+/** 美东此刻是当天的第几分钟(09:30 = 570) */
+export function etMinuteOf(epochMs: number): number {
+  const [h, m] = new Date(epochMs).toLocaleTimeString('en-GB', { timeZone: ET, hour: '2-digit', minute: '2-digit', hour12: false }).split(':');
+  return (Number(h) % 24) * 60 + Number(m);
 }
 
-export function sectorMoveBody(m: SectorMove, movePct: number): string {
-  const sign = (p: number): string => `${p > 0 ? '+' : p < 0 ? '−' : ''}${Math.abs(p).toFixed(1)}%`;
-  const list = m.movers.map((x) => `${x.symbol} ${sign(x.pct)}`).join('、');
-  return `${m.total} 只里 ${m.count} 只${m.direction === 'down' ? '跌' : '涨'}超 ${movePct}%,中位 ${sign(m.median)}:${list}。一只股的消息把整个板块带着走时,持仓里同板块的都要看。`;
+export const US_OPEN_MINUTE = 9 * 60 + 30;
+
+/** 美股常规时段开盘之前(异动循环 09:20 起算,所以板块联动在 09:20 ~ 09:30 看到的是盘前的涨跌) */
+export function isPremarket(epochMs: number): boolean {
+  return etMinuteOf(epochMs) < US_OPEN_MINUTE;
+}
+
+function signPct(p: number): string {
+  return `${p > 0 ? '+' : p < 0 ? '−' : ''}${Math.abs(p).toFixed(1)}%`;
+}
+
+export function sectorMoveTitle(m: SectorMove, premarket = false): string {
+  return `${premarket ? '盘前联动' : '板块联动'}:${m.sector} 集体${m.direction === 'down' ? '下跌' : '上涨'}`;
+}
+
+/**
+ * 盘前集体拉涨换一句话:消息面的利好(数据中心板块那种)在盘前拉起来的,开盘后涨幅大概率回吐——用户自己的经验,
+ * 10:00 那一眼(fadeVerdict)把它是不是又应验了报出来。
+ */
+export function sectorMoveBody(m: SectorMove, movePct: number, premarket = false): string {
+  const list = m.movers.map((x) => `${x.symbol} ${signPct(x.pct)}`).join('、');
+  const head = `${m.total} 只里 ${m.count} 只${m.direction === 'down' ? '跌' : '涨'}超 ${movePct}%,中位 ${signPct(m.median)}:${list}。`;
+  if (premarket && m.direction === 'up') return `${head}盘前靠消息面利好拉起来的,开盘后涨幅大概率回吐:别追高开,手里有的考虑趁开盘前后先减。10:00 再报一次守没守住。`;
+  if (premarket) return `${head}盘前的集体下跌,开盘后先看半小时再动。`;
+  return `${head}一只股的消息把整个板块带着走时,持仓里同板块的都要看。`;
+}
+
+/** 一个板块此刻的涨跌幅中位数;有行情的不到 minStocks 只给 null */
+export function sectorMedian(symbols: string[], changes: Record<string, number | null | undefined>, minStocks = 1): number | null {
+  const quoted = [...new Set(symbols)].map((s) => changes[s]).filter((x): x is number => typeof x === 'number' && Number.isFinite(x));
+  if (quoted.length < Math.max(1, minStocks)) return null;
+  return Math.round(median(quoted) * 100) / 100;
+}
+
+/** 盘前拉涨的回吐检查:美东 10:00 ~ 10:30 之间看一次(过了 10:30 才回来的不补) */
+export const FADE_CHECK_FROM = 10 * 60;
+export const FADE_CHECK_UNTIL = 10 * 60 + 30;
+
+/** 盘前中位的一半以上没了算回吐 */
+export function fadeVerdict(preMedian: number, nowMedian: number): 'faded' | 'held' {
+  return nowMedian <= preMedian / 2 ? 'faded' : 'held';
+}
+
+export function fadeTitle(sector: string, verdict: 'faded' | 'held'): string {
+  return verdict === 'faded' ? `${sector}:盘前涨幅已回吐` : `${sector}:盘前涨幅守住了`;
+}
+
+export function fadeBody(preMedian: number, nowMedian: number, verdict: 'faded' | 'held'): string {
+  const tail = verdict === 'faded'
+    ? '盘前的利好在开盘后被卖掉了,这回又应验;别在这里抄回去,等它自己站稳。'
+    : '这次没回吐,比平常的盘前利好强:别逆着它空。';
+  return `开盘前中位 ${signPct(preMedian)},现在 ${signPct(nowMedian)}。${tail}`;
+}
+
+// ---- 时段提醒 ----------------------------------------------------------------
+
+/**
+ * 每个交易日固定钟点的提醒:欧盘开收、美股开盘前、最后一小时。钟点按**各自交易所的当地时间**写,
+ * 换算交给 Intl——欧洲与美国的夏令时不在同一周切换(2026 年欧洲 10-25、美国 11-01),写死美东钟点那一周会错一小时。
+ * us = 美股的钟点:那一刻美股不开(假日、半日市收了)就不报。
+ */
+export interface SessionMark {
+  id: string;
+  tz: string;
+  /** 当地钟点 HH:MM */
+  time: string;
+  title: string;
+  body: string;
+  us: boolean;
+}
+
+export const SESSION_MARKS: SessionMark[] = [
+  {
+    id: 'eu_open', tz: 'Europe/London', time: '08:00', us: false, title: '欧盘开盘',
+    body: '欧洲资金进场,流动性明显变厚:美股期货(ES / NQ)常在这时走出当天第一段方向,或把亚盘的走势掀翻。按夜盘价挂的单、用期货推算的 SPX 现价,这时最容易被打穿。',
+  },
+  {
+    id: 'us_pre_open', tz: ET, time: '09:25', us: true, title: '美股 5 分钟后开盘',
+    body: '盘前靠消息面利好拉起来的,开盘后涨幅大概率回吐,别追高开。开盘头 15 分钟价差宽、方向反复:不用市价单,第一根 K 线别当方向。',
+  },
+  {
+    id: 'eu_close', tz: 'Europe/London', time: '16:30', us: true, title: '欧盘收盘',
+    body: '欧洲资金离场,流动性退潮:美股上午的趋势常在这附近停下或回头;接下来的午间是一天里最薄的时段,突破多是假的。',
+  },
+  {
+    id: 'us_last_hour', tz: ET, time: '15:00', us: true, title: '美股最后一小时',
+    body: '当日到期的期权 gamma 放大:SPX 动几个点,蝶的盈亏变化比上午大得多。15:50 交易所公布收盘集合竞价的买卖失衡,尾盘常急拉急砸;要平的别拖到最后十分钟。',
+  },
+];
+
+/** 某一刻在某个时区里的日期、星期(0 = 周日)、当天第几秒 */
+export function zonedParts(epochMs: number, tz: string): { date: string; weekday: number; seconds: number } {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit',
+    weekday: 'short', hourCycle: 'h23',
+  }).formatToParts(new Date(epochMs));
+  const get = (type: string): string => parts.find((p) => p.type === type)?.value ?? '';
+  const weekday = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(get('weekday'));
+  return {
+    date: `${get('year')}-${get('month')}-${get('day')}`,
+    weekday,
+    seconds: Number(get('hour')) * 3600 + Number(get('minute')) * 60 + Number(get('second')),
+  };
+}
+
+function hhmm(epochMs: number, tz: string): string {
+  return new Date(epochMs).toLocaleTimeString('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false });
+}
+
+/** 伦敦与纽约差几小时:平常 5,两边夏令时没同步的那一两周是 4 */
+export function londonNyGap(epochMs: number): number {
+  const ny = zonedParts(epochMs, ET);
+  const ld = zonedParts(epochMs, 'Europe/London');
+  const day = ny.date === ld.date ? 0 : 86_400;
+  return Math.round((ld.seconds + day - ny.seconds) / 3600);
+}
+
+export interface SessionMarkDue {
+  key: string;
+  mark: SessionMark;
+}
+
+/**
+ * 此刻该报的时段提醒:当地周一到周五、到点后的窗口里(同提前提醒,LEAD_WINDOW_MS),每个当地日期只报一次。
+ * usOpen:此刻美股开不开(界面按引擎的 market_status 给);美股的钟点不开就不报。纯函数,报过的由调用方拿着。
+ */
+export function sessionMarksDue(now: number, fired: ReadonlySet<string>, usOpen: boolean): SessionMarkDue[] {
+  const out: SessionMarkDue[] = [];
+  for (const mark of SESSION_MARKS) {
+    const local = zonedParts(now, mark.tz);
+    if (local.weekday < 1 || local.weekday > 5) continue;
+    if (mark.us && !usOpen) continue;
+    const [h, m] = mark.time.split(':').map(Number);
+    const since = (local.seconds - ((h ?? 0) * 3600 + (m ?? 0) * 60)) * 1000;
+    if (since < 0 || since >= LEAD_WINDOW_MS) continue;
+    const key = `session:${mark.id}:${local.date}`;
+    if (fired.has(key)) continue;
+    out.push({ key, mark });
+  }
+  return out;
+}
+
+/** 提醒正文:美东与北京的钟点都写上;欧美夏令时没同步的那一周点一句 */
+export function sessionMarkBody(mark: SessionMark, now: number): string {
+  const when = `美东 ${hhmm(now, ET)} · 北京 ${hhmm(now, 'Asia/Shanghai')}`;
+  const skew = mark.tz === 'Europe/London' && londonNyGap(now) !== 5
+    ? '这一周欧美夏令时没同步,欧盘和美股的时差比平常少一小时。'
+    : '';
+  return [when, mark.body, skew].filter(Boolean).join(' · ');
 }
 
 // ---- 对冲指令 ----------------------------------------------------------------

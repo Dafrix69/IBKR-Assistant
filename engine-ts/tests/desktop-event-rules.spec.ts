@@ -6,6 +6,8 @@
  *  3. 提前提醒:每档只在到点后 90 秒的窗口里报一次;错过的不补;中等影响的只报公布那一刻。
  *  4. 板块联动:有行情的只数够、同向超线的比例够才算;单只急跌不算;同一个板块只报多数方向。
  *  5. 对冲指令:两种结构的行权价与写法;SPX 当日一张 bear call 走本地速记的写法;缺现价、坏到期日当场说。
+ *  6. 盘前拉涨:09:30 之前的集体上涨换成"开盘后大概率回吐"的说法;10:00 那一眼按中位掉没掉一半判回吐 / 守住。
+ *  7. 时段提醒:欧盘按伦敦钟点算(欧美夏令时不同步的那一周照样对),美股的钟点美股不开不报,周末不报,每天只报一次。
  */
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -33,6 +35,16 @@ const mod = (await import(/* @vite-ignore */ pathToFileURL(path.join(SRC, "lib",
   hedgeInstruction(spec: { symbol: string; spot: number | null; kind: "put_spread" | "bear_call" | "short_stock"; width: number; qty: number; expiry: string; todayEt: string; reason: string; price?: number | null; outside?: boolean }): { text: string; legs: string; problem: string | null };
   hedgeExpiryFor(e: { date_et: string }, todayEt: string): string;
   strikeStep(symbol: string, spot: number): number;
+  isPremarket(at: number): boolean;
+  sectorMoveTitle(m: Move, premarket?: boolean): string;
+  sectorMoveBody(m: Move, movePct: number, premarket?: boolean): string;
+  sectorMedian(symbols: string[], changes: Record<string, number | null | undefined>, minStocks?: number): number | null;
+  fadeVerdict(pre: number, now: number): "faded" | "held";
+  fadeBody(pre: number, now: number, verdict: "faded" | "held"): string;
+  SESSION_MARKS: Array<{ id: string; tz: string; time: string; us: boolean }>;
+  londonNyGap(at: number): number;
+  sessionMarksDue(now: number, fired: ReadonlySet<string>, usOpen: boolean): Array<{ key: string; mark: { id: string } }>;
+  sessionMarkBody(mark: { id: string; tz: string; time: string; title: string; body: string; us: boolean }, now: number): string;
 };
 
 const CPI_AT = Date.parse("2026-10-14T08:30:00-04:00");
@@ -242,5 +254,69 @@ describe("卖空正股 / ETF", () => {
     expect(mod.hedgeInstruction({ ...base, kind: "short_stock", price: 28.5, outside: false, reason: "" }).text).toBe("限价 28.5 卖出 100 股 KORU");
     expect(mod.hedgeInstruction({ ...base, kind: "short_stock", price: null, outside: true }).problem).toMatch(/限价/);
     expect(mod.hedgeInstruction({ ...base, kind: "short_stock", price: 28.5, qty: 0 }).problem).toMatch(/股数/);
+  });
+});
+
+describe("盘前拉涨", () => {
+  const up: Move = { sector: "数据中心", direction: "up", count: 4, total: 5, median: 4.2, movers: [{ symbol: "CRWV", pct: 6.1 }, { symbol: "IREN", pct: 4.4 }] };
+
+  it("09:30 之前算盘前,换成会回吐的说法;开盘后照旧", () => {
+    const pre = Date.parse("2026-10-22T09:25:00-04:00");
+    const open = Date.parse("2026-10-22T09:30:00-04:00");
+    expect(mod.isPremarket(pre)).toBe(true);
+    expect(mod.isPremarket(open)).toBe(false);
+    expect(mod.sectorMoveTitle(up, true)).toBe("盘前联动:数据中心 集体上涨");
+    expect(mod.sectorMoveBody(up, 3, true)).toContain("开盘后涨幅大概率回吐");
+    expect(mod.sectorMoveBody(up, 3, false)).not.toContain("回吐");
+    expect(mod.sectorMoveBody({ ...up, direction: "down", median: -4 }, 3, true)).not.toContain("回吐");
+  });
+
+  it("10:00 那一眼:中位掉了一半以上是回吐,否则守住;行情不够只数给 null", () => {
+    expect(mod.fadeVerdict(4.2, 2.1)).toBe("faded");
+    expect(mod.fadeVerdict(4.2, -0.5)).toBe("faded");
+    expect(mod.fadeVerdict(4.2, 2.2)).toBe("held");
+    expect(mod.fadeBody(4.2, 1, "faded")).toContain("开盘前中位 +4.2%,现在 +1.0%");
+    expect(mod.sectorMedian(["A", "B", "C"], { A: 1, B: 3, C: null })).toBe(2);
+    expect(mod.sectorMedian(["A", "B", "C"], { A: 1, B: 3, C: null }, 3)).toBeNull();
+  });
+});
+
+describe("时段提醒", () => {
+  const ids = (now: number, usOpen = true, fired = new Set<string>()): string[] => mod.sessionMarksDue(now, fired, usOpen).map((d) => d.mark.id);
+
+  it("欧盘开盘按伦敦 08:00:平常是美东 03:00,欧洲先退夏令时的那一周是美东 04:00", () => {
+    // 2026-10-22 周四:两边都在夏令时,伦敦 08:00 = 美东 03:00
+    expect(ids(Date.parse("2026-10-22T03:00:10-04:00"))).toEqual(["eu_open"]);
+    expect(mod.londonNyGap(Date.parse("2026-10-22T03:00:00-04:00"))).toBe(5);
+    // 2026-10-27 周二:欧洲 10-25 已退,美国 11-01 才退——伦敦 08:00 = 美东 04:00
+    expect(ids(Date.parse("2026-10-27T03:00:10-04:00"))).toEqual([]);
+    const skewed = Date.parse("2026-10-27T04:00:10-04:00");
+    expect(ids(skewed)).toEqual(["eu_open"]);
+    expect(mod.londonNyGap(skewed)).toBe(4);
+    const eu = mod.SESSION_MARKS.find((m) => m.id === "eu_open") as Parameters<typeof mod.sessionMarkBody>[0];
+    expect(mod.sessionMarkBody(eu, skewed)).toContain("美东 04:00 · 北京 16:00");
+    expect(mod.sessionMarkBody(eu, skewed)).toContain("夏令时没同步");
+    expect(mod.sessionMarkBody(eu, Date.parse("2026-10-22T03:00:10-04:00"))).not.toContain("夏令时");
+    // 11-03 两边都是冬令时:又回到美东 03:00(北京 16:00)
+    expect(ids(Date.parse("2026-11-03T03:00:10-05:00"))).toEqual(["eu_open"]);
+  });
+
+  it("美股的钟点:开盘前 5 分钟、欧盘收盘、最后一小时;美股不开不报", () => {
+    expect(ids(Date.parse("2026-10-22T09:25:30-04:00"))).toEqual(["us_pre_open"]);
+    expect(ids(Date.parse("2026-10-22T11:30:00-04:00"))).toEqual(["eu_close"]);
+    expect(ids(Date.parse("2026-10-22T15:00:00-04:00"))).toEqual(["us_last_hour"]);
+    expect(ids(Date.parse("2026-10-22T15:00:00-04:00"), false)).toEqual([]);
+    // 欧盘开盘不看美股开不开(美东凌晨引擎报的是休市)
+    expect(ids(Date.parse("2026-10-22T03:00:10-04:00"), false)).toEqual(["eu_open"]);
+  });
+
+  it("窗口 90 秒,过了不补;报过的不再报;周末不报", () => {
+    expect(ids(Date.parse("2026-10-22T09:26:31-04:00"))).toEqual([]);
+    expect(ids(Date.parse("2026-10-22T09:24:59-04:00"))).toEqual([]);
+    const now = Date.parse("2026-10-22T09:25:00-04:00");
+    const [due] = mod.sessionMarksDue(now, new Set(), true);
+    expect(due?.key).toBe("session:us_pre_open:2026-10-22");
+    expect(ids(now + 15_000, true, new Set([due!.key]))).toEqual([]);
+    expect(ids(Date.parse("2026-10-24T03:00:10-04:00"))).toEqual([]);
   });
 });

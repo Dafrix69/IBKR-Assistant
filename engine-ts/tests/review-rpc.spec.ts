@@ -70,6 +70,8 @@ function makeServer(opts: { connected?: boolean } = {}): { s: RpcServer; call: (
       sessions: () => [{}],
       connectedNames: () => ["paper"],
       executions: async () => [],
+      // auto 周期按"开仓离今天多远"挑,远了就是日线(走 historicalBars);没有它,测试会随日历翻过去而变红
+      historicalBars: async () => BARS,
       positions: async () => [{ account: "主账户", symbol: "RKLB", sec_type: "STK", quantity: 100 }],
     } as never;
     (s.market as unknown as Rec)["paBars"] = async (): Promise<[Rec[], boolean]> => [BARS, false];

@@ -171,6 +171,9 @@ describe("「读窗口」那一行", () => {
     expect(view("no_list").text).toContain("--force-renderer-accessibility");
     expect(view("no_discord").text).toContain("Discord 没在运行");
     expect(view("untrusted").text).toContain("辅助功能");
+    // 换了新版本之后授权失效:旧记录占着位置,开关、删了重加都没用,要重置——这一句是真机上走出来的,别改回「删掉再加」
+    expect(view("untrusted").text).toContain("tccutil reset Accessibility com.dafri.trading");
+    expect(view("untrusted").text).not.toContain("删掉再加");
     expect(view("failed", { error: "读窗口的程序退出了(退出码 1),1 秒后重新启动" }).text).toBe("读窗口的程序退出了(退出码 1),1 秒后重新启动");
     for (const state of ["waiting", "no_list", "no_discord", "untrusted", "failed"]) expect(view(state).tone, state).not.toBe("ok");
     for (const state of ["waiting", "no_list", "no_discord", "untrusted"]) expect(view(state).text, state).toMatch(/^没在读/);

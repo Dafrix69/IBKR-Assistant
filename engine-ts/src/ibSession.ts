@@ -14,7 +14,7 @@ import type {
   RawBar, TickerData, TickerHandle, TradeLike,
 } from "./ibTypes.js";
 import { fetchExecutionHistory, historyClientId } from "./ibExecHistory.js";
-import { logStderr } from "./ibLink.js";
+import { LinkDownError, logStderr } from "./ibLink.js";
 
 type Subscription = { unsubscribe(): void };
 
@@ -600,6 +600,8 @@ export async function createIbApiNextSession(cfg: {
     },
 
     async placeOrder(contract, order): Promise<TradeLike> {
+      // 断着就当场报错:库会把命令排进缓冲、重连后才发出(见 LinkDownError)
+      if (!connected) throw new LinkDownError();
       const ibOrder = toIbOrder(mod, order);
       // 带着原 orderId 就是**改单**:IBKR 的改单语义是同一个 id 重发。以前这里永远 placeNewOrder,
       // modifyHosted 设了 orderId 也白设——每一次"改价"其实都新挂了一张单。托管单一秒一改价,
@@ -617,6 +619,7 @@ export async function createIbApiNextSession(cfg: {
      * 券商那边;持仓平了之后那张卖单一成交就是反向开仓(2026-09-10 真机:认领时自愈撤重复单,
      * 撤了个寂寞才暴露)。 */
     cancelOrder(orderId: number) {
+      if (!connected) throw new LinkDownError();
       api.cancelOrder(Number(orderId));
     },
 

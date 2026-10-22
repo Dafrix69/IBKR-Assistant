@@ -122,7 +122,7 @@ export function readerText(reader: FollowReaderState, channel: string): { tone: 
     case 'waiting': return { tone: 'warn', text: `没在读:Discord 没有窗口停在「${channel}」。切回那个频道就继续;离开期间的消息不补。` };
     case 'no_list': return { tone: 'bad', text: '没在读:窗口在这个频道,但消息读不到。退出 Discord,用 open -a Discord --args --force-renderer-accessibility 重新打开。' };
     case 'no_discord': return { tone: 'warn', text: '没在读:Discord 没在运行。打开它(要带 --force-renderer-accessibility)并停在这个频道。' };
-    case 'untrusted': return { tone: 'bad', text: '没在读:软件没有辅助功能权限。系统设置 → 隐私与安全性 → 辅助功能,打开 Datrix(换了新版本之后已经开着也读不到的话,先删掉再加一次);授权之后几秒内自己接上。' };
+    case 'untrusted': return { tone: 'bad', text: '没在读:软件没有辅助功能权限。系统设置 → 隐私与安全性 → 辅助功能,打开 Datrix 的开关,几秒内自己接上。换了新版本之后开着也读不到:系统记的还是旧版本——确认旧版本已经退出,在终端运行 tccutil reset Accessibility com.dafri.trading,等名单里重新出现这一项再打开(不要用「+」「−」)。' };
     case 'failed': return { tone: 'bad', text: reader.error ?? '读窗口的程序没有起来。' };
   }
 }

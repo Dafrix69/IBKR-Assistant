@@ -1236,7 +1236,7 @@ export class TradingEngine {
         ok = await this.router!.modifyHosted!(Number(entry["order_id"]), item);
       } catch (exc) {
         this.store.audit("engine", "close_chase_failed", { track: tid, error: String((exc as Error).message).slice(0, 300) });
-        this.killswitch.recordFailure((exc as Error).message, "broker");
+        if ((exc as Error).name !== "LinkDownError") this.killswitch.recordFailure((exc as Error).message, "broker"); // 链路断了不是券商拒单,不记熔断(ibLink.LinkDownError)
         return { rounds: entry["rounds"], limit: prev, natural: q.natural, floor: q.floor };
       }
       if (!ok) {

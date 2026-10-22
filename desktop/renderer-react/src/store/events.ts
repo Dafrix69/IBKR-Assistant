@@ -6,12 +6,15 @@
  *  · 15 秒一拍:倒计时跟着走,到了提前提醒的点就弹窗 / 响铃 / 系统通知。报过的记在内存里,每档只报一次。
  *  · 板块联动 60 秒一轮,只在连着券商、美东 04:00 ~ 20:00 里问:成分股的涨跌幅从异动循环留在引擎里的那一份读(quality.list,本地道),
  *    不另订行情,只认 3 分钟之内算出来的(异动循环只在 09:20 ~ 16:20 算,别的时候是旧数)。一个板块的集体涨跌报一次,
- *    之后它还在就一直挂着,直到条件消失 30 分钟。
+ *    之后它还在就一直挂着,直到条件消失 30 分钟。09:20 ~ 09:30 看到的是盘前的涨跌:集体拉涨换成"开盘后大概率回吐"的说法,
+ *    记下盘前的中位,10:00 ~ 10:30 之间再看一次,回吐了还是守住了都报一句。
+ *  · 时段提醒跟着 15 秒那一拍:欧盘开收、美股开盘前、最后一小时,各按当地钟点(eventRules.SESSION_MARKS),总开关关了不报。
  */
 import { create } from 'zustand';
 import { dafri, errorMessage, type EconEvent, type EventsConfig, type EventsList, type PopupItem, type Sector } from '../bridge';
 import {
-  etDateOf, freshChanges, leadBody, leadTitle, leadsDue, sectorMoveBody, sectorMoveTitle, sectorMoves, type RuleEvent, type SectorMove,
+  etDateOf, etMinuteOf, FADE_CHECK_FROM, FADE_CHECK_UNTIL, fadeBody, fadeTitle, fadeVerdict, freshChanges, isPremarket, leadBody, leadTitle,
+  leadsDue, sectorMedian, sectorMoveBody, sectorMoveTitle, sectorMoves, sessionMarkBody, sessionMarksDue, type RuleEvent, type SectorMove,
 } from '../lib/eventRules';
 import { playAlertTone } from './alerts';
 import { pushNotification } from './notify';
@@ -61,6 +64,8 @@ let sectors: Sector[] = [];
 let sectorsAt = 0;
 let sweepAt = 0;
 let sweeping = false;
+/** 盘前集体拉涨的板块:美东日期 + 板块 → 开盘前最后看到的中位与成分股(10:00 那一眼要用) */
+const premarketRallies = new Map<string, { date: string; sector: string; median: number; symbols: string[] }>();
 
 export async function loadEvents(force = false): Promise<void> {
   if (inFlight) return;
@@ -138,14 +143,22 @@ async function sweepSectors(now: number): Promise<void> {
       changes,
       { min_stocks: cfg.sector_min_stocks, share: cfg.sector_share, move_pct: cfg.sector_move_pct },
     );
+    const premarket = isPremarket(now);
+    const today = etDateOf(now);
+    for (const m of found) {
+      if (!premarket || m.direction !== 'up') continue;
+      const symbols = sectors.find((s) => s.name === m.sector)?.stocks.map((x) => x.symbol) ?? [];
+      premarketRallies.set(`${today}:${m.sector}`, { date: today, sector: m.sector, median: m.median, symbols });
+    }
+    checkFades(now, changes, cfg.sector_min_stocks);
     const prev = useStore.getState().events.moves;
     const next: EventsState['moves'] = [];
     for (const m of found) {
       const old = prev.find((p) => p.sector === m.sector && p.direction === m.direction);
       next.push({ ...m, since: old?.since ?? now, seenAt: now });
       if (!old) {
-        const title = sectorMoveTitle(m);
-        const body = sectorMoveBody(m, cfg.sector_move_pct);
+        const title = sectorMoveTitle(m, premarket);
+        const body = sectorMoveBody(m, cfg.sector_move_pct, premarket);
         void announce({ id: `sector:${m.sector}:${m.direction}:${now}`, kind: 'event', symbol: m.movers[0]?.symbol ?? '', title, body, tone: m.direction, at: now, page: 'sectors' }, m.direction);
       }
     }
@@ -161,6 +174,38 @@ async function sweepSectors(now: number): Promise<void> {
   }
 }
 
+/** 盘前拉涨的板块在 10:00 ~ 10:30 之间看一次:中位掉了一半以上算回吐。过了窗口、不是今天的直接丢 */
+function checkFades(now: number, changes: Record<string, number | null>, minStocks: number): void {
+  const minute = etMinuteOf(now);
+  if (minute < FADE_CHECK_FROM) return;
+  const today = etDateOf(now);
+  for (const [key, r] of premarketRallies) {
+    if (r.date !== today || minute >= FADE_CHECK_UNTIL) {
+      premarketRallies.delete(key);
+      continue;
+    }
+    const current = sectorMedian(r.symbols, changes, minStocks);
+    if (current === null) continue; // 这一轮行情不够,下一轮再看
+    premarketRallies.delete(key);
+    const verdict = fadeVerdict(r.median, current);
+    void announce({
+      id: `fade:${key}`, kind: 'event', symbol: r.symbols[0] ?? '', title: fadeTitle(r.sector, verdict), body: fadeBody(r.median, current, verdict),
+      tone: verdict === 'faded' ? 'down' : 'up', at: now, page: 'sectors',
+    }, null);
+  }
+}
+
+/** 欧盘开收、美股开盘前、最后一小时:美股的钟点只在美股开着(盘前 / 盘中)时报 */
+function checkSessionMarks(now: number): void {
+  const cfg = getEventsConfig();
+  if (!cfg?.enabled) return;
+  const market = getStatus()?.market_status ?? '';
+  for (const due of sessionMarksDue(now, fired, market === '盘前' || market === '盘中')) {
+    fired.add(due.key);
+    void announce({ id: `event:${due.key}`, kind: 'event', symbol: 'SPX', title: due.mark.title, body: sessionMarkBody(due.mark, now), tone: 'info', at: now, page: 'trade' }, null);
+  }
+}
+
 function tick(): void {
   const now = Date.now();
   set({ now });
@@ -168,6 +213,7 @@ function tick(): void {
   const every = useStore.getState().events.list?.cross_status.in_window ? SECTOR_SWEEP_MS : LIST_REFRESH_MS;
   if (now - loadedAt >= every) void loadEvents();
   checkLeads(now);
+  checkSessionMarks(now);
   const cfg = getEventsConfig();
   if (cfg?.enabled && getStatus()?.broker_connected && inSession(now) && now - sweepAt >= SECTOR_SWEEP_MS) {
     sweepAt = now;

@@ -21,6 +21,7 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { BrokerError } from "../src/broker.js";
+import { LinkDownError } from "../src/ibLink.js";
 import type { EtNow } from "../src/config.js";
 import { setClock } from "../src/config.js";
 import { TradingEngine } from "../src/engine.js";
@@ -197,6 +198,16 @@ describe("托管单挂不上:退避,不每秒重来", () => {
     for (let i = 0; i < 5; i++) await engine.syncHosted();
     expect(router.placeAttempts).toBe(1);
     expect(engine.killswitch.state()).toMatchObject({ engaged: false, consecutive_failures: 1 });
+  });
+
+  it("链路断了(LinkDownError)不是券商拒单:照样退避,但一次都不计入熔断", async () => {
+    const router = new FakeRouter([stockRow()]);
+    router.failPlace = new LinkDownError();
+    const engine = build(router);
+    track(engine, { targets: { take_profit: 250 } });
+    for (let i = 0; i < 5; i++) await engine.syncHosted();
+    expect(router.placeAttempts).toBe(1);
+    expect(engine.killswitch.state()).toMatchObject({ engaged: false, consecutive_failures: 0 });
   });
 
   it("拼不出平仓合约是我们这头的错:不去券商试,也不计入熔断", async () => {

@@ -86,7 +86,9 @@ class FakeIbSession implements IbSession {
     this.placed.push([contract, order]);
     return { orderId: 42, permId: 990042, status: "Submitted" };
   }
+  cancelFails = false;
   cancelOrder(orderId: number): void {
+    if (this.cancelFails) throw new Error("与 TWS 的连接已断开,正在自动重连");
     this.cancelledOrders.push(orderId);
   }
   async openTrades() {
@@ -297,6 +299,22 @@ describe("BrokerRouter: 托管单撤单(2026-09-10 真机:撤单从来没真的�
       aux_price: null, trailing_percent: null, trail_stop_seed: null, label: "托管止盈 250",
     };
     const placed = await router.placeHosted(account, { secType: "STK", symbol: "AAPL", exchange: "SMART", currency: "USD" } as any, item, "oca-x", "trk:x:tp");
+    expect(await router.cancelHosted(Number(placed.order_id))).toBe(true);
+    expect(fake.cancelledOrders).toEqual([42]);
+  });
+
+  it("撤单没发出去(链路断了)时不忘掉这张单:下一轮重试还是真撤,不是回 false 被当成已撤", async () => {
+    const fake = new FakeIbSession(["DU7654321"]);
+    const [router] = makeRouter({ paper: fake, live: new FakeIbSession([]) });
+    const account = router.settings.accountByAlias("模拟") ?? router.settings.accounts[0]!;
+    const item = {
+      kind: "tp", action: "SELL", order_type: "LMT", quantity: 100, lmt_price: 250,
+      aux_price: null, trailing_percent: null, trail_stop_seed: null, label: "托管止盈 250",
+    };
+    const placed = await router.placeHosted(account, { secType: "STK", symbol: "AAPL", exchange: "SMART", currency: "USD" } as any, item, "oca-x", "trk:x:tp");
+    fake.cancelFails = true;
+    await expect(router.cancelHosted(Number(placed.order_id))).rejects.toThrow("与 TWS 的连接已断开");
+    fake.cancelFails = false;
     expect(await router.cancelHosted(Number(placed.order_id))).toBe(true);
     expect(fake.cancelledOrders).toEqual([42]);
   });

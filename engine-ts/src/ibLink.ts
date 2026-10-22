@@ -12,6 +12,21 @@ export function redactForLog(accountId: string): string {
   return accountId.length > 5 ? `${accountId.slice(0, 2)}***${accountId.slice(-3)}` : "***";
 }
 
+/**
+ * 本机到 TWS 的连接断着时,下单 / 改单 / 撤单的回答:直接抛这个,不入队。
+ *
+ * 以前这三个调用在断线期间照样"成功"返回(Submitted),命令被库排进缓冲,**重连后才一股脑发出,没有时效**:
+ * 断线时调用方以为撤了的单其实没撤、以为改了价的单迟到几小时才改、等 nextValidId 的新单迟到发出——
+ * 上层一旦超时让用户重下,重连后旧单先出去就是重复单。
+ * 单独一个类,是为了让托管 / 追价那几处能认出"这是链路断了、不是券商拒了":不算券商失败,不往熔断上记(见 engine/hosted.ts)。
+ */
+export class LinkDownError extends Error {
+  constructor() {
+    super("与 TWS 的连接已断开,正在自动重连");
+    this.name = "LinkDownError";
+  }
+}
+
 export function logStderr(message: string): void {
   try {
     process.stderr.write(message + "\n");

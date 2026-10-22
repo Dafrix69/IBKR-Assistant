@@ -9,6 +9,7 @@
 import type { EtNow, Settings } from "../config.js";
 import { nowEt } from "../config.js";
 import { BrokerError } from "../broker.js";
+import { LinkDownError } from "../ibLink.js";
 import type { KillSwitch } from "../killswitch.js";
 import { ContractSpecSchema } from "../models.js";
 import type { HostedOrderRow, TrackerPollTick, TrackerSyncHostedTick } from "../contract/trackerloop.js";
@@ -317,7 +318,8 @@ export class HostedOrders {
           this.store.audit("engine", "hosted_place_failed", { track: tid, kind: item.kind, error: message });
           this.hostedRetryAt.set(`${tid}|${item.kind}`, { at: Date.now() + (own ? 600_000 : 60_000), reason: message });
           this.notifier.warning(`${track["symbol"]} 的${item.label}没有挂上:${message}`);
-          if (!own) {
+          // 链路断了不是券商拒单:不算失败,不往熔断上记(断线期间每个托管单一分钟一次,几分钟就能把熔断打合上)
+          if (!own && !(exc instanceof LinkDownError)) {
             const engaged = this.killswitch.recordFailure(message, "broker");
             if (engaged) this.notifier.breaker(engaged.reason);
           }

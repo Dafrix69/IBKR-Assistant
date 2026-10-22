@@ -15,7 +15,7 @@ import { describe, expect, it } from "vitest";
 
 import { BrokerError, BrokerRouter } from "../src/broker.js";
 import type { IbSession } from "../src/broker.js";
-import { coveredAccounts, liveSessions } from "../src/ibLink.js";
+import { LinkDownError, coveredAccounts, liveSessions } from "../src/ibLink.js";
 import { IB_RECONNECT_MS, createIbApiNextSession } from "../src/ibSession.js";
 import { loadGolden, makeSettings } from "./util.js";
 
@@ -51,6 +51,10 @@ class FakeApiNext {
     return FakeApiNext.twsUp ? Promise.resolve(["DU7654321"]) : Promise.reject(new Error("connect ECONNREFUSED"));
   }
   setMarketDataType(t: number): void { this.mdTypes.push(t); }
+  orderCalls: string[] = [];
+  placeNewOrder(): Promise<number> { this.orderCalls.push("new"); return Promise.resolve(77); }
+  modifyOrder(id: number): void { this.orderCalls.push(`modify ${id}`); }
+  cancelOrder(id: number): void { this.orderCalls.push(`cancel ${id}`); }
   getPositions() {
     return { subscribe: (o: Rec) => { this.posNext = o["next"]; return { unsubscribe: () => undefined }; } };
   }
@@ -164,6 +168,33 @@ function routerWith(sessions: Record<number, StubSession>): BrokerRouter {
     return s as unknown as IbSession;
   });
 }
+
+describe("会话层:断线期间不接下单 / 改单 / 撤单(库会排进缓冲、重连后才发出)", () => {
+  const ORDER = { orderType: "LMT", action: "SELL", totalQuantity: 1, lmtPrice: 1, auxPrice: null, trailingPercent: null, tif: "GTC", outsideRth: false, account: "DU7654321", transmit: true } as any;
+  const CONTRACT = { secType: "STK", symbol: "AAPL", exchange: "SMART", currency: "USD" } as any;
+
+  it("断着:新单 / 改单 / 撤单当场报错,什么都不交给库", async () => {
+    const [session, api] = await openSession();
+    api.state.next(DISCONNECTED);
+    expect(session.isConnected()).toBe(false);
+    await expect(session.placeOrder(CONTRACT, ORDER)).rejects.toBeInstanceOf(LinkDownError);
+    await expect(session.placeOrder(CONTRACT, { ...ORDER, orderId: 300 })).rejects.toThrow("与 TWS 的连接已断开");
+    expect(() => session.cancelOrder(300)).toThrow(LinkDownError);
+    expect(api.orderCalls).toEqual([]);
+  });
+
+  it("重连回来之后照常下单、改单、撤单,断线时那几条没有补发", async () => {
+    const [session, api] = await openSession();
+    api.state.next(DISCONNECTED);
+    await expect(session.placeOrder(CONTRACT, ORDER)).rejects.toThrow();
+    api.state.next(CONNECTED);
+    expect(session.isConnected()).toBe(true);
+    expect((await session.placeOrder(CONTRACT, ORDER)).orderId).toBe(77);
+    await session.placeOrder(CONTRACT, { ...ORDER, orderId: 300 });
+    session.cancelOrder(300);
+    expect(api.orderCalls).toEqual(["new", "modify 300", "cancel 300"]);
+  });
+});
 
 describe("会话层:往回要前几天的成交走另一条连接", () => {
   it("同一个 TWS、自己的 client id(平时那条的 + 9000);TWS 太老回 null,连不上照实抛", async () => {

@@ -2119,8 +2119,8 @@ export class BrokerRouter {
   async cancelHosted(orderId: number): Promise<boolean> {
     const entry = this.hostedTrades.get(orderId);
     if (entry === undefined) return false;
+    await entry.session.cancelOrder(orderId); // 撤单发出去了才忘掉这张单:先删再撤的话,失败后重试回 false 被当成已撤
     this.hostedTrades.delete(orderId);
-    await entry.session.cancelOrder(orderId);
     return true;
   }
 
