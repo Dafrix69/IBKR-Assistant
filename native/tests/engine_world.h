@@ -7,6 +7,8 @@
 // 完成检查在每个计时器之后、每一步之后做,与 JS 的 collectDone 同一些点。
 #pragma once
 
+#include "analysis/tracker_rules.h"
+
 #include "domain/config.h"
 #include "domain/store.h"
 #include "execution/broker_pricing.h"
@@ -500,6 +502,8 @@ public:
         co_return q;
     }
     orch::TrackExits& exits() override { return *w_.exits; }
+    /// 提前醒(orchestrate/fast_exit)是 C++ 先有的:对着 TS 的托管单场景永远是按节拍的那一轮
+    bool earlyTick() const override { return false; }
     void chaseWarnIfStuck(const OJson& track, OJson& entry, double limit, double natural) override {
         w_.rec(js::object({{u"c"_s, js::S(u"host"_s)},
                            {u"m"_s, js::S(u"chaseWarnIfStuck"_s)},
@@ -583,6 +587,8 @@ private:
 inline World::World(const OJson& s, const OJson& b) : script(s), base(b) {
     const double start = num(script, u"start"_s);
     ibkr::util::setDateNowForTests([this] { return T; });
+    // 按跌速多让是 C++ 先有的(TS 版没有):对着 TS 夹具比的这一组关掉它,它自己的行为在 tst_fly_fast_exit
+    ibkr::analysis::setChaseLeadDefaultForTests(0);
     ibkr::util::setRandomUUIDForTests([this] { return u"00000000-0000-4000-8000-%1"_s.arg(++uuidN, 12, 10, QChar(u'0')); });
     setT(start);
     rawSettings = base;
@@ -619,6 +625,7 @@ inline World::World(const OJson& s, const OJson& b) : script(s), base(b) {
 
 inline World::~World() {
     ibkr::util::setDateNowForTests({});
+    ibkr::analysis::setChaseLeadDefaultForTests(std::nullopt);
     ibkr::util::setRandomUUIDForTests({});
     ibkr::domain::setClock(std::nullopt);
 }

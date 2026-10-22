@@ -76,8 +76,9 @@ QString fillsNowMessage(const Position& position, const TargetStructure& structu
 
 std::optional<double> naturalClosePrice(const Position& position, const TargetStructure& structure, const util::OJson& book);
 double chaseMaxSteps(const Position& position, double natural, const util::OJson& autoClose, const util::OJson* reason = nullptr);
+/// lead:按跌速多让的那一截(点,analysis::momentumLead);0 = 不多让(和没有这一项时一样)
 double chaseLimit(const Position& position, double natural, std::optional<double> prev, double rounds, const util::OJson& autoClose,
-                  const util::OJson* reason = nullptr);
+                  const util::OJson* reason = nullptr, double lead = 0);
 double chaseFloor(const Position& position, double natural, const util::OJson& autoClose, const util::OJson* reason = nullptr);
 std::optional<QString> sweepReason(const util::OJson& track);
 

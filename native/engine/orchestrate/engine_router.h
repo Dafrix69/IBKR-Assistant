@@ -78,6 +78,16 @@ public:
         co_return Rec::null();
     }
     /// typeof router.qualify === "function"(解析预热用)
+    /// 同上,只读缓存、同步回;期权行情推送的回调(orchestrate/fast_exit 拿它在两拍之间提前醒)。没有的 router 只按节拍
+    virtual bool hasOptionQuotesNow() const { return false; }
+    virtual Rec optionQuotesNow(const QList<Rec>& rows) {
+        (void)rows;
+        return Rec();
+    }
+    virtual std::function<void()> onOptionTick(std::function<void()> listener) {
+        (void)listener;
+        return {};
+    }
     virtual bool hasQualify() const { return false; }
     virtual util::Task<> qualify(Rec contract, contract::AccountConfig account) {
         (void)contract;
@@ -112,6 +122,9 @@ public:
     std::optional<QString> quoteCapability(const QString& symbol) override { return r_->quoteCapability(symbol); }
     bool hasOptionQuotes() const override { return true; }
     util::Task<Rec> optionQuotes(QList<Rec> rows) override { return r_->optionQuotes(std::move(rows)); }
+    bool hasOptionQuotesNow() const override { return true; }
+    Rec optionQuotesNow(const QList<Rec>& rows) override { return r_->optionQuotesNow(rows); }
+    std::function<void()> onOptionTick(std::function<void()> listener) override { return r_->onOptionTick(std::move(listener)); }
     bool hasQualify() const override { return true; }
     util::Task<> qualify(Rec contract, contract::AccountConfig account) override { return qualifyImpl(std::move(contract), std::move(account)); }
     util::Task<QList<Rec>> listHostedOpenWith(std::optional<QString> refPrefix) override {

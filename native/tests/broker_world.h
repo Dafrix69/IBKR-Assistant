@@ -189,10 +189,13 @@ public:
         T = num(scenario, u"start"_s);
         sync();
         ibkr::util::setDateNowForTests([this] { return T; });
+        // TS 版每轮读常驻行情前干等 50ms;C++ 只转一圈(见 BrokerRouter::heldStreamPumpMs),对着 TS 夹具比时换回 50
+        ibkr::execution::BrokerRouter::setHeldStreamPumpMsForTests(50);
         setLogSinkForTests([this](const QString& line) { rec(QString(), u"stderr"_s, js::array({js::S(line)})); });
     }
     ~World() {
         ibkr::util::setDateNowForTests({});
+        ibkr::execution::BrokerRouter::setHeldStreamPumpMsForTests(std::nullopt);
         ibkr::domain::setClock(std::nullopt);
         setLogSinkForTests({});
     }

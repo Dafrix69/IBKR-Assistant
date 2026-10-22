@@ -416,6 +416,14 @@ public:
         if (const bool* v = lastFeed_.get(tickerKey(contract))) return *v;
         return std::nullopt;
     }
+    std::function<void()> onOptionTick(std::function<void()> listener) override {
+        const int id = ++nextTickListener_;
+        optionTickListeners_.insert(id, std::move(listener));
+        std::weak_ptr<IbApiNextSession> weak = weak_from_this();
+        return [weak, id]() {
+            if (auto s = weak.lock()) s->optionTickListeners_.remove(id);
+        };
+    }
     Task<> settle(int ms) override {
         Runtime::Scope s(*rt_);
         return sleep(ms);
@@ -570,6 +578,9 @@ private:
     std::vector<CommissionCallback> commissionCbs_;
     OrderedMap<QString, std::shared_ptr<LiveTicker>> tickers_;
     OrderedMap<QString, bool> lastFeed_;
+    /// 期权行情推送的回调(onOptionTick):盯盘靠它在两拍之间提前醒
+    QHash<int, std::function<void()>> optionTickListeners_;
+    int nextTickListener_ = 0;
     OrderedMap<double, OJson> contractsByOrder_;
     ExecForwarder execs_;
 
@@ -736,6 +747,16 @@ std::shared_ptr<TickerHandle> IbApiNextSession::subscribeTicker(const IbContract
             // 期货也记:指数盘外的 K 线按期货推算
             const bool plain = contract.secType == u"STK" || contract.secType == u"IND" || contract.secType == u"FUT";
             if (plain && entry->data.last) s->lastFeed_.set(tickerKey(contract), entry->data.delayed);
+            if (contract.secType == u"OPT" || contract.secType == u"FOP") {
+                const QList<std::function<void()>> listeners = s->optionTickListeners_.values();  // 回调里撤掉自己也安全
+                for (const auto& listener : listeners) {
+                    try {
+                        listener();
+                    } catch (...) {
+                        /* 回调出错不影响行情落缓存 */
+                    }
+                }
+            }
         };
         // 订阅被拒之后这条流就死了:摘掉,下次重新订
         o.error = [weak, weakEntry, key](const ibnext::ApiError& err) {

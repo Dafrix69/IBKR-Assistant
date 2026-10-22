@@ -16,7 +16,7 @@ Item {
     // 表单的值:初值照 React 版的 useState(组合的平仓方式默认限价、利润回撤门槛 10)
     property var v: ({ tp: null, sl: null, trail: null, profitDd: null, ddArm: 10, tiers: false, spotTarget: null, stopBelow: null, stopAbove: null,
                        fraction: null, chaseMax: null, autoPicked: null, orderType: isCombo ? "LMT" : "MKT", host: false,
-                       exits: { exitAt: "", stopConfirm: null, stopBasis: "mid", chaseGrace: null, chaseStep: null, chaseMax: null, peakConfirm: false, tiers: [] } })
+                       exits: { exitAt: "", stopConfirm: null, stopBasis: "mid", chaseGrace: null, chaseStep: null, chaseMax: null, chaseLead: null, chaseInterval: null, peakConfirm: false, tiers: [] } })
     function set(part) { var n = Object.assign({}, v); for (var k in part) n[k] = part[k]; v = n }
     function setExit(part) { var e = Object.assign({}, v.exits); for (var k in part) e[k] = part[k]; set({ exits: e }) }
     readonly property bool hasSpotTarget: v.spotTarget !== null && v.spotTarget > 0
@@ -404,6 +404,18 @@ Item {
                 label: "止损追价:最多让价 %"
                 tip: "止损类触发后最多让到立刻成交价的百分之几。不填 = 用上面的「追价最多让价 %」。"
                 InputNumber { width: parent.width; min: 0; max: 100; step: 1; placeholder: "不填 = 同止盈"; value: root.v.exits.chaseMax; onValueEdited: function (x) { root.setExit({ chaseMax: x }) } }
+            }
+            Field {
+                visible: root.derivative
+                label: "下跌时追价多让(倍)"
+                tip: "任何触发的追价都管:立刻成交价正在往不利方向走时,平仓单按「上一个改价间隔跌了多少」再多挂这么多倍,免得单子到了交易所价已经在它下面、一直追不上。不填 = 1 倍;0 = 不多让(只按每秒让一跳)。多让的加上每秒让的,仍不超过「追价最多让价 %」;行情不动时不多让。"
+                InputNumber { width: parent.width; min: 0; max: 3; step: 0.5; placeholder: "不填 = 1"; value: root.v.exits.chaseLead; onValueEdited: function (x) { root.setExit({ chaseLead: x }) } }
+            }
+            Field {
+                visible: root.derivative
+                label: "追价改价间隔(秒)"
+                tip: "追价时平仓单最快多久改一次价,0.25–1 秒。不填 = 1 秒(盯盘的节拍);填得更小,行情推送一到、离上次改价够了这么久就改,不等下一拍。"
+                InputNumber { width: parent.width; min: 0.25; max: 1; step: 0.25; placeholder: "不填 = 1"; value: root.v.exits.chaseInterval; onValueEdited: function (x) { root.setExit({ chaseInterval: x }) } }
             }
         }
         Column {

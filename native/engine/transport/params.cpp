@@ -172,10 +172,13 @@ OJson stopSettingsOf(const OJson& params) {
         QString label;
         bool whole;
     };
+    // 范围只挡手误,不是建议值。改价间隔的下限 0.25 秒:一张单一秒最多改 4 次,离 TWS 每秒 50 条消息的上限远;上限 1 秒是节拍本身
     const Range ranges[] = {
         {u"stop_chase_grace"_s, 0, 60, u"止损追价先等的轮数"_s, true},
         {u"stop_chase_step"_s, 1, 20, u"止损追价每轮让的跳数"_s, true},
         {u"stop_chase_max_pct"_s, 0, 100, u"止损追价的让价上限(%)"_s, false},
+        {u"chase_lead"_s, 0, 3, u"追价按跌速多让的倍数"_s, false},
+        {u"chase_interval_s"_s, 0.25, 1, u"追价改价的最短间隔(秒)"_s, false},
     };
     for (const Range& r : ranges) {
         if (!params.get(r.key)) continue;  // `key in params`

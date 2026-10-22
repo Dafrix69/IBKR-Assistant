@@ -50,6 +50,9 @@ struct ExitFields {
     std::optional<double> chaseGrace;
     std::optional<double> chaseStep;
     std::optional<double> chaseMax;
+    /// 快速下跌时的追价:按跌速多让的倍数、改价的最短间隔(秒);空 = 默认(1 倍、1 秒)。管所有触发的追价
+    std::optional<double> chaseLead;
+    std::optional<double> chaseInterval;
     bool peakConfirm = false;
     QList<TierField> tiers;
     /// fromJson 时既不是空、也读不成数的那几项(键名)。React 版的输入框只交数或 null,这里不该有;有了就是界面的毛病,
@@ -66,7 +69,7 @@ struct ProblemOpts {
     bool hasStockStop = false;
 };
 
-/// 表单 → tracker.add 载荷里的那几个键(exit_at、spot_stop_confirm_s、take_profit_tiers、stop_basis、stop_chase_*、peak_confirm)
+/// 表单 → tracker.add 载荷里的那几个键(exit_at、spot_stop_confirm_s、take_profit_tiers、stop_basis、stop_chase_*、peak_confirm、chase_lead、chase_interval_s)
 QJsonObject exitSpec(const ExitFields& f, bool derivative);
 QStringList exitProblems(const ExitFields& f, const ProblemOpts& opts);
 /// 确认框里的那几行(带换行);一样都没设是空串

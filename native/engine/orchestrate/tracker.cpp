@@ -364,10 +364,12 @@ double chaseMaxSteps(const Position& position, double natural, const OJson& auto
     return std::floor(cap / tick + 1e-9);
 }
 
-double chaseLimit(const Position& position, double natural, std::optional<double> prev, double rounds, const OJson& autoClose, const OJson* reason) {
+double chaseLimit(const Position& position, double natural, std::optional<double> prev, double rounds, const OJson& autoClose, const OJson* reason, double lead) {
     const double tick = closeTick(position, natural);
     const analysis::ChaseProfile pace = analysis::chaseProfile(autoClose, reason);
-    const double steps = jm::min(jm::max(0, rounds - pace.grace) * pace.step, chaseMaxSteps(position, natural, autoClose, reason));
+    // lead:价正朝不利方向走时按跌速多让的那一截(analysis::momentumLead),折成整数跳、往多让的一侧取;和越等越让的加在一起仍不超过上限
+    const double leadSteps = lead > 0 ? std::ceil(lead / tick - 1e-9) : 0;
+    const double steps = jm::min(jm::max(0, rounds - pace.grace) * pace.step + leadSteps, chaseMaxSteps(position, natural, autoClose, reason));
     const bool lng = isLong(position);
     const double raw = lng ? natural - steps * tick : natural + steps * tick;
     const double step = closeTick(position, raw);
@@ -587,7 +589,7 @@ OJson makeAutoClose(const OJson& raw) {
     const auto or_ = [&](const char16_t* k, const OJson& def) { const OJson* v = get(raw, k); return js::nullish(v) ? def : *v; };
     const OJson* basis = get(raw, u"stop_basis");
     const OJson* peak = get(raw, u"peak_confirm");
-    return js::object({{u"enabled"_s, or_(u"enabled", js::B(false))},
+    OJson out = js::object({{u"enabled"_s, or_(u"enabled", js::B(false))},
                        {u"order_type"_s, or_(u"order_type", js::S(u"MKT"_s))},
                        {u"slippage_pct"_s, or_(u"slippage_pct", js::N(0.3))},
                        {u"close_fraction_pct"_s, or_(u"close_fraction_pct", js::N(100.0))},
@@ -598,6 +600,10 @@ OJson makeAutoClose(const OJson& raw) {
                        {u"stop_chase_step"_s, or_(u"stop_chase_step", OJson::null())},
                        {u"stop_chase_max_pct"_s, or_(u"stop_chase_max_pct", OJson::null())},
                        {u"peak_confirm"_s, js::B(peak && peak->type == OJson::Bool && peak->b)}});
+    // 快速下跌的追价(C++ 先有):填了才带这个键,没填的读成默认(1 倍、1 秒)——没用到它的追踪和 TS 版的样子逐字一样
+    if (const OJson* v = get(raw, u"chase_lead")) out.set(u"chase_lead"_s, *v);
+    if (const OJson* v = get(raw, u"chase_interval_s")) out.set(u"chase_interval_s"_s, *v);
+    return out;
 }
 
 QStringList closeBlockers(const CloseGateArgs& args) {

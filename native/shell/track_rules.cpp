@@ -143,6 +143,8 @@ ExitFields ExitFields::fromJson(const QJsonObject& o) {
     f.chaseGrace = formNumber(o.value("chaseGrace"_L1), u"chaseGrace"_s, &f.invalid);
     f.chaseStep = formNumber(o.value("chaseStep"_L1), u"chaseStep"_s, &f.invalid);
     f.chaseMax = formNumber(o.value("chaseMax"_L1), u"chaseMax"_s, &f.invalid);
+    f.chaseLead = formNumber(o.value("chaseLead"_L1), u"chaseLead"_s, &f.invalid);
+    f.chaseInterval = formNumber(o.value("chaseInterval"_L1), u"chaseInterval"_s, &f.invalid);
     const QJsonValue peak = o.value("peakConfirm"_L1);
     if (!peak.isBool() && !peak.isNull() && !peak.isUndefined()) f.invalid << u"peakConfirm"_s;
     f.peakConfirm = peak.toBool();
@@ -170,6 +172,8 @@ QJsonObject exitSpec(const ExitFields& f, bool derivative) {
     if (!str(f.chaseStep).isEmpty()) out.insert(u"stop_chase_step"_s, str(f.chaseStep));
     if (!str(f.chaseMax).isEmpty()) out.insert(u"stop_chase_max_pct"_s, str(f.chaseMax));
     if (f.peakConfirm) out.insert(u"peak_confirm"_s, true);
+    if (!str(f.chaseLead).isEmpty()) out.insert(u"chase_lead"_s, str(f.chaseLead));
+    if (!str(f.chaseInterval).isEmpty()) out.insert(u"chase_interval_s"_s, str(f.chaseInterval));
     return out;
 }
 
@@ -211,6 +215,11 @@ QString exitConfirmLines(const ExitFields& f, bool derivative) {
                                                        f.chaseStep ? jsNumberToString(*f.chaseStep) : u"1"_s,
                                                        f.chaseMax ? u",最多让到立刻成交价的 %1%"_s.arg(jsNumberToString(*f.chaseMax)) : QString());
     }
+    if (derivative && f.chaseLead) {
+        out << (*f.chaseLead > 0 ? u"快速下跌时追价按跌速多让 %1 倍(上限仍是「追价最多让价 %」)。"_s.arg(jsNumberToString(*f.chaseLead))
+                                 : u"快速下跌时追价不按跌速多让(只按每秒让一跳追)。"_s);
+    }
+    if (derivative && f.chaseInterval) out << u"追价时平仓单最快每 %1 秒改一次价。"_s.arg(jsNumberToString(*f.chaseInterval));
     if (derivative && f.peakConfirm) out << u"峰值要连续两秒都见到才往上推:跟踪止损与利润回撤的峰值晚一秒,只出现一秒的高点不算。"_s;
     return out.isEmpty() ? QString() : out.join(u'\n') + u'\n';
 }
@@ -242,6 +251,10 @@ QStringList exitSummary(const QJsonObject& targets, const QJsonObject& autoClose
         out << u"%1 %2 秒"_s.arg(stock ? u"止损确认"_s : u"标的止损确认"_s, jsString(targets.value("spot_stop_confirm_s"_L1)));
     if (autoClose.value("stop_basis"_L1) == u"natural"_s) out << u"止损按可成交价判"_s;
     if (jsTruthy(autoClose.value("peak_confirm"_L1))) out << u"峰值两秒确认"_s;
+    const QJsonValue lead = autoClose.value("chase_lead"_L1);
+    if (!nullish(lead)) out << (lead.toDouble() > 0 ? u"下跌多让 %1 倍"_s.arg(jsString(lead)) : u"下跌不多让"_s);
+    const QJsonValue interval = autoClose.value("chase_interval_s"_L1);
+    if (!nullish(interval)) out << u"追价每 %1 秒改价"_s.arg(jsString(interval));
     const QJsonValue grace = autoClose.value("stop_chase_grace"_L1);
     const QJsonValue step = autoClose.value("stop_chase_step"_L1);
     const QJsonValue max = autoClose.value("stop_chase_max_pct"_L1);

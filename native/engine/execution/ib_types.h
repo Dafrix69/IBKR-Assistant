@@ -198,6 +198,12 @@ public:
     virtual void cancelTicker(const IbContract& contract, const std::optional<QString>& genericTicks = std::nullopt) = 0;
     /// Cap::QuoteDelayed。没见过成交价 nullopt(缺了同)
     virtual std::optional<bool> quoteDelayed(const IbContract&) { return std::nullopt; }
+    /// 期权 / 期货期权的行情流来了一笔推送就同步叫一下(不带内容,内容照旧从句柄读)。回撤掉这个回调的函数;不支持的会话回空函数。
+    /// 盯盘拿它在两拍之间提前醒(orchestrate/fast_exit);没有它就只按节拍读缓存
+    virtual std::function<void()> onOptionTick(std::function<void()> listener) {
+        (void)listener;
+        return {};
+    }
     /// 事件泵(ib.sleep):等行情落地
     virtual Task<> settle(int ms) = 0;
     virtual Task<std::vector<RawBar>> historicalData(IbContract contract, HistoricalRequest opts) = 0;

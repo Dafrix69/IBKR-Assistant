@@ -59,6 +59,10 @@ Task<BrokerRouter::SessionPtr> BrokerRouter::connect(QString connectionName) {
         if (linkHook) linkHook(connectionName, up);
     });
     connectionsMap_.insert(connectionName, session);
+    session->onOptionTick([listeners = tickListeners_]() {
+        const QList<std::function<void()>> all = listeners->values();
+        for (const auto& listener : all) listener();
+    });
     // 只服务纸面账户的会话,行情类型基线定成 3(有实时权限照样是实时,没有才给延迟)。实盘会话不动,仍是 1:实盘绝不拿延迟价定价。
     bool any = false, allPaper = true;
     for (const contract::AccountConfig& a : settings.accounts) {

@@ -219,6 +219,7 @@ TradingEngine::TradingEngine(EngineArgs args)
     accounts_ = std::make_unique<AccountGuard>(*impl_->guardHost);
     reconciler_ = std::make_unique<Reconciler>(*impl_->reconHost);
     callbacks_ = std::make_unique<IbCallbacks>(*impl_->cbHost);
+    fastExit_ = std::make_unique<FastExit>([this]() { return router_.get(); }, [this]() { wakeTracker(); });
 }
 
 TradingEngine::~TradingEngine() { *alive_ = false; }

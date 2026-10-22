@@ -5,6 +5,8 @@
 #include "execution/broker_pricing.h"
 #include "execution/ib_link_down.h"
 #include "orchestrate/clock.h"
+#include "analysis/tracker_rules.h"
+#include "util/js_runtime.h"
 #include "util/jsformat.h"
 #include "util/jsobj.h"
 #include "util/market_js.h"
@@ -248,10 +250,15 @@ util::Task<Rec> HostedOrders::syncHosted(std::optional<QList<Rec>> rows) {
         }
 
         const OJson* mp = js::prop(&raw, u"market_price"_s);
-        const std::optional<double> mark = host_.exits().peakMark(tid, position, js::nullish(mp) ? std::nullopt : std::optional<double>(js::num(mp)),
-                                                                  js::truthy(js::prop(&auto_, u"peak_confirm"_s)));
         const OJson* trackPeak = js::prop(&track, u"peak"_s);
-        const std::optional<double> peak = tk::advancePeak(position, mark, js::nullish(trackPeak) ? std::nullopt : std::optional<double>(js::num(trackPeak)));
+        const std::optional<double> storedPeak = js::nullish(trackPeak) ? std::nullopt : std::optional<double>(js::num(trackPeak));
+        // 推送提前叫醒的这一轮不推峰值(同 TrackExits::judge 的 early):挂单用的也是库里那一个
+        const std::optional<double> peak =
+            host_.earlyTick() ? storedPeak
+                              : tk::advancePeak(position,
+                                                host_.exits().peakMark(tid, position, js::nullish(mp) ? std::nullopt : std::optional<double>(js::num(mp)),
+                                                                       js::truthy(js::prop(&auto_, u"peak_confirm"_s))),
+                                                storedPeak);
         if (peak) {
             const OJson peakValue = js::N(*peak);
             if (!js::strictEqual(&peakValue, trackPeak)) host_.store().updateTrack(tid, js::object({{u"peak"_s, peakValue}}));
@@ -286,6 +293,9 @@ util::Task<Rec> HostedOrders::syncHosted(std::optional<QList<Rec>> rows) {
                 pushTo(u"hosted"_s, h);
                 continue;
             }
+            // 提前醒的这一轮离上次改价不够一个间隔(别的追踪越线叫醒的):停在上次的价,不多改一次
+            const bool tooSoon = host_.earlyTick() && tp && util::dateNow() - chaseAt_.value(tid, 0) < analysis::chaseIntervalMs(auto_);
+            if (tooSoon && prevLimit) chase->limit = *prevLimit;
             targets.set(u"take_profit"_s, js::N(chase->limit));
             hold = false;
         }
@@ -384,7 +394,10 @@ util::Task<Rec> HostedOrders::syncHosted(std::optional<QList<Rec>> rows) {
             const EntryPtr* tpp = current->entries.find(tk::kHostedKindTp);
             if (tpp) {
                 Rec& tp = **tpp;
-                tp.set(u"chase_rounds"_s, js::N(jsx::numOr(js::prop(&tp, u"chase_rounds"_s), 0) + 1));
+                // 提前醒的那一轮不数轮数:轮数是"等了几秒",越等越让按它算
+                if (!host_.earlyTick()) tp.set(u"chase_rounds"_s, js::N(jsx::numOr(js::prop(&tp, u"chase_rounds"_s), 0) + 1));
+                const OJson* lastLimit = js::prop(&tp, u"chase_limit"_s);
+                if (!chaseAt_.contains(tid) || !lastLimit || js::num(lastLimit) != chase->limit) chaseAt_.insert(tid, util::dateNow());
                 tp.set(u"chase_limit"_s, js::N(chase->limit));
                 tp.set(u"chase_natural"_s, js::N(chase->natural));
                 tp.set(u"chase_floor"_s, js::N(chase->floor));
@@ -752,7 +765,10 @@ void HostedOrders::dropHostedEntry(const QString& trackId, const QString& kind) 
         if (js::truthy(orderIdV)) hostedIndex_.remove(static_cast<qint64>(js::num(orderIdV)));
         (*km)->entries.remove(kind);
     }
-    if (km && (*km)->entries.isEmpty()) hosted_.remove(trackId);
+    if (km && (*km)->entries.isEmpty()) {
+        hosted_.remove(trackId);
+        chaseAt_.remove(trackId);
+    }
 }
 
 void HostedOrders::onStatus(const Rec& trade) {

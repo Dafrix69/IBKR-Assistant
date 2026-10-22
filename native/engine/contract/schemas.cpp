@@ -381,6 +381,8 @@ ParamsSchema trackerAdd() {
         {u"stop_chase_step"_s, numberField()},
         {u"stop_chase_max_pct"_s, numberField()},
         {u"peak_confirm"_s, optional(boolean())},
+        {u"chase_lead"_s, numberField()},
+        {u"chase_interval_s"_s, numberField()},
         {u"note"_s, optional(str())},
     };
     for (const auto& f : rest) shape.push_back(f);
@@ -401,6 +403,9 @@ ParamsSchema trackerUpdate() {
                                    {u"stop_chase_step"_s, zod::number()->nullable()},
                                    {u"stop_chase_max_pct"_s, zod::number()->nullable()},
                                    {u"peak_confirm"_s, boolean()},
+                                   // 同上:null = 回到默认(1 倍、1 秒)
+                                   {u"chase_lead"_s, zod::number()->nullable()},
+                                   {u"chase_interval_s"_s, zod::number()->nullable()},
                                })
                                ->partial()
                                ->strict();

@@ -26,6 +26,9 @@
 //     ① 换引擎(reload / dropEngine)时条件单队列 pendingTriggers 交给新引擎(adoptPendingTriggers);TS 里它留在旧实例上——界面的队列清空、库里还是 PendingTrigger、永远不触发;
 //     ② firePending 每一张发出前再查一次熔断(同 handleInstruction 的批内熔断),并确认它还在队里(halt 已清队就不发)——TS 只在函数开头查一次;
 //     ③ halt() 里 cancelAllOpen 抛了,软件侧的条件单队列与托管缓存照样清,再写审计 / 通知(带「撤单失败」)后把错抛出去——TS 里这两步被跳过。
+//     ④ 盯盘的推送提前醒与快速下跌的追价(orchestrate/fast_exit、analysis::momentumLead):期权行情一推过来就判,越线不等下一拍;追价按跌速多让、
+//        提前醒的那一轮不推峰值、不数追价轮数、守改价间隔;读常驻行情不再各等 50ms。对着 TS 夹具比的那几组把多让关掉、等待换回 50ms
+//        (setChaseLeadDefaultForTests / BrokerRouter::setHeldStreamPumpMsForTests),这一项自己的行为在 tests/tst_fly_fast_exit.cpp。
 //   · TS 原样:closePosition / firePending 对任何异常都记熔断(含 LinkDownError),只有 chaseCloseOrder 认 LinkDownError 不记;pollTrackers 里 closeChase 缓存项
 //     的 accepted_limit 在改价被拒时恢复;wireSession 的 try/catch 吞掉 sessionHook 赋值失败。
 #pragma once
@@ -38,6 +41,7 @@
 #include "orchestrate/clock.h"
 #include "orchestrate/engine_router.h"
 #include "orchestrate/exits.h"
+#include "orchestrate/fast_exit.h"
 #include "orchestrate/heartbeat.h"
 #include "orchestrate/hosted.h"
 #include "orchestrate/reconcile.h"
@@ -190,8 +194,15 @@ public:
     }
     void startTrackerLoop(int intervalMs = kTrackerTickMs);
     void stopTrackerLoop();
-    /// 一轮盯盘:读一次持仓 → 判触发 → 托管对账。任何异常都不许让节拍器停下
-    util::Task<> trackerTickOnce(std::optional<domain::EtNow> moment = std::nullopt);
+    /// 推送判定该醒了(orchestrate/fast_exit):不等节拍,马上排一轮;正在跑的话跑完紧接着再跑。节拍器没开着就不管
+    void wakeTracker();
+    /// 一轮盯盘:读一次持仓 → 判触发 → 托管对账。任何异常都不许让节拍器停下。
+    /// early:推送提前叫醒的这一轮——判断照常,只是不推峰值、不数追价轮数、追价守改价间隔
+    util::Task<> trackerTickOnce(std::optional<domain::EtNow> moment = std::nullopt, bool early = false);
+    /// 这一轮是推送提前叫醒的(托管单那一块也读)
+    bool earlyTick = false;
+    /// 测试用:推送那一路
+    FastExit& fastExit() { return *fastExit_; }
     Rec trackerHeartbeat() const;
 
     // ---- 持仓追踪
@@ -284,8 +295,8 @@ private:
     void dropCloseChase(const QString& tid);
     util::Task<> adoptCloseChase(QList<Rec> tracks);
     std::optional<Rec> closeUnbuildable(const Rec& track, const QString& message);
-    void scheduleTick(int delayMs, int intervalMs);
-    util::Task<> tickLoop(int intervalMs);
+    void scheduleTick(int delayMs, int intervalMs, bool early);
+    util::Task<> tickLoop(int intervalMs, bool early, int generation);
 
     std::shared_ptr<domain::TradeStore> store_;
     std::shared_ptr<util::Notifier> notifier_;
@@ -307,9 +318,18 @@ private:
     /// 追价平仓缓存:track_id → 项(shared_ptr:await 的空档里被摘掉,手里的引用照样活着)
     QHash<QString, std::shared_ptr<Rec>> closeChase_;
     bool closeChaseAdopted_ = false;
+    /// 追价平仓单上一次改价(或发出)的时刻:提前醒的那一轮守改价间隔用。不放进缓存项(缓存项的样子对着 TS 比)
+    QHash<QString, double> closeChaseModifiedAt_;
     QSet<qint64> liveTimers_;
     qint64 nextTimerId_ = 0;
     std::optional<qint64> tickTimer_;
+    /// 节拍器:正在跑一轮、跑的时候被推送叫过、上一次按拍跑的时刻、停一次加一(停了又开,旧的那一轮跑完不再接着排)
+    bool tickRunning_ = false, wakeRequested_ = false;
+    double lastRegular_ = 0;
+    int tickInterval_ = kTrackerTickMs, tickGeneration_ = 0;
+    /// 推送第一次叫醒的时刻(这一段提前醒跑完清掉):发单的审计里记从叫醒到发单多久
+    std::optional<double> wokeAt_;
+    std::unique_ptr<FastExit> fastExit_;
     Forwards forwards_;
     std::shared_ptr<bool> alive_ = std::make_shared<bool>(true);
 };

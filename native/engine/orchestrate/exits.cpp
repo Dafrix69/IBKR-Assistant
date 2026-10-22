@@ -50,7 +50,7 @@ OJson TrackExits::judge(const JudgeArgs& args) {
     const std::optional<double> stopPrice = !args.natural || fallback ? args.price : *args.natural;
     tk::EvaluateOpts opts;
     opts.hasPeakPrice = true;
-    opts.peakPrice = fallback ? std::nullopt : peakMark(tid, position, stopPrice, js::truthy(js::prop(&args.autoClose, u"peak_confirm"_s)));
+    opts.peakPrice = fallback || args.early ? std::nullopt : peakMark(tid, position, stopPrice, js::truthy(js::prop(&args.autoClose, u"peak_confirm"_s)));
     if (args.natural) {
         opts.hasStopPrice = true;
         opts.stopPrice = stopPrice;

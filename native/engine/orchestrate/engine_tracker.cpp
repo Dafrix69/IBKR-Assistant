@@ -54,51 +54,79 @@ struct Commit {
 // ======================================================================
 // 盯盘节拍器
 // ======================================================================
-void TradingEngine::scheduleTick(int delayMs, int intervalMs) {
+void TradingEngine::scheduleTick(int delayMs, int intervalMs, bool early) {
     const qint64 id = ++nextTimerId_;
     liveTimers_.insert(id);
     tickTimer_ = id;
-    setTimeout_(delayMs, [this, id, intervalMs, alive = std::weak_ptr<bool>(alive_)]() {
+    const int generation = tickGeneration_;
+    setTimeout_(delayMs, [this, id, intervalMs, early, generation, alive = std::weak_ptr<bool>(alive_)]() {
         const auto a = alive.lock();
         if (!a || !*a) return;
         if (!liveTimers_.remove(id)) return;  // clearTimeout 过了
-        util::detach(tickLoop(intervalMs));
+        util::detach(tickLoop(intervalMs, early, generation));
     });
 }
 
-Task<> TradingEngine::tickLoop(int intervalMs) {
-    const double t0 = util::dateNow();
-    co_await trackerTickOnce();
-    if (!js::truthy(trackerLoop.get(u"running"_s))) co_return;
-    // 下一轮在这一轮结束之后排:慢了就紧接着跑,不会叠两轮;快了就补足到一个节拍
-    scheduleTick(static_cast<int>(std::max(0.0, intervalMs - (util::dateNow() - t0))), intervalMs);
+Task<> TradingEngine::tickLoop(int intervalMs, bool early, int generation) {
+    tickTimer_.reset();
+    tickRunning_ = true;
+    if (!early) lastRegular_ = util::dateNow();
+    co_await trackerTickOnce(std::nullopt, early);
+    tickRunning_ = false;
+    if (!wakeRequested_) wokeAt_.reset();
+    if (!js::truthy(trackerLoop.get(u"running"_s)) || generation != tickGeneration_) co_return;
+    // 下一轮在这一轮结束之后排,不会叠两轮。推送在这一轮里叫过:紧接着跑一轮提前醒的;否则按节拍补足到上一次按拍跑的一个间隔之后
+    // (提前醒的那几轮不挪动节拍)。到了该按拍跑的时刻就按拍跑(它也是整轮,唤醒照样被服务):连着有推送叫醒时,节拍轮不能被挤掉——追价的轮数靠它涨
+    const bool wake = wakeRequested_;
+    wakeRequested_ = false;
+    const double due = lastRegular_ + intervalMs - util::dateNow();
+    scheduleTick(wake ? 0 : static_cast<int>(std::max(0.0, due)), intervalMs, wake && due > 0);
 }
 
 void TradingEngine::startTrackerLoop(int intervalMs) {
-    if (tickTimer_) return;
+    if (tickTimer_ || tickRunning_) return;
     loopMeter_.start();
     trackerLoop.set(u"running"_s, js::B(true));
     trackerLoop.set(u"interval_ms"_s, js::N(intervalMs));
-    scheduleTick(0, intervalMs);
+    tickInterval_ = intervalMs;
+    scheduleTick(0, intervalMs, false);
+}
+
+void TradingEngine::wakeTracker() {
+    if (!js::truthy(trackerLoop.get(u"running"_s))) return;
+    if (!wokeAt_) wokeAt_ = util::dateNow();
+    if (tickRunning_) {
+        wakeRequested_ = true;
+        return;
+    }
+    if (tickTimer_) liveTimers_.remove(*tickTimer_);
+    scheduleTick(0, tickInterval_, true);
 }
 
 void TradingEngine::stopTrackerLoop() {
     trackerLoop.set(u"running"_s, js::B(false));
+    tickGeneration_ += 1;
     if (tickTimer_) liveTimers_.remove(*tickTimer_);
     tickTimer_.reset();
+    fastExit_->stop();
     loopMeter_.stop();
     wakeGuard.pause();
 }
 
-Task<> TradingEngine::trackerTickOnce(std::optional<domain::EtNow> moment) {
+Task<> TradingEngine::trackerTickOnce(std::optional<domain::EtNow> moment, bool early) {
     const double t0 = util::dateNow();
     const double mono = awakeClock();
+    fastExit_->attach();
     try {
-        co_await withTrackerLock([this, t0, mono, moment]() { return tickBody(t0, mono, moment); });
+        co_await withTrackerLock([this, t0, mono, moment, early]() {
+            earlyTick = early;
+            return tickBody(t0, mono, moment);
+        });
     } catch (...) {
         trackerLoop.set(u"last_error"_s, js::S(jsx::errorMessage(std::current_exception()).left(200)));
         storePort_->audit(u"engine"_s, u"tracker_tick_failed"_s, js::object({{u"error"_s, js::copyOrNull(trackerLoop.get(u"last_error"_s))}}));
     }
+    earlyTick = false;
     loopMeter_.record(trackerLoop, t0, kTrackerSlowMs);
 }
 
@@ -115,6 +143,7 @@ Task<> TradingEngine::tickBody(double t0, double mono, std::optional<domain::EtN
         // 对账炸了不该带倒盯盘:留痕即可,下一轮还会再来
         if (failure) storePort_->audit(u"engine"_s, u"reconcile_failed"_s, js::object({{u"error"_s, js::S(failure->left(300))}}));
     }
+    fastExit_->disarm();
     const QList<Rec> tracks = storePort_->listTracks();
     const QString hold = wakeTick(t0, mono, tracks);
     if (!router_ || tracks.isEmpty()) {
@@ -150,6 +179,17 @@ Task<> TradingEngine::tickBody(double t0, double mono, std::optional<domain::EtN
     }
     const Rec poll = co_await pollTrackers(moment, rows);
     const Rec hosted = co_await syncHosted(rows);
+    // 按这一轮的结果排下一次推送要盯谁(越线 / 追价时不等节拍);这一轮跑着的时候到过的推送没人看,排完当场对缓存再问一次
+    {
+        Rec positions = js::object();
+        for (const Rec& p : domain::withCombos(rows)) positions.set(js::str(js::prop(&p, u"key"_s)), p);
+        const OJson* pollRows = js::prop(&poll, u"rows"_s);
+        fastExit_->arm(
+            js::isArr(pollRows) ? pollRows->items : QList<Rec>{}, positions,
+            [this](const QString& tid) { return flyMark_.contains(tid) ? std::optional<double>(flyMark_.value(tid)) : std::nullopt; },
+            moment ? *moment : domain::nowEt(), [this](const QString& tid) { return closeChase_.contains(tid); });
+        fastExit_->check(util::dateNow());
+    }
     state.set(u"poll"_s, poll);
     state.set(u"hosted"_s, hosted);
     state.set(u"last_error"_s, js::S(QString()));
@@ -284,7 +324,7 @@ Task<Rec> TradingEngine::pollTrackers(std::optional<domain::EtNow> moment, std::
     }
 
     if (!closeChaseAdopted_) co_await adoptCloseChase(tracks);
-    exits_->nextRound();
+    if (!earlyTick) exits_->nextRound();
     const util::BreakerState breaker = breakerPort_->state();
     const std::optional<QSet<QString>> covered = router_->coveredAccounts();
     for (const Rec& track : tracks) {
@@ -349,6 +389,7 @@ Task<Rec> TradingEngine::pollTrackers(std::optional<domain::EtNow> moment, std::
         ja.at = at;
         ja.spotTarget = spotTargetRow;
         ja.spotStop = spotStopRow;
+        ja.early = earlyTick;
         const Rec result = exits_->judge(ja);
 
         // 峰值只在变了的时候写
@@ -431,7 +472,12 @@ Task<Rec> TradingEngine::pollTrackers(std::optional<domain::EtNow> moment, std::
             std::optional<double> quote;
             if (natural && *natural) quote = **natural;
             else quote = co_await naturalCloseFor(raw, position, positions);
-            if (quote) closeResult.set(u"price"_s, js::N(*quote));
+            if (quote) {
+                // 价正朝不利方向走时首单就按跌速多让(orchestrate/fast_exit);没在走,lead = 0,原样挂在立刻成交价上
+                const double lead = fastExit_->leadFor(raw, position, *quote, auto_, util::dateNow());
+                const OJson stateJson = js::S(resultState);
+                closeResult.set(u"price"_s, js::N(lead > 0 ? tk::chaseLimit(position, *quote, std::nullopt, 0, auto_, &stateJson, lead) : *quote));
+            }
         }
         // 分批止盈:这一档先记成在等成交,平的比例换成这一档的(不是分批的触发,auto 原样)
         const Rec tierAuto = exits_->tierAuto(track, targets, result, auto_, position);
@@ -584,13 +630,18 @@ Task<std::optional<Rec>> TradingEngine::closePosition(Rec track, tk::Position po
     storePort_->appendEvent(recordId, u"status"_s, js::object({{u"status"_s, js::S(placement.status)}, {u"order_id"_s, idOrNull(placement.order_id)}}));
     // 平仓留一条只增的痕:保护规则按它数"最近几次止损"、算同一只标的的冷却期。mark 是触发那一刻的持仓现价
     const OJson* legV = js::prop(&track, u"leg"_s);
-    storePort_->audit(u"engine"_s, u"auto_close"_s,
-                      js::object({{u"track"_s, js::copyOrNull(js::prop(&track, u"id"_s))},
+    OJson closeAudit = js::object({{u"track"_s, js::copyOrNull(js::prop(&track, u"id"_s))},
                                   {u"symbol"_s, js::copyOrNull(js::prop(&track, u"symbol"_s))},
                                   {u"leg"_s, js::nullish(legV) ? js::S(QString()) : *legV},
                                   {u"state"_s, js::copyOrNull(js::prop(&result, u"state"_s))},
                                   {u"record"_s, js::S(recordId)},
-                                  {u"mark"_s, js::NOrNull(position.market_price)}}));
+                                  {u"mark"_s, js::NOrNull(position.market_price)}});
+    if (earlyTick) {
+        // 推送叫醒的那一轮发的:记下从第一次叫醒到发单多少毫秒,真机上的延迟照它量(按节拍发的不带这两项)
+        closeAudit.set(u"early"_s, js::B(true));
+        closeAudit.set(u"since_wake_ms"_s, wokeAt_ ? js::N(util::dateNow() - *wokeAt_) : js::Null());
+    }
+    storePort_->audit(u"engine"_s, u"auto_close"_s, closeAudit);
     breakerPort_->recordSuccess(u"broker"_s);
     // 期权 / 组合的限价平仓单发出去只是开始:挂在自然价上未必立刻成交,之后每轮按最新买卖价追那张单(chaseCloseOrder)。正股与市价单不追
     const QString secType = js::str(js::prop(js::prop(&order, u"contract"_s), u"secType"_s));
@@ -613,6 +664,7 @@ Task<std::optional<Rec>> TradingEngine::closePosition(Rec track, tk::Position po
                                                        {u"floor"_s, js::Null()},
                                                        {u"warned"_s, js::B(false)}}));
         closeChase_.insert(tid, entry);
+        closeChaseModifiedAt_.insert(tid, util::dateNow());
         closeChaseIndex.insert(orderId, tid);
         storePort_->updateTrack(tid, js::object({{u"fired_state"_s, js::S(tk::kSweepPrefix + js::str(js::prop(&result, u"state"_s)))}}));
     }
@@ -644,8 +696,10 @@ Task<std::optional<ChaseQuote>> TradingEngine::chaseQuote(Rec raw, tk::Position 
     const OJson* reasonPtr = reason ? &reasonJson : nullptr;
     ChaseQuote q;
     q.natural = *natural;
+    // 价正朝不利方向走时按跌速多让(orchestrate/fast_exit 记的立刻成交价)
+    const double lead = fastExit_->leadFor(raw, position, *natural, autoClose, util::dateNow());
     // 触发原因决定追价节奏:止损类可以另填一套(trackerExits.chaseProfile)
-    q.limit = tk::chaseLimit(position, *natural, prev, rounds, autoClose, reasonPtr);
+    q.limit = tk::chaseLimit(position, *natural, prev, rounds, autoClose, reasonPtr, lead);
     q.floor = tk::chaseFloor(position, *natural, autoClose, reasonPtr);
     co_return q;
 }
@@ -668,7 +722,9 @@ Task<std::optional<Rec>> TradingEngine::chaseCloseOrder(Rec track, Rec raw, tk::
     entry->set(u"natural"_s, js::N(q->natural));
     entry->set(u"floor"_s, js::N(q->floor));
     const std::optional<double> prev = js::finiteOrNull(entry->get(u"limit"_s));
-    if (!prev || jsRound(*prev * 100) != jsRound(q->limit * 100)) {
+    // 提前醒的那一轮也守着改价的最短间隔(chase_interval_s):别的追踪越线叫醒的这一轮,不该让这张单改得比设的还勤
+    const bool tooSoon = earlyTick && util::dateNow() - closeChaseModifiedAt_.value(tid, 0) < analysis::chaseIntervalMs(autoClose);
+    if (!tooSoon && (!prev || jsRound(*prev * 100) != jsRound(q->limit * 100))) {
         const OJson* actionV = entry->get(u"action"_s);
         Rec item = js::object({{u"kind"_s, js::S(u"close"_s)},
                                {u"action"_s, js::S(js::nullish(actionV) ? tk::closeSide(position) : js::str(actionV))},
@@ -708,10 +764,12 @@ Task<std::optional<Rec>> TradingEngine::chaseCloseOrder(Rec track, Rec raw, tk::
             co_return std::nullopt;
         }
         entry->set(u"limit"_s, js::N(q->limit));
+        closeChaseModifiedAt_.insert(tid, util::dateNow());
         storePort_->appendEvent(js::str(entry->get(u"record_id"_s)), u"status"_s,
                                 js::object({{u"status"_s, js::S(u"Adjusted"_s)}, {u"lmt_price"_s, js::N(q->limit)}, {u"quantity"_s, *item.get(u"quantity"_s)}}));
     }
-    entry->set(u"rounds"_s, js::N(jsx::numOr(entry->get(u"rounds"_s), 0) + 1));
+    // 提前醒的那一轮不数轮数:轮数是"等了几秒",越等越让按它算
+    if (!earlyTick) entry->set(u"rounds"_s, js::N(jsx::numOr(entry->get(u"rounds"_s), 0) + 1));
     chaseWarnIfStuck(track, *entry, q->limit, q->natural);
     co_return js::object({{u"rounds"_s, js::copyOrNull(entry->get(u"rounds"_s))},
                           {u"limit"_s, js::copyOrNull(entry->get(u"limit"_s))},
@@ -732,6 +790,7 @@ void TradingEngine::dropCloseChase(const QString& tid) {
     if (it == closeChase_.constEnd()) return;
     closeChaseIndex.remove(static_cast<qint64>(js::num((*it)->get(u"order_id"_s))));
     closeChase_.remove(tid);
+    closeChaseModifiedAt_.remove(tid);
 }
 
 // 重启后认领还挂在券商侧的平仓单(orderRef = 记录 id),接着追。只做一次;认领不到就算了

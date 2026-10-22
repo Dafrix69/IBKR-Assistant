@@ -312,7 +312,19 @@ Task<OJson> BrokerRouter::optionQuotes(QList<OJson> rows) {
     const SessionPtr session = live.empty() ? nullptr : live[0];
     if (!session) co_return out;
     co_await ensureOptionStreams(session, legs);
-    for (const OJson& row : legs) {
+    co_return optionQuotesNow(legs);
+}
+
+namespace {
+std::optional<int> pumpMsForTests;
+}
+int BrokerRouter::heldStreamPumpMs() { return pumpMsForTests.value_or(0); }
+void BrokerRouter::setHeldStreamPumpMsForTests(std::optional<int> ms) { pumpMsForTests = ms; }
+
+OJson BrokerRouter::optionQuotesNow(const QList<OJson>& rows) {
+    OJson out = js::object();
+    for (const OJson& row : rows) {
+        if (!isOptionLike(row)) continue;
         const HeldStream* entry = optionStreams_.find(u"opt:"_s + js::str(prop(row, u"key"_s)));
         const bool have = entry && entry->handle;
         TickerData t;
@@ -321,7 +333,15 @@ Task<OJson> BrokerRouter::optionQuotes(QList<OJson> rows) {
                 js::object({{u"bid"_s, have ? (t.bid == 0 ? js::N(0) : detail::numOrNull(cleanPrice(t.bid))) : js::Null()},
                             {u"ask"_s, have ? detail::numOrNull(cleanPrice(t.ask)) : js::Null()}}));
     }
-    co_return out;
+    return out;
+}
+
+std::function<void()> BrokerRouter::onOptionTick(std::function<void()> listener) {
+    const int id = ++nextTickListener_;
+    tickListeners_->insert(id, std::move(listener));
+    return [listeners = std::weak_ptr<QHash<int, std::function<void()>>>(tickListeners_), id]() {
+        if (auto l = listeners.lock()) l->remove(id);
+    };
 }
 
 /** 给这些期权腿备好常驻行情订阅(已有的跳过,被拒过的摘掉重订)。 */
@@ -361,9 +381,10 @@ Task<> BrokerRouter::ensureOptionStreams(SessionPtr session, QList<OJson> legs) 
                 [this, session](IbContract& c) { return qualifies(session, &c); }, limit);
             if (isFresh) fresh = true;
         }
-        // 首次订阅要等第一笔 tick 落地;之后每轮只是从常驻订阅的缓存里读,泵一下事件循环就够。
+        // 首次订阅要等第一笔 tick 落地;之后每轮只是从常驻订阅的缓存里读,让事件循环转一圈(已经到了 socket 的推送落进缓存)就够,
+        // 不再干等 50ms:那样读到的价新 50ms、判断也晚 50ms,一轮里这样的等待有好几处,全是白加的延迟(盯盘要秒级出手)。
         // 类型 3 要保持到这一步结束:连接刚建好时请求实际发出去会晚一拍,切早了就按实时类型发。
-        co_await session->settle(fresh ? 1500 : 50);
+        co_await session->settle(fresh ? 1500 : heldStreamPumpMs());
     } catch (...) {
         failure = std::current_exception();
     }
@@ -408,7 +429,7 @@ Task<> BrokerRouter::fillPositionPrices(QList<OJson>* rows) {
                         [this, session](IbContract& c) { return qualifies(session, &c); }, limit);
                     if (isFresh) fresh = true;
                 }
-                co_await session->settle(fresh ? 1500 : 50);
+                co_await session->settle(fresh ? 1500 : heldStreamPumpMs());  // 之后只让事件循环转一圈,同 ensureOptionStreams
             } catch (...) {
                 failure = std::current_exception();
             }

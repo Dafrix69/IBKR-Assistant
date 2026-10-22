@@ -200,6 +200,30 @@ ChaseProfile chaseProfile(const OJson& autoClose, const OJson* reason) {
     return {grace && *grace >= 0 ? std::trunc(*grace) : base.grace, step && *step >= 1 ? std::trunc(*step) : base.step, maxPct && *maxPct >= 0 ? *maxPct : base.maxPct};
 }
 
+// ================================================================ 按跌速多让
+namespace {
+std::optional<double> leadDefaultForTests;
+}
+double chaseLeadDefault() { return leadDefaultForTests.value_or(kChaseLeadDefault); }
+void setChaseLeadDefaultForTests(std::optional<double> value) { leadDefaultForTests = value; }
+
+double chaseIntervalMs(const OJson& autoClose) {
+    const auto s = js::finiteOrNull(f(&autoClose, u"chase_interval_s"));
+    return (s && *s > 0 ? *s : kChaseIntervalSDefault) * 1000;
+}
+
+double momentumLead(const QList<NaturalObs>& obs, bool isLong, double horizonMs, double mult, double nowMs) {
+    // 窗口就是改价间隔:往回取"一个间隔之前或更早的最后一笔"。不取更短:组合价是三条腿拼的,腿的报价先后到,几十毫秒里的跳动不是速度
+    if (!(mult > 0) || !(horizonMs > 0) || obs.size() < 2) return 0;
+    const NaturalObs& last = obs.last();
+    NaturalObs base = obs.first();
+    for (const NaturalObs& o : obs)
+        if (o.atMs <= nowMs - horizonMs) base = o;
+    if (!(last.atMs > base.atMs)) return 0;
+    const double adverse = isLong ? base.natural - last.natural : last.natural - base.natural;
+    return adverse > 0 ? std::round(mult * adverse * 1e4) / 1e4 : 0;
+}
+
 // ================================================================ 止损的确认秒数
 std::pair<OJson, std::optional<BreachClock>> confirmStockStop(const OJson& result, bool isLong, const OJson* confirmS, const std::optional<BreachClock>& clock,
                                                               double nowMs) {

@@ -5,6 +5,8 @@
 // C++ 与 JS 的差别(都不影响可观察结果):C++ 的协程在等的东西已经完成时不让一拍,所以 JS 那边的 drain 在这里不用。
 #pragma once
 
+#include "analysis/tracker_rules.h"
+
 #include "domain/config.h"
 #include "domain/models.h"
 #include "domain/positions.h"
@@ -666,6 +668,8 @@ public:
 // ======================================================================
 inline World::World(const OJson& s, const OJson& b) : script(s), base(b) {
     ibkr::util::setDateNowForTests([this] { return T; });
+    // 按跌速多让是 C++ 先有的(TS 版没有):对着 TS 夹具比的这一组关掉它,它自己的行为在 tst_fly_fast_exit
+    ibkr::analysis::setChaseLeadDefaultForTests(0);
     ibkr::util::setRandomUUIDForTests([this] { return u"00000000-0000-4000-8000-%1"_s.arg(++uuidN, 12, 10, QChar(u'0')); });
     ibkr::execution::setLogSinkForTests([this](const QString& line) { rec(js::object({{u"c"_s, js::S(u"log"_s)}, {u"a"_s, js::array({js::S(line)})}})); });
     setT(num(script, u"start"_s));
@@ -719,6 +723,7 @@ inline std::unique_ptr<orch::TradingEngine> World::makeEngine() {
 inline World::~World() {
     engine.reset();
     ibkr::util::setDateNowForTests({});
+    ibkr::analysis::setChaseLeadDefaultForTests(std::nullopt);
     ibkr::util::setRandomUUIDForTests({});
     ibkr::execution::setLogSinkForTests({});
     ibkr::domain::setClock(std::nullopt);

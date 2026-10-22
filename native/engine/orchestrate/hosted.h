@@ -94,6 +94,8 @@ public:
     virtual TrackExits& exits() = 0;
     /// entry 是缓存里那条托管单(就地写 warned)
     virtual void chaseWarnIfStuck(const Rec& track, Rec& entry, double limit, double natural) = 0;
+    /// 这一轮是推送提前叫醒的(orchestrate/fast_exit):峰值不推、追价照改但轮数不数、离上次改价不够一个间隔不改
+    virtual bool earlyTick() const = 0;
     virtual Rec baseRecord(const QString& instruction, const QString& channel) = 0;
     virtual void onIbError(const Rec& reqId, const Rec& errorCode, const Rec& errorString) = 0;
 };
@@ -176,6 +178,8 @@ private:
     QSet<QString> synced_;
     /// 被券商拒掉的:track_id|kind → {到期时刻, 原因}。退避期内不重挂也不再改价
     QHash<QString, Retry> hostedRetryAt_;
+    /// 追价改成的止盈单上一次改价的时刻(track_id → 毫秒):提前醒的那一轮守改价间隔用。不放进缓存项(缓存项的样子对着 TS 比)
+    QHash<QString, double> chaseAt_;
 };
 
 }  // namespace ibkr::orchestrate

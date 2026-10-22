@@ -49,6 +49,8 @@ public:
         std::optional<std::optional<double>> natural;
         domain::EtNow at;
         std::optional<util::OJson> spotTarget, spotStop;
+        /// 推送提前叫醒的这一轮:峰值不推——推峰值只在节拍那一轮,多出来的采样点更容易把一条腿晚到的价抬进峰值
+        bool early = false;
     };
     /// 一条追踪这一轮的结论:价格触发 → 标的触发 → 分批止盈 → 到点平仓,后面的只在前面都没触发时生效
     util::OJson judge(const JudgeArgs& args);

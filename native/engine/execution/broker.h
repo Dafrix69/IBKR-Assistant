@@ -208,6 +208,13 @@ public:
     util::Task<QList<util::OJson>> positions();
     /// {持仓 key: {bid, ask}}
     util::Task<util::OJson> optionQuotes(QList<util::OJson> rows);
+    /// 常驻行情流不是新订的那一轮让事件循环转几毫秒:生产 0(只转一圈)。对着 TS 夹具逐字比的券商场景换成 TS 版的 50;生产代码不调 set*ForTests
+    static int heldStreamPumpMs();
+    static void setHeldStreamPumpMsForTests(std::optional<int> ms);
+    /// 同上,只读常驻订阅的缓存:不订、不等、同步回(推送回调里当场拼组合价,orchestrate/fast_exit)。没订过的腿给 null
+    util::OJson optionQuotesNow(const QList<util::OJson>& rows);
+    /// 期权行情来一笔推送就叫一下:各会话的 onOptionTick 并成一路(连上会话时接上)。回撤掉的函数
+    std::function<void()> onOptionTick(std::function<void()> listener);
     util::Task<QList<util::OJson>> executions();
 
     // ---- 下单
@@ -275,6 +282,9 @@ private:
     contract::OrderedMap<std::shared_ptr<TickerHandle>> streams_;  // 空指针 = TS 的 null(认不出的记号)
     UpstreamWatch upstream_;
     HeldStreams optionStreams_;
+    /// onOptionTick 的回调表(shared_ptr:会话上挂的转发闭包拿着它,router 先没了也不悬空)
+    std::shared_ptr<QHash<int, std::function<void()>>> tickListeners_ = std::make_shared<QHash<int, std::function<void()>>>();
+    int nextTickListener_ = 0;
     HeldStreams stockStreams_{QString()};
     QHash<QString, int> conIdCache_;
     SessionBars sessionBars_;

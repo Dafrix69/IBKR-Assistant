@@ -5,6 +5,7 @@
 
 #include "util/ordered_json.h"
 
+#include <QList>
 #include <QString>
 
 #include <optional>
@@ -42,6 +43,25 @@ struct ChaseProfile {
 };
 bool isStopReason(const util::OJson* reason);
 ChaseProfile chaseProfile(const util::OJson& autoClose, const util::OJson* reason = nullptr);
+
+// ---- 按跌速多让(C++ 先有,TS 版没有;docs/features/tracker.md「快速下跌的追价」)
+/// 追价那一路自己看到的一笔立刻成交价与看到它的本地时刻(orchestrate/fast_exit 记,只在内存里)
+struct NaturalObs {
+    double atMs = 0;
+    double natural = 0;
+};
+/// 没填时用的值(auto_close.chase_lead / chase_interval_s)。倍数 1 不是拟合出来的数:就是"下一次能改价之前,价照刚才那样再走一段"。
+/// 0 = 不多让。间隔 1 秒 = 节拍器本来的节奏。两样都是用户可改的设置
+inline constexpr double kChaseLeadDefault = 1;
+inline constexpr double kChaseIntervalSDefault = 1;
+/// 没填倍数时用的值:生产就是 kChaseLeadDefault。对着 TS 夹具逐字比的测试(TS 版没有这一项)换成 0;生产代码不调 set*ForTests
+double chaseLeadDefault();
+void setChaseLeadDefaultForTests(std::optional<double> value);
+/// 追价改单的最短间隔(毫秒):auto_close.chase_interval_s,没填按 1 秒。也是按跌速多让的窗口
+double chaseIntervalMs(const util::OJson& autoClose);
+/// 立刻成交价正朝不利方向走时多让多少(点,≥ 0):倍数 ×(一个间隔之前或更早的最后一笔 − 此刻的)。多头不利 = 往下,空头 = 往上;
+/// 历史不够一个间隔拿最早那一笔;没在往不利方向走、观察不到两笔、倍数或窗口非正,回 0
+double momentumLead(const QList<NaturalObs>& obs, bool isLong, double horizonMs, double mult, double nowMs);
 
 // ---- 止损的确认秒数
 struct BreachClock {

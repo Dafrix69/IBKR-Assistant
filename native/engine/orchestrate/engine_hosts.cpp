@@ -39,6 +39,7 @@ public:
     }
     TrackExits& exits() override { return e_.exits(); }
     void chaseWarnIfStuck(const Rec& track, Rec& entry, double limit, double natural) override { e_.chaseWarnIfStuck(track, entry, limit, natural); }
+    bool earlyTick() const override { return e_.earlyTick; }
     Rec baseRecord(const QString& instruction, const QString& channel) override { return e_.baseRecord(instruction, channel, nullptr); }
     void onIbError(const Rec& reqId, const Rec& code, const Rec& message) override { e_.onIbError(reqId, code, message); }
 
