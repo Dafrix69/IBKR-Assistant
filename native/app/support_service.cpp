@@ -41,12 +41,6 @@ qint64 totalMemoryMb() {
     return 0;
 }
 
-QString readEngineVersion(const QString& repoDir) {
-    QFile f(QDir(repoDir).filePath(u"engine-ts/package.json"_s));
-    if (!f.open(QIODevice::ReadOnly)) return {};
-    return QJsonDocument::fromJson(f.readAll()).object().value("version"_L1).toString();
-}
-
 }  // namespace
 
 struct SupportService::Collected {
@@ -170,7 +164,7 @@ void SupportService::reveal(const QString& kind, Done done) {
     }
     if (kind == u"notices") {
         if (deps_.noticesPath.isEmpty() || !QFile::exists(deps_.noticesPath))
-            return done({}, u"这一份是打包时生成的:从源码运行时请先执行 npm run notices(在 desktop 目录下)"_s);
+            return done({}, u"这一份是打包时生成的:从源码运行时没有这份文件"_s);
         const QString failed = deps_.openPath ? deps_.openPath(deps_.noticesPath) : QString();
         return failed.isEmpty() ? done(QJsonObject{{u"ok"_s, true}}, {}) : done({}, failed);
     }
@@ -289,7 +283,8 @@ QJsonObject SupportService::appInfo() const {
         {u"configPath"_s, deps_.configPath},
         {u"repoRoot"_s, deps_.repoDir},
         {u"logPath"_s, deps_.log ? deps_.log->path() : QString()},
-        {u"engineVersion"_s, readEngineVersion(deps_.repoDir)},
+        // 引擎与界面同一次编出来(native/),版本就是应用的版本
+        {u"engineVersion"_s, deps_.appVersion},
         // 开发态只认源码运行且带 DAFRI_DEV=1(main.js 的 DEV):不带这个变量的源码运行照常自动检查更新
 #if defined(IBKR_PACKAGED)
         {u"dev"_s, false},

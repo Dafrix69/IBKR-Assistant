@@ -23,7 +23,7 @@ using namespace Qt::StringLiterals;
 
 namespace {
 
-const QString kRpcDir = QStringLiteral(IBKR_REPO_DIR "/engine-ts/baseline/rpc");
+const QString kRpcDir = QStringLiteral(IBKR_REPO_DIR "/native/spec/baseline/rpc");
 const QString kPassing = QStringLiteral(IBKR_FIXTURES_DIR "/golden_rpc_passing.json");
 
 QJsonValue readJson(const QString& path) {
@@ -184,7 +184,7 @@ private slots:
         env.insert(u"IBKR_USER_DATA_DIR"_s, dir.path());
         // 提示词与 JSON schema 资产:编译目录不在仓库里,可执行文件往上找不到,指给它(打包后的应用把它们放在资源目录里)
         env.insert(u"DAFRI_PROMPT_DIR"_s, QStringLiteral(IBKR_REPO_DIR "/prompts"));
-        env.insert(u"DAFRI_SCHEMA_DIR"_s, QStringLiteral(IBKR_REPO_DIR "/engine-ts/baseline/llm"));
+        env.insert(u"DAFRI_SCHEMA_DIR"_s, QStringLiteral(IBKR_REPO_DIR "/native/spec/baseline/llm"));
         engine.setProcessEnvironment(env);
         engine.setProcessChannelMode(QProcess::SeparateChannels);
         engine.start(QStringLiteral(IBKR_ENGINE_PATH), {u"--config"_s, settingsPath});

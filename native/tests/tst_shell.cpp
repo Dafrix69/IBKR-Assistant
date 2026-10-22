@@ -1,5 +1,5 @@
 // 界面能起来:把真的 Datrix 跑一次(--smoke-test,无窗口平台),QML 加载成功、第一帧真的画出来、退出码 0。
-// 自检不拉引擎(main.cpp 钉着);这里再把引擎目录与配置都指到不存在的地方:万一哪天自检拉了引擎,也碰不到真配置、真 TWS。
+// 自检不拉引擎(main.cpp 钉着);这里再把配置指到不存在的地方:万一哪天自检拉了引擎,也碰不到真配置、真 TWS。
 // QML 报任何一条警告(绑定里的 TypeError 之类)应用自己就以 6 退出,这里只看退出码。
 #include "shell/consent.h"
 #include "shell/engine_command.h"
@@ -18,7 +18,6 @@ namespace {
 QProcessEnvironment safeEnv(const QString& userData) {
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
     env.insert(QStringLiteral("QT_QPA_PLATFORM"), QStringLiteral("offscreen"));
-    env.insert(QStringLiteral("IBKR_TS_ENGINE_ROOT"), QStringLiteral("/nonexistent/engine-ts"));
     env.insert(QStringLiteral("DAFRI_CONFIG"), QStringLiteral("/nonexistent/settings.json"));
     // 同意记录、Qt 版的锁:临时目录,不读不写用户的那一份
     env.insert(QStringLiteral("IBKR_USER_DATA_DIR"), userData);

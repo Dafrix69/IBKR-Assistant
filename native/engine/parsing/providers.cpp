@@ -249,7 +249,7 @@ QString schemaAssetDir() {
     // TS 从模块所在目录往上找 baseline/llm;这边从可执行文件往上找(仓库里的编译目录、打包后的资源目录)
     QString d = QCoreApplication::instance() ? QCoreApplication::applicationDirPath() : QDir::currentPath();
     for (int i = 0; i < 6; ++i) {
-        for (const QString& c : {d + u"/baseline/llm"_s, d + u"/engine-ts/baseline/llm"_s})
+        for (const QString& c : {d + u"/baseline/llm"_s, d + u"/native/spec/baseline/llm"_s})
             if (QFileInfo::exists(c)) return dir = c;
         d = QFileInfo(d).absolutePath();
     }

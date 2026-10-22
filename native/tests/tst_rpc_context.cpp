@@ -59,7 +59,7 @@ struct Named : rpc::HandlerBase {
 };
 
 domain::Settings baseSettings(QTemporaryDir& dir) {
-    QFile in(QStringLiteral(IBKR_CONTRACT_DIR "/../../baseline/rpc/base_config.json"));
+    QFile in(QStringLiteral(IBKR_CONTRACT_DIR "/../baseline/rpc/base_config.json"));
     if (!in.open(QIODevice::ReadOnly)) qFatal("读不了 base_config.json");
     QJsonObject config = QJsonDocument::fromJson(in.readAll()).object();
     config.insert(u"storage"_s, QJsonObject{{u"db_path"_s, dir.filePath(u"t.db"_s)}});

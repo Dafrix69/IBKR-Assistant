@@ -239,7 +239,7 @@ private slots:
         QTemporaryDir dir;
         QByteArray configText;
         {
-            QFile base(QStringLiteral(IBKR_REPO_DIR "/engine-ts/baseline/rpc/base_config.json"));
+            QFile base(QStringLiteral(IBKR_REPO_DIR "/native/spec/baseline/rpc/base_config.json"));
             QVERIFY(base.open(QIODevice::ReadOnly));
             configText = base.readAll();
         }

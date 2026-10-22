@@ -48,7 +48,7 @@ using ibkr::util::Task;
 
 namespace {
 
-const QString kRpcDir = QStringLiteral(IBKR_CONTRACT_DIR "/../../baseline/rpc");
+const QString kRpcDir = QStringLiteral(IBKR_CONTRACT_DIR "/../baseline/rpc");
 
 QJsonValue readJson(const QString& path) {
     QFile f(path);
@@ -254,7 +254,7 @@ private slots:
             QVERIFY(f.open(QIODevice::WriteOnly));
             f.write(QJsonDocument(config).toJson(QJsonDocument::Indented));
         }
-        ibkr::parsing::providers::setSchemaAssetDir(QStringLiteral(IBKR_CONTRACT_DIR "/../../baseline/llm"));
+        ibkr::parsing::providers::setSchemaAssetDir(QStringLiteral(IBKR_CONTRACT_DIR "/../baseline/llm"));
         const double clock = QDateTime::fromString(u"2026-08-14T10:32:00-04:00"_s, Qt::ISODate).toMSecsSinceEpoch();
         ibkr::domain::setClock(clock);
         ibkr::util::setDateNowForTests([clock] { return clock; });

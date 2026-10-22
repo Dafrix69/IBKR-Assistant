@@ -1,13 +1,13 @@
 name: native
 
-# Qt / C++ 重写(native/,docs/briefs/qt-rewrite.md)。单独一条工作流:它还在阶段 0,
-# 先看它在两个平台上稳不稳,再决定要不要并进 ci.yml 当必过项。
+# Qt / C++ 版(native/):qt 分支上唯一的一条工作流。Electron 版与 engine-ts 已删(main 分支与
+# archive/electron-final-2026-10-22 还留着它们)。
 on:
   push:
     branches: [qt]
-    paths: ["native/**", "engine-ts/src/contract/**", ".github/workflows/native.yml"]
+    paths: ["native/**", "prompts/**", "config/**", ".github/workflows/native.yml"]
   pull_request:
-    paths: ["native/**", "engine-ts/src/contract/**", ".github/workflows/native.yml"]
+    paths: ["native/**", "prompts/**", "config/**", ".github/workflows/native.yml"]
 
 permissions:
   contents: read

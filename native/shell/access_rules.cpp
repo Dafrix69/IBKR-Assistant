@@ -558,7 +558,7 @@ const QJsonArray& inboxSteps() {
         QJsonObject{{u"title"_s, u"信任显示名"_s},
                     {u"detail"_s, u"对方发一条之后,在「频道里最近看到的消息」里点「信任」(条目是 local:显示名)。注意:频道里别人把昵称改成一样的,软件分不出来——只适合私密小群。"_s}},
         QJsonObject{{u"title"_s, u"不用安装包、或者想自己运行脚本"_s},
-                    {u"detail"_s, u"频道名留空,自己运行仓库里的 desktop/tools/discord-window-follow.swift:swift 那个文件 --channel 频道名 --out 上面显示的收件文件路径;辅助功能权限给运行它的终端。"_s}},
+                    {u"detail"_s, u"频道名留空,自己运行仓库里的 native/tools/discord-window-follow.swift:swift 那个文件 --channel 频道名 --out 上面显示的收件文件路径;辅助功能权限给运行它的终端。"_s}},
     };
     return s;
 }

@@ -654,7 +654,7 @@ inline Svc buildH2(World& w, Host& host, const OJson& script, Runner&) {
 /// 每个域的测试共用的循环:读夹具,逐场景跑,不一样的列出来
 inline QStringList replayFixture(const QString& fixtureName) {
     // 解析器要读的 schema 资产(engine-ts/baseline/llm/*.json):IBKR_CONTRACT_DIR = <repo>/engine-ts/src/contract
-    ibkr::parsing::providers::setSchemaAssetDir(QStringLiteral(IBKR_CONTRACT_DIR "/../../baseline/llm"));
+    ibkr::parsing::providers::setSchemaAssetDir(QStringLiteral(IBKR_CONTRACT_DIR "/../baseline/llm"));
     const OJson fx = jsfix::load(fixtureName);
     const OJson& base = *fx.get(u"base"_s);
     QStringList failures;

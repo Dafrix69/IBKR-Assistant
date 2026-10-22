@@ -1,154 +1,47 @@
 # CLAUDE.md — Datrix 的工作规矩
 
-这个文件只写**约束**,不写说明。项目是什么、怎么跑、每个功能怎么设计,看 `README.md` 与 `docs/features/`
+这个文件只写**约束**,不写说明。项目是什么、怎么跑、每个功能怎么设计,看 `README.md`、`native/README.md` 与 `docs/features/`
 (目录在 `docs/features/README.md`);动某个功能之前先读它对应的那份 feature 文档,改完把文档改成改动之后的样子。
 
 ## 仓库
 
-- `engine-ts/` 交易引擎(TypeScript,Node ≥ 22,ESM,`.js` 后缀 import)。`src/` 实现、`tests/` vitest、
-  `baseline/` 黄金基线。
-- `desktop/` Electron。`main.js` / `preload.js` 主进程与桥,`renderer-react/src/` 界面(React 19 + AntD 6 + zustand)。
+- 只有一个应用:`native/` 里的 Qt 6 / C++ 版。`qt` 分支是主线。Electron 版(`desktop/`)与 TypeScript 引擎(`engine-ts/`)已删,
+  **不要再建、不要往里加东西**;要看原来怎么写的,去 `main` 分支或 `archive/electron-final-2026-10-22`。
+- `native/engine/` 交易引擎(`ibkr-engine`,C++ 子进程)、`native/shell/` 界面进程里不画界面的那一半(只用 Qt Core)、
+  `native/app/` QML 界面、`native/spec/` 引擎与界面的契约类型(`spec/contract/*.ts`,只当数据读)与录制基线(`spec/baseline/`)。
 - 引擎与界面之间只有 stdio JSON-RPC,没有端口。真实账号永远不进提示词、不进日志、不进仓库。
-- `native/` Qt 6 / C++ 重写(`docs/briefs/qt-rewrite.md`)。`qt` 分支是主线、新开发进这里;`main` 只给已发布的 Electron 版出补丁。怎么编、怎么跑见 `native/README.md`;TWS 线协议不照着 IB 的 GPL 源码写。
+- TWS 线协议不照着 IB 的 GPL 源码写(见 `native/README.md` 的规矩)。
 
 ## 每次改完必须跑
 
 ```
-cd engine-ts && npm run lint && npx tsc --noEmit && npx vitest run
-cd desktop   && npm run lint && npm run ui:typecheck
-cd native    && cmake --preset mac-debug && cmake --build --preset mac-debug && ctest --preset mac-debug   # 动了 native/ 才跑
+cd native && cmake --preset mac-debug && cmake --build --preset mac-debug && ctest --preset mac-debug
 ```
 
-黄金基线红了不等于代码错了,等于**行为变了**。先判断是不是刻意的:是,`npm run golden:update` 并在 commit
-信息里说明改了哪个口径;不是,改代码。绝不为了让基线过而改基线。
+动了线程、协程、生命周期的,再跑一遍 `mac-asan` 与 `mac-tsan`。
 
-基线分两层,红了先分清是哪一层:
-
-- **参数层** `golden-params.spec.ts`(`baseline/golden/params.json`):进了钱路径或定价的那些数此刻是多少——止盈策略的倍数与钟点、
-  校准出来的 IV 模型、追价节奏、跳动、各段配置的默认值。它红 = 参数变了(重新校准、改了默认值),机制层里用到它的用例跟着红是预期的。
-- **机制层** 其余 `golden-*.spec.ts`:同样的输入、同样的参数,算出来的是什么。参数层绿、它红 = 机制自己变了,这才是要查的。
-- 基线只能说"和上次不一样",说不了"是对的"(期望值由这份代码自己重生成)。定价对不对由 `pricing-identities.spec.ts` 管:
-  平价关系、σ → 0 退化成内在价值、蝶价出不了 [0, 翼宽]、反解回得去——每一条都有独立于实现的答案。动定价函数先看它。
-
-## 引擎分层(依赖只能往下)
-
-```
-transport     rpc.ts(转出的壳)  rpc/server.ts  rpc/perfLog.ts(每个请求的排队与执行时长、每十分钟一行分位数)  rpc/context.ts  rpc/contractMethods.ts  rpc/params.ts  rpc/handlers/*.ts  cli.ts
-orchestrate   engine.ts  engine/*.ts(hosted 托管单、reconcile 执行对账、callbacks 回报落库、clock)  tracker.ts  services/*.ts
-execution     broker.ts  ibContracts.ts(怎么拼一张 IB 合约、期权链订哪些行权价)  futuBroker.ts  ibSession.ts  ibExecHistory.ts(向 TWS 要前几天的成交:另一条只读、用完就关的连接)  ibBars.ts(K 线的日盘与夜盘两条线:怎么取、怎么拼、闲着的那条留着不重取;指数的盘外按期货推算)  ibTypes.ts  tws.ts  futu.ts  futuBridge.ts  optionMarks.ts(蝴蝶测算取行情:自己的流,不碰盯盘的)  heldStreams.ts(持仓的常驻行情订阅:平掉的撤掉)  qualifyGate.ts(TWS 不回合约确认时只读取数按会话当场答;下单路径不受闸)  accountFeeds.ts(账户当日盈亏与净值:哪条会话管这个账号、是不是美元)  autoMid.ts(AUTO_MID 按盘口价差的一份让价)
-parsing       validator.ts  providers.ts  prompts.ts  shorthand.ts  llm.ts  embeddings.ts  follow.ts(Discord 跟单的判定规则、盘口的换算、成交后建追踪的入参与核对规则)
-analysis      backtest backtestLab priceaction screener research ideaRetrieval optionwall anomaly flyexit tradereview tradeOutcomes performance leaders fillsCsv optionTradesCsv optionPositionsCsv tradeSimilar ibtrades macro market alerts maTouch execQuality signalOutcomes trackerDrawdown trackerSpotStop trackerExits(到点平仓、分批止盈、止损类的追价节奏、标的止损的确认) openRisk(账户在手的期权敞口) assignmentRisk(到期日空头腿在不在实值里) sessionEm(从日内剧本的底账取当天的 EM) ivPricing playbook(SPX 日内剧本:预期波动区间与状态机) flyPlan flyCalibration flyIvModel(校准出来的参数,脚本生成,不手改) inference(小样本的区间与检验:Wilson / t / Welch / 秩和 / 中位数区间,按天成簇;纯数学,零 import) econCalendar(重要事件:内置的官方发布日程、公开日历源的解析与合并) crossMarket(跨市场跟跌套利:美股大动而韩股 / A 股的美股 ETF 没同步时的判定) symbolMentions(一句话提到了哪几只标的) intelItems(各处的记录折成情报时间线上的一条)
-domain        config.ts  models.ts  store.ts  storeSafety.ts(库的版本号、完整性、备份)  importedTrades.ts  ideaVectors.ts  signalLog.ts  positions.ts  combos.ts(期权腿 → 组合)  marketdata.ts  ivSamples.ts(自己攒的期权 IV,文件读写)  playbookLog.ts(日内剧本的底账,文件读写)  followLog.ts(跟单日志与盘口表)  followInbox.ts(跟单的本地收件:收件文件怎么读)  followReader.ts(跟单的本地收件:读窗口的程序怎么起、怎么看管)  riskQueries.ts(重复单防抖与保护规则从库里现算的那几样,只读)  messageLog.ts(情报的消息底账:信任的人说的每一句与认出的标的) flyExitSweep flyExitSweepSpec flyExitSweepStats flyExitSweepReport(蝶式出场参数的离线扫描:只用记下来的盘口,判定函数由调用方递进来)
-util          py.ts  pyjson.ts  tz.ts  notify.ts  keychain.ts  keychainChild.ts(凭证子进程)  secrets.ts(引擎里凭证读写的入口)  killswitch.ts  protections.ts  riskBudget.ts  rpcError.ts  marketCalendar.ts(内置休市日历)  discordGateway.ts(Discord Gateway 的最小客户端,只读)
-contract      contract/*.ts(纯类型,零 import,谁都能引)  contract/schema/*.ts(入参的 zod 校验,只给 rpc/ 用)
-```
-
-- 下层不 import 上层。`analysis` 这一层是纯计算,不认识券商、引擎、RPC,必须能离线单跑。
-- 执行层只认合约、订单、行情。它需要的领域概念已经有家:持仓身份与托管单计划在 `positions.ts`,
-  K 线周期表与量价快照在 `marketdata.ts`,IB 会话接口在 `ibTypes.ts`。不从 `tracker` / `priceaction` / `anomaly` 拿。
-- 不许循环 import,类型环也不许(`import type` 的环说明接口放错了文件)。
-- 引擎进程里不直接调 `keychain.ts`:它是同步的原生调用,macOS 弹窗问人时整个事件循环停住(盯盘跟着停)。
-  一律走 `secrets.ts`(子进程、有时限),见 `docs/features/credentials.md`;depcruise 的 `keychain-off-the-loop` 钉着。
-- `rpc/server.ts` 只管传输、生命周期、装配,**不写业务**。一个方法属于哪个域就进 `rpc/handlers/<域>.ts`;
-  handler 之间不互相 import,也不 import server——两个域都要的东西下沉:带状态的(缓存、循环、迁移标记)进
-  `services/`,纯函数进 `rpc/params.ts`。`services/` 不认识 RPC,只认 `ServiceHost`;settings / router / engine
-  每次从宿主现取,不在构造时存一份(配置会重载、券商会重连、引擎会重建)。
-- 规则在 `engine-ts/.dependency-cruiser.cjs`,`npm run depcruise` 必须零 error(CI 里排在 lint 之后)。
-  新建文件时把它归进上面某一层,并加到那条正则里。
-
-## 界面分层
-
-`shell → pages → lib → store → bridge`;`ui/` 与 `theme/` 只做视觉,不 import 业务。页面之间不互相 import,
-要共享的下沉到 `lib/`(组件、纯函数)或 `store/`(跨页状态、轮询)。轮询循环只能在 `store/` 里,
-不挂在组件生命周期上——切走页面追踪器还得跑。规则在 `desktop/.dependency-cruiser.cjs`,`npm run depcruise`。
-
-## 主进程(`desktop/*.js`)
-
-- `main.js` 只管窗口、菜单、引擎的生与死、把通道接起来。**判断写在旁边的纯模块里**:`config-guard.js` `store-guard.js`
-  `consent.js` `confirm-grants.js` `redact.js` `diagnostics.js` `accounts-setup.js` 都不 require electron,
-  `engine-ts/tests/desktop-*.spec.ts` 直接跑它们。新加的主进程逻辑照这个样子写:能离线测的部分单拎一个文件。
-  接线由 `tests/desktop-main.spec.ts` 管:它用一个假的 `electron` 把 `main.js` 真的跑起来、引擎子进程是真的。
-  新加通道、改放行的先后次序之后,在那里补一条。
-- 新的主进程文件要进三处:`package.json` 的 `build.files`(漏了装好的应用一启动就 `Cannot find module`,
-  `desktop-update.spec` 钉着)、`eslint.config.mjs` 的主进程那一组、以及对应的测试。
-- 每个 `ipcMain.handle` 第一句核对发起方。界面递不进路径:写到哪、打开哪个目录,由主进程或它弹的系统对话框定。
-- **会发单 / 授权发单 / 开闸门 / 放宽限额的新通道,要进 `confirm-grants.js` 的 `requiredGrants`**;
-  `__confirmed` 只说明调用是从桥上走的,不等于用户确认过。
-- 落盘的日志一律过 `redact.js`。新加一种会进日志的敏感内容,先在那里加规则和测试。
-- 引擎用专门的退出码说"别重启我":`EXIT_CONFIG`(78)、`EXIT_STORE`(74)。两头各有一个常量,测试对着。
-
-## 引擎 ↔ 界面契约
-
-- **新方法只能从契约加**,顺序是:`contract/<域>.ts` 写入参与返回的类型 → `contract/index.ts` 的 `RpcMethods` 登记 →
-  `contract/schema/` 配入参 schema(漏了是编译错)→ 所属域 handler 用 `contractMethods({...})` 实现 → `main.js` 的
-  `ALLOWED_RPC`(会发单的还要进 `SENSITIVE_RPC`)→ `preload.js` → `bridge.ts` 的 `DafriBridge` 用 `RpcParams` / `RpcResult` 写签名。
-  方法要走本地道 / 读道,还要进 `server.ts` 的道表。`tests/desktop-whitelist.spec.ts` 与 `tests/contract.spec.ts` 少一处会红。
-- `tests/contract.spec.ts` 的 `LEGACY_METHODS` **已于 2026-09-20 空掉**(当时 77 个方法、现在 93 个,全在契约里)。那张表留着是闸门:
-  想绕过契约就得先往里加一行,而那条用例不让。**只许变短,不许加。**
-- 契约的类型文件(`contract/` 顶层)**不 import 任何东西**:界面的 tsc 会顺着 `bridge.ts` 走进来,而 CI 里界面那一路
-  不装引擎的依赖。界面只有 `bridge.ts` 能跨进引擎目录,只许 `import type`,只许进 `contract/` 顶层。
-- schema 只管**结构**(有哪些字段、什么 JSON 类型);领域校验(代码形状、上限、阈值范围)留在 handler,报 handler 自己那句人话。
-  不要让 schema 比老 handler 严——那是改行为(例:异动阈值一直认数字串,schema 就不能写成 `z.number()`)。
-  缺必填字段归 schema 报;唯一的例外是 golden-rpc 里有请求没带它、期望的却是 handler 某句原话的字段(`ideas.update` 不带 id →
-  「缺少想法 id」;`backtest.run` 只给一个坏代码 →「股票代码不合法」,检查的先后次序也算行为),用 `schema/kit.ts` 的
-  `requiredButReportedByHandler()`,不要为了迁移去 `golden:update`。
-- **会发单 / 授权发单的方法(`tracker.add` / `update` / `close_now`、`instruction.submit`)反过来,schema 必须 `.strict()`**:不认识的键当场拒。
-  zod 默认把没列的键静默丢掉——对别的域无所谓,对 `tracker.add` 就是"追踪建成了,那道保护没设上"。这类方法还要登记进
-  `contract/index.ts` 的 `SENSITIVE_METHODS`(`desktop-whitelist.spec` 拿它和 `main.js` 的 `SENSITIVE_RPC` 双向对)。
-  动它们的入参之前先看 `tests/tracker-rpc.spec.ts`:输入是界面真实的载荷形状(数值全是字符串,`''` = 不设),迁移不许改它的断言。
-- 界面拼 RPC 载荷的对象字面量要**直接标上契约类型**(`const spec: TrackerAddSpec = {…}`)。TypeScript 只对标了类型的字面量查多余的键;
-  先拼成没标类型的变量再传进去,写错的键名编译期查不出来。
-- 改钱路径上的文件(`tracker.ts` `engine.ts` `store.ts` `broker.ts` `flyexit.ts`)时如果本意只是动类型:改动前后各编译一次,
-  去掉注释比对 `dist/src/<文件>.js`,必须逐字节一致。这比"我只改了类型"这句话可靠。
-- 老方法的返回结构改字段名 = 破坏契约,而且编译器看不见。改之前 grep `renderer-react/src` 里所有用到该字段的地方。
-
-## 类型
-
-- `type Rec = Record<string, any>` 只允许出现在对外的四个文件:`broker.ts` `ibSession.ts` `futuBroker.ts`
-  `providers.ts`(券商与模型回包的结构由对方定)。其它文件不新声明 `Rec`,新代码不用 `any`;
-  SQLite 行、追踪器行、RPC 入参都有固定字段,写成接口。eslint 有一张存量豁免表(`eslint.config.js`),
-  **那张表只许变短**;`rpc/` 与 `services/` 里搬家带过来的老代码共用 `services/host.ts` 的那一处声明,新 handler 不用它。
-- `strict` + `noUncheckedIndexedAccess` 开着,不要用 `!` 断言绕过,用 `?? 兜底值`。
-
-## 体积预算
-
-引擎单文件 1,500 行、函数 150 行、页面组件 400 行。超线不是不能提交,是提交前先回答"它是不是两个东西"。
-**文件行数这一条有闸门**:`tests/size-budget.spec.ts`——已超线的文件钉在 `OVER_BUDGET` 里,
-**那张表只许变短、数字只许变小**;没超线的文件新超线也会红(同 `LEGACY_METHODS` 的规矩)。
-真要让某个文件变长,就得去改那个数字——改的那一刻正好回答上面那句话。
-已知超线且待拆的:`engine.ts`(2026-09-20 托管单 → `engine/hosted.ts`、执行对账 → `engine/reconcile.ts`、
-回报落库 → `engine/callbacks.ts`;2026-09-27 本地速记 → `engine/localShorthand.ts`、托管追踪的触发处置 →
-`engine/hosted.ts` 的 `onTriggered`、平仓识别 → `engine/closing.ts`;2026-09-28 `localIsoSeconds` → `engine/clock.ts`,还剩 1,753 行。**另有两个方法超了 150 行的函数预算:
-`handleInstruction` 230 行、`pollTrackers` 154 行** —— 拆它时要顺带切开,不能只搬不动。
-四簇与建议顺序量在体检报告里)、
-`broker.ts`(2026-09-21 合约工具函数已搬进 `ibContracts.ts`,还剩 2,400 行 —— **大头是 `BrokerRouter`
-这个类本身:2,006 行,占 84%**。再往下拆要拆类:按"连接与会话 / 行情与订阅 / 下单与撤单 / 持仓与回报"
-四件事分,那是一件要单独判断的事,别顺手做)。
-**往这两个文件里加新功能之前,先看它是不是该去一个新文件。**(`rpc.ts` 已于 2026-09-19 按域拆完,
-最大的一个 handler 不到 450 行。)
+基线红了不等于代码错了,等于**行为变了**。先判断是不是刻意的:是,改期望值并在 commit 信息里说明改了哪个口径;不是,改代码。
+绝不为了让基线过而改基线。`tests/fixtures/` 里的期望值原来由 TS / React 原版现算,原版已删,往后只能手改:改之前先写清楚新的口径。
+`tests/fixtures/golden_rpc_passing.json` 只许变长。
 
 ## 加东西之前
 
-- 新依赖:先读 `docs/features/dependencies.md` 的"刻意不引入的"表。要加,写清楚为什么现成的更对,以及打进
-  安装包多大;桌面端主进程 `require` 的放 `dependencies`,渲染层的放 `devDependencies`。
-- 新指标 / 新数值算法:自己写,不引技术指标库——平滑口径不同就是换数,黄金基线会全红。
+- 新依赖:先读 `docs/features/dependencies.md` 的"刻意不引入的"表。要加,写清楚为什么现成的更对,以及打进安装包多大。
+- 新指标 / 新数值算法:自己写,不引技术指标库——平滑口径不同就是换数,基线会全红。
 - 新提示词:`prompts/` 按版本号只增不改,`config` 里 `prompt_version` 切换。
-- 进定价的参数不写经验值:拿历史数据估,估的方法进纯函数并用已知答案的合成数据测,估出来的那一份写明样本、检验结果与局限
-  (样子见 `flyCalibration.ts` / `flyIvModel.ts` / `scripts/calibrate-fly-iv.mjs`)。原始行情数据不进仓库。
+- 进定价的参数不写经验值:拿历史数据估,估的方法进纯函数并用已知答案的合成数据测,估出来的那一份写明样本、检验结果与局限。原始行情数据不进仓库。
 - 新功能:`docs/features/<名字>.md` 一份,写设计决策与口径,不写操作手册,并在 `docs/features/README.md` 的目录里加一行。
   feature 文档只写现在的样子:不写日期、不写"以前 / 后来改成"、不写修过的缺陷与每一次真机核对的经过(历史在 git 里);
-  哪些路径已在真机核对、哪些只有离线测试,写成一段当前状态。一条规则的理由用一句话写在规则旁边。事故写 `docs/journal/`。
-  用户看得见的改动还要进两处:`CHANGELOG.md` 的「未发布」(发布页与「关于 → 更新」显示的就是它),
-  以及 `docs/user-guide/` 里对应的那一页。
-- 改条款文本(`docs/legal/`)的实质内容:三份开头的「版本」与 `desktop/consent.js` 的 `TERMS_VERSION` 一起改成新日期。
-- 改交易库的表结构(加列以外的):`storeSafety.ts` 的 `SCHEMA_VERSION` 加一,`store.ts` 的 `migrate` 里写迁移。
-- 新的外部域名(引擎要连一个新的数据源):先改 `docs/legal/privacy.md`,`desktop-consent.spec` 钉着域名清单。
+  哪些路径已在真机核对、哪些只有离线测试,写成一段当前状态。事故写 `docs/journal/`。
+  用户看得见的改动还要进两处:`CHANGELOG.md` 的「未发布」,以及 `docs/user-guide/` 里对应的那一页。
+- 会发单 / 授权发单 / 开闸门 / 放宽限额的新 RPC 方法,要进 `native/shell/rpc_policy` 的敏感表与 `confirm_grants` 的授权表。
+- 改条款文本(`docs/legal/`)的实质内容:三份开头的「版本」与 `native/shell/consent` 的 `kTermsVersion` 一起改成新日期。
+- 新的外部域名(引擎要连一个新的数据源):先改 `docs/legal/privacy.md`。
+- 落盘的日志一律过脱敏(`engine/util/redact`);新加一种会进日志的敏感内容,先在那里加规则和测试。
 
 ## 不做的事
 
-- 不接 Prettier,不开 stylistic lint 规则,不重排别人手调过的对齐。
-- 不在测试里连真券商、不发真单。`tests/` 全部离线,新测试也必须离线。
-- 不改 `baseline/` 里的 `.db` 与 `golden/*.json` 手工内容,只通过 `golden:update` 重生成。
-- 不把 `config/settings.json`、`~/`、`.claude/` 提交进仓库。
+- 不接格式化工具,不重排别人手调过的对齐。
+- 不在测试里连真券商、不发真单。`native/tests/` 全部离线,新测试也必须离线;起应用的测试设 `IBKR_USER_DATA_DIR` 指到临时目录。
+- 不把 `config/settings.json`、`~/`、`.claude/`、真机录的 `*.twsrec` 提交进仓库。
 - 不覆盖已经发出去的版本。要改就发新的补丁版本。
-- 不把 Electron 升到 42 及以上,直到有了正式签名的包(42 起 macOS 的系统通知要求签名)。

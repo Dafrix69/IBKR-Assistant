@@ -3,7 +3,7 @@
 // 接过来的 Electron 主进程职责(desktop/main.js、rpc-client.js、store/status.ts),在 native/shell/:
 // 引擎的生与死(配置 / 交易库坏了不重启、别的退避重启、心跳、条件单轮询)、状态快照、单实例。页面从这里往后一页页搬。
 //
-//   Datrix [--engine ts|native|preview|none] [--config 配置] [--ts-engine-root engine-ts 目录] [--native-engine ibkr-engine]
+//   Datrix [--engine native|preview|none] [--config 配置] [--native-engine ibkr-engine]
 //   Datrix --smoke-test     # 不拉引擎;窗口建出来、真的画完第一帧就退出(测试与 CI 用);15 秒画不出来退出码 4
 //
 // 配置的找法同 Electron 版开发时:--config → 环境变量 DAFRI_CONFIG → 仓库里的 config/settings.json(真配置:连 TWS、真的交易库)。
@@ -115,16 +115,15 @@ int main(int argc, char* argv[]) {
     QCommandLineParser cli;
     cli.addHelpOption();
     const QCommandLineOption smokeOption(u"smoke-test"_s, u"不拉引擎,画完第一帧就退出"_s);
-    const QCommandLineOption engineOption(u"engine"_s, u"拉哪个引擎:ts(默认)、native、none"_s, u"kind"_s, u"ts"_s);
+    const QCommandLineOption engineOption(u"engine"_s, u"拉哪个引擎:native(默认,C++ 引擎)、preview、none"_s, u"kind"_s, u"native"_s);
     const QCommandLineOption configOption(u"config"_s, u"配置文件"_s, u"path"_s);
-    const QCommandLineOption tsRootOption(u"ts-engine-root"_s, u"engine-ts 目录(含 dist/src/cli.js)"_s, u"dir"_s);
     const QCommandLineOption dumpOption(u"dump-texts"_s, u"截图时顺带把看得见的每一段字(内容、在窗口里的位置、字号字重、颜色)写成 JSON(和 React 版对排版用)"_s, u"json"_s);
     const QCommandLineOption shotOption(u"screenshot"_s, u"引擎回了状态、画好之后抓一张 PNG 就退出(对比用)"_s, u"png"_s);
     const QCommandLineOption nativeOption(u"native-engine"_s, u"C++ 引擎 ibkr-engine 的路径"_s, u"path"_s);
     const QCommandLineOption openOption(u"open"_s, u"截图前先打开:all = 重要事件的「全部」,act = 第一条事件的「应对」,popup = 提醒小窗,page:<页>[@y] = 切到那一页再滚到 y(截图对比用)"_s, u"what"_s);
     const QCommandLineOption quitAfterOption(u"quit-after"_s, u"这么多毫秒后按 ⌘Q 那条路退出(测试退出的收尾用)"_s, u"ms"_s);
     const QCommandLineOption schemeOption(u"color-scheme"_s, u"light 或 dark:不跟系统,按这个画(截图对比用)"_s, u"scheme"_s);
-    cli.addOptions({smokeOption, engineOption, configOption, tsRootOption, nativeOption, shotOption, dumpOption, schemeOption, openOption, quitAfterOption});
+    cli.addOptions({smokeOption, engineOption, configOption, nativeOption, shotOption, dumpOption, schemeOption, openOption, quitAfterOption});
     cli.process(app);
 
     const bool smoke = cli.isSet(smokeOption);
@@ -132,18 +131,17 @@ int main(int argc, char* argv[]) {
     // 图表样例(--open chart:<n>)只放 fixtures 里的场景:没说用哪个引擎就用预览台的,别顺手按真配置拉起交易引擎
     const bool chartFixture = cli.value(openOption).startsWith(u"chart:"_s);
     const QString engineKind = smoke ? u"none"_s : chartFixture && !cli.isSet(engineOption) ? u"preview"_s : cli.value(engineOption);
-    if (engineKind != u"ts" && engineKind != u"native" && engineKind != u"none" && engineKind != u"preview") {
-        std::fprintf(stderr, "--engine 只认 ts、native、preview、none(收到 %s)\n", qPrintable(engineKind));
+    if (engineKind != u"native" && engineKind != u"none" && engineKind != u"preview") {
+        std::fprintf(stderr, "--engine 只认 native、preview、none(收到 %s)\n", qPrintable(engineKind));
         return 2;
     }
     const QString repo = QStringLiteral(IBKR_REPO_DIR);
     const QString configPath = firstNonEmpty({cli.value(configOption), qEnvironmentVariable("DAFRI_CONFIG"), QDir(repo).filePath(u"config/settings.json"_s)});
-    const QString tsRoot = firstNonEmpty({cli.value(tsRootOption), qEnvironmentVariable("IBKR_TS_ENGINE_ROOT"), QDir(repo).filePath(u"engine-ts"_s)});
     const QString nativePath = firstNonEmpty({cli.value(nativeOption), QStringLiteral(IBKR_NATIVE_ENGINE_PATH)});
 
     // 第一次打开:配置还没有,从示例建一份(main.js 的 ensureConfigExists)。只在要拉真引擎时做;自检、预览不碰配置
     bool configCreated = false;
-    if ((engineKind == u"ts" || engineKind == u"native") && !QFile::exists(configPath)) {
+    if (engineKind == u"native" && !QFile::exists(configPath)) {
         const QString example = QDir(repo).filePath(u"config/settings.example.json"_s);
         if (QFile::exists(example)) {
             QDir().mkpath(QFileInfo(configPath).absolutePath());
@@ -159,11 +157,9 @@ int main(int argc, char* argv[]) {
 
     shell::EngineResolver resolver;
     if (engineKind == u"native") {
-        resolver = [nativePath, configPath] { return shell::resolveNativeEngine(nativePath, configPath); };
+        resolver = [nativePath, configPath, repo] { return shell::resolveNativeEngine(nativePath, configPath, repo); };
     } else if (engineKind == u"preview") {
         resolver = [repo] { return shell::resolvePreviewEngine(repo); };
-    } else if (engineKind == u"ts") {
-        resolver = [tsRoot, configPath] { return shell::resolveTsEngine({tsRoot, configPath, {}}); };
     }
 
     const QString userDataDir = shell::electronUserDataDirs().first();
@@ -263,7 +259,8 @@ int main(int argc, char* argv[]) {
     app::SupportService support({
         .engine = &engine, .supervisor = &supervisor, .log = &logFile, .alerter = &alerter,
         .configPath = configPath, .userDataDir = userDataDir, .repoDir = repo,
-        .noticesPath = QDir(repo).filePath(u"desktop/build/THIRD-PARTY-NOTICES.txt"_s),
+        // 打包时放进 .app 的 Resources;从源码运行时没有
+        .noticesPath = QDir(QCoreApplication::applicationDirPath()).filePath(u"../Resources/THIRD-PARTY-NOTICES.txt"_s),
         .appVersion = QCoreApplication::applicationVersion(),
         .confirm = [](const app::Confirm& c) {
             QMessageBox box(c.icon == u"error" ? QMessageBox::Critical : c.icon == u"info" ? QMessageBox::Information : QMessageBox::Warning, c.title, c.message);
@@ -293,7 +290,7 @@ int main(int argc, char* argv[]) {
             return o;
         },
         // 只有接真引擎(ts / native)才改配置、换交易库;预览、自检、截图一律不碰
-        .readOnly = engineKind != u"ts" && engineKind != u"native",
+        .readOnly = engineKind != u"native",
     });
     // 帮助 → 导出诊断信息…:和界面上的按钮走同一条路,结果写在横幅上(同 SupportPanel.tsx)
     QObject::connect(&desktop, &app::DesktopShell::supportRequested, &support, [&support, &store](const QString& action) {
@@ -596,7 +593,7 @@ int main(int argc, char* argv[]) {
         records.load();
         pendingList.load();
         updates.check(false);
-    } else if (engineKind == u"ts" || engineKind == u"native") {
+    } else if (engineKind == u"native") {
         QString blocker = shell::engineStartBlocker(shell::electronUserDataDirs(), shell::localHostName());
         if (blocker.isEmpty()) {
             const QString lockPath = QDir(shell::electronUserDataDirs().first()).filePath(u"qt-shell.lock"_s);

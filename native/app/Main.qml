@@ -78,7 +78,7 @@ Window {
     property var aboutPage: null
     property var devCharts: null
     property var flyStore: null
-    property string engineMode: "ts"
+    property string engineMode: "native"
 
     readonly property var st: statusStore ? statusStore.status : ({})
     readonly property bool mac: Qt.platform.os === "osx"

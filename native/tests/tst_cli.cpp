@@ -75,7 +75,7 @@ struct Run {
 class TestCli : public QObject {
     Q_OBJECT
 private slots:
-    void initTestCase() { parsing::providers::setSchemaAssetDir(QDir::cleanPath(QStringLiteral(IBKR_CONTRACT_DIR "/../../baseline/llm"))); }
+    void initTestCase() { parsing::providers::setSchemaAssetDir(QDir::cleanPath(QStringLiteral(IBKR_CONTRACT_DIR "/../baseline/llm"))); }
     void cleanup() { domain::setClock(std::nullopt); }
 
     void scenariosMatchTs() {

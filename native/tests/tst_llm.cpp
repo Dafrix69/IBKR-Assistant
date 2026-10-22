@@ -431,7 +431,7 @@ private slots:
     void initTestCase() {
         fx_ = jsfix::load(u"llm.json"_s);
         scrubEnv();
-        pv::setSchemaAssetDir(QStringLiteral(IBKR_REPO_DIR) + u"/engine-ts/baseline/llm"_s);
+        pv::setSchemaAssetDir(QStringLiteral(IBKR_REPO_DIR) + u"/native/spec/baseline/llm"_s);
         installHooks();
     }
 
@@ -559,7 +559,7 @@ private slots:
     }
 
     void schemas() {
-        const QString assets = QStringLiteral(IBKR_REPO_DIR) + u"/engine-ts/baseline/llm"_s;
+        const QString assets = QStringLiteral(IBKR_REPO_DIR) + u"/native/spec/baseline/llm"_s;
         for (const OJson& c : fx_.get(u"pure"_s)->get(u"schemas"_s)->items) {
             OJson want = c;
             JSFIX_EXPECT(want, [&] {
