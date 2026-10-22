@@ -1,0 +1,7 @@
+# engine 簇的对拍测试(世界与夹具见 engine_world.h / fixtures/engine_world.mjs)
+ibkr_test(tst_engine_world js_fixture.h engine_world.h)
+target_link_libraries(tst_engine_world PRIVATE ibkr_orchestrate Qt6::Test)
+ibkr_test(tst_engine_pure js_fixture.h engine_world.h)
+target_link_libraries(tst_engine_pure PRIVATE ibkr_orchestrate Qt6::Test)
+ibkr_test(tst_engine_guards js_fixture.h engine_world.h)
+target_link_libraries(tst_engine_guards PRIVATE ibkr_orchestrate Qt6::Test)

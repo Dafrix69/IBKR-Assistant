@@ -1,0 +1,1743 @@
+{
+  "generator": "native/tests/fixtures/gen_feed_rules.mjs",
+  "tz": "Asia/Shanghai",
+  "stateLabel": {
+    "B2": "B2 上沿扩展",
+    "B3": "B3 失守续探",
+    "R": "区间内",
+    "none": "线还不全"
+  },
+  "stateHint": {
+    "B2": "取到新一格时现价站上了今日区间的上沿:高出 09:35 那个价的幅度已经超过剩余的预期波动。每 5 分钟取到新一格时判一次;那时现价在进入时那条线下方就失效",
+    "B3": "现价跌破了昨日区间的下沿(每一笔现价都判,压过 B2);收回这条线上方就失效",
+    "R": "现价在两条触发线之间,没有方向信号",
+    "none": "昨日区间与今日区间都还没有,判不了"
+  },
+  "gexAssumption": "假设做市商多看涨、空看跌",
+  "gexAssumptionHint": "净 gamma 的正负建立在「做市商持有看涨、卖出看跌」这个假设上:真实持仓没人看得到,假设反过来结论也反过来。它只用来判断波动会被压住还是放大,不判断方向。",
+  "kindLabel": {
+    "message": "消息",
+    "signal": "信号",
+    "event": "事件",
+    "order": "单子",
+    "idea": "想法"
+  },
+  "kindIcon": {
+    "message": "sf-antenna",
+    "signal": "sf-bell",
+    "event": "sf-clock",
+    "order": "sf-paperplane",
+    "idea": "sf-bulb"
+  },
+  "kindTint": {
+    "message": "blue",
+    "signal": "orange",
+    "event": "purple",
+    "order": "green",
+    "idea": "yellow"
+  },
+  "kindOrder": [
+    "message",
+    "signal",
+    "event",
+    "order",
+    "idea"
+  ],
+  "cases": [
+    {
+      "fn": "pb.fmtLevel",
+      "args": [
+        7712.345,
+        false
+      ],
+      "out": "7712.35"
+    },
+    {
+      "fn": "pb.fmtLevel",
+      "args": [
+        7700,
+        false
+      ],
+      "out": "7700.00"
+    },
+    {
+      "fn": "pb.fmtLevel",
+      "args": [
+        null,
+        false
+      ],
+      "out": "—"
+    },
+    {
+      "fn": "pb.fmtLevel",
+      "args": [
+        null,
+        true
+      ],
+      "out": "—"
+    },
+    {
+      "fn": "pb.fmtLevel",
+      "args": [
+        null,
+        false
+      ],
+      "out": "—"
+    },
+    {
+      "fn": "pb.fmtLevel",
+      "args": [
+        -0.004,
+        false
+      ],
+      "out": "-0.00"
+    },
+    {
+      "fn": "pb.fmtGap",
+      "args": [
+        7725,
+        7712.4
+      ],
+      "out": "+12.6"
+    },
+    {
+      "fn": "pb.fmtGap",
+      "args": [
+        7700,
+        7712.45
+      ],
+      "out": "−12.4"
+    },
+    {
+      "fn": "pb.fmtGap",
+      "args": [
+        7700,
+        7700
+      ],
+      "out": "0.0"
+    },
+    {
+      "fn": "pb.fmtGap",
+      "args": [
+        null,
+        1
+      ],
+      "out": ""
+    },
+    {
+      "fn": "pb.fmtGap",
+      "args": [
+        1,
+        null
+      ],
+      "out": ""
+    },
+    {
+      "fn": "pb.etTime",
+      "args": [
+        1791986700000
+      ],
+      "out": "10:05"
+    },
+    {
+      "fn": "pb.etTime",
+      "args": [
+        1796097540000
+      ],
+      "out": "22:59"
+    },
+    {
+      "fn": "pb.etTime",
+      "args": [
+        null
+      ],
+      "out": ""
+    },
+    {
+      "fn": "pb.event",
+      "args": [
+        {
+          "kind": "enter",
+          "state": "B2",
+          "level": 7745.5,
+          "price": 7746.25,
+          "at": 1791986700000
+        }
+      ],
+      "out": {
+        "tone": "up",
+        "title": "SPX 站上 7745.50,进入 B2 上沿扩展",
+        "body": "现价 7746.25 · 美东 10:05"
+      }
+    },
+    {
+      "fn": "pb.event",
+      "args": [
+        {
+          "kind": "enter",
+          "state": "B3",
+          "level": 7650,
+          "price": 7649.1,
+          "at": 1791986700000
+        }
+      ],
+      "out": {
+        "tone": "down",
+        "title": "SPX 跌破 7650.00,进入 B3 失守续探",
+        "body": "现价 7649.10 · 美东 10:05"
+      }
+    },
+    {
+      "fn": "pb.event",
+      "args": [
+        {
+          "kind": "exit",
+          "state": "B2",
+          "level": 7745.5,
+          "price": 7744,
+          "at": 1791986700000
+        }
+      ],
+      "out": {
+        "tone": "down",
+        "title": "SPX 跌回 7745.50 下方,B2 失效",
+        "body": "现价 7744.00 · 美东 10:05"
+      }
+    },
+    {
+      "fn": "pb.event",
+      "args": [
+        {
+          "kind": "exit",
+          "state": "B3",
+          "level": 7650,
+          "price": 7651,
+          "at": 1791986700000
+        }
+      ],
+      "out": {
+        "tone": "up",
+        "title": "SPX 收回 7650.00 上方,B3 失效",
+        "body": "现价 7651.00 · 美东 10:05"
+      }
+    },
+    {
+      "fn": "pb.event",
+      "args": [
+        {
+          "kind": "accel",
+          "state": "B2",
+          "level": 7760,
+          "price": 7760,
+          "at": 1791986700000
+        }
+      ],
+      "out": {
+        "tone": "up",
+        "title": "SPX 上穿加速档 7760",
+        "body": "现价 7760.00 · 美东 10:05"
+      }
+    },
+    {
+      "fn": "pb.event",
+      "args": [
+        {
+          "kind": "accel",
+          "state": "B3",
+          "level": 7630,
+          "price": 7629.75,
+          "at": 1791986700000
+        }
+      ],
+      "out": {
+        "tone": "down",
+        "title": "SPX 下破加速档 7630",
+        "body": "现价 7629.75 · 美东 10:05"
+      }
+    },
+    {
+      "fn": "pb.bandRows",
+      "args": [
+        {
+          "frame_seconds": 300,
+          "bands": {
+            "prior": {
+              "lo": 1
+            },
+            "open": null,
+            "current": {
+              "lo": 2
+            }
+          }
+        }
+      ],
+      "out": [
+        {
+          "key": "prior",
+          "label": "昨日定价",
+          "when": "上一个收盘后 10 分钟",
+          "band": {
+            "lo": 1
+          },
+          "derived": false
+        },
+        {
+          "key": "open",
+          "label": "盘初定价",
+          "when": "09:35",
+          "band": null,
+          "derived": false
+        },
+        {
+          "key": "current",
+          "label": "当前剩余",
+          "when": "每 5 分钟",
+          "band": {
+            "lo": 2
+          },
+          "derived": false
+        },
+        {
+          "key": "day",
+          "label": "今日区间",
+          "when": "09:35 的锚 ± 当前剩余",
+          "band": null,
+          "derived": true
+        }
+      ]
+    },
+    {
+      "fn": "pb.bandRows",
+      "args": [
+        {
+          "frame_seconds": 89,
+          "bands": {
+            "prior": {
+              "lo": 1
+            },
+            "open": null,
+            "current": {
+              "lo": 2
+            },
+            "day": {
+              "lo": 3
+            }
+          }
+        }
+      ],
+      "out": [
+        {
+          "key": "prior",
+          "label": "昨日定价",
+          "when": "上一个收盘后 10 分钟",
+          "band": {
+            "lo": 1
+          },
+          "derived": false
+        },
+        {
+          "key": "open",
+          "label": "盘初定价",
+          "when": "09:35",
+          "band": null,
+          "derived": false
+        },
+        {
+          "key": "current",
+          "label": "当前剩余",
+          "when": "每 1 分钟",
+          "band": {
+            "lo": 2
+          },
+          "derived": false
+        },
+        {
+          "key": "day",
+          "label": "今日区间",
+          "when": "09:35 的锚 ± 当前剩余",
+          "band": {
+            "lo": 3
+          },
+          "derived": true
+        }
+      ]
+    },
+    {
+      "fn": "pb.gexText",
+      "args": [
+        {
+          "regime": "neutral",
+          "gross_gex": 5
+        }
+      ],
+      "out": "看涨与看跌的 gamma 正好抵消"
+    },
+    {
+      "fn": "pb.gexText",
+      "args": [
+        {
+          "regime": "neutral",
+          "gross_gex": 0
+        }
+      ],
+      "out": "gamma 环境未知(缺隐含波动率或未平仓量)"
+    },
+    {
+      "fn": "pb.gexText",
+      "args": [
+        {
+          "regime": "neutral"
+        }
+      ],
+      "out": "看涨与看跌的 gamma 正好抵消"
+    },
+    {
+      "fn": "pb.gexText",
+      "args": [
+        {
+          "regime": "positive",
+          "has_greeks": false
+        }
+      ],
+      "out": "gamma 环境未知(缺隐含波动率或未平仓量)"
+    },
+    {
+      "fn": "pb.gexText",
+      "args": [
+        {
+          "regime": "positive",
+          "has_greeks": false,
+          "gross_gex": 3,
+          "net_gex_ratio": 0.1234
+        }
+      ],
+      "out": "正 gamma(波动受压) · 净额占总量 12.3%"
+    },
+    {
+      "fn": "pb.gexText",
+      "args": [
+        {
+          "regime": "negative",
+          "gross_gex": 3,
+          "net_gex_ratio": -0.0005
+        }
+      ],
+      "out": "负 gamma(波动放大) · 净额占总量 0.1%"
+    },
+    {
+      "fn": "pb.gexText",
+      "args": [
+        {
+          "regime": "negative",
+          "gross_gex": null
+        }
+      ],
+      "out": "gamma 环境未知(缺隐含波动率或未平仓量)"
+    },
+    {
+      "fn": "pb.gexText",
+      "args": [
+        {
+          "regime": "weird",
+          "gross_gex": 3
+        }
+      ],
+      "out": "gamma 环境未知(缺隐含波动率或未平仓量)"
+    },
+    {
+      "fn": "pb.gexText",
+      "args": [
+        {
+          "regime": "positive",
+          "gross_gex": 2,
+          "net_gex_ratio": null
+        }
+      ],
+      "out": "正 gamma(波动受压)"
+    },
+    {
+      "fn": "pb.coverageText",
+      "args": [
+        {
+          "lower": 7500,
+          "upper": 7900,
+          "strikes": 81,
+          "grid_strikes": 120,
+          "thinned": true
+        },
+        3
+      ],
+      "out": "7500–7900 共 81 档(链上 120 档,远处只取整数档) · 3 行没等到未平仓量"
+    },
+    {
+      "fn": "pb.coverageText",
+      "args": [
+        {
+          "lower": 7500,
+          "upper": 7900,
+          "strikes": 81,
+          "grid_strikes": null,
+          "thinned": true
+        },
+        0
+      ],
+      "out": "7500–7900 共 81 档"
+    },
+    {
+      "fn": "pb.coverageText",
+      "args": [
+        {
+          "lower": 1,
+          "upper": 2,
+          "strikes": 2,
+          "grid_strikes": 9,
+          "thinned": false
+        },
+        null
+      ],
+      "out": "1–2 共 2 档"
+    },
+    {
+      "fn": "pb.coverageText",
+      "args": [
+        null,
+        0
+      ],
+      "out": ""
+    },
+    {
+      "fn": "pb.rearmText",
+      "args": [
+        7745.5
+      ],
+      "out": "B2 已失效:取到新一格时回到这条线下方再站上,或重新站回 7745.50 之上,才算新的一次"
+    },
+    {
+      "fn": "pb.rearmText",
+      "args": [
+        null
+      ],
+      "out": ""
+    },
+    {
+      "fn": "in.sourceLabel",
+      "args": [
+        {
+          "kind": "signal",
+          "source": "cross"
+        }
+      ],
+      "out": "价位穿越"
+    },
+    {
+      "fn": "in.sourceLabel",
+      "args": [
+        {
+          "kind": "event",
+          "source": "fomc"
+        }
+      ],
+      "out": "FOMC"
+    },
+    {
+      "fn": "in.sourceLabel",
+      "args": [
+        {
+          "kind": "message",
+          "source": "Charlie"
+        }
+      ],
+      "out": "Charlie"
+    },
+    {
+      "fn": "in.sourceLabel",
+      "args": [
+        {
+          "kind": "idea",
+          "source": "zzz"
+        }
+      ],
+      "out": "zzz"
+    },
+    {
+      "fn": "in.sourceLabel",
+      "args": [
+        {
+          "kind": "order",
+          "source": "主账户"
+        }
+      ],
+      "out": "主账户"
+    },
+    {
+      "fn": "in.relTime",
+      "args": [
+        1792303200000,
+        1792303200000
+      ],
+      "out": "刚刚"
+    },
+    {
+      "fn": "in.relTime",
+      "args": [
+        1792303141000,
+        1792303200000
+      ],
+      "out": "刚刚"
+    },
+    {
+      "fn": "in.relTime",
+      "args": [
+        1792303230000,
+        1792303200000
+      ],
+      "out": "马上"
+    },
+    {
+      "fn": "in.relTime",
+      "args": [
+        1792303140000,
+        1792303200000
+      ],
+      "out": "1 分钟前"
+    },
+    {
+      "fn": "in.relTime",
+      "args": [
+        1792303110001,
+        1792303200000
+      ],
+      "out": "1 分钟前"
+    },
+    {
+      "fn": "in.relTime",
+      "args": [
+        1792303110000,
+        1792303200000
+      ],
+      "out": "2 分钟前"
+    },
+    {
+      "fn": "in.relTime",
+      "args": [
+        1792299601000,
+        1792303200000
+      ],
+      "out": "60 分钟前"
+    },
+    {
+      "fn": "in.relTime",
+      "args": [
+        1792312200000,
+        1792303200000
+      ],
+      "out": "3 小时后"
+    },
+    {
+      "fn": "in.relTime",
+      "args": [
+        1792218240000,
+        1792303200000
+      ],
+      "out": "24 小时前"
+    },
+    {
+      "fn": "in.relTime",
+      "args": [
+        1792216800000,
+        1792303200000
+      ],
+      "out": "10-17 14:00"
+    },
+    {
+      "fn": "in.relTime",
+      "args": [
+        1788847200000,
+        1792303200000
+      ],
+      "out": "09-08 14:00"
+    },
+    {
+      "fn": "in.move",
+      "args": [
+        {
+          "symbol": "SPX",
+          "then": 7700,
+          "now": 7712.5,
+          "pct": 0.1623
+        }
+      ],
+      "out": {
+        "text": "SPX 提到时 7700 → 此刻 7712.5(+0.16%)",
+        "tone": "up"
+      }
+    },
+    {
+      "fn": "in.move",
+      "args": [
+        {
+          "symbol": "NVDA",
+          "then": 180.2,
+          "now": null,
+          "pct": null
+        }
+      ],
+      "out": {
+        "text": "NVDA 提到时 180.20",
+        "tone": ""
+      }
+    },
+    {
+      "fn": "in.move",
+      "args": [
+        {
+          "symbol": "X",
+          "then": 999.999,
+          "now": 1000,
+          "pct": -0.001
+        }
+      ],
+      "out": {
+        "text": "X 提到时 1000 → 此刻 1000(-0.00%)",
+        "tone": "down"
+      }
+    },
+    {
+      "fn": "in.move",
+      "args": [
+        {
+          "symbol": "Y",
+          "then": 12,
+          "now": 11,
+          "pct": -8.333
+        }
+      ],
+      "out": {
+        "text": "Y 提到时 12 → 此刻 11(-8.33%)",
+        "tone": "down"
+      }
+    },
+    {
+      "fn": "in.move",
+      "args": [
+        {
+          "symbol": "Z",
+          "then": 1234.05,
+          "now": 1234.04,
+          "pct": 0
+        }
+      ],
+      "out": {
+        "text": "Z 提到时 1234 → 此刻 1234(0.00%)",
+        "tone": ""
+      }
+    },
+    {
+      "fn": "in.move",
+      "args": [
+        {
+          "symbol": "W",
+          "then": 1000.05,
+          "now": 1000,
+          "pct": 0.01
+        }
+      ],
+      "out": {
+        "text": "W 提到时 1000 → 此刻 1000(+0.01%)",
+        "tone": "up"
+      }
+    },
+    {
+      "fn": "in.move",
+      "args": [
+        null
+      ],
+      "out": {
+        "text": null,
+        "tone": ""
+      }
+    },
+    {
+      "fn": "in.filter",
+      "args": [
+        [
+          {
+            "id": "1",
+            "kind": "message",
+            "at": 1792303140000,
+            "title": "Charlie",
+            "body": "SPX 7700 put fly",
+            "source": "Charlie",
+            "symbols": [
+              "SPX"
+            ],
+            "held": [
+              "SPX"
+            ]
+          },
+          {
+            "id": "2",
+            "kind": "signal",
+            "at": 1792231200000,
+            "title": "NVDA 上穿 180",
+            "body": "",
+            "source": "cross",
+            "symbols": [
+              "NVDA"
+            ],
+            "held": []
+          },
+          {
+            "id": "3",
+            "kind": "event",
+            "at": 1792375200000,
+            "title": "CPI",
+            "body": "美东 08:30",
+            "source": "cpi",
+            "symbols": [],
+            "held": []
+          },
+          {
+            "id": "4",
+            "kind": "order",
+            "at": 1792195200000,
+            "title": "买入 SPX 蝶",
+            "body": "Filled",
+            "source": "主账户",
+            "symbols": [
+              "SPX",
+              "SPXW"
+            ],
+            "held": [
+              "SPX"
+            ]
+          },
+          {
+            "id": "5",
+            "kind": "idea",
+            "at": 1791871200000,
+            "title": "AMD 突破",
+            "body": "amd 回踩",
+            "source": "active",
+            "symbols": [
+              "AMD",
+              "NVDA"
+            ],
+            "held": []
+          }
+        ],
+        {
+          "kinds": [],
+          "heldOnly": false,
+          "query": ""
+        }
+      ],
+      "out": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5"
+      ]
+    },
+    {
+      "fn": "in.filter",
+      "args": [
+        [
+          {
+            "id": "1",
+            "kind": "message",
+            "at": 1792303140000,
+            "title": "Charlie",
+            "body": "SPX 7700 put fly",
+            "source": "Charlie",
+            "symbols": [
+              "SPX"
+            ],
+            "held": [
+              "SPX"
+            ]
+          },
+          {
+            "id": "2",
+            "kind": "signal",
+            "at": 1792231200000,
+            "title": "NVDA 上穿 180",
+            "body": "",
+            "source": "cross",
+            "symbols": [
+              "NVDA"
+            ],
+            "held": []
+          },
+          {
+            "id": "3",
+            "kind": "event",
+            "at": 1792375200000,
+            "title": "CPI",
+            "body": "美东 08:30",
+            "source": "cpi",
+            "symbols": [],
+            "held": []
+          },
+          {
+            "id": "4",
+            "kind": "order",
+            "at": 1792195200000,
+            "title": "买入 SPX 蝶",
+            "body": "Filled",
+            "source": "主账户",
+            "symbols": [
+              "SPX",
+              "SPXW"
+            ],
+            "held": [
+              "SPX"
+            ]
+          },
+          {
+            "id": "5",
+            "kind": "idea",
+            "at": 1791871200000,
+            "title": "AMD 突破",
+            "body": "amd 回踩",
+            "source": "active",
+            "symbols": [
+              "AMD",
+              "NVDA"
+            ],
+            "held": []
+          }
+        ],
+        {
+          "kinds": [
+            "message",
+            "order"
+          ],
+          "heldOnly": false,
+          "query": ""
+        }
+      ],
+      "out": [
+        "1",
+        "4"
+      ]
+    },
+    {
+      "fn": "in.filter",
+      "args": [
+        [
+          {
+            "id": "1",
+            "kind": "message",
+            "at": 1792303140000,
+            "title": "Charlie",
+            "body": "SPX 7700 put fly",
+            "source": "Charlie",
+            "symbols": [
+              "SPX"
+            ],
+            "held": [
+              "SPX"
+            ]
+          },
+          {
+            "id": "2",
+            "kind": "signal",
+            "at": 1792231200000,
+            "title": "NVDA 上穿 180",
+            "body": "",
+            "source": "cross",
+            "symbols": [
+              "NVDA"
+            ],
+            "held": []
+          },
+          {
+            "id": "3",
+            "kind": "event",
+            "at": 1792375200000,
+            "title": "CPI",
+            "body": "美东 08:30",
+            "source": "cpi",
+            "symbols": [],
+            "held": []
+          },
+          {
+            "id": "4",
+            "kind": "order",
+            "at": 1792195200000,
+            "title": "买入 SPX 蝶",
+            "body": "Filled",
+            "source": "主账户",
+            "symbols": [
+              "SPX",
+              "SPXW"
+            ],
+            "held": [
+              "SPX"
+            ]
+          },
+          {
+            "id": "5",
+            "kind": "idea",
+            "at": 1791871200000,
+            "title": "AMD 突破",
+            "body": "amd 回踩",
+            "source": "active",
+            "symbols": [
+              "AMD",
+              "NVDA"
+            ],
+            "held": []
+          }
+        ],
+        {
+          "kinds": [],
+          "heldOnly": true,
+          "query": ""
+        }
+      ],
+      "out": [
+        "1",
+        "4"
+      ]
+    },
+    {
+      "fn": "in.filter",
+      "args": [
+        [
+          {
+            "id": "1",
+            "kind": "message",
+            "at": 1792303140000,
+            "title": "Charlie",
+            "body": "SPX 7700 put fly",
+            "source": "Charlie",
+            "symbols": [
+              "SPX"
+            ],
+            "held": [
+              "SPX"
+            ]
+          },
+          {
+            "id": "2",
+            "kind": "signal",
+            "at": 1792231200000,
+            "title": "NVDA 上穿 180",
+            "body": "",
+            "source": "cross",
+            "symbols": [
+              "NVDA"
+            ],
+            "held": []
+          },
+          {
+            "id": "3",
+            "kind": "event",
+            "at": 1792375200000,
+            "title": "CPI",
+            "body": "美东 08:30",
+            "source": "cpi",
+            "symbols": [],
+            "held": []
+          },
+          {
+            "id": "4",
+            "kind": "order",
+            "at": 1792195200000,
+            "title": "买入 SPX 蝶",
+            "body": "Filled",
+            "source": "主账户",
+            "symbols": [
+              "SPX",
+              "SPXW"
+            ],
+            "held": [
+              "SPX"
+            ]
+          },
+          {
+            "id": "5",
+            "kind": "idea",
+            "at": 1791871200000,
+            "title": "AMD 突破",
+            "body": "amd 回踩",
+            "source": "active",
+            "symbols": [
+              "AMD",
+              "NVDA"
+            ],
+            "held": []
+          }
+        ],
+        {
+          "kinds": [],
+          "heldOnly": false,
+          "query": " spx "
+        }
+      ],
+      "out": [
+        "1",
+        "4"
+      ]
+    },
+    {
+      "fn": "in.filter",
+      "args": [
+        [
+          {
+            "id": "1",
+            "kind": "message",
+            "at": 1792303140000,
+            "title": "Charlie",
+            "body": "SPX 7700 put fly",
+            "source": "Charlie",
+            "symbols": [
+              "SPX"
+            ],
+            "held": [
+              "SPX"
+            ]
+          },
+          {
+            "id": "2",
+            "kind": "signal",
+            "at": 1792231200000,
+            "title": "NVDA 上穿 180",
+            "body": "",
+            "source": "cross",
+            "symbols": [
+              "NVDA"
+            ],
+            "held": []
+          },
+          {
+            "id": "3",
+            "kind": "event",
+            "at": 1792375200000,
+            "title": "CPI",
+            "body": "美东 08:30",
+            "source": "cpi",
+            "symbols": [],
+            "held": []
+          },
+          {
+            "id": "4",
+            "kind": "order",
+            "at": 1792195200000,
+            "title": "买入 SPX 蝶",
+            "body": "Filled",
+            "source": "主账户",
+            "symbols": [
+              "SPX",
+              "SPXW"
+            ],
+            "held": [
+              "SPX"
+            ]
+          },
+          {
+            "id": "5",
+            "kind": "idea",
+            "at": 1791871200000,
+            "title": "AMD 突破",
+            "body": "amd 回踩",
+            "source": "active",
+            "symbols": [
+              "AMD",
+              "NVDA"
+            ],
+            "held": []
+          }
+        ],
+        {
+          "kinds": [],
+          "heldOnly": false,
+          "query": "filled"
+        }
+      ],
+      "out": [
+        "4"
+      ]
+    },
+    {
+      "fn": "in.filter",
+      "args": [
+        [
+          {
+            "id": "1",
+            "kind": "message",
+            "at": 1792303140000,
+            "title": "Charlie",
+            "body": "SPX 7700 put fly",
+            "source": "Charlie",
+            "symbols": [
+              "SPX"
+            ],
+            "held": [
+              "SPX"
+            ]
+          },
+          {
+            "id": "2",
+            "kind": "signal",
+            "at": 1792231200000,
+            "title": "NVDA 上穿 180",
+            "body": "",
+            "source": "cross",
+            "symbols": [
+              "NVDA"
+            ],
+            "held": []
+          },
+          {
+            "id": "3",
+            "kind": "event",
+            "at": 1792375200000,
+            "title": "CPI",
+            "body": "美东 08:30",
+            "source": "cpi",
+            "symbols": [],
+            "held": []
+          },
+          {
+            "id": "4",
+            "kind": "order",
+            "at": 1792195200000,
+            "title": "买入 SPX 蝶",
+            "body": "Filled",
+            "source": "主账户",
+            "symbols": [
+              "SPX",
+              "SPXW"
+            ],
+            "held": [
+              "SPX"
+            ]
+          },
+          {
+            "id": "5",
+            "kind": "idea",
+            "at": 1791871200000,
+            "title": "AMD 突破",
+            "body": "amd 回踩",
+            "source": "active",
+            "symbols": [
+              "AMD",
+              "NVDA"
+            ],
+            "held": []
+          }
+        ],
+        {
+          "kinds": [],
+          "heldOnly": false,
+          "query": "cross"
+        }
+      ],
+      "out": [
+        "2"
+      ]
+    },
+    {
+      "fn": "in.filter",
+      "args": [
+        [
+          {
+            "id": "1",
+            "kind": "message",
+            "at": 1792303140000,
+            "title": "Charlie",
+            "body": "SPX 7700 put fly",
+            "source": "Charlie",
+            "symbols": [
+              "SPX"
+            ],
+            "held": [
+              "SPX"
+            ]
+          },
+          {
+            "id": "2",
+            "kind": "signal",
+            "at": 1792231200000,
+            "title": "NVDA 上穿 180",
+            "body": "",
+            "source": "cross",
+            "symbols": [
+              "NVDA"
+            ],
+            "held": []
+          },
+          {
+            "id": "3",
+            "kind": "event",
+            "at": 1792375200000,
+            "title": "CPI",
+            "body": "美东 08:30",
+            "source": "cpi",
+            "symbols": [],
+            "held": []
+          },
+          {
+            "id": "4",
+            "kind": "order",
+            "at": 1792195200000,
+            "title": "买入 SPX 蝶",
+            "body": "Filled",
+            "source": "主账户",
+            "symbols": [
+              "SPX",
+              "SPXW"
+            ],
+            "held": [
+              "SPX"
+            ]
+          },
+          {
+            "id": "5",
+            "kind": "idea",
+            "at": 1791871200000,
+            "title": "AMD 突破",
+            "body": "amd 回踩",
+            "source": "active",
+            "symbols": [
+              "AMD",
+              "NVDA"
+            ],
+            "held": []
+          }
+        ],
+        {
+          "kinds": [],
+          "heldOnly": false,
+          "query": "sp"
+        }
+      ],
+      "out": [
+        "1",
+        "4"
+      ]
+    },
+    {
+      "fn": "in.groupByDay",
+      "args": [
+        [
+          {
+            "id": "1",
+            "kind": "message",
+            "at": 1792303140000,
+            "title": "Charlie",
+            "body": "SPX 7700 put fly",
+            "source": "Charlie",
+            "symbols": [
+              "SPX"
+            ],
+            "held": [
+              "SPX"
+            ]
+          },
+          {
+            "id": "2",
+            "kind": "signal",
+            "at": 1792231200000,
+            "title": "NVDA 上穿 180",
+            "body": "",
+            "source": "cross",
+            "symbols": [
+              "NVDA"
+            ],
+            "held": []
+          },
+          {
+            "id": "3",
+            "kind": "event",
+            "at": 1792375200000,
+            "title": "CPI",
+            "body": "美东 08:30",
+            "source": "cpi",
+            "symbols": [],
+            "held": []
+          },
+          {
+            "id": "4",
+            "kind": "order",
+            "at": 1792195200000,
+            "title": "买入 SPX 蝶",
+            "body": "Filled",
+            "source": "主账户",
+            "symbols": [
+              "SPX",
+              "SPXW"
+            ],
+            "held": [
+              "SPX"
+            ]
+          },
+          {
+            "id": "5",
+            "kind": "idea",
+            "at": 1791871200000,
+            "title": "AMD 突破",
+            "body": "amd 回踩",
+            "source": "active",
+            "symbols": [
+              "AMD",
+              "NVDA"
+            ],
+            "held": []
+          }
+        ],
+        1792303200000
+      ],
+      "out": [
+        {
+          "label": "今天",
+          "ids": [
+            "1"
+          ]
+        },
+        {
+          "label": "昨天",
+          "ids": [
+            "2"
+          ]
+        },
+        {
+          "label": "明天",
+          "ids": [
+            "3"
+          ]
+        },
+        {
+          "label": "昨天",
+          "ids": [
+            "4"
+          ]
+        },
+        {
+          "label": "10月13日周二",
+          "ids": [
+            "5"
+          ]
+        }
+      ]
+    },
+    {
+      "fn": "in.hot",
+      "args": [
+        [
+          {
+            "id": "1",
+            "kind": "message",
+            "at": 1792303140000,
+            "title": "Charlie",
+            "body": "SPX 7700 put fly",
+            "source": "Charlie",
+            "symbols": [
+              "SPX"
+            ],
+            "held": [
+              "SPX"
+            ]
+          },
+          {
+            "id": "2",
+            "kind": "signal",
+            "at": 1792231200000,
+            "title": "NVDA 上穿 180",
+            "body": "",
+            "source": "cross",
+            "symbols": [
+              "NVDA"
+            ],
+            "held": []
+          },
+          {
+            "id": "3",
+            "kind": "event",
+            "at": 1792375200000,
+            "title": "CPI",
+            "body": "美东 08:30",
+            "source": "cpi",
+            "symbols": [],
+            "held": []
+          },
+          {
+            "id": "4",
+            "kind": "order",
+            "at": 1792195200000,
+            "title": "买入 SPX 蝶",
+            "body": "Filled",
+            "source": "主账户",
+            "symbols": [
+              "SPX",
+              "SPXW"
+            ],
+            "held": [
+              "SPX"
+            ]
+          },
+          {
+            "id": "5",
+            "kind": "idea",
+            "at": 1791871200000,
+            "title": "AMD 突破",
+            "body": "amd 回踩",
+            "source": "active",
+            "symbols": [
+              "AMD",
+              "NVDA"
+            ],
+            "held": []
+          }
+        ],
+        8
+      ],
+      "out": [
+        {
+          "symbol": "NVDA",
+          "n": 2,
+          "held": false
+        },
+        {
+          "symbol": "SPX",
+          "n": 2,
+          "held": true
+        },
+        {
+          "symbol": "AMD",
+          "n": 1,
+          "held": false
+        },
+        {
+          "symbol": "SPXW",
+          "n": 1,
+          "held": false
+        }
+      ]
+    },
+    {
+      "fn": "in.hot",
+      "args": [
+        [
+          {
+            "id": "1",
+            "kind": "message",
+            "at": 1792303140000,
+            "title": "Charlie",
+            "body": "SPX 7700 put fly",
+            "source": "Charlie",
+            "symbols": [
+              "SPX"
+            ],
+            "held": [
+              "SPX"
+            ]
+          },
+          {
+            "id": "2",
+            "kind": "signal",
+            "at": 1792231200000,
+            "title": "NVDA 上穿 180",
+            "body": "",
+            "source": "cross",
+            "symbols": [
+              "NVDA"
+            ],
+            "held": []
+          },
+          {
+            "id": "3",
+            "kind": "event",
+            "at": 1792375200000,
+            "title": "CPI",
+            "body": "美东 08:30",
+            "source": "cpi",
+            "symbols": [],
+            "held": []
+          },
+          {
+            "id": "4",
+            "kind": "order",
+            "at": 1792195200000,
+            "title": "买入 SPX 蝶",
+            "body": "Filled",
+            "source": "主账户",
+            "symbols": [
+              "SPX",
+              "SPXW"
+            ],
+            "held": [
+              "SPX"
+            ]
+          },
+          {
+            "id": "5",
+            "kind": "idea",
+            "at": 1791871200000,
+            "title": "AMD 突破",
+            "body": "amd 回踩",
+            "source": "active",
+            "symbols": [
+              "AMD",
+              "NVDA"
+            ],
+            "held": []
+          }
+        ],
+        2
+      ],
+      "out": [
+        {
+          "symbol": "NVDA",
+          "n": 2,
+          "held": false
+        },
+        {
+          "symbol": "SPX",
+          "n": 2,
+          "held": true
+        }
+      ]
+    },
+    {
+      "fn": "in.heldMention",
+      "args": [
+        {
+          "message_id": "m1",
+          "at": 1792303200000,
+          "author_name": "Charlie",
+          "text": "NVDA 180c 走了",
+          "symbols": [
+            "NVDA",
+            "AMD"
+          ],
+          "prices": {
+            "NVDA": 180.456
+          }
+        },
+        1792303200000
+      ],
+      "out": {
+        "id": "intel:m1",
+        "kind": "event",
+        "symbol": "NVDA",
+        "title": "NVDA、AMD 被提到(持仓)",
+        "body": "Charlie:NVDA 180c 走了(当时 NVDA 180.46)",
+        "tone": "info",
+        "at": 1792303200000,
+        "page": "intel"
+      }
+    },
+    {
+      "fn": "in.heldMention",
+      "args": [
+        {
+          "message_id": "m2",
+          "at": null,
+          "author_name": "",
+          "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "symbols": [
+            "SPX"
+          ],
+          "prices": {
+            "SPX": 7712.25
+          }
+        },
+        1792303200000
+      ],
+      "out": {
+        "id": "intel:m2",
+        "kind": "event",
+        "symbol": "SPX",
+        "title": "SPX 被提到(持仓)",
+        "body": "频道:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "tone": "info",
+        "at": 1792303200000,
+        "page": "intel"
+      }
+    },
+    {
+      "fn": "in.heldMention",
+      "args": [
+        {
+          "message_id": "m3",
+          "at": 1792303200000,
+          "author_name": "A",
+          "text": "t",
+          "symbols": [],
+          "prices": {}
+        },
+        1792303200000
+      ],
+      "out": null
+    },
+    {
+      "fn": "in.heldMention",
+      "args": [
+        {
+          "message_id": 5,
+          "symbols": [
+            "A"
+          ],
+          "text": "t"
+        },
+        1792303200000
+      ],
+      "out": null
+    },
+    {
+      "fn": "in.heldMention",
+      "args": [
+        null,
+        1792303200000
+      ],
+      "out": null
+    },
+    {
+      "fn": "in.lookupSymbol",
+      "args": [
+        " $nvda "
+      ],
+      "out": "NVDA"
+    },
+    {
+      "fn": "in.lookupSymbol",
+      "args": [
+        "BRK.B"
+      ],
+      "out": "BRK.B"
+    },
+    {
+      "fn": "in.lookupSymbol",
+      "args": [
+        "1ABC"
+      ],
+      "out": null
+    },
+    {
+      "fn": "in.lookupSymbol",
+      "args": [
+        "ABCDEFGHIJK"
+      ],
+      "out": null
+    },
+    {
+      "fn": "in.lookupSymbol",
+      "args": [
+        "英伟达"
+      ],
+      "out": null
+    },
+    {
+      "fn": "in.lookupSymbol",
+      "args": [
+        ""
+      ],
+      "out": null
+    }
+  ]
+}

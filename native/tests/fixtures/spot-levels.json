@@ -1,0 +1,1060 @@
+{
+  "generator": "native/tests/fixtures/gen_spot_levels.mjs",
+  "step": 25,
+  "gapMs": 30000,
+  "sequences": {
+    "firstOnlyRegisters": [
+      {
+        "sample": {
+          "price": 7712,
+          "source": "quote",
+          "at": 1760000000000
+        },
+        "state": {
+          "last": {
+            "price": 7712,
+            "source": "quote",
+            "at": 1760000000000
+          },
+          "muted": null
+        },
+        "hit": null
+      }
+    ],
+    "upThroughOne": [
+      {
+        "sample": {
+          "price": 7712,
+          "source": "quote",
+          "at": 1760000000000
+        },
+        "state": {
+          "last": {
+            "price": 7712,
+            "source": "quote",
+            "at": 1760000000000
+          },
+          "muted": null
+        },
+        "hit": null
+      },
+      {
+        "sample": {
+          "price": 7726,
+          "source": "quote",
+          "at": 1760000002000
+        },
+        "state": {
+          "last": {
+            "price": 7726,
+            "source": "quote",
+            "at": 1760000002000
+          },
+          "muted": 7725
+        },
+        "hit": {
+          "level": 7725,
+          "direction": "up",
+          "price": 7726,
+          "source": "quote",
+          "at": 1760000002000,
+          "skipped": 0
+        }
+      }
+    ],
+    "touchCounts": [
+      {
+        "sample": {
+          "price": 7712,
+          "source": "quote",
+          "at": 1760000000000
+        },
+        "state": {
+          "last": {
+            "price": 7712,
+            "source": "quote",
+            "at": 1760000000000
+          },
+          "muted": null
+        },
+        "hit": null
+      },
+      {
+        "sample": {
+          "price": 7725,
+          "source": "quote",
+          "at": 1760000002000
+        },
+        "state": {
+          "last": {
+            "price": 7725,
+            "source": "quote",
+            "at": 1760000002000
+          },
+          "muted": 7725
+        },
+        "hit": {
+          "level": 7725,
+          "direction": "up",
+          "price": 7725,
+          "source": "quote",
+          "at": 1760000002000,
+          "skipped": 0
+        }
+      }
+    ],
+    "downThroughOne": [
+      {
+        "sample": {
+          "price": 7712,
+          "source": "quote",
+          "at": 1760000000000
+        },
+        "state": {
+          "last": {
+            "price": 7712,
+            "source": "quote",
+            "at": 1760000000000
+          },
+          "muted": null
+        },
+        "hit": null
+      },
+      {
+        "sample": {
+          "price": 7699.5,
+          "source": "quote",
+          "at": 1760000002000
+        },
+        "state": {
+          "last": {
+            "price": 7699.5,
+            "source": "quote",
+            "at": 1760000002000
+          },
+          "muted": 7700
+        },
+        "hit": {
+          "level": 7700,
+          "direction": "down",
+          "price": 7699.5,
+          "source": "quote",
+          "at": 1760000002000,
+          "skipped": 0
+        }
+      }
+    ],
+    "downTouch": [
+      {
+        "sample": {
+          "price": 7712,
+          "source": "quote",
+          "at": 1760000000000
+        },
+        "state": {
+          "last": {
+            "price": 7712,
+            "source": "quote",
+            "at": 1760000000000
+          },
+          "muted": null
+        },
+        "hit": null
+      },
+      {
+        "sample": {
+          "price": 7700,
+          "source": "quote",
+          "at": 1760000002000
+        },
+        "state": {
+          "last": {
+            "price": 7700,
+            "source": "quote",
+            "at": 1760000002000
+          },
+          "muted": 7700
+        },
+        "hit": {
+          "level": 7700,
+          "direction": "down",
+          "price": 7700,
+          "source": "quote",
+          "at": 1760000002000,
+          "skipped": 0
+        }
+      }
+    ],
+    "jumpTwo": [
+      {
+        "sample": {
+          "price": 7690,
+          "source": "quote",
+          "at": 1760000000000
+        },
+        "state": {
+          "last": {
+            "price": 7690,
+            "source": "quote",
+            "at": 1760000000000
+          },
+          "muted": null
+        },
+        "hit": null
+      },
+      {
+        "sample": {
+          "price": 7752,
+          "source": "quote",
+          "at": 1760000002000
+        },
+        "state": {
+          "last": {
+            "price": 7752,
+            "source": "quote",
+            "at": 1760000002000
+          },
+          "muted": 7750
+        },
+        "hit": {
+          "level": 7750,
+          "direction": "up",
+          "price": 7752,
+          "source": "quote",
+          "at": 1760000002000,
+          "skipped": 2
+        }
+      }
+    ],
+    "jumpTwoDown": [
+      {
+        "sample": {
+          "price": 7760,
+          "source": "quote",
+          "at": 1760000000000
+        },
+        "state": {
+          "last": {
+            "price": 7760,
+            "source": "quote",
+            "at": 1760000000000
+          },
+          "muted": null
+        },
+        "hit": null
+      },
+      {
+        "sample": {
+          "price": 7698,
+          "source": "quote",
+          "at": 1760000002000
+        },
+        "state": {
+          "last": {
+            "price": 7698,
+            "source": "quote",
+            "at": 1760000002000
+          },
+          "muted": 7700
+        },
+        "hit": {
+          "level": 7700,
+          "direction": "down",
+          "price": 7698,
+          "source": "quote",
+          "at": 1760000002000,
+          "skipped": 2
+        }
+      }
+    ],
+    "rubOnLevel": [
+      {
+        "sample": {
+          "price": 7720,
+          "source": "quote",
+          "at": 1760000000000
+        },
+        "state": {
+          "last": {
+            "price": 7720,
+            "source": "quote",
+            "at": 1760000000000
+          },
+          "muted": null
+        },
+        "hit": null
+      },
+      {
+        "sample": {
+          "price": 7726,
+          "source": "quote",
+          "at": 1760000002000
+        },
+        "state": {
+          "last": {
+            "price": 7726,
+            "source": "quote",
+            "at": 1760000002000
+          },
+          "muted": 7725
+        },
+        "hit": {
+          "level": 7725,
+          "direction": "up",
+          "price": 7726,
+          "source": "quote",
+          "at": 1760000002000,
+          "skipped": 0
+        }
+      },
+      {
+        "sample": {
+          "price": 7724,
+          "source": "quote",
+          "at": 1760000004000
+        },
+        "state": {
+          "last": {
+            "price": 7724,
+            "source": "quote",
+            "at": 1760000004000
+          },
+          "muted": 7725
+        },
+        "hit": null
+      },
+      {
+        "sample": {
+          "price": 7726,
+          "source": "quote",
+          "at": 1760000006000
+        },
+        "state": {
+          "last": {
+            "price": 7726,
+            "source": "quote",
+            "at": 1760000006000
+          },
+          "muted": 7725
+        },
+        "hit": null
+      },
+      {
+        "sample": {
+          "price": 7711,
+          "source": "quote",
+          "at": 1760000008000
+        },
+        "state": {
+          "last": {
+            "price": 7711,
+            "source": "quote",
+            "at": 1760000008000
+          },
+          "muted": 7725
+        },
+        "hit": {
+          "level": 7725,
+          "direction": "down",
+          "price": 7711,
+          "source": "quote",
+          "at": 1760000008000,
+          "skipped": 0
+        }
+      },
+      {
+        "sample": {
+          "price": 7726,
+          "source": "quote",
+          "at": 1760000010000
+        },
+        "state": {
+          "last": {
+            "price": 7726,
+            "source": "quote",
+            "at": 1760000010000
+          },
+          "muted": 7725
+        },
+        "hit": null
+      }
+    ],
+    "leaveHalfStepThenBack": [
+      {
+        "sample": {
+          "price": 7720,
+          "source": "quote",
+          "at": 1760000000000
+        },
+        "state": {
+          "last": {
+            "price": 7720,
+            "source": "quote",
+            "at": 1760000000000
+          },
+          "muted": null
+        },
+        "hit": null
+      },
+      {
+        "sample": {
+          "price": 7726,
+          "source": "quote",
+          "at": 1760000002000
+        },
+        "state": {
+          "last": {
+            "price": 7726,
+            "source": "quote",
+            "at": 1760000002000
+          },
+          "muted": 7725
+        },
+        "hit": {
+          "level": 7725,
+          "direction": "up",
+          "price": 7726,
+          "source": "quote",
+          "at": 1760000002000,
+          "skipped": 0
+        }
+      },
+      {
+        "sample": {
+          "price": 7737.5,
+          "source": "quote",
+          "at": 1760000004000
+        },
+        "state": {
+          "last": {
+            "price": 7737.5,
+            "source": "quote",
+            "at": 1760000004000
+          },
+          "muted": null
+        },
+        "hit": null
+      },
+      {
+        "sample": {
+          "price": 7724,
+          "source": "quote",
+          "at": 1760000006000
+        },
+        "state": {
+          "last": {
+            "price": 7724,
+            "source": "quote",
+            "at": 1760000006000
+          },
+          "muted": 7725
+        },
+        "hit": {
+          "level": 7725,
+          "direction": "down",
+          "price": 7724,
+          "source": "quote",
+          "at": 1760000006000,
+          "skipped": 0
+        }
+      },
+      {
+        "sample": {
+          "price": 7712.4,
+          "source": "quote",
+          "at": 1760000008000
+        },
+        "state": {
+          "last": {
+            "price": 7712.4,
+            "source": "quote",
+            "at": 1760000008000
+          },
+          "muted": null
+        },
+        "hit": null
+      },
+      {
+        "sample": {
+          "price": 7725.1,
+          "source": "quote",
+          "at": 1760000010000
+        },
+        "state": {
+          "last": {
+            "price": 7725.1,
+            "source": "quote",
+            "at": 1760000010000
+          },
+          "muted": 7725
+        },
+        "hit": {
+          "level": 7725,
+          "direction": "up",
+          "price": 7725.1,
+          "source": "quote",
+          "at": 1760000010000,
+          "skipped": 0
+        }
+      }
+    ],
+    "gapTooLong": [
+      {
+        "sample": {
+          "price": 7712,
+          "source": "quote",
+          "at": 1760000000000
+        },
+        "state": {
+          "last": {
+            "price": 7712,
+            "source": "quote",
+            "at": 1760000000000
+          },
+          "muted": null
+        },
+        "hit": null
+      },
+      {
+        "sample": {
+          "price": 7730,
+          "source": "quote",
+          "at": 1760000030001
+        },
+        "state": {
+          "last": {
+            "price": 7730,
+            "source": "quote",
+            "at": 1760000030001
+          },
+          "muted": null
+        },
+        "hit": null
+      },
+      {
+        "sample": {
+          "price": 7751,
+          "source": "quote",
+          "at": 1760000032000
+        },
+        "state": {
+          "last": {
+            "price": 7751,
+            "source": "quote",
+            "at": 1760000032000
+          },
+          "muted": 7750
+        },
+        "hit": {
+          "level": 7750,
+          "direction": "up",
+          "price": 7751,
+          "source": "quote",
+          "at": 1760000032000,
+          "skipped": 0
+        }
+      }
+    ],
+    "gapExactly": [
+      {
+        "sample": {
+          "price": 7712,
+          "source": "quote",
+          "at": 1760000000000
+        },
+        "state": {
+          "last": {
+            "price": 7712,
+            "source": "quote",
+            "at": 1760000000000
+          },
+          "muted": null
+        },
+        "hit": null
+      },
+      {
+        "sample": {
+          "price": 7730,
+          "source": "quote",
+          "at": 1760000030000
+        },
+        "state": {
+          "last": {
+            "price": 7730,
+            "source": "quote",
+            "at": 1760000030000
+          },
+          "muted": 7725
+        },
+        "hit": {
+          "level": 7725,
+          "direction": "up",
+          "price": 7730,
+          "source": "quote",
+          "at": 1760000030000,
+          "skipped": 0
+        }
+      }
+    ],
+    "sourceSwitch": [
+      {
+        "sample": {
+          "price": 7712,
+          "source": "quote",
+          "at": 1760000000000
+        },
+        "state": {
+          "last": {
+            "price": 7712,
+            "source": "quote",
+            "at": 1760000000000
+          },
+          "muted": null
+        },
+        "hit": null
+      },
+      {
+        "sample": {
+          "price": 7730,
+          "source": "futures",
+          "at": 1760000002000
+        },
+        "state": {
+          "last": {
+            "price": 7730,
+            "source": "futures",
+            "at": 1760000002000
+          },
+          "muted": null
+        },
+        "hit": null
+      },
+      {
+        "sample": {
+          "price": 7751,
+          "source": "futures",
+          "at": 1760000004000
+        },
+        "state": {
+          "last": {
+            "price": 7751,
+            "source": "futures",
+            "at": 1760000004000
+          },
+          "muted": 7750
+        },
+        "hit": {
+          "level": 7750,
+          "direction": "up",
+          "price": 7751,
+          "source": "futures",
+          "at": 1760000004000,
+          "skipped": 0
+        }
+      }
+    ],
+    "unusableKeepsState": [
+      {
+        "sample": {
+          "price": 7712,
+          "source": "quote",
+          "at": 1760000000000
+        },
+        "state": {
+          "last": {
+            "price": 7712,
+            "source": "quote",
+            "at": 1760000000000
+          },
+          "muted": null
+        },
+        "hit": null
+      },
+      {
+        "sample": {
+          "price": null,
+          "source": "quote",
+          "at": 1760000002000
+        },
+        "state": {
+          "last": {
+            "price": 7712,
+            "source": "quote",
+            "at": 1760000000000
+          },
+          "muted": null
+        },
+        "hit": null
+      },
+      {
+        "sample": {
+          "price": 7730,
+          "source": "stale",
+          "at": 1760000004000
+        },
+        "state": {
+          "last": {
+            "price": 7712,
+            "source": "quote",
+            "at": 1760000000000
+          },
+          "muted": null
+        },
+        "hit": null
+      },
+      {
+        "sample": {
+          "price": 0,
+          "source": "quote",
+          "at": 1760000005000
+        },
+        "state": {
+          "last": {
+            "price": 7712,
+            "source": "quote",
+            "at": 1760000000000
+          },
+          "muted": null
+        },
+        "hit": null
+      },
+      {
+        "sample": {
+          "price": 7726,
+          "source": "quote",
+          "at": 1760000006000
+        },
+        "state": {
+          "last": {
+            "price": 7726,
+            "source": "quote",
+            "at": 1760000006000
+          },
+          "muted": 7725
+        },
+        "hit": {
+          "level": 7725,
+          "direction": "up",
+          "price": 7726,
+          "source": "quote",
+          "at": 1760000006000,
+          "skipped": 0
+        }
+      }
+    ],
+    "unusableThenGap": [
+      {
+        "sample": {
+          "price": 7712,
+          "source": "quote",
+          "at": 1760000000000
+        },
+        "state": {
+          "last": {
+            "price": 7712,
+            "source": "quote",
+            "at": 1760000000000
+          },
+          "muted": null
+        },
+        "hit": null
+      },
+      {
+        "sample": {
+          "price": 7780,
+          "source": "none",
+          "at": 1760000010000
+        },
+        "state": {
+          "last": {
+            "price": 7712,
+            "source": "quote",
+            "at": 1760000000000
+          },
+          "muted": null
+        },
+        "hit": null
+      },
+      {
+        "sample": {
+          "price": 7726,
+          "source": "quote",
+          "at": 1760000040000
+        },
+        "state": {
+          "last": {
+            "price": 7726,
+            "source": "quote",
+            "at": 1760000040000
+          },
+          "muted": null
+        },
+        "hit": null
+      }
+    ],
+    "backwardsTime": [
+      {
+        "sample": {
+          "price": 7712,
+          "source": "quote",
+          "at": 1760000000000
+        },
+        "state": {
+          "last": {
+            "price": 7712,
+            "source": "quote",
+            "at": 1760000000000
+          },
+          "muted": null
+        },
+        "hit": null
+      },
+      {
+        "sample": {
+          "price": 7730,
+          "source": "quote",
+          "at": 1759999999999
+        },
+        "state": {
+          "last": {
+            "price": 7730,
+            "source": "quote",
+            "at": 1759999999999
+          },
+          "muted": null
+        },
+        "hit": null
+      }
+    ],
+    "samePrice": [
+      {
+        "sample": {
+          "price": 7725,
+          "source": "quote",
+          "at": 1760000000000
+        },
+        "state": {
+          "last": {
+            "price": 7725,
+            "source": "quote",
+            "at": 1760000000000
+          },
+          "muted": null
+        },
+        "hit": null
+      },
+      {
+        "sample": {
+          "price": 7725,
+          "source": "quote",
+          "at": 1760000002000
+        },
+        "state": {
+          "last": {
+            "price": 7725,
+            "source": "quote",
+            "at": 1760000002000
+          },
+          "muted": null
+        },
+        "hit": null
+      }
+    ],
+    "nanPrice": [
+      {
+        "sample": {
+          "price": 7712,
+          "source": "quote",
+          "at": 1760000000000
+        },
+        "state": {
+          "last": {
+            "price": 7712,
+            "source": "quote",
+            "at": 1760000000000
+          },
+          "muted": null
+        },
+        "hit": null
+      },
+      {
+        "sample": {
+          "price": "NaN",
+          "source": "quote",
+          "at": 1760000002000
+        },
+        "state": {
+          "last": {
+            "price": 7712,
+            "source": "quote",
+            "at": 1760000000000
+          },
+          "muted": null
+        },
+        "hit": null
+      },
+      {
+        "sample": {
+          "price": 7726,
+          "source": "quote",
+          "at": 1760000004000
+        },
+        "state": {
+          "last": {
+            "price": 7726,
+            "source": "quote",
+            "at": 1760000004000
+          },
+          "muted": 7725
+        },
+        "hit": {
+          "level": 7725,
+          "direction": "up",
+          "price": 7726,
+          "source": "quote",
+          "at": 1760000004000,
+          "skipped": 0
+        }
+      }
+    ],
+    "fractional": [
+      {
+        "sample": {
+          "price": 7724.99,
+          "source": "quote",
+          "at": 1760000000000
+        },
+        "state": {
+          "last": {
+            "price": 7724.99,
+            "source": "quote",
+            "at": 1760000000000
+          },
+          "muted": null
+        },
+        "hit": null
+      },
+      {
+        "sample": {
+          "price": 7725.0000001,
+          "source": "quote",
+          "at": 1760000002000
+        },
+        "state": {
+          "last": {
+            "price": 7725.0000001,
+            "source": "quote",
+            "at": 1760000002000
+          },
+          "muted": 7725
+        },
+        "hit": {
+          "level": 7725,
+          "direction": "up",
+          "price": 7725.0000001,
+          "source": "quote",
+          "at": 1760000002000,
+          "skipped": 0
+        }
+      },
+      {
+        "sample": {
+          "price": 7699.999,
+          "source": "quote",
+          "at": 1760000004000
+        },
+        "state": {
+          "last": {
+            "price": 7699.999,
+            "source": "quote",
+            "at": 1760000004000
+          },
+          "muted": 7700
+        },
+        "hit": {
+          "level": 7700,
+          "direction": "down",
+          "price": 7699.999,
+          "source": "quote",
+          "at": 1760000004000,
+          "skipped": 1
+        }
+      }
+    ]
+  },
+  "near": [
+    {
+      "price": 7712.4,
+      "out": {
+        "below": 7700,
+        "above": 7725
+      }
+    },
+    {
+      "price": 7725,
+      "out": {
+        "below": 7725,
+        "above": 7750
+      }
+    },
+    {
+      "price": 7699.99,
+      "out": {
+        "below": 7675,
+        "above": 7700
+      }
+    },
+    {
+      "price": 25,
+      "out": {
+        "below": 25,
+        "above": 50
+      }
+    },
+    {
+      "price": 0.5,
+      "out": {
+        "below": 0,
+        "above": 25
+      }
+    }
+  ],
+  "text": [
+    {
+      "hit": {
+        "level": 7725,
+        "direction": "up",
+        "price": 7726.333,
+        "source": "quote",
+        "at": 1,
+        "skipped": 0
+      },
+      "title": "SPX 上穿 7725",
+      "body": "现价 7726.33"
+    },
+    {
+      "hit": {
+        "level": 7700,
+        "direction": "down",
+        "price": 7698.005,
+        "source": "futures",
+        "at": 1,
+        "skipped": 1
+      },
+      "title": "SPX 下破 7700",
+      "body": "现价 7698.01(按期货推算) · 这一步越过了 2 个关口"
+    },
+    {
+      "hit": {
+        "level": 7750,
+        "direction": "up",
+        "price": 7750,
+        "source": "futures",
+        "at": 1,
+        "skipped": 0
+      },
+      "title": "SPX 上穿 7750",
+      "body": "现价 7750.00(按期货推算)"
+    }
+  ]
+}

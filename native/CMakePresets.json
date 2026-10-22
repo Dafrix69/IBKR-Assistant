@@ -1,0 +1,177 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "QT_QML_GENERATE_QMLLS_INI": "ON"
+      }
+    },
+    {
+      "name": "mac-base",
+      "hidden": true,
+      "inherits": "base",
+      "description": "macOS:Qt 用 Homebrew 装的那一份;编出来的东西放在 iCloud 同步的桌面之外(同步会把编译产物逐出,也会给 .app 加属性让签名失败)",
+      "binaryDir": "$env{HOME}/Library/Caches/IBKR-Assistant/native-build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_PREFIX_PATH": "/opt/homebrew",
+        "CMAKE_MAKE_PROGRAM": "/opt/homebrew/bin/ninja"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      }
+    },
+    {
+      "name": "mac-debug",
+      "displayName": "macOS Debug",
+      "inherits": "mac-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "mac-release",
+      "displayName": "macOS Release",
+      "inherits": "mac-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    },
+    {
+      "name": "mac-asan",
+      "displayName": "macOS Debug + ASan/UBSan",
+      "inherits": "mac-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "IBKR_SANITIZE": "ON"
+      }
+    },
+    {
+      "name": "mac-tsan",
+      "displayName": "macOS Debug + TSan",
+      "inherits": "mac-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "IBKR_TSAN": "ON"
+      }
+    },
+    {
+      "name": "win-base",
+      "hidden": true,
+      "inherits": "base",
+      "description": "Windows:MSVC + Ninja;Qt 的位置从环境变量 QT_ROOT_DIR 来(如 C:/Qt/6.8.3/msvc2022_64)",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "architecture": {
+        "value": "x64",
+        "strategy": "external"
+      },
+      "toolset": {
+        "value": "host=x64",
+        "strategy": "external"
+      },
+      "cacheVariables": {
+        "CMAKE_PREFIX_PATH": "$env{QT_ROOT_DIR}",
+        "CMAKE_CXX_COMPILER": "cl"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "win-debug",
+      "displayName": "Windows Debug",
+      "inherits": "win-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "win-release",
+      "displayName": "Windows Release",
+      "inherits": "win-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "mac-debug",
+      "configurePreset": "mac-debug"
+    },
+    {
+      "name": "mac-release",
+      "configurePreset": "mac-release"
+    },
+    {
+      "name": "mac-asan",
+      "configurePreset": "mac-asan"
+    },
+    {
+      "name": "mac-tsan",
+      "configurePreset": "mac-tsan"
+    },
+    {
+      "name": "win-debug",
+      "configurePreset": "win-debug"
+    },
+    {
+      "name": "win-release",
+      "configurePreset": "win-release"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "output": {
+        "outputOnFailure": true
+      },
+      "environment": {
+        "QT_QPA_PLATFORM": "offscreen"
+      }
+    },
+    {
+      "name": "mac-debug",
+      "inherits": "base",
+      "configurePreset": "mac-debug"
+    },
+    {
+      "name": "mac-release",
+      "inherits": "base",
+      "configurePreset": "mac-release"
+    },
+    {
+      "name": "mac-asan",
+      "inherits": "base",
+      "configurePreset": "mac-asan"
+    },
+    {
+      "name": "mac-tsan",
+      "inherits": "base",
+      "configurePreset": "mac-tsan"
+    },
+    {
+      "name": "win-debug",
+      "inherits": "base",
+      "configurePreset": "win-debug"
+    },
+    {
+      "name": "win-release",
+      "inherits": "base",
+      "configurePreset": "win-release"
+    }
+  ]
+}

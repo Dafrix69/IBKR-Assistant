@@ -2,7 +2,7 @@ name: ci
 
 on:
   push:
-    branches: [main]
+    branches: [main, qt]
   pull_request:
 
 # 这条工作流只读代码:不发版、不写仓库。令牌权限收到最小

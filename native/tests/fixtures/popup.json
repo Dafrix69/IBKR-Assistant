@@ -1,0 +1,1459 @@
+{
+ "generator": "gen_popup.mjs",
+ "now": 1789150800000,
+ "limits": {
+  "width": 360,
+  "margin": 12,
+  "minHeight": 96,
+  "maxHeightRatio": 0.7,
+  "maxIncoming": 30,
+  "maxItems": 30,
+  "revealFallbackMs": 1500,
+  "pageReadyTimeoutMs": 10000,
+  "notifyFallbackMax": 5
+ },
+ "cases": [
+  {
+   "fn": "sanitize",
+   "input": null,
+   "out": {
+    "items": [],
+    "updown": "green-up",
+    "dropped": 0
+   }
+  },
+  {
+   "fn": "sanitize",
+   "input": 42,
+   "out": {
+    "items": [],
+    "updown": "green-up",
+    "dropped": 0
+   }
+  },
+  {
+   "fn": "sanitize",
+   "input": "x",
+   "out": {
+    "items": [],
+    "updown": "green-up",
+    "dropped": 0
+   }
+  },
+  {
+   "fn": "sanitize",
+   "input": [],
+   "out": {
+    "items": [],
+    "updown": "green-up",
+    "dropped": 0
+   }
+  },
+  {
+   "fn": "sanitize",
+   "input": {
+    "items": "nope"
+   },
+   "out": {
+    "items": [],
+    "updown": "green-up",
+    "dropped": 0
+   }
+  },
+  {
+   "fn": "sanitize",
+   "input": {
+    "items": {
+     "0": {
+      "id": "a",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     }
+    }
+   },
+   "out": {
+    "items": [],
+    "updown": "green-up",
+    "dropped": 0
+   }
+  },
+  {
+   "fn": "sanitize",
+   "input": {
+    "items": [],
+    "updown": "red-up"
+   },
+   "out": {
+    "items": [],
+    "updown": "red-up",
+    "dropped": 0
+   }
+  },
+  {
+   "fn": "sanitize",
+   "input": {
+    "items": [],
+    "updown": "purple-up"
+   },
+   "out": {
+    "items": [],
+    "updown": "green-up",
+    "dropped": 0
+   }
+  },
+  {
+   "fn": "sanitize",
+   "input": {
+    "items": [
+     {
+      "id": "id0",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "id1",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "id2",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "id3",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "id4",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "id5",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "id6",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "id7",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "id8",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "id9",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "id10",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "id11",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "id12",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "id13",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "id14",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "id15",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "id16",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "id17",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "id18",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "id19",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "id20",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "id21",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "id22",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "id23",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "id24",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "id25",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "id26",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "id27",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "id28",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "id29",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "id30",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "id31",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "id32",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "id33",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "id34",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     }
+    ]
+   },
+   "out": {
+    "items": [
+     {
+      "id": "id0",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "id1",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "id2",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "id3",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "id4",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "id5",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "id6",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "id7",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "id8",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "id9",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "id10",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "id11",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "id12",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "id13",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "id14",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "id15",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "id16",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "id17",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "id18",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "id19",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "id20",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "id21",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "id22",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "id23",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "id24",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "id25",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "id26",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "id27",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "id28",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "id29",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     }
+    ],
+    "updown": "green-up",
+    "dropped": 5
+   }
+  },
+  {
+   "fn": "sanitize",
+   "input": {
+    "items": [
+     {
+      "id": "a",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": ""
+     }
+    ]
+   },
+   "out": {
+    "items": [
+     {
+      "id": "a",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     }
+    ],
+    "updown": "green-up",
+    "dropped": 0
+   }
+  },
+  {
+   "fn": "sanitize",
+   "input": {
+    "items": [
+     {
+      "id": "RKLB:burst:up:-:1789150800",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "level:SPX:5000.5:1789150800000",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "a b<script>c\u0000d",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "<>!@#",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": {
+       "__undefined": true
+      },
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     null,
+     "string",
+     [
+      {
+       "id": "arr",
+       "kind": "anomaly",
+       "symbol": "RKLB",
+       "title": "RKLB 放量 3.1×",
+       "body": "说明",
+       "tone": "up",
+       "at": 1000
+      }
+     ],
+     {
+      "id": 12345,
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "中文id:9",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     }
+    ]
+   },
+   "out": {
+    "items": [
+     {
+      "id": "RKLB:burst:up:-:1789150800",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "level:SPX:5000.5:1789150800000",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "abscriptcd",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "12345",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "id:9",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     }
+    ],
+    "updown": "green-up",
+    "dropped": 0
+   }
+  },
+  {
+   "fn": "sanitize",
+   "input": {
+    "items": [
+     {
+      "id": "s0",
+      "kind": "anomaly",
+      "symbol": "brk.b",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "s1",
+      "kind": "anomaly",
+      "symbol": "rds-a",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "s2",
+      "kind": "anomaly",
+      "symbol": "AB C<D>",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "s3",
+      "kind": "anomaly",
+      "symbol": "ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "s4",
+      "kind": "anomaly",
+      "symbol": 123,
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "s5",
+      "kind": "anomaly",
+      "symbol": "ß-straße",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "s6",
+      "kind": "anomaly",
+      "symbol": null,
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     }
+    ]
+   },
+   "out": {
+    "items": [
+     {
+      "id": "s0",
+      "kind": "anomaly",
+      "symbol": "BRK.B",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "s1",
+      "kind": "anomaly",
+      "symbol": "RDS-A",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "s2",
+      "kind": "anomaly",
+      "symbol": "ABCD",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "s3",
+      "kind": "anomaly",
+      "symbol": "ZZZZZZZZZZZZZZZZ",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "s4",
+      "kind": "anomaly",
+      "symbol": "",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "s5",
+      "kind": "anomaly",
+      "symbol": "SS-STRASSE",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "s6",
+      "kind": "anomaly",
+      "symbol": "",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     }
+    ],
+    "updown": "green-up",
+    "dropped": 0
+   }
+  },
+  {
+   "fn": "sanitize",
+   "input": {
+    "items": [
+     {
+      "id": "a",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB\t放量\n\n3.1×\u0007",
+      "body": "下‮破​﻿ 5000\u0000",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "b",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长",
+      "body": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "c",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "d",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "  前后空白　  ",
+      "body": 12.5,
+      "tone": "up",
+      "at": 1000
+     },
+     {
+      "id": "e",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": " a  a  a  a  a  a  a  a  a  a  a  a  a  a  a  a  a  a  a  a  a  a  a  a  a  a  a  a  a  a  a  a  a  a  a  a  a  a  a  a 尾",
+      "body": "x y⁠z",
+      "tone": "up",
+      "at": 1000
+     }
+    ]
+   },
+   "out": {
+    "items": [
+     {
+      "id": "a",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "下破 5000",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "b",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长",
+      "body": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "c",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+      "body": "说明",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "d",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "前后空白",
+      "body": "12.5",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     },
+     {
+      "id": "e",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a",
+      "body": "xyz",
+      "tone": "up",
+      "at": 1000,
+      "page": null
+     }
+    ],
+    "updown": "green-up",
+    "dropped": 0
+   }
+  },
+  {
+   "fn": "sanitize",
+   "input": {
+    "items": [
+     {
+      "id": "a",
+      "kind": "trade",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "rainbow",
+      "at": {
+       "__number": "NaN"
+      },
+      "page": "orders"
+     },
+     {
+      "id": "b",
+      "kind": "level",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "down",
+      "at": 5,
+      "page": "sectors"
+     },
+     {
+      "id": "c",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "   ",
+      "body": {
+       "__undefined": true
+      },
+      "tone": "up",
+      "at": "1000",
+      "page": {
+       "__undefined": true
+      }
+     },
+     {
+      "id": "d",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": {
+       "__number": "Infinity"
+      },
+      "page": "tracker"
+     },
+     {
+      "id": "e",
+      "kind": "event",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "info",
+      "at": -3.5,
+      "page": "intel"
+     }
+    ]
+   },
+   "out": {
+    "items": [
+     {
+      "id": "a",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "info",
+      "at": 1789150800000,
+      "page": null
+     },
+     {
+      "id": "b",
+      "kind": "level",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "down",
+      "at": 5,
+      "page": "sectors"
+     },
+     {
+      "id": "c",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB",
+      "body": "",
+      "tone": "up",
+      "at": 1789150800000,
+      "page": null
+     },
+     {
+      "id": "d",
+      "kind": "anomaly",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "up",
+      "at": 1789150800000,
+      "page": "tracker"
+     },
+     {
+      "id": "e",
+      "kind": "event",
+      "symbol": "RKLB",
+      "title": "RKLB 放量 3.1×",
+      "body": "说明",
+      "tone": "info",
+      "at": -3.5,
+      "page": "intel"
+     }
+    ],
+    "updown": "green-up",
+    "dropped": 0
+   }
+  },
+  {
+   "fn": "sanitize",
+   "input": {
+    "items": [
+     {
+      "id": "a:bc",
+      "kind": "anomaly",
+      "symbol": "BRK.B",
+      "title": "x y",
+      "body": "说明",
+      "tone": "info",
+      "at": 1000,
+      "page": "quality"
+     }
+    ],
+    "updown": "red-up",
+    "dropped": 0
+   },
+   "out": {
+    "items": [
+     {
+      "id": "a:bc",
+      "kind": "anomaly",
+      "symbol": "BRK.B",
+      "title": "x y",
+      "body": "说明",
+      "tone": "info",
+      "at": 1000,
+      "page": "quality"
+     }
+    ],
+    "updown": "red-up",
+    "dropped": 0
+   }
+  },
+  {
+   "fn": "bounds",
+   "input": {
+    "area": {
+     "x": 1920,
+     "y": 25,
+     "width": 2560,
+     "height": 1415
+    },
+    "height": 150.2
+   },
+   "out": {
+    "x": 4108,
+    "y": 37,
+    "width": 360,
+    "height": 151
+   }
+  },
+  {
+   "fn": "bounds",
+   "input": {
+    "area": {
+     "x": 1920,
+     "y": 25,
+     "width": 2560,
+     "height": 1415
+    },
+    "height": 20
+   },
+   "out": {
+    "x": 4108,
+    "y": 37,
+    "width": 360,
+    "height": 96
+   }
+  },
+  {
+   "fn": "bounds",
+   "input": {
+    "area": {
+     "x": 1920,
+     "y": 25,
+     "width": 2560,
+     "height": 1415
+    },
+    "height": 5000
+   },
+   "out": {
+    "x": 4108,
+    "y": 37,
+    "width": 360,
+    "height": 990
+   }
+  },
+  {
+   "fn": "bounds",
+   "input": {
+    "area": {
+     "x": 1920,
+     "y": 25,
+     "width": 2560,
+     "height": 1415
+    },
+    "height": null
+   },
+   "out": {
+    "x": 4108,
+    "y": 37,
+    "width": 360,
+    "height": 96
+   }
+  },
+  {
+   "fn": "bounds",
+   "input": {
+    "area": {
+     "x": 0,
+     "y": 0,
+     "width": 800,
+     "height": 100
+    },
+    "height": 400
+   },
+   "out": {
+    "x": 428,
+    "y": 12,
+    "width": 360,
+    "height": 96
+   }
+  },
+  {
+   "fn": "bounds",
+   "input": {
+    "area": {
+     "x": -1440,
+     "y": 0,
+     "width": 1440.5,
+     "height": 875
+    },
+    "height": 96.01
+   },
+   "out": {
+    "x": -371,
+    "y": 12,
+    "width": 360,
+    "height": 97
+   }
+  }
+ ]
+}

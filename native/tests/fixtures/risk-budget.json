@@ -1,0 +1,3309 @@
+{
+ "generator": "native/tests/fixtures/gen_risk_budget.mjs",
+ "cfgs": [
+  {
+   "enabled": true,
+   "equity_usd": {
+    "模拟": 50000,
+    "主账户": 0,
+    "小号": 1234.56
+   },
+   "max_risk_pct": 1,
+   "max_position_pct": 20
+  },
+  {
+   "enabled": false,
+   "equity_usd": {
+    "模拟": 50000
+   },
+   "max_risk_pct": 1,
+   "max_position_pct": 20
+  },
+  {
+   "enabled": true,
+   "equity_usd": {
+    "模拟": 30000
+   },
+   "max_risk_pct": 0.5,
+   "max_position_pct": 33.35
+  }
+ ],
+ "cases": [
+  {
+   "ci": 0,
+   "alias": "模拟",
+   "sec": "STK",
+   "exposure": 0,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "模拟",
+   "sec": "STK",
+   "exposure": -5,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "模拟",
+   "sec": "STK",
+   "exposure": "NaN",
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "模拟",
+   "sec": "STK",
+   "exposure": 100,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "模拟",
+   "sec": "STK",
+   "exposure": 500,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "模拟",
+   "sec": "STK",
+   "exposure": 499.99,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "模拟",
+   "sec": "STK",
+   "exposure": 500.01,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "模拟",
+   "sec": "STK",
+   "exposure": 10000,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "模拟",
+   "sec": "STK",
+   "exposure": 10005,
+   "out": "单笔仓位:名义金额约 $10005.00,占 模拟 权益 $50000.00 的 20%,超过你定的 20%。最坏亏多少取决于止损——下单后记得在持仓追踪里设上(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "模拟",
+   "sec": "STK",
+   "exposure": 16675,
+   "out": "单笔仓位:名义金额约 $16675.00,占 模拟 权益 $50000.00 的 33.4%,超过你定的 20%。最坏亏多少取决于止损——下单后记得在持仓追踪里设上(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "模拟",
+   "sec": "STK",
+   "exposure": 16680,
+   "out": "单笔仓位:名义金额约 $16680.00,占 模拟 权益 $50000.00 的 33.4%,超过你定的 20%。最坏亏多少取决于止损——下单后记得在持仓追踪里设上(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "模拟",
+   "sec": "STK",
+   "exposure": 123.456,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "模拟",
+   "sec": "STK",
+   "exposure": 1000000,
+   "out": "单笔仓位:名义金额约 $1000000.00,占 模拟 权益 $50000.00 的 2000%,超过你定的 20%。最坏亏多少取决于止损——下单后记得在持仓追踪里设上(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "模拟",
+   "sec": "OPT",
+   "exposure": 0,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "模拟",
+   "sec": "OPT",
+   "exposure": -5,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "模拟",
+   "sec": "OPT",
+   "exposure": "NaN",
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "模拟",
+   "sec": "OPT",
+   "exposure": 100,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "模拟",
+   "sec": "OPT",
+   "exposure": 500,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "模拟",
+   "sec": "OPT",
+   "exposure": 499.99,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "模拟",
+   "sec": "OPT",
+   "exposure": 500.01,
+   "out": "单笔风险:最坏亏损约 $500.01,占 模拟 权益 $50000.00 的 1%,超过你定的 1%(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "模拟",
+   "sec": "OPT",
+   "exposure": 10000,
+   "out": "单笔风险:最坏亏损约 $10000.00,占 模拟 权益 $50000.00 的 20%,超过你定的 1%(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "模拟",
+   "sec": "OPT",
+   "exposure": 10005,
+   "out": "单笔风险:最坏亏损约 $10005.00,占 模拟 权益 $50000.00 的 20%,超过你定的 1%(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "模拟",
+   "sec": "OPT",
+   "exposure": 16675,
+   "out": "单笔风险:最坏亏损约 $16675.00,占 模拟 权益 $50000.00 的 33.4%,超过你定的 1%(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "模拟",
+   "sec": "OPT",
+   "exposure": 16680,
+   "out": "单笔风险:最坏亏损约 $16680.00,占 模拟 权益 $50000.00 的 33.4%,超过你定的 1%(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "模拟",
+   "sec": "OPT",
+   "exposure": 123.456,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "模拟",
+   "sec": "OPT",
+   "exposure": 1000000,
+   "out": "单笔风险:最坏亏损约 $1000000.00,占 模拟 权益 $50000.00 的 2000%,超过你定的 1%(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "模拟",
+   "sec": "BAG",
+   "exposure": 0,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "模拟",
+   "sec": "BAG",
+   "exposure": -5,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "模拟",
+   "sec": "BAG",
+   "exposure": "NaN",
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "模拟",
+   "sec": "BAG",
+   "exposure": 100,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "模拟",
+   "sec": "BAG",
+   "exposure": 500,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "模拟",
+   "sec": "BAG",
+   "exposure": 499.99,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "模拟",
+   "sec": "BAG",
+   "exposure": 500.01,
+   "out": "单笔风险:最坏亏损约 $500.01,占 模拟 权益 $50000.00 的 1%,超过你定的 1%(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "模拟",
+   "sec": "BAG",
+   "exposure": 10000,
+   "out": "单笔风险:最坏亏损约 $10000.00,占 模拟 权益 $50000.00 的 20%,超过你定的 1%(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "模拟",
+   "sec": "BAG",
+   "exposure": 10005,
+   "out": "单笔风险:最坏亏损约 $10005.00,占 模拟 权益 $50000.00 的 20%,超过你定的 1%(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "模拟",
+   "sec": "BAG",
+   "exposure": 16675,
+   "out": "单笔风险:最坏亏损约 $16675.00,占 模拟 权益 $50000.00 的 33.4%,超过你定的 1%(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "模拟",
+   "sec": "BAG",
+   "exposure": 16680,
+   "out": "单笔风险:最坏亏损约 $16680.00,占 模拟 权益 $50000.00 的 33.4%,超过你定的 1%(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "模拟",
+   "sec": "BAG",
+   "exposure": 123.456,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "模拟",
+   "sec": "BAG",
+   "exposure": 1000000,
+   "out": "单笔风险:最坏亏损约 $1000000.00,占 模拟 权益 $50000.00 的 2000%,超过你定的 1%(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "主账户",
+   "sec": "STK",
+   "exposure": 0,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "主账户",
+   "sec": "STK",
+   "exposure": -5,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "主账户",
+   "sec": "STK",
+   "exposure": "NaN",
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "主账户",
+   "sec": "STK",
+   "exposure": 100,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "主账户",
+   "sec": "STK",
+   "exposure": 500,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "主账户",
+   "sec": "STK",
+   "exposure": 499.99,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "主账户",
+   "sec": "STK",
+   "exposure": 500.01,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "主账户",
+   "sec": "STK",
+   "exposure": 10000,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "主账户",
+   "sec": "STK",
+   "exposure": 10005,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "主账户",
+   "sec": "STK",
+   "exposure": 16675,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "主账户",
+   "sec": "STK",
+   "exposure": 16680,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "主账户",
+   "sec": "STK",
+   "exposure": 123.456,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "主账户",
+   "sec": "STK",
+   "exposure": 1000000,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "主账户",
+   "sec": "OPT",
+   "exposure": 0,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "主账户",
+   "sec": "OPT",
+   "exposure": -5,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "主账户",
+   "sec": "OPT",
+   "exposure": "NaN",
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "主账户",
+   "sec": "OPT",
+   "exposure": 100,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "主账户",
+   "sec": "OPT",
+   "exposure": 500,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "主账户",
+   "sec": "OPT",
+   "exposure": 499.99,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "主账户",
+   "sec": "OPT",
+   "exposure": 500.01,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "主账户",
+   "sec": "OPT",
+   "exposure": 10000,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "主账户",
+   "sec": "OPT",
+   "exposure": 10005,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "主账户",
+   "sec": "OPT",
+   "exposure": 16675,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "主账户",
+   "sec": "OPT",
+   "exposure": 16680,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "主账户",
+   "sec": "OPT",
+   "exposure": 123.456,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "主账户",
+   "sec": "OPT",
+   "exposure": 1000000,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "主账户",
+   "sec": "BAG",
+   "exposure": 0,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "主账户",
+   "sec": "BAG",
+   "exposure": -5,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "主账户",
+   "sec": "BAG",
+   "exposure": "NaN",
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "主账户",
+   "sec": "BAG",
+   "exposure": 100,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "主账户",
+   "sec": "BAG",
+   "exposure": 500,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "主账户",
+   "sec": "BAG",
+   "exposure": 499.99,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "主账户",
+   "sec": "BAG",
+   "exposure": 500.01,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "主账户",
+   "sec": "BAG",
+   "exposure": 10000,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "主账户",
+   "sec": "BAG",
+   "exposure": 10005,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "主账户",
+   "sec": "BAG",
+   "exposure": 16675,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "主账户",
+   "sec": "BAG",
+   "exposure": 16680,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "主账户",
+   "sec": "BAG",
+   "exposure": 123.456,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "主账户",
+   "sec": "BAG",
+   "exposure": 1000000,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "小号",
+   "sec": "STK",
+   "exposure": 0,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "小号",
+   "sec": "STK",
+   "exposure": -5,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "小号",
+   "sec": "STK",
+   "exposure": "NaN",
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "小号",
+   "sec": "STK",
+   "exposure": 100,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "小号",
+   "sec": "STK",
+   "exposure": 500,
+   "out": "单笔仓位:名义金额约 $500.00,占 小号 权益 $1234.56 的 40.5%,超过你定的 20%。最坏亏多少取决于止损——下单后记得在持仓追踪里设上(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "小号",
+   "sec": "STK",
+   "exposure": 499.99,
+   "out": "单笔仓位:名义金额约 $499.99,占 小号 权益 $1234.56 的 40.5%,超过你定的 20%。最坏亏多少取决于止损——下单后记得在持仓追踪里设上(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "小号",
+   "sec": "STK",
+   "exposure": 500.01,
+   "out": "单笔仓位:名义金额约 $500.01,占 小号 权益 $1234.56 的 40.5%,超过你定的 20%。最坏亏多少取决于止损——下单后记得在持仓追踪里设上(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "小号",
+   "sec": "STK",
+   "exposure": 10000,
+   "out": "单笔仓位:名义金额约 $10000.00,占 小号 权益 $1234.56 的 810%,超过你定的 20%。最坏亏多少取决于止损——下单后记得在持仓追踪里设上(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "小号",
+   "sec": "STK",
+   "exposure": 10005,
+   "out": "单笔仓位:名义金额约 $10005.00,占 小号 权益 $1234.56 的 810.4%,超过你定的 20%。最坏亏多少取决于止损——下单后记得在持仓追踪里设上(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "小号",
+   "sec": "STK",
+   "exposure": 16675,
+   "out": "单笔仓位:名义金额约 $16675.00,占 小号 权益 $1234.56 的 1350.7%,超过你定的 20%。最坏亏多少取决于止损——下单后记得在持仓追踪里设上(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "小号",
+   "sec": "STK",
+   "exposure": 16680,
+   "out": "单笔仓位:名义金额约 $16680.00,占 小号 权益 $1234.56 的 1351.1%,超过你定的 20%。最坏亏多少取决于止损——下单后记得在持仓追踪里设上(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "小号",
+   "sec": "STK",
+   "exposure": 123.456,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "小号",
+   "sec": "STK",
+   "exposure": 1000000,
+   "out": "单笔仓位:名义金额约 $1000000.00,占 小号 权益 $1234.56 的 81000.5%,超过你定的 20%。最坏亏多少取决于止损——下单后记得在持仓追踪里设上(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "小号",
+   "sec": "OPT",
+   "exposure": 0,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "小号",
+   "sec": "OPT",
+   "exposure": -5,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "小号",
+   "sec": "OPT",
+   "exposure": "NaN",
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "小号",
+   "sec": "OPT",
+   "exposure": 100,
+   "out": "单笔风险:最坏亏损约 $100.00,占 小号 权益 $1234.56 的 8.1%,超过你定的 1%(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "小号",
+   "sec": "OPT",
+   "exposure": 500,
+   "out": "单笔风险:最坏亏损约 $500.00,占 小号 权益 $1234.56 的 40.5%,超过你定的 1%(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "小号",
+   "sec": "OPT",
+   "exposure": 499.99,
+   "out": "单笔风险:最坏亏损约 $499.99,占 小号 权益 $1234.56 的 40.5%,超过你定的 1%(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "小号",
+   "sec": "OPT",
+   "exposure": 500.01,
+   "out": "单笔风险:最坏亏损约 $500.01,占 小号 权益 $1234.56 的 40.5%,超过你定的 1%(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "小号",
+   "sec": "OPT",
+   "exposure": 10000,
+   "out": "单笔风险:最坏亏损约 $10000.00,占 小号 权益 $1234.56 的 810%,超过你定的 1%(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "小号",
+   "sec": "OPT",
+   "exposure": 10005,
+   "out": "单笔风险:最坏亏损约 $10005.00,占 小号 权益 $1234.56 的 810.4%,超过你定的 1%(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "小号",
+   "sec": "OPT",
+   "exposure": 16675,
+   "out": "单笔风险:最坏亏损约 $16675.00,占 小号 权益 $1234.56 的 1350.7%,超过你定的 1%(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "小号",
+   "sec": "OPT",
+   "exposure": 16680,
+   "out": "单笔风险:最坏亏损约 $16680.00,占 小号 权益 $1234.56 的 1351.1%,超过你定的 1%(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "小号",
+   "sec": "OPT",
+   "exposure": 123.456,
+   "out": "单笔风险:最坏亏损约 $123.46,占 小号 权益 $1234.56 的 10%,超过你定的 1%(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "小号",
+   "sec": "OPT",
+   "exposure": 1000000,
+   "out": "单笔风险:最坏亏损约 $1000000.00,占 小号 权益 $1234.56 的 81000.5%,超过你定的 1%(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "小号",
+   "sec": "BAG",
+   "exposure": 0,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "小号",
+   "sec": "BAG",
+   "exposure": -5,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "小号",
+   "sec": "BAG",
+   "exposure": "NaN",
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "小号",
+   "sec": "BAG",
+   "exposure": 100,
+   "out": "单笔风险:最坏亏损约 $100.00,占 小号 权益 $1234.56 的 8.1%,超过你定的 1%(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "小号",
+   "sec": "BAG",
+   "exposure": 500,
+   "out": "单笔风险:最坏亏损约 $500.00,占 小号 权益 $1234.56 的 40.5%,超过你定的 1%(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "小号",
+   "sec": "BAG",
+   "exposure": 499.99,
+   "out": "单笔风险:最坏亏损约 $499.99,占 小号 权益 $1234.56 的 40.5%,超过你定的 1%(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "小号",
+   "sec": "BAG",
+   "exposure": 500.01,
+   "out": "单笔风险:最坏亏损约 $500.01,占 小号 权益 $1234.56 的 40.5%,超过你定的 1%(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "小号",
+   "sec": "BAG",
+   "exposure": 10000,
+   "out": "单笔风险:最坏亏损约 $10000.00,占 小号 权益 $1234.56 的 810%,超过你定的 1%(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "小号",
+   "sec": "BAG",
+   "exposure": 10005,
+   "out": "单笔风险:最坏亏损约 $10005.00,占 小号 权益 $1234.56 的 810.4%,超过你定的 1%(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "小号",
+   "sec": "BAG",
+   "exposure": 16675,
+   "out": "单笔风险:最坏亏损约 $16675.00,占 小号 权益 $1234.56 的 1350.7%,超过你定的 1%(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "小号",
+   "sec": "BAG",
+   "exposure": 16680,
+   "out": "单笔风险:最坏亏损约 $16680.00,占 小号 权益 $1234.56 的 1351.1%,超过你定的 1%(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "小号",
+   "sec": "BAG",
+   "exposure": 123.456,
+   "out": "单笔风险:最坏亏损约 $123.46,占 小号 权益 $1234.56 的 10%,超过你定的 1%(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "小号",
+   "sec": "BAG",
+   "exposure": 1000000,
+   "out": "单笔风险:最坏亏损约 $1000000.00,占 小号 权益 $1234.56 的 81000.5%,超过你定的 1%(只提醒,不拦单)"
+  },
+  {
+   "ci": 0,
+   "alias": "没有",
+   "sec": "STK",
+   "exposure": 0,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "没有",
+   "sec": "STK",
+   "exposure": -5,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "没有",
+   "sec": "STK",
+   "exposure": "NaN",
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "没有",
+   "sec": "STK",
+   "exposure": 100,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "没有",
+   "sec": "STK",
+   "exposure": 500,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "没有",
+   "sec": "STK",
+   "exposure": 499.99,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "没有",
+   "sec": "STK",
+   "exposure": 500.01,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "没有",
+   "sec": "STK",
+   "exposure": 10000,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "没有",
+   "sec": "STK",
+   "exposure": 10005,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "没有",
+   "sec": "STK",
+   "exposure": 16675,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "没有",
+   "sec": "STK",
+   "exposure": 16680,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "没有",
+   "sec": "STK",
+   "exposure": 123.456,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "没有",
+   "sec": "STK",
+   "exposure": 1000000,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "没有",
+   "sec": "OPT",
+   "exposure": 0,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "没有",
+   "sec": "OPT",
+   "exposure": -5,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "没有",
+   "sec": "OPT",
+   "exposure": "NaN",
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "没有",
+   "sec": "OPT",
+   "exposure": 100,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "没有",
+   "sec": "OPT",
+   "exposure": 500,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "没有",
+   "sec": "OPT",
+   "exposure": 499.99,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "没有",
+   "sec": "OPT",
+   "exposure": 500.01,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "没有",
+   "sec": "OPT",
+   "exposure": 10000,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "没有",
+   "sec": "OPT",
+   "exposure": 10005,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "没有",
+   "sec": "OPT",
+   "exposure": 16675,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "没有",
+   "sec": "OPT",
+   "exposure": 16680,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "没有",
+   "sec": "OPT",
+   "exposure": 123.456,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "没有",
+   "sec": "OPT",
+   "exposure": 1000000,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "没有",
+   "sec": "BAG",
+   "exposure": 0,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "没有",
+   "sec": "BAG",
+   "exposure": -5,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "没有",
+   "sec": "BAG",
+   "exposure": "NaN",
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "没有",
+   "sec": "BAG",
+   "exposure": 100,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "没有",
+   "sec": "BAG",
+   "exposure": 500,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "没有",
+   "sec": "BAG",
+   "exposure": 499.99,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "没有",
+   "sec": "BAG",
+   "exposure": 500.01,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "没有",
+   "sec": "BAG",
+   "exposure": 10000,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "没有",
+   "sec": "BAG",
+   "exposure": 10005,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "没有",
+   "sec": "BAG",
+   "exposure": 16675,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "没有",
+   "sec": "BAG",
+   "exposure": 16680,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "没有",
+   "sec": "BAG",
+   "exposure": 123.456,
+   "out": null
+  },
+  {
+   "ci": 0,
+   "alias": "没有",
+   "sec": "BAG",
+   "exposure": 1000000,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "模拟",
+   "sec": "STK",
+   "exposure": 0,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "模拟",
+   "sec": "STK",
+   "exposure": -5,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "模拟",
+   "sec": "STK",
+   "exposure": "NaN",
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "模拟",
+   "sec": "STK",
+   "exposure": 100,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "模拟",
+   "sec": "STK",
+   "exposure": 500,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "模拟",
+   "sec": "STK",
+   "exposure": 499.99,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "模拟",
+   "sec": "STK",
+   "exposure": 500.01,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "模拟",
+   "sec": "STK",
+   "exposure": 10000,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "模拟",
+   "sec": "STK",
+   "exposure": 10005,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "模拟",
+   "sec": "STK",
+   "exposure": 16675,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "模拟",
+   "sec": "STK",
+   "exposure": 16680,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "模拟",
+   "sec": "STK",
+   "exposure": 123.456,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "模拟",
+   "sec": "STK",
+   "exposure": 1000000,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "模拟",
+   "sec": "OPT",
+   "exposure": 0,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "模拟",
+   "sec": "OPT",
+   "exposure": -5,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "模拟",
+   "sec": "OPT",
+   "exposure": "NaN",
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "模拟",
+   "sec": "OPT",
+   "exposure": 100,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "模拟",
+   "sec": "OPT",
+   "exposure": 500,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "模拟",
+   "sec": "OPT",
+   "exposure": 499.99,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "模拟",
+   "sec": "OPT",
+   "exposure": 500.01,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "模拟",
+   "sec": "OPT",
+   "exposure": 10000,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "模拟",
+   "sec": "OPT",
+   "exposure": 10005,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "模拟",
+   "sec": "OPT",
+   "exposure": 16675,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "模拟",
+   "sec": "OPT",
+   "exposure": 16680,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "模拟",
+   "sec": "OPT",
+   "exposure": 123.456,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "模拟",
+   "sec": "OPT",
+   "exposure": 1000000,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "模拟",
+   "sec": "BAG",
+   "exposure": 0,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "模拟",
+   "sec": "BAG",
+   "exposure": -5,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "模拟",
+   "sec": "BAG",
+   "exposure": "NaN",
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "模拟",
+   "sec": "BAG",
+   "exposure": 100,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "模拟",
+   "sec": "BAG",
+   "exposure": 500,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "模拟",
+   "sec": "BAG",
+   "exposure": 499.99,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "模拟",
+   "sec": "BAG",
+   "exposure": 500.01,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "模拟",
+   "sec": "BAG",
+   "exposure": 10000,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "模拟",
+   "sec": "BAG",
+   "exposure": 10005,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "模拟",
+   "sec": "BAG",
+   "exposure": 16675,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "模拟",
+   "sec": "BAG",
+   "exposure": 16680,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "模拟",
+   "sec": "BAG",
+   "exposure": 123.456,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "模拟",
+   "sec": "BAG",
+   "exposure": 1000000,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "主账户",
+   "sec": "STK",
+   "exposure": 0,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "主账户",
+   "sec": "STK",
+   "exposure": -5,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "主账户",
+   "sec": "STK",
+   "exposure": "NaN",
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "主账户",
+   "sec": "STK",
+   "exposure": 100,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "主账户",
+   "sec": "STK",
+   "exposure": 500,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "主账户",
+   "sec": "STK",
+   "exposure": 499.99,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "主账户",
+   "sec": "STK",
+   "exposure": 500.01,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "主账户",
+   "sec": "STK",
+   "exposure": 10000,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "主账户",
+   "sec": "STK",
+   "exposure": 10005,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "主账户",
+   "sec": "STK",
+   "exposure": 16675,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "主账户",
+   "sec": "STK",
+   "exposure": 16680,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "主账户",
+   "sec": "STK",
+   "exposure": 123.456,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "主账户",
+   "sec": "STK",
+   "exposure": 1000000,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "主账户",
+   "sec": "OPT",
+   "exposure": 0,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "主账户",
+   "sec": "OPT",
+   "exposure": -5,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "主账户",
+   "sec": "OPT",
+   "exposure": "NaN",
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "主账户",
+   "sec": "OPT",
+   "exposure": 100,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "主账户",
+   "sec": "OPT",
+   "exposure": 500,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "主账户",
+   "sec": "OPT",
+   "exposure": 499.99,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "主账户",
+   "sec": "OPT",
+   "exposure": 500.01,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "主账户",
+   "sec": "OPT",
+   "exposure": 10000,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "主账户",
+   "sec": "OPT",
+   "exposure": 10005,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "主账户",
+   "sec": "OPT",
+   "exposure": 16675,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "主账户",
+   "sec": "OPT",
+   "exposure": 16680,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "主账户",
+   "sec": "OPT",
+   "exposure": 123.456,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "主账户",
+   "sec": "OPT",
+   "exposure": 1000000,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "主账户",
+   "sec": "BAG",
+   "exposure": 0,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "主账户",
+   "sec": "BAG",
+   "exposure": -5,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "主账户",
+   "sec": "BAG",
+   "exposure": "NaN",
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "主账户",
+   "sec": "BAG",
+   "exposure": 100,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "主账户",
+   "sec": "BAG",
+   "exposure": 500,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "主账户",
+   "sec": "BAG",
+   "exposure": 499.99,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "主账户",
+   "sec": "BAG",
+   "exposure": 500.01,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "主账户",
+   "sec": "BAG",
+   "exposure": 10000,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "主账户",
+   "sec": "BAG",
+   "exposure": 10005,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "主账户",
+   "sec": "BAG",
+   "exposure": 16675,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "主账户",
+   "sec": "BAG",
+   "exposure": 16680,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "主账户",
+   "sec": "BAG",
+   "exposure": 123.456,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "主账户",
+   "sec": "BAG",
+   "exposure": 1000000,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "小号",
+   "sec": "STK",
+   "exposure": 0,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "小号",
+   "sec": "STK",
+   "exposure": -5,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "小号",
+   "sec": "STK",
+   "exposure": "NaN",
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "小号",
+   "sec": "STK",
+   "exposure": 100,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "小号",
+   "sec": "STK",
+   "exposure": 500,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "小号",
+   "sec": "STK",
+   "exposure": 499.99,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "小号",
+   "sec": "STK",
+   "exposure": 500.01,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "小号",
+   "sec": "STK",
+   "exposure": 10000,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "小号",
+   "sec": "STK",
+   "exposure": 10005,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "小号",
+   "sec": "STK",
+   "exposure": 16675,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "小号",
+   "sec": "STK",
+   "exposure": 16680,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "小号",
+   "sec": "STK",
+   "exposure": 123.456,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "小号",
+   "sec": "STK",
+   "exposure": 1000000,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "小号",
+   "sec": "OPT",
+   "exposure": 0,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "小号",
+   "sec": "OPT",
+   "exposure": -5,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "小号",
+   "sec": "OPT",
+   "exposure": "NaN",
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "小号",
+   "sec": "OPT",
+   "exposure": 100,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "小号",
+   "sec": "OPT",
+   "exposure": 500,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "小号",
+   "sec": "OPT",
+   "exposure": 499.99,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "小号",
+   "sec": "OPT",
+   "exposure": 500.01,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "小号",
+   "sec": "OPT",
+   "exposure": 10000,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "小号",
+   "sec": "OPT",
+   "exposure": 10005,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "小号",
+   "sec": "OPT",
+   "exposure": 16675,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "小号",
+   "sec": "OPT",
+   "exposure": 16680,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "小号",
+   "sec": "OPT",
+   "exposure": 123.456,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "小号",
+   "sec": "OPT",
+   "exposure": 1000000,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "小号",
+   "sec": "BAG",
+   "exposure": 0,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "小号",
+   "sec": "BAG",
+   "exposure": -5,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "小号",
+   "sec": "BAG",
+   "exposure": "NaN",
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "小号",
+   "sec": "BAG",
+   "exposure": 100,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "小号",
+   "sec": "BAG",
+   "exposure": 500,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "小号",
+   "sec": "BAG",
+   "exposure": 499.99,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "小号",
+   "sec": "BAG",
+   "exposure": 500.01,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "小号",
+   "sec": "BAG",
+   "exposure": 10000,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "小号",
+   "sec": "BAG",
+   "exposure": 10005,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "小号",
+   "sec": "BAG",
+   "exposure": 16675,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "小号",
+   "sec": "BAG",
+   "exposure": 16680,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "小号",
+   "sec": "BAG",
+   "exposure": 123.456,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "小号",
+   "sec": "BAG",
+   "exposure": 1000000,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "没有",
+   "sec": "STK",
+   "exposure": 0,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "没有",
+   "sec": "STK",
+   "exposure": -5,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "没有",
+   "sec": "STK",
+   "exposure": "NaN",
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "没有",
+   "sec": "STK",
+   "exposure": 100,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "没有",
+   "sec": "STK",
+   "exposure": 500,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "没有",
+   "sec": "STK",
+   "exposure": 499.99,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "没有",
+   "sec": "STK",
+   "exposure": 500.01,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "没有",
+   "sec": "STK",
+   "exposure": 10000,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "没有",
+   "sec": "STK",
+   "exposure": 10005,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "没有",
+   "sec": "STK",
+   "exposure": 16675,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "没有",
+   "sec": "STK",
+   "exposure": 16680,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "没有",
+   "sec": "STK",
+   "exposure": 123.456,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "没有",
+   "sec": "STK",
+   "exposure": 1000000,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "没有",
+   "sec": "OPT",
+   "exposure": 0,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "没有",
+   "sec": "OPT",
+   "exposure": -5,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "没有",
+   "sec": "OPT",
+   "exposure": "NaN",
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "没有",
+   "sec": "OPT",
+   "exposure": 100,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "没有",
+   "sec": "OPT",
+   "exposure": 500,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "没有",
+   "sec": "OPT",
+   "exposure": 499.99,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "没有",
+   "sec": "OPT",
+   "exposure": 500.01,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "没有",
+   "sec": "OPT",
+   "exposure": 10000,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "没有",
+   "sec": "OPT",
+   "exposure": 10005,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "没有",
+   "sec": "OPT",
+   "exposure": 16675,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "没有",
+   "sec": "OPT",
+   "exposure": 16680,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "没有",
+   "sec": "OPT",
+   "exposure": 123.456,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "没有",
+   "sec": "OPT",
+   "exposure": 1000000,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "没有",
+   "sec": "BAG",
+   "exposure": 0,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "没有",
+   "sec": "BAG",
+   "exposure": -5,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "没有",
+   "sec": "BAG",
+   "exposure": "NaN",
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "没有",
+   "sec": "BAG",
+   "exposure": 100,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "没有",
+   "sec": "BAG",
+   "exposure": 500,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "没有",
+   "sec": "BAG",
+   "exposure": 499.99,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "没有",
+   "sec": "BAG",
+   "exposure": 500.01,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "没有",
+   "sec": "BAG",
+   "exposure": 10000,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "没有",
+   "sec": "BAG",
+   "exposure": 10005,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "没有",
+   "sec": "BAG",
+   "exposure": 16675,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "没有",
+   "sec": "BAG",
+   "exposure": 16680,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "没有",
+   "sec": "BAG",
+   "exposure": 123.456,
+   "out": null
+  },
+  {
+   "ci": 1,
+   "alias": "没有",
+   "sec": "BAG",
+   "exposure": 1000000,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "模拟",
+   "sec": "STK",
+   "exposure": 0,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "模拟",
+   "sec": "STK",
+   "exposure": -5,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "模拟",
+   "sec": "STK",
+   "exposure": "NaN",
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "模拟",
+   "sec": "STK",
+   "exposure": 100,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "模拟",
+   "sec": "STK",
+   "exposure": 500,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "模拟",
+   "sec": "STK",
+   "exposure": 499.99,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "模拟",
+   "sec": "STK",
+   "exposure": 500.01,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "模拟",
+   "sec": "STK",
+   "exposure": 10000,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "模拟",
+   "sec": "STK",
+   "exposure": 10005,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "模拟",
+   "sec": "STK",
+   "exposure": 16675,
+   "out": "单笔仓位:名义金额约 $16675.00,占 模拟 权益 $30000.00 的 55.6%,超过你定的 33.4%。最坏亏多少取决于止损——下单后记得在持仓追踪里设上(只提醒,不拦单)"
+  },
+  {
+   "ci": 2,
+   "alias": "模拟",
+   "sec": "STK",
+   "exposure": 16680,
+   "out": "单笔仓位:名义金额约 $16680.00,占 模拟 权益 $30000.00 的 55.6%,超过你定的 33.4%。最坏亏多少取决于止损——下单后记得在持仓追踪里设上(只提醒,不拦单)"
+  },
+  {
+   "ci": 2,
+   "alias": "模拟",
+   "sec": "STK",
+   "exposure": 123.456,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "模拟",
+   "sec": "STK",
+   "exposure": 1000000,
+   "out": "单笔仓位:名义金额约 $1000000.00,占 模拟 权益 $30000.00 的 3333.3%,超过你定的 33.4%。最坏亏多少取决于止损——下单后记得在持仓追踪里设上(只提醒,不拦单)"
+  },
+  {
+   "ci": 2,
+   "alias": "模拟",
+   "sec": "OPT",
+   "exposure": 0,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "模拟",
+   "sec": "OPT",
+   "exposure": -5,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "模拟",
+   "sec": "OPT",
+   "exposure": "NaN",
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "模拟",
+   "sec": "OPT",
+   "exposure": 100,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "模拟",
+   "sec": "OPT",
+   "exposure": 500,
+   "out": "单笔风险:最坏亏损约 $500.00,占 模拟 权益 $30000.00 的 1.7%,超过你定的 0.5%(只提醒,不拦单)"
+  },
+  {
+   "ci": 2,
+   "alias": "模拟",
+   "sec": "OPT",
+   "exposure": 499.99,
+   "out": "单笔风险:最坏亏损约 $499.99,占 模拟 权益 $30000.00 的 1.7%,超过你定的 0.5%(只提醒,不拦单)"
+  },
+  {
+   "ci": 2,
+   "alias": "模拟",
+   "sec": "OPT",
+   "exposure": 500.01,
+   "out": "单笔风险:最坏亏损约 $500.01,占 模拟 权益 $30000.00 的 1.7%,超过你定的 0.5%(只提醒,不拦单)"
+  },
+  {
+   "ci": 2,
+   "alias": "模拟",
+   "sec": "OPT",
+   "exposure": 10000,
+   "out": "单笔风险:最坏亏损约 $10000.00,占 模拟 权益 $30000.00 的 33.3%,超过你定的 0.5%(只提醒,不拦单)"
+  },
+  {
+   "ci": 2,
+   "alias": "模拟",
+   "sec": "OPT",
+   "exposure": 10005,
+   "out": "单笔风险:最坏亏损约 $10005.00,占 模拟 权益 $30000.00 的 33.4%,超过你定的 0.5%(只提醒,不拦单)"
+  },
+  {
+   "ci": 2,
+   "alias": "模拟",
+   "sec": "OPT",
+   "exposure": 16675,
+   "out": "单笔风险:最坏亏损约 $16675.00,占 模拟 权益 $30000.00 的 55.6%,超过你定的 0.5%(只提醒,不拦单)"
+  },
+  {
+   "ci": 2,
+   "alias": "模拟",
+   "sec": "OPT",
+   "exposure": 16680,
+   "out": "单笔风险:最坏亏损约 $16680.00,占 模拟 权益 $30000.00 的 55.6%,超过你定的 0.5%(只提醒,不拦单)"
+  },
+  {
+   "ci": 2,
+   "alias": "模拟",
+   "sec": "OPT",
+   "exposure": 123.456,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "模拟",
+   "sec": "OPT",
+   "exposure": 1000000,
+   "out": "单笔风险:最坏亏损约 $1000000.00,占 模拟 权益 $30000.00 的 3333.3%,超过你定的 0.5%(只提醒,不拦单)"
+  },
+  {
+   "ci": 2,
+   "alias": "模拟",
+   "sec": "BAG",
+   "exposure": 0,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "模拟",
+   "sec": "BAG",
+   "exposure": -5,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "模拟",
+   "sec": "BAG",
+   "exposure": "NaN",
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "模拟",
+   "sec": "BAG",
+   "exposure": 100,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "模拟",
+   "sec": "BAG",
+   "exposure": 500,
+   "out": "单笔风险:最坏亏损约 $500.00,占 模拟 权益 $30000.00 的 1.7%,超过你定的 0.5%(只提醒,不拦单)"
+  },
+  {
+   "ci": 2,
+   "alias": "模拟",
+   "sec": "BAG",
+   "exposure": 499.99,
+   "out": "单笔风险:最坏亏损约 $499.99,占 模拟 权益 $30000.00 的 1.7%,超过你定的 0.5%(只提醒,不拦单)"
+  },
+  {
+   "ci": 2,
+   "alias": "模拟",
+   "sec": "BAG",
+   "exposure": 500.01,
+   "out": "单笔风险:最坏亏损约 $500.01,占 模拟 权益 $30000.00 的 1.7%,超过你定的 0.5%(只提醒,不拦单)"
+  },
+  {
+   "ci": 2,
+   "alias": "模拟",
+   "sec": "BAG",
+   "exposure": 10000,
+   "out": "单笔风险:最坏亏损约 $10000.00,占 模拟 权益 $30000.00 的 33.3%,超过你定的 0.5%(只提醒,不拦单)"
+  },
+  {
+   "ci": 2,
+   "alias": "模拟",
+   "sec": "BAG",
+   "exposure": 10005,
+   "out": "单笔风险:最坏亏损约 $10005.00,占 模拟 权益 $30000.00 的 33.4%,超过你定的 0.5%(只提醒,不拦单)"
+  },
+  {
+   "ci": 2,
+   "alias": "模拟",
+   "sec": "BAG",
+   "exposure": 16675,
+   "out": "单笔风险:最坏亏损约 $16675.00,占 模拟 权益 $30000.00 的 55.6%,超过你定的 0.5%(只提醒,不拦单)"
+  },
+  {
+   "ci": 2,
+   "alias": "模拟",
+   "sec": "BAG",
+   "exposure": 16680,
+   "out": "单笔风险:最坏亏损约 $16680.00,占 模拟 权益 $30000.00 的 55.6%,超过你定的 0.5%(只提醒,不拦单)"
+  },
+  {
+   "ci": 2,
+   "alias": "模拟",
+   "sec": "BAG",
+   "exposure": 123.456,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "模拟",
+   "sec": "BAG",
+   "exposure": 1000000,
+   "out": "单笔风险:最坏亏损约 $1000000.00,占 模拟 权益 $30000.00 的 3333.3%,超过你定的 0.5%(只提醒,不拦单)"
+  },
+  {
+   "ci": 2,
+   "alias": "主账户",
+   "sec": "STK",
+   "exposure": 0,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "主账户",
+   "sec": "STK",
+   "exposure": -5,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "主账户",
+   "sec": "STK",
+   "exposure": "NaN",
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "主账户",
+   "sec": "STK",
+   "exposure": 100,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "主账户",
+   "sec": "STK",
+   "exposure": 500,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "主账户",
+   "sec": "STK",
+   "exposure": 499.99,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "主账户",
+   "sec": "STK",
+   "exposure": 500.01,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "主账户",
+   "sec": "STK",
+   "exposure": 10000,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "主账户",
+   "sec": "STK",
+   "exposure": 10005,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "主账户",
+   "sec": "STK",
+   "exposure": 16675,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "主账户",
+   "sec": "STK",
+   "exposure": 16680,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "主账户",
+   "sec": "STK",
+   "exposure": 123.456,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "主账户",
+   "sec": "STK",
+   "exposure": 1000000,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "主账户",
+   "sec": "OPT",
+   "exposure": 0,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "主账户",
+   "sec": "OPT",
+   "exposure": -5,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "主账户",
+   "sec": "OPT",
+   "exposure": "NaN",
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "主账户",
+   "sec": "OPT",
+   "exposure": 100,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "主账户",
+   "sec": "OPT",
+   "exposure": 500,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "主账户",
+   "sec": "OPT",
+   "exposure": 499.99,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "主账户",
+   "sec": "OPT",
+   "exposure": 500.01,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "主账户",
+   "sec": "OPT",
+   "exposure": 10000,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "主账户",
+   "sec": "OPT",
+   "exposure": 10005,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "主账户",
+   "sec": "OPT",
+   "exposure": 16675,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "主账户",
+   "sec": "OPT",
+   "exposure": 16680,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "主账户",
+   "sec": "OPT",
+   "exposure": 123.456,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "主账户",
+   "sec": "OPT",
+   "exposure": 1000000,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "主账户",
+   "sec": "BAG",
+   "exposure": 0,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "主账户",
+   "sec": "BAG",
+   "exposure": -5,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "主账户",
+   "sec": "BAG",
+   "exposure": "NaN",
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "主账户",
+   "sec": "BAG",
+   "exposure": 100,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "主账户",
+   "sec": "BAG",
+   "exposure": 500,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "主账户",
+   "sec": "BAG",
+   "exposure": 499.99,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "主账户",
+   "sec": "BAG",
+   "exposure": 500.01,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "主账户",
+   "sec": "BAG",
+   "exposure": 10000,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "主账户",
+   "sec": "BAG",
+   "exposure": 10005,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "主账户",
+   "sec": "BAG",
+   "exposure": 16675,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "主账户",
+   "sec": "BAG",
+   "exposure": 16680,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "主账户",
+   "sec": "BAG",
+   "exposure": 123.456,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "主账户",
+   "sec": "BAG",
+   "exposure": 1000000,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "小号",
+   "sec": "STK",
+   "exposure": 0,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "小号",
+   "sec": "STK",
+   "exposure": -5,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "小号",
+   "sec": "STK",
+   "exposure": "NaN",
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "小号",
+   "sec": "STK",
+   "exposure": 100,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "小号",
+   "sec": "STK",
+   "exposure": 500,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "小号",
+   "sec": "STK",
+   "exposure": 499.99,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "小号",
+   "sec": "STK",
+   "exposure": 500.01,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "小号",
+   "sec": "STK",
+   "exposure": 10000,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "小号",
+   "sec": "STK",
+   "exposure": 10005,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "小号",
+   "sec": "STK",
+   "exposure": 16675,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "小号",
+   "sec": "STK",
+   "exposure": 16680,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "小号",
+   "sec": "STK",
+   "exposure": 123.456,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "小号",
+   "sec": "STK",
+   "exposure": 1000000,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "小号",
+   "sec": "OPT",
+   "exposure": 0,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "小号",
+   "sec": "OPT",
+   "exposure": -5,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "小号",
+   "sec": "OPT",
+   "exposure": "NaN",
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "小号",
+   "sec": "OPT",
+   "exposure": 100,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "小号",
+   "sec": "OPT",
+   "exposure": 500,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "小号",
+   "sec": "OPT",
+   "exposure": 499.99,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "小号",
+   "sec": "OPT",
+   "exposure": 500.01,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "小号",
+   "sec": "OPT",
+   "exposure": 10000,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "小号",
+   "sec": "OPT",
+   "exposure": 10005,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "小号",
+   "sec": "OPT",
+   "exposure": 16675,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "小号",
+   "sec": "OPT",
+   "exposure": 16680,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "小号",
+   "sec": "OPT",
+   "exposure": 123.456,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "小号",
+   "sec": "OPT",
+   "exposure": 1000000,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "小号",
+   "sec": "BAG",
+   "exposure": 0,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "小号",
+   "sec": "BAG",
+   "exposure": -5,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "小号",
+   "sec": "BAG",
+   "exposure": "NaN",
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "小号",
+   "sec": "BAG",
+   "exposure": 100,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "小号",
+   "sec": "BAG",
+   "exposure": 500,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "小号",
+   "sec": "BAG",
+   "exposure": 499.99,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "小号",
+   "sec": "BAG",
+   "exposure": 500.01,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "小号",
+   "sec": "BAG",
+   "exposure": 10000,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "小号",
+   "sec": "BAG",
+   "exposure": 10005,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "小号",
+   "sec": "BAG",
+   "exposure": 16675,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "小号",
+   "sec": "BAG",
+   "exposure": 16680,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "小号",
+   "sec": "BAG",
+   "exposure": 123.456,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "小号",
+   "sec": "BAG",
+   "exposure": 1000000,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "没有",
+   "sec": "STK",
+   "exposure": 0,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "没有",
+   "sec": "STK",
+   "exposure": -5,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "没有",
+   "sec": "STK",
+   "exposure": "NaN",
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "没有",
+   "sec": "STK",
+   "exposure": 100,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "没有",
+   "sec": "STK",
+   "exposure": 500,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "没有",
+   "sec": "STK",
+   "exposure": 499.99,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "没有",
+   "sec": "STK",
+   "exposure": 500.01,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "没有",
+   "sec": "STK",
+   "exposure": 10000,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "没有",
+   "sec": "STK",
+   "exposure": 10005,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "没有",
+   "sec": "STK",
+   "exposure": 16675,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "没有",
+   "sec": "STK",
+   "exposure": 16680,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "没有",
+   "sec": "STK",
+   "exposure": 123.456,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "没有",
+   "sec": "STK",
+   "exposure": 1000000,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "没有",
+   "sec": "OPT",
+   "exposure": 0,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "没有",
+   "sec": "OPT",
+   "exposure": -5,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "没有",
+   "sec": "OPT",
+   "exposure": "NaN",
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "没有",
+   "sec": "OPT",
+   "exposure": 100,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "没有",
+   "sec": "OPT",
+   "exposure": 500,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "没有",
+   "sec": "OPT",
+   "exposure": 499.99,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "没有",
+   "sec": "OPT",
+   "exposure": 500.01,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "没有",
+   "sec": "OPT",
+   "exposure": 10000,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "没有",
+   "sec": "OPT",
+   "exposure": 10005,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "没有",
+   "sec": "OPT",
+   "exposure": 16675,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "没有",
+   "sec": "OPT",
+   "exposure": 16680,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "没有",
+   "sec": "OPT",
+   "exposure": 123.456,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "没有",
+   "sec": "OPT",
+   "exposure": 1000000,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "没有",
+   "sec": "BAG",
+   "exposure": 0,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "没有",
+   "sec": "BAG",
+   "exposure": -5,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "没有",
+   "sec": "BAG",
+   "exposure": "NaN",
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "没有",
+   "sec": "BAG",
+   "exposure": 100,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "没有",
+   "sec": "BAG",
+   "exposure": 500,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "没有",
+   "sec": "BAG",
+   "exposure": 499.99,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "没有",
+   "sec": "BAG",
+   "exposure": 500.01,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "没有",
+   "sec": "BAG",
+   "exposure": 10000,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "没有",
+   "sec": "BAG",
+   "exposure": 10005,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "没有",
+   "sec": "BAG",
+   "exposure": 16675,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "没有",
+   "sec": "BAG",
+   "exposure": 16680,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "没有",
+   "sec": "BAG",
+   "exposure": 123.456,
+   "out": null
+  },
+  {
+   "ci": 2,
+   "alias": "没有",
+   "sec": "BAG",
+   "exposure": 1000000,
+   "out": null
+  }
+ ]
+}

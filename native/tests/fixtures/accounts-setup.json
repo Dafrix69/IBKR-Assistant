@@ -1,0 +1,501 @@
+{
+ "generator": "gen_accounts_setup.mjs",
+ "aliasMax": 24,
+ "base": {
+  "version": 3,
+  "connections": {
+   "paper": {
+    "host": "127.0.0.1",
+    "port": 7497,
+    "client_id": 11
+   },
+   "live": {
+    "port": 7496
+   },
+   "futu": {
+    "broker": "futu",
+    "port": 11111
+   },
+   "broken": "x"
+  },
+  "accounts": [
+   {
+    "alias": "模拟",
+    "account_id": "DU1234567",
+    "is_paper": true,
+    "connection": "paper",
+    "default": true,
+    "note": "留着的字段"
+   },
+   {
+    "alias": "实盘",
+    "account_id": "U7654321",
+    "is_paper": false,
+    "connection": "live"
+   },
+   "not-an-object",
+   {
+    "alias": "占位",
+    "account_id": "U0000000",
+    "is_paper": true,
+    "connection": "paper"
+   }
+  ],
+  "policies": {
+   "auto_execute": false
+  }
+ },
+ "cases": [
+  {
+   "change": {
+    "action": "upsert",
+    "alias": "新户",
+    "account_id": "DU7777777",
+    "is_paper": true,
+    "connection": "paper"
+   },
+   "ok": true,
+   "headline": "添加账户",
+   "lines": [
+    "别名:新户",
+    "账号:DU7777777",
+    "类别:纸面账户",
+    "连接:paper(IBKR,端口 7497)",
+    "默认账户:否",
+    "",
+    "保存后交易引擎会重启(几秒钟),券商连接会重连。请核对账号与 TWS 里显示的一致。"
+   ],
+   "config": "{\n  \"version\": 3,\n  \"connections\": {\n    \"paper\": {\n      \"host\": \"127.0.0.1\",\n      \"port\": 7497,\n      \"client_id\": 11\n    },\n    \"live\": {\n      \"port\": 7496\n    },\n    \"futu\": {\n      \"broker\": \"futu\",\n      \"port\": 11111\n    },\n    \"broken\": \"x\"\n  },\n  \"accounts\": [\n    {\n      \"alias\": \"模拟\",\n      \"account_id\": \"DU1234567\",\n      \"is_paper\": true,\n      \"connection\": \"paper\",\n      \"default\": true,\n      \"note\": \"留着的字段\"\n    },\n    {\n      \"alias\": \"实盘\",\n      \"account_id\": \"U7654321\",\n      \"is_paper\": false,\n      \"connection\": \"live\"\n    },\n    {\n      \"alias\": \"占位\",\n      \"account_id\": \"U0000000\",\n      \"is_paper\": true,\n      \"connection\": \"paper\"\n    },\n    {\n      \"alias\": \"新户\",\n      \"account_id\": \"DU7777777\",\n      \"is_paper\": true,\n      \"connection\": \"paper\"\n    }\n  ],\n  \"policies\": {\n    \"auto_execute\": false\n  }\n}"
+  },
+  {
+   "change": {
+    "action": "upsert",
+    "alias": "新户",
+    "account_id": "DU7777777",
+    "is_paper": true,
+    "connection": "paper",
+    "make_default": true
+   },
+   "ok": true,
+   "headline": "添加账户",
+   "lines": [
+    "别名:新户",
+    "账号:DU7777777",
+    "类别:纸面账户",
+    "连接:paper(IBKR,端口 7497)",
+    "默认账户:是",
+    "",
+    "保存后交易引擎会重启(几秒钟),券商连接会重连。请核对账号与 TWS 里显示的一致。"
+   ],
+   "config": "{\n  \"version\": 3,\n  \"connections\": {\n    \"paper\": {\n      \"host\": \"127.0.0.1\",\n      \"port\": 7497,\n      \"client_id\": 11\n    },\n    \"live\": {\n      \"port\": 7496\n    },\n    \"futu\": {\n      \"broker\": \"futu\",\n      \"port\": 11111\n    },\n    \"broken\": \"x\"\n  },\n  \"accounts\": [\n    {\n      \"alias\": \"模拟\",\n      \"account_id\": \"DU1234567\",\n      \"is_paper\": true,\n      \"connection\": \"paper\",\n      \"note\": \"留着的字段\"\n    },\n    {\n      \"alias\": \"实盘\",\n      \"account_id\": \"U7654321\",\n      \"is_paper\": false,\n      \"connection\": \"live\"\n    },\n    {\n      \"alias\": \"占位\",\n      \"account_id\": \"U0000000\",\n      \"is_paper\": true,\n      \"connection\": \"paper\"\n    },\n    {\n      \"alias\": \"新户\",\n      \"account_id\": \"DU7777777\",\n      \"is_paper\": true,\n      \"connection\": \"paper\",\n      \"default\": true\n    }\n  ],\n  \"policies\": {\n    \"auto_execute\": false\n  }\n}"
+  },
+  {
+   "change": {
+    "action": "upsert",
+    "alias": "实盘",
+    "account_id": "U7654322",
+    "is_paper": false,
+    "connection": "live"
+   },
+   "ok": true,
+   "headline": "修改账户",
+   "lines": [
+    "别名:实盘",
+    "账号:U7654322",
+    "类别:实盘账户(发到它的订单会用真钱成交,要过「允许实盘账户下单」这道闸)",
+    "连接:live(IBKR,端口 7496)",
+    "默认账户:否",
+    "",
+    "原来是:U7654321,实盘,连接 live",
+    "",
+    "保存后交易引擎会重启(几秒钟),券商连接会重连。请核对账号与 TWS 里显示的一致。"
+   ],
+   "config": "{\n  \"version\": 3,\n  \"connections\": {\n    \"paper\": {\n      \"host\": \"127.0.0.1\",\n      \"port\": 7497,\n      \"client_id\": 11\n    },\n    \"live\": {\n      \"port\": 7496\n    },\n    \"futu\": {\n      \"broker\": \"futu\",\n      \"port\": 11111\n    },\n    \"broken\": \"x\"\n  },\n  \"accounts\": [\n    {\n      \"alias\": \"模拟\",\n      \"account_id\": \"DU1234567\",\n      \"is_paper\": true,\n      \"connection\": \"paper\",\n      \"default\": true,\n      \"note\": \"留着的字段\"\n    },\n    {\n      \"alias\": \"实盘\",\n      \"account_id\": \"U7654322\",\n      \"is_paper\": false,\n      \"connection\": \"live\"\n    },\n    {\n      \"alias\": \"占位\",\n      \"account_id\": \"U0000000\",\n      \"is_paper\": true,\n      \"connection\": \"paper\"\n    }\n  ],\n  \"policies\": {\n    \"auto_execute\": false\n  }\n}"
+  },
+  {
+   "change": {
+    "action": "upsert",
+    "alias": "实盘",
+    "account_id": "DU7654321",
+    "is_paper": true,
+    "connection": "paper"
+   },
+   "ok": true,
+   "headline": "修改账户",
+   "lines": [
+    "别名:实盘",
+    "账号:DU7654321",
+    "类别:纸面账户",
+    "连接:paper(IBKR,端口 7497)",
+    "默认账户:否",
+    "",
+    "原来是:U7654321,实盘,连接 live",
+    "注意:这个别名从实盘改成了纸面。",
+    "",
+    "保存后交易引擎会重启(几秒钟),券商连接会重连。请核对账号与 TWS 里显示的一致。"
+   ],
+   "config": "{\n  \"version\": 3,\n  \"connections\": {\n    \"paper\": {\n      \"host\": \"127.0.0.1\",\n      \"port\": 7497,\n      \"client_id\": 11\n    },\n    \"live\": {\n      \"port\": 7496\n    },\n    \"futu\": {\n      \"broker\": \"futu\",\n      \"port\": 11111\n    },\n    \"broken\": \"x\"\n  },\n  \"accounts\": [\n    {\n      \"alias\": \"模拟\",\n      \"account_id\": \"DU1234567\",\n      \"is_paper\": true,\n      \"connection\": \"paper\",\n      \"default\": true,\n      \"note\": \"留着的字段\"\n    },\n    {\n      \"alias\": \"实盘\",\n      \"account_id\": \"DU7654321\",\n      \"is_paper\": true,\n      \"connection\": \"paper\"\n    },\n    {\n      \"alias\": \"占位\",\n      \"account_id\": \"U0000000\",\n      \"is_paper\": true,\n      \"connection\": \"paper\"\n    }\n  ],\n  \"policies\": {\n    \"auto_execute\": false\n  }\n}"
+  },
+  {
+   "change": {
+    "action": "upsert",
+    "alias": " 模拟 ",
+    "account_id": " DU1234567 ",
+    "is_paper": true,
+    "connection": "paper"
+   },
+   "ok": true,
+   "headline": "修改账户",
+   "lines": [
+    "别名:模拟",
+    "账号:DU1234567",
+    "类别:纸面账户",
+    "连接:paper(IBKR,端口 7497)",
+    "默认账户:是",
+    "",
+    "原来是:DU1234567,纸面,连接 paper",
+    "",
+    "保存后交易引擎会重启(几秒钟),券商连接会重连。请核对账号与 TWS 里显示的一致。"
+   ],
+   "config": "{\n  \"version\": 3,\n  \"connections\": {\n    \"paper\": {\n      \"host\": \"127.0.0.1\",\n      \"port\": 7497,\n      \"client_id\": 11\n    },\n    \"live\": {\n      \"port\": 7496\n    },\n    \"futu\": {\n      \"broker\": \"futu\",\n      \"port\": 11111\n    },\n    \"broken\": \"x\"\n  },\n  \"accounts\": [\n    {\n      \"alias\": \"模拟\",\n      \"account_id\": \"DU1234567\",\n      \"is_paper\": true,\n      \"connection\": \"paper\",\n      \"default\": true\n    },\n    {\n      \"alias\": \"实盘\",\n      \"account_id\": \"U7654321\",\n      \"is_paper\": false,\n      \"connection\": \"live\"\n    },\n    {\n      \"alias\": \"占位\",\n      \"account_id\": \"U0000000\",\n      \"is_paper\": true,\n      \"connection\": \"paper\"\n    }\n  ],\n  \"policies\": {\n    \"auto_execute\": false\n  }\n}"
+  },
+  {
+   "change": {
+    "action": "upsert",
+    "alias": "富途",
+    "account_id": "28190044",
+    "is_paper": true,
+    "connection": "futu"
+   },
+   "ok": true,
+   "headline": "添加账户",
+   "lines": [
+    "别名:富途",
+    "账号:28190044",
+    "类别:纸面账户",
+    "连接:futu(富途 OpenD,端口 11111)",
+    "默认账户:否",
+    "",
+    "保存后交易引擎会重启(几秒钟),券商连接会重连。请核对账号与 TWS 里显示的一致。"
+   ],
+   "config": "{\n  \"version\": 3,\n  \"connections\": {\n    \"paper\": {\n      \"host\": \"127.0.0.1\",\n      \"port\": 7497,\n      \"client_id\": 11\n    },\n    \"live\": {\n      \"port\": 7496\n    },\n    \"futu\": {\n      \"broker\": \"futu\",\n      \"port\": 11111\n    },\n    \"broken\": \"x\"\n  },\n  \"accounts\": [\n    {\n      \"alias\": \"模拟\",\n      \"account_id\": \"DU1234567\",\n      \"is_paper\": true,\n      \"connection\": \"paper\",\n      \"default\": true,\n      \"note\": \"留着的字段\"\n    },\n    {\n      \"alias\": \"实盘\",\n      \"account_id\": \"U7654321\",\n      \"is_paper\": false,\n      \"connection\": \"live\"\n    },\n    {\n      \"alias\": \"占位\",\n      \"account_id\": \"U0000000\",\n      \"is_paper\": true,\n      \"connection\": \"paper\"\n    },\n    {\n      \"alias\": \"富途\",\n      \"account_id\": \"28190044\",\n      \"is_paper\": true,\n      \"connection\": \"futu\"\n    }\n  ],\n  \"policies\": {\n    \"auto_execute\": false\n  }\n}"
+  },
+  {
+   "change": {
+    "action": "upsert",
+    "alias": "错标",
+    "account_id": "U1111111",
+    "is_paper": true,
+    "connection": "paper"
+   },
+   "ok": false,
+   "error": "这个账号不是 IBKR 模拟账号的样子(模拟账号以 D 开头,如 DU1234567),不能标成纸面——标错了,实盘闸门对它就不起作用"
+  },
+  {
+   "change": {
+    "action": "upsert",
+    "alias": "撞号",
+    "account_id": "U7654321",
+    "is_paper": false,
+    "connection": "live"
+   },
+   "ok": false,
+   "error": "这个账号已经配给了别名「实盘」"
+  },
+  {
+   "change": {
+    "action": "upsert",
+    "alias": "x",
+    "account_id": "ABCD1234",
+    "is_paper": false,
+    "connection": "live"
+   },
+   "ok": false,
+   "error": "账号的格式不对:IBKR 是 U 或 DU 开头加数字(在 TWS 右上角、账户窗口里看得到),富途是纯数字"
+  },
+  {
+   "change": {
+    "action": "upsert",
+    "alias": "x",
+    "account_id": "U123",
+    "is_paper": false,
+    "connection": "live"
+   },
+   "ok": false,
+   "error": "账号的格式不对:IBKR 是 U 或 DU 开头加数字(在 TWS 右上角、账户窗口里看得到),富途是纯数字"
+  },
+  {
+   "change": {
+    "action": "upsert",
+    "alias": "x",
+    "account_id": "U1234567",
+    "is_paper": "yes",
+    "connection": "live"
+   },
+   "ok": false,
+   "error": "要选清楚这是纸面账户还是实盘账户"
+  },
+  {
+   "change": {
+    "action": "upsert",
+    "alias": "x",
+    "account_id": "U1234568",
+    "is_paper": false,
+    "connection": "nope"
+   },
+   "ok": false,
+   "error": "配置里没有叫「nope」的连接"
+  },
+  {
+   "change": {
+    "action": "upsert",
+    "alias": "x",
+    "account_id": "U1234568",
+    "is_paper": false,
+    "connection": "__proto__"
+   },
+   "ok": false,
+   "error": "配置里没有叫「__proto__」的连接"
+  },
+  {
+   "change": {
+    "action": "upsert",
+    "alias": "x",
+    "account_id": "U1234568",
+    "is_paper": false,
+    "connection": "broken"
+   },
+   "ok": false,
+   "error": "配置里没有叫「broken」的连接"
+  },
+  {
+   "change": {
+    "action": "upsert",
+    "alias": "default",
+    "account_id": "U1234568",
+    "is_paper": false,
+    "connection": "live"
+   },
+   "ok": false,
+   "error": "DEFAULT 是保留字(指默认账户),换一个别名"
+  },
+  {
+   "change": {
+    "action": "upsert",
+    "alias": "",
+    "account_id": "U1234568"
+   },
+   "ok": false,
+   "error": "别名不能空着"
+  },
+  {
+   "change": {
+    "action": "upsert",
+    "alias": "名名名名名名名名名名名名名名名名名名名名名名名名名",
+    "account_id": "U1234568"
+   },
+   "ok": false,
+   "error": "别名太长了(最多 24 个字)"
+  },
+  {
+   "change": {
+    "action": "upsert",
+    "alias": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+    "account_id": "U1234568",
+    "is_paper": false,
+    "connection": "live"
+   },
+   "ok": true,
+   "headline": "添加账户",
+   "lines": [
+    "别名:😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+    "账号:U1234568",
+    "类别:实盘账户(发到它的订单会用真钱成交,要过「允许实盘账户下单」这道闸)",
+    "连接:live(IBKR,端口 7496)",
+    "默认账户:否",
+    "",
+    "保存后交易引擎会重启(几秒钟),券商连接会重连。请核对账号与 TWS 里显示的一致。"
+   ],
+   "config": "{\n  \"version\": 3,\n  \"connections\": {\n    \"paper\": {\n      \"host\": \"127.0.0.1\",\n      \"port\": 7497,\n      \"client_id\": 11\n    },\n    \"live\": {\n      \"port\": 7496\n    },\n    \"futu\": {\n      \"broker\": \"futu\",\n      \"port\": 11111\n    },\n    \"broken\": \"x\"\n  },\n  \"accounts\": [\n    {\n      \"alias\": \"模拟\",\n      \"account_id\": \"DU1234567\",\n      \"is_paper\": true,\n      \"connection\": \"paper\",\n      \"default\": true,\n      \"note\": \"留着的字段\"\n    },\n    {\n      \"alias\": \"实盘\",\n      \"account_id\": \"U7654321\",\n      \"is_paper\": false,\n      \"connection\": \"live\"\n    },\n    {\n      \"alias\": \"占位\",\n      \"account_id\": \"U0000000\",\n      \"is_paper\": true,\n      \"connection\": \"paper\"\n    },\n    {\n      \"alias\": \"😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\",\n      \"account_id\": \"U1234568\",\n      \"is_paper\": false,\n      \"connection\": \"live\"\n    }\n  ],\n  \"policies\": {\n    \"auto_execute\": false\n  }\n}"
+  },
+  {
+   "change": {
+    "action": "upsert",
+    "alias": "a\"b",
+    "account_id": "U1234568"
+   },
+   "ok": false,
+   "error": "别名里不能有引号、反斜杠与控制字符"
+  },
+  {
+   "change": {
+    "action": "upsert",
+    "alias": "a\tb",
+    "account_id": "U1234568"
+   },
+   "ok": false,
+   "error": "别名里不能有引号、反斜杠与控制字符"
+  },
+  {
+   "change": {
+    "action": "upsert",
+    "alias": 42,
+    "account_id": 12345678,
+    "is_paper": false,
+    "connection": "live"
+   },
+   "ok": true,
+   "headline": "添加账户",
+   "lines": [
+    "别名:42",
+    "账号:12345678",
+    "类别:实盘账户(发到它的订单会用真钱成交,要过「允许实盘账户下单」这道闸)",
+    "连接:live(IBKR,端口 7496)",
+    "默认账户:否",
+    "",
+    "保存后交易引擎会重启(几秒钟),券商连接会重连。请核对账号与 TWS 里显示的一致。"
+   ],
+   "config": "{\n  \"version\": 3,\n  \"connections\": {\n    \"paper\": {\n      \"host\": \"127.0.0.1\",\n      \"port\": 7497,\n      \"client_id\": 11\n    },\n    \"live\": {\n      \"port\": 7496\n    },\n    \"futu\": {\n      \"broker\": \"futu\",\n      \"port\": 11111\n    },\n    \"broken\": \"x\"\n  },\n  \"accounts\": [\n    {\n      \"alias\": \"模拟\",\n      \"account_id\": \"DU1234567\",\n      \"is_paper\": true,\n      \"connection\": \"paper\",\n      \"default\": true,\n      \"note\": \"留着的字段\"\n    },\n    {\n      \"alias\": \"实盘\",\n      \"account_id\": \"U7654321\",\n      \"is_paper\": false,\n      \"connection\": \"live\"\n    },\n    {\n      \"alias\": \"占位\",\n      \"account_id\": \"U0000000\",\n      \"is_paper\": true,\n      \"connection\": \"paper\"\n    },\n    {\n      \"alias\": \"42\",\n      \"account_id\": \"12345678\",\n      \"is_paper\": false,\n      \"connection\": \"live\"\n    }\n  ],\n  \"policies\": {\n    \"auto_execute\": false\n  }\n}"
+  },
+  {
+   "change": {
+    "action": "remove",
+    "alias": "模拟"
+   },
+   "ok": true,
+   "headline": "删除账户",
+   "lines": [
+    "删除账户「模拟」(DU1234567,纸面)",
+    "它原来是默认账户:默认账户改成「实盘」",
+    "",
+    "只改本机的配置,不影响券商那边的账户与持仓。用这个别名建的追踪会失效。"
+   ],
+   "config": "{\n  \"version\": 3,\n  \"connections\": {\n    \"paper\": {\n      \"host\": \"127.0.0.1\",\n      \"port\": 7497,\n      \"client_id\": 11\n    },\n    \"live\": {\n      \"port\": 7496\n    },\n    \"futu\": {\n      \"broker\": \"futu\",\n      \"port\": 11111\n    },\n    \"broken\": \"x\"\n  },\n  \"accounts\": [\n    {\n      \"alias\": \"实盘\",\n      \"account_id\": \"U7654321\",\n      \"is_paper\": false,\n      \"connection\": \"live\",\n      \"default\": true\n    },\n    {\n      \"alias\": \"占位\",\n      \"account_id\": \"U0000000\",\n      \"is_paper\": true,\n      \"connection\": \"paper\"\n    }\n  ],\n  \"policies\": {\n    \"auto_execute\": false\n  }\n}"
+  },
+  {
+   "change": {
+    "action": "remove",
+    "alias": "实盘"
+   },
+   "ok": true,
+   "headline": "删除账户",
+   "lines": [
+    "删除账户「实盘」(U7654321,实盘)",
+    "",
+    "只改本机的配置,不影响券商那边的账户与持仓。用这个别名建的追踪会失效。"
+   ],
+   "config": "{\n  \"version\": 3,\n  \"connections\": {\n    \"paper\": {\n      \"host\": \"127.0.0.1\",\n      \"port\": 7497,\n      \"client_id\": 11\n    },\n    \"live\": {\n      \"port\": 7496\n    },\n    \"futu\": {\n      \"broker\": \"futu\",\n      \"port\": 11111\n    },\n    \"broken\": \"x\"\n  },\n  \"accounts\": [\n    {\n      \"alias\": \"模拟\",\n      \"account_id\": \"DU1234567\",\n      \"is_paper\": true,\n      \"connection\": \"paper\",\n      \"default\": true,\n      \"note\": \"留着的字段\"\n    },\n    {\n      \"alias\": \"占位\",\n      \"account_id\": \"U0000000\",\n      \"is_paper\": true,\n      \"connection\": \"paper\"\n    }\n  ],\n  \"policies\": {\n    \"auto_execute\": false\n  }\n}"
+  },
+  {
+   "change": {
+    "action": "remove",
+    "alias": "没有"
+   },
+   "ok": false,
+   "error": "没有叫「没有」的账户"
+  },
+  {
+   "change": {
+    "action": "rename",
+    "alias": "模拟"
+   },
+   "ok": false,
+   "error": "不认识的操作:rename"
+  },
+  {
+   "change": null,
+   "ok": false,
+   "error": "没有收到要改的内容"
+  },
+  {
+   "base": {
+    "connections": {
+     "paper": {
+      "port": 7497
+     }
+    },
+    "accounts": [
+     {
+      "alias": "唯一",
+      "account_id": "DU1",
+      "is_paper": true,
+      "connection": "paper",
+      "default": true
+     }
+    ]
+   },
+   "change": {
+    "action": "remove",
+    "alias": "唯一"
+   },
+   "ok": true,
+   "headline": "删除账户",
+   "lines": [
+    "删除账户「唯一」(DU1,纸面)",
+    "删掉之后配置里一个账户都没有了:解析得了指令,但发不了单",
+    "",
+    "只改本机的配置,不影响券商那边的账户与持仓。用这个别名建的追踪会失效。"
+   ],
+   "config": "{\n  \"connections\": {\n    \"paper\": {\n      \"port\": 7497\n    }\n  },\n  \"accounts\": []\n}"
+  },
+  {
+   "base": {
+    "connections": {
+     "live": {
+      "port": 7496
+     }
+    }
+   },
+   "change": {
+    "action": "upsert",
+    "alias": "甲",
+    "account_id": "U12345678",
+    "is_paper": false,
+    "connection": "live"
+   },
+   "ok": true,
+   "headline": "添加账户",
+   "lines": [
+    "别名:甲",
+    "账号:U12345678",
+    "类别:实盘账户(发到它的订单会用真钱成交,要过「允许实盘账户下单」这道闸)",
+    "连接:live(IBKR,端口 7496)",
+    "默认账户:是",
+    "",
+    "保存后交易引擎会重启(几秒钟),券商连接会重连。请核对账号与 TWS 里显示的一致。"
+   ],
+   "config": "{\n  \"connections\": {\n    \"live\": {\n      \"port\": 7496\n    }\n  },\n  \"accounts\": [\n    {\n      \"alias\": \"甲\",\n      \"account_id\": \"U12345678\",\n      \"is_paper\": false,\n      \"connection\": \"live\",\n      \"default\": true\n    }\n  ]\n}"
+  },
+  {
+   "base": [
+    1
+   ],
+   "change": {
+    "action": "remove",
+    "alias": "x"
+   },
+   "ok": false,
+   "error": "配置文件读不出来,先修好它再改账户"
+  }
+ ],
+ "placeholders": [
+  "占位"
+ ],
+ "choices": [
+  {
+   "name": "paper",
+   "broker": "ibkr",
+   "port": 7497
+  },
+  {
+   "name": "live",
+   "broker": "ibkr",
+   "port": 7496
+  },
+  {
+   "name": "futu",
+   "broker": "futu",
+   "port": 11111
+  }
+ ]
+}

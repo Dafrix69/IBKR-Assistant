@@ -1,0 +1,1 @@
+target_sources(ibkr_orchestrate PRIVATE orchestrate/services/alerts_service.h orchestrate/services/alerts_service.cpp)

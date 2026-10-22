@@ -1,0 +1,11 @@
+{
+  // 打开 native/ 时 VS Code 会提示装这几个。微软的 C/C++ 扩展可装可不装(Windows 上调试要它的 cppvsdbg);
+  // 它的代码提示和 clangd 打架,settings.json 里已经关掉
+  "recommendations": [
+    "ms-vscode.cmake-tools",
+    "llvm-vs-code-extensions.vscode-clangd",
+    "vadimcn.vscode-lldb",
+    "theqtcompany.qt-qml",
+    "theqtcompany.qt-cpp"
+  ]
+}

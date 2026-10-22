@@ -1,0 +1,1 @@
+target_sources(ibkr_orchestrate PRIVATE orchestrate/services/playbook_service.h orchestrate/services/playbook_service.cpp)

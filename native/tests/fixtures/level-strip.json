@@ -1,0 +1,3970 @@
+{
+  "generator": "native/tests/fixtures/gen_level_strip.mjs",
+  "short": {
+    "call_wall": "C 墙",
+    "put_wall": "P 墙",
+    "call_vol_wall": "C 成交墙",
+    "put_vol_wall": "P 成交墙",
+    "max_pain": "痛点",
+    "gamma_flip": "γ 翻转",
+    "round": "关口",
+    "ma20": "MA20",
+    "ma60": "MA60",
+    "ma120": "MA120",
+    "ma200": "MA200",
+    "low_52w": "52周低",
+    "high_52w": "52周高"
+  },
+  "label": {
+    "call_wall": "持仓墙",
+    "put_wall": "持仓墙",
+    "call_vol_wall": "成交墙",
+    "put_vol_wall": "成交墙",
+    "max_pain": "最大痛点",
+    "gamma_flip": "Gamma 翻转",
+    "round": "整数关口",
+    "ma20": "20日线",
+    "ma60": "60日线",
+    "ma120": "120日线",
+    "ma200": "200日线",
+    "low_52w": "52周低点",
+    "high_52w": "52周高点"
+  },
+  "cases": [
+    {
+      "name": "NVDA 墙与均线",
+      "levels": [
+        {
+          "price": 230,
+          "source": "call_wall",
+          "label": "Call 墙",
+          "kind": "resistance"
+        },
+        {
+          "price": 225,
+          "source": "call_vol_wall",
+          "label": "成交墙",
+          "kind": "resistance"
+        },
+        {
+          "price": 220,
+          "source": "round",
+          "label": "整数关口",
+          "kind": "pivot"
+        },
+        {
+          "price": 221.3,
+          "source": "ma20",
+          "label": "20日线",
+          "kind": "pivot"
+        },
+        {
+          "price": 218.6,
+          "source": "gamma_flip",
+          "label": "Gamma",
+          "kind": "pivot"
+        },
+        {
+          "price": 215,
+          "source": "max_pain",
+          "label": "痛点",
+          "kind": "pivot"
+        },
+        {
+          "price": 215,
+          "source": "round",
+          "label": "整数关口",
+          "kind": "pivot"
+        },
+        {
+          "price": 210,
+          "source": "put_wall",
+          "label": "Put 墙",
+          "kind": "support"
+        },
+        {
+          "price": 196.4,
+          "source": "ma60",
+          "label": "60日线",
+          "kind": "pivot"
+        }
+      ],
+      "spot": 219.74,
+      "width": 1005,
+      "svg": {
+        "tag": "svg",
+        "attrs": {
+          "class": "lstrip-svg",
+          "width": "1005",
+          "height": "71",
+          "viewBox": "0 0 1005 71"
+        },
+        "children": [
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-axis",
+              "x1": "4",
+              "x2": "1001",
+              "y1": "43",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "path",
+            "attrs": {
+              "class": "lstrip-lead neutral",
+              "d": "M680.4868197278912 38 L680.4868197278912 35 L680.4868197278912 21"
+            },
+            "children": []
+          },
+          {
+            "tag": "path",
+            "attrs": {
+              "class": "lstrip-lead neutral",
+              "d": "M714.5137117346942 38 L714.5137117346942 35 L724.8424744897958 36"
+            },
+            "children": []
+          },
+          {
+            "tag": "path",
+            "attrs": {
+              "class": "lstrip-lead neutral",
+              "d": "M549.6141581632653 38 L549.6141581632653 35 L549.6141581632653 21"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick resistance",
+              "x1": "942.232142857143",
+              "x2": "942.232142857143",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick resistance",
+              "x1": "811.3594812925171",
+              "x2": "811.3594812925171",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick neutral",
+              "x1": "680.4868197278912",
+              "x2": "680.4868197278912",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick neutral",
+              "x1": "714.5137117346942",
+              "x2": "714.5137117346942",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick neutral",
+              "x1": "643.8424744897958",
+              "x2": "643.8424744897958",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick neutral",
+              "x1": "549.6141581632653",
+              "x2": "549.6141581632653",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick neutral",
+              "x1": "549.6141581632653",
+              "x2": "549.6141581632653",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick support",
+              "x1": "418.7414965986393",
+              "x2": "418.7414965986393",
+              "y1": "43",
+              "y2": "48"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick neutral",
+              "x1": "62.76785714285694",
+              "x2": "62.76785714285694",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "circle",
+            "attrs": {
+              "class": "lstrip-spot",
+              "cx": "673.6814413265308",
+              "cy": "43",
+              "r": "4"
+            },
+            "children": []
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text resistance",
+              "x": "942.232142857143",
+              "y": "34",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "C 墙",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "230",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "Call 墙 230 · 距现价 +4.67%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text resistance",
+              "x": "811.3594812925171",
+              "y": "34",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "C 成交墙",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "225",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "成交墙 225 · 距现价 +2.39%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text neutral",
+              "x": "680.4868197278912",
+              "y": "19",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "关口",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "220",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "整数关口 220 · 距现价 +0.12%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text neutral",
+              "x": "724.8424744897958",
+              "y": "34",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "MA20",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "221.30",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "20日线 221.30 · 距现价 +0.71%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text neutral",
+              "x": "643.8424744897958",
+              "y": "34",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "γ 翻转",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "218.60",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "Gamma 218.60 · 距现价 -0.52%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text neutral",
+              "x": "549.6141581632653",
+              "y": "34",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "痛点",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "215",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "痛点 215 · 距现价 -2.16%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text neutral",
+              "x": "549.6141581632653",
+              "y": "19",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "关口",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "215",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "整数关口 215 · 距现价 -2.16%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text support",
+              "x": "418.7414965986393",
+              "y": "62",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "P 墙",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "210",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "Put 墙 210 · 距现价 -4.43%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text neutral",
+              "x": "62.76785714285694",
+              "y": "34",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "MA60",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "196.40",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "60日线 196.40 · 距现价 -10.62%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text spot",
+              "x": "673.6814413265308",
+              "y": "62",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "现价",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "219.74",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "现价 219.74",
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "加上自己的线",
+      "levels": [
+        {
+          "price": 230,
+          "source": "call_wall",
+          "label": "Call 墙",
+          "kind": "resistance"
+        },
+        {
+          "price": 225,
+          "source": "call_vol_wall",
+          "label": "成交墙",
+          "kind": "resistance"
+        },
+        {
+          "price": 220,
+          "source": "round",
+          "label": "整数关口",
+          "kind": "pivot"
+        },
+        {
+          "price": 221.3,
+          "source": "ma20",
+          "label": "20日线",
+          "kind": "pivot"
+        },
+        {
+          "price": 218.6,
+          "source": "gamma_flip",
+          "label": "Gamma",
+          "kind": "pivot"
+        },
+        {
+          "price": 215,
+          "source": "max_pain",
+          "label": "痛点",
+          "kind": "pivot"
+        },
+        {
+          "price": 215,
+          "source": "round",
+          "label": "整数关口",
+          "kind": "pivot"
+        },
+        {
+          "price": 210,
+          "source": "put_wall",
+          "label": "Put 墙",
+          "kind": "support"
+        },
+        {
+          "price": 196.4,
+          "source": "ma60",
+          "label": "60日线",
+          "kind": "pivot"
+        },
+        {
+          "price": 213.75,
+          "label": "止损",
+          "source": "own:stop",
+          "kind": "pivot"
+        },
+        {
+          "price": 240,
+          "label": "止盈",
+          "source": "own:tp",
+          "kind": "pivot"
+        }
+      ],
+      "spot": 219.74,
+      "width": 1005,
+      "svg": {
+        "tag": "svg",
+        "attrs": {
+          "class": "lstrip-svg",
+          "width": "1005",
+          "height": "71",
+          "viewBox": "0 0 1005 71"
+        },
+        "children": [
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-axis",
+              "x1": "4",
+              "x2": "1001",
+              "y1": "43",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "path",
+            "attrs": {
+              "class": "lstrip-lead resistance",
+              "d": "M639.664154652687 38 L639.664154652687 35 L639.664154652687 21"
+            },
+            "children": []
+          },
+          {
+            "tag": "path",
+            "attrs": {
+              "class": "lstrip-lead neutral",
+              "d": "M538.808158584535 38 L538.808158584535 35 L538.808158584535 21"
+            },
+            "children": []
+          },
+          {
+            "tag": "path",
+            "attrs": {
+              "class": "lstrip-lead neutral",
+              "d": "M565.0307175622547 38 L565.0307175622547 35 L591.5684796854523 36"
+            },
+            "children": []
+          },
+          {
+            "tag": "path",
+            "attrs": {
+              "class": "lstrip-lead neutral",
+              "d": "M437.95216251638294 38 L437.95216251638294 35 L437.95216251638294 21"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick resistance",
+              "x1": "740.5201507208391",
+              "x2": "740.5201507208391",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick resistance",
+              "x1": "639.664154652687",
+              "x2": "639.664154652687",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick neutral",
+              "x1": "538.808158584535",
+              "x2": "538.808158584535",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick neutral",
+              "x1": "565.0307175622547",
+              "x2": "565.0307175622547",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick neutral",
+              "x1": "510.5684796854523",
+              "x2": "510.5684796854523",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick neutral",
+              "x1": "437.95216251638294",
+              "x2": "437.95216251638294",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick neutral",
+              "x1": "437.95216251638294",
+              "x2": "437.95216251638294",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick support",
+              "x1": "337.09616644823086",
+              "x2": "337.09616644823086",
+              "y1": "43",
+              "y2": "48"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick neutral",
+              "x1": "62.76785714285743",
+              "x2": "62.76785714285743",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick own",
+              "x1": "412.7381634993449",
+              "x2": "412.7381634993449",
+              "y1": "43",
+              "y2": "48"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick own",
+              "x1": "942.2321428571431",
+              "x2": "942.2321428571431",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "circle",
+            "attrs": {
+              "class": "lstrip-spot",
+              "cx": "533.5636467889912",
+              "cy": "43",
+              "r": "4"
+            },
+            "children": []
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text resistance",
+              "x": "740.5201507208391",
+              "y": "34",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "C 墙",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "230",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "Call 墙 230 · 距现价 +4.67%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text resistance",
+              "x": "639.664154652687",
+              "y": "19",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "C 成交墙",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "225",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "成交墙 225 · 距现价 +2.39%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text neutral",
+              "x": "538.808158584535",
+              "y": "19",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "关口",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "220",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "整数关口 220 · 距现价 +0.12%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text neutral",
+              "x": "591.5684796854523",
+              "y": "34",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "MA20",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "221.30",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "20日线 221.30 · 距现价 +0.71%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text neutral",
+              "x": "510.5684796854523",
+              "y": "34",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "γ 翻转",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "218.60",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "Gamma 218.60 · 距现价 -0.52%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text neutral",
+              "x": "437.95216251638294",
+              "y": "34",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "痛点",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "215",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "痛点 215 · 距现价 -2.16%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text neutral",
+              "x": "437.95216251638294",
+              "y": "19",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "关口",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "215",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "整数关口 215 · 距现价 -2.16%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text support",
+              "x": "337.09616644823086",
+              "y": "62",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "P 墙",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "210",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "Put 墙 210 · 距现价 -4.43%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text neutral",
+              "x": "62.76785714285743",
+              "y": "34",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "MA60",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "196.40",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "60日线 196.40 · 距现价 -10.62%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text own",
+              "x": "412.7381634993449",
+              "y": "62",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "止损",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "213.75",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "止损 213.75 · 距现价 -2.73%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text own",
+              "x": "942.2321428571431",
+              "y": "34",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "止盈",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "240",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "止盈 240 · 距现价 +9.22%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text spot",
+              "x": "533.5636467889912",
+              "y": "62",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "现价",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "219.74",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "现价 219.74",
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "窄",
+      "levels": [
+        {
+          "price": 230,
+          "source": "call_wall",
+          "label": "Call 墙",
+          "kind": "resistance"
+        },
+        {
+          "price": 225,
+          "source": "call_vol_wall",
+          "label": "成交墙",
+          "kind": "resistance"
+        },
+        {
+          "price": 220,
+          "source": "round",
+          "label": "整数关口",
+          "kind": "pivot"
+        },
+        {
+          "price": 221.3,
+          "source": "ma20",
+          "label": "20日线",
+          "kind": "pivot"
+        },
+        {
+          "price": 218.6,
+          "source": "gamma_flip",
+          "label": "Gamma",
+          "kind": "pivot"
+        },
+        {
+          "price": 215,
+          "source": "max_pain",
+          "label": "痛点",
+          "kind": "pivot"
+        },
+        {
+          "price": 215,
+          "source": "round",
+          "label": "整数关口",
+          "kind": "pivot"
+        },
+        {
+          "price": 210,
+          "source": "put_wall",
+          "label": "Put 墙",
+          "kind": "support"
+        },
+        {
+          "price": 196.4,
+          "source": "ma60",
+          "label": "60日线",
+          "kind": "pivot"
+        }
+      ],
+      "spot": 219.74,
+      "width": 360,
+      "svg": {
+        "tag": "svg",
+        "attrs": {
+          "class": "lstrip-svg",
+          "width": "360",
+          "height": "71",
+          "viewBox": "0 0 360 71"
+        },
+        "children": [
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-axis",
+              "x1": "4",
+              "x2": "356",
+              "y1": "43",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "path",
+            "attrs": {
+              "class": "lstrip-lead resistance",
+              "d": "M331.78571428571433 38 L331.78571428571433 35 L335.5 21"
+            },
+            "children": []
+          },
+          {
+            "tag": "path",
+            "attrs": {
+              "class": "lstrip-lead resistance",
+              "d": "M286.61139455782313 38 L286.61139455782313 35 L325.5 36"
+            },
+            "children": []
+          },
+          {
+            "tag": "path",
+            "attrs": {
+              "class": "lstrip-lead neutral",
+              "d": "M241.43707482993196 38 L241.43707482993196 35 L206.5 21"
+            },
+            "children": []
+          },
+          {
+            "tag": "path",
+            "attrs": {
+              "class": "lstrip-lead neutral",
+              "d": "M253.1823979591838 38 L253.1823979591838 35 L270.5 21"
+            },
+            "children": []
+          },
+          {
+            "tag": "path",
+            "attrs": {
+              "class": "lstrip-lead neutral",
+              "d": "M228.7882653061224 38 L228.7882653061224 35 L244.5 36"
+            },
+            "children": []
+          },
+          {
+            "tag": "path",
+            "attrs": {
+              "class": "lstrip-lead neutral",
+              "d": "M196.2627551020408 38 L196.2627551020408 35 L174.5 36"
+            },
+            "children": []
+          },
+          {
+            "tag": "path",
+            "attrs": {
+              "class": "lstrip-lead neutral",
+              "d": "M196.2627551020408 38 L196.2627551020408 35 L153.5 21"
+            },
+            "children": []
+          },
+          {
+            "tag": "path",
+            "attrs": {
+              "class": "lstrip-lead neutral",
+              "d": "M28.214285714285644 38 L28.214285714285644 35 L34.5 36"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick resistance",
+              "x1": "331.78571428571433",
+              "x2": "331.78571428571433",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick resistance",
+              "x1": "286.61139455782313",
+              "x2": "286.61139455782313",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick neutral",
+              "x1": "241.43707482993196",
+              "x2": "241.43707482993196",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick neutral",
+              "x1": "253.1823979591838",
+              "x2": "253.1823979591838",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick neutral",
+              "x1": "228.7882653061224",
+              "x2": "228.7882653061224",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick neutral",
+              "x1": "196.2627551020408",
+              "x2": "196.2627551020408",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick neutral",
+              "x1": "196.2627551020408",
+              "x2": "196.2627551020408",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick support",
+              "x1": "151.0884353741496",
+              "x2": "151.0884353741496",
+              "y1": "43",
+              "y2": "48"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick neutral",
+              "x1": "28.214285714285644",
+              "x2": "28.214285714285644",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "circle",
+            "attrs": {
+              "class": "lstrip-spot",
+              "cx": "239.0880102040817",
+              "cy": "43",
+              "r": "4"
+            },
+            "children": []
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text resistance",
+              "x": "335.5",
+              "y": "19",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "C 墙",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "230",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "Call 墙 230 · 距现价 +4.67%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text resistance",
+              "x": "325.5",
+              "y": "34",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "C 成交墙",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "225",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "成交墙 225 · 距现价 +2.39%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text neutral",
+              "x": "206.5",
+              "y": "19",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "关口",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "220",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "整数关口 220 · 距现价 +0.12%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text neutral",
+              "x": "270.5",
+              "y": "19",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "MA20",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "221.30",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "20日线 221.30 · 距现价 +0.71%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text neutral",
+              "x": "244.5",
+              "y": "34",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "γ 翻转",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "218.60",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "Gamma 218.60 · 距现价 -0.52%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text neutral",
+              "x": "174.5",
+              "y": "34",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "痛点",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "215",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "痛点 215 · 距现价 -2.16%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text neutral",
+              "x": "153.5",
+              "y": "19",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "关口",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "215",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "整数关口 215 · 距现价 -2.16%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text support",
+              "x": "151.0884353741496",
+              "y": "62",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "P 墙",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "210",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "Put 墙 210 · 距现价 -4.43%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text neutral",
+              "x": "34.5",
+              "y": "34",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "MA60",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "196.40",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "60日线 196.40 · 距现价 -10.62%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text spot",
+              "x": "239.0880102040817",
+              "y": "62",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "现价",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "219.74",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "现价 219.74",
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "两端压缩区",
+      "levels": [
+        {
+          "price": 230,
+          "source": "call_wall",
+          "label": "Call 墙",
+          "kind": "resistance"
+        },
+        {
+          "price": 225,
+          "source": "call_vol_wall",
+          "label": "成交墙",
+          "kind": "resistance"
+        },
+        {
+          "price": 220,
+          "source": "round",
+          "label": "整数关口",
+          "kind": "pivot"
+        },
+        {
+          "price": 221.3,
+          "source": "ma20",
+          "label": "20日线",
+          "kind": "pivot"
+        },
+        {
+          "price": 218.6,
+          "source": "gamma_flip",
+          "label": "Gamma",
+          "kind": "pivot"
+        },
+        {
+          "price": 215,
+          "source": "max_pain",
+          "label": "痛点",
+          "kind": "pivot"
+        },
+        {
+          "price": 215,
+          "source": "round",
+          "label": "整数关口",
+          "kind": "pivot"
+        },
+        {
+          "price": 210,
+          "source": "put_wall",
+          "label": "Put 墙",
+          "kind": "support"
+        },
+        {
+          "price": 196.4,
+          "source": "ma60",
+          "label": "60日线",
+          "kind": "pivot"
+        },
+        {
+          "price": 380,
+          "source": "high_52w",
+          "label": "52周高",
+          "kind": "pivot"
+        },
+        {
+          "price": 90,
+          "source": "low_52w",
+          "label": "52周低",
+          "kind": "support"
+        }
+      ],
+      "spot": 219.74,
+      "width": 700,
+      "svg": {
+        "tag": "svg",
+        "attrs": {
+          "class": "lstrip-svg",
+          "width": "700",
+          "height": "71",
+          "viewBox": "0 0 700 71"
+        },
+        "children": [
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-axis",
+              "x1": "4",
+              "x2": "696",
+              "y1": "43",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "path",
+            "attrs": {
+              "class": "lstrip-break",
+              "d": "M91.4 48 l3 -10 M95.4 48 l3 -10"
+            },
+            "children": []
+          },
+          {
+            "tag": "path",
+            "attrs": {
+              "class": "lstrip-break",
+              "d": "M602.6 48 l3 -10 M606.6 48 l3 -10"
+            },
+            "children": []
+          },
+          {
+            "tag": "path",
+            "attrs": {
+              "class": "lstrip-lead resistance",
+              "d": "M574.6428571428573 38 L574.6428571428573 35 L590.0688775510205 36"
+            },
+            "children": []
+          },
+          {
+            "tag": "path",
+            "attrs": {
+              "class": "lstrip-lead resistance",
+              "d": "M507.7848639455783 38 L507.7848639455783 35 L507.7848639455783 21"
+            },
+            "children": []
+          },
+          {
+            "tag": "path",
+            "attrs": {
+              "class": "lstrip-lead neutral",
+              "d": "M440.9268707482994 38 L440.9268707482994 35 L440.9268707482994 21"
+            },
+            "children": []
+          },
+          {
+            "tag": "path",
+            "attrs": {
+              "class": "lstrip-lead neutral",
+              "d": "M458.30994897959204 38 L458.30994897959204 35 L525.0688775510205 36"
+            },
+            "children": []
+          },
+          {
+            "tag": "path",
+            "attrs": {
+              "class": "lstrip-lead neutral",
+              "d": "M422.2066326530612 38 L422.2066326530612 35 L444.0688775510205 36"
+            },
+            "children": []
+          },
+          {
+            "tag": "path",
+            "attrs": {
+              "class": "lstrip-lead neutral",
+              "d": "M374.0688775510205 38 L374.0688775510205 35 L374.0688775510205 21"
+            },
+            "children": []
+          },
+          {
+            "tag": "path",
+            "attrs": {
+              "class": "lstrip-lead neutral",
+              "d": "M690 38 L690 35 L670.5 36"
+            },
+            "children": []
+          },
+          {
+            "tag": "path",
+            "attrs": {
+              "class": "lstrip-lead support",
+              "d": "M10 48 L10 51 L26.5 52"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick resistance",
+              "x1": "574.6428571428573",
+              "x2": "574.6428571428573",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick resistance",
+              "x1": "507.7848639455783",
+              "x2": "507.7848639455783",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick neutral",
+              "x1": "440.9268707482994",
+              "x2": "440.9268707482994",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick neutral",
+              "x1": "458.30994897959204",
+              "x2": "458.30994897959204",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick neutral",
+              "x1": "422.2066326530612",
+              "x2": "422.2066326530612",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick neutral",
+              "x1": "374.0688775510205",
+              "x2": "374.0688775510205",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick neutral",
+              "x1": "374.0688775510205",
+              "x2": "374.0688775510205",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick support",
+              "x1": "307.21088435374145",
+              "x2": "307.21088435374145",
+              "y1": "43",
+              "y2": "48"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick neutral",
+              "x1": "125.35714285714276",
+              "x2": "125.35714285714276",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick neutral",
+              "x1": "690",
+              "x2": "690",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick support",
+              "x1": "10",
+              "x2": "10",
+              "y1": "43",
+              "y2": "48"
+            },
+            "children": []
+          },
+          {
+            "tag": "circle",
+            "attrs": {
+              "class": "lstrip-spot",
+              "cx": "437.45025510204096",
+              "cy": "43",
+              "r": "4"
+            },
+            "children": []
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text resistance",
+              "x": "590.0688775510205",
+              "y": "34",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "C 墙",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "230",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "Call 墙 230 · 距现价 +4.67%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text resistance",
+              "x": "507.7848639455783",
+              "y": "19",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "C 成交墙",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "225",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "成交墙 225 · 距现价 +2.39%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text neutral",
+              "x": "440.9268707482994",
+              "y": "19",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "关口",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "220",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "整数关口 220 · 距现价 +0.12%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text neutral",
+              "x": "525.0688775510205",
+              "y": "34",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "MA20",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "221.30",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "20日线 221.30 · 距现价 +0.71%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text neutral",
+              "x": "444.0688775510205",
+              "y": "34",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "γ 翻转",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "218.60",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "Gamma 218.60 · 距现价 -0.52%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text neutral",
+              "x": "374.0688775510205",
+              "y": "34",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "痛点",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "215",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "痛点 215 · 距现价 -2.16%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text neutral",
+              "x": "374.0688775510205",
+              "y": "19",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "关口",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "215",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "整数关口 215 · 距现价 -2.16%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text support",
+              "x": "307.21088435374145",
+              "y": "62",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "P 墙",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "210",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "Put 墙 210 · 距现价 -4.43%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text neutral",
+              "x": "125.35714285714276",
+              "y": "34",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "MA60",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "196.40",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "60日线 196.40 · 距现价 -10.62%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text neutral",
+              "x": "670.5",
+              "y": "34",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "52周高",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "380",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "52周高 380 · 距现价 +72.93%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text support",
+              "x": "26.5",
+              "y": "62",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "52周低",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "90",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "52周低 90 · 距现价 -59.04%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text spot",
+              "x": "437.45025510204096",
+              "y": "62",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "现价",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "219.74",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "现价 219.74",
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "没有现价",
+      "levels": [
+        {
+          "price": 230,
+          "source": "call_wall",
+          "label": "Call 墙",
+          "kind": "resistance"
+        },
+        {
+          "price": 225,
+          "source": "call_vol_wall",
+          "label": "成交墙",
+          "kind": "resistance"
+        },
+        {
+          "price": 220,
+          "source": "round",
+          "label": "整数关口",
+          "kind": "pivot"
+        },
+        {
+          "price": 221.3,
+          "source": "ma20",
+          "label": "20日线",
+          "kind": "pivot"
+        },
+        {
+          "price": 218.6,
+          "source": "gamma_flip",
+          "label": "Gamma",
+          "kind": "pivot"
+        },
+        {
+          "price": 215,
+          "source": "max_pain",
+          "label": "痛点",
+          "kind": "pivot"
+        },
+        {
+          "price": 215,
+          "source": "round",
+          "label": "整数关口",
+          "kind": "pivot"
+        },
+        {
+          "price": 210,
+          "source": "put_wall",
+          "label": "Put 墙",
+          "kind": "support"
+        },
+        {
+          "price": 196.4,
+          "source": "ma60",
+          "label": "60日线",
+          "kind": "pivot"
+        }
+      ],
+      "spot": null,
+      "width": 700,
+      "svg": {
+        "tag": "svg",
+        "attrs": {
+          "class": "lstrip-svg",
+          "width": "700",
+          "height": "71",
+          "viewBox": "0 0 700 71"
+        },
+        "children": [
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-axis",
+              "x1": "4",
+              "x2": "696",
+              "y1": "43",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "path",
+            "attrs": {
+              "class": "lstrip-lead resistance",
+              "d": "M563.2227891156463 38 L563.2227891156463 35 L563.2227891156463 21"
+            },
+            "children": []
+          },
+          {
+            "tag": "path",
+            "attrs": {
+              "class": "lstrip-lead neutral",
+              "d": "M472.8741496598639 38 L472.8741496598639 35 L472.8741496598639 21"
+            },
+            "children": []
+          },
+          {
+            "tag": "path",
+            "attrs": {
+              "class": "lstrip-lead neutral",
+              "d": "M496.3647959183676 38 L496.3647959183676 35 L533.5255102040817 36"
+            },
+            "children": []
+          },
+          {
+            "tag": "path",
+            "attrs": {
+              "class": "lstrip-lead neutral",
+              "d": "M447.5765306122448 38 L447.5765306122448 35 L452.5255102040816 36"
+            },
+            "children": []
+          },
+          {
+            "tag": "path",
+            "attrs": {
+              "class": "lstrip-lead neutral",
+              "d": "M382.5255102040816 38 L382.5255102040816 35 L382.5255102040816 21"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick resistance",
+              "x1": "653.5714285714287",
+              "x2": "653.5714285714287",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick resistance",
+              "x1": "563.2227891156463",
+              "x2": "563.2227891156463",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick neutral",
+              "x1": "472.8741496598639",
+              "x2": "472.8741496598639",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick neutral",
+              "x1": "496.3647959183676",
+              "x2": "496.3647959183676",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick neutral",
+              "x1": "447.5765306122448",
+              "x2": "447.5765306122448",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick neutral",
+              "x1": "382.5255102040816",
+              "x2": "382.5255102040816",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick neutral",
+              "x1": "382.5255102040816",
+              "x2": "382.5255102040816",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick support",
+              "x1": "292.1768707482992",
+              "x2": "292.1768707482992",
+              "y1": "43",
+              "y2": "48"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick neutral",
+              "x1": "46.42857142857129",
+              "x2": "46.42857142857129",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text resistance",
+              "x": "653.5714285714287",
+              "y": "34",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "C 墙",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "230",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "Call 墙 230",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text resistance",
+              "x": "563.2227891156463",
+              "y": "19",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "C 成交墙",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "225",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "成交墙 225",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text neutral",
+              "x": "472.8741496598639",
+              "y": "19",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "关口",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "220",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "整数关口 220",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text neutral",
+              "x": "533.5255102040817",
+              "y": "34",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "MA20",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "221.30",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "20日线 221.30",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text neutral",
+              "x": "452.5255102040816",
+              "y": "34",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "γ 翻转",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "218.60",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "Gamma 218.60",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text neutral",
+              "x": "382.5255102040816",
+              "y": "34",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "痛点",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "215",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "痛点 215",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text neutral",
+              "x": "382.5255102040816",
+              "y": "19",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "关口",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "215",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "整数关口 215",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text support",
+              "x": "292.1768707482992",
+              "y": "62",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "P 墙",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "210",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "Put 墙 210",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text neutral",
+              "x": "46.42857142857129",
+              "y": "34",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "MA60",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "196.40",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "60日线 196.40",
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "只有现价",
+      "levels": [],
+      "spot": 100,
+      "width": 300,
+      "svg": {
+        "tag": "svg",
+        "attrs": {
+          "class": "lstrip-svg",
+          "width": "300",
+          "height": "41",
+          "viewBox": "0 0 300 41"
+        },
+        "children": [
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-axis",
+              "x1": "4",
+              "x2": "296",
+              "y1": "13",
+              "y2": "13"
+            },
+            "children": []
+          },
+          {
+            "tag": "circle",
+            "attrs": {
+              "class": "lstrip-spot",
+              "cx": "150",
+              "cy": "13",
+              "r": "4"
+            },
+            "children": []
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text spot",
+              "x": "150",
+              "y": "32",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "现价",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "100",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "现价 100",
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "空",
+      "levels": [],
+      "spot": null,
+      "width": 300,
+      "svg": null
+    },
+    {
+      "name": "一个价位",
+      "levels": [
+        {
+          "price": 7700,
+          "source": "put_wall",
+          "label": "Put 墙",
+          "kind": "support"
+        }
+      ],
+      "spot": 7712.25,
+      "width": 500,
+      "svg": {
+        "tag": "svg",
+        "attrs": {
+          "class": "lstrip-svg",
+          "width": "500",
+          "height": "41",
+          "viewBox": "0 0 500 41"
+        },
+        "children": [
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-axis",
+              "x1": "4",
+              "x2": "496",
+              "y1": "13",
+              "y2": "13"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick support",
+              "x1": "35.71428571427549",
+              "x2": "35.71428571427549",
+              "y1": "13",
+              "y2": "18"
+            },
+            "children": []
+          },
+          {
+            "tag": "circle",
+            "attrs": {
+              "class": "lstrip-spot",
+              "cx": "464.2857142857245",
+              "cy": "13",
+              "r": "4"
+            },
+            "children": []
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text support",
+              "x": "35.71428571427549",
+              "y": "32",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "P 墙",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "7700",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "Put 墙 7700 · 距现价 -0.16%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text spot",
+              "x": "464.2857142857245",
+              "y": "32",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "现价",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "7712.25",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "现价 7712.25",
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "SPX 一团挤在一起",
+      "levels": [
+        {
+          "price": 7680,
+          "source": "put_vol_wall",
+          "label": "x",
+          "kind": "pivot"
+        },
+        {
+          "price": 7690.4,
+          "source": "ma20",
+          "label": "x",
+          "kind": "pivot"
+        },
+        {
+          "price": 7700,
+          "source": "put_wall",
+          "label": "x",
+          "kind": "pivot"
+        },
+        {
+          "price": 7725,
+          "source": "max_pain",
+          "label": "x",
+          "kind": "pivot"
+        },
+        {
+          "price": 7735,
+          "source": "gamma_flip",
+          "label": "x",
+          "kind": "pivot"
+        },
+        {
+          "price": 7750,
+          "source": "call_wall",
+          "label": "x",
+          "kind": "pivot"
+        },
+        {
+          "price": 7775,
+          "source": "call_vol_wall",
+          "label": "x",
+          "kind": "pivot"
+        }
+      ],
+      "spot": 7722.35,
+      "width": 1005,
+      "svg": {
+        "tag": "svg",
+        "attrs": {
+          "class": "lstrip-svg",
+          "width": "1005",
+          "height": "56",
+          "viewBox": "0 0 1005 56"
+        },
+        "children": [
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-axis",
+              "x1": "4",
+              "x2": "1001",
+              "y1": "28",
+              "y2": "28"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick neutral",
+              "x1": "62.76785714285564",
+              "x2": "62.76785714285564",
+              "y1": "23",
+              "y2": "28"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick neutral",
+              "x1": "159.0460526315744",
+              "x2": "159.0460526315744",
+              "y1": "23",
+              "y2": "28"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick neutral",
+              "x1": "247.91823308270588",
+              "x2": "247.91823308270588",
+              "y1": "23",
+              "y2": "28"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick neutral",
+              "x1": "479.35620300751873",
+              "x2": "479.35620300751873",
+              "y1": "23",
+              "y2": "28"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick neutral",
+              "x1": "571.9313909774438",
+              "x2": "571.9313909774438",
+              "y1": "23",
+              "y2": "28"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick neutral",
+              "x1": "710.7941729323315",
+              "x2": "710.7941729323315",
+              "y1": "23",
+              "y2": "28"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick neutral",
+              "x1": "942.2321428571444",
+              "x2": "942.2321428571444",
+              "y1": "23",
+              "y2": "28"
+            },
+            "children": []
+          },
+          {
+            "tag": "circle",
+            "attrs": {
+              "class": "lstrip-spot",
+              "cx": "454.8237781954919",
+              "cy": "28",
+              "r": "4"
+            },
+            "children": []
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text neutral",
+              "x": "62.76785714285564",
+              "y": "19",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "P 成交墙",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "7680",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "x 7680 · 距现价 -0.55%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text neutral",
+              "x": "159.0460526315744",
+              "y": "19",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "MA20",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "7690.40",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "x 7690.40 · 距现价 -0.41%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text neutral",
+              "x": "247.91823308270588",
+              "y": "19",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "P 墙",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "7700",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "x 7700 · 距现价 -0.29%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text neutral",
+              "x": "479.35620300751873",
+              "y": "19",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "痛点",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "7725",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "x 7725 · 距现价 +0.03%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text neutral",
+              "x": "571.9313909774438",
+              "y": "19",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "γ 翻转",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "7735",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "x 7735 · 距现价 +0.16%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text neutral",
+              "x": "710.7941729323315",
+              "y": "19",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "C 墙",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "7750",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "x 7750 · 距现价 +0.36%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text neutral",
+              "x": "942.2321428571444",
+              "y": "19",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "C 成交墙",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "7775",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "x 7775 · 距现价 +0.68%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text spot",
+              "x": "454.8237781954919",
+              "y": "47",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "现价",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "7722.35",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "现价 7722.35",
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "价位相同",
+      "levels": [
+        {
+          "price": 100,
+          "source": "round",
+          "label": "a",
+          "kind": "pivot"
+        },
+        {
+          "price": 100,
+          "source": "ma20",
+          "label": "b",
+          "kind": "pivot"
+        },
+        {
+          "price": 100,
+          "source": "max_pain",
+          "label": "c",
+          "kind": "pivot"
+        }
+      ],
+      "spot": 100,
+      "width": 400,
+      "svg": {
+        "tag": "svg",
+        "attrs": {
+          "class": "lstrip-svg",
+          "width": "400",
+          "height": "71",
+          "viewBox": "0 0 400 71"
+        },
+        "children": [
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-axis",
+              "x1": "4",
+              "x2": "396",
+              "y1": "43",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "path",
+            "attrs": {
+              "class": "lstrip-lead neutral",
+              "d": "M200 38 L200 35 L200 21"
+            },
+            "children": []
+          },
+          {
+            "tag": "path",
+            "attrs": {
+              "class": "lstrip-lead neutral",
+              "d": "M200 38 L200 35 L253 36"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick neutral",
+              "x1": "200",
+              "x2": "200",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick neutral",
+              "x1": "200",
+              "x2": "200",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "line",
+            "attrs": {
+              "class": "lstrip-tick neutral",
+              "x1": "200",
+              "x2": "200",
+              "y1": "38",
+              "y2": "43"
+            },
+            "children": []
+          },
+          {
+            "tag": "circle",
+            "attrs": {
+              "class": "lstrip-spot",
+              "cx": "200",
+              "cy": "43",
+              "r": "4"
+            },
+            "children": []
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text neutral",
+              "x": "200",
+              "y": "34",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "关口",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "100",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "a 100 · 距现价 0.00%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text neutral",
+              "x": "200",
+              "y": "19",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "MA20",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "100",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "b 100 · 距现价 0.00%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text neutral",
+              "x": "253",
+              "y": "34",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "痛点",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "100",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "c 100 · 距现价 0.00%",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "text",
+            "attrs": {
+              "class": "lstrip-text spot",
+              "x": "200",
+              "y": "62",
+              "text-anchor": "middle"
+            },
+            "children": [
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-name"
+                },
+                "text": "现价",
+                "children": []
+              },
+              {
+                "tag": "tspan",
+                "attrs": {
+                  "class": "lstrip-price",
+                  "dx": "3"
+                },
+                "text": "100",
+                "children": []
+              },
+              {
+                "tag": "title",
+                "attrs": {},
+                "text": "现价 100",
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

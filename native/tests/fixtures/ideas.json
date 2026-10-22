@@ -1,0 +1,1896 @@
+{
+ "generator": "native/tests/fixtures/gen_ideas.mjs",
+ "now": 1787320200000,
+ "pages": [
+  {
+   "name": "预览台的数据",
+   "seed": {
+    "ideas": [
+     {
+      "id": "i1",
+      "text": "AXTI 周五尾盘买入,量能起来了",
+      "status": "active",
+      "symbols": [
+       "AXTI"
+      ],
+      "created_at": "2026-08-20T20:00:00Z"
+     },
+     {
+      "id": "i2",
+      "text": "留意 SPY 770 这个整数关口",
+      "status": "done",
+      "symbols": [
+       "SPY"
+      ],
+      "created_at": "2026-08-19T14:00:00Z"
+     }
+    ]
+   },
+   "texts": [
+    "想法",
+    "随手记,不解析、不下单",
+    "记下",
+    "「AI 分析」和「发到解析」是什么",
+    "进行中",
+    "全部",
+    "附带交易结果",
+    "总结知识",
+    "AXTI",
+    "进行中",
+    "AXTI 周五尾盘买入,量能起来了",
+    "04:00",
+    "AI 分析",
+    "发到解析",
+    "完成",
+    "归档",
+    "SPY",
+    "已完成",
+    "留意 SPY 770 这个整数关口",
+    "08-19 22:00",
+    "恢复为进行中"
+   ],
+   "buttons": [
+    {
+     "text": "记下",
+     "loading": false
+    },
+    {
+     "text": "总结知识",
+     "loading": false
+    },
+    {
+     "text": "AI 分析",
+     "loading": false
+    },
+    {
+     "text": "发到解析",
+     "loading": false
+    },
+    {
+     "text": "完成",
+     "loading": false
+    },
+    {
+     "text": "归档",
+     "loading": false
+    },
+    {
+     "text": "恢复为进行中",
+     "loading": false
+    }
+   ],
+   "titles": [
+    "2026/8/21 04:00:00",
+    "2026/8/19 22:00:00"
+   ],
+   "segments": [
+    true,
+    false
+   ],
+   "withTrades": true,
+   "input": ""
+  },
+  {
+   "name": "读不到",
+   "seed": {
+    "ideas": [
+     {
+      "id": "i1",
+      "text": "AXTI 周五尾盘买入,量能起来了",
+      "status": "active",
+      "symbols": [
+       "AXTI"
+      ],
+      "created_at": "2026-08-20T20:00:00Z"
+     },
+     {
+      "id": "i2",
+      "text": "留意 SPY 770 这个整数关口",
+      "status": "done",
+      "symbols": [
+       "SPY"
+      ],
+      "created_at": "2026-08-19T14:00:00Z"
+     }
+    ],
+    "loadError": "ideas.list 超时"
+   },
+   "texts": [
+    "想法",
+    "随手记,不解析、不下单",
+    "记下",
+    "「AI 分析」和「发到解析」是什么",
+    "进行中",
+    "全部",
+    "附带交易结果",
+    "总结知识",
+    "读取失败:ideas.list 超时"
+   ],
+   "buttons": [
+    {
+     "text": "记下",
+     "loading": false
+    },
+    {
+     "text": "总结知识",
+     "loading": false
+    }
+   ],
+   "titles": [],
+   "segments": [
+    true,
+    false
+   ],
+   "withTrades": true,
+   "input": ""
+  },
+  {
+   "name": "没有进行中的",
+   "seed": {},
+   "texts": [
+    "想法",
+    "随手记,不解析、不下单",
+    "记下",
+    "「AI 分析」和「发到解析」是什么",
+    "进行中",
+    "全部",
+    "附带交易结果",
+    "总结知识",
+    "还没有进行中的想法。"
+   ],
+   "buttons": [
+    {
+     "text": "记下",
+     "loading": false
+    },
+    {
+     "text": "总结知识",
+     "loading": false
+    }
+   ],
+   "titles": [],
+   "segments": [
+    true,
+    false
+   ],
+   "withTrades": true,
+   "input": ""
+  },
+  {
+   "name": "全部也没有",
+   "seed": {
+    "filter": "all"
+   },
+   "texts": [
+    "想法",
+    "随手记,不解析、不下单",
+    "记下",
+    "「AI 分析」和「发到解析」是什么",
+    "进行中",
+    "全部",
+    "附带交易结果",
+    "总结知识",
+    "还没有想法。"
+   ],
+   "buttons": [
+    {
+     "text": "记下",
+     "loading": false
+    },
+    {
+     "text": "总结知识",
+     "loading": false
+    }
+   ],
+   "titles": [],
+   "segments": [
+    false,
+    true
+   ],
+   "withTrades": true,
+   "input": ""
+  },
+  {
+   "name": "检索没命中",
+   "seed": {
+    "query": "RKLB"
+   },
+   "texts": [
+    "想法",
+    "随手记,不解析、不下单",
+    "记下",
+    "「AI 分析」和「发到解析」是什么",
+    "进行中",
+    "全部",
+    "附带交易结果",
+    "按检索总结",
+    "没有命中「RKLB」的想法。"
+   ],
+   "buttons": [
+    {
+     "text": "记下",
+     "loading": false
+    },
+    {
+     "text": "按检索总结",
+     "loading": false
+    }
+   ],
+   "titles": [],
+   "segments": [
+    true,
+    false
+   ],
+   "withTrades": true,
+   "input": ""
+  },
+  {
+   "name": "检索命中",
+   "seed": {
+    "query": "蝴蝶",
+    "ideas": [
+     {
+      "id": "i1",
+      "text": "AXTI 周五尾盘买入,量能起来了",
+      "status": "active",
+      "symbols": [
+       "AXTI"
+      ],
+      "created_at": "2026-08-20T20:00:00Z"
+     },
+     {
+      "id": "i2",
+      "text": "留意 SPY 770 这个整数关口",
+      "status": "done",
+      "symbols": [
+       "SPY"
+      ],
+      "created_at": "2026-08-19T14:00:00Z"
+     }
+    ],
+    "matched": {
+     "i1": [
+      "symbol",
+      "semantic"
+     ],
+     "i2": [
+      "recent"
+     ]
+    }
+   },
+   "texts": [
+    "想法",
+    "随手记,不解析、不下单",
+    "记下",
+    "「AI 分析」和「发到解析」是什么",
+    "进行中",
+    "全部",
+    "附带交易结果",
+    "按检索总结",
+    "AXTI",
+    "进行中",
+    "AXTI 周五尾盘买入,量能起来了",
+    "04:00",
+    "标的命中 · 语义相近",
+    "AI 分析",
+    "发到解析",
+    "完成",
+    "归档",
+    "SPY",
+    "已完成",
+    "留意 SPY 770 这个整数关口",
+    "08-19 22:00",
+    "近期",
+    "恢复为进行中"
+   ],
+   "buttons": [
+    {
+     "text": "记下",
+     "loading": false
+    },
+    {
+     "text": "按检索总结",
+     "loading": false
+    },
+    {
+     "text": "AI 分析",
+     "loading": false
+    },
+    {
+     "text": "发到解析",
+     "loading": false
+    },
+    {
+     "text": "完成",
+     "loading": false
+    },
+    {
+     "text": "归档",
+     "loading": false
+    },
+    {
+     "text": "恢复为进行中",
+     "loading": false
+    }
+   ],
+   "titles": [
+    "2026/8/21 04:00:00",
+    "2026/8/19 22:00:00"
+   ],
+   "segments": [
+    true,
+    false
+   ],
+   "withTrades": true,
+   "input": ""
+  },
+  {
+   "name": "各种分析",
+   "seed": {
+    "filter": "all",
+    "ideas": [
+     {
+      "id": "a1",
+      "text": "AXTI 周五尾盘买入",
+      "status": "active",
+      "symbols": [
+       "AXTI"
+      ],
+      "created_at": "2026-08-21T12:00:00Z",
+      "analysis": {
+       "symbol": "AXTI",
+       "summary": "量能放大的突破,等回踩确认",
+       "thesis": "周五尾盘放量,周线级别第一次站上 50 日线",
+       "checks": [
+        "盘前是否有增发公告",
+        "期权链 IV 是否已经抬高"
+       ],
+       "risks": [
+        "小盘股流动性差",
+        "财报在下周"
+       ],
+       "suggestion": "小仓位试,破 11.5 走",
+       "model": "claude-x",
+       "analyzed_at": "2026-08-21T13:30:00Z",
+       "brief": {
+        "last": 12.34,
+        "chg_1d_pct": 3.2,
+        "chg_20d_pct": -5.1,
+        "chg_60d_pct": 18,
+        "rsi14": 61.2,
+        "vs_sma50_pct": 4.4,
+        "vs_sma200_pct": -2,
+        "vol20_annual_pct": 55,
+        "from_52w_high_pct": -12.5,
+        "anchor": {
+         "label": "周五收盘",
+         "price": 11.8,
+         "chg_from_anchor_pct": 4.58
+        }
+       }
+      }
+     },
+     {
+      "id": "a2",
+      "text": "芯片轮动",
+      "status": "active",
+      "symbols": [
+       "NVDA",
+       "AMD"
+      ],
+      "created_at": "2026-08-21T12:00:00Z",
+      "analysis": {
+       "symbol": "NVDA",
+       "summary": "量能放大的突破,等回踩确认",
+       "thesis": "周五尾盘放量,周线级别第一次站上 50 日线",
+       "checks": [
+        "盘前是否有增发公告",
+        "期权链 IV 是否已经抬高"
+       ],
+       "risks": [
+        "小盘股流动性差",
+        "财报在下周"
+       ],
+       "suggestion": "小仓位试,破 11.5 走",
+       "model": "claude-x",
+       "analyzed_at": "2026-08-21T13:30:00Z",
+       "brief": {
+        "last": 12.34,
+        "chg_1d_pct": 3.2,
+        "chg_20d_pct": -5.1,
+        "chg_60d_pct": 18,
+        "rsi14": 61.2,
+        "vs_sma50_pct": 4.4,
+        "vs_sma200_pct": -2,
+        "vol20_annual_pct": 55,
+        "from_52w_high_pct": -12.5,
+        "anchor": {
+         "label": "前高",
+         "price": 140,
+         "chg_from_anchor_pct": -3
+        }
+       }
+      }
+     },
+     {
+      "id": "a3",
+      "text": "纯想法,没有标的",
+      "status": "active",
+      "symbols": [],
+      "created_at": "2026-08-21T12:00:00Z",
+      "analysis": {
+       "summary": "",
+       "checks": [],
+       "risks": []
+      }
+     },
+     {
+      "id": "a4",
+      "text": "行情失败",
+      "status": "active",
+      "symbols": [
+       "AXTI"
+      ],
+      "created_at": "2026-08-21T12:00:00Z",
+      "analysis": {
+       "symbol": "TSLA",
+       "summary": "看不清",
+       "brief": {
+        "error": "没有行情权限"
+       }
+      }
+     },
+     {
+      "id": "a5",
+      "text": "没连券商",
+      "status": "active",
+      "symbols": [
+       "AXTI"
+      ],
+      "created_at": "2026-08-21T12:00:00Z",
+      "analysis": {
+       "symbol": "AAPL",
+       "summary": "先记下"
+      }
+     },
+     {
+      "id": "a6",
+      "text": "锚点没有涨跌",
+      "status": "active",
+      "symbols": [
+       "AXTI"
+      ],
+      "created_at": "2026-08-21T12:00:00Z",
+      "analysis": {
+       "symbol": "QQQ",
+       "summary": "s",
+       "brief": {
+        "last": 500,
+        "anchor": {
+         "label": "整数",
+         "price": 500,
+         "chg_from_anchor_pct": null
+        }
+       }
+      }
+     },
+     {
+      "id": "a7",
+      "text": "只有锚点",
+      "status": "active",
+      "symbols": [
+       "AXTI"
+      ],
+      "created_at": "2026-08-21T12:00:00Z",
+      "analysis": {
+       "symbol": "IWM",
+       "brief": {
+        "anchor": {
+         "label": "均线",
+         "price": 210,
+         "chg_from_anchor_pct": 0
+        }
+       },
+       "model": "",
+       "analyzed_at": null
+      }
+     },
+     {
+      "id": "a8",
+      "text": "已归档的",
+      "status": "archived",
+      "symbols": null,
+      "created_at": "2026-07-01T00:00:00Z"
+     },
+     {
+      "id": "a9",
+      "text": "状态不认识",
+      "status": "weird",
+      "symbols": [
+       "AXTI"
+      ],
+      "created_at": "not a date"
+     },
+     {
+      "id": "a10",
+      "text": "空的时间",
+      "status": "active",
+      "symbols": [
+       "AXTI"
+      ],
+      "created_at": null
+     }
+    ]
+   },
+   "texts": [
+    "想法",
+    "随手记,不解析、不下单",
+    "记下",
+    "「AI 分析」和「发到解析」是什么",
+    "进行中",
+    "全部",
+    "附带交易结果",
+    "总结知识",
+    "AXTI",
+    "进行中",
+    "AXTI 周五尾盘买入",
+    "20:00",
+    "AI 分析 · 量能放大的突破,等回踩确认",
+    "AXTI 行情(代码计算):现价 12.34 · 1日 3.2% · 20日 -5.1% · 60日 18% · RSI14 61.2 · 对50日线 4.4% · 对200日线 -2% · 年化波动 55% · 距52周高 -12.5%",
+    "价格锚点:周五收盘 = 11.8 · 现价较锚点 +4.58%",
+    "逻辑:周五尾盘放量,周线级别第一次站上 50 日线",
+    "下单前先核实:",
+    "盘前是否有增发公告",
+    "期权链 IV 是否已经抬高",
+    "风险:",
+    "小盘股流动性差",
+    "财报在下周",
+    "建议:小仓位试,破 11.5 走",
+    "模型 claude-x",
+    "分析于 21:30",
+    "仅供参考,不构成投资建议",
+    "AI 重新分析",
+    "发到解析",
+    "完成",
+    "归档",
+    "NVDA · AMD",
+    "进行中",
+    "芯片轮动",
+    "20:00",
+    "AI 分析 · 量能放大的突破,等回踩确认",
+    "NVDA 行情(代码计算):现价 12.34 · 1日 3.2% · 20日 -5.1% · 60日 18% · RSI14 61.2 · 对50日线 4.4% · 对200日线 -2% · 年化波动 55% · 距52周高 -12.5%",
+    "价格锚点:前高 = 140 · 现价较锚点 -3%",
+    "逻辑:周五尾盘放量,周线级别第一次站上 50 日线",
+    "下单前先核实:",
+    "盘前是否有增发公告",
+    "期权链 IV 是否已经抬高",
+    "风险:",
+    "小盘股流动性差",
+    "财报在下周",
+    "建议:小仓位试,破 11.5 走",
+    "模型 claude-x",
+    "分析于 21:30",
+    "仅供参考,不构成投资建议",
+    "AI 重新分析",
+    "发到解析",
+    "完成",
+    "归档",
+    "想法",
+    "进行中",
+    "纯想法,没有标的",
+    "20:00",
+    "AI 分析 ·",
+    "仅供参考,不构成投资建议",
+    "AI 重新分析",
+    "发到解析",
+    "完成",
+    "归档",
+    "AXTI",
+    "进行中",
+    "行情失败",
+    "20:00",
+    "AI 分析 · 看不清",
+    "行情获取失败:没有行情权限",
+    "仅供参考,不构成投资建议",
+    "AI 重新分析",
+    "发到解析",
+    "完成",
+    "归档",
+    "AXTI",
+    "进行中",
+    "没连券商",
+    "20:00",
+    "AI 分析 · 先记下",
+    "分析时未连接券商网关,无行情情报",
+    "仅供参考,不构成投资建议",
+    "AI 重新分析",
+    "发到解析",
+    "完成",
+    "归档",
+    "AXTI",
+    "进行中",
+    "锚点没有涨跌",
+    "20:00",
+    "AI 分析 · s",
+    "QQQ 行情(代码计算):现价 500",
+    "价格锚点:整数 = 500",
+    "仅供参考,不构成投资建议",
+    "AI 重新分析",
+    "发到解析",
+    "完成",
+    "归档",
+    "AXTI",
+    "进行中",
+    "只有锚点",
+    "20:00",
+    "AI 分析 ·",
+    "价格锚点:均线 = 210 · 现价较锚点 +0%",
+    "仅供参考,不构成投资建议",
+    "AI 重新分析",
+    "发到解析",
+    "完成",
+    "归档",
+    "想法",
+    "已归档",
+    "已归档的",
+    "07-01 08:00",
+    "恢复为进行中",
+    "AXTI",
+    "weird",
+    "状态不认识",
+    "not a date",
+    "恢复为进行中",
+    "AXTI",
+    "进行中",
+    "空的时间",
+    "—",
+    "AI 分析",
+    "发到解析",
+    "完成",
+    "归档"
+   ],
+   "buttons": [
+    {
+     "text": "记下",
+     "loading": false
+    },
+    {
+     "text": "总结知识",
+     "loading": false
+    },
+    {
+     "text": "AI 重新分析",
+     "loading": false
+    },
+    {
+     "text": "发到解析",
+     "loading": false
+    },
+    {
+     "text": "完成",
+     "loading": false
+    },
+    {
+     "text": "归档",
+     "loading": false
+    },
+    {
+     "text": "AI 重新分析",
+     "loading": false
+    },
+    {
+     "text": "发到解析",
+     "loading": false
+    },
+    {
+     "text": "完成",
+     "loading": false
+    },
+    {
+     "text": "归档",
+     "loading": false
+    },
+    {
+     "text": "AI 重新分析",
+     "loading": false
+    },
+    {
+     "text": "发到解析",
+     "loading": false
+    },
+    {
+     "text": "完成",
+     "loading": false
+    },
+    {
+     "text": "归档",
+     "loading": false
+    },
+    {
+     "text": "AI 重新分析",
+     "loading": false
+    },
+    {
+     "text": "发到解析",
+     "loading": false
+    },
+    {
+     "text": "完成",
+     "loading": false
+    },
+    {
+     "text": "归档",
+     "loading": false
+    },
+    {
+     "text": "AI 重新分析",
+     "loading": false
+    },
+    {
+     "text": "发到解析",
+     "loading": false
+    },
+    {
+     "text": "完成",
+     "loading": false
+    },
+    {
+     "text": "归档",
+     "loading": false
+    },
+    {
+     "text": "AI 重新分析",
+     "loading": false
+    },
+    {
+     "text": "发到解析",
+     "loading": false
+    },
+    {
+     "text": "完成",
+     "loading": false
+    },
+    {
+     "text": "归档",
+     "loading": false
+    },
+    {
+     "text": "AI 重新分析",
+     "loading": false
+    },
+    {
+     "text": "发到解析",
+     "loading": false
+    },
+    {
+     "text": "完成",
+     "loading": false
+    },
+    {
+     "text": "归档",
+     "loading": false
+    },
+    {
+     "text": "恢复为进行中",
+     "loading": false
+    },
+    {
+     "text": "恢复为进行中",
+     "loading": false
+    },
+    {
+     "text": "AI 分析",
+     "loading": false
+    },
+    {
+     "text": "发到解析",
+     "loading": false
+    },
+    {
+     "text": "完成",
+     "loading": false
+    },
+    {
+     "text": "归档",
+     "loading": false
+    }
+   ],
+   "titles": [
+    "2026/8/21 20:00:00",
+    "2026/8/21 21:30:00",
+    "2026/8/21 20:00:00",
+    "2026/8/21 21:30:00",
+    "2026/8/21 20:00:00",
+    "2026/8/21 20:00:00",
+    "2026/8/21 20:00:00",
+    "2026/8/21 20:00:00",
+    "2026/8/21 20:00:00",
+    "2026/7/1 08:00:00",
+    "not a date",
+    "—"
+   ],
+   "segments": [
+    false,
+    true
+   ],
+   "withTrades": true,
+   "input": ""
+  },
+  {
+   "name": "分析着",
+   "seed": {
+    "ideas": [
+     {
+      "id": "a1",
+      "text": "AXTI 周五尾盘买入",
+      "status": "active",
+      "symbols": [
+       "AXTI"
+      ],
+      "created_at": "2026-08-21T12:00:00Z",
+      "analysis": {
+       "symbol": "AXTI",
+       "summary": "量能放大的突破,等回踩确认",
+       "thesis": "周五尾盘放量,周线级别第一次站上 50 日线",
+       "checks": [
+        "盘前是否有增发公告",
+        "期权链 IV 是否已经抬高"
+       ],
+       "risks": [
+        "小盘股流动性差",
+        "财报在下周"
+       ],
+       "suggestion": "小仓位试,破 11.5 走",
+       "model": "claude-x",
+       "analyzed_at": "2026-08-21T13:30:00Z",
+       "brief": {
+        "last": 12.34,
+        "chg_1d_pct": 3.2,
+        "chg_20d_pct": -5.1,
+        "chg_60d_pct": 18,
+        "rsi14": 61.2,
+        "vs_sma50_pct": 4.4,
+        "vs_sma200_pct": -2,
+        "vol20_annual_pct": 55,
+        "from_52w_high_pct": -12.5,
+        "anchor": {
+         "label": "周五收盘",
+         "price": 11.8,
+         "chg_from_anchor_pct": 4.58
+        }
+       }
+      }
+     },
+     {
+      "id": "a2",
+      "text": "芯片轮动",
+      "status": "active",
+      "symbols": [
+       "NVDA",
+       "AMD"
+      ],
+      "created_at": "2026-08-21T12:00:00Z",
+      "analysis": {
+       "symbol": "NVDA",
+       "summary": "量能放大的突破,等回踩确认",
+       "thesis": "周五尾盘放量,周线级别第一次站上 50 日线",
+       "checks": [
+        "盘前是否有增发公告",
+        "期权链 IV 是否已经抬高"
+       ],
+       "risks": [
+        "小盘股流动性差",
+        "财报在下周"
+       ],
+       "suggestion": "小仓位试,破 11.5 走",
+       "model": "claude-x",
+       "analyzed_at": "2026-08-21T13:30:00Z",
+       "brief": {
+        "last": 12.34,
+        "chg_1d_pct": 3.2,
+        "chg_20d_pct": -5.1,
+        "chg_60d_pct": 18,
+        "rsi14": 61.2,
+        "vs_sma50_pct": 4.4,
+        "vs_sma200_pct": -2,
+        "vol20_annual_pct": 55,
+        "from_52w_high_pct": -12.5,
+        "anchor": {
+         "label": "前高",
+         "price": 140,
+         "chg_from_anchor_pct": -3
+        }
+       }
+      }
+     }
+    ],
+    "analyzing": [
+     "a1"
+    ]
+   },
+   "texts": [
+    "想法",
+    "随手记,不解析、不下单",
+    "记下",
+    "「AI 分析」和「发到解析」是什么",
+    "进行中",
+    "全部",
+    "附带交易结果",
+    "总结知识",
+    "AXTI",
+    "进行中",
+    "AXTI 周五尾盘买入",
+    "20:00",
+    "AI 分析 · 量能放大的突破,等回踩确认",
+    "AXTI 行情(代码计算):现价 12.34 · 1日 3.2% · 20日 -5.1% · 60日 18% · RSI14 61.2 · 对50日线 4.4% · 对200日线 -2% · 年化波动 55% · 距52周高 -12.5%",
+    "价格锚点:周五收盘 = 11.8 · 现价较锚点 +4.58%",
+    "逻辑:周五尾盘放量,周线级别第一次站上 50 日线",
+    "下单前先核实:",
+    "盘前是否有增发公告",
+    "期权链 IV 是否已经抬高",
+    "风险:",
+    "小盘股流动性差",
+    "财报在下周",
+    "建议:小仓位试,破 11.5 走",
+    "模型 claude-x",
+    "分析于 21:30",
+    "仅供参考,不构成投资建议",
+    "分析中…",
+    "发到解析",
+    "完成",
+    "归档",
+    "NVDA · AMD",
+    "进行中",
+    "芯片轮动",
+    "20:00",
+    "AI 分析 · 量能放大的突破,等回踩确认",
+    "NVDA 行情(代码计算):现价 12.34 · 1日 3.2% · 20日 -5.1% · 60日 18% · RSI14 61.2 · 对50日线 4.4% · 对200日线 -2% · 年化波动 55% · 距52周高 -12.5%",
+    "价格锚点:前高 = 140 · 现价较锚点 -3%",
+    "逻辑:周五尾盘放量,周线级别第一次站上 50 日线",
+    "下单前先核实:",
+    "盘前是否有增发公告",
+    "期权链 IV 是否已经抬高",
+    "风险:",
+    "小盘股流动性差",
+    "财报在下周",
+    "建议:小仓位试,破 11.5 走",
+    "模型 claude-x",
+    "分析于 21:30",
+    "仅供参考,不构成投资建议",
+    "AI 重新分析",
+    "发到解析",
+    "完成",
+    "归档"
+   ],
+   "buttons": [
+    {
+     "text": "记下",
+     "loading": false
+    },
+    {
+     "text": "总结知识",
+     "loading": false
+    },
+    {
+     "text": "分析中…",
+     "loading": true
+    },
+    {
+     "text": "发到解析",
+     "loading": false
+    },
+    {
+     "text": "完成",
+     "loading": false
+    },
+    {
+     "text": "归档",
+     "loading": false
+    },
+    {
+     "text": "AI 重新分析",
+     "loading": false
+    },
+    {
+     "text": "发到解析",
+     "loading": false
+    },
+    {
+     "text": "完成",
+     "loading": false
+    },
+    {
+     "text": "归档",
+     "loading": false
+    }
+   ],
+   "titles": [
+    "2026/8/21 20:00:00",
+    "2026/8/21 21:30:00",
+    "2026/8/21 20:00:00",
+    "2026/8/21 21:30:00"
+   ],
+   "segments": [
+    true,
+    false
+   ],
+   "withTrades": true,
+   "input": ""
+  },
+  {
+   "name": "知识总结",
+   "seed": {
+    "ideas": [
+     {
+      "id": "i1",
+      "text": "AXTI 周五尾盘买入,量能起来了",
+      "status": "active",
+      "symbols": [
+       "AXTI"
+      ],
+      "created_at": "2026-08-20T20:00:00Z"
+     },
+     {
+      "id": "i2",
+      "text": "留意 SPY 770 这个整数关口",
+      "status": "done",
+      "symbols": [
+       "SPY"
+      ],
+      "created_at": "2026-08-19T14:00:00Z"
+     }
+    ],
+    "digests": [
+     {
+      "id": "d1",
+      "created_at": "2026-08-21T12:30:00Z",
+      "idea_count": 42,
+      "focus": null,
+      "trades": [
+       {
+        "opened_at": "2026-08-10T14:00:00Z",
+        "label": "SPX 蝶 7600/7615/7630",
+        "paper": false,
+        "result": "win",
+        "return_pct": 45.2,
+        "pnl_points": 3.1,
+        "note": ""
+       },
+       {
+        "opened_at": "2026-08-10T14:00:00Z",
+        "label": "SPX 蝶 7600/7615/7630",
+        "paper": true,
+        "result": "loss",
+        "return_pct": -100,
+        "pnl_points": -1.5,
+        "note": "穿过上翼"
+       },
+       {
+        "opened_at": "2026-08-10T14:00:00Z",
+        "label": "SPX 蝶 7600/7615/7630",
+        "paper": false,
+        "result": "open",
+        "return_pct": null,
+        "pnl_points": null,
+        "note": ""
+       }
+      ],
+      "digest": {
+       "summary": "耐心的突破单赚钱,追高的亏",
+       "themes": [
+        "尾盘放量",
+        "整数关口"
+       ],
+       "lessons": [
+        "破位就走"
+       ],
+       "patterns": [
+        "写了止损的想法胜率高"
+       ],
+       "actions": [
+        "下单前先写失效价"
+       ],
+       "model": "claude-x"
+      }
+     },
+     {
+      "id": "d0",
+      "created_at": "2026-08-01T00:00:00Z",
+      "idea_count": 42,
+      "focus": null,
+      "trades": [
+       {
+        "opened_at": "2026-08-10T14:00:00Z",
+        "label": "SPX 蝶 7600/7615/7630",
+        "paper": false,
+        "result": "win",
+        "return_pct": 45.2,
+        "pnl_points": 3.1,
+        "note": ""
+       },
+       {
+        "opened_at": "2026-08-10T14:00:00Z",
+        "label": "SPX 蝶 7600/7615/7630",
+        "paper": true,
+        "result": "loss",
+        "return_pct": -100,
+        "pnl_points": -1.5,
+        "note": "穿过上翼"
+       },
+       {
+        "opened_at": "2026-08-10T14:00:00Z",
+        "label": "SPX 蝶 7600/7615/7630",
+        "paper": false,
+        "result": "open",
+        "return_pct": null,
+        "pnl_points": null,
+        "note": ""
+       }
+      ],
+      "digest": {
+       "summary": "耐心的突破单赚钱,追高的亏",
+       "themes": [
+        "尾盘放量",
+        "整数关口"
+       ],
+       "lessons": [
+        "破位就走"
+       ],
+       "patterns": [
+        "写了止损的想法胜率高"
+       ],
+       "actions": [
+        "下单前先写失效价"
+       ],
+       "model": "claude-x"
+      }
+     },
+     {
+      "id": "dm",
+      "created_at": "2026-08-21T12:30:00Z",
+      "idea_count": 42,
+      "focus": null,
+      "trades": [
+       {
+        "opened_at": "2026-08-10T14:00:00Z",
+        "label": "SPX 蝶 7600/7615/7630",
+        "paper": false,
+        "result": "win",
+        "return_pct": 45.2,
+        "pnl_points": 3.1,
+        "note": ""
+       },
+       {
+        "opened_at": "2026-08-10T14:00:00Z",
+        "label": "SPX 蝶 7600/7615/7630",
+        "paper": true,
+        "result": "loss",
+        "return_pct": -100,
+        "pnl_points": -1.5,
+        "note": "穿过上翼"
+       },
+       {
+        "opened_at": "2026-08-10T14:00:00Z",
+        "label": "SPX 蝶 7600/7615/7630",
+        "paper": false,
+        "result": "open",
+        "return_pct": null,
+        "pnl_points": null,
+        "note": ""
+       }
+      ],
+      "digest": {
+       "summary": "耐心的突破单赚钱,追高的亏",
+       "themes": [
+        "尾盘放量",
+        "整数关口"
+       ],
+       "lessons": [
+        "破位就走"
+       ],
+       "patterns": [
+        "写了止损的想法胜率高"
+       ],
+       "actions": [
+        "下单前先写失效价"
+       ],
+       "model": "claude-x"
+      }
+     }
+    ]
+   },
+   "texts": [
+    "想法",
+    "随手记,不解析、不下单",
+    "记下",
+    "「AI 分析」和「发到解析」是什么",
+    "进行中",
+    "全部",
+    "附带交易结果",
+    "总结知识",
+    "知识总结 · 耐心的突破单赚钱,追高的亏",
+    "反复出现的主题:",
+    "尾盘放量",
+    "整数关口",
+    "经验教训:",
+    "破位就走",
+    "想法质量的规律:",
+    "写了止损的想法胜率高",
+    "下一步:",
+    "下单前先写失效价",
+    "对照的交易(引擎从真实成交算出):",
+    "2026-08-10 SPX 蝶 7600/7615/7630:赚 +45.2% +3.1 点/份",
+    "2026-08-10 SPX 蝶 7600/7615/7630(模拟):亏 -100% -1.5 点/份(穿过上翼)",
+    "2026-08-10 SPX 蝶 7600/7615/7630:未了结",
+    "基于 42 条想法",
+    "附带 3 笔交易结果",
+    "模型 claude-x",
+    "总结于 20:30",
+    "共 3 次总结,新的在上",
+    "仅供复盘参考,不构成投资建议",
+    "AXTI",
+    "进行中",
+    "AXTI 周五尾盘买入,量能起来了",
+    "04:00",
+    "AI 分析",
+    "发到解析",
+    "完成",
+    "归档",
+    "SPY",
+    "已完成",
+    "留意 SPY 770 这个整数关口",
+    "08-19 22:00",
+    "恢复为进行中"
+   ],
+   "buttons": [
+    {
+     "text": "记下",
+     "loading": false
+    },
+    {
+     "text": "总结知识",
+     "loading": false
+    },
+    {
+     "text": "AI 分析",
+     "loading": false
+    },
+    {
+     "text": "发到解析",
+     "loading": false
+    },
+    {
+     "text": "完成",
+     "loading": false
+    },
+    {
+     "text": "归档",
+     "loading": false
+    },
+    {
+     "text": "恢复为进行中",
+     "loading": false
+    }
+   ],
+   "titles": [
+    "2026/8/21 20:30:00",
+    "2026/8/21 04:00:00",
+    "2026/8/19 22:00:00"
+   ],
+   "segments": [
+    true,
+    false
+   ],
+   "withTrades": true,
+   "input": ""
+  },
+  {
+   "name": "只有一次总结、缺键、检索过",
+   "seed": {
+    "ideas": [
+     {
+      "id": "i1",
+      "text": "AXTI 周五尾盘买入,量能起来了",
+      "status": "active",
+      "symbols": [
+       "AXTI"
+      ],
+      "created_at": "2026-08-20T20:00:00Z"
+     },
+     {
+      "id": "i2",
+      "text": "留意 SPY 770 这个整数关口",
+      "status": "done",
+      "symbols": [
+       "SPY"
+      ],
+      "created_at": "2026-08-19T14:00:00Z"
+     }
+    ],
+    "digests": [
+     {
+      "id": "d",
+      "created_at": "2026-08-20T01:00:00Z",
+      "idea_count": 3,
+      "focus": {
+       "q": "蝴蝶",
+       "symbols": [
+        "SPX",
+        "XSP"
+       ]
+      },
+      "digest": {}
+     }
+    ]
+   },
+   "texts": [
+    "想法",
+    "随手记,不解析、不下单",
+    "记下",
+    "「AI 分析」和「发到解析」是什么",
+    "进行中",
+    "全部",
+    "附带交易结果",
+    "总结知识",
+    "知识总结 ·",
+    "基于 3 条想法",
+    "检索:蝴蝶 SPX XSP",
+    "总结于 08-20 09:00",
+    "仅供复盘参考,不构成投资建议",
+    "AXTI",
+    "进行中",
+    "AXTI 周五尾盘买入,量能起来了",
+    "04:00",
+    "AI 分析",
+    "发到解析",
+    "完成",
+    "归档",
+    "SPY",
+    "已完成",
+    "留意 SPY 770 这个整数关口",
+    "08-19 22:00",
+    "恢复为进行中"
+   ],
+   "buttons": [
+    {
+     "text": "记下",
+     "loading": false
+    },
+    {
+     "text": "总结知识",
+     "loading": false
+    },
+    {
+     "text": "AI 分析",
+     "loading": false
+    },
+    {
+     "text": "发到解析",
+     "loading": false
+    },
+    {
+     "text": "完成",
+     "loading": false
+    },
+    {
+     "text": "归档",
+     "loading": false
+    },
+    {
+     "text": "恢复为进行中",
+     "loading": false
+    }
+   ],
+   "titles": [
+    "2026/8/20 09:00:00",
+    "2026/8/21 04:00:00",
+    "2026/8/19 22:00:00"
+   ],
+   "segments": [
+    true,
+    false
+   ],
+   "withTrades": true,
+   "input": ""
+  },
+  {
+   "name": "检索加总结着",
+   "seed": {
+    "query": "结算",
+    "ideas": [
+     {
+      "id": "i1",
+      "text": "AXTI 周五尾盘买入,量能起来了",
+      "status": "active",
+      "symbols": [
+       "AXTI"
+      ],
+      "created_at": "2026-08-20T20:00:00Z"
+     },
+     {
+      "id": "i2",
+      "text": "留意 SPY 770 这个整数关口",
+      "status": "done",
+      "symbols": [
+       "SPY"
+      ],
+      "created_at": "2026-08-19T14:00:00Z"
+     }
+    ],
+    "digests": [
+     {
+      "id": "d1",
+      "created_at": "2026-08-21T12:30:00Z",
+      "idea_count": 42,
+      "focus": null,
+      "trades": [
+       {
+        "opened_at": "2026-08-10T14:00:00Z",
+        "label": "SPX 蝶 7600/7615/7630",
+        "paper": false,
+        "result": "win",
+        "return_pct": 45.2,
+        "pnl_points": 3.1,
+        "note": ""
+       },
+       {
+        "opened_at": "2026-08-10T14:00:00Z",
+        "label": "SPX 蝶 7600/7615/7630",
+        "paper": true,
+        "result": "loss",
+        "return_pct": -100,
+        "pnl_points": -1.5,
+        "note": "穿过上翼"
+       },
+       {
+        "opened_at": "2026-08-10T14:00:00Z",
+        "label": "SPX 蝶 7600/7615/7630",
+        "paper": false,
+        "result": "open",
+        "return_pct": null,
+        "pnl_points": null,
+        "note": ""
+       }
+      ],
+      "digest": {
+       "summary": "耐心的突破单赚钱,追高的亏",
+       "themes": [
+        "尾盘放量",
+        "整数关口"
+       ],
+       "lessons": [
+        "破位就走"
+       ],
+       "patterns": [
+        "写了止损的想法胜率高"
+       ],
+       "actions": [
+        "下单前先写失效价"
+       ],
+       "model": "claude-x"
+      }
+     }
+    ],
+    "digesting": true
+   },
+   "texts": [
+    "想法",
+    "随手记,不解析、不下单",
+    "记下",
+    "「AI 分析」和「发到解析」是什么",
+    "进行中",
+    "全部",
+    "附带交易结果",
+    "总结中…",
+    "知识总结 · 耐心的突破单赚钱,追高的亏",
+    "反复出现的主题:",
+    "尾盘放量",
+    "整数关口",
+    "经验教训:",
+    "破位就走",
+    "想法质量的规律:",
+    "写了止损的想法胜率高",
+    "下一步:",
+    "下单前先写失效价",
+    "对照的交易(引擎从真实成交算出):",
+    "2026-08-10 SPX 蝶 7600/7615/7630:赚 +45.2% +3.1 点/份",
+    "2026-08-10 SPX 蝶 7600/7615/7630(模拟):亏 -100% -1.5 点/份(穿过上翼)",
+    "2026-08-10 SPX 蝶 7600/7615/7630:未了结",
+    "基于 42 条想法",
+    "附带 3 笔交易结果",
+    "模型 claude-x",
+    "总结于 20:30",
+    "仅供复盘参考,不构成投资建议",
+    "AXTI",
+    "进行中",
+    "AXTI 周五尾盘买入,量能起来了",
+    "04:00",
+    "AI 分析",
+    "发到解析",
+    "完成",
+    "归档",
+    "SPY",
+    "已完成",
+    "留意 SPY 770 这个整数关口",
+    "08-19 22:00",
+    "恢复为进行中"
+   ],
+   "buttons": [
+    {
+     "text": "记下",
+     "loading": false
+    },
+    {
+     "text": "总结中…",
+     "loading": true
+    },
+    {
+     "text": "AI 分析",
+     "loading": false
+    },
+    {
+     "text": "发到解析",
+     "loading": false
+    },
+    {
+     "text": "完成",
+     "loading": false
+    },
+    {
+     "text": "归档",
+     "loading": false
+    },
+    {
+     "text": "恢复为进行中",
+     "loading": false
+    }
+   ],
+   "titles": [
+    "2026/8/21 20:30:00",
+    "2026/8/21 04:00:00",
+    "2026/8/19 22:00:00"
+   ],
+   "segments": [
+    true,
+    false
+   ],
+   "withTrades": true,
+   "input": ""
+  },
+  {
+   "name": "不附带交易结果",
+   "seed": {
+    "ideas": [
+     {
+      "id": "i1",
+      "text": "AXTI 周五尾盘买入,量能起来了",
+      "status": "active",
+      "symbols": [
+       "AXTI"
+      ],
+      "created_at": "2026-08-20T20:00:00Z"
+     },
+     {
+      "id": "i2",
+      "text": "留意 SPY 770 这个整数关口",
+      "status": "done",
+      "symbols": [
+       "SPY"
+      ],
+      "created_at": "2026-08-19T14:00:00Z"
+     }
+    ],
+    "withTrades": false,
+    "query": "x"
+   },
+   "texts": [
+    "想法",
+    "随手记,不解析、不下单",
+    "记下",
+    "「AI 分析」和「发到解析」是什么",
+    "进行中",
+    "全部",
+    "附带交易结果",
+    "按检索总结",
+    "AXTI",
+    "进行中",
+    "AXTI 周五尾盘买入,量能起来了",
+    "04:00",
+    "AI 分析",
+    "发到解析",
+    "完成",
+    "归档",
+    "SPY",
+    "已完成",
+    "留意 SPY 770 这个整数关口",
+    "08-19 22:00",
+    "恢复为进行中"
+   ],
+   "buttons": [
+    {
+     "text": "记下",
+     "loading": false
+    },
+    {
+     "text": "按检索总结",
+     "loading": false
+    },
+    {
+     "text": "AI 分析",
+     "loading": false
+    },
+    {
+     "text": "发到解析",
+     "loading": false
+    },
+    {
+     "text": "完成",
+     "loading": false
+    },
+    {
+     "text": "归档",
+     "loading": false
+    },
+    {
+     "text": "恢复为进行中",
+     "loading": false
+    }
+   ],
+   "titles": [
+    "2026/8/21 04:00:00",
+    "2026/8/19 22:00:00"
+   ],
+   "segments": [
+    true,
+    false
+   ],
+   "withTrades": false,
+   "input": ""
+  },
+  {
+   "name": "输入框里有字",
+   "seed": {
+    "ideas": [
+     {
+      "id": "i1",
+      "text": "AXTI 周五尾盘买入,量能起来了",
+      "status": "active",
+      "symbols": [
+       "AXTI"
+      ],
+      "created_at": "2026-08-20T20:00:00Z"
+     },
+     {
+      "id": "i2",
+      "text": "留意 SPY 770 这个整数关口",
+      "status": "done",
+      "symbols": [
+       "SPY"
+      ],
+      "created_at": "2026-08-19T14:00:00Z"
+     }
+    ],
+    "text": "新想法 RKLB"
+   },
+   "texts": [
+    "想法",
+    "随手记,不解析、不下单",
+    "记下",
+    "「AI 分析」和「发到解析」是什么",
+    "进行中",
+    "全部",
+    "附带交易结果",
+    "总结知识",
+    "AXTI",
+    "进行中",
+    "AXTI 周五尾盘买入,量能起来了",
+    "04:00",
+    "AI 分析",
+    "发到解析",
+    "完成",
+    "归档",
+    "SPY",
+    "已完成",
+    "留意 SPY 770 这个整数关口",
+    "08-19 22:00",
+    "恢复为进行中"
+   ],
+   "buttons": [
+    {
+     "text": "记下",
+     "loading": false
+    },
+    {
+     "text": "总结知识",
+     "loading": false
+    },
+    {
+     "text": "AI 分析",
+     "loading": false
+    },
+    {
+     "text": "发到解析",
+     "loading": false
+    },
+    {
+     "text": "完成",
+     "loading": false
+    },
+    {
+     "text": "归档",
+     "loading": false
+    },
+    {
+     "text": "恢复为进行中",
+     "loading": false
+    }
+   ],
+   "titles": [
+    "2026/8/21 04:00:00",
+    "2026/8/19 22:00:00"
+   ],
+   "segments": [
+    true,
+    false
+   ],
+   "withTrades": true,
+   "input": "新想法 RKLB"
+  },
+  {
+   "name": "焦点只有标的",
+   "seed": {
+    "ideas": [
+     {
+      "id": "i1",
+      "text": "AXTI 周五尾盘买入,量能起来了",
+      "status": "active",
+      "symbols": [
+       "AXTI"
+      ],
+      "created_at": "2026-08-20T20:00:00Z"
+     },
+     {
+      "id": "i2",
+      "text": "留意 SPY 770 这个整数关口",
+      "status": "done",
+      "symbols": [
+       "SPY"
+      ],
+      "created_at": "2026-08-19T14:00:00Z"
+     }
+    ],
+    "digests": [
+     {
+      "id": "d1",
+      "created_at": "2026-08-21T12:30:00Z",
+      "idea_count": 42,
+      "focus": {
+       "q": "",
+       "symbols": [
+        "SPX"
+       ]
+      },
+      "trades": [],
+      "digest": {
+       "summary": "耐心的突破单赚钱,追高的亏",
+       "themes": [
+        "尾盘放量",
+        "整数关口"
+       ],
+       "lessons": [
+        "破位就走"
+       ],
+       "patterns": [
+        "写了止损的想法胜率高"
+       ],
+       "actions": [
+        "下单前先写失效价"
+       ],
+       "model": "claude-x"
+      }
+     }
+    ]
+   },
+   "texts": [
+    "想法",
+    "随手记,不解析、不下单",
+    "记下",
+    "「AI 分析」和「发到解析」是什么",
+    "进行中",
+    "全部",
+    "附带交易结果",
+    "总结知识",
+    "知识总结 · 耐心的突破单赚钱,追高的亏",
+    "反复出现的主题:",
+    "尾盘放量",
+    "整数关口",
+    "经验教训:",
+    "破位就走",
+    "想法质量的规律:",
+    "写了止损的想法胜率高",
+    "下一步:",
+    "下单前先写失效价",
+    "基于 42 条想法",
+    "附带 0 笔交易结果",
+    "检索:SPX",
+    "模型 claude-x",
+    "总结于 20:30",
+    "仅供复盘参考,不构成投资建议",
+    "AXTI",
+    "进行中",
+    "AXTI 周五尾盘买入,量能起来了",
+    "04:00",
+    "AI 分析",
+    "发到解析",
+    "完成",
+    "归档",
+    "SPY",
+    "已完成",
+    "留意 SPY 770 这个整数关口",
+    "08-19 22:00",
+    "恢复为进行中"
+   ],
+   "buttons": [
+    {
+     "text": "记下",
+     "loading": false
+    },
+    {
+     "text": "总结知识",
+     "loading": false
+    },
+    {
+     "text": "AI 分析",
+     "loading": false
+    },
+    {
+     "text": "发到解析",
+     "loading": false
+    },
+    {
+     "text": "完成",
+     "loading": false
+    },
+    {
+     "text": "归档",
+     "loading": false
+    },
+    {
+     "text": "恢复为进行中",
+     "loading": false
+    }
+   ],
+   "titles": [
+    "2026/8/21 20:30:00",
+    "2026/8/21 04:00:00",
+    "2026/8/19 22:00:00"
+   ],
+   "segments": [
+    true,
+    false
+   ],
+   "withTrades": true,
+   "input": ""
+  }
+ ]
+}

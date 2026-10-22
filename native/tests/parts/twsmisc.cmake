@@ -1,0 +1,7 @@
+# twsmisc 这一组(ibContracts.ts / ibExecHistory.ts / tws.ts)
+ibkr_test(tst_ib_contracts)
+target_link_libraries(tst_ib_contracts PRIVATE ibkr_execution Qt6::Test)
+ibkr_test(tst_ib_exec_history)
+target_link_libraries(tst_ib_exec_history PRIVATE ibkr_execution Qt6::Test Qt6::Network)
+ibkr_test(tst_tws_detect)
+target_link_libraries(tst_tws_detect PRIVATE ibkr_execution Qt6::Test Qt6::Network)

@@ -1,0 +1,5 @@
+{"kind":"anchor","anchor":{"at":1792589700000,"price":7718.4,"source":"live"}}
+{"kind":"frame","band":{"at":1792589700000,"anchor":7718.4,"strike":7720,"expiry":"20261021","call":10,"put":10,"source":"live","em":25.06628274631,"lower":7693.333717253689,"upper":7743.46628274631}}
+{"kind":"open","band":{"at":1792589700000,"anchor":7718.4,"strike":7720,"expiry":"20261021","call":10,"put":10,"source":"live","em":25.06628274631,"lower":7693.333717253689,"upper":7743.46628274631}}
+{"kind":"machine","machine":{"at":1792589700000,"state":"R","trigger":null,"since":1792589700000,"lost":null}}
+{"kind":"frame","band":{"at":1792590000000,"anchor":7731,"strike":7730,"expiry":"20261021","call":8,"put":8,"source":"live","em":20.053026197048002,"lower":7710.946973802952,"upper":7751.053026197048}}

@@ -1,0 +1,1396 @@
+{
+  "generator": "native/tests/fixtures/gen_stoqey_v193.mjs",
+  "library": "@stoqey/ib 1.6.10",
+  "server_version": 193,
+  "server_version_reply": {
+    "tokens": [
+      "193",
+      "20261018 10:05:01 Asia/Shanghai"
+    ],
+    "version": 193,
+    "connection_time": "20261018 10:05:01 Asia/Shanghai"
+  },
+  "out": [
+    {
+      "name": "handshake v100..193",
+      "hex": "4150490000000009763130302e2e313933"
+    },
+    {
+      "name": "handshake v100..200",
+      "hex": "4150490000000009763130302e2e323030"
+    },
+    {
+      "name": "startApi 0",
+      "hex": "000000083731003200300000"
+    },
+    {
+      "name": "startApi 9012",
+      "hex": "0000000b3731003200393031320000"
+    },
+    {
+      "name": "reqPositions",
+      "hex": "000000053631003100"
+    },
+    {
+      "name": "cancelPositions",
+      "hex": "000000053634003100"
+    },
+    {
+      "name": "reqCurrentTime",
+      "hex": "000000053439003100"
+    }
+  ],
+  "in": [
+    {
+      "name": "managed accounts",
+      "tokens": [
+        "15",
+        "1",
+        "U1234567,DU7654321"
+      ],
+      "events": [
+        {
+          "name": "managedAccounts",
+          "args": [
+            "U1234567,DU7654321"
+          ]
+        }
+      ],
+      "errors": [],
+      "infos": [],
+      "underrun": false,
+      "leftover": false,
+      "unknown": false
+    },
+    {
+      "name": "next valid id",
+      "tokens": [
+        "9",
+        "1",
+        "42"
+      ],
+      "events": [
+        {
+          "name": "nextValidId",
+          "args": [
+            42
+          ]
+        }
+      ],
+      "errors": [],
+      "infos": [],
+      "underrun": false,
+      "leftover": false,
+      "unknown": false
+    },
+    {
+      "name": "current time",
+      "tokens": [
+        "49",
+        "1",
+        "1791500000"
+      ],
+      "events": [
+        {
+          "name": "currentTime",
+          "args": [
+            1791500000
+          ]
+        }
+      ],
+      "errors": [],
+      "infos": [],
+      "underrun": false,
+      "leftover": false,
+      "unknown": false
+    },
+    {
+      "name": "error: farm notice (id -1 = info)",
+      "tokens": [
+        "4",
+        "2",
+        "-1",
+        "2104",
+        "Market data farm connection is OK:usfarm",
+        ""
+      ],
+      "events": [],
+      "errors": [],
+      "infos": [
+        {
+          "message": "Market data farm connection is OK:usfarm",
+          "code": 2104
+        }
+      ],
+      "underrun": false,
+      "leftover": false,
+      "unknown": false
+    },
+    {
+      "name": "error: for a request",
+      "tokens": [
+        "4",
+        "2",
+        "7",
+        "200",
+        "No security definition has been found for the request",
+        ""
+      ],
+      "events": [],
+      "errors": [
+        {
+          "message": "No security definition has been found for the request",
+          "code": 200,
+          "reqId": 7
+        }
+      ],
+      "infos": [],
+      "underrun": false,
+      "leftover": false,
+      "unknown": false
+    },
+    {
+      "name": "error: unicode escapes",
+      "tokens": [
+        "4",
+        "2",
+        "3",
+        "201",
+        "\\u8ba2\\u5355\\u88ab\\u62d2 Order rejected",
+        ""
+      ],
+      "events": [],
+      "errors": [
+        {
+          "message": "订单被拒 Order rejected",
+          "code": 201,
+          "reqId": 3
+        }
+      ],
+      "infos": [],
+      "underrun": false,
+      "leftover": false,
+      "unknown": false
+    },
+    {
+      "name": "error: escape that builds another escape",
+      "tokens": [
+        "4",
+        "2",
+        "3",
+        "201",
+        "a\\u005cu0041b",
+        ""
+      ],
+      "events": [],
+      "errors": [
+        {
+          "message": "aAb",
+          "code": 201,
+          "reqId": 3
+        }
+      ],
+      "infos": [],
+      "underrun": false,
+      "leftover": false,
+      "unknown": false
+    },
+    {
+      "name": "error: bad hex escape",
+      "tokens": [
+        "4",
+        "2",
+        "3",
+        "201",
+        "x\\uzzzzy",
+        ""
+      ],
+      "events": [],
+      "errors": [
+        {
+          "message": "x\u0000y",
+          "code": 201,
+          "reqId": 3
+        }
+      ],
+      "infos": [],
+      "underrun": false,
+      "leftover": false,
+      "unknown": false
+    },
+    {
+      "name": "error: advanced reject json",
+      "tokens": [
+        "4",
+        "2",
+        "5",
+        "201",
+        "rejected",
+        "{\"rejectReason\":\"\\u4f59\\u989d\\u4e0d\\u8db3\",\"code\":7}"
+      ],
+      "events": [],
+      "errors": [
+        {
+          "message": "rejected",
+          "code": 201,
+          "reqId": 5,
+          "advanced": {
+            "rejectReason": "余额不足",
+            "code": 7
+          }
+        }
+      ],
+      "infos": [],
+      "underrun": false,
+      "leftover": false,
+      "unknown": false
+    },
+    {
+      "name": "error: version 1",
+      "tokens": [
+        "4",
+        "1",
+        "an old style error"
+      ],
+      "events": [],
+      "errors": [
+        {
+          "message": "an old style error",
+          "code": 505
+        }
+      ],
+      "infos": [],
+      "underrun": false,
+      "leftover": false,
+      "unknown": false
+    },
+    {
+      "name": "error: truncated (no advanced field)",
+      "tokens": [
+        "4",
+        "2",
+        "-1",
+        "2104",
+        "farm ok"
+      ],
+      "events": [],
+      "errors": [],
+      "infos": [],
+      "underrun": true,
+      "leftover": false,
+      "unknown": false
+    },
+    {
+      "name": "position: option",
+      "tokens": [
+        "61",
+        "3",
+        "U1234567",
+        "920693462",
+        "SPX",
+        "OPT",
+        "20261007",
+        "7790.0",
+        "P",
+        "100",
+        "",
+        "USD",
+        "SPXW  261007P07790000",
+        "SPXW",
+        "2",
+        "1234.56"
+      ],
+      "events": [
+        {
+          "name": "position",
+          "args": [
+            "U1234567",
+            {
+              "conId": 920693462,
+              "symbol": "SPX",
+              "secType": "OPT",
+              "lastTradeDateOrContractMonth": "20261007",
+              "strike": 7790,
+              "right": "P",
+              "multiplier": 100,
+              "exchange": "",
+              "currency": "USD",
+              "localSymbol": "SPXW  261007P07790000",
+              "tradingClass": "SPXW"
+            },
+            2,
+            1234.56
+          ]
+        }
+      ],
+      "errors": [],
+      "infos": [],
+      "underrun": false,
+      "leftover": false,
+      "unknown": false
+    },
+    {
+      "name": "position: stock (empty right and multiplier)",
+      "tokens": [
+        "61",
+        "3",
+        "DU7654321",
+        "265598",
+        "AAPL",
+        "STK",
+        "",
+        "0.0",
+        "",
+        "",
+        "NASDAQ",
+        "USD",
+        "AAPL",
+        "NMS",
+        "100",
+        "187.25"
+      ],
+      "events": [
+        {
+          "name": "position",
+          "args": [
+            "DU7654321",
+            {
+              "conId": 265598,
+              "symbol": "AAPL",
+              "secType": "STK",
+              "lastTradeDateOrContractMonth": "",
+              "strike": 0,
+              "multiplier": 0,
+              "exchange": "NASDAQ",
+              "currency": "USD",
+              "localSymbol": "AAPL",
+              "tradingClass": "NMS"
+            },
+            100,
+            187.25
+          ]
+        }
+      ],
+      "errors": [],
+      "infos": [],
+      "underrun": false,
+      "leftover": false,
+      "unknown": false
+    },
+    {
+      "name": "position: short with thousands separator",
+      "tokens": [
+        "61",
+        "3",
+        "U1234567",
+        "265598",
+        "AAPL",
+        "STK",
+        "",
+        "0.0",
+        "",
+        "",
+        "NASDAQ",
+        "USD",
+        "AAPL",
+        "NMS",
+        "-1,000",
+        "187.25"
+      ],
+      "events": [
+        {
+          "name": "position",
+          "args": [
+            "U1234567",
+            {
+              "conId": 265598,
+              "symbol": "AAPL",
+              "secType": "STK",
+              "lastTradeDateOrContractMonth": "",
+              "strike": 0,
+              "multiplier": 0,
+              "exchange": "NASDAQ",
+              "currency": "USD",
+              "localSymbol": "AAPL",
+              "tradingClass": "NMS"
+            },
+            -1000,
+            187.25
+          ]
+        }
+      ],
+      "errors": [],
+      "infos": [],
+      "underrun": false,
+      "leftover": false,
+      "unknown": false
+    },
+    {
+      "name": "position: empty size",
+      "tokens": [
+        "61",
+        "3",
+        "U1234567",
+        "265598",
+        "AAPL",
+        "STK",
+        "",
+        "0.0",
+        "",
+        "",
+        "NASDAQ",
+        "USD",
+        "AAPL",
+        "NMS",
+        "",
+        ""
+      ],
+      "events": [
+        {
+          "name": "position",
+          "args": [
+            "U1234567",
+            {
+              "conId": 265598,
+              "symbol": "AAPL",
+              "secType": "STK",
+              "lastTradeDateOrContractMonth": "",
+              "strike": 0,
+              "multiplier": 0,
+              "exchange": "NASDAQ",
+              "currency": "USD",
+              "localSymbol": "AAPL",
+              "tradingClass": "NMS"
+            },
+            null,
+            0
+          ]
+        }
+      ],
+      "errors": [],
+      "infos": [],
+      "underrun": false,
+      "leftover": false,
+      "unknown": false
+    },
+    {
+      "name": "position: MAX_VALUE strike and cost",
+      "tokens": [
+        "61",
+        "3",
+        "U1234567",
+        "1",
+        "X",
+        "OPT",
+        "",
+        "1.7976931348623157E308",
+        "C",
+        "100",
+        "",
+        "USD",
+        "X",
+        "X",
+        "1",
+        "1.7976931348623157E308"
+      ],
+      "events": [
+        {
+          "name": "position",
+          "args": [
+            "U1234567",
+            {
+              "conId": 1,
+              "symbol": "X",
+              "secType": "OPT",
+              "lastTradeDateOrContractMonth": "",
+              "right": "C",
+              "multiplier": 100,
+              "exchange": "",
+              "currency": "USD",
+              "localSymbol": "X",
+              "tradingClass": "X"
+            },
+            1,
+            null
+          ]
+        }
+      ],
+      "errors": [],
+      "infos": [],
+      "underrun": false,
+      "leftover": false,
+      "unknown": false
+    },
+    {
+      "name": "position: infinities",
+      "tokens": [
+        "61",
+        "3",
+        "U1234567",
+        "1",
+        "X",
+        "STK",
+        "",
+        "-Infinity",
+        "",
+        "",
+        "",
+        "USD",
+        "X",
+        "X",
+        "Infinity",
+        "-Infinity"
+      ],
+      "events": [
+        {
+          "name": "position",
+          "args": [
+            "U1234567",
+            {
+              "conId": 1,
+              "symbol": "X",
+              "secType": "STK",
+              "lastTradeDateOrContractMonth": "",
+              "strike": null,
+              "multiplier": 0,
+              "exchange": "",
+              "currency": "USD",
+              "localSymbol": "X",
+              "tradingClass": "X"
+            },
+            null,
+            null
+          ]
+        }
+      ],
+      "errors": [],
+      "infos": [],
+      "underrun": false,
+      "leftover": false,
+      "unknown": false
+    },
+    {
+      "name": "position: version 1 (no trading class, no cost)",
+      "tokens": [
+        "61",
+        "1",
+        "U1234567",
+        "1",
+        "X",
+        "STK",
+        "",
+        "0",
+        "",
+        "",
+        "",
+        "USD",
+        "X",
+        "5"
+      ],
+      "events": [
+        {
+          "name": "position",
+          "args": [
+            "U1234567",
+            {
+              "conId": 1,
+              "symbol": "X",
+              "secType": "STK",
+              "lastTradeDateOrContractMonth": "",
+              "strike": 0,
+              "multiplier": 0,
+              "exchange": "",
+              "currency": "USD",
+              "localSymbol": "X"
+            },
+            5,
+            0
+          ]
+        }
+      ],
+      "errors": [],
+      "infos": [],
+      "underrun": false,
+      "leftover": false,
+      "unknown": false
+    },
+    {
+      "name": "position: version 2 (no cost)",
+      "tokens": [
+        "61",
+        "2",
+        "U1234567",
+        "1",
+        "X",
+        "STK",
+        "",
+        "0",
+        "",
+        "",
+        "",
+        "USD",
+        "X",
+        "X",
+        "5"
+      ],
+      "events": [
+        {
+          "name": "position",
+          "args": [
+            "U1234567",
+            {
+              "conId": 1,
+              "symbol": "X",
+              "secType": "STK",
+              "lastTradeDateOrContractMonth": "",
+              "strike": 0,
+              "multiplier": 0,
+              "exchange": "",
+              "currency": "USD",
+              "localSymbol": "X",
+              "tradingClass": "X"
+            },
+            5,
+            0
+          ]
+        }
+      ],
+      "errors": [],
+      "infos": [],
+      "underrun": false,
+      "leftover": false,
+      "unknown": false
+    },
+    {
+      "name": "position: extra trailing fields",
+      "tokens": [
+        "61",
+        "3",
+        "U1234567",
+        "920693462",
+        "SPX",
+        "OPT",
+        "20261007",
+        "7790.0",
+        "P",
+        "100",
+        "",
+        "USD",
+        "SPXW  261007P07790000",
+        "SPXW",
+        "2",
+        "1234.56",
+        "future",
+        "fields"
+      ],
+      "events": [
+        {
+          "name": "position",
+          "args": [
+            "U1234567",
+            {
+              "conId": 920693462,
+              "symbol": "SPX",
+              "secType": "OPT",
+              "lastTradeDateOrContractMonth": "20261007",
+              "strike": 7790,
+              "right": "P",
+              "multiplier": 100,
+              "exchange": "",
+              "currency": "USD",
+              "localSymbol": "SPXW  261007P07790000",
+              "tradingClass": "SPXW"
+            },
+            2,
+            1234.56
+          ]
+        }
+      ],
+      "errors": [],
+      "infos": [],
+      "underrun": false,
+      "leftover": true,
+      "unknown": false
+    },
+    {
+      "name": "position: truncated",
+      "tokens": [
+        "61",
+        "3",
+        "U1234567",
+        "920693462",
+        "SPX",
+        "OPT"
+      ],
+      "events": [],
+      "errors": [],
+      "infos": [],
+      "underrun": true,
+      "leftover": false,
+      "unknown": false
+    },
+    {
+      "name": "position: right spelled out",
+      "tokens": [
+        "61",
+        "3",
+        "U1234567",
+        "1",
+        "X",
+        "OPT",
+        "20261007",
+        "10",
+        "CALL",
+        "100",
+        "",
+        "USD",
+        "X",
+        "X",
+        "1",
+        "2"
+      ],
+      "events": [
+        {
+          "name": "position",
+          "args": [
+            "U1234567",
+            {
+              "conId": 1,
+              "symbol": "X",
+              "secType": "OPT",
+              "lastTradeDateOrContractMonth": "20261007",
+              "strike": 10,
+              "multiplier": 100,
+              "exchange": "",
+              "currency": "USD",
+              "localSymbol": "X",
+              "tradingClass": "X"
+            },
+            1,
+            2
+          ]
+        }
+      ],
+      "errors": [],
+      "infos": [],
+      "underrun": false,
+      "leftover": false,
+      "unknown": false
+    },
+    {
+      "name": "position: lenient numbers",
+      "tokens": [
+        "61",
+        "3",
+        "U1234567",
+        " 12abc",
+        "X",
+        "OPT",
+        "",
+        " 7.5x",
+        "P",
+        "1e2",
+        "",
+        "USD",
+        "X",
+        "X",
+        "+.5e1",
+        "-.25"
+      ],
+      "events": [
+        {
+          "name": "position",
+          "args": [
+            "U1234567",
+            {
+              "conId": 12,
+              "symbol": "X",
+              "secType": "OPT",
+              "lastTradeDateOrContractMonth": "",
+              "strike": 7.5,
+              "right": "P",
+              "multiplier": 100,
+              "exchange": "",
+              "currency": "USD",
+              "localSymbol": "X",
+              "tradingClass": "X"
+            },
+            5,
+            -0.25
+          ]
+        }
+      ],
+      "errors": [],
+      "infos": [],
+      "underrun": false,
+      "leftover": false,
+      "unknown": false
+    },
+    {
+      "name": "position: unparseable numbers",
+      "tokens": [
+        "61",
+        "3",
+        "U1234567",
+        "abc",
+        "X",
+        "OPT",
+        "",
+        "x7",
+        "P",
+        "-",
+        "",
+        "USD",
+        "X",
+        "X",
+        "e5",
+        "."
+      ],
+      "events": [
+        {
+          "name": "position",
+          "args": [
+            "U1234567",
+            {
+              "conId": null,
+              "symbol": "X",
+              "secType": "OPT",
+              "lastTradeDateOrContractMonth": "",
+              "strike": null,
+              "right": "P",
+              "multiplier": null,
+              "exchange": "",
+              "currency": "USD",
+              "localSymbol": "X",
+              "tradingClass": "X"
+            },
+            null,
+            null
+          ]
+        }
+      ],
+      "errors": [],
+      "infos": [],
+      "underrun": false,
+      "leftover": false,
+      "unknown": false
+    },
+    {
+      "name": "position: overflowing number",
+      "tokens": [
+        "61",
+        "3",
+        "U1234567",
+        "1",
+        "X",
+        "STK",
+        "",
+        "1e400",
+        "",
+        "",
+        "",
+        "USD",
+        "X",
+        "X",
+        "-1e400",
+        "1e-400"
+      ],
+      "events": [
+        {
+          "name": "position",
+          "args": [
+            "U1234567",
+            {
+              "conId": 1,
+              "symbol": "X",
+              "secType": "STK",
+              "lastTradeDateOrContractMonth": "",
+              "strike": null,
+              "multiplier": 0,
+              "exchange": "",
+              "currency": "USD",
+              "localSymbol": "X",
+              "tradingClass": "X"
+            },
+            null,
+            0
+          ]
+        }
+      ],
+      "errors": [],
+      "infos": [],
+      "underrun": false,
+      "leftover": false,
+      "unknown": false
+    },
+    {
+      "name": "position end",
+      "tokens": [
+        "62",
+        "1"
+      ],
+      "events": [
+        {
+          "name": "positionEnd",
+          "args": []
+        }
+      ],
+      "errors": [],
+      "infos": [],
+      "underrun": false,
+      "leftover": false,
+      "unknown": false
+    },
+    {
+      "name": "unknown message id",
+      "tokens": [
+        "999",
+        "1",
+        "x"
+      ],
+      "events": [],
+      "errors": [],
+      "infos": [],
+      "underrun": false,
+      "leftover": true,
+      "unknown": true
+    },
+    {
+      "name": "empty message id",
+      "tokens": [
+        "",
+        "1"
+      ],
+      "events": [],
+      "errors": [],
+      "infos": [],
+      "underrun": false,
+      "leftover": true,
+      "unknown": true
+    }
+  ],
+  "jsnum": {
+    "parseInt10": [
+      [
+        "",
+        "NaN"
+      ],
+      [
+        "0",
+        0
+      ],
+      [
+        "42",
+        42
+      ],
+      [
+        "-7",
+        -7
+      ],
+      [
+        "+3",
+        3
+      ],
+      [
+        " 12",
+        12
+      ],
+      [
+        "\t\n12",
+        12
+      ],
+      [
+        " 12",
+        12
+      ],
+      [
+        "﻿12",
+        12
+      ],
+      [
+        " 5",
+        5
+      ],
+      [
+        "5",
+        "NaN"
+      ],
+      [
+        "12abc",
+        12
+      ],
+      [
+        "abc",
+        "NaN"
+      ],
+      [
+        "-",
+        "NaN"
+      ],
+      [
+        "+",
+        "NaN"
+      ],
+      [
+        "1.9",
+        1
+      ],
+      [
+        "-0",
+        "-0"
+      ],
+      [
+        "0x1A",
+        0
+      ],
+      [
+        "1e3",
+        1
+      ],
+      [
+        "007",
+        7
+      ],
+      [
+        "9007199254740993",
+        9007199254740992
+      ],
+      [
+        "123456789012345678901234567890",
+        1.2345678901234568e+29
+      ],
+      [
+        "1.5",
+        1
+      ],
+      [
+        ".5",
+        "NaN"
+      ],
+      [
+        "5.",
+        5
+      ],
+      [
+        "-.25",
+        "NaN"
+      ],
+      [
+        "+.5e1",
+        "NaN"
+      ],
+      [
+        "1e",
+        1
+      ],
+      [
+        "1e+",
+        1
+      ],
+      [
+        "1e-2",
+        1
+      ],
+      [
+        "1E308",
+        1
+      ],
+      [
+        "1.7976931348623157E308",
+        1
+      ],
+      [
+        "1e400",
+        1
+      ],
+      [
+        "-1e400",
+        -1
+      ],
+      [
+        "1e-400",
+        1
+      ],
+      [
+        "Infinity",
+        "NaN"
+      ],
+      [
+        "-Infinity",
+        "NaN"
+      ],
+      [
+        "+Infinity",
+        "NaN"
+      ],
+      [
+        "infinity",
+        "NaN"
+      ],
+      [
+        "Inf",
+        "NaN"
+      ],
+      [
+        " 7.5x",
+        7
+      ],
+      [
+        "x7",
+        "NaN"
+      ],
+      [
+        ".",
+        "NaN"
+      ],
+      [
+        "e5",
+        "NaN"
+      ],
+      [
+        "1,000",
+        1
+      ],
+      [
+        "0.1",
+        0
+      ],
+      [
+        "123.456e-7",
+        123
+      ],
+      [
+        "4.9e-324",
+        4
+      ]
+    ],
+    "parseInt16": [
+      [
+        "8ba2",
+        35746
+      ],
+      [
+        "005c",
+        92
+      ],
+      [
+        "zzzz",
+        "NaN"
+      ],
+      [
+        "12zz",
+        18
+      ],
+      [
+        "0x1f",
+        31
+      ],
+      [
+        "FFFF",
+        65535
+      ],
+      [
+        "-1",
+        -1
+      ],
+      [
+        "",
+        "NaN"
+      ]
+    ],
+    "parseFloat": [
+      [
+        "",
+        "NaN"
+      ],
+      [
+        "0",
+        0
+      ],
+      [
+        "42",
+        42
+      ],
+      [
+        "-7",
+        -7
+      ],
+      [
+        "+3",
+        3
+      ],
+      [
+        " 12",
+        12
+      ],
+      [
+        "\t\n12",
+        12
+      ],
+      [
+        " 12",
+        12
+      ],
+      [
+        "﻿12",
+        12
+      ],
+      [
+        " 5",
+        5
+      ],
+      [
+        "5",
+        "NaN"
+      ],
+      [
+        "12abc",
+        12
+      ],
+      [
+        "abc",
+        "NaN"
+      ],
+      [
+        "-",
+        "NaN"
+      ],
+      [
+        "+",
+        "NaN"
+      ],
+      [
+        "1.9",
+        1.9
+      ],
+      [
+        "-0",
+        "-0"
+      ],
+      [
+        "0x1A",
+        0
+      ],
+      [
+        "1e3",
+        1000
+      ],
+      [
+        "007",
+        7
+      ],
+      [
+        "9007199254740993",
+        9007199254740992
+      ],
+      [
+        "123456789012345678901234567890",
+        1.2345678901234568e+29
+      ],
+      [
+        "1.5",
+        1.5
+      ],
+      [
+        ".5",
+        0.5
+      ],
+      [
+        "5.",
+        5
+      ],
+      [
+        "-.25",
+        -0.25
+      ],
+      [
+        "+.5e1",
+        5
+      ],
+      [
+        "1e",
+        1
+      ],
+      [
+        "1e+",
+        1
+      ],
+      [
+        "1e-2",
+        0.01
+      ],
+      [
+        "1E308",
+        1e+308
+      ],
+      [
+        "1.7976931348623157E308",
+        1.7976931348623157e+308
+      ],
+      [
+        "1e400",
+        "Infinity"
+      ],
+      [
+        "-1e400",
+        "-Infinity"
+      ],
+      [
+        "1e-400",
+        0
+      ],
+      [
+        "Infinity",
+        "Infinity"
+      ],
+      [
+        "-Infinity",
+        "-Infinity"
+      ],
+      [
+        "+Infinity",
+        "Infinity"
+      ],
+      [
+        "infinity",
+        "NaN"
+      ],
+      [
+        "Inf",
+        "NaN"
+      ],
+      [
+        " 7.5x",
+        7.5
+      ],
+      [
+        "x7",
+        "NaN"
+      ],
+      [
+        ".",
+        "NaN"
+      ],
+      [
+        "e5",
+        "NaN"
+      ],
+      [
+        "1,000",
+        1
+      ],
+      [
+        "0.1",
+        0.1
+      ],
+      [
+        "123.456e-7",
+        0.0000123456
+      ],
+      [
+        "4.9e-324",
+        5e-324
+      ]
+    ]
+  }
+}

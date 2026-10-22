@@ -1,0 +1,5 @@
+# broker 簇的对拍测试(假会话与钟见 broker_world.h / fixtures/broker_world.mjs)
+ibkr_test(tst_broker_scenarios js_fixture.h broker_world.h broker_runner.h)
+target_link_libraries(tst_broker_scenarios PRIVATE ibkr_execution Qt6::Test)
+ibkr_test(tst_broker_pure js_fixture.h)
+target_link_libraries(tst_broker_pure PRIVATE ibkr_execution Qt6::Test)

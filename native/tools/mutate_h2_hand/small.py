@@ -1,0 +1,23 @@
+# small = events + intel + follow 的手挑变异:(文件, 原文, 改成[, 第几处])
+H = [
+    ("events.cpp", "list(js::truthy(js::prop(&p, u\"force\"_s)))", "list(false)"),
+    ("events.cpp", "throw util::RpcError(-32602, exc.message());", "throw util::RpcError(-32603, exc.message());"),
+    ("events.cpp", "if (!ports_.events().remove(id))", "if (ports_.events().remove(id))"),
+    ("events.cpp", "const QString id = util::jsTrim(js::str(js::prop(&params, u\"id\"_s)));", "const QString id = js::str(js::prop(&params, u\"id\"_s));"),
+    ("events.cpp", "{u\"deleted\"_s, js::S(id)}", "{u\"deleted\"_s, js::S(QString())}"),
+    ("events.cpp", "{u\"event\"_s, ports_.events().add(params)}", "{u\"event\"_s, js::Null()}"),
+    ("events.cpp", "{u\"config\"_s, ports_.events().setConfig(js::copyOrNull(js::prop(&params, u\"config\"_s)))}", "{u\"config\"_s, js::Null()}"),
+    ("intel.cpp", "ports_.intel().feed(std::move(p))", "ports_.intel().dossier(std::move(p))"),
+    ("intel.cpp", "ports_.intel().dossier(std::move(p))", "ports_.intel().feed(std::move(p))"),
+    ("follow.cpp", "parts.size() == 3 &&", "parts.size() >= 3 &&"),
+    ("follow.cpp", "tokenPart(parts[0], 20)", "tokenPart(parts[0], 19)"),
+    ("follow.cpp", "tokenPart(parts[1], 4)", "tokenPart(parts[1], 3)"),
+    ("follow.cpp", "tokenPart(parts[2], 20)", "tokenPart(parts[2], 21)"),
+    ("follow.cpp", "|| c == u'_' || c == u'-';", "|| c == u'_';"),
+    ("follow.cpp", "(c >= u'0' && c <= u'9') || c == u'_'", "(c >= u'0' && c < u'9') || c == u'_'"),
+    ("follow.cpp", "throw util::RpcError(-32008, exc.message());", "throw util::RpcError(-32009, exc.message());"),
+    ("follow.cpp", "co_await ports_.follow().sync(true);", "co_await ports_.follow().sync(false);"),
+    ("follow.cpp", "const QString token = util::jsTrim(js::str(js::prop(&params, u\"token\"_s)));", "const QString token = js::str(js::prop(&params, u\"token\"_s));"),
+    ("follow.cpp", "throw util::RpcError(-32602, u\"这不像", "throw util::RpcError(-32603, u\"这不像"),
+    ("follow.cpp", "{u\"follow.status\"_s, [this](OJson) { return ports_.follow().status(); }},", "{u\"follow.status\"_s, [this](OJson) { return reconnect(); }},"),
+]

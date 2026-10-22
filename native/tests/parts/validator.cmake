@@ -1,0 +1,5 @@
+# validator 组的对拍测试(validator.ts、performance.ts;界面那边的绩效体检是 tst_performance_rules / tst_performance_controller)
+ibkr_test(tst_validator js_fixture.h)
+target_link_libraries(tst_validator PRIVATE ibkr_parsing Qt6::Test)
+ibkr_test(tst_performance_engine js_fixture.h)
+target_link_libraries(tst_performance_engine PRIVATE ibkr_analysis Qt6::Test)

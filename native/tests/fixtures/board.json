@@ -1,0 +1,5603 @@
+{
+  "generator": "native/tests/fixtures/gen_board.mjs",
+  "now": 1787320200000,
+  "labels": {
+    "FINAL_STATUS_LABEL": {
+      "filled": "已成交",
+      "partially_filled": "部分成交",
+      "cancelled": "已撤单",
+      "expired_untriggered": "当日未触发",
+      "rejected_by_validator": "校验拒绝",
+      "rejected_by_llm": "模型拒绝",
+      "ibkr_error": "券商报错",
+      "halted_by_breaker": "熔断拦下"
+    },
+    "LIVE_STATUS_LABEL": {
+      "ValidatedOnly": "仅校验未发送",
+      "PendingSubmit": "待发送",
+      "PreSubmitted": "已受理",
+      "Submitted": "已挂单",
+      "ApiPending": "发送中",
+      "PendingCancel": "撤单中",
+      "Filled": "已成交",
+      "Cancelled": "已撤单",
+      "ApiCancelled": "已撤单",
+      "Inactive": "券商报错",
+      "Unknown": "状态未知",
+      "NotAtBroker": "去向不明(券商侧查无此单)"
+    },
+    "TRIGGER_OP_LABEL": {
+      ">=": "≥",
+      "<=": "≤",
+      ">": ">",
+      "<": "<",
+      "==": "="
+    },
+    "ACTION_LABEL": {
+      "BUY": "买入",
+      "SELL": "卖出"
+    }
+  },
+  "status": [
+    {
+      "final_status": null,
+      "status": null,
+      "label": "—",
+      "bucket": "working",
+      "tint": "blue",
+      "bucketLabel": "进行中",
+      "stages": {
+        "tile": "blue",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "blue",
+      "pillText": "—"
+    },
+    {
+      "final_status": null,
+      "status": "ValidatedOnly",
+      "label": "仅校验未发送",
+      "bucket": "draft",
+      "tint": "gray",
+      "bucketLabel": "仅校验未发送",
+      "stages": {
+        "tile": "gray",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "gray",
+      "pillText": "仅校验未发送"
+    },
+    {
+      "final_status": null,
+      "status": "PendingSubmit",
+      "label": "待发送",
+      "bucket": "working",
+      "tint": "blue",
+      "bucketLabel": "进行中",
+      "stages": {
+        "tile": "blue",
+        "steps": [
+          "done",
+          "done",
+          "now"
+        ]
+      },
+      "pill": "blue",
+      "pillText": "待发送"
+    },
+    {
+      "final_status": null,
+      "status": "PreSubmitted",
+      "label": "已受理",
+      "bucket": "working",
+      "tint": "blue",
+      "bucketLabel": "进行中",
+      "stages": {
+        "tile": "blue",
+        "steps": [
+          "done",
+          "done",
+          "now"
+        ]
+      },
+      "pill": "blue",
+      "pillText": "已受理"
+    },
+    {
+      "final_status": null,
+      "status": "Submitted",
+      "label": "已挂单",
+      "bucket": "working",
+      "tint": "blue",
+      "bucketLabel": "进行中",
+      "stages": {
+        "tile": "blue",
+        "steps": [
+          "done",
+          "done",
+          "now"
+        ]
+      },
+      "pill": "blue",
+      "pillText": "已挂单"
+    },
+    {
+      "final_status": null,
+      "status": "ApiPending",
+      "label": "发送中",
+      "bucket": "working",
+      "tint": "blue",
+      "bucketLabel": "进行中",
+      "stages": {
+        "tile": "blue",
+        "steps": [
+          "done",
+          "done",
+          "now"
+        ]
+      },
+      "pill": "blue",
+      "pillText": "发送中"
+    },
+    {
+      "final_status": null,
+      "status": "PendingCancel",
+      "label": "撤单中",
+      "bucket": "working",
+      "tint": "blue",
+      "bucketLabel": "进行中",
+      "stages": {
+        "tile": "blue",
+        "steps": [
+          "done",
+          "done",
+          "now"
+        ]
+      },
+      "pill": "blue",
+      "pillText": "撤单中"
+    },
+    {
+      "final_status": null,
+      "status": "Filled",
+      "label": "已成交",
+      "bucket": "filled",
+      "tint": "green",
+      "bucketLabel": "已成交",
+      "stages": {
+        "tile": "green",
+        "steps": [
+          "done",
+          "done",
+          "done"
+        ]
+      },
+      "pill": "green",
+      "pillText": "已成交"
+    },
+    {
+      "final_status": null,
+      "status": "Cancelled",
+      "label": "已撤单",
+      "bucket": "closed",
+      "tint": "gray",
+      "bucketLabel": "已撤 / 未触发",
+      "stages": {
+        "tile": "gray",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "gray",
+      "pillText": "已撤单"
+    },
+    {
+      "final_status": null,
+      "status": "ApiCancelled",
+      "label": "已撤单",
+      "bucket": "closed",
+      "tint": "gray",
+      "bucketLabel": "已撤 / 未触发",
+      "stages": {
+        "tile": "gray",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "gray",
+      "pillText": "已撤单"
+    },
+    {
+      "final_status": null,
+      "status": "Inactive",
+      "label": "券商报错",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "券商报错"
+    },
+    {
+      "final_status": null,
+      "status": "Unknown",
+      "label": "状态未知",
+      "bucket": "working",
+      "tint": "blue",
+      "bucketLabel": "进行中",
+      "stages": {
+        "tile": "blue",
+        "steps": [
+          "done",
+          "done",
+          "now"
+        ]
+      },
+      "pill": "blue",
+      "pillText": "状态未知"
+    },
+    {
+      "final_status": null,
+      "status": "NotAtBroker",
+      "label": "去向不明(券商侧查无此单)",
+      "bucket": "stale",
+      "tint": "yellow",
+      "bucketLabel": "去向不明",
+      "stages": {
+        "tile": "yellow",
+        "steps": [
+          "done",
+          "done",
+          "now"
+        ]
+      },
+      "pill": "yellow",
+      "pillText": "去向不明(券商侧查无此单)"
+    },
+    {
+      "final_status": null,
+      "status": "Weird",
+      "label": "Weird",
+      "bucket": "working",
+      "tint": "blue",
+      "bucketLabel": "进行中",
+      "stages": {
+        "tile": "blue",
+        "steps": [
+          "done",
+          "done",
+          "now"
+        ]
+      },
+      "pill": "blue",
+      "pillText": "Weird"
+    },
+    {
+      "final_status": "filled",
+      "status": null,
+      "label": "已成交",
+      "bucket": "filled",
+      "tint": "green",
+      "bucketLabel": "已成交",
+      "stages": {
+        "tile": "green",
+        "steps": [
+          "done",
+          "done",
+          "done"
+        ]
+      },
+      "pill": "green",
+      "pillText": "已成交"
+    },
+    {
+      "final_status": "filled",
+      "status": "ValidatedOnly",
+      "label": "已成交",
+      "bucket": "filled",
+      "tint": "green",
+      "bucketLabel": "已成交",
+      "stages": {
+        "tile": "green",
+        "steps": [
+          "done",
+          "done",
+          "done"
+        ]
+      },
+      "pill": "green",
+      "pillText": "已成交"
+    },
+    {
+      "final_status": "filled",
+      "status": "PendingSubmit",
+      "label": "已成交",
+      "bucket": "filled",
+      "tint": "green",
+      "bucketLabel": "已成交",
+      "stages": {
+        "tile": "green",
+        "steps": [
+          "done",
+          "done",
+          "done"
+        ]
+      },
+      "pill": "green",
+      "pillText": "已成交"
+    },
+    {
+      "final_status": "filled",
+      "status": "PreSubmitted",
+      "label": "已成交",
+      "bucket": "filled",
+      "tint": "green",
+      "bucketLabel": "已成交",
+      "stages": {
+        "tile": "green",
+        "steps": [
+          "done",
+          "done",
+          "done"
+        ]
+      },
+      "pill": "green",
+      "pillText": "已成交"
+    },
+    {
+      "final_status": "filled",
+      "status": "Submitted",
+      "label": "已成交",
+      "bucket": "filled",
+      "tint": "green",
+      "bucketLabel": "已成交",
+      "stages": {
+        "tile": "green",
+        "steps": [
+          "done",
+          "done",
+          "done"
+        ]
+      },
+      "pill": "green",
+      "pillText": "已成交"
+    },
+    {
+      "final_status": "filled",
+      "status": "ApiPending",
+      "label": "已成交",
+      "bucket": "filled",
+      "tint": "green",
+      "bucketLabel": "已成交",
+      "stages": {
+        "tile": "green",
+        "steps": [
+          "done",
+          "done",
+          "done"
+        ]
+      },
+      "pill": "green",
+      "pillText": "已成交"
+    },
+    {
+      "final_status": "filled",
+      "status": "PendingCancel",
+      "label": "已成交",
+      "bucket": "filled",
+      "tint": "green",
+      "bucketLabel": "已成交",
+      "stages": {
+        "tile": "green",
+        "steps": [
+          "done",
+          "done",
+          "done"
+        ]
+      },
+      "pill": "green",
+      "pillText": "已成交"
+    },
+    {
+      "final_status": "filled",
+      "status": "Filled",
+      "label": "已成交",
+      "bucket": "filled",
+      "tint": "green",
+      "bucketLabel": "已成交",
+      "stages": {
+        "tile": "green",
+        "steps": [
+          "done",
+          "done",
+          "done"
+        ]
+      },
+      "pill": "green",
+      "pillText": "已成交"
+    },
+    {
+      "final_status": "filled",
+      "status": "Cancelled",
+      "label": "已成交",
+      "bucket": "filled",
+      "tint": "green",
+      "bucketLabel": "已成交",
+      "stages": {
+        "tile": "green",
+        "steps": [
+          "done",
+          "done",
+          "done"
+        ]
+      },
+      "pill": "green",
+      "pillText": "已成交"
+    },
+    {
+      "final_status": "filled",
+      "status": "ApiCancelled",
+      "label": "已成交",
+      "bucket": "filled",
+      "tint": "green",
+      "bucketLabel": "已成交",
+      "stages": {
+        "tile": "green",
+        "steps": [
+          "done",
+          "done",
+          "done"
+        ]
+      },
+      "pill": "green",
+      "pillText": "已成交"
+    },
+    {
+      "final_status": "filled",
+      "status": "Inactive",
+      "label": "已成交",
+      "bucket": "filled",
+      "tint": "green",
+      "bucketLabel": "已成交",
+      "stages": {
+        "tile": "green",
+        "steps": [
+          "done",
+          "done",
+          "done"
+        ]
+      },
+      "pill": "green",
+      "pillText": "已成交"
+    },
+    {
+      "final_status": "filled",
+      "status": "Unknown",
+      "label": "已成交",
+      "bucket": "filled",
+      "tint": "green",
+      "bucketLabel": "已成交",
+      "stages": {
+        "tile": "green",
+        "steps": [
+          "done",
+          "done",
+          "done"
+        ]
+      },
+      "pill": "green",
+      "pillText": "已成交"
+    },
+    {
+      "final_status": "filled",
+      "status": "NotAtBroker",
+      "label": "已成交",
+      "bucket": "filled",
+      "tint": "green",
+      "bucketLabel": "已成交",
+      "stages": {
+        "tile": "green",
+        "steps": [
+          "done",
+          "done",
+          "done"
+        ]
+      },
+      "pill": "green",
+      "pillText": "已成交"
+    },
+    {
+      "final_status": "filled",
+      "status": "Weird",
+      "label": "已成交",
+      "bucket": "filled",
+      "tint": "green",
+      "bucketLabel": "已成交",
+      "stages": {
+        "tile": "green",
+        "steps": [
+          "done",
+          "done",
+          "done"
+        ]
+      },
+      "pill": "green",
+      "pillText": "已成交"
+    },
+    {
+      "final_status": "partially_filled",
+      "status": null,
+      "label": "部分成交",
+      "bucket": "working",
+      "tint": "blue",
+      "bucketLabel": "进行中",
+      "stages": {
+        "tile": "blue",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "blue",
+      "pillText": "部分成交"
+    },
+    {
+      "final_status": "partially_filled",
+      "status": "ValidatedOnly",
+      "label": "部分成交",
+      "bucket": "working",
+      "tint": "blue",
+      "bucketLabel": "进行中",
+      "stages": {
+        "tile": "blue",
+        "steps": [
+          "done",
+          "done",
+          "now"
+        ]
+      },
+      "pill": "blue",
+      "pillText": "部分成交"
+    },
+    {
+      "final_status": "partially_filled",
+      "status": "PendingSubmit",
+      "label": "部分成交",
+      "bucket": "working",
+      "tint": "blue",
+      "bucketLabel": "进行中",
+      "stages": {
+        "tile": "blue",
+        "steps": [
+          "done",
+          "done",
+          "now"
+        ]
+      },
+      "pill": "blue",
+      "pillText": "部分成交"
+    },
+    {
+      "final_status": "partially_filled",
+      "status": "PreSubmitted",
+      "label": "部分成交",
+      "bucket": "working",
+      "tint": "blue",
+      "bucketLabel": "进行中",
+      "stages": {
+        "tile": "blue",
+        "steps": [
+          "done",
+          "done",
+          "now"
+        ]
+      },
+      "pill": "blue",
+      "pillText": "部分成交"
+    },
+    {
+      "final_status": "partially_filled",
+      "status": "Submitted",
+      "label": "部分成交",
+      "bucket": "working",
+      "tint": "blue",
+      "bucketLabel": "进行中",
+      "stages": {
+        "tile": "blue",
+        "steps": [
+          "done",
+          "done",
+          "now"
+        ]
+      },
+      "pill": "blue",
+      "pillText": "部分成交"
+    },
+    {
+      "final_status": "partially_filled",
+      "status": "ApiPending",
+      "label": "部分成交",
+      "bucket": "working",
+      "tint": "blue",
+      "bucketLabel": "进行中",
+      "stages": {
+        "tile": "blue",
+        "steps": [
+          "done",
+          "done",
+          "now"
+        ]
+      },
+      "pill": "blue",
+      "pillText": "部分成交"
+    },
+    {
+      "final_status": "partially_filled",
+      "status": "PendingCancel",
+      "label": "部分成交",
+      "bucket": "working",
+      "tint": "blue",
+      "bucketLabel": "进行中",
+      "stages": {
+        "tile": "blue",
+        "steps": [
+          "done",
+          "done",
+          "now"
+        ]
+      },
+      "pill": "blue",
+      "pillText": "部分成交"
+    },
+    {
+      "final_status": "partially_filled",
+      "status": "Filled",
+      "label": "部分成交",
+      "bucket": "working",
+      "tint": "blue",
+      "bucketLabel": "进行中",
+      "stages": {
+        "tile": "blue",
+        "steps": [
+          "done",
+          "done",
+          "now"
+        ]
+      },
+      "pill": "blue",
+      "pillText": "部分成交"
+    },
+    {
+      "final_status": "partially_filled",
+      "status": "Cancelled",
+      "label": "部分成交",
+      "bucket": "working",
+      "tint": "blue",
+      "bucketLabel": "进行中",
+      "stages": {
+        "tile": "blue",
+        "steps": [
+          "done",
+          "done",
+          "now"
+        ]
+      },
+      "pill": "blue",
+      "pillText": "部分成交"
+    },
+    {
+      "final_status": "partially_filled",
+      "status": "ApiCancelled",
+      "label": "部分成交",
+      "bucket": "working",
+      "tint": "blue",
+      "bucketLabel": "进行中",
+      "stages": {
+        "tile": "blue",
+        "steps": [
+          "done",
+          "done",
+          "now"
+        ]
+      },
+      "pill": "blue",
+      "pillText": "部分成交"
+    },
+    {
+      "final_status": "partially_filled",
+      "status": "Inactive",
+      "label": "部分成交",
+      "bucket": "working",
+      "tint": "blue",
+      "bucketLabel": "进行中",
+      "stages": {
+        "tile": "blue",
+        "steps": [
+          "done",
+          "done",
+          "now"
+        ]
+      },
+      "pill": "blue",
+      "pillText": "部分成交"
+    },
+    {
+      "final_status": "partially_filled",
+      "status": "Unknown",
+      "label": "部分成交",
+      "bucket": "working",
+      "tint": "blue",
+      "bucketLabel": "进行中",
+      "stages": {
+        "tile": "blue",
+        "steps": [
+          "done",
+          "done",
+          "now"
+        ]
+      },
+      "pill": "blue",
+      "pillText": "部分成交"
+    },
+    {
+      "final_status": "partially_filled",
+      "status": "NotAtBroker",
+      "label": "部分成交",
+      "bucket": "working",
+      "tint": "blue",
+      "bucketLabel": "进行中",
+      "stages": {
+        "tile": "blue",
+        "steps": [
+          "done",
+          "done",
+          "now"
+        ]
+      },
+      "pill": "blue",
+      "pillText": "部分成交"
+    },
+    {
+      "final_status": "partially_filled",
+      "status": "Weird",
+      "label": "部分成交",
+      "bucket": "working",
+      "tint": "blue",
+      "bucketLabel": "进行中",
+      "stages": {
+        "tile": "blue",
+        "steps": [
+          "done",
+          "done",
+          "now"
+        ]
+      },
+      "pill": "blue",
+      "pillText": "部分成交"
+    },
+    {
+      "final_status": "cancelled",
+      "status": null,
+      "label": "已撤单",
+      "bucket": "closed",
+      "tint": "gray",
+      "bucketLabel": "已撤 / 未触发",
+      "stages": {
+        "tile": "gray",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "gray",
+      "pillText": "已撤单"
+    },
+    {
+      "final_status": "cancelled",
+      "status": "ValidatedOnly",
+      "label": "已撤单",
+      "bucket": "closed",
+      "tint": "gray",
+      "bucketLabel": "已撤 / 未触发",
+      "stages": {
+        "tile": "gray",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "gray",
+      "pillText": "已撤单"
+    },
+    {
+      "final_status": "cancelled",
+      "status": "PendingSubmit",
+      "label": "已撤单",
+      "bucket": "closed",
+      "tint": "gray",
+      "bucketLabel": "已撤 / 未触发",
+      "stages": {
+        "tile": "gray",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "gray",
+      "pillText": "已撤单"
+    },
+    {
+      "final_status": "cancelled",
+      "status": "PreSubmitted",
+      "label": "已撤单",
+      "bucket": "closed",
+      "tint": "gray",
+      "bucketLabel": "已撤 / 未触发",
+      "stages": {
+        "tile": "gray",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "gray",
+      "pillText": "已撤单"
+    },
+    {
+      "final_status": "cancelled",
+      "status": "Submitted",
+      "label": "已撤单",
+      "bucket": "closed",
+      "tint": "gray",
+      "bucketLabel": "已撤 / 未触发",
+      "stages": {
+        "tile": "gray",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "gray",
+      "pillText": "已撤单"
+    },
+    {
+      "final_status": "cancelled",
+      "status": "ApiPending",
+      "label": "已撤单",
+      "bucket": "closed",
+      "tint": "gray",
+      "bucketLabel": "已撤 / 未触发",
+      "stages": {
+        "tile": "gray",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "gray",
+      "pillText": "已撤单"
+    },
+    {
+      "final_status": "cancelled",
+      "status": "PendingCancel",
+      "label": "已撤单",
+      "bucket": "closed",
+      "tint": "gray",
+      "bucketLabel": "已撤 / 未触发",
+      "stages": {
+        "tile": "gray",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "gray",
+      "pillText": "已撤单"
+    },
+    {
+      "final_status": "cancelled",
+      "status": "Filled",
+      "label": "已撤单",
+      "bucket": "closed",
+      "tint": "gray",
+      "bucketLabel": "已撤 / 未触发",
+      "stages": {
+        "tile": "gray",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "gray",
+      "pillText": "已撤单"
+    },
+    {
+      "final_status": "cancelled",
+      "status": "Cancelled",
+      "label": "已撤单",
+      "bucket": "closed",
+      "tint": "gray",
+      "bucketLabel": "已撤 / 未触发",
+      "stages": {
+        "tile": "gray",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "gray",
+      "pillText": "已撤单"
+    },
+    {
+      "final_status": "cancelled",
+      "status": "ApiCancelled",
+      "label": "已撤单",
+      "bucket": "closed",
+      "tint": "gray",
+      "bucketLabel": "已撤 / 未触发",
+      "stages": {
+        "tile": "gray",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "gray",
+      "pillText": "已撤单"
+    },
+    {
+      "final_status": "cancelled",
+      "status": "Inactive",
+      "label": "已撤单",
+      "bucket": "closed",
+      "tint": "gray",
+      "bucketLabel": "已撤 / 未触发",
+      "stages": {
+        "tile": "gray",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "gray",
+      "pillText": "已撤单"
+    },
+    {
+      "final_status": "cancelled",
+      "status": "Unknown",
+      "label": "已撤单",
+      "bucket": "closed",
+      "tint": "gray",
+      "bucketLabel": "已撤 / 未触发",
+      "stages": {
+        "tile": "gray",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "gray",
+      "pillText": "已撤单"
+    },
+    {
+      "final_status": "cancelled",
+      "status": "NotAtBroker",
+      "label": "已撤单",
+      "bucket": "closed",
+      "tint": "gray",
+      "bucketLabel": "已撤 / 未触发",
+      "stages": {
+        "tile": "gray",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "gray",
+      "pillText": "已撤单"
+    },
+    {
+      "final_status": "cancelled",
+      "status": "Weird",
+      "label": "已撤单",
+      "bucket": "closed",
+      "tint": "gray",
+      "bucketLabel": "已撤 / 未触发",
+      "stages": {
+        "tile": "gray",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "gray",
+      "pillText": "已撤单"
+    },
+    {
+      "final_status": "expired_untriggered",
+      "status": null,
+      "label": "当日未触发",
+      "bucket": "closed",
+      "tint": "gray",
+      "bucketLabel": "已撤 / 未触发",
+      "stages": {
+        "tile": "gray",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "gray",
+      "pillText": "当日未触发"
+    },
+    {
+      "final_status": "expired_untriggered",
+      "status": "ValidatedOnly",
+      "label": "当日未触发",
+      "bucket": "closed",
+      "tint": "gray",
+      "bucketLabel": "已撤 / 未触发",
+      "stages": {
+        "tile": "gray",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "gray",
+      "pillText": "当日未触发"
+    },
+    {
+      "final_status": "expired_untriggered",
+      "status": "PendingSubmit",
+      "label": "当日未触发",
+      "bucket": "closed",
+      "tint": "gray",
+      "bucketLabel": "已撤 / 未触发",
+      "stages": {
+        "tile": "gray",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "gray",
+      "pillText": "当日未触发"
+    },
+    {
+      "final_status": "expired_untriggered",
+      "status": "PreSubmitted",
+      "label": "当日未触发",
+      "bucket": "closed",
+      "tint": "gray",
+      "bucketLabel": "已撤 / 未触发",
+      "stages": {
+        "tile": "gray",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "gray",
+      "pillText": "当日未触发"
+    },
+    {
+      "final_status": "expired_untriggered",
+      "status": "Submitted",
+      "label": "当日未触发",
+      "bucket": "closed",
+      "tint": "gray",
+      "bucketLabel": "已撤 / 未触发",
+      "stages": {
+        "tile": "gray",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "gray",
+      "pillText": "当日未触发"
+    },
+    {
+      "final_status": "expired_untriggered",
+      "status": "ApiPending",
+      "label": "当日未触发",
+      "bucket": "closed",
+      "tint": "gray",
+      "bucketLabel": "已撤 / 未触发",
+      "stages": {
+        "tile": "gray",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "gray",
+      "pillText": "当日未触发"
+    },
+    {
+      "final_status": "expired_untriggered",
+      "status": "PendingCancel",
+      "label": "当日未触发",
+      "bucket": "closed",
+      "tint": "gray",
+      "bucketLabel": "已撤 / 未触发",
+      "stages": {
+        "tile": "gray",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "gray",
+      "pillText": "当日未触发"
+    },
+    {
+      "final_status": "expired_untriggered",
+      "status": "Filled",
+      "label": "当日未触发",
+      "bucket": "closed",
+      "tint": "gray",
+      "bucketLabel": "已撤 / 未触发",
+      "stages": {
+        "tile": "gray",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "gray",
+      "pillText": "当日未触发"
+    },
+    {
+      "final_status": "expired_untriggered",
+      "status": "Cancelled",
+      "label": "当日未触发",
+      "bucket": "closed",
+      "tint": "gray",
+      "bucketLabel": "已撤 / 未触发",
+      "stages": {
+        "tile": "gray",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "gray",
+      "pillText": "当日未触发"
+    },
+    {
+      "final_status": "expired_untriggered",
+      "status": "ApiCancelled",
+      "label": "当日未触发",
+      "bucket": "closed",
+      "tint": "gray",
+      "bucketLabel": "已撤 / 未触发",
+      "stages": {
+        "tile": "gray",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "gray",
+      "pillText": "当日未触发"
+    },
+    {
+      "final_status": "expired_untriggered",
+      "status": "Inactive",
+      "label": "当日未触发",
+      "bucket": "closed",
+      "tint": "gray",
+      "bucketLabel": "已撤 / 未触发",
+      "stages": {
+        "tile": "gray",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "gray",
+      "pillText": "当日未触发"
+    },
+    {
+      "final_status": "expired_untriggered",
+      "status": "Unknown",
+      "label": "当日未触发",
+      "bucket": "closed",
+      "tint": "gray",
+      "bucketLabel": "已撤 / 未触发",
+      "stages": {
+        "tile": "gray",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "gray",
+      "pillText": "当日未触发"
+    },
+    {
+      "final_status": "expired_untriggered",
+      "status": "NotAtBroker",
+      "label": "当日未触发",
+      "bucket": "closed",
+      "tint": "gray",
+      "bucketLabel": "已撤 / 未触发",
+      "stages": {
+        "tile": "gray",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "gray",
+      "pillText": "当日未触发"
+    },
+    {
+      "final_status": "expired_untriggered",
+      "status": "Weird",
+      "label": "当日未触发",
+      "bucket": "closed",
+      "tint": "gray",
+      "bucketLabel": "已撤 / 未触发",
+      "stages": {
+        "tile": "gray",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "gray",
+      "pillText": "当日未触发"
+    },
+    {
+      "final_status": "rejected_by_validator",
+      "status": null,
+      "label": "校验拒绝",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "now",
+          "",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "校验拒绝"
+    },
+    {
+      "final_status": "rejected_by_validator",
+      "status": "ValidatedOnly",
+      "label": "校验拒绝",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "now",
+          "",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "校验拒绝"
+    },
+    {
+      "final_status": "rejected_by_validator",
+      "status": "PendingSubmit",
+      "label": "校验拒绝",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "now",
+          "",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "校验拒绝"
+    },
+    {
+      "final_status": "rejected_by_validator",
+      "status": "PreSubmitted",
+      "label": "校验拒绝",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "now",
+          "",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "校验拒绝"
+    },
+    {
+      "final_status": "rejected_by_validator",
+      "status": "Submitted",
+      "label": "校验拒绝",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "now",
+          "",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "校验拒绝"
+    },
+    {
+      "final_status": "rejected_by_validator",
+      "status": "ApiPending",
+      "label": "校验拒绝",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "now",
+          "",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "校验拒绝"
+    },
+    {
+      "final_status": "rejected_by_validator",
+      "status": "PendingCancel",
+      "label": "校验拒绝",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "now",
+          "",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "校验拒绝"
+    },
+    {
+      "final_status": "rejected_by_validator",
+      "status": "Filled",
+      "label": "校验拒绝",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "now",
+          "",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "校验拒绝"
+    },
+    {
+      "final_status": "rejected_by_validator",
+      "status": "Cancelled",
+      "label": "校验拒绝",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "now",
+          "",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "校验拒绝"
+    },
+    {
+      "final_status": "rejected_by_validator",
+      "status": "ApiCancelled",
+      "label": "校验拒绝",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "now",
+          "",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "校验拒绝"
+    },
+    {
+      "final_status": "rejected_by_validator",
+      "status": "Inactive",
+      "label": "校验拒绝",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "now",
+          "",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "校验拒绝"
+    },
+    {
+      "final_status": "rejected_by_validator",
+      "status": "Unknown",
+      "label": "校验拒绝",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "now",
+          "",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "校验拒绝"
+    },
+    {
+      "final_status": "rejected_by_validator",
+      "status": "NotAtBroker",
+      "label": "校验拒绝",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "now",
+          "",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "校验拒绝"
+    },
+    {
+      "final_status": "rejected_by_validator",
+      "status": "Weird",
+      "label": "校验拒绝",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "now",
+          "",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "校验拒绝"
+    },
+    {
+      "final_status": "rejected_by_llm",
+      "status": null,
+      "label": "模型拒绝",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "now",
+          "",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "模型拒绝"
+    },
+    {
+      "final_status": "rejected_by_llm",
+      "status": "ValidatedOnly",
+      "label": "模型拒绝",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "now",
+          "",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "模型拒绝"
+    },
+    {
+      "final_status": "rejected_by_llm",
+      "status": "PendingSubmit",
+      "label": "模型拒绝",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "now",
+          "",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "模型拒绝"
+    },
+    {
+      "final_status": "rejected_by_llm",
+      "status": "PreSubmitted",
+      "label": "模型拒绝",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "now",
+          "",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "模型拒绝"
+    },
+    {
+      "final_status": "rejected_by_llm",
+      "status": "Submitted",
+      "label": "模型拒绝",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "now",
+          "",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "模型拒绝"
+    },
+    {
+      "final_status": "rejected_by_llm",
+      "status": "ApiPending",
+      "label": "模型拒绝",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "now",
+          "",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "模型拒绝"
+    },
+    {
+      "final_status": "rejected_by_llm",
+      "status": "PendingCancel",
+      "label": "模型拒绝",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "now",
+          "",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "模型拒绝"
+    },
+    {
+      "final_status": "rejected_by_llm",
+      "status": "Filled",
+      "label": "模型拒绝",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "now",
+          "",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "模型拒绝"
+    },
+    {
+      "final_status": "rejected_by_llm",
+      "status": "Cancelled",
+      "label": "模型拒绝",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "now",
+          "",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "模型拒绝"
+    },
+    {
+      "final_status": "rejected_by_llm",
+      "status": "ApiCancelled",
+      "label": "模型拒绝",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "now",
+          "",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "模型拒绝"
+    },
+    {
+      "final_status": "rejected_by_llm",
+      "status": "Inactive",
+      "label": "模型拒绝",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "now",
+          "",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "模型拒绝"
+    },
+    {
+      "final_status": "rejected_by_llm",
+      "status": "Unknown",
+      "label": "模型拒绝",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "now",
+          "",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "模型拒绝"
+    },
+    {
+      "final_status": "rejected_by_llm",
+      "status": "NotAtBroker",
+      "label": "模型拒绝",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "now",
+          "",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "模型拒绝"
+    },
+    {
+      "final_status": "rejected_by_llm",
+      "status": "Weird",
+      "label": "模型拒绝",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "now",
+          "",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "模型拒绝"
+    },
+    {
+      "final_status": "ibkr_error",
+      "status": null,
+      "label": "券商报错",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "券商报错"
+    },
+    {
+      "final_status": "ibkr_error",
+      "status": "ValidatedOnly",
+      "label": "券商报错",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "券商报错"
+    },
+    {
+      "final_status": "ibkr_error",
+      "status": "PendingSubmit",
+      "label": "券商报错",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "券商报错"
+    },
+    {
+      "final_status": "ibkr_error",
+      "status": "PreSubmitted",
+      "label": "券商报错",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "券商报错"
+    },
+    {
+      "final_status": "ibkr_error",
+      "status": "Submitted",
+      "label": "券商报错",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "券商报错"
+    },
+    {
+      "final_status": "ibkr_error",
+      "status": "ApiPending",
+      "label": "券商报错",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "券商报错"
+    },
+    {
+      "final_status": "ibkr_error",
+      "status": "PendingCancel",
+      "label": "券商报错",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "券商报错"
+    },
+    {
+      "final_status": "ibkr_error",
+      "status": "Filled",
+      "label": "券商报错",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "券商报错"
+    },
+    {
+      "final_status": "ibkr_error",
+      "status": "Cancelled",
+      "label": "券商报错",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "券商报错"
+    },
+    {
+      "final_status": "ibkr_error",
+      "status": "ApiCancelled",
+      "label": "券商报错",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "券商报错"
+    },
+    {
+      "final_status": "ibkr_error",
+      "status": "Inactive",
+      "label": "券商报错",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "券商报错"
+    },
+    {
+      "final_status": "ibkr_error",
+      "status": "Unknown",
+      "label": "券商报错",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "券商报错"
+    },
+    {
+      "final_status": "ibkr_error",
+      "status": "NotAtBroker",
+      "label": "券商报错",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "券商报错"
+    },
+    {
+      "final_status": "ibkr_error",
+      "status": "Weird",
+      "label": "券商报错",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "券商报错"
+    },
+    {
+      "final_status": "halted_by_breaker",
+      "status": null,
+      "label": "熔断拦下",
+      "bucket": "halted",
+      "tint": "orange",
+      "bucketLabel": "熔断拦下",
+      "stages": {
+        "tile": "orange",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "orange",
+      "pillText": "熔断拦下"
+    },
+    {
+      "final_status": "halted_by_breaker",
+      "status": "ValidatedOnly",
+      "label": "熔断拦下",
+      "bucket": "halted",
+      "tint": "orange",
+      "bucketLabel": "熔断拦下",
+      "stages": {
+        "tile": "orange",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "orange",
+      "pillText": "熔断拦下"
+    },
+    {
+      "final_status": "halted_by_breaker",
+      "status": "PendingSubmit",
+      "label": "熔断拦下",
+      "bucket": "halted",
+      "tint": "orange",
+      "bucketLabel": "熔断拦下",
+      "stages": {
+        "tile": "orange",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "orange",
+      "pillText": "熔断拦下"
+    },
+    {
+      "final_status": "halted_by_breaker",
+      "status": "PreSubmitted",
+      "label": "熔断拦下",
+      "bucket": "halted",
+      "tint": "orange",
+      "bucketLabel": "熔断拦下",
+      "stages": {
+        "tile": "orange",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "orange",
+      "pillText": "熔断拦下"
+    },
+    {
+      "final_status": "halted_by_breaker",
+      "status": "Submitted",
+      "label": "熔断拦下",
+      "bucket": "halted",
+      "tint": "orange",
+      "bucketLabel": "熔断拦下",
+      "stages": {
+        "tile": "orange",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "orange",
+      "pillText": "熔断拦下"
+    },
+    {
+      "final_status": "halted_by_breaker",
+      "status": "ApiPending",
+      "label": "熔断拦下",
+      "bucket": "halted",
+      "tint": "orange",
+      "bucketLabel": "熔断拦下",
+      "stages": {
+        "tile": "orange",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "orange",
+      "pillText": "熔断拦下"
+    },
+    {
+      "final_status": "halted_by_breaker",
+      "status": "PendingCancel",
+      "label": "熔断拦下",
+      "bucket": "halted",
+      "tint": "orange",
+      "bucketLabel": "熔断拦下",
+      "stages": {
+        "tile": "orange",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "orange",
+      "pillText": "熔断拦下"
+    },
+    {
+      "final_status": "halted_by_breaker",
+      "status": "Filled",
+      "label": "熔断拦下",
+      "bucket": "halted",
+      "tint": "orange",
+      "bucketLabel": "熔断拦下",
+      "stages": {
+        "tile": "orange",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "orange",
+      "pillText": "熔断拦下"
+    },
+    {
+      "final_status": "halted_by_breaker",
+      "status": "Cancelled",
+      "label": "熔断拦下",
+      "bucket": "halted",
+      "tint": "orange",
+      "bucketLabel": "熔断拦下",
+      "stages": {
+        "tile": "orange",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "orange",
+      "pillText": "熔断拦下"
+    },
+    {
+      "final_status": "halted_by_breaker",
+      "status": "ApiCancelled",
+      "label": "熔断拦下",
+      "bucket": "halted",
+      "tint": "orange",
+      "bucketLabel": "熔断拦下",
+      "stages": {
+        "tile": "orange",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "orange",
+      "pillText": "熔断拦下"
+    },
+    {
+      "final_status": "halted_by_breaker",
+      "status": "Inactive",
+      "label": "熔断拦下",
+      "bucket": "halted",
+      "tint": "orange",
+      "bucketLabel": "熔断拦下",
+      "stages": {
+        "tile": "orange",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "orange",
+      "pillText": "熔断拦下"
+    },
+    {
+      "final_status": "halted_by_breaker",
+      "status": "Unknown",
+      "label": "熔断拦下",
+      "bucket": "halted",
+      "tint": "orange",
+      "bucketLabel": "熔断拦下",
+      "stages": {
+        "tile": "orange",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "orange",
+      "pillText": "熔断拦下"
+    },
+    {
+      "final_status": "halted_by_breaker",
+      "status": "NotAtBroker",
+      "label": "熔断拦下",
+      "bucket": "halted",
+      "tint": "orange",
+      "bucketLabel": "熔断拦下",
+      "stages": {
+        "tile": "orange",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "orange",
+      "pillText": "熔断拦下"
+    },
+    {
+      "final_status": "halted_by_breaker",
+      "status": "Weird",
+      "label": "熔断拦下",
+      "bucket": "halted",
+      "tint": "orange",
+      "bucketLabel": "熔断拦下",
+      "stages": {
+        "tile": "orange",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "orange",
+      "pillText": "熔断拦下"
+    },
+    {
+      "final_status": "something_new",
+      "status": null,
+      "label": "something_new",
+      "bucket": "working",
+      "tint": "blue",
+      "bucketLabel": "进行中",
+      "stages": {
+        "tile": "blue",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "blue",
+      "pillText": "something_new"
+    },
+    {
+      "final_status": "something_new",
+      "status": "ValidatedOnly",
+      "label": "something_new",
+      "bucket": "draft",
+      "tint": "gray",
+      "bucketLabel": "仅校验未发送",
+      "stages": {
+        "tile": "gray",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "gray",
+      "pillText": "something_new"
+    },
+    {
+      "final_status": "something_new",
+      "status": "PendingSubmit",
+      "label": "something_new",
+      "bucket": "working",
+      "tint": "blue",
+      "bucketLabel": "进行中",
+      "stages": {
+        "tile": "blue",
+        "steps": [
+          "done",
+          "done",
+          "now"
+        ]
+      },
+      "pill": "blue",
+      "pillText": "something_new"
+    },
+    {
+      "final_status": "something_new",
+      "status": "PreSubmitted",
+      "label": "something_new",
+      "bucket": "working",
+      "tint": "blue",
+      "bucketLabel": "进行中",
+      "stages": {
+        "tile": "blue",
+        "steps": [
+          "done",
+          "done",
+          "now"
+        ]
+      },
+      "pill": "blue",
+      "pillText": "something_new"
+    },
+    {
+      "final_status": "something_new",
+      "status": "Submitted",
+      "label": "something_new",
+      "bucket": "working",
+      "tint": "blue",
+      "bucketLabel": "进行中",
+      "stages": {
+        "tile": "blue",
+        "steps": [
+          "done",
+          "done",
+          "now"
+        ]
+      },
+      "pill": "blue",
+      "pillText": "something_new"
+    },
+    {
+      "final_status": "something_new",
+      "status": "ApiPending",
+      "label": "something_new",
+      "bucket": "working",
+      "tint": "blue",
+      "bucketLabel": "进行中",
+      "stages": {
+        "tile": "blue",
+        "steps": [
+          "done",
+          "done",
+          "now"
+        ]
+      },
+      "pill": "blue",
+      "pillText": "something_new"
+    },
+    {
+      "final_status": "something_new",
+      "status": "PendingCancel",
+      "label": "something_new",
+      "bucket": "working",
+      "tint": "blue",
+      "bucketLabel": "进行中",
+      "stages": {
+        "tile": "blue",
+        "steps": [
+          "done",
+          "done",
+          "now"
+        ]
+      },
+      "pill": "blue",
+      "pillText": "something_new"
+    },
+    {
+      "final_status": "something_new",
+      "status": "Filled",
+      "label": "something_new",
+      "bucket": "filled",
+      "tint": "green",
+      "bucketLabel": "已成交",
+      "stages": {
+        "tile": "green",
+        "steps": [
+          "done",
+          "done",
+          "done"
+        ]
+      },
+      "pill": "green",
+      "pillText": "something_new"
+    },
+    {
+      "final_status": "something_new",
+      "status": "Cancelled",
+      "label": "something_new",
+      "bucket": "closed",
+      "tint": "gray",
+      "bucketLabel": "已撤 / 未触发",
+      "stages": {
+        "tile": "gray",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "gray",
+      "pillText": "something_new"
+    },
+    {
+      "final_status": "something_new",
+      "status": "ApiCancelled",
+      "label": "something_new",
+      "bucket": "closed",
+      "tint": "gray",
+      "bucketLabel": "已撤 / 未触发",
+      "stages": {
+        "tile": "gray",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "gray",
+      "pillText": "something_new"
+    },
+    {
+      "final_status": "something_new",
+      "status": "Inactive",
+      "label": "something_new",
+      "bucket": "failed",
+      "tint": "red",
+      "bucketLabel": "被拒 / 出错",
+      "stages": {
+        "tile": "red",
+        "steps": [
+          "done",
+          "now",
+          ""
+        ]
+      },
+      "pill": "red",
+      "pillText": "something_new"
+    },
+    {
+      "final_status": "something_new",
+      "status": "Unknown",
+      "label": "something_new",
+      "bucket": "working",
+      "tint": "blue",
+      "bucketLabel": "进行中",
+      "stages": {
+        "tile": "blue",
+        "steps": [
+          "done",
+          "done",
+          "now"
+        ]
+      },
+      "pill": "blue",
+      "pillText": "something_new"
+    },
+    {
+      "final_status": "something_new",
+      "status": "NotAtBroker",
+      "label": "something_new",
+      "bucket": "stale",
+      "tint": "yellow",
+      "bucketLabel": "去向不明",
+      "stages": {
+        "tile": "yellow",
+        "steps": [
+          "done",
+          "done",
+          "now"
+        ]
+      },
+      "pill": "yellow",
+      "pillText": "something_new"
+    },
+    {
+      "final_status": "something_new",
+      "status": "Weird",
+      "label": "something_new",
+      "bucket": "working",
+      "tint": "blue",
+      "bucketLabel": "进行中",
+      "stages": {
+        "tile": "blue",
+        "steps": [
+          "done",
+          "done",
+          "now"
+        ]
+      },
+      "pill": "blue",
+      "pillText": "something_new"
+    }
+  ],
+  "pages": [
+    {
+      "name": "预览台的数据",
+      "overrides": [],
+      "pending": [
+        {
+          "record_id": "p1",
+          "intent_summary": "SPY 涨到 775 时买入 100 股",
+          "symbol": "SPY",
+          "operator": ">=",
+          "value": 775,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:30:00Z"
+        }
+      ],
+      "pendingError": null,
+      "records": [
+        {
+          "id": "r1",
+          "symbol": "NVDA",
+          "action": "BUY",
+          "quantity": 2,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "status": "Submitted",
+          "final_status": "filled",
+          "avg_fill_price": 5.52,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "限价 5.5 买入 2 张 NVDA 20260821 180 Call",
+          "reason": "财报前布局",
+          "raw_instruction": "买2张英伟达周五180call 限价5.5"
+        },
+        {
+          "id": "r5",
+          "symbol": "SPX",
+          "action": "BUY",
+          "quantity": 1,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "status": "ValidatedOnly",
+          "final_status": null,
+          "created_at": "2026-08-21T13:39:40Z",
+          "notional_estimate": 180,
+          "intent_summary": "限价 1.8 买入 1 组 SPX 7600/7615/7630 看跌蝴蝶",
+          "reason": "本地速记解析",
+          "raw_instruction": "1.8 挂15蝴蝶 15CM"
+        },
+        {
+          "id": "r2",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 100,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "status": "Submitted",
+          "final_status": null,
+          "created_at": "2026-08-21T13:38:55Z",
+          "intent_summary": "限价 316 买入 100 股 AAPL",
+          "reason": "回调到位",
+          "raw_instruction": "苹果316买100股"
+        },
+        {
+          "id": "r3",
+          "symbol": "SPY",
+          "action": "SELL",
+          "quantity": 1,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "final_status": "ibkr_error",
+          "created_at": "2026-08-21T13:20:10Z",
+          "intent_summary": "市价卖出 1 张 SPY Put",
+          "reason": "止损",
+          "rejection": {
+            "code": "IBKR_ERROR"
+          },
+          "raw_instruction": "把spy的put平了"
+        },
+        {
+          "id": "r4",
+          "symbol": "TSLA",
+          "action": "BUY",
+          "quantity": 50,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "final_status": "rejected_by_validator",
+          "created_at": "2026-08-21T12:02:00Z",
+          "intent_summary": "市价买入 50 股 TSLA",
+          "reason": "突破",
+          "raw_instruction": "特斯拉市价来50股"
+        }
+      ],
+      "recordsError": null,
+      "feed": [],
+      "texts": [
+        "订单看板",
+        "刷新",
+        "1",
+        "排队等待触发",
+        "1",
+        "在途",
+        "1",
+        "已成交",
+        "2",
+        "被拒 / 出错",
+        "排队等待触发",
+        "1",
+        "SPY",
+        "SPY 涨到 775 时买入 100 股",
+        "账户 模拟",
+        "入队 21:30",
+        "SPY ≥",
+        "775",
+        "排队",
+        "触发",
+        "提交",
+        "成交",
+        "已提交 / 近期",
+        "3",
+        "NVDA",
+        "限价 5.5 买入 2 张 NVDA 20260821 180 Call",
+        "2 NVDA",
+        "账户 模拟",
+        "均价 5.52",
+        "买入",
+        "校验",
+        "提交",
+        "成交",
+        "已成交",
+        "SPX",
+        "限价 1.8 买入 1 组 SPX 7600/7615/7630 看跌蝴蝶",
+        "1 SPX",
+        "账户 模拟",
+        "买入",
+        "校验",
+        "提交",
+        "成交",
+        "仅校验未发送",
+        "AAPL",
+        "限价 316 买入 100 股 AAPL",
+        "100 AAPL",
+        "账户 模拟",
+        "买入",
+        "校验",
+        "提交",
+        "成交",
+        "已挂单",
+        "通知",
+        "暂无通知"
+      ],
+      "stages": [
+        {
+          "tile": "orange",
+          "steps": [
+            "now",
+            "",
+            "",
+            ""
+          ]
+        },
+        {
+          "tile": "green",
+          "steps": [
+            "done",
+            "done",
+            "done"
+          ]
+        },
+        {
+          "tile": "gray",
+          "steps": [
+            "done",
+            "now",
+            ""
+          ]
+        },
+        {
+          "tile": "blue",
+          "steps": [
+            "done",
+            "done",
+            "now"
+          ]
+        }
+      ],
+      "pills": [
+        "up",
+        "green",
+        "up",
+        "gray",
+        "up",
+        "blue"
+      ]
+    },
+    {
+      "name": "什么都没有",
+      "overrides": [
+        "listRecords",
+        "listPending"
+      ],
+      "pending": [],
+      "pendingError": null,
+      "records": [],
+      "recordsError": null,
+      "feed": [],
+      "texts": [
+        "订单看板",
+        "刷新",
+        "0",
+        "排队等待触发",
+        "0",
+        "在途",
+        "0",
+        "已成交",
+        "0",
+        "被拒 / 出错",
+        "排队等待触发",
+        "0",
+        "没有等待触发的条件单。",
+        "已提交 / 近期",
+        "0",
+        "今天还没有提交过订单。",
+        "通知",
+        "暂无通知"
+      ],
+      "stages": [],
+      "pills": []
+    },
+    {
+      "name": "条件单读不到",
+      "overrides": [
+        "listPending"
+      ],
+      "pending": [
+        {
+          "record_id": "p1",
+          "intent_summary": "SPY 涨到 775 时买入 100 股",
+          "symbol": "SPY",
+          "operator": ">=",
+          "value": 775,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:30:00Z"
+        }
+      ],
+      "pendingError": "引擎忙",
+      "records": [
+        {
+          "id": "r1",
+          "symbol": "NVDA",
+          "action": "BUY",
+          "quantity": 2,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "status": "Submitted",
+          "final_status": "filled",
+          "avg_fill_price": 5.52,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "限价 5.5 买入 2 张 NVDA 20260821 180 Call",
+          "reason": "财报前布局",
+          "raw_instruction": "买2张英伟达周五180call 限价5.5"
+        },
+        {
+          "id": "r5",
+          "symbol": "SPX",
+          "action": "BUY",
+          "quantity": 1,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "status": "ValidatedOnly",
+          "final_status": null,
+          "created_at": "2026-08-21T13:39:40Z",
+          "notional_estimate": 180,
+          "intent_summary": "限价 1.8 买入 1 组 SPX 7600/7615/7630 看跌蝴蝶",
+          "reason": "本地速记解析",
+          "raw_instruction": "1.8 挂15蝴蝶 15CM"
+        },
+        {
+          "id": "r2",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 100,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "status": "Submitted",
+          "final_status": null,
+          "created_at": "2026-08-21T13:38:55Z",
+          "intent_summary": "限价 316 买入 100 股 AAPL",
+          "reason": "回调到位",
+          "raw_instruction": "苹果316买100股"
+        },
+        {
+          "id": "r3",
+          "symbol": "SPY",
+          "action": "SELL",
+          "quantity": 1,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "final_status": "ibkr_error",
+          "created_at": "2026-08-21T13:20:10Z",
+          "intent_summary": "市价卖出 1 张 SPY Put",
+          "reason": "止损",
+          "rejection": {
+            "code": "IBKR_ERROR"
+          },
+          "raw_instruction": "把spy的put平了"
+        },
+        {
+          "id": "r4",
+          "symbol": "TSLA",
+          "action": "BUY",
+          "quantity": 50,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "final_status": "rejected_by_validator",
+          "created_at": "2026-08-21T12:02:00Z",
+          "intent_summary": "市价买入 50 股 TSLA",
+          "reason": "突破",
+          "raw_instruction": "特斯拉市价来50股"
+        }
+      ],
+      "recordsError": null,
+      "feed": [],
+      "texts": [
+        "订单看板",
+        "刷新",
+        "1",
+        "排队等待触发",
+        "1",
+        "在途",
+        "1",
+        "已成交",
+        "2",
+        "被拒 / 出错",
+        "排队等待触发",
+        "1",
+        "读取失败:引擎忙",
+        "已提交 / 近期",
+        "3",
+        "NVDA",
+        "限价 5.5 买入 2 张 NVDA 20260821 180 Call",
+        "2 NVDA",
+        "账户 模拟",
+        "均价 5.52",
+        "买入",
+        "校验",
+        "提交",
+        "成交",
+        "已成交",
+        "SPX",
+        "限价 1.8 买入 1 组 SPX 7600/7615/7630 看跌蝴蝶",
+        "1 SPX",
+        "账户 模拟",
+        "买入",
+        "校验",
+        "提交",
+        "成交",
+        "仅校验未发送",
+        "AAPL",
+        "限价 316 买入 100 股 AAPL",
+        "100 AAPL",
+        "账户 模拟",
+        "买入",
+        "校验",
+        "提交",
+        "成交",
+        "已挂单",
+        "通知",
+        "暂无通知"
+      ],
+      "stages": [
+        {
+          "tile": "green",
+          "steps": [
+            "done",
+            "done",
+            "done"
+          ]
+        },
+        {
+          "tile": "gray",
+          "steps": [
+            "done",
+            "now",
+            ""
+          ]
+        },
+        {
+          "tile": "blue",
+          "steps": [
+            "done",
+            "done",
+            "now"
+          ]
+        }
+      ],
+      "pills": [
+        "up",
+        "green",
+        "up",
+        "gray",
+        "up",
+        "blue"
+      ]
+    },
+    {
+      "name": "记录读不到",
+      "overrides": [
+        "listRecords"
+      ],
+      "pending": [
+        {
+          "record_id": "p1",
+          "intent_summary": "SPY 涨到 775 时买入 100 股",
+          "symbol": "SPY",
+          "operator": ">=",
+          "value": 775,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:30:00Z"
+        }
+      ],
+      "pendingError": null,
+      "records": [
+        {
+          "id": "r1",
+          "symbol": "NVDA",
+          "action": "BUY",
+          "quantity": 2,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "status": "Submitted",
+          "final_status": "filled",
+          "avg_fill_price": 5.52,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "限价 5.5 买入 2 张 NVDA 20260821 180 Call",
+          "reason": "财报前布局",
+          "raw_instruction": "买2张英伟达周五180call 限价5.5"
+        },
+        {
+          "id": "r5",
+          "symbol": "SPX",
+          "action": "BUY",
+          "quantity": 1,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "status": "ValidatedOnly",
+          "final_status": null,
+          "created_at": "2026-08-21T13:39:40Z",
+          "notional_estimate": 180,
+          "intent_summary": "限价 1.8 买入 1 组 SPX 7600/7615/7630 看跌蝴蝶",
+          "reason": "本地速记解析",
+          "raw_instruction": "1.8 挂15蝴蝶 15CM"
+        },
+        {
+          "id": "r2",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 100,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "status": "Submitted",
+          "final_status": null,
+          "created_at": "2026-08-21T13:38:55Z",
+          "intent_summary": "限价 316 买入 100 股 AAPL",
+          "reason": "回调到位",
+          "raw_instruction": "苹果316买100股"
+        },
+        {
+          "id": "r3",
+          "symbol": "SPY",
+          "action": "SELL",
+          "quantity": 1,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "final_status": "ibkr_error",
+          "created_at": "2026-08-21T13:20:10Z",
+          "intent_summary": "市价卖出 1 张 SPY Put",
+          "reason": "止损",
+          "rejection": {
+            "code": "IBKR_ERROR"
+          },
+          "raw_instruction": "把spy的put平了"
+        },
+        {
+          "id": "r4",
+          "symbol": "TSLA",
+          "action": "BUY",
+          "quantity": 50,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "final_status": "rejected_by_validator",
+          "created_at": "2026-08-21T12:02:00Z",
+          "intent_summary": "市价买入 50 股 TSLA",
+          "reason": "突破",
+          "raw_instruction": "特斯拉市价来50股"
+        }
+      ],
+      "recordsError": "records.list 超时",
+      "feed": [],
+      "texts": [
+        "订单看板",
+        "刷新",
+        "1",
+        "排队等待触发",
+        "1",
+        "在途",
+        "1",
+        "已成交",
+        "2",
+        "被拒 / 出错",
+        "排队等待触发",
+        "1",
+        "SPY",
+        "SPY 涨到 775 时买入 100 股",
+        "账户 模拟",
+        "入队 21:30",
+        "SPY ≥",
+        "775",
+        "排队",
+        "触发",
+        "提交",
+        "成交",
+        "已提交 / 近期",
+        "3",
+        "读取失败:records.list 超时",
+        "通知",
+        "暂无通知"
+      ],
+      "stages": [
+        {
+          "tile": "orange",
+          "steps": [
+            "now",
+            "",
+            "",
+            ""
+          ]
+        }
+      ],
+      "pills": []
+    },
+    {
+      "name": "两样都读不到",
+      "overrides": [
+        "listPending",
+        "listRecords"
+      ],
+      "pending": [
+        {
+          "record_id": "p1",
+          "intent_summary": "SPY 涨到 775 时买入 100 股",
+          "symbol": "SPY",
+          "operator": ">=",
+          "value": 775,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:30:00Z"
+        }
+      ],
+      "pendingError": "a",
+      "records": [
+        {
+          "id": "r1",
+          "symbol": "NVDA",
+          "action": "BUY",
+          "quantity": 2,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "status": "Submitted",
+          "final_status": "filled",
+          "avg_fill_price": 5.52,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "限价 5.5 买入 2 张 NVDA 20260821 180 Call",
+          "reason": "财报前布局",
+          "raw_instruction": "买2张英伟达周五180call 限价5.5"
+        },
+        {
+          "id": "r5",
+          "symbol": "SPX",
+          "action": "BUY",
+          "quantity": 1,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "status": "ValidatedOnly",
+          "final_status": null,
+          "created_at": "2026-08-21T13:39:40Z",
+          "notional_estimate": 180,
+          "intent_summary": "限价 1.8 买入 1 组 SPX 7600/7615/7630 看跌蝴蝶",
+          "reason": "本地速记解析",
+          "raw_instruction": "1.8 挂15蝴蝶 15CM"
+        },
+        {
+          "id": "r2",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 100,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "status": "Submitted",
+          "final_status": null,
+          "created_at": "2026-08-21T13:38:55Z",
+          "intent_summary": "限价 316 买入 100 股 AAPL",
+          "reason": "回调到位",
+          "raw_instruction": "苹果316买100股"
+        },
+        {
+          "id": "r3",
+          "symbol": "SPY",
+          "action": "SELL",
+          "quantity": 1,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "final_status": "ibkr_error",
+          "created_at": "2026-08-21T13:20:10Z",
+          "intent_summary": "市价卖出 1 张 SPY Put",
+          "reason": "止损",
+          "rejection": {
+            "code": "IBKR_ERROR"
+          },
+          "raw_instruction": "把spy的put平了"
+        },
+        {
+          "id": "r4",
+          "symbol": "TSLA",
+          "action": "BUY",
+          "quantity": 50,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "final_status": "rejected_by_validator",
+          "created_at": "2026-08-21T12:02:00Z",
+          "intent_summary": "市价买入 50 股 TSLA",
+          "reason": "突破",
+          "raw_instruction": "特斯拉市价来50股"
+        }
+      ],
+      "recordsError": "b",
+      "feed": [],
+      "texts": [
+        "订单看板",
+        "刷新",
+        "1",
+        "排队等待触发",
+        "1",
+        "在途",
+        "1",
+        "已成交",
+        "2",
+        "被拒 / 出错",
+        "排队等待触发",
+        "1",
+        "读取失败:a",
+        "已提交 / 近期",
+        "3",
+        "读取失败:b",
+        "通知",
+        "暂无通知"
+      ],
+      "stages": [],
+      "pills": []
+    },
+    {
+      "name": "回包不是数组",
+      "overrides": [
+        "listRecords",
+        "listPending"
+      ],
+      "pending": [],
+      "pendingError": null,
+      "records": [],
+      "recordsError": null,
+      "feed": [],
+      "texts": [
+        "订单看板",
+        "刷新",
+        "0",
+        "排队等待触发",
+        "0",
+        "在途",
+        "0",
+        "已成交",
+        "0",
+        "被拒 / 出错",
+        "排队等待触发",
+        "0",
+        "没有等待触发的条件单。",
+        "已提交 / 近期",
+        "0",
+        "今天还没有提交过订单。",
+        "通知",
+        "暂无通知"
+      ],
+      "stages": [],
+      "pills": []
+    },
+    {
+      "name": "各种状态(只摆前 8 张)",
+      "overrides": [
+        "listRecords"
+      ],
+      "pending": [
+        {
+          "record_id": "p1",
+          "intent_summary": "SPY 涨到 775 时买入 100 股",
+          "symbol": "SPY",
+          "operator": ">=",
+          "value": 775,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:30:00Z"
+        }
+      ],
+      "pendingError": null,
+      "records": [
+        {
+          "id": "e0",
+          "symbol": "AAPL",
+          "action": "SELL",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 — / —",
+          "final_status": null,
+          "status": null
+        },
+        {
+          "id": "e1",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 — / Submitted",
+          "final_status": null,
+          "status": "Submitted"
+        },
+        {
+          "id": "e2",
+          "symbol": "AAPL",
+          "action": "SELL",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 — / ValidatedOnly",
+          "final_status": null,
+          "status": "ValidatedOnly"
+        },
+        {
+          "id": "e3",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 — / NotAtBroker",
+          "final_status": null,
+          "status": "NotAtBroker"
+        },
+        {
+          "id": "e4",
+          "symbol": "AAPL",
+          "action": "SELL",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 — / Filled",
+          "final_status": null,
+          "status": "Filled"
+        },
+        {
+          "id": "e5",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 — / Inactive",
+          "final_status": null,
+          "status": "Inactive"
+        },
+        {
+          "id": "e6",
+          "symbol": "AAPL",
+          "action": "SELL",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 — / Cancelled",
+          "final_status": null,
+          "status": "Cancelled"
+        },
+        {
+          "id": "e7",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 — / PreSubmitted",
+          "final_status": null,
+          "status": "PreSubmitted"
+        },
+        {
+          "id": "e8",
+          "symbol": "AAPL",
+          "action": "SELL",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 filled / —",
+          "final_status": "filled",
+          "status": null
+        },
+        {
+          "id": "e9",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 filled / Submitted",
+          "final_status": "filled",
+          "status": "Submitted"
+        },
+        {
+          "id": "e10",
+          "symbol": "AAPL",
+          "action": "SELL",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 filled / ValidatedOnly",
+          "final_status": "filled",
+          "status": "ValidatedOnly"
+        },
+        {
+          "id": "e11",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 filled / NotAtBroker",
+          "final_status": "filled",
+          "status": "NotAtBroker"
+        },
+        {
+          "id": "e12",
+          "symbol": "AAPL",
+          "action": "SELL",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 filled / Filled",
+          "final_status": "filled",
+          "status": "Filled"
+        },
+        {
+          "id": "e13",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 filled / Inactive",
+          "final_status": "filled",
+          "status": "Inactive"
+        },
+        {
+          "id": "e14",
+          "symbol": "AAPL",
+          "action": "SELL",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 filled / Cancelled",
+          "final_status": "filled",
+          "status": "Cancelled"
+        },
+        {
+          "id": "e15",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 filled / PreSubmitted",
+          "final_status": "filled",
+          "status": "PreSubmitted"
+        },
+        {
+          "id": "e16",
+          "symbol": "AAPL",
+          "action": "SELL",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 partially_filled / —",
+          "final_status": "partially_filled",
+          "status": null
+        },
+        {
+          "id": "e17",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 partially_filled / Submitted",
+          "final_status": "partially_filled",
+          "status": "Submitted"
+        },
+        {
+          "id": "e18",
+          "symbol": "AAPL",
+          "action": "SELL",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 partially_filled / ValidatedOnly",
+          "final_status": "partially_filled",
+          "status": "ValidatedOnly"
+        },
+        {
+          "id": "e19",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 partially_filled / NotAtBroker",
+          "final_status": "partially_filled",
+          "status": "NotAtBroker"
+        },
+        {
+          "id": "e20",
+          "symbol": "AAPL",
+          "action": "SELL",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 partially_filled / Filled",
+          "final_status": "partially_filled",
+          "status": "Filled"
+        },
+        {
+          "id": "e21",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 partially_filled / Inactive",
+          "final_status": "partially_filled",
+          "status": "Inactive"
+        },
+        {
+          "id": "e22",
+          "symbol": "AAPL",
+          "action": "SELL",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 partially_filled / Cancelled",
+          "final_status": "partially_filled",
+          "status": "Cancelled"
+        },
+        {
+          "id": "e23",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 partially_filled / PreSubmitted",
+          "final_status": "partially_filled",
+          "status": "PreSubmitted"
+        },
+        {
+          "id": "e24",
+          "symbol": "AAPL",
+          "action": "SELL",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 cancelled / —",
+          "final_status": "cancelled",
+          "status": null
+        },
+        {
+          "id": "e25",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 cancelled / Submitted",
+          "final_status": "cancelled",
+          "status": "Submitted"
+        },
+        {
+          "id": "e26",
+          "symbol": "AAPL",
+          "action": "SELL",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 cancelled / ValidatedOnly",
+          "final_status": "cancelled",
+          "status": "ValidatedOnly"
+        },
+        {
+          "id": "e27",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 cancelled / NotAtBroker",
+          "final_status": "cancelled",
+          "status": "NotAtBroker"
+        },
+        {
+          "id": "e28",
+          "symbol": "AAPL",
+          "action": "SELL",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 cancelled / Filled",
+          "final_status": "cancelled",
+          "status": "Filled"
+        },
+        {
+          "id": "e29",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 cancelled / Inactive",
+          "final_status": "cancelled",
+          "status": "Inactive"
+        },
+        {
+          "id": "e30",
+          "symbol": "AAPL",
+          "action": "SELL",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 cancelled / Cancelled",
+          "final_status": "cancelled",
+          "status": "Cancelled"
+        },
+        {
+          "id": "e31",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 cancelled / PreSubmitted",
+          "final_status": "cancelled",
+          "status": "PreSubmitted"
+        },
+        {
+          "id": "e32",
+          "symbol": "AAPL",
+          "action": "SELL",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 expired_untriggered / —",
+          "final_status": "expired_untriggered",
+          "status": null
+        },
+        {
+          "id": "e33",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 expired_untriggered / Submitted",
+          "final_status": "expired_untriggered",
+          "status": "Submitted"
+        },
+        {
+          "id": "e34",
+          "symbol": "AAPL",
+          "action": "SELL",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 expired_untriggered / ValidatedOnly",
+          "final_status": "expired_untriggered",
+          "status": "ValidatedOnly"
+        },
+        {
+          "id": "e35",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 expired_untriggered / NotAtBroker",
+          "final_status": "expired_untriggered",
+          "status": "NotAtBroker"
+        },
+        {
+          "id": "e36",
+          "symbol": "AAPL",
+          "action": "SELL",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 expired_untriggered / Filled",
+          "final_status": "expired_untriggered",
+          "status": "Filled"
+        },
+        {
+          "id": "e37",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 expired_untriggered / Inactive",
+          "final_status": "expired_untriggered",
+          "status": "Inactive"
+        },
+        {
+          "id": "e38",
+          "symbol": "AAPL",
+          "action": "SELL",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 expired_untriggered / Cancelled",
+          "final_status": "expired_untriggered",
+          "status": "Cancelled"
+        },
+        {
+          "id": "e39",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 expired_untriggered / PreSubmitted",
+          "final_status": "expired_untriggered",
+          "status": "PreSubmitted"
+        },
+        {
+          "id": "e40",
+          "symbol": "AAPL",
+          "action": "SELL",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 rejected_by_validator / —",
+          "final_status": "rejected_by_validator",
+          "status": null
+        },
+        {
+          "id": "e41",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 rejected_by_validator / Submitted",
+          "final_status": "rejected_by_validator",
+          "status": "Submitted"
+        },
+        {
+          "id": "e42",
+          "symbol": "AAPL",
+          "action": "SELL",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 rejected_by_validator / ValidatedOnly",
+          "final_status": "rejected_by_validator",
+          "status": "ValidatedOnly"
+        },
+        {
+          "id": "e43",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 rejected_by_validator / NotAtBroker",
+          "final_status": "rejected_by_validator",
+          "status": "NotAtBroker"
+        },
+        {
+          "id": "e44",
+          "symbol": "AAPL",
+          "action": "SELL",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 rejected_by_validator / Filled",
+          "final_status": "rejected_by_validator",
+          "status": "Filled"
+        },
+        {
+          "id": "e45",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 rejected_by_validator / Inactive",
+          "final_status": "rejected_by_validator",
+          "status": "Inactive"
+        },
+        {
+          "id": "e46",
+          "symbol": "AAPL",
+          "action": "SELL",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 rejected_by_validator / Cancelled",
+          "final_status": "rejected_by_validator",
+          "status": "Cancelled"
+        },
+        {
+          "id": "e47",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 rejected_by_validator / PreSubmitted",
+          "final_status": "rejected_by_validator",
+          "status": "PreSubmitted"
+        },
+        {
+          "id": "e48",
+          "symbol": "AAPL",
+          "action": "SELL",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 rejected_by_llm / —",
+          "final_status": "rejected_by_llm",
+          "status": null
+        },
+        {
+          "id": "e49",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 rejected_by_llm / Submitted",
+          "final_status": "rejected_by_llm",
+          "status": "Submitted"
+        },
+        {
+          "id": "e50",
+          "symbol": "AAPL",
+          "action": "SELL",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 rejected_by_llm / ValidatedOnly",
+          "final_status": "rejected_by_llm",
+          "status": "ValidatedOnly"
+        },
+        {
+          "id": "e51",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 rejected_by_llm / NotAtBroker",
+          "final_status": "rejected_by_llm",
+          "status": "NotAtBroker"
+        },
+        {
+          "id": "e52",
+          "symbol": "AAPL",
+          "action": "SELL",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 rejected_by_llm / Filled",
+          "final_status": "rejected_by_llm",
+          "status": "Filled"
+        },
+        {
+          "id": "e53",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 rejected_by_llm / Inactive",
+          "final_status": "rejected_by_llm",
+          "status": "Inactive"
+        },
+        {
+          "id": "e54",
+          "symbol": "AAPL",
+          "action": "SELL",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 rejected_by_llm / Cancelled",
+          "final_status": "rejected_by_llm",
+          "status": "Cancelled"
+        },
+        {
+          "id": "e55",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 rejected_by_llm / PreSubmitted",
+          "final_status": "rejected_by_llm",
+          "status": "PreSubmitted"
+        },
+        {
+          "id": "e56",
+          "symbol": "AAPL",
+          "action": "SELL",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 ibkr_error / —",
+          "final_status": "ibkr_error",
+          "status": null
+        },
+        {
+          "id": "e57",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 ibkr_error / Submitted",
+          "final_status": "ibkr_error",
+          "status": "Submitted"
+        },
+        {
+          "id": "e58",
+          "symbol": "AAPL",
+          "action": "SELL",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 ibkr_error / ValidatedOnly",
+          "final_status": "ibkr_error",
+          "status": "ValidatedOnly"
+        },
+        {
+          "id": "e59",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 ibkr_error / NotAtBroker",
+          "final_status": "ibkr_error",
+          "status": "NotAtBroker"
+        },
+        {
+          "id": "e60",
+          "symbol": "AAPL",
+          "action": "SELL",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 ibkr_error / Filled",
+          "final_status": "ibkr_error",
+          "status": "Filled"
+        },
+        {
+          "id": "e61",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 ibkr_error / Inactive",
+          "final_status": "ibkr_error",
+          "status": "Inactive"
+        },
+        {
+          "id": "e62",
+          "symbol": "AAPL",
+          "action": "SELL",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 ibkr_error / Cancelled",
+          "final_status": "ibkr_error",
+          "status": "Cancelled"
+        },
+        {
+          "id": "e63",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 ibkr_error / PreSubmitted",
+          "final_status": "ibkr_error",
+          "status": "PreSubmitted"
+        },
+        {
+          "id": "e64",
+          "symbol": "AAPL",
+          "action": "SELL",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 halted_by_breaker / —",
+          "final_status": "halted_by_breaker",
+          "status": null
+        },
+        {
+          "id": "e65",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 halted_by_breaker / Submitted",
+          "final_status": "halted_by_breaker",
+          "status": "Submitted"
+        },
+        {
+          "id": "e66",
+          "symbol": "AAPL",
+          "action": "SELL",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 halted_by_breaker / ValidatedOnly",
+          "final_status": "halted_by_breaker",
+          "status": "ValidatedOnly"
+        },
+        {
+          "id": "e67",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 halted_by_breaker / NotAtBroker",
+          "final_status": "halted_by_breaker",
+          "status": "NotAtBroker"
+        },
+        {
+          "id": "e68",
+          "symbol": "AAPL",
+          "action": "SELL",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 halted_by_breaker / Filled",
+          "final_status": "halted_by_breaker",
+          "status": "Filled"
+        },
+        {
+          "id": "e69",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 halted_by_breaker / Inactive",
+          "final_status": "halted_by_breaker",
+          "status": "Inactive"
+        },
+        {
+          "id": "e70",
+          "symbol": "AAPL",
+          "action": "SELL",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 halted_by_breaker / Cancelled",
+          "final_status": "halted_by_breaker",
+          "status": "Cancelled"
+        },
+        {
+          "id": "e71",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 halted_by_breaker / PreSubmitted",
+          "final_status": "halted_by_breaker",
+          "status": "PreSubmitted"
+        },
+        {
+          "id": "e72",
+          "symbol": "AAPL",
+          "action": "SELL",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 something_new / —",
+          "final_status": "something_new",
+          "status": null
+        },
+        {
+          "id": "e73",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 something_new / Submitted",
+          "final_status": "something_new",
+          "status": "Submitted"
+        },
+        {
+          "id": "e74",
+          "symbol": "AAPL",
+          "action": "SELL",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 something_new / ValidatedOnly",
+          "final_status": "something_new",
+          "status": "ValidatedOnly"
+        },
+        {
+          "id": "e75",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 something_new / NotAtBroker",
+          "final_status": "something_new",
+          "status": "NotAtBroker"
+        },
+        {
+          "id": "e76",
+          "symbol": "AAPL",
+          "action": "SELL",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 something_new / Filled",
+          "final_status": "something_new",
+          "status": "Filled"
+        },
+        {
+          "id": "e77",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 something_new / Inactive",
+          "final_status": "something_new",
+          "status": "Inactive"
+        },
+        {
+          "id": "e78",
+          "symbol": "AAPL",
+          "action": "SELL",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 something_new / Cancelled",
+          "final_status": "something_new",
+          "status": "Cancelled"
+        },
+        {
+          "id": "e79",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "状态 something_new / PreSubmitted",
+          "final_status": "something_new",
+          "status": "PreSubmitted"
+        }
+      ],
+      "recordsError": null,
+      "feed": [],
+      "texts": [
+        "订单看板",
+        "刷新",
+        "1",
+        "排队等待触发",
+        "2",
+        "在途",
+        "2",
+        "已成交",
+        "26",
+        "被拒 / 出错",
+        "排队等待触发",
+        "1",
+        "SPY",
+        "SPY 涨到 775 时买入 100 股",
+        "账户 模拟",
+        "入队 21:30",
+        "SPY ≥",
+        "775",
+        "排队",
+        "触发",
+        "提交",
+        "成交",
+        "已提交 / 近期",
+        "8",
+        "AAPL",
+        "状态 — / Submitted",
+        "10 AAPL",
+        "账户 模拟",
+        "买入",
+        "校验",
+        "提交",
+        "成交",
+        "已挂单",
+        "AAPL",
+        "状态 — / ValidatedOnly",
+        "10 AAPL",
+        "账户 模拟",
+        "卖出",
+        "校验",
+        "提交",
+        "成交",
+        "仅校验未发送",
+        "AAPL",
+        "状态 — / NotAtBroker",
+        "10 AAPL",
+        "账户 模拟",
+        "买入",
+        "校验",
+        "提交",
+        "成交",
+        "去向不明(券商侧查无此单)",
+        "AAPL",
+        "状态 — / Filled",
+        "10 AAPL",
+        "账户 模拟",
+        "卖出",
+        "校验",
+        "提交",
+        "成交",
+        "已成交",
+        "AAPL",
+        "状态 — / Inactive",
+        "10 AAPL",
+        "账户 模拟",
+        "买入",
+        "校验",
+        "提交",
+        "成交",
+        "券商报错",
+        "AAPL",
+        "状态 — / Cancelled",
+        "10 AAPL",
+        "账户 模拟",
+        "卖出",
+        "校验",
+        "提交",
+        "成交",
+        "已撤单",
+        "AAPL",
+        "状态 — / PreSubmitted",
+        "10 AAPL",
+        "账户 模拟",
+        "买入",
+        "校验",
+        "提交",
+        "成交",
+        "已受理",
+        "AAPL",
+        "状态 filled / Submitted",
+        "10 AAPL",
+        "账户 模拟",
+        "买入",
+        "校验",
+        "提交",
+        "成交",
+        "已成交",
+        "通知",
+        "暂无通知"
+      ],
+      "stages": [
+        {
+          "tile": "orange",
+          "steps": [
+            "now",
+            "",
+            "",
+            ""
+          ]
+        },
+        {
+          "tile": "blue",
+          "steps": [
+            "done",
+            "done",
+            "now"
+          ]
+        },
+        {
+          "tile": "gray",
+          "steps": [
+            "done",
+            "now",
+            ""
+          ]
+        },
+        {
+          "tile": "yellow",
+          "steps": [
+            "done",
+            "done",
+            "now"
+          ]
+        },
+        {
+          "tile": "green",
+          "steps": [
+            "done",
+            "done",
+            "done"
+          ]
+        },
+        {
+          "tile": "red",
+          "steps": [
+            "done",
+            "now",
+            ""
+          ]
+        },
+        {
+          "tile": "gray",
+          "steps": [
+            "done",
+            "now",
+            ""
+          ]
+        },
+        {
+          "tile": "blue",
+          "steps": [
+            "done",
+            "done",
+            "now"
+          ]
+        },
+        {
+          "tile": "green",
+          "steps": [
+            "done",
+            "done",
+            "done"
+          ]
+        }
+      ],
+      "pills": [
+        "up",
+        "blue",
+        "down",
+        "gray",
+        "up",
+        "yellow",
+        "down",
+        "green",
+        "up",
+        "red",
+        "down",
+        "gray",
+        "up",
+        "blue",
+        "up",
+        "green"
+      ]
+    },
+    {
+      "name": "被拒的不算在途",
+      "overrides": [
+        "listRecords"
+      ],
+      "pending": [
+        {
+          "record_id": "p1",
+          "intent_summary": "SPY 涨到 775 时买入 100 股",
+          "symbol": "SPY",
+          "operator": ">=",
+          "value": 775,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:30:00Z"
+        }
+      ],
+      "pendingError": null,
+      "records": [
+        {
+          "id": "a",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "买入 10 股 AAPL",
+          "status": "Submitted",
+          "rejection": {
+            "code": "X"
+          }
+        },
+        {
+          "id": "b",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "买入 10 股 AAPL",
+          "status": null,
+          "final_status": "rejected_by_llm"
+        },
+        {
+          "id": "c",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": null,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "",
+          "status": "Filled",
+          "final_status": "filled",
+          "avg_fill_price": 201.255,
+          "raw_instruction": "原话"
+        },
+        {
+          "id": "d",
+          "symbol": null,
+          "action": null,
+          "quantity": 10,
+          "account": null,
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": null,
+          "status": "PreSubmitted",
+          "raw_instruction": null
+        },
+        {
+          "id": "e",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "买入 10 股 AAPL",
+          "status": "Submitted",
+          "avg_fill_price": 0
+        }
+      ],
+      "recordsError": null,
+      "feed": [],
+      "texts": [
+        "订单看板",
+        "刷新",
+        "1",
+        "排队等待触发",
+        "2",
+        "在途",
+        "1",
+        "已成交",
+        "1",
+        "被拒 / 出错",
+        "排队等待触发",
+        "1",
+        "SPY",
+        "SPY 涨到 775 时买入 100 股",
+        "账户 模拟",
+        "入队 21:30",
+        "SPY ≥",
+        "775",
+        "排队",
+        "触发",
+        "提交",
+        "成交",
+        "已提交 / 近期",
+        "3",
+        "AAPL",
+        "原话",
+        "AAPL",
+        "账户 模拟",
+        "均价 201.26",
+        "买入",
+        "校验",
+        "提交",
+        "成交",
+        "已成交",
+        "10 null",
+        "账户 null",
+        "校验",
+        "提交",
+        "成交",
+        "已受理",
+        "AAPL",
+        "买入 10 股 AAPL",
+        "10 AAPL",
+        "账户 模拟",
+        "买入",
+        "校验",
+        "提交",
+        "成交",
+        "已挂单",
+        "通知",
+        "暂无通知"
+      ],
+      "stages": [
+        {
+          "tile": "orange",
+          "steps": [
+            "now",
+            "",
+            "",
+            ""
+          ]
+        },
+        {
+          "tile": "green",
+          "steps": [
+            "done",
+            "done",
+            "done"
+          ]
+        },
+        {
+          "tile": "blue",
+          "steps": [
+            "done",
+            "done",
+            "now"
+          ]
+        },
+        {
+          "tile": "blue",
+          "steps": [
+            "done",
+            "done",
+            "now"
+          ]
+        }
+      ],
+      "pills": [
+        "up",
+        "green",
+        "blue",
+        "up",
+        "blue"
+      ]
+    },
+    {
+      "name": "条件单的各种比较符",
+      "overrides": [
+        "listPending"
+      ],
+      "pending": [
+        {
+          "record_id": "p1",
+          "intent_summary": "SPY 涨到 775 时买入 100 股",
+          "symbol": "SPY",
+          "operator": ">=",
+          "value": 775,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:30:00Z"
+        },
+        {
+          "record_id": "p2",
+          "intent_summary": "SPY 涨到 775 时买入 100 股",
+          "symbol": "SPX",
+          "operator": "<=",
+          "value": 7500.5,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-20T23:10:00Z"
+        },
+        {
+          "record_id": "p3",
+          "intent_summary": "",
+          "symbol": "",
+          "operator": "==",
+          "value": 10,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:30:00Z"
+        },
+        {
+          "record_id": "p4",
+          "intent_summary": "SPY 涨到 775 时买入 100 股",
+          "symbol": "SPY",
+          "operator": "crosses",
+          "value": 1,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": null
+        },
+        {
+          "record_id": "p5",
+          "intent_summary": "SPY 涨到 775 时买入 100 股",
+          "symbol": null,
+          "operator": null,
+          "value": null,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "not a date"
+        }
+      ],
+      "pendingError": null,
+      "records": [
+        {
+          "id": "r1",
+          "symbol": "NVDA",
+          "action": "BUY",
+          "quantity": 2,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "status": "Submitted",
+          "final_status": "filled",
+          "avg_fill_price": 5.52,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "限价 5.5 买入 2 张 NVDA 20260821 180 Call",
+          "reason": "财报前布局",
+          "raw_instruction": "买2张英伟达周五180call 限价5.5"
+        },
+        {
+          "id": "r5",
+          "symbol": "SPX",
+          "action": "BUY",
+          "quantity": 1,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "status": "ValidatedOnly",
+          "final_status": null,
+          "created_at": "2026-08-21T13:39:40Z",
+          "notional_estimate": 180,
+          "intent_summary": "限价 1.8 买入 1 组 SPX 7600/7615/7630 看跌蝴蝶",
+          "reason": "本地速记解析",
+          "raw_instruction": "1.8 挂15蝴蝶 15CM"
+        },
+        {
+          "id": "r2",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 100,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "status": "Submitted",
+          "final_status": null,
+          "created_at": "2026-08-21T13:38:55Z",
+          "intent_summary": "限价 316 买入 100 股 AAPL",
+          "reason": "回调到位",
+          "raw_instruction": "苹果316买100股"
+        },
+        {
+          "id": "r3",
+          "symbol": "SPY",
+          "action": "SELL",
+          "quantity": 1,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "final_status": "ibkr_error",
+          "created_at": "2026-08-21T13:20:10Z",
+          "intent_summary": "市价卖出 1 张 SPY Put",
+          "reason": "止损",
+          "rejection": {
+            "code": "IBKR_ERROR"
+          },
+          "raw_instruction": "把spy的put平了"
+        },
+        {
+          "id": "r4",
+          "symbol": "TSLA",
+          "action": "BUY",
+          "quantity": 50,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "final_status": "rejected_by_validator",
+          "created_at": "2026-08-21T12:02:00Z",
+          "intent_summary": "市价买入 50 股 TSLA",
+          "reason": "突破",
+          "raw_instruction": "特斯拉市价来50股"
+        }
+      ],
+      "recordsError": null,
+      "feed": [],
+      "texts": [
+        "订单看板",
+        "刷新",
+        "5",
+        "排队等待触发",
+        "1",
+        "在途",
+        "1",
+        "已成交",
+        "2",
+        "被拒 / 出错",
+        "排队等待触发",
+        "5",
+        "SPY",
+        "SPY 涨到 775 时买入 100 股",
+        "账户 模拟",
+        "入队 21:30",
+        "SPY ≥",
+        "775",
+        "排队",
+        "触发",
+        "提交",
+        "成交",
+        "SPX",
+        "SPY 涨到 775 时买入 100 股",
+        "账户 模拟",
+        "入队 07:10",
+        "SPX ≤",
+        "7500.5",
+        "排队",
+        "触发",
+        "提交",
+        "成交",
+        "账户 模拟",
+        "入队 21:30",
+        "=",
+        "10",
+        "排队",
+        "触发",
+        "提交",
+        "成交",
+        "SPY",
+        "SPY 涨到 775 时买入 100 股",
+        "账户 模拟",
+        "入队 —",
+        "SPY crosses",
+        "1",
+        "排队",
+        "触发",
+        "提交",
+        "成交",
+        "SPY 涨到 775 时买入 100 股",
+        "账户 模拟",
+        "入队 not a date",
+        "排队",
+        "触发",
+        "提交",
+        "成交",
+        "已提交 / 近期",
+        "3",
+        "NVDA",
+        "限价 5.5 买入 2 张 NVDA 20260821 180 Call",
+        "2 NVDA",
+        "账户 模拟",
+        "均价 5.52",
+        "买入",
+        "校验",
+        "提交",
+        "成交",
+        "已成交",
+        "SPX",
+        "限价 1.8 买入 1 组 SPX 7600/7615/7630 看跌蝴蝶",
+        "1 SPX",
+        "账户 模拟",
+        "买入",
+        "校验",
+        "提交",
+        "成交",
+        "仅校验未发送",
+        "AAPL",
+        "限价 316 买入 100 股 AAPL",
+        "100 AAPL",
+        "账户 模拟",
+        "买入",
+        "校验",
+        "提交",
+        "成交",
+        "已挂单",
+        "通知",
+        "暂无通知"
+      ],
+      "stages": [
+        {
+          "tile": "orange",
+          "steps": [
+            "now",
+            "",
+            "",
+            ""
+          ]
+        },
+        {
+          "tile": "orange",
+          "steps": [
+            "now",
+            "",
+            "",
+            ""
+          ]
+        },
+        {
+          "tile": "orange",
+          "steps": [
+            "now",
+            "",
+            "",
+            ""
+          ]
+        },
+        {
+          "tile": "orange",
+          "steps": [
+            "now",
+            "",
+            "",
+            ""
+          ]
+        },
+        {
+          "tile": "orange",
+          "steps": [
+            "now",
+            "",
+            "",
+            ""
+          ]
+        },
+        {
+          "tile": "green",
+          "steps": [
+            "done",
+            "done",
+            "done"
+          ]
+        },
+        {
+          "tile": "gray",
+          "steps": [
+            "done",
+            "now",
+            ""
+          ]
+        },
+        {
+          "tile": "blue",
+          "steps": [
+            "done",
+            "done",
+            "now"
+          ]
+        }
+      ],
+      "pills": [
+        "up",
+        "green",
+        "up",
+        "gray",
+        "up",
+        "blue"
+      ]
+    },
+    {
+      "name": "通知流满了",
+      "overrides": [],
+      "pending": [
+        {
+          "record_id": "p1",
+          "intent_summary": "SPY 涨到 775 时买入 100 股",
+          "symbol": "SPY",
+          "operator": ">=",
+          "value": 775,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "created_at": "2026-08-21T13:30:00Z"
+        }
+      ],
+      "pendingError": null,
+      "records": [
+        {
+          "id": "r1",
+          "symbol": "NVDA",
+          "action": "BUY",
+          "quantity": 2,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "status": "Submitted",
+          "final_status": "filled",
+          "avg_fill_price": 5.52,
+          "created_at": "2026-08-21T13:41:02Z",
+          "intent_summary": "限价 5.5 买入 2 张 NVDA 20260821 180 Call",
+          "reason": "财报前布局",
+          "raw_instruction": "买2张英伟达周五180call 限价5.5"
+        },
+        {
+          "id": "r5",
+          "symbol": "SPX",
+          "action": "BUY",
+          "quantity": 1,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "status": "ValidatedOnly",
+          "final_status": null,
+          "created_at": "2026-08-21T13:39:40Z",
+          "notional_estimate": 180,
+          "intent_summary": "限价 1.8 买入 1 组 SPX 7600/7615/7630 看跌蝴蝶",
+          "reason": "本地速记解析",
+          "raw_instruction": "1.8 挂15蝴蝶 15CM"
+        },
+        {
+          "id": "r2",
+          "symbol": "AAPL",
+          "action": "BUY",
+          "quantity": 100,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "status": "Submitted",
+          "final_status": null,
+          "created_at": "2026-08-21T13:38:55Z",
+          "intent_summary": "限价 316 买入 100 股 AAPL",
+          "reason": "回调到位",
+          "raw_instruction": "苹果316买100股"
+        },
+        {
+          "id": "r3",
+          "symbol": "SPY",
+          "action": "SELL",
+          "quantity": 1,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "final_status": "ibkr_error",
+          "created_at": "2026-08-21T13:20:10Z",
+          "intent_summary": "市价卖出 1 张 SPY Put",
+          "reason": "止损",
+          "rejection": {
+            "code": "IBKR_ERROR"
+          },
+          "raw_instruction": "把spy的put平了"
+        },
+        {
+          "id": "r4",
+          "symbol": "TSLA",
+          "action": "BUY",
+          "quantity": 50,
+          "account": "模拟",
+          "account_masked": "DU***321",
+          "is_paper": true,
+          "final_status": "rejected_by_validator",
+          "created_at": "2026-08-21T12:02:00Z",
+          "intent_summary": "市价买入 50 股 TSLA",
+          "reason": "突破",
+          "raw_instruction": "特斯拉市价来50股"
+        }
+      ],
+      "recordsError": null,
+      "feed": [
+        {
+          "at": "21:50:00",
+          "text": "第 61 条 · 说明 61"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 60 条"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 59 条 · 说明 59"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 58 条"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 57 条 · 说明 57"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 56 条"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 55 条 · 说明 55"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 54 条"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 53 条 · 说明 53"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 52 条"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 51 条 · 说明 51"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 50 条"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 49 条 · 说明 49"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 48 条"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 47 条 · 说明 47"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 46 条"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 45 条 · 说明 45"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 44 条"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 43 条 · 说明 43"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 42 条"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 41 条 · 说明 41"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 40 条"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 39 条 · 说明 39"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 38 条"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 37 条 · 说明 37"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 36 条"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 35 条 · 说明 35"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 34 条"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 33 条 · 说明 33"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 32 条"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 31 条 · 说明 31"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 30 条"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 29 条 · 说明 29"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 28 条"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 27 条 · 说明 27"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 26 条"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 25 条 · 说明 25"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 24 条"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 23 条 · 说明 23"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 22 条"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 21 条 · 说明 21"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 20 条"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 19 条 · 说明 19"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 18 条"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 17 条 · 说明 17"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 16 条"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 15 条 · 说明 15"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 14 条"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 13 条 · 说明 13"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 12 条"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 11 条 · 说明 11"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 10 条"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 9 条 · 说明 9"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 8 条"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 7 条 · 说明 7"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 6 条"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 5 条 · 说明 5"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 4 条"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 3 条 · 说明 3"
+        },
+        {
+          "at": "21:50:00",
+          "text": "第 2 条"
+        }
+      ],
+      "texts": [
+        "订单看板",
+        "刷新",
+        "1",
+        "排队等待触发",
+        "1",
+        "在途",
+        "1",
+        "已成交",
+        "2",
+        "被拒 / 出错",
+        "排队等待触发",
+        "1",
+        "SPY",
+        "SPY 涨到 775 时买入 100 股",
+        "账户 模拟",
+        "入队 21:30",
+        "SPY ≥",
+        "775",
+        "排队",
+        "触发",
+        "提交",
+        "成交",
+        "已提交 / 近期",
+        "3",
+        "NVDA",
+        "限价 5.5 买入 2 张 NVDA 20260821 180 Call",
+        "2 NVDA",
+        "账户 模拟",
+        "均价 5.52",
+        "买入",
+        "校验",
+        "提交",
+        "成交",
+        "已成交",
+        "SPX",
+        "限价 1.8 买入 1 组 SPX 7600/7615/7630 看跌蝴蝶",
+        "1 SPX",
+        "账户 模拟",
+        "买入",
+        "校验",
+        "提交",
+        "成交",
+        "仅校验未发送",
+        "AAPL",
+        "限价 316 买入 100 股 AAPL",
+        "100 AAPL",
+        "账户 模拟",
+        "买入",
+        "校验",
+        "提交",
+        "成交",
+        "已挂单",
+        "通知",
+        "21:50:00",
+        "第 61 条 · 说明 61",
+        "21:50:00",
+        "第 60 条",
+        "21:50:00",
+        "第 59 条 · 说明 59",
+        "21:50:00",
+        "第 58 条",
+        "21:50:00",
+        "第 57 条 · 说明 57",
+        "21:50:00",
+        "第 56 条",
+        "21:50:00",
+        "第 55 条 · 说明 55",
+        "21:50:00",
+        "第 54 条",
+        "21:50:00",
+        "第 53 条 · 说明 53",
+        "21:50:00",
+        "第 52 条",
+        "21:50:00",
+        "第 51 条 · 说明 51",
+        "21:50:00",
+        "第 50 条",
+        "21:50:00",
+        "第 49 条 · 说明 49",
+        "21:50:00",
+        "第 48 条",
+        "21:50:00",
+        "第 47 条 · 说明 47",
+        "21:50:00",
+        "第 46 条",
+        "21:50:00",
+        "第 45 条 · 说明 45",
+        "21:50:00",
+        "第 44 条",
+        "21:50:00",
+        "第 43 条 · 说明 43",
+        "21:50:00",
+        "第 42 条",
+        "21:50:00",
+        "第 41 条 · 说明 41",
+        "21:50:00",
+        "第 40 条",
+        "21:50:00",
+        "第 39 条 · 说明 39",
+        "21:50:00",
+        "第 38 条",
+        "21:50:00",
+        "第 37 条 · 说明 37",
+        "21:50:00",
+        "第 36 条",
+        "21:50:00",
+        "第 35 条 · 说明 35",
+        "21:50:00",
+        "第 34 条",
+        "21:50:00",
+        "第 33 条 · 说明 33",
+        "21:50:00",
+        "第 32 条",
+        "21:50:00",
+        "第 31 条 · 说明 31",
+        "21:50:00",
+        "第 30 条",
+        "21:50:00",
+        "第 29 条 · 说明 29",
+        "21:50:00",
+        "第 28 条",
+        "21:50:00",
+        "第 27 条 · 说明 27",
+        "21:50:00",
+        "第 26 条",
+        "21:50:00",
+        "第 25 条 · 说明 25",
+        "21:50:00",
+        "第 24 条",
+        "21:50:00",
+        "第 23 条 · 说明 23",
+        "21:50:00",
+        "第 22 条",
+        "21:50:00",
+        "第 21 条 · 说明 21",
+        "21:50:00",
+        "第 20 条",
+        "21:50:00",
+        "第 19 条 · 说明 19",
+        "21:50:00",
+        "第 18 条",
+        "21:50:00",
+        "第 17 条 · 说明 17",
+        "21:50:00",
+        "第 16 条",
+        "21:50:00",
+        "第 15 条 · 说明 15",
+        "21:50:00",
+        "第 14 条",
+        "21:50:00",
+        "第 13 条 · 说明 13",
+        "21:50:00",
+        "第 12 条",
+        "21:50:00",
+        "第 11 条 · 说明 11",
+        "21:50:00",
+        "第 10 条",
+        "21:50:00",
+        "第 9 条 · 说明 9",
+        "21:50:00",
+        "第 8 条",
+        "21:50:00",
+        "第 7 条 · 说明 7",
+        "21:50:00",
+        "第 6 条",
+        "21:50:00",
+        "第 5 条 · 说明 5",
+        "21:50:00",
+        "第 4 条",
+        "21:50:00",
+        "第 3 条 · 说明 3",
+        "21:50:00",
+        "第 2 条"
+      ],
+      "stages": [
+        {
+          "tile": "orange",
+          "steps": [
+            "now",
+            "",
+            "",
+            ""
+          ]
+        },
+        {
+          "tile": "green",
+          "steps": [
+            "done",
+            "done",
+            "done"
+          ]
+        },
+        {
+          "tile": "gray",
+          "steps": [
+            "done",
+            "now",
+            ""
+          ]
+        },
+        {
+          "tile": "blue",
+          "steps": [
+            "done",
+            "done",
+            "now"
+          ]
+        }
+      ],
+      "pills": [
+        "up",
+        "green",
+        "up",
+        "gray",
+        "up",
+        "blue"
+      ]
+    }
+  ]
+}

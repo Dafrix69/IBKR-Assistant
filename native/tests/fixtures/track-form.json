@@ -1,0 +1,2676 @@
+{
+  "generator": "native/tests/fixtures/gen_track_form.mjs",
+  "defaults": {
+    "stk": {
+      "position": {
+        "key": "k:NVDA",
+        "symbol": "NVDA",
+        "sec_type": "STK",
+        "quantity": 100,
+        "account": "模拟"
+      },
+      "values": {
+        "tp": null,
+        "sl": null,
+        "trail": null,
+        "profitDd": null,
+        "ddArm": 10,
+        "tiers": false,
+        "spotTarget": null,
+        "stopBelow": null,
+        "stopAbove": null,
+        "fraction": null,
+        "chaseMax": null,
+        "autoPicked": null,
+        "orderType": "MKT",
+        "host": false,
+        "exits": {
+          "exitAt": "",
+          "stopConfirm": null,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": []
+        }
+      }
+    },
+    "short": {
+      "position": {
+        "key": "k:TSLA",
+        "symbol": "TSLA",
+        "sec_type": "STK",
+        "quantity": -50,
+        "account": "主账户"
+      },
+      "values": {
+        "tp": null,
+        "sl": null,
+        "trail": null,
+        "profitDd": null,
+        "ddArm": 10,
+        "tiers": false,
+        "spotTarget": null,
+        "stopBelow": null,
+        "stopAbove": null,
+        "fraction": null,
+        "chaseMax": null,
+        "autoPicked": null,
+        "orderType": "MKT",
+        "host": false,
+        "exits": {
+          "exitAt": "",
+          "stopConfirm": null,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": []
+        }
+      }
+    },
+    "opt": {
+      "position": {
+        "key": "k:SPXC",
+        "symbol": "SPX",
+        "sec_type": "OPT",
+        "quantity": 2,
+        "account": "主账户"
+      },
+      "values": {
+        "tp": null,
+        "sl": null,
+        "trail": null,
+        "profitDd": null,
+        "ddArm": 10,
+        "tiers": false,
+        "spotTarget": null,
+        "stopBelow": null,
+        "stopAbove": null,
+        "fraction": null,
+        "chaseMax": null,
+        "autoPicked": null,
+        "orderType": "MKT",
+        "host": false,
+        "exits": {
+          "exitAt": "",
+          "stopConfirm": null,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": []
+        }
+      }
+    },
+    "bag": {
+      "position": {
+        "key": "k:SPXFLY",
+        "symbol": "SPX",
+        "sec_type": "BAG",
+        "quantity": 1,
+        "account": "主账户"
+      },
+      "values": {
+        "tp": null,
+        "sl": null,
+        "trail": null,
+        "profitDd": null,
+        "ddArm": 10,
+        "tiers": false,
+        "spotTarget": null,
+        "stopBelow": null,
+        "stopAbove": null,
+        "fraction": null,
+        "chaseMax": null,
+        "autoPicked": null,
+        "orderType": "LMT",
+        "host": false,
+        "exits": {
+          "exitAt": "",
+          "stopConfirm": null,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": []
+        }
+      }
+    }
+  },
+  "cases": [
+    {
+      "name": "仅提醒的正股",
+      "position": {
+        "key": "k:NVDA",
+        "symbol": "NVDA",
+        "sec_type": "STK",
+        "quantity": 100,
+        "account": "模拟"
+      },
+      "values": {
+        "tp": 200,
+        "sl": 170
+      },
+      "autoExecute": false,
+      "previews": [],
+      "confirms": [],
+      "addResult": {
+        "track": {
+          "id": "t1"
+        }
+      },
+      "spec": {
+        "key": "k:NVDA",
+        "take_profit": "200",
+        "stop_loss": "170",
+        "trail_pct": "",
+        "profit_drawdown_pct": "",
+        "profit_drawdown_arm_pct": "",
+        "spot_target": "",
+        "spot_stop_below": "",
+        "spot_stop_above": "",
+        "auto_close": false,
+        "order_type": "MKT",
+        "host_at_broker": false,
+        "exit_at": "",
+        "spot_stop_confirm_s": "",
+        "take_profit_tiers": ""
+      },
+      "schemaOk": true,
+      "schemaIssues": [],
+      "calls": [
+        {
+          "call": "saving",
+          "on": true
+        },
+        {
+          "call": "add",
+          "spec": {
+            "key": "k:NVDA",
+            "take_profit": "200",
+            "stop_loss": "170",
+            "trail_pct": "",
+            "profit_drawdown_pct": "",
+            "profit_drawdown_arm_pct": "",
+            "spot_target": "",
+            "spot_stop_below": "",
+            "spot_stop_above": "",
+            "auto_close": false,
+            "order_type": "MKT",
+            "host_at_broker": false,
+            "exit_at": "",
+            "spot_stop_confirm_s": "",
+            "take_profit_tiers": ""
+          }
+        },
+        {
+          "call": "banner",
+          "text": "已开始追踪 NVDA,下面「正在追踪」里可以看盯盘进度。",
+          "info": true
+        },
+        {
+          "call": "reload",
+          "refresh": true
+        },
+        {
+          "call": "created",
+          "id": "t1"
+        },
+        {
+          "call": "saving",
+          "on": false
+        }
+      ]
+    },
+    {
+      "name": "正股开自动平仓",
+      "position": {
+        "key": "k:NVDA",
+        "symbol": "NVDA",
+        "sec_type": "STK",
+        "quantity": 100,
+        "account": "模拟"
+      },
+      "values": {
+        "sl": 170,
+        "trail": 5,
+        "autoPicked": true
+      },
+      "autoExecute": false,
+      "previews": [],
+      "confirms": [
+        true
+      ],
+      "addResult": {
+        "track": {
+          "id": "t2"
+        }
+      },
+      "spec": {
+        "key": "k:NVDA",
+        "take_profit": "",
+        "stop_loss": "170",
+        "trail_pct": "5",
+        "profit_drawdown_pct": "",
+        "profit_drawdown_arm_pct": "",
+        "spot_target": "",
+        "spot_stop_below": "",
+        "spot_stop_above": "",
+        "auto_close": true,
+        "order_type": "MKT",
+        "host_at_broker": false,
+        "exit_at": "",
+        "spot_stop_confirm_s": "",
+        "take_profit_tiers": ""
+      },
+      "schemaOk": true,
+      "schemaIssues": [],
+      "calls": [
+        {
+          "call": "confirm",
+          "purpose": "tracker.add",
+          "binding": {
+            "key": "k:NVDA",
+            "take_profit": "",
+            "stop_loss": "170",
+            "trail_pct": "5",
+            "profit_drawdown_pct": "",
+            "profit_drawdown_arm_pct": "",
+            "spot_target": "",
+            "spot_stop_below": "",
+            "spot_stop_above": "",
+            "auto_close": true,
+            "order_type": "MKT",
+            "host_at_broker": false,
+            "exit_at": "",
+            "spot_stop_confirm_s": "",
+            "take_profit_tiers": ""
+          },
+          "title": "开启到价自动平仓",
+          "message": "NVDA 到价后会自动发出平仓单,不再询问。",
+          "detail": "数量 100 · 账户 模拟 · 市价平仓\n软件关闭后不再盯盘。",
+          "confirmLabel": "我确认"
+        },
+        {
+          "call": "saving",
+          "on": true
+        },
+        {
+          "call": "add",
+          "spec": {
+            "key": "k:NVDA",
+            "take_profit": "",
+            "stop_loss": "170",
+            "trail_pct": "5",
+            "profit_drawdown_pct": "",
+            "profit_drawdown_arm_pct": "",
+            "spot_target": "",
+            "spot_stop_below": "",
+            "spot_stop_above": "",
+            "auto_close": true,
+            "order_type": "MKT",
+            "host_at_broker": false,
+            "exit_at": "",
+            "spot_stop_confirm_s": "",
+            "take_profit_tiers": ""
+          }
+        },
+        {
+          "call": "banner",
+          "text": "已开始追踪 NVDA,下面「正在追踪」里可以看盯盘进度。",
+          "info": true
+        },
+        {
+          "call": "reload",
+          "refresh": true
+        },
+        {
+          "call": "created",
+          "id": "t2"
+        },
+        {
+          "call": "saving",
+          "on": false
+        }
+      ]
+    },
+    {
+      "name": "全局自动执行开着:默认打开",
+      "position": {
+        "key": "k:NVDA",
+        "symbol": "NVDA",
+        "sec_type": "STK",
+        "quantity": 100,
+        "account": "模拟"
+      },
+      "values": {
+        "sl": 170
+      },
+      "autoExecute": true,
+      "previews": [],
+      "confirms": [
+        true
+      ],
+      "addResult": {
+        "track": {
+          "id": "t2b"
+        }
+      },
+      "spec": {
+        "key": "k:NVDA",
+        "take_profit": "",
+        "stop_loss": "170",
+        "trail_pct": "",
+        "profit_drawdown_pct": "",
+        "profit_drawdown_arm_pct": "",
+        "spot_target": "",
+        "spot_stop_below": "",
+        "spot_stop_above": "",
+        "auto_close": true,
+        "order_type": "MKT",
+        "host_at_broker": false,
+        "exit_at": "",
+        "spot_stop_confirm_s": "",
+        "take_profit_tiers": ""
+      },
+      "schemaOk": true,
+      "schemaIssues": [],
+      "calls": [
+        {
+          "call": "confirm",
+          "purpose": "tracker.add",
+          "binding": {
+            "key": "k:NVDA",
+            "take_profit": "",
+            "stop_loss": "170",
+            "trail_pct": "",
+            "profit_drawdown_pct": "",
+            "profit_drawdown_arm_pct": "",
+            "spot_target": "",
+            "spot_stop_below": "",
+            "spot_stop_above": "",
+            "auto_close": true,
+            "order_type": "MKT",
+            "host_at_broker": false,
+            "exit_at": "",
+            "spot_stop_confirm_s": "",
+            "take_profit_tiers": ""
+          },
+          "title": "开启到价自动平仓",
+          "message": "NVDA 到价后会自动发出平仓单,不再询问。",
+          "detail": "数量 100 · 账户 模拟 · 市价平仓\n软件关闭后不再盯盘。",
+          "confirmLabel": "我确认"
+        },
+        {
+          "call": "saving",
+          "on": true
+        },
+        {
+          "call": "add",
+          "spec": {
+            "key": "k:NVDA",
+            "take_profit": "",
+            "stop_loss": "170",
+            "trail_pct": "",
+            "profit_drawdown_pct": "",
+            "profit_drawdown_arm_pct": "",
+            "spot_target": "",
+            "spot_stop_below": "",
+            "spot_stop_above": "",
+            "auto_close": true,
+            "order_type": "MKT",
+            "host_at_broker": false,
+            "exit_at": "",
+            "spot_stop_confirm_s": "",
+            "take_profit_tiers": ""
+          }
+        },
+        {
+          "call": "banner",
+          "text": "已开始追踪 NVDA,下面「正在追踪」里可以看盯盘进度。",
+          "info": true
+        },
+        {
+          "call": "reload",
+          "refresh": true
+        },
+        {
+          "call": "created",
+          "id": "t2b"
+        },
+        {
+          "call": "saving",
+          "on": false
+        }
+      ]
+    },
+    {
+      "name": "确认框点了取消",
+      "position": {
+        "key": "k:NVDA",
+        "symbol": "NVDA",
+        "sec_type": "STK",
+        "quantity": 100,
+        "account": "模拟"
+      },
+      "values": {
+        "sl": 170,
+        "autoPicked": true
+      },
+      "autoExecute": false,
+      "previews": [],
+      "confirms": [
+        false
+      ],
+      "addResult": null,
+      "spec": {
+        "key": "k:NVDA",
+        "take_profit": "",
+        "stop_loss": "170",
+        "trail_pct": "",
+        "profit_drawdown_pct": "",
+        "profit_drawdown_arm_pct": "",
+        "spot_target": "",
+        "spot_stop_below": "",
+        "spot_stop_above": "",
+        "auto_close": true,
+        "order_type": "MKT",
+        "host_at_broker": false,
+        "exit_at": "",
+        "spot_stop_confirm_s": "",
+        "take_profit_tiers": ""
+      },
+      "schemaOk": true,
+      "schemaIssues": [],
+      "calls": [
+        {
+          "call": "confirm",
+          "purpose": "tracker.add",
+          "binding": {
+            "key": "k:NVDA",
+            "take_profit": "",
+            "stop_loss": "170",
+            "trail_pct": "",
+            "profit_drawdown_pct": "",
+            "profit_drawdown_arm_pct": "",
+            "spot_target": "",
+            "spot_stop_below": "",
+            "spot_stop_above": "",
+            "auto_close": true,
+            "order_type": "MKT",
+            "host_at_broker": false,
+            "exit_at": "",
+            "spot_stop_confirm_s": "",
+            "take_profit_tiers": ""
+          },
+          "title": "开启到价自动平仓",
+          "message": "NVDA 到价后会自动发出平仓单,不再询问。",
+          "detail": "数量 100 · 账户 模拟 · 市价平仓\n软件关闭后不再盯盘。",
+          "confirmLabel": "我确认"
+        }
+      ]
+    },
+    {
+      "name": "托管却没开自动平仓",
+      "position": {
+        "key": "k:NVDA",
+        "symbol": "NVDA",
+        "sec_type": "STK",
+        "quantity": 100,
+        "account": "模拟"
+      },
+      "values": {
+        "sl": 170,
+        "host": true
+      },
+      "autoExecute": false,
+      "previews": [],
+      "confirms": [],
+      "addResult": null,
+      "spec": {
+        "key": "k:NVDA",
+        "take_profit": "",
+        "stop_loss": "170",
+        "trail_pct": "",
+        "profit_drawdown_pct": "",
+        "profit_drawdown_arm_pct": "",
+        "spot_target": "",
+        "spot_stop_below": "",
+        "spot_stop_above": "",
+        "auto_close": false,
+        "order_type": "MKT",
+        "host_at_broker": true,
+        "exit_at": "",
+        "spot_stop_confirm_s": "",
+        "take_profit_tiers": ""
+      },
+      "schemaOk": true,
+      "schemaIssues": [],
+      "calls": [
+        {
+          "call": "banner",
+          "text": "托管到券商需先打开「到价自动平仓」:挂托管单即发单授权。",
+          "info": false
+        }
+      ]
+    },
+    {
+      "name": "正股托管",
+      "position": {
+        "key": "k:NVDA",
+        "symbol": "NVDA",
+        "sec_type": "STK",
+        "quantity": 100,
+        "account": "模拟"
+      },
+      "values": {
+        "tp": 200,
+        "sl": 170,
+        "host": true,
+        "autoPicked": true,
+        "orderType": "LMT"
+      },
+      "autoExecute": false,
+      "previews": [],
+      "confirms": [
+        true
+      ],
+      "addResult": {
+        "track": {
+          "id": "t3"
+        }
+      },
+      "spec": {
+        "key": "k:NVDA",
+        "take_profit": "200",
+        "stop_loss": "170",
+        "trail_pct": "",
+        "profit_drawdown_pct": "",
+        "profit_drawdown_arm_pct": "",
+        "spot_target": "",
+        "spot_stop_below": "",
+        "spot_stop_above": "",
+        "auto_close": true,
+        "order_type": "LMT",
+        "host_at_broker": true,
+        "exit_at": "",
+        "spot_stop_confirm_s": "",
+        "take_profit_tiers": ""
+      },
+      "schemaOk": true,
+      "schemaIssues": [],
+      "calls": [
+        {
+          "call": "confirm",
+          "purpose": "tracker.add",
+          "binding": {
+            "key": "k:NVDA",
+            "take_profit": "200",
+            "stop_loss": "170",
+            "trail_pct": "",
+            "profit_drawdown_pct": "",
+            "profit_drawdown_arm_pct": "",
+            "spot_target": "",
+            "spot_stop_below": "",
+            "spot_stop_above": "",
+            "auto_close": true,
+            "order_type": "LMT",
+            "host_at_broker": true,
+            "exit_at": "",
+            "spot_stop_confirm_s": "",
+            "take_profit_tiers": ""
+          },
+          "title": "托管到券商服务器",
+          "message": "NVDA 的止盈/止损将作为 GTC 单挂在券商服务器上。",
+          "detail": "数量 100 · 账户 模拟\n这张 GTC 限价单会立刻挂到券商服务器上;软件关闭后它仍然有效,价格停在最后一次调整的位置。\n触发由券商实时行情决定,一张成交其余自动撤销(OCA)。",
+          "confirmLabel": "我确认"
+        },
+        {
+          "call": "saving",
+          "on": true
+        },
+        {
+          "call": "add",
+          "spec": {
+            "key": "k:NVDA",
+            "take_profit": "200",
+            "stop_loss": "170",
+            "trail_pct": "",
+            "profit_drawdown_pct": "",
+            "profit_drawdown_arm_pct": "",
+            "spot_target": "",
+            "spot_stop_below": "",
+            "spot_stop_above": "",
+            "auto_close": true,
+            "order_type": "LMT",
+            "host_at_broker": true,
+            "exit_at": "",
+            "spot_stop_confirm_s": "",
+            "take_profit_tiers": ""
+          }
+        },
+        {
+          "call": "banner",
+          "text": "已开始追踪 NVDA,下面「正在追踪」里可以看盯盘进度。",
+          "info": true
+        },
+        {
+          "call": "reload",
+          "refresh": true
+        },
+        {
+          "call": "created",
+          "id": "t3"
+        },
+        {
+          "call": "saving",
+          "on": false
+        }
+      ]
+    },
+    {
+      "name": "空头正股",
+      "position": {
+        "key": "k:TSLA",
+        "symbol": "TSLA",
+        "sec_type": "STK",
+        "quantity": -50,
+        "account": "主账户"
+      },
+      "values": {
+        "tp": 250,
+        "sl": 300,
+        "fraction": 50,
+        "autoPicked": true
+      },
+      "autoExecute": false,
+      "previews": [],
+      "confirms": [
+        true
+      ],
+      "addResult": {},
+      "spec": {
+        "key": "k:TSLA",
+        "take_profit": "250",
+        "stop_loss": "300",
+        "trail_pct": "",
+        "profit_drawdown_pct": "",
+        "profit_drawdown_arm_pct": "",
+        "spot_target": "",
+        "spot_stop_below": "",
+        "spot_stop_above": "",
+        "close_fraction_pct": "50",
+        "auto_close": true,
+        "order_type": "MKT",
+        "host_at_broker": false,
+        "exit_at": "",
+        "spot_stop_confirm_s": "",
+        "take_profit_tiers": ""
+      },
+      "schemaOk": true,
+      "schemaIssues": [],
+      "calls": [
+        {
+          "call": "confirm",
+          "purpose": "tracker.add",
+          "binding": {
+            "key": "k:TSLA",
+            "take_profit": "250",
+            "stop_loss": "300",
+            "trail_pct": "",
+            "profit_drawdown_pct": "",
+            "profit_drawdown_arm_pct": "",
+            "spot_target": "",
+            "spot_stop_below": "",
+            "spot_stop_above": "",
+            "close_fraction_pct": "50",
+            "auto_close": true,
+            "order_type": "MKT",
+            "host_at_broker": false,
+            "exit_at": "",
+            "spot_stop_confirm_s": "",
+            "take_profit_tiers": ""
+          },
+          "title": "开启到价自动平仓",
+          "message": "TSLA 到价后会自动发出平仓单,不再询问。",
+          "detail": "数量 50 · 账户 主账户 · 市价平仓\n软件关闭后不再盯盘。",
+          "confirmLabel": "我确认"
+        },
+        {
+          "call": "saving",
+          "on": true
+        },
+        {
+          "call": "add",
+          "spec": {
+            "key": "k:TSLA",
+            "take_profit": "250",
+            "stop_loss": "300",
+            "trail_pct": "",
+            "profit_drawdown_pct": "",
+            "profit_drawdown_arm_pct": "",
+            "spot_target": "",
+            "spot_stop_below": "",
+            "spot_stop_above": "",
+            "close_fraction_pct": "50",
+            "auto_close": true,
+            "order_type": "MKT",
+            "host_at_broker": false,
+            "exit_at": "",
+            "spot_stop_confirm_s": "",
+            "take_profit_tiers": ""
+          }
+        },
+        {
+          "call": "banner",
+          "text": "已开始追踪 TSLA,下面「正在追踪」里可以看盯盘进度。",
+          "info": true
+        },
+        {
+          "call": "reload",
+          "refresh": true
+        },
+        {
+          "call": "created",
+          "id": null
+        },
+        {
+          "call": "saving",
+          "on": false
+        }
+      ]
+    },
+    {
+      "name": "期权按标的目标价",
+      "position": {
+        "key": "k:SPXC",
+        "symbol": "SPX",
+        "sec_type": "OPT",
+        "quantity": 2,
+        "account": "主账户"
+      },
+      "values": {
+        "spotTarget": 7750,
+        "autoPicked": true,
+        "chaseMax": 20
+      },
+      "autoExecute": false,
+      "previews": [
+        {
+          "spot_target": {
+            "price": 5.2,
+            "pnl": 340,
+            "pnl_pct": 65.4,
+            "natural": 4.9,
+            "sigma_source": "smile",
+            "spot": 7712.4
+          }
+        }
+      ],
+      "confirms": [
+        true
+      ],
+      "addResult": {
+        "track": {
+          "id": "t4"
+        }
+      },
+      "spec": {
+        "key": "k:SPXC",
+        "take_profit": "",
+        "stop_loss": "",
+        "trail_pct": "",
+        "profit_drawdown_pct": "",
+        "profit_drawdown_arm_pct": "",
+        "spot_target": "7750",
+        "spot_stop_below": "",
+        "spot_stop_above": "",
+        "chase_max_pct": "20",
+        "auto_close": true,
+        "order_type": "MKT",
+        "host_at_broker": false,
+        "exit_at": "",
+        "spot_stop_confirm_s": "",
+        "take_profit_tiers": "",
+        "stop_basis": "mid"
+      },
+      "schemaOk": true,
+      "schemaIssues": [],
+      "calls": [
+        {
+          "call": "saving",
+          "on": true
+        },
+        {
+          "call": "preview",
+          "key": "k:SPXC",
+          "target": 7750,
+          "chaseMax": 20
+        },
+        {
+          "call": "saving",
+          "on": false
+        },
+        {
+          "call": "confirm",
+          "purpose": "tracker.add",
+          "binding": {
+            "key": "k:SPXC",
+            "take_profit": "",
+            "stop_loss": "",
+            "trail_pct": "",
+            "profit_drawdown_pct": "",
+            "profit_drawdown_arm_pct": "",
+            "spot_target": "7750",
+            "spot_stop_below": "",
+            "spot_stop_above": "",
+            "chase_max_pct": "20",
+            "auto_close": true,
+            "order_type": "MKT",
+            "host_at_broker": false,
+            "exit_at": "",
+            "spot_stop_confirm_s": "",
+            "take_profit_tiers": "",
+            "stop_basis": "mid"
+          },
+          "title": "确认这个止盈价位,并开启自动平仓",
+          "message": "SPX 到 7750.00 就走,现在算下来约 5.20。",
+          "detail": "SPX 到 7750.00 → 价格约 5.20,预估收益 340.00\n这个价按当前波动率算出来,软件开着时每秒重算并改单——标的真走到 7750.00 时\n挂的就是那一刻的价,不是现在这个数。\n标的真到了 7750.00(软件开着时按秒盯),不等期权价追上来,直接按各腿当时的买卖价挂立刻成交的价平掉,没成交就每秒再追。\n数量 2 · 账户 主账户 · 市价平仓\n软件关闭后不再盯盘。",
+          "confirmLabel": "同意这个价,开始追踪"
+        },
+        {
+          "call": "saving",
+          "on": true
+        },
+        {
+          "call": "add",
+          "spec": {
+            "key": "k:SPXC",
+            "take_profit": "",
+            "stop_loss": "",
+            "trail_pct": "",
+            "profit_drawdown_pct": "",
+            "profit_drawdown_arm_pct": "",
+            "spot_target": "7750",
+            "spot_stop_below": "",
+            "spot_stop_above": "",
+            "chase_max_pct": "20",
+            "auto_close": true,
+            "order_type": "MKT",
+            "host_at_broker": false,
+            "exit_at": "",
+            "spot_stop_confirm_s": "",
+            "take_profit_tiers": "",
+            "stop_basis": "mid"
+          }
+        },
+        {
+          "call": "banner",
+          "text": "已开始追踪 SPX,下面「正在追踪」里可以看盯盘进度。",
+          "info": true
+        },
+        {
+          "call": "reload",
+          "refresh": true
+        },
+        {
+          "call": "created",
+          "id": "t4"
+        },
+        {
+          "call": "saving",
+          "on": false
+        }
+      ]
+    },
+    {
+      "name": "试算是模型默认波动率",
+      "position": {
+        "key": "k:SPXC",
+        "symbol": "SPX",
+        "sec_type": "OPT",
+        "quantity": 2,
+        "account": "主账户"
+      },
+      "values": {
+        "spotTarget": 7750,
+        "autoPicked": true
+      },
+      "autoExecute": false,
+      "previews": [
+        {
+          "spot_target": {
+            "price": 5.2,
+            "pnl": 340,
+            "pnl_pct": 65.4,
+            "natural": 4.9,
+            "sigma_source": "clock",
+            "spot": 7712.4
+          }
+        }
+      ],
+      "confirms": [],
+      "addResult": null,
+      "spec": {
+        "key": "k:SPXC",
+        "take_profit": "",
+        "stop_loss": "",
+        "trail_pct": "",
+        "profit_drawdown_pct": "",
+        "profit_drawdown_arm_pct": "",
+        "spot_target": "7750",
+        "spot_stop_below": "",
+        "spot_stop_above": "",
+        "auto_close": true,
+        "order_type": "MKT",
+        "host_at_broker": false,
+        "exit_at": "",
+        "spot_stop_confirm_s": "",
+        "take_profit_tiers": "",
+        "stop_basis": "mid"
+      },
+      "schemaOk": true,
+      "schemaIssues": [],
+      "calls": [
+        {
+          "call": "saving",
+          "on": true
+        },
+        {
+          "call": "preview",
+          "key": "k:SPXC",
+          "target": 7750,
+          "chaseMax": null
+        },
+        {
+          "call": "saving",
+          "on": false
+        },
+        {
+          "call": "banner",
+          "text": "现在拿不到市场报价,这个价是按模型默认波动率算的参考值,不能拿它发单。等行情来了再设。",
+          "info": false
+        }
+      ]
+    },
+    {
+      "name": "试算带警告",
+      "position": {
+        "key": "k:SPXC",
+        "symbol": "SPX",
+        "sec_type": "OPT",
+        "quantity": 2,
+        "account": "主账户"
+      },
+      "values": {
+        "spotTarget": 7750,
+        "autoPicked": true
+      },
+      "autoExecute": false,
+      "previews": [
+        {
+          "spot_target": {
+            "price": 5.2,
+            "pnl": 340,
+            "pnl_pct": 65.4,
+            "natural": 4.9,
+            "sigma_source": "smile",
+            "spot": 7712.4,
+            "warning": "盘口太宽,这个价不可信"
+          }
+        }
+      ],
+      "confirms": [],
+      "addResult": null,
+      "spec": {
+        "key": "k:SPXC",
+        "take_profit": "",
+        "stop_loss": "",
+        "trail_pct": "",
+        "profit_drawdown_pct": "",
+        "profit_drawdown_arm_pct": "",
+        "spot_target": "7750",
+        "spot_stop_below": "",
+        "spot_stop_above": "",
+        "auto_close": true,
+        "order_type": "MKT",
+        "host_at_broker": false,
+        "exit_at": "",
+        "spot_stop_confirm_s": "",
+        "take_profit_tiers": "",
+        "stop_basis": "mid"
+      },
+      "schemaOk": true,
+      "schemaIssues": [],
+      "calls": [
+        {
+          "call": "saving",
+          "on": true
+        },
+        {
+          "call": "preview",
+          "key": "k:SPXC",
+          "target": 7750,
+          "chaseMax": null
+        },
+        {
+          "call": "saving",
+          "on": false
+        },
+        {
+          "call": "banner",
+          "text": "盘口太宽,这个价不可信",
+          "info": false
+        }
+      ]
+    },
+    {
+      "name": "试算报错",
+      "position": {
+        "key": "k:SPXC",
+        "symbol": "SPX",
+        "sec_type": "OPT",
+        "quantity": 2,
+        "account": "主账户"
+      },
+      "values": {
+        "spotTarget": 7750,
+        "autoPicked": true
+      },
+      "autoExecute": false,
+      "previews": [
+        "throw:读道满了"
+      ],
+      "confirms": [],
+      "addResult": null,
+      "spec": {
+        "key": "k:SPXC",
+        "take_profit": "",
+        "stop_loss": "",
+        "trail_pct": "",
+        "profit_drawdown_pct": "",
+        "profit_drawdown_arm_pct": "",
+        "spot_target": "7750",
+        "spot_stop_below": "",
+        "spot_stop_above": "",
+        "auto_close": true,
+        "order_type": "MKT",
+        "host_at_broker": false,
+        "exit_at": "",
+        "spot_stop_confirm_s": "",
+        "take_profit_tiers": "",
+        "stop_basis": "mid"
+      },
+      "schemaOk": true,
+      "schemaIssues": [],
+      "calls": [
+        {
+          "call": "saving",
+          "on": true
+        },
+        {
+          "call": "preview",
+          "key": "k:SPXC",
+          "target": 7750,
+          "chaseMax": null
+        },
+        {
+          "call": "banner",
+          "text": "读道满了",
+          "info": false
+        },
+        {
+          "call": "saving",
+          "on": false
+        },
+        {
+          "call": "saving",
+          "on": false
+        }
+      ]
+    },
+    {
+      "name": "试算算不出价",
+      "position": {
+        "key": "k:SPXC",
+        "symbol": "SPX",
+        "sec_type": "OPT",
+        "quantity": 2,
+        "account": "主账户"
+      },
+      "values": {
+        "spotTarget": 7750,
+        "autoPicked": true
+      },
+      "autoExecute": false,
+      "previews": [
+        {
+          "spot_target": {
+            "price": null,
+            "reason": "行情断了"
+          }
+        }
+      ],
+      "confirms": [],
+      "addResult": null,
+      "spec": {
+        "key": "k:SPXC",
+        "take_profit": "",
+        "stop_loss": "",
+        "trail_pct": "",
+        "profit_drawdown_pct": "",
+        "profit_drawdown_arm_pct": "",
+        "spot_target": "7750",
+        "spot_stop_below": "",
+        "spot_stop_above": "",
+        "auto_close": true,
+        "order_type": "MKT",
+        "host_at_broker": false,
+        "exit_at": "",
+        "spot_stop_confirm_s": "",
+        "take_profit_tiers": "",
+        "stop_basis": "mid"
+      },
+      "schemaOk": true,
+      "schemaIssues": [],
+      "calls": [
+        {
+          "call": "saving",
+          "on": true
+        },
+        {
+          "call": "preview",
+          "key": "k:SPXC",
+          "target": 7750,
+          "chaseMax": null
+        },
+        {
+          "call": "saving",
+          "on": false
+        },
+        {
+          "call": "banner",
+          "text": "行情断了",
+          "info": false
+        }
+      ]
+    },
+    {
+      "name": "试算算不出价也没原因",
+      "position": {
+        "key": "k:SPXC",
+        "symbol": "SPX",
+        "sec_type": "OPT",
+        "quantity": 2,
+        "account": "主账户"
+      },
+      "values": {
+        "spotTarget": 7750,
+        "autoPicked": true
+      },
+      "autoExecute": false,
+      "previews": [
+        {
+          "spot_target": null
+        }
+      ],
+      "confirms": [],
+      "addResult": null,
+      "spec": {
+        "key": "k:SPXC",
+        "take_profit": "",
+        "stop_loss": "",
+        "trail_pct": "",
+        "profit_drawdown_pct": "",
+        "profit_drawdown_arm_pct": "",
+        "spot_target": "7750",
+        "spot_stop_below": "",
+        "spot_stop_above": "",
+        "auto_close": true,
+        "order_type": "MKT",
+        "host_at_broker": false,
+        "exit_at": "",
+        "spot_stop_confirm_s": "",
+        "take_profit_tiers": "",
+        "stop_basis": "mid"
+      },
+      "schemaOk": true,
+      "schemaIssues": [],
+      "calls": [
+        {
+          "call": "saving",
+          "on": true
+        },
+        {
+          "call": "preview",
+          "key": "k:SPXC",
+          "target": 7750,
+          "chaseMax": null
+        },
+        {
+          "call": "saving",
+          "on": false
+        },
+        {
+          "call": "banner",
+          "text": "这一刻算不出 SPX 到 7750 的价格,先别发单。",
+          "info": false
+        }
+      ]
+    },
+    {
+      "name": "目标价但只提醒:不试算",
+      "position": {
+        "key": "k:SPXC",
+        "symbol": "SPX",
+        "sec_type": "OPT",
+        "quantity": 2,
+        "account": "主账户"
+      },
+      "values": {
+        "spotTarget": 7750,
+        "tp": 9
+      },
+      "autoExecute": false,
+      "previews": [],
+      "confirms": [],
+      "addResult": {
+        "track": {
+          "id": "t5"
+        }
+      },
+      "spec": {
+        "key": "k:SPXC",
+        "take_profit": "",
+        "stop_loss": "",
+        "trail_pct": "",
+        "profit_drawdown_pct": "",
+        "profit_drawdown_arm_pct": "",
+        "spot_target": "7750",
+        "spot_stop_below": "",
+        "spot_stop_above": "",
+        "auto_close": false,
+        "order_type": "MKT",
+        "host_at_broker": false,
+        "exit_at": "",
+        "spot_stop_confirm_s": "",
+        "take_profit_tiers": "",
+        "stop_basis": "mid"
+      },
+      "schemaOk": true,
+      "schemaIssues": [],
+      "calls": [
+        {
+          "call": "saving",
+          "on": true
+        },
+        {
+          "call": "add",
+          "spec": {
+            "key": "k:SPXC",
+            "take_profit": "",
+            "stop_loss": "",
+            "trail_pct": "",
+            "profit_drawdown_pct": "",
+            "profit_drawdown_arm_pct": "",
+            "spot_target": "7750",
+            "spot_stop_below": "",
+            "spot_stop_above": "",
+            "auto_close": false,
+            "order_type": "MKT",
+            "host_at_broker": false,
+            "exit_at": "",
+            "spot_stop_confirm_s": "",
+            "take_profit_tiers": "",
+            "stop_basis": "mid"
+          }
+        },
+        {
+          "call": "banner",
+          "text": "已开始追踪 SPX,下面「正在追踪」里可以看盯盘进度。",
+          "info": true
+        },
+        {
+          "call": "reload",
+          "refresh": true
+        },
+        {
+          "call": "created",
+          "id": "t5"
+        },
+        {
+          "call": "saving",
+          "on": false
+        }
+      ]
+    },
+    {
+      "name": "组合托管、盘外推算",
+      "position": {
+        "key": "k:SPXFLY",
+        "symbol": "SPX",
+        "sec_type": "BAG",
+        "quantity": 1,
+        "account": "主账户"
+      },
+      "values": {
+        "spotTarget": 7725,
+        "host": true,
+        "autoPicked": true,
+        "orderType": "LMT",
+        "stopBelow": 7680
+      },
+      "autoExecute": false,
+      "previews": [
+        {
+          "spot_target": {
+            "price": 5.2,
+            "pnl": 340,
+            "pnl_pct": 65.4,
+            "natural": 4.9,
+            "sigma_source": "smile",
+            "spot": 7701.25,
+            "spot_note": "盘外按 ES 推算"
+          }
+        }
+      ],
+      "confirms": [
+        true
+      ],
+      "addResult": {
+        "track": {
+          "id": "t6"
+        }
+      },
+      "spec": {
+        "key": "k:SPXFLY",
+        "take_profit": "",
+        "stop_loss": "",
+        "trail_pct": "",
+        "profit_drawdown_pct": "",
+        "profit_drawdown_arm_pct": "",
+        "spot_target": "7725",
+        "spot_stop_below": "7680",
+        "spot_stop_above": "",
+        "auto_close": true,
+        "order_type": "LMT",
+        "host_at_broker": true,
+        "exit_at": "",
+        "spot_stop_confirm_s": "",
+        "take_profit_tiers": "",
+        "stop_basis": "mid"
+      },
+      "schemaOk": true,
+      "schemaIssues": [],
+      "calls": [
+        {
+          "call": "saving",
+          "on": true
+        },
+        {
+          "call": "preview",
+          "key": "k:SPXFLY",
+          "target": 7725,
+          "chaseMax": null
+        },
+        {
+          "call": "saving",
+          "on": false
+        },
+        {
+          "call": "confirm",
+          "purpose": "tracker.add",
+          "binding": {
+            "key": "k:SPXFLY",
+            "take_profit": "",
+            "stop_loss": "",
+            "trail_pct": "",
+            "profit_drawdown_pct": "",
+            "profit_drawdown_arm_pct": "",
+            "spot_target": "7725",
+            "spot_stop_below": "7680",
+            "spot_stop_above": "",
+            "auto_close": true,
+            "order_type": "LMT",
+            "host_at_broker": true,
+            "exit_at": "",
+            "spot_stop_confirm_s": "",
+            "take_profit_tiers": "",
+            "stop_basis": "mid"
+          },
+          "title": "确认这个止盈价位,并挂到券商",
+          "message": "SPX 到 7725.00 就走,现在算下来约 5.20。",
+          "detail": "现价 7701.25:盘外按 ES 推算\nSPX 到 7725.00 → 组合净价约 5.20,预估收益 340.00\n这个价按当前波动率算出来,软件开着时每秒重算并改单——标的真走到 7725.00 时\n挂的就是那一刻的价,不是现在这个数。\n标的真到了 7725.00(软件开着时按秒盯),不等组合价追上来,直接按各腿当时的买卖价挂立刻成交的价平掉,没成交就每秒再追。\n标的止损:SPX 跌到 7680 就平,记作止损。只看标的现价,不看这份持仓值多少;软件开着时按秒盯。\n数量 1 · 账户 主账户\n这张 GTC 限价单会立刻挂到券商服务器上;软件关闭后它仍然有效,价格停在最后一次调整的位置。\n触发由券商实时行情决定,一张成交其余自动撤销(OCA)。",
+          "confirmLabel": "同意这个价,挂单"
+        },
+        {
+          "call": "saving",
+          "on": true
+        },
+        {
+          "call": "add",
+          "spec": {
+            "key": "k:SPXFLY",
+            "take_profit": "",
+            "stop_loss": "",
+            "trail_pct": "",
+            "profit_drawdown_pct": "",
+            "profit_drawdown_arm_pct": "",
+            "spot_target": "7725",
+            "spot_stop_below": "7680",
+            "spot_stop_above": "",
+            "auto_close": true,
+            "order_type": "LMT",
+            "host_at_broker": true,
+            "exit_at": "",
+            "spot_stop_confirm_s": "",
+            "take_profit_tiers": "",
+            "stop_basis": "mid"
+          }
+        },
+        {
+          "call": "banner",
+          "text": "已开始追踪 SPX,下面「正在追踪」里可以看盯盘进度。",
+          "info": true
+        },
+        {
+          "call": "reload",
+          "refresh": true
+        },
+        {
+          "call": "created",
+          "id": "t6"
+        },
+        {
+          "call": "saving",
+          "on": false
+        }
+      ]
+    },
+    {
+      "name": "组合没目标价不能托管",
+      "position": {
+        "key": "k:SPXFLY",
+        "symbol": "SPX",
+        "sec_type": "BAG",
+        "quantity": 1,
+        "account": "主账户"
+      },
+      "values": {
+        "host": true,
+        "autoPicked": true,
+        "sl": 1.2,
+        "orderType": "LMT"
+      },
+      "autoExecute": false,
+      "previews": [],
+      "confirms": [
+        true
+      ],
+      "addResult": {
+        "track": {
+          "id": "t7"
+        }
+      },
+      "spec": {
+        "key": "k:SPXFLY",
+        "take_profit": "",
+        "stop_loss": "1.2",
+        "trail_pct": "",
+        "profit_drawdown_pct": "",
+        "profit_drawdown_arm_pct": "",
+        "spot_target": "",
+        "spot_stop_below": "",
+        "spot_stop_above": "",
+        "auto_close": true,
+        "order_type": "LMT",
+        "host_at_broker": false,
+        "exit_at": "",
+        "spot_stop_confirm_s": "",
+        "take_profit_tiers": "",
+        "stop_basis": "mid"
+      },
+      "schemaOk": true,
+      "schemaIssues": [],
+      "calls": [
+        {
+          "call": "confirm",
+          "purpose": "tracker.add",
+          "binding": {
+            "key": "k:SPXFLY",
+            "take_profit": "",
+            "stop_loss": "1.2",
+            "trail_pct": "",
+            "profit_drawdown_pct": "",
+            "profit_drawdown_arm_pct": "",
+            "spot_target": "",
+            "spot_stop_below": "",
+            "spot_stop_above": "",
+            "auto_close": true,
+            "order_type": "LMT",
+            "host_at_broker": false,
+            "exit_at": "",
+            "spot_stop_confirm_s": "",
+            "take_profit_tiers": "",
+            "stop_basis": "mid"
+          },
+          "title": "开启到价自动平仓",
+          "message": "SPX 到价后会自动发出平仓单,不再询问。",
+          "detail": "数量 1 · 账户 主账户 · 限价平仓\n软件关闭后不再盯盘。",
+          "confirmLabel": "我确认"
+        },
+        {
+          "call": "saving",
+          "on": true
+        },
+        {
+          "call": "add",
+          "spec": {
+            "key": "k:SPXFLY",
+            "take_profit": "",
+            "stop_loss": "1.2",
+            "trail_pct": "",
+            "profit_drawdown_pct": "",
+            "profit_drawdown_arm_pct": "",
+            "spot_target": "",
+            "spot_stop_below": "",
+            "spot_stop_above": "",
+            "auto_close": true,
+            "order_type": "LMT",
+            "host_at_broker": false,
+            "exit_at": "",
+            "spot_stop_confirm_s": "",
+            "take_profit_tiers": "",
+            "stop_basis": "mid"
+          }
+        },
+        {
+          "call": "banner",
+          "text": "已开始追踪 SPX,下面「正在追踪」里可以看盯盘进度。",
+          "info": true
+        },
+        {
+          "call": "reload",
+          "refresh": true
+        },
+        {
+          "call": "created",
+          "id": "t7"
+        },
+        {
+          "call": "saving",
+          "on": false
+        }
+      ]
+    },
+    {
+      "name": "组合不改平仓方式:默认限价",
+      "position": {
+        "key": "k:SPXFLY",
+        "symbol": "SPX",
+        "sec_type": "BAG",
+        "quantity": 1,
+        "account": "主账户"
+      },
+      "values": {
+        "sl": 1.2,
+        "autoPicked": true
+      },
+      "autoExecute": false,
+      "previews": [],
+      "confirms": [
+        true
+      ],
+      "addResult": {
+        "track": {
+          "id": "t7b"
+        }
+      },
+      "spec": {
+        "key": "k:SPXFLY",
+        "take_profit": "",
+        "stop_loss": "1.2",
+        "trail_pct": "",
+        "profit_drawdown_pct": "",
+        "profit_drawdown_arm_pct": "",
+        "spot_target": "",
+        "spot_stop_below": "",
+        "spot_stop_above": "",
+        "auto_close": true,
+        "order_type": "LMT",
+        "host_at_broker": false,
+        "exit_at": "",
+        "spot_stop_confirm_s": "",
+        "take_profit_tiers": "",
+        "stop_basis": "mid"
+      },
+      "schemaOk": true,
+      "schemaIssues": [],
+      "calls": [
+        {
+          "call": "confirm",
+          "purpose": "tracker.add",
+          "binding": {
+            "key": "k:SPXFLY",
+            "take_profit": "",
+            "stop_loss": "1.2",
+            "trail_pct": "",
+            "profit_drawdown_pct": "",
+            "profit_drawdown_arm_pct": "",
+            "spot_target": "",
+            "spot_stop_below": "",
+            "spot_stop_above": "",
+            "auto_close": true,
+            "order_type": "LMT",
+            "host_at_broker": false,
+            "exit_at": "",
+            "spot_stop_confirm_s": "",
+            "take_profit_tiers": "",
+            "stop_basis": "mid"
+          },
+          "title": "开启到价自动平仓",
+          "message": "SPX 到价后会自动发出平仓单,不再询问。",
+          "detail": "数量 1 · 账户 主账户 · 限价平仓\n软件关闭后不再盯盘。",
+          "confirmLabel": "我确认"
+        },
+        {
+          "call": "saving",
+          "on": true
+        },
+        {
+          "call": "add",
+          "spec": {
+            "key": "k:SPXFLY",
+            "take_profit": "",
+            "stop_loss": "1.2",
+            "trail_pct": "",
+            "profit_drawdown_pct": "",
+            "profit_drawdown_arm_pct": "",
+            "spot_target": "",
+            "spot_stop_below": "",
+            "spot_stop_above": "",
+            "auto_close": true,
+            "order_type": "LMT",
+            "host_at_broker": false,
+            "exit_at": "",
+            "spot_stop_confirm_s": "",
+            "take_profit_tiers": "",
+            "stop_basis": "mid"
+          }
+        },
+        {
+          "call": "banner",
+          "text": "已开始追踪 SPX,下面「正在追踪」里可以看盯盘进度。",
+          "info": true
+        },
+        {
+          "call": "reload",
+          "refresh": true
+        },
+        {
+          "call": "created",
+          "id": "t7b"
+        },
+        {
+          "call": "saving",
+          "on": false
+        }
+      ]
+    },
+    {
+      "name": "正股不改平仓方式:默认市价",
+      "position": {
+        "key": "k:NVDA",
+        "symbol": "NVDA",
+        "sec_type": "STK",
+        "quantity": 100,
+        "account": "模拟"
+      },
+      "values": {
+        "sl": 170,
+        "autoPicked": true
+      },
+      "autoExecute": false,
+      "previews": [],
+      "confirms": [
+        true
+      ],
+      "addResult": {
+        "track": {
+          "id": "t7c"
+        }
+      },
+      "spec": {
+        "key": "k:NVDA",
+        "take_profit": "",
+        "stop_loss": "170",
+        "trail_pct": "",
+        "profit_drawdown_pct": "",
+        "profit_drawdown_arm_pct": "",
+        "spot_target": "",
+        "spot_stop_below": "",
+        "spot_stop_above": "",
+        "auto_close": true,
+        "order_type": "MKT",
+        "host_at_broker": false,
+        "exit_at": "",
+        "spot_stop_confirm_s": "",
+        "take_profit_tiers": ""
+      },
+      "schemaOk": true,
+      "schemaIssues": [],
+      "calls": [
+        {
+          "call": "confirm",
+          "purpose": "tracker.add",
+          "binding": {
+            "key": "k:NVDA",
+            "take_profit": "",
+            "stop_loss": "170",
+            "trail_pct": "",
+            "profit_drawdown_pct": "",
+            "profit_drawdown_arm_pct": "",
+            "spot_target": "",
+            "spot_stop_below": "",
+            "spot_stop_above": "",
+            "auto_close": true,
+            "order_type": "MKT",
+            "host_at_broker": false,
+            "exit_at": "",
+            "spot_stop_confirm_s": "",
+            "take_profit_tiers": ""
+          },
+          "title": "开启到价自动平仓",
+          "message": "NVDA 到价后会自动发出平仓单,不再询问。",
+          "detail": "数量 100 · 账户 模拟 · 市价平仓\n软件关闭后不再盯盘。",
+          "confirmLabel": "我确认"
+        },
+        {
+          "call": "saving",
+          "on": true
+        },
+        {
+          "call": "add",
+          "spec": {
+            "key": "k:NVDA",
+            "take_profit": "",
+            "stop_loss": "170",
+            "trail_pct": "",
+            "profit_drawdown_pct": "",
+            "profit_drawdown_arm_pct": "",
+            "spot_target": "",
+            "spot_stop_below": "",
+            "spot_stop_above": "",
+            "auto_close": true,
+            "order_type": "MKT",
+            "host_at_broker": false,
+            "exit_at": "",
+            "spot_stop_confirm_s": "",
+            "take_profit_tiers": ""
+          }
+        },
+        {
+          "call": "banner",
+          "text": "已开始追踪 NVDA,下面「正在追踪」里可以看盯盘进度。",
+          "info": true
+        },
+        {
+          "call": "reload",
+          "refresh": true
+        },
+        {
+          "call": "created",
+          "id": "t7c"
+        },
+        {
+          "call": "saving",
+          "on": false
+        }
+      ]
+    },
+    {
+      "name": "分档利润回撤",
+      "position": {
+        "key": "k:SPXFLY",
+        "symbol": "SPX",
+        "sec_type": "BAG",
+        "quantity": 1,
+        "account": "主账户"
+      },
+      "values": {
+        "tiers": true,
+        "profitDd": 30,
+        "autoPicked": true,
+        "orderType": "LMT"
+      },
+      "autoExecute": false,
+      "previews": [],
+      "confirms": [
+        true
+      ],
+      "addResult": {
+        "track": {
+          "id": "t8"
+        }
+      },
+      "spec": {
+        "key": "k:SPXFLY",
+        "take_profit": "",
+        "stop_loss": "",
+        "trail_pct": "",
+        "profit_drawdown_pct": "",
+        "profit_drawdown_preset": "fly",
+        "profit_drawdown_arm_pct": "",
+        "spot_target": "",
+        "spot_stop_below": "",
+        "spot_stop_above": "",
+        "auto_close": true,
+        "order_type": "LMT",
+        "host_at_broker": false,
+        "exit_at": "",
+        "spot_stop_confirm_s": "",
+        "take_profit_tiers": "",
+        "stop_basis": "mid"
+      },
+      "schemaOk": true,
+      "schemaIssues": [],
+      "calls": [
+        {
+          "call": "confirm",
+          "purpose": "tracker.add",
+          "binding": {
+            "key": "k:SPXFLY",
+            "take_profit": "",
+            "stop_loss": "",
+            "trail_pct": "",
+            "profit_drawdown_pct": "",
+            "profit_drawdown_preset": "fly",
+            "profit_drawdown_arm_pct": "",
+            "spot_target": "",
+            "spot_stop_below": "",
+            "spot_stop_above": "",
+            "auto_close": true,
+            "order_type": "LMT",
+            "host_at_broker": false,
+            "exit_at": "",
+            "spot_stop_confirm_s": "",
+            "take_profit_tiers": "",
+            "stop_basis": "mid"
+          },
+          "title": "开启到价自动平仓",
+          "message": "SPX 到价后会自动发出平仓单,不再询问。",
+          "detail": "数量 1 · 账户 主账户 · 限价平仓\n软件关闭后不再盯盘。",
+          "confirmLabel": "我确认"
+        },
+        {
+          "call": "saving",
+          "on": true
+        },
+        {
+          "call": "add",
+          "spec": {
+            "key": "k:SPXFLY",
+            "take_profit": "",
+            "stop_loss": "",
+            "trail_pct": "",
+            "profit_drawdown_pct": "",
+            "profit_drawdown_preset": "fly",
+            "profit_drawdown_arm_pct": "",
+            "spot_target": "",
+            "spot_stop_below": "",
+            "spot_stop_above": "",
+            "auto_close": true,
+            "order_type": "LMT",
+            "host_at_broker": false,
+            "exit_at": "",
+            "spot_stop_confirm_s": "",
+            "take_profit_tiers": "",
+            "stop_basis": "mid"
+          }
+        },
+        {
+          "call": "banner",
+          "text": "已开始追踪 SPX,下面「正在追踪」里可以看盯盘进度。",
+          "info": true
+        },
+        {
+          "call": "reload",
+          "refresh": true
+        },
+        {
+          "call": "created",
+          "id": "t8"
+        },
+        {
+          "call": "saving",
+          "on": false
+        }
+      ]
+    },
+    {
+      "name": "利润回撤带门槛",
+      "position": {
+        "key": "k:SPXC",
+        "symbol": "SPX",
+        "sec_type": "OPT",
+        "quantity": 2,
+        "account": "主账户"
+      },
+      "values": {
+        "profitDd": 30,
+        "ddArm": 15
+      },
+      "autoExecute": false,
+      "previews": [],
+      "confirms": [],
+      "addResult": {
+        "track": {
+          "id": "t9"
+        }
+      },
+      "spec": {
+        "key": "k:SPXC",
+        "take_profit": "",
+        "stop_loss": "",
+        "trail_pct": "",
+        "profit_drawdown_pct": "30",
+        "profit_drawdown_arm_pct": "15",
+        "spot_target": "",
+        "spot_stop_below": "",
+        "spot_stop_above": "",
+        "auto_close": false,
+        "order_type": "MKT",
+        "host_at_broker": false,
+        "exit_at": "",
+        "spot_stop_confirm_s": "",
+        "take_profit_tiers": "",
+        "stop_basis": "mid"
+      },
+      "schemaOk": true,
+      "schemaIssues": [],
+      "calls": [
+        {
+          "call": "saving",
+          "on": true
+        },
+        {
+          "call": "add",
+          "spec": {
+            "key": "k:SPXC",
+            "take_profit": "",
+            "stop_loss": "",
+            "trail_pct": "",
+            "profit_drawdown_pct": "30",
+            "profit_drawdown_arm_pct": "15",
+            "spot_target": "",
+            "spot_stop_below": "",
+            "spot_stop_above": "",
+            "auto_close": false,
+            "order_type": "MKT",
+            "host_at_broker": false,
+            "exit_at": "",
+            "spot_stop_confirm_s": "",
+            "take_profit_tiers": "",
+            "stop_basis": "mid"
+          }
+        },
+        {
+          "call": "banner",
+          "text": "已开始追踪 SPX,下面「正在追踪」里可以看盯盘进度。",
+          "info": true
+        },
+        {
+          "call": "reload",
+          "refresh": true
+        },
+        {
+          "call": "created",
+          "id": "t9"
+        },
+        {
+          "call": "saving",
+          "on": false
+        }
+      ]
+    },
+    {
+      "name": "利润回撤清空门槛",
+      "position": {
+        "key": "k:SPXC",
+        "symbol": "SPX",
+        "sec_type": "OPT",
+        "quantity": 2,
+        "account": "主账户"
+      },
+      "values": {
+        "profitDd": 30,
+        "ddArm": null
+      },
+      "autoExecute": false,
+      "previews": [],
+      "confirms": [],
+      "addResult": {
+        "track": {
+          "id": "t10"
+        }
+      },
+      "spec": {
+        "key": "k:SPXC",
+        "take_profit": "",
+        "stop_loss": "",
+        "trail_pct": "",
+        "profit_drawdown_pct": "30",
+        "profit_drawdown_arm_pct": "",
+        "spot_target": "",
+        "spot_stop_below": "",
+        "spot_stop_above": "",
+        "auto_close": false,
+        "order_type": "MKT",
+        "host_at_broker": false,
+        "exit_at": "",
+        "spot_stop_confirm_s": "",
+        "take_profit_tiers": "",
+        "stop_basis": "mid"
+      },
+      "schemaOk": true,
+      "schemaIssues": [],
+      "calls": [
+        {
+          "call": "saving",
+          "on": true
+        },
+        {
+          "call": "add",
+          "spec": {
+            "key": "k:SPXC",
+            "take_profit": "",
+            "stop_loss": "",
+            "trail_pct": "",
+            "profit_drawdown_pct": "30",
+            "profit_drawdown_arm_pct": "",
+            "spot_target": "",
+            "spot_stop_below": "",
+            "spot_stop_above": "",
+            "auto_close": false,
+            "order_type": "MKT",
+            "host_at_broker": false,
+            "exit_at": "",
+            "spot_stop_confirm_s": "",
+            "take_profit_tiers": "",
+            "stop_basis": "mid"
+          }
+        },
+        {
+          "call": "banner",
+          "text": "已开始追踪 SPX,下面「正在追踪」里可以看盯盘进度。",
+          "info": true
+        },
+        {
+          "call": "reload",
+          "refresh": true
+        },
+        {
+          "call": "created",
+          "id": "t10"
+        },
+        {
+          "call": "saving",
+          "on": false
+        }
+      ]
+    },
+    {
+      "name": "出场细则有毛病",
+      "position": {
+        "key": "k:SPXC",
+        "symbol": "SPX",
+        "sec_type": "OPT",
+        "quantity": 2,
+        "account": "主账户"
+      },
+      "values": {
+        "exits": {
+          "exitAt": "25:00",
+          "stopConfirm": null,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": []
+        },
+        "autoPicked": true
+      },
+      "autoExecute": false,
+      "previews": [],
+      "confirms": [],
+      "addResult": null,
+      "spec": {
+        "key": "k:SPXC",
+        "take_profit": "",
+        "stop_loss": "",
+        "trail_pct": "",
+        "profit_drawdown_pct": "",
+        "profit_drawdown_arm_pct": "",
+        "spot_target": "",
+        "spot_stop_below": "",
+        "spot_stop_above": "",
+        "auto_close": true,
+        "order_type": "MKT",
+        "host_at_broker": false,
+        "exit_at": "25:00",
+        "spot_stop_confirm_s": "",
+        "take_profit_tiers": "",
+        "stop_basis": "mid"
+      },
+      "schemaOk": true,
+      "schemaIssues": [],
+      "calls": [
+        {
+          "call": "banner",
+          "text": "到点平仓的时刻要写成美东时间的 HH:MM,如 15:45。",
+          "info": false
+        }
+      ]
+    },
+    {
+      "name": "出场细则齐全",
+      "position": {
+        "key": "k:SPXC",
+        "symbol": "SPX",
+        "sec_type": "OPT",
+        "quantity": 2,
+        "account": "主账户"
+      },
+      "values": {
+        "stopBelow": 7650,
+        "stopAbove": 7800,
+        "autoPicked": true,
+        "exits": {
+          "exitAt": "15:45",
+          "stopConfirm": 5,
+          "stopBasis": "natural",
+          "chaseGrace": 3,
+          "chaseStep": 2,
+          "chaseMax": 40,
+          "peakConfirm": true,
+          "tiers": [
+            {
+              "price": 8,
+              "fraction": 50
+            }
+          ]
+        }
+      },
+      "autoExecute": false,
+      "previews": [],
+      "confirms": [
+        true
+      ],
+      "addResult": {
+        "track": {
+          "id": "t11"
+        }
+      },
+      "spec": {
+        "key": "k:SPXC",
+        "take_profit": "",
+        "stop_loss": "",
+        "trail_pct": "",
+        "profit_drawdown_pct": "",
+        "profit_drawdown_arm_pct": "",
+        "spot_target": "",
+        "spot_stop_below": "7650",
+        "spot_stop_above": "7800",
+        "auto_close": true,
+        "order_type": "MKT",
+        "host_at_broker": false,
+        "exit_at": "15:45",
+        "spot_stop_confirm_s": "5",
+        "take_profit_tiers": [
+          {
+            "price": "8",
+            "fraction_pct": "50"
+          }
+        ],
+        "stop_basis": "natural",
+        "stop_chase_grace": "3",
+        "stop_chase_step": "2",
+        "stop_chase_max_pct": "40",
+        "peak_confirm": true
+      },
+      "schemaOk": true,
+      "schemaIssues": [],
+      "calls": [
+        {
+          "call": "confirm",
+          "purpose": "tracker.add",
+          "binding": {
+            "key": "k:SPXC",
+            "take_profit": "",
+            "stop_loss": "",
+            "trail_pct": "",
+            "profit_drawdown_pct": "",
+            "profit_drawdown_arm_pct": "",
+            "spot_target": "",
+            "spot_stop_below": "7650",
+            "spot_stop_above": "7800",
+            "auto_close": true,
+            "order_type": "MKT",
+            "host_at_broker": false,
+            "exit_at": "15:45",
+            "spot_stop_confirm_s": "5",
+            "take_profit_tiers": [
+              {
+                "price": "8",
+                "fraction_pct": "50"
+              }
+            ],
+            "stop_basis": "natural",
+            "stop_chase_grace": "3",
+            "stop_chase_step": "2",
+            "stop_chase_max_pct": "40",
+            "peak_confirm": true
+          },
+          "title": "开启到价自动平仓",
+          "message": "SPX 到价后会自动发出平仓单,不再询问。",
+          "detail": "标的止损:SPX 跌到 7650、或涨到 7800 就平,记作止损。只看标的现价,不看这份持仓值多少;软件开着时按秒盯。\n到点平仓:下一次到美东 15:45 时持仓还在就平(不算止损);软件开着时才盯。\n分批止盈:第 1 档到 8 平 50%。每一档成交之后接着盯剩下的仓。\n标的止损要标的在线外连续待满 5 秒才平。\n止损、跟踪止损、利润回撤按「此刻立刻能成交的价」判(盘口变宽时会比按中间价判更早触发)。\n止损类触发后的追价:先等 3 秒,之后每秒让 2 跳,最多让到立刻成交价的 40%。\n峰值要连续两秒都见到才往上推:跟踪止损与利润回撤的峰值晚一秒,只出现一秒的高点不算。\n数量 2 · 账户 主账户 · 市价平仓\n软件关闭后不再盯盘。",
+          "confirmLabel": "我确认"
+        },
+        {
+          "call": "saving",
+          "on": true
+        },
+        {
+          "call": "add",
+          "spec": {
+            "key": "k:SPXC",
+            "take_profit": "",
+            "stop_loss": "",
+            "trail_pct": "",
+            "profit_drawdown_pct": "",
+            "profit_drawdown_arm_pct": "",
+            "spot_target": "",
+            "spot_stop_below": "7650",
+            "spot_stop_above": "7800",
+            "auto_close": true,
+            "order_type": "MKT",
+            "host_at_broker": false,
+            "exit_at": "15:45",
+            "spot_stop_confirm_s": "5",
+            "take_profit_tiers": [
+              {
+                "price": "8",
+                "fraction_pct": "50"
+              }
+            ],
+            "stop_basis": "natural",
+            "stop_chase_grace": "3",
+            "stop_chase_step": "2",
+            "stop_chase_max_pct": "40",
+            "peak_confirm": true
+          }
+        },
+        {
+          "call": "banner",
+          "text": "已开始追踪 SPX,下面「正在追踪」里可以看盯盘进度。",
+          "info": true
+        },
+        {
+          "call": "reload",
+          "refresh": true
+        },
+        {
+          "call": "created",
+          "id": "t11"
+        },
+        {
+          "call": "saving",
+          "on": false
+        }
+      ]
+    },
+    {
+      "name": "正股止损确认却没止损",
+      "position": {
+        "key": "k:NVDA",
+        "symbol": "NVDA",
+        "sec_type": "STK",
+        "quantity": 100,
+        "account": "模拟"
+      },
+      "values": {
+        "exits": {
+          "exitAt": "",
+          "stopConfirm": 5,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": []
+        }
+      },
+      "autoExecute": false,
+      "previews": [],
+      "confirms": [],
+      "addResult": null,
+      "spec": {
+        "key": "k:NVDA",
+        "take_profit": "",
+        "stop_loss": "",
+        "trail_pct": "",
+        "profit_drawdown_pct": "",
+        "profit_drawdown_arm_pct": "",
+        "spot_target": "",
+        "spot_stop_below": "",
+        "spot_stop_above": "",
+        "auto_close": false,
+        "order_type": "MKT",
+        "host_at_broker": false,
+        "exit_at": "",
+        "spot_stop_confirm_s": "5",
+        "take_profit_tiers": ""
+      },
+      "schemaOk": true,
+      "schemaIssues": [],
+      "calls": [
+        {
+          "call": "banner",
+          "text": "正股的止损确认要先填止损价或跟踪止损。",
+          "info": false
+        }
+      ]
+    },
+    {
+      "name": "正股止损确认",
+      "position": {
+        "key": "k:NVDA",
+        "symbol": "NVDA",
+        "sec_type": "STK",
+        "quantity": 100,
+        "account": "模拟"
+      },
+      "values": {
+        "sl": 170,
+        "exits": {
+          "exitAt": "",
+          "stopConfirm": 5,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": []
+        },
+        "autoPicked": true
+      },
+      "autoExecute": false,
+      "previews": [],
+      "confirms": [
+        true
+      ],
+      "addResult": {
+        "track": {
+          "id": "t12"
+        }
+      },
+      "spec": {
+        "key": "k:NVDA",
+        "take_profit": "",
+        "stop_loss": "170",
+        "trail_pct": "",
+        "profit_drawdown_pct": "",
+        "profit_drawdown_arm_pct": "",
+        "spot_target": "",
+        "spot_stop_below": "",
+        "spot_stop_above": "",
+        "auto_close": true,
+        "order_type": "MKT",
+        "host_at_broker": false,
+        "exit_at": "",
+        "spot_stop_confirm_s": "5",
+        "take_profit_tiers": ""
+      },
+      "schemaOk": true,
+      "schemaIssues": [],
+      "calls": [
+        {
+          "call": "confirm",
+          "purpose": "tracker.add",
+          "binding": {
+            "key": "k:NVDA",
+            "take_profit": "",
+            "stop_loss": "170",
+            "trail_pct": "",
+            "profit_drawdown_pct": "",
+            "profit_drawdown_arm_pct": "",
+            "spot_target": "",
+            "spot_stop_below": "",
+            "spot_stop_above": "",
+            "auto_close": true,
+            "order_type": "MKT",
+            "host_at_broker": false,
+            "exit_at": "",
+            "spot_stop_confirm_s": "5",
+            "take_profit_tiers": ""
+          },
+          "title": "开启到价自动平仓",
+          "message": "NVDA 到价后会自动发出平仓单,不再询问。",
+          "detail": "止损要现价在线外连续待满 5 秒才平(一笔打穿又弹回的不算)。\n数量 100 · 账户 模拟 · 市价平仓\n软件关闭后不再盯盘。",
+          "confirmLabel": "我确认"
+        },
+        {
+          "call": "saving",
+          "on": true
+        },
+        {
+          "call": "add",
+          "spec": {
+            "key": "k:NVDA",
+            "take_profit": "",
+            "stop_loss": "170",
+            "trail_pct": "",
+            "profit_drawdown_pct": "",
+            "profit_drawdown_arm_pct": "",
+            "spot_target": "",
+            "spot_stop_below": "",
+            "spot_stop_above": "",
+            "auto_close": true,
+            "order_type": "MKT",
+            "host_at_broker": false,
+            "exit_at": "",
+            "spot_stop_confirm_s": "5",
+            "take_profit_tiers": ""
+          }
+        },
+        {
+          "call": "banner",
+          "text": "已开始追踪 NVDA,下面「正在追踪」里可以看盯盘进度。",
+          "info": true
+        },
+        {
+          "call": "reload",
+          "refresh": true
+        },
+        {
+          "call": "created",
+          "id": "t12"
+        },
+        {
+          "call": "saving",
+          "on": false
+        }
+      ]
+    },
+    {
+      "name": "建追踪被引擎拒",
+      "position": {
+        "key": "k:NVDA",
+        "symbol": "NVDA",
+        "sec_type": "STK",
+        "quantity": 100,
+        "account": "模拟"
+      },
+      "values": {
+        "sl": 170
+      },
+      "autoExecute": false,
+      "previews": [],
+      "confirms": [],
+      "addResult": "throw:止损价要低于现价",
+      "spec": {
+        "key": "k:NVDA",
+        "take_profit": "",
+        "stop_loss": "170",
+        "trail_pct": "",
+        "profit_drawdown_pct": "",
+        "profit_drawdown_arm_pct": "",
+        "spot_target": "",
+        "spot_stop_below": "",
+        "spot_stop_above": "",
+        "auto_close": false,
+        "order_type": "MKT",
+        "host_at_broker": false,
+        "exit_at": "",
+        "spot_stop_confirm_s": "",
+        "take_profit_tiers": ""
+      },
+      "schemaOk": true,
+      "schemaIssues": [],
+      "calls": [
+        {
+          "call": "saving",
+          "on": true
+        },
+        {
+          "call": "add",
+          "spec": {
+            "key": "k:NVDA",
+            "take_profit": "",
+            "stop_loss": "170",
+            "trail_pct": "",
+            "profit_drawdown_pct": "",
+            "profit_drawdown_arm_pct": "",
+            "spot_target": "",
+            "spot_stop_below": "",
+            "spot_stop_above": "",
+            "auto_close": false,
+            "order_type": "MKT",
+            "host_at_broker": false,
+            "exit_at": "",
+            "spot_stop_confirm_s": "",
+            "take_profit_tiers": ""
+          }
+        },
+        {
+          "call": "banner",
+          "text": "止损价要低于现价",
+          "info": false
+        },
+        {
+          "call": "saving",
+          "on": false
+        }
+      ]
+    },
+    {
+      "name": "小数与零",
+      "position": {
+        "key": "k:SPXC",
+        "symbol": "SPX",
+        "sec_type": "OPT",
+        "quantity": 2,
+        "account": "主账户"
+      },
+      "values": {
+        "tp": 0.05,
+        "sl": 0,
+        "trail": 12.5,
+        "fraction": 100,
+        "chaseMax": 0
+      },
+      "autoExecute": false,
+      "previews": [],
+      "confirms": [],
+      "addResult": {
+        "track": {
+          "id": "t13"
+        }
+      },
+      "spec": {
+        "key": "k:SPXC",
+        "take_profit": "0.05",
+        "stop_loss": "0",
+        "trail_pct": "12.5",
+        "profit_drawdown_pct": "",
+        "profit_drawdown_arm_pct": "",
+        "spot_target": "",
+        "spot_stop_below": "",
+        "spot_stop_above": "",
+        "close_fraction_pct": "100",
+        "chase_max_pct": "0",
+        "auto_close": false,
+        "order_type": "MKT",
+        "host_at_broker": false,
+        "exit_at": "",
+        "spot_stop_confirm_s": "",
+        "take_profit_tiers": "",
+        "stop_basis": "mid"
+      },
+      "schemaOk": true,
+      "schemaIssues": [],
+      "calls": [
+        {
+          "call": "saving",
+          "on": true
+        },
+        {
+          "call": "add",
+          "spec": {
+            "key": "k:SPXC",
+            "take_profit": "0.05",
+            "stop_loss": "0",
+            "trail_pct": "12.5",
+            "profit_drawdown_pct": "",
+            "profit_drawdown_arm_pct": "",
+            "spot_target": "",
+            "spot_stop_below": "",
+            "spot_stop_above": "",
+            "close_fraction_pct": "100",
+            "chase_max_pct": "0",
+            "auto_close": false,
+            "order_type": "MKT",
+            "host_at_broker": false,
+            "exit_at": "",
+            "spot_stop_confirm_s": "",
+            "take_profit_tiers": "",
+            "stop_basis": "mid"
+          }
+        },
+        {
+          "call": "banner",
+          "text": "已开始追踪 SPX,下面「正在追踪」里可以看盯盘进度。",
+          "info": true
+        },
+        {
+          "call": "reload",
+          "refresh": true
+        },
+        {
+          "call": "created",
+          "id": "t13"
+        },
+        {
+          "call": "saving",
+          "on": false
+        }
+      ]
+    }
+  ]
+}

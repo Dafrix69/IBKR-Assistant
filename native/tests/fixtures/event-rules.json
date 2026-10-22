@@ -1,0 +1,10214 @@
+{
+ "generator": "gen_event_rules.mjs",
+ "cases": [
+  {
+   "fn": "starText",
+   "args": [
+    null
+   ],
+   "out": ""
+  },
+  {
+   "fn": "starText",
+   "args": [
+    0
+   ],
+   "out": ""
+  },
+  {
+   "fn": "starText",
+   "args": [
+    0.4
+   ],
+   "out": ""
+  },
+  {
+   "fn": "starText",
+   "args": [
+    1
+   ],
+   "out": "★"
+  },
+  {
+   "fn": "starText",
+   "args": [
+    2.5
+   ],
+   "out": "★★★"
+  },
+  {
+   "fn": "starText",
+   "args": [
+    3.49
+   ],
+   "out": "★★★"
+  },
+  {
+   "fn": "starText",
+   "args": [
+    4.6
+   ],
+   "out": "★★★★★"
+  },
+  {
+   "fn": "starText",
+   "args": [
+    5
+   ],
+   "out": "★★★★★"
+  },
+  {
+   "fn": "starText",
+   "args": [
+    9
+   ],
+   "out": "★★★★★"
+  },
+  {
+   "fn": "starText",
+   "args": [
+    -1
+   ],
+   "out": ""
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "cpi",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120,
+     "items": [
+      {
+       "title": "CPI 月率",
+       "forecast": "0.3%",
+       "previous": "0.4%"
+      },
+      {
+       "title": "核心 CPI 年率",
+       "forecast": "",
+       "previous": "3.1%"
+      },
+      {
+       "title": "没数的",
+       "forecast": "",
+       "previous": ""
+      }
+     ],
+     "note": "指数常跳空"
+    },
+    1791887400000
+   ],
+   "out": "upcoming"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "cpi",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120,
+     "items": [
+      {
+       "title": "CPI 月率",
+       "forecast": "0.3%",
+       "previous": "0.4%"
+      },
+      {
+       "title": "核心 CPI 年率",
+       "forecast": "",
+       "previous": "3.1%"
+      },
+      {
+       "title": "没数的",
+       "forecast": "",
+       "previous": ""
+      }
+     ],
+     "note": "指数常跳空"
+    },
+    1791887400000
+   ],
+   "out": "还有 1 天 2 小时"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "cpi",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120,
+     "items": [
+      {
+       "title": "CPI 月率",
+       "forecast": "0.3%",
+       "previous": "0.4%"
+      },
+      {
+       "title": "核心 CPI 年率",
+       "forecast": "",
+       "previous": "3.1%"
+      },
+      {
+       "title": "没数的",
+       "forecast": "",
+       "previous": ""
+      }
+     ],
+     "note": "指数常跳空"
+    },
+    1791912600000
+   ],
+   "out": "upcoming"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "cpi",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120,
+     "items": [
+      {
+       "title": "CPI 月率",
+       "forecast": "0.3%",
+       "previous": "0.4%"
+      },
+      {
+       "title": "核心 CPI 年率",
+       "forecast": "",
+       "previous": "3.1%"
+      },
+      {
+       "title": "没数的",
+       "forecast": "",
+       "previous": ""
+      }
+     ],
+     "note": "指数常跳空"
+    },
+    1791912600000
+   ],
+   "out": "还有 19 小时"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "cpi",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120,
+     "items": [
+      {
+       "title": "CPI 月率",
+       "forecast": "0.3%",
+       "previous": "0.4%"
+      },
+      {
+       "title": "核心 CPI 年率",
+       "forecast": "",
+       "previous": "3.1%"
+      },
+      {
+       "title": "没数的",
+       "forecast": "",
+       "previous": ""
+      }
+     ],
+     "note": "指数常跳空"
+    },
+    1791973800000
+   ],
+   "out": "upcoming"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "cpi",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120,
+     "items": [
+      {
+       "title": "CPI 月率",
+       "forecast": "0.3%",
+       "previous": "0.4%"
+      },
+      {
+       "title": "核心 CPI 年率",
+       "forecast": "",
+       "previous": "3.1%"
+      },
+      {
+       "title": "没数的",
+       "forecast": "",
+       "previous": ""
+      }
+     ],
+     "note": "指数常跳空"
+    },
+    1791973800000
+   ],
+   "out": "还有 2 小时"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "cpi",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120,
+     "items": [
+      {
+       "title": "CPI 月率",
+       "forecast": "0.3%",
+       "previous": "0.4%"
+      },
+      {
+       "title": "核心 CPI 年率",
+       "forecast": "",
+       "previous": "3.1%"
+      },
+      {
+       "title": "没数的",
+       "forecast": "",
+       "previous": ""
+      }
+     ],
+     "note": "指数常跳空"
+    },
+    1791977340000
+   ],
+   "out": "upcoming"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "cpi",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120,
+     "items": [
+      {
+       "title": "CPI 月率",
+       "forecast": "0.3%",
+       "previous": "0.4%"
+      },
+      {
+       "title": "核心 CPI 年率",
+       "forecast": "",
+       "previous": "3.1%"
+      },
+      {
+       "title": "没数的",
+       "forecast": "",
+       "previous": ""
+      }
+     ],
+     "note": "指数常跳空"
+    },
+    1791977340000
+   ],
+   "out": "还有 1 小时 01 分"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "cpi",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120,
+     "items": [
+      {
+       "title": "CPI 月率",
+       "forecast": "0.3%",
+       "previous": "0.4%"
+      },
+      {
+       "title": "核心 CPI 年率",
+       "forecast": "",
+       "previous": "3.1%"
+      },
+      {
+       "title": "没数的",
+       "forecast": "",
+       "previous": ""
+      }
+     ],
+     "note": "指数常跳空"
+    },
+    1791977400000
+   ],
+   "out": "soon"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "cpi",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120,
+     "items": [
+      {
+       "title": "CPI 月率",
+       "forecast": "0.3%",
+       "previous": "0.4%"
+      },
+      {
+       "title": "核心 CPI 年率",
+       "forecast": "",
+       "previous": "3.1%"
+      },
+      {
+       "title": "没数的",
+       "forecast": "",
+       "previous": ""
+      }
+     ],
+     "note": "指数常跳空"
+    },
+    1791977400000
+   ],
+   "out": "还有 1 小时"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "cpi",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120,
+     "items": [
+      {
+       "title": "CPI 月率",
+       "forecast": "0.3%",
+       "previous": "0.4%"
+      },
+      {
+       "title": "核心 CPI 年率",
+       "forecast": "",
+       "previous": "3.1%"
+      },
+      {
+       "title": "没数的",
+       "forecast": "",
+       "previous": ""
+      }
+     ],
+     "note": "指数常跳空"
+    },
+    1791977430000
+   ],
+   "out": "soon"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "cpi",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120,
+     "items": [
+      {
+       "title": "CPI 月率",
+       "forecast": "0.3%",
+       "previous": "0.4%"
+      },
+      {
+       "title": "核心 CPI 年率",
+       "forecast": "",
+       "previous": "3.1%"
+      },
+      {
+       "title": "没数的",
+       "forecast": "",
+       "previous": ""
+      }
+     ],
+     "note": "指数常跳空"
+    },
+    1791977430000
+   ],
+   "out": "还有 1 小时"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "cpi",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120,
+     "items": [
+      {
+       "title": "CPI 月率",
+       "forecast": "0.3%",
+       "previous": "0.4%"
+      },
+      {
+       "title": "核心 CPI 年率",
+       "forecast": "",
+       "previous": "3.1%"
+      },
+      {
+       "title": "没数的",
+       "forecast": "",
+       "previous": ""
+      }
+     ],
+     "note": "指数常跳空"
+    },
+    1791979200000
+   ],
+   "out": "soon"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "cpi",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120,
+     "items": [
+      {
+       "title": "CPI 月率",
+       "forecast": "0.3%",
+       "previous": "0.4%"
+      },
+      {
+       "title": "核心 CPI 年率",
+       "forecast": "",
+       "previous": "3.1%"
+      },
+      {
+       "title": "没数的",
+       "forecast": "",
+       "previous": ""
+      }
+     ],
+     "note": "指数常跳空"
+    },
+    1791979200000
+   ],
+   "out": "还有 30 分钟"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "cpi",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120,
+     "items": [
+      {
+       "title": "CPI 月率",
+       "forecast": "0.3%",
+       "previous": "0.4%"
+      },
+      {
+       "title": "核心 CPI 年率",
+       "forecast": "",
+       "previous": "3.1%"
+      },
+      {
+       "title": "没数的",
+       "forecast": "",
+       "previous": ""
+      }
+     ],
+     "note": "指数常跳空"
+    },
+    1791980999999
+   ],
+   "out": "soon"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "cpi",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120,
+     "items": [
+      {
+       "title": "CPI 月率",
+       "forecast": "0.3%",
+       "previous": "0.4%"
+      },
+      {
+       "title": "核心 CPI 年率",
+       "forecast": "",
+       "previous": "3.1%"
+      },
+      {
+       "title": "没数的",
+       "forecast": "",
+       "previous": ""
+      }
+     ],
+     "note": "指数常跳空"
+    },
+    1791980999999
+   ],
+   "out": "还有 1 分钟"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "cpi",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120,
+     "items": [
+      {
+       "title": "CPI 月率",
+       "forecast": "0.3%",
+       "previous": "0.4%"
+      },
+      {
+       "title": "核心 CPI 年率",
+       "forecast": "",
+       "previous": "3.1%"
+      },
+      {
+       "title": "没数的",
+       "forecast": "",
+       "previous": ""
+      }
+     ],
+     "note": "指数常跳空"
+    },
+    1791981000000
+   ],
+   "out": "live"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "cpi",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120,
+     "items": [
+      {
+       "title": "CPI 月率",
+       "forecast": "0.3%",
+       "previous": "0.4%"
+      },
+      {
+       "title": "核心 CPI 年率",
+       "forecast": "",
+       "previous": "3.1%"
+      },
+      {
+       "title": "没数的",
+       "forecast": "",
+       "previous": ""
+      }
+     ],
+     "note": "指数常跳空"
+    },
+    1791981000000
+   ],
+   "out": "正在公布"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "cpi",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120,
+     "items": [
+      {
+       "title": "CPI 月率",
+       "forecast": "0.3%",
+       "previous": "0.4%"
+      },
+      {
+       "title": "核心 CPI 年率",
+       "forecast": "",
+       "previous": "3.1%"
+      },
+      {
+       "title": "没数的",
+       "forecast": "",
+       "previous": ""
+      }
+     ],
+     "note": "指数常跳空"
+    },
+    1791981000001
+   ],
+   "out": "live"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "cpi",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120,
+     "items": [
+      {
+       "title": "CPI 月率",
+       "forecast": "0.3%",
+       "previous": "0.4%"
+      },
+      {
+       "title": "核心 CPI 年率",
+       "forecast": "",
+       "previous": "3.1%"
+      },
+      {
+       "title": "没数的",
+       "forecast": "",
+       "previous": ""
+      }
+     ],
+     "note": "指数常跳空"
+    },
+    1791981000001
+   ],
+   "out": "正在公布"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "cpi",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120,
+     "items": [
+      {
+       "title": "CPI 月率",
+       "forecast": "0.3%",
+       "previous": "0.4%"
+      },
+      {
+       "title": "核心 CPI 年率",
+       "forecast": "",
+       "previous": "3.1%"
+      },
+      {
+       "title": "没数的",
+       "forecast": "",
+       "previous": ""
+      }
+     ],
+     "note": "指数常跳空"
+    },
+    1791981840000
+   ],
+   "out": "live"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "cpi",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120,
+     "items": [
+      {
+       "title": "CPI 月率",
+       "forecast": "0.3%",
+       "previous": "0.4%"
+      },
+      {
+       "title": "核心 CPI 年率",
+       "forecast": "",
+       "previous": "3.1%"
+      },
+      {
+       "title": "没数的",
+       "forecast": "",
+       "previous": ""
+      }
+     ],
+     "note": "指数常跳空"
+    },
+    1791981840000
+   ],
+   "out": "正在公布"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "cpi",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120,
+     "items": [
+      {
+       "title": "CPI 月率",
+       "forecast": "0.3%",
+       "previous": "0.4%"
+      },
+      {
+       "title": "核心 CPI 年率",
+       "forecast": "",
+       "previous": "3.1%"
+      },
+      {
+       "title": "没数的",
+       "forecast": "",
+       "previous": ""
+      }
+     ],
+     "note": "指数常跳空"
+    },
+    1791981900000
+   ],
+   "out": "after"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "cpi",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120,
+     "items": [
+      {
+       "title": "CPI 月率",
+       "forecast": "0.3%",
+       "previous": "0.4%"
+      },
+      {
+       "title": "核心 CPI 年率",
+       "forecast": "",
+       "previous": "3.1%"
+      },
+      {
+       "title": "没数的",
+       "forecast": "",
+       "previous": ""
+      }
+     ],
+     "note": "指数常跳空"
+    },
+    1791981900000
+   ],
+   "out": "已公布 15 分钟"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "cpi",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120,
+     "items": [
+      {
+       "title": "CPI 月率",
+       "forecast": "0.3%",
+       "previous": "0.4%"
+      },
+      {
+       "title": "核心 CPI 年率",
+       "forecast": "",
+       "previous": "3.1%"
+      },
+      {
+       "title": "没数的",
+       "forecast": "",
+       "previous": ""
+      }
+     ],
+     "note": "指数常跳空"
+    },
+    1791981990000
+   ],
+   "out": "after"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "cpi",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120,
+     "items": [
+      {
+       "title": "CPI 月率",
+       "forecast": "0.3%",
+       "previous": "0.4%"
+      },
+      {
+       "title": "核心 CPI 年率",
+       "forecast": "",
+       "previous": "3.1%"
+      },
+      {
+       "title": "没数的",
+       "forecast": "",
+       "previous": ""
+      }
+     ],
+     "note": "指数常跳空"
+    },
+    1791981990000
+   ],
+   "out": "已公布 16 分钟"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "cpi",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120,
+     "items": [
+      {
+       "title": "CPI 月率",
+       "forecast": "0.3%",
+       "previous": "0.4%"
+      },
+      {
+       "title": "核心 CPI 年率",
+       "forecast": "",
+       "previous": "3.1%"
+      },
+      {
+       "title": "没数的",
+       "forecast": "",
+       "previous": ""
+      }
+     ],
+     "note": "指数常跳空"
+    },
+    1791988140000
+   ],
+   "out": "after"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "cpi",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120,
+     "items": [
+      {
+       "title": "CPI 月率",
+       "forecast": "0.3%",
+       "previous": "0.4%"
+      },
+      {
+       "title": "核心 CPI 年率",
+       "forecast": "",
+       "previous": "3.1%"
+      },
+      {
+       "title": "没数的",
+       "forecast": "",
+       "previous": ""
+      }
+     ],
+     "note": "指数常跳空"
+    },
+    1791988140000
+   ],
+   "out": "已公布 119 分钟"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "cpi",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120,
+     "items": [
+      {
+       "title": "CPI 月率",
+       "forecast": "0.3%",
+       "previous": "0.4%"
+      },
+      {
+       "title": "核心 CPI 年率",
+       "forecast": "",
+       "previous": "3.1%"
+      },
+      {
+       "title": "没数的",
+       "forecast": "",
+       "previous": ""
+      }
+     ],
+     "note": "指数常跳空"
+    },
+    1791988200000
+   ],
+   "out": "expired"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "cpi",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120,
+     "items": [
+      {
+       "title": "CPI 月率",
+       "forecast": "0.3%",
+       "previous": "0.4%"
+      },
+      {
+       "title": "核心 CPI 年率",
+       "forecast": "",
+       "previous": "3.1%"
+      },
+      {
+       "title": "没数的",
+       "forecast": "",
+       "previous": ""
+      }
+     ],
+     "note": "指数常跳空"
+    },
+    1791988200000
+   ],
+   "out": "已过去"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "cpi",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120,
+     "items": [
+      {
+       "title": "CPI 月率",
+       "forecast": "0.3%",
+       "previous": "0.4%"
+      },
+      {
+       "title": "核心 CPI 年率",
+       "forecast": "",
+       "previous": "3.1%"
+      },
+      {
+       "title": "没数的",
+       "forecast": "",
+       "previous": ""
+      }
+     ],
+     "note": "指数常跳空"
+    },
+    1791991800000
+   ],
+   "out": "expired"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "cpi",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120,
+     "items": [
+      {
+       "title": "CPI 月率",
+       "forecast": "0.3%",
+       "previous": "0.4%"
+      },
+      {
+       "title": "核心 CPI 年率",
+       "forecast": "",
+       "previous": "3.1%"
+      },
+      {
+       "title": "没数的",
+       "forecast": "",
+       "previous": ""
+      }
+     ],
+     "note": "指数常跳空"
+    },
+    1791991800000
+   ],
+   "out": "已过去"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "claims",
+     "kind": "econ",
+     "title": "初请失业金",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "medium",
+     "stars": 3,
+     "source": "builtin",
+     "linger_min": 60
+    },
+    1791887400000
+   ],
+   "out": "upcoming"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "claims",
+     "kind": "econ",
+     "title": "初请失业金",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "medium",
+     "stars": 3,
+     "source": "builtin",
+     "linger_min": 60
+    },
+    1791887400000
+   ],
+   "out": "还有 1 天 2 小时"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "claims",
+     "kind": "econ",
+     "title": "初请失业金",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "medium",
+     "stars": 3,
+     "source": "builtin",
+     "linger_min": 60
+    },
+    1791912600000
+   ],
+   "out": "upcoming"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "claims",
+     "kind": "econ",
+     "title": "初请失业金",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "medium",
+     "stars": 3,
+     "source": "builtin",
+     "linger_min": 60
+    },
+    1791912600000
+   ],
+   "out": "还有 19 小时"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "claims",
+     "kind": "econ",
+     "title": "初请失业金",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "medium",
+     "stars": 3,
+     "source": "builtin",
+     "linger_min": 60
+    },
+    1791973800000
+   ],
+   "out": "upcoming"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "claims",
+     "kind": "econ",
+     "title": "初请失业金",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "medium",
+     "stars": 3,
+     "source": "builtin",
+     "linger_min": 60
+    },
+    1791973800000
+   ],
+   "out": "还有 2 小时"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "claims",
+     "kind": "econ",
+     "title": "初请失业金",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "medium",
+     "stars": 3,
+     "source": "builtin",
+     "linger_min": 60
+    },
+    1791977340000
+   ],
+   "out": "upcoming"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "claims",
+     "kind": "econ",
+     "title": "初请失业金",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "medium",
+     "stars": 3,
+     "source": "builtin",
+     "linger_min": 60
+    },
+    1791977340000
+   ],
+   "out": "还有 1 小时 01 分"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "claims",
+     "kind": "econ",
+     "title": "初请失业金",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "medium",
+     "stars": 3,
+     "source": "builtin",
+     "linger_min": 60
+    },
+    1791977400000
+   ],
+   "out": "soon"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "claims",
+     "kind": "econ",
+     "title": "初请失业金",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "medium",
+     "stars": 3,
+     "source": "builtin",
+     "linger_min": 60
+    },
+    1791977400000
+   ],
+   "out": "还有 1 小时"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "claims",
+     "kind": "econ",
+     "title": "初请失业金",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "medium",
+     "stars": 3,
+     "source": "builtin",
+     "linger_min": 60
+    },
+    1791977430000
+   ],
+   "out": "soon"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "claims",
+     "kind": "econ",
+     "title": "初请失业金",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "medium",
+     "stars": 3,
+     "source": "builtin",
+     "linger_min": 60
+    },
+    1791977430000
+   ],
+   "out": "还有 1 小时"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "claims",
+     "kind": "econ",
+     "title": "初请失业金",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "medium",
+     "stars": 3,
+     "source": "builtin",
+     "linger_min": 60
+    },
+    1791979200000
+   ],
+   "out": "soon"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "claims",
+     "kind": "econ",
+     "title": "初请失业金",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "medium",
+     "stars": 3,
+     "source": "builtin",
+     "linger_min": 60
+    },
+    1791979200000
+   ],
+   "out": "还有 30 分钟"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "claims",
+     "kind": "econ",
+     "title": "初请失业金",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "medium",
+     "stars": 3,
+     "source": "builtin",
+     "linger_min": 60
+    },
+    1791980999999
+   ],
+   "out": "soon"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "claims",
+     "kind": "econ",
+     "title": "初请失业金",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "medium",
+     "stars": 3,
+     "source": "builtin",
+     "linger_min": 60
+    },
+    1791980999999
+   ],
+   "out": "还有 1 分钟"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "claims",
+     "kind": "econ",
+     "title": "初请失业金",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "medium",
+     "stars": 3,
+     "source": "builtin",
+     "linger_min": 60
+    },
+    1791981000000
+   ],
+   "out": "live"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "claims",
+     "kind": "econ",
+     "title": "初请失业金",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "medium",
+     "stars": 3,
+     "source": "builtin",
+     "linger_min": 60
+    },
+    1791981000000
+   ],
+   "out": "正在公布"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "claims",
+     "kind": "econ",
+     "title": "初请失业金",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "medium",
+     "stars": 3,
+     "source": "builtin",
+     "linger_min": 60
+    },
+    1791981000001
+   ],
+   "out": "live"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "claims",
+     "kind": "econ",
+     "title": "初请失业金",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "medium",
+     "stars": 3,
+     "source": "builtin",
+     "linger_min": 60
+    },
+    1791981000001
+   ],
+   "out": "正在公布"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "claims",
+     "kind": "econ",
+     "title": "初请失业金",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "medium",
+     "stars": 3,
+     "source": "builtin",
+     "linger_min": 60
+    },
+    1791981840000
+   ],
+   "out": "live"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "claims",
+     "kind": "econ",
+     "title": "初请失业金",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "medium",
+     "stars": 3,
+     "source": "builtin",
+     "linger_min": 60
+    },
+    1791981840000
+   ],
+   "out": "正在公布"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "claims",
+     "kind": "econ",
+     "title": "初请失业金",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "medium",
+     "stars": 3,
+     "source": "builtin",
+     "linger_min": 60
+    },
+    1791981900000
+   ],
+   "out": "after"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "claims",
+     "kind": "econ",
+     "title": "初请失业金",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "medium",
+     "stars": 3,
+     "source": "builtin",
+     "linger_min": 60
+    },
+    1791981900000
+   ],
+   "out": "已公布 15 分钟"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "claims",
+     "kind": "econ",
+     "title": "初请失业金",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "medium",
+     "stars": 3,
+     "source": "builtin",
+     "linger_min": 60
+    },
+    1791981990000
+   ],
+   "out": "after"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "claims",
+     "kind": "econ",
+     "title": "初请失业金",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "medium",
+     "stars": 3,
+     "source": "builtin",
+     "linger_min": 60
+    },
+    1791981990000
+   ],
+   "out": "已公布 16 分钟"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "claims",
+     "kind": "econ",
+     "title": "初请失业金",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "medium",
+     "stars": 3,
+     "source": "builtin",
+     "linger_min": 60
+    },
+    1791988140000
+   ],
+   "out": "expired"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "claims",
+     "kind": "econ",
+     "title": "初请失业金",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "medium",
+     "stars": 3,
+     "source": "builtin",
+     "linger_min": 60
+    },
+    1791988140000
+   ],
+   "out": "已过去"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "claims",
+     "kind": "econ",
+     "title": "初请失业金",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "medium",
+     "stars": 3,
+     "source": "builtin",
+     "linger_min": 60
+    },
+    1791988200000
+   ],
+   "out": "expired"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "claims",
+     "kind": "econ",
+     "title": "初请失业金",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "medium",
+     "stars": 3,
+     "source": "builtin",
+     "linger_min": 60
+    },
+    1791988200000
+   ],
+   "out": "已过去"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "claims",
+     "kind": "econ",
+     "title": "初请失业金",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "medium",
+     "stars": 3,
+     "source": "builtin",
+     "linger_min": 60
+    },
+    1791991800000
+   ],
+   "out": "expired"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "claims",
+     "kind": "econ",
+     "title": "初请失业金",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "medium",
+     "stars": 3,
+     "source": "builtin",
+     "linger_min": 60
+    },
+    1791991800000
+   ],
+   "out": "已过去"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "ppi",
+     "kind": "econ",
+     "title": "PPI",
+     "at": 1792067400000,
+     "date_et": "2026-10-15",
+     "time_et": "08:30",
+     "impact": "high",
+     "source": "builtin",
+     "linger_min": 120
+    },
+    1791973800000
+   ],
+   "out": "upcoming"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "ppi",
+     "kind": "econ",
+     "title": "PPI",
+     "at": 1792067400000,
+     "date_et": "2026-10-15",
+     "time_et": "08:30",
+     "impact": "high",
+     "source": "builtin",
+     "linger_min": 120
+    },
+    1791973800000
+   ],
+   "out": "还有 1 天 2 小时"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "ppi",
+     "kind": "econ",
+     "title": "PPI",
+     "at": 1792067400000,
+     "date_et": "2026-10-15",
+     "time_et": "08:30",
+     "impact": "high",
+     "source": "builtin",
+     "linger_min": 120
+    },
+    1791999000000
+   ],
+   "out": "upcoming"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "ppi",
+     "kind": "econ",
+     "title": "PPI",
+     "at": 1792067400000,
+     "date_et": "2026-10-15",
+     "time_et": "08:30",
+     "impact": "high",
+     "source": "builtin",
+     "linger_min": 120
+    },
+    1791999000000
+   ],
+   "out": "还有 19 小时"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "ppi",
+     "kind": "econ",
+     "title": "PPI",
+     "at": 1792067400000,
+     "date_et": "2026-10-15",
+     "time_et": "08:30",
+     "impact": "high",
+     "source": "builtin",
+     "linger_min": 120
+    },
+    1792060200000
+   ],
+   "out": "upcoming"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "ppi",
+     "kind": "econ",
+     "title": "PPI",
+     "at": 1792067400000,
+     "date_et": "2026-10-15",
+     "time_et": "08:30",
+     "impact": "high",
+     "source": "builtin",
+     "linger_min": 120
+    },
+    1792060200000
+   ],
+   "out": "还有 2 小时"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "ppi",
+     "kind": "econ",
+     "title": "PPI",
+     "at": 1792067400000,
+     "date_et": "2026-10-15",
+     "time_et": "08:30",
+     "impact": "high",
+     "source": "builtin",
+     "linger_min": 120
+    },
+    1792063740000
+   ],
+   "out": "upcoming"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "ppi",
+     "kind": "econ",
+     "title": "PPI",
+     "at": 1792067400000,
+     "date_et": "2026-10-15",
+     "time_et": "08:30",
+     "impact": "high",
+     "source": "builtin",
+     "linger_min": 120
+    },
+    1792063740000
+   ],
+   "out": "还有 1 小时 01 分"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "ppi",
+     "kind": "econ",
+     "title": "PPI",
+     "at": 1792067400000,
+     "date_et": "2026-10-15",
+     "time_et": "08:30",
+     "impact": "high",
+     "source": "builtin",
+     "linger_min": 120
+    },
+    1792063800000
+   ],
+   "out": "soon"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "ppi",
+     "kind": "econ",
+     "title": "PPI",
+     "at": 1792067400000,
+     "date_et": "2026-10-15",
+     "time_et": "08:30",
+     "impact": "high",
+     "source": "builtin",
+     "linger_min": 120
+    },
+    1792063800000
+   ],
+   "out": "还有 1 小时"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "ppi",
+     "kind": "econ",
+     "title": "PPI",
+     "at": 1792067400000,
+     "date_et": "2026-10-15",
+     "time_et": "08:30",
+     "impact": "high",
+     "source": "builtin",
+     "linger_min": 120
+    },
+    1792063830000
+   ],
+   "out": "soon"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "ppi",
+     "kind": "econ",
+     "title": "PPI",
+     "at": 1792067400000,
+     "date_et": "2026-10-15",
+     "time_et": "08:30",
+     "impact": "high",
+     "source": "builtin",
+     "linger_min": 120
+    },
+    1792063830000
+   ],
+   "out": "还有 1 小时"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "ppi",
+     "kind": "econ",
+     "title": "PPI",
+     "at": 1792067400000,
+     "date_et": "2026-10-15",
+     "time_et": "08:30",
+     "impact": "high",
+     "source": "builtin",
+     "linger_min": 120
+    },
+    1792065600000
+   ],
+   "out": "soon"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "ppi",
+     "kind": "econ",
+     "title": "PPI",
+     "at": 1792067400000,
+     "date_et": "2026-10-15",
+     "time_et": "08:30",
+     "impact": "high",
+     "source": "builtin",
+     "linger_min": 120
+    },
+    1792065600000
+   ],
+   "out": "还有 30 分钟"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "ppi",
+     "kind": "econ",
+     "title": "PPI",
+     "at": 1792067400000,
+     "date_et": "2026-10-15",
+     "time_et": "08:30",
+     "impact": "high",
+     "source": "builtin",
+     "linger_min": 120
+    },
+    1792067399999
+   ],
+   "out": "soon"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "ppi",
+     "kind": "econ",
+     "title": "PPI",
+     "at": 1792067400000,
+     "date_et": "2026-10-15",
+     "time_et": "08:30",
+     "impact": "high",
+     "source": "builtin",
+     "linger_min": 120
+    },
+    1792067399999
+   ],
+   "out": "还有 1 分钟"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "ppi",
+     "kind": "econ",
+     "title": "PPI",
+     "at": 1792067400000,
+     "date_et": "2026-10-15",
+     "time_et": "08:30",
+     "impact": "high",
+     "source": "builtin",
+     "linger_min": 120
+    },
+    1792067400000
+   ],
+   "out": "live"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "ppi",
+     "kind": "econ",
+     "title": "PPI",
+     "at": 1792067400000,
+     "date_et": "2026-10-15",
+     "time_et": "08:30",
+     "impact": "high",
+     "source": "builtin",
+     "linger_min": 120
+    },
+    1792067400000
+   ],
+   "out": "正在公布"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "ppi",
+     "kind": "econ",
+     "title": "PPI",
+     "at": 1792067400000,
+     "date_et": "2026-10-15",
+     "time_et": "08:30",
+     "impact": "high",
+     "source": "builtin",
+     "linger_min": 120
+    },
+    1792067400001
+   ],
+   "out": "live"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "ppi",
+     "kind": "econ",
+     "title": "PPI",
+     "at": 1792067400000,
+     "date_et": "2026-10-15",
+     "time_et": "08:30",
+     "impact": "high",
+     "source": "builtin",
+     "linger_min": 120
+    },
+    1792067400001
+   ],
+   "out": "正在公布"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "ppi",
+     "kind": "econ",
+     "title": "PPI",
+     "at": 1792067400000,
+     "date_et": "2026-10-15",
+     "time_et": "08:30",
+     "impact": "high",
+     "source": "builtin",
+     "linger_min": 120
+    },
+    1792068240000
+   ],
+   "out": "live"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "ppi",
+     "kind": "econ",
+     "title": "PPI",
+     "at": 1792067400000,
+     "date_et": "2026-10-15",
+     "time_et": "08:30",
+     "impact": "high",
+     "source": "builtin",
+     "linger_min": 120
+    },
+    1792068240000
+   ],
+   "out": "正在公布"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "ppi",
+     "kind": "econ",
+     "title": "PPI",
+     "at": 1792067400000,
+     "date_et": "2026-10-15",
+     "time_et": "08:30",
+     "impact": "high",
+     "source": "builtin",
+     "linger_min": 120
+    },
+    1792068300000
+   ],
+   "out": "after"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "ppi",
+     "kind": "econ",
+     "title": "PPI",
+     "at": 1792067400000,
+     "date_et": "2026-10-15",
+     "time_et": "08:30",
+     "impact": "high",
+     "source": "builtin",
+     "linger_min": 120
+    },
+    1792068300000
+   ],
+   "out": "已公布 15 分钟"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "ppi",
+     "kind": "econ",
+     "title": "PPI",
+     "at": 1792067400000,
+     "date_et": "2026-10-15",
+     "time_et": "08:30",
+     "impact": "high",
+     "source": "builtin",
+     "linger_min": 120
+    },
+    1792068390000
+   ],
+   "out": "after"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "ppi",
+     "kind": "econ",
+     "title": "PPI",
+     "at": 1792067400000,
+     "date_et": "2026-10-15",
+     "time_et": "08:30",
+     "impact": "high",
+     "source": "builtin",
+     "linger_min": 120
+    },
+    1792068390000
+   ],
+   "out": "已公布 16 分钟"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "ppi",
+     "kind": "econ",
+     "title": "PPI",
+     "at": 1792067400000,
+     "date_et": "2026-10-15",
+     "time_et": "08:30",
+     "impact": "high",
+     "source": "builtin",
+     "linger_min": 120
+    },
+    1792074540000
+   ],
+   "out": "after"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "ppi",
+     "kind": "econ",
+     "title": "PPI",
+     "at": 1792067400000,
+     "date_et": "2026-10-15",
+     "time_et": "08:30",
+     "impact": "high",
+     "source": "builtin",
+     "linger_min": 120
+    },
+    1792074540000
+   ],
+   "out": "已公布 119 分钟"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "ppi",
+     "kind": "econ",
+     "title": "PPI",
+     "at": 1792067400000,
+     "date_et": "2026-10-15",
+     "time_et": "08:30",
+     "impact": "high",
+     "source": "builtin",
+     "linger_min": 120
+    },
+    1792074600000
+   ],
+   "out": "expired"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "ppi",
+     "kind": "econ",
+     "title": "PPI",
+     "at": 1792067400000,
+     "date_et": "2026-10-15",
+     "time_et": "08:30",
+     "impact": "high",
+     "source": "builtin",
+     "linger_min": 120
+    },
+    1792074600000
+   ],
+   "out": "已过去"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "ppi",
+     "kind": "econ",
+     "title": "PPI",
+     "at": 1792067400000,
+     "date_et": "2026-10-15",
+     "time_et": "08:30",
+     "impact": "high",
+     "source": "builtin",
+     "linger_min": 120
+    },
+    1792078200000
+   ],
+   "out": "expired"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "ppi",
+     "kind": "econ",
+     "title": "PPI",
+     "at": 1792067400000,
+     "date_et": "2026-10-15",
+     "time_et": "08:30",
+     "impact": "high",
+     "source": "builtin",
+     "linger_min": 120
+    },
+    1792078200000
+   ],
+   "out": "已过去"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "c1",
+     "kind": "econ",
+     "title": "CRWV 发债",
+     "at": 1792164600000,
+     "date_et": "2026-10-16",
+     "time_et": "11:30",
+     "impact": "high",
+     "stars": 0,
+     "source": "custom",
+     "linger_min": 120
+    },
+    1792071000000
+   ],
+   "out": "upcoming"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "c1",
+     "kind": "econ",
+     "title": "CRWV 发债",
+     "at": 1792164600000,
+     "date_et": "2026-10-16",
+     "time_et": "11:30",
+     "impact": "high",
+     "stars": 0,
+     "source": "custom",
+     "linger_min": 120
+    },
+    1792071000000
+   ],
+   "out": "还有 1 天 2 小时"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "c1",
+     "kind": "econ",
+     "title": "CRWV 发债",
+     "at": 1792164600000,
+     "date_et": "2026-10-16",
+     "time_et": "11:30",
+     "impact": "high",
+     "stars": 0,
+     "source": "custom",
+     "linger_min": 120
+    },
+    1792096200000
+   ],
+   "out": "upcoming"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "c1",
+     "kind": "econ",
+     "title": "CRWV 发债",
+     "at": 1792164600000,
+     "date_et": "2026-10-16",
+     "time_et": "11:30",
+     "impact": "high",
+     "stars": 0,
+     "source": "custom",
+     "linger_min": 120
+    },
+    1792096200000
+   ],
+   "out": "还有 19 小时"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "c1",
+     "kind": "econ",
+     "title": "CRWV 发债",
+     "at": 1792164600000,
+     "date_et": "2026-10-16",
+     "time_et": "11:30",
+     "impact": "high",
+     "stars": 0,
+     "source": "custom",
+     "linger_min": 120
+    },
+    1792157400000
+   ],
+   "out": "upcoming"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "c1",
+     "kind": "econ",
+     "title": "CRWV 发债",
+     "at": 1792164600000,
+     "date_et": "2026-10-16",
+     "time_et": "11:30",
+     "impact": "high",
+     "stars": 0,
+     "source": "custom",
+     "linger_min": 120
+    },
+    1792157400000
+   ],
+   "out": "还有 2 小时"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "c1",
+     "kind": "econ",
+     "title": "CRWV 发债",
+     "at": 1792164600000,
+     "date_et": "2026-10-16",
+     "time_et": "11:30",
+     "impact": "high",
+     "stars": 0,
+     "source": "custom",
+     "linger_min": 120
+    },
+    1792160940000
+   ],
+   "out": "upcoming"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "c1",
+     "kind": "econ",
+     "title": "CRWV 发债",
+     "at": 1792164600000,
+     "date_et": "2026-10-16",
+     "time_et": "11:30",
+     "impact": "high",
+     "stars": 0,
+     "source": "custom",
+     "linger_min": 120
+    },
+    1792160940000
+   ],
+   "out": "还有 1 小时 01 分"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "c1",
+     "kind": "econ",
+     "title": "CRWV 发债",
+     "at": 1792164600000,
+     "date_et": "2026-10-16",
+     "time_et": "11:30",
+     "impact": "high",
+     "stars": 0,
+     "source": "custom",
+     "linger_min": 120
+    },
+    1792161000000
+   ],
+   "out": "soon"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "c1",
+     "kind": "econ",
+     "title": "CRWV 发债",
+     "at": 1792164600000,
+     "date_et": "2026-10-16",
+     "time_et": "11:30",
+     "impact": "high",
+     "stars": 0,
+     "source": "custom",
+     "linger_min": 120
+    },
+    1792161000000
+   ],
+   "out": "还有 1 小时"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "c1",
+     "kind": "econ",
+     "title": "CRWV 发债",
+     "at": 1792164600000,
+     "date_et": "2026-10-16",
+     "time_et": "11:30",
+     "impact": "high",
+     "stars": 0,
+     "source": "custom",
+     "linger_min": 120
+    },
+    1792161030000
+   ],
+   "out": "soon"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "c1",
+     "kind": "econ",
+     "title": "CRWV 发债",
+     "at": 1792164600000,
+     "date_et": "2026-10-16",
+     "time_et": "11:30",
+     "impact": "high",
+     "stars": 0,
+     "source": "custom",
+     "linger_min": 120
+    },
+    1792161030000
+   ],
+   "out": "还有 1 小时"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "c1",
+     "kind": "econ",
+     "title": "CRWV 发债",
+     "at": 1792164600000,
+     "date_et": "2026-10-16",
+     "time_et": "11:30",
+     "impact": "high",
+     "stars": 0,
+     "source": "custom",
+     "linger_min": 120
+    },
+    1792162800000
+   ],
+   "out": "soon"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "c1",
+     "kind": "econ",
+     "title": "CRWV 发债",
+     "at": 1792164600000,
+     "date_et": "2026-10-16",
+     "time_et": "11:30",
+     "impact": "high",
+     "stars": 0,
+     "source": "custom",
+     "linger_min": 120
+    },
+    1792162800000
+   ],
+   "out": "还有 30 分钟"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "c1",
+     "kind": "econ",
+     "title": "CRWV 发债",
+     "at": 1792164600000,
+     "date_et": "2026-10-16",
+     "time_et": "11:30",
+     "impact": "high",
+     "stars": 0,
+     "source": "custom",
+     "linger_min": 120
+    },
+    1792164599999
+   ],
+   "out": "soon"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "c1",
+     "kind": "econ",
+     "title": "CRWV 发债",
+     "at": 1792164600000,
+     "date_et": "2026-10-16",
+     "time_et": "11:30",
+     "impact": "high",
+     "stars": 0,
+     "source": "custom",
+     "linger_min": 120
+    },
+    1792164599999
+   ],
+   "out": "还有 1 分钟"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "c1",
+     "kind": "econ",
+     "title": "CRWV 发债",
+     "at": 1792164600000,
+     "date_et": "2026-10-16",
+     "time_et": "11:30",
+     "impact": "high",
+     "stars": 0,
+     "source": "custom",
+     "linger_min": 120
+    },
+    1792164600000
+   ],
+   "out": "live"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "c1",
+     "kind": "econ",
+     "title": "CRWV 发债",
+     "at": 1792164600000,
+     "date_et": "2026-10-16",
+     "time_et": "11:30",
+     "impact": "high",
+     "stars": 0,
+     "source": "custom",
+     "linger_min": 120
+    },
+    1792164600000
+   ],
+   "out": "正在公布"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "c1",
+     "kind": "econ",
+     "title": "CRWV 发债",
+     "at": 1792164600000,
+     "date_et": "2026-10-16",
+     "time_et": "11:30",
+     "impact": "high",
+     "stars": 0,
+     "source": "custom",
+     "linger_min": 120
+    },
+    1792164600001
+   ],
+   "out": "live"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "c1",
+     "kind": "econ",
+     "title": "CRWV 发债",
+     "at": 1792164600000,
+     "date_et": "2026-10-16",
+     "time_et": "11:30",
+     "impact": "high",
+     "stars": 0,
+     "source": "custom",
+     "linger_min": 120
+    },
+    1792164600001
+   ],
+   "out": "正在公布"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "c1",
+     "kind": "econ",
+     "title": "CRWV 发债",
+     "at": 1792164600000,
+     "date_et": "2026-10-16",
+     "time_et": "11:30",
+     "impact": "high",
+     "stars": 0,
+     "source": "custom",
+     "linger_min": 120
+    },
+    1792165440000
+   ],
+   "out": "live"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "c1",
+     "kind": "econ",
+     "title": "CRWV 发债",
+     "at": 1792164600000,
+     "date_et": "2026-10-16",
+     "time_et": "11:30",
+     "impact": "high",
+     "stars": 0,
+     "source": "custom",
+     "linger_min": 120
+    },
+    1792165440000
+   ],
+   "out": "正在公布"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "c1",
+     "kind": "econ",
+     "title": "CRWV 发债",
+     "at": 1792164600000,
+     "date_et": "2026-10-16",
+     "time_et": "11:30",
+     "impact": "high",
+     "stars": 0,
+     "source": "custom",
+     "linger_min": 120
+    },
+    1792165500000
+   ],
+   "out": "after"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "c1",
+     "kind": "econ",
+     "title": "CRWV 发债",
+     "at": 1792164600000,
+     "date_et": "2026-10-16",
+     "time_et": "11:30",
+     "impact": "high",
+     "stars": 0,
+     "source": "custom",
+     "linger_min": 120
+    },
+    1792165500000
+   ],
+   "out": "已公布 15 分钟"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "c1",
+     "kind": "econ",
+     "title": "CRWV 发债",
+     "at": 1792164600000,
+     "date_et": "2026-10-16",
+     "time_et": "11:30",
+     "impact": "high",
+     "stars": 0,
+     "source": "custom",
+     "linger_min": 120
+    },
+    1792165590000
+   ],
+   "out": "after"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "c1",
+     "kind": "econ",
+     "title": "CRWV 发债",
+     "at": 1792164600000,
+     "date_et": "2026-10-16",
+     "time_et": "11:30",
+     "impact": "high",
+     "stars": 0,
+     "source": "custom",
+     "linger_min": 120
+    },
+    1792165590000
+   ],
+   "out": "已公布 16 分钟"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "c1",
+     "kind": "econ",
+     "title": "CRWV 发债",
+     "at": 1792164600000,
+     "date_et": "2026-10-16",
+     "time_et": "11:30",
+     "impact": "high",
+     "stars": 0,
+     "source": "custom",
+     "linger_min": 120
+    },
+    1792171740000
+   ],
+   "out": "after"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "c1",
+     "kind": "econ",
+     "title": "CRWV 发债",
+     "at": 1792164600000,
+     "date_et": "2026-10-16",
+     "time_et": "11:30",
+     "impact": "high",
+     "stars": 0,
+     "source": "custom",
+     "linger_min": 120
+    },
+    1792171740000
+   ],
+   "out": "已公布 119 分钟"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "c1",
+     "kind": "econ",
+     "title": "CRWV 发债",
+     "at": 1792164600000,
+     "date_et": "2026-10-16",
+     "time_et": "11:30",
+     "impact": "high",
+     "stars": 0,
+     "source": "custom",
+     "linger_min": 120
+    },
+    1792171800000
+   ],
+   "out": "expired"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "c1",
+     "kind": "econ",
+     "title": "CRWV 发债",
+     "at": 1792164600000,
+     "date_et": "2026-10-16",
+     "time_et": "11:30",
+     "impact": "high",
+     "stars": 0,
+     "source": "custom",
+     "linger_min": 120
+    },
+    1792171800000
+   ],
+   "out": "已过去"
+  },
+  {
+   "fn": "phaseOf",
+   "args": [
+    {
+     "id": "c1",
+     "kind": "econ",
+     "title": "CRWV 发债",
+     "at": 1792164600000,
+     "date_et": "2026-10-16",
+     "time_et": "11:30",
+     "impact": "high",
+     "stars": 0,
+     "source": "custom",
+     "linger_min": 120
+    },
+    1792175400000
+   ],
+   "out": "expired"
+  },
+  {
+   "fn": "countdownText",
+   "args": [
+    {
+     "id": "c1",
+     "kind": "econ",
+     "title": "CRWV 发债",
+     "at": 1792164600000,
+     "date_et": "2026-10-16",
+     "time_et": "11:30",
+     "impact": "high",
+     "stars": 0,
+     "source": "custom",
+     "linger_min": 120
+    },
+    1792175400000
+   ],
+   "out": "已过去"
+  },
+  {
+   "fn": "whenText",
+   "args": [
+    1791981000000,
+    1791714600000,
+    "Asia/Shanghai"
+   ],
+   "out": "周三 20:30"
+  },
+  {
+   "fn": "whenText",
+   "args": [
+    1791981000000,
+    1791714600000,
+    "America/New_York"
+   ],
+   "out": "周三 08:30"
+  },
+  {
+   "fn": "whenText",
+   "args": [
+    1791981000000,
+    1791801000000,
+    "Asia/Shanghai"
+   ],
+   "out": "周三 20:30"
+  },
+  {
+   "fn": "whenText",
+   "args": [
+    1791981000000,
+    1791801000000,
+    "America/New_York"
+   ],
+   "out": "周三 08:30"
+  },
+  {
+   "fn": "whenText",
+   "args": [
+    1791981000000,
+    1791891000000,
+    "Asia/Shanghai"
+   ],
+   "out": "明天 20:30"
+  },
+  {
+   "fn": "whenText",
+   "args": [
+    1791981000000,
+    1791891000000,
+    "America/New_York"
+   ],
+   "out": "明天 08:30"
+  },
+  {
+   "fn": "whenText",
+   "args": [
+    1791981000000,
+    1791898200000,
+    "Asia/Shanghai"
+   ],
+   "out": "明天 20:30"
+  },
+  {
+   "fn": "whenText",
+   "args": [
+    1791981000000,
+    1791898200000,
+    "America/New_York"
+   ],
+   "out": "明天 08:30"
+  },
+  {
+   "fn": "whenText",
+   "args": [
+    1791981000000,
+    1791963000000,
+    "Asia/Shanghai"
+   ],
+   "out": "今天 20:30"
+  },
+  {
+   "fn": "whenText",
+   "args": [
+    1791981000000,
+    1791963000000,
+    "America/New_York"
+   ],
+   "out": "今天 08:30"
+  },
+  {
+   "fn": "whenText",
+   "args": [
+    1791981000000,
+    1791981000000,
+    "Asia/Shanghai"
+   ],
+   "out": "今天 20:30"
+  },
+  {
+   "fn": "whenText",
+   "args": [
+    1791981000000,
+    1791981000000,
+    "America/New_York"
+   ],
+   "out": "今天 08:30"
+  },
+  {
+   "fn": "whenText",
+   "args": [
+    1791981000000,
+    1792006200000,
+    "Asia/Shanghai"
+   ],
+   "out": "昨天 20:30"
+  },
+  {
+   "fn": "whenText",
+   "args": [
+    1791981000000,
+    1792006200000,
+    "America/New_York"
+   ],
+   "out": "今天 08:30"
+  },
+  {
+   "fn": "whenText",
+   "args": [
+    1791981000000,
+    1792053000000,
+    "Asia/Shanghai"
+   ],
+   "out": "昨天 20:30"
+  },
+  {
+   "fn": "whenText",
+   "args": [
+    1791981000000,
+    1792053000000,
+    "America/New_York"
+   ],
+   "out": "昨天 08:30"
+  },
+  {
+   "fn": "whenText",
+   "args": [
+    1791981000000,
+    1792089000000,
+    "Asia/Shanghai"
+   ],
+   "out": "10-14 20:30"
+  },
+  {
+   "fn": "whenText",
+   "args": [
+    1791981000000,
+    1792089000000,
+    "America/New_York"
+   ],
+   "out": "昨天 08:30"
+  },
+  {
+   "fn": "whenText",
+   "args": [
+    1791981000000,
+    1792499400000,
+    "Asia/Shanghai"
+   ],
+   "out": "10-14 20:30"
+  },
+  {
+   "fn": "whenText",
+   "args": [
+    1791981000000,
+    1792499400000,
+    "America/New_York"
+   ],
+   "out": "10-14 08:30"
+  },
+  {
+   "fn": "whenText",
+   "args": [
+    1791981000000,
+    1792672200000,
+    "Asia/Shanghai"
+   ],
+   "out": "10-14 20:30"
+  },
+  {
+   "fn": "whenText",
+   "args": [
+    1791981000000,
+    1792672200000,
+    "America/New_York"
+   ],
+   "out": "10-14 08:30"
+  },
+  {
+   "fn": "etDateOf",
+   "args": [
+    1791981000000
+   ],
+   "out": "2026-10-14"
+  },
+  {
+   "fn": "etDateOf",
+   "args": [
+    1791934200000
+   ],
+   "out": "2026-10-13"
+  },
+  {
+   "fn": "etDateOf",
+   "args": [
+    1793626200000
+   ],
+   "out": "2026-11-02"
+  },
+  {
+   "fn": "etDateOf",
+   "args": [
+    1793665800000
+   ],
+   "out": "2026-11-02"
+  },
+  {
+   "fn": "etDateOf",
+   "args": [
+    1772953140000
+   ],
+   "out": "2026-03-08"
+  },
+  {
+   "fn": "etDateOf",
+   "args": [
+    1772953260000
+   ],
+   "out": "2026-03-08"
+  },
+  {
+   "fn": "pinnedEvents",
+   "args": [
+    [
+     {
+      "id": "far",
+      "kind": "econ",
+      "title": "远的中等",
+      "at": 1792089000000,
+      "date_et": "2026-10-15",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "fomc",
+      "kind": "econ",
+      "title": "FOMC 利率决议",
+      "at": 1792000800000,
+      "date_et": "2026-10-14",
+      "time_et": "14:00",
+      "impact": "high",
+      "stars": 4.6,
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "cpi",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120,
+      "items": [
+       {
+        "title": "CPI 月率",
+        "forecast": "0.3%",
+        "previous": "0.4%"
+       },
+       {
+        "title": "核心 CPI 年率",
+        "forecast": "",
+        "previous": "3.1%"
+       },
+       {
+        "title": "没数的",
+        "forecast": "",
+        "previous": ""
+       }
+      ],
+      "note": "指数常跳空"
+     },
+     {
+      "id": "claims",
+      "kind": "econ",
+      "title": "初请失业金",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 3,
+      "source": "builtin",
+      "linger_min": 60
+     },
+     {
+      "id": "ppi",
+      "kind": "econ",
+      "title": "PPI",
+      "at": 1792067400000,
+      "date_et": "2026-10-15",
+      "time_et": "08:30",
+      "impact": "high",
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "x1",
+      "kind": "cross",
+      "title": "美股 −2.5%,韩股 ETF 没跟跌",
+      "at": 1792197000000,
+      "date_et": "2026-10-16",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 600,
+      "cross": {
+       "direction": "down",
+       "us_pct": -2.5,
+       "markets": [
+        {
+         "key": "kr",
+         "name": "韩股",
+         "symbol": "EWY",
+         "etf_pct": -0.4,
+         "gap": 2.1,
+         "open_at": 1792200600000,
+         "instruments": [
+          {
+           "symbol": "KORU",
+           "change_pct": -1.2,
+           "last": 10.5
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "id": "nov",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1793626200000,
+      "date_et": "2026-11-02",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "c1",
+      "kind": "econ",
+      "title": "CRWV 发债",
+      "at": 1792164600000,
+      "date_et": "2026-10-16",
+      "time_et": "11:30",
+      "impact": "high",
+      "stars": 0,
+      "source": "custom",
+      "linger_min": 120
+     }
+    ],
+    1791909000000
+   ],
+   "out": {
+    "ids": [
+     "x1"
+    ],
+    "more": 0
+   }
+  },
+  {
+   "fn": "pinnedEvents",
+   "args": [
+    [
+     {
+      "id": "far",
+      "kind": "econ",
+      "title": "远的中等",
+      "at": 1792089000000,
+      "date_et": "2026-10-15",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "fomc",
+      "kind": "econ",
+      "title": "FOMC 利率决议",
+      "at": 1792000800000,
+      "date_et": "2026-10-14",
+      "time_et": "14:00",
+      "impact": "high",
+      "stars": 4.6,
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "cpi",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120,
+      "items": [
+       {
+        "title": "CPI 月率",
+        "forecast": "0.3%",
+        "previous": "0.4%"
+       },
+       {
+        "title": "核心 CPI 年率",
+        "forecast": "",
+        "previous": "3.1%"
+       },
+       {
+        "title": "没数的",
+        "forecast": "",
+        "previous": ""
+       }
+      ],
+      "note": "指数常跳空"
+     },
+     {
+      "id": "claims",
+      "kind": "econ",
+      "title": "初请失业金",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 3,
+      "source": "builtin",
+      "linger_min": 60
+     },
+     {
+      "id": "ppi",
+      "kind": "econ",
+      "title": "PPI",
+      "at": 1792067400000,
+      "date_et": "2026-10-15",
+      "time_et": "08:30",
+      "impact": "high",
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "x1",
+      "kind": "cross",
+      "title": "美股 −2.5%,韩股 ETF 没跟跌",
+      "at": 1792197000000,
+      "date_et": "2026-10-16",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 600,
+      "cross": {
+       "direction": "down",
+       "us_pct": -2.5,
+       "markets": [
+        {
+         "key": "kr",
+         "name": "韩股",
+         "symbol": "EWY",
+         "etf_pct": -0.4,
+         "gap": 2.1,
+         "open_at": 1792200600000,
+         "instruments": [
+          {
+           "symbol": "KORU",
+           "change_pct": -1.2,
+           "last": 10.5
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "id": "nov",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1793626200000,
+      "date_et": "2026-11-02",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "c1",
+      "kind": "econ",
+      "title": "CRWV 发债",
+      "at": 1792164600000,
+      "date_et": "2026-10-16",
+      "time_et": "11:30",
+      "impact": "high",
+      "stars": 0,
+      "source": "custom",
+      "linger_min": 120
+     }
+    ],
+    1791945000000
+   ],
+   "out": {
+    "ids": [
+     "cpi",
+     "fomc",
+     "x1"
+    ],
+    "more": 0
+   }
+  },
+  {
+   "fn": "pinnedEvents",
+   "args": [
+    [
+     {
+      "id": "far",
+      "kind": "econ",
+      "title": "远的中等",
+      "at": 1792089000000,
+      "date_et": "2026-10-15",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "fomc",
+      "kind": "econ",
+      "title": "FOMC 利率决议",
+      "at": 1792000800000,
+      "date_et": "2026-10-14",
+      "time_et": "14:00",
+      "impact": "high",
+      "stars": 4.6,
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "cpi",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120,
+      "items": [
+       {
+        "title": "CPI 月率",
+        "forecast": "0.3%",
+        "previous": "0.4%"
+       },
+       {
+        "title": "核心 CPI 年率",
+        "forecast": "",
+        "previous": "3.1%"
+       },
+       {
+        "title": "没数的",
+        "forecast": "",
+        "previous": ""
+       }
+      ],
+      "note": "指数常跳空"
+     },
+     {
+      "id": "claims",
+      "kind": "econ",
+      "title": "初请失业金",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 3,
+      "source": "builtin",
+      "linger_min": 60
+     },
+     {
+      "id": "ppi",
+      "kind": "econ",
+      "title": "PPI",
+      "at": 1792067400000,
+      "date_et": "2026-10-15",
+      "time_et": "08:30",
+      "impact": "high",
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "x1",
+      "kind": "cross",
+      "title": "美股 −2.5%,韩股 ETF 没跟跌",
+      "at": 1792197000000,
+      "date_et": "2026-10-16",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 600,
+      "cross": {
+       "direction": "down",
+       "us_pct": -2.5,
+       "markets": [
+        {
+         "key": "kr",
+         "name": "韩股",
+         "symbol": "EWY",
+         "etf_pct": -0.4,
+         "gap": 2.1,
+         "open_at": 1792200600000,
+         "instruments": [
+          {
+           "symbol": "KORU",
+           "change_pct": -1.2,
+           "last": 10.5
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "id": "nov",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1793626200000,
+      "date_et": "2026-11-02",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "c1",
+      "kind": "econ",
+      "title": "CRWV 发债",
+      "at": 1792164600000,
+      "date_et": "2026-10-16",
+      "time_et": "11:30",
+      "impact": "high",
+      "stars": 0,
+      "source": "custom",
+      "linger_min": 120
+     }
+    ],
+    1791973800000
+   ],
+   "out": {
+    "ids": [
+     "cpi",
+     "fomc",
+     "x1"
+    ],
+    "more": 0
+   }
+  },
+  {
+   "fn": "pinnedEvents",
+   "args": [
+    [
+     {
+      "id": "far",
+      "kind": "econ",
+      "title": "远的中等",
+      "at": 1792089000000,
+      "date_et": "2026-10-15",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "fomc",
+      "kind": "econ",
+      "title": "FOMC 利率决议",
+      "at": 1792000800000,
+      "date_et": "2026-10-14",
+      "time_et": "14:00",
+      "impact": "high",
+      "stars": 4.6,
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "cpi",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120,
+      "items": [
+       {
+        "title": "CPI 月率",
+        "forecast": "0.3%",
+        "previous": "0.4%"
+       },
+       {
+        "title": "核心 CPI 年率",
+        "forecast": "",
+        "previous": "3.1%"
+       },
+       {
+        "title": "没数的",
+        "forecast": "",
+        "previous": ""
+       }
+      ],
+      "note": "指数常跳空"
+     },
+     {
+      "id": "claims",
+      "kind": "econ",
+      "title": "初请失业金",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 3,
+      "source": "builtin",
+      "linger_min": 60
+     },
+     {
+      "id": "ppi",
+      "kind": "econ",
+      "title": "PPI",
+      "at": 1792067400000,
+      "date_et": "2026-10-15",
+      "time_et": "08:30",
+      "impact": "high",
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "x1",
+      "kind": "cross",
+      "title": "美股 −2.5%,韩股 ETF 没跟跌",
+      "at": 1792197000000,
+      "date_et": "2026-10-16",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 600,
+      "cross": {
+       "direction": "down",
+       "us_pct": -2.5,
+       "markets": [
+        {
+         "key": "kr",
+         "name": "韩股",
+         "symbol": "EWY",
+         "etf_pct": -0.4,
+         "gap": 2.1,
+         "open_at": 1792200600000,
+         "instruments": [
+          {
+           "symbol": "KORU",
+           "change_pct": -1.2,
+           "last": 10.5
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "id": "nov",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1793626200000,
+      "date_et": "2026-11-02",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "c1",
+      "kind": "econ",
+      "title": "CRWV 发债",
+      "at": 1792164600000,
+      "date_et": "2026-10-16",
+      "time_et": "11:30",
+      "impact": "high",
+      "stars": 0,
+      "source": "custom",
+      "linger_min": 120
+     }
+    ],
+    1791978300000
+   ],
+   "out": {
+    "ids": [
+     "cpi",
+     "claims",
+     "fomc"
+    ],
+    "more": 1
+   }
+  },
+  {
+   "fn": "pinnedEvents",
+   "args": [
+    [
+     {
+      "id": "far",
+      "kind": "econ",
+      "title": "远的中等",
+      "at": 1792089000000,
+      "date_et": "2026-10-15",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "fomc",
+      "kind": "econ",
+      "title": "FOMC 利率决议",
+      "at": 1792000800000,
+      "date_et": "2026-10-14",
+      "time_et": "14:00",
+      "impact": "high",
+      "stars": 4.6,
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "cpi",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120,
+      "items": [
+       {
+        "title": "CPI 月率",
+        "forecast": "0.3%",
+        "previous": "0.4%"
+       },
+       {
+        "title": "核心 CPI 年率",
+        "forecast": "",
+        "previous": "3.1%"
+       },
+       {
+        "title": "没数的",
+        "forecast": "",
+        "previous": ""
+       }
+      ],
+      "note": "指数常跳空"
+     },
+     {
+      "id": "claims",
+      "kind": "econ",
+      "title": "初请失业金",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 3,
+      "source": "builtin",
+      "linger_min": 60
+     },
+     {
+      "id": "ppi",
+      "kind": "econ",
+      "title": "PPI",
+      "at": 1792067400000,
+      "date_et": "2026-10-15",
+      "time_et": "08:30",
+      "impact": "high",
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "x1",
+      "kind": "cross",
+      "title": "美股 −2.5%,韩股 ETF 没跟跌",
+      "at": 1792197000000,
+      "date_et": "2026-10-16",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 600,
+      "cross": {
+       "direction": "down",
+       "us_pct": -2.5,
+       "markets": [
+        {
+         "key": "kr",
+         "name": "韩股",
+         "symbol": "EWY",
+         "etf_pct": -0.4,
+         "gap": 2.1,
+         "open_at": 1792200600000,
+         "instruments": [
+          {
+           "symbol": "KORU",
+           "change_pct": -1.2,
+           "last": 10.5
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "id": "nov",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1793626200000,
+      "date_et": "2026-11-02",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "c1",
+      "kind": "econ",
+      "title": "CRWV 发债",
+      "at": 1792164600000,
+      "date_et": "2026-10-16",
+      "time_et": "11:30",
+      "impact": "high",
+      "stars": 0,
+      "source": "custom",
+      "linger_min": 120
+     }
+    ],
+    1791981000000
+   ],
+   "out": {
+    "ids": [
+     "cpi",
+     "claims",
+     "fomc"
+    ],
+    "more": 1
+   }
+  },
+  {
+   "fn": "pinnedEvents",
+   "args": [
+    [
+     {
+      "id": "far",
+      "kind": "econ",
+      "title": "远的中等",
+      "at": 1792089000000,
+      "date_et": "2026-10-15",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "fomc",
+      "kind": "econ",
+      "title": "FOMC 利率决议",
+      "at": 1792000800000,
+      "date_et": "2026-10-14",
+      "time_et": "14:00",
+      "impact": "high",
+      "stars": 4.6,
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "cpi",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120,
+      "items": [
+       {
+        "title": "CPI 月率",
+        "forecast": "0.3%",
+        "previous": "0.4%"
+       },
+       {
+        "title": "核心 CPI 年率",
+        "forecast": "",
+        "previous": "3.1%"
+       },
+       {
+        "title": "没数的",
+        "forecast": "",
+        "previous": ""
+       }
+      ],
+      "note": "指数常跳空"
+     },
+     {
+      "id": "claims",
+      "kind": "econ",
+      "title": "初请失业金",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 3,
+      "source": "builtin",
+      "linger_min": 60
+     },
+     {
+      "id": "ppi",
+      "kind": "econ",
+      "title": "PPI",
+      "at": 1792067400000,
+      "date_et": "2026-10-15",
+      "time_et": "08:30",
+      "impact": "high",
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "x1",
+      "kind": "cross",
+      "title": "美股 −2.5%,韩股 ETF 没跟跌",
+      "at": 1792197000000,
+      "date_et": "2026-10-16",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 600,
+      "cross": {
+       "direction": "down",
+       "us_pct": -2.5,
+       "markets": [
+        {
+         "key": "kr",
+         "name": "韩股",
+         "symbol": "EWY",
+         "etf_pct": -0.4,
+         "gap": 2.1,
+         "open_at": 1792200600000,
+         "instruments": [
+          {
+           "symbol": "KORU",
+           "change_pct": -1.2,
+           "last": 10.5
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "id": "nov",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1793626200000,
+      "date_et": "2026-11-02",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "c1",
+      "kind": "econ",
+      "title": "CRWV 发债",
+      "at": 1792164600000,
+      "date_et": "2026-10-16",
+      "time_et": "11:30",
+      "impact": "high",
+      "stars": 0,
+      "source": "custom",
+      "linger_min": 120
+     }
+    ],
+    1791982800000
+   ],
+   "out": {
+    "ids": [
+     "cpi",
+     "claims",
+     "fomc"
+    ],
+    "more": 1
+   }
+  },
+  {
+   "fn": "pinnedEvents",
+   "args": [
+    [
+     {
+      "id": "far",
+      "kind": "econ",
+      "title": "远的中等",
+      "at": 1792089000000,
+      "date_et": "2026-10-15",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "fomc",
+      "kind": "econ",
+      "title": "FOMC 利率决议",
+      "at": 1792000800000,
+      "date_et": "2026-10-14",
+      "time_et": "14:00",
+      "impact": "high",
+      "stars": 4.6,
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "cpi",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120,
+      "items": [
+       {
+        "title": "CPI 月率",
+        "forecast": "0.3%",
+        "previous": "0.4%"
+       },
+       {
+        "title": "核心 CPI 年率",
+        "forecast": "",
+        "previous": "3.1%"
+       },
+       {
+        "title": "没数的",
+        "forecast": "",
+        "previous": ""
+       }
+      ],
+      "note": "指数常跳空"
+     },
+     {
+      "id": "claims",
+      "kind": "econ",
+      "title": "初请失业金",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 3,
+      "source": "builtin",
+      "linger_min": 60
+     },
+     {
+      "id": "ppi",
+      "kind": "econ",
+      "title": "PPI",
+      "at": 1792067400000,
+      "date_et": "2026-10-15",
+      "time_et": "08:30",
+      "impact": "high",
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "x1",
+      "kind": "cross",
+      "title": "美股 −2.5%,韩股 ETF 没跟跌",
+      "at": 1792197000000,
+      "date_et": "2026-10-16",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 600,
+      "cross": {
+       "direction": "down",
+       "us_pct": -2.5,
+       "markets": [
+        {
+         "key": "kr",
+         "name": "韩股",
+         "symbol": "EWY",
+         "etf_pct": -0.4,
+         "gap": 2.1,
+         "open_at": 1792200600000,
+         "instruments": [
+          {
+           "symbol": "KORU",
+           "change_pct": -1.2,
+           "last": 10.5
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "id": "nov",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1793626200000,
+      "date_et": "2026-11-02",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "c1",
+      "kind": "econ",
+      "title": "CRWV 发债",
+      "at": 1792164600000,
+      "date_et": "2026-10-16",
+      "time_et": "11:30",
+      "impact": "high",
+      "stars": 0,
+      "source": "custom",
+      "linger_min": 120
+     }
+    ],
+    1791991800000
+   ],
+   "out": {
+    "ids": [
+     "fomc",
+     "x1"
+    ],
+    "more": 0
+   }
+  },
+  {
+   "fn": "pinnedEvents",
+   "args": [
+    [
+     {
+      "id": "far",
+      "kind": "econ",
+      "title": "远的中等",
+      "at": 1792089000000,
+      "date_et": "2026-10-15",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "fomc",
+      "kind": "econ",
+      "title": "FOMC 利率决议",
+      "at": 1792000800000,
+      "date_et": "2026-10-14",
+      "time_et": "14:00",
+      "impact": "high",
+      "stars": 4.6,
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "cpi",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120,
+      "items": [
+       {
+        "title": "CPI 月率",
+        "forecast": "0.3%",
+        "previous": "0.4%"
+       },
+       {
+        "title": "核心 CPI 年率",
+        "forecast": "",
+        "previous": "3.1%"
+       },
+       {
+        "title": "没数的",
+        "forecast": "",
+        "previous": ""
+       }
+      ],
+      "note": "指数常跳空"
+     },
+     {
+      "id": "claims",
+      "kind": "econ",
+      "title": "初请失业金",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 3,
+      "source": "builtin",
+      "linger_min": 60
+     },
+     {
+      "id": "ppi",
+      "kind": "econ",
+      "title": "PPI",
+      "at": 1792067400000,
+      "date_et": "2026-10-15",
+      "time_et": "08:30",
+      "impact": "high",
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "x1",
+      "kind": "cross",
+      "title": "美股 −2.5%,韩股 ETF 没跟跌",
+      "at": 1792197000000,
+      "date_et": "2026-10-16",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 600,
+      "cross": {
+       "direction": "down",
+       "us_pct": -2.5,
+       "markets": [
+        {
+         "key": "kr",
+         "name": "韩股",
+         "symbol": "EWY",
+         "etf_pct": -0.4,
+         "gap": 2.1,
+         "open_at": 1792200600000,
+         "instruments": [
+          {
+           "symbol": "KORU",
+           "change_pct": -1.2,
+           "last": 10.5
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "id": "nov",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1793626200000,
+      "date_et": "2026-11-02",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "c1",
+      "kind": "econ",
+      "title": "CRWV 发债",
+      "at": 1792164600000,
+      "date_et": "2026-10-16",
+      "time_et": "11:30",
+      "impact": "high",
+      "stars": 0,
+      "source": "custom",
+      "linger_min": 120
+     }
+    ],
+    1792006200000
+   ],
+   "out": {
+    "ids": [
+     "fomc",
+     "ppi",
+     "x1"
+    ],
+    "more": 0
+   }
+  },
+  {
+   "fn": "pinnedEvents",
+   "args": [
+    [
+     {
+      "id": "far",
+      "kind": "econ",
+      "title": "远的中等",
+      "at": 1792089000000,
+      "date_et": "2026-10-15",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "fomc",
+      "kind": "econ",
+      "title": "FOMC 利率决议",
+      "at": 1792000800000,
+      "date_et": "2026-10-14",
+      "time_et": "14:00",
+      "impact": "high",
+      "stars": 4.6,
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "cpi",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120,
+      "items": [
+       {
+        "title": "CPI 月率",
+        "forecast": "0.3%",
+        "previous": "0.4%"
+       },
+       {
+        "title": "核心 CPI 年率",
+        "forecast": "",
+        "previous": "3.1%"
+       },
+       {
+        "title": "没数的",
+        "forecast": "",
+        "previous": ""
+       }
+      ],
+      "note": "指数常跳空"
+     },
+     {
+      "id": "claims",
+      "kind": "econ",
+      "title": "初请失业金",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 3,
+      "source": "builtin",
+      "linger_min": 60
+     },
+     {
+      "id": "ppi",
+      "kind": "econ",
+      "title": "PPI",
+      "at": 1792067400000,
+      "date_et": "2026-10-15",
+      "time_et": "08:30",
+      "impact": "high",
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "x1",
+      "kind": "cross",
+      "title": "美股 −2.5%,韩股 ETF 没跟跌",
+      "at": 1792197000000,
+      "date_et": "2026-10-16",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 600,
+      "cross": {
+       "direction": "down",
+       "us_pct": -2.5,
+       "markets": [
+        {
+         "key": "kr",
+         "name": "韩股",
+         "symbol": "EWY",
+         "etf_pct": -0.4,
+         "gap": 2.1,
+         "open_at": 1792200600000,
+         "instruments": [
+          {
+           "symbol": "KORU",
+           "change_pct": -1.2,
+           "last": 10.5
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "id": "nov",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1793626200000,
+      "date_et": "2026-11-02",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "c1",
+      "kind": "econ",
+      "title": "CRWV 发债",
+      "at": 1792164600000,
+      "date_et": "2026-10-16",
+      "time_et": "11:30",
+      "impact": "high",
+      "stars": 0,
+      "source": "custom",
+      "linger_min": 120
+     }
+    ],
+    1792053000000
+   ],
+   "out": {
+    "ids": [
+     "ppi",
+     "x1"
+    ],
+    "more": 0
+   }
+  },
+  {
+   "fn": "pinnedEvents",
+   "args": [
+    [
+     {
+      "id": "far",
+      "kind": "econ",
+      "title": "远的中等",
+      "at": 1792089000000,
+      "date_et": "2026-10-15",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "fomc",
+      "kind": "econ",
+      "title": "FOMC 利率决议",
+      "at": 1792000800000,
+      "date_et": "2026-10-14",
+      "time_et": "14:00",
+      "impact": "high",
+      "stars": 4.6,
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "cpi",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120,
+      "items": [
+       {
+        "title": "CPI 月率",
+        "forecast": "0.3%",
+        "previous": "0.4%"
+       },
+       {
+        "title": "核心 CPI 年率",
+        "forecast": "",
+        "previous": "3.1%"
+       },
+       {
+        "title": "没数的",
+        "forecast": "",
+        "previous": ""
+       }
+      ],
+      "note": "指数常跳空"
+     },
+     {
+      "id": "claims",
+      "kind": "econ",
+      "title": "初请失业金",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 3,
+      "source": "builtin",
+      "linger_min": 60
+     },
+     {
+      "id": "ppi",
+      "kind": "econ",
+      "title": "PPI",
+      "at": 1792067400000,
+      "date_et": "2026-10-15",
+      "time_et": "08:30",
+      "impact": "high",
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "x1",
+      "kind": "cross",
+      "title": "美股 −2.5%,韩股 ETF 没跟跌",
+      "at": 1792197000000,
+      "date_et": "2026-10-16",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 600,
+      "cross": {
+       "direction": "down",
+       "us_pct": -2.5,
+       "markets": [
+        {
+         "key": "kr",
+         "name": "韩股",
+         "symbol": "EWY",
+         "etf_pct": -0.4,
+         "gap": 2.1,
+         "open_at": 1792200600000,
+         "instruments": [
+          {
+           "symbol": "KORU",
+           "change_pct": -1.2,
+           "last": 10.5
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "id": "nov",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1793626200000,
+      "date_et": "2026-11-02",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "c1",
+      "kind": "econ",
+      "title": "CRWV 发债",
+      "at": 1792164600000,
+      "date_et": "2026-10-16",
+      "time_et": "11:30",
+      "impact": "high",
+      "stars": 0,
+      "source": "custom",
+      "linger_min": 120
+     }
+    ],
+    1792125000000
+   ],
+   "out": {
+    "ids": [
+     "c1",
+     "x1"
+    ],
+    "more": 0
+   }
+  },
+  {
+   "fn": "pinnedEvents",
+   "args": [
+    [
+     {
+      "id": "far",
+      "kind": "econ",
+      "title": "远的中等",
+      "at": 1792089000000,
+      "date_et": "2026-10-15",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "fomc",
+      "kind": "econ",
+      "title": "FOMC 利率决议",
+      "at": 1792000800000,
+      "date_et": "2026-10-14",
+      "time_et": "14:00",
+      "impact": "high",
+      "stars": 4.6,
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "cpi",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120,
+      "items": [
+       {
+        "title": "CPI 月率",
+        "forecast": "0.3%",
+        "previous": "0.4%"
+       },
+       {
+        "title": "核心 CPI 年率",
+        "forecast": "",
+        "previous": "3.1%"
+       },
+       {
+        "title": "没数的",
+        "forecast": "",
+        "previous": ""
+       }
+      ],
+      "note": "指数常跳空"
+     },
+     {
+      "id": "claims",
+      "kind": "econ",
+      "title": "初请失业金",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 3,
+      "source": "builtin",
+      "linger_min": 60
+     },
+     {
+      "id": "ppi",
+      "kind": "econ",
+      "title": "PPI",
+      "at": 1792067400000,
+      "date_et": "2026-10-15",
+      "time_et": "08:30",
+      "impact": "high",
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "x1",
+      "kind": "cross",
+      "title": "美股 −2.5%,韩股 ETF 没跟跌",
+      "at": 1792197000000,
+      "date_et": "2026-10-16",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 600,
+      "cross": {
+       "direction": "down",
+       "us_pct": -2.5,
+       "markets": [
+        {
+         "key": "kr",
+         "name": "韩股",
+         "symbol": "EWY",
+         "etf_pct": -0.4,
+         "gap": 2.1,
+         "open_at": 1792200600000,
+         "instruments": [
+          {
+           "symbol": "KORU",
+           "change_pct": -1.2,
+           "last": 10.5
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "id": "nov",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1793626200000,
+      "date_et": "2026-11-02",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120
+     },
+     {
+      "id": "c1",
+      "kind": "econ",
+      "title": "CRWV 发债",
+      "at": 1792164600000,
+      "date_et": "2026-10-16",
+      "time_et": "11:30",
+      "impact": "high",
+      "stars": 0,
+      "source": "custom",
+      "linger_min": 120
+     }
+    ],
+    1792233000000
+   ],
+   "out": {
+    "ids": [],
+    "more": 0
+   }
+  },
+  {
+   "fn": "leadsDue",
+   "args": [
+    [
+     {
+      "id": "cpi",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120,
+      "items": [
+       {
+        "title": "CPI 月率",
+        "forecast": "0.3%",
+        "previous": "0.4%"
+       },
+       {
+        "title": "核心 CPI 年率",
+        "forecast": "",
+        "previous": "3.1%"
+       },
+       {
+        "title": "没数的",
+        "forecast": "",
+        "previous": ""
+       }
+      ],
+      "note": "指数常跳空"
+     },
+     {
+      "id": "claims",
+      "kind": "econ",
+      "title": "初请失业金",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 3,
+      "source": "builtin",
+      "linger_min": 60
+     },
+     {
+      "id": "fomc",
+      "kind": "econ",
+      "title": "FOMC 利率决议",
+      "at": 1792000800000,
+      "date_et": "2026-10-14",
+      "time_et": "14:00",
+      "impact": "high",
+      "stars": 4.6,
+      "source": "builtin",
+      "linger_min": 120
+     }
+    ],
+    1791979140000,
+    [
+     30,
+     10
+    ],
+    []
+   ],
+   "out": []
+  },
+  {
+   "fn": "leadsDue",
+   "args": [
+    [
+     {
+      "id": "cpi",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120,
+      "items": [
+       {
+        "title": "CPI 月率",
+        "forecast": "0.3%",
+        "previous": "0.4%"
+       },
+       {
+        "title": "核心 CPI 年率",
+        "forecast": "",
+        "previous": "3.1%"
+       },
+       {
+        "title": "没数的",
+        "forecast": "",
+        "previous": ""
+       }
+      ],
+      "note": "指数常跳空"
+     },
+     {
+      "id": "claims",
+      "kind": "econ",
+      "title": "初请失业金",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 3,
+      "source": "builtin",
+      "linger_min": 60
+     },
+     {
+      "id": "fomc",
+      "kind": "econ",
+      "title": "FOMC 利率决议",
+      "at": 1792000800000,
+      "date_et": "2026-10-14",
+      "time_et": "14:00",
+      "impact": "high",
+      "stars": 4.6,
+      "source": "builtin",
+      "linger_min": 120
+     }
+    ],
+    1791979200000,
+    [
+     30,
+     10
+    ],
+    []
+   ],
+   "out": [
+    {
+     "key": "cpi:30",
+     "lead": 30,
+     "id": "cpi"
+    }
+   ]
+  },
+  {
+   "fn": "leadsDue",
+   "args": [
+    [
+     {
+      "id": "cpi",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120,
+      "items": [
+       {
+        "title": "CPI 月率",
+        "forecast": "0.3%",
+        "previous": "0.4%"
+       },
+       {
+        "title": "核心 CPI 年率",
+        "forecast": "",
+        "previous": "3.1%"
+       },
+       {
+        "title": "没数的",
+        "forecast": "",
+        "previous": ""
+       }
+      ],
+      "note": "指数常跳空"
+     },
+     {
+      "id": "claims",
+      "kind": "econ",
+      "title": "初请失业金",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 3,
+      "source": "builtin",
+      "linger_min": 60
+     },
+     {
+      "id": "fomc",
+      "kind": "econ",
+      "title": "FOMC 利率决议",
+      "at": 1792000800000,
+      "date_et": "2026-10-14",
+      "time_et": "14:00",
+      "impact": "high",
+      "stars": 4.6,
+      "source": "builtin",
+      "linger_min": 120
+     }
+    ],
+    1791979260000,
+    [
+     30,
+     10
+    ],
+    []
+   ],
+   "out": [
+    {
+     "key": "cpi:30",
+     "lead": 30,
+     "id": "cpi"
+    }
+   ]
+  },
+  {
+   "fn": "leadsDue",
+   "args": [
+    [
+     {
+      "id": "cpi",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120,
+      "items": [
+       {
+        "title": "CPI 月率",
+        "forecast": "0.3%",
+        "previous": "0.4%"
+       },
+       {
+        "title": "核心 CPI 年率",
+        "forecast": "",
+        "previous": "3.1%"
+       },
+       {
+        "title": "没数的",
+        "forecast": "",
+        "previous": ""
+       }
+      ],
+      "note": "指数常跳空"
+     },
+     {
+      "id": "claims",
+      "kind": "econ",
+      "title": "初请失业金",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 3,
+      "source": "builtin",
+      "linger_min": 60
+     },
+     {
+      "id": "fomc",
+      "kind": "econ",
+      "title": "FOMC 利率决议",
+      "at": 1792000800000,
+      "date_et": "2026-10-14",
+      "time_et": "14:00",
+      "impact": "high",
+      "stars": 4.6,
+      "source": "builtin",
+      "linger_min": 120
+     }
+    ],
+    1791979296000,
+    [
+     30,
+     10
+    ],
+    []
+   ],
+   "out": []
+  },
+  {
+   "fn": "leadsDue",
+   "args": [
+    [
+     {
+      "id": "cpi",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120,
+      "items": [
+       {
+        "title": "CPI 月率",
+        "forecast": "0.3%",
+        "previous": "0.4%"
+       },
+       {
+        "title": "核心 CPI 年率",
+        "forecast": "",
+        "previous": "3.1%"
+       },
+       {
+        "title": "没数的",
+        "forecast": "",
+        "previous": ""
+       }
+      ],
+      "note": "指数常跳空"
+     },
+     {
+      "id": "claims",
+      "kind": "econ",
+      "title": "初请失业金",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 3,
+      "source": "builtin",
+      "linger_min": 60
+     },
+     {
+      "id": "fomc",
+      "kind": "econ",
+      "title": "FOMC 利率决议",
+      "at": 1792000800000,
+      "date_et": "2026-10-14",
+      "time_et": "14:00",
+      "impact": "high",
+      "stars": 4.6,
+      "source": "builtin",
+      "linger_min": 120
+     }
+    ],
+    1791980400000,
+    [
+     30,
+     10
+    ],
+    []
+   ],
+   "out": [
+    {
+     "key": "cpi:10",
+     "lead": 10,
+     "id": "cpi"
+    }
+   ]
+  },
+  {
+   "fn": "leadsDue",
+   "args": [
+    [
+     {
+      "id": "cpi",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120,
+      "items": [
+       {
+        "title": "CPI 月率",
+        "forecast": "0.3%",
+        "previous": "0.4%"
+       },
+       {
+        "title": "核心 CPI 年率",
+        "forecast": "",
+        "previous": "3.1%"
+       },
+       {
+        "title": "没数的",
+        "forecast": "",
+        "previous": ""
+       }
+      ],
+      "note": "指数常跳空"
+     },
+     {
+      "id": "claims",
+      "kind": "econ",
+      "title": "初请失业金",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 3,
+      "source": "builtin",
+      "linger_min": 60
+     },
+     {
+      "id": "fomc",
+      "kind": "econ",
+      "title": "FOMC 利率决议",
+      "at": 1792000800000,
+      "date_et": "2026-10-14",
+      "time_et": "14:00",
+      "impact": "high",
+      "stars": 4.6,
+      "source": "builtin",
+      "linger_min": 120
+     }
+    ],
+    1791980460000,
+    [
+     30,
+     10
+    ],
+    [
+     "cpi:10"
+    ]
+   ],
+   "out": []
+  },
+  {
+   "fn": "leadsDue",
+   "args": [
+    [
+     {
+      "id": "cpi",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120,
+      "items": [
+       {
+        "title": "CPI 月率",
+        "forecast": "0.3%",
+        "previous": "0.4%"
+       },
+       {
+        "title": "核心 CPI 年率",
+        "forecast": "",
+        "previous": "3.1%"
+       },
+       {
+        "title": "没数的",
+        "forecast": "",
+        "previous": ""
+       }
+      ],
+      "note": "指数常跳空"
+     },
+     {
+      "id": "claims",
+      "kind": "econ",
+      "title": "初请失业金",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 3,
+      "source": "builtin",
+      "linger_min": 60
+     },
+     {
+      "id": "fomc",
+      "kind": "econ",
+      "title": "FOMC 利率决议",
+      "at": 1792000800000,
+      "date_et": "2026-10-14",
+      "time_et": "14:00",
+      "impact": "high",
+      "stars": 4.6,
+      "source": "builtin",
+      "linger_min": 120
+     }
+    ],
+    1791981000000,
+    [
+     30,
+     10
+    ],
+    []
+   ],
+   "out": [
+    {
+     "key": "cpi:0",
+     "lead": 0,
+     "id": "cpi"
+    },
+    {
+     "key": "claims:0",
+     "lead": 0,
+     "id": "claims"
+    }
+   ]
+  },
+  {
+   "fn": "leadsDue",
+   "args": [
+    [
+     {
+      "id": "cpi",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120,
+      "items": [
+       {
+        "title": "CPI 月率",
+        "forecast": "0.3%",
+        "previous": "0.4%"
+       },
+       {
+        "title": "核心 CPI 年率",
+        "forecast": "",
+        "previous": "3.1%"
+       },
+       {
+        "title": "没数的",
+        "forecast": "",
+        "previous": ""
+       }
+      ],
+      "note": "指数常跳空"
+     },
+     {
+      "id": "claims",
+      "kind": "econ",
+      "title": "初请失业金",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 3,
+      "source": "builtin",
+      "linger_min": 60
+     },
+     {
+      "id": "fomc",
+      "kind": "econ",
+      "title": "FOMC 利率决议",
+      "at": 1792000800000,
+      "date_et": "2026-10-14",
+      "time_et": "14:00",
+      "impact": "high",
+      "stars": 4.6,
+      "source": "builtin",
+      "linger_min": 120
+     }
+    ],
+    1791981060000,
+    [
+     30,
+     10
+    ],
+    []
+   ],
+   "out": [
+    {
+     "key": "cpi:0",
+     "lead": 0,
+     "id": "cpi"
+    },
+    {
+     "key": "claims:0",
+     "lead": 0,
+     "id": "claims"
+    }
+   ]
+  },
+  {
+   "fn": "leadsDue",
+   "args": [
+    [
+     {
+      "id": "cpi",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120,
+      "items": [
+       {
+        "title": "CPI 月率",
+        "forecast": "0.3%",
+        "previous": "0.4%"
+       },
+       {
+        "title": "核心 CPI 年率",
+        "forecast": "",
+        "previous": "3.1%"
+       },
+       {
+        "title": "没数的",
+        "forecast": "",
+        "previous": ""
+       }
+      ],
+      "note": "指数常跳空"
+     },
+     {
+      "id": "claims",
+      "kind": "econ",
+      "title": "初请失业金",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 3,
+      "source": "builtin",
+      "linger_min": 60
+     },
+     {
+      "id": "fomc",
+      "kind": "econ",
+      "title": "FOMC 利率决议",
+      "at": 1792000800000,
+      "date_et": "2026-10-14",
+      "time_et": "14:00",
+      "impact": "high",
+      "stars": 4.6,
+      "source": "builtin",
+      "linger_min": 120
+     }
+    ],
+    1791981096000,
+    [
+     30,
+     10
+    ],
+    []
+   ],
+   "out": []
+  },
+  {
+   "fn": "leadsDue",
+   "args": [
+    [
+     {
+      "id": "cpi",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120,
+      "items": [
+       {
+        "title": "CPI 月率",
+        "forecast": "0.3%",
+        "previous": "0.4%"
+       },
+       {
+        "title": "核心 CPI 年率",
+        "forecast": "",
+        "previous": "3.1%"
+       },
+       {
+        "title": "没数的",
+        "forecast": "",
+        "previous": ""
+       }
+      ],
+      "note": "指数常跳空"
+     },
+     {
+      "id": "claims",
+      "kind": "econ",
+      "title": "初请失业金",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 3,
+      "source": "builtin",
+      "linger_min": 60
+     },
+     {
+      "id": "fomc",
+      "kind": "econ",
+      "title": "FOMC 利率决议",
+      "at": 1792000800000,
+      "date_et": "2026-10-14",
+      "time_et": "14:00",
+      "impact": "high",
+      "stars": 4.6,
+      "source": "builtin",
+      "linger_min": 120
+     }
+    ],
+    1791979140000,
+    [
+     10,
+     30,
+     10,
+     0,
+     -5
+    ],
+    []
+   ],
+   "out": []
+  },
+  {
+   "fn": "leadsDue",
+   "args": [
+    [
+     {
+      "id": "cpi",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120,
+      "items": [
+       {
+        "title": "CPI 月率",
+        "forecast": "0.3%",
+        "previous": "0.4%"
+       },
+       {
+        "title": "核心 CPI 年率",
+        "forecast": "",
+        "previous": "3.1%"
+       },
+       {
+        "title": "没数的",
+        "forecast": "",
+        "previous": ""
+       }
+      ],
+      "note": "指数常跳空"
+     },
+     {
+      "id": "claims",
+      "kind": "econ",
+      "title": "初请失业金",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 3,
+      "source": "builtin",
+      "linger_min": 60
+     },
+     {
+      "id": "fomc",
+      "kind": "econ",
+      "title": "FOMC 利率决议",
+      "at": 1792000800000,
+      "date_et": "2026-10-14",
+      "time_et": "14:00",
+      "impact": "high",
+      "stars": 4.6,
+      "source": "builtin",
+      "linger_min": 120
+     }
+    ],
+    1791979200000,
+    [
+     10,
+     30,
+     10,
+     0,
+     -5
+    ],
+    []
+   ],
+   "out": [
+    {
+     "key": "cpi:30",
+     "lead": 30,
+     "id": "cpi"
+    }
+   ]
+  },
+  {
+   "fn": "leadsDue",
+   "args": [
+    [
+     {
+      "id": "cpi",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120,
+      "items": [
+       {
+        "title": "CPI 月率",
+        "forecast": "0.3%",
+        "previous": "0.4%"
+       },
+       {
+        "title": "核心 CPI 年率",
+        "forecast": "",
+        "previous": "3.1%"
+       },
+       {
+        "title": "没数的",
+        "forecast": "",
+        "previous": ""
+       }
+      ],
+      "note": "指数常跳空"
+     },
+     {
+      "id": "claims",
+      "kind": "econ",
+      "title": "初请失业金",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 3,
+      "source": "builtin",
+      "linger_min": 60
+     },
+     {
+      "id": "fomc",
+      "kind": "econ",
+      "title": "FOMC 利率决议",
+      "at": 1792000800000,
+      "date_et": "2026-10-14",
+      "time_et": "14:00",
+      "impact": "high",
+      "stars": 4.6,
+      "source": "builtin",
+      "linger_min": 120
+     }
+    ],
+    1791979260000,
+    [
+     10,
+     30,
+     10,
+     0,
+     -5
+    ],
+    []
+   ],
+   "out": [
+    {
+     "key": "cpi:30",
+     "lead": 30,
+     "id": "cpi"
+    }
+   ]
+  },
+  {
+   "fn": "leadsDue",
+   "args": [
+    [
+     {
+      "id": "cpi",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120,
+      "items": [
+       {
+        "title": "CPI 月率",
+        "forecast": "0.3%",
+        "previous": "0.4%"
+       },
+       {
+        "title": "核心 CPI 年率",
+        "forecast": "",
+        "previous": "3.1%"
+       },
+       {
+        "title": "没数的",
+        "forecast": "",
+        "previous": ""
+       }
+      ],
+      "note": "指数常跳空"
+     },
+     {
+      "id": "claims",
+      "kind": "econ",
+      "title": "初请失业金",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 3,
+      "source": "builtin",
+      "linger_min": 60
+     },
+     {
+      "id": "fomc",
+      "kind": "econ",
+      "title": "FOMC 利率决议",
+      "at": 1792000800000,
+      "date_et": "2026-10-14",
+      "time_et": "14:00",
+      "impact": "high",
+      "stars": 4.6,
+      "source": "builtin",
+      "linger_min": 120
+     }
+    ],
+    1791979296000,
+    [
+     10,
+     30,
+     10,
+     0,
+     -5
+    ],
+    []
+   ],
+   "out": []
+  },
+  {
+   "fn": "leadsDue",
+   "args": [
+    [
+     {
+      "id": "cpi",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120,
+      "items": [
+       {
+        "title": "CPI 月率",
+        "forecast": "0.3%",
+        "previous": "0.4%"
+       },
+       {
+        "title": "核心 CPI 年率",
+        "forecast": "",
+        "previous": "3.1%"
+       },
+       {
+        "title": "没数的",
+        "forecast": "",
+        "previous": ""
+       }
+      ],
+      "note": "指数常跳空"
+     },
+     {
+      "id": "claims",
+      "kind": "econ",
+      "title": "初请失业金",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 3,
+      "source": "builtin",
+      "linger_min": 60
+     },
+     {
+      "id": "fomc",
+      "kind": "econ",
+      "title": "FOMC 利率决议",
+      "at": 1792000800000,
+      "date_et": "2026-10-14",
+      "time_et": "14:00",
+      "impact": "high",
+      "stars": 4.6,
+      "source": "builtin",
+      "linger_min": 120
+     }
+    ],
+    1791980400000,
+    [
+     10,
+     30,
+     10,
+     0,
+     -5
+    ],
+    []
+   ],
+   "out": [
+    {
+     "key": "cpi:10",
+     "lead": 10,
+     "id": "cpi"
+    }
+   ]
+  },
+  {
+   "fn": "leadsDue",
+   "args": [
+    [
+     {
+      "id": "cpi",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120,
+      "items": [
+       {
+        "title": "CPI 月率",
+        "forecast": "0.3%",
+        "previous": "0.4%"
+       },
+       {
+        "title": "核心 CPI 年率",
+        "forecast": "",
+        "previous": "3.1%"
+       },
+       {
+        "title": "没数的",
+        "forecast": "",
+        "previous": ""
+       }
+      ],
+      "note": "指数常跳空"
+     },
+     {
+      "id": "claims",
+      "kind": "econ",
+      "title": "初请失业金",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 3,
+      "source": "builtin",
+      "linger_min": 60
+     },
+     {
+      "id": "fomc",
+      "kind": "econ",
+      "title": "FOMC 利率决议",
+      "at": 1792000800000,
+      "date_et": "2026-10-14",
+      "time_et": "14:00",
+      "impact": "high",
+      "stars": 4.6,
+      "source": "builtin",
+      "linger_min": 120
+     }
+    ],
+    1791980460000,
+    [
+     10,
+     30,
+     10,
+     0,
+     -5
+    ],
+    [
+     "cpi:10"
+    ]
+   ],
+   "out": []
+  },
+  {
+   "fn": "leadsDue",
+   "args": [
+    [
+     {
+      "id": "cpi",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120,
+      "items": [
+       {
+        "title": "CPI 月率",
+        "forecast": "0.3%",
+        "previous": "0.4%"
+       },
+       {
+        "title": "核心 CPI 年率",
+        "forecast": "",
+        "previous": "3.1%"
+       },
+       {
+        "title": "没数的",
+        "forecast": "",
+        "previous": ""
+       }
+      ],
+      "note": "指数常跳空"
+     },
+     {
+      "id": "claims",
+      "kind": "econ",
+      "title": "初请失业金",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 3,
+      "source": "builtin",
+      "linger_min": 60
+     },
+     {
+      "id": "fomc",
+      "kind": "econ",
+      "title": "FOMC 利率决议",
+      "at": 1792000800000,
+      "date_et": "2026-10-14",
+      "time_et": "14:00",
+      "impact": "high",
+      "stars": 4.6,
+      "source": "builtin",
+      "linger_min": 120
+     }
+    ],
+    1791981000000,
+    [
+     10,
+     30,
+     10,
+     0,
+     -5
+    ],
+    []
+   ],
+   "out": [
+    {
+     "key": "cpi:0",
+     "lead": 0,
+     "id": "cpi"
+    },
+    {
+     "key": "claims:0",
+     "lead": 0,
+     "id": "claims"
+    }
+   ]
+  },
+  {
+   "fn": "leadsDue",
+   "args": [
+    [
+     {
+      "id": "cpi",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120,
+      "items": [
+       {
+        "title": "CPI 月率",
+        "forecast": "0.3%",
+        "previous": "0.4%"
+       },
+       {
+        "title": "核心 CPI 年率",
+        "forecast": "",
+        "previous": "3.1%"
+       },
+       {
+        "title": "没数的",
+        "forecast": "",
+        "previous": ""
+       }
+      ],
+      "note": "指数常跳空"
+     },
+     {
+      "id": "claims",
+      "kind": "econ",
+      "title": "初请失业金",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 3,
+      "source": "builtin",
+      "linger_min": 60
+     },
+     {
+      "id": "fomc",
+      "kind": "econ",
+      "title": "FOMC 利率决议",
+      "at": 1792000800000,
+      "date_et": "2026-10-14",
+      "time_et": "14:00",
+      "impact": "high",
+      "stars": 4.6,
+      "source": "builtin",
+      "linger_min": 120
+     }
+    ],
+    1791981060000,
+    [
+     10,
+     30,
+     10,
+     0,
+     -5
+    ],
+    []
+   ],
+   "out": [
+    {
+     "key": "cpi:0",
+     "lead": 0,
+     "id": "cpi"
+    },
+    {
+     "key": "claims:0",
+     "lead": 0,
+     "id": "claims"
+    }
+   ]
+  },
+  {
+   "fn": "leadsDue",
+   "args": [
+    [
+     {
+      "id": "cpi",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120,
+      "items": [
+       {
+        "title": "CPI 月率",
+        "forecast": "0.3%",
+        "previous": "0.4%"
+       },
+       {
+        "title": "核心 CPI 年率",
+        "forecast": "",
+        "previous": "3.1%"
+       },
+       {
+        "title": "没数的",
+        "forecast": "",
+        "previous": ""
+       }
+      ],
+      "note": "指数常跳空"
+     },
+     {
+      "id": "claims",
+      "kind": "econ",
+      "title": "初请失业金",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 3,
+      "source": "builtin",
+      "linger_min": 60
+     },
+     {
+      "id": "fomc",
+      "kind": "econ",
+      "title": "FOMC 利率决议",
+      "at": 1792000800000,
+      "date_et": "2026-10-14",
+      "time_et": "14:00",
+      "impact": "high",
+      "stars": 4.6,
+      "source": "builtin",
+      "linger_min": 120
+     }
+    ],
+    1791981096000,
+    [
+     10,
+     30,
+     10,
+     0,
+     -5
+    ],
+    []
+   ],
+   "out": []
+  },
+  {
+   "fn": "leadsDue",
+   "args": [
+    [
+     {
+      "id": "cpi",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120,
+      "items": [
+       {
+        "title": "CPI 月率",
+        "forecast": "0.3%",
+        "previous": "0.4%"
+       },
+       {
+        "title": "核心 CPI 年率",
+        "forecast": "",
+        "previous": "3.1%"
+       },
+       {
+        "title": "没数的",
+        "forecast": "",
+        "previous": ""
+       }
+      ],
+      "note": "指数常跳空"
+     },
+     {
+      "id": "claims",
+      "kind": "econ",
+      "title": "初请失业金",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 3,
+      "source": "builtin",
+      "linger_min": 60
+     },
+     {
+      "id": "fomc",
+      "kind": "econ",
+      "title": "FOMC 利率决议",
+      "at": 1792000800000,
+      "date_et": "2026-10-14",
+      "time_et": "14:00",
+      "impact": "high",
+      "stars": 4.6,
+      "source": "builtin",
+      "linger_min": 120
+     }
+    ],
+    1791979140000,
+    [],
+    []
+   ],
+   "out": []
+  },
+  {
+   "fn": "leadsDue",
+   "args": [
+    [
+     {
+      "id": "cpi",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120,
+      "items": [
+       {
+        "title": "CPI 月率",
+        "forecast": "0.3%",
+        "previous": "0.4%"
+       },
+       {
+        "title": "核心 CPI 年率",
+        "forecast": "",
+        "previous": "3.1%"
+       },
+       {
+        "title": "没数的",
+        "forecast": "",
+        "previous": ""
+       }
+      ],
+      "note": "指数常跳空"
+     },
+     {
+      "id": "claims",
+      "kind": "econ",
+      "title": "初请失业金",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 3,
+      "source": "builtin",
+      "linger_min": 60
+     },
+     {
+      "id": "fomc",
+      "kind": "econ",
+      "title": "FOMC 利率决议",
+      "at": 1792000800000,
+      "date_et": "2026-10-14",
+      "time_et": "14:00",
+      "impact": "high",
+      "stars": 4.6,
+      "source": "builtin",
+      "linger_min": 120
+     }
+    ],
+    1791979200000,
+    [],
+    []
+   ],
+   "out": []
+  },
+  {
+   "fn": "leadsDue",
+   "args": [
+    [
+     {
+      "id": "cpi",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120,
+      "items": [
+       {
+        "title": "CPI 月率",
+        "forecast": "0.3%",
+        "previous": "0.4%"
+       },
+       {
+        "title": "核心 CPI 年率",
+        "forecast": "",
+        "previous": "3.1%"
+       },
+       {
+        "title": "没数的",
+        "forecast": "",
+        "previous": ""
+       }
+      ],
+      "note": "指数常跳空"
+     },
+     {
+      "id": "claims",
+      "kind": "econ",
+      "title": "初请失业金",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 3,
+      "source": "builtin",
+      "linger_min": 60
+     },
+     {
+      "id": "fomc",
+      "kind": "econ",
+      "title": "FOMC 利率决议",
+      "at": 1792000800000,
+      "date_et": "2026-10-14",
+      "time_et": "14:00",
+      "impact": "high",
+      "stars": 4.6,
+      "source": "builtin",
+      "linger_min": 120
+     }
+    ],
+    1791979260000,
+    [],
+    []
+   ],
+   "out": []
+  },
+  {
+   "fn": "leadsDue",
+   "args": [
+    [
+     {
+      "id": "cpi",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120,
+      "items": [
+       {
+        "title": "CPI 月率",
+        "forecast": "0.3%",
+        "previous": "0.4%"
+       },
+       {
+        "title": "核心 CPI 年率",
+        "forecast": "",
+        "previous": "3.1%"
+       },
+       {
+        "title": "没数的",
+        "forecast": "",
+        "previous": ""
+       }
+      ],
+      "note": "指数常跳空"
+     },
+     {
+      "id": "claims",
+      "kind": "econ",
+      "title": "初请失业金",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 3,
+      "source": "builtin",
+      "linger_min": 60
+     },
+     {
+      "id": "fomc",
+      "kind": "econ",
+      "title": "FOMC 利率决议",
+      "at": 1792000800000,
+      "date_et": "2026-10-14",
+      "time_et": "14:00",
+      "impact": "high",
+      "stars": 4.6,
+      "source": "builtin",
+      "linger_min": 120
+     }
+    ],
+    1791979296000,
+    [],
+    []
+   ],
+   "out": []
+  },
+  {
+   "fn": "leadsDue",
+   "args": [
+    [
+     {
+      "id": "cpi",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120,
+      "items": [
+       {
+        "title": "CPI 月率",
+        "forecast": "0.3%",
+        "previous": "0.4%"
+       },
+       {
+        "title": "核心 CPI 年率",
+        "forecast": "",
+        "previous": "3.1%"
+       },
+       {
+        "title": "没数的",
+        "forecast": "",
+        "previous": ""
+       }
+      ],
+      "note": "指数常跳空"
+     },
+     {
+      "id": "claims",
+      "kind": "econ",
+      "title": "初请失业金",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 3,
+      "source": "builtin",
+      "linger_min": 60
+     },
+     {
+      "id": "fomc",
+      "kind": "econ",
+      "title": "FOMC 利率决议",
+      "at": 1792000800000,
+      "date_et": "2026-10-14",
+      "time_et": "14:00",
+      "impact": "high",
+      "stars": 4.6,
+      "source": "builtin",
+      "linger_min": 120
+     }
+    ],
+    1791980400000,
+    [],
+    []
+   ],
+   "out": []
+  },
+  {
+   "fn": "leadsDue",
+   "args": [
+    [
+     {
+      "id": "cpi",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120,
+      "items": [
+       {
+        "title": "CPI 月率",
+        "forecast": "0.3%",
+        "previous": "0.4%"
+       },
+       {
+        "title": "核心 CPI 年率",
+        "forecast": "",
+        "previous": "3.1%"
+       },
+       {
+        "title": "没数的",
+        "forecast": "",
+        "previous": ""
+       }
+      ],
+      "note": "指数常跳空"
+     },
+     {
+      "id": "claims",
+      "kind": "econ",
+      "title": "初请失业金",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 3,
+      "source": "builtin",
+      "linger_min": 60
+     },
+     {
+      "id": "fomc",
+      "kind": "econ",
+      "title": "FOMC 利率决议",
+      "at": 1792000800000,
+      "date_et": "2026-10-14",
+      "time_et": "14:00",
+      "impact": "high",
+      "stars": 4.6,
+      "source": "builtin",
+      "linger_min": 120
+     }
+    ],
+    1791980460000,
+    [],
+    [
+     "cpi:10"
+    ]
+   ],
+   "out": []
+  },
+  {
+   "fn": "leadsDue",
+   "args": [
+    [
+     {
+      "id": "cpi",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120,
+      "items": [
+       {
+        "title": "CPI 月率",
+        "forecast": "0.3%",
+        "previous": "0.4%"
+       },
+       {
+        "title": "核心 CPI 年率",
+        "forecast": "",
+        "previous": "3.1%"
+       },
+       {
+        "title": "没数的",
+        "forecast": "",
+        "previous": ""
+       }
+      ],
+      "note": "指数常跳空"
+     },
+     {
+      "id": "claims",
+      "kind": "econ",
+      "title": "初请失业金",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 3,
+      "source": "builtin",
+      "linger_min": 60
+     },
+     {
+      "id": "fomc",
+      "kind": "econ",
+      "title": "FOMC 利率决议",
+      "at": 1792000800000,
+      "date_et": "2026-10-14",
+      "time_et": "14:00",
+      "impact": "high",
+      "stars": 4.6,
+      "source": "builtin",
+      "linger_min": 120
+     }
+    ],
+    1791981000000,
+    [],
+    []
+   ],
+   "out": [
+    {
+     "key": "cpi:0",
+     "lead": 0,
+     "id": "cpi"
+    },
+    {
+     "key": "claims:0",
+     "lead": 0,
+     "id": "claims"
+    }
+   ]
+  },
+  {
+   "fn": "leadsDue",
+   "args": [
+    [
+     {
+      "id": "cpi",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120,
+      "items": [
+       {
+        "title": "CPI 月率",
+        "forecast": "0.3%",
+        "previous": "0.4%"
+       },
+       {
+        "title": "核心 CPI 年率",
+        "forecast": "",
+        "previous": "3.1%"
+       },
+       {
+        "title": "没数的",
+        "forecast": "",
+        "previous": ""
+       }
+      ],
+      "note": "指数常跳空"
+     },
+     {
+      "id": "claims",
+      "kind": "econ",
+      "title": "初请失业金",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 3,
+      "source": "builtin",
+      "linger_min": 60
+     },
+     {
+      "id": "fomc",
+      "kind": "econ",
+      "title": "FOMC 利率决议",
+      "at": 1792000800000,
+      "date_et": "2026-10-14",
+      "time_et": "14:00",
+      "impact": "high",
+      "stars": 4.6,
+      "source": "builtin",
+      "linger_min": 120
+     }
+    ],
+    1791981060000,
+    [],
+    []
+   ],
+   "out": [
+    {
+     "key": "cpi:0",
+     "lead": 0,
+     "id": "cpi"
+    },
+    {
+     "key": "claims:0",
+     "lead": 0,
+     "id": "claims"
+    }
+   ]
+  },
+  {
+   "fn": "leadsDue",
+   "args": [
+    [
+     {
+      "id": "cpi",
+      "kind": "econ",
+      "title": "CPI(9月)",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "high",
+      "stars": 5,
+      "source": "builtin",
+      "linger_min": 120,
+      "items": [
+       {
+        "title": "CPI 月率",
+        "forecast": "0.3%",
+        "previous": "0.4%"
+       },
+       {
+        "title": "核心 CPI 年率",
+        "forecast": "",
+        "previous": "3.1%"
+       },
+       {
+        "title": "没数的",
+        "forecast": "",
+        "previous": ""
+       }
+      ],
+      "note": "指数常跳空"
+     },
+     {
+      "id": "claims",
+      "kind": "econ",
+      "title": "初请失业金",
+      "at": 1791981000000,
+      "date_et": "2026-10-14",
+      "time_et": "08:30",
+      "impact": "medium",
+      "stars": 3,
+      "source": "builtin",
+      "linger_min": 60
+     },
+     {
+      "id": "fomc",
+      "kind": "econ",
+      "title": "FOMC 利率决议",
+      "at": 1792000800000,
+      "date_et": "2026-10-14",
+      "time_et": "14:00",
+      "impact": "high",
+      "stars": 4.6,
+      "source": "builtin",
+      "linger_min": 120
+     }
+    ],
+    1791981096000,
+    [],
+    []
+   ],
+   "out": []
+  },
+  {
+   "fn": "leadTitle",
+   "args": [
+    {
+     "id": "cpi",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120,
+     "items": [
+      {
+       "title": "CPI 月率",
+       "forecast": "0.3%",
+       "previous": "0.4%"
+      },
+      {
+       "title": "核心 CPI 年率",
+       "forecast": "",
+       "previous": "3.1%"
+      },
+      {
+       "title": "没数的",
+       "forecast": "",
+       "previous": ""
+      }
+     ],
+     "note": "指数常跳空"
+    },
+    0
+   ],
+   "out": "正在公布 CPI(9月)"
+  },
+  {
+   "fn": "leadBody",
+   "args": [
+    {
+     "id": "cpi",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120,
+     "items": [
+      {
+       "title": "CPI 月率",
+       "forecast": "0.3%",
+       "previous": "0.4%"
+      },
+      {
+       "title": "核心 CPI 年率",
+       "forecast": "",
+       "previous": "3.1%"
+      },
+      {
+       "title": "没数的",
+       "forecast": "",
+       "previous": ""
+      }
+     ],
+     "note": "指数常跳空"
+    },
+    0,
+    1791981000000,
+    "Asia/Shanghai"
+   ],
+   "out": "今天 20:30(美东 08:30) · CPI 月率:预期 0.3%,前值 0.4% · 核心 CPI 年率:预期 —,前值 3.1% · 指数常跳空 · 盯住现价与持仓;追踪的止损照常。"
+  },
+  {
+   "fn": "leadTitle",
+   "args": [
+    {
+     "id": "claims",
+     "kind": "econ",
+     "title": "初请失业金",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "medium",
+     "stars": 3,
+     "source": "builtin",
+     "linger_min": 60
+    },
+    0
+   ],
+   "out": "正在公布 初请失业金"
+  },
+  {
+   "fn": "leadBody",
+   "args": [
+    {
+     "id": "claims",
+     "kind": "econ",
+     "title": "初请失业金",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "medium",
+     "stars": 3,
+     "source": "builtin",
+     "linger_min": 60
+    },
+    0,
+    1791981000000,
+    "Asia/Shanghai"
+   ],
+   "out": "今天 20:30(美东 08:30) · 盯住现价与持仓;追踪的止损照常。"
+  },
+  {
+   "fn": "leadTitle",
+   "args": [
+    {
+     "id": "bare",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120
+    },
+    0
+   ],
+   "out": "正在公布 CPI(9月)"
+  },
+  {
+   "fn": "leadBody",
+   "args": [
+    {
+     "id": "bare",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120
+    },
+    0,
+    1791981000000,
+    "Asia/Shanghai"
+   ],
+   "out": "今天 20:30(美东 08:30) · 盯住现价与持仓;追踪的止损照常。"
+  },
+  {
+   "fn": "leadTitle",
+   "args": [
+    {
+     "id": "cpi",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120,
+     "items": [
+      {
+       "title": "CPI 月率",
+       "forecast": "0.3%",
+       "previous": "0.4%"
+      },
+      {
+       "title": "核心 CPI 年率",
+       "forecast": "",
+       "previous": "3.1%"
+      },
+      {
+       "title": "没数的",
+       "forecast": "",
+       "previous": ""
+      }
+     ],
+     "note": "指数常跳空"
+    },
+    10
+   ],
+   "out": "10 分钟后公布 CPI(9月)"
+  },
+  {
+   "fn": "leadBody",
+   "args": [
+    {
+     "id": "cpi",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120,
+     "items": [
+      {
+       "title": "CPI 月率",
+       "forecast": "0.3%",
+       "previous": "0.4%"
+      },
+      {
+       "title": "核心 CPI 年率",
+       "forecast": "",
+       "previous": "3.1%"
+      },
+      {
+       "title": "没数的",
+       "forecast": "",
+       "previous": ""
+      }
+     ],
+     "note": "指数常跳空"
+    },
+    10,
+    1791980400000,
+    "Asia/Shanghai"
+   ],
+   "out": "今天 20:30(美东 08:30) · CPI 月率:预期 0.3%,前值 0.4% · 核心 CPI 年率:预期 —,前值 3.1% · 指数常跳空 · 公布前后指数常有跳空:当日到期的蝶可能直接穿出翼,要对冲或减仓趁现在。"
+  },
+  {
+   "fn": "leadTitle",
+   "args": [
+    {
+     "id": "claims",
+     "kind": "econ",
+     "title": "初请失业金",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "medium",
+     "stars": 3,
+     "source": "builtin",
+     "linger_min": 60
+    },
+    10
+   ],
+   "out": "10 分钟后公布 初请失业金"
+  },
+  {
+   "fn": "leadBody",
+   "args": [
+    {
+     "id": "claims",
+     "kind": "econ",
+     "title": "初请失业金",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "medium",
+     "stars": 3,
+     "source": "builtin",
+     "linger_min": 60
+    },
+    10,
+    1791980400000,
+    "Asia/Shanghai"
+   ],
+   "out": "今天 20:30(美东 08:30) · 公布前后指数常有跳空:当日到期的蝶可能直接穿出翼,要对冲或减仓趁现在。"
+  },
+  {
+   "fn": "leadTitle",
+   "args": [
+    {
+     "id": "bare",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120
+    },
+    10
+   ],
+   "out": "10 分钟后公布 CPI(9月)"
+  },
+  {
+   "fn": "leadBody",
+   "args": [
+    {
+     "id": "bare",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120
+    },
+    10,
+    1791980400000,
+    "Asia/Shanghai"
+   ],
+   "out": "今天 20:30(美东 08:30) · 公布前后指数常有跳空:当日到期的蝶可能直接穿出翼,要对冲或减仓趁现在。"
+  },
+  {
+   "fn": "leadTitle",
+   "args": [
+    {
+     "id": "cpi",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120,
+     "items": [
+      {
+       "title": "CPI 月率",
+       "forecast": "0.3%",
+       "previous": "0.4%"
+      },
+      {
+       "title": "核心 CPI 年率",
+       "forecast": "",
+       "previous": "3.1%"
+      },
+      {
+       "title": "没数的",
+       "forecast": "",
+       "previous": ""
+      }
+     ],
+     "note": "指数常跳空"
+    },
+    30
+   ],
+   "out": "30 分钟后公布 CPI(9月)"
+  },
+  {
+   "fn": "leadBody",
+   "args": [
+    {
+     "id": "cpi",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120,
+     "items": [
+      {
+       "title": "CPI 月率",
+       "forecast": "0.3%",
+       "previous": "0.4%"
+      },
+      {
+       "title": "核心 CPI 年率",
+       "forecast": "",
+       "previous": "3.1%"
+      },
+      {
+       "title": "没数的",
+       "forecast": "",
+       "previous": ""
+      }
+     ],
+     "note": "指数常跳空"
+    },
+    30,
+    1791979200000,
+    "Asia/Shanghai"
+   ],
+   "out": "今天 20:30(美东 08:30) · CPI 月率:预期 0.3%,前值 0.4% · 核心 CPI 年率:预期 —,前值 3.1% · 指数常跳空 · 公布前后指数常有跳空:当日到期的蝶可能直接穿出翼,要对冲或减仓趁现在。"
+  },
+  {
+   "fn": "leadTitle",
+   "args": [
+    {
+     "id": "claims",
+     "kind": "econ",
+     "title": "初请失业金",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "medium",
+     "stars": 3,
+     "source": "builtin",
+     "linger_min": 60
+    },
+    30
+   ],
+   "out": "30 分钟后公布 初请失业金"
+  },
+  {
+   "fn": "leadBody",
+   "args": [
+    {
+     "id": "claims",
+     "kind": "econ",
+     "title": "初请失业金",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "medium",
+     "stars": 3,
+     "source": "builtin",
+     "linger_min": 60
+    },
+    30,
+    1791979200000,
+    "Asia/Shanghai"
+   ],
+   "out": "今天 20:30(美东 08:30) · 公布前后指数常有跳空:当日到期的蝶可能直接穿出翼,要对冲或减仓趁现在。"
+  },
+  {
+   "fn": "leadTitle",
+   "args": [
+    {
+     "id": "bare",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120
+    },
+    30
+   ],
+   "out": "30 分钟后公布 CPI(9月)"
+  },
+  {
+   "fn": "leadBody",
+   "args": [
+    {
+     "id": "bare",
+     "kind": "econ",
+     "title": "CPI(9月)",
+     "at": 1791981000000,
+     "date_et": "2026-10-14",
+     "time_et": "08:30",
+     "impact": "high",
+     "stars": 5,
+     "source": "builtin",
+     "linger_min": 120
+    },
+    30,
+    1791979200000,
+    "Asia/Shanghai"
+   ],
+   "out": "今天 20:30(美东 08:30) · 公布前后指数常有跳空:当日到期的蝶可能直接穿出翼,要对冲或减仓趁现在。"
+  },
+  {
+   "fn": "freshChanges",
+   "args": [
+    [
+     {
+      "symbol": "NVDA",
+      "change_pct": -3.2,
+      "at": "2026-10-14T14:59:00.000Z"
+     },
+     {
+      "symbol": "AMD",
+      "change_pct": -2.1,
+      "at": "2026-10-14T14:58:30Z"
+     },
+     {
+      "symbol": "OLD",
+      "change_pct": -9,
+      "at": "2026-10-14T14:50:00.000Z"
+     },
+     {
+      "symbol": "FUT",
+      "change_pct": 1,
+      "at": "2026-10-14T15:02:00.000Z"
+     },
+     {
+      "symbol": "NEAR",
+      "change_pct": 1.5,
+      "at": "2026-10-14T15:00:59.000Z"
+     },
+     {
+      "symbol": "NUL",
+      "change_pct": null,
+      "at": "2026-10-14T14:59:00.000Z"
+     },
+     {
+      "symbol": "NOAT",
+      "change_pct": 2,
+      "at": null
+     },
+     {
+      "symbol": "BAD",
+      "change_pct": 2,
+      "at": "not a date"
+     },
+     {
+      "symbol": "EDGE",
+      "change_pct": 0,
+      "at": "2026-10-14T14:57:00.000Z"
+     }
+    ],
+    1791990000000,
+    180000
+   ],
+   "out": {
+    "NVDA": -3.2,
+    "AMD": -2.1,
+    "OLD": null,
+    "FUT": null,
+    "NEAR": 1.5,
+    "NUL": null,
+    "NOAT": null,
+    "BAD": null,
+    "EDGE": 0
+   }
+  },
+  {
+   "fn": "freshChanges",
+   "args": [
+    [
+     {
+      "symbol": "NVDA",
+      "change_pct": -3.2,
+      "at": "2026-10-14T14:59:00.000Z"
+     },
+     {
+      "symbol": "AMD",
+      "change_pct": -2.1,
+      "at": "2026-10-14T14:58:30Z"
+     },
+     {
+      "symbol": "OLD",
+      "change_pct": -9,
+      "at": "2026-10-14T14:50:00.000Z"
+     },
+     {
+      "symbol": "FUT",
+      "change_pct": 1,
+      "at": "2026-10-14T15:02:00.000Z"
+     },
+     {
+      "symbol": "NEAR",
+      "change_pct": 1.5,
+      "at": "2026-10-14T15:00:59.000Z"
+     },
+     {
+      "symbol": "NUL",
+      "change_pct": null,
+      "at": "2026-10-14T14:59:00.000Z"
+     },
+     {
+      "symbol": "NOAT",
+      "change_pct": 2,
+      "at": null
+     },
+     {
+      "symbol": "BAD",
+      "change_pct": 2,
+      "at": "not a date"
+     },
+     {
+      "symbol": "EDGE",
+      "change_pct": 0,
+      "at": "2026-10-14T14:57:00.000Z"
+     }
+    ],
+    1791990000000,
+    1200000
+   ],
+   "out": {
+    "NVDA": -3.2,
+    "AMD": -2.1,
+    "OLD": -9,
+    "FUT": null,
+    "NEAR": 1.5,
+    "NUL": null,
+    "NOAT": null,
+    "BAD": null,
+    "EDGE": 0
+   }
+  },
+  {
+   "fn": "sectorMoves",
+   "args": [
+    [
+     {
+      "name": "半导体",
+      "symbols": [
+       "NVDA",
+       "AMD",
+       "AVGO",
+       "MU",
+       "NVDA",
+       "TSM"
+      ]
+     },
+     {
+      "name": "数据中心",
+      "symbols": [
+       "CRWV",
+       "NBIS",
+       "ORCL",
+       "SMCI"
+      ]
+     },
+     {
+      "name": "少",
+      "symbols": [
+       "A",
+       "B"
+      ]
+     },
+     {
+      "name": "平",
+      "symbols": [
+       "P1",
+       "P2",
+       "P3",
+       "P4"
+      ]
+     },
+     {
+      "name": "涨",
+      "symbols": [
+       "U1",
+       "U2",
+       "U3",
+       "U4",
+       "U5"
+      ]
+     }
+    ],
+    {
+     "NVDA": -3.2,
+     "AMD": -2.5,
+     "AVGO": -2,
+     "MU": -1.1,
+     "TSM": null,
+     "CRWV": -12.4,
+     "NBIS": -4.4,
+     "ORCL": -2.05,
+     "SMCI": 0.3,
+     "A": -5,
+     "B": -5,
+     "P1": 2,
+     "P2": -2,
+     "P3": 2,
+     "P4": -2,
+     "U1": 2.2,
+     "U2": 3.1,
+     "U3": 2,
+     "U4": -0.5,
+     "U5": 1.999
+    },
+    {
+     "min_stocks": 3,
+     "share": 0.6,
+     "move_pct": 2
+    }
+   ],
+   "out": [
+    {
+     "sector": "半导体",
+     "direction": "down",
+     "count": 3,
+     "total": 4,
+     "median": -2.25,
+     "movers": [
+      {
+       "symbol": "NVDA",
+       "pct": -3.2
+      },
+      {
+       "symbol": "AMD",
+       "pct": -2.5
+      },
+      {
+       "symbol": "AVGO",
+       "pct": -2
+      }
+     ]
+    },
+    {
+     "sector": "数据中心",
+     "direction": "down",
+     "count": 3,
+     "total": 4,
+     "median": -3.22,
+     "movers": [
+      {
+       "symbol": "CRWV",
+       "pct": -12.4
+      },
+      {
+       "symbol": "NBIS",
+       "pct": -4.4
+      },
+      {
+       "symbol": "ORCL",
+       "pct": -2.05
+      }
+     ]
+    },
+    {
+     "sector": "涨",
+     "direction": "up",
+     "count": 3,
+     "total": 5,
+     "median": 2,
+     "movers": [
+      {
+       "symbol": "U2",
+       "pct": 3.1
+      },
+      {
+       "symbol": "U1",
+       "pct": 2.2
+      },
+      {
+       "symbol": "U3",
+       "pct": 2
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "fn": "sectorMoveTitle",
+   "args": [
+    {
+     "sector": "半导体",
+     "direction": "down",
+     "count": 3,
+     "total": 4,
+     "median": -2.25,
+     "movers": [
+      {
+       "symbol": "NVDA",
+       "pct": -3.2
+      },
+      {
+       "symbol": "AMD",
+       "pct": -2.5
+      },
+      {
+       "symbol": "AVGO",
+       "pct": -2
+      }
+     ]
+    }
+   ],
+   "out": "板块联动:半导体 集体下跌"
+  },
+  {
+   "fn": "sectorMoveBody",
+   "args": [
+    {
+     "sector": "半导体",
+     "direction": "down",
+     "count": 3,
+     "total": 4,
+     "median": -2.25,
+     "movers": [
+      {
+       "symbol": "NVDA",
+       "pct": -3.2
+      },
+      {
+       "symbol": "AMD",
+       "pct": -2.5
+      },
+      {
+       "symbol": "AVGO",
+       "pct": -2
+      }
+     ]
+    },
+    2
+   ],
+   "out": "4 只里 3 只跌超 2%,中位 −2.3%:NVDA −3.2%、AMD −2.5%、AVGO −2.0%。一只股的消息把整个板块带着走时,持仓里同板块的都要看。"
+  },
+  {
+   "fn": "sectorMoveTitle",
+   "args": [
+    {
+     "sector": "数据中心",
+     "direction": "down",
+     "count": 3,
+     "total": 4,
+     "median": -3.22,
+     "movers": [
+      {
+       "symbol": "CRWV",
+       "pct": -12.4
+      },
+      {
+       "symbol": "NBIS",
+       "pct": -4.4
+      },
+      {
+       "symbol": "ORCL",
+       "pct": -2.05
+      }
+     ]
+    }
+   ],
+   "out": "板块联动:数据中心 集体下跌"
+  },
+  {
+   "fn": "sectorMoveBody",
+   "args": [
+    {
+     "sector": "数据中心",
+     "direction": "down",
+     "count": 3,
+     "total": 4,
+     "median": -3.22,
+     "movers": [
+      {
+       "symbol": "CRWV",
+       "pct": -12.4
+      },
+      {
+       "symbol": "NBIS",
+       "pct": -4.4
+      },
+      {
+       "symbol": "ORCL",
+       "pct": -2.05
+      }
+     ]
+    },
+    2
+   ],
+   "out": "4 只里 3 只跌超 2%,中位 −3.2%:CRWV −12.4%、NBIS −4.4%、ORCL −2.0%。一只股的消息把整个板块带着走时,持仓里同板块的都要看。"
+  },
+  {
+   "fn": "sectorMoveTitle",
+   "args": [
+    {
+     "sector": "涨",
+     "direction": "up",
+     "count": 3,
+     "total": 5,
+     "median": 2,
+     "movers": [
+      {
+       "symbol": "U2",
+       "pct": 3.1
+      },
+      {
+       "symbol": "U1",
+       "pct": 2.2
+      },
+      {
+       "symbol": "U3",
+       "pct": 2
+      }
+     ]
+    }
+   ],
+   "out": "板块联动:涨 集体上涨"
+  },
+  {
+   "fn": "sectorMoveBody",
+   "args": [
+    {
+     "sector": "涨",
+     "direction": "up",
+     "count": 3,
+     "total": 5,
+     "median": 2,
+     "movers": [
+      {
+       "symbol": "U2",
+       "pct": 3.1
+      },
+      {
+       "symbol": "U1",
+       "pct": 2.2
+      },
+      {
+       "symbol": "U3",
+       "pct": 2
+      }
+     ]
+    },
+    2
+   ],
+   "out": "5 只里 3 只涨超 2%,中位 +2.0%:U2 +3.1%、U1 +2.2%、U3 +2.0%。一只股的消息把整个板块带着走时,持仓里同板块的都要看。"
+  },
+  {
+   "fn": "sectorMoves",
+   "args": [
+    [
+     {
+      "name": "半导体",
+      "symbols": [
+       "NVDA",
+       "AMD",
+       "AVGO",
+       "MU",
+       "NVDA",
+       "TSM"
+      ]
+     },
+     {
+      "name": "数据中心",
+      "symbols": [
+       "CRWV",
+       "NBIS",
+       "ORCL",
+       "SMCI"
+      ]
+     },
+     {
+      "name": "少",
+      "symbols": [
+       "A",
+       "B"
+      ]
+     },
+     {
+      "name": "平",
+      "symbols": [
+       "P1",
+       "P2",
+       "P3",
+       "P4"
+      ]
+     },
+     {
+      "name": "涨",
+      "symbols": [
+       "U1",
+       "U2",
+       "U3",
+       "U4",
+       "U5"
+      ]
+     }
+    ],
+    {
+     "NVDA": -3.2,
+     "AMD": -2.5,
+     "AVGO": -2,
+     "MU": -1.1,
+     "TSM": null,
+     "CRWV": -12.4,
+     "NBIS": -4.4,
+     "ORCL": -2.05,
+     "SMCI": 0.3,
+     "A": -5,
+     "B": -5,
+     "P1": 2,
+     "P2": -2,
+     "P3": 2,
+     "P4": -2,
+     "U1": 2.2,
+     "U2": 3.1,
+     "U3": 2,
+     "U4": -0.5,
+     "U5": 1.999
+    },
+    {
+     "min_stocks": 2,
+     "share": 0.5,
+     "move_pct": 2
+    }
+   ],
+   "out": [
+    {
+     "sector": "半导体",
+     "direction": "down",
+     "count": 3,
+     "total": 4,
+     "median": -2.25,
+     "movers": [
+      {
+       "symbol": "NVDA",
+       "pct": -3.2
+      },
+      {
+       "symbol": "AMD",
+       "pct": -2.5
+      },
+      {
+       "symbol": "AVGO",
+       "pct": -2
+      }
+     ]
+    },
+    {
+     "sector": "数据中心",
+     "direction": "down",
+     "count": 3,
+     "total": 4,
+     "median": -3.22,
+     "movers": [
+      {
+       "symbol": "CRWV",
+       "pct": -12.4
+      },
+      {
+       "symbol": "NBIS",
+       "pct": -4.4
+      },
+      {
+       "symbol": "ORCL",
+       "pct": -2.05
+      }
+     ]
+    },
+    {
+     "sector": "少",
+     "direction": "down",
+     "count": 2,
+     "total": 2,
+     "median": -5,
+     "movers": [
+      {
+       "symbol": "A",
+       "pct": -5
+      },
+      {
+       "symbol": "B",
+       "pct": -5
+      }
+     ]
+    },
+    {
+     "sector": "平",
+     "direction": "down",
+     "count": 2,
+     "total": 4,
+     "median": 0,
+     "movers": [
+      {
+       "symbol": "P2",
+       "pct": -2
+      },
+      {
+       "symbol": "P4",
+       "pct": -2
+      }
+     ]
+    },
+    {
+     "sector": "涨",
+     "direction": "up",
+     "count": 3,
+     "total": 5,
+     "median": 2,
+     "movers": [
+      {
+       "symbol": "U2",
+       "pct": 3.1
+      },
+      {
+       "symbol": "U1",
+       "pct": 2.2
+      },
+      {
+       "symbol": "U3",
+       "pct": 2
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "fn": "sectorMoveTitle",
+   "args": [
+    {
+     "sector": "半导体",
+     "direction": "down",
+     "count": 3,
+     "total": 4,
+     "median": -2.25,
+     "movers": [
+      {
+       "symbol": "NVDA",
+       "pct": -3.2
+      },
+      {
+       "symbol": "AMD",
+       "pct": -2.5
+      },
+      {
+       "symbol": "AVGO",
+       "pct": -2
+      }
+     ]
+    }
+   ],
+   "out": "板块联动:半导体 集体下跌"
+  },
+  {
+   "fn": "sectorMoveBody",
+   "args": [
+    {
+     "sector": "半导体",
+     "direction": "down",
+     "count": 3,
+     "total": 4,
+     "median": -2.25,
+     "movers": [
+      {
+       "symbol": "NVDA",
+       "pct": -3.2
+      },
+      {
+       "symbol": "AMD",
+       "pct": -2.5
+      },
+      {
+       "symbol": "AVGO",
+       "pct": -2
+      }
+     ]
+    },
+    2
+   ],
+   "out": "4 只里 3 只跌超 2%,中位 −2.3%:NVDA −3.2%、AMD −2.5%、AVGO −2.0%。一只股的消息把整个板块带着走时,持仓里同板块的都要看。"
+  },
+  {
+   "fn": "sectorMoveTitle",
+   "args": [
+    {
+     "sector": "数据中心",
+     "direction": "down",
+     "count": 3,
+     "total": 4,
+     "median": -3.22,
+     "movers": [
+      {
+       "symbol": "CRWV",
+       "pct": -12.4
+      },
+      {
+       "symbol": "NBIS",
+       "pct": -4.4
+      },
+      {
+       "symbol": "ORCL",
+       "pct": -2.05
+      }
+     ]
+    }
+   ],
+   "out": "板块联动:数据中心 集体下跌"
+  },
+  {
+   "fn": "sectorMoveBody",
+   "args": [
+    {
+     "sector": "数据中心",
+     "direction": "down",
+     "count": 3,
+     "total": 4,
+     "median": -3.22,
+     "movers": [
+      {
+       "symbol": "CRWV",
+       "pct": -12.4
+      },
+      {
+       "symbol": "NBIS",
+       "pct": -4.4
+      },
+      {
+       "symbol": "ORCL",
+       "pct": -2.05
+      }
+     ]
+    },
+    2
+   ],
+   "out": "4 只里 3 只跌超 2%,中位 −3.2%:CRWV −12.4%、NBIS −4.4%、ORCL −2.0%。一只股的消息把整个板块带着走时,持仓里同板块的都要看。"
+  },
+  {
+   "fn": "sectorMoveTitle",
+   "args": [
+    {
+     "sector": "少",
+     "direction": "down",
+     "count": 2,
+     "total": 2,
+     "median": -5,
+     "movers": [
+      {
+       "symbol": "A",
+       "pct": -5
+      },
+      {
+       "symbol": "B",
+       "pct": -5
+      }
+     ]
+    }
+   ],
+   "out": "板块联动:少 集体下跌"
+  },
+  {
+   "fn": "sectorMoveBody",
+   "args": [
+    {
+     "sector": "少",
+     "direction": "down",
+     "count": 2,
+     "total": 2,
+     "median": -5,
+     "movers": [
+      {
+       "symbol": "A",
+       "pct": -5
+      },
+      {
+       "symbol": "B",
+       "pct": -5
+      }
+     ]
+    },
+    2
+   ],
+   "out": "2 只里 2 只跌超 2%,中位 −5.0%:A −5.0%、B −5.0%。一只股的消息把整个板块带着走时,持仓里同板块的都要看。"
+  },
+  {
+   "fn": "sectorMoveTitle",
+   "args": [
+    {
+     "sector": "平",
+     "direction": "down",
+     "count": 2,
+     "total": 4,
+     "median": 0,
+     "movers": [
+      {
+       "symbol": "P2",
+       "pct": -2
+      },
+      {
+       "symbol": "P4",
+       "pct": -2
+      }
+     ]
+    }
+   ],
+   "out": "板块联动:平 集体下跌"
+  },
+  {
+   "fn": "sectorMoveBody",
+   "args": [
+    {
+     "sector": "平",
+     "direction": "down",
+     "count": 2,
+     "total": 4,
+     "median": 0,
+     "movers": [
+      {
+       "symbol": "P2",
+       "pct": -2
+      },
+      {
+       "symbol": "P4",
+       "pct": -2
+      }
+     ]
+    },
+    2
+   ],
+   "out": "4 只里 2 只跌超 2%,中位 0.0%:P2 −2.0%、P4 −2.0%。一只股的消息把整个板块带着走时,持仓里同板块的都要看。"
+  },
+  {
+   "fn": "sectorMoveTitle",
+   "args": [
+    {
+     "sector": "涨",
+     "direction": "up",
+     "count": 3,
+     "total": 5,
+     "median": 2,
+     "movers": [
+      {
+       "symbol": "U2",
+       "pct": 3.1
+      },
+      {
+       "symbol": "U1",
+       "pct": 2.2
+      },
+      {
+       "symbol": "U3",
+       "pct": 2
+      }
+     ]
+    }
+   ],
+   "out": "板块联动:涨 集体上涨"
+  },
+  {
+   "fn": "sectorMoveBody",
+   "args": [
+    {
+     "sector": "涨",
+     "direction": "up",
+     "count": 3,
+     "total": 5,
+     "median": 2,
+     "movers": [
+      {
+       "symbol": "U2",
+       "pct": 3.1
+      },
+      {
+       "symbol": "U1",
+       "pct": 2.2
+      },
+      {
+       "symbol": "U3",
+       "pct": 2
+      }
+     ]
+    },
+    2
+   ],
+   "out": "5 只里 3 只涨超 2%,中位 +2.0%:U2 +3.1%、U1 +2.2%、U3 +2.0%。一只股的消息把整个板块带着走时,持仓里同板块的都要看。"
+  },
+  {
+   "fn": "sectorMoves",
+   "args": [
+    [
+     {
+      "name": "半导体",
+      "symbols": [
+       "NVDA",
+       "AMD",
+       "AVGO",
+       "MU",
+       "NVDA",
+       "TSM"
+      ]
+     },
+     {
+      "name": "数据中心",
+      "symbols": [
+       "CRWV",
+       "NBIS",
+       "ORCL",
+       "SMCI"
+      ]
+     },
+     {
+      "name": "少",
+      "symbols": [
+       "A",
+       "B"
+      ]
+     },
+     {
+      "name": "平",
+      "symbols": [
+       "P1",
+       "P2",
+       "P3",
+       "P4"
+      ]
+     },
+     {
+      "name": "涨",
+      "symbols": [
+       "U1",
+       "U2",
+       "U3",
+       "U4",
+       "U5"
+      ]
+     }
+    ],
+    {
+     "NVDA": -3.2,
+     "AMD": -2.5,
+     "AVGO": -2,
+     "MU": -1.1,
+     "TSM": null,
+     "CRWV": -12.4,
+     "NBIS": -4.4,
+     "ORCL": -2.05,
+     "SMCI": 0.3,
+     "A": -5,
+     "B": -5,
+     "P1": 2,
+     "P2": -2,
+     "P3": 2,
+     "P4": -2,
+     "U1": 2.2,
+     "U2": 3.1,
+     "U3": 2,
+     "U4": -0.5,
+     "U5": 1.999
+    },
+    {
+     "min_stocks": 4,
+     "share": 0.75,
+     "move_pct": 1
+    }
+   ],
+   "out": [
+    {
+     "sector": "半导体",
+     "direction": "down",
+     "count": 4,
+     "total": 4,
+     "median": -2.25,
+     "movers": [
+      {
+       "symbol": "NVDA",
+       "pct": -3.2
+      },
+      {
+       "symbol": "AMD",
+       "pct": -2.5
+      },
+      {
+       "symbol": "AVGO",
+       "pct": -2
+      },
+      {
+       "symbol": "MU",
+       "pct": -1.1
+      }
+     ]
+    },
+    {
+     "sector": "涨",
+     "direction": "up",
+     "count": 4,
+     "total": 5,
+     "median": 2,
+     "movers": [
+      {
+       "symbol": "U2",
+       "pct": 3.1
+      },
+      {
+       "symbol": "U1",
+       "pct": 2.2
+      },
+      {
+       "symbol": "U3",
+       "pct": 2
+      },
+      {
+       "symbol": "U5",
+       "pct": 1.999
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "fn": "sectorMoveTitle",
+   "args": [
+    {
+     "sector": "半导体",
+     "direction": "down",
+     "count": 4,
+     "total": 4,
+     "median": -2.25,
+     "movers": [
+      {
+       "symbol": "NVDA",
+       "pct": -3.2
+      },
+      {
+       "symbol": "AMD",
+       "pct": -2.5
+      },
+      {
+       "symbol": "AVGO",
+       "pct": -2
+      },
+      {
+       "symbol": "MU",
+       "pct": -1.1
+      }
+     ]
+    }
+   ],
+   "out": "板块联动:半导体 集体下跌"
+  },
+  {
+   "fn": "sectorMoveBody",
+   "args": [
+    {
+     "sector": "半导体",
+     "direction": "down",
+     "count": 4,
+     "total": 4,
+     "median": -2.25,
+     "movers": [
+      {
+       "symbol": "NVDA",
+       "pct": -3.2
+      },
+      {
+       "symbol": "AMD",
+       "pct": -2.5
+      },
+      {
+       "symbol": "AVGO",
+       "pct": -2
+      },
+      {
+       "symbol": "MU",
+       "pct": -1.1
+      }
+     ]
+    },
+    1
+   ],
+   "out": "4 只里 4 只跌超 1%,中位 −2.3%:NVDA −3.2%、AMD −2.5%、AVGO −2.0%、MU −1.1%。一只股的消息把整个板块带着走时,持仓里同板块的都要看。"
+  },
+  {
+   "fn": "sectorMoveTitle",
+   "args": [
+    {
+     "sector": "涨",
+     "direction": "up",
+     "count": 4,
+     "total": 5,
+     "median": 2,
+     "movers": [
+      {
+       "symbol": "U2",
+       "pct": 3.1
+      },
+      {
+       "symbol": "U1",
+       "pct": 2.2
+      },
+      {
+       "symbol": "U3",
+       "pct": 2
+      },
+      {
+       "symbol": "U5",
+       "pct": 1.999
+      }
+     ]
+    }
+   ],
+   "out": "板块联动:涨 集体上涨"
+  },
+  {
+   "fn": "sectorMoveBody",
+   "args": [
+    {
+     "sector": "涨",
+     "direction": "up",
+     "count": 4,
+     "total": 5,
+     "median": 2,
+     "movers": [
+      {
+       "symbol": "U2",
+       "pct": 3.1
+      },
+      {
+       "symbol": "U1",
+       "pct": 2.2
+      },
+      {
+       "symbol": "U3",
+       "pct": 2
+      },
+      {
+       "symbol": "U5",
+       "pct": 1.999
+      }
+     ]
+    },
+    1
+   ],
+   "out": "5 只里 4 只涨超 1%,中位 +2.0%:U2 +3.1%、U1 +2.2%、U3 +2.0%、U5 +2.0%。一只股的消息把整个板块带着走时,持仓里同板块的都要看。"
+  },
+  {
+   "fn": "etMinuteOf",
+   "args": [
+    1792675500000
+   ],
+   "out": 565
+  },
+  {
+   "fn": "isPremarket",
+   "args": [
+    1792675500000
+   ],
+   "out": true
+  },
+  {
+   "fn": "etMinuteOf",
+   "args": [
+    1792675799000
+   ],
+   "out": 569
+  },
+  {
+   "fn": "isPremarket",
+   "args": [
+    1792675799000
+   ],
+   "out": true
+  },
+  {
+   "fn": "etMinuteOf",
+   "args": [
+    1792675800000
+   ],
+   "out": 570
+  },
+  {
+   "fn": "isPremarket",
+   "args": [
+    1792675800000
+   ],
+   "out": false
+  },
+  {
+   "fn": "etMinuteOf",
+   "args": [
+    1793716140000
+   ],
+   "out": 569
+  },
+  {
+   "fn": "isPremarket",
+   "args": [
+    1793716140000
+   ],
+   "out": true
+  },
+  {
+   "fn": "etMinuteOf",
+   "args": [
+    1793716200000
+   ],
+   "out": 570
+  },
+  {
+   "fn": "isPremarket",
+   "args": [
+    1793716200000
+   ],
+   "out": false
+  },
+  {
+   "fn": "etMinuteOf",
+   "args": [
+    1792641540000
+   ],
+   "out": 1439
+  },
+  {
+   "fn": "isPremarket",
+   "args": [
+    1792641540000
+   ],
+   "out": false
+  },
+  {
+   "fn": "sectorMoveTitle",
+   "args": [
+    {
+     "sector": "数据中心",
+     "direction": "up",
+     "count": 4,
+     "total": 5,
+     "median": 4.25,
+     "movers": [
+      {
+       "symbol": "CRWV",
+       "pct": 6.15
+      },
+      {
+       "symbol": "IREN",
+       "pct": 4.4
+      }
+     ]
+    },
+    false
+   ],
+   "out": "板块联动:数据中心 集体上涨"
+  },
+  {
+   "fn": "sectorMoveBody",
+   "args": [
+    {
+     "sector": "数据中心",
+     "direction": "up",
+     "count": 4,
+     "total": 5,
+     "median": 4.25,
+     "movers": [
+      {
+       "symbol": "CRWV",
+       "pct": 6.15
+      },
+      {
+       "symbol": "IREN",
+       "pct": 4.4
+      }
+     ]
+    },
+    3,
+    false
+   ],
+   "out": "5 只里 4 只涨超 3%,中位 +4.3%:CRWV +6.2%、IREN +4.4%。一只股的消息把整个板块带着走时,持仓里同板块的都要看。"
+  },
+  {
+   "fn": "sectorMoveTitle",
+   "args": [
+    {
+     "sector": "数据中心",
+     "direction": "up",
+     "count": 4,
+     "total": 5,
+     "median": 4.25,
+     "movers": [
+      {
+       "symbol": "CRWV",
+       "pct": 6.15
+      },
+      {
+       "symbol": "IREN",
+       "pct": 4.4
+      }
+     ]
+    },
+    true
+   ],
+   "out": "盘前联动:数据中心 集体上涨"
+  },
+  {
+   "fn": "sectorMoveBody",
+   "args": [
+    {
+     "sector": "数据中心",
+     "direction": "up",
+     "count": 4,
+     "total": 5,
+     "median": 4.25,
+     "movers": [
+      {
+       "symbol": "CRWV",
+       "pct": 6.15
+      },
+      {
+       "symbol": "IREN",
+       "pct": 4.4
+      }
+     ]
+    },
+    3,
+    true
+   ],
+   "out": "5 只里 4 只涨超 3%,中位 +4.3%:CRWV +6.2%、IREN +4.4%。盘前靠消息面利好拉起来的,开盘后涨幅大概率回吐:别追高开,手里有的考虑趁开盘前后先减。10:00 再报一次守没守住。"
+  },
+  {
+   "fn": "sectorMoveTitle",
+   "args": [
+    {
+     "sector": "数据中心",
+     "direction": "down",
+     "count": 4,
+     "total": 5,
+     "median": -3.05,
+     "movers": [
+      {
+       "symbol": "CRWV",
+       "pct": -12.4
+      }
+     ]
+    },
+    false
+   ],
+   "out": "板块联动:数据中心 集体下跌"
+  },
+  {
+   "fn": "sectorMoveBody",
+   "args": [
+    {
+     "sector": "数据中心",
+     "direction": "down",
+     "count": 4,
+     "total": 5,
+     "median": -3.05,
+     "movers": [
+      {
+       "symbol": "CRWV",
+       "pct": -12.4
+      }
+     ]
+    },
+    3,
+    false
+   ],
+   "out": "5 只里 4 只跌超 3%,中位 −3.0%:CRWV −12.4%。一只股的消息把整个板块带着走时,持仓里同板块的都要看。"
+  },
+  {
+   "fn": "sectorMoveTitle",
+   "args": [
+    {
+     "sector": "数据中心",
+     "direction": "down",
+     "count": 4,
+     "total": 5,
+     "median": -3.05,
+     "movers": [
+      {
+       "symbol": "CRWV",
+       "pct": -12.4
+      }
+     ]
+    },
+    true
+   ],
+   "out": "盘前联动:数据中心 集体下跌"
+  },
+  {
+   "fn": "sectorMoveBody",
+   "args": [
+    {
+     "sector": "数据中心",
+     "direction": "down",
+     "count": 4,
+     "total": 5,
+     "median": -3.05,
+     "movers": [
+      {
+       "symbol": "CRWV",
+       "pct": -12.4
+      }
+     ]
+    },
+    3,
+    true
+   ],
+   "out": "5 只里 4 只跌超 3%,中位 −3.0%:CRWV −12.4%。盘前的集体下跌,开盘后先看半小时再动。"
+  },
+  {
+   "fn": "sectorMedian",
+   "args": [
+    [
+     "A",
+     "B",
+     "C"
+    ],
+    {
+     "A": 1,
+     "B": 3,
+     "C": null,
+     "D": 2.555,
+     "E": -0.004
+    },
+    1
+   ],
+   "out": 2
+  },
+  {
+   "fn": "sectorMedian",
+   "args": [
+    [
+     "A",
+     "B",
+     "C"
+    ],
+    {
+     "A": 1,
+     "B": 3,
+     "C": null,
+     "D": 2.555,
+     "E": -0.004
+    },
+    3
+   ],
+   "out": null
+  },
+  {
+   "fn": "sectorMedian",
+   "args": [
+    [
+     "A",
+     "B",
+     "D",
+     "A"
+    ],
+    {
+     "A": 1,
+     "B": 3,
+     "C": null,
+     "D": 2.555,
+     "E": -0.004
+    },
+    1
+   ],
+   "out": 2.56
+  },
+  {
+   "fn": "sectorMedian",
+   "args": [
+    [
+     "E"
+    ],
+    {
+     "A": 1,
+     "B": 3,
+     "C": null,
+     "D": 2.555,
+     "E": -0.004
+    },
+    1
+   ],
+   "out": 0
+  },
+  {
+   "fn": "sectorMedian",
+   "args": [
+    [],
+    {
+     "A": 1,
+     "B": 3,
+     "C": null,
+     "D": 2.555,
+     "E": -0.004
+    },
+    0
+   ],
+   "out": null
+  },
+  {
+   "fn": "sectorMedian",
+   "args": [
+    [
+     "C"
+    ],
+    {
+     "A": 1,
+     "B": 3,
+     "C": null,
+     "D": 2.555,
+     "E": -0.004
+    },
+    1
+   ],
+   "out": null
+  },
+  {
+   "fn": "sectorMedian",
+   "args": [
+    [
+     "A",
+     "D",
+     "E",
+     "B"
+    ],
+    {
+     "A": 1,
+     "B": 3,
+     "C": null,
+     "D": 2.555,
+     "E": -0.004
+    },
+    2
+   ],
+   "out": 1.78
+  },
+  {
+   "fn": "fadeVerdict",
+   "args": [
+    4.2,
+    2.1
+   ],
+   "out": "faded"
+  },
+  {
+   "fn": "fadeTitle",
+   "args": [
+    "数据中心",
+    "faded"
+   ],
+   "out": "数据中心:盘前涨幅已回吐"
+  },
+  {
+   "fn": "fadeBody",
+   "args": [
+    4.2,
+    2.1,
+    "faded"
+   ],
+   "out": "开盘前中位 +4.2%,现在 +2.1%。盘前的利好在开盘后被卖掉了,这回又应验;别在这里抄回去,等它自己站稳。"
+  },
+  {
+   "fn": "fadeVerdict",
+   "args": [
+    4.2,
+    2.11
+   ],
+   "out": "held"
+  },
+  {
+   "fn": "fadeTitle",
+   "args": [
+    "数据中心",
+    "held"
+   ],
+   "out": "数据中心:盘前涨幅守住了"
+  },
+  {
+   "fn": "fadeBody",
+   "args": [
+    4.2,
+    2.11,
+    "held"
+   ],
+   "out": "开盘前中位 +4.2%,现在 +2.1%。这次没回吐,比平常的盘前利好强:别逆着它空。"
+  },
+  {
+   "fn": "fadeVerdict",
+   "args": [
+    4.2,
+    -0.5
+   ],
+   "out": "faded"
+  },
+  {
+   "fn": "fadeTitle",
+   "args": [
+    "数据中心",
+    "faded"
+   ],
+   "out": "数据中心:盘前涨幅已回吐"
+  },
+  {
+   "fn": "fadeBody",
+   "args": [
+    4.2,
+    -0.5,
+    "faded"
+   ],
+   "out": "开盘前中位 +4.2%,现在 −0.5%。盘前的利好在开盘后被卖掉了,这回又应验;别在这里抄回去,等它自己站稳。"
+  },
+  {
+   "fn": "fadeVerdict",
+   "args": [
+    3,
+    3.5
+   ],
+   "out": "held"
+  },
+  {
+   "fn": "fadeTitle",
+   "args": [
+    "数据中心",
+    "held"
+   ],
+   "out": "数据中心:盘前涨幅守住了"
+  },
+  {
+   "fn": "fadeBody",
+   "args": [
+    3,
+    3.5,
+    "held"
+   ],
+   "out": "开盘前中位 +3.0%,现在 +3.5%。这次没回吐,比平常的盘前利好强:别逆着它空。"
+  },
+  {
+   "fn": "fadeVerdict",
+   "args": [
+    2,
+    0
+   ],
+   "out": "faded"
+  },
+  {
+   "fn": "fadeTitle",
+   "args": [
+    "数据中心",
+    "faded"
+   ],
+   "out": "数据中心:盘前涨幅已回吐"
+  },
+  {
+   "fn": "fadeBody",
+   "args": [
+    2,
+    0,
+    "faded"
+   ],
+   "out": "开盘前中位 +2.0%,现在 0.0%。盘前的利好在开盘后被卖掉了,这回又应验;别在这里抄回去,等它自己站稳。"
+  },
+  {
+   "fn": "londonNyGap",
+   "args": [
+    1792652410000
+   ],
+   "out": 5
+  },
+  {
+   "fn": "sessionMarksDue",
+   "args": [
+    1792652410000,
+    [],
+    true
+   ],
+   "out": [
+    {
+     "key": "session:eu_open:2026-10-22",
+     "id": "eu_open"
+    }
+   ]
+  },
+  {
+   "fn": "sessionMarksDue",
+   "args": [
+    1792652410000,
+    [],
+    false
+   ],
+   "out": [
+    {
+     "key": "session:eu_open:2026-10-22",
+     "id": "eu_open"
+    }
+   ]
+  },
+  {
+   "fn": "sessionMarksDue",
+   "args": [
+    1792652410000,
+    [
+     "session:eu_open:2026-10-22"
+    ],
+    true
+   ],
+   "out": []
+  },
+  {
+   "fn": "sessionMarkBody",
+   "args": [
+    "eu_open",
+    1792652410000
+   ],
+   "out": "美东 03:00 · 北京 15:00 · 欧洲资金进场,流动性明显变厚:美股期货(ES / NQ)常在这时走出当天第一段方向,或把亚盘的走势掀翻。按夜盘价挂的单、用期货推算的 SPX 现价,这时最容易被打穿。"
+  },
+  {
+   "fn": "londonNyGap",
+   "args": [
+    1792652399000
+   ],
+   "out": 5
+  },
+  {
+   "fn": "sessionMarksDue",
+   "args": [
+    1792652399000,
+    [],
+    true
+   ],
+   "out": []
+  },
+  {
+   "fn": "sessionMarksDue",
+   "args": [
+    1792652399000,
+    [],
+    false
+   ],
+   "out": []
+  },
+  {
+   "fn": "londonNyGap",
+   "args": [
+    1792652489000
+   ],
+   "out": 5
+  },
+  {
+   "fn": "sessionMarksDue",
+   "args": [
+    1792652489000,
+    [],
+    true
+   ],
+   "out": [
+    {
+     "key": "session:eu_open:2026-10-22",
+     "id": "eu_open"
+    }
+   ]
+  },
+  {
+   "fn": "sessionMarksDue",
+   "args": [
+    1792652489000,
+    [],
+    false
+   ],
+   "out": [
+    {
+     "key": "session:eu_open:2026-10-22",
+     "id": "eu_open"
+    }
+   ]
+  },
+  {
+   "fn": "sessionMarksDue",
+   "args": [
+    1792652489000,
+    [
+     "session:eu_open:2026-10-22"
+    ],
+    true
+   ],
+   "out": []
+  },
+  {
+   "fn": "sessionMarkBody",
+   "args": [
+    "eu_open",
+    1792652489000
+   ],
+   "out": "美东 03:01 · 北京 15:01 · 欧洲资金进场,流动性明显变厚:美股期货(ES / NQ)常在这时走出当天第一段方向,或把亚盘的走势掀翻。按夜盘价挂的单、用期货推算的 SPX 现价,这时最容易被打穿。"
+  },
+  {
+   "fn": "londonNyGap",
+   "args": [
+    1792652490000
+   ],
+   "out": 5
+  },
+  {
+   "fn": "sessionMarksDue",
+   "args": [
+    1792652490000,
+    [],
+    true
+   ],
+   "out": []
+  },
+  {
+   "fn": "sessionMarksDue",
+   "args": [
+    1792652490000,
+    [],
+    false
+   ],
+   "out": []
+  },
+  {
+   "fn": "londonNyGap",
+   "args": [
+    1793084410000
+   ],
+   "out": 4
+  },
+  {
+   "fn": "sessionMarksDue",
+   "args": [
+    1793084410000,
+    [],
+    true
+   ],
+   "out": []
+  },
+  {
+   "fn": "sessionMarksDue",
+   "args": [
+    1793084410000,
+    [],
+    false
+   ],
+   "out": []
+  },
+  {
+   "fn": "londonNyGap",
+   "args": [
+    1793088010000
+   ],
+   "out": 4
+  },
+  {
+   "fn": "sessionMarksDue",
+   "args": [
+    1793088010000,
+    [],
+    true
+   ],
+   "out": [
+    {
+     "key": "session:eu_open:2026-10-27",
+     "id": "eu_open"
+    }
+   ]
+  },
+  {
+   "fn": "sessionMarksDue",
+   "args": [
+    1793088010000,
+    [],
+    false
+   ],
+   "out": [
+    {
+     "key": "session:eu_open:2026-10-27",
+     "id": "eu_open"
+    }
+   ]
+  },
+  {
+   "fn": "sessionMarksDue",
+   "args": [
+    1793088010000,
+    [
+     "session:eu_open:2026-10-27"
+    ],
+    true
+   ],
+   "out": []
+  },
+  {
+   "fn": "sessionMarkBody",
+   "args": [
+    "eu_open",
+    1793088010000
+   ],
+   "out": "美东 04:00 · 北京 16:00 · 欧洲资金进场,流动性明显变厚:美股期货(ES / NQ)常在这时走出当天第一段方向,或把亚盘的走势掀翻。按夜盘价挂的单、用期货推算的 SPX 现价,这时最容易被打穿。 · 这一周欧美夏令时没同步,欧盘和美股的时差比平常少一小时。"
+  },
+  {
+   "fn": "londonNyGap",
+   "args": [
+    1793692810000
+   ],
+   "out": 5
+  },
+  {
+   "fn": "sessionMarksDue",
+   "args": [
+    1793692810000,
+    [],
+    true
+   ],
+   "out": [
+    {
+     "key": "session:eu_open:2026-11-03",
+     "id": "eu_open"
+    }
+   ]
+  },
+  {
+   "fn": "sessionMarksDue",
+   "args": [
+    1793692810000,
+    [],
+    false
+   ],
+   "out": [
+    {
+     "key": "session:eu_open:2026-11-03",
+     "id": "eu_open"
+    }
+   ]
+  },
+  {
+   "fn": "sessionMarksDue",
+   "args": [
+    1793692810000,
+    [
+     "session:eu_open:2026-11-03"
+    ],
+    true
+   ],
+   "out": []
+  },
+  {
+   "fn": "sessionMarkBody",
+   "args": [
+    "eu_open",
+    1793692810000
+   ],
+   "out": "美东 03:00 · 北京 16:00 · 欧洲资金进场,流动性明显变厚:美股期货(ES / NQ)常在这时走出当天第一段方向,或把亚盘的走势掀翻。按夜盘价挂的单、用期货推算的 SPX 现价,这时最容易被打穿。"
+  },
+  {
+   "fn": "londonNyGap",
+   "args": [
+    1792675530000
+   ],
+   "out": 5
+  },
+  {
+   "fn": "sessionMarksDue",
+   "args": [
+    1792675530000,
+    [],
+    true
+   ],
+   "out": [
+    {
+     "key": "session:us_pre_open:2026-10-22",
+     "id": "us_pre_open"
+    }
+   ]
+  },
+  {
+   "fn": "sessionMarksDue",
+   "args": [
+    1792675530000,
+    [],
+    false
+   ],
+   "out": []
+  },
+  {
+   "fn": "sessionMarksDue",
+   "args": [
+    1792675530000,
+    [
+     "session:us_pre_open:2026-10-22"
+    ],
+    true
+   ],
+   "out": []
+  },
+  {
+   "fn": "sessionMarkBody",
+   "args": [
+    "us_pre_open",
+    1792675530000
+   ],
+   "out": "美东 09:25 · 北京 21:25 · 盘前靠消息面利好拉起来的,开盘后涨幅大概率回吐,别追高开。开盘头 15 分钟价差宽、方向反复:不用市价单,第一根 K 线别当方向。"
+  },
+  {
+   "fn": "londonNyGap",
+   "args": [
+    1792683000000
+   ],
+   "out": 5
+  },
+  {
+   "fn": "sessionMarksDue",
+   "args": [
+    1792683000000,
+    [],
+    true
+   ],
+   "out": [
+    {
+     "key": "session:eu_close:2026-10-22",
+     "id": "eu_close"
+    }
+   ]
+  },
+  {
+   "fn": "sessionMarksDue",
+   "args": [
+    1792683000000,
+    [],
+    false
+   ],
+   "out": []
+  },
+  {
+   "fn": "sessionMarksDue",
+   "args": [
+    1792683000000,
+    [
+     "session:eu_close:2026-10-22"
+    ],
+    true
+   ],
+   "out": []
+  },
+  {
+   "fn": "sessionMarkBody",
+   "args": [
+    "eu_close",
+    1792683000000
+   ],
+   "out": "美东 11:30 · 北京 23:30 · 欧洲资金离场,流动性退潮:美股上午的趋势常在这附近停下或回头;接下来的午间是一天里最薄的时段,突破多是假的。"
+  },
+  {
+   "fn": "londonNyGap",
+   "args": [
+    1793118600000
+   ],
+   "out": 4
+  },
+  {
+   "fn": "sessionMarksDue",
+   "args": [
+    1793118600000,
+    [],
+    true
+   ],
+   "out": [
+    {
+     "key": "session:eu_close:2026-10-27",
+     "id": "eu_close"
+    }
+   ]
+  },
+  {
+   "fn": "sessionMarksDue",
+   "args": [
+    1793118600000,
+    [],
+    false
+   ],
+   "out": []
+  },
+  {
+   "fn": "sessionMarksDue",
+   "args": [
+    1793118600000,
+    [
+     "session:eu_close:2026-10-27"
+    ],
+    true
+   ],
+   "out": []
+  },
+  {
+   "fn": "sessionMarkBody",
+   "args": [
+    "eu_close",
+    1793118600000
+   ],
+   "out": "美东 12:30 · 北京 00:30 · 欧洲资金离场,流动性退潮:美股上午的趋势常在这附近停下或回头;接下来的午间是一天里最薄的时段,突破多是假的。 · 这一周欧美夏令时没同步,欧盘和美股的时差比平常少一小时。"
+  },
+  {
+   "fn": "londonNyGap",
+   "args": [
+    1792695600000
+   ],
+   "out": 5
+  },
+  {
+   "fn": "sessionMarksDue",
+   "args": [
+    1792695600000,
+    [],
+    true
+   ],
+   "out": [
+    {
+     "key": "session:us_last_hour:2026-10-22",
+     "id": "us_last_hour"
+    }
+   ]
+  },
+  {
+   "fn": "sessionMarksDue",
+   "args": [
+    1792695600000,
+    [],
+    false
+   ],
+   "out": []
+  },
+  {
+   "fn": "sessionMarksDue",
+   "args": [
+    1792695600000,
+    [
+     "session:us_last_hour:2026-10-22"
+    ],
+    true
+   ],
+   "out": []
+  },
+  {
+   "fn": "sessionMarkBody",
+   "args": [
+    "us_last_hour",
+    1792695600000
+   ],
+   "out": "美东 15:00 · 北京 03:00 · 当日到期的期权 gamma 放大:SPX 动几个点,蝶的盈亏变化比上午大得多。15:50 交易所公布收盘集合竞价的买卖失衡,尾盘常急拉急砸;要平的别拖到最后十分钟。"
+  },
+  {
+   "fn": "londonNyGap",
+   "args": [
+    1793736000000
+   ],
+   "out": 5
+  },
+  {
+   "fn": "sessionMarksDue",
+   "args": [
+    1793736000000,
+    [],
+    true
+   ],
+   "out": [
+    {
+     "key": "session:us_last_hour:2026-11-03",
+     "id": "us_last_hour"
+    }
+   ]
+  },
+  {
+   "fn": "sessionMarksDue",
+   "args": [
+    1793736000000,
+    [],
+    false
+   ],
+   "out": []
+  },
+  {
+   "fn": "sessionMarksDue",
+   "args": [
+    1793736000000,
+    [
+     "session:us_last_hour:2026-11-03"
+    ],
+    true
+   ],
+   "out": []
+  },
+  {
+   "fn": "sessionMarkBody",
+   "args": [
+    "us_last_hour",
+    1793736000000
+   ],
+   "out": "美东 15:00 · 北京 04:00 · 当日到期的期权 gamma 放大:SPX 动几个点,蝶的盈亏变化比上午大得多。15:50 交易所公布收盘集合竞价的买卖失衡,尾盘常急拉急砸;要平的别拖到最后十分钟。"
+  },
+  {
+   "fn": "londonNyGap",
+   "args": [
+    1792825210000
+   ],
+   "out": 5
+  },
+  {
+   "fn": "sessionMarksDue",
+   "args": [
+    1792825210000,
+    [],
+    true
+   ],
+   "out": []
+  },
+  {
+   "fn": "sessionMarksDue",
+   "args": [
+    1792825210000,
+    [],
+    false
+   ],
+   "out": []
+  },
+  {
+   "fn": "londonNyGap",
+   "args": [
+    1792934700000
+   ],
+   "out": 4
+  },
+  {
+   "fn": "sessionMarksDue",
+   "args": [
+    1792934700000,
+    [],
+    true
+   ],
+   "out": []
+  },
+  {
+   "fn": "sessionMarksDue",
+   "args": [
+    1792934700000,
+    [],
+    false
+   ],
+   "out": []
+  },
+  {
+   "fn": "londonNyGap",
+   "args": [
+    1805180410000
+   ],
+   "out": 4
+  },
+  {
+   "fn": "sessionMarksDue",
+   "args": [
+    1805180410000,
+    [],
+    true
+   ],
+   "out": []
+  },
+  {
+   "fn": "sessionMarksDue",
+   "args": [
+    1805180410000,
+    [],
+    false
+   ],
+   "out": []
+  },
+  {
+   "fn": "londonNyGap",
+   "args": [
+    1805184010000
+   ],
+   "out": 4
+  },
+  {
+   "fn": "sessionMarksDue",
+   "args": [
+    1805184010000,
+    [],
+    true
+   ],
+   "out": [
+    {
+     "key": "session:eu_open:2027-03-16",
+     "id": "eu_open"
+    }
+   ]
+  },
+  {
+   "fn": "sessionMarksDue",
+   "args": [
+    1805184010000,
+    [],
+    false
+   ],
+   "out": [
+    {
+     "key": "session:eu_open:2027-03-16",
+     "id": "eu_open"
+    }
+   ]
+  },
+  {
+   "fn": "sessionMarksDue",
+   "args": [
+    1805184010000,
+    [
+     "session:eu_open:2027-03-16"
+    ],
+    true
+   ],
+   "out": []
+  },
+  {
+   "fn": "sessionMarkBody",
+   "args": [
+    "eu_open",
+    1805184010000
+   ],
+   "out": "美东 04:00 · 北京 16:00 · 欧洲资金进场,流动性明显变厚:美股期货(ES / NQ)常在这时走出当天第一段方向,或把亚盘的走势掀翻。按夜盘价挂的单、用期货推算的 SPX 现价,这时最容易被打穿。 · 这一周欧美夏令时没同步,欧盘和美股的时差比平常少一小时。"
+  },
+  {
+   "fn": "strikeStep",
+   "args": [
+    "SPX",
+    7712
+   ],
+   "out": 5
+  },
+  {
+   "fn": "strikeStep",
+   "args": [
+    "spx",
+    3
+   ],
+   "out": 5
+  },
+  {
+   "fn": "strikeStep",
+   "args": [
+    "AAPL",
+    230
+   ],
+   "out": 5
+  },
+  {
+   "fn": "strikeStep",
+   "args": [
+    "XLF",
+    50
+   ],
+   "out": 1
+  },
+  {
+   "fn": "strikeStep",
+   "args": [
+    "XLF",
+    25
+   ],
+   "out": 1
+  },
+  {
+   "fn": "strikeStep",
+   "args": [
+    "F",
+    12
+   ],
+   "out": 0.5
+  },
+  {
+   "fn": "strikeStep",
+   "args": [
+    "NDX",
+    20000
+   ],
+   "out": 5
+  },
+  {
+   "fn": "hedgeInstruction",
+   "args": [
+    {
+     "symbol": "SPX",
+     "spot": 7712.4,
+     "kind": "put_spread",
+     "width": 25,
+     "qty": 1,
+     "expiry": "2026-10-14",
+     "todayEt": "2026-10-14",
+     "reason": "CPI 前对冲"
+    }
+   ],
+   "out": {
+    "text": "开一张 SPX 今天的 7685 7710 put spread,理由:CPI 前对冲",
+    "legs": "买 7710 put、卖 7685 put,1 张;最大亏损 = 付出的权利金",
+    "problem": null
+   }
+  },
+  {
+   "fn": "hedgeInstruction",
+   "args": [
+    {
+     "symbol": "SPX",
+     "spot": 7712.4,
+     "kind": "bear_call",
+     "width": 25,
+     "qty": 1,
+     "expiry": "2026-10-14",
+     "todayEt": "2026-10-14",
+     "reason": "CPI 前对冲"
+    }
+   ],
+   "out": {
+    "text": "7715 7740 bear call",
+    "legs": "卖 7715 call、买 7740 call,1 张;收权利金,最大亏损 = 25 点 − 权利金",
+    "problem": null
+   }
+  },
+  {
+   "fn": "hedgeInstruction",
+   "args": [
+    {
+     "symbol": "SPX",
+     "spot": 7715,
+     "kind": "bear_call",
+     "width": 25,
+     "qty": 1,
+     "expiry": "2026-10-14",
+     "todayEt": "2026-10-14",
+     "reason": "CPI 前对冲"
+    }
+   ],
+   "out": {
+    "text": "7720 7745 bear call",
+    "legs": "卖 7720 call、买 7745 call,1 张;收权利金,最大亏损 = 25 点 − 权利金",
+    "problem": null
+   }
+  },
+  {
+   "fn": "hedgeInstruction",
+   "args": [
+    {
+     "symbol": "SPX",
+     "spot": 7712.4,
+     "kind": "bear_call",
+     "width": 25,
+     "qty": 2,
+     "expiry": "2026-10-14",
+     "todayEt": "2026-10-14",
+     "reason": "CPI 前对冲"
+    }
+   ],
+   "out": {
+    "text": "卖出2 张 SPX 今天的 7715 7740 call spread,理由:CPI 前对冲",
+    "legs": "卖 7715 call、买 7740 call,2 张;收权利金,最大亏损 = 25 点 − 权利金",
+    "problem": null
+   }
+  },
+  {
+   "fn": "hedgeInstruction",
+   "args": [
+    {
+     "symbol": "SPX",
+     "spot": 7712.4,
+     "kind": "bear_call",
+     "width": 25,
+     "qty": 1,
+     "expiry": "2026-10-15",
+     "todayEt": "2026-10-14",
+     "reason": "CPI 前对冲"
+    }
+   ],
+   "out": {
+    "text": "卖出一张 SPX 2026-10-15 到期的 7715 7740 call spread,理由:CPI 前对冲",
+    "legs": "卖 7715 call、买 7740 call,1 张;收权利金,最大亏损 = 25 点 − 权利金",
+    "problem": null
+   }
+  },
+  {
+   "fn": "hedgeInstruction",
+   "args": [
+    {
+     "symbol": "SPX",
+     "spot": 7712.4,
+     "kind": "put_spread",
+     "width": 25,
+     "qty": 3,
+     "expiry": "2026-10-16",
+     "todayEt": "2026-10-14",
+     "reason": "  "
+    }
+   ],
+   "out": {
+    "text": "开3 张 SPX 2026-10-16 到期的 7685 7710 put spread",
+    "legs": "买 7710 put、卖 7685 put,3 张;最大亏损 = 付出的权利金",
+    "problem": null
+   }
+  },
+  {
+   "fn": "hedgeInstruction",
+   "args": [
+    {
+     "symbol": " aapl ",
+     "spot": 231.37,
+     "kind": "put_spread",
+     "width": 5,
+     "qty": 1,
+     "expiry": "2026-10-14",
+     "todayEt": "2026-10-14",
+     "reason": "CPI 前对冲"
+    }
+   ],
+   "out": {
+    "text": "开一张 AAPL 今天的 225 230 put spread,理由:CPI 前对冲",
+    "legs": "买 230 put、卖 225 put,1 张;最大亏损 = 付出的权利金",
+    "problem": null
+   }
+  },
+  {
+   "fn": "hedgeInstruction",
+   "args": [
+    {
+     "symbol": "F",
+     "spot": 12.26,
+     "kind": "put_spread",
+     "width": 1.5,
+     "qty": 1,
+     "expiry": "2026-10-14",
+     "todayEt": "2026-10-14",
+     "reason": "CPI 前对冲"
+    }
+   ],
+   "out": {
+    "text": "开一张 F 今天的 10.5 12 put spread,理由:CPI 前对冲",
+    "legs": "买 12 put、卖 10.5 put,1 张;最大亏损 = 付出的权利金",
+    "problem": null
+   }
+  },
+  {
+   "fn": "hedgeInstruction",
+   "args": [
+    {
+     "symbol": "XLF",
+     "spot": 49.99,
+     "kind": "bear_call",
+     "width": 2,
+     "qty": 1,
+     "expiry": "2026-10-14",
+     "todayEt": "2026-10-14",
+     "reason": "CPI 前对冲"
+    }
+   ],
+   "out": {
+    "text": "卖出一张 XLF 今天的 50 52 call spread,理由:CPI 前对冲",
+    "legs": "卖 50 call、买 52 call,1 张;收权利金,最大亏损 = 2 点 − 权利金",
+    "problem": null
+   }
+  },
+  {
+   "fn": "hedgeInstruction",
+   "args": [
+    {
+     "symbol": "",
+     "spot": 7712.4,
+     "kind": "put_spread",
+     "width": 25,
+     "qty": 1,
+     "expiry": "2026-10-14",
+     "todayEt": "2026-10-14",
+     "reason": "CPI 前对冲"
+    }
+   ],
+   "out": {
+    "text": "",
+    "legs": "",
+    "problem": "先填标的"
+   }
+  },
+  {
+   "fn": "hedgeInstruction",
+   "args": [
+    {
+     "symbol": "SPX",
+     "spot": null,
+     "kind": "put_spread",
+     "width": 25,
+     "qty": 1,
+     "expiry": "2026-10-14",
+     "todayEt": "2026-10-14",
+     "reason": "CPI 前对冲"
+    }
+   ],
+   "out": {
+    "text": "",
+    "legs": "",
+    "problem": "没有现价:连上券商,或自己填一个"
+   }
+  },
+  {
+   "fn": "hedgeInstruction",
+   "args": [
+    {
+     "symbol": "SPX",
+     "spot": 0,
+     "kind": "put_spread",
+     "width": 25,
+     "qty": 1,
+     "expiry": "2026-10-14",
+     "todayEt": "2026-10-14",
+     "reason": "CPI 前对冲"
+    }
+   ],
+   "out": {
+    "text": "",
+    "legs": "",
+    "problem": "没有现价:连上券商,或自己填一个"
+   }
+  },
+  {
+   "fn": "hedgeInstruction",
+   "args": [
+    {
+     "symbol": "SPX",
+     "spot": 7712.4,
+     "kind": "put_spread",
+     "width": 0,
+     "qty": 1,
+     "expiry": "2026-10-14",
+     "todayEt": "2026-10-14",
+     "reason": "CPI 前对冲"
+    }
+   ],
+   "out": {
+    "text": "",
+    "legs": "",
+    "problem": "宽度要大于 0"
+   }
+  },
+  {
+   "fn": "hedgeInstruction",
+   "args": [
+    {
+     "symbol": "SPX",
+     "spot": 7712.4,
+     "kind": "put_spread",
+     "width": 25,
+     "qty": 1.5,
+     "expiry": "2026-10-14",
+     "todayEt": "2026-10-14",
+     "reason": "CPI 前对冲"
+    }
+   ],
+   "out": {
+    "text": "",
+    "legs": "",
+    "problem": "张数要是正整数"
+   }
+  },
+  {
+   "fn": "hedgeInstruction",
+   "args": [
+    {
+     "symbol": "SPX",
+     "spot": 7712.4,
+     "kind": "put_spread",
+     "width": 25,
+     "qty": 0,
+     "expiry": "2026-10-14",
+     "todayEt": "2026-10-14",
+     "reason": "CPI 前对冲"
+    }
+   ],
+   "out": {
+    "text": "",
+    "legs": "",
+    "problem": "张数要是正整数"
+   }
+  },
+  {
+   "fn": "hedgeInstruction",
+   "args": [
+    {
+     "symbol": "SPX",
+     "spot": 7712.4,
+     "kind": "put_spread",
+     "width": 25,
+     "qty": 1,
+     "expiry": "2026-1-14",
+     "todayEt": "2026-10-14",
+     "reason": "CPI 前对冲"
+    }
+   ],
+   "out": {
+    "text": "",
+    "legs": "",
+    "problem": "到期日要写成 YYYY-MM-DD"
+   }
+  },
+  {
+   "fn": "hedgeInstruction",
+   "args": [
+    {
+     "symbol": "SPX",
+     "spot": 7712.4,
+     "kind": "put_spread",
+     "width": 25,
+     "qty": 1,
+     "expiry": "2026-10-13",
+     "todayEt": "2026-10-14",
+     "reason": "CPI 前对冲"
+    }
+   ],
+   "out": {
+    "text": "",
+    "legs": "",
+    "problem": "到期日已经过了"
+   }
+  },
+  {
+   "fn": "hedgeInstruction",
+   "args": [
+    {
+     "symbol": "SPX",
+     "spot": 7712.4,
+     "kind": "put_spread",
+     "width": 8000,
+     "qty": 1,
+     "expiry": "2026-10-14",
+     "todayEt": "2026-10-14",
+     "reason": "CPI 前对冲"
+    }
+   ],
+   "out": {
+    "text": "",
+    "legs": "",
+    "problem": "宽度比现价还大"
+   }
+  },
+  {
+   "fn": "hedgeInstruction",
+   "args": [
+    {
+     "symbol": "koru",
+     "spot": 7712.4,
+     "kind": "short_stock",
+     "width": 25,
+     "qty": 100,
+     "expiry": "2026-10-14",
+     "todayEt": "2026-10-14",
+     "reason": "跟跌",
+     "price": 10.456,
+     "outside": true
+    }
+   ],
+   "out": {
+    "text": "盘外 限价 10.46 卖出 100 股 KORU,理由:跟跌",
+    "legs": "卖空 100 股 KORU @ 10.46,盘外限价;亏损没有上限,3 倍 ETF 一天能走 10% 以上",
+    "problem": null
+   }
+  },
+  {
+   "fn": "hedgeInstruction",
+   "args": [
+    {
+     "symbol": "EWY",
+     "spot": 7712.4,
+     "kind": "short_stock",
+     "width": 25,
+     "qty": 50,
+     "expiry": "2026-10-14",
+     "todayEt": "2026-10-14",
+     "reason": "",
+     "price": 61,
+     "outside": false
+    }
+   ],
+   "out": {
+    "text": "限价 61 卖出 50 股 EWY",
+    "legs": "卖空 50 股 EWY @ 61;亏损没有上限,3 倍 ETF 一天能走 10% 以上",
+    "problem": null
+   }
+  },
+  {
+   "fn": "hedgeInstruction",
+   "args": [
+    {
+     "symbol": "EWY",
+     "spot": 7712.4,
+     "kind": "short_stock",
+     "width": 25,
+     "qty": 50,
+     "expiry": "2026-10-14",
+     "todayEt": "2026-10-14",
+     "reason": "CPI 前对冲",
+     "price": null
+    }
+   ],
+   "out": {
+    "text": "",
+    "legs": "",
+    "problem": "卖空要写限价:看一眼 TWS 里的盘口填进来"
+   }
+  },
+  {
+   "fn": "hedgeInstruction",
+   "args": [
+    {
+     "symbol": "EWY",
+     "spot": 7712.4,
+     "kind": "short_stock",
+     "width": 25,
+     "qty": 0.5,
+     "expiry": "2026-10-14",
+     "todayEt": "2026-10-14",
+     "reason": "CPI 前对冲",
+     "price": 3
+    }
+   ],
+   "out": {
+    "text": "",
+    "legs": "",
+    "problem": "股数要是正整数"
+   }
+  },
+  {
+   "fn": "hedgeInstruction",
+   "args": [
+    {
+     "symbol": "EWY",
+     "spot": 7712.4,
+     "kind": "short_stock",
+     "width": 25,
+     "qty": 10,
+     "expiry": "2026-10-14",
+     "todayEt": "2026-10-14",
+     "reason": "CPI 前对冲",
+     "price": 0
+    }
+   ],
+   "out": {
+    "text": "",
+    "legs": "",
+    "problem": "卖空要写限价:看一眼 TWS 里的盘口填进来"
+   }
+  },
+  {
+   "fn": "hedgeExpiryFor",
+   "args": [
+    {
+     "date_et": "2026-10-15"
+    },
+    "2026-10-14"
+   ],
+   "out": "2026-10-15"
+  },
+  {
+   "fn": "hedgeExpiryFor",
+   "args": [
+    {
+     "date_et": "2026-10-14"
+    },
+    "2026-10-14"
+   ],
+   "out": "2026-10-14"
+  },
+  {
+   "fn": "hedgeExpiryFor",
+   "args": [
+    {
+     "date_et": "2026-10-13"
+    },
+    "2026-10-14"
+   ],
+   "out": "2026-10-14"
+  }
+ ]
+}

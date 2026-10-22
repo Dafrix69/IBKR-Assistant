@@ -1,0 +1,8 @@
+# 编译目录(macOS 的预设编到 ~/Library/Caches,Windows 的编到这里)
+build/
+# VS Code 的 CMake Tools 拷过来给 clangd 读的;CMake 生成给 qmlls 读的
+compile_commands.json
+.qmlls.ini
+.cache/
+# tws-positions --record 录下来的报文:含真实账号,不进仓库
+*.twsrec

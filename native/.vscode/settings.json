@@ -1,0 +1,36 @@
+{
+  // ---- CMake Tools:配置 / 编译 / 测试全走 CMakePresets.json ----
+  "cmake.useCMakePresets": "always",
+  "cmake.configureOnOpen": true,
+  // 编译数据库拷一份到 native/ 下,clangd 从这里读(真正的编译目录在 ~/Library/Caches,桌面是 iCloud 同步的)
+  "cmake.copyCompileCommands": "${workspaceFolder}/compile_commands.json",
+  "cmake.ctest.testExplorerIntegrationEnabled": true,
+
+  // ---- 代码提示:clangd(CommandLineTools 自带的那一个)----
+  "clangd.path": "/Library/Developer/CommandLineTools/usr/bin/clangd",
+  "clangd.arguments": ["--compile-commands-dir=${workspaceFolder}", "--header-insertion=never", "--background-index"],
+  "C_Cpp.intelliSenseEngine": "disabled",
+
+  // ---- QML:Homebrew 装的 qmlls;导入路径由 CMake 生成的 .qmlls.ini 给 ----
+  "qt-qml.qmlls.enabled": true,
+  "qt-qml.qmlls.customExePath": "/opt/homebrew/bin/qmlls",
+  "qt-qml.doNotAskForQmllsDownload": true,
+  // 用预设,不要 Qt 扩展自己生成 CMake 工具包
+  "qt-cpp.disableAutoKitGenerationOnOpen": true,
+  "qt-core.doNotAskForDefaultQtInstallationRoot": true,
+
+  // ---- 编辑器 ----
+  // 不接格式化工具(同 CLAUDE.md:不重排别人手调过的对齐)
+  "editor.formatOnSave": false,
+  "files.associations": {
+    "*.twsrec": "jsonl"
+  },
+  "files.exclude": {
+    "build": true,
+    "compile_commands.json": true,
+    "**/.qmlls.ini": true
+  },
+  "search.exclude": {
+    "tests/fixtures/stoqey-v193.json": true
+  }
+}

@@ -1,0 +1,76 @@
+{
+  // F5 之前先编译(preLaunchTask)。macOS 用 CodeLLDB(type: lldb),Windows 用 C/C++ 扩展的 cppvsdbg。
+  // 路径里的 ${command:cmake.buildDirectory} 是当前预设的编译目录(macOS 在 ~/Library/Caches/IBKR-Assistant/native-build/<预设>)。
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "界面 Datrix",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${command:cmake.buildDirectory}/app/Datrix.app/Contents/MacOS/Datrix",
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "CMake: 编译"
+    },
+    {
+      "name": "引擎 ibkr-engine(在终端里一行一条 JSON-RPC)",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${command:cmake.buildDirectory}/engine/ibkr-engine",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      // 引擎读 stdin:开在集成终端里,可以手打 {"jsonrpc":"2.0","id":1,"method":"system.status"}
+      "terminal": "integrated",
+      "preLaunchTask": "CMake: 编译"
+    },
+    {
+      "name": "tws-positions:纸面账户读一次持仓(只读,端口 7497)",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${command:cmake.buildDirectory}/tools/tws-positions",
+      // 录像含真实账号,放在仓库外
+      "args": ["--port", "7497", "--record", "${env:HOME}/Library/Caches/IBKR-Assistant/tws-positions.twsrec"],
+      "cwd": "${workspaceFolder}",
+      "terminal": "integrated",
+      "preLaunchTask": "CMake: 编译"
+    },
+    {
+      "name": "tws-replay:回放上一次 tws-positions 录的",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${command:cmake.buildDirectory}/tools/tws-replay",
+      "args": ["${env:HOME}/Library/Caches/IBKR-Assistant/tws-positions.twsrec"],
+      "cwd": "${workspaceFolder}",
+      "terminal": "integrated",
+      "preLaunchTask": "CMake: 编译"
+    },
+    {
+      "name": "CMake 状态栏里选中的目标(测试也行)",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${command:cmake.launchTargetPath}",
+      "cwd": "${workspaceFolder}",
+      // 不设 QT_QPA_PLATFORM:选中的是界面时要看得见窗口;测试自己会设(tst_shell 起界面时用 offscreen)
+      "preLaunchTask": "CMake: 编译"
+    },
+    {
+      "name": "Windows:界面 Datrix",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "${command:cmake.buildDirectory}/app/Datrix.exe",
+      // 从编译目录直接跑:Qt 的 DLL 不在旁边(没跑 windeployqt),从装 Qt 的地方找;插件与 QML 按那份 Qt 的前缀找
+      "environment": [{ "name": "PATH", "value": "${env:QT_ROOT_DIR}\\bin;${env:PATH}" }],
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "CMake: 编译"
+    },
+    {
+      "name": "Windows:引擎 ibkr-engine",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "${command:cmake.buildDirectory}/engine/ibkr-engine.exe",
+      "environment": [{ "name": "PATH", "value": "${env:QT_ROOT_DIR}\\bin;${env:PATH}" }],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "preLaunchTask": "CMake: 编译"
+    }
+  ]
+}

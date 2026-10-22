@@ -1,0 +1,2334 @@
+{
+  "generator": "native/tests/fixtures/gen_track_card.mjs",
+  "cases": [
+    {
+      "name": "正股托管、在盯价位",
+      "t": {
+        "id": "tk1",
+        "account": "IBKR模拟",
+        "symbol": "NVDA",
+        "sec_type": "STK",
+        "contract": {
+          "secType": "STK",
+          "symbol": "NVDA"
+        },
+        "targets": {
+          "take_profit": 240,
+          "stop_loss": 200,
+          "trail_pct": 5
+        },
+        "auto_close": {
+          "enabled": true,
+          "order_type": "MKT",
+          "host_at_broker": true
+        },
+        "enabled": true,
+        "peak": 225,
+        "fired_at": null,
+        "fired_state": ""
+      },
+      "live": {
+        "id": "tk1",
+        "state": "holding",
+        "price": 219.74,
+        "peak": 225,
+        "trail_stop": 213.75,
+        "unrealized_pnl": 3974,
+        "unrealized_pct": 22.08,
+        "reason": "",
+        "stop_effective": 213.75
+      },
+      "hosted": {
+        "orders": [
+          {
+            "kind": "tp",
+            "label": "托管止盈 240.0"
+          },
+          {
+            "kind": "ptrail",
+            "label": "回撤停损 210"
+          }
+        ]
+      },
+      "delayed": true,
+      "connected": true,
+      "watches": [
+        {
+          "id": "w1",
+          "symbol": "NVDA",
+          "enabled": true,
+          "last_price": 219.5,
+          "expiry": "2026-09-11",
+          "levels": [
+            {
+              "price": 230,
+              "source": "call_wall",
+              "label": "Call 墙",
+              "kind": "resistance"
+            },
+            {
+              "price": 220,
+              "source": "round",
+              "label": "整数关口",
+              "kind": "pivot"
+            },
+            {
+              "price": 215,
+              "source": "max_pain",
+              "label": "痛点",
+              "kind": "pivot"
+            },
+            {
+              "price": 210,
+              "source": "put_wall",
+              "label": "Put 墙",
+              "kind": "support"
+            }
+          ],
+          "wall": {
+            "regime": "positive",
+            "net_gex_ratio": 0.31,
+            "gross_gex": 5,
+            "max_pain": {
+              "strike": 215
+            },
+            "days_to_expiry": 4
+          }
+        }
+      ],
+      "busy": [],
+      "gateway": "TWS",
+      "texts": [
+        "NVDA · IBKR模拟",
+        "持有中",
+        "止盈 240.00",
+        "止损 200.00",
+        "跟踪 5% → 213.75",
+        "最有利价 225.00",
+        "自动平仓已开",
+        "券商托管",
+        "托管止盈 240.0",
+        "回撤停损 210(秒级调整)",
+        "行情可能延迟:动态调整或滞后;触发由券商实时行情决定,不受影响",
+        "+3,974.00",
+        "+22.08%",
+        "未实现盈亏",
+        "跟踪止损",
+        "213.75",
+        "现价",
+        "219.74",
+        "止盈",
+        "240.00",
+        "9.2",
+        "%",
+        "止盈",
+        "240.00",
+        "还差 +20.2600",
+        "2.7",
+        "%",
+        "跟踪止损",
+        "213.75",
+        "还差 -5.9900",
+        "关键价位",
+        "下方 痛点 215(−2.16%)、P 墙 210(−4.43%) · 上方 关口 220(+0.12%)、C 墙 230(+4.67%)",
+        "止损 213.75 在 痛点 215 之下 0.58%",
+        "止盈 240 在 C 墙 230 之上 4.17%",
+        "正 gamma(波动受压) · 净额占总量 31.0%",
+        "最大痛点 215",
+        "墙按 2026-09-11 到期",
+        "穿越时弹窗(和板块页的价位提醒同一套)",
+        "重算墙",
+        "暂停",
+        "立即平仓",
+        "删除"
+      ]
+    },
+    {
+      "name": "正股托管、还没挂出、没连",
+      "t": {
+        "id": "tk1",
+        "account": "IBKR模拟",
+        "symbol": "NVDA",
+        "sec_type": "STK",
+        "contract": {
+          "secType": "STK",
+          "symbol": "NVDA"
+        },
+        "targets": {
+          "take_profit": 240,
+          "stop_loss": 200,
+          "trail_pct": 5
+        },
+        "auto_close": {
+          "enabled": true,
+          "order_type": "MKT",
+          "host_at_broker": true
+        },
+        "enabled": true,
+        "peak": 225,
+        "fired_at": null,
+        "fired_state": ""
+      },
+      "live": {
+        "id": "tk1",
+        "state": "holding",
+        "price": 219.74,
+        "peak": 225,
+        "trail_stop": 213.75,
+        "unrealized_pnl": 3974,
+        "unrealized_pct": 22.08,
+        "reason": "",
+        "stop_effective": 213.75
+      },
+      "hosted": null,
+      "delayed": false,
+      "connected": false,
+      "watches": [],
+      "busy": [],
+      "gateway": "TWS",
+      "texts": [
+        "NVDA · IBKR模拟",
+        "持有中",
+        "止盈 240.00",
+        "止损 200.00",
+        "跟踪 5% → 213.75",
+        "最有利价 225.00",
+        "自动平仓已开",
+        "券商托管",
+        "连接TWS后自动挂出",
+        "+3,974.00",
+        "+22.08%",
+        "未实现盈亏",
+        "跟踪止损",
+        "213.75",
+        "现价",
+        "219.74",
+        "止盈",
+        "240.00",
+        "9.2",
+        "%",
+        "止盈",
+        "240.00",
+        "还差 +20.2600",
+        "2.7",
+        "%",
+        "跟踪止损",
+        "213.75",
+        "还差 -5.9900",
+        "NVDA 还没在盯价位(期权墙、均线、整数关口)。",
+        "算关键价位",
+        "暂停",
+        "立即平仓",
+        "删除"
+      ]
+    },
+    {
+      "name": "蝶式分档、标的止损、价位当天到期",
+      "t": {
+        "id": "tk2",
+        "account": "模拟",
+        "symbol": "SPX",
+        "sec_type": "BAG",
+        "contract": {
+          "secType": "BAG",
+          "symbol": "SPX",
+          "label": "买入看涨蝴蝶 7725/7750/7775"
+        },
+        "targets": {
+          "take_profit": null,
+          "stop_loss": null,
+          "trail_pct": null,
+          "profit_drawdown_pct": null,
+          "profit_drawdown_tiers": [
+            {
+              "above": 0,
+              "pct": 40
+            }
+          ],
+          "profit_drawdown_arm": 0.222222,
+          "spot_target": null,
+          "spot_stop_below": 7700,
+          "spot_stop_above": 7790
+        },
+        "auto_close": {
+          "enabled": true,
+          "order_type": "LMT",
+          "close_fraction_pct": 100,
+          "host_at_broker": false,
+          "chase_max_pct": 10
+        },
+        "enabled": true,
+        "peak": 5.4,
+        "fired_at": null,
+        "fired_state": ""
+      },
+      "live": {
+        "id": "tk2",
+        "state": "holding",
+        "price": 5.23,
+        "peak": 5.4,
+        "trail_stop": null,
+        "cost_basis": 450,
+        "unrealized_pnl": 73,
+        "unrealized_pct": 16.22,
+        "reason": "",
+        "stop_effective": null,
+        "profit_peak": 90,
+        "profit_drawdown_threshold": null,
+        "profit_trail_stop": null,
+        "spot_stop": {
+          "below": 7700,
+          "above": 7790,
+          "spot": 7722.35,
+          "spot_note": "",
+          "hit": null,
+          "reason": ""
+        }
+      },
+      "hosted": null,
+      "delayed": false,
+      "connected": true,
+      "watches": [
+        {
+          "id": "w2",
+          "symbol": "SPX",
+          "enabled": true,
+          "last_price": 7720,
+          "expiry": "20261008",
+          "levels": [
+            {
+              "price": 7700,
+              "source": "put_wall",
+              "label": "Put 墙",
+              "kind": "support"
+            },
+            {
+              "price": 7725,
+              "source": "max_pain",
+              "label": "痛点",
+              "kind": "pivot"
+            },
+            {
+              "price": 7750,
+              "source": "call_wall",
+              "label": "Call 墙",
+              "kind": "resistance"
+            }
+          ],
+          "wall": {
+            "regime": "negative",
+            "net_gex_ratio": -0.118,
+            "gross_gex": 3,
+            "max_pain": null,
+            "days_to_expiry": 0
+          }
+        }
+      ],
+      "busy": [],
+      "gateway": "TWS",
+      "texts": [
+        "SPX · 买入看涨蝴蝶 7725/7750/7775 · 模拟",
+        "持有中",
+        "标的止损 跌到 7700 / 涨到 7790",
+        "利润回撤 分档",
+        "峰值利润 90.00",
+        "最有利价 5.40",
+        "自动平仓已开",
+        "+73.00",
+        "+16.22%",
+        "未实现盈亏",
+        "利润回撤未激活:峰值利润 90.00,浮盈到过 100.00(成本的 22.22%) 才开始追回撤;在那之前只有止损能保护它。",
+        "标的止损:SPX 现价 7722.35,跌到 7700 就平(还差 22.35 点),涨到 7790 就平(还差 67.65 点)",
+        "关键价位",
+        "下方 P 墙 7700(−0.29%) · 上方 痛点 7725(+0.03%)、C 墙 7750(+0.36%)",
+        "标的止损 7700 贴着 P 墙 7700",
+        "标的止损 7790 在 C 墙 7750 之上 0.51%",
+        "负 gamma(波动放大) · 净额占总量 11.8%",
+        "墙按 20261008 到期",
+        "当天到期:以成交墙为准",
+        "穿越时弹窗(和板块页的价位提醒同一套)",
+        "重算墙",
+        "暂停",
+        "立即平仓",
+        "删除"
+      ]
+    },
+    {
+      "name": "蝶式:还没盈利过",
+      "t": {
+        "id": "tk2",
+        "account": "模拟",
+        "symbol": "SPX",
+        "sec_type": "BAG",
+        "contract": {
+          "secType": "BAG",
+          "symbol": "SPX",
+          "label": "买入看涨蝴蝶 7725/7750/7775"
+        },
+        "targets": {
+          "take_profit": null,
+          "stop_loss": null,
+          "trail_pct": null,
+          "profit_drawdown_pct": null,
+          "profit_drawdown_tiers": [
+            {
+              "above": 0,
+              "pct": 40
+            }
+          ],
+          "profit_drawdown_arm": 0.222222,
+          "spot_target": null,
+          "spot_stop_below": 7700,
+          "spot_stop_above": 7790
+        },
+        "auto_close": {
+          "enabled": true,
+          "order_type": "LMT",
+          "close_fraction_pct": 100,
+          "host_at_broker": false,
+          "chase_max_pct": 10
+        },
+        "enabled": true,
+        "peak": 5.4,
+        "fired_at": null,
+        "fired_state": ""
+      },
+      "live": {
+        "id": "tk2",
+        "state": "holding",
+        "price": 5.23,
+        "peak": 5.4,
+        "trail_stop": null,
+        "cost_basis": 450,
+        "unrealized_pnl": 73,
+        "unrealized_pct": 16.22,
+        "reason": "",
+        "stop_effective": null,
+        "profit_peak": -12,
+        "profit_drawdown_threshold": null,
+        "profit_trail_stop": null,
+        "spot_stop": {
+          "below": 7700,
+          "above": 7790,
+          "spot": 7722.35,
+          "spot_note": "",
+          "hit": null,
+          "reason": ""
+        }
+      },
+      "hosted": null,
+      "delayed": false,
+      "connected": true,
+      "watches": [],
+      "busy": [],
+      "gateway": "TWS",
+      "texts": [
+        "SPX · 买入看涨蝴蝶 7725/7750/7775 · 模拟",
+        "持有中",
+        "标的止损 跌到 7700 / 涨到 7790",
+        "利润回撤 分档",
+        "峰值利润 -12.00",
+        "最有利价 5.40",
+        "自动平仓已开",
+        "+73.00",
+        "+16.22%",
+        "未实现盈亏",
+        "利润回撤已设,但这笔从建仓起还没盈利过(峰值利润 -12.00)——先转正才会开始算回撤,在那之前只有止损能保护它。",
+        "标的止损:SPX 现价 7722.35,跌到 7700 就平(还差 22.35 点),涨到 7790 就平(还差 67.65 点)",
+        "SPX 还没在盯价位(期权墙、均线、整数关口)。",
+        "算关键价位",
+        "暂停",
+        "立即平仓",
+        "删除"
+      ]
+    },
+    {
+      "name": "蝶式:没有起算门槛",
+      "t": {
+        "id": "tk2",
+        "account": "模拟",
+        "symbol": "SPX",
+        "sec_type": "BAG",
+        "contract": {
+          "secType": "BAG",
+          "symbol": "SPX",
+          "label": "买入看涨蝴蝶 7725/7750/7775"
+        },
+        "targets": {
+          "take_profit": null,
+          "stop_loss": null,
+          "trail_pct": null,
+          "profit_drawdown_pct": null,
+          "profit_drawdown_tiers": [
+            {
+              "above": 0,
+              "pct": 40
+            }
+          ],
+          "profit_drawdown_arm": null,
+          "spot_target": null,
+          "spot_stop_below": 7700,
+          "spot_stop_above": 7790
+        },
+        "auto_close": {
+          "enabled": true,
+          "order_type": "LMT",
+          "close_fraction_pct": 100,
+          "host_at_broker": false,
+          "chase_max_pct": 10
+        },
+        "enabled": true,
+        "peak": 5.4,
+        "fired_at": null,
+        "fired_state": ""
+      },
+      "live": {
+        "id": "tk2",
+        "state": "holding",
+        "price": 5.23,
+        "peak": 5.4,
+        "trail_stop": null,
+        "cost_basis": 450,
+        "unrealized_pnl": 73,
+        "unrealized_pct": 16.22,
+        "reason": "",
+        "stop_effective": null,
+        "profit_peak": 90,
+        "profit_drawdown_threshold": null,
+        "profit_trail_stop": null,
+        "spot_stop": {
+          "below": 7700,
+          "above": 7790,
+          "spot": 7722.35,
+          "spot_note": "",
+          "hit": null,
+          "reason": ""
+        }
+      },
+      "hosted": null,
+      "delayed": false,
+      "connected": true,
+      "watches": [],
+      "busy": [],
+      "gateway": "TWS",
+      "texts": [
+        "SPX · 买入看涨蝴蝶 7725/7750/7775 · 模拟",
+        "持有中",
+        "标的止损 跌到 7700 / 涨到 7790",
+        "利润回撤 分档",
+        "峰值利润 90.00",
+        "最有利价 5.40",
+        "自动平仓已开",
+        "+73.00",
+        "+16.22%",
+        "未实现盈亏",
+        "利润回撤已设,等第一次盈利后开始记峰值。",
+        "标的止损:SPX 现价 7722.35,跌到 7700 就平(还差 22.35 点),涨到 7790 就平(还差 67.65 点)",
+        "SPX 还没在盯价位(期权墙、均线、整数关口)。",
+        "算关键价位",
+        "暂停",
+        "立即平仓",
+        "删除"
+      ]
+    },
+    {
+      "name": "利润回撤已激活",
+      "t": {
+        "id": "tk2",
+        "account": "模拟",
+        "symbol": "SPX",
+        "sec_type": "BAG",
+        "contract": {
+          "secType": "BAG",
+          "symbol": "SPX",
+          "label": "买入看涨蝴蝶 7725/7750/7775"
+        },
+        "targets": {
+          "take_profit": null,
+          "stop_loss": null,
+          "trail_pct": null,
+          "profit_drawdown_pct": 30,
+          "profit_drawdown_tiers": null,
+          "profit_drawdown_arm": 0.222222,
+          "spot_target": null,
+          "spot_stop_below": 7700,
+          "spot_stop_above": 7790
+        },
+        "auto_close": {
+          "enabled": true,
+          "order_type": "LMT",
+          "close_fraction_pct": 50,
+          "host_at_broker": false,
+          "chase_max_pct": 10
+        },
+        "enabled": true,
+        "peak": 5.4,
+        "fired_at": null,
+        "fired_state": ""
+      },
+      "live": {
+        "id": "tk2",
+        "state": "holding",
+        "price": 5.23,
+        "peak": 5.4,
+        "trail_stop": null,
+        "cost_basis": 450,
+        "unrealized_pnl": 73,
+        "unrealized_pct": 16.22,
+        "reason": "",
+        "stop_effective": null,
+        "profit_peak": 120,
+        "profit_drawdown_threshold": 30,
+        "profit_trail_stop": 4.6,
+        "spot_stop": {
+          "below": 7700,
+          "above": 7790,
+          "spot": 7722.35,
+          "spot_note": "",
+          "hit": null,
+          "reason": ""
+        }
+      },
+      "hosted": null,
+      "delayed": false,
+      "connected": true,
+      "watches": [],
+      "busy": [],
+      "gateway": "TWS",
+      "texts": [
+        "SPX · 买入看涨蝴蝶 7725/7750/7775 · 模拟",
+        "持有中",
+        "标的止损 跌到 7700 / 涨到 7790",
+        "利润回撤 30% → 平 50%",
+        "最有利价 5.40",
+        "自动平仓已开",
+        "+73.00",
+        "+16.22%",
+        "未实现盈亏",
+        "回撤线",
+        "4.60",
+        "现价",
+        "5.23",
+        "标的止损:SPX 现价 7722.35,跌到 7700 就平(还差 22.35 点),涨到 7790 就平(还差 67.65 点)",
+        "12.0",
+        "%",
+        "利润回撤 30.00%",
+        "4.60",
+        "还差 -0.6300 · 峰值利润 120.00",
+        "SPX 还没在盯价位(期权墙、均线、整数关口)。",
+        "算关键价位",
+        "暂停",
+        "立即平仓",
+        "删除"
+      ]
+    },
+    {
+      "name": "分档、当前阈值",
+      "t": {
+        "id": "tk2",
+        "account": "模拟",
+        "symbol": "SPX",
+        "sec_type": "BAG",
+        "contract": {
+          "secType": "BAG",
+          "symbol": "SPX",
+          "label": "买入看涨蝴蝶 7725/7750/7775"
+        },
+        "targets": {
+          "take_profit": null,
+          "stop_loss": null,
+          "trail_pct": null,
+          "profit_drawdown_pct": null,
+          "profit_drawdown_tiers": [
+            {
+              "above": 0,
+              "pct": 40
+            }
+          ],
+          "profit_drawdown_arm": 0.222222,
+          "spot_target": null,
+          "spot_stop_below": 7700,
+          "spot_stop_above": 7790
+        },
+        "auto_close": {
+          "enabled": true,
+          "order_type": "LMT",
+          "close_fraction_pct": 100,
+          "host_at_broker": false,
+          "chase_max_pct": 10
+        },
+        "enabled": true,
+        "peak": 5.4,
+        "fired_at": null,
+        "fired_state": ""
+      },
+      "live": {
+        "id": "tk2",
+        "state": "holding",
+        "price": 5.23,
+        "peak": 5.4,
+        "trail_stop": null,
+        "cost_basis": 450,
+        "unrealized_pnl": 73,
+        "unrealized_pct": 16.22,
+        "reason": "",
+        "stop_effective": null,
+        "profit_peak": 150,
+        "profit_drawdown_threshold": 27,
+        "profit_trail_stop": 4.9,
+        "spot_stop": {
+          "below": 7700,
+          "above": 7790,
+          "spot": 7722.35,
+          "spot_note": "",
+          "hit": null,
+          "reason": ""
+        }
+      },
+      "hosted": null,
+      "delayed": false,
+      "connected": true,
+      "watches": [],
+      "busy": [],
+      "gateway": "TWS",
+      "texts": [
+        "SPX · 买入看涨蝴蝶 7725/7750/7775 · 模拟",
+        "持有中",
+        "标的止损 跌到 7700 / 涨到 7790",
+        "利润回撤 分档 · 当前 27%",
+        "峰值利润 150.00",
+        "最有利价 5.40",
+        "自动平仓已开",
+        "+73.00",
+        "+16.22%",
+        "未实现盈亏",
+        "回撤线",
+        "4.90",
+        "现价",
+        "5.23",
+        "标的止损:SPX 现价 7722.35,跌到 7700 就平(还差 22.35 点),涨到 7790 就平(还差 67.65 点)",
+        "6.3",
+        "%",
+        "利润回撤 27.00%",
+        "4.90",
+        "还差 -0.3300 · 峰值利润 150.00",
+        "SPX 还没在盯价位(期权墙、均线、整数关口)。",
+        "算关键价位",
+        "暂停",
+        "立即平仓",
+        "删除"
+      ]
+    },
+    {
+      "name": "拿不到现价",
+      "t": {
+        "id": "tk1",
+        "account": "IBKR模拟",
+        "symbol": "NVDA",
+        "sec_type": "STK",
+        "contract": {
+          "secType": "STK",
+          "symbol": "NVDA"
+        },
+        "targets": {
+          "take_profit": 240,
+          "stop_loss": 200,
+          "trail_pct": 5
+        },
+        "auto_close": {
+          "enabled": true,
+          "order_type": "MKT",
+          "host_at_broker": true
+        },
+        "enabled": true,
+        "peak": 225,
+        "fired_at": null,
+        "fired_state": ""
+      },
+      "live": {
+        "id": "tk1",
+        "state": "holding",
+        "price": null,
+        "peak": 225,
+        "trail_stop": 213.75,
+        "unrealized_pnl": null,
+        "unrealized_pct": 22.08,
+        "reason": "",
+        "stop_effective": 213.75
+      },
+      "hosted": null,
+      "delayed": false,
+      "connected": true,
+      "watches": [
+        {
+          "id": "w1",
+          "symbol": "NVDA",
+          "enabled": true,
+          "last_price": 219.5,
+          "expiry": "2026-09-11",
+          "levels": [
+            {
+              "price": 230,
+              "source": "call_wall",
+              "label": "Call 墙",
+              "kind": "resistance"
+            },
+            {
+              "price": 220,
+              "source": "round",
+              "label": "整数关口",
+              "kind": "pivot"
+            },
+            {
+              "price": 215,
+              "source": "max_pain",
+              "label": "痛点",
+              "kind": "pivot"
+            },
+            {
+              "price": 210,
+              "source": "put_wall",
+              "label": "Put 墙",
+              "kind": "support"
+            }
+          ],
+          "wall": {
+            "regime": "positive",
+            "net_gex_ratio": 0.31,
+            "gross_gex": 5,
+            "max_pain": {
+              "strike": 215
+            },
+            "days_to_expiry": 4
+          }
+        }
+      ],
+      "busy": [
+        "w1"
+      ],
+      "gateway": "TWS",
+      "texts": [
+        "NVDA · IBKR模拟",
+        "持有中",
+        "止盈 240.00",
+        "止损 200.00",
+        "跟踪 5% → 213.75",
+        "最有利价 225.00",
+        "自动平仓已开",
+        "券商托管",
+        "托管单尚未挂出(对账中,或被闸门拦住——看下方提示)",
+        "—",
+        "未实现盈亏",
+        "拿不到现价,本轮不判断",
+        "关键价位",
+        "下方 痛点 215(−2.05%)、P 墙 210(−4.33%) · 上方 关口 220(+0.23%)、C 墙 230(+4.78%)",
+        "止损 213.75 在 痛点 215 之下 0.58%",
+        "止盈 240 在 C 墙 230 之上 4.17%",
+        "正 gamma(波动受压) · 净额占总量 31.0%",
+        "最大痛点 215",
+        "墙按 2026-09-11 到期",
+        "穿越时弹窗(和板块页的价位提醒同一套)",
+        "计算中…",
+        "暂停",
+        "立即平仓",
+        "删除"
+      ]
+    },
+    {
+      "name": "拿不到现价但有标的止损",
+      "t": {
+        "id": "tk2",
+        "account": "模拟",
+        "symbol": "SPX",
+        "sec_type": "BAG",
+        "contract": {
+          "secType": "BAG",
+          "symbol": "SPX",
+          "label": "买入看涨蝴蝶 7725/7750/7775"
+        },
+        "targets": {
+          "take_profit": null,
+          "stop_loss": null,
+          "trail_pct": null,
+          "profit_drawdown_pct": null,
+          "profit_drawdown_tiers": [
+            {
+              "above": 0,
+              "pct": 40
+            }
+          ],
+          "profit_drawdown_arm": 0.222222,
+          "spot_target": null,
+          "spot_stop_below": 7700,
+          "spot_stop_above": 7790
+        },
+        "auto_close": {
+          "enabled": true,
+          "order_type": "LMT",
+          "close_fraction_pct": 100,
+          "host_at_broker": false,
+          "chase_max_pct": 10
+        },
+        "enabled": true,
+        "peak": 5.4,
+        "fired_at": null,
+        "fired_state": ""
+      },
+      "live": {
+        "id": "tk2",
+        "state": "holding",
+        "price": null,
+        "peak": 5.4,
+        "trail_stop": null,
+        "cost_basis": 450,
+        "unrealized_pnl": 73,
+        "unrealized_pct": 16.22,
+        "reason": "",
+        "stop_effective": null,
+        "profit_peak": 90,
+        "profit_drawdown_threshold": null,
+        "profit_trail_stop": null,
+        "spot_stop": {
+          "below": 7700,
+          "above": 7790,
+          "spot": 7722.35,
+          "spot_note": "",
+          "hit": null,
+          "reason": ""
+        }
+      },
+      "hosted": null,
+      "delayed": false,
+      "connected": true,
+      "watches": [],
+      "busy": [],
+      "gateway": "TWS",
+      "texts": [
+        "SPX · 买入看涨蝴蝶 7725/7750/7775 · 模拟",
+        "持有中",
+        "标的止损 跌到 7700 / 涨到 7790",
+        "利润回撤 分档",
+        "峰值利润 90.00",
+        "最有利价 5.40",
+        "自动平仓已开",
+        "+73.00",
+        "+16.22%",
+        "未实现盈亏",
+        "拿不到现价,本轮不判断",
+        "标的止损:SPX 现价 7722.35,跌到 7700 就平(还差 22.35 点),涨到 7790 就平(还差 67.65 点)",
+        "SPX 还没在盯价位(期权墙、均线、整数关口)。",
+        "算关键价位",
+        "暂停",
+        "立即平仓",
+        "删除"
+      ]
+    },
+    {
+      "name": "什么都没设",
+      "t": {
+        "id": "tk1",
+        "account": "IBKR模拟",
+        "symbol": "NVDA",
+        "sec_type": "STK",
+        "contract": {
+          "secType": "STK",
+          "symbol": "NVDA"
+        },
+        "targets": {},
+        "auto_close": {
+          "enabled": false
+        },
+        "enabled": true,
+        "peak": null,
+        "fired_at": null,
+        "fired_state": ""
+      },
+      "live": {
+        "id": "tk1",
+        "state": "holding",
+        "price": 219.74,
+        "peak": 225,
+        "trail_stop": null,
+        "unrealized_pnl": 3974,
+        "unrealized_pct": 22.08,
+        "reason": "",
+        "stop_effective": null
+      },
+      "hosted": null,
+      "delayed": false,
+      "connected": true,
+      "watches": [],
+      "busy": [],
+      "gateway": "TWS",
+      "texts": [
+        "NVDA · IBKR模拟",
+        "持有中",
+        "仅提醒",
+        "+3,974.00",
+        "+22.08%",
+        "未实现盈亏",
+        "没设任何触发条件,只是挂着看",
+        "NVDA 还没在盯价位(期权墙、均线、整数关口)。",
+        "算关键价位",
+        "暂停",
+        "立即平仓",
+        "删除"
+      ]
+    },
+    {
+      "name": "期权按标的目标价",
+      "t": {
+        "id": "tk2",
+        "account": "模拟",
+        "symbol": "SPX",
+        "sec_type": "OPT",
+        "contract": {
+          "secType": "OPT",
+          "symbol": "SPX",
+          "lastTradeDateOrContractMonth": "20261120",
+          "strike": 7700,
+          "right": "C"
+        },
+        "targets": {
+          "spot_target": 7750
+        },
+        "auto_close": {
+          "enabled": true,
+          "order_type": "LMT",
+          "close_fraction_pct": 100,
+          "host_at_broker": false,
+          "chase_max_pct": 10
+        },
+        "enabled": true,
+        "peak": 5.4,
+        "fired_at": null,
+        "fired_state": ""
+      },
+      "live": {
+        "id": "tk2",
+        "state": "holding",
+        "price": 5.23,
+        "peak": 5.4,
+        "trail_stop": null,
+        "cost_basis": 450,
+        "unrealized_pnl": 73,
+        "unrealized_pct": 16.22,
+        "reason": "",
+        "stop_effective": null,
+        "profit_peak": 90,
+        "profit_drawdown_threshold": null,
+        "profit_trail_stop": null,
+        "spot_target": {
+          "spot_target": 7750,
+          "price": 9.85,
+          "pnl": 462,
+          "spot": 7722
+        }
+      },
+      "hosted": null,
+      "delayed": false,
+      "connected": true,
+      "watches": [],
+      "busy": [],
+      "gateway": "TWS",
+      "texts": [
+        "SPX 7700C 2026-11-20 · 模拟",
+        "持有中",
+        "最有利价 5.40",
+        "自动平仓已开",
+        "+73.00",
+        "+16.22%",
+        "未实现盈亏",
+        "现价",
+        "5.23",
+        "止盈",
+        "9.85",
+        "88.3",
+        "%",
+        "标的到 7750.00",
+        "9.85",
+        "还差 +4.6200 · 预估收益 462.00",
+        "SPX 还没在盯价位(期权墙、均线、整数关口)。",
+        "算关键价位",
+        "暂停",
+        "立即平仓",
+        "删除"
+      ]
+    },
+    {
+      "name": "标的目标价挂起",
+      "t": {
+        "id": "tk2",
+        "account": "模拟",
+        "symbol": "SPX",
+        "sec_type": "BAG",
+        "contract": {
+          "secType": "BAG",
+          "symbol": "SPX",
+          "label": "买入看涨蝴蝶 7725/7750/7775"
+        },
+        "targets": {
+          "spot_target": 7750
+        },
+        "auto_close": {
+          "enabled": true,
+          "order_type": "LMT",
+          "close_fraction_pct": 100,
+          "host_at_broker": false,
+          "chase_max_pct": 10
+        },
+        "enabled": true,
+        "peak": 5.4,
+        "fired_at": null,
+        "fired_state": ""
+      },
+      "live": {
+        "id": "tk2",
+        "state": "holding",
+        "price": 5.23,
+        "peak": 5.4,
+        "trail_stop": null,
+        "cost_basis": 450,
+        "unrealized_pnl": 73,
+        "unrealized_pct": 16.22,
+        "reason": "",
+        "stop_effective": null,
+        "profit_peak": 90,
+        "profit_drawdown_threshold": null,
+        "profit_trail_stop": null,
+        "spot_target": {
+          "held": true,
+          "reason": "盘口太宽,先不挂单"
+        }
+      },
+      "hosted": null,
+      "delayed": false,
+      "connected": true,
+      "watches": [],
+      "busy": [],
+      "gateway": "TWS",
+      "texts": [
+        "SPX · 买入看涨蝴蝶 7725/7750/7775 · 模拟",
+        "持有中",
+        "最有利价 5.40",
+        "自动平仓已开",
+        "+73.00",
+        "+16.22%",
+        "未实现盈亏",
+        "盘口太宽,先不挂单",
+        "SPX 还没在盯价位(期权墙、均线、整数关口)。",
+        "算关键价位",
+        "暂停",
+        "立即平仓",
+        "删除"
+      ]
+    },
+    {
+      "name": "标的目标价这一轮算不出",
+      "t": {
+        "id": "tk2",
+        "account": "模拟",
+        "symbol": "SPX",
+        "sec_type": "BAG",
+        "contract": {
+          "secType": "BAG",
+          "symbol": "SPX",
+          "label": "买入看涨蝴蝶 7725/7750/7775"
+        },
+        "targets": {
+          "spot_target": 7750
+        },
+        "auto_close": {
+          "enabled": true,
+          "order_type": "LMT",
+          "close_fraction_pct": 100,
+          "host_at_broker": false,
+          "chase_max_pct": 10
+        },
+        "enabled": true,
+        "peak": 5.4,
+        "fired_at": null,
+        "fired_state": ""
+      },
+      "live": {
+        "id": "tk2",
+        "state": "holding",
+        "price": 5.23,
+        "peak": 5.4,
+        "trail_stop": null,
+        "cost_basis": 450,
+        "unrealized_pnl": 73,
+        "unrealized_pct": 16.22,
+        "reason": "",
+        "stop_effective": null,
+        "profit_peak": 90,
+        "profit_drawdown_threshold": null,
+        "profit_trail_stop": null,
+        "spot_target": {
+          "price": null
+        }
+      },
+      "hosted": null,
+      "delayed": false,
+      "connected": true,
+      "watches": [],
+      "busy": [],
+      "gateway": "TWS",
+      "texts": [
+        "SPX · 买入看涨蝴蝶 7725/7750/7775 · 模拟",
+        "持有中",
+        "最有利价 5.40",
+        "自动平仓已开",
+        "+73.00",
+        "+16.22%",
+        "未实现盈亏",
+        "标的目标价 7750.00 已设,但这一轮算不出对应的价位。",
+        "SPX 还没在盯价位(期权墙、均线、整数关口)。",
+        "算关键价位",
+        "暂停",
+        "立即平仓",
+        "删除"
+      ]
+    },
+    {
+      "name": "已暂停",
+      "t": {
+        "id": "tk1",
+        "account": "IBKR模拟",
+        "symbol": "NVDA",
+        "sec_type": "STK",
+        "contract": {
+          "secType": "STK",
+          "symbol": "NVDA"
+        },
+        "targets": {
+          "take_profit": 240,
+          "stop_loss": 200,
+          "trail_pct": 5
+        },
+        "auto_close": {
+          "enabled": true,
+          "order_type": "MKT",
+          "host_at_broker": true
+        },
+        "enabled": false,
+        "peak": 225,
+        "fired_at": null,
+        "fired_state": ""
+      },
+      "live": {
+        "id": "tk1",
+        "state": "holding",
+        "price": 219.74,
+        "peak": 225,
+        "trail_stop": 213.75,
+        "unrealized_pnl": 3974,
+        "unrealized_pct": 22.08,
+        "reason": "",
+        "stop_effective": 213.75
+      },
+      "hosted": null,
+      "delayed": false,
+      "connected": true,
+      "watches": [],
+      "busy": [],
+      "gateway": "TWS",
+      "texts": [
+        "NVDA · IBKR模拟",
+        "已暂停",
+        "止盈 240.00",
+        "止损 200.00",
+        "跟踪 5% → 213.75",
+        "最有利价 225.00",
+        "自动平仓已开",
+        "券商托管",
+        "托管单尚未挂出(对账中,或被闸门拦住——看下方提示)",
+        "+3,974.00",
+        "+22.08%",
+        "未实现盈亏",
+        "跟踪止损",
+        "213.75",
+        "现价",
+        "219.74",
+        "止盈",
+        "240.00",
+        "恢复",
+        "立即平仓",
+        "删除"
+      ]
+    },
+    {
+      "name": "止盈已触发",
+      "t": {
+        "id": "tk1",
+        "account": "IBKR模拟",
+        "symbol": "NVDA",
+        "sec_type": "STK",
+        "contract": {
+          "secType": "STK",
+          "symbol": "NVDA"
+        },
+        "targets": {
+          "take_profit": 240,
+          "stop_loss": 200,
+          "trail_pct": 5
+        },
+        "auto_close": {
+          "enabled": true,
+          "order_type": "MKT",
+          "host_at_broker": true
+        },
+        "enabled": true,
+        "peak": 225,
+        "fired_at": "2026-10-18T10:00:00Z",
+        "fired_state": "take_profit"
+      },
+      "live": {
+        "id": "tk1",
+        "state": "holding",
+        "price": 219.74,
+        "peak": 225,
+        "trail_stop": 213.75,
+        "unrealized_pnl": 3974,
+        "unrealized_pct": 22.08,
+        "reason": "",
+        "stop_effective": 213.75
+      },
+      "hosted": null,
+      "delayed": false,
+      "connected": true,
+      "watches": [],
+      "busy": [],
+      "gateway": "TWS",
+      "texts": [
+        "NVDA · IBKR模拟",
+        "止盈已触发",
+        "止盈 240.00",
+        "止损 200.00",
+        "跟踪 5% → 213.75",
+        "最有利价 225.00",
+        "自动平仓已开",
+        "券商托管",
+        "托管单尚未挂出(对账中,或被闸门拦住——看下方提示)",
+        "+3,974.00",
+        "+22.08%",
+        "未实现盈亏",
+        "暂停",
+        "立即平仓",
+        "删除"
+      ]
+    },
+    {
+      "name": "止损触发追价中",
+      "t": {
+        "id": "tk2",
+        "account": "模拟",
+        "symbol": "SPX",
+        "sec_type": "BAG",
+        "contract": {
+          "secType": "BAG",
+          "symbol": "SPX",
+          "label": "买入看涨蝴蝶 7725/7750/7775"
+        },
+        "targets": {
+          "take_profit": null,
+          "stop_loss": null,
+          "trail_pct": null,
+          "profit_drawdown_pct": null,
+          "profit_drawdown_tiers": [
+            {
+              "above": 0,
+              "pct": 40
+            }
+          ],
+          "profit_drawdown_arm": 0.222222,
+          "spot_target": null,
+          "spot_stop_below": 7700,
+          "spot_stop_above": 7790
+        },
+        "auto_close": {
+          "enabled": true,
+          "order_type": "LMT",
+          "close_fraction_pct": 100,
+          "host_at_broker": false,
+          "chase_max_pct": 10
+        },
+        "enabled": true,
+        "peak": 5.4,
+        "fired_at": "2026-10-18T10:00:00Z",
+        "fired_state": "sweep:stop_loss"
+      },
+      "live": {
+        "id": "tk2",
+        "state": "holding",
+        "price": 5.23,
+        "peak": 5.4,
+        "trail_stop": null,
+        "cost_basis": 450,
+        "unrealized_pnl": 73,
+        "unrealized_pct": 16.22,
+        "reason": "止损 4.20 触发",
+        "stop_effective": null,
+        "profit_peak": 90,
+        "profit_drawdown_threshold": null,
+        "profit_trail_stop": null,
+        "spot_stop": {
+          "below": 7700,
+          "above": 7790,
+          "spot": 7722.35,
+          "spot_note": "",
+          "hit": null,
+          "reason": ""
+        },
+        "sweeping": true,
+        "chase": {
+          "rounds": 4,
+          "limit": 4.1,
+          "natural": 4,
+          "floor": 3.7
+        }
+      },
+      "hosted": null,
+      "delayed": false,
+      "connected": true,
+      "watches": [],
+      "busy": [],
+      "gateway": "TWS",
+      "texts": [
+        "SPX · 买入看涨蝴蝶 7725/7750/7775 · 模拟",
+        "止损触发,追价平仓中",
+        "标的止损 跌到 7700 / 涨到 7790",
+        "利润回撤 分档",
+        "峰值利润 90.00",
+        "最有利价 5.40",
+        "自动平仓已开",
+        "+73.00",
+        "+16.22%",
+        "未实现盈亏",
+        "止损 4.20 触发",
+        "追价第 4 秒:挂 4.10,此刻立刻成交价 4.00,最多让到 3.70",
+        "暂停",
+        "立即平仓",
+        "删除"
+      ]
+    },
+    {
+      "name": "到价被拦",
+      "t": {
+        "id": "tk1",
+        "account": "IBKR模拟",
+        "symbol": "NVDA",
+        "sec_type": "STK",
+        "contract": {
+          "secType": "STK",
+          "symbol": "NVDA"
+        },
+        "targets": {
+          "take_profit": 240,
+          "stop_loss": 200,
+          "trail_pct": 5
+        },
+        "auto_close": {
+          "enabled": true,
+          "order_type": "MKT",
+          "host_at_broker": true
+        },
+        "enabled": true,
+        "peak": 225,
+        "fired_at": null,
+        "fired_state": ""
+      },
+      "live": {
+        "id": "tk1",
+        "state": "holding",
+        "price": 219.74,
+        "peak": 225,
+        "trail_stop": 213.75,
+        "unrealized_pnl": 3974,
+        "unrealized_pct": 22.08,
+        "reason": "",
+        "stop_effective": 213.75,
+        "blocked": [
+          "熔断中",
+          "实盘未授权"
+        ]
+      },
+      "hosted": null,
+      "delayed": false,
+      "connected": true,
+      "watches": [],
+      "busy": [],
+      "gateway": "TWS",
+      "texts": [
+        "NVDA · IBKR模拟",
+        "持有中",
+        "止盈 240.00",
+        "止损 200.00",
+        "跟踪 5% → 213.75",
+        "最有利价 225.00",
+        "自动平仓已开",
+        "券商托管",
+        "托管单尚未挂出(对账中,或被闸门拦住——看下方提示)",
+        "+3,974.00",
+        "+22.08%",
+        "未实现盈亏",
+        "跟踪止损",
+        "213.75",
+        "现价",
+        "219.74",
+        "止盈",
+        "240.00",
+        "9.2",
+        "%",
+        "止盈",
+        "240.00",
+        "还差 +20.2600",
+        "2.7",
+        "%",
+        "跟踪止损",
+        "213.75",
+        "还差 -5.9900",
+        "NVDA 还没在盯价位(期权墙、均线、整数关口)。",
+        "算关键价位",
+        "到价了但没有平仓",
+        "熔断中、实盘未授权",
+        "暂停",
+        "立即平仓",
+        "删除"
+      ]
+    },
+    {
+      "name": "止损按可成交价判",
+      "t": {
+        "id": "tk2",
+        "account": "模拟",
+        "symbol": "SPX",
+        "sec_type": "BAG",
+        "contract": {
+          "secType": "BAG",
+          "symbol": "SPX",
+          "label": "买入看涨蝴蝶 7725/7750/7775"
+        },
+        "targets": {
+          "take_profit": null,
+          "stop_loss": null,
+          "trail_pct": null,
+          "profit_drawdown_pct": null,
+          "profit_drawdown_tiers": [
+            {
+              "above": 0,
+              "pct": 40
+            }
+          ],
+          "profit_drawdown_arm": 0.222222,
+          "spot_target": null,
+          "spot_stop_below": 7700,
+          "spot_stop_above": 7790
+        },
+        "auto_close": {
+          "enabled": true,
+          "order_type": "LMT",
+          "close_fraction_pct": 100,
+          "host_at_broker": false,
+          "chase_max_pct": 10,
+          "stop_basis": "natural",
+          "stop_chase_step": 2
+        },
+        "enabled": true,
+        "peak": 5.4,
+        "fired_at": null,
+        "fired_state": ""
+      },
+      "live": {
+        "id": "tk2",
+        "state": "holding",
+        "price": 5.23,
+        "peak": 5.4,
+        "trail_stop": null,
+        "cost_basis": 450,
+        "unrealized_pnl": 73,
+        "unrealized_pct": 16.22,
+        "reason": "",
+        "stop_effective": null,
+        "profit_peak": 90,
+        "profit_drawdown_threshold": null,
+        "profit_trail_stop": null,
+        "spot_stop": {
+          "below": 7700,
+          "above": 7790,
+          "spot": 7722.35,
+          "spot_note": "",
+          "hit": null,
+          "reason": ""
+        },
+        "stop_price": 5.05
+      },
+      "hosted": null,
+      "delayed": false,
+      "connected": true,
+      "watches": [],
+      "busy": [],
+      "gateway": "TWS",
+      "texts": [
+        "SPX · 买入看涨蝴蝶 7725/7750/7775 · 模拟",
+        "持有中",
+        "标的止损 跌到 7700 / 涨到 7790",
+        "利润回撤 分档",
+        "峰值利润 90.00",
+        "最有利价 5.40",
+        "止损按可成交价判",
+        "止损追价 等 2 秒 / 每秒 2 跳",
+        "自动平仓已开",
+        "止损按可成交价判:此刻立刻平掉约 5.05",
+        "+73.00",
+        "+16.22%",
+        "未实现盈亏",
+        "利润回撤未激活:峰值利润 90.00,浮盈到过 100.00(成本的 22.22%) 才开始追回撤;在那之前只有止损能保护它。",
+        "标的止损:SPX 现价 7722.35,跌到 7700 就平(还差 22.35 点),涨到 7790 就平(还差 67.65 点)",
+        "SPX 还没在盯价位(期权墙、均线、整数关口)。",
+        "算关键价位",
+        "暂停",
+        "立即平仓",
+        "删除"
+      ]
+    },
+    {
+      "name": "可成交价这一轮拿不到",
+      "t": {
+        "id": "tk2",
+        "account": "模拟",
+        "symbol": "SPX",
+        "sec_type": "BAG",
+        "contract": {
+          "secType": "BAG",
+          "symbol": "SPX",
+          "label": "买入看涨蝴蝶 7725/7750/7775"
+        },
+        "targets": {
+          "take_profit": null,
+          "stop_loss": null,
+          "trail_pct": null,
+          "profit_drawdown_pct": null,
+          "profit_drawdown_tiers": [
+            {
+              "above": 0,
+              "pct": 40
+            }
+          ],
+          "profit_drawdown_arm": 0.222222,
+          "spot_target": null,
+          "spot_stop_below": 7700,
+          "spot_stop_above": 7790
+        },
+        "auto_close": {
+          "enabled": true,
+          "order_type": "LMT",
+          "close_fraction_pct": 100,
+          "host_at_broker": false,
+          "chase_max_pct": 10,
+          "stop_basis": "natural"
+        },
+        "enabled": true,
+        "peak": 5.4,
+        "fired_at": null,
+        "fired_state": ""
+      },
+      "live": {
+        "id": "tk2",
+        "state": "holding",
+        "price": 5.23,
+        "peak": 5.4,
+        "trail_stop": null,
+        "cost_basis": 450,
+        "unrealized_pnl": 73,
+        "unrealized_pct": 16.22,
+        "reason": "",
+        "stop_effective": null,
+        "profit_peak": 90,
+        "profit_drawdown_threshold": null,
+        "profit_trail_stop": null,
+        "spot_stop": {
+          "below": 7700,
+          "above": 7790,
+          "spot": 7722.35,
+          "spot_note": "",
+          "hit": null,
+          "reason": ""
+        },
+        "stop_price": null
+      },
+      "hosted": null,
+      "delayed": false,
+      "connected": true,
+      "watches": [],
+      "busy": [],
+      "gateway": "TWS",
+      "texts": [
+        "SPX · 买入看涨蝴蝶 7725/7750/7775 · 模拟",
+        "持有中",
+        "标的止损 跌到 7700 / 涨到 7790",
+        "利润回撤 分档",
+        "峰值利润 90.00",
+        "最有利价 5.40",
+        "止损按可成交价判",
+        "自动平仓已开",
+        "这一轮拿不到可成交价(腿没有报价,或盘口太宽),止损类退回按中间价判",
+        "+73.00",
+        "+16.22%",
+        "未实现盈亏",
+        "利润回撤未激活:峰值利润 90.00,浮盈到过 100.00(成本的 22.22%) 才开始追回撤;在那之前只有止损能保护它。",
+        "标的止损:SPX 现价 7722.35,跌到 7700 就平(还差 22.35 点),涨到 7790 就平(还差 67.65 点)",
+        "SPX 还没在盯价位(期权墙、均线、整数关口)。",
+        "算关键价位",
+        "暂停",
+        "立即平仓",
+        "删除"
+      ]
+    },
+    {
+      "name": "出场细则与分批止盈",
+      "t": {
+        "id": "tk1",
+        "account": "IBKR模拟",
+        "symbol": "NVDA",
+        "sec_type": "STK",
+        "contract": {
+          "secType": "STK",
+          "symbol": "NVDA"
+        },
+        "targets": {
+          "take_profit": 240,
+          "stop_loss": 200,
+          "trail_pct": 5,
+          "exit_at": "15:45",
+          "exit_at_ms": 1792439100000,
+          "spot_stop_confirm_s": 5,
+          "take_profit_tiers": [
+            {
+              "price": 230,
+              "fraction_pct": 50,
+              "done": true
+            },
+            {
+              "price": 240,
+              "fraction_pct": 50
+            }
+          ]
+        },
+        "auto_close": {
+          "enabled": true,
+          "order_type": "MKT",
+          "host_at_broker": true
+        },
+        "enabled": true,
+        "peak": 225,
+        "fired_at": null,
+        "fired_state": ""
+      },
+      "live": {
+        "id": "tk1",
+        "state": "holding",
+        "price": 219.74,
+        "peak": 225,
+        "trail_stop": 213.75,
+        "unrealized_pnl": 3974,
+        "unrealized_pct": 22.08,
+        "reason": "",
+        "stop_effective": 213.75
+      },
+      "hosted": null,
+      "delayed": false,
+      "connected": true,
+      "watches": [],
+      "busy": [],
+      "gateway": "TWS",
+      "texts": [
+        "NVDA · IBKR模拟",
+        "持有中",
+        "止盈 240.00",
+        "止损 200.00",
+        "跟踪 5% → 213.75",
+        "最有利价 225.00",
+        "到点平仓 美东 10-19 15:45",
+        "分批止盈 1/2 档",
+        "止损确认 5 秒",
+        "自动平仓已开",
+        "第 1 档 230 平 50%(已成交)",
+        "第 2 档 240 平 50%(未到)",
+        "券商托管",
+        "托管单尚未挂出(对账中,或被闸门拦住——看下方提示)",
+        "+3,974.00",
+        "+22.08%",
+        "未实现盈亏",
+        "跟踪止损",
+        "213.75",
+        "现价",
+        "219.74",
+        "止盈",
+        "240.00",
+        "9.2",
+        "%",
+        "止盈",
+        "240.00",
+        "还差 +20.2600",
+        "2.7",
+        "%",
+        "跟踪止损",
+        "213.75",
+        "还差 -5.9900",
+        "NVDA 还没在盯价位(期权墙、均线、整数关口)。",
+        "算关键价位",
+        "暂停",
+        "立即平仓",
+        "删除"
+      ]
+    },
+    {
+      "name": "手动平仓",
+      "t": {
+        "id": "tk1",
+        "account": "IBKR模拟",
+        "symbol": "NVDA",
+        "sec_type": "STK",
+        "contract": {
+          "secType": "STK",
+          "symbol": "NVDA"
+        },
+        "targets": {
+          "take_profit": 240,
+          "stop_loss": 200,
+          "trail_pct": 5
+        },
+        "auto_close": {
+          "enabled": true,
+          "order_type": "MKT",
+          "host_at_broker": true
+        },
+        "enabled": true,
+        "peak": 225,
+        "fired_at": "x",
+        "fired_state": "manual"
+      },
+      "live": {
+        "id": "tk1",
+        "state": "holding",
+        "price": 219.74,
+        "peak": 225,
+        "trail_stop": 213.75,
+        "unrealized_pnl": 3974,
+        "unrealized_pct": 22.08,
+        "reason": "",
+        "stop_effective": 213.75
+      },
+      "hosted": null,
+      "delayed": false,
+      "connected": true,
+      "watches": [],
+      "busy": [],
+      "gateway": "TWS",
+      "texts": [
+        "NVDA · IBKR模拟",
+        "已手动平仓",
+        "止盈 240.00",
+        "止损 200.00",
+        "跟踪 5% → 213.75",
+        "最有利价 225.00",
+        "自动平仓已开",
+        "券商托管",
+        "托管单尚未挂出(对账中,或被闸门拦住——看下方提示)",
+        "+3,974.00",
+        "+22.08%",
+        "未实现盈亏",
+        "暂停",
+        "立即平仓",
+        "删除"
+      ]
+    },
+    {
+      "name": "盈亏为零",
+      "t": {
+        "id": "tk1",
+        "account": "IBKR模拟",
+        "symbol": "NVDA",
+        "sec_type": "STK",
+        "contract": {
+          "secType": "STK",
+          "symbol": "NVDA"
+        },
+        "targets": {
+          "take_profit": 240,
+          "stop_loss": 200,
+          "trail_pct": 5
+        },
+        "auto_close": {
+          "enabled": true,
+          "order_type": "MKT",
+          "host_at_broker": true
+        },
+        "enabled": true,
+        "peak": 225,
+        "fired_at": null,
+        "fired_state": ""
+      },
+      "live": {
+        "id": "tk1",
+        "state": "holding",
+        "price": 219.74,
+        "peak": 225,
+        "trail_stop": 213.75,
+        "unrealized_pnl": 0,
+        "unrealized_pct": 0,
+        "reason": "",
+        "stop_effective": 213.75
+      },
+      "hosted": null,
+      "delayed": false,
+      "connected": true,
+      "watches": [],
+      "busy": [],
+      "gateway": "TWS",
+      "texts": [
+        "NVDA · IBKR模拟",
+        "持有中",
+        "止盈 240.00",
+        "止损 200.00",
+        "跟踪 5% → 213.75",
+        "最有利价 225.00",
+        "自动平仓已开",
+        "券商托管",
+        "托管单尚未挂出(对账中,或被闸门拦住——看下方提示)",
+        "0.00",
+        "0%",
+        "未实现盈亏",
+        "跟踪止损",
+        "213.75",
+        "现价",
+        "219.74",
+        "止盈",
+        "240.00",
+        "9.2",
+        "%",
+        "止盈",
+        "240.00",
+        "还差 +20.2600",
+        "2.7",
+        "%",
+        "跟踪止损",
+        "213.75",
+        "还差 -5.9900",
+        "NVDA 还没在盯价位(期权墙、均线、整数关口)。",
+        "算关键价位",
+        "暂停",
+        "立即平仓",
+        "删除"
+      ]
+    },
+    {
+      "name": "亏损",
+      "t": {
+        "id": "tk1",
+        "account": "IBKR模拟",
+        "symbol": "NVDA",
+        "sec_type": "STK",
+        "contract": {
+          "secType": "STK",
+          "symbol": "NVDA"
+        },
+        "targets": {
+          "take_profit": 240,
+          "stop_loss": 200,
+          "trail_pct": 5
+        },
+        "auto_close": {
+          "enabled": true,
+          "order_type": "MKT",
+          "host_at_broker": true
+        },
+        "enabled": true,
+        "peak": 225,
+        "fired_at": null,
+        "fired_state": ""
+      },
+      "live": {
+        "id": "tk1",
+        "state": "holding",
+        "price": 219.74,
+        "peak": 225,
+        "trail_stop": 213.75,
+        "unrealized_pnl": -12.5,
+        "unrealized_pct": -0.31,
+        "reason": "",
+        "stop_effective": 213.75
+      },
+      "hosted": null,
+      "delayed": false,
+      "connected": true,
+      "watches": [],
+      "busy": [],
+      "gateway": "TWS",
+      "texts": [
+        "NVDA · IBKR模拟",
+        "持有中",
+        "止盈 240.00",
+        "止损 200.00",
+        "跟踪 5% → 213.75",
+        "最有利价 225.00",
+        "自动平仓已开",
+        "券商托管",
+        "托管单尚未挂出(对账中,或被闸门拦住——看下方提示)",
+        "-12.50",
+        "-0.31%",
+        "未实现盈亏",
+        "跟踪止损",
+        "213.75",
+        "现价",
+        "219.74",
+        "止盈",
+        "240.00",
+        "9.2",
+        "%",
+        "止盈",
+        "240.00",
+        "还差 +20.2600",
+        "2.7",
+        "%",
+        "跟踪止损",
+        "213.75",
+        "还差 -5.9900",
+        "NVDA 还没在盯价位(期权墙、均线、整数关口)。",
+        "算关键价位",
+        "暂停",
+        "立即平仓",
+        "删除"
+      ]
+    },
+    {
+      "name": "还没有盯盘行",
+      "t": {
+        "id": "tk1",
+        "account": "IBKR模拟",
+        "symbol": "NVDA",
+        "sec_type": "STK",
+        "contract": {
+          "secType": "STK",
+          "symbol": "NVDA"
+        },
+        "targets": {
+          "take_profit": 240,
+          "stop_loss": 200,
+          "trail_pct": 5
+        },
+        "auto_close": {
+          "enabled": true,
+          "order_type": "MKT",
+          "host_at_broker": true
+        },
+        "enabled": true,
+        "peak": 225,
+        "fired_at": null,
+        "fired_state": ""
+      },
+      "live": {
+        "id": "tk1"
+      },
+      "hosted": null,
+      "delayed": false,
+      "connected": true,
+      "watches": [],
+      "busy": [],
+      "gateway": "TWS",
+      "texts": [
+        "NVDA · IBKR模拟",
+        "持有中",
+        "止盈 240.00",
+        "止损 200.00",
+        "跟踪 5%",
+        "最有利价 225.00",
+        "自动平仓已开",
+        "券商托管",
+        "托管单尚未挂出(对账中,或被闸门拦住——看下方提示)",
+        "拿不到现价,本轮不判断",
+        "NVDA 还没在盯价位(期权墙、均线、整数关口)。",
+        "算关键价位",
+        "暂停",
+        "立即平仓",
+        "删除"
+      ]
+    },
+    {
+      "name": "价位还没算出来",
+      "t": {
+        "id": "tk1",
+        "account": "IBKR模拟",
+        "symbol": "NVDA",
+        "sec_type": "STK",
+        "contract": {
+          "secType": "STK",
+          "symbol": "NVDA"
+        },
+        "targets": {
+          "take_profit": 240,
+          "stop_loss": 200,
+          "trail_pct": 5
+        },
+        "auto_close": {
+          "enabled": true,
+          "order_type": "MKT",
+          "host_at_broker": true
+        },
+        "enabled": true,
+        "peak": 225,
+        "fired_at": null,
+        "fired_state": ""
+      },
+      "live": {
+        "id": "tk1",
+        "state": "holding",
+        "price": 219.74,
+        "peak": 225,
+        "trail_stop": 213.75,
+        "unrealized_pnl": 3974,
+        "unrealized_pct": 22.08,
+        "reason": "",
+        "stop_effective": 213.75
+      },
+      "hosted": null,
+      "delayed": false,
+      "connected": true,
+      "watches": [
+        {
+          "id": "w1",
+          "symbol": "NVDA",
+          "enabled": true,
+          "last_price": 219.5,
+          "expiry": "2026-09-11",
+          "levels": [],
+          "wall": {
+            "regime": "positive",
+            "net_gex_ratio": 0.31,
+            "gross_gex": 5,
+            "max_pain": {
+              "strike": 215
+            },
+            "days_to_expiry": 4
+          }
+        }
+      ],
+      "busy": [],
+      "gateway": "TWS",
+      "texts": [
+        "NVDA · IBKR模拟",
+        "持有中",
+        "止盈 240.00",
+        "止损 200.00",
+        "跟踪 5% → 213.75",
+        "最有利价 225.00",
+        "自动平仓已开",
+        "券商托管",
+        "托管单尚未挂出(对账中,或被闸门拦住——看下方提示)",
+        "+3,974.00",
+        "+22.08%",
+        "未实现盈亏",
+        "跟踪止损",
+        "213.75",
+        "现价",
+        "219.74",
+        "止盈",
+        "240.00",
+        "9.2",
+        "%",
+        "止盈",
+        "240.00",
+        "还差 +20.2600",
+        "2.7",
+        "%",
+        "跟踪止损",
+        "213.75",
+        "还差 -5.9900",
+        "NVDA 的关键价位还没算出来",
+        "立刻算",
+        "暂停",
+        "立即平仓",
+        "删除"
+      ]
+    },
+    {
+      "name": "价位算着呢",
+      "t": {
+        "id": "tk1",
+        "account": "IBKR模拟",
+        "symbol": "NVDA",
+        "sec_type": "STK",
+        "contract": {
+          "secType": "STK",
+          "symbol": "NVDA"
+        },
+        "targets": {
+          "take_profit": 240,
+          "stop_loss": 200,
+          "trail_pct": 5
+        },
+        "auto_close": {
+          "enabled": true,
+          "order_type": "MKT",
+          "host_at_broker": true
+        },
+        "enabled": true,
+        "peak": 225,
+        "fired_at": null,
+        "fired_state": ""
+      },
+      "live": {
+        "id": "tk1",
+        "state": "holding",
+        "price": 219.74,
+        "peak": 225,
+        "trail_stop": 213.75,
+        "unrealized_pnl": 3974,
+        "unrealized_pct": 22.08,
+        "reason": "",
+        "stop_effective": 213.75
+      },
+      "hosted": null,
+      "delayed": false,
+      "connected": true,
+      "watches": [
+        {
+          "id": "w1",
+          "symbol": "NVDA",
+          "enabled": true,
+          "last_price": 219.5,
+          "expiry": "2026-09-11",
+          "levels": [],
+          "wall": {
+            "regime": "positive",
+            "net_gex_ratio": 0.31,
+            "gross_gex": 5,
+            "max_pain": {
+              "strike": 215
+            },
+            "days_to_expiry": 4
+          }
+        }
+      ],
+      "busy": [
+        "w1"
+      ],
+      "gateway": "TWS",
+      "texts": [
+        "NVDA · IBKR模拟",
+        "持有中",
+        "止盈 240.00",
+        "止损 200.00",
+        "跟踪 5% → 213.75",
+        "最有利价 225.00",
+        "自动平仓已开",
+        "券商托管",
+        "托管单尚未挂出(对账中,或被闸门拦住——看下方提示)",
+        "+3,974.00",
+        "+22.08%",
+        "未实现盈亏",
+        "跟踪止损",
+        "213.75",
+        "现价",
+        "219.74",
+        "止盈",
+        "240.00",
+        "9.2",
+        "%",
+        "止盈",
+        "240.00",
+        "还差 +20.2600",
+        "2.7",
+        "%",
+        "跟踪止损",
+        "213.75",
+        "还差 -5.9900",
+        "正在算关键价位…",
+        "立刻算",
+        "暂停",
+        "立即平仓",
+        "删除"
+      ]
+    },
+    {
+      "name": "富途",
+      "t": {
+        "id": "tk1",
+        "account": "IBKR模拟",
+        "symbol": "NVDA",
+        "sec_type": "STK",
+        "contract": {
+          "secType": "STK",
+          "symbol": "NVDA"
+        },
+        "targets": {
+          "take_profit": 240,
+          "stop_loss": 200,
+          "trail_pct": 5
+        },
+        "auto_close": {
+          "enabled": true,
+          "order_type": "MKT",
+          "host_at_broker": true
+        },
+        "enabled": true,
+        "peak": 225,
+        "fired_at": null,
+        "fired_state": ""
+      },
+      "live": {
+        "id": "tk1",
+        "state": "holding",
+        "price": 219.74,
+        "peak": 225,
+        "trail_stop": 213.75,
+        "unrealized_pnl": 3974,
+        "unrealized_pct": 22.08,
+        "reason": "",
+        "stop_effective": 213.75
+      },
+      "hosted": null,
+      "delayed": false,
+      "connected": false,
+      "watches": [],
+      "busy": [],
+      "gateway": "OpenD",
+      "texts": [
+        "NVDA · IBKR模拟",
+        "持有中",
+        "止盈 240.00",
+        "止损 200.00",
+        "跟踪 5% → 213.75",
+        "最有利价 225.00",
+        "自动平仓已开",
+        "券商托管",
+        "连接OpenD后自动挂出",
+        "+3,974.00",
+        "+22.08%",
+        "未实现盈亏",
+        "跟踪止损",
+        "213.75",
+        "现价",
+        "219.74",
+        "止盈",
+        "240.00",
+        "9.2",
+        "%",
+        "止盈",
+        "240.00",
+        "还差 +20.2600",
+        "2.7",
+        "%",
+        "跟踪止损",
+        "213.75",
+        "还差 -5.9900",
+        "NVDA 还没在盯价位(期权墙、均线、整数关口)。",
+        "算关键价位",
+        "暂停",
+        "立即平仓",
+        "删除"
+      ]
+    }
+  ]
+}

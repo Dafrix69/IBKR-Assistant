@@ -3,7 +3,11 @@
 用自然语言下单到 Interactive Brokers 的桌面交易台。大模型只负责把"买入 AAPL 100 股 limit 230,理由:回调到位"这样的中英混合指令翻译成结构化订单;限额、方向、账户、价差结构、时段、重复单的校验全部由代码完成,再经三道执行闸门才会发到券商。围绕下单之外,还带持仓追踪自动平仓、K 线价格行为分析、期权墙价位提醒、板块扫描、回测与交易复盘。
 
 [![ci](https://github.com/Dafrix69/IBKR-Assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/Dafrix69/IBKR-Assistant/actions/workflows/ci.yml)
+
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+> **分支**:`qt` 是主线,往后的开发以 Qt 6 / C++ 版(`native/`,见 [native/README.md](native/README.md) 与 [docs/briefs/qt-rewrite.md](docs/briefs/qt-rewrite.md))为主;
+> `main` 留着现在发布的 Electron 版,只做它的补丁版本。
 
 > 本仓库是软件实现,不构成任何投资建议。自动执行意味着解析错误会真金白银成交,请先在模拟账户跑够回归再考虑实盘。
 

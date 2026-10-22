@@ -1,0 +1,7073 @@
+{
+ "generator": "gen_alert_rules.mjs",
+ "blockShareHeavy": 0.5,
+ "nearPct": 0.15,
+ "short": {
+  "call_wall": "C 墙",
+  "put_wall": "P 墙",
+  "call_vol_wall": "C 成交墙",
+  "put_vol_wall": "P 成交墙",
+  "max_pain": "痛点",
+  "gamma_flip": "γ 翻转",
+  "round": "关口",
+  "ma20": "MA20",
+  "ma60": "MA60",
+  "ma120": "MA120",
+  "ma200": "MA200",
+  "low_52w": "52周低",
+  "high_52w": "52周高"
+ },
+ "cases": [
+  {
+   "fn": "toneDirection",
+   "args": [
+    []
+   ],
+   "out": null
+  },
+  {
+   "fn": "toneDirection",
+   "args": [
+    null
+   ],
+   "out": null
+  },
+  {
+   "fn": "toneDirection",
+   "args": [
+    [
+     {
+      "kind": "spike",
+      "direction": "up"
+     }
+    ]
+   ],
+   "out": "up"
+  },
+  {
+   "fn": "toneDirection",
+   "args": [
+    [
+     {
+      "kind": "rvol",
+      "direction": "up"
+     },
+     {
+      "kind": "burst",
+      "direction": "down"
+     }
+    ]
+   ],
+   "out": null
+  },
+  {
+   "fn": "toneDirection",
+   "args": [
+    [
+     {
+      "direction": "down"
+     },
+     {
+      "trigger": "touch",
+      "direction": "up"
+     }
+    ]
+   ],
+   "out": "down"
+  },
+  {
+   "fn": "toneDirection",
+   "args": [
+    [
+     {
+      "direction": "up"
+     },
+     {
+      "direction": "down"
+     }
+    ]
+   ],
+   "out": null
+  },
+  {
+   "fn": "toneDirection",
+   "args": [
+    [
+     {
+      "kind": "gap",
+      "direction": "down"
+     },
+     {
+      "kind": "move",
+      "direction": "down"
+     }
+    ]
+   ],
+   "out": "down"
+  },
+  {
+   "fn": "toneDirection",
+   "args": [
+    [
+     null,
+     {
+      "direction": "sideways"
+     },
+     {
+      "kind": 5,
+      "direction": "up"
+     }
+    ]
+   ],
+   "out": "up"
+  },
+  {
+   "fn": "popupCounts",
+   "args": [
+    0,
+    {
+     "shown": 3
+    }
+   ],
+   "out": {
+    "accepted": 0,
+    "dropped": 0
+   }
+  },
+  {
+   "fn": "popupCounts",
+   "args": [
+    3,
+    null
+   ],
+   "out": {
+    "accepted": 3,
+    "dropped": 0
+   }
+  },
+  {
+   "fn": "popupCounts",
+   "args": [
+    3,
+    {
+     "shown": 0
+    }
+   ],
+   "out": {
+    "accepted": 0,
+    "dropped": 3
+   }
+  },
+  {
+   "fn": "popupCounts",
+   "args": [
+    3,
+    {
+     "shown": 2
+    }
+   ],
+   "out": {
+    "accepted": 2,
+    "dropped": 1
+   }
+  },
+  {
+   "fn": "popupCounts",
+   "args": [
+    3,
+    {
+     "shown": 2,
+     "dropped": 5
+    }
+   ],
+   "out": {
+    "accepted": 2,
+    "dropped": 1
+   }
+  },
+  {
+   "fn": "popupCounts",
+   "args": [
+    3,
+    {
+     "shown": 9,
+     "dropped": 1
+    }
+   ],
+   "out": {
+    "accepted": 3,
+    "dropped": 0
+   }
+  },
+  {
+   "fn": "popupCounts",
+   "args": [
+    2.7,
+    {
+     "shown": 1.9
+    }
+   ],
+   "out": {
+    "accepted": 1,
+    "dropped": 1
+   }
+  },
+  {
+   "fn": "popupCounts",
+   "args": [
+    3,
+    {
+     "shown": "x",
+     "dropped": 1
+    }
+   ],
+   "out": {
+    "accepted": 3,
+    "dropped": 0
+   }
+  },
+  {
+   "fn": "popupCounts",
+   "args": [
+    -1,
+    {}
+   ],
+   "out": {
+    "accepted": 0,
+    "dropped": 0
+   }
+  },
+  {
+   "fn": "popupCounts",
+   "args": [
+    3,
+    {
+     "dropped": 1
+    }
+   ],
+   "out": {
+    "accepted": 3,
+    "dropped": 0
+   }
+  },
+  {
+   "fn": "burstVerdict",
+   "args": [
+    null,
+    3
+   ],
+   "out": {
+    "level": "none",
+    "note": ""
+   }
+  },
+  {
+   "fn": "burstVerdict",
+   "args": [
+    {
+     "burst": null
+    },
+    3
+   ],
+   "out": {
+    "level": "none",
+    "note": ""
+   }
+  },
+  {
+   "fn": "burstVerdict",
+   "args": [
+    {
+     "burst": 4,
+     "block_share": null,
+     "basis_volume": "session_pace"
+    },
+    3
+   ],
+   "out": {
+    "level": "reference",
+    "note": "这只没有日均量,按今天到目前的成交节奏估算常态。窗口还不是按样本差算的(刚加入追踪、或样本断过),判不出是不是一笔大单补报——这个数只作参考,这一轮不会报。"
+   }
+  },
+  {
+   "fn": "burstVerdict",
+   "args": [
+    {
+     "burst": 6,
+     "block_share": 0.2,
+     "basis_volume": "avg_volume"
+    },
+    3
+   ],
+   "out": {
+    "level": "hot",
+    "note": ""
+   }
+  },
+  {
+   "fn": "burstVerdict",
+   "args": [
+    {
+     "burst": 6,
+     "block_share": 0.6
+    },
+    3
+   ],
+   "out": {
+    "level": "muted",
+    "note": "一笔大单占了窗口的 60%,去掉它只有 2.4×,不到 3× 的阈值,不算放量。"
+   }
+  },
+  {
+   "fn": "burstVerdict",
+   "args": [
+    {
+     "burst": 4,
+     "block_share": 0.4
+    },
+    3
+   ],
+   "out": {
+    "level": "muted",
+    "note": "一笔大单占了窗口的 40%,去掉它只有 2.4×,不到 3× 的阈值,不算放量。"
+   }
+  },
+  {
+   "fn": "burstVerdict",
+   "args": [
+    {
+     "burst": 2,
+     "block_share": 0.1
+    },
+    3
+   ],
+   "out": {
+    "level": "plain",
+    "note": ""
+   }
+  },
+  {
+   "fn": "burstVerdict",
+   "args": [
+    {
+     "burst": 2,
+     "block_share": 0.7
+    },
+    3
+   ],
+   "out": {
+    "level": "muted",
+    "note": "一笔大单占了窗口的 70%,去掉它只有 0.6×。"
+   }
+  },
+  {
+   "fn": "burstVerdict",
+   "args": [
+    {
+     "burst": 5,
+     "block_share": 0.3
+    },
+    null
+   ],
+   "out": {
+    "level": "plain",
+    "note": ""
+   }
+  },
+  {
+   "fn": "burstVerdict",
+   "args": [
+    {
+     "burst": 4.04,
+     "block_share": 0.25
+    },
+    4
+   ],
+   "out": {
+    "level": "muted",
+    "note": "一笔大单占了窗口的 25%,去掉它只有 3.0×,不到 4× 的阈值,不算放量。"
+   }
+  },
+  {
+   "fn": "ownLines",
+   "args": [
+    "STK",
+    {
+     "stop_loss": 210,
+     "take_profit": 240
+    },
+    null
+   ],
+   "out": [
+    {
+     "price": 210,
+     "label": "止损",
+     "source": "own:stop",
+     "kind": "pivot"
+    },
+    {
+     "price": 240,
+     "label": "止盈",
+     "source": "own:tp",
+     "kind": "pivot"
+    }
+   ]
+  },
+  {
+   "fn": "ownLines",
+   "args": [
+    "STK",
+    {
+     "stop_loss": 210,
+     "spot_target": 250
+    },
+    {
+     "stop_effective": 215.5,
+     "profit_trail_stop": 220
+    }
+   ],
+   "out": [
+    {
+     "price": 215.5,
+     "label": "止损",
+     "source": "own:stop",
+     "kind": "pivot"
+    },
+    {
+     "price": 220,
+     "label": "回撤线",
+     "source": "own:ptrail",
+     "kind": "pivot"
+    },
+    {
+     "price": 250,
+     "label": "止盈",
+     "source": "own:tp",
+     "kind": "pivot"
+    }
+   ]
+  },
+  {
+   "fn": "ownLines",
+   "args": [
+    "OPT",
+    {
+     "spot_stop_below": 7700,
+     "spot_stop_above": 7790.5,
+     "spot_target": 7750,
+     "stop_loss": 2
+    },
+    {}
+   ],
+   "out": [
+    {
+     "price": 7700,
+     "label": "标的止损",
+     "source": "own:stop_below",
+     "kind": "pivot"
+    },
+    {
+     "price": 7790.5,
+     "label": "标的止损",
+     "source": "own:stop_above",
+     "kind": "pivot"
+    },
+    {
+     "price": 7750,
+     "label": "目标价",
+     "source": "own:target",
+     "kind": "pivot"
+    }
+   ]
+  },
+  {
+   "fn": "ownLines",
+   "args": [
+    "BAG",
+    {},
+    null
+   ],
+   "out": []
+  },
+  {
+   "fn": "ownLines",
+   "args": [
+    "STK",
+    {
+     "stop_loss": -1,
+     "take_profit": "x"
+    },
+    {
+     "stop_effective": null
+    }
+   ],
+   "out": []
+  },
+  {
+   "fn": "nearestLevels",
+   "args": [
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7712.4
+   ],
+   "out": {
+    "below": [
+     {
+      "level": {
+       "price": 7700,
+       "source": "put_wall",
+       "label": "Put 墙",
+       "kind": "pivot"
+      },
+      "pct": -0.16078004252890743
+     },
+     {
+      "level": {
+       "price": 7690,
+       "source": "weird",
+       "label": "",
+       "kind": "pivot"
+      },
+      "pct": -0.29044136714899693
+     }
+    ],
+    "above": [
+     {
+      "level": {
+       "price": 7725,
+       "source": "gamma_flip",
+       "label": "Gamma",
+       "kind": "pivot"
+      },
+      "pct": 0.16337326902131633
+     },
+     {
+      "level": {
+       "price": 7750,
+       "source": "round",
+       "label": "整数关口",
+       "kind": "pivot"
+      },
+      "pct": 0.4875265805715623
+     }
+    ]
+   }
+  },
+  {
+   "fn": "levelSummary",
+   "args": [
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7712.4
+   ],
+   "out": "下方 P 墙 7700(−0.16%)、价位 7690(−0.29%) · 上方 γ 翻转 7725(+0.16%)、关口 7750(+0.49%)"
+  },
+  {
+   "fn": "pickSides",
+   "args": [
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7712.4,
+    "stop",
+    true,
+    true
+   ],
+   "out": {
+    "below": [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     }
+    ],
+    "above": [
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     }
+    ]
+   }
+  },
+  {
+   "fn": "pickSides",
+   "args": [
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7712.4,
+    "stop",
+    true,
+    false
+   ],
+   "out": {
+    "below": [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     }
+    ],
+    "above": []
+   }
+  },
+  {
+   "fn": "pickSides",
+   "args": [
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7712.4,
+    "stop",
+    false,
+    true
+   ],
+   "out": {
+    "below": [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     }
+    ],
+    "above": [
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     }
+    ]
+   }
+  },
+  {
+   "fn": "pickSides",
+   "args": [
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7712.4,
+    "stop",
+    false,
+    false
+   ],
+   "out": {
+    "below": [],
+    "above": [
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     }
+    ]
+   }
+  },
+  {
+   "fn": "pickSides",
+   "args": [
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7712.4,
+    "target",
+    true,
+    true
+   ],
+   "out": {
+    "below": [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     }
+    ],
+    "above": [
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     }
+    ]
+   }
+  },
+  {
+   "fn": "pickSides",
+   "args": [
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7712.4,
+    "target",
+    true,
+    false
+   ],
+   "out": {
+    "below": [],
+    "above": [
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     }
+    ]
+   }
+  },
+  {
+   "fn": "pickSides",
+   "args": [
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7712.4,
+    "target",
+    false,
+    true
+   ],
+   "out": {
+    "below": [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     }
+    ],
+    "above": [
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     }
+    ]
+   }
+  },
+  {
+   "fn": "pickSides",
+   "args": [
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7712.4,
+    "target",
+    false,
+    false
+   ],
+   "out": {
+    "below": [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     }
+    ],
+    "above": []
+   }
+  },
+  {
+   "fn": "lineContext",
+   "args": [
+    {
+     "price": 7690,
+     "source": "own:stop",
+     "label": "止损",
+     "kind": "pivot"
+    },
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7712.4
+   ],
+   "out": "止损 7690 贴着 价位 7690"
+  },
+  {
+   "fn": "lineContext",
+   "args": [
+    {
+     "price": 7701,
+     "source": "own:stop",
+     "label": "止损",
+     "kind": "pivot"
+    },
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7712.4
+   ],
+   "out": "止损 7701 贴着 P 墙 7700"
+  },
+  {
+   "fn": "lineContext",
+   "args": [
+    {
+     "price": 7710,
+     "source": "own:stop",
+     "label": "止损",
+     "kind": "pivot"
+    },
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7712.4
+   ],
+   "out": "止损 7710 贴着 P 墙 7700"
+  },
+  {
+   "fn": "lineContext",
+   "args": [
+    {
+     "price": 7760,
+     "source": "own:tp",
+     "label": "止盈",
+     "kind": "pivot"
+    },
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7712.4
+   ],
+   "out": "止盈 7760 贴着 关口 7750"
+  },
+  {
+   "fn": "lineContext",
+   "args": [
+    {
+     "price": 7810,
+     "source": "own:tp",
+     "label": "止盈",
+     "kind": "pivot"
+    },
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7712.4
+   ],
+   "out": "止盈 7810 贴着 C 墙 7800"
+  },
+  {
+   "fn": "lineContext",
+   "args": [
+    {
+     "price": 7712.4,
+     "source": "own:x",
+     "label": "线",
+     "kind": "pivot"
+    },
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7712.4
+   ],
+   "out": null
+  },
+  {
+   "fn": "lineContext",
+   "args": [
+    {
+     "price": 7300,
+     "source": "own:s",
+     "label": "止损",
+     "kind": "pivot"
+    },
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7712.4
+   ],
+   "out": "止损 7300 在 MA20 7650 之下 4.79%"
+  },
+  {
+   "fn": "nearestLevels",
+   "args": [
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7720
+   ],
+   "out": {
+    "below": [
+     {
+      "level": {
+       "price": 7712.4,
+       "source": "max_pain",
+       "label": "痛点",
+       "kind": "pivot"
+      },
+      "pct": -0.09844559585492352
+     },
+     {
+      "level": {
+       "price": 7700,
+       "source": "put_wall",
+       "label": "Put 墙",
+       "kind": "pivot"
+      },
+      "pct": -0.2590673575129543
+     }
+    ],
+    "above": [
+     {
+      "level": {
+       "price": 7725,
+       "source": "gamma_flip",
+       "label": "Gamma",
+       "kind": "pivot"
+      },
+      "pct": 0.06476683937823857
+     },
+     {
+      "level": {
+       "price": 7750,
+       "source": "round",
+       "label": "整数关口",
+       "kind": "pivot"
+      },
+      "pct": 0.38860103626943143
+     }
+    ]
+   }
+  },
+  {
+   "fn": "levelSummary",
+   "args": [
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7720
+   ],
+   "out": "下方 痛点 7712.4(−0.10%)、P 墙 7700(−0.26%) · 上方 γ 翻转 7725(+0.06%)、关口 7750(+0.39%)"
+  },
+  {
+   "fn": "pickSides",
+   "args": [
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7720,
+    "stop",
+    true,
+    true
+   ],
+   "out": {
+    "below": [
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     }
+    ],
+    "above": [
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     }
+    ]
+   }
+  },
+  {
+   "fn": "pickSides",
+   "args": [
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7720,
+    "stop",
+    true,
+    false
+   ],
+   "out": {
+    "below": [
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     }
+    ],
+    "above": []
+   }
+  },
+  {
+   "fn": "pickSides",
+   "args": [
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7720,
+    "stop",
+    false,
+    true
+   ],
+   "out": {
+    "below": [
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     }
+    ],
+    "above": [
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     }
+    ]
+   }
+  },
+  {
+   "fn": "pickSides",
+   "args": [
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7720,
+    "stop",
+    false,
+    false
+   ],
+   "out": {
+    "below": [],
+    "above": [
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     }
+    ]
+   }
+  },
+  {
+   "fn": "pickSides",
+   "args": [
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7720,
+    "target",
+    true,
+    true
+   ],
+   "out": {
+    "below": [
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     }
+    ],
+    "above": [
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     }
+    ]
+   }
+  },
+  {
+   "fn": "pickSides",
+   "args": [
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7720,
+    "target",
+    true,
+    false
+   ],
+   "out": {
+    "below": [],
+    "above": [
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     }
+    ]
+   }
+  },
+  {
+   "fn": "pickSides",
+   "args": [
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7720,
+    "target",
+    false,
+    true
+   ],
+   "out": {
+    "below": [
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     }
+    ],
+    "above": [
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     }
+    ]
+   }
+  },
+  {
+   "fn": "pickSides",
+   "args": [
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7720,
+    "target",
+    false,
+    false
+   ],
+   "out": {
+    "below": [
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     }
+    ],
+    "above": []
+   }
+  },
+  {
+   "fn": "lineContext",
+   "args": [
+    {
+     "price": 7690,
+     "source": "own:stop",
+     "label": "止损",
+     "kind": "pivot"
+    },
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7720
+   ],
+   "out": "止损 7690 贴着 价位 7690"
+  },
+  {
+   "fn": "lineContext",
+   "args": [
+    {
+     "price": 7701,
+     "source": "own:stop",
+     "label": "止损",
+     "kind": "pivot"
+    },
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7720
+   ],
+   "out": "止损 7701 贴着 P 墙 7700"
+  },
+  {
+   "fn": "lineContext",
+   "args": [
+    {
+     "price": 7710,
+     "source": "own:stop",
+     "label": "止损",
+     "kind": "pivot"
+    },
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7720
+   ],
+   "out": "止损 7710 贴着 痛点 7712.4"
+  },
+  {
+   "fn": "lineContext",
+   "args": [
+    {
+     "price": 7760,
+     "source": "own:tp",
+     "label": "止盈",
+     "kind": "pivot"
+    },
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7720
+   ],
+   "out": "止盈 7760 贴着 关口 7750"
+  },
+  {
+   "fn": "lineContext",
+   "args": [
+    {
+     "price": 7810,
+     "source": "own:tp",
+     "label": "止盈",
+     "kind": "pivot"
+    },
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7720
+   ],
+   "out": "止盈 7810 贴着 C 墙 7800"
+  },
+  {
+   "fn": "lineContext",
+   "args": [
+    {
+     "price": 7712.4,
+     "source": "own:x",
+     "label": "线",
+     "kind": "pivot"
+    },
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7720
+   ],
+   "out": "线 7712.4 贴着 痛点 7712.4"
+  },
+  {
+   "fn": "lineContext",
+   "args": [
+    {
+     "price": 7300,
+     "source": "own:s",
+     "label": "止损",
+     "kind": "pivot"
+    },
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7720
+   ],
+   "out": "止损 7300 在 MA20 7650 之下 4.79%"
+  },
+  {
+   "fn": "nearestLevels",
+   "args": [
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7600
+   ],
+   "out": {
+    "below": [],
+    "above": [
+     {
+      "level": {
+       "price": 7650,
+       "source": "ma20",
+       "label": "20日线",
+       "kind": "pivot"
+      },
+      "pct": 0.6578947368421018
+     },
+     {
+      "level": {
+       "price": 7690,
+       "source": "weird",
+       "label": "",
+       "kind": "pivot"
+      },
+      "pct": 1.1842105263157876
+     }
+    ]
+   }
+  },
+  {
+   "fn": "levelSummary",
+   "args": [
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7600
+   ],
+   "out": "上方 MA20 7650(+0.66%)、价位 7690(+1.18%)"
+  },
+  {
+   "fn": "pickSides",
+   "args": [
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7600,
+    "stop",
+    true,
+    true
+   ],
+   "out": {
+    "below": [],
+    "above": [
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     }
+    ]
+   }
+  },
+  {
+   "fn": "pickSides",
+   "args": [
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7600,
+    "stop",
+    true,
+    false
+   ],
+   "out": {
+    "below": [],
+    "above": []
+   }
+  },
+  {
+   "fn": "pickSides",
+   "args": [
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7600,
+    "stop",
+    false,
+    true
+   ],
+   "out": {
+    "below": [],
+    "above": [
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     }
+    ]
+   }
+  },
+  {
+   "fn": "pickSides",
+   "args": [
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7600,
+    "stop",
+    false,
+    false
+   ],
+   "out": {
+    "below": [],
+    "above": [
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     }
+    ]
+   }
+  },
+  {
+   "fn": "pickSides",
+   "args": [
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7600,
+    "target",
+    true,
+    true
+   ],
+   "out": {
+    "below": [],
+    "above": [
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     }
+    ]
+   }
+  },
+  {
+   "fn": "pickSides",
+   "args": [
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7600,
+    "target",
+    true,
+    false
+   ],
+   "out": {
+    "below": [],
+    "above": [
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     }
+    ]
+   }
+  },
+  {
+   "fn": "pickSides",
+   "args": [
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7600,
+    "target",
+    false,
+    true
+   ],
+   "out": {
+    "below": [],
+    "above": [
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     }
+    ]
+   }
+  },
+  {
+   "fn": "pickSides",
+   "args": [
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7600,
+    "target",
+    false,
+    false
+   ],
+   "out": {
+    "below": [],
+    "above": []
+   }
+  },
+  {
+   "fn": "lineContext",
+   "args": [
+    {
+     "price": 7690,
+     "source": "own:stop",
+     "label": "止损",
+     "kind": "pivot"
+    },
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7600
+   ],
+   "out": "止损 7690 贴着 价位 7690"
+  },
+  {
+   "fn": "lineContext",
+   "args": [
+    {
+     "price": 7701,
+     "source": "own:stop",
+     "label": "止损",
+     "kind": "pivot"
+    },
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7600
+   ],
+   "out": "止损 7701 贴着 P 墙 7700"
+  },
+  {
+   "fn": "lineContext",
+   "args": [
+    {
+     "price": 7710,
+     "source": "own:stop",
+     "label": "止损",
+     "kind": "pivot"
+    },
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7600
+   ],
+   "out": "止损 7710 贴着 痛点 7712.4"
+  },
+  {
+   "fn": "lineContext",
+   "args": [
+    {
+     "price": 7760,
+     "source": "own:tp",
+     "label": "止盈",
+     "kind": "pivot"
+    },
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7600
+   ],
+   "out": "止盈 7760 贴着 关口 7750"
+  },
+  {
+   "fn": "lineContext",
+   "args": [
+    {
+     "price": 7810,
+     "source": "own:tp",
+     "label": "止盈",
+     "kind": "pivot"
+    },
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7600
+   ],
+   "out": "止盈 7810 贴着 C 墙 7800"
+  },
+  {
+   "fn": "lineContext",
+   "args": [
+    {
+     "price": 7712.4,
+     "source": "own:x",
+     "label": "线",
+     "kind": "pivot"
+    },
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7600
+   ],
+   "out": "线 7712.4 贴着 痛点 7712.4"
+  },
+  {
+   "fn": "lineContext",
+   "args": [
+    {
+     "price": 7300,
+     "source": "own:s",
+     "label": "止损",
+     "kind": "pivot"
+    },
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7600
+   ],
+   "out": null
+  },
+  {
+   "fn": "nearestLevels",
+   "args": [
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7900
+   ],
+   "out": {
+    "below": [
+     {
+      "level": {
+       "price": 7800,
+       "source": "call_wall",
+       "label": "Call 墙",
+       "kind": "pivot"
+      },
+      "pct": -1.2658227848101222
+     },
+     {
+      "level": {
+       "price": 7750,
+       "source": "round",
+       "label": "整数关口",
+       "kind": "pivot"
+      },
+      "pct": -1.898734177215189
+     }
+    ],
+    "above": []
+   }
+  },
+  {
+   "fn": "levelSummary",
+   "args": [
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7900
+   ],
+   "out": "下方 C 墙 7800(−1.27%)、关口 7750(−1.90%)"
+  },
+  {
+   "fn": "pickSides",
+   "args": [
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7900,
+    "stop",
+    true,
+    true
+   ],
+   "out": {
+    "below": [
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     }
+    ],
+    "above": []
+   }
+  },
+  {
+   "fn": "pickSides",
+   "args": [
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7900,
+    "stop",
+    true,
+    false
+   ],
+   "out": {
+    "below": [
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     }
+    ],
+    "above": []
+   }
+  },
+  {
+   "fn": "pickSides",
+   "args": [
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7900,
+    "stop",
+    false,
+    true
+   ],
+   "out": {
+    "below": [
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     }
+    ],
+    "above": []
+   }
+  },
+  {
+   "fn": "pickSides",
+   "args": [
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7900,
+    "stop",
+    false,
+    false
+   ],
+   "out": {
+    "below": [],
+    "above": []
+   }
+  },
+  {
+   "fn": "pickSides",
+   "args": [
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7900,
+    "target",
+    true,
+    true
+   ],
+   "out": {
+    "below": [
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     }
+    ],
+    "above": []
+   }
+  },
+  {
+   "fn": "pickSides",
+   "args": [
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7900,
+    "target",
+    true,
+    false
+   ],
+   "out": {
+    "below": [],
+    "above": []
+   }
+  },
+  {
+   "fn": "pickSides",
+   "args": [
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7900,
+    "target",
+    false,
+    true
+   ],
+   "out": {
+    "below": [
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     }
+    ],
+    "above": []
+   }
+  },
+  {
+   "fn": "pickSides",
+   "args": [
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7900,
+    "target",
+    false,
+    false
+   ],
+   "out": {
+    "below": [
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     }
+    ],
+    "above": []
+   }
+  },
+  {
+   "fn": "lineContext",
+   "args": [
+    {
+     "price": 7690,
+     "source": "own:stop",
+     "label": "止损",
+     "kind": "pivot"
+    },
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7900
+   ],
+   "out": "止损 7690 贴着 价位 7690"
+  },
+  {
+   "fn": "lineContext",
+   "args": [
+    {
+     "price": 7701,
+     "source": "own:stop",
+     "label": "止损",
+     "kind": "pivot"
+    },
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7900
+   ],
+   "out": "止损 7701 贴着 P 墙 7700"
+  },
+  {
+   "fn": "lineContext",
+   "args": [
+    {
+     "price": 7710,
+     "source": "own:stop",
+     "label": "止损",
+     "kind": "pivot"
+    },
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7900
+   ],
+   "out": "止损 7710 贴着 痛点 7712.4"
+  },
+  {
+   "fn": "lineContext",
+   "args": [
+    {
+     "price": 7760,
+     "source": "own:tp",
+     "label": "止盈",
+     "kind": "pivot"
+    },
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7900
+   ],
+   "out": "止盈 7760 贴着 关口 7750"
+  },
+  {
+   "fn": "lineContext",
+   "args": [
+    {
+     "price": 7810,
+     "source": "own:tp",
+     "label": "止盈",
+     "kind": "pivot"
+    },
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7900
+   ],
+   "out": "止盈 7810 贴着 C 墙 7800"
+  },
+  {
+   "fn": "lineContext",
+   "args": [
+    {
+     "price": 7712.4,
+     "source": "own:x",
+     "label": "线",
+     "kind": "pivot"
+    },
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7900
+   ],
+   "out": "线 7712.4 贴着 痛点 7712.4"
+  },
+  {
+   "fn": "lineContext",
+   "args": [
+    {
+     "price": 7300,
+     "source": "own:s",
+     "label": "止损",
+     "kind": "pivot"
+    },
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7650,
+      "source": "ma20",
+      "label": "20日线",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7750,
+      "source": "round",
+      "label": "整数关口",
+      "kind": "pivot"
+     },
+     {
+      "price": 7725,
+      "source": "gamma_flip",
+      "label": "Gamma",
+      "kind": "pivot"
+     },
+     {
+      "price": 0,
+      "source": "round",
+      "label": "round",
+      "kind": "pivot"
+     },
+     {
+      "price": 7712.4,
+      "source": "max_pain",
+      "label": "痛点",
+      "kind": "pivot"
+     },
+     {
+      "price": 7690,
+      "source": "weird",
+      "label": "",
+      "kind": "pivot"
+     },
+     {
+      "price": 7900,
+      "source": "own:stop",
+      "label": "止损",
+      "kind": "pivot"
+     }
+    ],
+    7900
+   ],
+   "out": "止损 7300 在 MA20 7650 之下 4.79%"
+  },
+  {
+   "fn": "lineContext",
+   "args": [
+    {
+     "price": 7688.3,
+     "source": "own:stop",
+     "label": "止损",
+     "kind": "pivot"
+    },
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     }
+    ],
+    7750
+   ],
+   "out": "止损 7688.3 在 P 墙 7700 之下 0.15%"
+  },
+  {
+   "fn": "lineContext",
+   "args": [
+    {
+     "price": 7688.4,
+     "source": "own:stop",
+     "label": "止损",
+     "kind": "pivot"
+    },
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     }
+    ],
+    7750
+   ],
+   "out": "止损 7688.4 贴着 P 墙 7700"
+  },
+  {
+   "fn": "lineContext",
+   "args": [
+    {
+     "price": 7720,
+     "source": "own:stop",
+     "label": "止损",
+     "kind": "pivot"
+    },
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     }
+    ],
+    7750
+   ],
+   "out": "止损 7720 在 P 墙 7700 之上 0.26%:支撑没破就先出了"
+  },
+  {
+   "fn": "lineContext",
+   "args": [
+    {
+     "price": 7811.6,
+     "source": "own:stop",
+     "label": "止损",
+     "kind": "pivot"
+    },
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     }
+    ],
+    7750
+   ],
+   "out": "止损 7811.6 贴着 C 墙 7800"
+  },
+  {
+   "fn": "lineContext",
+   "args": [
+    {
+     "price": 7811.7,
+     "source": "own:stop",
+     "label": "止损",
+     "kind": "pivot"
+    },
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     }
+    ],
+    7750
+   ],
+   "out": "止损 7811.7 在 C 墙 7800 之上 0.15%"
+  },
+  {
+   "fn": "lineContext",
+   "args": [
+    {
+     "price": 7830,
+     "source": "own:stop",
+     "label": "止损",
+     "kind": "pivot"
+    },
+    [
+     {
+      "price": 7700,
+      "source": "put_wall",
+      "label": "Put 墙",
+      "kind": "pivot"
+     },
+     {
+      "price": 7800,
+      "source": "call_wall",
+      "label": "Call 墙",
+      "kind": "pivot"
+     }
+    ],
+    7750
+   ],
+   "out": "止损 7830 在 C 墙 7800 之上 0.38%"
+  },
+  {
+   "fn": "fmtLevel",
+   "args": [
+    7700
+   ],
+   "out": "7700"
+  },
+  {
+   "fn": "fmtLevel",
+   "args": [
+    7790.5
+   ],
+   "out": "7790.5"
+  },
+  {
+   "fn": "fmtLevel",
+   "args": [
+    219.744
+   ],
+   "out": "219.74"
+  },
+  {
+   "fn": "fmtLevel",
+   "args": [
+    0.30000000000000004
+   ],
+   "out": "0.3"
+  },
+  {
+   "fn": "fmtGap",
+   "args": [
+    0.364
+   ],
+   "out": "+0.36%"
+  },
+  {
+   "fn": "fmtGap",
+   "args": [
+    -0.29
+   ],
+   "out": "−0.29%"
+  },
+  {
+   "fn": "fmtGap",
+   "args": [
+    0
+   ],
+   "out": "0.00%"
+  },
+  {
+   "fn": "fmtGap",
+   "args": [
+    -0.004
+   ],
+   "out": "−0.00%"
+  },
+  {
+   "fn": "fmtGap",
+   "args": [
+    12.345
+   ],
+   "out": "+12.35%"
+  },
+  {
+   "fn": "trackContext",
+   "args": [
+    "NVDA",
+    [
+     {
+      "id": "a",
+      "symbol": "NVDA",
+      "sec_type": "STK",
+      "enabled": true,
+      "fired_at": null,
+      "targets": {
+       "stop_loss": 170
+      }
+     },
+     {
+      "id": "b",
+      "symbol": "SPX",
+      "sec_type": "BAG",
+      "enabled": true,
+      "fired_at": null,
+      "targets": {
+       "spot_stop_below": 7700,
+       "spot_stop_above": 7790
+      }
+     },
+     {
+      "id": "c",
+      "symbol": "SPX",
+      "sec_type": "OPT",
+      "enabled": true,
+      "fired_at": null,
+      "targets": {}
+     },
+     {
+      "id": "d",
+      "symbol": "SPX",
+      "sec_type": "BAG",
+      "enabled": false,
+      "fired_at": null,
+      "targets": {
+       "spot_stop_below": 1
+      }
+     },
+     {
+      "id": "e",
+      "symbol": "TSLA",
+      "sec_type": "STK",
+      "enabled": true,
+      "fired_at": "2026-10-01",
+      "targets": {
+       "stop_loss": 1
+      }
+     },
+     {
+      "id": "f",
+      "symbol": "AAPL",
+      "sec_type": "STK",
+      "enabled": true,
+      "fired_at": null,
+      "targets": {}
+     },
+     {
+      "id": "g",
+      "symbol": "SPX",
+      "sec_type": "BAG",
+      "enabled": true,
+      "fired_at": null,
+      "targets": {
+       "spot_stop_below": 7700,
+       "spot_stop_above": 7790
+      }
+     }
+    ],
+    {
+     "a": {
+      "stop_effective": 172.5,
+      "price": 180
+     },
+     "b": {
+      "spot_stop": {
+       "below": 7700,
+       "above": 7790,
+       "spot": 7695.25
+      }
+     },
+     "g": {
+      "spot_stop": {
+       "below": 7700,
+       "above": 7790,
+       "spot": 7695.25
+      }
+     }
+    }
+   ],
+   "out": "持仓追踪:止损 172.5(距现价 −4.17%)"
+  },
+  {
+   "fn": "trackContext",
+   "args": [
+    "SPX",
+    [
+     {
+      "id": "a",
+      "symbol": "NVDA",
+      "sec_type": "STK",
+      "enabled": true,
+      "fired_at": null,
+      "targets": {
+       "stop_loss": 170
+      }
+     },
+     {
+      "id": "b",
+      "symbol": "SPX",
+      "sec_type": "BAG",
+      "enabled": true,
+      "fired_at": null,
+      "targets": {
+       "spot_stop_below": 7700,
+       "spot_stop_above": 7790
+      }
+     },
+     {
+      "id": "c",
+      "symbol": "SPX",
+      "sec_type": "OPT",
+      "enabled": true,
+      "fired_at": null,
+      "targets": {}
+     },
+     {
+      "id": "d",
+      "symbol": "SPX",
+      "sec_type": "BAG",
+      "enabled": false,
+      "fired_at": null,
+      "targets": {
+       "spot_stop_below": 1
+      }
+     },
+     {
+      "id": "e",
+      "symbol": "TSLA",
+      "sec_type": "STK",
+      "enabled": true,
+      "fired_at": "2026-10-01",
+      "targets": {
+       "stop_loss": 1
+      }
+     },
+     {
+      "id": "f",
+      "symbol": "AAPL",
+      "sec_type": "STK",
+      "enabled": true,
+      "fired_at": null,
+      "targets": {}
+     },
+     {
+      "id": "g",
+      "symbol": "SPX",
+      "sec_type": "BAG",
+      "enabled": true,
+      "fired_at": null,
+      "targets": {
+       "spot_stop_below": 7700,
+       "spot_stop_above": 7790
+      }
+     }
+    ],
+    {
+     "a": {
+      "stop_effective": 172.5,
+      "price": 180
+     },
+     "b": {
+      "spot_stop": {
+       "below": 7700,
+       "above": 7790,
+       "spot": 7695.25
+      }
+     },
+     "g": {
+      "spot_stop": {
+       "below": 7700,
+       "above": 7790,
+       "spot": 7695.25
+      }
+     }
+    }
+   ],
+   "out": "持仓追踪:标的止损 跌到 7700(已越过 4.75 点) / 涨到 7790(还差 94.75 点);期权在追踪,没设标的止损"
+  },
+  {
+   "fn": "trackContext",
+   "args": [
+    "TSLA",
+    [
+     {
+      "id": "a",
+      "symbol": "NVDA",
+      "sec_type": "STK",
+      "enabled": true,
+      "fired_at": null,
+      "targets": {
+       "stop_loss": 170
+      }
+     },
+     {
+      "id": "b",
+      "symbol": "SPX",
+      "sec_type": "BAG",
+      "enabled": true,
+      "fired_at": null,
+      "targets": {
+       "spot_stop_below": 7700,
+       "spot_stop_above": 7790
+      }
+     },
+     {
+      "id": "c",
+      "symbol": "SPX",
+      "sec_type": "OPT",
+      "enabled": true,
+      "fired_at": null,
+      "targets": {}
+     },
+     {
+      "id": "d",
+      "symbol": "SPX",
+      "sec_type": "BAG",
+      "enabled": false,
+      "fired_at": null,
+      "targets": {
+       "spot_stop_below": 1
+      }
+     },
+     {
+      "id": "e",
+      "symbol": "TSLA",
+      "sec_type": "STK",
+      "enabled": true,
+      "fired_at": "2026-10-01",
+      "targets": {
+       "stop_loss": 1
+      }
+     },
+     {
+      "id": "f",
+      "symbol": "AAPL",
+      "sec_type": "STK",
+      "enabled": true,
+      "fired_at": null,
+      "targets": {}
+     },
+     {
+      "id": "g",
+      "symbol": "SPX",
+      "sec_type": "BAG",
+      "enabled": true,
+      "fired_at": null,
+      "targets": {
+       "spot_stop_below": 7700,
+       "spot_stop_above": 7790
+      }
+     }
+    ],
+    {
+     "a": {
+      "stop_effective": 172.5,
+      "price": 180
+     },
+     "b": {
+      "spot_stop": {
+       "below": 7700,
+       "above": 7790,
+       "spot": 7695.25
+      }
+     },
+     "g": {
+      "spot_stop": {
+       "below": 7700,
+       "above": 7790,
+       "spot": 7695.25
+      }
+     }
+    }
+   ],
+   "out": null
+  },
+  {
+   "fn": "trackContext",
+   "args": [
+    "AAPL",
+    [
+     {
+      "id": "a",
+      "symbol": "NVDA",
+      "sec_type": "STK",
+      "enabled": true,
+      "fired_at": null,
+      "targets": {
+       "stop_loss": 170
+      }
+     },
+     {
+      "id": "b",
+      "symbol": "SPX",
+      "sec_type": "BAG",
+      "enabled": true,
+      "fired_at": null,
+      "targets": {
+       "spot_stop_below": 7700,
+       "spot_stop_above": 7790
+      }
+     },
+     {
+      "id": "c",
+      "symbol": "SPX",
+      "sec_type": "OPT",
+      "enabled": true,
+      "fired_at": null,
+      "targets": {}
+     },
+     {
+      "id": "d",
+      "symbol": "SPX",
+      "sec_type": "BAG",
+      "enabled": false,
+      "fired_at": null,
+      "targets": {
+       "spot_stop_below": 1
+      }
+     },
+     {
+      "id": "e",
+      "symbol": "TSLA",
+      "sec_type": "STK",
+      "enabled": true,
+      "fired_at": "2026-10-01",
+      "targets": {
+       "stop_loss": 1
+      }
+     },
+     {
+      "id": "f",
+      "symbol": "AAPL",
+      "sec_type": "STK",
+      "enabled": true,
+      "fired_at": null,
+      "targets": {}
+     },
+     {
+      "id": "g",
+      "symbol": "SPX",
+      "sec_type": "BAG",
+      "enabled": true,
+      "fired_at": null,
+      "targets": {
+       "spot_stop_below": 7700,
+       "spot_stop_above": 7790
+      }
+     }
+    ],
+    {
+     "a": {
+      "stop_effective": 172.5,
+      "price": 180
+     },
+     "b": {
+      "spot_stop": {
+       "below": 7700,
+       "above": 7790,
+       "spot": 7695.25
+      }
+     },
+     "g": {
+      "spot_stop": {
+       "below": 7700,
+       "above": 7790,
+       "spot": 7695.25
+      }
+     }
+    }
+   ],
+   "out": "持仓追踪:正股在追踪,没设止损价"
+  },
+  {
+   "fn": "trackContext",
+   "args": [
+    "QQQ",
+    [
+     {
+      "id": "a",
+      "symbol": "NVDA",
+      "sec_type": "STK",
+      "enabled": true,
+      "fired_at": null,
+      "targets": {
+       "stop_loss": 170
+      }
+     },
+     {
+      "id": "b",
+      "symbol": "SPX",
+      "sec_type": "BAG",
+      "enabled": true,
+      "fired_at": null,
+      "targets": {
+       "spot_stop_below": 7700,
+       "spot_stop_above": 7790
+      }
+     },
+     {
+      "id": "c",
+      "symbol": "SPX",
+      "sec_type": "OPT",
+      "enabled": true,
+      "fired_at": null,
+      "targets": {}
+     },
+     {
+      "id": "d",
+      "symbol": "SPX",
+      "sec_type": "BAG",
+      "enabled": false,
+      "fired_at": null,
+      "targets": {
+       "spot_stop_below": 1
+      }
+     },
+     {
+      "id": "e",
+      "symbol": "TSLA",
+      "sec_type": "STK",
+      "enabled": true,
+      "fired_at": "2026-10-01",
+      "targets": {
+       "stop_loss": 1
+      }
+     },
+     {
+      "id": "f",
+      "symbol": "AAPL",
+      "sec_type": "STK",
+      "enabled": true,
+      "fired_at": null,
+      "targets": {}
+     },
+     {
+      "id": "g",
+      "symbol": "SPX",
+      "sec_type": "BAG",
+      "enabled": true,
+      "fired_at": null,
+      "targets": {
+       "spot_stop_below": 7700,
+       "spot_stop_above": 7790
+      }
+     }
+    ],
+    {
+     "a": {
+      "stop_effective": 172.5,
+      "price": 180
+     },
+     "b": {
+      "spot_stop": {
+       "below": 7700,
+       "above": 7790,
+       "spot": 7695.25
+      }
+     },
+     "g": {
+      "spot_stop": {
+       "below": 7700,
+       "above": 7790,
+       "spot": 7695.25
+      }
+     }
+    }
+   ],
+   "out": null
+  },
+  {
+   "fn": "trackContext",
+   "args": [
+    "NVDA",
+    [
+     {
+      "id": "a",
+      "symbol": "NVDA",
+      "sec_type": "STK",
+      "enabled": true,
+      "fired_at": null,
+      "targets": {
+       "stop_loss": 170
+      }
+     },
+     {
+      "id": "b",
+      "symbol": "SPX",
+      "sec_type": "BAG",
+      "enabled": true,
+      "fired_at": null,
+      "targets": {
+       "spot_stop_below": 7700,
+       "spot_stop_above": 7790
+      }
+     },
+     {
+      "id": "c",
+      "symbol": "SPX",
+      "sec_type": "OPT",
+      "enabled": true,
+      "fired_at": null,
+      "targets": {}
+     },
+     {
+      "id": "d",
+      "symbol": "SPX",
+      "sec_type": "BAG",
+      "enabled": false,
+      "fired_at": null,
+      "targets": {
+       "spot_stop_below": 1
+      }
+     },
+     {
+      "id": "e",
+      "symbol": "TSLA",
+      "sec_type": "STK",
+      "enabled": true,
+      "fired_at": "2026-10-01",
+      "targets": {
+       "stop_loss": 1
+      }
+     },
+     {
+      "id": "f",
+      "symbol": "AAPL",
+      "sec_type": "STK",
+      "enabled": true,
+      "fired_at": null,
+      "targets": {}
+     },
+     {
+      "id": "g",
+      "symbol": "SPX",
+      "sec_type": "BAG",
+      "enabled": true,
+      "fired_at": null,
+      "targets": {
+       "spot_stop_below": 7700,
+       "spot_stop_above": 7790
+      }
+     }
+    ],
+    {}
+   ],
+   "out": "持仓追踪:止损 170"
+  }
+ ]
+}

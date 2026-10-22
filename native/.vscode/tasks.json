@@ -1,0 +1,30 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "CMake: 编译",
+      "type": "cmake",
+      "command": "build",
+      "targets": ["all"],
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "CMake: 跑测试",
+      "type": "cmake",
+      "command": "test",
+      "group": { "kind": "test", "isDefault": true },
+      "dependsOn": ["CMake: 编译"],
+      "problemMatcher": []
+    },
+    {
+      "label": "重生成对拍 fixture(@stoqey/ib)",
+      "detail": "TS 引擎升级了 @stoqey/ib 之后跑;只能重生成、不手改",
+      "type": "shell",
+      "command": "node",
+      "args": ["tests/fixtures/gen_stoqey_v193.mjs"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    }
+  ]
+}

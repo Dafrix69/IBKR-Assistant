@@ -1,0 +1,295 @@
+{
+ "generator": "gen_config_guard.mjs",
+ "exitConfig": 78,
+ "now": 1792296306000,
+ "tz": "Asia/Shanghai",
+ "roundtrip": [
+  {
+   "text": "{\"b\":1,\"a\":[1,2,{\"z\":null,\"y\":true}],\"c\":{}}",
+   "ok": true,
+   "out": "{\n  \"b\": 1,\n  \"a\": [\n    1,\n    2,\n    {\n      \"z\": null,\n      \"y\": true\n    }\n  ],\n  \"c\": {}\n}"
+  },
+  {
+   "text": "{\"dup\":1,\"x\":2,\"dup\":3}",
+   "ok": true,
+   "out": "{\n  \"dup\": 3,\n  \"x\": 2\n}"
+  },
+  {
+   "text": "[]",
+   "ok": true,
+   "out": "[]"
+  },
+  {
+   "text": "{\"e\":[],\"o\":{}}",
+   "ok": true,
+   "out": "{\n  \"e\": [],\n  \"o\": {}\n}"
+  },
+  {
+   "text": "  {\"s\":\"中文 \\u00e9 \\n \\t \\\" \\\\ \\/ \\u2028 \\ud83d\\ude00\"}  ",
+   "ok": true,
+   "out": "{\n  \"s\": \"中文 é \\n \\t \\\" \\\\ /   😀\"\n}"
+  },
+  {
+   "text": "{\"n\":[1.50,-0,0.1,1e21,1E-7,123456789012345678901234,2.5e-3,-1.0e+2,1e999]}",
+   "ok": true,
+   "out": "{\n  \"n\": [\n    1.5,\n    0,\n    0.1,\n    1e+21,\n    1e-7,\n    1.2345678901234569e+23,\n    0.0025,\n    -100,\n    null\n  ]\n}"
+  },
+  {
+   "text": "{\"k\":\"\u0001\"}",
+   "ok": false
+  },
+  {
+   "text": "{\"a\":1,}",
+   "ok": false
+  },
+  {
+   "text": "{a:1}",
+   "ok": false
+  },
+  {
+   "text": "{'a':1}",
+   "ok": false
+  },
+  {
+   "text": "{\"a\":01}",
+   "ok": false
+  },
+  {
+   "text": "{\"a\":1.}",
+   "ok": false
+  },
+  {
+   "text": "{\"a\":.5}",
+   "ok": false
+  },
+  {
+   "text": "nul",
+   "ok": false
+  },
+  {
+   "text": "{\"a\":1} x",
+   "ok": false
+  },
+  {
+   "text": "",
+   "ok": false
+  },
+  {
+   "text": "﻿{\"a\":1}",
+   "ok": false
+  },
+  {
+   "text": "{\"a\":\"\\x41\"}",
+   "ok": false
+  },
+  {
+   "text": "[1,[2,[3,[]]],{\"deep\":{\"er\":{\"est\":[{}]}}}]",
+   "ok": true,
+   "out": "[\n  1,\n  [\n    2,\n    [\n      3,\n      []\n    ]\n  ],\n  {\n    \"deep\": {\n      \"er\": {\n        \"est\": [\n          {}\n        ]\n      }\n    }\n  }\n]"
+  },
+  {
+   "text": "\"just a string\"",
+   "ok": true,
+   "out": "\"just a string\""
+  },
+  {
+   "text": "42",
+   "ok": true,
+   "out": "42"
+  },
+  {
+   "text": "true",
+   "ok": true,
+   "out": "true"
+  }
+ ],
+ "scenarios": [
+  {
+   "name": "broken+good-backup",
+   "current": "{ \"a\": 1, ",
+   "backup": "{\n  \"policies\": {\n    \"auto_execute\": true,\n    \"max_order_value\": 1000,\n    \"allow_live_trading\": true,\n    \"allow_combo_live\": true\n  },\n  \"accounts\": [\n    {\n      \"alias\": \"模拟\",\n      \"account_id\": \"DU1\"\n    }\n  ],\n  \"zeta\": 1,\n  \"alpha\": [\n    1.5\n  ]\n}",
+   "inspect": {
+    "exists": true,
+    "syntaxOk": false,
+    "hasSyntaxError": true,
+    "backupUsable": true,
+    "hasBackupAt": true,
+    "sameAsCurrent": false
+   },
+   "restore": {
+    "ok": true,
+    "closedGates": [
+     "允许自动执行",
+     "允许实盘账户下单"
+    ],
+    "brokenCopy": "settings.json.broken-20261018-120506",
+    "written": "{\n  \"policies\": {\n    \"auto_execute\": false,\n    \"max_order_value\": 1000,\n    \"allow_live_trading\": false,\n    \"allow_combo_live\": true\n  },\n  \"accounts\": [\n    {\n      \"alias\": \"模拟\",\n      \"account_id\": \"DU1\"\n    }\n  ],\n  \"zeta\": 1,\n  \"alpha\": [\n    1.5\n  ]\n}"
+   },
+   "files": [
+    "settings.json",
+    "settings.json.bak",
+    "settings.json.broken-20261018-120506"
+   ]
+  },
+  {
+   "name": "same-as-current",
+   "current": "{\n  \"policies\": {\n    \"auto_execute\": true,\n    \"max_order_value\": 1000,\n    \"allow_live_trading\": true,\n    \"allow_combo_live\": true\n  },\n  \"accounts\": [\n    {\n      \"alias\": \"模拟\",\n      \"account_id\": \"DU1\"\n    }\n  ],\n  \"zeta\": 1,\n  \"alpha\": [\n    1.5\n  ]\n}",
+   "backup": "{\n  \"policies\": {\n    \"auto_execute\": true,\n    \"max_order_value\": 1000,\n    \"allow_live_trading\": true,\n    \"allow_combo_live\": true\n  },\n  \"accounts\": [\n    {\n      \"alias\": \"模拟\",\n      \"account_id\": \"DU1\"\n    }\n  ],\n  \"zeta\": 1,\n  \"alpha\": [\n    1.5\n  ]\n}",
+   "inspect": {
+    "exists": true,
+    "syntaxOk": true,
+    "hasSyntaxError": false,
+    "backupUsable": true,
+    "hasBackupAt": true,
+    "sameAsCurrent": true
+   },
+   "restore": {
+    "ok": true,
+    "closedGates": [
+     "允许自动执行",
+     "允许实盘账户下单"
+    ],
+    "brokenCopy": "settings.json.broken-20261018-120506",
+    "written": "{\n  \"policies\": {\n    \"auto_execute\": false,\n    \"max_order_value\": 1000,\n    \"allow_live_trading\": false,\n    \"allow_combo_live\": true\n  },\n  \"accounts\": [\n    {\n      \"alias\": \"模拟\",\n      \"account_id\": \"DU1\"\n    }\n  ],\n  \"zeta\": 1,\n  \"alpha\": [\n    1.5\n  ]\n}"
+   },
+   "files": [
+    "settings.json",
+    "settings.json.bak",
+    "settings.json.broken-20261018-120506"
+   ]
+  },
+  {
+   "name": "no-backup",
+   "current": "{",
+   "backup": null,
+   "inspect": {
+    "exists": true,
+    "syntaxOk": false,
+    "hasSyntaxError": true,
+    "backupUsable": false,
+    "hasBackupAt": false,
+    "sameAsCurrent": false
+   },
+   "restore": {
+    "ok": false,
+    "error": "没有可用的备份:文件不存在"
+   },
+   "files": [
+    "settings.json"
+   ]
+  },
+  {
+   "name": "backup-not-object",
+   "current": "{",
+   "backup": "[1,2]",
+   "inspect": {
+    "exists": true,
+    "syntaxOk": false,
+    "hasSyntaxError": true,
+    "backupUsable": false,
+    "hasBackupAt": true,
+    "sameAsCurrent": false
+   },
+   "restore": {
+    "ok": false,
+    "error": "没有可用的备份:最外层不是一个 { } 对象"
+   },
+   "files": [
+    "settings.json",
+    "settings.json.bak"
+   ]
+  },
+  {
+   "name": "backup-broken",
+   "current": "{",
+   "backup": "{\"x\":",
+   "inspect": {
+    "exists": true,
+    "syntaxOk": false,
+    "hasSyntaxError": true,
+    "backupUsable": false,
+    "hasBackupAt": true,
+    "sameAsCurrent": false
+   },
+   "restore": {
+    "ok": false,
+    "error": "没有可用的备份:Unexpected end of JSON input"
+   },
+   "files": [
+    "settings.json",
+    "settings.json.bak"
+   ]
+  },
+  {
+   "name": "missing-current",
+   "current": null,
+   "backup": "{\"policies\":{\"auto_execute\":false,\"allow_live_trading\":\"yes\"},\"b\":2}",
+   "inspect": {
+    "exists": false,
+    "syntaxOk": false,
+    "hasSyntaxError": true,
+    "backupUsable": true,
+    "hasBackupAt": true,
+    "sameAsCurrent": false
+   },
+   "restore": {
+    "ok": true,
+    "closedGates": [],
+    "brokenCopy": null,
+    "written": "{\n  \"policies\": {\n    \"auto_execute\": false,\n    \"allow_live_trading\": \"yes\"\n  },\n  \"b\": 2\n}"
+   },
+   "files": [
+    "settings.json",
+    "settings.json.bak"
+   ]
+  },
+  {
+   "name": "policies-not-object",
+   "current": "{}",
+   "backup": "{\"policies\":[true],\"auto_execute\":true}",
+   "inspect": {
+    "exists": true,
+    "syntaxOk": true,
+    "hasSyntaxError": false,
+    "backupUsable": true,
+    "hasBackupAt": true,
+    "sameAsCurrent": false
+   },
+   "restore": {
+    "ok": true,
+    "closedGates": [],
+    "brokenCopy": "settings.json.broken-20261018-120506",
+    "written": "{\n  \"policies\": [\n    true\n  ],\n  \"auto_execute\": true\n}"
+   },
+   "files": [
+    "settings.json",
+    "settings.json.bak",
+    "settings.json.broken-20261018-120506"
+   ]
+  },
+  {
+   "name": "gates-already-off",
+   "current": "x",
+   "backup": "{\"z\":0,\"policies\":{\"allow_live_trading\":false}}",
+   "inspect": {
+    "exists": true,
+    "syntaxOk": false,
+    "hasSyntaxError": true,
+    "backupUsable": true,
+    "hasBackupAt": true,
+    "sameAsCurrent": false
+   },
+   "restore": {
+    "ok": true,
+    "closedGates": [],
+    "brokenCopy": "settings.json.broken-20261018-120506",
+    "written": "{\n  \"z\": 0,\n  \"policies\": {\n    \"allow_live_trading\": false\n  }\n}"
+   },
+   "files": [
+    "settings.json",
+    "settings.json.bak",
+    "settings.json.broken-20261018-120506"
+   ]
+  }
+ ]
+}

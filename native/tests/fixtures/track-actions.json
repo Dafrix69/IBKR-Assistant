@@ -1,0 +1,442 @@
+{
+  "generator": "native/tests/fixtures/gen_track_actions.mjs",
+  "cases": [
+    {
+      "name": "暂停",
+      "action": "toggle",
+      "track": {
+        "id": "tk1",
+        "symbol": "NVDA",
+        "sec_type": "STK",
+        "account": "IBKR模拟",
+        "contract": {
+          "secType": "STK"
+        },
+        "enabled": true
+      },
+      "confirms": [],
+      "result": {},
+      "calls": [
+        {
+          "call": "busy",
+          "busy": "toggle"
+        },
+        {
+          "call": "updateTracker",
+          "args": [
+            {
+              "id": "tk1",
+              "enabled": false
+            }
+          ]
+        },
+        {
+          "call": "reload",
+          "refresh": false
+        },
+        {
+          "call": "busy",
+          "busy": null
+        }
+      ]
+    },
+    {
+      "name": "恢复",
+      "action": "toggle",
+      "track": {
+        "id": "tk3",
+        "symbol": "NVDA",
+        "sec_type": "STK",
+        "account": "IBKR模拟",
+        "contract": {},
+        "enabled": false
+      },
+      "confirms": [],
+      "result": {},
+      "calls": [
+        {
+          "call": "busy",
+          "busy": "toggle"
+        },
+        {
+          "call": "updateTracker",
+          "args": [
+            {
+              "id": "tk3",
+              "enabled": true
+            }
+          ]
+        },
+        {
+          "call": "reload",
+          "refresh": false
+        },
+        {
+          "call": "busy",
+          "busy": null
+        }
+      ]
+    },
+    {
+      "name": "暂停失败",
+      "action": "toggle",
+      "track": {
+        "id": "tk1",
+        "symbol": "NVDA",
+        "sec_type": "STK",
+        "account": "IBKR模拟",
+        "contract": {
+          "secType": "STK"
+        },
+        "enabled": true
+      },
+      "confirms": [],
+      "result": "throw:引擎忙",
+      "calls": [
+        {
+          "call": "busy",
+          "busy": "toggle"
+        },
+        {
+          "call": "updateTracker",
+          "args": [
+            {
+              "id": "tk1",
+              "enabled": false
+            }
+          ]
+        },
+        {
+          "call": "banner",
+          "text": "引擎忙",
+          "info": false
+        },
+        {
+          "call": "busy",
+          "busy": null
+        }
+      ]
+    },
+    {
+      "name": "立即平仓:点了取消",
+      "action": "closeNow",
+      "track": {
+        "id": "tk2",
+        "symbol": "SPX",
+        "sec_type": "BAG",
+        "account": "模拟",
+        "contract": {
+          "label": "买入看涨蝴蝶 7725/7750/7775"
+        },
+        "enabled": 1
+      },
+      "confirms": [
+        false
+      ],
+      "result": null,
+      "calls": [
+        {
+          "call": "confirm",
+          "purpose": "tracker.close_now",
+          "binding": {
+            "id": "tk2"
+          },
+          "title": "立即平仓",
+          "message": "马上把 SPX · 买入看涨蝴蝶 7725/7750/7775 的持仓平掉?账户 模拟。",
+          "detail": "这会立刻发出一张平仓单,和到价自动平仓走的是同一条路。",
+          "confirmLabel": "平仓"
+        }
+      ]
+    },
+    {
+      "name": "立即平仓",
+      "action": "closeNow",
+      "track": {
+        "id": "tk2",
+        "symbol": "SPX",
+        "sec_type": "BAG",
+        "account": "模拟",
+        "contract": {
+          "label": "买入看涨蝴蝶 7725/7750/7775"
+        },
+        "enabled": 1
+      },
+      "confirms": [
+        true
+      ],
+      "result": {
+        "fired": {
+          "reason": "手动平仓"
+        }
+      },
+      "calls": [
+        {
+          "call": "confirm",
+          "purpose": "tracker.close_now",
+          "binding": {
+            "id": "tk2"
+          },
+          "title": "立即平仓",
+          "message": "马上把 SPX · 买入看涨蝴蝶 7725/7750/7775 的持仓平掉?账户 模拟。",
+          "detail": "这会立刻发出一张平仓单,和到价自动平仓走的是同一条路。",
+          "confirmLabel": "平仓"
+        },
+        {
+          "call": "busy",
+          "busy": "close"
+        },
+        {
+          "call": "closePositionNow",
+          "args": [
+            "tk2"
+          ]
+        },
+        {
+          "call": "banner",
+          "text": "平仓单已发出:手动平仓",
+          "info": true
+        },
+        {
+          "call": "reload",
+          "refresh": true
+        },
+        {
+          "call": "records"
+        },
+        {
+          "call": "busy",
+          "busy": null
+        }
+      ]
+    },
+    {
+      "name": "立即平仓:回执没有原因",
+      "action": "closeNow",
+      "track": {
+        "id": "tk4",
+        "symbol": "AAPL",
+        "sec_type": "OPT",
+        "account": "主账户",
+        "contract": {
+          "lastTradeDateOrContractMonth": "20260918",
+          "strike": 320,
+          "right": "C"
+        },
+        "enabled": true
+      },
+      "confirms": [
+        true
+      ],
+      "result": {},
+      "calls": [
+        {
+          "call": "confirm",
+          "purpose": "tracker.close_now",
+          "binding": {
+            "id": "tk4"
+          },
+          "title": "立即平仓",
+          "message": "马上把 AAPL 320C 2026-09-18 的持仓平掉?账户 主账户。",
+          "detail": "这会立刻发出一张平仓单,和到价自动平仓走的是同一条路。",
+          "confirmLabel": "平仓"
+        },
+        {
+          "call": "busy",
+          "busy": "close"
+        },
+        {
+          "call": "closePositionNow",
+          "args": [
+            "tk4"
+          ]
+        },
+        {
+          "call": "banner",
+          "text": "平仓单已发出:",
+          "info": true
+        },
+        {
+          "call": "reload",
+          "refresh": true
+        },
+        {
+          "call": "records"
+        },
+        {
+          "call": "busy",
+          "busy": null
+        }
+      ]
+    },
+    {
+      "name": "立即平仓:被拒",
+      "action": "closeNow",
+      "track": {
+        "id": "tk1",
+        "symbol": "NVDA",
+        "sec_type": "STK",
+        "account": "IBKR模拟",
+        "contract": {
+          "secType": "STK"
+        },
+        "enabled": true
+      },
+      "confirms": [
+        true
+      ],
+      "result": "throw:熔断中,不发单",
+      "calls": [
+        {
+          "call": "confirm",
+          "purpose": "tracker.close_now",
+          "binding": {
+            "id": "tk1"
+          },
+          "title": "立即平仓",
+          "message": "马上把 NVDA 的持仓平掉?账户 IBKR模拟。",
+          "detail": "这会立刻发出一张平仓单,和到价自动平仓走的是同一条路。",
+          "confirmLabel": "平仓"
+        },
+        {
+          "call": "busy",
+          "busy": "close"
+        },
+        {
+          "call": "closePositionNow",
+          "args": [
+            "tk1"
+          ]
+        },
+        {
+          "call": "banner",
+          "text": "熔断中,不发单",
+          "info": false
+        },
+        {
+          "call": "busy",
+          "busy": null
+        }
+      ]
+    },
+    {
+      "name": "删除:点了取消",
+      "action": "remove",
+      "track": {
+        "id": "tk1",
+        "symbol": "NVDA",
+        "sec_type": "STK",
+        "account": "IBKR模拟",
+        "contract": {
+          "secType": "STK"
+        },
+        "enabled": true
+      },
+      "confirms": [
+        false
+      ],
+      "result": null,
+      "calls": [
+        {
+          "call": "confirm",
+          "title": "删除追踪",
+          "message": "不再追踪 NVDA?",
+          "detail": "只删除追踪设置,不影响持仓本身。",
+          "confirmLabel": "删除"
+        }
+      ]
+    },
+    {
+      "name": "删除",
+      "action": "remove",
+      "track": {
+        "id": "tk2",
+        "symbol": "SPX",
+        "sec_type": "BAG",
+        "account": "模拟",
+        "contract": {
+          "label": "买入看涨蝴蝶 7725/7750/7775"
+        },
+        "enabled": 1
+      },
+      "confirms": [
+        true
+      ],
+      "result": {},
+      "calls": [
+        {
+          "call": "confirm",
+          "title": "删除追踪",
+          "message": "不再追踪 SPX?",
+          "detail": "只删除追踪设置,不影响持仓本身。",
+          "confirmLabel": "删除"
+        },
+        {
+          "call": "busy",
+          "busy": "delete"
+        },
+        {
+          "call": "deleteTracker",
+          "args": [
+            "tk2"
+          ]
+        },
+        {
+          "call": "reload",
+          "refresh": false
+        },
+        {
+          "call": "busy",
+          "busy": null
+        }
+      ]
+    },
+    {
+      "name": "删除失败",
+      "action": "remove",
+      "track": {
+        "id": "tk4",
+        "symbol": "AAPL",
+        "sec_type": "OPT",
+        "account": "主账户",
+        "contract": {
+          "lastTradeDateOrContractMonth": "20260918",
+          "strike": 320,
+          "right": "C"
+        },
+        "enabled": true
+      },
+      "confirms": [
+        true
+      ],
+      "result": "throw:没有这条追踪",
+      "calls": [
+        {
+          "call": "confirm",
+          "title": "删除追踪",
+          "message": "不再追踪 AAPL?",
+          "detail": "只删除追踪设置,不影响持仓本身。",
+          "confirmLabel": "删除"
+        },
+        {
+          "call": "busy",
+          "busy": "delete"
+        },
+        {
+          "call": "deleteTracker",
+          "args": [
+            "tk4"
+          ]
+        },
+        {
+          "call": "banner",
+          "text": "没有这条追踪",
+          "info": false
+        },
+        {
+          "call": "busy",
+          "busy": null
+        }
+      ]
+    }
+  ]
+}

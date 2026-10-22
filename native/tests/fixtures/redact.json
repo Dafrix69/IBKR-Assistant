@@ -1,0 +1,1389 @@
+{
+ "generator": "gen_redact.mjs",
+ "cases": [
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "/Users/zhangsan",
+   "input": "order rejected for account U1234567: margin",
+   "out": "order rejected for account U***567: margin"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "/Users/zhangsan",
+   "input": "DU7654321 与 U1234567",
+   "out": "DU***321 与 U***567"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "/Users/zhangsan",
+   "input": "富途账户 28190044 解锁失败",
+   "out": "富途账户 ***044 解锁失败"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "/Users/zhangsan",
+   "input": "managedAccounts: U9988776,DU1122334,F5566778",
+   "out": "managedAccounts: U***776,DU***334,F***778"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "/Users/zhangsan",
+   "input": "orderId 12345678 strike 7450 expiry 20260928 ref f1234567",
+   "out": "orderId 12345678 strike 7450 expiry 20260928 ref f1234567"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "/Users/zhangsan",
+   "input": "U12345 U123456789 DU12 I12345 DF1234567 aU1234567 U1234567b _U1234567",
+   "out": "U***345 U***56789 DU12 I***345 DF***567 aU***567 U***567b _U***567"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "/Users/zhangsan",
+   "input": "key sk-ant-api03-AbCdEf123456_xyz used",
+   "out": "key sk-*** used"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "/Users/zhangsan",
+   "input": "sk-short sk-12345678",
+   "out": "sk-short sk-***"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "/Users/zhangsan",
+   "input": "gateway auth failed with MTIzNDU2Nzg5MDEyMzQ1Njc4OQ\u002eGaBcDe\u002eabcdefghijklmnopqrstuvwxyz0123456789AB",
+   "out": "gateway auth failed with ***.***.***"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "/Users/zhangsan",
+   "input": "engine 0.5.1 at services/follow.spec.ts via gateway.discord.gg",
+   "out": "engine 0.5.1 at services/follow.spec.ts via gateway.discord.gg"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "/Users/zhangsan",
+   "input": "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.payload.sig",
+   "out": "Authorization: *** ***"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "/Users/zhangsan",
+   "input": "bearer abc.def-ghi_jkl",
+   "out": "bearer ***"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "/Users/zhangsan",
+   "input": "{\"api_key\": \"abcdef123456\"}",
+   "out": "{\"api_key\": \"***\"}"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "/Users/zhangsan",
+   "input": "x-api-key: 9f8e7d6c5b4a",
+   "out": "x-api-key: ***"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "/Users/zhangsan",
+   "input": "password=hunter2secret&next=1",
+   "out": "password=***&next=1"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "/Users/zhangsan",
+   "input": "API-KEY=abcdef, Token: 'zzzzzzzz'; secret=\"short\" passwd = 1234567",
+   "out": "API-KEY=***, Token: '***'; secret=\"short\" passwd = ***"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "/Users/zhangsan",
+   "input": "apikey:abcdefg authorization=x",
+   "out": "apikey:*** authorization=x"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "/Users/zhangsan",
+   "input": "\"max_tokens\": 8000, \"keychain_service\": \"dafri-llm-api-key\", \"keychain_account\": \"anthropic\"",
+   "out": "\"max_tokens\": 8000, \"keychain_service\": \"dafri-llm-api-key\", \"keychain_account\": \"anthropic\""
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "/Users/zhangsan",
+   "input": "at foo (/Users/zhangsan/Library/Application Support/x.js:1:1) /Users/zhangsanfeng/x",
+   "out": "at foo (~/Library/Application Support/x.js:1:1) ~feng/x"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "/Users/zhangsan",
+   "input": "[通知] 成交回报 | 账户 模拟 | BUY AAPL 100 @ 230.0000",
+   "out": "[通知] 成交回报 | (内容不进日志)"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "/Users/zhangsan",
+   "input": "[engine] ok\n[通知] 下单提醒 | warning | 限价偏离现价 3%\n[engine] next",
+   "out": "[engine] ok\n[通知] 下单提醒 | (内容不进日志)\n[engine] next"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "/Users/zhangsan",
+   "input": "[通知]没有竖线的一行",
+   "out": "[通知]没有竖线的一行"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "/Users/zhangsan",
+   "input": "[通知]　全角空格 | 内容",
+   "out": "[通知]　全角空格 | (内容不进日志)"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "/Users/zhangsan",
+   "input": "账号 2819 与 28190044 与 DU7654321X",
+   "out": "账号 *** 与 ***044 与 DU***321X"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "/Users/zhangsan",
+   "input": "",
+   "out": ""
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "/Users/zhangsan",
+   "input": "aaaaaaaaaaaaaaaaaaaa.bbbb.cccccccccccccccccccc",
+   "out": "***.***.***"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "/Users/zhangsan",
+   "input": "x.y.z 1.2.3",
+   "out": "x.y.z 1.2.3"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "",
+   "input": "order rejected for account U1234567: margin",
+   "out": "order rejected for account U***567: margin"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "",
+   "input": "DU7654321 与 U1234567",
+   "out": "DU***321 与 U***567"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "",
+   "input": "富途账户 28190044 解锁失败",
+   "out": "富途账户 ***044 解锁失败"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "",
+   "input": "managedAccounts: U9988776,DU1122334,F5566778",
+   "out": "managedAccounts: U***776,DU***334,F***778"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "",
+   "input": "orderId 12345678 strike 7450 expiry 20260928 ref f1234567",
+   "out": "orderId 12345678 strike 7450 expiry 20260928 ref f1234567"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "",
+   "input": "U12345 U123456789 DU12 I12345 DF1234567 aU1234567 U1234567b _U1234567",
+   "out": "U***345 U***56789 DU12 I***345 DF***567 aU***567 U***567b _U***567"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "",
+   "input": "key sk-ant-api03-AbCdEf123456_xyz used",
+   "out": "key sk-*** used"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "",
+   "input": "sk-short sk-12345678",
+   "out": "sk-short sk-***"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "",
+   "input": "gateway auth failed with MTIzNDU2Nzg5MDEyMzQ1Njc4OQ\u002eGaBcDe\u002eabcdefghijklmnopqrstuvwxyz0123456789AB",
+   "out": "gateway auth failed with ***.***.***"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "",
+   "input": "engine 0.5.1 at services/follow.spec.ts via gateway.discord.gg",
+   "out": "engine 0.5.1 at services/follow.spec.ts via gateway.discord.gg"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "",
+   "input": "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.payload.sig",
+   "out": "Authorization: *** ***"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "",
+   "input": "bearer abc.def-ghi_jkl",
+   "out": "bearer ***"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "",
+   "input": "{\"api_key\": \"abcdef123456\"}",
+   "out": "{\"api_key\": \"***\"}"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "",
+   "input": "x-api-key: 9f8e7d6c5b4a",
+   "out": "x-api-key: ***"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "",
+   "input": "password=hunter2secret&next=1",
+   "out": "password=***&next=1"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "",
+   "input": "API-KEY=abcdef, Token: 'zzzzzzzz'; secret=\"short\" passwd = 1234567",
+   "out": "API-KEY=***, Token: '***'; secret=\"short\" passwd = ***"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "",
+   "input": "apikey:abcdefg authorization=x",
+   "out": "apikey:*** authorization=x"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "",
+   "input": "\"max_tokens\": 8000, \"keychain_service\": \"dafri-llm-api-key\", \"keychain_account\": \"anthropic\"",
+   "out": "\"max_tokens\": 8000, \"keychain_service\": \"dafri-llm-api-key\", \"keychain_account\": \"anthropic\""
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "",
+   "input": "at foo (/Users/zhangsan/Library/Application Support/x.js:1:1) /Users/zhangsanfeng/x",
+   "out": "at foo (/Users/zhangsan/Library/Application Support/x.js:1:1) /Users/zhangsanfeng/x"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "",
+   "input": "[通知] 成交回报 | 账户 模拟 | BUY AAPL 100 @ 230.0000",
+   "out": "[通知] 成交回报 | (内容不进日志)"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "",
+   "input": "[engine] ok\n[通知] 下单提醒 | warning | 限价偏离现价 3%\n[engine] next",
+   "out": "[engine] ok\n[通知] 下单提醒 | (内容不进日志)\n[engine] next"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "",
+   "input": "[通知]没有竖线的一行",
+   "out": "[通知]没有竖线的一行"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "",
+   "input": "[通知]　全角空格 | 内容",
+   "out": "[通知]　全角空格 | (内容不进日志)"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "",
+   "input": "账号 2819 与 28190044 与 DU7654321X",
+   "out": "账号 *** 与 ***044 与 DU***321X"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "",
+   "input": "",
+   "out": ""
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "",
+   "input": "aaaaaaaaaaaaaaaaaaaa.bbbb.cccccccccccccccccccc",
+   "out": "***.***.***"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "",
+   "input": "x.y.z 1.2.3",
+   "out": "x.y.z 1.2.3"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "abc",
+   "input": "order rejected for account U1234567: margin",
+   "out": "order rejected for account U***567: margin"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "abc",
+   "input": "DU7654321 与 U1234567",
+   "out": "DU***321 与 U***567"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "abc",
+   "input": "富途账户 28190044 解锁失败",
+   "out": "富途账户 ***044 解锁失败"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "abc",
+   "input": "managedAccounts: U9988776,DU1122334,F5566778",
+   "out": "managedAccounts: U***776,DU***334,F***778"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "abc",
+   "input": "orderId 12345678 strike 7450 expiry 20260928 ref f1234567",
+   "out": "orderId 12345678 strike 7450 expiry 20260928 ref f1234567"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "abc",
+   "input": "U12345 U123456789 DU12 I12345 DF1234567 aU1234567 U1234567b _U1234567",
+   "out": "U***345 U***56789 DU12 I***345 DF***567 aU***567 U***567b _U***567"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "abc",
+   "input": "key sk-ant-api03-AbCdEf123456_xyz used",
+   "out": "key sk-*** used"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "abc",
+   "input": "sk-short sk-12345678",
+   "out": "sk-short sk-***"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "abc",
+   "input": "gateway auth failed with MTIzNDU2Nzg5MDEyMzQ1Njc4OQ\u002eGaBcDe\u002eabcdefghijklmnopqrstuvwxyz0123456789AB",
+   "out": "gateway auth failed with ***.***.***"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "abc",
+   "input": "engine 0.5.1 at services/follow.spec.ts via gateway.discord.gg",
+   "out": "engine 0.5.1 at services/follow.spec.ts via gateway.discord.gg"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "abc",
+   "input": "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.payload.sig",
+   "out": "Authorization: *** ***"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "abc",
+   "input": "bearer abc.def-ghi_jkl",
+   "out": "bearer ***"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "abc",
+   "input": "{\"api_key\": \"abcdef123456\"}",
+   "out": "{\"api_key\": \"***\"}"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "abc",
+   "input": "x-api-key: 9f8e7d6c5b4a",
+   "out": "x-api-key: ***"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "abc",
+   "input": "password=hunter2secret&next=1",
+   "out": "password=***&next=1"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "abc",
+   "input": "API-KEY=abcdef, Token: 'zzzzzzzz'; secret=\"short\" passwd = 1234567",
+   "out": "API-KEY=***, Token: '***'; secret=\"short\" passwd = ***"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "abc",
+   "input": "apikey:abcdefg authorization=x",
+   "out": "apikey:*** authorization=x"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "abc",
+   "input": "\"max_tokens\": 8000, \"keychain_service\": \"dafri-llm-api-key\", \"keychain_account\": \"anthropic\"",
+   "out": "\"max_tokens\": 8000, \"keychain_service\": \"dafri-llm-api-key\", \"keychain_account\": \"anthropic\""
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "abc",
+   "input": "at foo (/Users/zhangsan/Library/Application Support/x.js:1:1) /Users/zhangsanfeng/x",
+   "out": "at foo (/Users/zhangsan/Library/Application Support/x.js:1:1) /Users/zhangsanfeng/x"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "abc",
+   "input": "[通知] 成交回报 | 账户 模拟 | BUY AAPL 100 @ 230.0000",
+   "out": "[通知] 成交回报 | (内容不进日志)"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "abc",
+   "input": "[engine] ok\n[通知] 下单提醒 | warning | 限价偏离现价 3%\n[engine] next",
+   "out": "[engine] ok\n[通知] 下单提醒 | (内容不进日志)\n[engine] next"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "abc",
+   "input": "[通知]没有竖线的一行",
+   "out": "[通知]没有竖线的一行"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "abc",
+   "input": "[通知]　全角空格 | 内容",
+   "out": "[通知]　全角空格 | (内容不进日志)"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "abc",
+   "input": "账号 2819 与 28190044 与 DU7654321X",
+   "out": "账号 *** 与 ***044 与 DU***321X"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "abc",
+   "input": "",
+   "out": ""
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "abc",
+   "input": "aaaaaaaaaaaaaaaaaaaa.bbbb.cccccccccccccccccccc",
+   "out": "***.***.***"
+  },
+  {
+   "fn": "redact",
+   "accounts": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ],
+   "homedir": "abc",
+   "input": "x.y.z 1.2.3",
+   "out": "x.y.z 1.2.3"
+  },
+  {
+   "fn": "maskAccount",
+   "input": "DU7654321",
+   "out": "DU***321"
+  },
+  {
+   "fn": "maskAccount",
+   "input": "U1234567",
+   "out": "U***567"
+  },
+  {
+   "fn": "maskAccount",
+   "input": "28190044",
+   "out": "***044"
+  },
+  {
+   "fn": "maskAccount",
+   "input": "12345",
+   "out": "***"
+  },
+  {
+   "fn": "maskAccount",
+   "input": "123456",
+   "out": "***456"
+  },
+  {
+   "fn": "maskAccount",
+   "input": "ab",
+   "out": "***"
+  },
+  {
+   "fn": "maskAccount",
+   "input": "",
+   "out": "***"
+  },
+  {
+   "fn": "maskAccount",
+   "input": "xyZ1234567",
+   "out": "xyZ***567"
+  },
+  {
+   "fn": "maskAccount",
+   "input": "中文账号1234567",
+   "out": "***567"
+  },
+  {
+   "fn": "accountsFromConfig",
+   "input": {
+    "prompt_version": "v1.8.0",
+    "llm": {
+     "model": "claude-opus-5",
+     "effort": "high",
+     "temperature": null
+    },
+    "limits": {
+     "max_order_notional": 50000,
+     "max_option_contracts": 10,
+     "max_mkt_shares": 200,
+     "min_confidence": 0.9,
+     "max_spread_slippage": 0.1,
+     "max_orders_per_input": 5,
+     "duplicate_window_minutes": 10,
+     "duplicate_qty_tolerance": 0.2
+    },
+    "policies": {
+     "auto_execute": false,
+     "allow_live_trading": false,
+     "require_trigger_price_verification": true,
+     "trigger_min_gap_bps": 5,
+     "closed_market_policy": "reject_market_orders"
+    },
+    "connections": {
+     "paper": {
+      "host": "127.0.0.1",
+      "port": 7497,
+      "client_id": 11
+     },
+     "live": {
+      "host": "127.0.0.1",
+      "port": 7496,
+      "client_id": 12
+     }
+    },
+    "accounts": [
+     {
+      "alias": "模拟",
+      "account_id": "DU7654321",
+      "is_paper": true,
+      "connection": "paper",
+      "default": true
+     },
+     {
+      "alias": "主账户",
+      "account_id": "U1234567",
+      "is_paper": false,
+      "connection": "live",
+      "note": "备注里也写了 U1234567 与 sk-abcdefghijk"
+     },
+     {
+      "alias": "富途",
+      "account_id": "28190044",
+      "is_paper": true,
+      "connection": "paper"
+     },
+     {
+      "alias": "短",
+      "account_id": "X12",
+      "is_paper": true
+     },
+     {
+      "alias": "前缀",
+      "account_id": "2819",
+      "is_paper": true
+     },
+     "not an object",
+     null
+    ],
+    "symbol_aliases": {
+     "苹果": "AAPL",
+     "英伟达": "NVDA",
+     "特斯拉": "TSLA"
+    },
+    "index_symbols": {
+     "SPX": {
+      "exchange": "CBOE",
+      "daily_trading_class": "SPXW",
+      "monthly_trading_class": "SPX"
+     }
+    },
+    "market_holidays": [
+     "2026-09-07"
+    ],
+    "early_close_days": [
+     "2026-11-27"
+    ]
+   },
+   "out": [
+    "DU7654321",
+    "U1234567",
+    "28190044",
+    "X12",
+    "2819"
+   ]
+  },
+  {
+   "fn": "redactConfig",
+   "input": {
+    "prompt_version": "v1.8.0",
+    "llm": {
+     "model": "claude-opus-5",
+     "effort": "high",
+     "temperature": null
+    },
+    "limits": {
+     "max_order_notional": 50000,
+     "max_option_contracts": 10,
+     "max_mkt_shares": 200,
+     "min_confidence": 0.9,
+     "max_spread_slippage": 0.1,
+     "max_orders_per_input": 5,
+     "duplicate_window_minutes": 10,
+     "duplicate_qty_tolerance": 0.2
+    },
+    "policies": {
+     "auto_execute": false,
+     "allow_live_trading": false,
+     "require_trigger_price_verification": true,
+     "trigger_min_gap_bps": 5,
+     "closed_market_policy": "reject_market_orders"
+    },
+    "connections": {
+     "paper": {
+      "host": "127.0.0.1",
+      "port": 7497,
+      "client_id": 11
+     },
+     "live": {
+      "host": "127.0.0.1",
+      "port": 7496,
+      "client_id": 12
+     }
+    },
+    "accounts": [
+     {
+      "alias": "模拟",
+      "account_id": "DU7654321",
+      "is_paper": true,
+      "connection": "paper",
+      "default": true
+     },
+     {
+      "alias": "主账户",
+      "account_id": "U1234567",
+      "is_paper": false,
+      "connection": "live",
+      "note": "备注里也写了 U1234567 与 sk-abcdefghijk"
+     },
+     {
+      "alias": "富途",
+      "account_id": "28190044",
+      "is_paper": true,
+      "connection": "paper"
+     },
+     {
+      "alias": "短",
+      "account_id": "X12",
+      "is_paper": true
+     },
+     {
+      "alias": "前缀",
+      "account_id": "2819",
+      "is_paper": true
+     },
+     "not an object",
+     null
+    ],
+    "symbol_aliases": {
+     "苹果": "AAPL",
+     "英伟达": "NVDA",
+     "特斯拉": "TSLA"
+    },
+    "index_symbols": {
+     "SPX": {
+      "exchange": "CBOE",
+      "daily_trading_class": "SPXW",
+      "monthly_trading_class": "SPX"
+     }
+    },
+    "market_holidays": [
+     "2026-09-07"
+    ],
+    "early_close_days": [
+     "2026-11-27"
+    ]
+   },
+   "out": {
+    "prompt_version": "v1.8.0",
+    "llm": {
+     "model": "claude-opus-5",
+     "effort": "high",
+     "temperature": null
+    },
+    "limits": {
+     "max_order_notional": 50000,
+     "max_option_contracts": 10,
+     "max_mkt_shares": 200,
+     "min_confidence": 0.9,
+     "max_spread_slippage": 0.1,
+     "max_orders_per_input": 5,
+     "duplicate_window_minutes": 10,
+     "duplicate_qty_tolerance": 0.2
+    },
+    "policies": {
+     "auto_execute": false,
+     "allow_live_trading": false,
+     "require_trigger_price_verification": true,
+     "trigger_min_gap_bps": 5,
+     "closed_market_policy": "reject_market_orders"
+    },
+    "connections": {
+     "paper": {
+      "host": "127.0.0.1",
+      "port": 7497,
+      "client_id": 11
+     },
+     "live": {
+      "host": "127.0.0.1",
+      "port": 7496,
+      "client_id": 12
+     }
+    },
+    "accounts": [
+     {
+      "alias": "模拟",
+      "account_id": "DU***321",
+      "is_paper": true,
+      "connection": "paper",
+      "default": true
+     },
+     {
+      "alias": "主账户",
+      "account_id": "U***567",
+      "is_paper": false,
+      "connection": "live",
+      "note": "备注里也写了 U***567 与 sk-***"
+     },
+     {
+      "alias": "富途",
+      "account_id": "***044",
+      "is_paper": true,
+      "connection": "paper"
+     },
+     {
+      "alias": "短",
+      "account_id": "***",
+      "is_paper": true
+     },
+     {
+      "alias": "前缀",
+      "account_id": "***",
+      "is_paper": true
+     },
+     "not an object",
+     null
+    ],
+    "symbol_aliases": {
+     "苹果": "AAPL",
+     "英伟达": "NVDA",
+     "特斯拉": "TSLA"
+    },
+    "index_symbols": {
+     "SPX": {
+      "exchange": "CBOE",
+      "daily_trading_class": "SPXW",
+      "monthly_trading_class": "SPX"
+     }
+    },
+    "market_holidays": [
+     "2026-09-07"
+    ],
+    "early_close_days": [
+     "2026-11-27"
+    ]
+   },
+   "homedir": ""
+  },
+  {
+   "fn": "redactConfig",
+   "input": null,
+   "out": null
+  }
+ ]
+}

@@ -1,0 +1,45 @@
+# SQLite 3.53.4:better-sqlite3 13.0.3 自带的那一份(deps/sqlite3,已打上它的 1208.patch),一个字节不改。
+# 编译开关照它的 deps/defines.gypi 与 common.gypi 的 Release(装好的应用里 TS 引擎用的就是 Release 那一份):
+# 同一份源码、同一组开关,两个引擎在 SQL 上不会有差别。换版本:从新的 better-sqlite3 里整份拷过来,三个 sha256 写进 README。
+add_library(ibkr_sqlite3 STATIC sqlite3.c sqlite3.h sqlite3ext.h)
+target_include_directories(ibkr_sqlite3 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+set_target_properties(ibkr_sqlite3 PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED ON)
+target_compile_definitions(ibkr_sqlite3 PRIVATE
+    NDEBUG
+    HAVE_INT16_T=1 HAVE_INT32_T=1 HAVE_INT8_T=1 HAVE_STDINT_H=1 HAVE_UINT16_T=1 HAVE_UINT32_T=1 HAVE_UINT8_T=1 HAVE_USLEEP=1
+    SQLITE_DEFAULT_CACHE_SIZE=-16000
+    SQLITE_DEFAULT_FOREIGN_KEYS=1
+    SQLITE_DEFAULT_MEMSTATUS=0
+    SQLITE_DEFAULT_WAL_SYNCHRONOUS=1
+    SQLITE_DQS=0
+    SQLITE_ENABLE_COLUMN_METADATA
+    SQLITE_ENABLE_DBSTAT_VTAB
+    SQLITE_ENABLE_DESERIALIZE
+    SQLITE_ENABLE_FTS3
+    SQLITE_ENABLE_FTS3_PARENTHESIS
+    SQLITE_ENABLE_FTS4
+    SQLITE_ENABLE_FTS5
+    SQLITE_ENABLE_GEOPOLY
+    SQLITE_ENABLE_JSON1
+    SQLITE_ENABLE_MATH_FUNCTIONS
+    SQLITE_ENABLE_PERCENTILE
+    SQLITE_ENABLE_RTREE
+    SQLITE_ENABLE_STAT4
+    SQLITE_ENABLE_UPDATE_DELETE_LIMIT
+    SQLITE_LIKE_DOESNT_MATCH_BLOBS
+    SQLITE_OMIT_DEPRECATED
+    SQLITE_OMIT_PROGRESS_CALLBACK
+    SQLITE_OMIT_SHARED_CACHE
+    SQLITE_OMIT_TCL_VARIABLE
+    SQLITE_SOUNDEX
+    SQLITE_THREADSAFE=2
+    SQLITE_TRACE_SIZE_LIMIT=32
+    SQLITE_USE_URI=0
+    $<$<PLATFORM_ID:Windows>:WIN32>
+)
+# 别人的源码:不报它的警告(sanitizer 构建里它照样被查)
+if(MSVC)
+    target_compile_options(ibkr_sqlite3 PRIVATE /w)
+else()
+    target_compile_options(ibkr_sqlite3 PRIVATE -w -O2)
+endif()

@@ -1,0 +1,321 @@
+{
+ "generator": "gen_store_guard.mjs",
+ "exitStore": 74,
+ "now": 1792296306000,
+ "tz": "Asia/Shanghai",
+ "backups": {
+  "trades-20260928-010000-daily.db": {
+   "db": 2000000
+  },
+  "trades-20260928-010000-daily-2.db": {
+   "db": 500
+  },
+  "trades-20260927-235959-upgrade.db": {
+   "db": 10
+  },
+  "trades-20261001-120000-manual.db": {
+   "db": 1048560
+  },
+  "trades-20261001-120000-manual-10.db": {
+   "db": 0
+  },
+  "trades-20260101-000000-weird.db": {
+   "db": 100
+  },
+  "trades-2026-bad.db": {
+   "db": 100
+  },
+  "notes.txt": {
+   "text": "x"
+  },
+  "trades-20260930-080000-daily.db": {
+   "text": ""
+  },
+  "trades-20260929-080000-daily.db": {
+   "text": "not sqlite at all, sorry"
+  }
+ },
+ "list": [
+  {
+   "name": "trades-20261001-120000-manual.db",
+   "reason": "manual",
+   "at": "2026-10-01T12:00:00Z",
+   "bytes": 1048576
+  },
+  {
+   "name": "trades-20261001-120000-manual-10.db",
+   "reason": "manual",
+   "at": "2026-10-01T12:00:00Z",
+   "bytes": 16
+  },
+  {
+   "name": "trades-20260929-080000-daily.db",
+   "reason": "daily",
+   "at": "2026-09-29T08:00:00Z",
+   "bytes": 24
+  },
+  {
+   "name": "trades-20260928-010000-daily.db",
+   "reason": "daily",
+   "at": "2026-09-28T01:00:00Z",
+   "bytes": 2000016
+  },
+  {
+   "name": "trades-20260928-010000-daily-2.db",
+   "reason": "daily",
+   "at": "2026-09-28T01:00:00Z",
+   "bytes": 516
+  },
+  {
+   "name": "trades-20260927-235959-upgrade.db",
+   "reason": "upgrade",
+   "at": "2026-09-27T23:59:59Z",
+   "bytes": 26
+  }
+ ],
+ "described": [
+  {
+   "name": "trades-20261001-120000-manual.db",
+   "line": "2026/10/01 20:00 · 手动 · 1.0 MB"
+  },
+  {
+   "name": "trades-20261001-120000-manual-10.db",
+   "line": "2026/10/01 20:00 · 手动 · 1 KB"
+  },
+  {
+   "name": "trades-20260929-080000-daily.db",
+   "line": "2026/09/29 16:00 · 每日自动 · 1 KB"
+  },
+  {
+   "name": "trades-20260928-010000-daily.db",
+   "line": "2026/09/28 09:00 · 每日自动 · 1.9 MB"
+  },
+  {
+   "name": "trades-20260928-010000-daily-2.db",
+   "line": "2026/09/28 09:00 · 每日自动 · 1 KB"
+  },
+  {
+   "name": "trades-20260927-235959-upgrade.db",
+   "line": "2026/09/28 07:59 · 升级前 · 1 KB"
+  }
+ ],
+ "extra": [
+  {
+   "backup": {
+    "name": "x",
+    "reason": "daily",
+    "at": "2026-01-05T23:30:00Z",
+    "bytes": 1
+   },
+   "line": "2026/01/06 07:30 · 每日自动 · 1 KB"
+  },
+  {
+   "backup": {
+    "name": "y",
+    "reason": "manual",
+    "at": "2026-01-05T15:59:00Z",
+    "bytes": 1536
+   },
+   "line": "2026/01/05 23:59 · 手动 · 2 KB"
+  },
+  {
+   "backup": {
+    "name": "z",
+    "reason": "other",
+    "at": "2026-01-05T15:59:00Z",
+    "bytes": 1048576
+   },
+   "line": "2026/01/05 23:59 · other · 1.0 MB"
+  }
+ ],
+ "restores": [
+  {
+   "name": "main+wal+shm",
+   "target": "trades-20260928-010000-daily.db",
+   "opts": {},
+   "setupFiles": {
+    "": "OLDDB",
+    "-wal": "W",
+    "-shm": "S"
+   },
+   "result": {
+    "ok": true,
+    "restored": "trades-20260928-010000-daily.db",
+    "kept": "trades.db.before-restore-20261018-120506"
+   },
+   "files": [
+    "trades.db",
+    "trades.db.before-restore-20261018-120506",
+    "trades.db.before-restore-20261018-120506-shm",
+    "trades.db.before-restore-20261018-120506-wal"
+   ],
+   "contents": {
+    "trades.db": "1d442fd08704ae841c3d3303f3d132d72a0e656c88adb610c1164459d125a4d7",
+    "trades.db.before-restore-20261018-120506": "43ddcc9dc4ac5d939b66a5503e1bdc4770af617aa063a5a5e091a8aa2a48be77",
+    "trades.db.before-restore-20261018-120506-shm": "8de0b3c47f112c59745f717a626932264c422a7563954872e237b223af4ad643",
+    "trades.db.before-restore-20261018-120506-wal": "fcb5f40df9be6bae66c1d77a6c15968866a9e6cbd7314ca432b019d17392f6f4"
+   }
+  },
+  {
+   "name": "corrupt-aside",
+   "target": "trades-20260927-235959-upgrade.db",
+   "opts": {
+    "aside": "corrupt"
+   },
+   "setupFiles": {
+    "": "BROKEN"
+   },
+   "result": {
+    "ok": true,
+    "restored": "trades-20260927-235959-upgrade.db",
+    "kept": "trades.db.corrupt-20261018-120506"
+   },
+   "files": [
+    "trades.db",
+    "trades.db.corrupt-20261018-120506"
+   ],
+   "contents": {
+    "trades.db": "1e59d2524d7a9783f230ea42f8468669b8b0c1edec4834686a5630982ed84d71",
+    "trades.db.corrupt-20261018-120506": "d84771511dbeaa7374796d8b58d21045b82bcad601cc302037828379edb47814"
+   }
+  },
+  {
+   "name": "only-wal",
+   "target": "trades-20261001-120000-manual.db",
+   "opts": {},
+   "setupFiles": {
+    "-wal": "W"
+   },
+   "result": {
+    "ok": true,
+    "restored": "trades-20261001-120000-manual.db",
+    "kept": null
+   },
+   "files": [
+    "trades.db"
+   ],
+   "contents": {
+    "trades.db": "2605d92c115462db3e60366143d8ef1e35c9bd3b52f3c46fa348b2089de3bf3a"
+   }
+  },
+  {
+   "name": "no-db",
+   "target": "trades-20260928-010000-daily-2.db",
+   "opts": {},
+   "setupFiles": {},
+   "result": {
+    "ok": true,
+    "restored": "trades-20260928-010000-daily-2.db",
+    "kept": null
+   },
+   "files": [
+    "trades.db"
+   ],
+   "contents": {
+    "trades.db": "62c4c99635f5978ad3d6fbe53c73d73c90072d3642a07281a4a2d5089e778f4c"
+   }
+  },
+  {
+   "name": "bad-name",
+   "target": "../settings.json",
+   "opts": {},
+   "setupFiles": {
+    "": "OLD"
+   },
+   "result": {
+    "ok": false,
+    "error": "这不是一份备份的文件名"
+   },
+   "files": [
+    "trades.db"
+   ],
+   "contents": {
+    "trades.db": "099d90cbee62f89e6478e153eb3240efcbe4ac2231bedc3e84549bbeaaba87e8"
+   }
+  },
+  {
+   "name": "not-sqlite",
+   "target": "trades-20260929-080000-daily.db",
+   "opts": {},
+   "setupFiles": {
+    "": "OLD"
+   },
+   "result": {
+    "ok": false,
+    "error": "这份备份不是一个数据库文件:trades-20260929-080000-daily.db"
+   },
+   "files": [
+    "trades.db"
+   ],
+   "contents": {
+    "trades.db": "099d90cbee62f89e6478e153eb3240efcbe4ac2231bedc3e84549bbeaaba87e8"
+   }
+  },
+  {
+   "name": "empty",
+   "target": "trades-20260930-080000-daily.db",
+   "opts": {},
+   "setupFiles": {
+    "": "OLD"
+   },
+   "result": {
+    "ok": false,
+    "error": "找不到这份备份:trades-20260930-080000-daily.db"
+   },
+   "files": [
+    "trades.db"
+   ],
+   "contents": {
+    "trades.db": "099d90cbee62f89e6478e153eb3240efcbe4ac2231bedc3e84549bbeaaba87e8"
+   }
+  },
+  {
+   "name": "missing",
+   "target": "trades-20260101-000000-daily.db",
+   "opts": {},
+   "setupFiles": {
+    "": "OLD"
+   },
+   "result": {
+    "ok": false,
+    "error": "找不到这份备份:trades-20260101-000000-daily.db"
+   },
+   "files": [
+    "trades.db"
+   ],
+   "contents": {
+    "trades.db": "099d90cbee62f89e6478e153eb3240efcbe4ac2231bedc3e84549bbeaaba87e8"
+   }
+  }
+ ],
+ "fatal": [
+  {
+   "text": "line\n[fatal:store:path] /x/trades.db\n[fatal:store:corrupt] 库损坏",
+   "out": {
+    "kind": "corrupt",
+    "message": "库损坏",
+    "dbPath": "/x/trades.db"
+   }
+  },
+  {
+   "text": "[fatal:store:locked] 被占着",
+   "out": {
+    "kind": "locked",
+    "message": "被占着",
+    "dbPath": null
+   }
+  },
+  {
+   "text": "nothing",
+   "out": null
+  },
+  {
+   "text": "[fatal:store:path]  /a b/c.db  \r\n[fatal:store:newer] 版本 9\n[fatal:store:unwritable] 写不进去",
+   "out": {
+    "kind": "unwritable",
+    "message": "写不进去",
+    "dbPath": "/a b/c.db"
+   }
+  }
+ ]
+}

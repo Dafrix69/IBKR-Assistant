@@ -9,12 +9,14 @@
   `baseline/` 黄金基线。
 - `desktop/` Electron。`main.js` / `preload.js` 主进程与桥,`renderer-react/src/` 界面(React 19 + AntD 6 + zustand)。
 - 引擎与界面之间只有 stdio JSON-RPC,没有端口。真实账号永远不进提示词、不进日志、不进仓库。
+- `native/` Qt 6 / C++ 重写(`docs/briefs/qt-rewrite.md`)。`qt` 分支是主线、新开发进这里;`main` 只给已发布的 Electron 版出补丁。怎么编、怎么跑见 `native/README.md`;TWS 线协议不照着 IB 的 GPL 源码写。
 
 ## 每次改完必须跑
 
 ```
 cd engine-ts && npm run lint && npx tsc --noEmit && npx vitest run
 cd desktop   && npm run lint && npm run ui:typecheck
+cd native    && cmake --preset mac-debug && cmake --build --preset mac-debug && ctest --preset mac-debug   # 动了 native/ 才跑
 ```
 
 黄金基线红了不等于代码错了,等于**行为变了**。先判断是不是刻意的:是,`npm run golden:update` 并在 commit

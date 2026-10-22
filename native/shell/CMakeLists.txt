@@ -1,0 +1,95 @@
+# 界面那个进程里不画界面的那一半:引擎子进程的客户端、引擎的生与死、状态快照、单实例。
+# 只用 Qt Core:测试不装 Qt Quick 也能编、能跑(IBKR_BUILD_UI=OFF 时照样在)。
+
+qt_add_library(ibkr_shell STATIC
+    engine_command.h engine_command.cpp
+    engine_client.h engine_client.cpp
+    engine_supervisor.h engine_supervisor.cpp
+    status_store.h status_store.cpp
+    fatal_line.h fatal_line.cpp
+    instance_guard.h instance_guard.cpp
+    jsvalue.h
+    confirm_grants.h confirm_grants.cpp
+    consent.h consent.cpp
+    consent_model.h consent_model.cpp
+    doc_parse.h doc_parse.cpp
+    event_rules.h event_rules.cpp
+    macro_store.h macro_store.cpp
+    redactor.h redactor.cpp
+    log_file.h log_file.cpp
+    popup_rules.h popup_rules.cpp
+    alert_tone.h alert_tone.cpp
+    alerter.h alerter.cpp
+    window_state.h window_state.cpp
+    power_guard.h power_guard.cpp
+    ordered_json.h
+    config_guard.h config_guard.cpp
+    store_guard.h store_guard.cpp
+    diagnostics.h diagnostics.cpp
+    accounts_setup.h accounts_setup.cpp
+    update_check.h update_check.cpp
+    alert_rules.h alert_rules.cpp
+    track_levels.h track_levels.cpp
+    alerts_store.h alerts_store.cpp
+    spot_levels.h spot_levels.cpp
+    spot_store.h spot_store.cpp
+    playbook_format.h playbook_format.cpp
+    intel_rules.h intel_rules.cpp
+    feed_stores.h feed_stores.cpp
+    update_store.h update_store.cpp
+    track_rules.h track_rules.cpp
+    tracker_store.h tracker_store.cpp
+    track_form.h track_form.cpp
+    level_strip.h level_strip.cpp
+    track_card.h track_card.cpp
+    tracker_page.h tracker_page.cpp
+    trade_rules.h trade_rules.cpp
+    trade_composer.h trade_composer.cpp
+    keyed_list_model.h keyed_list_model.cpp
+    llm_store.h llm_store.cpp
+    trade_controller.h trade_controller.cpp
+    fly_rules.h fly_rules.cpp
+    fly_store.h fly_store.cpp
+    fly_controller.h fly_controller.cpp
+    order_rules.h order_rules.cpp
+    order_stores.h order_stores.cpp
+    board_controller.h board_controller.cpp
+    records_rules.h records_rules.cpp
+    market_rules.h market_rules.cpp
+    pa_spec.h pa_spec.cpp
+    market_controller.h market_controller.cpp
+    ideas_rules.h ideas_rules.cpp
+    ideas_controller.h ideas_controller.cpp
+    sectors_rules.h sectors_rules.cpp
+    sectors_store.h sectors_store.cpp
+    sectors_controller.h sectors_controller.cpp
+    screener_rules.h screener_rules.cpp
+    backtest_rules.h backtest_rules.cpp
+    backtest_controller.h backtest_controller.cpp
+    review_rules.h review_rules.cpp
+    review_controller.h review_controller.cpp
+    performance_rules.h performance_rules.cpp
+    performance_controller.h performance_controller.cpp
+    intel_page_rules.h intel_page_rules.cpp
+    intel_controller.h intel_controller.cpp
+    access_rules.h access_rules.cpp
+    settings_rules.h settings_rules.cpp
+    settings_controller.h settings_controller.cpp
+    about_controller.h about_controller.cpp
+    access_controller.h access_controller.cpp
+    screener_controller.h screener_controller.cpp
+    records_controller.h records_controller.cpp
+    chart_spec.h chart_spec.cpp
+    chart_scale.h chart_scale.cpp
+    chart_source.h
+    track_actions.h track_actions.cpp
+    tracker_controller.h tracker_controller.cpp
+    events_store.h events_store.cpp
+    topbar_state.h topbar_state.cpp
+    shell_actions.h shell_actions.cpp
+    rpc_policy.h rpc_policy.cpp
+    bridge.h bridge.cpp
+)
+# 头文件按 "shell/xxx.h" 引
+target_include_directories(ibkr_shell PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
+target_link_libraries(ibkr_shell PUBLIC ibkr_util Qt6::Core)

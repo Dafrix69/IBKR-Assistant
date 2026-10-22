@@ -1,0 +1,2196 @@
+{
+  "generator": "native/tests/fixtures/gen_track_rules.mjs",
+  "tz": "Asia/Shanghai",
+  "maxTiers": 4,
+  "emptyExitFields": {
+    "exitAt": "",
+    "stopConfirm": null,
+    "stopBasis": "mid",
+    "chaseGrace": null,
+    "chaseStep": null,
+    "chaseMax": null,
+    "peakConfirm": false,
+    "tiers": []
+  },
+  "trackStateLabel": {
+    "holding": "持有中",
+    "take_profit": "止盈已触发",
+    "profit_trail": "利润回撤已触发",
+    "stop_loss": "止损已触发",
+    "manual": "已手动平仓",
+    "time_exit": "已到点平仓",
+    "closed": "持仓已不在",
+    "sweep:take_profit": "到了目标价,追价平仓中",
+    "sweep:stop_loss": "止损触发,追价平仓中",
+    "sweep:profit_trail": "利润回撤触发,追价平仓中",
+    "sweep:manual": "手动平仓,追价中",
+    "sweep:time_exit": "到点了,追价平仓中"
+  },
+  "cases": [
+    {
+      "fn": "fmtNum",
+      "args": [
+        1.005,
+        2
+      ],
+      "out": "1.00"
+    },
+    {
+      "fn": "fmtNum",
+      "args": [
+        0.05,
+        2
+      ],
+      "out": "0.05"
+    },
+    {
+      "fn": "fmtNum",
+      "args": [
+        "12.5",
+        2
+      ],
+      "out": "12.50"
+    },
+    {
+      "fn": "fmtNum",
+      "args": [
+        null,
+        2
+      ],
+      "out": "0.00"
+    },
+    {
+      "fn": "fmtNum",
+      "args": [
+        "__undefined__",
+        2
+      ],
+      "out": "—"
+    },
+    {
+      "fn": "fmtNum",
+      "args": [
+        "x",
+        2
+      ],
+      "out": "—"
+    },
+    {
+      "fn": "fmtNum",
+      "args": [
+        -0.004,
+        2
+      ],
+      "out": "-0.00"
+    },
+    {
+      "fn": "fmtNum",
+      "args": [
+        1e+21,
+        2
+      ],
+      "out": "1e+21"
+    },
+    {
+      "fn": "fmtNum",
+      "args": [
+        7712.4,
+        2
+      ],
+      "out": "7712.40"
+    },
+    {
+      "fn": "fmtNum",
+      "args": [
+        0.05,
+        4
+      ],
+      "out": "0.0500"
+    },
+    {
+      "fn": "fmtNum",
+      "args": [
+        3,
+        0
+      ],
+      "out": "3"
+    },
+    {
+      "fn": "fmtNum",
+      "args": [
+        2.5,
+        0
+      ],
+      "out": "3"
+    },
+    {
+      "fn": "fmtMoney",
+      "args": [
+        1234567.891
+      ],
+      "out": "1,234,567.89"
+    },
+    {
+      "fn": "fmtMoney",
+      "args": [
+        0
+      ],
+      "out": "0.00"
+    },
+    {
+      "fn": "fmtMoney",
+      "args": [
+        -12.345
+      ],
+      "out": "-12.35"
+    },
+    {
+      "fn": "fmtMoney",
+      "args": [
+        "99.995"
+      ],
+      "out": "100.00"
+    },
+    {
+      "fn": "fmtMoney",
+      "args": [
+        null
+      ],
+      "out": "—"
+    },
+    {
+      "fn": "fmtMoney",
+      "args": [
+        "__undefined__"
+      ],
+      "out": "—"
+    },
+    {
+      "fn": "fmtMoney",
+      "args": [
+        "abc"
+      ],
+      "out": "—"
+    },
+    {
+      "fn": "fmtMoney",
+      "args": [
+        1e+21
+      ],
+      "out": "1,000,000,000,000,000,000,000.00"
+    },
+    {
+      "fn": "fmtMoney",
+      "args": [
+        0.005
+      ],
+      "out": "0.01"
+    },
+    {
+      "fn": "fmtMoney",
+      "args": [
+        -0.004
+      ],
+      "out": "-0.00"
+    },
+    {
+      "fn": "fmtMoney",
+      "args": [
+        -0.001
+      ],
+      "out": "-0.00"
+    },
+    {
+      "fn": "fmtExpiry",
+      "args": [
+        "20261120"
+      ],
+      "out": "2026-11-20"
+    },
+    {
+      "fn": "fmtExpiry",
+      "args": [
+        " 20261120 "
+      ],
+      "out": "2026-11-20"
+    },
+    {
+      "fn": "fmtExpiry",
+      "args": [
+        "202611"
+      ],
+      "out": "202611"
+    },
+    {
+      "fn": "fmtExpiry",
+      "args": [
+        ""
+      ],
+      "out": null
+    },
+    {
+      "fn": "fmtExpiry",
+      "args": [
+        null
+      ],
+      "out": null
+    },
+    {
+      "fn": "fmtExpiry",
+      "args": [
+        20261120
+      ],
+      "out": "2026-11-20"
+    },
+    {
+      "fn": "spotStopSummary",
+      "args": [
+        7700,
+        7790
+      ],
+      "out": "标的止损 跌到 7700 / 涨到 7790"
+    },
+    {
+      "fn": "spotStopConfirmLine",
+      "args": [
+        7700,
+        7790
+      ],
+      "out": "标的止损:SPX 跌到 7700、或涨到 7790 就平,记作止损。只看标的现价,不看这份持仓值多少;软件开着时按秒盯。\n"
+    },
+    {
+      "fn": "spotStopSummary",
+      "args": [
+        7700.5,
+        null
+      ],
+      "out": "标的止损 跌到 7700.5"
+    },
+    {
+      "fn": "spotStopConfirmLine",
+      "args": [
+        7700.5,
+        null
+      ],
+      "out": "标的止损:SPX 跌到 7700.5 就平,记作止损。只看标的现价,不看这份持仓值多少;软件开着时按秒盯。\n"
+    },
+    {
+      "fn": "spotStopSummary",
+      "args": [
+        null,
+        7790.256
+      ],
+      "out": "标的止损 涨到 7790.26"
+    },
+    {
+      "fn": "spotStopConfirmLine",
+      "args": [
+        null,
+        7790.256
+      ],
+      "out": "标的止损:SPX 涨到 7790.26 就平,记作止损。只看标的现价,不看这份持仓值多少;软件开着时按秒盯。\n"
+    },
+    {
+      "fn": "spotStopSummary",
+      "args": [
+        null,
+        null
+      ],
+      "out": ""
+    },
+    {
+      "fn": "spotStopConfirmLine",
+      "args": [
+        null,
+        null
+      ],
+      "out": ""
+    },
+    {
+      "fn": "spotStopSummary",
+      "args": [
+        7700.004,
+        "__undefined__"
+      ],
+      "out": "标的止损 跌到 7700"
+    },
+    {
+      "fn": "spotStopConfirmLine",
+      "args": [
+        7700.004,
+        "__undefined__"
+      ],
+      "out": "标的止损:SPX 跌到 7700 就平,记作止损。只看标的现价,不看这份持仓值多少;软件开着时按秒盯。\n"
+    },
+    {
+      "fn": "spotStopLine",
+      "args": [
+        {
+          "below": 7700,
+          "above": 7790,
+          "spot": 7712.456
+        }
+      ],
+      "out": "标的止损:SPX 现价 7712.46,跌到 7700 就平(还差 12.46 点),涨到 7790 就平(还差 77.54 点)"
+    },
+    {
+      "fn": "spotStopLine",
+      "args": [
+        {
+          "below": 7700,
+          "above": null,
+          "spot": 7695.5,
+          "spot_note": "盘外按 ES 推算"
+        }
+      ],
+      "out": "标的止损:SPX 现价 7695.50,跌到 7700 就平(还差 -4.50 点) · 盘外按 ES 推算"
+    },
+    {
+      "fn": "spotStopLine",
+      "args": [
+        {
+          "below": null,
+          "above": 7790,
+          "spot": null
+        }
+      ],
+      "out": "拿不到 SPX 的现价,标的止损这一轮不判断"
+    },
+    {
+      "fn": "spotStopLine",
+      "args": [
+        {
+          "below": 7700,
+          "above": null,
+          "spot": null,
+          "reason": "标的行情断了"
+        }
+      ],
+      "out": "标的行情断了"
+    },
+    {
+      "fn": "spotStopLine",
+      "args": [
+        {
+          "below": 7700,
+          "above": 7790,
+          "spot": 7698,
+          "pending": {
+            "side": "below",
+            "held_s": 4,
+            "need_s": 10
+          }
+        }
+      ],
+      "out": "标的止损:已跌破止损线,持续 4 秒,满 10 秒才平 · SPX 现价 7698.00,跌到 7700 就平(还差 -2.00 点),涨到 7790 就平(还差 92.00 点)"
+    },
+    {
+      "fn": "spotStopLine",
+      "args": [
+        {
+          "below": 7700,
+          "above": 7790,
+          "spot": 7792,
+          "pending": {
+            "side": "above",
+            "held_s": 1,
+            "need_s": 3
+          }
+        }
+      ],
+      "out": "标的止损:已涨破止损线,持续 1 秒,满 3 秒才平 · SPX 现价 7792.00,跌到 7700 就平(还差 92.00 点),涨到 7790 就平(还差 -2.00 点)"
+    },
+    {
+      "fn": "exitSpec",
+      "args": [
+        {
+          "exitAt": "",
+          "stopConfirm": null,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": []
+        },
+        true
+      ],
+      "out": {
+        "exit_at": "",
+        "spot_stop_confirm_s": "",
+        "take_profit_tiers": "",
+        "stop_basis": "mid"
+      }
+    },
+    {
+      "fn": "exitConfirmLines",
+      "args": [
+        {
+          "exitAt": "",
+          "stopConfirm": null,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": []
+        },
+        true
+      ],
+      "out": ""
+    },
+    {
+      "fn": "exitSpec",
+      "args": [
+        {
+          "exitAt": "",
+          "stopConfirm": null,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": []
+        },
+        false
+      ],
+      "out": {
+        "exit_at": "",
+        "spot_stop_confirm_s": "",
+        "take_profit_tiers": ""
+      }
+    },
+    {
+      "fn": "exitConfirmLines",
+      "args": [
+        {
+          "exitAt": "",
+          "stopConfirm": null,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": []
+        },
+        false
+      ],
+      "out": ""
+    },
+    {
+      "fn": "exitProblems",
+      "args": [
+        {
+          "exitAt": "",
+          "stopConfirm": null,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": []
+        },
+        {
+          "hosted": false,
+          "hasSpotStop": false
+        }
+      ],
+      "out": []
+    },
+    {
+      "fn": "exitProblems",
+      "args": [
+        {
+          "exitAt": "",
+          "stopConfirm": null,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": []
+        },
+        {
+          "hosted": true,
+          "hasSpotStop": true
+        }
+      ],
+      "out": []
+    },
+    {
+      "fn": "exitProblems",
+      "args": [
+        {
+          "exitAt": "",
+          "stopConfirm": null,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": []
+        },
+        {
+          "hosted": false,
+          "hasSpotStop": false,
+          "stock": true,
+          "hasStockStop": false
+        }
+      ],
+      "out": []
+    },
+    {
+      "fn": "exitProblems",
+      "args": [
+        {
+          "exitAt": "",
+          "stopConfirm": null,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": []
+        },
+        {
+          "hosted": true,
+          "hasSpotStop": false,
+          "stock": true,
+          "hasStockStop": true
+        }
+      ],
+      "out": []
+    },
+    {
+      "fn": "exitProblems",
+      "args": [
+        {
+          "exitAt": "",
+          "stopConfirm": null,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": []
+        },
+        {
+          "hosted": false,
+          "hasSpotStop": true,
+          "stock": true,
+          "hasStockStop": true
+        }
+      ],
+      "out": []
+    },
+    {
+      "fn": "exitSpec",
+      "args": [
+        {
+          "exitAt": " 15:45 ",
+          "stopConfirm": 10,
+          "stopBasis": "natural",
+          "chaseGrace": 3,
+          "chaseStep": 2,
+          "chaseMax": 40,
+          "peakConfirm": true,
+          "tiers": [
+            {
+              "price": 7.5,
+              "fraction": 50
+            },
+            {
+              "price": 9,
+              "fraction": 25
+            },
+            {
+              "price": null,
+              "fraction": 10
+            }
+          ]
+        },
+        true
+      ],
+      "out": {
+        "exit_at": "15:45",
+        "spot_stop_confirm_s": "10",
+        "take_profit_tiers": [
+          {
+            "price": "7.5",
+            "fraction_pct": "50"
+          },
+          {
+            "price": "9",
+            "fraction_pct": "25"
+          }
+        ],
+        "stop_basis": "natural",
+        "stop_chase_grace": "3",
+        "stop_chase_step": "2",
+        "stop_chase_max_pct": "40",
+        "peak_confirm": true
+      }
+    },
+    {
+      "fn": "exitConfirmLines",
+      "args": [
+        {
+          "exitAt": " 15:45 ",
+          "stopConfirm": 10,
+          "stopBasis": "natural",
+          "chaseGrace": 3,
+          "chaseStep": 2,
+          "chaseMax": 40,
+          "peakConfirm": true,
+          "tiers": [
+            {
+              "price": 7.5,
+              "fraction": 50
+            },
+            {
+              "price": 9,
+              "fraction": 25
+            },
+            {
+              "price": null,
+              "fraction": 10
+            }
+          ]
+        },
+        true
+      ],
+      "out": "到点平仓:下一次到美东 15:45 时持仓还在就平(不算止损);软件开着时才盯。\n分批止盈:第 1 档到 7.5 平 50%,第 2 档到 9 平 25%。每一档成交之后接着盯剩下的仓。\n标的止损要标的在线外连续待满 10 秒才平。\n止损、跟踪止损、利润回撤按「此刻立刻能成交的价」判(盘口变宽时会比按中间价判更早触发)。\n止损类触发后的追价:先等 3 秒,之后每秒让 2 跳,最多让到立刻成交价的 40%。\n峰值要连续两秒都见到才往上推:跟踪止损与利润回撤的峰值晚一秒,只出现一秒的高点不算。\n"
+    },
+    {
+      "fn": "exitSpec",
+      "args": [
+        {
+          "exitAt": " 15:45 ",
+          "stopConfirm": 10,
+          "stopBasis": "natural",
+          "chaseGrace": 3,
+          "chaseStep": 2,
+          "chaseMax": 40,
+          "peakConfirm": true,
+          "tiers": [
+            {
+              "price": 7.5,
+              "fraction": 50
+            },
+            {
+              "price": 9,
+              "fraction": 25
+            },
+            {
+              "price": null,
+              "fraction": 10
+            }
+          ]
+        },
+        false
+      ],
+      "out": {
+        "exit_at": "15:45",
+        "spot_stop_confirm_s": "10",
+        "take_profit_tiers": [
+          {
+            "price": "7.5",
+            "fraction_pct": "50"
+          },
+          {
+            "price": "9",
+            "fraction_pct": "25"
+          }
+        ]
+      }
+    },
+    {
+      "fn": "exitConfirmLines",
+      "args": [
+        {
+          "exitAt": " 15:45 ",
+          "stopConfirm": 10,
+          "stopBasis": "natural",
+          "chaseGrace": 3,
+          "chaseStep": 2,
+          "chaseMax": 40,
+          "peakConfirm": true,
+          "tiers": [
+            {
+              "price": 7.5,
+              "fraction": 50
+            },
+            {
+              "price": 9,
+              "fraction": 25
+            },
+            {
+              "price": null,
+              "fraction": 10
+            }
+          ]
+        },
+        false
+      ],
+      "out": "到点平仓:下一次到美东 15:45 时持仓还在就平(不算止损);软件开着时才盯。\n分批止盈:第 1 档到 7.5 平 50%,第 2 档到 9 平 25%。每一档成交之后接着盯剩下的仓。\n止损要现价在线外连续待满 10 秒才平(一笔打穿又弹回的不算)。\n"
+    },
+    {
+      "fn": "exitProblems",
+      "args": [
+        {
+          "exitAt": " 15:45 ",
+          "stopConfirm": 10,
+          "stopBasis": "natural",
+          "chaseGrace": 3,
+          "chaseStep": 2,
+          "chaseMax": 40,
+          "peakConfirm": true,
+          "tiers": [
+            {
+              "price": 7.5,
+              "fraction": 50
+            },
+            {
+              "price": 9,
+              "fraction": 25
+            },
+            {
+              "price": null,
+              "fraction": 10
+            }
+          ]
+        },
+        {
+          "hosted": false,
+          "hasSpotStop": false
+        }
+      ],
+      "out": [
+        "分批止盈的每一档要把价和比例都填上。",
+        "确认秒数是给标的止损价用的:先填「标的跌到」或「标的涨到」。"
+      ]
+    },
+    {
+      "fn": "exitProblems",
+      "args": [
+        {
+          "exitAt": " 15:45 ",
+          "stopConfirm": 10,
+          "stopBasis": "natural",
+          "chaseGrace": 3,
+          "chaseStep": 2,
+          "chaseMax": 40,
+          "peakConfirm": true,
+          "tiers": [
+            {
+              "price": 7.5,
+              "fraction": 50
+            },
+            {
+              "price": 9,
+              "fraction": 25
+            },
+            {
+              "price": null,
+              "fraction": 10
+            }
+          ]
+        },
+        {
+          "hosted": true,
+          "hasSpotStop": true
+        }
+      ],
+      "out": [
+        "分批止盈的每一档要把价和比例都填上。",
+        "分批止盈只支持软件盯盘:托管到券商时不能设。"
+      ]
+    },
+    {
+      "fn": "exitProblems",
+      "args": [
+        {
+          "exitAt": " 15:45 ",
+          "stopConfirm": 10,
+          "stopBasis": "natural",
+          "chaseGrace": 3,
+          "chaseStep": 2,
+          "chaseMax": 40,
+          "peakConfirm": true,
+          "tiers": [
+            {
+              "price": 7.5,
+              "fraction": 50
+            },
+            {
+              "price": 9,
+              "fraction": 25
+            },
+            {
+              "price": null,
+              "fraction": 10
+            }
+          ]
+        },
+        {
+          "hosted": false,
+          "hasSpotStop": false,
+          "stock": true,
+          "hasStockStop": false
+        }
+      ],
+      "out": [
+        "分批止盈的每一档要把价和比例都填上。",
+        "正股的止损确认要先填止损价或跟踪止损。"
+      ]
+    },
+    {
+      "fn": "exitProblems",
+      "args": [
+        {
+          "exitAt": " 15:45 ",
+          "stopConfirm": 10,
+          "stopBasis": "natural",
+          "chaseGrace": 3,
+          "chaseStep": 2,
+          "chaseMax": 40,
+          "peakConfirm": true,
+          "tiers": [
+            {
+              "price": 7.5,
+              "fraction": 50
+            },
+            {
+              "price": 9,
+              "fraction": 25
+            },
+            {
+              "price": null,
+              "fraction": 10
+            }
+          ]
+        },
+        {
+          "hosted": true,
+          "hasSpotStop": false,
+          "stock": true,
+          "hasStockStop": true
+        }
+      ],
+      "out": [
+        "分批止盈的每一档要把价和比例都填上。",
+        "分批止盈只支持软件盯盘:托管到券商时不能设。",
+        "托管到券商的止损由券商触线即发,确认秒数只在软件自己盯时有用:要用它就别托管。"
+      ]
+    },
+    {
+      "fn": "exitProblems",
+      "args": [
+        {
+          "exitAt": " 15:45 ",
+          "stopConfirm": 10,
+          "stopBasis": "natural",
+          "chaseGrace": 3,
+          "chaseStep": 2,
+          "chaseMax": 40,
+          "peakConfirm": true,
+          "tiers": [
+            {
+              "price": 7.5,
+              "fraction": 50
+            },
+            {
+              "price": 9,
+              "fraction": 25
+            },
+            {
+              "price": null,
+              "fraction": 10
+            }
+          ]
+        },
+        {
+          "hosted": false,
+          "hasSpotStop": true,
+          "stock": true,
+          "hasStockStop": true
+        }
+      ],
+      "out": [
+        "分批止盈的每一档要把价和比例都填上。"
+      ]
+    },
+    {
+      "fn": "exitSpec",
+      "args": [
+        {
+          "exitAt": "9:5",
+          "stopConfirm": null,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": [
+            {
+              "price": 1.2,
+              "fraction": null
+            }
+          ]
+        },
+        true
+      ],
+      "out": {
+        "exit_at": "9:5",
+        "spot_stop_confirm_s": "",
+        "take_profit_tiers": "",
+        "stop_basis": "mid"
+      }
+    },
+    {
+      "fn": "exitConfirmLines",
+      "args": [
+        {
+          "exitAt": "9:5",
+          "stopConfirm": null,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": [
+            {
+              "price": 1.2,
+              "fraction": null
+            }
+          ]
+        },
+        true
+      ],
+      "out": "到点平仓:下一次到美东 9:5 时持仓还在就平(不算止损);软件开着时才盯。\n"
+    },
+    {
+      "fn": "exitSpec",
+      "args": [
+        {
+          "exitAt": "9:5",
+          "stopConfirm": null,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": [
+            {
+              "price": 1.2,
+              "fraction": null
+            }
+          ]
+        },
+        false
+      ],
+      "out": {
+        "exit_at": "9:5",
+        "spot_stop_confirm_s": "",
+        "take_profit_tiers": ""
+      }
+    },
+    {
+      "fn": "exitConfirmLines",
+      "args": [
+        {
+          "exitAt": "9:5",
+          "stopConfirm": null,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": [
+            {
+              "price": 1.2,
+              "fraction": null
+            }
+          ]
+        },
+        false
+      ],
+      "out": "到点平仓:下一次到美东 9:5 时持仓还在就平(不算止损);软件开着时才盯。\n"
+    },
+    {
+      "fn": "exitProblems",
+      "args": [
+        {
+          "exitAt": "9:5",
+          "stopConfirm": null,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": [
+            {
+              "price": 1.2,
+              "fraction": null
+            }
+          ]
+        },
+        {
+          "hosted": false,
+          "hasSpotStop": false
+        }
+      ],
+      "out": [
+        "到点平仓的时刻要写成美东时间的 HH:MM,如 15:45。",
+        "分批止盈的每一档要把价和比例都填上。"
+      ]
+    },
+    {
+      "fn": "exitProblems",
+      "args": [
+        {
+          "exitAt": "9:5",
+          "stopConfirm": null,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": [
+            {
+              "price": 1.2,
+              "fraction": null
+            }
+          ]
+        },
+        {
+          "hosted": true,
+          "hasSpotStop": true
+        }
+      ],
+      "out": [
+        "到点平仓的时刻要写成美东时间的 HH:MM,如 15:45。",
+        "分批止盈的每一档要把价和比例都填上。"
+      ]
+    },
+    {
+      "fn": "exitProblems",
+      "args": [
+        {
+          "exitAt": "9:5",
+          "stopConfirm": null,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": [
+            {
+              "price": 1.2,
+              "fraction": null
+            }
+          ]
+        },
+        {
+          "hosted": false,
+          "hasSpotStop": false,
+          "stock": true,
+          "hasStockStop": false
+        }
+      ],
+      "out": [
+        "到点平仓的时刻要写成美东时间的 HH:MM,如 15:45。",
+        "分批止盈的每一档要把价和比例都填上。"
+      ]
+    },
+    {
+      "fn": "exitProblems",
+      "args": [
+        {
+          "exitAt": "9:5",
+          "stopConfirm": null,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": [
+            {
+              "price": 1.2,
+              "fraction": null
+            }
+          ]
+        },
+        {
+          "hosted": true,
+          "hasSpotStop": false,
+          "stock": true,
+          "hasStockStop": true
+        }
+      ],
+      "out": [
+        "到点平仓的时刻要写成美东时间的 HH:MM,如 15:45。",
+        "分批止盈的每一档要把价和比例都填上。"
+      ]
+    },
+    {
+      "fn": "exitProblems",
+      "args": [
+        {
+          "exitAt": "9:5",
+          "stopConfirm": null,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": [
+            {
+              "price": 1.2,
+              "fraction": null
+            }
+          ]
+        },
+        {
+          "hosted": false,
+          "hasSpotStop": true,
+          "stock": true,
+          "hasStockStop": true
+        }
+      ],
+      "out": [
+        "到点平仓的时刻要写成美东时间的 HH:MM,如 15:45。",
+        "分批止盈的每一档要把价和比例都填上。"
+      ]
+    },
+    {
+      "fn": "exitSpec",
+      "args": [
+        {
+          "exitAt": "24:00",
+          "stopConfirm": 0,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": 1,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": []
+        },
+        true
+      ],
+      "out": {
+        "exit_at": "24:00",
+        "spot_stop_confirm_s": "0",
+        "take_profit_tiers": "",
+        "stop_basis": "mid",
+        "stop_chase_step": "1"
+      }
+    },
+    {
+      "fn": "exitConfirmLines",
+      "args": [
+        {
+          "exitAt": "24:00",
+          "stopConfirm": 0,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": 1,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": []
+        },
+        true
+      ],
+      "out": "到点平仓:下一次到美东 24:00 时持仓还在就平(不算止损);软件开着时才盯。\n止损类触发后的追价:先等 2 秒,之后每秒让 1 跳。\n"
+    },
+    {
+      "fn": "exitSpec",
+      "args": [
+        {
+          "exitAt": "24:00",
+          "stopConfirm": 0,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": 1,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": []
+        },
+        false
+      ],
+      "out": {
+        "exit_at": "24:00",
+        "spot_stop_confirm_s": "0",
+        "take_profit_tiers": ""
+      }
+    },
+    {
+      "fn": "exitConfirmLines",
+      "args": [
+        {
+          "exitAt": "24:00",
+          "stopConfirm": 0,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": 1,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": []
+        },
+        false
+      ],
+      "out": "到点平仓:下一次到美东 24:00 时持仓还在就平(不算止损);软件开着时才盯。\n"
+    },
+    {
+      "fn": "exitProblems",
+      "args": [
+        {
+          "exitAt": "24:00",
+          "stopConfirm": 0,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": 1,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": []
+        },
+        {
+          "hosted": false,
+          "hasSpotStop": false
+        }
+      ],
+      "out": [
+        "到点平仓的时刻要写成美东时间的 HH:MM,如 15:45。"
+      ]
+    },
+    {
+      "fn": "exitProblems",
+      "args": [
+        {
+          "exitAt": "24:00",
+          "stopConfirm": 0,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": 1,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": []
+        },
+        {
+          "hosted": true,
+          "hasSpotStop": true
+        }
+      ],
+      "out": [
+        "到点平仓的时刻要写成美东时间的 HH:MM,如 15:45。"
+      ]
+    },
+    {
+      "fn": "exitProblems",
+      "args": [
+        {
+          "exitAt": "24:00",
+          "stopConfirm": 0,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": 1,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": []
+        },
+        {
+          "hosted": false,
+          "hasSpotStop": false,
+          "stock": true,
+          "hasStockStop": false
+        }
+      ],
+      "out": [
+        "到点平仓的时刻要写成美东时间的 HH:MM,如 15:45。"
+      ]
+    },
+    {
+      "fn": "exitProblems",
+      "args": [
+        {
+          "exitAt": "24:00",
+          "stopConfirm": 0,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": 1,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": []
+        },
+        {
+          "hosted": true,
+          "hasSpotStop": false,
+          "stock": true,
+          "hasStockStop": true
+        }
+      ],
+      "out": [
+        "到点平仓的时刻要写成美东时间的 HH:MM,如 15:45。"
+      ]
+    },
+    {
+      "fn": "exitProblems",
+      "args": [
+        {
+          "exitAt": "24:00",
+          "stopConfirm": 0,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": 1,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": []
+        },
+        {
+          "hosted": false,
+          "hasSpotStop": true,
+          "stock": true,
+          "hasStockStop": true
+        }
+      ],
+      "out": [
+        "到点平仓的时刻要写成美东时间的 HH:MM,如 15:45。"
+      ]
+    },
+    {
+      "fn": "exitSpec",
+      "args": [
+        {
+          "exitAt": "",
+          "stopConfirm": 5,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": 25.5,
+          "peakConfirm": false,
+          "tiers": []
+        },
+        true
+      ],
+      "out": {
+        "exit_at": "",
+        "spot_stop_confirm_s": "5",
+        "take_profit_tiers": "",
+        "stop_basis": "mid",
+        "stop_chase_max_pct": "25.5"
+      }
+    },
+    {
+      "fn": "exitConfirmLines",
+      "args": [
+        {
+          "exitAt": "",
+          "stopConfirm": 5,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": 25.5,
+          "peakConfirm": false,
+          "tiers": []
+        },
+        true
+      ],
+      "out": "标的止损要标的在线外连续待满 5 秒才平。\n止损类触发后的追价:先等 2 秒,之后每秒让 1 跳,最多让到立刻成交价的 25.5%。\n"
+    },
+    {
+      "fn": "exitSpec",
+      "args": [
+        {
+          "exitAt": "",
+          "stopConfirm": 5,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": 25.5,
+          "peakConfirm": false,
+          "tiers": []
+        },
+        false
+      ],
+      "out": {
+        "exit_at": "",
+        "spot_stop_confirm_s": "5",
+        "take_profit_tiers": ""
+      }
+    },
+    {
+      "fn": "exitConfirmLines",
+      "args": [
+        {
+          "exitAt": "",
+          "stopConfirm": 5,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": 25.5,
+          "peakConfirm": false,
+          "tiers": []
+        },
+        false
+      ],
+      "out": "止损要现价在线外连续待满 5 秒才平(一笔打穿又弹回的不算)。\n"
+    },
+    {
+      "fn": "exitProblems",
+      "args": [
+        {
+          "exitAt": "",
+          "stopConfirm": 5,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": 25.5,
+          "peakConfirm": false,
+          "tiers": []
+        },
+        {
+          "hosted": false,
+          "hasSpotStop": false
+        }
+      ],
+      "out": [
+        "确认秒数是给标的止损价用的:先填「标的跌到」或「标的涨到」。"
+      ]
+    },
+    {
+      "fn": "exitProblems",
+      "args": [
+        {
+          "exitAt": "",
+          "stopConfirm": 5,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": 25.5,
+          "peakConfirm": false,
+          "tiers": []
+        },
+        {
+          "hosted": true,
+          "hasSpotStop": true
+        }
+      ],
+      "out": []
+    },
+    {
+      "fn": "exitProblems",
+      "args": [
+        {
+          "exitAt": "",
+          "stopConfirm": 5,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": 25.5,
+          "peakConfirm": false,
+          "tiers": []
+        },
+        {
+          "hosted": false,
+          "hasSpotStop": false,
+          "stock": true,
+          "hasStockStop": false
+        }
+      ],
+      "out": [
+        "正股的止损确认要先填止损价或跟踪止损。"
+      ]
+    },
+    {
+      "fn": "exitProblems",
+      "args": [
+        {
+          "exitAt": "",
+          "stopConfirm": 5,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": 25.5,
+          "peakConfirm": false,
+          "tiers": []
+        },
+        {
+          "hosted": true,
+          "hasSpotStop": false,
+          "stock": true,
+          "hasStockStop": true
+        }
+      ],
+      "out": [
+        "托管到券商的止损由券商触线即发,确认秒数只在软件自己盯时有用:要用它就别托管。"
+      ]
+    },
+    {
+      "fn": "exitProblems",
+      "args": [
+        {
+          "exitAt": "",
+          "stopConfirm": 5,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": 25.5,
+          "peakConfirm": false,
+          "tiers": []
+        },
+        {
+          "hosted": false,
+          "hasSpotStop": true,
+          "stock": true,
+          "hasStockStop": true
+        }
+      ],
+      "out": []
+    },
+    {
+      "fn": "exitSpec",
+      "args": [
+        {
+          "exitAt": "",
+          "stopConfirm": 3,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": [
+            {
+              "price": 0.05,
+              "fraction": 100
+            }
+          ]
+        },
+        true
+      ],
+      "out": {
+        "exit_at": "",
+        "spot_stop_confirm_s": "3",
+        "take_profit_tiers": [
+          {
+            "price": "0.05",
+            "fraction_pct": "100"
+          }
+        ],
+        "stop_basis": "mid"
+      }
+    },
+    {
+      "fn": "exitConfirmLines",
+      "args": [
+        {
+          "exitAt": "",
+          "stopConfirm": 3,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": [
+            {
+              "price": 0.05,
+              "fraction": 100
+            }
+          ]
+        },
+        true
+      ],
+      "out": "分批止盈:第 1 档到 0.05 平 100%。每一档成交之后接着盯剩下的仓。\n标的止损要标的在线外连续待满 3 秒才平。\n"
+    },
+    {
+      "fn": "exitSpec",
+      "args": [
+        {
+          "exitAt": "",
+          "stopConfirm": 3,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": [
+            {
+              "price": 0.05,
+              "fraction": 100
+            }
+          ]
+        },
+        false
+      ],
+      "out": {
+        "exit_at": "",
+        "spot_stop_confirm_s": "3",
+        "take_profit_tiers": [
+          {
+            "price": "0.05",
+            "fraction_pct": "100"
+          }
+        ]
+      }
+    },
+    {
+      "fn": "exitConfirmLines",
+      "args": [
+        {
+          "exitAt": "",
+          "stopConfirm": 3,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": [
+            {
+              "price": 0.05,
+              "fraction": 100
+            }
+          ]
+        },
+        false
+      ],
+      "out": "分批止盈:第 1 档到 0.05 平 100%。每一档成交之后接着盯剩下的仓。\n止损要现价在线外连续待满 3 秒才平(一笔打穿又弹回的不算)。\n"
+    },
+    {
+      "fn": "exitProblems",
+      "args": [
+        {
+          "exitAt": "",
+          "stopConfirm": 3,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": [
+            {
+              "price": 0.05,
+              "fraction": 100
+            }
+          ]
+        },
+        {
+          "hosted": false,
+          "hasSpotStop": false
+        }
+      ],
+      "out": [
+        "确认秒数是给标的止损价用的:先填「标的跌到」或「标的涨到」。"
+      ]
+    },
+    {
+      "fn": "exitProblems",
+      "args": [
+        {
+          "exitAt": "",
+          "stopConfirm": 3,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": [
+            {
+              "price": 0.05,
+              "fraction": 100
+            }
+          ]
+        },
+        {
+          "hosted": true,
+          "hasSpotStop": true
+        }
+      ],
+      "out": [
+        "分批止盈只支持软件盯盘:托管到券商时不能设。"
+      ]
+    },
+    {
+      "fn": "exitProblems",
+      "args": [
+        {
+          "exitAt": "",
+          "stopConfirm": 3,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": [
+            {
+              "price": 0.05,
+              "fraction": 100
+            }
+          ]
+        },
+        {
+          "hosted": false,
+          "hasSpotStop": false,
+          "stock": true,
+          "hasStockStop": false
+        }
+      ],
+      "out": [
+        "正股的止损确认要先填止损价或跟踪止损。"
+      ]
+    },
+    {
+      "fn": "exitProblems",
+      "args": [
+        {
+          "exitAt": "",
+          "stopConfirm": 3,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": [
+            {
+              "price": 0.05,
+              "fraction": 100
+            }
+          ]
+        },
+        {
+          "hosted": true,
+          "hasSpotStop": false,
+          "stock": true,
+          "hasStockStop": true
+        }
+      ],
+      "out": [
+        "分批止盈只支持软件盯盘:托管到券商时不能设。",
+        "托管到券商的止损由券商触线即发,确认秒数只在软件自己盯时有用:要用它就别托管。"
+      ]
+    },
+    {
+      "fn": "exitProblems",
+      "args": [
+        {
+          "exitAt": "",
+          "stopConfirm": 3,
+          "stopBasis": "mid",
+          "chaseGrace": null,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": [
+            {
+              "price": 0.05,
+              "fraction": 100
+            }
+          ]
+        },
+        {
+          "hosted": false,
+          "hasSpotStop": true,
+          "stock": true,
+          "hasStockStop": true
+        }
+      ],
+      "out": []
+    },
+    {
+      "fn": "exitSpec",
+      "args": [
+        {
+          "exitAt": "",
+          "stopConfirm": null,
+          "stopBasis": "mid",
+          "chaseGrace": 0,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": []
+        },
+        true
+      ],
+      "out": {
+        "exit_at": "",
+        "spot_stop_confirm_s": "",
+        "take_profit_tiers": "",
+        "stop_basis": "mid",
+        "stop_chase_grace": "0"
+      }
+    },
+    {
+      "fn": "exitConfirmLines",
+      "args": [
+        {
+          "exitAt": "",
+          "stopConfirm": null,
+          "stopBasis": "mid",
+          "chaseGrace": 0,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": []
+        },
+        true
+      ],
+      "out": "止损类触发后的追价:先等 0 秒,之后每秒让 1 跳。\n"
+    },
+    {
+      "fn": "exitSpec",
+      "args": [
+        {
+          "exitAt": "",
+          "stopConfirm": null,
+          "stopBasis": "mid",
+          "chaseGrace": 0,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": []
+        },
+        false
+      ],
+      "out": {
+        "exit_at": "",
+        "spot_stop_confirm_s": "",
+        "take_profit_tiers": ""
+      }
+    },
+    {
+      "fn": "exitConfirmLines",
+      "args": [
+        {
+          "exitAt": "",
+          "stopConfirm": null,
+          "stopBasis": "mid",
+          "chaseGrace": 0,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": []
+        },
+        false
+      ],
+      "out": ""
+    },
+    {
+      "fn": "exitProblems",
+      "args": [
+        {
+          "exitAt": "",
+          "stopConfirm": null,
+          "stopBasis": "mid",
+          "chaseGrace": 0,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": []
+        },
+        {
+          "hosted": false,
+          "hasSpotStop": false
+        }
+      ],
+      "out": []
+    },
+    {
+      "fn": "exitProblems",
+      "args": [
+        {
+          "exitAt": "",
+          "stopConfirm": null,
+          "stopBasis": "mid",
+          "chaseGrace": 0,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": []
+        },
+        {
+          "hosted": true,
+          "hasSpotStop": true
+        }
+      ],
+      "out": []
+    },
+    {
+      "fn": "exitProblems",
+      "args": [
+        {
+          "exitAt": "",
+          "stopConfirm": null,
+          "stopBasis": "mid",
+          "chaseGrace": 0,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": []
+        },
+        {
+          "hosted": false,
+          "hasSpotStop": false,
+          "stock": true,
+          "hasStockStop": false
+        }
+      ],
+      "out": []
+    },
+    {
+      "fn": "exitProblems",
+      "args": [
+        {
+          "exitAt": "",
+          "stopConfirm": null,
+          "stopBasis": "mid",
+          "chaseGrace": 0,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": []
+        },
+        {
+          "hosted": true,
+          "hasSpotStop": false,
+          "stock": true,
+          "hasStockStop": true
+        }
+      ],
+      "out": []
+    },
+    {
+      "fn": "exitProblems",
+      "args": [
+        {
+          "exitAt": "",
+          "stopConfirm": null,
+          "stopBasis": "mid",
+          "chaseGrace": 0,
+          "chaseStep": null,
+          "chaseMax": null,
+          "peakConfirm": false,
+          "tiers": []
+        },
+        {
+          "hosted": false,
+          "hasSpotStop": true,
+          "stock": true,
+          "hasStockStop": true
+        }
+      ],
+      "out": []
+    },
+    {
+      "fn": "tierLabel",
+      "args": [
+        {
+          "price": 7.5,
+          "fraction_pct": 50,
+          "done": true
+        },
+        0
+      ],
+      "out": "第 1 档 7.5 平 50%(已成交)"
+    },
+    {
+      "fn": "tierLabel",
+      "args": [
+        {
+          "price": 1.23456,
+          "fraction_pct": 33.3333,
+          "pending": true
+        },
+        1
+      ],
+      "out": "第 2 档 1.2346 平 33.3333%(平仓单已发,等成交)"
+    },
+    {
+      "fn": "tierLabel",
+      "args": [
+        {
+          "price": 9,
+          "fraction_pct": 25
+        },
+        3
+      ],
+      "out": "第 4 档 9 平 25%(未到)"
+    },
+    {
+      "fn": "exitMoment",
+      "args": [
+        1792439100000
+      ],
+      "out": "10-19 15:45"
+    },
+    {
+      "fn": "exitMoment",
+      "args": [
+        1793593800000
+      ],
+      "out": "11-01 23:30"
+    },
+    {
+      "fn": "exitMoment",
+      "args": [
+        1772953140000
+      ],
+      "out": "03-08 01:59"
+    },
+    {
+      "fn": "exitSummary",
+      "args": [
+        {},
+        {},
+        false
+      ],
+      "out": []
+    },
+    {
+      "fn": "exitSummary",
+      "args": [
+        {
+          "exit_at": "15:45",
+          "exit_at_ms": 1792439100000,
+          "take_profit_tiers": [
+            {
+              "price": 1,
+              "fraction_pct": 50,
+              "done": true
+            },
+            {
+              "price": 2,
+              "fraction_pct": 50
+            }
+          ],
+          "spot_stop_confirm_s": 10
+        },
+        {
+          "stop_basis": "natural",
+          "peak_confirm": true,
+          "stop_chase_grace": null,
+          "stop_chase_step": 3,
+          "stop_chase_max_pct": null
+        },
+        false
+      ],
+      "out": [
+        "到点平仓 美东 10-19 15:45",
+        "分批止盈 1/2 档",
+        "标的止损确认 10 秒",
+        "止损按可成交价判",
+        "峰值两秒确认",
+        "止损追价 等 2 秒 / 每秒 3 跳"
+      ]
+    },
+    {
+      "fn": "exitSummary",
+      "args": [
+        {
+          "exit_at": "15:45",
+          "exit_at_ms": null,
+          "spot_stop_confirm_s": 5
+        },
+        {
+          "stop_basis": "mid",
+          "stop_chase_max_pct": 30
+        },
+        true
+      ],
+      "out": [
+        "到点平仓 美东 15:45(已过期,不会再触发)",
+        "止损确认 5 秒",
+        "止损追价 等 2 秒 / 每秒 1 跳 / 最多 30%"
+      ]
+    },
+    {
+      "fn": "exitSummary",
+      "args": [
+        {
+          "spot_stop_confirm_s": 0,
+          "take_profit_tiers": []
+        },
+        {
+          "stop_chase_grace": 4
+        },
+        false
+      ],
+      "out": [
+        "止损追价 等 4 秒 / 每秒 1 跳"
+      ]
+    },
+    {
+      "fn": "legLabel",
+      "args": [
+        "SPX",
+        "BAG",
+        {
+          "label": "7700/7725/7750 看涨蝶"
+        }
+      ],
+      "out": "SPX · 7700/7725/7750 看涨蝶"
+    },
+    {
+      "fn": "legLabel",
+      "args": [
+        "SPX",
+        "BAG",
+        {}
+      ],
+      "out": "SPX 组合"
+    },
+    {
+      "fn": "legLabel",
+      "args": [
+        "NVDA",
+        "STK",
+        {}
+      ],
+      "out": "NVDA"
+    },
+    {
+      "fn": "legLabel",
+      "args": [
+        "SPX",
+        "OPT",
+        {
+          "lastTradeDateOrContractMonth": "20261120",
+          "strike": 7700,
+          "right": "C"
+        }
+      ],
+      "out": "SPX 7700C 2026-11-20"
+    },
+    {
+      "fn": "legLabel",
+      "args": [
+        "ES",
+        "FOP",
+        {
+          "lastTradeDateOrContractMonth": "202612",
+          "strike": "7700.50",
+          "right": "put"
+        }
+      ],
+      "out": "ES 7700.5P 202612"
+    },
+    {
+      "fn": "legLabel",
+      "args": [
+        "SPX",
+        "OPT",
+        {}
+      ],
+      "out": "SPX"
+    },
+    {
+      "fn": "legLabel",
+      "args": [
+        "SPX",
+        "OPT",
+        {
+          "strike": 0,
+          "right": ""
+        }
+      ],
+      "out": "SPX 0"
+    }
+  ]
+}

@@ -1,0 +1,1320 @@
+{
+ "generator": "gen_power.mjs",
+ "offDelayMs": 600000,
+ "cases": [
+  {
+   "kind": "power",
+   "steps": [
+    {
+     "op": "observe",
+     "args": {
+      "onBattery": false
+     },
+     "out": {
+      "log": "[power] 现在接着电源",
+      "notify": null
+     },
+     "state": {
+      "onBattery": false,
+      "live": 0,
+      "warned": false,
+      "lidAwake": false
+     }
+    },
+    {
+     "op": "observe",
+     "args": {
+      "live": 2
+     },
+     "out": {
+      "log": null,
+      "notify": null
+     },
+     "state": {
+      "onBattery": false,
+      "live": 2,
+      "warned": false,
+      "lidAwake": false
+     }
+    },
+    {
+     "op": "observe",
+     "args": {
+      "onBattery": true
+     },
+     "out": {
+      "log": "[power] 改用电池",
+      "notify": {
+       "title": "正在用电池:合上盖子,本机盯盘就停了",
+       "body": "有 2 条追踪在本机盯着。用电池时合上笔记本,电脑会直接睡着,止盈止损、跟踪止损、利润回撤都不再判断。要离开请接着电源、别合盖,或者给追踪打开「托管到券商」。"
+      }
+     },
+     "state": {
+      "onBattery": true,
+      "live": 2,
+      "warned": true,
+      "lidAwake": false
+     }
+    },
+    {
+     "op": "observe",
+     "args": {
+      "onBattery": true,
+      "live": 3
+     },
+     "out": {
+      "log": null,
+      "notify": null
+     },
+     "state": {
+      "onBattery": true,
+      "live": 3,
+      "warned": true,
+      "lidAwake": false
+     }
+    },
+    {
+     "op": "observe",
+     "args": {
+      "onBattery": false
+     },
+     "out": {
+      "log": "[power] 接上了电源",
+      "notify": null
+     },
+     "state": {
+      "onBattery": false,
+      "live": 3,
+      "warned": false,
+      "lidAwake": false
+     }
+    },
+    {
+     "op": "observe",
+     "args": {
+      "onBattery": true,
+      "live": 1,
+      "lidAwake": true
+     },
+     "out": {
+      "log": "[power] 改用电池",
+      "notify": {
+       "title": "正在用电池:电耗光,本机盯盘就停了",
+       "body": "有 1 条追踪在本机盯着。合盖不会睡,但电池耗光电脑就关了。要离开很久请接上电源,或者给追踪打开「托管到券商」。"
+      }
+     },
+     "state": {
+      "onBattery": true,
+      "live": 1,
+      "warned": true,
+      "lidAwake": true
+     }
+    },
+    {
+     "op": "observe",
+     "args": {
+      "live": 0
+     },
+     "out": {
+      "log": null,
+      "notify": null
+     },
+     "state": {
+      "onBattery": true,
+      "live": 0,
+      "warned": true,
+      "lidAwake": true
+     }
+    }
+   ]
+  },
+  {
+   "kind": "power",
+   "steps": [
+    {
+     "op": "observe",
+     "args": {
+      "onBattery": true
+     },
+     "out": {
+      "log": "[power] 现在用电池",
+      "notify": null
+     },
+     "state": {
+      "onBattery": true,
+      "live": 0,
+      "warned": false,
+      "lidAwake": false
+     }
+    },
+    {
+     "op": "observe",
+     "args": {
+      "live": 2.7
+     },
+     "out": {
+      "log": null,
+      "notify": {
+       "title": "正在用电池:合上盖子,本机盯盘就停了",
+       "body": "有 2 条追踪在本机盯着。用电池时合上笔记本,电脑会直接睡着,止盈止损、跟踪止损、利润回撤都不再判断。要离开请接着电源、别合盖,或者给追踪打开「托管到券商」。"
+      }
+     },
+     "state": {
+      "onBattery": true,
+      "live": 2,
+      "warned": true,
+      "lidAwake": false
+     }
+    },
+    {
+     "op": "observe",
+     "args": {
+      "live": -3
+     },
+     "out": {
+      "log": null,
+      "notify": null
+     },
+     "state": {
+      "onBattery": true,
+      "live": 0,
+      "warned": true,
+      "lidAwake": false
+     }
+    },
+    {
+     "op": "observe",
+     "args": {
+      "live": "x"
+     },
+     "out": {
+      "log": null,
+      "notify": null
+     },
+     "state": {
+      "onBattery": true,
+      "live": 0,
+      "warned": true,
+      "lidAwake": false
+     }
+    },
+    {
+     "op": "observe",
+     "args": {},
+     "out": {
+      "log": null,
+      "notify": null
+     },
+     "state": {
+      "onBattery": true,
+      "live": 0,
+      "warned": true,
+      "lidAwake": false
+     }
+    },
+    {
+     "op": "suspend",
+     "args": {
+      "now": 1000
+     },
+     "out": {
+      "log": "[power] 系统睡眠,用电池;在盯的追踪 0 条",
+      "notify": null
+     },
+     "state": {
+      "onBattery": true,
+      "live": 0,
+      "warned": true,
+      "lidAwake": false
+     }
+    },
+    {
+     "op": "resume",
+     "args": {
+      "now": 46400
+     },
+     "out": {
+      "log": "[power] 系统醒来,睡了 45 秒",
+      "notify": null
+     },
+     "state": {
+      "onBattery": true,
+      "live": 0,
+      "warned": true,
+      "lidAwake": false
+     }
+    },
+    {
+     "op": "resume",
+     "args": {
+      "now": 5
+     },
+     "out": {
+      "log": "[power] 系统醒来",
+      "notify": null
+     },
+     "state": {
+      "onBattery": true,
+      "live": 0,
+      "warned": true,
+      "lidAwake": false
+     }
+    },
+    {
+     "op": "suspend",
+     "args": {
+      "now": 0
+     },
+     "out": {
+      "log": "[power] 系统睡眠,用电池;在盯的追踪 0 条",
+      "notify": null
+     },
+     "state": {
+      "onBattery": true,
+      "live": 0,
+      "warned": true,
+      "lidAwake": false
+     }
+    },
+    {
+     "op": "resume",
+     "args": {
+      "now": 3570000
+     },
+     "out": {
+      "log": "[power] 系统醒来,睡了 1 小时 0 分",
+      "notify": null
+     },
+     "state": {
+      "onBattery": true,
+      "live": 0,
+      "warned": true,
+      "lidAwake": false
+     }
+    },
+    {
+     "op": "suspend",
+     "args": {
+      "now": 0
+     },
+     "out": {
+      "log": "[power] 系统睡眠,用电池;在盯的追踪 0 条",
+      "notify": null
+     },
+     "state": {
+      "onBattery": true,
+      "live": 0,
+      "warned": true,
+      "lidAwake": false
+     }
+    },
+    {
+     "op": "resume",
+     "args": {
+      "now": 8129000
+     },
+     "out": {
+      "log": "[power] 系统醒来,睡了 2 小时 15 分",
+      "notify": null
+     },
+     "state": {
+      "onBattery": true,
+      "live": 0,
+      "warned": true,
+      "lidAwake": false
+     }
+    }
+   ]
+  },
+  {
+   "kind": "power",
+   "steps": [
+    {
+     "op": "suspend",
+     "args": {
+      "now": 0
+     },
+     "out": {
+      "log": "[power] 系统睡眠;在盯的追踪 0 条",
+      "notify": null
+     },
+     "state": {
+      "onBattery": null,
+      "live": 0,
+      "warned": false,
+      "lidAwake": false
+     }
+    },
+    {
+     "op": "observe",
+     "args": {
+      "live": 1
+     },
+     "out": {
+      "log": null,
+      "notify": null
+     },
+     "state": {
+      "onBattery": null,
+      "live": 1,
+      "warned": false,
+      "lidAwake": false
+     }
+    },
+    {
+     "op": "observe",
+     "args": {
+      "onBattery": true
+     },
+     "out": {
+      "log": "[power] 现在用电池",
+      "notify": {
+       "title": "正在用电池:合上盖子,本机盯盘就停了",
+       "body": "有 1 条追踪在本机盯着。用电池时合上笔记本,电脑会直接睡着,止盈止损、跟踪止损、利润回撤都不再判断。要离开请接着电源、别合盖,或者给追踪打开「托管到券商」。"
+      }
+     },
+     "state": {
+      "onBattery": true,
+      "live": 1,
+      "warned": true,
+      "lidAwake": false
+     }
+    }
+   ]
+  },
+  {
+   "kind": "lid",
+   "init": {},
+   "steps": [
+    {
+     "op": "observe",
+     "args": {
+      "live": 2,
+      "sleepDisabled": false,
+      "now": 0
+     },
+     "out": {
+      "set": true,
+      "log": "[power] 有 2 条追踪在盯,请求关掉合盖睡眠",
+      "notify": null
+     },
+     "state": {
+      "enabled": true,
+      "owned": false,
+      "sleepDisabled": false,
+      "live": 2,
+      "declined": false,
+      "restoreDeclined": false,
+      "busy": true
+     }
+    },
+    {
+     "op": "done",
+     "args": {
+      "on": true,
+      "outcome": "ok"
+     },
+     "out": {
+      "set": null,
+      "log": "[power] 已关掉合盖睡眠(盯盘期间)",
+      "notify": {
+       "title": "盯盘期间合盖不睡",
+       "body": "有 2 条追踪在本机盯着,合上盖子也照常盯。机器会一直跑:别放进包里,用电池时电会耗光。没有追踪在盯满 10 分钟、或退出应用时,恢复合盖睡眠。"
+      }
+     },
+     "state": {
+      "enabled": true,
+      "owned": true,
+      "sleepDisabled": true,
+      "live": 2,
+      "declined": false,
+      "restoreDeclined": false,
+      "busy": false
+     }
+    },
+    {
+     "op": "observe",
+     "args": {
+      "live": 2,
+      "sleepDisabled": true,
+      "now": 60000
+     },
+     "out": {
+      "set": null,
+      "log": null,
+      "notify": null
+     },
+     "state": {
+      "enabled": true,
+      "owned": true,
+      "sleepDisabled": true,
+      "live": 2,
+      "declined": false,
+      "restoreDeclined": false,
+      "busy": false
+     }
+    },
+    {
+     "op": "observe",
+     "args": {
+      "live": 0,
+      "sleepDisabled": true,
+      "now": 120000
+     },
+     "out": {
+      "set": null,
+      "log": null,
+      "notify": null
+     },
+     "state": {
+      "enabled": true,
+      "owned": true,
+      "sleepDisabled": true,
+      "live": 0,
+      "declined": false,
+      "restoreDeclined": false,
+      "busy": false
+     }
+    },
+    {
+     "op": "observe",
+     "args": {
+      "live": 0,
+      "sleepDisabled": true,
+      "now": 660000
+     },
+     "out": {
+      "set": null,
+      "log": null,
+      "notify": null
+     },
+     "state": {
+      "enabled": true,
+      "owned": true,
+      "sleepDisabled": true,
+      "live": 0,
+      "declined": false,
+      "restoreDeclined": false,
+      "busy": false
+     }
+    },
+    {
+     "op": "observe",
+     "args": {
+      "live": 0,
+      "sleepDisabled": true,
+      "now": 720000
+     },
+     "out": {
+      "set": false,
+      "log": "[power] 没有追踪在盯满 10 分钟,请求恢复合盖睡眠",
+      "notify": null
+     },
+     "state": {
+      "enabled": true,
+      "owned": true,
+      "sleepDisabled": true,
+      "live": 0,
+      "declined": false,
+      "restoreDeclined": false,
+      "busy": true
+     }
+    },
+    {
+     "op": "done",
+     "args": {
+      "on": false,
+      "outcome": "ok"
+     },
+     "out": {
+      "set": null,
+      "log": "[power] 已恢复合盖睡眠",
+      "notify": null
+     },
+     "state": {
+      "enabled": true,
+      "owned": false,
+      "sleepDisabled": false,
+      "live": 0,
+      "declined": false,
+      "restoreDeclined": false,
+      "busy": false
+     }
+    },
+    {
+     "op": "observe",
+     "args": {
+      "live": 0,
+      "sleepDisabled": false,
+      "now": 780000
+     },
+     "out": {
+      "set": null,
+      "log": null,
+      "notify": null
+     },
+     "state": {
+      "enabled": true,
+      "owned": false,
+      "sleepDisabled": false,
+      "live": 0,
+      "declined": false,
+      "restoreDeclined": false,
+      "busy": false
+     }
+    }
+   ]
+  },
+  {
+   "kind": "lid",
+   "init": {},
+   "steps": [
+    {
+     "op": "observe",
+     "args": {
+      "live": 1,
+      "sleepDisabled": false,
+      "now": 0
+     },
+     "out": {
+      "set": true,
+      "log": "[power] 有 1 条追踪在盯,请求关掉合盖睡眠",
+      "notify": null
+     },
+     "state": {
+      "enabled": true,
+      "owned": false,
+      "sleepDisabled": false,
+      "live": 1,
+      "declined": false,
+      "restoreDeclined": false,
+      "busy": true
+     }
+    },
+    {
+     "op": "done",
+     "args": {
+      "on": true,
+      "outcome": "cancelled"
+     },
+     "out": {
+      "set": null,
+      "log": "[power] 关掉合盖睡眠没成:授权框被取消",
+      "notify": {
+       "title": "合上盖子,本机盯盘仍会停",
+       "body": "没有关掉合盖睡眠,这一段盯盘期间不再问。要离开请别合盖,或者给追踪打开「托管到券商」;不想再被问,在菜单「交易 → 盯盘时合盖不睡」里关掉这一项。"
+      }
+     },
+     "state": {
+      "enabled": true,
+      "owned": false,
+      "sleepDisabled": false,
+      "live": 1,
+      "declined": true,
+      "restoreDeclined": false,
+      "busy": false
+     }
+    },
+    {
+     "op": "observe",
+     "args": {
+      "live": 1,
+      "sleepDisabled": false,
+      "now": 60000
+     },
+     "out": {
+      "set": null,
+      "log": null,
+      "notify": null
+     },
+     "state": {
+      "enabled": true,
+      "owned": false,
+      "sleepDisabled": false,
+      "live": 1,
+      "declined": true,
+      "restoreDeclined": false,
+      "busy": false
+     }
+    },
+    {
+     "op": "observe",
+     "args": {
+      "live": 0,
+      "now": 120000
+     },
+     "out": {
+      "set": null,
+      "log": null,
+      "notify": null
+     },
+     "state": {
+      "enabled": true,
+      "owned": false,
+      "sleepDisabled": false,
+      "live": 0,
+      "declined": false,
+      "restoreDeclined": false,
+      "busy": false
+     }
+    },
+    {
+     "op": "observe",
+     "args": {
+      "live": 3,
+      "sleepDisabled": false,
+      "now": 180000
+     },
+     "out": {
+      "set": true,
+      "log": "[power] 有 3 条追踪在盯,请求关掉合盖睡眠",
+      "notify": null
+     },
+     "state": {
+      "enabled": true,
+      "owned": false,
+      "sleepDisabled": false,
+      "live": 3,
+      "declined": false,
+      "restoreDeclined": false,
+      "busy": true
+     }
+    },
+    {
+     "op": "done",
+     "args": {
+      "on": true,
+      "outcome": "failed",
+      "detail": "execution error"
+     },
+     "out": {
+      "set": null,
+      "log": "[power] 关掉合盖睡眠没成:execution error",
+      "notify": {
+       "title": "合上盖子,本机盯盘仍会停",
+       "body": "没有关掉合盖睡眠,这一段盯盘期间不再问。要离开请别合盖,或者给追踪打开「托管到券商」;不想再被问,在菜单「交易 → 盯盘时合盖不睡」里关掉这一项。"
+      }
+     },
+     "state": {
+      "enabled": true,
+      "owned": false,
+      "sleepDisabled": false,
+      "live": 3,
+      "declined": true,
+      "restoreDeclined": false,
+      "busy": false
+     }
+    },
+    {
+     "op": "done",
+     "args": {
+      "on": true,
+      "outcome": "failed"
+     },
+     "out": {
+      "set": null,
+      "log": "[power] 关掉合盖睡眠没成:执行失败",
+      "notify": {
+       "title": "合上盖子,本机盯盘仍会停",
+       "body": "没有关掉合盖睡眠,这一段盯盘期间不再问。要离开请别合盖,或者给追踪打开「托管到券商」;不想再被问,在菜单「交易 → 盯盘时合盖不睡」里关掉这一项。"
+      }
+     },
+     "state": {
+      "enabled": true,
+      "owned": false,
+      "sleepDisabled": false,
+      "live": 3,
+      "declined": true,
+      "restoreDeclined": false,
+      "busy": false
+     }
+    }
+   ]
+  },
+  {
+   "kind": "lid",
+   "init": {
+    "enabled": true,
+    "owned": true
+   },
+   "steps": [
+    {
+     "op": "observe",
+     "args": {
+      "live": 0,
+      "now": 0
+     },
+     "out": {
+      "set": null,
+      "log": null,
+      "notify": null
+     },
+     "state": {
+      "enabled": true,
+      "owned": true,
+      "sleepDisabled": null,
+      "live": 0,
+      "declined": false,
+      "restoreDeclined": false,
+      "busy": false
+     }
+    },
+    {
+     "op": "wantsReading",
+     "args": {
+      "live": 0
+     },
+     "out": true,
+     "state": {
+      "enabled": true,
+      "owned": true,
+      "sleepDisabled": null,
+      "live": 0,
+      "declined": false,
+      "restoreDeclined": false,
+      "busy": false
+     }
+    },
+    {
+     "op": "observe",
+     "args": {
+      "live": 0,
+      "sleepDisabled": true,
+      "now": 1
+     },
+     "out": {
+      "set": null,
+      "log": null,
+      "notify": null
+     },
+     "state": {
+      "enabled": true,
+      "owned": true,
+      "sleepDisabled": true,
+      "live": 0,
+      "declined": false,
+      "restoreDeclined": false,
+      "busy": false
+     }
+    },
+    {
+     "op": "setEnabled",
+     "args": {
+      "enabled": false
+     },
+     "out": null,
+     "state": {
+      "enabled": false,
+      "owned": true,
+      "sleepDisabled": true,
+      "live": 0,
+      "declined": false,
+      "restoreDeclined": false,
+      "busy": false
+     }
+    },
+    {
+     "op": "observe",
+     "args": {
+      "live": 0,
+      "sleepDisabled": true,
+      "now": 2
+     },
+     "out": {
+      "set": false,
+      "log": "[power] 「盯盘时合盖不睡」已关,请求恢复合盖睡眠",
+      "notify": null
+     },
+     "state": {
+      "enabled": false,
+      "owned": true,
+      "sleepDisabled": true,
+      "live": 0,
+      "declined": false,
+      "restoreDeclined": false,
+      "busy": true
+     }
+    },
+    {
+     "op": "observe",
+     "args": {
+      "live": 0,
+      "sleepDisabled": true,
+      "now": 3
+     },
+     "out": {
+      "set": null,
+      "log": null,
+      "notify": null
+     },
+     "state": {
+      "enabled": false,
+      "owned": true,
+      "sleepDisabled": true,
+      "live": 0,
+      "declined": false,
+      "restoreDeclined": false,
+      "busy": true
+     }
+    },
+    {
+     "op": "done",
+     "args": {
+      "on": false,
+      "outcome": "cancelled"
+     },
+     "out": {
+      "set": null,
+      "log": "[power] 恢复合盖睡眠没成:授权框被取消",
+      "notify": {
+       "title": "合盖睡眠还关着",
+       "body": "合上盖子电脑不会睡。要恢复,在终端里运行 sudo pmset -a disablesleep 0,或者退出应用时在授权框里允许。"
+      }
+     },
+     "state": {
+      "enabled": false,
+      "owned": true,
+      "sleepDisabled": true,
+      "live": 0,
+      "declined": false,
+      "restoreDeclined": true,
+      "busy": false
+     }
+    },
+    {
+     "op": "observe",
+     "args": {
+      "live": 0,
+      "sleepDisabled": true,
+      "now": 4
+     },
+     "out": {
+      "set": null,
+      "log": null,
+      "notify": null
+     },
+     "state": {
+      "enabled": false,
+      "owned": true,
+      "sleepDisabled": true,
+      "live": 0,
+      "declined": false,
+      "restoreDeclined": true,
+      "busy": false
+     }
+    },
+    {
+     "op": "quitAction",
+     "args": {},
+     "out": {
+      "set": false,
+      "log": "[power] 退出应用,请求恢复合盖睡眠",
+      "notify": null
+     },
+     "state": {
+      "enabled": false,
+      "owned": true,
+      "sleepDisabled": true,
+      "live": 0,
+      "declined": false,
+      "restoreDeclined": true,
+      "busy": true
+     }
+    },
+    {
+     "op": "setEnabled",
+     "args": {
+      "enabled": true
+     },
+     "out": null,
+     "state": {
+      "enabled": true,
+      "owned": true,
+      "sleepDisabled": true,
+      "live": 0,
+      "declined": false,
+      "restoreDeclined": false,
+      "busy": true
+     }
+    },
+    {
+     "op": "quitAction",
+     "args": {},
+     "out": {
+      "set": null,
+      "log": null,
+      "notify": null
+     },
+     "state": {
+      "enabled": true,
+      "owned": true,
+      "sleepDisabled": true,
+      "live": 0,
+      "declined": false,
+      "restoreDeclined": false,
+      "busy": true
+     }
+    },
+    {
+     "op": "done",
+     "args": {
+      "on": false,
+      "outcome": "failed",
+      "detail": "x"
+     },
+     "out": {
+      "set": null,
+      "log": "[power] 恢复合盖睡眠没成:x",
+      "notify": {
+       "title": "合盖睡眠还关着",
+       "body": "合上盖子电脑不会睡。要恢复,在终端里运行 sudo pmset -a disablesleep 0,或者退出应用时在授权框里允许。"
+      }
+     },
+     "state": {
+      "enabled": true,
+      "owned": true,
+      "sleepDisabled": true,
+      "live": 0,
+      "declined": false,
+      "restoreDeclined": true,
+      "busy": false
+     }
+    }
+   ]
+  },
+  {
+   "kind": "lid",
+   "init": {
+    "enabled": true,
+    "owned": true
+   },
+   "steps": [
+    {
+     "op": "observe",
+     "args": {
+      "live": 2,
+      "sleepDisabled": false,
+      "now": 0
+     },
+     "out": {
+      "set": null,
+      "log": null,
+      "notify": null
+     },
+     "state": {
+      "enabled": true,
+      "owned": false,
+      "sleepDisabled": false,
+      "live": 2,
+      "declined": true,
+      "restoreDeclined": false,
+      "busy": false
+     }
+    },
+    {
+     "op": "state",
+     "args": {},
+     "out": {
+      "enabled": true,
+      "owned": false
+     },
+     "state": {
+      "enabled": true,
+      "owned": false,
+      "sleepDisabled": false,
+      "live": 2,
+      "declined": true,
+      "restoreDeclined": false,
+      "busy": false
+     }
+    },
+    {
+     "op": "observe",
+     "args": {
+      "live": 2,
+      "sleepDisabled": false,
+      "now": 1
+     },
+     "out": {
+      "set": null,
+      "log": null,
+      "notify": null
+     },
+     "state": {
+      "enabled": true,
+      "owned": false,
+      "sleepDisabled": false,
+      "live": 2,
+      "declined": true,
+      "restoreDeclined": false,
+      "busy": false
+     }
+    },
+    {
+     "op": "quitAction",
+     "args": {},
+     "out": {
+      "set": null,
+      "log": null,
+      "notify": null
+     },
+     "state": {
+      "enabled": true,
+      "owned": false,
+      "sleepDisabled": false,
+      "live": 2,
+      "declined": true,
+      "restoreDeclined": false,
+      "busy": false
+     }
+    },
+    {
+     "op": "wantsReading",
+     "args": {
+      "live": 2
+     },
+     "out": true,
+     "state": {
+      "enabled": true,
+      "owned": false,
+      "sleepDisabled": false,
+      "live": 2,
+      "declined": true,
+      "restoreDeclined": false,
+      "busy": false
+     }
+    }
+   ]
+  },
+  {
+   "kind": "lid",
+   "init": {
+    "enabled": false,
+    "owned": false
+   },
+   "steps": [
+    {
+     "op": "wantsReading",
+     "args": {
+      "live": 5
+     },
+     "out": false,
+     "state": {
+      "enabled": false,
+      "owned": false,
+      "sleepDisabled": null,
+      "live": 0,
+      "declined": false,
+      "restoreDeclined": false,
+      "busy": false
+     }
+    },
+    {
+     "op": "observe",
+     "args": {
+      "live": 5,
+      "sleepDisabled": false,
+      "now": 0
+     },
+     "out": {
+      "set": null,
+      "log": null,
+      "notify": null
+     },
+     "state": {
+      "enabled": false,
+      "owned": false,
+      "sleepDisabled": false,
+      "live": 5,
+      "declined": false,
+      "restoreDeclined": false,
+      "busy": false
+     }
+    },
+    {
+     "op": "observe",
+     "args": {
+      "live": 2.9,
+      "sleepDisabled": true,
+      "now": 1
+     },
+     "out": {
+      "set": null,
+      "log": null,
+      "notify": null
+     },
+     "state": {
+      "enabled": false,
+      "owned": false,
+      "sleepDisabled": true,
+      "live": 2,
+      "declined": false,
+      "restoreDeclined": false,
+      "busy": false
+     }
+    },
+    {
+     "op": "quitAction",
+     "args": {},
+     "out": {
+      "set": null,
+      "log": null,
+      "notify": null
+     },
+     "state": {
+      "enabled": false,
+      "owned": false,
+      "sleepDisabled": true,
+      "live": 2,
+      "declined": false,
+      "restoreDeclined": false,
+      "busy": false
+     }
+    }
+   ]
+  }
+ ],
+ "helpers": [
+  {
+   "fn": "parseSleepDisabled",
+   "input": "Sleep On\n SleepDisabled\t\t1\n",
+   "out": true
+  },
+  {
+   "fn": "parseSleepDisabled",
+   "input": " SleepDisabled 0",
+   "out": false
+  },
+  {
+   "fn": "parseSleepDisabled",
+   "input": "nothing here",
+   "out": null
+  },
+  {
+   "fn": "parseSleepDisabled",
+   "input": "",
+   "out": null
+  },
+  {
+   "fn": "parseSleepDisabled",
+   "input": "SleepDisabled x",
+   "out": null
+  },
+  {
+   "fn": "parseSleepDisabled",
+   "input": " sleepdisabled 1",
+   "out": null
+  },
+  {
+   "fn": "pmsetScript",
+   "input": true,
+   "out": "do shell script \"/usr/bin/pmset -a disablesleep 1\" with administrator privileges with prompt \"Datrix 要在盯盘期间阻止合盖睡眠:合上盖子时持仓追踪照常运行。\""
+  },
+  {
+   "fn": "pmsetScript",
+   "input": false,
+   "out": "do shell script \"/usr/bin/pmset -a disablesleep 0\" with administrator privileges with prompt \"Datrix 要在盯盘期间阻止合盖睡眠:合上盖子时持仓追踪照常运行。\""
+  },
+  {
+   "fn": "isCancelled",
+   "input": {
+    "stderr": "execution error: User canceled. (-128)"
+   },
+   "out": true
+  },
+  {
+   "fn": "isCancelled",
+   "input": {
+    "message": "用户已取消。"
+   },
+   "out": true
+  },
+  {
+   "fn": "isCancelled",
+   "input": {
+    "message": "User cancelled"
+   },
+   "out": true
+  },
+  {
+   "fn": "isCancelled",
+   "input": {
+    "stderr": "boom",
+    "message": "Command failed"
+   },
+   "out": false
+  },
+  {
+   "fn": "isCancelled",
+   "input": {},
+   "out": false
+  },
+  {
+   "fn": "minutesText",
+   "input": 0,
+   "out": "0 秒"
+  },
+  {
+   "fn": "minutesText",
+   "input": 999,
+   "out": "1 秒"
+  },
+  {
+   "fn": "minutesText",
+   "input": 45400,
+   "out": "45 秒"
+  },
+  {
+   "fn": "minutesText",
+   "input": 59999,
+   "out": "60 秒"
+  },
+  {
+   "fn": "minutesText",
+   "input": 60000,
+   "out": "1 分钟"
+  },
+  {
+   "fn": "minutesText",
+   "input": 89999,
+   "out": "1 分钟"
+  },
+  {
+   "fn": "minutesText",
+   "input": 3570000,
+   "out": "1 小时 0 分"
+  },
+  {
+   "fn": "minutesText",
+   "input": 8129000,
+   "out": "2 小时 15 分"
+  },
+  {
+   "fn": "minutesText",
+   "input": -5,
+   "out": "0 秒"
+  },
+  {
+   "fn": "batteryNotice",
+   "input": {
+    "live": 3,
+    "lidAwake": false
+   },
+   "out": {
+    "title": "正在用电池:合上盖子,本机盯盘就停了",
+    "body": "有 3 条追踪在本机盯着。用电池时合上笔记本,电脑会直接睡着,止盈止损、跟踪止损、利润回撤都不再判断。要离开请接着电源、别合盖,或者给追踪打开「托管到券商」。"
+   }
+  },
+  {
+   "fn": "batteryNotice",
+   "input": {
+    "live": 1,
+    "lidAwake": true
+   },
+   "out": {
+    "title": "正在用电池:电耗光,本机盯盘就停了",
+    "body": "有 1 条追踪在本机盯着。合盖不会睡,但电池耗光电脑就关了。要离开很久请接上电源,或者给追踪打开「托管到券商」。"
+   }
+  }
+ ]
+}
