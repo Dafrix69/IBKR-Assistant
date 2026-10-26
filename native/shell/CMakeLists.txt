@@ -2,6 +2,7 @@
 # 只用 Qt Core:测试不装 Qt Quick 也能编、能跑(IBKR_BUILD_UI=OFF 时照样在)。
 
 qt_add_library(ibkr_shell STATIC
+    terrain_controller.h terrain_controller.cpp
     engine_command.h engine_command.cpp
     engine_client.h engine_client.cpp
     engine_supervisor.h engine_supervisor.cpp
@@ -48,9 +49,9 @@ qt_add_library(ibkr_shell STATIC
     keyed_list_model.h keyed_list_model.cpp
     llm_store.h llm_store.cpp
     trade_controller.h trade_controller.cpp
-    fly_rules.h fly_rules.cpp
     entry_market.h entry_market.cpp
     fly_entry.h fly_entry.cpp
+    fly_rules.h fly_rules.cpp
     fly_store.h fly_store.cpp
     fly_controller.h fly_controller.cpp
     order_rules.h order_rules.cpp

@@ -42,3 +42,5 @@ export const OptionsSpotParamsSchema: ParamsSchema<OptionsSpotParams> = z.object
 export const PlaybookSetParamsSchema: ParamsSchema<PlaybookSetParams> = z.object({
   enabled: z.boolean(),
 }).strict();
+
+export const TerrainParamsSchema = z.object({ date: optional(z.string()) });

@@ -1,5 +1,6 @@
 #include "orchestrate/services/playbook_service.h"
 
+#include "domain/terrain_log.h"
 #include "execution/held_streams.h"
 #include "execution/ib_bars.h"
 #include "execution/ib_contracts.h"
@@ -8,6 +9,8 @@
 #include "util/jsformat.h"
 #include "util/jsobj.h"
 #include "util/tz.h"
+
+#include <QFileInfo>
 
 #include <cmath>
 #include <limits>
@@ -551,6 +554,8 @@ Task<std::optional<double>> PlaybookService::minuteOpen(std::shared_ptr<executio
 /// 换了当前区间就顺手换一份期权墙(取不到留着上一份,原因写进 notes)。窗口要盖住剧本画出来的每一条线
 Task<> PlaybookService::refreshWall(std::shared_ptr<Day> day, double nowMs, double spot) {
     std::exception_ptr failure;
+    std::optional<OJson> terrain;
+    const double terrainRequestedAt = domain::nowMs();
     try {
         const std::optional<BandRec> today = todayRec(*day);
         const std::optional<double> span = pb::wallSpan(spot, {day->prior ? std::optional<double>(day->prior->b.lower) : std::nullopt,
@@ -564,6 +569,7 @@ Task<> PlaybookService::refreshWall(std::shared_ptr<Day> day, double nowMs, doub
         const QString daily = cfg ? cfg->daily_trading_class : QString();
         const OJson wall = co_await market_.wallFor(kSymbol, QString(day->date).remove(u'-'), kWallWidth, span, daily);
         if (wall.type == OJson::Null) throw util::JsError(u"Cannot read properties of null (reading 'expiry')"_s);
+        terrain = wall;
         const auto f = [&](const QString& k) { return js::copyOrNull(wall.get(k)); };
         day->wall = js::object({{u"at"_s, js::N(nowMs)},
                                 {u"expiry"_s, f(u"expiry"_s)},
@@ -580,6 +586,13 @@ Task<> PlaybookService::refreshWall(std::shared_ptr<Day> day, double nowMs, doub
         delNote(day->notes, u"wall"_s);
     } catch (...) {
         failure = std::current_exception();
+    }
+    try {
+        domain::TerrainLog log(QFileInfo(settings().db_path).absolutePath() + u"/terrain"_s);
+        log.record(terrainRequestedAt, domain::nowMs(), terrain ? &*terrain : nullptr);
+        delNote(day->notes, u"terrain"_s);
+    } catch (...) {
+        setNote(day->notes, u"terrain"_s, u"地形记录失败:本轮没有可回放记录"_s);
     }
     if (failure) setNote(day->notes, u"wall"_s, u"期权墙没取到:%1"_s.arg(excMessage(failure).left(120)));
     day->accel = pb::accelerator(strikesOf(day->wall), day->current ? std::optional<pb::Band>(day->current->b) : std::nullopt);

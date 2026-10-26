@@ -179,6 +179,11 @@ private slots:
     }
 
     /// 方法名、SENSITIVE_METHODS、顶层 strict 的那几个
+    void terrainParams() {
+        QVERIFY(callContract(u"options.terrain"_s,rawOf(u"{}"_s)).ok);
+        QVERIFY(callContract(u"options.terrain"_s,rawOf(uR"({"date":"2026-10-22"})"_s)).ok);
+        QVERIFY(!callContract(u"options.terrain"_s,rawOf(uR"({"date":123})"_s)).ok);
+    }
     void registryMatchesTs() {
         const OJson fx = jsfix::load(u"contract.json"_s);
         QStringList names;

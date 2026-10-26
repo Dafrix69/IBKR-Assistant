@@ -130,7 +130,7 @@ void FlyController::writeReviewedInstruction() {
 }
 void FlyController::writeInstruction() {
     const QJsonValue result = fly_->plan().value(u"result"_s);
-    if (!result.isObject()) return;
+    if (!result.isObject() || fly_->plan()[u"resultFor"].toString()!=fly::formKey(fly_->plan()[u"form"].toObject())) return;
     if (composer_) composer_->appendInstruction(fly::instructionFor(result.toObject(), fly::etClock(now()).date));
     if (status_) status_->showInfo(u"已写进左边的指令框。先点「解析并校验」核对,再决定发不发。"_s);
 }

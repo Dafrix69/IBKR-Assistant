@@ -7,6 +7,7 @@
 #include "shell/status_store.h"
 
 #include <QPointer>
+#include <QDateTime>
 
 #include <memory>
 
@@ -82,7 +83,6 @@ void SectorsStore::load(Done done) {
     });
 }
 
-void SectorsStore::refreshQuotes(Done done) {
 void SectorsStore::refreshEarnings(const QString& symbol) {
     QStringList symbols;
     if (!symbol.isEmpty()) symbols << symbol;
@@ -114,14 +114,15 @@ void SectorsStore::nextEarnings() {
     });
 }
 
+void SectorsStore::refreshQuotes(Done done) {
     QPointer<SectorsStore> self(this);
     bridge_->rpc(this, u"sectors.quotes"_s, QJsonObject{}, [self, done](const EngineReply& r) {
         if (!self) return;
         if (r.ok) {
             const QJsonObject res = r.result.toObject();
             self->quotes_ = res.value("quotes"_L1).toObject();
-            emit self->changed();
             self->refreshEarnings();
+            emit self->changed();
             bool anyStocks = false;
             for (const QJsonValue& s : std::as_const(self->sectors_)) anyStocks = anyStocks || !s[u"stocks"_s].toArray().isEmpty();
             if (!jsTruthy(res.value("connected"_L1)) && anyStocks) {

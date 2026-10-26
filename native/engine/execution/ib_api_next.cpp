@@ -915,7 +915,6 @@ Task<JsList> ApiNext::getHistoricalData(const OJson& contract, std::optional<QSt
     return lastValueFrom<JsList>(sub, listOf, JsList{});
 }
 
-Task<JsList> ApiNext::getSecDefOptParams(const QString& symbol, const QString& fut, const QString& secType, double conId) {
 Task<QString> ApiNext::getWsh(bool metadata, const QString& filter, const QString& start, const QString& end) {
     const int command = metadata ? 100 : 102;
     auto sub = registerSub([=, this](double id) { api_.wsh(command, id, filter, start, end); },
@@ -936,6 +935,7 @@ Task<QString> ApiNext::getWsh(bool metadata, const QString& filter, const QStrin
     return task;
 }
 
+Task<JsList> ApiNext::getSecDefOptParams(const QString& symbol, const QString& fut, const QString& secType, double conId) {
     auto sub = registerSub([=, this](double reqId) { api_.reqSecDefOptParams(reqId, symbol, fut, secType, conId); }, nullptr,
                            {{u"securityDefinitionOptionParameter"_s, [this](Subs& s, const OJson& a) { onSecDefOptParam(s, a); }},
                             {u"securityDefinitionOptionParameterEnd"_s, [this](Subs& s, const OJson& a) { onSecDefOptParamEnd(s, a); }}},

@@ -3,6 +3,7 @@
 // 与每步的结果、写出来的底账文件、最后整个库的样子记下来,逐字比。场景含手写的(每个分支)与种子固定的随机交错。
 // 环境变量:ONLY=<场景名里的子串> 只跑这些;SVC_PLAYBOOK_FIXTURE=<路径> 换一份夹具(检验"测试会咬人"用:拿改坏的副本跑,必须红)。
 #include "orchestrate/services/playbook_service.h"
+#include "domain/terrain_log.h"
 #include "svc1_playbook_world.h"
 #include "svc1_world.h"
 
@@ -127,9 +128,34 @@ private slots:
         const OJson steps = r.run(script);
         const OJson db = dumpDb(r.world.dir.path() + u"/t.db"_s);
         QVERIFY(compareScenario(str(sc, u"name"_s), *sc.get(u"expected"_s), r.world, steps, db));
+        ibkr::domain::TerrainLog terrain(r.world.dir.path() + u"/terrain"_s);
+        for (const auto& date : terrain.dates()) {
+            int rejected = 0;
+            const auto rows = terrain.read(date, &rejected);
+            QCOMPARE(rejected, 0);
+            for (const auto& row : rows) {
+                ++terrainRecords_;
+                QVERIFY(row.get(u"received_at"_s)->n >= row.get(u"requested_at"_s)->n);
+            }
+        }
     }
 
+    void recordingFailureDoesNotStopRefresh() {
+        const auto& sc = fixture_.get(u"scenarios"_s)->items.front();
+        const OJson script = jsfix::dec(*sc.get(u"script"_s));
+        Runner r(script, *fixture_.get(u"base"_s));
+        QFile blocked(r.world.dir.path() + u"/terrain"_s);
+        QVERIFY(blocked.open(QIODevice::WriteOnly)); blocked.close();
+        r.run(script);
+        const auto snapshot = r.svc().snapshot();
+        const auto wall = snapshot.get(u"wall"_s);
+        QVERIFY(wall && wall->type == OJson::Object);
+        QVERIFY(js::stringify(*snapshot.get(u"notes"_s)).contains(u"地形记录失败"_s));
+    }
+    void cleanupTestCase() { QVERIFY(terrainRecords_ > 0); }
+
 private:
+    int terrainRecords_ = 0;
     OJson fixture_;
 };
 

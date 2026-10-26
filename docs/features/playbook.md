@@ -127,6 +127,10 @@ T1 已经在触发线身后就不给 T1,T2 从触发线起算(盘中隐含波动
   六种记录:三种取价的区间(`prior` / `open` / `frame`)、报出来的事件(`event`)、09:35 的锚(`anchor`)、状态(`machine`)。
   每 5 分钟那一条(`frame`)记的是取价时的现价与跨式,不是拼出来的今日区间。只读前四种的地方(按日期取 EM)不受后两种影响:不认识的种类跳过。
 
+## 地形观察底账
+
+每次期权墙刷新结束后,另写一条独立的[地形记录](terrain-replay.md),包含成功观察的分布或刷新失败标记。落盘失败显示在备注中,不改变现有剧本状态与提醒逻辑。
+
 ## 当前状态
 
 只有离线测试(`playbook.spec`、`playbook-service.spec`、`desktop-playbook-format.spec`、`option-chain.spec`)与假数据的界面预览,

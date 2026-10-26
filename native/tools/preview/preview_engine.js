@@ -71,6 +71,32 @@ function main() {
     let req;
     try { req = JSON.parse(line); } catch { write({ jsonrpc: '2.0', id: null, error: { code: -32700, message: '无法解析的 JSON' } }); return; }
     const id = req.id ?? null;
+    if (req.method === 'sectors.earnings') {
+      const symbol = req.params?.symbol || 'NVDA';
+      const result = symbol === 'NVDA' ? {
+        symbol, source: 'IBKR WSH', at: Date.now(), status: 'available', message: '',
+        upcoming: {date:'2026-11-18',timing:'AFTER MARKET',status:'CONFIRMED',days_until:26},
+        history: [{date:'2026-08-26',timing:'AFTER MARKET',status:'CONFIRMED',gap:2.1,day1:3.4,day5:-1.2,missing:''},
+          {date:'2026-05-27',timing:'UNSPECIFIED',status:'CONFIRMED',gap:null,day1:null,day5:null,missing:'发布时间缺失'}],
+        basis:'演示数据，非真实财报或行情。美东日期，相对财报前一交易日收盘。'
+      } : {symbol,source:'IBKR WSH',at:Date.now(),status:'missing',message:'演示：IBKR WSH 财报数据缺失',history:[]};
+      write({jsonrpc:'2.0',id,result}); return;
+    }
+    if (req.method === 'options.entry_context') {
+      write({jsonrpc:'2.0',id,result:{at:Date.now(),SPX:{error:'演示：实时分钟线缺失'},SPY:{error:'演示：实时分钟线缺失'}}}); return;
+    }
+    if (req.method === 'options.terrain') {
+      const date = req.params?.date || '2026-10-22';
+      const t = Date.parse(date + 'T14:00:00Z');
+      const records = [0, 300000, 900000].map((offset, n) => ({
+        received_at: t + offset, status: 'observed',
+        wall: { spot: 6000 + n * 7, net_gex: -2e9 + n * 1e9,
+          strikes: Array.from({length: 21}, (_, i) => ({ strike: 5950 + i * 5,
+            net_gex: Math.sin(i / 3 + n * 0.7) * 4e9 })), coverage: { lower: 5950, upper: 6050, thinned: false } }
+      }));
+      write({jsonrpc:'2.0',id,result:{dates:['2026-10-21','2026-10-22'],records:req.params?.date ? records : [],rejected_records:0,demo:true}});
+      return;
+    }
     const fn = table[String(req.method ?? '')];
     if (!fn || typeof dafri[fn] !== 'function') {
       write({ jsonrpc: '2.0', id, error: { code: -32601, message: `预览引擎没有这个方法的假数据:${req.method}` } });

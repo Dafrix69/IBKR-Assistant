@@ -10,3 +10,7 @@ foreach(tool tws-positions tws-replay)
     target_link_libraries(${tool} PRIVATE ibkr_tools_common)
     set_target_properties(${tool} PROPERTIES MACOSX_BUNDLE FALSE WIN32_EXECUTABLE FALSE)
 endforeach()
+
+qt_add_executable(terrain-replay terrain_replay.cpp)
+target_link_libraries(terrain-replay PRIVATE ibkr_domain)
+set_target_properties(terrain-replay PROPERTIES MACOSX_BUNDLE FALSE WIN32_EXECUTABLE FALSE)

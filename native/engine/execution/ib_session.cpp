@@ -454,6 +454,22 @@ public:
         Runtime::Scope s(*rt_);
         return secDefCo(shared_from_this(), std::move(symbol), std::move(secType), conId);
     }
+    Task<QString> wshEvents(const QString& filter, const QString& start, const QString& end) override {
+        Runtime::Scope scope(*rt_);
+        return wshCo(shared_from_this(), filter, start, end);
+    }
+    static Task<QString> wshCo(std::shared_ptr<IbApiNextSession> self, QString filter, QString start, QString end) {
+        if (!self->isConnected()) throw util::JsError(u"IBKR 未连接"_s);
+        if (self->wshBusy_) throw util::JsError(u"IBKR WSH 正在读取，请稍后重试"_s);
+        self->wshBusy_ = true;
+        try {
+            co_await self->api_->getWsh(true);
+            const auto result = co_await self->api_->getWsh(false, filter, start, end);
+            self->wshBusy_ = false;
+            co_return result;
+        } catch (...) { self->wshBusy_ = false; throw; }
+    }
+    bool wshBusy_ = false;
     Task<Depth> mktDepth(IbContract contract, int rows, int waitMs) override {
         Runtime::Scope s(*rt_);
         return depthCo(shared_from_this(), std::move(contract), rows, waitMs);
@@ -472,22 +488,6 @@ public:
         if (!connected_) throw LinkDownError();
         api_->cancelOrder(orderId);
         return Task<>::resolved();
-    Task<QString> wshEvents(const QString& filter, const QString& start, const QString& end) override {
-        Runtime::Scope scope(*rt_);
-        return wshCo(shared_from_this(), filter, start, end);
-    }
-    static Task<QString> wshCo(std::shared_ptr<IbApiNextSession> self, QString filter, QString start, QString end) {
-        if (!self->isConnected()) throw util::JsError(u"IBKR 未连接"_s);
-        if (self->wshBusy_) throw util::JsError(u"IBKR WSH 正在读取，请稍后重试"_s);
-        self->wshBusy_ = true;
-        try {
-            co_await self->api_->getWsh(true);
-            const auto result = co_await self->api_->getWsh(false, filter, start, end);
-            self->wshBusy_ = false;
-            co_return result;
-        } catch (...) { self->wshBusy_ = false; throw; }
-    }
-    bool wshBusy_ = false;
     }
     Task<std::vector<OpenTradeDetail>> openTradesDetailed() override {
         Runtime::Scope s(*rt_);
@@ -781,6 +781,11 @@ std::shared_ptr<TickerHandle> IbApiNextSession::subscribeTicker(const IbContract
             // 期货也记:指数盘外的 K 线按期货推算
             const bool plain = contract.secType == u"STK" || contract.secType == u"IND" || contract.secType == u"FUT";
             if (plain && entry->data.last) s->lastFeed_.set(tickerKey(contract), entry->data.delayed);
+            // 来源元数据更新不作为价格 tick 唤醒现有快速出场逻辑。
+            bool metadataOnly = bool(m.added || m.changed);
+            for (const auto& delta : {m.added, m.changed})
+                if (delta) for (const auto& field : delta->items) metadataOnly &= field.first == 11000;
+            if (metadataOnly) return;
             if (contract.secType == u"OPT" || contract.secType == u"FOP") {
                 const QList<std::function<void()>> listeners = s->optionTickListeners_.values();  // 回调里撤掉自己也安全
                 for (const auto& listener : listeners) {

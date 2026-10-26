@@ -4,6 +4,8 @@
 #include "analysis/priceaction.h"
 #include "analysis/signal_outcomes.h"
 #include "domain/config.h"
+#include "domain/terrain_log.h"
+#include <QFileInfo>
 #include "domain/models.h"
 #include "domain/positions.h"
 #include "execution/broker_pricing.h"
@@ -14,6 +16,7 @@
 #include "util/jsvalue.h"
 
 #include <QSet>
+#include <QDateTime>
 
 #include <cmath>
 
@@ -28,6 +31,7 @@ namespace pa = analysis::priceaction;
 namespace {
 
 QString feedName(const std::optional<execution::BarsFeed>& feed) {
+    if (!feed) return u"unknown"_s;
     switch (*feed) {
     case execution::BarsFeed::Live: return u"live"_s;
     case execution::BarsFeed::Delayed: return u"delayed"_s;
@@ -68,12 +72,23 @@ MethodTable MarketHandlers::methods() {
     return contractTable({
         {u"book.snapshot"_s, [this](OJson p) { return bookSnapshot(std::move(p)); }},
         {u"options.wall"_s, [this](OJson p) { return optionsWall(std::move(p)); }},
+        {u"options.entry_context"_s, [this](OJson) { return entryContext(); }},
         {u"options.fly_plan"_s, [this](OJson p) { return optionsFlyPlan(std::move(p)); }},
         {u"options.iv_recorder"_s, syncImpl([this](const OJson&) { return ports_.ivRecorder().status(); })},
         {u"options.iv_recorder_set"_s,
          syncImpl([this](const OJson& p) { return ports_.ivRecorder().setEnabled(js::truthy(js::prop(&p, u"enabled"_s))); })},
-        {u"options.entry_context"_s, [this](OJson) { return entryContext(); }},
         {u"options.spot"_s, [this](OJson p) { return optionsSpot(std::move(p)); }},
+        {u"options.terrain"_s, syncImpl([this](const OJson& p) {
+            domain::TerrainLog log(QFileInfo(settings().db_path).absolutePath() + u"/terrain"_s);
+            const auto date = p.get(u"date"_s);
+            int rejected = 0;
+            QList<OJson> records;
+            if (date && !date->s.isEmpty()) {
+                try { records = log.read(date->s, &rejected); }
+                catch (...) { throw util::RpcError(-32602, u"无法读取地形日期:请使用 YYYY-MM-DD 并检查文件权限"_s); }
+            }
+            return js::object({{u"dates"_s, js::strings(log.dates())}, {u"records"_s, js::array(records)}, {u"rejected_records"_s, js::N(rejected)}});
+        })},
         {u"options.playbook"_s, syncImpl([this](const OJson&) { return ports_.playbook().snapshot(); })},
         {u"options.playbook_set"_s,
          syncImpl([this](const OJson& p) { return ports_.playbook().setEnabled(js::truthy(js::prop(&p, u"enabled"_s))); })},
@@ -108,21 +123,6 @@ util::Task<OJson> MarketHandlers::optionsWall(OJson params) {
     co_return co_await ports_.market().wallFor(symbol, expiry, width);
 }
 
-// ---- 蝴蝶测算 --------------------------------------------------------
-util::Task<OJson> MarketHandlers::optionsFlyPlan(OJson params) {
-    QString symbol = util::jsTrim(js::strOr(js::prop(&params, u"symbol"_s), u"SPX"_s)).toUpper();
-    if (symbol.isEmpty()) symbol = u"SPX"_s;
-    if (!symbolMatches(symbol)) throw util::RpcError(-32602, u"标的代码不合法:'%1'"_s.arg(js::str(js::prop(&params, u"symbol"_s))));
-    OJson planParams = params;
-    planParams.set(u"symbol"_s, js::S(symbol));
-    co_return co_await ports_.flyPlanner().planFor(std::move(planParams));
-}
-
-util::Task<OJson> MarketHandlers::optionsSpot(OJson params) {
-    QString symbol = util::jsTrim(js::strOr(js::prop(&params, u"symbol"_s), u"SPX"_s)).toUpper();
-    if (symbol.isEmpty()) symbol = u"SPX"_s;
-    if (!symbolMatches(symbol) || !settings().indexConfig(symbol)) {
-        throw util::RpcError(-32602, u"实时现价只给配置里的指数,'%1' 不是。"_s.arg(js::str(js::prop(&params, u"symbol"_s))));
 util::Task<OJson> MarketHandlers::entryContext() {
     OJson out = js::object();
     for (const QString& symbol : {u"SPX"_s, u"SPY"_s}) {
@@ -139,6 +139,21 @@ util::Task<OJson> MarketHandlers::entryContext() {
     co_return out;
 }
 
+// ---- 蝴蝶测算 --------------------------------------------------------
+util::Task<OJson> MarketHandlers::optionsFlyPlan(OJson params) {
+    QString symbol = util::jsTrim(js::strOr(js::prop(&params, u"symbol"_s), u"SPX"_s)).toUpper();
+    if (symbol.isEmpty()) symbol = u"SPX"_s;
+    if (!symbolMatches(symbol)) throw util::RpcError(-32602, u"标的代码不合法:'%1'"_s.arg(js::str(js::prop(&params, u"symbol"_s))));
+    OJson planParams = params;
+    planParams.set(u"symbol"_s, js::S(symbol));
+    co_return co_await ports_.flyPlanner().planFor(std::move(planParams));
+}
+
+util::Task<OJson> MarketHandlers::optionsSpot(OJson params) {
+    QString symbol = util::jsTrim(js::strOr(js::prop(&params, u"symbol"_s), u"SPX"_s)).toUpper();
+    if (symbol.isEmpty()) symbol = u"SPX"_s;
+    if (!symbolMatches(symbol) || !settings().indexConfig(symbol)) {
+        throw util::RpcError(-32602, u"实时现价只给配置里的指数,'%1' 不是。"_s.arg(js::str(js::prop(&params, u"symbol"_s))));
     }
     co_return co_await ports_.flyPlanner().spotFor(symbol);
 }

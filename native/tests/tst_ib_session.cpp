@@ -518,6 +518,8 @@ private:
         IbSession& s = *session_;
         if (m == u"destroyOnNext") {
             destroyOnNext = true;
+        } else if (m == u"optionListener") {
+            s.onOptionTick([this] { rec(u"cb"_s,js::S(u"optionTick"_s)); });
         } else if (m == u"onSecond") {
             s.onConnectivity([this](int c) { rec(u"cb"_s, js::array({js::S(u"conn2"_s), js::N(c)})); });
             s.onLink([this](bool up) { rec(u"cb"_s, js::array({js::S(u"link2"_s), js::B(up)})); });
@@ -684,10 +686,10 @@ private:
                 for (const auto& r : rows) out.items.append(js::object({{u"contract"_s, r.contract}, {u"execution"_s, r.execution}}));
                 return out;
             });
-        } else if (m == u"executionHistory") {
-            later<std::optional<std::vector<ExecutionRow>>>(id, s.executionHistory(static_cast<int>(arg(0).n)), [](const auto& rows) {
         } else if (m == u"wsh") {
             later<QString>(id,s.wshEvents(u"{}"_s,u"20250101"_s,u"20261023"_s),[](const QString& value){return js::S(value);});
+        } else if (m == u"executionHistory") {
+            later<std::optional<std::vector<ExecutionRow>>>(id, s.executionHistory(static_cast<int>(arg(0).n)), [](const auto& rows) {
                 if (!rows) return OJson::null();
                 OJson out = js::array();
                 for (const auto& r : *rows) out.items.append(js::object({{u"contract"_s, r.contract}, {u"execution"_s, r.execution}}));
@@ -770,8 +772,6 @@ class TestIbSession : public QObject {
     Q_OBJECT
 
 private slots:
-    void tickTypeTable() {
-        // applyTicks 认的号与库里的两张枚举表一致(T1 ?? T2)
     void metadataDoesNotTriggerPriceListener() {
         const auto* all=fixture().get(u"scenarios"_s);
         for(bool price : {false,true}) {
@@ -811,6 +811,8 @@ private slots:
             QVERIFY2(h.afterlife(&error),qPrintable(error));
         }
     }
+    void tickTypeTable() {
+        // applyTicks 认的号与库里的两张枚举表一致(T1 ?? T2)
         for (const auto& [name, ids] : at(fixture(), u"tickTypes"_s).fields) {
             const OJson& t1 = ids.items[0];
             const OJson& t2 = ids.items[1];

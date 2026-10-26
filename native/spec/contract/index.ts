@@ -182,6 +182,8 @@ export interface RpcMethods {
   "options.iv_recorder_set": { params: IvRecorderSetParams; result: IvRecorderStatus };
   /** 测算面板上那一行实时现价:和测算用的是同一路(夜盘按期货推算)。取不到是 price: null 的回执,不是报错 */
   "options.spot": { params: OptionsSpotParams; result: OptionsSpot };
+  /** 本地 SPX 地形日志:列日期或读取整日观察,无需券商连接 */
+  "options.terrain": { params: { date?: string }; result: { dates: string[]; records: Record<string, unknown>[]; rejected_records: number } };
   /** SPX 日内剧本此刻的样子:三条预期波动区间、状态、触发线与目标、加速档。读内存里循环留下的那一份 */
   "options.playbook": { params: NoParams; result: PlaybookSnapshot };
   "options.playbook_set": { params: PlaybookSetParams; result: PlaybookSnapshot };
@@ -218,10 +220,10 @@ export interface RpcMethods {
   "sectors.add": { params: SectorsAddParams; result: { sector: Sector } };
   "sectors.delete": { params: SectorsIdParams; result: SectorsDeleteResult };
   "sectors.pick": { params: SectorsIdParams; result: SectorsPickResult };
+  "sectors.earnings": { params: { symbol: string }; result: import("./sectors.js").EarningsResult };
   "sectors.quotes": { params: NoParams; result: SectorsQuotesResult };
   "sectors.add_stock": { params: SectorsAddStockParams; result: SectorsAddStockResult };
   "sectors.remove_stock": { params: SectorsRemoveStockParams; result: SectorsRemoveStockResult };
-  "sectors.earnings": { params: { symbol: string }; result: import("./sectors.js").EarningsResult };
   "sectors.set_tag": { params: SectorsSetTagParams; result: { sector: Sector } };
 
   "settings.get": { params: NoParams; result: SettingsView };

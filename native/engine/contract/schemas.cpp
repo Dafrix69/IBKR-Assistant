@@ -493,6 +493,7 @@ const std::vector<NamedSchema>& paramsSchemas() {
             {u"options.iv_recorder"_s, none},
             {u"options.iv_recorder_set"_s, ivRecorderSet()},
             {u"options.spot"_s, optionsSpot()},
+            {u"options.terrain"_s, obj({{u"date"_s, optional(str())}})},
             {u"options.playbook"_s, none},
             {u"options.playbook_set"_s, playbookSet()},
 
@@ -524,9 +525,9 @@ const std::vector<NamedSchema>& paramsSchemas() {
             {u"sectors.add"_s, sectorsAdd()},
             {u"sectors.delete"_s, sectorsIdSchema},
             {u"sectors.pick"_s, sectorsIdSchema},
+            {u"sectors.earnings"_s, obj({{u"symbol"_s, str()}})->strict()},
             {u"sectors.quotes"_s, none},
             {u"sectors.add_stock"_s, sectorsAddStock()},
-            {u"sectors.earnings"_s, obj({{u"symbol"_s, str()}})->strict()},
             {u"sectors.remove_stock"_s, sectorsRemoveStock()},
             {u"sectors.set_tag"_s, sectorsSetTag()},
 

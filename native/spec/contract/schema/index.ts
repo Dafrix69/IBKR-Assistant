@@ -29,7 +29,7 @@ import { NoParamsSchema } from "./kit.js";
 import type { ParamsSchema } from "./kit.js";
 import { LlmPatchParamsSchema, LlmTestParamsSchema } from "./llm.js";
 import { BookSnapshotParamsSchema, MacroBoardParamsSchema } from "./market.js";
-import { FlyPlanParamsSchema, IvRecorderSetParamsSchema, OptionsSpotParamsSchema, OptionsWallParamsSchema, PlaybookSetParamsSchema } from "./options.js";
+import { TerrainParamsSchema, FlyPlanParamsSchema, IvRecorderSetParamsSchema, OptionsSpotParamsSchema, OptionsWallParamsSchema, PlaybookSetParamsSchema } from "./options.js";
 import { PaAnalyzeParamsSchema } from "./priceaction.js";
 import { PoolSetWatchParamsSchema } from "./pool.js";
 import {
@@ -116,6 +116,7 @@ export const PARAMS_SCHEMAS: { readonly [M in RpcMethodName]: ParamsSchema<RpcPa
   "options.iv_recorder": NoParamsSchema,
   "options.iv_recorder_set": IvRecorderSetParamsSchema,
   "options.spot": OptionsSpotParamsSchema,
+  "options.terrain": TerrainParamsSchema,
   "options.playbook": NoParamsSchema,
   "options.playbook_set": PlaybookSetParamsSchema,
 
@@ -147,9 +148,9 @@ export const PARAMS_SCHEMAS: { readonly [M in RpcMethodName]: ParamsSchema<RpcPa
   "sectors.add": SectorsAddParamsSchema,
   "sectors.delete": SectorsIdParamsSchema,
   "sectors.pick": SectorsIdParamsSchema,
+  "sectors.earnings": EarningsParamsSchema,
   "sectors.quotes": NoParamsSchema,
   "sectors.add_stock": SectorsAddStockParamsSchema,
-  "sectors.earnings": EarningsParamsSchema,
   "sectors.remove_stock": SectorsRemoveStockParamsSchema,
   "sectors.set_tag": SectorsSetTagParamsSchema,
 

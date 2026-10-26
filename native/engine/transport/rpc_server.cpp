@@ -49,7 +49,7 @@ const LaneTable& defaultLaneTable() {
             // IV 记录的状态与开关:数一下目录里的文件、写一行偏好;记的那一路是引擎里自己的循环
             u"options.iv_recorder"_s, u"options.iv_recorder_set"_s,
             // 日内剧本:读循环留在内存里的那一份、写一行偏好;取行情是循环自己的事
-            u"options.playbook"_s, u"options.playbook_set"_s,
+            u"options.terrain"_s, u"options.playbook"_s, u"options.playbook_set"_s,
             // 存 API Key / 富途解锁密码:写系统凭证库(子进程,可能等 macOS 弹窗,最多 20 秒)。和下单状态无关,不该让一个没人点的弹窗把排在后面的下单、立即平仓挡住
             u"keychain.set"_s, u"futu.set_password"_s,
             // Discord 跟单:状态是读内存与本地库;存 token 写系统凭证库(同上);重新连接只是换一条 WebSocket。都不碰下单状态
@@ -59,7 +59,7 @@ const LaneTable& defaultLaneTable() {
         };
         // 读道:只读的行情 / 探测 / 纯计算,最多 kReadConcurrency 个并发;彼此独立,也不碰下单状态
         t.read = {
-            u"positions.list"_s, u"sectors.quotes"_s, u"pa.analyze"_s, u"book.snapshot"_s, u"options.wall"_s, u"macro.board"_s,
+            u"positions.list"_s, u"options.entry_context"_s, u"sectors.earnings"_s, u"sectors.quotes"_s, u"pa.analyze"_s, u"book.snapshot"_s, u"options.wall"_s, u"macro.board"_s,
             u"screener.rs"_s, u"screener.inflection"_s, u"screener.deviation"_s, u"backtest.run"_s, u"backtest.strategies"_s, u"backtest.sweep"_s,
             u"pa.timeframes"_s, u"tws.scan"_s, u"tws.diagnose"_s, u"futu.scan"_s, u"futu.diagnose"_s,
             u"tracker.target_preview"_s,

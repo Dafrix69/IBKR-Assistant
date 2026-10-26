@@ -31,6 +31,7 @@
 #include "shell/trade_composer.h"
 #include "shell/trade_controller.h"
 #include "shell/fly_controller.h"
+#include "shell/terrain_controller.h"
 #include "shell/fly_store.h"
 #include "shell/board_controller.h"
 #include "shell/records_controller.h"
@@ -387,6 +388,7 @@ int main(int argc, char* argv[]) {
     // 三路引擎推来的提醒(日内剧本、异动、情报),同样不看当前在哪一页
     shell::PlaybookStore playbook(&bridge, &alerter, QDir(userDataDir).filePath(u"qt-settings.ini"_s));
     // 交易指令页右栏两面的接线(蝴蝶测算、日内剧本)
+    shell::TerrainController terrainPage(&bridge);
     shell::FlyController flyPage(&flyStore, &spot, &store, &events, &playbook, &composer);
     shell::QualityStore quality(&bridge, &store, &alerter);
     shell::IntelStore intel(&bridge, &alerter, QDir(userDataDir).filePath(u"qt-settings.ini"_s));
@@ -520,6 +522,7 @@ int main(int argc, char* argv[]) {
                               {u"trackerPage"_s, QVariant::fromValue<QObject*>(withEngine ? &trackerPage : nullptr)},
                               {u"composer"_s, QVariant::fromValue<QObject*>(withEngine ? &composer : nullptr)},
                               {u"tradePage"_s, QVariant::fromValue<QObject*>(withEngine ? &tradePage : nullptr)},
+                              {u"terrain"_s, QVariant::fromValue<QObject*>(withEngine ? &terrainPage : nullptr)},
                               {u"fly"_s, QVariant::fromValue<QObject*>(withEngine ? &flyPage : nullptr)},
                               {u"board"_s, QVariant::fromValue<QObject*>(withEngine ? &boardPage : nullptr)},
                               {u"recordsPage"_s, QVariant::fromValue<QObject*>(withEngine ? &recordsPage : nullptr)},

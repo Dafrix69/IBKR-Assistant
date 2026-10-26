@@ -50,6 +50,7 @@ Window {
     /// 交易指令页:输入与提交(shell/trade_composer,对应 store/trade)与页面接线(shell/trade_controller)
     property var composer: null
     property var tradePage: null
+    property var terrain: null
     property var fly: null
     property var board: null
     property var recordsPage: null
@@ -92,6 +93,8 @@ Window {
     }
     /// 截图对比用(main.cpp 的 --open):先打开抽屉或对话框再抓
     function devOpen(what) {
+        if (what === "fly-entry") { flyEntryModal.open(); return }
+        if (what === "terrain") { terrainModal.open(); if (root.terrain) root.terrain.refresh(); return }
         // chart:<n>:图表对比(场景见 native/tests/fixtures/chart_scale_cases.json),铺在窗口左上角、同浏览器里的尺寸
         if (what.indexOf("chart:") === 0 && root.devCharts) {
             var c = root.devCharts.load(Number(what.slice(6)))
@@ -467,7 +470,7 @@ Window {
         }
         Component {
             id: tradePageComp
-            TradePage { controller: root.tradePage; composer: root.composer; fly: root.fly; flyStore: root.flyStore; navigate: function (key) { Nav.navigate(key) } }
+            TradePage { onOpenFlyEntry: flyEntryModal.open(); onOpenTerrain: { terrainModal.open(); if (root.terrain) root.terrain.refresh() } controller: root.tradePage; composer: root.composer; fly: root.fly; flyStore: root.flyStore; navigate: function (key) { Nav.navigate(key) } }
         }
         Component {
             id: placeholder
@@ -557,6 +560,20 @@ Window {
         z: 1000
         color: "#ffffff"
         Chart { anchors.fill: parent; source: root.devCharts ? root.devCharts.source : null }
+    }
+
+    Modal {
+        id: terrainModal
+        objectName: "terrainModal"
+        title: "SPX 地形回放"
+        panelWidth: 1020
+        TerrainReplay { width: parent.width; controller: root.terrain }
+    }
+    Modal {
+        id: flyEntryModal
+        title: "蝴蝶开仓复核"
+        panelWidth: 940
+        FlyEntry { width: parent.width; controller: root.fly }
     }
 
 }

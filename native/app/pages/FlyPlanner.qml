@@ -70,6 +70,9 @@ Column {
     // .event-warning 写的是下 8,但 kit 的 Notice 那条下 14 排在后面、优先级一样,量出来是 14
     Item { width: 1; height: root.m.warning ? 14 : 0 }
 
+    Button { text: "开仓复核 · 地形、确认与风险"; onClicked: root.openEntry() }
+    Item { width: 1; height: 10 }
+
     // ---- 表单(.fly-form:内边距 10 12 12、卡片圆角、填充底、下 12)
     Rectangle {
         width: parent.width
@@ -84,8 +87,8 @@ Column {
                 Field { label: "中心行权价"; FlyInput { key: "center"; placeholder: "7750" } }
                 Field { label: "翼宽(点)"; FlyInput { key: "width"; placeholder: "25"; width: 72 } }
                 Field {
-                    label: "方向"; tip: "自动 = 中心在现价上方看涨、下方看跌"
-                    Segmented { small: true; fontSize: 11; itemColor: Theme.labelSecondary; value: root.form.right || ""; options: [{ label: "自动", value: "" }, { label: "看涨", value: "C" }, { label: "看跌", value: "P" }]
+                    label: "期权类型"; tip: "自动 = 中心在现价上方选 Call、下方选 Put；交易方向取决于目标相对现价的位置"
+                    Segmented { small: true; fontSize: 11; itemColor: Theme.labelSecondary; value: root.form.right || ""; options: [{ label: "自动", value: "" }, { label: "Call", value: "C" }, { label: "Put", value: "P" }]
                                 onActivated: function (v) { root.controller.patch({ right: v }) } }
                 }
                 Field { label: "张数"; FlyInput { key: "quantity"; placeholder: "1"; width: 60 } }

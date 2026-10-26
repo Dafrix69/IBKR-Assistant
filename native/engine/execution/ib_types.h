@@ -209,8 +209,8 @@ public:
     virtual Task<> settle(int ms) = 0;
     virtual Task<std::vector<RawBar>> historicalData(IbContract contract, HistoricalRequest opts) = 0;
     virtual Task<std::vector<OptChainParam>> secDefOptParams(QString symbol, QString secType, int conId) = 0;
-    virtual Task<Depth> mktDepth(IbContract contract, int rows, int waitMs) = 0;
     virtual Task<QString> wshEvents(const QString&, const QString&, const QString&) { throw std::runtime_error("WSH unavailable on this session"); co_return QString(); }
+    virtual Task<Depth> mktDepth(IbContract contract, int rows, int waitMs) = 0;
     virtual Task<TradeLike> placeOrder(IbContract contract, OrderIntent order) = 0;
     virtual Task<std::vector<OpenTrade>> openTrades() = 0;
     virtual Task<> cancelOrder(int orderId) = 0;

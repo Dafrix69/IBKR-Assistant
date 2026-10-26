@@ -13,6 +13,9 @@
 #include "util/py.h"
 #include "util/tz.h"
 
+#include <QDateTime>
+#include <QTimeZone>
+#include <QJsonDocument>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -482,9 +485,6 @@ Task<std::optional<OJson>> BrokerRouter::futuresSpot(SessionPtr session, contrac
 }
 
 /// 批量拉股票/ETF 报价;绝不用于订单定价。
-Task<OJson> BrokerRouter::stockQuotes(QStringList symbols) {
-    const auto live = sessions();
-    const SessionPtr session = live.empty() ? nullptr : live[0];
 Task<OJson> BrokerRouter::earnings(QString symbol) {
     const auto live = sessions();
     if (live.empty()) throw util::JsError(u"IBKR 未连接"_s);
@@ -500,6 +500,9 @@ Task<OJson> BrokerRouter::earnings(QString symbol) {
     co_return *parsed;
 }
 
+Task<OJson> BrokerRouter::stockQuotes(QStringList symbols) {
+    const auto live = sessions();
+    const SessionPtr session = live.empty() ? nullptr : live[0];
     if (!session) co_return js::object();
     OJson out = js::object();
     std::exception_ptr failure;

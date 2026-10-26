@@ -6,6 +6,8 @@ import Dafri.Kit
 // 判定、文案、结果卡片都在 C++(shell/trade_rules,经 shell/trade_controller 的 model);这里只摆。
 ScrollPage {
     id: page
+    signal openTerrain()
+    signal openFlyEntry()
     property var controller: null
     property var composer: null
     property var navigate: function (key) {}
@@ -19,6 +21,7 @@ ScrollPage {
     PageHead {
         width: parent.width
         title: m.title || "交易指令"
+        Button { text: "地形回放"; small: true; onClicked: page.openTerrain() }
         Label { text: page.m.limits || "—"; size: 11; color: Theme.labelSecondary }
     }
 
