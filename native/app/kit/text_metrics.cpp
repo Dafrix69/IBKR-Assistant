@@ -2,6 +2,7 @@
 
 #include <QFont>
 #include <QFontMetricsF>
+#include <QGuiApplication>
 #include <QHash>
 #include <QMap>
 
@@ -41,6 +42,8 @@ double at(const QMap<int, double>& t, double px) {
 
 double trackFix(double px, const QString& text) {
 #ifdef Q_OS_MACOS
+    // 这张校正表只量过 Apple 系统字体,不能套到 Anthropic Sans 上。
+    if (QGuiApplication::font().family() != u".AppleSystemUIFont") return 0;
     if (text.isEmpty()) return 0;
     int n = 0, han = 0, dots = 0;
     for (QChar ch : text) {
@@ -68,12 +71,9 @@ double labelWidth(const QString& text, double px, int weight, const QString& fam
     if (cache.size() > 4096) cache.clear();
     const double base = std::ceil(px - 0.001);
     const double k = px / base;
-    // 没给字体 = 系统界面字体,同 Theme.fontFamily 按平台选的那一个(macOS 以外是 Segoe UI)
-#ifdef Q_OS_MACOS
-    QFont font(family.isEmpty() ? QStringLiteral(".AppleSystemUIFont") : family);
-#else
-    QFont font(family.isEmpty() ? QStringLiteral("Segoe UI") : family);
-#endif
+    // 与 Theme.fontFamily 使用同一份应用字体,图表与页面的字宽才能一致。
+    QFont font = QGuiApplication::font();
+    if (!family.isEmpty()) font.setFamily(family);
     font.setPixelSize(int(base));
     font.setWeight(QFont::Weight(weight));
     if (family.isEmpty()) font.setVariableAxis(QFont::Tag("wght"), float(weight));

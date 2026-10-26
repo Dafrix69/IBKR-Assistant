@@ -65,6 +65,53 @@ void type(QObject* num, const QString& text) {
 class TestKitControls : public QObject {
     Q_OBJECT
 private slots:
+    void scrolledHeaderSurvivesPageReplacement() {
+        QQuickView view;
+        QQmlComponent component(view.engine());
+        component.setData(R"(
+import QtQuick
+import Dafri.Kit
+Item {
+    id: host
+    width: 600; height: 300
+    property bool pageOn: true
+    Loader {
+        anchors.fill: parent
+        active: host.pageOn
+        sourceComponent: Component {
+            ScrollPage {
+                objectName: "scrollPage"
+                PageHead { objectName: "pageHead"; width: parent.width; title: "Header" }
+                Repeater { model: 40; Rectangle { width: 400; height: 30; color: "lightgray" } }
+            }
+        }
+    }
+}
+)", QUrl(u"inline-header.qml"_s));
+        std::unique_ptr<QObject> root(component.create());
+        QVERIFY2(root, qPrintable(component.errorString()));
+        qobject_cast<QQuickItem*>(root.get())->setParentItem(view.contentItem());
+        view.resize(600, 300);
+        view.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&view));
+        for (int i = 0; i < 20; ++i) {
+            QObject* page = child(root.get(), "scrollPage");
+            QVERIFY(page);
+            QVERIFY(child(page, "pageHead"));
+            page->setProperty("contentY", 140);
+            QTest::qWait(20);
+            view.resize(600 + i % 2, 300 + i % 3);
+            page->setProperty("contentY", 0);
+            QTest::qWait(10);
+            root->setProperty("pageOn", false);
+            QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+            QCoreApplication::processEvents();
+            root->setProperty("pageOn", true);
+            QCoreApplication::processEvents();
+        }
+        QVERIFY(child(root.get(), "scrollPage"));
+    }
+
     // 复现 review 的那一条:输入 30 → 勾上「分档」把它清成 null → 框里也得空着,不能还显示 30
     void inputNumberFollowsTheState() {
         QQmlEngine engine;

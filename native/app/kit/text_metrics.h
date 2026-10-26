@@ -12,7 +12,7 @@ namespace ibkr::kit {
 
 /// 整数像素 px、这段字(纯文字)在 Qt 里该加的字距(macOS 以外是 0)
 double trackFix(double px, const QString& text);
-/// kit/Label.qml 画这段字的宽;family 空 = 系统字体
+/// kit/Label.qml 画这段字的宽;family 空 = 应用界面字体
 double labelWidth(const QString& text, double px, int weight = 400, const QString& family = QString(), bool tnum = false);
 
 class Metrics : public QObject {

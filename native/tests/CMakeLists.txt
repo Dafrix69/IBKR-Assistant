@@ -85,6 +85,9 @@ target_compile_definitions(tst_prompts PRIVATE IBKR_PROMPTS_DIR="${IBKR_REPO_DIR
 ibkr_test(tst_jsmath)
 target_link_libraries(tst_jsmath PRIVATE ibkr_util Qt6::Test)
 
+ibkr_test(tst_ib_runtime)
+target_link_libraries(tst_ib_runtime PRIVATE ibkr_execution Qt6::Test Qt6::Network)
+
 ibkr_test(tst_config)
 target_link_libraries(tst_config PRIVATE ibkr_domain Qt6::Test)
 

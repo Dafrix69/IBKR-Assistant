@@ -6,6 +6,9 @@ config/settings.json.bak
 config/settings.json.broken-*
 config/settings.json.tmp-*
 
+# TWS research cache and derived results: retain locally, never commit raw market data.
+data/
+
 # 桌面端:依赖、打包产物、预览与压测输出
 desktop/node_modules/
 desktop/dist/
@@ -18,7 +21,8 @@ desktop/build/inbox-reader/
 desktop/build/THIRD-PARTY-NOTICES.txt
 .uipreview/
 
-# 引擎自己的忽略见 engine-ts/.gitignore
+# 已移除的 TypeScript 引擎仍可能留下本地编译产物
+engine-ts/dist/
 node_modules/
 .claude/
 .DS_Store

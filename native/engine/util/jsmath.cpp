@@ -58,7 +58,7 @@ double log(double x) {
     extract(x, hx, lx);
     k = 0;
     if (hx < 0x00100000) {                                   // x < 2**-1022
-        if (((hx & 0x7fffffff) | int32_t(lx)) == 0) return -two54 / 0.0;  // log(+-0)=-inf
+        if (((hx & 0x7fffffff) | int32_t(lx)) == 0) return -std::numeric_limits<double>::infinity();  // log(+-0)=-inf
         if (hx < 0) return (x - x) / 0.0;                    // log(-#) = NaN
         k -= 54;
         x *= two54;  // subnormal number, scale up x
@@ -167,7 +167,7 @@ double log10(double x) {
     extract(x, hx, lx);
     k = 0;
     if (hx < 0x00100000) {  // x < 2**-1022
-        if (((hx & 0x7fffffff) | int32_t(lx)) == 0) return -two54_ / 0.0;  // log(+-0)=-inf
+        if (((hx & 0x7fffffff) | int32_t(lx)) == 0) return -std::numeric_limits<double>::infinity();  // log(+-0)=-inf
         if (hx < 0) return (x - x) / 0.0;                                     // log(-#) = NaN
         k -= 54;
         x *= two54_;  // subnormal number, scale up x
@@ -192,7 +192,7 @@ double log2(double x) {
     extract(x, hx, lx);
     k = 0;
     if (hx < 0x00100000) {  // x < 2**-1022
-        if (((hx & 0x7fffffff) | int32_t(lx)) == 0) return -two54_ / 0.0;
+        if (((hx & 0x7fffffff) | int32_t(lx)) == 0) return -std::numeric_limits<double>::infinity();
         if (hx < 0) return (x - x) / 0.0;
         k -= 54;
         x *= two54_;

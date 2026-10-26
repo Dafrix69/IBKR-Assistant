@@ -37,7 +37,7 @@ void Runtime::queueMicrotask(std::function<void()> fn) {
     if (depth_ == 0) drain();
 }
 
-Runtime::Scope::Scope(Runtime& rt) : rt_(rt) { ++rt_.depth_; }
+Runtime::Scope::Scope(Runtime& rt) : keep_(rt.weak_from_this().lock()), rt_(rt) { ++rt_.depth_; }
 Runtime::Scope::~Scope() {
     if (--rt_.depth_ == 0) rt_.drain();
 }
@@ -49,6 +49,7 @@ void Runtime::runMacrotask(const std::function<void()>& fn) {
 
 void Runtime::drain() {
     if (draining_) return;
+    const auto keep = weak_from_this().lock();
     draining_ = true;
     ++depth_;  // 微任务里再开的 Scope 不自己放(这里一直放到空)
     while (!micro_.empty()) {

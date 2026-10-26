@@ -1,6 +1,6 @@
 # 界面
 
-桌面端界面在 `desktop/renderer-react/`:React 19 + Ant Design 6 + zustand,Vite + TypeScript 构建。
+桌面端界面在 `native/app/`:Qt Quick / QML,共享控件与主题在 `native/app/kit/`。
 外观参考 iOS 27 的 Liquid Glass;深浅色默认跟随系统(可以固定成浅色或深色),涨跌配色与玻璃透明度在设置里调。
 
 ## 页面结构
@@ -71,12 +71,15 @@
 
 - **玻璃只给浮在内容之上的那一层**:侧栏(四周留白的 22px 圆角面板)、工具栏里的胶囊、吸顶标题、行情带瓦片。
   内容滚到标题下面时是一整条均匀的玻璃栏(`.page-head::before`,用 `animation-timeline: scroll()` 渐显)。
+  Qt 版 Windows 的吸顶标题仅使用半透明渐变着色,不创建背景模糊采样链,避免 Qt 6.10.3 在切页或销毁采样对象时触发渲染断言;标题位置与渐显行为保持一致。
   卡片是内容,用着色的实面、不加 `backdrop-filter`:几十张卡各自模糊会让滚动掉帧。
 - 玻璃边压暗、顶上一道高光(`--glass-edge`)。所有面的透明度由一个变量 `--glass-tint` 计算(设置 › 外观 › Liquid Glass 滑杆,0 通透、1 完全着色);
   系统打开「减弱透明度」时强制为 1 并关闭模糊。Windows 没有 vibrancy,主进程给窗口不透明的底色。
 - 窗口底是 iOS 分组灰加两抹几乎看不出的冷色(`--ambient`)。
 - 圆角同心:面板 22 → 卡片 20 → 卡内瓦片 14 → 控件 12;按钮、分段控件、标签都是胶囊;开关 46×26。
-- 字号:大标题 28px、分组标题 17px、正文 13px、说明 11px;数字用 `--font-display`(SF Pro Rounded,Windows 用 Segoe UI Variable Display)与等宽数字。
+- 字号:大标题 28px、分组标题 17px、正文 13px、说明 11px。界面优先用 Anthropic Sans(包括 Variable 版),中文优先 Noto Sans SC,
+  缺失时回退到平台字体;数字保留等宽数字特性。字体文件从 `DAFRI_FONT_DIR` 指定目录读取,默认是 userData 下的 `fonts/`,不随源码分发。
+  `Theme.fontFamily`、原生确认框、图表与持仓标签的字宽测量共用应用字体;macOS 原有的系统字体字距校正只在系统字体上启用。
 - **用色克制**(规则写在 `graphics.css` 开头):面是中性的,颜色只表达语义(涨跌、成败、警告)。饱和实心色只给主按钮和开关,其余约 11% 淡染;
   代码徽章、小组件、事实瓦片灰底;实心图标瓦片只在设置页行首,平涂、不加渐变与彩色投影。
 - **文字着色用可访问变体** `--green-text` / `--red-text` / `--orange-text` 与 `--up-text` / `--down-text`;基础色只用于面与图。0 不着色。

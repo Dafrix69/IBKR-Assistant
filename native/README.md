@@ -35,8 +35,11 @@ Electron 版与 TS 引擎已删;下文提到的 `desktop/…`、`engine-ts/…`�
    - **tws-replay**:把上一次录的放回去,写出去的字节对不上就退出码 3。
    - 断点直接点行号左边;CodeLLDB 会停在那里。
 6. 预设还有 `mac-release`、`mac-asan`(AddressSanitizer + UBSan)、`mac-tsan`(ThreadSanitizer),状态栏里切。
-7. Windows:先装 Qt(在线安装器或 aqt)并把环境变量 `QT_ROOT_DIR` 设成那一份(如 `C:\Qt\6.10.3\msvc2022_64`),
-   预设选 `win-debug`;「运行和调试」里的 Windows 两项会把 `QT_ROOT_DIR\bin` 加进 PATH(编译目录里没有 Qt 的 DLL)。
+7. Windows:先装 Visual Studio 2022 Build Tools 的 C++ x64/x86 工具与 Windows SDK,以及 CMake(至少 3.25)、Ninja。
+   Qt 用在线安装器或 aqt 装 MSVC 2022 x64 版,包括 qtbase、qtdeclarative、qtsvg、qttools、qtshadertools;Discord 网关还要 qtwebsockets。
+   把环境变量 `QT_ROOT_DIR` 设成那一份(如 `C:\Qt\6.10.3\msvc2022_64`),预设选 `win-debug`。
+   命令行要先进入 VS 的 x64 Developer PowerShell,再把下文三条命令的 `mac-debug` 换成 `win-debug`;
+   运行前把 `QT_ROOT_DIR\bin` 加进 PATH。「运行和调试」里的 Windows 两项会自动加它(编译目录里没有 Qt 的 DLL)。
 
 改了 C++ 不用管 `compile_commands.json`:CMake Tools 每次配置后会拷一份到 `native/` 给 clangd(已 gitignore)。
 

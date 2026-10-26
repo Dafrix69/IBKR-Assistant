@@ -173,11 +173,20 @@ void EngineClient::wireChild(const std::shared_ptr<Child>& child) {
         onStdout(child);
         onStderr(child);
         const bool crashed = status == QProcess::CrashExit;
+#if defined(Q_OS_WIN)
+        // Windows 的 exitCode 是异常状态码,不是 Unix 信号;保留它供诊断。
+        const int code = exitCode;
+        const int signal = 0;
+#else
         const int code = crashed ? 0 : exitCode;
         // Unix 上被信号杀掉时 Qt 给的 exitCode 是信号号
         const int signal = crashed ? exitCode : 0;
+#endif
         QString detail = tail_.mid(std::max<qsizetype>(0, tail_.size() - 8)).join(u'\n');
         if (detail.isEmpty()) detail = u"退出码 %1"_s.arg(code);
+#if defined(Q_OS_WIN)
+        if (crashed) detail.prepend(u"Windows 异常 0x%1\n"_s.arg(quint32(exitCode), 8, 16, QChar(u'0')).toUpper());
+#endif
         settle(child, code, signal, detail);
         finishStopping(child);
         child->process->deleteLater();

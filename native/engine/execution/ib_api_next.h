@@ -67,7 +67,7 @@ struct Live {
 /// setTimeout 的时长:不在 [1, 2^31 − 1] 里的(含 NaN)按 1 毫秒,小数截掉(同 ib_exec_history 的 nodeTimerDelay)
 double nodeDelay(double ms);
 
-class Runtime {
+class Runtime : public std::enable_shared_from_this<Runtime> {
 public:
     virtual ~Runtime() = default;
     /// Date.now()
@@ -86,6 +86,8 @@ public:
         Scope& operator=(const Scope&) = delete;
 
     private:
+        // 回调可能放手最后一个会话;运行时至少活到这一拍的微任务全部放完。
+        std::shared_ptr<Runtime> keep_;
         Runtime& rt_;
     };
 

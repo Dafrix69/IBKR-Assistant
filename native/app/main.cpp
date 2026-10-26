@@ -79,6 +79,7 @@
 #include <QFileDialog>
 #include <QQuickWindow>
 #include <QFont>
+#include <QFontDatabase>
 #include <QFontMetricsF>
 #include <QSettings>
 #include <QStandardPaths>
@@ -95,6 +96,39 @@ QString firstNonEmpty(std::initializer_list<QString> candidates) {
     for (const QString& c : candidates)
         if (!c.isEmpty()) return c;
     return {};
+}
+
+void configureFonts(const QString& directory) {
+    const QDir fonts(directory);
+    for (const QString& file : fonts.entryList({u"*.otf"_s, u"*.ttf"_s}, QDir::Files))
+        QFontDatabase::addApplicationFont(fonts.filePath(file));
+    QStringList available = QFontDatabase::families();
+#if defined(Q_OS_WIN)
+    if (!available.contains(u"Noto Sans SC"_s)) {
+        const QString cjk = QDir(qEnvironmentVariable("WINDIR")).filePath(u"Fonts/NotoSansSC-VF.ttf"_s);
+        if (QFile::exists(cjk)) QFontDatabase::addApplicationFont(cjk);
+        available = QFontDatabase::families();
+    }
+#endif
+    QFont ui = QApplication::font();
+#if defined(Q_OS_MACOS)
+    ui.setFamily(u".AppleSystemUIFont"_s);
+#else
+    ui.setFamily(u"Segoe UI"_s);
+#endif
+    for (const QString& family : {u"Anthropic Sans Variable"_s, u"Anthropic Sans Variable Text"_s, u"Anthropic Sans"_s, u"Anthropic Sans Text"_s}) {
+        if (!available.contains(family)) continue;
+        ui.setFamily(family);
+        break;
+    }
+    QApplication::setFont(ui);
+    // 显式指定中文回退,避免无中文字符的西文字体在 Windows 上落到宋体。
+    for (const QString& family : {u"Noto Sans SC"_s, u"Microsoft YaHei UI"_s, u"PingFang SC"_s}) {
+        if (!available.contains(family)) continue;
+        QFontDatabase::addApplicationFallbackFontFamily(QChar::Script_Han, family);
+        QFontDatabase::addApplicationFallbackFontFamily(QChar::Script_Common, family);
+        break;
+    }
 }
 
 }  // namespace
@@ -164,6 +198,7 @@ int main(int argc, char* argv[]) {
     }
 
     const QString userDataDir = shell::electronUserDataDirs().first();
+    configureFonts(qEnvironmentVariable("DAFRI_FONT_DIR", QDir(userDataDir).filePath(u"fonts"_s)));
     // QML 的 Settings(侧栏折叠、当前页)不给 location 时用 QSettings 的默认位置——macOS 上是 ~/Library/Preferences 的 plist,
     // 不跟 IBKR_USER_DATA_DIR 走,截图与自检会读写用户那份真偏好。默认位置改成 userData 下的 ini
     QSettings::setDefaultFormat(QSettings::IniFormat);
@@ -182,6 +217,7 @@ int main(int argc, char* argv[]) {
     // 先于 logFile 析构:QApplication 比它活得久,收尾时的 qWarning 不能落到一个已经没了的对象上
     const struct Unhook { ~Unhook() { shell::LogFile::installMessageHandler(nullptr); } } unhook;
     logFile.info(u"[boot] Datrix(Qt)%1 启动,引擎 %2"_s.arg(QCoreApplication::applicationVersion(), engineKind));
+    logFile.info(u"[font] UI: %1; CJK: %2"_s.arg(QApplication::font().family(), QFontDatabase::applicationFallbackFontFamilies(QChar::Script_Han).join(u", "_s)));
 
     shell::EngineClient engine(resolver);
     // 引擎 stderr 也落盘:界面只留最近几行,崩溃前那几行往往在更早
@@ -324,10 +360,11 @@ int main(int argc, char* argv[]) {
     // 持仓追踪页的接线:价位条按真字体量字宽(lib/LevelStrip.tsx 量的是画布上的 10px 字:名字 500、价格等宽 600)
     shell::TrackerController trackerPage(&bridge, &store, &tracker, &alerts);
     trackerPage.measure = [](const QString& text, bool mono, int weight) {
+        QFont font = QApplication::font();
 #if defined(Q_OS_MACOS)
-        QFont font(mono ? u".AppleSystemUIFontMonospaced"_s : u".AppleSystemUIFont"_s);
+        if (mono) font.setFamily(u".AppleSystemUIFontMonospaced"_s);
 #else
-        QFont font(mono ? u"Consolas"_s : u"Segoe UI"_s);
+        if (mono) font.setFamily(u"Consolas"_s);
 #endif
         font.setPixelSize(10);
         font.setWeight(QFont::Weight(weight));

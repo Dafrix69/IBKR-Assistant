@@ -88,7 +88,7 @@ void Bridge::forward(const QString& method, const QJsonObject& clean, RpcDone do
         if (!reply.ok && reply.code == u"ENGINE_TIMEOUT") {
             EngineReply unknown = reply;
             unknown.error = u"结果未知:引擎 2 分钟内没有回话,这次操作可能已经执行(订单可能已经发出)。"
-                            "请先到「订单看板」和券商端核对,不要直接重发;引擎回话后这里会再通知一次。"_s;
+                            u"请先到「订单看板」和券商端核对,不要直接重发;引擎回话后这里会再通知一次。"_s;
             return done(unknown);
         }
         done(reply);

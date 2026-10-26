@@ -114,18 +114,18 @@ QtObject {
     readonly property int radiusSmall: 9
     readonly property int radiusXS: 6
 
-    // --- 字:系统字体,macOS 的字号层级(正文 13 / 说明 11),字重照 CSS 的 510 / 590 / 650 / 750 ---
+    // --- 字:由 QApplication 统一选择 Claude 风格或系统回退;字号与字重保持原有层级 ---
     readonly property int fontSmall: 11
     readonly property int fontCaption: 12
     readonly property int fontBody: 13
     readonly property int fontLarge: 15
     readonly property int fontTitle: 20
     readonly property int fontLargeTitle: 28
-    readonly property string fontFamily: Qt.platform.os === "osx" ? ".AppleSystemUIFont" : "Segoe UI"
+    readonly property string fontFamily: Qt.application.font.family
     // --font-mono 的 ui-monospace 在 macOS 上是 SF Mono:Qt 里叫 .AppleSystemUIFontMonospaced(fontInfo 报的名字是 Menlo,
     // 实际画的是 SF Mono——同一串字量出来 176.45,Chromium 的 ui-monospace 是 176.84,真 Menlo 是 183.7)
     readonly property string fontMono: Qt.platform.os === "osx" ? ".AppleSystemUIFontMonospaced" : "Consolas"
-    // --font-display 写的 "SF Pro Rounded" 在 Chromium 里认不出来(量出来和不存在的字体一样宽),落到系统字体:同 fontFamily
+    // 标题、数字与正文共用当前界面字体。
     readonly property string fontDisplay: fontFamily
     readonly property int weightMedium: 510
     readonly property int weightSemibold: 590

@@ -100,9 +100,14 @@ void QtScheduler::clearTimeout(TimerId id) {
 std::optional<double> snowflakeMs(const QString& id) {
     static const QRegularExpression re(u"^[0-9]{15,21}\\z"_s);
     if (!re.match(id).hasMatch()) return std::nullopt;
-    unsigned __int128 v = 0;
-    for (const QChar c : id) v = v * 10 + unsigned(c.unicode() - u'0');
-    return double(v >> 22) + kDiscordEpochMs;
+    // 商余分开累计:21 位 ID 超过 64 位,但除以 2^22 后的商装得下;MSVC 没有 __int128。
+    quint64 quotient = 0, remainder = 0;
+    for (const QChar c : id) {
+        remainder = remainder * 10 + unsigned(c.unicode() - u'0');
+        quotient = quotient * 10 + (remainder >> 22);
+        remainder &= (quint64(1) << 22) - 1;
+    }
+    return double(quotient) + kDiscordEpochMs;
 }
 
 std::optional<DiscordMessage> parseMessage(const OJson* d) {

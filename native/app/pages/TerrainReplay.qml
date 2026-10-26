@@ -37,7 +37,7 @@ Column {
                 var low=Number(root.m.low || 0),high=Number(root.m.high || 1),scale=Number(root.m.scale || 1)
                 function x(k) { return l+(k-low)/Math.max(1,high-low)*(r-l) }
                 function y(g) { return mid-g/scale*(bottom-top)/2 }
-                c.font="11px sans-serif"; c.fillStyle=ink; c.strokeStyle=ink; c.lineWidth=0.5
+                c.font="11px '"+Theme.fontFamily+"'"; c.fillStyle=ink; c.strokeStyle=ink; c.lineWidth=0.5
                 c.beginPath();c.moveTo(l,mid);c.lineTo(r,mid);c.stroke()
                 c.textAlign="right";c.fillText((scale/1e9).toPrecision(3)+" B",l-8,top+5);c.fillText("0",l-8,mid+4);c.fillText((-scale/1e9).toPrecision(3)+" B",l-8,bottom)
                 c.textAlign="center"

@@ -224,8 +224,8 @@ void SupportService::restoreBackup(const QString& name, Done done) {
         box.title = u"从备份恢复交易库"_s;
         box.message = u"用这份备份换掉现在的交易库?"_s;
         box.detail = u"备份:%1\n\n这份备份之后产生的交易记录、成交、追踪设置、想法,在恢复后的库里都没有。\n"
-                     "恢复前会先给现在的库再留一份备份,原文件也会改名留在旁边,不会删。\n"
-                     "恢复期间交易引擎会重启:持仓追踪停几秒,券商连接会重连。已经挂在券商那边的单不受影响。"_s.arg(shell::store::describeBackup(*target));
+                     u"恢复前会先给现在的库再留一份备份,原文件也会改名留在旁边,不会删。\n"
+                     u"恢复期间交易引擎会重启:持仓追踪停几秒,券商连接会重连。已经挂在券商那边的单不受影响。"_s.arg(shell::store::describeBackup(*target));
         box.buttons = {u"取消"_s, u"恢复这一份"_s};
         if (!deps_.confirm || deps_.confirm(box) != 1) return done(QJsonObject{{u"ok"_s, false}, {u"canceled"_s, true}}, {});
         // 先给现在的库留一份(能留就留:库已经坏了的话这一步会失败,不挡恢复)

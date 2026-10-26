@@ -32,7 +32,8 @@ Item {
         height: root.implicitHeight
         // 盒子(含 padding)从 -6 起,高 14 + 标题 + 10;玻璃再往下多 10
         readonly property real boxH: 14 + head.implicitHeight + 10
-        // 玻璃:背后内容的模糊(着色器,真机的 Metal 下才画;沙箱截图用的软件渲染画不出着色器,只剩着色那一层)+ 透明那一档的玻璃色。
+        // Windows 下捕获滚动内容会触发 Qt ShaderEffectSource 生命周期断言,只保留着色层。
+        // 其他平台叠加背后内容的模糊;软件渲染仍只画着色层。
         // 最后 12px 渐隐:模糊那一层用遮罩,着色那一层直接是渐变——不再套一层 layer,哪一层画不出来都不连累另一层
         Item {
             id: glass
@@ -43,35 +44,41 @@ Item {
             height: bar.boxH + 10
             opacity: Math.max(0, Math.min(1, root.scrolled / 40))
             readonly property real solid: Math.max(0, 1 - 12 / Math.max(1, height))
-            ShaderEffectSource {
-                id: behind
+            Loader {
                 anchors.fill: parent
-                visible: false
-                live: glass.visible
-                sourceItem: glass.visible && root.scroller ? root.scroller.contentItem : null
-                sourceRect: Qt.rect(0, root.scrolled + bar.y - 6, glass.width, glass.height)
-            }
-            MultiEffect {
-                anchors.fill: parent
-                source: behind
-                blurEnabled: true
-                blurMax: 32
-                blur: 1.0
-                saturation: 0.9
-                maskEnabled: true
-                maskSource: fade
-            }
-            Item {
-                id: fade
-                visible: false
-                anchors.fill: parent
-                layer.enabled: glass.visible
-                Rectangle {
-                    anchors.fill: parent
-                    gradient: Gradient {
-                        GradientStop { position: 0; color: "black" }
-                        GradientStop { position: glass.solid; color: "black" }
-                        GradientStop { position: 1; color: "transparent" }
+                active: Qt.platform.os !== "windows"
+                sourceComponent: Item {
+                    ShaderEffectSource {
+                        id: behind
+                        anchors.fill: parent
+                        visible: false
+                        live: glass.visible
+                        sourceItem: glass.visible && root.scroller ? root.scroller.contentItem : null
+                        sourceRect: Qt.rect(0, root.scrolled + bar.y - 6, glass.width, glass.height)
+                    }
+                    MultiEffect {
+                        anchors.fill: parent
+                        source: behind
+                        blurEnabled: true
+                        blurMax: 32
+                        blur: 1.0
+                        saturation: 0.9
+                        maskEnabled: true
+                        maskSource: fade
+                    }
+                    Item {
+                        id: fade
+                        visible: false
+                        anchors.fill: parent
+                        layer.enabled: glass.visible
+                        Rectangle {
+                            anchors.fill: parent
+                            gradient: Gradient {
+                                GradientStop { position: 0; color: "black" }
+                                GradientStop { position: glass.solid; color: "black" }
+                                GradientStop { position: 1; color: "transparent" }
+                            }
+                        }
                     }
                 }
             }

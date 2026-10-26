@@ -33,6 +33,7 @@ get_filename_component(IBKR_REPO_DIR "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
 if(MSVC)
     # 源码里的中文注释与字符串按 UTF-8 读
     add_compile_options(/W4 /permissive- /utf-8 /Zc:__cplusplus)
+    add_compile_definitions(_USE_MATH_DEFINES)
 else()
     add_compile_options(-Wall -Wextra -Wpedantic -Wshadow)
     # 浮点照 JS 的算法一步一舍:不许把 a * b + c 合成一条 FMA(arm64 上 clang 默认会合)。
