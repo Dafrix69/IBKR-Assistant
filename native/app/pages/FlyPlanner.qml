@@ -6,6 +6,7 @@ import Dafri.Kit
 // 模型在 C++(shell/fly_rules,经 shell/fly_controller);表单与结果在 shell/fly_store(切页回来还在)。
 Column {
     id: root
+    signal openEntry()
     property var controller: null
     property var store: null
     readonly property var m: controller ? controller.planner : ({})

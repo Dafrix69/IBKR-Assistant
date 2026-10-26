@@ -19,12 +19,21 @@ class TradeComposer;
 
 class FlyController : public QObject {
     Q_OBJECT
+    Q_PROPERTY(QJsonObject entry READ entry NOTIFY entryChanged)
     Q_PROPERTY(QJsonObject planner READ planner NOTIFY plannerChanged)
     Q_PROPERTY(QJsonObject playbook READ playbook NOTIFY playbookChanged)
 
 public:
     FlyController(FlyStore* fly, SpotStore* spot, StatusStore* status, EventsStore* events, PlaybookStore* playbook, TradeComposer* composer,
                   QObject* parent = nullptr);
+
+    QJsonObject entry() const { return entry_; }
+    Q_INVOKABLE void patchEntry(const QJsonObject& part);
+    Q_INVOKABLE void checkEntry(const QString& key, bool checked);
+    Q_INVOKABLE void refreshEntry();
+    Q_INVOKABLE void refreshEntryData();
+    Q_INVOKABLE void refreshEntryPricing();
+    Q_INVOKABLE void writeReviewedInstruction();
 
     QJsonObject planner() const { return planner_; }
     QJsonObject playbook() const { return playbook_; }
@@ -49,6 +58,7 @@ public:
     QTimeZone localZone = QTimeZone::systemTimeZone();
 
 signals:
+    void entryChanged();
     void plannerChanged();
     void playbookChanged();
 
@@ -62,6 +72,8 @@ private:
     EventsStore* events_;
     PlaybookStore* playbookStore_;
     TradeComposer* composer_;
+    QJsonObject entry_, evidence_;
+    QString entryFormKey_;
     QJsonObject planner_;
     QJsonObject playbook_;
 };

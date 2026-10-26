@@ -174,6 +174,7 @@ export interface RpcMethods {
 
   "options.wall": { params: OptionsWallParams; result: OptionWall };
   /** 蝴蝶测算:开仓之前估「标的在某个时刻走到某个点位」时这只蝶值多少、赚多少。只算不下单 */
+  "options.entry_context": { params: NoParams; result: Record<string, unknown> };
   "options.fly_plan": { params: FlyPlanParams; result: FlyPlanResult };
   /** 当日到期期权 IV 的记录现在是什么状态:开没开、攒了多少、上一轮为什么没记 */
   "options.iv_recorder": { params: NoParams; result: IvRecorderStatus };

@@ -250,6 +250,13 @@ export interface FlyPlanTime extends FlyPlanValue {
 }
 
 export interface FlyPlanResult {
+  entry_quotes?: Array<{
+    strike: number; error?: string | null; market_data_type: number | null;
+    bid_at: number | null; ask_at: number | null;
+    bid_size: number | null; ask_size: number | null;
+    bid_size_at: number | null; ask_size_at: number | null;
+    iv_at: number | null; iv_value: number | null;
+  }>;
   symbol: string;
   expiry: string;
   trading_class: string;

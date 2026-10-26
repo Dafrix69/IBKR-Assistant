@@ -24,6 +24,7 @@ public:
 private:
     util::Task<util::OJson> bookSnapshot(util::OJson params);
     util::Task<util::OJson> optionsWall(util::OJson params);
+    util::Task<util::OJson> entryContext();
     util::Task<util::OJson> optionsFlyPlan(util::OJson params);
     util::Task<util::OJson> optionsSpot(util::OJson params);
     util::OJson paTimeframes();

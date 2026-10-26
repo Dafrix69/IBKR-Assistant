@@ -84,6 +84,7 @@ struct TickerData {
     std::optional<double> open, high, low, volume, avgVolume, histVol, vol3m, vol5m, vol10m, lastTradeAt;
     bool delayed = false;
     std::optional<double> requestedAt, quotedAt;
+    std::optional<double> marketDataType, bidAt, askAt, bidSizeAt, askSizeAt, ivAt;
 };
 
 class TickerHandle {

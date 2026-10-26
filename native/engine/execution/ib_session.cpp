@@ -191,6 +191,11 @@ std::optional<double> tickTypeId(const QString& name) {
 
 void applyTicks(TickerData& data, const MarketDataUpdate& update, double nowMs) {
     const auto& ticks = update.all;
+    const auto oldType = data.marketDataType;
+    if(ticks) if(const auto t=ticks->get(11000);t&&t->value) data.marketDataType=*t->value;
+    if(oldType != data.marketDataType) {
+        data.bidAt.reset(); data.askAt.reset(); data.bidSizeAt.reset(); data.askSizeAt.reset(); data.ivAt.reset();
+    }
     // 没有这一格:空;有、值是 undefined:Number({…}) = NaN;有值:那个数
     auto get = [&](const QString& name) -> std::optional<double> {
         const auto id = tickTypeId(name);
@@ -203,6 +208,7 @@ void applyTicks(TickerData& data, const MarketDataUpdate& update, double nowMs) 
         if (v && !std::isnan(*v)) apply(*v);
     };
     auto pick = [&](const QString& name) {
+        if(data.marketDataType) return get((*data.marketDataType >= 3 ? u"DELAYED_"_s : QString()) + name);
         auto v = get(name);
         return v ? v : get(u"DELAYED_"_s + name);
     };
@@ -223,8 +229,8 @@ void applyTicks(TickerData& data, const MarketDataUpdate& update, double nowMs) 
     setIf(get(u"SHORT_TERM_VOLUME_5_MIN"_s), [&](double v) { data.vol5m = v; });
     setIf(get(u"SHORT_TERM_VOLUME_10_MIN"_s), [&](double v) { data.vol10m = v; });
     setIf(pick(u"LAST_TIMESTAMP"_s), [&](double v) { data.lastTradeAt = v; });
-    setIf(get(u"BID_SIZE"_s), [&](double v) { data.bidSize = v; });
-    setIf(get(u"ASK_SIZE"_s), [&](double v) { data.askSize = v; });
+    setIf(data.marketDataType ? pick(u"BID_SIZE"_s) : get(u"BID_SIZE"_s), [&](double v) { data.bidSize = v; });
+    setIf(data.marketDataType ? pick(u"ASK_SIZE"_s) : get(u"ASK_SIZE"_s), [&](double v) { data.askSize = v; });
     setIf(get(u"OPTION_CALL_OPEN_INTEREST"_s), [&](double v) { data.callOpenInterest = v; });
     setIf(get(u"OPTION_PUT_OPEN_INTEREST"_s), [&](double v) { data.putOpenInterest = v; });
     setIf(get(u"OPTION_CALL_VOLUME"_s), [&](double v) { data.callVolume = v; });
@@ -237,6 +243,18 @@ void applyTicks(TickerData& data, const MarketDataUpdate& update, double nowMs) 
         for (const QString& name : {QString::fromLatin1(n), u"DELAYED_"_s + QString::fromLatin1(n)})
             if (const auto id = tickTypeId(name); id && delta && delta->has(*id)) quoted = true;
     if (quoted) data.quotedAt = nowMs;
+    // 逐字段记本机接收时刻，不能拿无关 tick 更新整份盘口年龄。
+    for (const auto& [name,dst] : {std::pair{u"BID"_s,&data.bidAt}, {u"ASK"_s,&data.askAt},
+            {u"BID_SIZE"_s,&data.bidSizeAt}, {u"ASK_SIZE"_s,&data.askSizeAt}, {u"MODEL_OPTION_IV"_s,&data.ivAt}})
+        for(const auto& field:{name,u"DELAYED_"_s+name}) {
+            if(data.marketDataType && field.startsWith(u"DELAYED_"_s) != (*data.marketDataType >= 3)) continue;
+            const auto id=tickTypeId(field);
+            const bool touched=id && ((update.changed&&update.changed->has(*id)) || (update.added&&update.added->has(*id))
+                || (!update.changed&&!update.added&&ticks&&ticks->has(*id)));
+            if(touched) { const auto value=get(field); if(value&&std::isfinite(*value)&&*value>=0)*dst=nowMs; else dst->reset(); }
+        }
+    if(data.marketDataType) data.delayed=*data.marketDataType>=3;
+
     const auto gamma = pick(u"MODEL_OPTION_GAMMA"_s);  // ?? get("modelGamma"):两张表里都没有,永远是 undefined
     const auto iv = pick(u"MODEL_OPTION_IV"_s);
     const auto optPrice = pick(u"MODEL_OPTION_PRICE"_s);

@@ -135,7 +135,12 @@ Task<OJson> FlyPlannerService::planFor(OJson params) {
         if (const OJson* sh = js::prop(&params, u"iv_shift_pct"_s); !js::nullish(sh)) in.ivShiftPct = js::num(sh);
         in.timelineMs = schedule.timelineMs;
         in.warnings = warnings;
-        co_return fp::planFly(in);
+        OJson result=fp::planFly(in);
+        OJson quality=js::array();
+        for(double strike:strikes)if(const auto m=marksJson.get(fp::markKey(strike));m&&m->get(u"quality"_s))
+            quality.items.append(*m->get(u"quality"_s));
+        if(!quality.items.isEmpty())result.set(u"entry_quotes"_s,quality);
+        co_return result;
     } catch (const fp::FlyPlanError& exc) {
         throw RpcError(-32602, exc.message());
     } catch (const execution::OptionMarksError& exc) {
@@ -253,7 +258,14 @@ Task<OJson> FlyPlannerService::liveMarks(Fly fly, Given given, QStringList* warn
         if (m.error && !m.error->isEmpty() && !m.iv && !m.ask) refused.append(util::pyG(m.strike) + m.right + u' ' + *m.error);
     if (!refused.isEmpty()) co_return giveUp(u"取不到 %1 期权行情,TWS 拒了订阅:%2。"_s.arg(fly.symbol, refused.join(u';')));
     OJson out = js::object();
-    for (const auto& m : got) out.set(fp::markKey(m.strike), js::object({{u"bid"_s, js::NOrNull(m.bid)}, {u"ask"_s, js::NOrNull(m.ask)}, {u"iv"_s, js::NOrNull(m.iv)}}));
+    for (const auto& m : got) {
+        auto row=js::object({{u"bid"_s,js::NOrNull(m.bid)},{u"ask"_s,js::NOrNull(m.ask)},{u"iv"_s,js::NOrNull(m.iv)}});
+        if(m.bidAt||m.askAt||m.marketDataType)row.set(u"quality"_s,js::object({{u"strike"_s,js::N(m.strike)},{u"error"_s,m.error?js::S(*m.error):js::Null()},
+            {u"market_data_type"_s,js::NOrNull(m.marketDataType)},{u"bid_at"_s,js::NOrNull(m.bidAt)},{u"ask_at"_s,js::NOrNull(m.askAt)},
+            {u"bid_size"_s,js::NOrNull(m.bidSize)},{u"ask_size"_s,js::NOrNull(m.askSize)},
+            {u"bid_size_at"_s,js::NOrNull(m.bidSizeAt)},{u"ask_size_at"_s,js::NOrNull(m.askSizeAt)},{u"iv_at"_s,js::NOrNull(m.ivAt)},{u"iv_value"_s,js::NOrNull(m.iv)}}));
+        out.set(fp::markKey(m.strike),row);
+    }
     co_return out;
 }
 

@@ -279,7 +279,7 @@ ScrollPage {
                 active: page.m.pane === "fly" && !!page.fly
                 visible: active
                 width: parent.width
-                sourceComponent: FlyPlanner { controller: page.fly; store: page.flyStore }
+                sourceComponent: FlyPlanner { controller: page.fly; store: page.flyStore; onOpenEntry: page.openFlyEntry() }
             }
             Loader {
                 active: page.m.pane === "playbook" && !!page.fly

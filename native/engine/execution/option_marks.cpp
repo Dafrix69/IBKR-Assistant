@@ -210,6 +210,8 @@ Task<std::vector<OptionMark>> OptionMarkStreams::readNow(std::shared_ptr<IbSessi
             m.ask = price(t->ask);
             m.iv = price(t->modelGreeks ? t->modelGreeks->impliedVol : std::nullopt);
             m.error = t->error;
+            m.bidSize=t->bidSize; m.askSize=t->askSize; m.marketDataType=t->marketDataType;
+            m.bidAt=t->bidAt;m.askAt=t->askAt;m.bidSizeAt=t->bidSizeAt;m.askSizeAt=t->askSizeAt;m.ivAt=t->ivAt;
         }
         out.push_back(std::move(m));
     }

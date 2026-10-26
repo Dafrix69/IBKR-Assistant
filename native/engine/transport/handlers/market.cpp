@@ -72,6 +72,7 @@ MethodTable MarketHandlers::methods() {
         {u"options.iv_recorder"_s, syncImpl([this](const OJson&) { return ports_.ivRecorder().status(); })},
         {u"options.iv_recorder_set"_s,
          syncImpl([this](const OJson& p) { return ports_.ivRecorder().setEnabled(js::truthy(js::prop(&p, u"enabled"_s))); })},
+        {u"options.entry_context"_s, [this](OJson) { return entryContext(); }},
         {u"options.spot"_s, [this](OJson p) { return optionsSpot(std::move(p)); }},
         {u"options.playbook"_s, syncImpl([this](const OJson&) { return ports_.playbook().snapshot(); })},
         {u"options.playbook_set"_s,
@@ -122,6 +123,22 @@ util::Task<OJson> MarketHandlers::optionsSpot(OJson params) {
     if (symbol.isEmpty()) symbol = u"SPX"_s;
     if (!symbolMatches(symbol) || !settings().indexConfig(symbol)) {
         throw util::RpcError(-32602, u"实时现价只给配置里的指数,'%1' 不是。"_s.arg(js::str(js::prop(&params, u"symbol"_s))));
+util::Task<OJson> MarketHandlers::entryContext() {
+    OJson out = js::object();
+    for (const QString& symbol : {u"SPX"_s, u"SPY"_s}) {
+        try {
+            const auto data = co_await ports_.market().paBars(symbol, u"1m"_s, true, false, false);
+            out.set(symbol, js::object({{u"bars"_s, rowsOf(data.bars)}, {u"feed"_s, js::S(feedName(data.feed))},
+                {u"asked_at"_s, js::N(data.askedAt)}, {u"cached"_s, js::B(data.cached)},
+                {u"proxy"_s, js::B(data.bars.proxy.has_value())}}));
+        } catch (...) {
+            out.set(symbol, js::object({{u"error"_s, js::S(orchestrate::errMessage(std::current_exception()))}}));
+        }
+    }
+    out.set(u"at"_s, js::N(QDateTime::currentMSecsSinceEpoch()));
+    co_return out;
+}
+
     }
     co_return co_await ports_.flyPlanner().spotFor(symbol);
 }

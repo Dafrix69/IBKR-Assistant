@@ -897,7 +897,8 @@ std::shared_ptr<Subscription> ApiNext::getMarketData(const OJson& contract, cons
                        [this, snapshot, reg](double reqId) {
                            if (!snapshot && !reg) api_.cancelMktData(reqId);
                        },
-                       {{u"tickPrice"_s, tick},
+                       {{u"marketDataType"_s, [this](Subs& subs, const OJson& a) { onTick(subs, js::array({a.items[0],js::N(11000),a.items[1]})); }},
+                        {u"tickPrice"_s, tick},
                         {u"tickSize"_s, tick},
                         {u"tickGeneric"_s, tick},
                         {u"tickString"_s, [this](Subs& s, const OJson& a) { onTickString(s, a); }},

@@ -46,6 +46,7 @@ struct OptionMark {
     /// 买价恰好为 0 = 没人出价,照实给 0
     std::optional<double> bid, ask;
     std::optional<double> iv;        // IBKR 的模型 IV(年化小数)
+    std::optional<double> bidSize, askSize, marketDataType, bidAt, askAt, bidSizeAt, askSizeAt, ivAt;
     std::optional<QString> error;    // 订阅被 TWS 拒掉时的原文(10197、354……)
 };
 

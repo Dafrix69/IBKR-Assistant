@@ -488,6 +488,7 @@ const std::vector<NamedSchema>& paramsSchemas() {
             {u"ideas.similar_trades"_s, ideasSimilarTrades()},
 
             {u"options.wall"_s, optionsWall()},
+            {u"options.entry_context"_s, none},
             {u"options.fly_plan"_s, flyPlan()},
             {u"options.iv_recorder"_s, none},
             {u"options.iv_recorder_set"_s, ivRecorderSet()},

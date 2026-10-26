@@ -26,6 +26,7 @@ struct StoreDeps {
     /// options.iv_recorder / options.iv_recorder_set
     std::function<void(Reply)> recorder;
     std::function<void(bool enabled, Reply)> setRecorder;
+    std::function<void(Reply)> entryContext;
     /// 本机时钟(毫秒):「算于」那一刻
     std::function<double()> nowMs;
 };
@@ -45,6 +46,8 @@ public:
     static fly::StoreDeps bridgeDeps(Bridge* bridge, QObject* context);
 
     QJsonObject plan() const;
+    QJsonObject entryContext() const { return entryContext_; }
+    void loadEntryContext();
     Q_INVOKABLE void patch(const QJsonObject& part);
     Q_INVOKABLE void reset();
     /// quiet = 自动刷新那一路:不清掉屏幕上的结果,失败了把自动刷新关掉
@@ -63,6 +66,7 @@ public:
 
 signals:
     void changed();
+    void entryContextChanged();
     void recorderDone(const QString& problem);
 
 private:
@@ -70,6 +74,9 @@ private:
 
     fly::StoreDeps deps_;
     QJsonObject plan_;
+    QJsonObject entryContext_;
+    bool contextBusy_ = false;
+    double contextAsked_ = 0;
     bool visible_ = false;
     QTimer timer_;
 };
