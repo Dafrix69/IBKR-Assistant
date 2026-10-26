@@ -67,7 +67,7 @@ qt_add_qml_module(ibkr_assistant
               pages/FlyPlanner.qml pages/FlyResult.qml pages/FlyChart.qml pages/PlaybookPanel.qml
               pages/BoardPage.qml pages/RecordsPage.qml pages/RecordDetail.qml
               pages/MarketPage.qml pages/PaCards.qml pages/BookBody.qml
-              pages/IdeasPage.qml pages/SectorsPage.qml pages/ScreenerPage.qml
+              pages/IdeasPage.qml pages/SectorsPage.qml pages/EarningsPanel.qml pages/ScreenerPage.qml
               pages/BacktestPage.qml pages/BacktestResult.qml pages/SweepPanel.qml pages/RuleBuilder.qml
               pages/ReviewPage.qml pages/ReviewResult.qml pages/PerformancePage.qml pages/PerformanceParts.qml pages/ShareCard.qml pages/IntelPage.qml pages/IntelTimeline.qml pages/AccessPage.qml pages/AccessParts.qml pages/SettingsPage.qml pages/AboutPage.qml
 )

@@ -525,6 +525,7 @@ const std::vector<NamedSchema>& paramsSchemas() {
             {u"sectors.pick"_s, sectorsIdSchema},
             {u"sectors.quotes"_s, none},
             {u"sectors.add_stock"_s, sectorsAddStock()},
+            {u"sectors.earnings"_s, obj({{u"symbol"_s, str()}})->strict()},
             {u"sectors.remove_stock"_s, sectorsRemoveStock()},
             {u"sectors.set_tag"_s, sectorsSetTag()},
 

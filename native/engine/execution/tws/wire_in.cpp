@@ -1256,6 +1256,11 @@ void Decoder::processMsg(double id) {
     else if (id == 90) historicalDataUpdate(*this);
     else if (id == 94) pnl(*this);
     else if (id == 100) orderBound(*this);
+    else if (id == 104 || id == 105) {
+        const double reqId = readInt();
+        const QString json = readStr();
+        queueEvent(id == 104 ? u"wshMetaData"_s : u"wshEventData"_s, {N(reqId), S(json)});
+    }
     else if (unported(id)) {
         // 库里有、这里没搬:整条跳过,留个记号
         while (!queue_.empty() && queue_.front()) queue_.pop_front();

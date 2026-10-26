@@ -686,6 +686,8 @@ private:
             });
         } else if (m == u"executionHistory") {
             later<std::optional<std::vector<ExecutionRow>>>(id, s.executionHistory(static_cast<int>(arg(0).n)), [](const auto& rows) {
+        } else if (m == u"wsh") {
+            later<QString>(id,s.wshEvents(u"{}"_s,u"20250101"_s,u"20261023"_s),[](const QString& value){return js::S(value);});
                 if (!rows) return OJson::null();
                 OJson out = js::array();
                 for (const auto& r : *rows) out.items.append(js::object({{u"contract"_s, r.contract}, {u"execution"_s, r.execution}}));
@@ -770,6 +772,45 @@ class TestIbSession : public QObject {
 private slots:
     void tickTypeTable() {
         // applyTicks 认的号与库里的两张枚举表一致(T1 ?? T2)
+    void metadataDoesNotTriggerPriceListener() {
+        const auto* all=fixture().get(u"scenarios"_s);
+        for(bool price : {false,true}) {
+            OJson steps=js::array();
+            for(int i=0;i<5;++i)steps.items.append(all->items[0].get(u"steps"_s)->items[i]);
+            steps.items.append(js::object({{u"op"_s,js::S(u"call"_s)},{u"id"_s,js::N(40)},{u"m"_s,js::S(u"optionListener"_s)},{u"a"_s,js::array()}}));
+            const auto contract=js::object({{u"symbol"_s,js::S(u"SPX"_s)},{u"secType"_s,js::S(u"OPT"_s)},{u"exchange"_s,js::S(u"SMART"_s)},{u"currency"_s,js::S(u"USD"_s)}});
+            steps.items.append(js::object({{u"op"_s,js::S(u"call"_s)},{u"id"_s,js::N(41)},{u"m"_s,js::S(u"subscribeTicker"_s)},{u"a"_s,js::array({contract})}}));
+            auto send=[&](QStringList fields){steps.items.append(js::object({{u"op"_s,js::S(u"send"_s)},{u"msgs"_s,js::array({js::strings(fields)})}}));};
+            send({u"58"_s,u"1"_s,u"$f:1:2"_s,u"1"_s});
+            if(price)send({u"1"_s,u"6"_s,u"$f:1:2"_s,u"1"_s,u"2.5"_s,u"10"_s,u"0"_s});
+            OJson scenario=js::object({{u"steps"_s,steps}});Harness h(scenario);QString error;
+            QVERIFY2(h.run(&error,false),qPrintable(error));
+            const auto* callbacks=h.step.get(u"cb"_s);
+            if(price)QVERIFY(callbacks&&!callbacks->items.isEmpty()); else QVERIFY(!callbacks||callbacks->items.isEmpty());
+            QVERIFY2(h.afterlife(&error),qPrintable(error));
+        }
+    }
+    void wshLifecycle() {
+        const auto* all=fixture().get(u"scenarios"_s);
+        for(const QString& mode : {u"success"_s,u"timeout"_s,u"error"_s}) {
+            OJson steps=js::array();
+            for(int i=0;i<5;++i)steps.items.append(all->items[0].get(u"steps"_s)->items[i]);
+            steps.items.append(js::object({{u"op"_s,js::S(u"call"_s)},{u"id"_s,js::N(50)},{u"m"_s,js::S(u"wsh"_s)},{u"a"_s,js::array()}}));
+            auto send=[&](QStringList fields){steps.items.append(js::object({{u"op"_s,js::S(u"send"_s)},{u"msgs"_s,js::array({js::strings(fields)})}}));};
+            if(mode==u"timeout") steps.items.append(js::object({{u"op"_s,js::S(u"advance"_s)},{u"ms"_s,js::N(12001)}}));
+            else if(mode==u"error") send({u"4"_s,u"2"_s,u"$f:100:1"_s,u"10276"_s,u"WSH subscription unavailable"_s,QString()});
+            else {
+                send({u"104"_s,u"$f:100:1"_s,u"{}"_s});
+                send({u"105"_s,u"$f:102:1"_s,u"[]"_s});
+            }
+            OJson scenario=js::object({{u"steps"_s,steps}});
+            Harness h(scenario);QString error;QVERIFY2(h.run(&error,false),qPrintable(error));
+            const auto* res=h.step.get(u"res"_s);QVERIFY(res);QCOMPARE(res->items.size(),1);
+            QCOMPARE(res->items[0].items[1].s,mode==u"success"?u"ok"_s:u"err"_s);
+            if(mode==u"success") QCOMPARE(res->items[0].items[2].s,u"[]"_s);
+            QVERIFY2(h.afterlife(&error),qPrintable(error));
+        }
+    }
         for (const auto& [name, ids] : at(fixture(), u"tickTypes"_s).fields) {
             const OJson& t1 = ids.items[0];
             const OJson& t2 = ids.items[1];

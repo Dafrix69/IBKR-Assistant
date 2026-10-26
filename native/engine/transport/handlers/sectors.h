@@ -22,6 +22,7 @@ private:
     util::OJson sectorsAddStock(const util::OJson& params);
     util::OJson sectorsRemoveStock(const util::OJson& params);
     util::Task<util::OJson> sectorsQuotes();
+    util::Task<util::OJson> sectorsEarnings(util::OJson params);
     util::OJson sectorsSetTag(const util::OJson& params);
     util::OJson poolSetWatch(const util::OJson& params);
 

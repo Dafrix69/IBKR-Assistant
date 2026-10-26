@@ -86,6 +86,8 @@ Encoded reqSecDefOptParams(int serverVersion, const Arg& reqId, const Arg& under
 Encoded reqManagedAccts(int serverVersion);
 /// REQ_IDS
 Encoded reqIds(int serverVersion, const Arg& numIds);
+Encoded wsh(int serverVersion, int command, double reqId, const QString& filter = {}, const QString& start = {}, const QString& end = {});
+
 /// REQ_CURRENT_TIME
 Encoded reqCurrentTime(int serverVersion);
 /// 握手之后的报到(socket.js 的 startAPI;版本 2、client id、可选能力空串)

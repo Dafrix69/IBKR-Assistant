@@ -187,6 +187,7 @@ public:
     std::optional<util::OJson> spotInfo(const QString& symbol) const;
     util::Task<std::optional<double>> indexPrice(QString symbol);
     /// {symbol: {last, close, change_pct}}
+    util::Task<util::OJson> earnings(QString symbol);
     util::Task<util::OJson> stockQuotes(QStringList symbols);
     /// 日线历史:每根 {date, open, high, low, close, volume}
     util::Task<QList<util::OJson>> historicalBars(QString symbol, QString start, QString end);

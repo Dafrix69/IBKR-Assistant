@@ -83,6 +83,37 @@ void SectorsStore::load(Done done) {
 }
 
 void SectorsStore::refreshQuotes(Done done) {
+void SectorsStore::refreshEarnings(const QString& symbol) {
+    QStringList symbols;
+    if (!symbol.isEmpty()) symbols << symbol;
+    else for (const auto& s : sectors_) for (const auto& stock : s[u"stocks"_s].toArray()) symbols << stock[u"symbol"_s].toString();
+    for (const auto& s : symbols) {
+        const auto old = earnings_[s].toObject();
+        const double age = QDateTime::currentMSecsSinceEpoch() - old["at"].toDouble();
+        if (s.isEmpty() || earningsQueue_.contains(s) || old["status"] == "loading") continue;
+        if (symbol.isEmpty() && age >= 0 && age < 300000) continue;
+        earningsQueue_ << s;
+    }
+    nextEarnings();
+}
+
+void SectorsStore::nextEarnings() {
+    if (earningsBusy_ || earningsQueue_.isEmpty()) return;
+    const QString symbol = earningsQueue_.takeFirst();
+    earningsBusy_ = true;
+    earnings_[symbol] = QJsonObject{{"status","loading"},{"message",u"正在读取 IBKR 财报日历…"_s}};
+    emit earningsChanged();
+    QPointer<SectorsStore> self(this);
+    bridge_->rpc(this, u"sectors.earnings"_s, QJsonObject{{"symbol",symbol}}, [self,symbol](const EngineReply& r) {
+        if (!self) return;
+        self->earnings_[symbol] = r.ok ? r.result.toObject() : QJsonObject{{"status","missing"},{"message",r.error},
+            {"at",double(QDateTime::currentMSecsSinceEpoch())}};
+        self->earningsBusy_ = false;
+        emit self->earningsChanged();
+        self->nextEarnings();
+    });
+}
+
     QPointer<SectorsStore> self(this);
     bridge_->rpc(this, u"sectors.quotes"_s, QJsonObject{}, [self, done](const EngineReply& r) {
         if (!self) return;
@@ -90,6 +121,7 @@ void SectorsStore::refreshQuotes(Done done) {
             const QJsonObject res = r.result.toObject();
             self->quotes_ = res.value("quotes"_L1).toObject();
             emit self->changed();
+            self->refreshEarnings();
             bool anyStocks = false;
             for (const QJsonValue& s : std::as_const(self->sectors_)) anyStocks = anyStocks || !s[u"stocks"_s].toArray().isEmpty();
             if (!jsTruthy(res.value("connected"_L1)) && anyStocks) {

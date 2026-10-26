@@ -454,6 +454,22 @@ public:
         if (!connected_) throw LinkDownError();
         api_->cancelOrder(orderId);
         return Task<>::resolved();
+    Task<QString> wshEvents(const QString& filter, const QString& start, const QString& end) override {
+        Runtime::Scope scope(*rt_);
+        return wshCo(shared_from_this(), filter, start, end);
+    }
+    static Task<QString> wshCo(std::shared_ptr<IbApiNextSession> self, QString filter, QString start, QString end) {
+        if (!self->isConnected()) throw util::JsError(u"IBKR 未连接"_s);
+        if (self->wshBusy_) throw util::JsError(u"IBKR WSH 正在读取，请稍后重试"_s);
+        self->wshBusy_ = true;
+        try {
+            co_await self->api_->getWsh(true);
+            const auto result = co_await self->api_->getWsh(false, filter, start, end);
+            self->wshBusy_ = false;
+            co_return result;
+        } catch (...) { self->wshBusy_ = false; throw; }
+    }
+    bool wshBusy_ = false;
     }
     Task<std::vector<OpenTradeDetail>> openTradesDetailed() override {
         Runtime::Scope s(*rt_);

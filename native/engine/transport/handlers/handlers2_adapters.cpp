@@ -14,6 +14,7 @@ public:
     explicit RouterAdapter(std::shared_ptr<execution::BrokerRouter> r) : r_(std::move(r)) {}
     bool hasSessions() override { return !r_->sessions().empty(); }
     Task<QList<OJson>> historicalBars(QString symbol, QString start, QString end) override { return r_->historicalBars(std::move(symbol), std::move(start), std::move(end)); }
+    Task<OJson> earnings(QString symbol) override { return r_->earnings(std::move(symbol)); }
     Task<OJson> stockQuotes(QStringList symbols) override { return r_->stockQuotes(std::move(symbols)); }
     Task<OJson> streamQuotes(QStringList symbols) override { return r_->streamQuotes(std::move(symbols)); }
     Task<OJson> orderBook(QString symbol) override { return r_->orderBook(std::move(symbol)); }

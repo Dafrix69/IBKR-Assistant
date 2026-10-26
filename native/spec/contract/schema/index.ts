@@ -24,6 +24,7 @@ import {
   IdeasSearchParamsSchema, IdeasSimilarTradesParamsSchema, IdeasUpdateParamsSchema,
 } from "./ideas.js";
 import { InstructionSubmitParamsSchema } from "./instruction.js";
+import { EarningsParamsSchema } from "./sectors.js";
 import { NoParamsSchema } from "./kit.js";
 import type { ParamsSchema } from "./kit.js";
 import { LlmPatchParamsSchema, LlmTestParamsSchema } from "./llm.js";
@@ -147,6 +148,7 @@ export const PARAMS_SCHEMAS: { readonly [M in RpcMethodName]: ParamsSchema<RpcPa
   "sectors.pick": SectorsIdParamsSchema,
   "sectors.quotes": NoParamsSchema,
   "sectors.add_stock": SectorsAddStockParamsSchema,
+  "sectors.earnings": EarningsParamsSchema,
   "sectors.remove_stock": SectorsRemoveStockParamsSchema,
   "sectors.set_tag": SectorsSetTagParamsSchema,
 

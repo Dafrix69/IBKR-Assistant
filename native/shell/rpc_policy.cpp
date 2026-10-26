@@ -16,7 +16,7 @@ const QSet<QString>& allowedRpc() {
         u"llm.catalog"_s, u"llm.patch"_s, u"llm.test"_s, u"settings.get"_s, u"settings.patch"_s,
         u"ideas.add"_s, u"ideas.list"_s, u"ideas.update"_s, u"ideas.analyze"_s, u"ideas.digest"_s, u"ideas.digests"_s,
         u"ideas.search"_s, u"ideas.similar_trades"_s,
-        u"sectors.list"_s, u"sectors.add"_s, u"sectors.delete"_s, u"sectors.pick"_s, u"sectors.quotes"_s,
+        u"sectors.earnings"_s, u"sectors.list"_s, u"sectors.add"_s, u"sectors.delete"_s, u"sectors.pick"_s, u"sectors.quotes"_s,
         u"sectors.add_stock"_s, u"sectors.remove_stock"_s, u"sectors.set_tag"_s, u"pool.set_watch"_s,
         u"screener.rs"_s, u"screener.inflection"_s, u"screener.deviation"_s, u"screener.leaders"_s,
         u"backtest.strategies"_s, u"backtest.run"_s, u"backtest.sweep"_s, u"backtest.parse_rules"_s,

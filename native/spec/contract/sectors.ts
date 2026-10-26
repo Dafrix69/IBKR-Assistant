@@ -84,3 +84,14 @@ export interface SectorsRemoveStockResult {
   sector: Sector;
   dropped: string[];
 }
+
+export interface EarningsResult {
+  symbol: string; source: "IBKR WSH"; at: number;
+  status: "available" | "missing"; message: string;
+  upcoming?: EarningsRow | null; history: EarningsRow[]; basis?: string; price_error?: string;
+}
+export interface EarningsRow {
+  date: string; days_until?: number; timing: string; status: string; quarter?: string;
+  gap: number | null; day1: number | null; day5: number | null;
+  session?: string; missing: string;
+}

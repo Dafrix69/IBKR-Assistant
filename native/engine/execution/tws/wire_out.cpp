@@ -820,6 +820,20 @@ Encoded reqIds(int serverVersion, const Arg& numIds) {
     return t.send();
 }
 
+// WSH field order: @stoqey/ib (MIT), encoder reqWshEventData, protocol >=173.
+Encoded wsh(int sv, int command, double reqId, const QString& filter, const QString& start, const QString& end) {
+    Tokens t(sv);
+    const OJson id = OJson::number(reqId);
+    if (sv < 173) return t.error(u"WSH date filters require TWS protocol 173 or later"_s, &id);
+    t.num(command); t.num(reqId);
+    if (command == 102) {
+        t.num(2147483647); t.str(filter);
+        t.boolean(false); t.boolean(false); t.boolean(false);
+        t.str(start); t.str(end); t.num(1000);
+    }
+    return t.send();
+}
+
 Encoded reqCurrentTime(int serverVersion) {
     Tokens t(serverVersion);
     t.num(49);

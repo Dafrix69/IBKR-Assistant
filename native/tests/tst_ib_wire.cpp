@@ -121,6 +121,18 @@ OJson runDecode(int sv, const QStringList& tokens) {
 class TestIbWire : public QObject {
     Q_OBJECT
 private slots:
+    void wshProtocol() {
+        QVERIFY(!wsh(172,102,9).tokens);
+        QCOMPARE(fieldsOf(*wsh(173,100,9).tokens), (QStringList{"100","9"}));
+        QCOMPARE(fieldsOf(*wsh(173,102,10,u"{}"_s,u"20250101"_s,u"20261023"_s).tokens),
+            (QStringList{"102","10","2147483647","{}","0","0","0","20250101","20261023","1000"}));
+        QCOMPARE(fieldsOf(*wsh(173,103,10).tokens), (QStringList{"103","10"}));
+        const auto decoded=runDecode(173,{"105","10","{\"events\":[]}"});
+        const auto* emits=decoded.get(u"emits"_s);
+        QCOMPARE(emits->items.size(),1);
+        QCOMPARE(emits->items[0].get(u"name"_s)->s,u"wshEventData"_s);
+        QCOMPARE(emits->items[0].get(u"args"_s)->items[1].s,u"{\"events\":[]}"_s);
+    }
     void encoderMatchesStoqey_data() {
         QTest::addColumn<QString>("file");
         QTest::newRow("orders") << u"ib-wire-orders.json"_s;

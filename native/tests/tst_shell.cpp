@@ -184,6 +184,8 @@ private slots:
         const QString all = QString::fromUtf8(texts.readAll());
         QVERIFY2(all.contains(QStringLiteral("AI 算力(3)")), err.constData());
         QVERIFY(all.contains(QStringLiteral("核电(2)")));
+        QVERIFY(all.contains(QStringLiteral("财报提醒")));
+        QVERIFY(all.contains(QStringLiteral("2026-11-18")));
         QVERIFY(all.contains(QStringLiteral("监控中 · 每 5 秒一轮")));
         QVERIFY(all.contains(QStringLiteral("整数关口步长")));
     }

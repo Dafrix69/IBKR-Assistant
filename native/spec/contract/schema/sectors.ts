@@ -32,3 +32,5 @@ export const SectorsSetTagParamsSchema: ParamsSchema<SectorsSetTagParams> = z.ob
   symbol: z.string(),
   tag: optional(z.string()),
 });
+
+export const EarningsParamsSchema = z.object({symbol: z.string()}).strict();

@@ -46,6 +46,7 @@ public:
     /// router.sessions().length > 0
     virtual bool hasSessions() = 0;
     virtual util::Task<QList<util::OJson>> historicalBars(QString symbol, QString start, QString end) = 0;
+    virtual util::Task<util::OJson> earnings(QString) { co_return util::OJson::null(); }
     virtual util::Task<util::OJson> stockQuotes(QStringList symbols) = 0;
     virtual util::Task<util::OJson> streamQuotes(QStringList symbols) = 0;
     /// 盘口快照 BookSnapshot

@@ -326,6 +326,7 @@ public:
     void onDisconnected();
 
     // ---- IBApi 的请求(都进命令缓冲)
+    void wsh(int command, double reqId, const QString& filter = {}, const QString& start = {}, const QString& end = {});
     void reqManagedAccts();
     void reqContractDetails(double reqId, const OJson& contract);
     void reqMarketDataType(double type);
@@ -446,6 +447,7 @@ public:
     std::shared_ptr<Subscription> getMarketData(const OJson& contract, const QString& genericTickList, bool snapshot, bool regulatorySnapshot);
     Task<JsList> getHistoricalData(const OJson& contract, std::optional<QString> endDateTime, const QString& durationStr, const QString& barSizeSetting,
                                    const QString& whatToShow, double useRTH, double formatDate);
+    Task<QString> getWsh(bool metadata, const QString& filter = {}, const QString& start = {}, const QString& end = {});
     Task<JsList> getSecDefOptParams(const QString& symbol, const QString& futFopExchange, const QString& secType, double conId);
     std::shared_ptr<Subscription> getMarketDepth(const OJson& contract, double numRows, bool isSmartDepth);
     Task<double> getNextValidOrderId();

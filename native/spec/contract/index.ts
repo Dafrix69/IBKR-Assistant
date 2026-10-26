@@ -220,6 +220,7 @@ export interface RpcMethods {
   "sectors.quotes": { params: NoParams; result: SectorsQuotesResult };
   "sectors.add_stock": { params: SectorsAddStockParams; result: SectorsAddStockResult };
   "sectors.remove_stock": { params: SectorsRemoveStockParams; result: SectorsRemoveStockResult };
+  "sectors.earnings": { params: { symbol: string }; result: import("./sectors.js").EarningsResult };
   "sectors.set_tag": { params: SectorsSetTagParams; result: { sector: Sector } };
 
   "settings.get": { params: NoParams; result: SettingsView };

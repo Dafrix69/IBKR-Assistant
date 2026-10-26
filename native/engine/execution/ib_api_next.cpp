@@ -705,6 +705,10 @@ void IbApi::reqHistoricalData(double reqId, const OJson& contract, std::optional
                                              Nn(useRTH), Nn(formatDate), Bv(keepUpToDate)));
     });
 }
+void IbApi::wsh(int command, double id, const QString& filter, const QString& start, const QString& end) {
+    schedule([=, this] { deliver(wire::wsh(IBNEXT_SV, command, id, filter, start, end)); });
+}
+
 void IbApi::reqSecDefOptParams(double reqId, const QString& symbol, const QString& fut, const QString& secType, double conId) {
     schedule([=, this] { deliver(wire::reqSecDefOptParams(IBNEXT_SV, Nn(reqId), Sv(symbol), Sv(fut), Sv(secType), Nn(conId))); });
 }
@@ -911,6 +915,26 @@ Task<JsList> ApiNext::getHistoricalData(const OJson& contract, std::optional<QSt
 }
 
 Task<JsList> ApiNext::getSecDefOptParams(const QString& symbol, const QString& fut, const QString& secType, double conId) {
+Task<QString> ApiNext::getWsh(bool metadata, const QString& filter, const QString& start, const QString& end) {
+    const int command = metadata ? 100 : 102;
+    auto sub = registerSub([=, this](double id) { api_.wsh(command, id, filter, start, end); },
+        [=, this](double id) { api_.wsh(command + 1, id); },
+        {{metadata ? u"wshMetaData"_s : u"wshEventData"_s, [](Subs& subs, const OJson& a) {
+            if (auto* p = subs.get(argNum(a, 0))) {
+                auto keep = *p;
+                Upd u; u.all = js::str(arg(a, 1));
+                keep->next(u); keep->complete();
+            }
+        }}}, QString());
+    std::weak_ptr<Subscription> weak = sub;
+    const auto timer = rt_->setTimeout(12000, [weak] {
+        if (auto s = weak.lock()) s->error({u"IBKR WSH 请求超时"_s, -1, s->reqId});
+    });
+    auto task = lastValueFrom<QString>(sub, [](const std::any& a) { return std::any_cast<QString>(a); }, {});
+    task.onDone([rt = rt_, timer] { rt->clearTimeout(timer); });
+    return task;
+}
+
     auto sub = registerSub([=, this](double reqId) { api_.reqSecDefOptParams(reqId, symbol, fut, secType, conId); }, nullptr,
                            {{u"securityDefinitionOptionParameter"_s, [this](Subs& s, const OJson& a) { onSecDefOptParam(s, a); }},
                             {u"securityDefinitionOptionParameterEnd"_s, [this](Subs& s, const OJson& a) { onSecDefOptParamEnd(s, a); }}},

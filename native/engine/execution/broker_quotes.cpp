@@ -485,6 +485,21 @@ Task<std::optional<OJson>> BrokerRouter::futuresSpot(SessionPtr session, contrac
 Task<OJson> BrokerRouter::stockQuotes(QStringList symbols) {
     const auto live = sessions();
     const SessionPtr session = live.empty() ? nullptr : live[0];
+Task<OJson> BrokerRouter::earnings(QString symbol) {
+    const auto live = sessions();
+    if (live.empty()) throw util::JsError(u"IBKR 未连接"_s);
+    auto session = live[0];
+    IbContract contract = stockContract(symbol);
+    co_await qualifyOrRaise(session, &contract);
+    const auto today = QDateTime::currentDateTimeUtc().toTimeZone(QTimeZone("America/New_York")).date();
+    const auto filter = js::object({{u"country"_s, js::S(u"All"_s)},
+        {u"watchlist"_s, js::array({js::S(QString::number(contract.conId.value_or(0)))})}, {u"wshe_ed"_s, js::S(u"true"_s)}});
+    const QString raw = co_await session->wshEvents(js::stringify(filter), today.addYears(-2).toString(u"yyyyMMdd"_s), today.addDays(120).toString(u"yyyyMMdd"_s));
+    auto parsed = util::parseOJson(raw);
+    if (!parsed) throw util::JsError(u"IBKR WSH 返回了无效 JSON"_s);
+    co_return *parsed;
+}
+
     if (!session) co_return js::object();
     OJson out = js::object();
     std::exception_ptr failure;

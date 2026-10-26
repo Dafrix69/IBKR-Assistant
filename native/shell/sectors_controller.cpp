@@ -20,6 +20,7 @@ SectorsController::SectorsController(SectorsStore* sectors, AlertsStore* alerts,
     : QObject(parent), sectors_(sectors), alerts_(alerts), quality_(quality), status_(status), alerter_(alerter) {
     now = [] { return double(QDateTime::currentMSecsSinceEpoch()); };
     windowActive = [] { return true; };
+    connect(sectors_, &SectorsStore::earningsChanged, this, &SectorsController::earningsChanged);
     connect(sectors_, &SectorsStore::changed, this, &SectorsController::rebuild);
     // 引擎那份变了(保存回执 / 别处改过 / 每 5 秒重读),且本地没有待存的改动,页面上那份就跟上
     // 只在引擎那份真换了的时候(原版的 effect 依赖是 config 本身):5 秒一轮的重读或清未读不动它,保存回执回来之前不闪回旧值
@@ -288,6 +289,9 @@ QJsonObject SectorsController::levelStrip(const QJsonArray& levelList, const QVa
     const std::optional<double> s = spot.isValid() && !spot.isNull() ? std::optional<double>(spot.toDouble()) : std::nullopt;
     return levels::buildLevelStrip(levelList, s, width, measure);
 }
+
+QJsonObject SectorsController::earnings() const { return sectors_->earnings(); }
+void SectorsController::refreshEarnings(const QString& symbol) { sectors_->refreshEarnings(symbol); }
 
 void SectorsController::rebuild() {
     sectors::PageInput in;

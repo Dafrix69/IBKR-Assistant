@@ -24,12 +24,16 @@ class SectorsStore : public QObject {
     Q_OBJECT
     Q_PROPERTY(QJsonArray sectors READ sectors NOTIFY changed)
     Q_PROPERTY(QJsonObject quotes READ quotes NOTIFY changed)
+    Q_PROPERTY(QJsonObject earnings READ earnings NOTIFY earningsChanged)
 
 public:
     SectorsStore(Bridge* bridge, StatusStore* status, AlertsStore* alerts, QualityStore* quality, QObject* parent = nullptr);
 
     QJsonArray sectors() const { return sectors_; }
     QJsonObject quotes() const { return quotes_; }
+    QJsonObject earnings() const { return earnings_; }
+    Q_INVOKABLE void refreshEarnings(const QString& symbol = {});
+
 
     using Done = std::function<void()>;
     using Ok = std::function<void(bool)>;
@@ -48,6 +52,7 @@ public:
 
 signals:
     void changed();
+    void earningsChanged();
 
 private:
     void replaceSector(const QJsonValue& fresh, Done done);
@@ -57,6 +62,10 @@ private:
     void error(const QString& text);
     void info(const QString& text);
 
+    void nextEarnings();
+    QJsonObject earnings_;
+    QStringList earningsQueue_;
+    bool earningsBusy_ = false;
     Bridge* bridge_;
     StatusStore* status_;
     AlertsStore* alerts_;

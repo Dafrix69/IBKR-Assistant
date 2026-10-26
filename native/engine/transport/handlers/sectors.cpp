@@ -10,6 +10,9 @@
 #include "util/zod.h"
 
 #include <algorithm>
+#include <QDateTime>
+#include <QTimeZone>
+#include "util/earnings.h"
 
 using namespace Qt::StringLiterals;
 
@@ -65,6 +68,7 @@ MethodTable SectorsHandlers::methods() {
         {u"sectors.add"_s, syncImpl([this](const OJson& p) { return sectorsAdd(p); })},
         {u"sectors.delete"_s, syncImpl([this](const OJson& p) { return sectorsDelete(p); })},
         {u"sectors.pick"_s, [this](OJson p) { return sectorsPick(std::move(p)); }},
+        {u"sectors.earnings"_s, [this](OJson p) { return sectorsEarnings(std::move(p)); }},
         {u"sectors.quotes"_s, [this](OJson) { return sectorsQuotes(); }},
         {u"sectors.add_stock"_s, syncImpl([this](const OJson& p) { return sectorsAddStock(p); })},
         {u"sectors.remove_stock"_s, syncImpl([this](const OJson& p) { return sectorsRemoveStock(p); })},
@@ -212,6 +216,29 @@ OJson SectorsHandlers::sectorsRemoveStock(const OJson& params) {
     // 出了池子(而且不在别的板块里):价位 / 异动两张表里的行一起清掉
     const QStringList dropped = ports_.pool().dropWatches({symbol});
     return js::object({{u"sector"_s, reread(sectorId)}, {u"dropped"_s, js::strings(dropped)}});
+}
+
+util::Task<OJson> SectorsHandlers::sectorsEarnings(OJson params) {
+    const QString symbol = symbolOrRaise(params);
+    QJsonObject result{{"symbol", symbol}, {"source", "IBKR WSH"}, {"at", double(QDateTime::currentMSecsSinceEpoch())}};
+    try {
+        auto router = ports_.router();
+        if (!router || !router->hasSessions()) throw util::JsError(u"IBKR 未连接"_s);
+        const auto raw = co_await router->earnings(symbol);
+        QJsonArray bars;
+        QString priceError;
+        try {
+            for (const auto& b : co_await ports_.market().dailyHistory(symbol, 760)) bars.append(b.toQJson());
+        } catch (...) { priceError = orchestrate::errMessage(std::current_exception()); }
+        const auto today = QDateTime::currentDateTimeUtc().toTimeZone(QTimeZone("America/New_York")).date();
+        const auto view = util::earningsView(raw.toQJson(), bars, today);
+        for (auto it=view.begin();it!=view.end();++it) result[it.key()]=it.value();
+        result["price_error"]=priceError;
+    } catch (...) {
+        result["status"]="missing"; result["message"]=orchestrate::errMessage(std::current_exception());
+        result["history"]=QJsonArray{};
+    }
+    co_return OJson::fromQJson(result);
 }
 
 util::Task<OJson> SectorsHandlers::sectorsQuotes() {

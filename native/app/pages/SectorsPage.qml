@@ -396,6 +396,11 @@ ScrollPage {
                 }
             }
         }
+        EarningsPanel {
+            width: pr.width
+            report: page.controller && page.controller.earnings ? (page.controller.earnings[pr.r.symbol] || {}) : ({})
+            onRefresh: if (page.controller) page.controller.refreshEarnings(pr.r.symbol)
+        }
         Levels { visible: !!pr.r.levels; width: pr.width; lv: pr.r.levels || ({}) }
         Rectangle { visible: !pr.last; width: pr.width; height: 1; color: Theme.separator }
     }

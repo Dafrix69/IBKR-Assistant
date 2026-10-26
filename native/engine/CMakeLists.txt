@@ -2,6 +2,7 @@
 # 只用 Qt Core / Network,没有界面:CI 与 Windows 不装 Qt Quick 也能编引擎与测试。
 
 qt_add_library(ibkr_util STATIC
+    util/earnings.h util/earnings.cpp
     util/jsnum.h util/jsnum.cpp
     util/jsformat.h util/jsformat.cpp
     util/jsvalue.h util/jsvalue.cpp

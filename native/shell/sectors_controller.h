@@ -30,6 +30,7 @@ class StatusStore;
 class SectorsController : public QObject {
     Q_OBJECT
     Q_PROPERTY(QJsonObject page READ page NOTIFY pageChanged)
+    Q_PROPERTY(QJsonObject earnings READ earnings NOTIFY earningsChanged)
     /// 板块卡片(按 id 原地更新:5 秒一轮的重读不把卡片里敲了一半的代码、滚到一半的列表清掉)
     Q_PROPERTY(QObject* cards READ cards CONSTANT)
 
@@ -41,6 +42,8 @@ public:
     SectorsController(SectorsStore* sectors, AlertsStore* alerts, QualityStore* quality, StatusStore* status, Alerter* alerter, QObject* parent = nullptr);
 
     QJsonObject page() const { return page_; }
+    QJsonObject earnings() const;
+    Q_INVOKABLE void refreshEarnings(const QString& symbol);
     QObject* cards() { return &cards_; }
     /// 某个板块的成分股行(按代码原地更新);没有这个板块是 null
     Q_INVOKABLE QObject* rowsModel(const QString& sectorId) const { return rows_.value(sectorId, nullptr); }
@@ -85,6 +88,7 @@ public:
 
 signals:
     void pageChanged();
+    void earningsChanged();
     void sectorCreated();
     void stockAdded(const QString& sectorId);
     /// 把这一只的行滚到眼前
