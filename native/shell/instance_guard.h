@@ -19,6 +19,10 @@ namespace ibkr::shell {
 
 /// Electron 版可能用的 userData 目录(现在的与改名前的);第一个是它正在用的那个
 QStringList electronUserDataDirs();
+/// 现在的 userData 目录(Datrix);IBKR_USER_DATA_DIR 设了就是它
+QString currentUserDataDir();
+/// 改名前的 userData 目录(IBKR-Assistant、Dafri Trading);IBKR_USER_DATA_DIR 设了就没有
+QStringList legacyUserDataDirs();
 
 /// 那几个目录里有活着的 Electron 版:给出它的 pid
 std::optional<qint64> runningElectronPid(const QStringList& userDataDirs, const QString& hostName);

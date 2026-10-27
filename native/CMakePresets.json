@@ -48,6 +48,15 @@
       }
     },
     {
+      "name": "mac-package",
+      "displayName": "macOS 打包版(引擎与资源放进 .app;tools/package_mac.sh 用)",
+      "inherits": "mac-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "IBKR_PACKAGE": "ON"
+      }
+    },
+    {
       "name": "mac-asan",
       "displayName": "macOS Debug + ASan/UBSan",
       "inherits": "mac-base",
@@ -116,6 +125,10 @@
       "configurePreset": "mac-release"
     },
     {
+      "name": "mac-package",
+      "configurePreset": "mac-package"
+    },
+    {
       "name": "mac-asan",
       "configurePreset": "mac-asan"
     },
@@ -152,6 +165,11 @@
       "name": "mac-release",
       "inherits": "base",
       "configurePreset": "mac-release"
+    },
+    {
+      "name": "mac-package",
+      "inherits": "base",
+      "configurePreset": "mac-package"
     },
     {
       "name": "mac-asan",

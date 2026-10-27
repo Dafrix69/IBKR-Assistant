@@ -100,15 +100,16 @@ brew install qtbase qtdeclarative qtwebsockets qtsvg qttools cmake ninja
 cd native && cmake --preset mac-debug && cmake --build --preset mac-debug && ctest --preset mac-debug
 ```
 
-编出来的应用在 `~/Library/Caches/IBKR-Assistant/native-build/mac-debug/app/` 下;它默认拉同一次编出来的 C++ 引擎、用仓库里的
-`config/settings.json`。VS Code 里怎么改、编、调,以及只看界面不连券商的几种开法,见 [native/README.md](native/README.md);
+编出来的应用在 `~/Library/Caches/IBKR-Assistant/native-build/mac-debug/app/` 下;它默认拉同一次编出来的 C++ 引擎,
+配置用 `~/Library/Application Support/Datrix/settings.json`(第一次从仓库里的 `config/settings.json` 拷过去)。
+出安装包:`native/tools/package_mac.sh`,见 [打包](docs/features/packaging.md)。VS Code 里怎么改、编、调,以及只看界面不连券商的几种开法,见 [native/README.md](native/README.md);
 改代码的规矩在根目录的 [CLAUDE.md](CLAUDE.md)。
 
 命令行也能用同一个引擎:`ibkr-engine selftest | validate | records | import-fills …`。
 
 ## 配置
 
-`config/settings.json`(从 `settings.example.json` 生成,含账户映射,永不进仓库):
+`~/Library/Application Support/Datrix/settings.json`(第一次从仓库的 `config/settings.json`、旧目录里的或 `settings.example.json` 拷来,含账户映射,永不进仓库):
 
 | 段 | 说明 |
 |---|---|

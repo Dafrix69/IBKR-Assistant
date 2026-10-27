@@ -29,18 +29,14 @@ ResolvedEngine resolvePreviewEngine(const QString& repoDir, const QString& nodeP
     return {cmd, {}};
 }
 
-ResolvedEngine resolveNativeEngine(const QString& enginePath, const QString& configPath, const QString& repoDir) {
+ResolvedEngine resolveNativeEngine(const QString& enginePath, const QString& configPath, const QString& promptDir, const QString& schemaDir) {
     if (!QFileInfo(enginePath).isExecutable()) return {std::nullopt, QStringLiteral("找不到 C++ 引擎 %1").arg(QDir::toNativeSeparators(enginePath))};
     EngineCommand cmd;
     cmd.program = enginePath;
     if (!configPath.isEmpty()) cmd.args = {QStringLiteral("--config"), configPath};
-    if (!repoDir.isEmpty()) {
-        const QDir repo(repoDir);
-        const std::pair<const char*, QString> dirs[] = {{"DAFRI_PROMPT_DIR", repo.filePath(QStringLiteral("prompts"))},
-                                                        {"DAFRI_SCHEMA_DIR", repo.filePath(QStringLiteral("native/spec/baseline/llm"))}};
-        for (const auto& [name, dir] : dirs)
-            if (!qEnvironmentVariableIsSet(name) && QFileInfo(dir).isDir()) cmd.env.insert(QString::fromLatin1(name), dir);
-    }
+    const std::pair<const char*, QString> dirs[] = {{"DAFRI_PROMPT_DIR", promptDir}, {"DAFRI_SCHEMA_DIR", schemaDir}};
+    for (const auto& [name, dir] : dirs)
+        if (!dir.isEmpty() && !qEnvironmentVariableIsSet(name) && QFileInfo(dir).isDir()) cmd.env.insert(QString::fromLatin1(name), dir);
     cmd.workingDir = QFileInfo(enginePath).absolutePath();
     cmd.label = QStringLiteral("ibkr-engine");
     return {cmd, {}};

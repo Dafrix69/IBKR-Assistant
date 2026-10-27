@@ -9,6 +9,7 @@ qt_add_library(ibkr_shell STATIC
     status_store.h status_store.cpp
     fatal_line.h fatal_line.cpp
     instance_guard.h instance_guard.cpp
+    config_home.h config_home.cpp
     jsvalue.h
     locale_format.h locale_format.cpp
     consent.h consent.cpp

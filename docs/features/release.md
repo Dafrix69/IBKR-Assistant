@@ -12,9 +12,10 @@
 `.github/workflows/native.yml` 一个任务:macOS 与 Windows 上配置、编译、跑 `ctest`(`QT_QPA_PLATFORM=offscreen`)。
 令牌权限是 `contents: read`。ASan / UBSan 与 TSan 不在 CI 里跑,本机用 `mac-asan`、`mac-tsan` 两个 preset。
 
+安装包怎么出见 [打包](packaging.md)。
+
 ## 还没做的
 
-- **打包。** `native/` 还没有出安装包(DMG / 安装器)的步骤。
 - **代码签名。** macOS 的 Developer ID、Windows 的证书都还没有。
   没有签名之前,每装一个新包,第一次用 API Key 时 macOS 会问一次钥匙串(见 [系统凭证库](credentials.md))。
 - **自动更新。** 要先有签名;届时还要定:有追踪或托管单在运行时不自动重启。

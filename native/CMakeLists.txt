@@ -13,6 +13,11 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 option(IBKR_BUILD_UI "编 Qt Quick 界面(要装 Qt Quick;只编引擎与测试时关掉)" ON)
 option(IBKR_SANITIZE "AddressSanitizer + UndefinedBehaviorSanitizer" OFF)
 option(IBKR_TSAN "ThreadSanitizer(和上一项二选一)" OFF)
+# 打包版(tools/package_mac.sh 用):引擎、提示词、schema、条款、示例配置放进 .app,运行时只从 .app 里找
+option(IBKR_PACKAGE "打包版:引擎与资源放进 Datrix.app" OFF)
+if(IBKR_PACKAGE)
+    add_compile_definitions(IBKR_PACKAGED=1)
+endif()
 
 set(IBKR_QT_COMPONENTS Core Network Test)
 if(IBKR_BUILD_UI)

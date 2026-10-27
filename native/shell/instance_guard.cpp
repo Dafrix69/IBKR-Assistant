@@ -35,14 +35,25 @@ std::optional<QString> readLink(const QString& path) {
 
 }  // namespace
 
-QStringList electronUserDataDirs() {
+QString currentUserDataDir() {
     // 测试用:把同意记录、Qt 版的锁、Electron 的 SingletonLock 都指到临时目录,碰不到用户的那一份
-    if (const QString dir = qEnvironmentVariable("IBKR_USER_DATA_DIR"); !dir.isEmpty()) return {dir};
+    if (const QString dir = qEnvironmentVariable("IBKR_USER_DATA_DIR"); !dir.isEmpty()) return dir;
+    return QDir(QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)).filePath(u"Datrix"_s);
+}
+
+QStringList legacyUserDataDirs() {
+    if (!qEnvironmentVariable("IBKR_USER_DATA_DIR").isEmpty()) return {};
+    // 改过两次名:Dafri Trading → IBKR-Assistant → Datrix
     const QDir base(QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation));
-    // 改过两次名:Dafri Trading → IBKR-Assistant → Datrix。Electron 版在新目录没有配置时继续用有配置的旧目录
-    // (config-guard.js 的 legacyUserDataDir),这里按同一个次序挑出它正在用的那个放第一个,其余的跟在后面
-    const QString current = base.filePath(u"Datrix"_s);
-    const QStringList legacy{base.filePath(u"IBKR-Assistant"_s), base.filePath(u"Dafri Trading"_s)};
+    return {base.filePath(u"IBKR-Assistant"_s), base.filePath(u"Dafri Trading"_s)};
+}
+
+QStringList electronUserDataDirs() {
+    if (const QString dir = qEnvironmentVariable("IBKR_USER_DATA_DIR"); !dir.isEmpty()) return {dir};
+    // Electron 版在新目录没有配置时继续用有配置的旧目录(config-guard.js 的 legacyUserDataDir),
+    // 这里按同一个次序挑出它正在用的那个放第一个,其余的跟在后面
+    const QString current = currentUserDataDir();
+    const QStringList legacy = legacyUserDataDirs();
     QString active = current;
     if (!QFileInfo::exists(QDir(current).filePath(u"settings.json"_s))) {
         auto withConfig = std::find_if(legacy.begin(), legacy.end(), [](const QString& d) { return QFileInfo::exists(QDir(d).filePath(u"settings.json"_s)); });

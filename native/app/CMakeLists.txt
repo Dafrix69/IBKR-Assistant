@@ -72,8 +72,25 @@ qt_add_qml_module(ibkr_assistant
               pages/ReviewPage.qml pages/ReviewResult.qml pages/PerformancePage.qml pages/PerformanceParts.qml pages/ShareCard.qml pages/IntelPage.qml pages/IntelTimeline.qml pages/AccessPage.qml pages/AccessParts.qml pages/SettingsPage.qml pages/AboutPage.qml
 )
 target_link_libraries(ibkr_assistant PRIVATE ibkr_qml_bridge ibkr_support ibkr_shell ibkr_icons ibkr_kit ibkr_kitplugin Qt6::Gui Qt6::Quick Qt6::Svg Qt6::Widgets Qt6::Network)
-# 开发时的默认位置:仓库里的配置与 TS 引擎、编出来的 C++ 引擎(打包后怎么找,阶段 1 结束时打包再定)
+# 开发时的默认位置:仓库里的示例配置、提示词、schema、条款,编出来的 C++ 引擎。打包版(IBKR_PACKAGE)不用这两个
 target_compile_definitions(ibkr_assistant PRIVATE
     IBKR_REPO_DIR="${IBKR_REPO_DIR}"
     IBKR_NATIVE_ENGINE_PATH="$<TARGET_FILE:ibkr-engine>")
 add_dependencies(ibkr_assistant ibkr-engine)
+set_target_properties(ibkr_assistant PROPERTIES
+    MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
+    MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}")
+if(IBKR_PACKAGE AND APPLE)
+    # 每次编都重拷(不挂在 POST_BUILD 上:那个只在 Datrix 重新链接时跑,只改了引擎时 .app 里会是旧的)
+    set(_contents "$<TARGET_BUNDLE_CONTENT_DIR:ibkr_assistant>")
+    add_custom_target(ibkr_bundle ALL
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:ibkr-engine>" "${_contents}/MacOS/ibkr-engine"
+        COMMAND ${CMAKE_COMMAND} -E rm -rf "${_contents}/Resources/prompts" "${_contents}/Resources/llm" "${_contents}/Resources/legal"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory "${IBKR_REPO_DIR}/prompts" "${_contents}/Resources/prompts"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory "${IBKR_REPO_DIR}/native/spec/baseline/llm" "${_contents}/Resources/llm"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory "${IBKR_REPO_DIR}/docs/legal" "${_contents}/Resources/legal"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${IBKR_REPO_DIR}/config/settings.example.json" "${_contents}/Resources/settings.example.json"
+        DEPENDS ibkr_assistant ibkr-engine
+        COMMENT "把引擎与资源放进 Datrix.app"
+        VERBATIM)
+endif()

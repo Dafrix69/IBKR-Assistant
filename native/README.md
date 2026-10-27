@@ -27,7 +27,7 @@ Electron 版与 TS 引擎已删;下文提到的 `desktop/…`、`engine-ts/…`�
 4. 编译:`⇧⌘B`(任务「CMake: 编译」)或状态栏的「生成」。测试:侧栏的「测试」面板(CTest),或任务「CMake: 跑测试」。
 5. 运行 / 调试:`F5`,在「运行和调试」里选一项:
    - **界面 Datrix**:拉起同一次编出来的 C++ 引擎(`ibkr-engine --config …`,提示词与 schema 的目录由界面用 `DAFRI_PROMPT_DIR` / `DAFRI_SCHEMA_DIR` 指给它)。
-     **用的是真配置**(`--config` → `DAFRI_CONFIG` → 仓库里的 `config/settings.json`):会按设置连 TWS、开真的交易库、跑盯盘。
+     **用的是真配置**(`--config` → `DAFRI_CONFIG` → `~/Library/Application Support/Datrix/settings.json`,第一次从仓库里的 `config/settings.json` 拷过去):会按设置连 TWS、开真的交易库、跑盯盘。
      旧的 Electron 版开着时它不拉引擎(两个引擎会同时盯同一个交易库)。只想看界面、不拉引擎:参数加 `--engine none`;看假数据:`--engine preview`(要 node)。
    - **引擎 ibkr-engine**:开在集成终端里,一行一条请求,例如 `{"jsonrpc":"2.0","id":1,"method":"system.status"}`;`⌃D` 结束。带命令时是命令行(`ibkr-engine selftest --config …`、`validate`、`records`、`import-fills` 等,同 `cli.ts`;`parse` / `run` 还没搬)。
    - **tws-positions**:连**纸面账户**的 TWS(7497)读一次持仓,账号遮过才打出来;报文录到 `~/Library/Caches/IBKR-Assistant/tws-positions.twsrec`

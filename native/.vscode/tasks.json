@@ -18,6 +18,14 @@
       "problemMatcher": []
     },
     {
+      "label": "打包:Datrix.app + DMG",
+      "detail": "Release 编打包版,macdeployqt、ad-hoc 签名、出 DMG,放在 ~/Developer/ibkr/work/dist",
+      "type": "shell",
+      "command": "tools/package_mac.sh",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
       "label": "重生成对拍 fixture(@stoqey/ib)",
       "detail": "TS 引擎升级了 @stoqey/ib 之后跑;只能重生成、不手改",
       "type": "shell",

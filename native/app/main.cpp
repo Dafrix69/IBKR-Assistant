@@ -5,7 +5,8 @@
 //
 //   Datrix [--engine native|preview|none] [--config 配置] [--native-engine ibkr-engine]
 //
-// 配置的找法同 Electron 版开发时:--config → 环境变量 DAFRI_CONFIG → 仓库里的 config/settings.json(真配置:连 TWS、真的交易库)。
+// 配置的找法:--config → 环境变量 DAFRI_CONFIG → userData 里的 settings.json(第一次从仓库那份迁过去,见 shell/config_home.h)。
+// 打包版(IBKR_PACKAGED)的引擎、提示词、schema、条款文本、示例配置都在 .app 里;开发版从编译目录与仓库里找。
 // Electron 版开着时不拉引擎(两个引擎会同时盯同一个交易库),见 shell/instance_guard.h。
 #include "native_prompter.h"
 #include "desktop_shell.h"
@@ -54,6 +55,7 @@
 #include "shell/log_file.h"
 #include "shell/popup_rules.h"
 #include "shell/rpc_policy.h"
+#include "shell/config_home.h"
 #include "shell/events_store.h"
 #include "shell/macro_store.h"
 #include "shell/shell_actions.h"
@@ -167,28 +169,46 @@ int main(int argc, char* argv[]) {
         return 2;
     }
     const QString repo = QStringLiteral(IBKR_REPO_DIR);
-    const QString configPath = firstNonEmpty({cli.value(configOption), qEnvironmentVariable("DAFRI_CONFIG"), QDir(repo).filePath(u"config/settings.json"_s)});
-    const QString nativePath = firstNonEmpty({cli.value(nativeOption), QStringLiteral(IBKR_NATIVE_ENGINE_PATH)});
+#if defined(IBKR_PACKAGED)
+    // 打包版:一切从 .app 里拿(Contents/MacOS/ibkr-engine、Contents/Resources/…),不认编译时的仓库路径
+    const QString resources = QDir(QCoreApplication::applicationDirPath()).filePath(u"../Resources"_s);
+    const auto bundled = [&resources](const QString& name) { return QDir::cleanPath(QDir(resources).filePath(name)); };
+    const QString defaultEngine = QDir(QCoreApplication::applicationDirPath()).filePath(u"ibkr-engine"_s);
+    const QString example = bundled(u"settings.example.json"_s), promptDir = bundled(u"prompts"_s), schemaDir = bundled(u"llm"_s),
+                  legalDir = bundled(u"legal"_s);
+#else
+    const QString defaultEngine = QStringLiteral(IBKR_NATIVE_ENGINE_PATH);
+    const QString example = QDir(repo).filePath(u"config/settings.example.json"_s), promptDir = QDir(repo).filePath(u"prompts"_s),
+                  schemaDir = QDir(repo).filePath(u"native/spec/baseline/llm"_s), legalDir = QDir(repo).filePath(u"docs/legal"_s);
+#endif
+    const QString userConfig = shell::config_home::configPath(shell::currentUserDataDir());
+    const QString configPath = firstNonEmpty({cli.value(configOption), qEnvironmentVariable("DAFRI_CONFIG"), userConfig});
+    const QString nativePath = firstNonEmpty({cli.value(nativeOption), defaultEngine});
 
-    // 第一次打开:配置还没有,从示例建一份(main.js 的 ensureConfigExists)。只在要拉真引擎时做;自检、预览不碰配置
+    // 第一次用 userData 那份:从仓库那份 / 改名前的目录 / 示例拷一份过来(main.js 的 ensureConfigExists)。只在要拉真引擎时做;
+    // 预览、截图不碰配置。另给的配置(--config / DAFRI_CONFIG)不存在时照旧从示例建
     bool configCreated = false;
+    QString configNote;
     if (engineKind == u"native" && !QFile::exists(configPath)) {
-        const QString example = QDir(repo).filePath(u"config/settings.example.json"_s);
-        if (QFile::exists(example)) {
-            QDir().mkpath(QFileInfo(configPath).absolutePath());
-            if (!QFile::copy(example, configPath)) {
-                // 数据目录写不进去(权限、磁盘满):不是一个默不作声的失败
-                QMessageBox::critical(nullptr, u"Datrix 无法启动"_s,
-                                      u"写不进配置文件:%1\n\n请检查这个文件夹的权限与磁盘剩余空间后重试。"_s.arg(configPath));
-                return 1;
-            }
-            configCreated = true;
+        const QStringList sources = configPath == userConfig
+                                        ? shell::config_home::migrationSources(repo, shell::legacyUserDataDirs(), example)
+                                        : QStringList{example};
+        const shell::config_home::Migration m = shell::config_home::migrate(configPath, sources);
+        if (!m.error.isEmpty()) {
+            // 数据目录写不进去(权限、磁盘满):不是一个默不作声的失败
+            QMessageBox::critical(nullptr, u"Datrix 无法启动"_s, m.error + u"\n\n请检查这个文件夹的权限与磁盘剩余空间后重试。"_s);
+            return 1;
+        }
+        configCreated = m.fromExample();
+        if (!m.from.isEmpty() && !configCreated) {
+            configNote = u"[config] 第一次用 %1,从 %2 拷过来"_s.arg(configPath, m.from);
+            if (shell::config_home::carryPrefs(shell::legacyUserDataDirs(), shell::currentUserDataDir())) configNote += u";界面偏好一并带过来"_s;
         }
     }
 
     shell::EngineResolver resolver;
     if (engineKind == u"native") {
-        resolver = [nativePath, configPath, repo] { return shell::resolveNativeEngine(nativePath, configPath, repo); };
+        resolver = [nativePath, configPath, promptDir, schemaDir] { return shell::resolveNativeEngine(nativePath, configPath, promptDir, schemaDir); };
     } else if (engineKind == u"preview") {
         resolver = [repo] { return shell::resolvePreviewEngine(repo); };
     }
@@ -212,6 +232,8 @@ int main(int argc, char* argv[]) {
     // 先于 logFile 析构:QApplication 比它活得久,收尾时的 qWarning 不能落到一个已经没了的对象上
     const struct Unhook { ~Unhook() { shell::LogFile::installMessageHandler(nullptr); } } unhook;
     logFile.info(u"[boot] Datrix(Qt)%1 启动,引擎 %2"_s.arg(QCoreApplication::applicationVersion(), engineKind));
+    if (!configNote.isEmpty()) logFile.info(configNote);
+    logFile.info(u"[config] 配置 %1;引擎 %2"_s.arg(configPath, nativePath));
     logFile.info(u"[font] UI: %1; CJK: %2"_s.arg(QApplication::font().family(), QFontDatabase::applicationFallbackFontFamilies(QChar::Script_Han).join(u", "_s)));
 
     shell::EngineClient engine(resolver);
@@ -431,8 +453,8 @@ int main(int argc, char* argv[]) {
     shell::IntelController intelPage(&intel, &store);
     QObject::connect(&engine, &shell::EngineClient::engineEvent, &alerts, [&alerts](const QString& name, const QJsonValue& data) { alerts.onEngineEvent(name, data); });
     QObject::connect(&engine, &shell::EngineClient::engineEvent, &events, [&events](const QString& name, const QJsonValue&) { events.onEngineEvent(name); });
-    // 条款文本:开发时读仓库里的 docs/legal/(打包后从哪儿读,打包时再定)
-    shell::ConsentModel consentModel(&consent, QDir(repo).filePath(u"docs/legal"_s), QCoreApplication::applicationVersion());
+    // 条款文本:开发时读仓库里的 docs/legal/,打包后读 .app 里的 Resources/legal
+    shell::ConsentModel consentModel(&consent, legalDir, QCoreApplication::applicationVersion());
     QObject::connect(&consentModel, &shell::ConsentModel::quitRequested, &app, &QCoreApplication::quit);
     // 板块页:板块与行情(store/sectors.ts)、页面接线;价位条的字宽同持仓追踪
     shell::SectorsStore sectors(&bridge, &store, &alerts, &quality);

@@ -19,8 +19,9 @@
 
 ## 发布
 
-- [ ] 本机 Release 编一次,装上,启动,看「关于」页的版本、条款同意页正常、引擎起得来。
-- [ ] 推标签:`git tag vx.y.z && git push origin vx.y.z`,在 GitHub 上建 Release,说明取 CHANGELOG 里这一版的那一节。
+- [ ] 在普通终端里跑 `native/tools/package_mac.sh`(见 [打包](features/packaging.md)),出 `~/Developer/ibkr/work/dist/Datrix-<版本>.dmg`。
+      装上,启动,看「关于」页的版本、条款同意页正常、引擎起得来。
+- [ ] 推标签:`git tag vx.y.z && git push origin vx.y.z`,在 GitHub 上建 Release,挂上 DMG,说明取 CHANGELOG 里这一版的那一节。
 
 ## 之后
 

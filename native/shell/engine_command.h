@@ -30,10 +30,10 @@ struct ResolvedEngine {
 
 using EngineResolver = std::function<ResolvedEngine()>;
 
-/// C++ 引擎:ibkr-engine --config <配置>。给了仓库目录就把提示词(prompts/)与大模型输出的 schema(native/spec/baseline/llm)
-/// 用 DAFRI_PROMPT_DIR / DAFRI_SCHEMA_DIR 指给它:编译目录在仓库外(macOS 的预设在 ~/Library/Caches)时,引擎从自己往上找不到。
-/// 环境里已经设了的不覆盖
-ResolvedEngine resolveNativeEngine(const QString& enginePath, const QString& configPath, const QString& repoDir = {});
+/// C++ 引擎:ibkr-engine --config <配置>。提示词目录与大模型输出的 schema 目录用 DAFRI_PROMPT_DIR / DAFRI_SCHEMA_DIR 指给它:
+/// 开发时是仓库里的 prompts/ 与 native/spec/baseline/llm(编译目录在仓库外时引擎从自己往上找不到),打包后是 .app 的 Resources。
+/// 目录不存在的、环境里已经设了的不覆盖
+ResolvedEngine resolveNativeEngine(const QString& enginePath, const QString& configPath, const QString& promptDir = {}, const QString& schemaDir = {});
 
 /// 预览引擎:node native/tools/preview/preview_engine.js,答的是预览台 mock 里的假数据,没有任何出路到券商。只在明说 --engine preview 时用
 ResolvedEngine resolvePreviewEngine(const QString& repoDir, const QString& nodePath = {});
