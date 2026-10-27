@@ -161,8 +161,15 @@ private slots:
         QVERIFY(!all.contains(QStringLiteral("还没有进行中的想法")));
     }
 
-    // 板块页接上了:两个板块、NVDA 的价位条、心跳一行;QML 没报警告
+    // 板块页:折叠时保留行情空间,展开时读得到纪律与样本范围;QML 没报警告。
+    void sectorsShowsThePool_data() {
+        QTest::addColumn<bool>("expanded");
+        QTest::newRow("compact") << false;
+        QTest::newRow("discipline_expanded") << true;
+    }
+
     void sectorsShowsThePool() {
+        QFETCH(bool, expanded);
         if (ibkr::shell::findNode().isEmpty()) QSKIP("没有 node");
         QTemporaryDir userData;
         QFile consent(userData.filePath(QStringLiteral("consent.json")));
@@ -170,6 +177,8 @@ private slots:
         consent.write(QStringLiteral(R"({"accepted":[{"version":"%1","at":"2026-10-18T05:00:00.000Z","app_version":"test"}]})").arg(QLatin1StringView(ibkr::shell::kTermsVersion)).toUtf8());
         consent.close();
         const QString dump = userData.filePath(QStringLiteral("sectors.json"));
+        if (expanded)
+            QSettings(userData.filePath(QStringLiteral("Dafri/Datrix.ini")), QSettings::IniFormat).setValue(QStringLiteral("primer/sector-discipline-v1"), QStringLiteral("1"));
         QProcess app;
         app.setProcessEnvironment(safeEnv(userData.path()));
         app.start(QStringLiteral(IBKR_APP_PATH), {QStringLiteral("--engine"), QStringLiteral("preview"), QStringLiteral("--open"), QStringLiteral("page:sectors"),
@@ -183,11 +192,19 @@ private slots:
         QVERIFY(texts.open(QIODevice::ReadOnly));
         const QString all = QString::fromUtf8(texts.readAll());
         QVERIFY2(all.contains(QStringLiteral("AI 算力(3)")), err.constData());
-        QVERIFY(all.contains(QStringLiteral("核电(2)")));
-        QVERIFY(all.contains(QStringLiteral("财报提醒")));
-        QVERIFY(all.contains(QStringLiteral("2026-11-18")));
         QVERIFY(all.contains(QStringLiteral("监控中 · 每 5 秒一轮")));
-        QVERIFY(all.contains(QStringLiteral("整数关口步长")));
+        QVERIFY(all.contains(QStringLiteral("提醒后的交易纪律")));
+        if (expanded) {
+            QVERIFY(all.contains(QStringLiteral("先写退出条件")));
+            QVERIFY(all.contains(QStringLiteral("跨时段重新评估")));
+            QVERIFY(all.contains(QStringLiteral("按可成交价格计划")));
+            QVERIFY(all.contains(QStringLiteral("未满两年")));
+        } else {
+            QVERIFY(all.contains(QStringLiteral("核电(2)")));
+            QVERIFY(all.contains(QStringLiteral("财报提醒")));
+            QVERIFY(all.contains(QStringLiteral("2026-11-18")));
+            QVERIFY(all.contains(QStringLiteral("整数关口步长")));
+        }
     }
 
     // 扫描页接上了:点「扫描」后标签卡、表、榜首那只的极值偏离都出来了,再筛一遍强势股;QML 没报警告

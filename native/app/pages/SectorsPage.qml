@@ -8,6 +8,7 @@ ScrollPage {
     id: page
     property var controller: null
     readonly property var m: controller ? controller.page : ({})
+    readonly property var discipline: controller ? controller.discipline : ({})
     Component.onCompleted: if (controller) controller.setVisible(true)
     Component.onDestruction: if (controller) controller.setVisible(false)
     Connections {
@@ -64,6 +65,23 @@ ScrollPage {
         }
     }
     MonitorLine { width: parent.width; mon: page.m.monitor || ({}) }
+    Hint { width: parent.width; text: page.discipline.summary || "" }
+    Primer {
+        id_: "sector-discipline-v1"
+        width: parent.width
+        summary: page.discipline.title || "提醒后的交易纪律"
+        Repeater {
+            // CONSTANT 模型:行情刷新不重建纪律列表,折叠状态由 Primer 保留。
+            model: page.discipline.rules || []
+            Hint {
+                required property var modelData
+                width: parent.width
+                text: "<b>" + modelData.title + "</b>:" + modelData.body
+            }
+        }
+        Hint { width: parent.width; text: page.discipline.evidence || "" }
+        Hint { width: parent.width; text: page.discipline.scope || "" }
+    }
 
     // 板块卡片(#sectors-list:每张最窄 720、等分,间距 12)
     EmptyState {

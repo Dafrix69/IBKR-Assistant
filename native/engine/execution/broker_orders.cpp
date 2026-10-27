@@ -83,6 +83,25 @@ Task<OJson> BrokerRouter::priceCondition(SessionPtr session, std::optional<OJson
     co_return out;
 }
 
+Task<std::vector<OJson>> BrokerRouter::hostedSpotConditions(SessionPtr session, QString symbol, OJson conditions) {
+    if (!js::isArr(&conditions) || conditions.items.isEmpty() || conditions.items.size() > 2)
+        throw BrokerError(u"标的条件止损缺少有效的价格条件,拒绝发送无条件平仓单。"_s);
+    std::vector<OJson> out;
+    for (const OJson& c : conditions.items) {
+        const auto price = js::finiteOrNull(c.get(u"price"_s));
+        if (!price || *price <= 0 || !c.get(u"isMore"_s) || c.get(u"isMore"_s)->type != OJson::Bool)
+            throw BrokerError(u"标的条件止损的价格或方向无效。"_s);
+        const OJson trigger = js::object({{u"symbol"_s, js::S(symbol)},
+            {u"secType"_s, js::S(settings.indexConfig(symbol) ? u"IND"_s : u"STK"_s)},
+            {u"operator"_s, js::S(c.get(u"isMore"_s)->b ? u">="_s : u"<="_s)}, {u"value"_s, js::N(*price)}});
+        OJson condition = co_await priceCondition(session, trigger);
+        condition.set(u"triggerMethod"_s, js::N(2));  // Last:指数点位 / 股票最新成交价
+        condition.set(u"conjunctionConnection"_s, js::S(u"o"_s));  // 跌到下沿 OR 涨到上沿
+        out.push_back(condition);
+    }
+    co_return out;
+}
+
 /** 熔断用:撤掉全部未成交单(§9.7)。 */
 Task<int> BrokerRouter::cancelAllOpen() {
     int count = 0;
@@ -123,6 +142,11 @@ Task<HostedPlacement> BrokerRouter::placeHosted(contract::AccountConfig account,
     order.orderRef = orderRef;
     order.ocaGroup = ocaGroup;
     order.ocaType = 1;  // 一张成交,整组撤销
+    if (js::str(item.get(u"kind"_s)) == u"spot") {
+        order.conditions = co_await hostedSpotConditions(session, contract.symbol, js::copyOrNull(item.get(u"spot_conditions"_s)));
+        order.conditionsCancelOrder = false;
+        order.conditionsIgnoreRth = false;
+    }
     // 用持久化峰值播种 TRAIL 初始停损:重启不把已锁住的利润放开
     if (notJsonNull(prop(item, u"trailing_percent"_s)) && notJsonNull(prop(item, u"trail_stop_seed"_s))) {
         order.trailStopPrice = optNum(prop(item, u"trail_stop_seed"_s));
@@ -140,7 +164,23 @@ Task<HostedPlacement> BrokerRouter::placeHosted(contract::AccountConfig account,
 Task<bool> BrokerRouter::modifyHosted(int orderId, OJson item) {
     const auto found = hostedTrades_.find(orderId);
     if (found == hostedTrades_.end()) co_return false;
-    HostedEntry* entry = &found.value();
+    // 合约核对会挂起:不跨 await 保存 QHash 中元素的地址,并在返回后重新确认订单还在。
+    std::optional<std::vector<OJson>> conditions;
+    if (js::str(item.get(u"kind"_s)) == u"spot") {
+        const SessionPtr session = found->session;
+        const QString symbol = found->contract.symbol;
+        conditions = co_await hostedSpotConditions(session, symbol, js::copyOrNull(item.get(u"spot_conditions"_s)));
+    }
+    const auto current = hostedTrades_.find(orderId);
+    if (current == hostedTrades_.end()) co_return false;
+    HostedEntry* entry = &current.value();
+    if (conditions) {
+        entry->order.conditions = *conditions;
+        entry->order.conditionsCancelOrder = false;
+        entry->order.conditionsIgnoreRth = false;
+        entry->order.orderType = js::str(item.get(u"order_type"_s));
+        entry->order.lmtPrice.reset();
+    }
     entry->order.orderId = orderId;
     entry->order.totalQuantity = js::num(prop(item, u"quantity"_s));
     // 组合改价同样要走带符号净价——挂单时签了、改单时忘了签,第一次调价就会把一张"收 12.35"的单改成"付 12.35"。
@@ -189,6 +229,9 @@ Task<QList<OJson>> BrokerRouter::listHostedOpen(QString refPrefix) {
                 o.account = trade.account;
                 o.transmit = true;
                 o.orderRef = trade.orderRef;
+                o.conditions = trade.conditions;
+                o.conditionsCancelOrder = trade.conditionsCancelOrder;
+                o.conditionsIgnoreRth = trade.conditionsIgnoreRth;
                 // 改单要整张重发:不带上原来的 OCA 组,改一次价就可能把它踢出组
                 if (!trade.ocaGroup.isEmpty()) {
                     o.ocaGroup = trade.ocaGroup;
@@ -211,6 +254,12 @@ Task<QList<OJson>> BrokerRouter::listHostedOpen(QString refPrefix) {
                                     {u"trailing_percent"_s, detail::numOrNull(trade.trailingPercent)},
                                     {u"status"_s, js::S(trade.status)},
                                     {u"sec_type"_s, js::S(trade.contract.secType)}}));
+            if (trade.orderRef.endsWith(u":spot")) {
+                OJson conditions = js::array();
+                for (const OJson& c : trade.conditions)
+                    conditions.items.append(js::object({{u"price"_s, js::copyOrNull(c.get(u"price"_s))}, {u"isMore"_s, js::copyOrNull(c.get(u"isMore"_s))}}));
+                rows.last().set(u"spot_conditions"_s, conditions);
+            }
         }
     }
     co_return rows;

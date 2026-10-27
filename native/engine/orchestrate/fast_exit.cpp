@@ -9,6 +9,7 @@
 #include <QTimer>
 
 #include <cmath>
+#include <algorithm>
 
 namespace ibkr::orchestrate {
 
@@ -39,6 +40,7 @@ OJson positionRaw(const OJson& raw) {
 void FastExit::attach() {
     EngineRouter* router = router_();
     if (router == attachedTo_) return;
+    resetRapid();
     if (detach_) detach_();
     detach_ = {};
     attachedTo_ = router;
@@ -55,12 +57,14 @@ void FastExit::stop() {
     detach_ = {};
     attachedTo_ = nullptr;
     watches_.clear();
+    resetRapid();
 }
 
 void FastExit::arm(const QList<Rec>& rows, const Rec& positions, const std::function<std::optional<double>(const QString&)>& tp, const domain::EtNow& at,
                    const std::function<bool(const QString&)>& chasing) {
     QList<Watch> next;
     QSet<QString> live;
+    QSet<QString> liveTracks;
     for (const Rec& row : rows) {
         const OJson* raw = js::prop(&row, u"position"_s);
         if (js::nullish(raw)) continue;
@@ -110,9 +114,11 @@ void FastExit::arm(const QList<Rec>& rows, const Rec& positions, const std::func
         w.roundAt = util::dateNow();
         w.roundNatural = js::finiteOrNull(js::prop(js::prop(&row, u"chase"_s), u"natural"_s));
         live.insert(w.key);
+        if (armed) liveTracks.insert(tid);
         next << w;
     }
     watches_ = next;
+    for (auto it = rapid_.begin(); it != rapid_.end();) it = liveTracks.contains(it.key()) ? std::next(it) : rapid_.erase(it);
     for (auto it = obs_.begin(); it != obs_.end();) it = live.contains(it.key()) ? std::next(it) : obs_.erase(it);
 }
 
@@ -138,6 +144,7 @@ void FastExit::check(double nowMs) {
         try {
             book = router->optionQuotesNow(w.legRows);
         } catch (...) {
+            rapid_.remove(w.tid);
             continue;
         }
         const std::optional<double> natural = tk::naturalClosePrice(w.position, w.structure, legBook(w, book));
@@ -146,6 +153,14 @@ void FastExit::check(double nowMs) {
             // 追价:价动了、离上一轮够一个改价间隔,就不等下一拍去改那张单
             if (natural && natural != w.roundNatural && nowMs - w.roundAt >= analysis::chaseIntervalMs(w.autoClose)) w.woke = true;
         } else {
+            if (js::finiteOrNull(w.autoClose.get(u"rapid_exit_window_s"_s)) && js::finiteOrNull(w.autoClose.get(u"rapid_exit_pct"_s))) {
+                const Rec rapid = sampleRapid(w, book, nowMs);
+                if (js::truthy(rapid.get(u"hit"_s))) {
+                    w.woke = true;
+                    wake = true;
+                    continue;
+                }
+            }
             const std::optional<double> mid = midOf(w, book);
             if (!mid) continue;
             // 和盯盘同一个判定;峰值不在这里推(peakPrice: null)——推峰值只在节拍那一轮,两轮确认的口径才不被打乱
@@ -207,6 +222,83 @@ double FastExit::leadFor(const Rec& raw, const tk::Position& position, double na
     observe(key, natural, nowMs);
     const double mult = js::finiteOrNull(js::prop(&autoClose, u"chase_lead"_s)).value_or(analysis::chaseLeadDefault());
     return analysis::momentumLead(obs_.value(key), tk::isLong(position), analysis::chaseIntervalMs(autoClose), mult, nowMs);
+}
+
+std::optional<FastExit::Rec> FastExit::rapidFor(const Rec& track, const Rec& raw, const tk::Position& position, const Rec& positions,
+                                               const Rec& autoClose, double nowMs) {
+    const QString tid = js::str(track.get(u"id"_s));
+    if (!js::truthy(track.get(u"enabled"_s)) || js::truthy(track.get(u"fired_at"_s)) || !js::truthy(autoClose.get(u"enabled"_s)) ||
+        !js::finiteOrNull(autoClose.get(u"rapid_exit_window_s"_s)) || !js::finiteOrNull(autoClose.get(u"rapid_exit_pct"_s))) {
+        rapid_.remove(tid);
+        return std::nullopt;
+    }
+    const auto structure = tk::structureOf(position.sec_type, raw.get(u"contract"_s));
+    if (!structure || (position.sec_type != u"OPT" && position.sec_type != u"BAG")) return std::nullopt;
+    Watch w;
+    w.tid = tid;
+    w.key = js::str(raw.get(u"key"_s));
+    w.position = position;
+    w.structure = *structure;
+    w.autoClose = autoClose;
+    if (position.sec_type == u"BAG") {
+        const OJson* legs = raw.get(u"legs"_s);
+        if (js::isArr(legs)) for (const OJson& key : legs->items) {
+            const Rec* leg = positions.get(js::str(&key));
+            w.legRows << (leg ? *leg : js::object());
+        }
+    } else w.legRows << raw;
+    EngineRouter* router = router_();
+    Rec book = js::object();
+    try {
+        if (router && router->hasOptionQuotesNow()) book = router->optionQuotesNow(w.legRows);
+    } catch (...) { /* 行情不可用:清空观察,不跨断档判急跌 */ }
+    return sampleRapid(w, book, nowMs);
+}
+
+FastExit::Rec FastExit::sampleRapid(const Watch& w, const Rec& book, double nowMs) {
+    const double window = js::num(w.autoClose.get(u"rapid_exit_window_s"_s)) * 1000;
+    const double pct = js::num(w.autoClose.get(u"rapid_exit_pct"_s));
+    const QString signature = js::stringify(js::array({js::S(w.key), js::N(w.position.quantity), js::N(w.position.avg_cost),
+                                                       js::N(window), js::N(pct)}));
+    RapidHistory& h = rapid_[w.tid];
+    if (h.signature != signature) h = RapidHistory{signature, {}};
+    const auto waiting = [](const QString& note) { return js::object({{u"hit"_s, js::B(false)}, {u"reason"_s, js::S(note)}}); };
+    const auto invalid = [&]() {
+        h.samples.clear();
+        return waiting(u"急跌保护等待新鲜、同步的实时买卖报价"_s);
+    };
+    if (!(window >= 250 && window <= 5000) || !(pct > 0 && pct <= 100) || w.legRows.isEmpty()) return invalid();
+    double oldest = nowMs, newest = 0;
+    for (const Rec& row : w.legRows) {
+        const Rec* q = book.get(js::str(row.get(u"key"_s)));
+        const auto bid = js::finiteOrNull(js::prop(q, u"bid"_s)), ask = js::finiteOrNull(js::prop(q, u"ask"_s));
+        if (!bid || !ask || *bid < 0 || *ask <= 0 || *ask < *bid || js::num(js::prop(q, u"market_data_type"_s)) != 1) return invalid();
+        for (const QString& key : {u"bid_at"_s, u"ask_at"_s}) {
+            const auto at = js::finiteOrNull(js::prop(q, key));
+            if (!at || *at > nowMs || nowMs - *at > window) return invalid();
+            oldest = std::min(oldest, *at);
+            newest = std::max(newest, *at);
+        }
+    }
+    // 250ms 是报价同步的上限,不是出场参数;缺腿或异步报价不拿来估算秒级跌幅。
+    if (newest - oldest > 250) return waiting(u"急跌保护等待各腿报价同步"_s);
+    const auto natural = tk::naturalClosePrice(w.position, w.structure, legBook(w, book));
+    if (!natural || *natural <= 0) return invalid();
+    if (!h.samples.isEmpty() && (oldest < h.samples.last().atMs || oldest - h.samples.last().atMs > window)) h.samples.clear();
+    // 新快照最早的一侧也要晚于旧快照最晚的一侧,才能确认所有腿两侧都已更新。
+    // 相同快照可由正式盯盘复核,但一条腿单独更新不能变成新的跌幅证据。
+    if (!h.samples.isEmpty() && oldest <= h.newestAt && (newest != h.newestAt || *natural != h.samples.last().natural))
+        return waiting(u"急跌保护等待各腿报价更新完整"_s);
+    while (!h.samples.isEmpty() && h.samples.first().atMs < nowMs - window) h.samples.removeFirst();
+    if (h.samples.isEmpty() || oldest > h.newestAt) {
+        h.samples.append({oldest, *natural});
+        h.newestAt = newest;
+    }
+    const auto move = analysis::rapidExitMove(h.samples, tk::isLong(w.position), window, pct, nowMs);
+    if (!move) return waiting(u"急跌保护观察中"_s);
+    Rec out = *move;
+    out.set(u"hit"_s, js::B(true));
+    return out;
 }
 
 }  // namespace ibkr::orchestrate

@@ -53,6 +53,8 @@ struct ExitFields {
     /// 快速下跌时的追价:按跌速多让的倍数、改价的最短间隔(秒);空 = 默认(1 倍、1 秒)。管所有触发的追价
     std::optional<double> chaseLead;
     std::optional<double> chaseInterval;
+    std::optional<double> rapidWindow;
+    std::optional<double> rapidPct;
     bool peakConfirm = false;
     QList<TierField> tiers;
     /// fromJson 时既不是空、也读不成数的那几项(键名)。React 版的输入框只交数或 null,这里不该有;有了就是界面的毛病,

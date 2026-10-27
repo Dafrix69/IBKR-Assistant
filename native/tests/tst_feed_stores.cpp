@@ -170,6 +170,10 @@ private slots:
         QCOMPARE(item[u"page"].toString(), u"quality"_s);
         QCOMPARE(item[u"at"].toDouble(), 400'000.0);
         QCOMPARE(item[u"tone"].toString(), u"up"_s);
+        QVERIFY(item[u"body"].toString().startsWith(u"近 5 分钟"_s));
+        QVERIFY(item[u"body"].toString().contains(u"异动不等于反转确认"_s));
+        QVERIFY(item[u"body"].toString().contains(u"风险预算"_s));
+        QVERIFY(rig.fed.at(0).at(1).toString().contains(u"同板块合并风险"_s));
         QTRY_COMPARE(rig.calls(u"quality.list"_s), lists + 1);  // 读完列表跟上
 
         // 人在这一页:照 React 版问的是 quality,实际总是算没看见
@@ -191,7 +195,8 @@ private slots:
         q.onEngineEvent(u"anomaly"_s, obj(R"({"events":[{"id":"a","symbol":"NVDA","title":"NVDA 急跌","text":"t","direction":"down","at":1},{"id":"b","symbol":"NVDA","title":"NVDA 放量","at":2},{"id":"c","symbol":"AMD","title":"AMD 急跌","at":3}]})"));
         QCOMPARE(rig.outputs.notices.size(), 1);
         QCOMPARE(rig.outputs.notices.at(0).first, u"3 条异动:NVDA、AMD"_s);
-        QCOMPARE(rig.outputs.notices.at(0).second, u"NVDA 急跌;NVDA 放量;AMD 急跌"_s);
+        QVERIFY(rig.outputs.notices.at(0).second.startsWith(u"NVDA 急跌;NVDA 放量;AMD 急跌"_s));
+        QVERIFY(rig.outputs.notices.at(0).second.contains(u"异动不等于反转确认"_s));
     }
 
     void qualityErrorBannerOnce() {

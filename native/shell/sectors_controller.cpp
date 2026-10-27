@@ -3,6 +3,7 @@
 #include "shell/alerter.h"
 #include "shell/alerts_store.h"
 #include "shell/feed_stores.h"
+#include "shell/event_rules.h"
 #include "shell/jsvalue.h"
 #include "shell/sectors_rules.h"
 #include "shell/sectors_store.h"
@@ -291,6 +292,7 @@ QJsonObject SectorsController::levelStrip(const QJsonArray& levelList, const QVa
 }
 
 QJsonObject SectorsController::earnings() const { return sectors_->earnings(); }
+QJsonObject SectorsController::discipline() const { return events::tradingDiscipline(); }
 void SectorsController::refreshEarnings(const QString& symbol) { sectors_->refreshEarnings(symbol); }
 
 void SectorsController::rebuild() {

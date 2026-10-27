@@ -145,6 +145,8 @@ ExitFields ExitFields::fromJson(const QJsonObject& o) {
     f.chaseMax = formNumber(o.value("chaseMax"_L1), u"chaseMax"_s, &f.invalid);
     f.chaseLead = formNumber(o.value("chaseLead"_L1), u"chaseLead"_s, &f.invalid);
     f.chaseInterval = formNumber(o.value("chaseInterval"_L1), u"chaseInterval"_s, &f.invalid);
+    f.rapidWindow = formNumber(o.value("rapidWindow"_L1), u"rapidWindow"_s, &f.invalid);
+    f.rapidPct = formNumber(o.value("rapidPct"_L1), u"rapidPct"_s, &f.invalid);
     const QJsonValue peak = o.value("peakConfirm"_L1);
     if (!peak.isBool() && !peak.isNull() && !peak.isUndefined()) f.invalid << u"peakConfirm"_s;
     f.peakConfirm = peak.toBool();
@@ -174,11 +176,17 @@ QJsonObject exitSpec(const ExitFields& f, bool derivative) {
     if (f.peakConfirm) out.insert(u"peak_confirm"_s, true);
     if (!str(f.chaseLead).isEmpty()) out.insert(u"chase_lead"_s, str(f.chaseLead));
     if (!str(f.chaseInterval).isEmpty()) out.insert(u"chase_interval_s"_s, str(f.chaseInterval));
+    if (f.rapidWindow) out.insert(u"rapid_exit_window_s"_s, str(f.rapidWindow));
+    if (f.rapidPct) out.insert(u"rapid_exit_pct"_s, str(f.rapidPct));
     return out;
 }
 
 QStringList exitProblems(const ExitFields& f, const ProblemOpts& opts) {
     QStringList out;
+    if (f.rapidWindow.has_value() != f.rapidPct.has_value()) out << u"急跌保护的观察窗口和不利变动阈值必须一起填写或一起清空。"_s;
+    if (f.rapidWindow && (*f.rapidWindow < 0.25 || *f.rapidWindow > 5)) out << u"急跌观察窗口要在 0.25–5 秒之间。"_s;
+    if (f.rapidPct && (*f.rapidPct < 0.01 || *f.rapidPct > 100)) out << u"急跌不利变动阈值要在 0.01–100% 之间。"_s;
+    if (opts.stock && (f.rapidWindow || f.rapidPct)) out << u"急跌保护只支持单腿期权与组合。"_s;
     if (!jsTrim(f.exitAt).isEmpty() && !clockOk(f.exitAt)) out << u"到点平仓的时刻要写成美东时间的 HH:MM,如 15:45。"_s;
     if (std::any_of(f.tiers.begin(), f.tiers.end(), [](const TierField& t) { return t.price.has_value() != t.fraction.has_value(); }))
         out << u"分批止盈的每一档要把价和比例都填上。"_s;
@@ -197,6 +205,8 @@ QStringList exitProblems(const ExitFields& f, const ProblemOpts& opts) {
 
 QString exitConfirmLines(const ExitFields& f, bool derivative) {
     QStringList out;
+    if (derivative && f.rapidWindow && f.rapidPct)
+        out << u"急跌保护:最近 %1 秒内可平仓报价向不利方向变动达到 %2% 就平,独立于利润回撤线,亏损时也生效。只在软件开着并取得新鲜同步的实时报价时检测;沿用平仓比例和让价上限,不保证成交价。"_s.arg(jsNumberToString(*f.rapidWindow), jsNumberToString(*f.rapidPct));
     const QString at = jsTrim(f.exitAt);
     if (!at.isEmpty()) out << u"到点平仓:下一次到美东 %1 时持仓还在就平(不算止损);软件开着时才盯。"_s.arg(at);
     const QList<FilledTier> tiers = filledTiers(f.tiers);
@@ -236,6 +246,8 @@ QString exitMoment(double ms) {
 
 QStringList exitSummary(const QJsonObject& targets, const QJsonObject& autoClose, bool stock) {
     QStringList out;
+    if (!nullish(autoClose.value("rapid_exit_window_s"_L1)) && !nullish(autoClose.value("rapid_exit_pct"_L1)))
+        out << u"急跌保护 %1 秒 / %2%"_s.arg(jsString(autoClose.value("rapid_exit_window_s"_L1)), jsString(autoClose.value("rapid_exit_pct"_L1)));
     if (jsTruthy(targets.value("exit_at"_L1))) {
         // 时刻被清掉了 = 到点那天没平掉、这一次已经作废(引擎当时提醒过);点「恢复」或重新设置才有下一次
         const QJsonValue ms = targets.value("exit_at_ms"_L1);
@@ -270,6 +282,7 @@ const QHash<QString, QString>& trackStateLabel() {
         {u"holding"_s, u"持有中"_s},
         {u"take_profit"_s, u"止盈已触发"_s},
         {u"profit_trail"_s, u"利润回撤已触发"_s},
+        {u"rapid_exit"_s, u"急跌保护已触发"_s},
         {u"stop_loss"_s, u"止损已触发"_s},
         {u"manual"_s, u"已手动平仓"_s},
         {u"time_exit"_s, u"已到点平仓"_s},
@@ -278,6 +291,7 @@ const QHash<QString, QString>& trackStateLabel() {
         {u"sweep:take_profit"_s, u"到了目标价,追价平仓中"_s},
         {u"sweep:stop_loss"_s, u"止损触发,追价平仓中"_s},
         {u"sweep:profit_trail"_s, u"利润回撤触发,追价平仓中"_s},
+        {u"sweep:rapid_exit"_s, u"急跌保护触发,追价平仓中"_s},
         {u"sweep:manual"_s, u"手动平仓,追价中"_s},
         {u"sweep:time_exit"_s, u"到点了,追价平仓中"_s},
     };

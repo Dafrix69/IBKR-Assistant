@@ -63,6 +63,10 @@ double chaseIntervalMs(const util::OJson& autoClose);
 /// 历史不够一个间隔拿最早那一笔;没在往不利方向走、观察不到两笔、倍数或窗口非正,回 0
 double momentumLead(const QList<NaturalObs>& obs, bool isLong, double horizonMs, double mult, double nowMs);
 
+// 急跌保护:窗口内从最有利的有效平仓报价向不利方向移动多少。空头对称看急涨。
+inline const QString kStateRapidExit = QStringLiteral("rapid_exit");
+std::optional<util::OJson> rapidExitMove(const QList<NaturalObs>& obs, bool isLong, double windowMs, double thresholdPct, double nowMs);
+
 // ---- 止损的确认秒数
 struct BreachClock {
     QString side;  // below / above

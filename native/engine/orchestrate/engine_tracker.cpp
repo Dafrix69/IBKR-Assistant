@@ -147,6 +147,7 @@ Task<> TradingEngine::tickBody(double t0, double mono, std::optional<domain::EtN
     const QList<Rec> tracks = storePort_->listTracks();
     const QString hold = wakeTick(t0, mono, tracks);
     if (!router_ || tracks.isEmpty()) {
+        fastExit_->resetRapid();
         state.set(u"poll"_s, js::object({{u"rows"_s, js::array()}, {u"fired"_s, js::array()}, {u"blocked"_s, js::array()}}));
         state.set(u"hosted"_s, js::object({{u"hosted"_s, js::array()}, {u"blocked"_s, js::array()}, {u"quote_maybe_delayed"_s, js::B(false)}}));
         state.set(u"last_error"_s, js::S(QString()));
@@ -160,11 +161,13 @@ Task<> TradingEngine::tickBody(double t0, double mono, std::optional<domain::EtN
         readFailure = jsx::errorMessage(std::current_exception());
     }
     if (readFailure) {
+        fastExit_->resetRapid();
         // 读不到持仓:这一轮不判断、不对账——当成空仓会停掉追踪、撤掉托管单
         state.set(u"last_error"_s, js::S(u"读不到持仓:"_s + readFailure->left(200)));
         co_return;
     }
     if (!hold.isEmpty()) {
+        fastExit_->resetRapid();
         // 醒后这几秒的报价不可信:持仓照读(常驻行情流跟着续订),不判触发、不推峰值、不追价、不改托管单
         Rec held = js::array();
         for (const Rec& t : tracks) {
@@ -369,10 +372,13 @@ Task<Rec> TradingEngine::pollTrackers(std::optional<domain::EtNow> moment, std::
         const std::optional<Rec> spotTargetRow = spotRes.spotTarget;
         // 标的止损价只看标的现价;设了确认秒数的,越线之后待够了才算
         const QString rawSymbol = js::str(js::prop(&raw, u"symbol"_s));
-        const std::optional<Rec> stopRaw = co_await spotStopFor(*router_, rawSymbol, targets, spotTargetRow, settings.indexConfig(rawSymbol) != nullptr);
-        const std::optional<Rec> spotStopRow = exits_->confirmSpot(tid, targets, stopRaw, at.epochMs);
         const OJson* autoRaw = js::prop(&track, u"auto_close"_s);
         const Rec auto_ = tk::makeAutoClose(js::nullish(autoRaw) ? js::object() : *autoRaw);
+        const bool brokerSpot = js::truthy(auto_.get(u"host_at_broker"_s)) && js::truthy(auto_.get(u"spot_stop_at_broker"_s));
+        // 原生条件只由 IBKR 的官方标的行情触发,不能再用本机的夜盘推算价发第二张平仓单。
+        std::optional<Rec> stopRaw;
+        if (!brokerSpot) stopRaw = co_await spotStopFor(*router_, rawSymbol, targets, spotTargetRow, settings.indexConfig(rawSymbol) != nullptr);
+        const std::optional<Rec> spotStopRow = exits_->confirmSpot(tid, targets, stopRaw, at.epochMs);
         const QString secType = js::str(js::prop(&raw, u"sec_type"_s));
         const bool derivative = isDerivative(secType);
         // 止损类按可成交价判的(stop_basis = natural):这一轮的立刻成交价现取;拿不到(null)这一轮止损类不判
@@ -390,7 +396,19 @@ Task<Rec> TradingEngine::pollTrackers(std::optional<domain::EtNow> moment, std::
         ja.spotTarget = spotTargetRow;
         ja.spotStop = spotStopRow;
         ja.early = earlyTick;
-        const Rec result = exits_->judge(ja);
+        Rec result = exits_->judge(ja);
+        const auto rapid = fastExit_->rapidFor(track, raw, position, positions, auto_, util::dateNow());
+        if (rapid) {
+            result.set(u"rapid_exit"_s, *rapid);
+            if (js::truthy(rapid->get(u"hit"_s)) && !analysis::isStopReason(result.get(u"state"_s))) {
+                result.set(u"state"_s, js::S(analysis::kStateRapidExit));
+                result.set(u"reason"_s, *rapid->get(u"reason"_s));
+                result.set(u"price"_s, *rapid->get(u"to"_s));
+                result.remove(u"tier"_s);  // 急跌优先于分批止盈,沿用整条追踪的平仓比例
+            } else if (js::str(result.get(u"state"_s)) == tk::kStateHolding) {
+                result.set(u"reason"_s, js::S(js::str(result.get(u"reason"_s)) + u";"_s + js::str(rapid->get(u"reason"_s))));
+            }
+        }
 
         // 峰值只在变了的时候写
         const OJson* peak = js::prop(&result, u"peak"_s);
@@ -402,6 +420,8 @@ Task<Rec> TradingEngine::pollTrackers(std::optional<domain::EtNow> moment, std::
         row.set(u"position"_s, raw);
         if (spotTargetRow) row.set(u"spot_target"_s, *spotTargetRow);
         if (spotStopRow) row.set(u"spot_stop"_s, *spotStopRow);
+        if (brokerSpot) row.set(u"spot_stop"_s, js::object({{u"spot"_s, js::Null()},
+            {u"reason"_s, js::S(u"标的止损由 IBKR 条件单按常规时段官方行情触发;挂单状态见托管订单。"_s)}}));
         outRows->items.append(row);
         Rec& rowSlot = outRows->items.last();
         const Commit commit{rowSlot, row};

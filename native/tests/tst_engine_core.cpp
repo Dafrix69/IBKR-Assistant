@@ -44,6 +44,75 @@ private:
     }
 
 private slots:
+    void brokerSpotHostedLifecycle() {
+        const auto fx = jsfix::load(u"engine_core.json"_s);
+        OJson original;
+        for (const auto& s : fx.get(u"scenarios"_s)->items)
+            if (s.get(u"name"_s)->s == u"poll_spot_stop_with_confirm") original = jsfix::dec(*s.get(u"script"_s));
+        QVERIFY(original.get(u"setup"_s));
+        for (const bool adopt : {false, true}) {
+            auto script = original;
+            auto& spec = *script.get(u"setup"_s)->items[0].get(u"spec"_s);
+            spec.get(u"targets"_s)->remove(u"spot_stop_confirm_s"_s);
+            spec.get(u"auto_close"_s)->set(u"host_at_broker"_s, js::B(true));
+            spec.get(u"auto_close"_s)->set(u"spot_stop_at_broker"_s, js::B(true));
+            spec.get(u"auto_close"_s)->set(u"spot_stop_limit"_s, js::N(1));
+            if (adopt) script.get(u"router"_s)->set(u"hostedOpen"_s, *ibkr::util::parseOJson(R"([{
+                "order_ref":"trk:${track:A}:spot","order_id":501,"account":"DU7654321","action":"SELL","order_type":"LMT","quantity":1,
+                "lmt_price":1,"aux_price":null,"trailing_percent":null,"status":"PreSubmitted","spot_conditions":[{"price":7495,"isMore":false}]}])"));
+            if (adopt) script.get(u"router"_s)->set(u"nextId"_s, js::N(501));
+            script.set(u"steps"_s, *ibkr::util::parseOJson(R"([
+                {"op":"sync"},{"op":"sync"},
+                {"op":"status","trade":{"order":{"orderId":501},"orderStatus":{"status":"Filled","filled":1,"remaining":0},"contract":{"symbol":"SPX"}}},
+                {"op":"sync"}])"));
+            ecw::World world(script, jsfix::dec(*fx.get(u"base"_s)));
+            const auto result = world.run();
+            int placed = 0, modified = 0;
+            QString oca;
+            for (const auto& e : result.get(u"log"_s)->items) {
+                if (js::str(e.get(u"c"_s)) != u"router") continue;
+                if (js::str(e.get(u"m"_s)) == u"modifyHosted") ++modified;
+                if (js::str(e.get(u"m"_s)) != u"placeHosted") continue;
+                ++placed;
+                const auto& a = e.get(u"a"_s)->items;
+                if (oca.isEmpty()) oca = a[5].s;
+                QCOMPARE(a[5].s, oca); // 条件止损和止盈使用同一个 OCA 组
+            }
+            QCOMPARE(placed, adopt ? 1 : 2);
+            QCOMPARE(modified, 0); // 认领后的未变化条件不反复重发
+            const auto track = world.real->getTrack(world.trackNames[u"A"_s]);
+            QVERIFY(track);
+            QCOMPARE(track->get(u"fired_state"_s)->s, u"stop_loss"_s);
+            QVERIFY(js::truthy(track->get(u"fired_at"_s)));
+        }
+    }
+    void brokerSpotDoesNotAlsoCloseLocally() {
+        const auto fx = jsfix::load(u"engine_core.json"_s);
+        OJson script;
+        for (const auto& s : fx.get(u"scenarios"_s)->items)
+            if (s.get(u"name"_s)->s == u"poll_spot_stop_with_confirm") script = jsfix::dec(*s.get(u"script"_s));
+        QVERIFY(script.get(u"setup"_s));
+        auto& spec = *script.get(u"setup"_s)->items[0].get(u"spec"_s);
+        spec.get(u"targets"_s)->remove(u"spot_stop_confirm_s"_s);
+        spec.get(u"auto_close"_s)->set(u"host_at_broker"_s, js::B(true));
+        spec.get(u"auto_close"_s)->set(u"spot_stop_at_broker"_s, js::B(true));
+        spec.get(u"auto_close"_s)->set(u"spot_stop_limit"_s, js::N(1));
+        ecw::World world(script, jsfix::dec(*fx.get(u"base"_s)));
+        const auto result = world.run();
+        int polls = 0;
+        for (const auto& step : result.get(u"steps"_s)->items) {
+            if (step.get(u"op"_s)->s != u"poll") continue;
+            ++polls;
+            const auto& poll = *step.get(u"r"_s);
+            QVERIFY(poll.get(u"fired"_s)->items.isEmpty());
+            const auto& row = poll.get(u"rows"_s)->items[0];
+            QCOMPARE(row.get(u"state"_s)->s, u"holding"_s);
+            QVERIFY(js::path(&row, {u"spot_stop"_s, u"reason"_s})->s.contains(u"IBKR"));
+        }
+        QCOMPARE(polls, 3);
+        for (const auto& e : result.get(u"log"_s)->items)
+            if (js::str(e.get(u"c"_s)) == u"router") QVERIFY(js::str(e.get(u"m"_s)) != u"place");
+    }
     void initTestCase() { qputenv("DAFRI_PROMPT_DIR", (QStringLiteral(IBKR_FIXTURES_DIR) + u"/../../../prompts"_s).toUtf8()); }
     void named() {
         QStringList failures;

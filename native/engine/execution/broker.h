@@ -276,6 +276,7 @@ private:
 
     // broker_orders.cpp
     util::Task<util::OJson> priceCondition(SessionPtr session, std::optional<util::OJson> trigger);
+    util::Task<std::vector<util::OJson>> hostedSpotConditions(SessionPtr session, QString symbol, util::OJson conditions);
 
     IbSessionFactory factory_;
     contract::OrderedMap<SessionPtr> connectionsMap_;

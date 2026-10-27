@@ -53,6 +53,8 @@ FormState FormState::fromJson(const QJsonObject& position, bool autoExecute, con
     if (order == u"MKT"_s || order == u"LMT"_s) s.orderType = order.toString();
     else if (!order.isNull() && !order.isUndefined()) s.invalid << u"orderType"_s;
     s.host = flag("host");
+    s.brokerSpotStop = flag("brokerSpotStop");
+    s.spotStopLimit = number("spotStopLimit", std::nullopt);
     s.exits = ExitFields::fromJson(v.value("exits"_L1).toObject());
     return s;
 }
@@ -66,7 +68,7 @@ bool FormState::derivative() const {
 }
 bool FormState::autoClose() const { return autoPicked.value_or(autoExecute); }
 bool FormState::hasSpotTarget() const { return spotTarget && *spotTarget > 0; }
-bool FormState::hostAllowed() const { return !isCombo() || hasSpotTarget(); }
+bool FormState::hostAllowed() const { return !isCombo() || hasSpotTarget() || (brokerSpotStop && (stopBelow || stopAbove)); }
 bool FormState::hostOn() const { return host && hostAllowed(); }
 
 QJsonObject buildSpec(const FormState& s) {
@@ -88,6 +90,10 @@ QJsonObject buildSpec(const FormState& s) {
     if (s.tiers) spec.insert(u"profit_drawdown_preset"_s, u"fly"_s);
     if (!str(s.fraction).isEmpty()) spec.insert(u"close_fraction_pct"_s, str(s.fraction));
     if (!str(s.chaseMax).isEmpty()) spec.insert(u"chase_max_pct"_s, str(s.chaseMax));
+    if (s.hostOn() && s.brokerSpotStop && (s.stopBelow || s.stopAbove)) {
+        spec.insert(u"spot_stop_at_broker"_s, true);
+        if (s.spotStopLimit) spec.insert(u"spot_stop_limit"_s, str(s.spotStopLimit));
+    }
     const QJsonObject exits = exitSpec(s.exits, s.derivative());
     for (auto it = exits.begin(); it != exits.end(); ++it) spec.insert(it.key(), it.value());
     return spec;
@@ -115,7 +121,15 @@ void confirmAndAdd(const FormState& s, const FormDeps& deps, const QJsonObject& 
             priceLine += u"标的真到了 %1(软件开着时按秒盯),不等%2价追上来,直接按各腿当时的买卖价挂立刻成交的价平掉,没成交就每秒再追。\n"_s.arg(
                 target, s.isCombo() ? u"组合"_s : u"期权"_s);
     }
-    const QString stopLine = spotStopConfirmLine(symbol, s.stopBelow, s.stopAbove) + exitConfirmLines(s.exits, s.derivative());
+    QString stopLine = spotStopConfirmLine(symbol, s.stopBelow, s.stopAbove) + exitConfirmLines(s.exits, s.derivative());
+    const bool brokerSpot = s.hostOn() && s.brokerSpotStop && (s.stopBelow || s.stopAbove);
+    if (brokerSpot) {
+        stopLine.replace(u"软件开着时按秒盯"_s, u"由 IBKR 在常规时段按官方标的行情触发,软件关闭后仍有效"_s);
+        stopLine += (s.isCombo() || s.orderTypeOrDefault() == u"LMT")
+            ? u"条件触发后按限价 %1 平仓%2;限价不保证成交。\n"_s.arg(str(s.spotStopLimit), s.isCombo() ? u"(组合净价)"_s : QString())
+            : u"条件触发后市价平仓,成交价由当时市场决定。\n"_s;
+        stopLine += u"SPX 使用官方指数,不使用夜盘 ES 推算价;不支持越线持续秒数确认。\n"_s;
+    }
     const QString quotedMessage = quoted ? u"%1 到 %2 就走,现在算下来约 %3。"_s.arg(symbol, target, fmtMoney(quoted->value("price"_L1))) : QString();
 
     const auto add = [s, deps, spec, symbol] {
@@ -141,7 +155,8 @@ void confirmAndAdd(const FormState& s, const FormDeps& deps, const QJsonObject& 
                {u"title"_s, quoted ? u"确认这个止盈价位,并挂到券商"_s : u"托管到券商服务器"_s},
                {u"message"_s, quoted ? quotedMessage : u"%1 的止盈/止损将作为 GTC 单挂在券商服务器上。"_s.arg(symbol)},
                {u"detail"_s, priceLine + stopLine + u"数量 %1 · 账户 %2\n"_s.arg(qty, account) +
-                                 u"这张 GTC 限价单会立刻挂到券商服务器上;软件关闭后它仍然有效,价格停在最后一次调整的位置。\n"_s +
+                                 (brokerSpot ? u"GTC 条件单提交到 IBKR,满足条件后激活平仓;与同组止盈/止损单互斥。\n"_s :
+                                 u"这张 GTC 限价单会立刻挂到券商服务器上;软件关闭后它仍然有效,价格停在最后一次调整的位置。\n"_s) +
                                  u"触发由券商实时行情决定,一张成交其余自动撤销(OCA)。"_s},
                {u"confirmLabel"_s, quoted ? u"同意这个价,挂单"_s : u"我确认"_s}};
     } else if (s.autoClose()) {
@@ -291,6 +306,12 @@ void startTrack(const FormState& s, const FormDeps& deps) {
     opts.hasStockStop = s.sl || s.trail;
     const QStringList problems = exitProblems(s.exits, opts);
     if (!problems.isEmpty()) return deps.banner(problems.first(), false);
+    if (s.hostOn() && s.brokerSpotStop && (s.stopBelow || s.stopAbove)) {
+        if (s.exits.stopConfirm.value_or(0) > 0)
+            return deps.banner(u"IBKR 价格条件触线即发,请清空止损确认秒数或关闭标的条件单托管。"_s, false);
+        if ((s.isCombo() || s.orderTypeOrDefault() == u"LMT") && (!s.spotStopLimit || *s.spotStopLimit <= 0))
+            return deps.banner(u"请填写条件触发后的平仓限价(组合填净价),限价必须大于 0。"_s, false);
+    }
     if (s.hostOn() && !s.autoClose()) {
         // 托管单就是授权发单——没有总开关的托管是自相矛盾的设置
         return deps.banner(u"托管到券商需先打开「到价自动平仓」:挂托管单即发单授权。"_s, false);

@@ -88,7 +88,7 @@ std::optional<double> marketValue(const Position& p, std::optional<double> price
 util::OJson unrealized(const Position& p, std::optional<double> price);
 
 // ---- 校验与触发
-void validate(const Position& position, const util::OJson& targets, std::optional<double> price);
+void validate(const Position& position, const util::OJson& targets, std::optional<double> price, bool hasAdditionalExit = false);
 std::optional<double> advancePeak(const Position& position, std::optional<double> price, std::optional<double> peak);
 std::optional<double> trailStopPrice(const Position& position, std::optional<double> peak, const util::OJson* trailPct);
 struct EvaluateOpts {
@@ -130,6 +130,7 @@ inline const QString kHostedKindTp = QStringLiteral("tp");
 inline const QString kHostedKindSl = QStringLiteral("sl");
 inline const QString kHostedKindTrail = QStringLiteral("trail");
 inline const QString kHostedKindPtrail = QStringLiteral("ptrail");
+inline const QString kHostedKindSpot = QStringLiteral("spot");
 QString hostedLabel(const QString& kind);
 std::optional<double> profitTrailStopPrice(const Position& position, std::optional<double> peak, std::optional<double> drawdownPct,
                                            std::optional<double> floor = std::nullopt);

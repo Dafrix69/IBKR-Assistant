@@ -127,7 +127,7 @@ public:
         tracker::Position position;
         QString state, reason;
         bool spotReached = false;
-        /// 这次触发是标的止损价:券商侧没有任何单看标的,一定要追价
+        /// 本机标的止损触发,要追价;选择 IBKR 原生标的条件的追踪不走这个本机触发入口
         bool spotStop = false;
     };
     /// 托管的追踪在盯盘里判到了触发:交给券商侧那张单,还是改成追价平仓。row 与 out(TrackerPollTick)原地改:out 要有 fired / blocked 两个数组

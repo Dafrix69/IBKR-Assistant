@@ -79,6 +79,10 @@ export interface AutoClose {
   /** 把止盈/止损挂到券商服务器(GTC + OCA):软件关掉也生效。软件开着时,
    * 利润回撤等动态目标由引擎按秒调整托管单价格;关掉则停在最后一次。 */
   host_at_broker: boolean;
+  /** 明确选择 IBKR PriceCondition,按官方标的行情在常规时段触发;旧追踪缺省仍由本机判断。 */
+  spot_stop_at_broker?: boolean;
+  /** 条件触发后的固定平仓限价,组合填净价;BAG 或 LMT 必填。 */
+  spot_stop_limit?: number | null;
   /** 追价平仓最多让到自然价的百分之几(见 chaseLimit)。只管期权与组合;正股不追价。 */
   chase_max_pct: number;
   /** 止损类(止损 / 跟踪止损 / 利润回撤)拿哪个价判:"mid" = 持仓的中间价(默认);
@@ -88,6 +92,9 @@ export interface AutoClose {
   stop_chase_grace: number | null;
   stop_chase_step: number | null;
   stop_chase_max_pct: number | null;
+  /** 本机急跌保护,两项同时设置才启用。OPT / BAG;按新鲜实时平仓报价,空头对称看急涨。 */
+  rapid_exit_window_s?: number | null;
+  rapid_exit_pct?: number | null;
   /** 峰值要连续两轮都见到才往有利方向推(期权与组合;见 engine/exits.ts 的 peakMark)。默认关 = 每一轮的价都能推峰值 */
   peak_confirm: boolean;
 }
@@ -230,6 +237,8 @@ export interface TrackerAddParams extends TargetsInput {
   close_fraction_pct?: NumberField;
   /** 托管到券商服务器(只有 IBKR 账户能开) */
   host_at_broker?: boolean;
+  spot_stop_at_broker?: boolean;
+  spot_stop_limit?: NumberField;
   /** 0 是合法值(至少让两跳),所以不能拿 0 当"没填" */
   chase_max_pct?: NumberField;
   /** 止损类拿哪个价判:"mid"(默认)/ "natural" */
@@ -238,6 +247,8 @@ export interface TrackerAddParams extends TargetsInput {
   stop_chase_grace?: NumberField;
   stop_chase_step?: NumberField;
   stop_chase_max_pct?: NumberField;
+  rapid_exit_window_s?: NumberField;
+  rapid_exit_pct?: NumberField;
   /** 峰值要连续两轮都见到才推(期权与组合) */
   peak_confirm?: boolean;
   /** 截到 200 字 */

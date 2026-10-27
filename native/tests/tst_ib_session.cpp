@@ -772,6 +772,25 @@ class TestIbSession : public QObject {
     Q_OBJECT
 
 private slots:
+    void conditionalOrderKeepsOrAndLast() {
+        OrderIntent order;
+        order.conditions = {js::object({{u"price"_s, js::N(6000)}, {u"isMore"_s, js::B(false)}, {u"conId"_s, js::N(416904)},
+            {u"exchange"_s, js::S(u"CBOE"_s)}, {u"triggerMethod"_s, js::N(2)}, {u"conjunctionConnection"_s, js::S(u"o"_s)}})};
+        order.conditions.push_back(order.conditions.front());
+        order.conditions.back().set(u"price"_s, js::N(6200));
+        order.conditions.back().set(u"isMore"_s, js::B(true));
+        order.conditionsCancelOrder = false;
+        order.conditionsIgnoreRth = false;
+        const OJson encoded = toIbOrder(order);
+        const auto& cs = encoded.get(u"conditions"_s)->items;
+        QCOMPARE(cs.size(), 2);
+        QCOMPARE(cs[0].get(u"conjunctionConnection"_s)->s, u"o"_s);
+        QCOMPARE(cs[0].get(u"triggerMethod"_s)->n, 2.0);
+        QVERIFY(!cs[0].get(u"isMore"_s)->b);
+        QVERIFY(cs[1].get(u"isMore"_s)->b);
+        QVERIFY(!encoded.get(u"conditionsIgnoreRth"_s)->b);
+        QVERIFY(!encoded.get(u"conditionsCancelOrder"_s)->b);
+    }
     void metadataDoesNotTriggerPriceListener() {
         const auto* all=fixture().get(u"scenarios"_s);
         for(bool price : {false,true}) {

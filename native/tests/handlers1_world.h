@@ -28,6 +28,7 @@
 #include <QTemporaryDir>
 
 #include <map>
+#include <cstdlib>
 #include <memory>
 
 namespace h1w {
@@ -352,7 +353,7 @@ public:
     explicit Ctx(State* s) : s_(s) {}
     const ibkr::domain::Settings& settings() const override { return s_->settings; }
     std::shared_ptr<ibkr::orchestrate::Router> router() const override { return nullptr; }
-    ibkr::orchestrate::TradingEngine& engine() override { qFatal("handlers1 的 handler 只经 Handlers1Ports 碰引擎"); }
+    ibkr::orchestrate::TradingEngine& engine() override { qFatal("handlers1 的 handler 只经 Handlers1Ports 碰引擎"); std::abort(); }
     void emitEvent(const QString& event, const OJson& payload) override { s_->world->rec(u"ctx"_s, u"emit"_s, js::array({js::S(event), payload})); }
     void setSettings(ibkr::domain::Settings v) override {
         s_->world->rec(u"ctx"_s, u"setSettings"_s, js::array());
@@ -360,7 +361,7 @@ public:
     }
     void setRouter(std::shared_ptr<ibkr::orchestrate::Router>) override { qFatal("handlers1 的 handler 只经 Handlers1Ports 清 router"); }
     ibkr::orchestrate::TradingEngine* engineBuilt() const override { return nullptr; }
-    std::shared_ptr<rpc::Parser> parserFactory(const ibkr::contract::LLMConfig&) override { qFatal("handlers1_world: parserFactory 不该被碰"); }
+    std::shared_ptr<rpc::Parser> parserFactory(const ibkr::contract::LLMConfig&) override { qFatal("handlers1_world: parserFactory 不该被碰"); std::abort(); }
     void reload() override {
         s_->world->rec(u"ctx"_s, u"reload"_s, js::array());
         s_->settings = ibkr::domain::loadSettings(s_->settingsPath);
@@ -751,11 +752,9 @@ inline void addRows(const QString& file) {
 #define H1_SCENARIOS(name, file)                                                                                         \
     void name##_data() { h1w::addRows(file); }                                                                           \
     void name() {                                                                                                        \
-        const QString tag = QString::fromUtf8(QTest::currentDataTag());                                                  \
-        const jsfix::OJson* sc = nullptr;                                                                                \
-        for (const jsfix::OJson& s : h1w::fixture(file).get(u"scenarios"_s)->items)                                      \
-            if (s.get(u"name"_s)->s == tag) sc = &s;                                                                     \
-        QVERIFY(sc);                                                                                                     \
+        QFETCH(int, index);                                                                                             \
+        const jsfix::OJson* sc = &h1w::fixture(file).get(u"scenarios"_s)->items[index];                                 \
+        const QString tag = sc->get(u"name"_s)->s;                                                                      \
         h1w::Runner runner(*sc->get(u"script"_s));                                                                       \
         const jsfix::OJson got = runner.run();                                                                           \
         JSFIX_SAME(*sc->get(u"expected"_s), got, tag);                                                                   \

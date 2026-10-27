@@ -179,6 +179,8 @@ OJson stopSettingsOf(const OJson& params) {
         {u"stop_chase_max_pct"_s, 0, 100, u"止损追价的让价上限(%)"_s, false},
         {u"chase_lead"_s, 0, 3, u"追价按跌速多让的倍数"_s, false},
         {u"chase_interval_s"_s, 0.25, 1, u"追价改价的最短间隔(秒)"_s, false},
+        {u"rapid_exit_window_s"_s, 0.25, 5, u"急跌观察窗口(秒)"_s, false},
+        {u"rapid_exit_pct"_s, 0.01, 100, u"急跌不利变动阈值(%)"_s, false},
     };
     for (const Range& r : ranges) {
         if (!params.get(r.key)) continue;  // `key in params`

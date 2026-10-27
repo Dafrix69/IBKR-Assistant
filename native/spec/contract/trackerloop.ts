@@ -12,7 +12,7 @@ import type { TrackerHeartbeat } from "./system.js";
 
 /** 盯盘一轮对某一条追踪算出来的结论(tracker.ts 的 evaluate)。 */
 export interface TrackEvaluation {
-  /** holding / take_profit / stop_loss / profit_trail / time_exit / manual / closed;
+  /** holding / take_profit / stop_loss / profit_trail / rapid_exit / time_exit / manual / closed;
    *  `sweep:` 开头 = 正在追价平仓 */
   state: string;
   /** 判断用的那个价;这一轮拿不到就是 null */
@@ -40,6 +40,8 @@ export interface TrackEvaluation {
   stop_price?: number | null;
   /** stop_basis = natural 的追踪这一轮拿不到可成交价(腿没报价,或者算出来不是正数):止损类退回按中间价判,峰值不推 */
   stop_fallback?: boolean;
+  /** 本机急跌保护的状态与证据;未配置时没有这一项。 */
+  rapid_exit?: { hit: boolean; reason: string; from?: number; to?: number; move_pct?: number; elapsed_s?: number };
   /** 正股设了止损确认(spot_stop_confirm_s)、已经越过止损线但还没待够:待了多少秒、要多少秒(trackerExits.confirmStockStop) */
   stop_pending?: { held_s: number; need_s: number };
   /** 这一轮触发的是分批止盈的第几档(从 0 数);不是分批止盈的触发没有这一项 */
@@ -126,6 +128,8 @@ export interface HostedOrderRow {
   aux_price: number | null;
   trailing_percent: number | null;
   order_id: number | null;
+  /** kind=spot:同一标的的下沿 / 上沿,两条条件用 OR 连接。 */
+  spot_conditions?: Array<{ price: number; isMore: boolean }>;
 }
 
 export interface HostedTrack {

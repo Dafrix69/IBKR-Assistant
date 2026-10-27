@@ -32,7 +32,7 @@ void putDefined(OJson& obj, const QString& key, const OJson* v) {
     if (v) obj.set(key, *v);
 }
 
-/// 触发状态 → 哪几种托管单在券商侧负责它。组合只托管止盈单,止损类在券商侧本来就没有单
+/// 持仓价触发 → 哪几种托管单负责它。标的条件单不覆盖持仓自身价格的止损
 QStringList coveringKinds(const QString& state) {
     if (state == tk::kStateTakeProfit) return {tk::kHostedKindTp};
     if (state == tk::kStateStopLoss) return {tk::kHostedKindSl, tk::kHostedKindTrail};
@@ -43,7 +43,7 @@ QStringList coveringKinds(const QString& state) {
 /// 托管单成交 → 追踪落闩时,kind 映射回软件盯盘同一套触发状态
 std::optional<QString> hostedFiredState(const QString& kind) {
     if (kind == u"tp") return u"take_profit"_s;
-    if (kind == u"sl" || kind == u"trail") return u"stop_loss"_s;
+    if (kind == u"sl" || kind == u"trail" || kind == tk::kHostedKindSpot) return u"stop_loss"_s;
     if (kind == u"ptrail") return u"profit_trail"_s;
     return std::nullopt;
 }
@@ -115,6 +115,7 @@ Rec HostedOrders::hostedRows(const QString& tid) const {
         row.set(u"aux_price"_s, js::nullish(js::prop(&v, u"aux_price"_s)) ? js::Null() : *js::prop(&v, u"aux_price"_s));
         row.set(u"trailing_percent"_s, js::nullish(js::prop(&v, u"trailing_percent"_s)) ? js::Null() : *js::prop(&v, u"trailing_percent"_s));
         row.set(u"order_id"_s, js::nullish(js::prop(&v, u"order_id"_s)) ? js::Null() : *js::prop(&v, u"order_id"_s));
+        putDefined(row, u"spot_conditions"_s, v.get(u"spot_conditions"_s));
         rows.items.append(row);
     }
     return rows;
@@ -401,7 +402,8 @@ util::Task<Rec> HostedOrders::syncHosted(std::optional<QList<Rec>> rows) {
                 tp.set(u"chase_limit"_s, js::N(chase->limit));
                 tp.set(u"chase_natural"_s, js::N(chase->natural));
                 tp.set(u"chase_floor"_s, js::N(chase->floor));
-                const Rec roundsNow = *js::prop(&tp, u"chase_rounds"_s);
+                // 首次由行情推送触发追价时还没有按秒计过轮数,不能解引用缺失的键。
+                const Rec roundsNow = js::N(jsx::numOr(js::prop(&tp, u"chase_rounds"_s), 0));
                 tp.set(u"rounds"_s, roundsNow);
                 host_.chaseWarnIfStuck(track, tp, chase->limit, chase->natural);
             }
@@ -440,7 +442,7 @@ void HostedOrders::onTriggered(const TriggeredArgs& args, Rec& row, Rec& out) {
     const QSet<QString> live = liveKinds(tid);
     bool covered = false;
     for (const QString& k : coveringKinds(args.state)) covered = covered || live.contains(k);
-    // 组合只托管止盈单:止损类在券商侧永远没有单,不用等对账就知道。其余品种要对过一次账才作数(见 synced)
+    // 组合没有按持仓净价判断的停损单;原生标的条件也不能覆盖这类止损。其余品种要对过一次账才作数(见 synced)
     const bool uncoveredForSure = secType == u"BAG" && args.state != tk::kStateTakeProfit;
     const bool sweep = (derivative && args.spotReached) || args.spotStop || uncoveredForSure || (!covered && synced_.contains(tid));
     if (sweep && !tk::sweepReason(track) && !js::truthy(js::prop(&track, u"fired_at"_s))) {
@@ -616,6 +618,10 @@ util::Task<> HostedOrders::adoptHosted() {
             const OJson* v = js::prop(&row, QString::fromUtf16(k));
             entry.set(QString::fromUtf16(k), js::nullish(v) ? js::Null() : *v);
         }
+        if (kind == tk::kHostedKindSpot) {
+            putDefined(entry, u"spot_conditions"_s, row.get(u"spot_conditions"_s));
+            putDefined(entry, u"order_type"_s, row.get(u"order_type"_s));
+        }
         // 从券商的未成交单里认领回来的:它就在券商侧
         entry.set(u"live"_s, js::B(true));
         if (!hosted_.contains(tid)) hosted_.insert(tid, std::make_shared<KindMap>());
@@ -653,6 +659,7 @@ util::Task<> HostedOrders::placeHostedOne(Rec track, Rec item, QString oca) {
         putDefined(order, key, js::prop(&item, key));
     }
     record.set(u"order"_s, order);
+    if (const OJson* conditions = item.get(u"spot_conditions"_s)) record.set(u"trigger"_s, *conditions);
     record.set(u"execution_type"_s, js::S(u"HOSTED"_s));
     record.set(u"signature"_s, js::S(ref));
     const QString recordId = host_.store().createRecord(record);
@@ -698,6 +705,11 @@ util::Task<> HostedOrders::modifyHostedOne(Rec track, EntryPtr current, Rec item
         putDefined(accepted, key, js::prop(&*current, key));
     }
     current->set(u"accepted"_s, accepted);
+    if (js::str(item.get(u"kind"_s)) == tk::kHostedKindSpot) {
+        putDefined(accepted, u"spot_conditions"_s, current->get(u"spot_conditions"_s));
+        putDefined(accepted, u"order_type"_s, current->get(u"order_type"_s));
+        current->set(u"accepted"_s, accepted);
+    }
     current->set(u"pending"_s, js::S(u"modify"_s));
     host_.sentOrders().insert(orderId, SentOrder{nowMs(), SentOrder::Kind::Modify});
     const bool ok = co_await host_.router()->modifyHosted(orderId, item);
@@ -712,12 +724,17 @@ util::Task<> HostedOrders::modifyHostedOne(Rec track, EntryPtr current, Rec item
         putDefined(payload, u"lmt_price"_s, js::prop(&item, u"lmt_price"_s));
         putDefined(payload, u"aux_price"_s, js::prop(&item, u"aux_price"_s));
         putDefined(payload, u"quantity"_s, js::prop(&item, u"quantity"_s));
+        putDefined(payload, u"spot_conditions"_s, item.get(u"spot_conditions"_s));
         host_.store().appendEvent(js::str(recordId), u"status"_s, payload);
     }
     for (const char16_t* k : {u"quantity", u"lmt_price", u"aux_price", u"trailing_percent", u"label"}) {
         const QString key = QString::fromUtf16(k);
         if (const OJson* v = js::prop(&item, key)) current->set(key, *v);
         else current->remove(key);
+    }
+    if (js::str(item.get(u"kind"_s)) == tk::kHostedKindSpot) {
+        putDefined(*current, u"spot_conditions"_s, item.get(u"spot_conditions"_s));
+        putDefined(*current, u"order_type"_s, item.get(u"order_type"_s));
     }
 }
 

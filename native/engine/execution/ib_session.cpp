@@ -337,16 +337,17 @@ OJson toIbOrder(const OrderIntent& order) {
                 if (!js::undef(v)) pc.set(k, *v);
             };
             put(u"price"_s, c.get(u"price"_s));
-            pc.set(u"triggerMethod"_s, js::N(0));
+            pc.set(u"triggerMethod"_s, js::nullish(c.get(u"triggerMethod"_s)) ? js::N(0) : *c.get(u"triggerMethod"_s));
             put(u"conId"_s, c.get(u"conId"_s));
             put(u"exchange"_s, c.get(u"exchange"_s));
             put(u"isMore"_s, c.get(u"isMore"_s));
-            pc.set(u"conjunctionConnection"_s, js::S(u"a"_s));
+            pc.set(u"conjunctionConnection"_s, js::nullish(c.get(u"conjunctionConnection"_s)) ? js::S(u"a"_s) : *c.get(u"conjunctionConnection"_s));
             pc.set(u"type"_s, js::N(1));
             conds.items.append(pc);
         }
         out.set(u"conditions"_s, conds);
         out.set(u"conditionsCancelOrder"_s, js::B(order.conditionsCancelOrder.value_or(false)));
+        if (order.conditionsIgnoreRth) out.set(u"conditionsIgnoreRth"_s, js::B(*order.conditionsIgnoreRth));
     }
     return out;
 }
@@ -1170,6 +1171,12 @@ Task<std::vector<OpenTradeDetail>> IbApiNextSession::openDetailedCo(std::weak_pt
         d.ocaType = intOrNull(js::nullish(f(u"ocaType"_s)) ? 0 : js::num(f(u"ocaType"_s)));
         d.tif = js::strOr(f(u"tif"_s), u"GTC"_s);
         d.outsideRth = js::truthy(f(u"outsideRth"_s));
+        if (const OJson* cs = f(u"conditions"_s); js::isArr(cs))
+            for (const OJson& condition : cs->items) d.conditions.push_back(condition);
+        if (!d.conditions.empty()) {
+            d.conditionsCancelOrder = js::truthy(f(u"conditionsCancelOrder"_s));
+            d.conditionsIgnoreRth = js::truthy(f(u"conditionsIgnoreRth"_s));
+        }
         auto cs = [&](const QString& k, const QString& fb) { return js::strOr(c.get(k), fb); };
         d.contract.secType = cs(u"secType"_s, QString());
         d.contract.symbol = cs(u"symbol"_s, QString());

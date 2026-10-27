@@ -421,8 +421,8 @@ OJson unrealized(const Position& p, std::optional<double> price) {
 }
 
 // ================================================================ 设置校验
-void validate(const Position& position, const OJson& targets, std::optional<double> price) {
-    if (targetsEmpty(targets)) throw TrackerError(u"至少要设一个:止盈价、止损价、跟踪止损百分比,或标的目标价。"_s);
+void validate(const Position& position, const OJson& targets, std::optional<double> price, bool hasAdditionalExit) {
+    if (targetsEmpty(targets) && !hasAdditionalExit) throw TrackerError(u"至少要设一个:止盈价、止损价、跟踪止损百分比,或标的目标价。"_s);
     if (position.quantity == 0 || std::isnan(position.quantity)) throw TrackerError(u"这个持仓的数量是 0,没有可追踪的头寸。"_s);
     for (const auto& [name, key] : {std::pair{u"止盈价"_s, u"take_profit"}, std::pair{u"止损价"_s, u"stop_loss"}}) {
         const OJson* v = get(targets, key);
@@ -603,6 +603,10 @@ OJson makeAutoClose(const OJson& raw) {
     // 快速下跌的追价(C++ 先有):填了才带这个键,没填的读成默认(1 倍、1 秒)——没用到它的追踪和 TS 版的样子逐字一样
     if (const OJson* v = get(raw, u"chase_lead")) out.set(u"chase_lead"_s, *v);
     if (const OJson* v = get(raw, u"chase_interval_s")) out.set(u"chase_interval_s"_s, *v);
+    for (const char16_t* k : {u"rapid_exit_window_s", u"rapid_exit_pct"})
+        if (const OJson* v = get(raw, k)) out.set(QString::fromUtf16(k), *v);
+    for (const char16_t* k : {u"spot_stop_at_broker", u"spot_stop_limit"})
+        if (const OJson* v = get(raw, k)) out.set(QString::fromUtf16(k), *v);
     return out;
 }
 
@@ -726,6 +730,7 @@ OJson buildCloseOrder(const Position& position, const OJson& autoClose, std::opt
                         : state == kStateProfitTrail ? u"利润回撤"_s
                         : state == kStateManual      ? u"手动"_s
                         : state == analysis::kStateTimeExit ? u"到点"_s
+                        : state == analysis::kStateRapidExit ? u"急跌保护"_s
                                                             : u"止损"_s;
     const bool extended = kExtendedSessions.contains(marketStatus);
     const bool isBag = position.sec_type == u"BAG";
@@ -768,6 +773,7 @@ QString hostedLabel(const QString& kind) {
     if (kind == kHostedKindSl) return u"托管止损"_s;
     if (kind == kHostedKindTrail) return u"托管跟踪止损"_s;
     if (kind == kHostedKindPtrail) return u"利润回撤动态停损"_s;
+    if (kind == kHostedKindSpot) return u"IBKR 标的条件止损"_s;
     return {};
 }
 
@@ -823,6 +829,29 @@ OJson hostedPlan(const Position& position, const OJson& targets, const OJson& au
     const double qty = closeQty(position, autoClose);
     const QString side = closeSide(position);
     const auto tpRaw = fin(get(targets, u"take_profit"));
+    if (js::truthy(get(autoClose, u"spot_stop_at_broker")) && (position.sec_type == u"OPT" || position.sec_type == u"BAG")) {
+        OJson conditions = js::array();
+        QStringList lines;
+        for (const bool above : {false, true}) {
+            const auto price = fin(get(targets, above ? u"spot_stop_above" : u"spot_stop_below"));
+            if (!price || *price <= 0) continue;
+            conditions.items.append(js::object({{u"price"_s, js::N(*price)}, {u"isMore"_s, js::B(above)}}));
+            lines.append((above ? u"≥ "_s : u"≤ "_s) + G(*price));
+        }
+        if (!conditions.items.isEmpty()) {
+            const bool limit = position.sec_type == u"BAG" || js::str(get(autoClose, u"order_type")) == u"LMT";
+            const auto price = fin(get(autoClose, u"spot_stop_limit"));
+            if (limit && (!price || *price <= 0)) throw TrackerError(u"IBKR 标的条件止损的限价平仓必须填写正数平仓限价。"_s);
+            // 限价是用户明确给出的最低收入 / 最高支出,取整不能越过这个边界。
+            const double tick = price ? closeTick(position, *price) : 0.01;
+            const auto lmt = limit ? js::N(R((isLong(position) ? std::ceil(*price / tick - 1e-9) : std::floor(*price / tick + 1e-9)) * tick, 4)) : js::Null();
+            if (limit && lmt.n <= 0) throw TrackerError(u"条件平仓限价低于最小报价单位。"_s);
+            OJson item = planItem(kHostedKindSpot, side, limit ? u"LMT"_s : u"MKT"_s, qty, lmt, js::Null(), js::Null(), js::Null(),
+                                 hostedLabel(kHostedKindSpot) + u" "_s + position.symbol + u" "_s + lines.join(u" 或 "_s));
+            item.set(u"spot_conditions"_s, conditions);
+            plan.items.append(item);
+        }
+    }
     if (position.sec_type == u"BAG") {
         if (const auto flyTp = hostedComboPrice(position, tpRaw))
             plan.items.append(planItem(kHostedKindTp, side, u"LMT"_s, qty, js::N(*flyTp), OJson::null(), OJson::null(), OJson::null(),
@@ -856,6 +885,10 @@ OJson hostedPlan(const Position& position, const OJson& targets, const OJson& au
 }
 
 bool hostedNeedsUpdate(const OJson& current, const OJson& desired) {
+    if (js::prop(&current, u"spot_conditions"_s) || js::prop(&desired, u"spot_conditions"_s)) {
+        if (js::str(js::prop(&current, u"order_type"_s)) != js::str(js::prop(&desired, u"order_type"_s)) ||
+            js::stringify(js::copyOrNull(js::prop(&current, u"spot_conditions"_s))) != js::stringify(js::copyOrNull(js::prop(&desired, u"spot_conditions"_s)))) return true;
+    }
     const auto qty = [](const OJson& o) {
         const OJson* q = js::prop(&o, u"quantity"_s);
         return std::trunc(js::nullish(q) ? 0 : js::num(q));

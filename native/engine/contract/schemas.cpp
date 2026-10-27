@@ -375,6 +375,8 @@ ParamsSchema trackerAdd() {
         {u"slippage_pct"_s, numberField()},
         {u"close_fraction_pct"_s, numberField()},
         {u"host_at_broker"_s, optional(boolean())},
+        {u"spot_stop_at_broker"_s, optional(boolean())},
+        {u"spot_stop_limit"_s, numberField()},
         {u"chase_max_pct"_s, numberField()},
         {u"stop_basis"_s, optional(str())},
         {u"stop_chase_grace"_s, numberField()},
@@ -383,6 +385,8 @@ ParamsSchema trackerAdd() {
         {u"peak_confirm"_s, optional(boolean())},
         {u"chase_lead"_s, numberField()},
         {u"chase_interval_s"_s, numberField()},
+        {u"rapid_exit_window_s"_s, numberField()},
+        {u"rapid_exit_pct"_s, numberField()},
         {u"note"_s, optional(str())},
     };
     for (const auto& f : rest) shape.push_back(f);
@@ -396,6 +400,8 @@ ParamsSchema trackerUpdate() {
                                    {u"slippage_pct"_s, num()},
                                    {u"close_fraction_pct"_s, num()},
                                    {u"host_at_broker"_s, boolean()},
+                                   {u"spot_stop_at_broker"_s, boolean()},
+                                   {u"spot_stop_limit"_s, zod::number()->nullable()},
                                    {u"chase_max_pct"_s, num()},
                                    {u"stop_basis"_s, str()},
                                    // 这三项收 null:null = 回到"和止盈同一套"(别的键不收 null)
@@ -406,6 +412,8 @@ ParamsSchema trackerUpdate() {
                                    // 同上:null = 回到默认(1 倍、1 秒)
                                    {u"chase_lead"_s, zod::number()->nullable()},
                                    {u"chase_interval_s"_s, zod::number()->nullable()},
+                                   {u"rapid_exit_window_s"_s, zod::number()->nullable()},
+                                   {u"rapid_exit_pct"_s, zod::number()->nullable()},
                                })
                                ->partial()
                                ->strict();

@@ -31,6 +31,8 @@ struct FormState {
     /// 不给 = 原版的初值:组合限价,别的市价
     std::optional<QString> orderType;
     bool host = false;
+    bool brokerSpotStop = false;
+    std::optional<double> spotStopLimit;
     ExitFields exits;
     /// 界面交上来的值里读不成数的那几项(见 formNumber);有就不往下走
     QStringList invalid;
@@ -43,7 +45,7 @@ struct FormState {
     bool derivative() const;
     bool autoClose() const;
     bool hasSpotTarget() const;
-    /// 组合要先有标的目标价才能托管(引擎 checkTargets 同一条规矩)
+    /// 组合有标的目标价或明确选择标的条件止损才能托管(引擎 checkTargets 同一条规矩)
     bool hostAllowed() const;
     bool hostOn() const;
 };

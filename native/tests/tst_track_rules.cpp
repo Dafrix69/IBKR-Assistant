@@ -59,6 +59,24 @@ QJsonObject fixture() {
 class TestTrackRules : public QObject {
     Q_OBJECT
 private slots:
+    void rapidExitFields() {
+        const auto fields = track::ExitFields::fromJson(QJsonObject{{u"rapidWindow"_s, 1.0}, {u"rapidPct"_s, 5.0}});
+        const auto spec = track::exitSpec(fields, true);
+        QCOMPARE(spec.value(u"rapid_exit_window_s"_s).toString(), u"1"_s);
+        QCOMPARE(spec.value(u"rapid_exit_pct"_s).toString(), u"5"_s);
+        QVERIFY(track::exitConfirmLines(fields, true).contains(u"亏损时也生效"_s));
+        QVERIFY(track::exitProblems(fields, {}).isEmpty());
+        auto half = fields;
+        half.rapidPct.reset();
+        QVERIFY(!track::exitProblems(half, {}).isEmpty());
+        half = fields;
+        half.rapidWindow = 0.1;
+        QVERIFY(!track::exitProblems(half, {}).isEmpty());
+        QVERIFY(!track::exitSpec(fields, false).contains(u"rapid_exit_pct"_s));
+        track::ProblemOpts stock;
+        stock.stock = true;
+        QVERIFY(!track::exitProblems(fields, stock).isEmpty());
+    }
     void matchesTsModule_data() {
         QTest::addColumn<QString>("fn");
         QTest::addColumn<QJsonArray>("args");

@@ -73,16 +73,20 @@ int etMinuteOf(double epochMs);
 /// 美股常规时段开盘之前(异动循环 09:20 起算,板块联动在 09:20 ~ 09:30 看到的是盘前的涨跌)
 bool isPremarket(double epochMs);
 
-/// premarket:09:30 之前判出来的,标题写「盘前联动」,集体上涨换成"开盘后大概率回吐"的说法
+/// premarket:09:30 之前判出来的,标题写「盘前联动」;正文只描述快照与交易纪律,不预测反转
 QString sectorMoveTitle(const QJsonObject& m, bool premarket = false);
 QString sectorMoveBody(const QJsonObject& m, double movePct, bool premarket = false);
+/// 板块页的固定研究依据与六条执行纪律;不依赖实时数据,不作为下单或行情确认条件
+QJsonObject tradingDiscipline();
+/// 个股异动弹窗与系统通知共用的简短执行提醒
+QString tradingDisciplineReminder();
 /// 一个板块此刻的涨跌幅中位数(两位小数);有行情的不到 minStocks 只给空
 std::optional<double> sectorMedian(const QStringList& symbols, const QMap<QString, std::optional<double>>& changes, double minStocks = 1);
 
-/// 盘前拉涨的回吐检查:美东 10:00 ~ 10:30 之间看一次
+/// 盘前涨跌的快照复核:美东 10:00 ~ 10:30 之间看一次,不代表连续守住
 inline constexpr int kFadeCheckFrom = 10 * 60;
 inline constexpr int kFadeCheckUntil = 10 * 60 + 30;
-/// faded(盘前中位的一半以上没了)/ held
+/// 上涨:faded / held;下跌:recovered / still_down;零或无效基准:unknown
 QString fadeVerdict(double preMedian, double nowMedian);
 QString fadeTitle(const QString& sector, const QString& verdict);
 QString fadeBody(double preMedian, double nowMedian, const QString& verdict);

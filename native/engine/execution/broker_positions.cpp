@@ -329,9 +329,13 @@ OJson BrokerRouter::optionQuotesNow(const QList<OJson>& rows) {
         const bool have = entry && entry->handle;
         TickerData t;
         if (have) t = entry->handle->read();
-        out.set(js::str(prop(row, u"key"_s)),
-                js::object({{u"bid"_s, have ? (t.bid == 0 ? js::N(0) : detail::numOrNull(cleanPrice(t.bid))) : js::Null()},
-                            {u"ask"_s, have ? detail::numOrNull(cleanPrice(t.ask)) : js::Null()}}));
+        OJson quote = js::object({{u"bid"_s, have ? (t.bid == 0 ? js::N(0) : detail::numOrNull(cleanPrice(t.bid))) : js::Null()},
+                                 {u"ask"_s, have ? detail::numOrNull(cleanPrice(t.ask)) : js::Null()}});
+        // 没有时间戳的适配器保持原样;急跌检测必须明确拿到实时类型和逐字段接收时刻。
+        if (t.marketDataType) quote.set(u"market_data_type"_s, js::N(*t.marketDataType));
+        if (t.bidAt) quote.set(u"bid_at"_s, js::N(*t.bidAt));
+        if (t.askAt) quote.set(u"ask_at"_s, js::N(*t.askAt));
+        out.set(js::str(prop(row, u"key"_s)), quote);
     }
     return out;
 }

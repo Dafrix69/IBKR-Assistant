@@ -189,7 +189,7 @@ OJson withTier(const OJson& result, const OJson& targets, bool isLong, const QSt
 bool isStopReason(const OJson* reason) {
     const QString text = js::strOr(reason, QString());
     const QString bare = text.contains(u':') ? text.mid(text.lastIndexOf(u':') + 1) : text;
-    return bare == u"stop_loss" || bare == u"profit_trail";
+    return bare == u"stop_loss" || bare == u"profit_trail" || bare == kStateRapidExit;
 }
 
 ChaseProfile chaseProfile(const OJson& autoClose, const OJson* reason) {
@@ -222,6 +222,25 @@ double momentumLead(const QList<NaturalObs>& obs, bool isLong, double horizonMs,
     if (!(last.atMs > base.atMs)) return 0;
     const double adverse = isLong ? base.natural - last.natural : last.natural - base.natural;
     return adverse > 0 ? std::round(mult * adverse * 1e4) / 1e4 : 0;
+}
+
+std::optional<OJson> rapidExitMove(const QList<NaturalObs>& obs, bool isLong, double windowMs, double thresholdPct, double nowMs) {
+    if (!std::isfinite(nowMs) || !(windowMs >= 250 && windowMs <= 5000) || !(thresholdPct > 0 && thresholdPct <= 100) || obs.size() < 2) return std::nullopt;
+    const NaturalObs& last = obs.last();
+    if (!std::isfinite(last.atMs) || !std::isfinite(last.natural) || last.natural <= 0 || last.atMs > nowMs || last.atMs < nowMs - windowMs) return std::nullopt;
+    std::optional<NaturalObs> best;
+    for (const NaturalObs& o : obs) {
+        if (!std::isfinite(o.atMs) || !std::isfinite(o.natural) || o.natural <= 0 || o.atMs < nowMs - windowMs || o.atMs >= last.atMs) continue;
+        if (!best || (isLong ? o.natural > best->natural : o.natural < best->natural)) best = o;
+    }
+    if (!best) return std::nullopt;
+    const double pct = (isLong ? best->natural - last.natural : last.natural - best->natural) / best->natural * 100;
+    if (pct + 1e-9 < thresholdPct) return std::nullopt;
+    return js::object({{u"from"_s, js::N(best->natural)}, {u"to"_s, js::N(last.natural)},
+                       {u"move_pct"_s, js::N(pct)}, {u"elapsed_s"_s, js::N((last.atMs - best->atMs) / 1000)},
+                       {u"reason"_s, js::S(u"急跌保护:可平仓报价在 %1 秒内从 %2 %3 %4,不利变动 %5%(阈值 %6%)"_s.arg(
+                           util::pyG((last.atMs - best->atMs) / 1000), util::pyG(best->natural), isLong ? u"跌到"_s : u"涨到"_s,
+                           util::pyG(last.natural), util::fmtF(pct, 2), util::pyG(thresholdPct)))}});
 }
 
 // ================================================================ 止损的确认秒数

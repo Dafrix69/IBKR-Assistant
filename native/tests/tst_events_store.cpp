@@ -71,10 +71,12 @@ struct Rig {
     QJsonObject results;
 
     explicit Rig(const QJsonObject& eventsList, const QString& status = u"{\"broker_connected\":true}"_s)
-        : engine(fakeEngine({{u"FAKE_STATUS"_s, status}, {u"FAKE_LOG_PARAMS"_s, u"1"_s}, {u"FAKE_RESULTS_FILE"_s, resultsPath}}), 40) {
+        : engine(fakeEngine({{u"FAKE_LOG_PARAMS"_s, u"1"_s}, {u"FAKE_RESULTS_FILE"_s, resultsPath}}), 40) {
         QObject::connect(&engine, &shell::EngineClient::logLine, [this](const QString& l) { logs.append(l); });
         events.now = [this] { return clock; };
         events.tz = u"Asia/Shanghai"_s;
+        // 中文状态从 UTF-8 JSON 传入,不经过 Windows 环境变量的本地编码。
+        set(u"system.status"_s, QJsonDocument::fromJson(status.toUtf8()).object());
         set(u"events.list"_s, eventsList);
     }
     ~Rig() {
@@ -253,17 +255,69 @@ private slots:
         rig.events.tick();
         QTRY_COMPARE(rig.announced.size(), 1);
         QCOMPARE(rig.announcedTitle(0), u"盘前联动:数据中心 集体上涨"_s);
-        QVERIFY(rig.announced.at(0).at(0).toJsonObject()[u"body"].toString().contains(u"开盘后涨幅大概率回吐"_s));
+        QVERIFY(rig.announced.at(0).at(0).toJsonObject()[u"body"].toString().contains(u"涨跌幅只作观察条件"_s));
 
         // 10:05:中位从 +4.0% 掉到 +1.0%,算回吐,报一次
         rig.clock = kCpiAt + 95 * kMin;
         quality(1.5, 1.0, 0.5);
         rig.events.tick();
         QTRY_COMPARE(rig.announced.size(), 2);
-        QCOMPARE(rig.announcedTitle(1), u"数据中心:盘前涨幅已回吐"_s);
-        QCOMPARE(rig.announced.at(1).at(0).toJsonObject()[u"body"].toString().startsWith(u"开盘前中位 +4.0%,现在 +1.0%。"_s), true);
+        QCOMPARE(rig.announcedTitle(1), u"数据中心:盘前涨幅已回吐至少一半"_s);
+        QCOMPARE(rig.announced.at(1).at(0).toJsonObject()[u"body"].toString().startsWith(u"盘前记录中位 +4.0%,当前 +1.0%。"_s), true);
         rig.clock += 60'000;
         const int sweeps = rig.calls(u"quality.list"_s);
+        rig.events.tick();
+        QTRY_COMPARE(rig.calls(u"quality.list"_s), sweeps + 1);
+        QTest::qWait(100);
+        QCOMPARE(rig.announced.size(), 2);
+    }
+
+    void snapshotReviewRequiresSameCohort_data() {
+        QTest::addColumn<double>("sign");
+        QTest::newRow("rally_fades") << 1.0;
+        QTest::newRow("decline_recovers") << -1.0;
+    }
+
+    void snapshotReviewRequiresSameCohort() {
+        QFETCH(double, sign);
+        Rig rig(list(QJsonArray{}));
+        rig.clock = kCpiAt + 54 * kMin;  // 09:24,避开时段提醒
+        rig.set(u"sectors.list"_s, obj(R"({"sectors":[{"name":"光通信","stocks":[{"symbol":"AAOI"},{"symbol":"LITE"},{"symbol":"COHR"},{"symbol":"POET"}]}]})"));
+        const auto quality = [&](bool later, bool staleLast) {
+            const QStringList symbols{u"AAOI"_s, u"LITE"_s, u"COHR"_s, u"POET"_s};
+            const QList<double> pcts = later ? QList<double>{1, 2, 2.5, 1} : QList<double>{6, 4, 3, 20};
+            QJsonArray stocks;
+            for (int i = 0; i < symbols.size(); ++i) {
+                const double age = staleLast && i == 3 ? 10 * kMin : 30'000;
+                const QString at = QDateTime::fromMSecsSinceEpoch(qint64(rig.clock - age), QTimeZone::UTC).toString(Qt::ISODateWithMs);
+                stocks.append(QJsonObject{{u"symbol"_s, symbols[i]}, {u"metrics"_s, QJsonObject{{u"change_pct"_s, sign * pcts[i]}}}, {u"metrics_at"_s, at}});
+            }
+            rig.set(u"quality.list"_s, QJsonObject{{u"stocks"_s, stocks}});
+        };
+        quality(false, false);
+        rig.status.refresh();
+        QTRY_COMPARE(rig.status.engineOk(), 1);
+        rig.loadNow();
+        rig.events.tick();
+        QTRY_COMPARE(rig.announced.size(), 1);
+        rig.clock = kCpiAt + 95 * kMin;  // 10:05,有3只新鲜行情仍不足以替换原4只
+        quality(true, true);
+        int sweeps = rig.calls(u"quality.list"_s);
+        rig.events.tick();
+        QTRY_COMPARE(rig.calls(u"quality.list"_s), sweeps + 1);
+        QTest::qWait(100);
+        QCOMPARE(rig.announced.size(), 1);
+        rig.clock += kMin;
+        quality(true, false);
+        rig.events.tick();
+        QTRY_COMPARE(rig.announced.size(), 2);
+        QCOMPARE(rig.announcedTitle(1), sign > 0 ? u"光通信:盘前涨幅已回吐至少一半"_s : u"光通信:盘前跌幅已收回至少一半"_s);
+        const QJsonObject review = rig.announced.at(1).at(0).toJsonObject();
+        QVERIFY(review[u"body"_s].toString().contains(u"不代表5分钟收盘确认"_s));
+        QCOMPARE(review[u"tone"_s].toString(), sign > 0 ? u"down"_s : u"up"_s);
+        rig.clock += kMin;
+        quality(true, false);
+        sweeps = rig.calls(u"quality.list"_s);
         rig.events.tick();
         QTRY_COMPARE(rig.calls(u"quality.list"_s), sweeps + 1);
         QTest::qWait(100);
@@ -287,6 +341,7 @@ private slots:
         rig.events.tick();
         QCOMPARE(rig.announced.size(), 2);
         QCOMPARE(rig.announcedTitle(1), u"美股 5 分钟后开盘"_s);
+        QVERIFY(rig.announced.at(1).at(0).toJsonObject()[u"body"].toString().contains(u"盘前涨跌不能单独预测开盘方向"_s));
         QCOMPARE(rig.announced.at(1).at(0).toJsonObject()[u"id"].toString(), u"event:session:us_pre_open:2026-10-14"_s);
     }
 

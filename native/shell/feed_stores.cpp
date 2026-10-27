@@ -3,6 +3,7 @@
 #include "shell/alert_rules.h"
 #include "shell/alerter.h"
 #include "shell/bridge.h"
+#include "shell/event_rules.h"
 #include "shell/intel_rules.h"
 #include "shell/jsvalue.h"
 #include "shell/playbook_format.h"
@@ -353,7 +354,7 @@ void QualityStore::onAnomaly(const QJsonValue& data) {
     emit changed();
     if (alerter_) {
         // 订单看板底下那条通知流也记一笔:回头翻"刚才报了什么"不用专门切到这一页
-        for (const QJsonValue& e : fresh) alerter_->pushFeed(e[u"title"].toString(), e[u"text"].toString());
+        for (const QJsonValue& e : fresh) alerter_->pushFeed(e[u"title"].toString(), e[u"text"].toString() + u'\n' + events::tradingDisciplineReminder());
         QJsonArray items;
         for (const QJsonValue& e : fresh) {
             const QString dir = e[u"direction"].toString();
@@ -361,7 +362,7 @@ void QualityStore::onAnomaly(const QJsonValue& data) {
             QJsonObject item{{u"id"_s, e[u"id"]}, {u"kind"_s, u"anomaly"_s}, {u"symbol"_s, e[u"symbol"]}, {u"title"_s, e[u"title"]},
                              {u"tone"_s, dir == u"up" ? u"up"_s : dir == u"down" ? u"down"_s : u"info"_s},
                              {u"at"_s, at > 0 ? at * 1000 : now()}, {u"page"_s, u"quality"_s}};
-            if (!e[u"text"].isUndefined()) item.insert(u"body"_s, e[u"text"]);
+            item.insert(u"body"_s, e[u"text"].toString() + u'\n' + events::tradingDisciplineReminder());
             items.append(item);
         }
         // 放量(rvol / burst)一律中性的两声:它们的 direction 是引擎顺手带的涨跌方向,只给圆点和色块用
@@ -383,7 +384,7 @@ void QualityStore::onAnomaly(const QJsonValue& data) {
                 title = u"%1 条异动:%2"_s.arg(rest.size()).arg(symbols.join(u"、"_s));
                 body = titles.join(u";"_s);
             }
-            if (!alerter_->systemNotify(title, body)) qWarning("系统通知失败");
+            if (!alerter_->systemNotify(title, body + u'\n' + events::tradingDisciplineReminder())) qWarning("系统通知失败");
         }
     }
     load();  // 各股的"最近异动"与指标跟上

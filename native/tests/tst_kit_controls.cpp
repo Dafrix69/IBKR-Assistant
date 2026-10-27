@@ -65,6 +65,64 @@ void type(QObject* num, const QString& text) {
 class TestKitControls : public QObject {
     Q_OBJECT
 private slots:
+    void rapidExitForm() {
+        QQuickView view;
+        QQmlComponent component(view.engine(), QUrl::fromLocalFile(QStringLiteral(IBKR_FIXTURES_DIR "/../../app/pages/TrackForm.qml")));
+        std::unique_ptr<QObject> form(component.createWithInitialProperties({
+            {u"position"_s, QVariantMap{{u"key"_s, u"paper|SPX|BAG"_s}, {u"symbol"_s, u"SPX"_s}, {u"sec_type"_s, u"BAG"_s},
+                {u"quantity"_s, 1}, {u"account"_s, u"paper"_s}}}, {u"width"_s, 960}}));
+        QVERIFY2(form, qPrintable(component.errorString()));
+        auto* item = qobject_cast<QQuickItem*>(form.get());
+        QVERIFY(item);
+        item->setParentItem(view.contentItem());
+        auto* fields = form->findChild<QObject*>(u"exitFields"_s);
+        auto* window = form->findChild<QQuickItem*>(u"rapidWindowInput"_s);
+        auto* pct = form->findChild<QQuickItem*>(u"rapidPctInput"_s);
+        QVERIFY(fields && window && pct);
+        fields->setProperty("open", true);
+        QVERIFY(QMetaObject::invokeMethod(window, "valueEdited", Q_ARG(QVariant, QVariant(1.0))));
+        QVERIFY(QMetaObject::invokeMethod(pct, "valueEdited", Q_ARG(QVariant, QVariant(5.0))));
+        const QJSValue values = form->property("v").value<QJSValue>().property(u"exits"_s);
+        QCOMPARE(values.property(u"rapidWindow"_s).toNumber(), 1.0);
+        QCOMPARE(values.property(u"rapidPct"_s).toNumber(), 5.0);
+        view.resize(960, 900);
+        view.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&view));
+        QTest::qWait(100);
+        item->setY(-std::max(0.0, window->mapToItem(item, QPointF()).y() - 220));
+        QTest::qWait(100);
+        const QString shot = qEnvironmentVariable("DATRIX_RAPID_FORM_SCREENSHOT");
+        if (!shot.isEmpty()) QVERIFY(view.grabWindow().save(shot));
+    }
+    void underlyingStopHostingForm() {
+        QQuickView view;
+        QQmlComponent component(view.engine(), QUrl::fromLocalFile(QStringLiteral(IBKR_FIXTURES_DIR "/../../app/pages/TrackForm.qml")));
+        std::unique_ptr<QObject> form(component.createWithInitialProperties({
+            {u"position"_s, QVariantMap{{u"key"_s, u"paper|SPX|BAG"_s}, {u"symbol"_s, u"SPX"_s}, {u"sec_type"_s, u"BAG"_s},
+                {u"quantity"_s, 2}, {u"account"_s, u"paper"_s}}}, {u"width"_s, 960}}));
+        QVERIFY2(form, qPrintable(component.errorString()));
+        auto* item = qobject_cast<QQuickItem*>(form.get());
+        QVERIFY(item);
+        item->setParentItem(view.contentItem());
+        setState(form.get(), {{u"stopBelow"_s, 6000}, {u"stopAbove"_s, 6200}, {u"brokerSpotStop"_s, true},
+            {u"host"_s, true}, {u"autoPicked"_s, true}, {u"spotStopLimit"_s, 1.25}});
+        QVERIFY(form->property("hostAllowed").toBool());
+        QVERIFY(form->property("hostOn").toBool());
+        QObject* hosting = nullptr;
+        for (QObject* o : form->findChildren<QObject*>())
+            if (o->property("label").toString() == u"止盈/止损托管到券商(IBKR)") hosting = o;
+        QVERIFY(hosting);
+        view.resize(960, 1500);
+        view.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&view));
+        QTest::qWait(100);
+        const QString shot = qEnvironmentVariable("DATRIX_TRACK_FORM_SCREENSHOT");
+        if (!shot.isEmpty()) QVERIFY(view.grabWindow().save(shot));
+        QVERIFY(QMetaObject::invokeMethod(hosting, "toggled", Q_ARG(bool, false)));
+        QVERIFY(!form->property("hostOn").toBool());
+        const auto values = form->property("v").value<QJSValue>();
+        QVERIFY(!values.property(u"brokerSpotStop"_s).toBool()); // 关闭托管不能仍显示为券商条件单
+    }
     void scrolledHeaderSurvivesPageReplacement() {
         QQuickView view;
         QQmlComponent component(view.engine());

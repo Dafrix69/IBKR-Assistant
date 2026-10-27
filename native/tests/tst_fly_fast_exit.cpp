@@ -87,6 +87,9 @@ public:
     qint64 placedAtNs = -1;
     /// optionQuotesNow 读的价可以和持仓那一行不一样(模拟"读完持仓才到的推送");空 = 同一个
     std::optional<double> cacheN;
+    bool hosted = false;
+    std::function<void(OJson&)> quotePatch;
+    QList<qint64> modifiedIds;
 
     double n() const { return market(now - kNoon); }
     QList<OJson> rows() const {
@@ -103,6 +106,13 @@ public:
             for (int i = 0; i < 3; ++i)
                 if (kStrikes[i] == strike) out.set(js::str(js::prop(&r, u"key"_s)), js::object({{u"bid"_s, js::N(b[i].first)}, {u"ask"_s, js::N(b[i].second)}}));
         }
+        for (auto& [key, q] : out.fields) {
+            (void)key;
+            q.set(u"market_data_type"_s, js::N(1));
+            q.set(u"bid_at"_s, js::N(now));
+            q.set(u"ask_at"_s, js::N(now));
+        }
+        if (quotePatch) quotePatch(out);
         return out;
     }
     /// 到了的单子生效;生效的那张限价不高于此刻 N 就成交(卖出按 N,价格改善归自己)。回成交的单号
@@ -146,11 +156,16 @@ public:
         return [this]() { listener = {}; };
     }
     // ---- HostedRouter
-    bool supportsHostedClose() const override { return false; }
-    Task<ibkr::execution::HostedPlacement> placeHosted(ibkr::contract::AccountConfig, OJson, OJson, QString, QString) override {
-        co_return ibkr::execution::HostedPlacement{};
+    bool supportsHostedClose() const override { return hosted; }
+    Task<ibkr::execution::HostedPlacement> placeHosted(ibkr::contract::AccountConfig, OJson, OJson item, QString, QString) override {
+        orders << Sent{now, js::num(item.get(u"lmt_price"_s)), u"hosted"_s};
+        ibkr::execution::HostedPlacement p;
+        p.order_id = 901;
+        p.status = u"Submitted"_s;
+        co_return p;
     }
-    Task<bool> modifyHosted(qint64, OJson item) override {
+    Task<bool> modifyHosted(qint64 id, OJson item) override {
+        modifiedIds << id;
         const double limit = js::num(js::prop(&item, u"lmt_price"_s));
         orders << Sent{now, limit, u"modify"_s};
         pending << Pending{now + latencyMs, limit};
@@ -252,6 +267,131 @@ class TstFlyFastExit : public QObject {
     Q_OBJECT
 private slots:
     void initTestCase() { qputenv("DAFRI_PROMPT_DIR", (QStringLiteral(IBKR_FIXTURES_DIR) + u"/../../../prompts"_s).toUtf8()); }
+
+    void rapidMoveKnownAnswers() {
+        const QList<an::NaturalObs> falling{{0, 10}, {250, 11}, {500, 9.9}};
+        const auto hit = an::rapidExitMove(falling, true, 1000, 10, 500);
+        QVERIFY(hit);
+        QCOMPARE(js::num(hit->get(u"from"_s)), 11.0);
+        QVERIFY(!an::rapidExitMove(falling, true, 250, 11, 500));
+        QVERIFY(!an::rapidExitMove(falling, true, 250, 10, 1000)); // 过期
+        QVERIFY(!an::rapidExitMove({{500, 10}, {500, 8}}, true, 1000, 1, 500)); // 缓存不算两笔
+        QVERIFY(an::rapidExitMove({{0, 10}, {500, 11}}, false, 1000, 10, 500));
+        QVERIFY(!an::rapidExitMove({{0, 0}, {500, 1}}, false, 1000, 1, 500));
+        const OJson reason = js::S(u"sweep:rapid_exit"_s);
+        QVERIFY(an::isStopReason(&reason));
+        const auto profile = an::chaseProfile(js::object({{u"stop_chase_grace"_s, js::N(0)}, {u"stop_chase_max_pct"_s, js::N(3)}}), &reason);
+        QCOMPARE(profile.grace, 0.0);
+        QCOMPARE(profile.maxPct, 3.0);
+    }
+
+    void rapidTriggersBeforeDrawdownAndOnlyOnce() {
+        double n = 7;
+        Rig rig([&](double) { return n; }, 10000, rapidSettings());
+        rig.at(0); rig.tick(false);
+        QVERIFY(rig.router->orders.isEmpty());
+        n = 6.6; // 中间价 6.75,未触及原利润回撤线 6.50
+        rig.at(500); rig.tick(true);
+        QCOMPARE(rig.router->orders.size(), 1);
+        QCOMPARE(js::str(rig.store->getTrack(rig.trackId)->get(u"fired_state"_s)), u"sweep:rapid_exit"_s);
+        rig.at(1500); rig.tick(false);
+        int places = 0;
+        for (const auto& o : rig.router->orders) if (o.kind == u"place") ++places;
+        QCOMPARE(places, 1);
+    }
+
+    void rapidPushWakesEngine() {
+        double n = 7;
+        Rig rig([&](double) { return n; }, 10000, rapidSettings());
+        rig.engine->startTrackerLoop(60000);
+        QTRY_VERIFY(js::num(rig.engine->trackerLoop.get(u"ticks"_s)) >= 1);
+        n = 6.6; rig.at(500);
+        rig.router->listener();
+        QTRY_VERIFY_WITH_TIMEOUT(!rig.router->orders.isEmpty(), 3000);
+        QCOMPARE(js::str(rig.store->getTrack(rig.trackId)->get(u"fired_state"_s)), u"sweep:rapid_exit"_s);
+        rig.engine->stopTrackerLoop();
+    }
+
+    void rapidBadQuotesDoNotFire() {
+        for (int kind = 0; kind < 6; ++kind) {
+            double n = 7;
+            Rig rig([&](double) { return n; }, 10000, rapidSettings());
+            rig.at(0); rig.tick(false);
+            n = 6.6; rig.at(500);
+            rig.router->quotePatch = [kind](OJson& book) {
+                OJson& q = book.fields.first().second;
+                if (kind == 0) q.remove(u"bid_at"_s);
+                if (kind == 1) q.set(u"market_data_type"_s, js::N(3));
+                if (kind == 2) q.set(u"market_data_type"_s, js::N(2));
+                if (kind == 3) q.set(u"ask_at"_s, js::N(kNoon + 9999));
+                if (kind == 4) q.set(u"bid_at"_s, js::N(kNoon - 2000));
+                if (kind == 5) q.set(u"bid"_s, js::N(100));
+            };
+            rig.tick(true);
+            QVERIFY(rig.router->orders.isEmpty());
+            rig.router->quotePatch = {};
+            rig.at(600); rig.tick(true);
+            QVERIFY(rig.router->orders.isEmpty()); // 恢复后重新积累,不跨坏报价比较
+        }
+    }
+
+    void rapidWaitsForAsynchronousLegs() {
+        double n = 7;
+        Rig rig([&](double) { return n; }, 10000, rapidSettings());
+        rig.at(0); rig.tick(false);
+        n = 6.6; rig.at(500);
+        rig.router->quotePatch = [](OJson& b) { b.fields.first().second.set(u"bid_at"_s, js::N(kNoon)); };
+        rig.tick(true);
+        QVERIFY(rig.router->orders.isEmpty());
+        rig.router->quotePatch = {};
+        rig.at(550); rig.tick(true);
+        QCOMPARE(rig.router->orders.size(), 1); // 腿到齐才判,保留窗口内完整旧样本
+    }
+
+    void rapidResetAndAuthorization() {
+        for (bool reset : {false, true}) {
+            double n = 7;
+            Rig rig([&](double) { return n; }, 10000, rapidSettings());
+            rig.at(0); rig.tick(false);
+            if (reset) rig.engine->fastExit().resetRapid();
+            else rig.engine->settings.policies.auto_execute = false;
+            n = 6.6; rig.at(500); rig.tick(true);
+            QVERIFY(rig.router->orders.isEmpty());
+            QVERIFY(!js::truthy(rig.store->getTrack(rig.trackId)->get(u"fired_at"_s)));
+        }
+    }
+
+    void rapidRejectsOverlappingSnapshots() {
+        double n = 7;
+        Rig rig([&](double) { return n; }, 10000, rapidSettings());
+        rig.at(500);
+        rig.router->quotePatch = [](OJson& b) { b.fields.first().second.set(u"bid_at"_s, js::N(kNoon + 400)); };
+        rig.tick(false);
+        n = 6.6; rig.at(600);
+        rig.router->quotePatch = [](OJson& b) { b.fields.first().second.set(u"bid_at"_s, js::N(kNoon + 450)); };
+        rig.tick(true); // 150ms 跨度虽合格,仍与旧快照重叠,不能作为一份全新的报价
+        QVERIFY(rig.router->orders.isEmpty());
+        rig.router->quotePatch = {};
+        rig.at(650); rig.tick(true);
+        QCOMPARE(rig.router->orders.size(), 1);
+    }
+
+    void rapidReusesHostedOrder() {
+        double n = 7;
+        OJson settings = rapidSettings();
+        settings.set(u"host_at_broker"_s, js::B(true));
+        Rig rig([&](double) { return n; }, 10000, settings);
+        rig.router->hosted = true;
+        rig.store->updateTrack(rig.trackId, js::object({{u"targets"_s, js::object({{u"take_profit"_s, js::N(10)}})}}));
+        rig.at(0); rig.tick(false);
+        QCOMPARE(rig.router->orders.size(), 1);
+        QCOMPARE(rig.router->orders.first().kind, u"hosted"_s);
+        n = 6.6; rig.at(500); rig.tick(true);
+        QCOMPARE(js::str(rig.store->getTrack(rig.trackId)->get(u"fired_state"_s)), u"sweep:rapid_exit"_s);
+        QCOMPARE(rig.router->orders.size(), 2);
+        QCOMPARE(rig.router->orders.last().kind, u"modify"_s);
+        QCOMPARE(rig.router->modifiedIds.last(), qint64(901));
+    }
 
     // ---------------------------------------------------------------- 纯函数
     void momentumLeadKnownAnswers() {
@@ -452,6 +592,9 @@ private slots:
     }
 
 private:
+    static OJson rapidSettings() {
+        return js::object({{u"rapid_exit_window_s"_s, js::N(1)}, {u"rapid_exit_pct"_s, js::N(5)}});
+    }
     /// 推送那一路判一次;回它叫醒了几次(把引擎的 wake 换成计数:节拍器没开时引擎的 wakeTracker 什么也不做)
     static int countWakes(Rig& rig, double nAfter) {
         int wakes = 0;

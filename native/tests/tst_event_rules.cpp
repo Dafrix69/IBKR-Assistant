@@ -8,6 +8,8 @@
 #include <QJsonDocument>
 #include <QTest>
 
+#include <limits>
+
 using namespace ibkr;
 using namespace ibkr::shell::events;
 using namespace Qt::StringLiterals;
@@ -107,6 +109,33 @@ QJsonValue run(const QString& fn, const QJsonArray& a) {
 class TestEventRules : public QObject {
     Q_OBJECT
 private slots:
+    void symmetricSnapshotRecovery() {
+        QCOMPARE(fadeVerdict(4, 2), u"faded"_s);
+        QCOMPARE(fadeVerdict(4, 2.01), u"held"_s);
+        QCOMPARE(fadeVerdict(-4, -2), u"recovered"_s);
+        QCOMPARE(fadeVerdict(-4, -2.01), u"still_down"_s);
+        QCOMPARE(fadeVerdict(-4, 1), u"recovered"_s);
+        QCOMPARE(fadeVerdict(0, 1), u"unknown"_s);
+        QCOMPARE(fadeVerdict(4, std::numeric_limits<double>::quiet_NaN()), u"unknown"_s);
+        QVERIFY(fadeTitle(u"光通信"_s, u"held"_s).contains(u"当前"_s));
+        QVERIFY(!fadeTitle(u"光通信"_s, u"held"_s).contains(u"守住了"_s));
+    }
+
+    void disciplineIsObservationOnly() {
+        const QJsonObject model = tradingDiscipline();
+        QCOMPARE(model[u"rules"_s].toArray().size(), 6);
+        QVERIFY(model[u"scope"_s].toString().contains(u"未计算"_s));
+        QVERIFY(model[u"evidence"_s].toString().contains(u"未满两年"_s));
+        const QJsonObject move{{u"sector"_s, u"光通信"_s}, {u"direction"_s, u"up"_s}, {u"total"_s, 4}, {u"count"_s, 3}, {u"median"_s, 4}};
+        for (bool premarket : {false, true}) {
+            const QString body = sectorMoveBody(move, 3, premarket);
+            QVERIFY(body.contains(u"未作5分钟收盘确认"_s));
+            QVERIFY(body.contains(u"风险预算"_s));
+            QVERIFY(!body.contains(u"大概率"_s));
+            QVERIFY(!body.contains(u"利好"_s));
+        }
+    }
+
     void matchesTsModule_data() {
         QTest::addColumn<QString>("fn");
         QTest::addColumn<QJsonArray>("args");

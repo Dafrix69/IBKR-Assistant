@@ -44,6 +44,7 @@ struct OrderIntent {
     /// 价格条件(PriceCondition 的字段:price / conId / exchange / isMore)
     std::vector<OJson> conditions;
     std::optional<bool> conditionsCancelOrder;
+    std::optional<bool> conditionsIgnoreRth;
     // 托管单用:OCA 组、TRAIL 初始停损、改单时的原 id
     QString ocaGroup;
     std::optional<int> ocaType;
@@ -150,6 +151,8 @@ struct OpenTradeDetail {
     std::optional<int> ocaType;
     QString tif = QStringLiteral("GTC");
     bool outsideRth = false;
+    std::vector<OJson> conditions;
+    std::optional<bool> conditionsCancelOrder, conditionsIgnoreRth;
 };
 
 struct ExecutionRow {

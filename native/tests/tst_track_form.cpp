@@ -63,6 +63,31 @@ QJsonArray cases() {
 class TestTrackForm : public QObject {
     Q_OBJECT
 private slots:
+    void brokerSpotForm() {
+        const QJsonObject position{{u"key"_s, u"paper|SPX|BAG"_s}, {u"symbol"_s, u"SPX"_s}, {u"sec_type"_s, u"BAG"_s},
+            {u"quantity"_s, 2}, {u"account"_s, u"paper"_s}};
+        QJsonObject values{{u"host"_s, true}, {u"brokerSpotStop"_s, true}, {u"autoPicked"_s, true}, {u"stopBelow"_s, 6000}, {u"spotStopLimit"_s, 1.25}};
+        const auto state = track::FormState::fromJson(position, false, values);
+        QVERIFY(state.hostOn()); // 只有止损也能托管组合,不必虚构一个止盈目标
+        const auto spec = track::buildSpec(state);
+        QVERIFY(spec[u"spot_stop_at_broker"].toBool());
+        QCOMPARE(spec[u"spot_stop_limit"].toString(), u"1.25"_s);
+        QJsonObject scenario{{u"position"_s, position}, {u"values"_s, values}};
+        auto calls = replay(scenario);
+        QCOMPARE(calls[0][u"call"].toString(), u"confirm"_s);
+        QVERIFY(calls[0][u"detail"].toString().contains(u"IBKR"));
+        QVERIFY(calls[0][u"detail"].toString().contains(u"1.25"));
+        values.remove(u"spotStopLimit"_s);
+        scenario[u"values"] = values;
+        calls = replay(scenario);
+        QCOMPARE(calls[0][u"call"].toString(), u"banner"_s);
+        values[u"spotStopLimit"] = 1.25;
+        values[u"exits"] = QJsonObject{{u"stopConfirm"_s, 5}};
+        scenario[u"values"] = values;
+        calls = replay(scenario);
+        QCOMPARE(calls[0][u"call"].toString(), u"banner"_s);
+        QVERIFY(calls[0][u"text"].toString().contains(u"确认"));
+    }
     void matchesTsStart_data() {
         QTest::addColumn<QJsonObject>("scenario");
         const QJsonArray all = cases();

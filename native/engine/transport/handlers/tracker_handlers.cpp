@@ -253,14 +253,28 @@ util::Task<> TrackerHandlers::checkTargets(OJson raw, OJson rows, Position posit
     }
     const bool hostAtBroker = js::truthy(autoClose.get(u"host_at_broker"_s));
     const bool autoEnabled = js::truthy(autoClose.get(u"enabled"_s));
-    // 组合在券商那边只托管一张限价止盈单,价由标的目标价现算——没有目标价就没有这张单。
-    if (secIs(raw, u"BAG"_s) && hostAtBroker && !spot) {
+    // 组合可以单独托管标的条件止损;限价止盈仍由标的目标价现算。
+    const bool brokerSpot = js::truthy(autoClose.get(u"spot_stop_at_broker"_s));
+    if (brokerSpot) {
+        if (!hostAtBroker || !autoEnabled) invalid(u"IBKR 标的条件止损需要开启自动平仓和托管到券商。"_s);
+        if (!secIs(raw, u"OPT"_s) && !secIs(raw, u"BAG"_s)) invalid(u"IBKR 标的条件止损只支持期权与组合。"_s);
+        if (!an::hasSpotStop(targets)) invalid(u"IBKR 标的条件止损要先填「标的跌到」或「标的涨到」。"_s);
+        if (js::str(autoClose.get(u"order_type"_s)) != u"MKT" && js::str(autoClose.get(u"order_type"_s)) != u"LMT")
+            invalid(u"IBKR 标的条件平仓只支持 MKT 或 LMT。"_s);
+        if (numField(targets, u"spot_stop_confirm_s"_s).value_or(0) > 0) invalid(u"IBKR 价格条件触线即发,不支持持续秒数确认;请清空确认秒数或关闭标的条件单托管。"_s);
+        const auto limit = numField(autoClose, u"spot_stop_limit"_s);
+        if ((limit && (!std::isfinite(*limit) || *limit <= 0)) ||
+            ((secIs(raw, u"BAG"_s) || js::str(autoClose.get(u"order_type"_s)) == u"LMT") && !limit))
+            invalid(u"IBKR 标的条件止损的限价平仓必须填写正数平仓限价(组合填净价)。"_s);
+    }
+    if (secIs(raw, u"BAG"_s) && hostAtBroker && !spot && !brokerSpot) {
         invalid(u"组合的「托管到券商」要先填标的目标价:"
                 u"引擎按当前波动率把它换算成组合净价,挂一张随行情秒级调价的 GTC 限价单。"
                 u"止损、利润回撤可以一起设,由引擎盯着,触发时把这张单改到立刻成交的价。"_s);
     }
     try {
-        tk::validate(position, targets, hu::optNumber(raw.get(u"market_price"_s)));
+        tk::validate(position, targets, hu::optNumber(raw.get(u"market_price"_s)),
+                     numField(autoClose, u"rapid_exit_window_s"_s).has_value() && numField(autoClose, u"rapid_exit_pct"_s).has_value());
         co_await checkExits(raw, rows, position, targets, autoClose);
         if (!js::nullish(targets.get(u"spot_stop_below"_s)) || !js::nullish(targets.get(u"spot_stop_above"_s))) {
             // 填在现价另一侧的止损,建好的下一秒就把仓平掉:方向当场核对,取价和盯盘同一个口径
@@ -269,6 +283,11 @@ util::Task<> TrackerHandlers::checkTargets(OJson raw, OJson rows, Position posit
             const auto router = ports_.router();
             if (!(!router || secIs(raw, u"STK"_s))) {
                 liveSpot = (co_await orchestrate::underlyingSpot(*router, symbol, settings().indexConfig(symbol) != nullptr)).spot;
+                if (brokerSpot && settings().indexConfig(symbol) && router->hasSpotInfo()) {
+                    const auto info = router->spotInfo(symbol);
+                    if (info && js::str(info->get(u"source"_s)) == u"futures")
+                        throw tk::TrackerError(u"IBKR 指数条件使用官方指数,当前是夜盘期货推算价;请等官方指数行情恢复后设置条件止损。"_s);
+                }
             }
             const OJson spotJson = js::NOrNull(liveSpot);
             const auto issue = an::spotStopIssue(targets, secTypeOf(raw), symbol, &spotJson);
@@ -303,6 +322,12 @@ util::Task<> TrackerHandlers::checkTargets(OJson raw, OJson rows, Position posit
  *  · 止损按可成交价判:只给期权与组合;止损价要在此刻可成交价的保护一侧
  */
 util::Task<> TrackerHandlers::checkExits(OJson raw, OJson rows, Position position, OJson targets, OJson autoClose) {
+    const auto rapidWindow = numField(autoClose, u"rapid_exit_window_s"_s), rapidPct = numField(autoClose, u"rapid_exit_pct"_s);
+    if (rapidWindow.has_value() != rapidPct.has_value()) throw tk::TrackerError(u"急跌保护的观察窗口和不利变动阈值必须一起填写或一起清空。"_s);
+    if (rapidWindow) {
+        if (!secIs(raw, u"OPT"_s) && !secIs(raw, u"BAG"_s)) throw tk::TrackerError(u"急跌保护只支持单腿期权与组合。"_s);
+        if (!ports_.router() || !ports_.router()->hasOptionQuotes()) throw tk::TrackerError(u"这条券商通道取不到期权买卖报价,用不了急跌保护。"_s);
+    }
     const bool hostAtBroker = js::truthy(autoClose.get(u"host_at_broker"_s));
     const OJson* tiers = targets.get(u"take_profit_tiers"_s);
     const bool hasTiers = js::isArr(tiers) && !tiers->items.isEmpty();
@@ -431,11 +456,17 @@ util::Task<OJson> TrackerHandlers::trackerAddLocked(OJson params) {
     const Position position = positionFromRaw(raw);
     OJson targets = tk::makeTargets(targetsInputOf(params, raw, [flySpot] { return flySpot; }));
     OJson autoIn = js::object();
+    const OJson* requestedOrderType = params.get(u"order_type"_s);
+    if (js::truthy(params.get(u"spot_stop_at_broker"_s)) && !js::nullish(requestedOrderType) &&
+        js::str(requestedOrderType) != u"MKT" && js::str(requestedOrderType) != u"LMT")
+        invalid(u"IBKR 标的条件平仓只支持 MKT 或 LMT。"_s);
     autoIn.set(u"enabled"_s, js::B(js::truthy(params.get(u"auto_close"_s))));
     autoIn.set(u"order_type"_s, js::S(js::isStr(params.get(u"order_type"_s)) && params.get(u"order_type"_s)->s == u"LMT" ? u"LMT"_s : u"MKT"_s));
     autoIn.set(u"slippage_pct"_s, js::N(hu::numOrDefault(params.get(u"slippage_pct"_s), 0.3)));
     autoIn.set(u"close_fraction_pct"_s, js::N(hu::numOrDefault(params.get(u"close_fraction_pct"_s), 100)));
     autoIn.set(u"host_at_broker"_s, js::B(js::truthy(params.get(u"host_at_broker"_s))));
+    if (const OJson* v = params.get(u"spot_stop_at_broker"_s)) autoIn.set(u"spot_stop_at_broker"_s, *v);
+    if (const auto limit = optFloat(params.get(u"spot_stop_limit"_s))) autoIn.set(u"spot_stop_limit"_s, js::N(*limit));
     // 追价让价上限:0 也是合法值(至少两跳),所以不能用 || 兜底
     if (const auto chase = optFloat(params.get(u"chase_max_pct"_s))) autoIn.set(u"chase_max_pct"_s, js::N(*chase));
     for (const auto& [k, v] : stopSettingsOf(params).fields) autoIn.set(k, v);
@@ -566,7 +597,11 @@ util::Task<OJson> TrackerHandlers::trackerUpdateLocked(OJson params, OJson rawPa
                              u"profit_drawdown_arm_pct"_s, u"spot_target"_s, u"spot_stop_below"_s, u"spot_stop_above"_s, u"spot_stop_confirm_s"_s, u"exit_at"_s,
                              u"take_profit_tiers"_s})
         if (given(k)) targetsGiven = true;
-    if (targetsGiven || basisBefore != basisAfter) {
+    const bool brokerSpotChanged = given(u"auto_close"_s) &&
+        (js::truthy(js::prop(trackAuto, u"spot_stop_at_broker"_s)) || js::truthy(js::prop(autoSource, u"spot_stop_at_broker"_s)));
+    const OJson* autoPatch = params.get(u"auto_close"_s);
+    const bool rapidChanged = js::prop(autoPatch, u"rapid_exit_window_s"_s) || js::prop(autoPatch, u"rapid_exit_pct"_s);
+    if (targetsGiven || basisBefore != basisAfter || brokerSpotChanged || rapidChanged) {
         // 改目标和新建走**同一套**校验:以前这里什么都不查,改一下目标价就能绕过「算出来的价比现价还差、挂上去立刻成交」那道拦。
         // 持仓先取:蝶式预设按每组成本把金额线换算成倍数
         const OJson rows = keyedRows(domain::withCombos(co_await livePositions()));

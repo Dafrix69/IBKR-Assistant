@@ -15,14 +15,15 @@ Item {
     readonly property string symbol: position.symbol || ""
     // 表单的值:初值照 React 版的 useState(组合的平仓方式默认限价、利润回撤门槛 10)
     property var v: ({ tp: null, sl: null, trail: null, profitDd: null, ddArm: 10, tiers: false, spotTarget: null, stopBelow: null, stopAbove: null,
-                       fraction: null, chaseMax: null, autoPicked: null, orderType: isCombo ? "LMT" : "MKT", host: false,
-                       exits: { exitAt: "", stopConfirm: null, stopBasis: "mid", chaseGrace: null, chaseStep: null, chaseMax: null, chaseLead: null, chaseInterval: null, peakConfirm: false, tiers: [] } })
+                       fraction: null, chaseMax: null, autoPicked: null, orderType: isCombo ? "LMT" : "MKT", host: false, brokerSpotStop: false, spotStopLimit: null,
+                       exits: { exitAt: "", stopConfirm: null, stopBasis: "mid", chaseGrace: null, chaseStep: null, chaseMax: null, chaseLead: null, chaseInterval: null, rapidWindow: null, rapidPct: null, peakConfirm: false, tiers: [] } })
     function set(part) { var n = Object.assign({}, v); for (var k in part) n[k] = part[k]; v = n }
     function setExit(part) { var e = Object.assign({}, v.exits); for (var k in part) e[k] = part[k]; set({ exits: e }) }
     readonly property bool hasSpotTarget: v.spotTarget !== null && v.spotTarget > 0
     readonly property bool autoOn: v.autoPicked !== null ? v.autoPicked : !!(statusAuto)
     property bool statusAuto: false
-    readonly property bool hostAllowed: !isCombo || hasSpotTarget
+    readonly property bool hasSpotStop: v.stopBelow > 0 || v.stopAbove > 0
+    readonly property bool hostAllowed: !isCombo || hasSpotTarget || (v.brokerSpotStop && hasSpotStop)
     readonly property bool hostOn: v.host && hostAllowed
     readonly property bool saving: controller ? !!controller.saving[position.key] : false
 
@@ -192,13 +193,13 @@ Item {
         Field {
             visible: root.derivative
             label: "标的跌到多少止损(" + root.symbol + ")"
-            tip: "只看标的现价,不看这份持仓值多少:标的到了这里就平,记作止损(平仓走和别的止损同一条路)。两个可以只填一个;软件关掉就不再盯。"
+            tip: "只看标的现价。可只填一侧,或两侧任一触发就平仓。下方可选择交给 IBKR 条件单;本机盯盘需要软件保持运行。"
             InputNumber { width: parent.width; min: 0; step: 1; placeholder: "低于 " + root.symbol + " 现价,跌到就平"; value: root.v.stopBelow; onValueEdited: function (x) { root.set({ stopBelow: x }) } }
         }
         Field {
             visible: root.derivative
             label: "标的涨到多少止损(" + root.symbol + ")"
-            tip: "只看标的现价,不看这份持仓值多少:标的到了这里就平,记作止损(平仓走和别的止损同一条路)。两个可以只填一个;软件关掉就不再盯。"
+            tip: "只看标的现价。可只填一侧,或两侧任一触发就平仓。下方可选择交给 IBKR 条件单;本机盯盘需要软件保持运行。"
             InputNumber { width: parent.width; min: 0; step: 1; placeholder: "高于 " + root.symbol + " 现价,涨到就平"; value: root.v.stopAbove; onValueEdited: function (x) { root.set({ stopAbove: x }) } }
         }
         Field { label: "跟踪止损 %(按价格)"; InputNumber { width: parent.width; min: 0; step: 0.01; placeholder: "价格从峰值回落 N%,全平"; value: root.v.trail; onValueEdited: function (x) { root.set({ trail: x }) } } }
@@ -241,15 +242,31 @@ Item {
         }
         Item { Layout.columnSpan: 2; Layout.fillWidth: true }
         SwitchRow {
+            visible: root.derivative && root.hasSpotStop
+            label: "标的止损交给 IBKR 条件单"
+            sub: "按常规时段官方标的行情触发,软件关闭后仍有效;SPX 不用夜盘 ES 推算价。两条线按「或」触发,不支持持续秒数确认。需要开启自动平仓与券商托管"
+            checked: root.v.brokerSpotStop
+            onToggled: function (on) { root.set({ brokerSpotStop: on, host: on || root.v.host }) }
+        }
+        Field {
+            visible: root.derivative && root.hasSpotStop && root.v.brokerSpotStop && (root.isCombo || root.v.orderType === "LMT")
+            Layout.columnSpan: 3
+            label: root.isCombo ? "条件触发后的平仓限价(组合净价)" : "条件触发后的平仓限价"
+            sub: root.isLong ? "填最低愿意收取的价格;条件满足后按此限价平仓,可能不成交" : "填最高愿意支付的价格;条件满足后按此限价平仓,可能不成交"
+            InputNumber { width: parent.width; min: 0; step: 0.05; value: root.v.spotStopLimit; placeholder: "必填,与 SPX 触发点位是两个不同的价格"; onValueEdited: function (x) { root.set({ spotStopLimit: x }) } }
+        }
+        SwitchRow {
             label: "止盈/止损托管到券商(IBKR)"
-            sub: root.isCombo
+            sub: root.v.brokerSpotStop && root.hasSpotStop
+                 ? "IBKR 条件平仓单与止盈/止损单放在同一 OCA 组,一张成交其余撤销。请在追踪卡片核对已挂出的条件单或拒单原因"
+                 : root.isCombo
                  ? (root.hasSpotTarget
                     ? "券商那边挂一张限价止盈单,价按上面的标的目标价每秒现算、原地改;GTC,关机也有效。止损、利润回撤由软件盯着——它们触发,或标的真到了目标价,软件把这张单改到立刻成交的价平掉(软件开着时)"
-                    : "组合要先填上面的「标的目标价」才能托管:托管的就是按它算出来的那张限价止盈单")
+                    : "组合可填写「标的目标价」托管止盈,或填写标的止损并选择 IBKR 条件单")
                  : "GTC 单挂在券商服务器,关机也触发,不受本机轮询与行情延迟影响。利润回撤为动态停损,软件开着时按秒调整,关掉则停在最后价位"
             checked: root.hostOn
             enabled: root.hostAllowed
-            onToggled: function (on) { root.set({ host: on }) }
+            onToggled: function (on) { root.set({ host: on, brokerSpotStop: on && root.v.brokerSpotStop }) }
         }
         Column {
             visible: root.isCombo
@@ -258,7 +275,9 @@ Item {
             spacing: 4
             Label {
                 width: parent.width; wrap: true; css: 1.5
-                text: "组合按整组净价触发。平仓会发一张腿方向全部反转的 BAG 限价单,价按各腿当前买卖价算的立刻成交价(组合不发市价单:每条腿各吃一次价差)。托管到券商:挂一张按标的目标价算出的限价止盈单,止损类目标由软件盯,触发时把这张单改到立刻成交的价。"
+                text: root.v.brokerSpotStop && root.hasSpotStop
+                      ? "组合条件单按标的点位激活,按你填写的组合净价限价平仓。券商接受后关机仍有效;限价不保证成交,不会自动改成市价。其他本机出场规则仍需要软件运行。"
+                      : "组合按整组净价触发,平仓发一张腿方向全部反转的 BAG 限价单。标的目标价可托管限价止盈;标的止损可选 IBKR 条件单。其他止损与利润回撤由软件盯盘。"
                 color: Theme.labelSecondary; size: 11.5; family: Theme.fontFamily
             }
             Label {
@@ -345,6 +364,7 @@ Item {
     // 更多出场规则(TrackExitFields.tsx):到点平仓、确认秒数、止损口径、峰值确认、止损追价、分批止盈
     component ExitFields: Column {
         id: ex
+        objectName: "exitFields"
         property bool open: false
         spacing: 6
         // <summary>:上下 4、12px 二级色(行高 1.47,一行 25.64)
@@ -354,7 +374,7 @@ Item {
                 y: 4
                 spacing: 6
                 Text { anchors.verticalCenter: summaryL.verticalCenter; text: "›"; rotation: ex.open ? 90 : 0; color: Theme.labelSecondary; font.pixelSize: 12 }
-                Label { id: summaryL; text: "更多出场规则(到点平仓、分批止盈、止损的口径与追价)——不填就和以前一样"; size: 12; color: Theme.labelSecondary }
+                Label { id: summaryL; text: "更多出场规则(急跌保护、到点平仓、分批止盈、止损与追价)"; size: 12; color: Theme.labelSecondary }
             }
             TapHandler { onTapped: ex.open = !ex.open }
         }
@@ -416,6 +436,18 @@ Item {
                 label: "追价改价间隔(秒)"
                 tip: "追价时平仓单最快多久改一次价,0.25–1 秒。不填 = 1 秒(盯盘的节拍);填得更小,行情推送一到、离上次改价够了这么久就改,不等下一拍。"
                 InputNumber { width: parent.width; min: 0.25; max: 1; step: 0.25; placeholder: "不填 = 1"; value: root.v.exits.chaseInterval; onValueEdited: function (x) { root.setExit({ chaseInterval: x }) } }
+            }
+            Field {
+                visible: root.isCombo || root.position.sec_type === "OPT"
+                label: "急跌保护:观察窗口(秒)"
+                tip: "与下一项一起填写才启用。不等利润回撤线:最近这段时间内,可平仓报价从窗口内最有利的位置向不利方向变动达到阈值就平,亏损时也生效。多头看下跌,空头看平仓成本上涨。只在软件开着、有新鲜同步的实时买卖报价时检测。"
+                InputNumber { objectName: "rapidWindowInput"; width: parent.width; min: 0.25; max: 5; step: 0.25; placeholder: "不填 = 不启用"; value: root.v.exits.rapidWindow; onValueEdited: function (x) { root.setExit({ rapidWindow: x }) } }
+            }
+            Field {
+                visible: root.isCombo || root.position.sec_type === "OPT"
+                label: "急跌保护:不利变动 %"
+                tip: "按窗口内最有利的可平仓报价计算百分比,不是浮盈回吐百分比。触发后复用已有平仓单,使用止损追价设置、原平仓比例和让价上限。组合用限价追价,不保证成交;盘口突然变宽也可能触发。"
+                InputNumber { objectName: "rapidPctInput"; width: parent.width; min: 0.01; max: 100; step: 0.1; placeholder: "与观察窗口一起填写"; value: root.v.exits.rapidPct; onValueEdited: function (x) { root.setExit({ rapidPct: x }) } }
             }
         }
         Column {

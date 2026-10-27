@@ -241,7 +241,35 @@ bool isPremarket(double epochMs) { return etMinuteOf(epochMs) < kUsOpenMinute; }
 
 namespace {
 QString signPct(double p) { return (p > 0 ? u"+"_s : p < 0 ? u"−"_s : QString()) + jsToFixed(std::fabs(p), 1) + u'%'; }
+QString disciplineBrief() {
+    return u"涨跌幅只作观察条件,不能单独判反转。先写目标、失效价、最迟退出时间和风险预算;同板块合并风险,核对价差与限价。"_s;
+}
 }  // namespace
+
+QString tradingDisciplineReminder() { return u"异动不等于反转确认。"_s + disciplineBrief(); }
+
+QJsonObject tradingDiscipline() {
+    return {
+        {u"title"_s, u"提醒后的交易纪律"_s},
+        {u"summary"_s, u"提醒只提供观察线索:先确认价格,再检查退出计划、同板块风险与成交成本。"_s},
+        {u"evidence"_s, u"固定历史样本:2025-03-25—2026-10-23,28只主题股、11,054个股日,未满两年。四类总体反向比例的95%区间均覆盖50%,没有确认稳定的反转优势。"_s},
+        {u"scope"_s, u"当前板块提醒使用相对昨收的价格快照;未计算夜盘自身涨跌、5分钟收盘确认或连续10分钟守住。历史个股概率不能直接套到当前板块,也未按新闻利好分类。"_s},
+        {u"rules"_s, QJsonArray{
+            QJsonObject{{u"title"_s, u"涨跌幅只作观察条件"_s},
+                        {u"body"_s, u"达到提醒线不等于开仓信号。不同股票、板块和时段分别判断,不因涨得多就做空、跌得多就抄底。"_s}},
+            QJsonObject{{u"title"_s, u"触及不等于收盘确认"_s},
+                        {u"body"_s, u"判断恢复看已完成的5分钟K线,长影线只记触及。夜盘跌≥3%的205个股日中,78.5%曾收回一半跌幅,25.4%在盘前结束仍达到目标;确认后入场的收益尚未验证。"_s}},
+            QJsonObject{{u"title"_s, u"先写退出条件"_s},
+                        {u"body"_s, u"入场前写明目标、失效价和最迟退出时间;不能因为浮盈消失或亏损而临时延长持仓。统计中的恢复50%不是统一止盈点。"_s}},
+            QJsonObject{{u"title"_s, u"跨时段重新评估"_s},
+                        {u"body"_s, u"夜盘、盘前、正盘分别复核。到09:30重新检查原假设;快照仍在某价位不代表已经连续守住,也不自动延长原计划。"_s}},
+            QJsonObject{{u"title"_s, u"先定风险预算,再定仓位"_s},
+                        {u"body"_s, u"结合失效价距离、费用和滑点估算仓位,同板块多笔合并预算。亏损后不提高总风险;跳空或成交不足仍可能超过计划损失。"_s}},
+            QJsonObject{{u"title"_s, u"按可成交价格计划"_s},
+                        {u"body"_s, u"核对买卖价差与可成交量,优先限价并接受未成交。成本吞掉计划收益空间时放弃,不把历史最高价触及当成自己的成交。"_s}},
+        }},
+    };
+}
 
 QString sectorMoveTitle(const QJsonObject& m, bool premarket) {
     return u"%1:%2 集体%3"_s.arg(premarket ? u"盘前联动"_s : u"板块联动"_s, str(m, "sector"_L1),
@@ -256,10 +284,9 @@ QString sectorMoveBody(const QJsonObject& m, double movePct, bool premarket) {
     const QString head = u"%1 只里 %2 只%3超 %4%,中位 %5:%6。"_s.arg(jsNumberToString(num(m, "total"_L1)), jsNumberToString(num(m, "count"_L1)),
                                                                      down ? u"跌"_s : u"涨"_s, jsNumberToString(movePct),
                                                                      signPct(num(m, "median"_L1)), list.join(u"、"_s));
-    if (premarket && !down)
-        return head + u"盘前靠消息面利好拉起来的,开盘后涨幅大概率回吐:别追高开,手里有的考虑趁开盘前后先减。10:00 再报一次守没守住。"_s;
-    if (premarket) return head + u"盘前的集体下跌,开盘后先看半小时再动。"_s;
-    return head + u"一只股的消息把整个板块带着走时,持仓里同板块的都要看。"_s;
+    const QString snapshot = u"仅为价格快照,未作5分钟收盘确认。"_s;
+    const QString review = premarket ? u"09:30跨时段重新评估;10:00—10:30有同组行情时复核。"_s : QString();
+    return head + snapshot + disciplineBrief() + review;
 }
 
 std::optional<double> sectorMedian(const QStringList& symbols, const QMap<QString, std::optional<double>>& changes, double minStocks) {
@@ -278,16 +305,24 @@ std::optional<double> sectorMedian(const QStringList& symbols, const QMap<QStrin
     return jsRound(median * 100) / 100;
 }
 
-QString fadeVerdict(double preMedian, double nowMedian) { return nowMedian <= preMedian / 2 ? u"faded"_s : u"held"_s; }
+QString fadeVerdict(double preMedian, double nowMedian) {
+    if (!std::isfinite(preMedian) || !std::isfinite(nowMedian) || preMedian == 0) return u"unknown"_s;
+    if (preMedian < 0) return nowMedian >= preMedian / 2 ? u"recovered"_s : u"still_down"_s;
+    return nowMedian <= preMedian / 2 ? u"faded"_s : u"held"_s;
+}
 
 QString fadeTitle(const QString& sector, const QString& verdict) {
-    return sector + (verdict == u"faded" ? u":盘前涨幅已回吐"_s : u":盘前涨幅守住了"_s);
+    if (verdict == u"faded") return sector + u":盘前涨幅已回吐至少一半"_s;
+    if (verdict == u"held") return sector + u":当前仍保留过半盘前涨幅"_s;
+    if (verdict == u"recovered") return sector + u":盘前跌幅已收回至少一半"_s;
+    if (verdict == u"still_down") return sector + u":当前仍保留过半盘前跌幅"_s;
+    return sector + u":盘前涨跌复核基准不足"_s;
 }
 
 QString fadeBody(double preMedian, double nowMedian, const QString& verdict) {
-    const QString tail = verdict == u"faded" ? u"盘前的利好在开盘后被卖掉了,这回又应验;别在这里抄回去,等它自己站稳。"_s
-                                             : u"这次没回吐,比平常的盘前利好强:别逆着它空。"_s;
-    return u"开盘前中位 %1,现在 %2。"_s.arg(signPct(preMedian), signPct(nowMedian)) + tail;
+    if (verdict == u"unknown") return u"盘前基准或当前行情不足,不能判断恢复程度。"_s;
+    return u"盘前记录中位 %1,当前 %2。只比较同组股票的两次快照,不代表5分钟收盘确认、连续守住或可成交。"_s.arg(signPct(preMedian), signPct(nowMedian))
+           + disciplineBrief();
 }
 
 const QList<SessionMark>& sessionMarks() {
@@ -296,7 +331,7 @@ const QList<SessionMark>& sessionMarks() {
          u"欧洲资金进场,流动性明显变厚:美股期货(ES / NQ)常在这时走出当天第一段方向,或把亚盘的走势掀翻。按夜盘价挂的单、用期货推算的 SPX 现价,这时最容易被打穿。"_s,
          false},
         {u"us_pre_open"_s, u"America/New_York"_s, u"09:25"_s, u"美股 5 分钟后开盘"_s,
-         u"盘前靠消息面利好拉起来的,开盘后涨幅大概率回吐,别追高开。开盘头 15 分钟价差宽、方向反复:不用市价单,第一根 K 线别当方向。"_s, true},
+         u"盘前涨跌不能单独预测开盘方向。跨时段重新检查目标、失效价和最迟退出时间;同板块合并风险,不因亏损扩大预算。核对价差与可成交量,优先限价;长影线不等于已完成5分钟收盘确认。"_s, true},
         {u"eu_close"_s, u"Europe/London"_s, u"16:30"_s, u"欧盘收盘"_s,
          u"欧洲资金离场,流动性退潮:美股上午的趋势常在这附近停下或回头;接下来的午间是一天里最薄的时段,突破多是假的。"_s, true},
         {u"us_last_hour"_s, u"America/New_York"_s, u"15:00"_s, u"美股最后一小时"_s,

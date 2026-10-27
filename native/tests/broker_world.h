@@ -109,7 +109,7 @@ inline OJson canonOrder(const OrderIntent& o) {
         OJson cs = js::array();
         for (const OJson& c : o.conditions) {
             OJson co = js::object();
-            for (const QString& k : {u"type"_s, u"conId"_s, u"exchange"_s, u"isMore"_s, u"price"_s}) {
+            for (const QString& k : {u"type"_s, u"conId"_s, u"exchange"_s, u"isMore"_s, u"price"_s, u"triggerMethod"_s, u"conjunctionConnection"_s}) {
                 if (const OJson* v = c.get(k)) co.set(k, *v);
             }
             cs.items.append(co);
@@ -117,6 +117,7 @@ inline OJson canonOrder(const OrderIntent& o) {
         j.set(u"conditions"_s, cs);
     }
     if (o.conditionsCancelOrder) j.set(u"conditionsCancelOrder"_s, js::B(*o.conditionsCancelOrder));
+    if (o.conditionsIgnoreRth) j.set(u"conditionsIgnoreRth"_s, js::B(*o.conditionsIgnoreRth));
     if (!o.ocaGroup.isEmpty()) j.set(u"ocaGroup"_s, js::S(o.ocaGroup));
     if (o.ocaType) j.set(u"ocaType"_s, js::N(*o.ocaType));
     if (o.trailStopPrice) j.set(u"trailStopPrice"_s, js::N(*o.trailStopPrice));
@@ -606,6 +607,10 @@ public:
                 t.ocaType = optInt(d.get(u"ocaType"_s));
                 t.tif = str(d, u"tif"_s);
                 t.outsideRth = flag(d, u"outsideRth"_s);
+                if (const OJson* cs = d.get(u"conditions"_s); js::isArr(cs))
+                    for (const OJson& c : cs->items) t.conditions.push_back(c);
+                if (d.get(u"conditionsCancelOrder"_s)) t.conditionsCancelOrder = flag(d, u"conditionsCancelOrder"_s);
+                if (d.get(u"conditionsIgnoreRth"_s)) t.conditionsIgnoreRth = flag(d, u"conditionsIgnoreRth"_s);
                 out.push_back(t);
             }
         }

@@ -47,6 +47,9 @@ public:
     void check(double nowMs);
     /// 追价与首单要多让多少:先把这一笔立刻成交价记下,再按"一个改价间隔之前到此刻跌了多少"× 倍数(auto_close.chase_lead,没填按 1)
     double leadFor(const Rec& raw, const tracker::Position& position, double natural, const Rec& autoClose, double nowMs);
+    /// 正式盯盘与推送唤醒共用的急跌检测;只返回证据,发单仍由盯盘过闸门。
+    std::optional<Rec> rapidFor(const Rec& track, const Rec& raw, const tracker::Position& position, const Rec& positions, const Rec& autoClose, double nowMs);
+    void resetRapid() { rapid_.clear(); }
 
 private:
     struct Watch {
@@ -66,11 +69,18 @@ private:
     void observe(const QString& key, double natural, double nowMs);
     Rec legBook(const Watch& w, const Rec& book) const;
     std::optional<double> midOf(const Watch& w, const Rec& book) const;
+    Rec sampleRapid(const Watch& w, const Rec& book, double nowMs);
+    struct RapidHistory {
+        QString signature;
+        QList<analysis::NaturalObs> samples;
+        double newestAt = 0;
+    };
 
     std::function<EngineRouter*()> router_;
     std::function<void()> wake_;
     QList<Watch> watches_;
     QHash<QString, QList<analysis::NaturalObs>> obs_;
+    QHash<QString, RapidHistory> rapid_;
     EngineRouter* attachedTo_ = nullptr;
     std::function<void()> detach_;
     bool queued_ = false;

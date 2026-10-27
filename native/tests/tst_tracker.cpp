@@ -39,6 +39,39 @@ class TestTracker : public QObject {
     const OJson* C(const OJson* name) { return contracts_.get(name->s); }
 
 private slots:
+    void hostedUnderlyingConditions() {
+        tk::Position p;
+        p.symbol = u"SPX"_s; p.sec_type = u"OPT"_s; p.quantity = 3;
+        auto targets = js::object({{u"spot_stop_below"_s, js::N(6000)}, {u"spot_stop_above"_s, js::N(6200)}});
+        auto ac = tk::makeAutoClose(js::object({{u"host_at_broker"_s, js::B(true)}, {u"spot_stop_at_broker"_s, js::B(true)},
+            {u"close_fraction_pct"_s, js::N(50)}}));
+        const auto plan = tk::hostedPlan(p, targets, ac, std::nullopt);
+        QCOMPARE(plan.items.size(), 1);
+        const auto item = plan.items.first();
+        QCOMPARE(item.get(u"kind"_s)->s, u"spot"_s);
+        QCOMPARE(item.get(u"order_type"_s)->s, u"MKT"_s);
+        QCOMPARE(item.get(u"action"_s)->s, u"SELL"_s);
+        QCOMPARE(item.get(u"quantity"_s)->n, 1.0);
+        const auto cs = *item.get(u"spot_conditions"_s);
+        QCOMPARE(cs.items.size(), 2);
+        QVERIFY(!cs.items[0].get(u"isMore"_s)->b);
+        QVERIFY(cs.items[1].get(u"isMore"_s)->b);
+        QVERIFY(!tk::hostedNeedsUpdate(item, item));
+        targets.set(u"spot_stop_below"_s, js::N(6010));
+        QVERIFY(tk::hostedNeedsUpdate(item, tk::hostedPlan(p, targets, ac, {}).items.first()));
+        p.sec_type = u"BAG"_s;
+        QVERIFY_THROWS_EXCEPTION(tk::TrackerError, tk::hostedPlan(p, targets, ac, {}));
+        ac.set(u"spot_stop_limit"_s, js::N(1.23));
+        const auto bag = tk::hostedPlan(p, targets, ac, {}).items.first();
+        QCOMPARE(bag.get(u"order_type"_s)->s, u"LMT"_s);
+        QCOMPARE(bag.get(u"lmt_price"_s)->n, 1.25); // 卖出最低收入不能向下取整
+        p.quantity = -3;
+        const auto shortBag = tk::hostedPlan(p, targets, ac, {}).items.first();
+        QCOMPARE(shortBag.get(u"action"_s)->s, u"BUY"_s);
+        QCOMPARE(shortBag.get(u"lmt_price"_s)->n, 1.20); // 买回最高支出不能向上取整
+        ac.set(u"spot_stop_at_broker"_s, js::B(false));
+        QVERIFY(tk::hostedPlan(p, targets, ac, {}).items.isEmpty());
+    }
     void initTestCase() {
         fx_ = jsfix::load(u"tracker.json"_s);
         for (const OJson& p : fx_.get(u"positions"_s)->items) positions_.push_back(tk::makePosition(dec(*p.get(u"p"_s))));

@@ -7,6 +7,8 @@
 #include <QDateTime>
 #include <QTimeZone>
 
+#include <algorithm>
+
 using namespace Qt::StringLiterals;
 
 namespace ibkr::shell {
@@ -168,11 +170,16 @@ void EventsStore::finishSweep(double t, const QJsonArray& quality) {
     const QString today = events::etDateOf(t);
     for (const QJsonValue& v : found) {
         const QJsonObject m = v.toObject();
-        if (!premarket || m.value("direction"_L1).toString() != u"up") continue;
+        if (!premarket) continue;
         const QString sector = m.value("sector"_L1).toString();
         QStringList symbols;
+        // 固定盘前中位实际使用的成分股;后续缺任意一只时不换样本作比较。
         for (const events::SectorInput& s : sectors)
-            if (s.name == sector) symbols = s.symbols;
+            if (s.name == sector)
+                for (const QString& symbol : s.symbols) {
+                    const auto change = changes.constFind(symbol);
+                    if (change != changes.cend() && change->has_value() && !symbols.contains(symbol)) symbols.append(symbol);
+                }
         premarketRallies_.insert(today + u':' + sector, {today, sector, m.value("median"_L1).toDouble(), symbols});
     }
     checkFades(t, changes, minStocks);
@@ -224,7 +231,7 @@ void EventsStore::checkFades(double t, const QMap<QString, std::optional<double>
             it = premarketRallies_.erase(it);
             continue;
         }
-        const std::optional<double> current = events::sectorMedian(r.symbols, changes, minStocks);
+        const std::optional<double> current = events::sectorMedian(r.symbols, changes, std::max(minStocks, double(r.symbols.size())));
         if (!current) {  // 这一轮行情不够,下一轮再看
             ++it;
             continue;
@@ -238,7 +245,7 @@ void EventsStore::checkFades(double t, const QMap<QString, std::optional<double>
                           {u"symbol"_s, r.symbols.value(0)},
                           {u"title"_s, events::fadeTitle(r.sector, verdict)},
                           {u"body"_s, events::fadeBody(r.median, *current, verdict)},
-                          {u"tone"_s, verdict == u"faded" ? u"down"_s : u"up"_s},
+                          {u"tone"_s, verdict == u"unknown" ? u"info"_s : verdict == u"faded" || verdict == u"still_down" ? u"down"_s : u"up"_s},
                           {u"at"_s, t},
                           {u"page"_s, u"sectors"_s},
                       },
