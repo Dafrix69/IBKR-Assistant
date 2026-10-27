@@ -1,5 +1,5 @@
-// 界面能起来:把真的 Datrix 跑一次(--smoke-test,无窗口平台),QML 加载成功、第一帧真的画出来、退出码 0。
-// 自检不拉引擎(main.cpp 钉着);这里再把配置指到不存在的地方:万一哪天自检拉了引擎,也碰不到真配置、真 TWS。
+// 界面能起来:带预览引擎(mock 数据,不连券商)把真的 Datrix 跑起来,QML 加载成功、画得出来、退出码 0。
+// 配置指到不存在的地方:碰不到真配置、真 TWS。
 // QML 报任何一条警告(绑定里的 TypeError 之类)应用自己就以 6 退出,这里只看退出码。
 #include "shell/consent.h"
 #include "shell/engine_command.h"
@@ -29,18 +29,6 @@ QProcessEnvironment safeEnv(const QString& userData) {
 class TestShell : public QObject {
     Q_OBJECT
 private slots:
-    void startsAndQuits() {
-        QTemporaryDir userData;
-        QProcess app;
-        app.setProcessEnvironment(safeEnv(userData.path()));
-        app.start(QStringLiteral(IBKR_APP_PATH), {QStringLiteral("--smoke-test")});
-        QVERIFY2(app.waitForStarted(5000), qPrintable(app.errorString()));
-        QVERIFY(app.waitForFinished(20000));
-        const QByteArray err = app.readAllStandardError();
-        QVERIFY2(app.exitCode() == 0, err.constData());
-        QVERIFY2(app.readAllStandardOutput().startsWith("shell ok 1360x900, first frame drawn, engine none"), err.constData());
-    }
-
     // 带预览引擎(mock 数据,不连券商)把整个外壳画一遍:顶栏、侧栏、占位页、同意页(临时目录里没有同意记录,所以它会盖在上面)。
     // 页面的绑定只有拿到引擎的状态才会走到,自检那一条走不到
     void drawsWithPreviewEngine() {

@@ -1,4 +1,4 @@
-// 持仓追踪页的接线(shell/tracker_controller)端到端:真的 Bridge(白名单、条款同意、确认框凭据)对着假引擎。
+// 持仓追踪页的接线(shell/tracker_controller)端到端:真的 Bridge(白名单、条款同意)对着假引擎。
 // 钱路径:「开始追踪」授权自动平仓时先弹确认框,点了确认才发 tracker.add,引擎收到的载荷就是确认框绑的那一份(不多不少,
 // 没有 __confirmed);点取消一个请求都不发;「立即平仓」同理绑这条追踪的 id;没同意条款时一律发不出去。
 #include "shell/alerter.h"
@@ -95,15 +95,14 @@ const QJsonObject kNvda{{u"key"_s, u"模拟|NVDA|STK"_s}, {u"symbol"_s, u"NVDA"_
 class TestTrackerController : public QObject {
     Q_OBJECT
 private slots:
-    // 授权自动平仓:确认框 → 凭据 → 引擎收到的就是确认框绑的那一份
-    void startTrackGoesThroughTheGrant() {
+    // 授权自动平仓:不弹框,引擎收到的就是表单拼出来的那一份
+    void startTrackSendsWithoutAsking() {
         Rig rig;
         QSignalSpy created(&rig.controller, &shell::TrackerController::created);
-        rig.controller.startTrack(kNvda, obj(R"({"sl":170,"trail":5})"));  // 自动执行开着:到价自动平仓默认开
+        rig.controller.startTrack(kNvda, obj(R"({"sl":170,"trail":5})"));  // 到价自动平仓默认开
         QTRY_COMPARE(created.size(), 1);
         QCOMPARE(created.at(0).at(0).toString(), u"tk9"_s);
-        QCOMPARE(rig.prompter.boxes.size(), 1);
-        QCOMPARE(rig.prompter.boxes.at(0).confirmLabel, u"我确认"_s);
+        QCOMPARE(rig.prompter.boxes.size(), 0);
         const QList<QJsonObject> got = rig.received(u"tracker.add"_s);
         QCOMPARE(got.size(), 1);
         const QJsonObject expected{{u"key"_s, u"模拟|NVDA|STK"_s}, {u"take_profit"_s, u""_s}, {u"stop_loss"_s, u"170"_s}, {u"trail_pct"_s, u"5"_s},
@@ -115,16 +114,7 @@ private slots:
         QCOMPARE(rig.controller.flashId(), u"tk9"_s);
     }
 
-    void cancelSendsNothing() {
-        Rig rig;
-        rig.prompter.answer = false;
-        rig.controller.startTrack(kNvda, obj(R"({"sl":170,"autoPicked":true})"));
-        QTRY_COMPARE(rig.prompter.boxes.size(), 1);
-        QTest::qWait(150);
-        QCOMPARE(rig.received(u"tracker.add"_s).size(), 0);
-    }
-
-    // 只设提醒价位、不授权发单:不弹框,直接建(Bridge 那头也不要凭据)
+    // 只设提醒价位、不授权发单:同样不弹框,直接建
     void reminderOnlyNeedsNoConfirm() {
         Rig rig;
         QSignalSpy created(&rig.controller, &shell::TrackerController::created);
@@ -139,7 +129,7 @@ private slots:
         rig.controller.closeNow(u"tk1"_s);
         QTRY_COMPARE(rig.received(u"tracker.close_now"_s).size(), 1);
         QCOMPARE(rig.received(u"tracker.close_now"_s).at(0), (QJsonObject{{u"id"_s, u"tk1"_s}}));
-        QCOMPARE(rig.prompter.boxes.at(0).confirmLabel, u"平仓"_s);
+        QCOMPARE(rig.prompter.boxes.size(), 0);
         QTRY_COMPARE(rig.status.banner(), u"平仓单已发出:手动平仓"_s);
         QTRY_VERIFY(rig.controller.busy().isEmpty());
     }
@@ -154,7 +144,7 @@ private slots:
         QCOMPARE(rig.received(u"tracker.close_now"_s).size(), 0);
     }
 
-    // 暂停 / 恢复:不弹框、不要凭据,引擎收到的正好是 { id, enabled }(没有 __confirmed——桥去掉它)
+    // 暂停 / 恢复:不弹框,引擎收到的正好是 { id, enabled }(没有 __confirmed——桥去掉它)
     void pauseAndResumeGoThroughTheBridge() {
         Rig rig;
         rig.set(u"tracker.update"_s, QJsonObject{});
@@ -192,17 +182,6 @@ private slots:
         QVERIFY(rig.controller.model()[u"positions"][u"cards"][0][u"open"].toBool());
         rig.controller.setVisible(false);
         QVERIFY(!rig.controller.model()[u"positions"][u"cards"][0][u"open"].toBool());
-    }
-
-    // 全局「自动执行」变了:autoExecuteOn 跟着变、statusTick 发出(新建追踪表单里「到价自动平仓」的默认值绑着它)
-    void autoExecuteFollowsStatus() {
-        Rig rig;
-        QVERIFY(rig.controller.autoExecute());
-        QSignalSpy tick(&rig.controller, &shell::TrackerController::statusTick);
-        rig.set(u"system.status"_s, QJsonObject{{u"auto_execute"_s, false}});
-        rig.status.refresh();
-        QTRY_VERIFY(!tick.isEmpty());
-        QCOMPARE(rig.controller.property("autoExecuteOn").toBool(), false);
     }
 
     // 「查看」带过来的标的:同标的的第一张卡片闪一下,并把视线带到「正在追踪」

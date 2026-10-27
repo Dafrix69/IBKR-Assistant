@@ -20,8 +20,7 @@ Item {
     function set(part) { var n = Object.assign({}, v); for (var k in part) n[k] = part[k]; v = n }
     function setExit(part) { var e = Object.assign({}, v.exits); for (var k in part) e[k] = part[k]; set({ exits: e }) }
     readonly property bool hasSpotTarget: v.spotTarget !== null && v.spotTarget > 0
-    readonly property bool autoOn: v.autoPicked !== null ? v.autoPicked : !!(statusAuto)
-    property bool statusAuto: false
+    readonly property bool autoOn: v.autoPicked !== null ? v.autoPicked : true
     readonly property bool hasSpotStop: v.stopBelow > 0 || v.stopAbove > 0
     readonly property bool hostAllowed: !isCombo || hasSpotTarget || (v.brokerSpotStop && hasSpotStop)
     readonly property bool hostOn: v.host && hostAllowed

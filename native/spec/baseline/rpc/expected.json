@@ -38,12 +38,9 @@
    "prompt_version": "v1.8.0",
    "prompt_fingerprint": "5a368bc6d0919d8e",
    "model": "claude-opus-5",
-   "auto_execute": false,
-   "allow_live_trading": false,
    "breaker": {
     "engaged": false,
-    "reason": "",
-    "consecutive_failures": 0
+    "reason": ""
    },
    "protections": {
     "paused": false,
@@ -233,13 +230,10 @@
     "by_account": {}
    },
    "policies": {
-    "auto_execute": false,
-    "allow_live_trading": false,
     "auto_outside_rth": true,
     "require_trigger_price_verification": true,
     "trigger_min_gap_bps": 5,
     "closed_market_policy": "reject_market_orders",
-    "consecutive_failure_breaker": 3,
     "review_feature_enabled": false
    },
    "protections": {
@@ -355,13 +349,10 @@
     "by_account": {}
    },
    "policies": {
-    "auto_execute": false,
-    "allow_live_trading": false,
     "auto_outside_rth": true,
     "require_trigger_price_verification": true,
     "trigger_min_gap_bps": 5,
     "closed_market_policy": "reject_market_orders",
-    "consecutive_failure_breaker": 3,
     "review_feature_enabled": false
    },
    "protections": {
@@ -558,8 +549,7 @@
   "result": {
    "engaged": false,
    "reason": "",
-   "at": "<VAR>",
-   "consecutive_failures": 0
+   "at": "<VAR>"
   }
  },
  {
@@ -572,8 +562,7 @@
   "result": {
    "engaged": true,
    "reason": "契约测试",
-   "at": "<VAR>",
-   "consecutive_failures": 0
+   "at": "<VAR>"
   }
  },
  {
@@ -589,8 +578,8 @@
  },
  {
   "error": {
-   "code": -32003,
-   "message": "自动执行没有打开,拒绝执行。请先在「设置」里打开「允许自动执行」。"
+   "code": -32004,
+   "message": "尚未连接TWS / IB Gateway,拒绝执行。"
   }
  },
  {
@@ -648,63 +637,82 @@
  },
  {
   "result": {
-   "submitted": [],
-   "queued": [],
-   "validated_only": [
-    {
-     "record_id": "<ID>",
-     "intent_summary": "限价 230 买入 100 股 AAPL",
-     "account": "模拟",
-     "notional": 23000,
-     "ticket": {
-      "sec_type": "STK",
-      "symbol": "AAPL",
-      "action": "BUY",
-      "quantity": 100,
-      "order_type": "LMT",
-      "price_mode": "EXPLICIT",
-      "limit_price": 230,
-      "aux_price": null,
-      "trailing_percent": null,
-      "tif": "DAY",
-      "expiry": null,
-      "strike": null,
-      "right": null,
-      "multiplier": 100,
-      "combo_strategy": null,
-      "legs": [],
-      "trigger": null
-     }
-    }
-   ],
-   "rejections": [
-    {
-     "source": "llm",
-     "code": "UNCLEAR",
-     "message": "「梭哈」没有明确数量与标的,拒绝。",
-     "original_text": "顺便梭哈"
-    },
-    {
-     "source": "validator",
-     "code": "LIVE_TRADING_DISABLED",
-     "message": "订单指向实盘账户 主账户,但当前没有允许实盘下单(默认关闭)。请先在纸面账户跑够回归测试,再到「设置」里打开「允许实盘账户下单」。",
-     "intent_summary": "限价 230 买入 100 股 AAPL"
-    }
-   ],
-   "warnings": [
-    "已按勾选账户同时发单:模拟、主账户(每笔订单各 2 份,各自独立校验与记录)"
-   ],
+   "executed": false,
    "llm": {
-    "model": "fake-model",
-    "prompt_version": "v1.8.0",
-    "prompt_fingerprint": "5a368bc6d0919d8e",
     "latency_ms": "<VAR>",
+    "model": "fake-model",
+    "prompt_fingerprint": "5a368bc6d0919d8e",
+    "prompt_version": "v1.8.0",
     "usage": {
      "input_tokens": 100,
      "output_tokens": 50
     }
    },
-   "executed": false
+   "queued": [],
+   "rejections": [
+    {
+     "code": "UNCLEAR",
+     "message": "「梭哈」没有明确数量与标的,拒绝。",
+     "original_text": "顺便梭哈",
+     "source": "llm"
+    }
+   ],
+   "submitted": [],
+   "validated_only": [
+    {
+     "account": "模拟",
+     "intent_summary": "限价 230 买入 100 股 AAPL",
+     "notional": 23000,
+     "record_id": "<ID>",
+     "ticket": {
+      "action": "BUY",
+      "aux_price": null,
+      "combo_strategy": null,
+      "expiry": null,
+      "legs": [],
+      "limit_price": 230,
+      "multiplier": 100,
+      "order_type": "LMT",
+      "price_mode": "EXPLICIT",
+      "quantity": 100,
+      "right": null,
+      "sec_type": "STK",
+      "strike": null,
+      "symbol": "AAPL",
+      "tif": "DAY",
+      "trailing_percent": null,
+      "trigger": null
+     }
+    },
+    {
+     "account": "主账户",
+     "intent_summary": "限价 230 买入 100 股 AAPL",
+     "notional": 23000,
+     "record_id": "<ID>",
+     "ticket": {
+      "action": "BUY",
+      "aux_price": null,
+      "combo_strategy": null,
+      "expiry": null,
+      "legs": [],
+      "limit_price": 230,
+      "multiplier": 100,
+      "order_type": "LMT",
+      "price_mode": "EXPLICIT",
+      "quantity": 100,
+      "right": null,
+      "sec_type": "STK",
+      "strike": null,
+      "symbol": "AAPL",
+      "tif": "DAY",
+      "trailing_percent": null,
+      "trigger": null
+     }
+    }
+   ],
+   "warnings": [
+    "已按勾选账户同时发单:模拟、主账户(每笔订单各 2 份,各自独立校验与记录)"
+   ]
   }
  },
  {
@@ -723,131 +731,122 @@
   "result": {
    "records": [
     {
-     "id": "<ID>",
-     "created_at": "<VAR>",
-     "intent_summary": "限价 230 买入 100 股 AAPL",
-     "raw_instruction": "买入 MSFT 50股 limit 400",
-     "reason": "回调到位",
-     "symbol": "AAPL",
-     "secType": "STK",
+     "account": "主账户",
+     "account_masked": "U1***567",
      "action": "BUY",
-     "quantity": 100,
-     "account": "模拟",
-     "account_masked": "DU***321",
-     "is_paper": true,
+     "avg_fill_price": null,
+     "confidence": 0.99,
+     "created_at": "<VAR>",
      "execution_type": "IMMEDIATE",
      "final_status": null,
-     "status": "ValidatedOnly",
-     "avg_fill_price": null,
-     "total_commission": null,
-     "confidence": 0.99,
-     "rejection": null,
-     "notional_estimate": 23000
-    },
-    {
      "id": "<ID>",
-     "created_at": "<VAR>",
      "intent_summary": "限价 230 买入 100 股 AAPL",
+     "is_paper": false,
+     "notional_estimate": 23000,
+     "quantity": 100,
      "raw_instruction": "买入 MSFT 50股 limit 400",
      "reason": "回调到位",
-     "symbol": "AAPL",
+     "rejection": null,
      "secType": "STK",
-     "action": "BUY",
-     "quantity": 100,
-     "account": "",
-     "account_masked": "",
-     "is_paper": null,
-     "execution_type": "IMMEDIATE",
-     "final_status": "rejected_by_validator",
-     "status": null,
-     "avg_fill_price": null,
-     "total_commission": null,
-     "confidence": 0.99,
-     "rejection": {
-      "code": "LIVE_TRADING_DISABLED",
-      "issues": [
-       {
-        "code": "LIVE_TRADING_DISABLED",
-        "message": "订单指向实盘账户 主账户,但当前没有允许实盘下单(默认关闭)。请先在纸面账户跑够回归测试,再到「设置」里打开「允许实盘账户下单」。"
-       }
-      ],
-      "message": "订单指向实盘账户 主账户,但当前没有允许实盘下单(默认关闭)。请先在纸面账户跑够回归测试,再到「设置」里打开「允许实盘账户下单」。"
-     },
-     "notional_estimate": null
+     "status": "ValidatedOnly",
+     "symbol": "AAPL",
+     "total_commission": null
     },
     {
-     "id": "<ID>",
+     "account": "模拟",
+     "account_masked": "DU***321",
+     "action": "BUY",
+     "avg_fill_price": null,
+     "confidence": 0.99,
      "created_at": "<VAR>",
-     "intent_summary": "顺便梭哈",
+     "execution_type": "IMMEDIATE",
+     "final_status": null,
+     "id": "<ID>",
+     "intent_summary": "限价 230 买入 100 股 AAPL",
+     "is_paper": true,
+     "notional_estimate": 23000,
+     "quantity": 100,
      "raw_instruction": "买入 MSFT 50股 limit 400",
-     "reason": "",
-     "symbol": "",
-     "secType": "",
-     "action": "",
-     "quantity": null,
+     "reason": "回调到位",
+     "rejection": null,
+     "secType": "STK",
+     "status": "ValidatedOnly",
+     "symbol": "AAPL",
+     "total_commission": null
+    },
+    {
      "account": "",
      "account_masked": "",
-     "is_paper": null,
+     "action": "",
+     "avg_fill_price": null,
+     "confidence": null,
+     "created_at": "<VAR>",
      "execution_type": null,
      "final_status": "rejected_by_llm",
-     "status": null,
-     "avg_fill_price": null,
-     "total_commission": null,
-     "confidence": null,
+     "id": "<ID>",
+     "intent_summary": "顺便梭哈",
+     "is_paper": null,
+     "notional_estimate": null,
+     "quantity": null,
+     "raw_instruction": "买入 MSFT 50股 limit 400",
+     "reason": "",
      "rejection": {
       "code": "UNCLEAR",
       "message": "「梭哈」没有明确数量与标的,拒绝。",
       "original_text": "顺便梭哈"
      },
-     "notional_estimate": null
+     "secType": "",
+     "status": null,
+     "symbol": "",
+     "total_commission": null
     },
     {
-     "id": "<ID>",
-     "created_at": "<VAR>",
-     "intent_summary": "限价 230 买入 100 股 AAPL",
-     "raw_instruction": "买入 AAPL 100股 limit 230,顺便梭哈",
-     "reason": "回调到位",
-     "symbol": "AAPL",
-     "secType": "STK",
-     "action": "BUY",
-     "quantity": 100,
      "account": "模拟",
      "account_masked": "DU***321",
-     "is_paper": true,
+     "action": "BUY",
+     "avg_fill_price": null,
+     "confidence": 0.99,
+     "created_at": "<VAR>",
      "execution_type": "IMMEDIATE",
      "final_status": null,
-     "status": "ValidatedOnly",
-     "avg_fill_price": null,
-     "total_commission": null,
-     "confidence": 0.99,
+     "id": "<ID>",
+     "intent_summary": "限价 230 买入 100 股 AAPL",
+     "is_paper": true,
+     "notional_estimate": 23000,
+     "quantity": 100,
+     "raw_instruction": "买入 AAPL 100股 limit 230,顺便梭哈",
+     "reason": "回调到位",
      "rejection": null,
-     "notional_estimate": 23000
+     "secType": "STK",
+     "status": "ValidatedOnly",
+     "symbol": "AAPL",
+     "total_commission": null
     },
     {
-     "id": "<ID>",
-     "created_at": "<VAR>",
-     "intent_summary": "顺便梭哈",
-     "raw_instruction": "买入 AAPL 100股 limit 230,顺便梭哈",
-     "reason": "",
-     "symbol": "",
-     "secType": "",
-     "action": "",
-     "quantity": null,
      "account": "",
      "account_masked": "",
-     "is_paper": null,
+     "action": "",
+     "avg_fill_price": null,
+     "confidence": null,
+     "created_at": "<VAR>",
      "execution_type": null,
      "final_status": "rejected_by_llm",
-     "status": null,
-     "avg_fill_price": null,
-     "total_commission": null,
-     "confidence": null,
+     "id": "<ID>",
+     "intent_summary": "顺便梭哈",
+     "is_paper": null,
+     "notional_estimate": null,
+     "quantity": null,
+     "raw_instruction": "买入 AAPL 100股 limit 230,顺便梭哈",
+     "reason": "",
      "rejection": {
       "code": "UNCLEAR",
       "message": "「梭哈」没有明确数量与标的,拒绝。",
       "original_text": "顺便梭哈"
      },
-     "notional_estimate": null
+     "secType": "",
+     "status": null,
+     "symbol": "",
+     "total_commission": null
     }
    ]
   }

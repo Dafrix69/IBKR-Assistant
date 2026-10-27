@@ -72,6 +72,7 @@ private slots:
         ac.set(u"spot_stop_at_broker"_s, js::B(false));
         QVERIFY(tk::hostedPlan(p, targets, ac, {}).items.isEmpty());
     }
+    void cleanupTestCase() { jsfix::rewrite(u"tracker.json"_s, fx_); }
     void initTestCase() {
         fx_ = jsfix::load(u"tracker.json"_s);
         for (const OJson& p : fx_.get(u"positions"_s)->items) positions_.push_back(tk::makePosition(dec(*p.get(u"p"_s))));
@@ -213,9 +214,6 @@ private slots:
             tk::CloseGateArgs g;
             g.autoClose = a.get(u"auto"_s);
             g.position = &P(c.get(u"p"_s));
-            g.accountIsPaper = a.get(u"accountIsPaper"_s)->b;
-            g.autoExecute = a.get(u"autoExecute"_s)->b;
-            g.allowLiveTrading = a.get(u"allowLiveTrading"_s)->b;
             g.breakerEngaged = a.get(u"breakerEngaged"_s)->b;
             g.marketStatus = a.get(u"marketStatus"_s)->s;
             g.outsideRth = a.get(u"outsideRth"_s)->b;

@@ -533,7 +533,6 @@ Task<> FollowService::process(DiscordMessage message, std::optional<QString> sta
     const BreakerView breaker = eng().breaker();
     pf::FollowGates gates;
     if (breaker.engaged) gates.breaker = breaker.reason;
-    gates.autoExecute = settings().policies.auto_execute;
     gates.connected = router && router->hasSessions();
     const pf::Decision decision = pf::decide(cfg, payload, gates, sentToday());
     if (decision.outcome != u"send") {

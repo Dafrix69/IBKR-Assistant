@@ -1,5 +1,5 @@
 // engine.ts 逐句搬:TradingEngine——输入 → 解析 → 硬校验 → 下单 → 落库 → 通知;盯盘节拍器;持仓追踪的到价平仓与追价;条件单队列;熔断与保护规则;
-// 回报接线;账户扇出。**钱路径**:下单只在最后一步发生,且要同时满足:校验通过、熔断未触发、auto_execute=true、账户允许。
+// 回报接线;账户扇出。**钱路径**:下单只在最后一步发生,且要同时满足:校验通过、熔断未触发。
 // 期望值:tests/fixtures/gen_engine_core.mjs(原 TradingEngine 对着脚本驱动的假 router / 假解析器 / 真交易库与熔断开关、虚拟钟现跑,
 // 对 router / 库 / 通知 / 熔断 / 解析器的每一次调用的方法、参数、虚拟时刻、先后,与各步结果、内部状态、整个库的最终样子一并记下),tests/engine_core_world.h 放同样的脚本给这里。
 //
@@ -112,7 +112,7 @@ struct EngineArgs {
     std::shared_ptr<domain::TradeStore> store;
     /// 空 = new Notifier()
     std::shared_ptr<util::Notifier> notifier;
-    /// 空 = <db 所在目录>/breaker.json,阈值取 policies.consecutive_failure_breaker
+    /// 空 = <db 所在目录>/breaker.json
     std::shared_ptr<util::KillSwitch> killswitch;
     std::shared_ptr<EngineRouter> router;
     /// 空 = loadPromptBundle(settings)
@@ -166,7 +166,7 @@ public:
     std::function<double()> awakeClock;
 
     // ---- 指令
-    /// 解析一条指令并走完校验 / 执行。accounts 是用户勾选的目标账户别名。dryRun:只解析、只校验,不发单(**不许**靠临时改 policies.auto_execute 实现)
+    /// 解析一条指令并走完校验 / 执行。accounts 是用户勾选的目标账户别名。dryRun:只解析、只校验,不发单
     util::Task<EngineResult> handleInstruction(QString instruction, QString channel = QStringLiteral("manual"), std::optional<domain::EtNow> moment = std::nullopt,
                                                std::optional<Rec> snapshot = std::nullopt, std::optional<QStringList> accounts = std::nullopt, bool dryRun = false,
                                                InstructionScope scope = {});

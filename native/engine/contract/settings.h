@@ -36,13 +36,10 @@ struct Limits {
 };
 
 struct Policies {
-    bool auto_execute = false;
-    bool allow_live_trading = false;
     bool auto_outside_rth = true;
     bool require_trigger_price_verification = false;
     double trigger_min_gap_bps = 0;
     QString closed_market_policy;
-    double consecutive_failure_breaker = 0;
     bool review_feature_enabled = false;
 };
 

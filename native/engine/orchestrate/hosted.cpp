@@ -210,37 +210,17 @@ util::Task<Rec> HostedOrders::syncHosted(std::optional<QList<Rec>> rows) {
         for (const char16_t* k : {u"account", u"symbol", u"sec_type", u"quantity", u"avg_cost", u"multiplier", u"currency", u"market_price", u"market_value", u"unrealized_pnl"})
             putDefined(posRaw, QString::fromUtf16(k), js::prop(&raw, QString::fromUtf16(k)));
         const tk::Position position = tk::makePosition(posRaw);
-        // 托管单只是挂着,不是立刻成交——时段闸门不适用,其余闸门照过:挂单也是发单,授权与熔断一个都不能少。
+        // 托管单只是挂着,不是立刻成交——时段闸门不适用,其余照过:挂单也是发单,手动熔断照样挡。
         // 追价平仓中的追踪已经落了闩(fired_at),但它的托管单正是要继续改的那一张,不算"已触发过"
         const bool sweeping = tk::sweepReason(track).has_value();
         tk::CloseGateArgs gate;
         gate.autoClose = &auto_;
         gate.position = &position;
-        gate.accountIsPaper = host_.accountIsPaper(account);
-        gate.autoExecute = host_.settings().policies.auto_execute;
-        gate.allowLiveTrading = host_.settings().policies.allow_live_trading;
-        // 自动熔断不挡追价平仓:那是在减仓,和软件止损同一口径
-        gate.breakerEngaged = breaker.engaged && !(breaker.autoEngaged && sweeping);
+        gate.breakerEngaged = breaker.engaged;
         gate.marketStatus = u"盘中"_s;
         gate.alreadyFired = js::truthy(js::prop(&track, u"fired_at"_s)) && !sweeping;
         const QStringList blockers = tk::closeBlockers(gate);
         if (!blockers.isEmpty()) {
-            // 挡住它的只有**自动**熔断:券商侧已经挂着的托管单原样留着,只是不再挂新的、不再改价
-            bool onlyBreaker = true;
-            for (const QString& b : blockers) onlyBreaker = onlyBreaker && b == tk::kBlockBreaker;
-            if (breaker.autoEngaged && onlyBreaker) {
-                Rec b = js::object({{u"id"_s, js::S(tid)}});
-                putDefined(b, u"symbol"_s, js::prop(&track, u"symbol"_s));
-                b.set(u"blockers"_s, js::array({js::S(tk::kBlockBreaker + u"(自动熔断:券商侧已挂的托管单原样保留,不再改价)"_s)}));
-                pushTo(u"blocked"_s, b);
-                if (hosted_.contains(tid)) {
-                    Rec h = js::object({{u"id"_s, js::S(tid)}});
-                    putDefined(h, u"symbol"_s, js::prop(&track, u"symbol"_s));
-                    h.set(u"orders"_s, hostedRows(tid));
-                    pushTo(u"hosted"_s, h);
-                }
-                continue;
-            }
             co_await cancelHostedTrack(tid, blockers.join(u"、"_s));
             Rec b = js::object({{u"id"_s, js::S(tid)}});
             putDefined(b, u"symbol"_s, js::prop(&track, u"symbol"_s));
@@ -368,26 +348,19 @@ util::Task<Rec> HostedOrders::syncHosted(std::optional<QList<Rec>> rows) {
                 failure = std::current_exception();
             }
             if (failure) {
-                // 单张失败不拖垮整轮。也不每秒重来:退避一分钟;拼不出合约这类我们自己的错,券商那边永远不会好,退避十分钟且不算券商失败
+                // 单张失败不拖垮整轮。也不每秒重来:退避一分钟;拼不出合约这类我们自己的错,券商那边永远不会好,退避十分钟
                 const QString message = jsx::errorMessage(failure).left(300);
-                bool own = false, linkDown = false;
+                bool own = false;
                 try {
                     std::rethrow_exception(failure);
                 } catch (const HostedPlanError&) {
                     own = true;
-                } catch (const execution::LinkDownError&) {
-                    linkDown = true;
                 } catch (...) {
                 }
                 host_.store().audit(u"engine"_s, u"hosted_place_failed"_s,
                                     js::object({{u"track"_s, js::S(tid)}, {u"kind"_s, js::S(kind)}, {u"error"_s, js::S(message)}}));
                 hostedRetryAt_.insert(retryKey, Retry{nowMs() + (own ? 600'000 : 60'000), message, false});
                 host_.notifier().warning(js::str(js::prop(&track, u"symbol"_s)) + u" 的"_s + label + u"没有挂上:"_s + message);
-                // 链路断了不是券商拒单:不算失败,不往熔断上记(断线期间每个托管单一分钟一次,几分钟就能把熔断打合上)
-                if (!own && !linkDown) {
-                    const auto engaged = host_.killswitch().recordFailure(message, u"broker"_s);
-                    if (engaged) host_.notifier().breaker(engaged->reason);
-                }
             }
         }
         if (chase) {
@@ -451,10 +424,7 @@ void HostedOrders::onTriggered(const TriggeredArgs& args, Rec& row, Rec& out) {
         tk::CloseGateArgs gate;
         gate.autoClose = &auto_;
         gate.position = &args.position;
-        gate.accountIsPaper = host_.accountIsPaper(js::str(js::prop(&track, u"account"_s)));
-        gate.autoExecute = host_.settings().policies.auto_execute;
-        gate.allowLiveTrading = host_.settings().policies.allow_live_trading;
-        gate.breakerEngaged = breaker.engaged && !breaker.autoEngaged;
+        gate.breakerEngaged = breaker.engaged;
         // 托管单挂着等成交,不是立刻发出去:时段闸门不适用(同 syncHosted)
         gate.marketStatus = u"盘中"_s;
         gate.alreadyFired = false;
@@ -690,7 +660,6 @@ util::Task<> HostedOrders::placeHostedOne(Rec track, Rec item, QString oca) {
             co_return;
         }
     }
-    host_.killswitch().recordSuccess(u"broker"_s);
     host_.notifier().notify(u"托管单已挂出"_s, js::str(js::prop(&track, u"symbol"_s)) + u":"_s + label);
 }
 

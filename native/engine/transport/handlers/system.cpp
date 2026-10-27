@@ -51,9 +51,7 @@ QJsonObject systemStatus(qint64 epochMs) {
         {u"prompt_version"_s, u""_s},
         {u"prompt_fingerprint"_s, u""_s},
         {u"model"_s, u""_s},
-        {u"auto_execute"_s, false},
-        {u"allow_live_trading"_s, false},
-        {u"breaker"_s, QJsonObject{{u"engaged"_s, false}, {u"reason"_s, u""_s}, {u"consecutive_failures"_s, 0}}},
+        {u"breaker"_s, QJsonObject{{u"engaged"_s, false}, {u"reason"_s, u""_s}}},
         {u"protections"_s, QJsonObject{
              {u"paused"_s, false},
              {u"rule"_s, u""_s},

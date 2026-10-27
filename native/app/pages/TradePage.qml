@@ -144,15 +144,7 @@ ScrollPage {
                 }
                 Label { visible: !!(page.m.picker && page.m.picker.hint); text: page.m.picker ? page.m.picker.hint : ""; size: 11; color: Theme.labelSecondary; css: 26 }
             }
-            // 实盘闸门 / 保护规则的提醒(.live-gate:上 6、间距 8、11px 二级色)
-            Flow {
-                visible: !!page.m.liveGate
-                width: parent.width
-                topPadding: 6
-                spacing: 8
-                Label { width: Math.min(implicitWidth, parent.width - 70); wrap: true; text: page.m.liveGate || ""; size: 11; color: Theme.labelSecondary; css: lineCount > 1 ? 1.47 : 24 }
-                Button { small: true; text: "去设置"; onClicked: page.navigate("settings") }
-            }
+            // 保护规则的提醒(上 6、11px 二级色)
             Label { visible: !!page.m.guard; width: parent.width; wrap: true; topPadding: 6; text: page.m.guard || ""; size: 11; color: Theme.labelSecondary }
             Label { visible: !!page.m.accountPauses; width: parent.width; wrap: true; topPadding: 6; text: page.m.accountPauses || ""; size: 11; color: Theme.labelSecondary }
             // 速记片段(.shorthand-chips 上 10、间距 6;.chip-tag:3 × 10、控件圆角、12px 行高 1.5、填充底正文色)

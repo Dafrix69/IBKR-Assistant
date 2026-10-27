@@ -13,8 +13,8 @@
   `invalid` 的原因就是校验那一句原话。
 - 主进程认出 78 就不再自动重启,弹对话框:「恢复上一份可用的配置」(有备份、且和现在这份不一样时才有)、「打开配置文件所在位置」
   (点完对话框会再出来)、「我改好了,重试」、「退出」。主进程只认得出 JSON 语法,字段对不对由引擎启动时校验,还不过就再弹一次。
-- **不自动恢复备份**:备份比现状旧,用户刚关掉「允许自动执行」时写盘出事,自动恢复会把它悄悄打开。
-  恢复只在用户点了按钮之后做,恢复出来的配置里**三个执行闸门一律关闭**;坏的那一份改名成 `settings.json.broken-<时间>` 留在旁边。
+- **不自动恢复备份**:备份比现状旧,用户刚收紧限额或打开保护规则时写盘出事,自动恢复会把它悄悄换回旧值。
+  恢复只在用户点了按钮之后做;坏的那一份改名成 `settings.json.broken-<时间>` 留在旁边。
 
 ## 交易库(`trades.db`)
 
@@ -88,7 +88,7 @@
 | 文件 | 内容 |
 |---|---|
 | `tests/config-durability.spec.ts` | 原子写与 `.bak`、`ConfigLoadError` 三种、rpc 入口的退出码与那一行话 |
-| `tests/desktop-config-guard.spec.ts` | 恢复:闸门关上、坏文件留着、两头的退出码与文件名一致 |
+| `tests/desktop-config-guard.spec.ts` | 恢复:坏文件留着、两头的退出码与文件名一致 |
 | `tests/store-safety.spec.ts` | 版本号、upgrade / daily 备份、清理、坏库与新库、备份失败不挡开库、`data.backups` / `data.backup` |
 | `tests/desktop-store-guard.spec.ts` | 恢复:只认文件名、WAL 一起挪走、坏库改名、恢复出来的库打得开 |
 | `tests/submit-intent.spec.ts` | 发单那一刻库里已经认得这条记录;发到一半被杀之后的认领、去向不明、重复单检查 |

@@ -208,6 +208,7 @@ private slots:
 
         QList<int> matched, regressed;
         QStringList firstDiffs;
+        QJsonArray actual;  // IBKR_GOLDEN_RPC_DUMP=文件:把每一步归一化之后的回执写出来(行为刻意改了、要重定期望时对着看)
         for (int i = 0; i < requests.size(); ++i) {
             const QJsonObject step = requests[i].toObject();
             const QJsonObject req{{u"jsonrpc"_s, u"2.0"_s}, {u"id"_s, i}, {u"method"_s, step[u"method"_s]}, {u"params"_s, substitute(step[u"params"_s], vars)}};
@@ -219,6 +220,7 @@ private slots:
             QJsonObject picked;
             if (response.contains(u"result")) picked.insert(u"result"_s, response.value(u"result"));
             if (response.contains(u"error")) picked.insert(u"error"_s, response.value(u"error"));
+            actual.append(normalize(picked));
             const QString diff = deepCompare(normalize(picked), expected[i], u"%1[%2]"_s.arg(step[u"method"_s].toString()).arg(i));
             if (diff.isEmpty()) matched << i;
             else {
@@ -228,6 +230,10 @@ private slots:
         }
         engine.closeWriteChannel();
         engine.waitForFinished(5000);
+        if (qEnvironmentVariableIsSet("IBKR_GOLDEN_RPC_DUMP")) {
+            QFile f(qEnvironmentVariable("IBKR_GOLDEN_RPC_DUMP"));
+            if (f.open(QIODevice::WriteOnly)) f.write(QJsonDocument(actual).toJson(QJsonDocument::Indented));
+        }
 
         QList<int> fresh;
         for (int i : matched) if (!passing.contains(i)) fresh << i;

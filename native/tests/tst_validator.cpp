@@ -90,6 +90,7 @@ class TestValidator : public QObject {
     OJson fx_;
 
 private slots:
+    void cleanupTestCase() { jsfix::rewrite(u"validator.json"_s, fx_); }
     void initTestCase() {
         fx_ = jsfix::load(u"validator.json"_s);
         QVERIFY(fx_.get(u"cases"_s)->items.size() > 300);

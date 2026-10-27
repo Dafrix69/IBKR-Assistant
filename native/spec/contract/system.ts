@@ -12,14 +12,12 @@ export interface BreakerState {
   reason: string;
   /** 合闸时刻(ISO);没合闸时是空串 */
   at: string;
-  consecutive_failures: number;
 }
 
 /** 状态条上那一格:不带合闸时刻,界面只显示"停没停、为什么"。 */
 export interface BreakerBrief {
   engaged: boolean;
   reason: string;
-  consecutive_failures: number;
 }
 
 export interface BreakerHaltParams {
@@ -119,8 +117,6 @@ export interface SystemStatus {
   prompt_version: string;
   prompt_fingerprint: string;
   model: string;
-  auto_execute: boolean;
-  allow_live_trading: boolean;
   breaker: BreakerBrief;
   protections: ProtectionsSummary;
   broker_provider: string;

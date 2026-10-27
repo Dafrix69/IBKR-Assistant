@@ -1,7 +1,7 @@
 // 「接入」的接线(shell/access_controller,照 pages/Access.tsx 与五节):对着假引擎。
 //   · 子页签记在本机;一次只挂一节:进来读、换走清掉、晚到的回包不落地;
 //   · TWS:检测程序与端口、读券商目录;「检测连接」的入参与读着 / 失败;启动程序带 __confirmed、发通知、过一会儿重新检测、失败横幅带「启动失败:」;
-//   · 富途:换券商先过确认框(purpose broker.select,绑着那一家),取消不发;交易密码只往 futu.set_password 送、存完清掉;解锁的几种说法;
+//   · 富途:换券商不弹框,直接发;交易密码只往 futu.set_password 送、存完清掉;解锁的几种说法;
 //   · 账户:改动交给壳,成了清掉表单、横幅、过一会儿刷新;取消不说话;失败横幅;
 //   · 大模型:按目录与供应商重填表单(同一份目录再来不冲掉没存的);数字框不合规先说;测试带一把还没存的 key;保存与存 key 的入参;
 //   · 跟单:读状态、引擎报 follow 时重读但不动表单;关是当场生效的;有毛病不发;打开着保存要过确认框(gate.follow)。
@@ -162,16 +162,10 @@ private slots:
         page.setSub(u"futu"_s);
         page.setVisible(true);
         QTRY_VERIFY(page.model()[u"providers"_s][u"cards"_s].isArray());
-        // 换券商:确认框;取消不发
-        rig.asker.answer = false;
-        page.switchBroker(u"futu"_s, u"富途证券(OpenD)"_s);
-        QTRY_COMPARE(rig.asker.boxes.size(), 1);
-        QCOMPARE(rig.asker.boxes[0].title, u"切换下单的券商"_s);  // 带 purpose 的框,标题由 Bridge 按用途写
-        QTest::qWait(80);
-        QCOMPARE(rig.calls(u"broker.select"_s), 0);
-        rig.asker.answer = true;
+        // 换券商:不弹框,直接发
         page.switchBroker(u"futu"_s, u"富途证券(OpenD)"_s);
         QTRY_COMPARE(rig.calls(u"broker.select"_s), 1);
+        QCOMPARE(rig.asker.boxes.size(), 0);
         QCOMPARE(rig.params(u"broker.select"_s).first(), u"{\"provider\":\"futu\"}"_s);
         QTRY_COMPARE(rig.status.banner(), u"已切到 富途证券(OpenD)。请在下面点「连接 / 断开交易引擎」重新连接。"_s);
         // 交易密码:空着不发;存完清掉、横幅
@@ -302,18 +296,13 @@ private slots:
         QCOMPARE(rig.status.banner(), u"还不能保存:到点平仓的钟点要写成美东时间的 HH:MM(如 15:45),或者空着(另有 1 处)"_s);
         QCOMPARE(page.model()[u"problems"_s].toArray().size(), 2);
         QCOMPARE(rig.calls(u"settings.patch"_s), 1);
-        // 开着保存:确认框(取消不发),确认了带着整份
+        // 开着保存:不弹框,带着整份
         page.setFollow(u"maxAge"_s, 30);
         page.setFollow(u"trackExitAt"_s, u"15:45"_s);
         page.setFollowEnabled(true);
-        rig.asker.answer = false;
-        page.saveFollow();
-        QTRY_COMPARE(rig.asker.boxes.size(), 1);
-        QTest::qWait(80);
-        QCOMPARE(rig.calls(u"settings.patch"_s), 1);
-        rig.asker.answer = true;
         page.saveFollow();
         QTRY_COMPARE(rig.calls(u"settings.patch"_s), 2);
+        QCOMPARE(rig.asker.boxes.size(), 0);
         QVERIFY(rig.params(u"settings.patch"_s).last().contains(u"\"max_orders_per_day\":7"_s));
         QTRY_COMPARE(rig.status.banner(), u"已保存:自动跟单开着。"_s);
         // token:空着不发;存完清掉

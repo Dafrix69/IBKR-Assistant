@@ -263,14 +263,11 @@ private slots:
             return cli::main(args + QStringList{u"--config"_s, settingsPath}, io, rpc);
         };
         QStringList err;
-        // 没带确认开关:不管 auto_execute 开没开,先说开关的事(两种配置都一样)
+        // 没带确认开关:先说开关的事(老配置里的 auto_execute 写成什么都一样,已经不认它了)
         for (const bool on : {false, true}) {
             QCOMPARE(go(on, {u"run"_s, u"买入 AAPL"_s}, &err), 1);
             QCOMPARE(err, (QStringList{u"拒绝执行:缺少 --i-understand-this-places-real-orders 开关。"_s}));
         }
-        // 带了开关、配置里 auto_execute=false:拒绝
-        QCOMPARE(go(false, {u"run"_s, u"买入 AAPL"_s, u"--i-understand-this-places-real-orders"_s}, &err), 1);
-        QCOMPARE(err, (QStringList{u"拒绝执行:配置里 policies.auto_execute=false。"_s}));
     }
 
     /// parse 永不下单:配置里 auto_execute=true 也只解析、只校验(validated_only),不发、不记券商错

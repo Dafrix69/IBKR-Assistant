@@ -154,9 +154,9 @@
       },
       "values": {
         "tp": 200,
-        "sl": 170
+        "sl": 170,
+        "autoPicked": false
       },
-      "autoExecute": false,
       "previews": [],
       "confirms": [],
       "addResult": {
@@ -241,7 +241,6 @@
         "trail": 5,
         "autoPicked": true
       },
-      "autoExecute": false,
       "previews": [],
       "confirms": [
         true
@@ -351,7 +350,6 @@
       "values": {
         "sl": 170
       },
-      "autoExecute": true,
       "previews": [],
       "confirms": [
         true
@@ -462,7 +460,6 @@
         "sl": 170,
         "autoPicked": true
       },
-      "autoExecute": false,
       "previews": [],
       "confirms": [
         false
@@ -526,9 +523,9 @@
       },
       "values": {
         "sl": 170,
-        "host": true
+        "host": true,
+        "autoPicked": false
       },
-      "autoExecute": false,
       "previews": [],
       "confirms": [],
       "addResult": null,
@@ -575,7 +572,6 @@
         "autoPicked": true,
         "orderType": "LMT"
       },
-      "autoExecute": false,
       "previews": [],
       "confirms": [
         true
@@ -688,7 +684,6 @@
         "fraction": 50,
         "autoPicked": true
       },
-      "autoExecute": false,
       "previews": [],
       "confirms": [
         true
@@ -799,7 +794,6 @@
         "autoPicked": true,
         "chaseMax": 20
       },
-      "autoExecute": false,
       "previews": [
         {
           "spot_target": {
@@ -941,7 +935,6 @@
         "spotTarget": 7750,
         "autoPicked": true
       },
-      "autoExecute": false,
       "previews": [
         {
           "spot_target": {
@@ -1011,7 +1004,6 @@
         "spotTarget": 7750,
         "autoPicked": true
       },
-      "autoExecute": false,
       "previews": [
         {
           "spot_target": {
@@ -1082,7 +1074,6 @@
         "spotTarget": 7750,
         "autoPicked": true
       },
-      "autoExecute": false,
       "previews": [
         "throw:读道满了"
       ],
@@ -1147,7 +1138,6 @@
         "spotTarget": 7750,
         "autoPicked": true
       },
-      "autoExecute": false,
       "previews": [
         {
           "spot_target": {
@@ -1213,7 +1203,6 @@
         "spotTarget": 7750,
         "autoPicked": true
       },
-      "autoExecute": false,
       "previews": [
         {
           "spot_target": null
@@ -1274,9 +1263,9 @@
       },
       "values": {
         "spotTarget": 7750,
-        "tp": 9
+        "tp": 9,
+        "autoPicked": false
       },
-      "autoExecute": false,
       "previews": [],
       "confirms": [],
       "addResult": {
@@ -1365,7 +1354,6 @@
         "orderType": "LMT",
         "stopBelow": 7680
       },
-      "autoExecute": false,
       "previews": [
         {
           "spot_target": {
@@ -1507,7 +1495,6 @@
         "sl": 1.2,
         "orderType": "LMT"
       },
-      "autoExecute": false,
       "previews": [],
       "confirms": [
         true
@@ -1621,7 +1608,6 @@
         "sl": 1.2,
         "autoPicked": true
       },
-      "autoExecute": false,
       "previews": [],
       "confirms": [
         true
@@ -1735,7 +1721,6 @@
         "sl": 170,
         "autoPicked": true
       },
-      "autoExecute": false,
       "previews": [],
       "confirms": [
         true
@@ -1848,7 +1833,6 @@
         "autoPicked": true,
         "orderType": "LMT"
       },
-      "autoExecute": false,
       "previews": [],
       "confirms": [
         true
@@ -1963,9 +1947,9 @@
       },
       "values": {
         "profitDd": 30,
-        "ddArm": 15
+        "ddArm": 15,
+        "autoPicked": false
       },
-      "autoExecute": false,
       "previews": [],
       "confirms": [],
       "addResult": {
@@ -2049,9 +2033,9 @@
       },
       "values": {
         "profitDd": 30,
-        "ddArm": null
+        "ddArm": null,
+        "autoPicked": false
       },
-      "autoExecute": false,
       "previews": [],
       "confirms": [],
       "addResult": {
@@ -2146,7 +2130,6 @@
         },
         "autoPicked": true
       },
-      "autoExecute": false,
       "previews": [],
       "confirms": [],
       "addResult": null,
@@ -2207,7 +2190,6 @@
           ]
         }
       },
-      "autoExecute": false,
       "previews": [],
       "confirms": [
         true
@@ -2354,9 +2336,9 @@
           "chaseMax": null,
           "peakConfirm": false,
           "tiers": []
-        }
+        },
+        "autoPicked": false
       },
-      "autoExecute": false,
       "previews": [],
       "confirms": [],
       "addResult": null,
@@ -2410,7 +2392,6 @@
         },
         "autoPicked": true
       },
-      "autoExecute": false,
       "previews": [],
       "confirms": [
         true
@@ -2518,9 +2499,9 @@
         "account": "模拟"
       },
       "values": {
-        "sl": 170
+        "sl": 170,
+        "autoPicked": false
       },
-      "autoExecute": false,
       "previews": [],
       "confirms": [],
       "addResult": "throw:止损价要低于现价",
@@ -2593,9 +2574,9 @@
         "sl": 0,
         "trail": 12.5,
         "fraction": 100,
-        "chaseMax": 0
+        "chaseMax": 0,
+        "autoPicked": false
       },
-      "autoExecute": false,
       "previews": [],
       "confirms": [],
       "addResult": {

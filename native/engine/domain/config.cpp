@@ -740,7 +740,7 @@ contract::Limits buildLimits(V raw) {
 }
 
 contract::Policies buildPolicies(V raw) {
-    // allow_combo_live:已撤掉的开关,老配置里还写着,认下、不用
+    // allow_combo_live、auto_execute、allow_live_trading、consecutive_failure_breaker:已撤掉的开关,老配置里还写着,认下、不用
     rejectUnknown({u"auto_execute"_s, u"allow_live_trading"_s, u"auto_outside_rth"_s, u"require_trigger_price_verification"_s, u"trigger_min_gap_bps"_s,
                    u"closed_market_policy"_s, u"consecutive_failure_breaker"_s, u"review_feature_enabled"_s, u"allow_combo_live"_s},
                   raw, u"policies"_s);
@@ -748,13 +748,10 @@ contract::Policies buildPolicies(V raw) {
     if (!includesStr(kClosedMarketPolicies, policy)) throw JsError(u"policies.closed_market_policy 只能是 "_s + sortedCopy(kClosedMarketPolicies).join(u"、"_s));
     const QString P = u"policies"_s;
     contract::Policies p;
-    p.auto_execute = flag(raw, u"auto_execute"_s, false, P);
-    p.allow_live_trading = flag(raw, u"allow_live_trading"_s, false, P);
     p.auto_outside_rth = flag(raw, u"auto_outside_rth"_s, true, P);
     p.require_trigger_price_verification = flag(raw, u"require_trigger_price_verification"_s, true, P);
     p.trigger_min_gap_bps = numReq(raw, u"trigger_min_gap_bps"_s, false, 5.0, P, kMin0f);
     p.closed_market_policy = policy.p->s;
-    p.consecutive_failure_breaker = numReq(raw, u"consecutive_failure_breaker"_s, true, 3, P, kMin1);
     p.review_feature_enabled = flag(raw, u"review_feature_enabled"_s, false, P);
     return p;
 }
@@ -873,7 +870,7 @@ QStringList livePaperMismatches(Settings& s) {
         if (!a.is_paper || s.accountBroker(a) != u"ibkr") continue;
         if (a.account_id.startsWith(u'D') || a.account_id.startsWith(u'd')) continue;
         a.is_paper = false;
-        out << u"账户 %1 标的是纸面账户,但账号不是 IBKR 模拟账号的样子(模拟账号以 D 开头),已按实盘账户处理(下单要过「允许实盘账户下单」这道闸)。如果它确实是模拟账户,请核对账号有没有填错。"_s.arg(a.alias);
+        out << u"账户 %1 标的是纸面账户,但账号不是 IBKR 模拟账号的样子(模拟账号以 D 开头),已按实盘账户处理。如果它确实是模拟账户,请核对账号有没有填错。"_s.arg(a.alias);
     }
     return out;
 }
@@ -1034,7 +1031,7 @@ Settings fromDict(const OJson& rawJson, const std::optional<QString>& source) {
     s.source_path = source;
     s.paper_flag_missing = paperMissing;
     for (const QString& alias : paperMissing)
-        s.config_warnings << u"账户 %1 没写 is_paper,已按实盘账户处理(下单要过「允许实盘账户下单」这道闸)。请在 config/settings.json 里给它写明 \"is_paper\": true 或 false。"_s.arg(alias);
+        s.config_warnings << u"账户 %1 没写 is_paper,已按实盘账户处理。请在 config/settings.json 里给它写明 \"is_paper\": true 或 false。"_s.arg(alias);
     assertAccountConnections(s);
     s.config_warnings << livePaperMismatches(s);
     arena().clear();

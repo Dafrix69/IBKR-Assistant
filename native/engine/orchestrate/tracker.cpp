@@ -577,8 +577,6 @@ QString closeSide(const Position& p) { return isLong(p) ? u"SELL"_s : u"BUY"_s; 
 
 // ================================================================ 自动平仓
 const QString kBlockDisabled = u"该持仓没有开启自动平仓"_s;
-const QString kBlockAutoExecute = u"全局自动执行未打开"_s;
-const QString kBlockLive = u"实盘账户需要先在「设置」里允许实盘下单"_s;
 const QString kBlockBreaker = u"已熔断,不再发出任何新单"_s;
 const QString kBlockMarket = u"当前时段不能交易"_s;
 const QString kBlockAlready = u"这个追踪已经触发过一次,不重复发单"_s;
@@ -615,8 +613,6 @@ QStringList closeBlockers(const CloseGateArgs& args) {
     if (!js::truthy(js::prop(args.autoClose, u"enabled"_s))) blocked << kBlockDisabled;
     if (args.alreadyFired) blocked << kBlockAlready;
     if (args.position->quantity == 0 || std::isnan(args.position->quantity)) blocked << kBlockQty;
-    if (!args.autoExecute) blocked << kBlockAutoExecute;
-    if (!args.accountIsPaper && !args.allowLiveTrading) blocked << kBlockLive;
     if (args.breakerEngaged) blocked << kBlockBreaker;
     QStringList tradable{u"盘中"_s};
     if (args.outsideRth) tradable += kExtendedSessions;

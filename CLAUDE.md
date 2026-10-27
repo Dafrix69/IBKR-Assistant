@@ -34,7 +34,7 @@ cd native && cmake --preset mac-debug && cmake --build --preset mac-debug && cte
   feature 文档只写现在的样子:不写日期、不写"以前 / 后来改成"、不写修过的缺陷与每一次真机核对的经过(历史在 git 里);
   哪些路径已在真机核对、哪些只有离线测试,写成一段当前状态。事故写 `docs/journal/`。
   用户看得见的改动还要进两处:`CHANGELOG.md` 的「未发布」,以及 `docs/user-guide/` 里对应的那一页。
-- 会发单 / 授权发单 / 开闸门 / 放宽限额的新 RPC 方法,要进 `native/shell/rpc_policy` 的敏感表与 `confirm_grants` 的授权表。
+- 会发单 / 授权发单 / 放宽限额的新 RPC 方法,要进 `native/shell/rpc_policy` 的敏感表。
 - 改条款文本(`docs/legal/`)的实质内容:三份开头的「版本」与 `native/shell/consent` 的 `kTermsVersion` 一起改成新日期。
 - 新的外部域名(引擎要连一个新的数据源):先改 `docs/legal/privacy.md`。
 - 落盘的日志一律过脱敏(`engine/util/redact`);新加一种会进日志的敏感内容,先在那里加规则和测试。

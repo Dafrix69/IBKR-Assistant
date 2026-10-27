@@ -1,9 +1,8 @@
 // 交易指令页的提交(shell/trade_composer),两层:
 //   · 对着原 store/trade.ts 真跑出来的步骤逐步比(tests/fixtures/gen_trade_page.mjs 的 actions):确认框上写什么、调了什么、
 //     每一步之后 store 里的输入框 / 结果是什么样(含 __elapsedMs 的取整);
-//   · 端到端:真的 Bridge(白名单、条款同意、确认框凭据)对着假引擎。发送 = 先确认框、点了确认才发 instruction.submit,
-//     引擎收到的就是 { text, execute, accounts }(没有 __confirmed、没有多的键);点取消一个请求都不发;只解析不弹框;
-//     确认框上写着发到哪些账户、各是纸面还是实盘(问引擎,不听页面的)。
+//   · 端到端:真的 Bridge(白名单、条款同意)对着假引擎。发送不弹框,直接发 instruction.submit,
+//     引擎收到的就是 { text, execute, accounts }(没有 __confirmed、没有多的键)。
 #include "shell/bridge.h"
 #include "shell/consent.h"
 #include "shell/status_store.h"
@@ -224,36 +223,18 @@ private slots:
     }
 
     // ---- 端到端:真的桥 ----
-    void executeGoesThroughTheGrant() {
+    // 发送不弹确认框:点下去就发
+    void executeSendsWithoutAsking() {
         Rig rig;
         rig.composer->setText(u"  买 1 股 AAPL 限价 200 "_s);
         rig.composer->submit(true, {u"模拟"_s, u"主账户"_s});
         QTRY_COMPARE(rig.received(u"instruction.submit"_s).size(), 1);
         QCOMPARE(rig.received(u"instruction.submit"_s).at(0),
                  (QJsonObject{{u"text"_s, u"买 1 股 AAPL 限价 200"_s}, {u"execute"_s, true}, {u"accounts"_s, QJsonArray{u"模拟"_s, u"主账户"_s}}}));
-        QCOMPARE(rig.prompter.boxes.size(), 1);
-        const shell::ConfirmBox& box = rig.prompter.boxes.at(0);
-        QCOMPARE(box.title, u"发送真实订单"_s);
-        QCOMPARE(box.message, u"发送真实订单(含实盘账户)"_s);
-        QCOMPARE(box.confirmLabel, u"我确认,发送"_s);
-        QVERIFY2(box.detail.contains(u"账户:模拟(纸面)、主账户(实盘)"_s), qPrintable(box.detail));
-        QVERIFY2(box.detail.contains(u"指令:买 1 股 AAPL 限价 200"_s), qPrintable(box.detail));
-        QVERIFY2(box.detail.contains(u"这条指令解析后会直接发送到IBKR,没有二次确认环节。"_s), qPrintable(box.detail));
+        QCOMPARE(rig.prompter.boxes.size(), 0);
         QTRY_VERIFY(rig.composer->busy().isEmpty());
         QVERIFY(rig.composer->payload().isObject());
         QVERIFY(rig.composer->payload()[u"__elapsedMs"].isDouble());
-    }
-
-    void cancelSendsNothing() {
-        Rig rig;
-        rig.prompter.answer = false;
-        rig.composer->setText(u"买 1 股 AAPL"_s);
-        rig.composer->submit(true, {u"模拟"_s});
-        QTRY_COMPARE(rig.prompter.boxes.size(), 1);
-        QTest::qWait(150);
-        QCOMPARE(rig.received(u"instruction.submit"_s).size(), 0);
-        QVERIFY(rig.composer->busy().isEmpty());
-        QCOMPARE(rig.composer->payload(), QJsonValue());
     }
 
     void parseNeedsNoConfirm() {

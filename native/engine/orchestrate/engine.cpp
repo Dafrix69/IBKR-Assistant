@@ -197,7 +197,7 @@ TradingEngine::TradingEngine(EngineArgs args)
       router_(std::move(args.router)),
       setTimeout_(defaultSetTimeout()) {
     killswitch_ = args.killswitch ? std::move(args.killswitch)
-                                  : std::make_shared<util::KillSwitch>(QFileInfo(settings.db_path).path() + u"/breaker.json"_s, settings.policies.consecutive_failure_breaker);
+                                  : std::make_shared<util::KillSwitch>(QFileInfo(settings.db_path).path() + u"/breaker.json"_s);
     bundle = args.bundle ? std::move(*args.bundle) : prompts::loadPromptBundle(settings);
     storePort_ = args.storePort ? std::move(args.storePort) : std::shared_ptr<CoreStore>(makeCoreStorePort(*store_));
     breakerPort_ = args.breakerPort ? std::move(args.breakerPort) : std::shared_ptr<BreakerPort>(makeBreakerPort(*killswitch_));
@@ -259,7 +259,7 @@ Task<EngineResult> TradingEngine::handleInstruction(QString instruction, QString
 
     const util::BreakerState breaker = breakerPort_->state();
     if (breaker.engaged) {
-        const QString message = u"自动执行已熔断("_s + breaker.reason + u"),本条指令未解析。请在软件里手动解除后重试。"_s;
+        const QString message = u"已熔断("_s + breaker.reason + u"),本条指令未解析。请在软件里手动解除后重试。"_s;
         notifier_->breaker(message);
         result.warnings << message;
         co_return result;
@@ -287,7 +287,7 @@ Task<EngineResult> TradingEngine::handleInstruction(QString instruction, QString
         const QString userMessage = prompts::renderUser(bundle, settings, instruction, at, QString(), &snap);
         std::optional<QString> llmError;
         try {
-            // 跟单那一趟:解析器一被叫到就拒(抛的不是 LLMError,引擎不计解析失败、不碰熔断,原样抛回)
+            // 跟单那一趟:解析器一被叫到就拒(抛的不是 LLMError,原样抛回)
             if (scope.localOnly) throw FollowLocalOnlyError();
             response = co_await parser->parse(bundle, userMessage);
         } catch (const domain::LLMError& exc) {
@@ -295,9 +295,7 @@ Task<EngineResult> TradingEngine::handleInstruction(QString instruction, QString
         }
         if (llmError) {
             // 调用失败 = 这条指令被拒了,不是"提示"
-            const auto engaged = breakerPort_->recordFailure(*llmError, u"parse"_s);
             notifier_->rejection(u"LLM_ERROR"_s, *llmError);
-            if (engaged) notifier_->breaker(engaged->reason);
             storePort_->audit(u"engine"_s, u"llm_error"_s, js::object({{u"instruction"_s, js::S(instruction)}, {u"error"_s, js::S(*llmError)}}));
             result.rejections << js::object({{u"source"_s, js::S(u"engine"_s)},
                                              {u"code"_s, js::S(u"LLM_ERROR"_s)},
@@ -322,9 +320,7 @@ Task<EngineResult> TradingEngine::handleInstruction(QString instruction, QString
         payloadError = jsx::errorMessage(std::current_exception());
     }
     if (payloadError) {
-        const auto engaged = breakerPort_->recordFailure(*payloadError, u"parse"_s);
         notifier_->rejection(u"BAD_PAYLOAD"_s, *payloadError);
-        if (engaged) notifier_->breaker(engaged->reason);
         storePort_->audit(u"engine"_s, u"bad_payload"_s, js::object({{u"error"_s, js::S(*payloadError)}, {u"raw"_s, js::S(response.text.left(2000))}}));
         result.rejections << js::object({{u"source"_s, js::S(u"engine"_s)},
                                          {u"code"_s, js::S(u"BAD_PAYLOAD"_s)},
@@ -333,8 +329,6 @@ Task<EngineResult> TradingEngine::handleInstruction(QString instruction, QString
         co_return result;
     }
 
-    // 只清"解析失败"计数。券商失败计数必须等真正下单成功才清。
-    breakerPort_->recordSuccess(u"parse"_s);
     if (const OJson* se = js::prop(&parsed, u"schema_errors"_s); js::isArr(se)) {
         for (const OJson& e : se->items) result.warnings << js::str(&e);
     }
@@ -411,9 +405,9 @@ Task<EngineResult> TradingEngine::handleInstruction(QString instruction, QString
         summary.set(u"ticket"_s, orderTicket(approved.order));
         const QString intent = js::str(js::prop(&approved.order, u"intent_summary"_s));
 
-        if (dryRun || !settings.policies.auto_execute) {
+        if (dryRun) {
             storePort_->appendEvent(recordId, u"status"_s, js::object({{u"status"_s, js::S(u"ValidatedOnly"_s)}}));
-            notifier_->warning(dryRun ? u"已通过校验(只解析,未发送):"_s + intent : u"已通过校验但未发送(自动执行未打开):"_s + intent);
+            notifier_->warning(u"已通过校验(只解析,未发送):"_s + intent);
             result.validated_only << summary;
             // 解析预热:后台把合约 qualify 一遍填 conId 缓存——用户下一步点「发送」时组合腿零往返。失败无害
             prewarm(approved);
@@ -468,10 +462,8 @@ Task<EngineResult> TradingEngine::handleInstruction(QString instruction, QString
         }
         if (brokerError) {
             storePort_->setFinalStatus(recordId, u"ibkr_error"_s, *brokerError);
-            const auto engaged = breakerPort_->recordFailure(*brokerError, u"broker"_s);
             const QString code = brokerCode();
             notifier_->rejection(code, *brokerError);
-            if (engaged) notifier_->breaker(engaged->reason);
             result.rejections << js::object({{u"source"_s, js::S(u"broker"_s)}, {u"code"_s, js::S(code)}, {u"message"_s, js::S(*brokerError)}, {u"record_id"_s, js::S(recordId)}});
             continue;
         }
@@ -479,8 +471,6 @@ Task<EngineResult> TradingEngine::handleInstruction(QString instruction, QString
         if (js::truthy(summary.get(u"queued"_s))) {
             result.queued << summary;
         } else {
-            // 真正把单发出去了才算"券商成功";仅进入盯盘队列不算。
-            breakerPort_->recordSuccess(u"broker"_s);
             result.submitted << summary;
         }
     }
@@ -589,12 +579,7 @@ Task<QList<Rec>> TradingEngine::firePending(Rec prices) {
         }
         if (failure) {
             storePort_->setFinalStatus(pending->record_id, u"ibkr_error"_s, *failure);
-            const auto engaged = breakerPort_->recordFailure(*failure, u"broker"_s);
             notifier_->rejection(brokerCode(), *failure);
-            if (engaged) {
-                notifier_->breaker(engaged->reason);
-                break;  // 熔断已挂起:本轮不再触发任何后续条件单
-            }
             continue;
         }
         if (unknown) {
@@ -602,15 +587,9 @@ Task<QList<Rec>> TradingEngine::firePending(Rec prices) {
             const QString where = router_ && router_->broker() == u"futu" ? u"富途客户端"_s : u"TWS"_s;
             const QString detail = u"触发下单过程中发生未知异常,订单可能已经到达券商,请立即在"_s + where + u"里核对未成交单:"_s + *unknown;
             storePort_->setFinalStatus(pending->record_id, u"ibkr_error"_s, detail);
-            const auto engaged = breakerPort_->recordFailure(*unknown, u"broker"_s);
             notifier_->rejection(brokerCode(), detail);
-            if (engaged) {
-                notifier_->breaker(engaged->reason);
-                break;
-            }
             continue;
         }
-        breakerPort_->recordSuccess(u"broker"_s);
         indexPlacement(pending->record_id, placement);
         const auto idOrNull = [](const std::optional<int>& v) { return v ? js::N(*v) : js::Null(); };
         storePort_->appendEvent(pending->record_id, u"trigger"_s,

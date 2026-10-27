@@ -105,13 +105,13 @@ std::optional<QString> unreachableReason(const std::optional<QSet<QString>>& cov
 QString closeSide(const Position& p);
 
 // ---- 自动平仓
-extern const QString kBlockDisabled, kBlockAutoExecute, kBlockLive, kBlockBreaker, kBlockMarket, kBlockAlready, kBlockQty;
+extern const QString kBlockDisabled, kBlockBreaker, kBlockMarket, kBlockAlready, kBlockQty;
 extern const QStringList kExtendedSessions;
 util::OJson makeAutoClose(const util::OJson& raw);
 struct CloseGateArgs {
     const util::OJson* autoClose = nullptr;
     const Position* position = nullptr;
-    bool accountIsPaper = false, autoExecute = false, allowLiveTrading = false, breakerEngaged = false;
+    bool breakerEngaged = false;
     QString marketStatus;
     bool outsideRth = false, alreadyFired = false;
 };

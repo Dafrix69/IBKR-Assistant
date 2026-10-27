@@ -527,7 +527,6 @@ QJsonArray resultCards(const QJsonObject& payload) {
 
 QJsonObject tradePageModel(const PageInput& in) {
     const QJsonObject st = in.status.toObject();
-    const bool hasStatus = in.status.isObject();
     const bool connected = jsTruthy(st.value("broker_connected"_L1));
     const bool engaged = jsTruthy(st.value("breaker"_L1).toObject().value("engaged"_L1));
     const QString gateway = gatewayName(in.status);
@@ -553,7 +552,6 @@ QJsonObject tradePageModel(const PageInput& in) {
          u"「%1」还是示例里的占位账号:解析得了指令,但订单发不到你的账户上。"_s.arg(in.placeholders.join(u"」「"_s)), u"已配置"_s, u"accounts"_s, u"去填写"_s, false},
         {connected, u"连接"_s + gateway, u"没有券商连接只能解析,不能下单,也拿不到行情。"_s, u"已连接"_s,
          st.value("broker_provider"_L1) == QJsonValue(u"futu"_s) ? u"futu"_s : u"tws"_s, u"去连接"_s, false},
-        {jsTruthy(st.value("auto_execute"_L1)), u"打开自动执行"_s, u"当前「仅解析」,校验通过也不发单。确认要下单再打开。"_s, u"已打开"_s, u"settings"_s, u"去设置"_s, true},
     };
     int blocking = 0;
     for (const Step& s : steps)
@@ -568,17 +566,13 @@ QJsonObject tradePageModel(const PageInput& in) {
 
     // 「发送」按钮只在真的会发到实盘账户时才橙字
     bool liveOn = false;
-    QStringList liveBlocked;
     for (const QJsonValue& av : usable) {
         const QJsonObject a = av.toObject();
         const bool live = !jsTruthy(a.value("is_paper"_L1));
         const bool on = picked.contains(jsString(a.value("alias"_L1)));
         if (live && (usable.size() < 2 || on)) liveOn = true;
-        // 会发到实盘、但实盘闸门还关着:这一份一定会被硬校验拦下,本地就知道
-        if (hasStatus && !jsTruthy(st.value("allow_live_trading"_L1)) && live && on) liveBlocked << jsString(a.value("alias"_L1));
     }
     QStringList blockers;
-    if (!jsTruthy(st.value("auto_execute"_L1))) blockers << u"自动执行未打开"_s;
     if (!connected) blockers << u"未连接 "_s + gateway;
     if (engaged) blockers << u"已熔断"_s;
 
@@ -598,10 +592,6 @@ QJsonObject tradePageModel(const PageInput& in) {
         picker = QJsonObject{{u"accounts"_s, accounts}, {u"hint"_s, hint}};
     }
 
-    QJsonValue liveGate;
-    if (!liveBlocked.isEmpty())
-        liveGate = u"「%1」是实盘账户,当前没有允许实盘下单,%2。"_s.arg(liveBlocked.join(u"」「"_s),
-                                                                    liveBlocked.size() == picked.size() ? u"这条指令会被校验拦下"_s : u"发到这个账户的那一份会被拦下"_s);
     // 保护规则暂停不算发送条件:它只挡新单、不挡平仓,由引擎判
     const QJsonObject prot = st.value("protections"_L1).toObject();
     QJsonValue guard;
@@ -662,7 +652,6 @@ QJsonObject tradePageModel(const PageInput& in) {
         {u"hotkeys"_s, in.mac ? u"⌘↩ 解析 · ⌘⇧↩ 发送"_s : u"Ctrl+Enter 解析 · Ctrl+Shift+Enter 发送"_s},
         {u"placeholder"_s, u"例:spx到7500时,开一张今天的 7520 7550 call spread。理由:突破 7500 整数关口后追动能"_s},
         {u"picker"_s, picker},
-        {u"liveGate"_s, liveGate},
         {u"guard"_s, guard},
         {u"accountPauses"_s, pauses},
         {u"chips"_s, shorthandChips()},
@@ -737,7 +726,6 @@ QStringList pageTexts(const QJsonObject& m, const QString& composerText) {
         for (const QJsonValue& a : p.value("accounts"_L1).toArray()) out << a.toObject().value("text"_L1).toString();
         if (!p.value("hint"_L1).toString().isEmpty()) out << p.value("hint"_L1).toString();
     }
-    if (m.value("liveGate"_L1).isString()) out << m.value("liveGate"_L1).toString() << u"去设置"_s;
     if (m.value("guard"_L1).isString()) out << m.value("guard"_L1).toString();
     if (m.value("accountPauses"_L1).isString()) out << m.value("accountPauses"_L1).toString();
     for (const QJsonValue& c : m.value("chips"_L1).toArray()) out << c.toArray().at(0).toString();

@@ -1,4 +1,4 @@
-// 「设置」与「关于」的接线(shell/settings_controller、about_controller,照 pages/Settings.tsx、About.tsx):对着假引擎与真的 Bridge(确认凭据真的核销)。
+// 「设置」与「关于」的接线(shell/settings_controller、about_controller,照 pages/Settings.tsx、About.tsx):对着假引擎与真的 Bridge。
 //   · 设置:进来读设置与备份清单;晚到的回包不落地;执行闸门关是当场生效的(只送那一个 false、失败拨回去),开只改表单;
 //     保存:有毛病不发、横幅说第一条;打开闸门各过一个确认框(取消拨回去、不存);放宽限额过 limits.loosen(取消不存);
 //     发出去的补丁就是 toPatch 的那一份;重要事件的口径防抖存、开关当场存、离开页面补存、失败横幅;立即备份、恢复交给壳;
@@ -128,36 +128,7 @@ private slots:
         QCOMPARE(page.model()[u"data"_s].toObject()[u"error"_s].toString(), u"引擎没起来"_s);
     }
 
-    void gateOffIsImmediateOnWaitsForSave() {
-        Rig rig;
-        shell::SettingsController page(&rig.bridge, &rig.status, &rig.events);
-        page.setVisible(true);
-        QTRY_VERIFY(!page.model()[u"loading"_s].toBool());
-        // 开:只改表单(允许实盘原本关着)
-        page.setGate(u"allowLive"_s, true);
-        QTest::qWait(150);
-        QCOMPARE(rig.calls(u"settings.patch"_s), 0);
-        QVERIFY(page.model()[u"dirty"_s].toBool());
-        page.setGate(u"allowLive"_s, false);
-        // 关(自动执行原本开着):当场只送那一个 false,不问
-        page.setGate(u"autoExecute"_s, false);
-        QTRY_COMPARE(rig.calls(u"settings.patch"_s), 1);
-        // __confirmed 由 Bridge 核销后摘掉,引擎收不到
-        QCOMPARE(rig.lastParams(u"settings.patch"_s), (QJsonObject{{u"patch"_s, QJsonObject{{u"policies"_s, QJsonObject{{u"auto_execute"_s, false}}}}}}));
-        QVERIFY(rig.asker.boxes.isEmpty());
-        QTRY_COMPARE(rig.status.banner(), u"已关闭自动执行,当场生效。"_s);
-        // 失败:拨回去,说没有关掉
-        page.setVisible(false);
-        page.setVisible(true);
-        QTRY_VERIFY(!page.model()[u"loading"_s].toBool());
-        rig.set(u"settings.patch"_s, QJsonObject{{u"__error"_s, u"引擎拒绝"_s}});
-        page.setGate(u"autoExecute"_s, false);
-        QCOMPARE(page.model()[u"gates"_s].toArray()[0].toObject()[u"checked"_s].toBool(), false);
-        QTRY_COMPARE(rig.status.banner(), u"没有关掉:引擎拒绝"_s);
-        QCOMPARE(page.model()[u"gates"_s].toArray()[0].toObject()[u"checked"_s].toBool(), true);
-    }
-
-    void saveChecksConfirmsAndSendsThePatch() {
+    void saveChecksAndSendsThePatch() {
         Rig rig;
         shell::SettingsController page(&rig.bridge, &rig.status, &rig.events);
         page.setVisible(true);
@@ -178,27 +149,8 @@ private slots:
         QCOMPARE(rig.status.banner(), u"还不能保存:「模拟」的单笔名义金额上限要大于 0;想用全局的就空着(另有 1 处)"_s);
         page.setAccountLimit(u"模拟"_s, u"notional"_s, QVariant());
         page.setAccountLimit(u"主账户"_s, u"notional"_s, 2000);
-        // 打开实盘:先问 gate.allow_live_trading;取消就拨回去、不存
-        page.setGate(u"allowLive"_s, true);
-        rig.asker.answer = false;
-        page.save();
-        QTRY_COMPARE(rig.asker.boxes.size(), 1);
-        QCOMPARE(rig.asker.boxes[0].title, u"允许实盘账户下单"_s);  // 带 purpose 的框,标题由 Bridge 按用途写
-        QTest::qWait(150);
-        QCOMPARE(rig.calls(u"settings.patch"_s), 0);
-        QCOMPARE(page.model()[u"gates"_s].toArray()[1].toObject()[u"checked"_s].toBool(), false);
-        // 放宽单笔金额(5000 → 8000):要过 limits.loosen;取消不存
-        rig.asker.boxes.clear();
+        // 放宽单笔金额(5000 → 8000)也不弹框:发出去的就是 toPatch 那一份
         page.setField(u"notional"_s, 8000);
-        page.save();
-        QTRY_COMPARE(rig.asker.boxes.size(), 1);
-        QCOMPARE(rig.asker.boxes[0].title, u"放宽风控限额"_s);
-        QVERIFY(rig.asker.boxes[0].detail.contains(u"→ 8,000"_s));
-        QTest::qWait(150);
-        QCOMPARE(rig.calls(u"settings.patch"_s), 0);
-        // 同意:发出去的就是 toPatch 那一份,凭据由 Bridge 核销(没有凭据它会拒)
-        rig.asker.answer = true;
-        rig.asker.boxes.clear();
         page.setField(u"slGuard"_s, true);
         page.setField(u"coolScope"_s, u"position"_s);
         page.setAccountLimit(u"主账户"_s, u"notional"_s, QVariant());
@@ -219,7 +171,7 @@ private slots:
         QCOMPARE(sent[u"patch"_s][u"limits"_s][u"by_account"_s][u"主账户"_s][u"max_order_notional"_s], QJsonValue(QJsonValue::Null));
         QTRY_COMPARE(rig.status.banner(), u"设置已保存,提示词与限额已同步更新。"_s);
         QVERIFY(rig.status.bannerInfo());
-        QCOMPARE(rig.asker.boxes.size(), 1);  // 只问了放宽限额
+        QVERIFY(rig.asker.boxes.isEmpty());
         QTRY_VERIFY(!page.model()[u"saving"_s].toBool());
         QCOMPARE(page.model()[u"problems"_s].toArray().size(), 0);
         // 保存失败:配置未改动

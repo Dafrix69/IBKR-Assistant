@@ -123,7 +123,7 @@ std::optional<Plan> applyChange(const OJson& config, const OJson& change, QStrin
     QStringList lines{
         u"别名:"_s + alias,
         u"账号:"_s + accountId,
-        u"类别:%1账户%2"_s.arg(kindOf(next), isPaper ? QString() : u"(发到它的订单会用真钱成交,要过「允许实盘账户下单」这道闸)"_s),
+        u"类别:%1账户%2"_s.arg(kindOf(next), isPaper ? QString() : u"(发到它的订单会用真钱成交)"_s),
         u"连接:%1(%2,端口 %3)"_s.arg(connection, broker == u"futu" ? u"富途 OpenD"_s : u"IBKR"_s, port && port->type != OJson::Null ? jsStr(port) : u"?"_s),
         u"默认账户:"_s + (makeDefault ? u"是"_s : u"否"_s),
     };

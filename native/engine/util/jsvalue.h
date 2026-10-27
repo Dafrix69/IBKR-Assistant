@@ -1,8 +1,7 @@
 // JS 的 Number() / String() / 真假,作用在 JSON 值上(引擎与界面共用;界面那边的 shell/jsvalue.h 只是把这里的名字引过去)。
 //
-// 为什么要照抄 JS:确认凭据(confirm_grants)的每一条判断都是在 JS 里写的——Number("") 是 0、Number(undefined) 是 NaN、
-// 读不出的数按"放松了"算……C++ 版换一种读法,同一份补丁就可能少问一次确认。期望值由 node 现算
-// (tests/fixtures/gen_confirm_grants.mjs),不是凭记忆写的。
+// 为什么要照抄 JS:配置与界面的判断原来都是在 JS 里写的——Number("") 是 0、Number(undefined) 是 NaN……C++ 版换一种读法,
+// 同一份输入就可能得出另一个结论。
 #pragma once
 
 #include <QJsonValue>

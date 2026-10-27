@@ -79,9 +79,6 @@ util::Task<OJson> TradingHandlers::instructionSubmit(OJson params) {
     const QString text = util::jsTrim(hu::strOr(params.get(u"text"_s)));
     if (text.isEmpty()) throw RpcError(-32602, u"指令为空"_s);
     const bool execute = js::truthy(params.get(u"execute"_s));
-    if (execute && !settings().policies.auto_execute) {
-        throw RpcError(-32003, u"自动执行没有打开,拒绝执行。请先在「设置」里打开「允许自动执行」。"_s);
-    }
     if (execute && !ports_.router()) throw RpcError(-32004, u"尚未连接"_s + gateway() + u",拒绝执行。"_s);
     // 界面勾选的目标账户:勾两个就同时向两个账户发单。别名先在这里核对,表外的名字不该走到大模型那一步才报错。
     const OJson* rawAccounts = params.get(u"accounts"_s);
@@ -176,8 +173,7 @@ OJson TradingHandlers::breakerState() {
     const util::BreakerState state = ports_.engine().killswitch().state();
     return js::object({{u"engaged"_s, js::B(state.engaged)},
                        {u"reason"_s, js::S(state.reason)},
-                       {u"at"_s, js::S(state.at)},
-                       {u"consecutive_failures"_s, js::N(state.consecutive_failures)}});
+                       {u"at"_s, js::S(state.at)}});
 }
 
 util::Task<OJson> TradingHandlers::breakerHalt(OJson params) {

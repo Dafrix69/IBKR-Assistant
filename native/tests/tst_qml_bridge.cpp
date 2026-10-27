@@ -53,20 +53,16 @@ private slots:
         QCOMPARE(js.evaluate(u"out.status.third"_s).toString(), u"三"_s);
         QCOMPARE(js.evaluate(u"out.status.half"_s).toNumber(), 2.5);
 
-        // 从 JS 拼的发单:没确认被拒(带回 Bridge 的原话);确认之后放行,引擎收到的入参原样、没有 __confirmed
+        // 从 JS 拼的发单:带用途的确认不弹框、直接回是;发出去引擎收到的入参原样、没有 __confirmed
         js.evaluate(uR"(var spec = { text: "买 AAPL 1 股", execute: true, accounts: ["模拟"], __confirmed: true };
-            bridge.call("instruction.submit", spec, function (ok, result, error) { out.first = { ok: ok, error: error }; }))"_s);
-        QTRY_VERIFY(js.evaluate(u"out.first !== undefined"_s).toBool());
-        QCOMPARE(js.evaluate(u"out.first.ok"_s).toBool(), false);
-        QVERIFY(js.evaluate(u"out.first.error"_s).toString().startsWith(u"这一步要先在确认框里点确认"_s));
-        js.evaluate(uR"(bridge.ask({ purpose: "instruction.submit", binding: { text: spec.text, accounts: spec.accounts } }, function (yes, error) {
+            bridge.ask({ purpose: "instruction.submit", binding: { text: spec.text, accounts: spec.accounts } }, function (yes, error) {
                 out.asked = yes;
                 if (yes) bridge.call("instruction.submit", spec, function (ok, result, error) { out.second = { ok: ok, error: error }; });
             }))"_s);
         QTRY_VERIFY(js.evaluate(u"out.second !== undefined"_s).toBool());
         QCOMPARE(js.evaluate(u"out.asked"_s).toBool(), true);
         QVERIFY2(js.evaluate(u"out.second.ok"_s).toBool(), qPrintable(js.evaluate(u"out.second.error"_s).toString()));
-        QCOMPARE(prompter.last.title, u"发送真实订单"_s);
+        QVERIFY(prompter.last.title.isEmpty());  // 没弹框
         const QString sent = logs.filter(u"[fake] instruction.submit "_s).value(0);
         QVERIFY2(sent.contains(u"\"text\":\"买 AAPL 1 股\""_s) && !sent.contains(u"__confirmed"_s), qPrintable(sent));
 

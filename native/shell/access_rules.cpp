@@ -427,7 +427,7 @@ QJsonObject accountsModel(const QJsonObject& st, const QJsonValue& status) {
     const QStringList placeholders = strs(info[u"placeholders"_s]);
     const bool busy = st[u"busy"_s].toBool();
     QJsonArray notices{notice(u"info"_s, u"别名是给指令用的,账号留在本机。"_s,
-                              u"指令里写「模拟」「主账户」就是指这里的别名;发给大模型的只有别名,没有账号。纸面还是实盘决定这份订单要不要过「允许实盘账户下单」这道闸,请如实选。"_s)};
+                              u"指令里写「模拟」「主账户」就是指这里的别名;发给大模型的只有别名,没有账号。纸面还是实盘会写在每张订单上,请如实选。"_s)};
     if (!placeholders.isEmpty())
         notices.append(notice(u"warn"_s, u"还有账户用的是示例里的占位账号"_s,
                               u"「%1」的账号还是全零的占位。点「修改」填上你自己的账号(TWS 右上角、或「账户」窗口里看得到),不用的别名可以删掉。"_s.arg(placeholders.join(u"」「"_s))));
@@ -473,7 +473,7 @@ QJsonObject accountsModel(const QJsonObject& st, const QJsonValue& status) {
         {u"connection"_s, S(d[u"connection"_s])},
         {u"makeDefault"_s, d[u"makeDefault"_s].toBool()},
         {u"idSub"_s, editing ? u"为了不把账号显示出来,修改时要重新填一遍"_s : u"IBKR:U 或 DU 开头加数字;富途:纯数字"_s},
-        {u"kindSub"_s, mismatch ? u"这个账号不是模拟账号的样子(模拟账号以 D 开头),不能标成纸面"_s : u"实盘账户的订单要过「允许实盘账户下单」这道闸"_s},
+        {u"kindSub"_s, mismatch ? u"这个账号不是模拟账号的样子(模拟账号以 D 开头),不能标成纸面"_s : u"实盘账户的订单会用真钱成交"_s},
         {u"mismatch"_s, mismatch},
         {u"connections"_s, connOptions},
         {u"save"_s, button(u"保存…"_s, busy, jsTrim(S(d[u"alias"_s])).isEmpty() || idText.isEmpty() || S(d[u"connection"_s]).isEmpty() || mismatch, u"primary"_s)},
@@ -678,7 +678,6 @@ QJsonObject followModel(const QJsonObject& st, const QJsonValue& appStatus, cons
             {u"trackExitAt"_s, f[u"trackExitAt"_s]},
             {u"tracksPending"_s, N(status[u"tracks_pending"_s])},
             {u"enabled"_s, f[u"enabled"_s]},
-            {u"autoExecuteOff"_s, f[u"enabled"_s].toBool() && appStatus.isObject() && !T(appStatus[u"auto_execute"_s])},
             {u"problems"_s, checked && !problems.isEmpty() ? QJsonArray::fromStringList(problems) : QJsonArray{}},
             {u"save"_s, button(u"保存"_s, busy == u"save", !dirty, u"primary"_s)},
             {u"dirty"_s, dirty},
@@ -823,7 +822,7 @@ QStringList pageTexts(const QString& sub, const QJsonObject& m) {
     }
     if (!m[u"seenEmpty"_s].toString().isEmpty()) t << m[u"seenEmpty"_s].toString();
     if (m[u"trustHint"_s].toBool()) t << u"点某一条右边的「信任」,就把它的发送者加进名单;保存之后才生效。"_s;
-    t << u"3 · 发到哪、最多亏多少"_s << u"发到这些账户"_s << u"一个都不勾 = 默认账户。勾两个就每单各发一份,上限各算各的;实盘账户还要「允许实盘账户下单」开着。"_s;
+    t << u"3 · 发到哪、最多亏多少"_s << u"发到这些账户"_s << u"一个都不勾 = 默认账户。勾两个就每单各发一份,上限各算各的。"_s;
     for (const QJsonValue& a : m[u"accounts"_s].toArray()) t << a[u"label"_s].toString();
     t << u"每单最坏亏损上限"_s << u"USD。蝴蝶 = 张数 × 100 × 权利金;贷方价差 = 张数 × 100 ×(宽度 − 收到的权利金)"_s << u"每天最多跟几单"_s << m[u"perDaySub"_s].toString()
       << u"消息多旧就不跟"_s << u"秒。断线之后补到的旧消息不追"_s << u"这三个上限是跟单多加的一道;「设置」里的限额、保护规则、熔断照常生效,取更严的那个。"_s << u"4 · 成交之后"_s
@@ -835,8 +834,7 @@ QStringList pageTexts(const QString& sub, const QJsonObject& m) {
     if (pending > 0)
         t << u"在等成交"_s << u"有 %1 只跟进去的蝴蝶还没成交(或刚成交):成交之后几秒内自动建追踪,建好、建不了都会发通知。"_s.arg(pending) << u"%1 只"_s.arg(pending);
     t << u"软件只跟对方的开仓:他什么时候走、止盈止损设在哪,软件不知道。上面这一项是用你自己的规则替跟进来的蝴蝶收尾,不是跟着他平。"_s << u"5 · 开关"_s << u"自动跟单"_s
-      << u"关着 = 只观察。关是当场生效的,开要点保存并在确认框里确认"_s;
-    if (m[u"autoExecuteOff"_s].toBool()) t << u"「设置 → 允许自动执行」现在关着:打开跟单之后信号仍然发不出去,会记成「闸门关着」。"_s;
+      << u"关着 = 只观察。关是当场生效的,开要点保存"_s;
     if (!m[u"problems"_s].toArray().isEmpty()) {
         t << u"还不能保存"_s;
         for (const QJsonValue& p : m[u"problems"_s].toArray()) t << p.toString();

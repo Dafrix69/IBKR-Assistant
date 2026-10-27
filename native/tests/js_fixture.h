@@ -1,11 +1,15 @@
 // 对拍夹具的读法(gen_fly_model.mjs、gen_flyexit.mjs 那一套):NaN / ±Infinity / −0 / undefined 在 JSON 里写不出来,写成占位串;
 // 期望是 {out} 或 {error: "TypeError: …"}。
+//
+// 重做基线(IBKR_REBASELINE=目录):行为是刻意改的、原版又已删掉时用。对不上不报错,把期望就地换成 C++ 现算的那一份;
+// 测试把整份夹具写进那个目录(rewrite),再由 tools/rebaseline_check.py 对着仓库里的旧夹具逐条归类——归不了类的差别不许拷回去。
 #pragma once
 
 #include "util/error.h"
 #include "util/jsobj.h"
 #include "util/ordered_json.h"
 
+#include <QDir>
 #include <QFile>
 #include <QTest>
 
@@ -95,11 +99,28 @@ inline OJson load(const QString& name) {
     return *parsed;
 }
 
+inline bool rebaselining() { return qEnvironmentVariableIsSet("IBKR_REBASELINE"); }
+/// 重做基线时把整份夹具写到 IBKR_REBASELINE 目录(原文件是缩进两格的就照样缩进,否则紧凑)
+inline void rewrite(const QString& name, const OJson& doc) {
+    if (!rebaselining()) return;
+    QFile orig(QStringLiteral(IBKR_FIXTURES_DIR) + u'/' + name);
+    const bool pretty = orig.open(QIODevice::ReadOnly) && orig.read(2) == "{\n";
+    const QString dir = qEnvironmentVariable("IBKR_REBASELINE");
+    QDir().mkpath(dir);
+    QFile f(dir + u'/' + name);
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate)) qFatal("写不进 %s", qPrintable(f.fileName()));
+    f.write((ibkr::util::stringifyOJson(doc, pretty ? 2 : 0) + (pretty ? QStringLiteral("\n") : QString())).toUtf8());
+}
+
 /// 两份 JSON 逐字比,不一样时报出第一个不同的位置附近
 inline bool same(const OJson& want, const OJson& got, const QString& what) {
     using namespace Qt::StringLiterals;
     const QString w = js::stringify(stripUndefined(want)), h = js::stringify(enc(got));
     if (w == h) return true;
+    if (rebaselining()) {
+        const_cast<OJson&>(want) = enc(got);
+        return true;
+    }
     qsizetype i = 0;
     while (i < w.size() && i < h.size() && w[i] == h[i]) ++i;
     const qsizetype from = qMax<qsizetype>(0, i - 120);
@@ -123,6 +144,10 @@ bool expect(const OJson& c, F&& f, const QString& what) {
             return false;
         }
         const QString want = js::stringify(stripUndefined(*c.get(u"out"_s))), have = js::stringify(got);
+        if (want != have && rebaselining()) {
+            *const_cast<OJson&>(c).get(u"out"_s) = got;
+            return true;
+        }
         if (want != have) {
             qsizetype i = 0;
             while (i < want.size() && i < have.size() && want[i] == have[i]) ++i;

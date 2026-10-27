@@ -477,7 +477,7 @@ public:
         writeSettings(raw);
         st_.settings = ibkr::domain::loadSettings(st_.settingsPath);
         ibkr::domain::TradeStore store(st_.settings.db_path);
-        ibkr::util::KillSwitch killswitch(dir_.path() + u"/breaker.json", st_.settings.policies.consecutive_failure_breaker);
+        ibkr::util::KillSwitch killswitch(dir_.path() + u"/breaker.json");
         st_.engine = std::make_unique<FakeEngine>(&scripts, &store, &killswitch, ibkr::parsing::prompts::loadPromptBundle(st_.settings));
         st_.alerts = std::make_unique<FakeAlerts>(&scripts, &script_);
         st_.brokerLink = std::make_unique<FakeBrokerLink>(&scripts, &script_);
@@ -595,17 +595,13 @@ public:
                 const auto stateJson = [](const ibkr::util::BreakerState& b) {
                     return js::object({{u"engaged"_s, js::B(b.engaged)},
                                        {u"reason"_s, js::S(b.reason)},
-                                       {u"at"_s, js::S(b.at)},
-                                       {u"consecutive_failures"_s, js::N(b.consecutive_failures)},
-                                       {u"consecutive_parse_failures"_s, js::N(b.consecutive_parse_failures)},
-                                       {u"auto"_s, js::B(b.autoEngaged)}});
+                                       {u"at"_s, js::S(b.at)}});
                 };
-                if (m == u"engage") v = stateJson(killswitch.engage(a.items[0].s, a.items.size() > 1 && js::truthy(&a.items[1])));
+                // 自动熔断已撤掉:engage 的第二个参数(auto)不再有意义,recordFailure 什么也不做
+                if (m == u"engage") v = stateJson(killswitch.engage(a.items[0].s));
                 else if (m == u"release") v = stateJson(killswitch.release(a.items.isEmpty() ? u"user"_s : a.items[0].s));
-                else if (m == u"recordFailure") {
-                    const auto r = killswitch.recordFailure(a.items[0].s, a.items.size() > 1 ? a.items[1].s : u"broker"_s);
-                    v = r ? stateJson(*r) : js::Null();
-                } else qFatal("不认识的熔断方法 %s", qPrintable(m));
+                else if (m == u"recordFailure") v = js::Null();
+                else qFatal("不认识的熔断方法 %s", qPrintable(m));
                 rec.set(u"value"_s, jsfix::enc(v));
             } else if (op == u"file") {
                 QFile f(dir_.path() + u'/' + str(step, u"path"_s));
@@ -615,10 +611,7 @@ public:
                     const ibkr::util::BreakerState b = killswitch.state();
                     rec.set(u"value"_s, js::object({{u"engaged"_s, js::B(b.engaged)},
                                                     {u"reason"_s, js::S(b.reason)},
-                                                    {u"at"_s, js::S(b.at)},
-                                                    {u"consecutive_failures"_s, js::N(b.consecutive_failures)},
-                                                    {u"consecutive_parse_failures"_s, js::N(b.consecutive_parse_failures)},
-                                                    {u"auto"_s, js::B(b.autoEngaged)}}));
+                                                    {u"at"_s, js::S(b.at)}}));
                 } else {
                     qFatal("不认识的读取 %s", qPrintable(str(step, u"what"_s)));
                 }
@@ -758,4 +751,5 @@ inline void addRows(const QString& file) {
         h1w::Runner runner(*sc->get(u"script"_s));                                                                       \
         const jsfix::OJson got = runner.run();                                                                           \
         JSFIX_SAME(*sc->get(u"expected"_s), got, tag);                                                                   \
+        jsfix::rewrite(file, h1w::fixture(file));                                                                        \
     }

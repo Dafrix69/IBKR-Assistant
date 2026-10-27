@@ -35,8 +35,6 @@ class BreakerAdapter final : public BreakerPort {
 public:
     explicit BreakerAdapter(util::KillSwitch& k) : k_(k) {}
     util::BreakerState state() override { return k_.state(); }
-    std::optional<util::BreakerState> recordFailure(const QString& reason, const QString& kind) override { return k_.recordFailure(reason, kind); }
-    void recordSuccess(const QString& kind) override { k_.recordSuccess(kind); }
 
 private:
     util::KillSwitch& k_;

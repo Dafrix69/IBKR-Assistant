@@ -65,14 +65,11 @@ public:
 /// 真库的端口。store 要活得比端口长
 std::unique_ptr<EngineStore> makeStorePort(domain::TradeStore& store);
 
-/// 熔断开关(killswitch.ts)用到的那三个方法
+/// 熔断开关:引擎只读它合没合上(合上与解除是手动的,走 halt / resume)
 class BreakerPort {
 public:
     virtual ~BreakerPort() = default;
     virtual util::BreakerState state() = 0;
-    /// kind:"broker" / "parse"。合上了回新的状态,没合上回空
-    virtual std::optional<util::BreakerState> recordFailure(const QString& reason, const QString& kind) = 0;
-    virtual void recordSuccess(const QString& kind) = 0;
 };
 std::unique_ptr<BreakerPort> makeBreakerPort(util::KillSwitch& killSwitch);
 

@@ -70,7 +70,7 @@ void FatalDialogs::handleConfig(const QString& kind, const QString& message) {
         if (canRestore) buttons << RESTORE;
         buttons << REVEAL << RETRY << QUIT;
         const QString note = canRestore
-            ? u"\n\n上一份可用的配置备份于 %1。恢复后「允许自动执行」「允许实盘账户下单」会是关闭的,需要时请到「设置」里重新打开;现在这份会改名留在旁边,不会删。"_s
+            ? u"\n\n上一份可用的配置备份于 %1。现在这份会改名留在旁边,不会删。"_s
                   .arg(state.backupAt ? QDateTime::fromMSecsSinceEpoch(qint64(*state.backupAt)).toString(u"yyyy/M/d HH:mm:ss"_s) : QString())
             : u"\n\n没有可以恢复的备份(还没有从界面改过设置)。请打开配置文件修正,或对照 settings.example.json 重写。"_s;
         const QString choice = ask(QMessageBox::Warning, u"配置文件有问题"_s, u"%1,交易引擎没有启动"_s.arg(why),
@@ -87,10 +87,8 @@ void FatalDialogs::handleConfig(const QString& kind, const QString& message) {
                 QMessageBox::critical(nullptr, u"恢复失败"_s, error);
                 continue;
             }
-            log_->warn(u"[config] 已从备份恢复配置:关掉的闸门 %1,原文件 %2"_s.arg(done->closedGates.join(u"、"_s), done->brokenCopy));
-            alerter_->systemNotify(u"已恢复上一份可用的配置"_s, done->closedGates.isEmpty()
-                                                                ? u"执行闸门保持关闭。"_s
-                                                                : u"已关闭:%1。需要时请到「设置」里重新打开。"_s.arg(done->closedGates.join(u"、"_s)));
+            log_->warn(u"[config] 已从备份恢复配置,原文件 %1"_s.arg(done->brokenCopy));
+            alerter_->systemNotify(u"已恢复上一份可用的配置"_s, QString());
         }
         configOpen_ = false;
         if (choice == QUIT) {

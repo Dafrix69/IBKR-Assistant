@@ -86,7 +86,7 @@ cmake --preset mac-debug -B /tmp/claude-501/ibkr-native-build \
 - 引擎不直接碰凭证库:`util/secrets` 的读写都经 `ibkr-engine --keychain-child` 子进程、有时限(同 TS 版的 keychain-off-the-loop)。
 - 测试不碰用户的 userData(同意记录、Qt 版的锁、Electron 的 `SingletonLock`):起应用的测试设 `IBKR_USER_DATA_DIR` 指到临时目录。
 - QML 里的 JS 是 Qt 的 V4,不是浏览器:`Array.prototype.flatMap` 之类没有。绑定里出错默认只打一行 stderr,界面照常开着,
-  所以 `--smoke-test` 与 `--screenshot` 遇到任何一条 QML 警告都以退出码 6 失败,`tst_shell` 两条都看退出码。
+  所以 `--screenshot` 遇到任何一条 QML 警告都以退出码 6 失败,`tst_shell` 看退出码。
 - 外观照 React 版逐项搬:颜色、圆角、阴影的数取自 `styles.css` / `theme/antd.ts`(`app/kit/Theme.qml` 里写明出处),
   图标是当初从 React 版的 `ui/Icons.tsx` / `ui/AppMark.tsx` 原样渲染出的 SVG(`app/kit/icons/`),新图标照同样的线宽与网格画。
   截图:`Datrix --engine preview --screenshot x.png [--color-scheme dark]`。

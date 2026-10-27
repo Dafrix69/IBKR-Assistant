@@ -5,6 +5,7 @@
 //   · loadSettings 的 missing / syntax / invalid、patchConfigFile 写盘的文本与 .bak、deepMerge;
 //   · parseTradingHours、hoursStatus、validateBaseUrl(WHATWG URL 的怪处)、latestPromptVersion、expandHome、etNowFromEpoch。
 #include "domain/config.h"
+#include "js_fixture.h"
 #include "util/market_calendar.h"
 
 #include <QDir>
@@ -137,10 +138,9 @@ OJson dump(const Settings& s, const Masks& m, const QList<double>& instants) {
                                             {u"symbol_map"_s, symMap}})},
                            {u"auto_connect"_s, B(s.broker.auto_connect)}})},
         {u"limits"_s, limitsJson(s.limits)},
-        {u"policies"_s, obj({{u"auto_execute"_s, B(s.policies.auto_execute)}, {u"allow_live_trading"_s, B(s.policies.allow_live_trading)},
-                             {u"auto_outside_rth"_s, B(s.policies.auto_outside_rth)}, {u"require_trigger_price_verification"_s, B(s.policies.require_trigger_price_verification)},
+        {u"policies"_s, obj({{u"auto_outside_rth"_s, B(s.policies.auto_outside_rth)}, {u"require_trigger_price_verification"_s, B(s.policies.require_trigger_price_verification)},
                              {u"trigger_min_gap_bps"_s, N(s.policies.trigger_min_gap_bps)}, {u"closed_market_policy"_s, S(s.policies.closed_market_policy)},
-                             {u"consecutive_failure_breaker"_s, N(s.policies.consecutive_failure_breaker)}, {u"review_feature_enabled"_s, B(s.policies.review_feature_enabled)}})},
+                             {u"review_feature_enabled"_s, B(s.policies.review_feature_enabled)}})},
         {u"protections"_s,
          obj({{u"stoploss_guard"_s, obj({{u"enabled"_s, B(p.stoploss_guard.enabled)}, {u"lookback_minutes"_s, N(p.stoploss_guard.lookback_minutes)},
                                          {u"trigger_count"_s, N(p.stoploss_guard.trigger_count)}, {u"pause_minutes"_s, N(p.stoploss_guard.pause_minutes)}})},
@@ -194,6 +194,22 @@ class TestConfig : public QObject {
     }
 
 private slots:
+    void cleanupTestCase() { jsfix::rewrite(u"config.json"_s, fx); }
+    /// 重做基线:把这一格的期望换成 C++ 现算的(抛错的话换成 error)
+    static void rebase(const OJson& c, const QString& got) {
+        OJson& m = const_cast<OJson&>(c);
+        const OJson* oldOut = c.get(u"out"_s);
+        const QString oldSrc = oldOut && oldOut->get(u"source_path"_s) ? oldOut->get(u"source_path"_s)->s : QString();
+        m.remove(u"out"_s);
+        m.remove(u"error"_s);
+        if (got.startsWith(u"ERR "_s)) {
+            m.set(u"error"_s, OJson::string(got.mid(4)));
+            return;
+        }
+        OJson out = *util::parseOJson(got);
+        if (!oldSrc.isEmpty() && out.get(u"source_path"_s)) out.set(u"source_path"_s, OJson::string(oldSrc));  // 临时文件的路径不进夹具
+        m.set(u"out"_s, out);
+    }
     void initTestCase() {
         // 默认提示词目录:TS 那边从模块往上找到的是仓库的 prompts/;这边的测试程序在编译目录里,往上找不到,直接指给它
         qputenv("DAFRI_PROMPT_DIR", (QStringLiteral(IBKR_FIXTURES_DIR) + u"/../../../prompts"_s).toUtf8());
@@ -227,6 +243,10 @@ private slots:
             } else {
                 want = text(*c.get(u"out"_s));
             }
+            if (got != want && jsfix::rebaselining()) {
+                rebase(c, got);
+                want = got;
+            }
             if (got != want) {
                 qWarning().noquote() << "配置:" << src.left(600);
                 qWarning().noquote() << "C++ :" << got.left(3000);
@@ -236,7 +256,7 @@ private slots:
             ++n;
         }
         QCOMPARE(n, 465);
-        QCOMPARE(errors, 243);
+        QCOMPARE(errors, 239);
     }
 
     void loadSettingsKinds() {
@@ -281,7 +301,8 @@ private slots:
             // source_path 是两边各自的临时文件:不比
             static const QRegularExpression src(u"\"source_path\":\"[^\"]*\""_s);
             const auto unsrc = [](QString t) { return t.replace(src, u"\"source_path\":\"<P>\""_s); };
-            QCOMPARE(unsrc(got), err ? u"ERR "_s + err->s : unsrc(text(*c.get(u"out"_s))));
+            if (jsfix::rebaselining() && unsrc(got) != (err ? u"ERR "_s + err->s : unsrc(text(*c.get(u"out"_s))))) rebase(c, got);
+            else QCOMPARE(unsrc(got), err ? u"ERR "_s + err->s : unsrc(text(*c.get(u"out"_s))));
             QFile f(p), bak(p + u".bak"_s);
             QVERIFY(f.open(QIODevice::ReadOnly));
             QCOMPARE(QString::fromUtf8(f.readAll()), c.get(u"file"_s)->s);

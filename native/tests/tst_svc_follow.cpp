@@ -573,6 +573,7 @@ class TstSvcFollow : public QObject {
     Q_OBJECT
 private slots:
     void initTestCase() { fixture_ = jsfix::load(u"svc_follow.json"_s); }
+    void cleanupTestCase() { jsfix::rewrite(u"svc_follow.json"_s, fixture_); }
     void scenarios_data() {
         QTest::addColumn<int>("index");
         const OJson& list = *fixture_.get(u"scenarios"_s);

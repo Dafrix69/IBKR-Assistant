@@ -274,7 +274,7 @@ orch::TradingEngine& EngineServer::Impl::engine() {
         a.parser = orch::adaptParser(parserFor(settings.llm));  // 跟单那一趟不碰大模型:由 handleInstruction 的 localOnly 范围认
         a.store = std::make_shared<domain::TradeStore>(settings.db_path, true);
         a.notifier = notifier;
-        a.killswitch = std::make_shared<util::KillSwitch>(QFileInfo(settings.db_path).path() + u"/breaker.json"_s, settings.policies.consecutive_failure_breaker);
+        a.killswitch = std::make_shared<util::KillSwitch>(QFileInfo(settings.db_path).path() + u"/breaker.json"_s);
         if (router) a.router = std::make_shared<orch::BrokerEngineRouter>(router);
         engineInstance = std::make_unique<orch::TradingEngine>(std::move(a));
         engineBroker = router;

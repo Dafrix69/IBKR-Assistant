@@ -1,19 +1,17 @@
 import QtQuick
 import Dafri.Kit
 
-// 设置(pages/Settings.tsx):外观、执行闸门、风控限额(含按账户覆盖)、保护规则、单笔风险预算、重要事件的口径、数据与备份。内容最宽 880。
-// 表单、保存、确认框、备份都在 C++(shell/settings_controller),每一行摆什么在 shell/settings_rules 的模型里(行是数据:开关 / 数字 / 分段);
+// 设置(pages/Settings.tsx):外观、条件单、风控限额(含按账户覆盖)、保护规则、单笔风险预算、重要事件的口径、数据与备份。内容最宽 880。
+// 表单、保存、备份都在 C++(shell/settings_controller),每一行摆什么在 shell/settings_rules 的模型里(行是数据:开关 / 数字 / 分段);
 // 外观三项直接读写 Theme(记在本机,同 React 版的 store/appearance)
 ScrollPage {
     id: page
     property var controller: null
     readonly property var m: controller ? controller.model : ({})
     maxWidth: 880
-    // 表单的一格改了:两个执行闸门走 setGate(关是当场生效的),别的只改表单
+    // 表单的一格改了:只改表单,跟着「保存设置」走
     function edit(key, kind, v) {
-        if (!controller) return
-        if (key === "autoExecute" || key === "allowLive") controller.setGate(key, v)
-        else controller.setField(key, v)
+        if (controller) controller.setField(key, v)
     }
     Component.onCompleted: if (controller) controller.setVisible(true)
     Component.onDestruction: if (controller) controller.setVisible(false)
@@ -82,7 +80,7 @@ ScrollPage {
         visible: !page.m.loading
         width: parent.width
 
-        SectionTitle { text: "执行闸门" }
+        SectionTitle { text: "条件单" }
         Group {
             width: parent.width
             RowList { rows: page.m.gates || []; onEdited: function (key, kind, v) { page.edit(key, kind, v) } }
@@ -97,7 +95,7 @@ ScrollPage {
         Group {
             visible: (page.m.accounts || []).length > 0
             width: parent.width
-            hint: "只填要和上面不一样的那几项,空着的用上面的;往松了改同样要确认。"
+            hint: "只填要和上面不一样的那几项,空着的用上面的。"
             // 模型只放别名 / 字段键(同 RowList:每改一格模型整份重建,对象数组会把正在打字的框换掉)
             Repeater {
                 model: (page.m.accounts || []).map(function (a) { return a.alias })

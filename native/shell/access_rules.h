@@ -1,6 +1,6 @@
 // 「接入」一页怎么摆(逐句搬):pages/Access.tsx 的五个子页签——lib/TwsPanel、FutuPanel、AccountsPanel、LlmPanel、FollowPanel,
 // 共用的 lib/connectBits(程序卡、端口栅格、握手卡、连接引擎、「连不上时照着做」),跟单表单的纯逻辑 lib/followForm.ts。
-// 每一节的输入就是原版那一节组件里的 useState(同名字段,JSON),加上状态快照(券商连没连、账户、允许自动执行)与大模型目录;
+// 每一节的输入就是原版那一节组件里的 useState(同名字段,JSON),加上状态快照(券商连没连、账户)与大模型目录;
 // 这里只算「摆什么字、什么颜色、哪颗按钮点不点得动」。期望值:tests/fixtures/gen_access.mjs
 #pragma once
 

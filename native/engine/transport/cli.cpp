@@ -56,8 +56,6 @@ std::optional<QString> flagValue(const QStringList& args, const QString& flag) {
     return args[idx + 1];
 }
 
-QString pyBool(bool v) { return v ? u"True"_s : u"False"_s; }
-
 /// partition(text, sep):[前, sep, 后];没有 sep 是 [text, "", ""]
 std::array<QString, 3> partition(const QString& text, const QString& sep) {
     const qsizetype idx = text.indexOf(sep);
@@ -131,15 +129,14 @@ QStringList accountsArg(const std::optional<QString>& raw) {
 }
 
 int parseCmd(Settings settings, const QString& instruction, const OJson& snapshot, const QStringList& accounts, const Io& io, const Hooks& hooks) {
-    // parse 子命令永不下单,不管配置怎么写
-    settings.policies.auto_execute = false;
+    // parse 子命令永不下单:只解析、只校验
     orchestrate::EngineArgs a;
     a.settings = settings;
     a.parser = hooks.parser ? hooks.parser(settings) : orchestrate::adaptParser(parsing::providers::buildParser(settings.llm));
     a.notifier = std::make_shared<util::Notifier>(false);
     orchestrate::TradingEngine engine(std::move(a));
     const orchestrate::EngineResult result =
-        runBlocking(engine.handleInstruction(instruction, u"manual"_s, std::nullopt, snapshot, accounts));
+        runBlocking(engine.handleInstruction(instruction, u"manual"_s, std::nullopt, snapshot, accounts, true));
     io.log(pretty(result.toJson()));
     return result.rejections.isEmpty() ? 0 : 2;
 }
@@ -147,10 +144,6 @@ int parseCmd(Settings settings, const QString& instruction, const OJson& snapsho
 int runCmd(const Settings& settings, const QString& instruction, bool confirmed, const QStringList& accounts, const Io& io) {
     if (!confirmed) {
         io.error(u"拒绝执行:缺少 --i-understand-this-places-real-orders 开关。"_s);
-        return 1;
-    }
-    if (!settings.policies.auto_execute) {
-        io.error(u"拒绝执行:配置里 policies.auto_execute=false。"_s);
         return 1;
     }
     auto router = std::make_shared<execution::BrokerRouter>(settings);  // buildRouter:富途不移植,只有 IBKR
@@ -345,7 +338,6 @@ int selftest(const Settings& settings, const Io& io) {
     io.log(u"系统提示词 : %1 字"_s.arg(bundle.system_text.toUcs4().size()));
     io.log(u"市场状态   : %1"_s.arg(settings.marketStatus(moment)));
     io.log(u"账户别名   : %1"_s.arg(settings.aliasList().join(u", "_s)));
-    io.log(u"自动执行   : %1 / 实盘允许:%2"_s.arg(pyBool(settings.policies.auto_execute), pyBool(settings.policies.allow_live_trading)));
     const OJson schema = parsing::providers::structuredOutputSchema();
     QStringList top;
     if (const OJson* props = js::prop(&schema, u"properties"_s); js::isObj(props))
@@ -468,7 +460,7 @@ int main(const QStringList& argvIn, const Io& io, const RpcEntry& rpc, const Hoo
             ks.release(u"cli"_s);
             const OJson detail = js::object();
             domain::TradeStore(settings.db_path).audit(u"cli"_s, u"resume"_s, &detail);
-            io.log(u"熔断已解除。注意:auto_execute 仍受配置控制。"_s);
+            io.log(u"熔断已解除。"_s);
             return 0;
         }
         if (command == u"export") {

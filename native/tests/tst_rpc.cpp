@@ -72,8 +72,8 @@ private slots:
         QCOMPARE(sorted(status[u"breaker"].toObject().keys()), sorted(contractFields(u"BreakerBrief"_s)));
         QCOMPARE(sorted(status[u"protections"].toObject().keys()), sorted(contractFields(u"ProtectionsSummary"_s)));
         QCOMPARE(sorted(status[u"limits"].toObject().keys()), sorted(contractFields(u"StatusLimits"_s)));
-        // 读契约的正则没读空:SystemStatus 有 18 个字段
-        QCOMPARE(contractFields(u"SystemStatus"_s).size(), 18);
+        // 读契约的正则没读空:SystemStatus 有 16 个字段
+        QCOMPARE(contractFields(u"SystemStatus"_s).size(), 16);
     }
 
     void statusTypesMatchTheContract() {

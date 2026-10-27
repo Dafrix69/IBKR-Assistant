@@ -1,5 +1,5 @@
 // 追踪卡片的三个按钮(shell/track_actions)对着原文件 TrackCard.tsx 的 toggle / closeNow / remove 跑出来的 10 个场景逐步对:
-// 确认框上的每一个字(立即平仓的凭据绑这条追踪的 id)、发给引擎的入参、横幅、重读与转圈的先后。
+// 确认框上的每一个字、发给引擎的入参、横幅、重读与转圈的先后。
 #include "json_compare.h"
 #include "shell/track_actions.h"
 

@@ -465,11 +465,7 @@ Task<Rec> TradingEngine::pollTrackers(std::optional<domain::EtNow> moment, std::
         tk::CloseGateArgs gate;
         gate.autoClose = &auto_;
         gate.position = &position;
-        gate.accountIsPaper = accountIsPaper(js::str(js::prop(&track, u"account"_s)));
-        gate.autoExecute = settings.policies.auto_execute;
-        gate.allowLiveTrading = settings.policies.allow_live_trading;
-        // 自动熔断(连续失败)不挡止损类平仓:那是在减仓。手动熔断照旧一律不发
-        gate.breakerEngaged = breaker.engaged && !breaker.autoEngaged;
+        gate.breakerEngaged = breaker.engaged;
         gate.marketStatus = marketStatus;
         gate.outsideRth = true;
         gate.alreadyFired = js::truthy(js::prop(&track, u"fired_at"_s));
@@ -639,9 +635,7 @@ Task<std::optional<Rec>> TradingEngine::closePosition(Rec track, tk::Position po
     if (placeFailure) {
         const QString detail = u"自动平仓下单失败:"_s + *placeFailure + u"。请立刻手动核对持仓。"_s;
         storePort_->setFinalStatus(recordId, u"ibkr_error"_s, detail);
-        const auto engaged = breakerPort_->recordFailure(*placeFailure, u"broker"_s);
         notifier_->rejection(brokerCode(), detail);
-        if (engaged) notifier_->breaker(engaged->reason);
         co_return std::nullopt;
     }
 
@@ -662,7 +656,6 @@ Task<std::optional<Rec>> TradingEngine::closePosition(Rec track, tk::Position po
         closeAudit.set(u"since_wake_ms"_s, wokeAt_ ? js::N(util::dateNow() - *wokeAt_) : js::Null());
     }
     storePort_->audit(u"engine"_s, u"auto_close"_s, closeAudit);
-    breakerPort_->recordSuccess(u"broker"_s);
     // 期权 / 组合的限价平仓单发出去只是开始:挂在自然价上未必立刻成交,之后每轮按最新买卖价追那张单(chaseCloseOrder)。正股与市价单不追
     const QString secType = js::str(js::prop(js::prop(&order, u"contract"_s), u"secType"_s));
     const OJson* orderSpec = js::prop(&order, u"order"_s);
@@ -761,18 +754,13 @@ Task<std::optional<Rec>> TradingEngine::chaseCloseOrder(Rec track, Rec raw, tk::
         const qint64 orderId = static_cast<qint64>(js::num(entry->get(u"order_id"_s)));
         sentOrders.insert(orderId, SentOrder{util::dateNow(), SentOrder::Kind::Modify});
         std::optional<QString> failure;
-        bool linkDown = false;
         try {
             ok = co_await router_->modifyHosted(orderId, item);
-        } catch (const execution::LinkDownError& exc) {
-            linkDown = true;
-            failure = exc.message();
         } catch (...) {
             failure = jsx::errorMessage(std::current_exception());
         }
         if (failure) {
             storePort_->audit(u"engine"_s, u"close_chase_failed"_s, js::object({{u"track"_s, js::S(tid)}, {u"error"_s, js::S(failure->left(300))}}));
-            if (!linkDown) breakerPort_->recordFailure(*failure, u"broker"_s);  // 链路断了不是券商拒单,不记熔断(ibLink.LinkDownError)
             co_return js::object({{u"rounds"_s, js::copyOrNull(entry->get(u"rounds"_s))},
                                   {u"limit"_s, js::NOrNull(prev)},
                                   {u"natural"_s, js::N(q->natural)},

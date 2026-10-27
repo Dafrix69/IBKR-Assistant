@@ -733,11 +733,7 @@ util::Task<OJson> TrackerHandlers::trackerCloseNowLocked(OJson params) {
     tk::CloseGateArgs gate;
     gate.autoClose = &autoClose;
     gate.position = &position;
-    gate.accountIsPaper = ports_.engine().accountIsPaper(js::str(track.get(u"account"_s)));
-    gate.autoExecute = settings().policies.auto_execute;
-    gate.allowLiveTrading = settings().policies.allow_live_trading;
-    // 自动熔断不挡平仓(那是在减仓);手动熔断照旧
-    gate.breakerEngaged = breaker.engaged && !breaker.autoEngaged;
+    gate.breakerEngaged = breaker.engaged;
     gate.marketStatus = marketStatus;
     gate.outsideRth = true;  // 手动平仓同样全时段:盘外自动转限价
     gate.alreadyFired = false;

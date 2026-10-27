@@ -10,7 +10,7 @@ qt_add_library(ibkr_shell STATIC
     fatal_line.h fatal_line.cpp
     instance_guard.h instance_guard.cpp
     jsvalue.h
-    confirm_grants.h confirm_grants.cpp
+    locale_format.h locale_format.cpp
     consent.h consent.cpp
     consent_model.h consent_model.cpp
     doc_parse.h doc_parse.cpp

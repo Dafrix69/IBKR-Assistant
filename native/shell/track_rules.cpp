@@ -1,7 +1,7 @@
 #include "shell/track_rules.h"
 
-#include "shell/confirm_grants.h"
 #include "shell/jsvalue.h"
+#include "shell/locale_format.h"
 
 #include <QDateTime>
 #include <QRegularExpression>

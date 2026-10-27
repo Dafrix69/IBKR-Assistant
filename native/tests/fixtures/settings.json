@@ -82,12 +82,9 @@
        }
       },
       "policies": {
-       "auto_execute": true,
-       "allow_live_trading": false,
        "require_trigger_price_verification": true,
        "trigger_min_gap_bps": 5,
        "closed_market_policy": "reject_market_orders",
-       "consecutive_failure_breaker": 3,
        "review_feature_enabled": false
       },
       "protections": {
@@ -139,8 +136,6 @@
       "connections": {}
      },
      "form": {
-      "autoExecute": true,
-      "allowLive": false,
       "triggerVerify": true,
       "notional": 5000,
       "contracts": 5,
@@ -251,11 +246,7 @@
     "K 线、行情带、盈亏数字统一跟随;默认美股习惯",
     "绿涨红跌",
     "红涨绿跌",
-    "执行闸门",
-    "允许自动执行",
-    "关闭时只解析校验,永不发单。关是当场生效的,开要点保存",
-    "允许实盘账户下单",
-    "默认关闭,纸面账户不受此限。关是当场生效的,开要点保存",
+    "条件单",
     "触发方向必须有现价",
     "拿不到现价就拒绝条件单",
     "风控限额",
@@ -287,7 +278,7 @@
     "单笔张数",
     "在手风险",
     "同标的张数",
-    "只填要和上面不一样的那几项,空着的用上面的;往松了改同样要确认。",
+    "只填要和上面不一样的那几项,空着的用上面的。",
     "保护规则",
     "比熔断细一档:接连止损、盈亏回撤过大、当天亏到上限、同一只刚平过仓,就先停一会儿自动执行。到点自己解除,不用人工。",
     "只挡新单,永远不挡平仓。",
@@ -582,8 +573,6 @@
    "switches": [
     true,
     false,
-    true,
-    false,
     false,
     false,
     false,
@@ -600,8 +589,6 @@
    "links": [],
    "pres": [],
    "switchesDisabled": [
-    false,
-    false,
     false,
     false,
     false,
@@ -644,12 +631,9 @@
        }
       },
       "policies": {
-       "auto_execute": true,
-       "allow_live_trading": false,
        "require_trigger_price_verification": true,
        "trigger_min_gap_bps": 5,
        "closed_market_policy": "reject_market_orders",
-       "consecutive_failure_breaker": 3,
        "review_feature_enabled": false
       },
       "protections": {
@@ -701,8 +685,6 @@
       "connections": {}
      },
      "form": {
-      "autoExecute": true,
-      "allowLive": false,
       "triggerVerify": true,
       "notional": 5000,
       "contracts": 5,
@@ -813,11 +795,7 @@
     "K 线、行情带、盈亏数字统一跟随;默认美股习惯",
     "绿涨红跌",
     "红涨绿跌",
-    "执行闸门",
-    "允许自动执行",
-    "关闭时只解析校验,永不发单。关是当场生效的,开要点保存",
-    "允许实盘账户下单",
-    "默认关闭,纸面账户不受此限。关是当场生效的,开要点保存",
+    "条件单",
     "触发方向必须有现价",
     "拿不到现价就拒绝条件单",
     "风控限额",
@@ -849,7 +827,7 @@
     "单笔张数",
     "在手风险",
     "同标的张数",
-    "只填要和上面不一样的那几项,空着的用上面的;往松了改同样要确认。",
+    "只填要和上面不一样的那几项,空着的用上面的。",
     "保护规则",
     "比熔断细一档:接连止损、盈亏回撤过大、当天亏到上限、同一只刚平过仓,就先停一会儿自动执行。到点自己解除,不用人工。",
     "只挡新单,永远不挡平仓。",
@@ -1144,8 +1122,6 @@
    "switches": [
     true,
     false,
-    true,
-    false,
     false,
     false,
     false,
@@ -1162,8 +1138,6 @@
    "links": [],
    "pres": [],
    "switchesDisabled": [
-    false,
-    false,
     false,
     false,
     false,
@@ -1206,12 +1180,9 @@
        }
       },
       "policies": {
-       "auto_execute": true,
-       "allow_live_trading": false,
        "require_trigger_price_verification": true,
        "trigger_min_gap_bps": 5,
        "closed_market_policy": "reject_market_orders",
-       "consecutive_failure_breaker": 3,
        "review_feature_enabled": false
       },
       "protections": {
@@ -1263,8 +1234,6 @@
       "connections": {}
      },
      "form": {
-      "autoExecute": false,
-      "allowLive": false,
       "triggerVerify": true,
       "notional": 8000,
       "contracts": 5,
@@ -1378,11 +1347,7 @@
     "K 线、行情带、盈亏数字统一跟随;默认美股习惯",
     "绿涨红跌",
     "红涨绿跌",
-    "执行闸门",
-    "允许自动执行",
-    "关闭时只解析校验,永不发单。关是当场生效的,开要点保存",
-    "允许实盘账户下单",
-    "默认关闭,纸面账户不受此限。关是当场生效的,开要点保存",
+    "条件单",
     "触发方向必须有现价",
     "拿不到现价就拒绝条件单",
     "风控限额",
@@ -1414,7 +1379,7 @@
     "单笔张数",
     "在手风险",
     "同标的张数",
-    "只填要和上面不一样的那几项,空着的用上面的;往松了改同样要确认。",
+    "只填要和上面不一样的那几项,空着的用上面的。",
     "保护规则",
     "比熔断细一档:接连止损、盈亏回撤过大、当天亏到上限、同一只刚平过仓,就先停一会儿自动执行。到点自己解除,不用人工。",
     "只挡新单,永远不挡平仓。",
@@ -1714,8 +1679,6 @@
     ]
    ],
    "switches": [
-    false,
-    false,
     true,
     false,
     false,
@@ -1734,8 +1697,6 @@
    "links": [],
    "pres": [],
    "switchesDisabled": [
-    false,
-    false,
     false,
     false,
     false,
@@ -1778,12 +1739,9 @@
        }
       },
       "policies": {
-       "auto_execute": true,
-       "allow_live_trading": false,
        "require_trigger_price_verification": true,
        "trigger_min_gap_bps": 5,
        "closed_market_policy": "reject_market_orders",
-       "consecutive_failure_breaker": 3,
        "review_feature_enabled": false
       },
       "protections": {
@@ -1835,8 +1793,6 @@
       "connections": {}
      },
      "form": {
-      "autoExecute": true,
-      "allowLive": false,
       "triggerVerify": true,
       "notional": 5000,
       "contracts": 5,
@@ -1949,11 +1905,7 @@
     "K 线、行情带、盈亏数字统一跟随;默认美股习惯",
     "绿涨红跌",
     "红涨绿跌",
-    "执行闸门",
-    "允许自动执行",
-    "关闭时只解析校验,永不发单。关是当场生效的,开要点保存",
-    "允许实盘账户下单",
-    "默认关闭,纸面账户不受此限。关是当场生效的,开要点保存",
+    "条件单",
     "触发方向必须有现价",
     "拿不到现价就拒绝条件单",
     "风控限额",
@@ -1985,7 +1937,7 @@
     "单笔张数",
     "在手风险",
     "同标的张数",
-    "只填要和上面不一样的那几项,空着的用上面的;往松了改同样要确认。",
+    "只填要和上面不一样的那几项,空着的用上面的。",
     "保护规则",
     "比熔断细一档:接连止损、盈亏回撤过大、当天亏到上限、同一只刚平过仓,就先停一会儿自动执行。到点自己解除,不用人工。",
     "只挡新单,永远不挡平仓。",
@@ -2403,8 +2355,6 @@
    ],
    "switches": [
     true,
-    false,
-    true,
     true,
     true,
     true,
@@ -2422,8 +2372,6 @@
    "links": [],
    "pres": [],
    "switchesDisabled": [
-    false,
-    false,
     false,
     false,
     false,
@@ -2466,12 +2414,9 @@
        }
       },
       "policies": {
-       "auto_execute": true,
-       "allow_live_trading": false,
        "require_trigger_price_verification": true,
        "trigger_min_gap_bps": 5,
        "closed_market_policy": "reject_market_orders",
-       "consecutive_failure_breaker": 3,
        "review_feature_enabled": false
       },
       "protections": {
@@ -2523,8 +2468,6 @@
       "connections": {}
      },
      "form": {
-      "autoExecute": true,
-      "allowLive": false,
       "triggerVerify": true,
       "notional": null,
       "contracts": 0,
@@ -2638,11 +2581,7 @@
     "K 线、行情带、盈亏数字统一跟随;默认美股习惯",
     "绿涨红跌",
     "红涨绿跌",
-    "执行闸门",
-    "允许自动执行",
-    "关闭时只解析校验,永不发单。关是当场生效的,开要点保存",
-    "允许实盘账户下单",
-    "默认关闭,纸面账户不受此限。关是当场生效的,开要点保存",
+    "条件单",
     "触发方向必须有现价",
     "拿不到现价就拒绝条件单",
     "风控限额",
@@ -2674,7 +2613,7 @@
     "单笔张数",
     "在手风险",
     "同标的张数",
-    "只填要和上面不一样的那几项,空着的用上面的;往松了改同样要确认。",
+    "只填要和上面不一样的那几项,空着的用上面的。",
     "保护规则",
     "比熔断细一档:接连止损、盈亏回撤过大、当天亏到上限、同一只刚平过仓,就先停一会儿自动执行。到点自己解除,不用人工。",
     "只挡新单,永远不挡平仓。",
@@ -3058,8 +2997,6 @@
    ],
    "switches": [
     true,
-    false,
-    true,
     true,
     true,
     true,
@@ -3079,8 +3016,6 @@
    "links": [],
    "pres": [],
    "switchesDisabled": [
-    false,
-    false,
     false,
     false,
     false,
@@ -3123,12 +3058,9 @@
        }
       },
       "policies": {
-       "auto_execute": true,
-       "allow_live_trading": false,
        "require_trigger_price_verification": true,
        "trigger_min_gap_bps": 5,
        "closed_market_policy": "reject_market_orders",
-       "consecutive_failure_breaker": 3,
        "review_feature_enabled": false
       },
       "protections": {
@@ -3180,8 +3112,6 @@
       "connections": {}
      },
      "form": {
-      "autoExecute": true,
-      "allowLive": false,
       "triggerVerify": true,
       "notional": null,
       "contracts": 0,
@@ -3294,11 +3224,7 @@
     "K 线、行情带、盈亏数字统一跟随;默认美股习惯",
     "绿涨红跌",
     "红涨绿跌",
-    "执行闸门",
-    "允许自动执行",
-    "关闭时只解析校验,永不发单。关是当场生效的,开要点保存",
-    "允许实盘账户下单",
-    "默认关闭,纸面账户不受此限。关是当场生效的,开要点保存",
+    "条件单",
     "触发方向必须有现价",
     "拿不到现价就拒绝条件单",
     "风控限额",
@@ -3330,7 +3256,7 @@
     "单笔张数",
     "在手风险",
     "同标的张数",
-    "只填要和上面不一样的那几项,空着的用上面的;往松了改同样要确认。",
+    "只填要和上面不一样的那几项,空着的用上面的。",
     "保护规则",
     "比熔断细一档:接连止损、盈亏回撤过大、当天亏到上限、同一只刚平过仓,就先停一会儿自动执行。到点自己解除,不用人工。",
     "只挡新单,永远不挡平仓。",
@@ -3699,8 +3625,6 @@
    ],
    "switches": [
     true,
-    false,
-    true,
     true,
     true,
     true,
@@ -3718,8 +3642,6 @@
    "links": [],
    "pres": [],
    "switchesDisabled": [
-    false,
-    false,
     false,
     false,
     false,
@@ -3757,12 +3679,9 @@
        "by_account": {}
       },
       "policies": {
-       "auto_execute": true,
-       "allow_live_trading": false,
        "require_trigger_price_verification": true,
        "trigger_min_gap_bps": 5,
        "closed_market_policy": "reject_market_orders",
-       "consecutive_failure_breaker": 3,
        "review_feature_enabled": false
       },
       "symbol_aliases": {
@@ -3790,8 +3709,6 @@
       }
      },
      "form": {
-      "autoExecute": true,
-      "allowLive": false,
       "triggerVerify": true,
       "notional": 5000,
       "contracts": 5,
@@ -3895,11 +3812,7 @@
     "K 线、行情带、盈亏数字统一跟随;默认美股习惯",
     "绿涨红跌",
     "红涨绿跌",
-    "执行闸门",
-    "允许自动执行",
-    "关闭时只解析校验,永不发单。关是当场生效的,开要点保存",
-    "允许实盘账户下单",
-    "默认关闭,纸面账户不受此限。关是当场生效的,开要点保存",
+    "条件单",
     "触发方向必须有现价",
     "拿不到现价就拒绝条件单",
     "风控限额",
@@ -4184,8 +4097,6 @@
    "switches": [
     true,
     false,
-    true,
-    false,
     false,
     false,
     false,
@@ -4202,8 +4113,6 @@
    "links": [],
    "pres": [],
    "switchesDisabled": [
-    false,
-    false,
     false,
     false,
     false,
@@ -4246,12 +4155,9 @@
        }
       },
       "policies": {
-       "auto_execute": true,
-       "allow_live_trading": false,
        "require_trigger_price_verification": true,
        "trigger_min_gap_bps": 5,
        "closed_market_policy": "reject_market_orders",
-       "consecutive_failure_breaker": 3,
        "review_feature_enabled": false
       },
       "protections": {
@@ -4303,8 +4209,6 @@
       "connections": {}
      },
      "form": {
-      "autoExecute": true,
-      "allowLive": false,
       "triggerVerify": true,
       "notional": 5000,
       "contracts": 5,
@@ -4391,11 +4295,7 @@
     "K 线、行情带、盈亏数字统一跟随;默认美股习惯",
     "绿涨红跌",
     "红涨绿跌",
-    "执行闸门",
-    "允许自动执行",
-    "关闭时只解析校验,永不发单。关是当场生效的,开要点保存",
-    "允许实盘账户下单",
-    "默认关闭,纸面账户不受此限。关是当场生效的,开要点保存",
+    "条件单",
     "触发方向必须有现价",
     "拿不到现价就拒绝条件单",
     "风控限额",
@@ -4427,7 +4327,7 @@
     "单笔张数",
     "在手风险",
     "同标的张数",
-    "只填要和上面不一样的那几项,空着的用上面的;往松了改同样要确认。",
+    "只填要和上面不一样的那几项,空着的用上面的。",
     "保护规则",
     "比熔断细一档:接连止损、盈亏回撤过大、当天亏到上限、同一只刚平过仓,就先停一会儿自动执行。到点自己解除,不用人工。",
     "只挡新单,永远不挡平仓。",
@@ -4684,8 +4584,6 @@
    "switches": [
     true,
     false,
-    true,
-    false,
     false,
     false,
     false,
@@ -4702,8 +4600,6 @@
    "links": [],
    "pres": [],
    "switchesDisabled": [
-    false,
-    false,
     false,
     false,
     false,
@@ -4746,12 +4642,9 @@
        }
       },
       "policies": {
-       "auto_execute": true,
-       "allow_live_trading": false,
        "require_trigger_price_verification": true,
        "trigger_min_gap_bps": 5,
        "closed_market_policy": "reject_market_orders",
-       "consecutive_failure_breaker": 3,
        "review_feature_enabled": false
       },
       "protections": {
@@ -4803,8 +4696,6 @@
       "connections": {}
      },
      "form": {
-      "autoExecute": true,
-      "allowLive": false,
       "triggerVerify": true,
       "notional": 5000,
       "contracts": 5,
@@ -4896,11 +4787,7 @@
     "K 线、行情带、盈亏数字统一跟随;默认美股习惯",
     "绿涨红跌",
     "红涨绿跌",
-    "执行闸门",
-    "允许自动执行",
-    "关闭时只解析校验,永不发单。关是当场生效的,开要点保存",
-    "允许实盘账户下单",
-    "默认关闭,纸面账户不受此限。关是当场生效的,开要点保存",
+    "条件单",
     "触发方向必须有现价",
     "拿不到现价就拒绝条件单",
     "风控限额",
@@ -4932,7 +4819,7 @@
     "单笔张数",
     "在手风险",
     "同标的张数",
-    "只填要和上面不一样的那几项,空着的用上面的;往松了改同样要确认。",
+    "只填要和上面不一样的那几项,空着的用上面的。",
     "保护规则",
     "比熔断细一档:接连止损、盈亏回撤过大、当天亏到上限、同一只刚平过仓,就先停一会儿自动执行。到点自己解除,不用人工。",
     "只挡新单,永远不挡平仓。",
@@ -5199,8 +5086,6 @@
    "switches": [
     true,
     false,
-    true,
-    false,
     false,
     false,
     false,
@@ -5217,8 +5102,6 @@
    "links": [],
    "pres": [],
    "switchesDisabled": [
-    false,
-    false,
     false,
     false,
     false,
@@ -5261,12 +5144,9 @@
        }
       },
       "policies": {
-       "auto_execute": true,
-       "allow_live_trading": false,
        "require_trigger_price_verification": true,
        "trigger_min_gap_bps": 5,
        "closed_market_policy": "reject_market_orders",
-       "consecutive_failure_breaker": 3,
        "review_feature_enabled": false
       },
       "protections": {
@@ -5318,8 +5198,6 @@
       "connections": {}
      },
      "form": {
-      "autoExecute": true,
-      "allowLive": false,
       "triggerVerify": true,
       "notional": 5000,
       "contracts": 5,
@@ -5431,11 +5309,7 @@
     "K 线、行情带、盈亏数字统一跟随;默认美股习惯",
     "绿涨红跌",
     "红涨绿跌",
-    "执行闸门",
-    "允许自动执行",
-    "关闭时只解析校验,永不发单。关是当场生效的,开要点保存",
-    "允许实盘账户下单",
-    "默认关闭,纸面账户不受此限。关是当场生效的,开要点保存",
+    "条件单",
     "触发方向必须有现价",
     "拿不到现价就拒绝条件单",
     "风控限额",
@@ -5467,7 +5341,7 @@
     "单笔张数",
     "在手风险",
     "同标的张数",
-    "只填要和上面不一样的那几项,空着的用上面的;往松了改同样要确认。",
+    "只填要和上面不一样的那几项,空着的用上面的。",
     "保护规则",
     "比熔断细一档:接连止损、盈亏回撤过大、当天亏到上限、同一只刚平过仓,就先停一会儿自动执行。到点自己解除,不用人工。",
     "只挡新单,永远不挡平仓。",
@@ -5762,8 +5636,6 @@
    "switches": [
     true,
     false,
-    true,
-    false,
     false,
     false,
     false,
@@ -5780,8 +5652,6 @@
    "links": [],
    "pres": [],
    "switchesDisabled": [
-    false,
-    false,
     false,
     false,
     false,
@@ -5824,12 +5694,9 @@
        }
       },
       "policies": {
-       "auto_execute": true,
-       "allow_live_trading": false,
        "require_trigger_price_verification": true,
        "trigger_min_gap_bps": 5,
        "closed_market_policy": "reject_market_orders",
-       "consecutive_failure_breaker": 3,
        "review_feature_enabled": false
       },
       "protections": {
@@ -5881,8 +5748,6 @@
       "connections": {}
      },
      "form": {
-      "autoExecute": true,
-      "allowLive": false,
       "triggerVerify": true,
       "notional": 5000,
       "contracts": 5,
@@ -5994,11 +5859,7 @@
     "K 线、行情带、盈亏数字统一跟随;默认美股习惯",
     "绿涨红跌",
     "红涨绿跌",
-    "执行闸门",
-    "允许自动执行",
-    "关闭时只解析校验,永不发单。关是当场生效的,开要点保存",
-    "允许实盘账户下单",
-    "默认关闭,纸面账户不受此限。关是当场生效的,开要点保存",
+    "条件单",
     "触发方向必须有现价",
     "拿不到现价就拒绝条件单",
     "风控限额",
@@ -6030,7 +5891,7 @@
     "单笔张数",
     "在手风险",
     "同标的张数",
-    "只填要和上面不一样的那几项,空着的用上面的;往松了改同样要确认。",
+    "只填要和上面不一样的那几项,空着的用上面的。",
     "保护规则",
     "比熔断细一档:接连止损、盈亏回撤过大、当天亏到上限、同一只刚平过仓,就先停一会儿自动执行。到点自己解除,不用人工。",
     "只挡新单,永远不挡平仓。",
@@ -6325,8 +6186,6 @@
    "switches": [
     true,
     false,
-    true,
-    false,
     false,
     false,
     false,
@@ -6343,8 +6202,6 @@
    "links": [],
    "pres": [],
    "switchesDisabled": [
-    false,
-    false,
     false,
     false,
     false,
@@ -6387,12 +6244,9 @@
        }
       },
       "policies": {
-       "auto_execute": true,
-       "allow_live_trading": false,
        "require_trigger_price_verification": true,
        "trigger_min_gap_bps": 5,
        "closed_market_policy": "reject_market_orders",
-       "consecutive_failure_breaker": 3,
        "review_feature_enabled": false
       },
       "protections": {
@@ -6444,8 +6298,6 @@
       "connections": {}
      },
      "form": {
-      "autoExecute": true,
-      "allowLive": false,
       "triggerVerify": true,
       "notional": 5000,
       "contracts": 5,
@@ -6556,11 +6408,7 @@
     "K 线、行情带、盈亏数字统一跟随;默认美股习惯",
     "绿涨红跌",
     "红涨绿跌",
-    "执行闸门",
-    "允许自动执行",
-    "关闭时只解析校验,永不发单。关是当场生效的,开要点保存",
-    "允许实盘账户下单",
-    "默认关闭,纸面账户不受此限。关是当场生效的,开要点保存",
+    "条件单",
     "触发方向必须有现价",
     "拿不到现价就拒绝条件单",
     "风控限额",
@@ -6592,7 +6440,7 @@
     "单笔张数",
     "在手风险",
     "同标的张数",
-    "只填要和上面不一样的那几项,空着的用上面的;往松了改同样要确认。",
+    "只填要和上面不一样的那几项,空着的用上面的。",
     "保护规则",
     "比熔断细一档:接连止损、盈亏回撤过大、当天亏到上限、同一只刚平过仓,就先停一会儿自动执行。到点自己解除,不用人工。",
     "只挡新单,永远不挡平仓。",
@@ -6887,8 +6735,6 @@
    "switches": [
     true,
     false,
-    true,
-    false,
     false,
     false,
     false,
@@ -6905,8 +6751,6 @@
    "links": [],
    "pres": [],
    "switchesDisabled": [
-    false,
-    false,
     false,
     false,
     false,
@@ -6949,12 +6793,9 @@
        }
       },
       "policies": {
-       "auto_execute": true,
-       "allow_live_trading": false,
        "require_trigger_price_verification": true,
        "trigger_min_gap_bps": 5,
        "closed_market_policy": "reject_market_orders",
-       "consecutive_failure_breaker": 3,
        "review_feature_enabled": false
       },
       "protections": {
@@ -7006,8 +6847,6 @@
       "connections": {}
      },
      "form": {
-      "autoExecute": true,
-      "allowLive": false,
       "triggerVerify": true,
       "notional": 5000,
       "contracts": 5,
@@ -7117,11 +6956,7 @@
     "K 线、行情带、盈亏数字统一跟随;默认美股习惯",
     "绿涨红跌",
     "红涨绿跌",
-    "执行闸门",
-    "允许自动执行",
-    "关闭时只解析校验,永不发单。关是当场生效的,开要点保存",
-    "允许实盘账户下单",
-    "默认关闭,纸面账户不受此限。关是当场生效的,开要点保存",
+    "条件单",
     "触发方向必须有现价",
     "拿不到现价就拒绝条件单",
     "风控限额",
@@ -7153,7 +6988,7 @@
     "单笔张数",
     "在手风险",
     "同标的张数",
-    "只填要和上面不一样的那几项,空着的用上面的;往松了改同样要确认。",
+    "只填要和上面不一样的那几项,空着的用上面的。",
     "保护规则",
     "比熔断细一档:接连止损、盈亏回撤过大、当天亏到上限、同一只刚平过仓,就先停一会儿自动执行。到点自己解除,不用人工。",
     "只挡新单,永远不挡平仓。",
@@ -7448,8 +7283,6 @@
    "switches": [
     true,
     false,
-    true,
-    false,
     false,
     false,
     false,
@@ -7466,8 +7299,6 @@
    "links": [],
    "pres": [],
    "switchesDisabled": [
-    false,
-    false,
     false,
     false,
     false,
@@ -7510,12 +7341,9 @@
        }
       },
       "policies": {
-       "auto_execute": true,
-       "allow_live_trading": false,
        "require_trigger_price_verification": true,
        "trigger_min_gap_bps": 5,
        "closed_market_policy": "reject_market_orders",
-       "consecutive_failure_breaker": 3,
        "review_feature_enabled": false
       },
       "protections": {
@@ -7567,8 +7395,6 @@
       "connections": {}
      },
      "form": {
-      "autoExecute": true,
-      "allowLive": false,
       "triggerVerify": true,
       "notional": 5000,
       "contracts": 5,
@@ -7673,11 +7499,7 @@
     "K 线、行情带、盈亏数字统一跟随;默认美股习惯",
     "绿涨红跌",
     "红涨绿跌",
-    "执行闸门",
-    "允许自动执行",
-    "关闭时只解析校验,永不发单。关是当场生效的,开要点保存",
-    "允许实盘账户下单",
-    "默认关闭,纸面账户不受此限。关是当场生效的,开要点保存",
+    "条件单",
     "触发方向必须有现价",
     "拿不到现价就拒绝条件单",
     "风控限额",
@@ -7709,7 +7531,7 @@
     "单笔张数",
     "在手风险",
     "同标的张数",
-    "只填要和上面不一样的那几项,空着的用上面的;往松了改同样要确认。",
+    "只填要和上面不一样的那几项,空着的用上面的。",
     "保护规则",
     "比熔断细一档:接连止损、盈亏回撤过大、当天亏到上限、同一只刚平过仓,就先停一会儿自动执行。到点自己解除,不用人工。",
     "只挡新单,永远不挡平仓。",
@@ -7994,8 +7816,6 @@
    "switches": [
     true,
     false,
-    true,
-    false,
     false,
     false,
     false,
@@ -8012,8 +7832,6 @@
    "links": [],
    "pres": [],
    "switchesDisabled": [
-    false,
-    false,
     false,
     false,
     false,
@@ -8113,8 +7931,6 @@
      "connections": {}
     },
     "form": {
-     "autoExecute": true,
-     "allowLive": false,
      "triggerVerify": true,
      "notional": 5000,
      "contracts": 5,
@@ -8217,8 +8033,6 @@
      }
     },
     "form": {
-     "autoExecute": true,
-     "allowLive": false,
      "triggerVerify": true,
      "notional": 5000,
      "contracts": 5,
@@ -8343,8 +8157,6 @@
      "connections": {}
     },
     "form": {
-     "autoExecute": true,
-     "allowLive": false,
      "triggerVerify": true,
      "notional": 5000,
      "contracts": 5,
@@ -8394,8 +8206,6 @@
    {
     "saved": {},
     "form": {
-     "autoExecute": false,
-     "allowLive": false,
      "triggerVerify": false,
      "notional": null,
      "contracts": null,
@@ -8439,8 +8249,6 @@
      ]
     },
     "form": {
-     "autoExecute": true,
-     "allowLive": false,
      "triggerVerify": false,
      "notional": null,
      "contracts": null,
@@ -8484,8 +8292,6 @@
   "problems": [
    {
     "form": {
-     "autoExecute": true,
-     "allowLive": false,
      "triggerVerify": true,
      "notional": 5000,
      "contracts": 5,
@@ -8539,8 +8345,6 @@
    },
    {
     "form": {
-     "autoExecute": true,
-     "allowLive": false,
      "triggerVerify": true,
      "notional": 5000,
      "contracts": 5,
@@ -8594,8 +8398,6 @@
    },
    {
     "form": {
-     "autoExecute": true,
-     "allowLive": false,
      "triggerVerify": true,
      "notional": null,
      "contracts": 0,
@@ -8664,8 +8466,6 @@
    },
    {
     "form": {
-     "autoExecute": true,
-     "allowLive": false,
      "triggerVerify": true,
      "notional": 5000,
      "contracts": 5,
@@ -8721,8 +8521,6 @@
    },
    {
     "form": {
-     "autoExecute": true,
-     "allowLive": false,
      "triggerVerify": true,
      "notional": 5000,
      "contracts": 5,
@@ -8776,8 +8574,6 @@
    },
    {
     "form": {
-     "autoExecute": true,
-     "allowLive": false,
      "triggerVerify": true,
      "notional": 5000,
      "contracts": 5,
@@ -8837,8 +8633,6 @@
   "patch": [
    {
     "form": {
-     "autoExecute": true,
-     "allowLive": false,
      "triggerVerify": true,
      "notional": 5000,
      "contracts": 5,
@@ -8969,8 +8763,6 @@
     },
     "patch": {
      "policies": {
-      "auto_execute": true,
-      "allow_live_trading": false,
       "require_trigger_price_verification": true
      },
      "limits": {
@@ -9024,8 +8816,6 @@
    },
    {
     "form": {
-     "autoExecute": true,
-     "allowLive": false,
      "triggerVerify": true,
      "notional": 5000,
      "contracts": 5,
@@ -9127,8 +8917,6 @@
     },
     "patch": {
      "policies": {
-      "auto_execute": true,
-      "allow_live_trading": false,
       "require_trigger_price_verification": true
      },
      "limits": {
@@ -9184,8 +8972,6 @@
    },
    {
     "form": {
-     "autoExecute": true,
-     "allowLive": false,
      "triggerVerify": true,
      "notional": 5000,
      "contracts": 5,
@@ -9234,8 +9020,6 @@
     "saved": null,
     "patch": {
      "policies": {
-      "auto_execute": true,
-      "allow_live_trading": false,
       "require_trigger_price_verification": true
      },
      "limits": {
@@ -9289,8 +9073,6 @@
    },
    {
     "form": {
-     "autoExecute": true,
-     "allowLive": false,
      "triggerVerify": true,
      "notional": 5000,
      "contracts": 5,
@@ -9421,8 +9203,6 @@
     },
     "patch": {
      "policies": {
-      "auto_execute": true,
-      "allow_live_trading": false,
       "require_trigger_price_verification": true
      },
      "limits": {
@@ -9478,8 +9258,6 @@
    },
    {
     "form": {
-     "autoExecute": true,
-     "allowLive": false,
      "triggerVerify": true,
      "notional": 5000,
      "contracts": 5,
@@ -9581,8 +9359,6 @@
     },
     "patch": {
      "policies": {
-      "auto_execute": true,
-      "allow_live_trading": false,
       "require_trigger_price_verification": true
      },
      "limits": {
@@ -9638,8 +9414,6 @@
    },
    {
     "form": {
-     "autoExecute": true,
-     "allowLive": false,
      "triggerVerify": true,
      "notional": 5000,
      "contracts": 5,
@@ -9688,8 +9462,6 @@
     "saved": null,
     "patch": {
      "policies": {
-      "auto_execute": true,
-      "allow_live_trading": false,
       "require_trigger_price_verification": true
      },
      "limits": {
@@ -9745,8 +9517,6 @@
    },
    {
     "form": {
-     "autoExecute": true,
-     "allowLive": false,
      "triggerVerify": true,
      "notional": null,
      "contracts": 0,
@@ -9877,8 +9647,6 @@
     },
     "patch": {
      "policies": {
-      "auto_execute": true,
-      "allow_live_trading": false,
       "require_trigger_price_verification": true
      },
      "limits": {
@@ -9937,8 +9705,6 @@
    },
    {
     "form": {
-     "autoExecute": true,
-     "allowLive": false,
      "triggerVerify": true,
      "notional": null,
      "contracts": 0,
@@ -10040,8 +9806,6 @@
     },
     "patch": {
      "policies": {
-      "auto_execute": true,
-      "allow_live_trading": false,
       "require_trigger_price_verification": true
      },
      "limits": {
@@ -10098,8 +9862,6 @@
    },
    {
     "form": {
-     "autoExecute": true,
-     "allowLive": false,
      "triggerVerify": true,
      "notional": null,
      "contracts": 0,
@@ -10148,8 +9910,6 @@
     "saved": null,
     "patch": {
      "policies": {
-      "auto_execute": true,
-      "allow_live_trading": false,
       "require_trigger_price_verification": true
      },
      "limits": {
@@ -10202,8 +9962,6 @@
    },
    {
     "form": {
-     "autoExecute": true,
-     "allowLive": false,
      "triggerVerify": true,
      "notional": 5000,
      "contracts": 5,
@@ -10334,8 +10092,6 @@
     },
     "patch": {
      "policies": {
-      "auto_execute": true,
-      "allow_live_trading": false,
       "require_trigger_price_verification": true
      },
      "limits": {
@@ -10391,8 +10147,6 @@
    },
    {
     "form": {
-     "autoExecute": true,
-     "allowLive": false,
      "triggerVerify": true,
      "notional": 5000,
      "contracts": 5,
@@ -10494,8 +10248,6 @@
     },
     "patch": {
      "policies": {
-      "auto_execute": true,
-      "allow_live_trading": false,
       "require_trigger_price_verification": true
      },
      "limits": {
@@ -10551,8 +10303,6 @@
    },
    {
     "form": {
-     "autoExecute": true,
-     "allowLive": false,
      "triggerVerify": true,
      "notional": 5000,
      "contracts": 5,
@@ -10601,8 +10351,6 @@
     "saved": null,
     "patch": {
      "policies": {
-      "auto_execute": true,
-      "allow_live_trading": false,
       "require_trigger_price_verification": true
      },
      "limits": {
@@ -10658,8 +10406,6 @@
    },
    {
     "form": {
-     "autoExecute": true,
-     "allowLive": false,
      "triggerVerify": true,
      "notional": 5000,
      "contracts": 5,
@@ -10790,8 +10536,6 @@
     },
     "patch": {
      "policies": {
-      "auto_execute": true,
-      "allow_live_trading": false,
       "require_trigger_price_verification": true
      },
      "limits": {
@@ -10849,8 +10593,6 @@
    },
    {
     "form": {
-     "autoExecute": true,
-     "allowLive": false,
      "triggerVerify": true,
      "notional": 5000,
      "contracts": 5,
@@ -10952,8 +10694,6 @@
     },
     "patch": {
      "policies": {
-      "auto_execute": true,
-      "allow_live_trading": false,
       "require_trigger_price_verification": true
      },
      "limits": {
@@ -11009,8 +10749,6 @@
    },
    {
     "form": {
-     "autoExecute": true,
-     "allowLive": false,
      "triggerVerify": true,
      "notional": 5000,
      "contracts": 5,
@@ -11059,8 +10797,6 @@
     "saved": null,
     "patch": {
      "policies": {
-      "auto_execute": true,
-      "allow_live_trading": false,
       "require_trigger_price_verification": true
      },
      "limits": {
@@ -11114,8 +10850,6 @@
    },
    {
     "form": {
-     "autoExecute": true,
-     "allowLive": false,
      "triggerVerify": true,
      "notional": 5000,
      "contracts": 5,
@@ -11246,8 +10980,6 @@
     },
     "patch": {
      "policies": {
-      "auto_execute": true,
-      "allow_live_trading": false,
       "require_trigger_price_verification": true
      },
      "limits": {
@@ -11305,8 +11037,6 @@
    },
    {
     "form": {
-     "autoExecute": true,
-     "allowLive": false,
      "triggerVerify": true,
      "notional": 5000,
      "contracts": 5,
@@ -11408,8 +11138,6 @@
     },
     "patch": {
      "policies": {
-      "auto_execute": true,
-      "allow_live_trading": false,
       "require_trigger_price_verification": true
      },
      "limits": {
@@ -11468,8 +11196,6 @@
    },
    {
     "form": {
-     "autoExecute": true,
-     "allowLive": false,
      "triggerVerify": true,
      "notional": 5000,
      "contracts": 5,
@@ -11518,8 +11244,6 @@
     "saved": null,
     "patch": {
      "policies": {
-      "auto_execute": true,
-      "allow_live_trading": false,
       "require_trigger_price_verification": true
      },
      "limits": {
@@ -11578,8 +11302,6 @@
   "dirty": [
    {
     "form": {
-     "autoExecute": true,
-     "allowLive": false,
      "triggerVerify": true,
      "notional": 5000,
      "contracts": 5,
@@ -11712,8 +11434,6 @@
    },
    {
     "form": {
-     "autoExecute": true,
-     "allowLive": false,
      "triggerVerify": true,
      "notional": 5000,
      "contracts": 5,
@@ -11764,8 +11484,6 @@
    },
    {
     "form": {
-     "autoExecute": true,
-     "allowLive": false,
      "triggerVerify": true,
      "notional": 5000,
      "contracts": 5,
@@ -11898,8 +11616,6 @@
    },
    {
     "form": {
-     "autoExecute": true,
-     "allowLive": false,
      "triggerVerify": true,
      "notional": 5000,
      "contracts": 5,
@@ -11950,8 +11666,6 @@
    },
    {
     "form": {
-     "autoExecute": true,
-     "allowLive": false,
      "triggerVerify": true,
      "notional": null,
      "contracts": 0,
@@ -12084,8 +11798,6 @@
    },
    {
     "form": {
-     "autoExecute": true,
-     "allowLive": false,
      "triggerVerify": true,
      "notional": null,
      "contracts": 0,
@@ -12136,8 +11848,6 @@
    },
    {
     "form": {
-     "autoExecute": true,
-     "allowLive": false,
      "triggerVerify": true,
      "notional": 5000,
      "contracts": 5,
@@ -12270,8 +11980,6 @@
    },
    {
     "form": {
-     "autoExecute": true,
-     "allowLive": false,
      "triggerVerify": true,
      "notional": 5000,
      "contracts": 5,
@@ -12322,8 +12030,6 @@
    },
    {
     "form": {
-     "autoExecute": true,
-     "allowLive": false,
      "triggerVerify": true,
      "notional": 5000,
      "contracts": 5,
@@ -12456,8 +12162,6 @@
    },
    {
     "form": {
-     "autoExecute": true,
-     "allowLive": false,
      "triggerVerify": true,
      "notional": 5000,
      "contracts": 5,
@@ -12508,8 +12212,6 @@
    },
    {
     "form": {
-     "autoExecute": true,
-     "allowLive": false,
      "triggerVerify": true,
      "notional": 5000,
      "contracts": 5,
@@ -12642,8 +12344,6 @@
    },
    {
     "form": {
-     "autoExecute": true,
-     "allowLive": false,
      "triggerVerify": true,
      "notional": 5000,
      "contracts": 5,

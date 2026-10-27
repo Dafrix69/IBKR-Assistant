@@ -78,7 +78,6 @@ Item {
                 spacing: 12
                 Chip { key: "broker" }
                 Chip { key: "mode" }
-                Chip { key: "live"; strong: !!(root.topbarState.live || {}).on }
                 Chip { key: "market"; visible: root.width > 1020 }
                 Text {
                     visible: root.width > 1180
@@ -123,11 +122,10 @@ Item {
         }
     }
 
-    // 一格状态:圆点 + 12px 的字;实盘开着时字是红的、加粗(shell.css 的 .chip-live.on)
+    // 一格状态:圆点 + 12px 的字
     component Chip: Item {
         id: chip
         property string key
-        property bool strong: false
         readonly property var c: root.topbarState[key] || ({})
         anchors.verticalCenter: parent.verticalCenter
         width: visible ? row.implicitWidth : 0
@@ -139,9 +137,8 @@ Item {
             Text {
                 anchors.verticalCenter: parent.verticalCenter
                 text: chip.c.text || ""
-                color: chip.strong ? Theme.redText : Theme.label
+                color: Theme.label
                 font.pixelSize: Theme.fontCaption; font.family: Theme.fontFamily
-                font.weight: chip.strong ? Theme.weightBold : Font.Normal
                 font.features: { "tnum": 1 }
             }
         }

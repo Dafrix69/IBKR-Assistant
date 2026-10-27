@@ -1,9 +1,6 @@
 // 「设置」一页的接线(pages/Settings.tsx,带 lib/EventsConfig、lib/DataPanel):
 //   · 表单:进来读 settings.get(引擎报 settings 事件时重读),表单按 shell/settings_rules 的 toForm 填;
-//   · 两个执行闸门:**关**是当场生效的(settings.patch 只送 policies 那一个 false,失败把开关拨回去),开只改表单、跟着「保存」走;
-//   · 保存:先看表单的问题;要从关到开的闸门各弹一个确认框(gate.auto_execute / gate.allow_live_trading,点了取消就把那个开关拨回去、不存);
-//     再弹「放宽风控限额」(limits.loosen,绑着补丁里的 limits——没放宽时 Bridge 不弹、直接放行);都过了才 settings.patch。
-//     确认凭据与 Electron 的 confirm-grants.js 同一张表,由 Bridge 核销;
+//   · 保存:先看表单的问题,过了就 settings.patch;
 //   · 重要事件的口径:草稿跟着 EventsStore 的 config;改一格 600ms 防抖再存(开关当场存),离开页面时把没存的补存;
 //   · 数据与备份:data.backups 读清单,data.backup 立即备份,恢复交给壳(停引擎、换库、重启;确认框是壳弹的),成了 2.5 秒后重读;
 //   · 外观三项在 QML 的 Theme 里(记在本机),不经这里。
@@ -38,8 +35,6 @@ public:
     Q_INVOKABLE void setField(const QString& key, const QVariant& value);
     /// 按账户覆盖的一格
     Q_INVOKABLE void setAccountLimit(const QString& alias, const QString& key, const QVariant& value);
-    /// 两个执行闸门:key = autoExecute / allowLive
-    Q_INVOKABLE void setGate(const QString& key, bool on);
     Q_INVOKABLE void save();
     /// 重要事件的一格:enabled / feed / cross_market(当场存),min_stars / lead1 / lead2 / cross_market_pct / cross_lag_pct /
     /// sector_move_pct / sector_share(百分数)/ sector_min_stocks(防抖存)

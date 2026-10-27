@@ -37,6 +37,7 @@ class TestFollow : public QObject {
     std::vector<contract::FollowConfig> cfgs_;
 
 private slots:
+    void cleanupTestCase() { jsfix::rewrite(u"follow.json"_s, fx_); }
     void initTestCase() {
         fx_ = jsfix::load(u"follow.json"_s);
         for (const OJson& c : fx_.get(u"cfgs"_s)->items) cfgs_.push_back(cfgOf(c));
@@ -64,7 +65,6 @@ private slots:
             const OJson& g = *c.get(u"g"_s);
             fo::FollowGates gates;
             if (g.get(u"breaker"_s)->type == OJson::String) gates.breaker = g.get(u"breaker"_s)->s;
-            gates.autoExecute = g.get(u"autoExecute"_s)->b;
             gates.connected = g.get(u"connected"_s)->b;
             const fo::Decision d = fo::decide(cfgs_[size_t(c.get(u"c"_s)->n)], dec(*c.get(u"p"_s)), gates, c.get(u"sent"_s)->n);
             JSFIX_SAME(*c.get(u"out"_s), d.toJson(),

@@ -354,7 +354,7 @@ private slots:
             Rig rig([&](double) { return n; }, 10000, rapidSettings());
             rig.at(0); rig.tick(false);
             if (reset) rig.engine->fastExit().resetRapid();
-            else rig.engine->settings.policies.auto_execute = false;
+            else rig.engine->killswitch().engage(u"x"_s);
             n = 6.6; rig.at(500); rig.tick(true);
             QVERIFY(rig.router->orders.isEmpty());
             QVERIFY(!js::truthy(rig.store->getTrack(rig.trackId)->get(u"fired_at"_s)));

@@ -40,13 +40,10 @@
   },
   "_limits_comment": "后四项默认不设(0 / 空):max_open_risk_usd = 账户在手期权的最坏亏损合计上限;max_underlying_contracts = 同一标的同一到期的张数上限;auto_mid_spread_share = AUTO_MID 让盘口价差的几成(0–1);by_account 按账户别名另设前两项与这两条累计上限,如 {\"主账户\": {\"max_order_notional\": 2000}}。",
   "policies": {
-    "auto_execute": false,
-    "allow_live_trading": false,
     "auto_outside_rth": true,
     "require_trigger_price_verification": true,
     "trigger_min_gap_bps": 5.0,
     "closed_market_policy": "reject_market_orders",
-    "consecutive_failure_breaker": 3,
     "review_feature_enabled": false
   },
   "_protections_comment": "保护规则:比熔断细一档的自动执行暂停,只挡新单、永不挡平仓,到点自己解除。默认全关。",

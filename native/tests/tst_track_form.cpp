@@ -14,7 +14,7 @@ using namespace Qt::StringLiterals;
 namespace {
 
 track::FormState stateOf(const QJsonObject& c) {
-    return track::FormState::fromJson(c[u"position"].toObject(), c[u"autoExecute"].toBool(), c[u"values"].toObject());
+    return track::FormState::fromJson(c[u"position"].toObject(), c[u"values"].toObject());
 }
 
 /// 按场景回话的假货,把每一步记成和生成器一样的形状
@@ -67,7 +67,7 @@ private slots:
         const QJsonObject position{{u"key"_s, u"paper|SPX|BAG"_s}, {u"symbol"_s, u"SPX"_s}, {u"sec_type"_s, u"BAG"_s},
             {u"quantity"_s, 2}, {u"account"_s, u"paper"_s}};
         QJsonObject values{{u"host"_s, true}, {u"brokerSpotStop"_s, true}, {u"autoPicked"_s, true}, {u"stopBelow"_s, 6000}, {u"spotStopLimit"_s, 1.25}};
-        const auto state = track::FormState::fromJson(position, false, values);
+        const auto state = track::FormState::fromJson(position, values);
         QVERIFY(state.hostOn()); // 只有止损也能托管组合,不必虚构一个止盈目标
         const auto spec = track::buildSpec(state);
         QVERIFY(spec[u"spot_stop_at_broker"].toBool());
@@ -144,8 +144,8 @@ private slots:
     void defaultsMatchUseState() {
         QFETCH(QJsonObject, d);
         const QJsonObject v = d[u"values"].toObject();
-        const track::FormState fromDefaults = track::FormState::fromJson(d[u"position"].toObject(), false, v);
-        const track::FormState untouched = track::FormState::fromJson(d[u"position"].toObject(), false, QJsonObject{});
+        const track::FormState fromDefaults = track::FormState::fromJson(d[u"position"].toObject(), v);
+        const track::FormState untouched = track::FormState::fromJson(d[u"position"].toObject(), QJsonObject{});
         QVERIFY(untouched.invalid.isEmpty() && fromDefaults.invalid.isEmpty());
         // 一项都没改时拼出来的载荷,和把原版初值逐项填上时拼出来的一样
         QCOMPARE(test::jsonDiff(track::buildSpec(fromDefaults), track::buildSpec(untouched)), QString());

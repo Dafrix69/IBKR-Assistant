@@ -80,13 +80,6 @@ QString ConsentStore::blockedWithoutConsent(const QString& method, const QJsonVa
     }
     if (method == u"settings.patch") {
         const QJsonValue patch = p.value(u"patch");
-        const QJsonValue policies = patch.isObject() ? patch.toObject().value(u"policies") : QJsonValue();
-        if (policies.isObject()) {
-            const QJsonObject pol = policies.toObject();
-            if (pol.value(u"auto_execute") == QJsonValue(true) || pol.value(u"allow_live_trading") == QJsonValue(true)) {
-                return u"还没有同意《风险揭示与使用条款》,不能打开自动执行或实盘下单。请在应用里阅读并同意后再试。"_s;
-            }
-        }
         // 打开 Discord 跟单 = 授权软件不经确认发单
         const QJsonValue follow = patch.isObject() ? patch.toObject().value(u"follow") : QJsonValue();
         if (follow.isObject() && follow.toObject().value(u"enabled") == QJsonValue(true)) {

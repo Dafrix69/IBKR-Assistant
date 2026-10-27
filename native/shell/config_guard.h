@@ -1,7 +1,6 @@
 // 配置文件的体检与恢复(desktop/config-guard.js 逐条搬)。引擎读不进配置时用退出码 78(EXIT_CONFIG)说"是配置的问题",
 // 壳停下重启、把话说清楚,并给一条回到上一份可用配置的路。备份是引擎每次从界面改配置之前留的 settings.json.bak。
-// 恢复只在用户点了之后做;恢复出来的配置里执行闸门(自动执行 / 实盘下单)一律关上——备份比现状旧,不替人保留一个
-// "也许已经不想要了"的授权;坏的那份改名留在旁边(.broken-时间戳),不删。写回去保持原来的键次序(shell/ordered_json)。
+// 恢复只在用户点了之后做;坏的那份改名留在旁边(.broken-时间戳),不删。写回去保持原来的键次序(shell/ordered_json)。
 // 期望值由 node 跑原模块现算(tests/fixtures/gen_config_guard.mjs)。
 #pragma once
 
@@ -28,8 +27,7 @@ struct Inspection {
 Inspection inspect(const QString& configPath);
 
 struct Restored {
-    QString brokenCopy;       // 空 = 原来没有文件
-    QStringList closedGates;  // 这一步关掉的闸门的中文名
+    QString brokenCopy;  // 空 = 原来没有文件
 };
 /// 用备份换回配置;没有可用的备份时返回空,error 里是给人看的那句
 std::optional<Restored> restoreBackup(const QString& configPath, double nowMs, QString* error, const QTimeZone& zone = QTimeZone::systemTimeZone());

@@ -136,8 +136,7 @@ QString buildSummary(const Input& input) {
         lines << u"券商:%1 %2%3 · 市场 %4 · 美东 %5"_s.arg(orQ(field(s, u"broker_provider"_s)), flag(u"broker_connected"_s) ? u"已连接"_s : u"未连接"_s,
                                                            upstream && upstream->type == OJson::Bool && !upstream->b ? u"(上游中断)"_s : QString(),
                                                            orQ(field(s, u"market_status"_s)), orQ(field(s, u"now_et"_s)));
-        lines << u"自动执行 %1 · 实盘 %2 · 熔断 %3"_s.arg(flag(u"auto_execute"_s) ? u"开"_s : u"关"_s, flag(u"allow_live_trading"_s) ? u"开"_s : u"关"_s,
-                                                       engaged ? u"已合上(%1)"_s.arg(field(*breaker, u"reason"_s)) : u"未合上"_s);
+        lines << u"熔断 %1"_s.arg(engaged ? u"已合上(%1)"_s.arg(field(*breaker, u"reason"_s)) : u"未合上"_s);
         lines << u"模型 %1 · 提示词 %2"_s.arg(orQ(field(s, u"model"_s)), orQ(field(s, u"prompt_version"_s)));
     }
     for (const QString& e : engine.errors) lines << u"引擎报错:"_s + e;

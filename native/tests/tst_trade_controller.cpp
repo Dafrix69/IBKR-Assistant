@@ -124,7 +124,6 @@ private slots:
         Rig rig;
         rig.controller.togglePick(u"主账户"_s, true);
         QCOMPARE(rig.controller.model()[u"picked"].toArray(), (QJsonArray{u"模拟"_s, u"主账户"_s}));
-        QVERIFY(rig.controller.model()[u"liveGate"].isString());
         rig.controller.togglePick(u"模拟"_s, false);
         QCOMPARE(rig.controller.model()[u"picked"].toArray(), (QJsonArray{u"主账户"_s}));
         rig.controller.togglePick(u"主账户"_s, false);
@@ -155,12 +154,12 @@ private slots:
     // 快捷键发送:发不出去时只说一句(不弹框、不发);发得出去时同按钮
     void hotkeyObeysTheButtonGate() {
         Rig rig;
-        rig.set(u"system.status"_s, obj(R"({"auto_execute":false})"));
+        rig.set(u"system.status"_s, obj(R"({"breaker":{"engaged":true,"reason":"手动"}})"));
         rig.status.refresh();
         QTRY_VERIFY(!rig.controller.model()[u"send"][u"canExecute"].toBool());
         rig.composer.setText(u"买 1 股 AAPL"_s);
         rig.controller.hotkey(true);
-        QCOMPARE(rig.status.banner(), u"现在发不出去:自动执行未打开"_s);
+        QCOMPARE(rig.status.banner(), u"现在发不出去:已熔断"_s);
         QTest::qWait(100);
         QCOMPARE(rig.prompter.boxes.size(), 0);
         QCOMPARE(rig.received(u"instruction.submit"_s).size(), 0);

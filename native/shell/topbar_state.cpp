@@ -10,19 +10,6 @@ QString gatewayName(const QJsonObject& status) { return status.value(u"broker_pr
 
 namespace {
 
-/// 当前券商通道下可选的账户:两家都配了别名时,只列生效券商那一家的
-QJsonArray pickableAccounts(const QJsonObject& status) {
-    QString provider = status.value(u"broker_provider").toString();
-    if (provider.isEmpty()) provider = u"ibkr"_s;
-    QJsonArray out;
-    for (const QJsonValue& a : status.value(u"accounts").toArray()) {
-        QString broker = a.toObject().value(u"broker").toString();
-        if (broker.isEmpty()) broker = u"ibkr"_s;
-        if (broker == provider) out.append(a);
-    }
-    return out;
-}
-
 QJsonObject chip(const QString& text, const QString& tone, const QString& tip = {}) {
     return {{u"text"_s, text}, {u"tone"_s, tone}, {u"tip"_s, tip}};
 }
@@ -50,43 +37,19 @@ QJsonObject topbarState(const QJsonObject& status, int engineOk) {
         : connected ? u"引擎与券商网关的长连接正常"_s
                     : u"未连接券商:只能解析,不能下单,也拿不到行情"_s;
 
-    // 实盘闸门
-    QStringList liveAliases;
-    for (const QJsonValue& a : pickableAccounts(status))
-        if (!a.toObject().value(u"is_paper").toBool()) liveAliases.append(a.toObject().value(u"alias").toString());
-    const bool liveOpen = status.value(u"allow_live_trading").toBool() && !liveAliases.isEmpty();
-    const QString liveText = !has ? u"—"_s : liveOpen ? u"实盘已放开"_s : u"仅纸面"_s;
-    QString liveTip;
-    if (has) {
-        if (liveOpen) {
-            liveTip = u"实盘闸门开着:发到实盘账户(%1)的订单不会被它拦下,会用真钱成交。"_s.arg(liveAliases.join(u"、"_s))
-                + (status.value(u"auto_execute").toBool() ? QString() : u"现在自动执行关着,什么单都发不出去;一打开就是这个状态。"_s)
-                + u"在「设置」里关掉「允许实盘账户下单」当场生效。"_s;
-        } else if (!liveAliases.isEmpty()) {
-            liveTip = u"发到实盘账户(%1)的订单会被拦下:「设置」里没有允许实盘账户下单。"_s.arg(liveAliases.join(u"、"_s));
-        } else {
-            liveTip = u"这家券商下没有配置实盘账户。"_s;
-        }
-    }
-
     // 模式
-    QString modeText = u"仅解析"_s;
-    QString modeTone = u"idle"_s;
-    QString modeTip = u"自动执行未打开:校验通过也不发单"_s;
+    QString modeText = u"直接发单"_s;
+    QString modeTone = u"warn"_s;
+    QString modeTip = u"解析、校验通过的订单直接发到券商,实盘账户也一样"_s;
     if (engaged) {
         modeText = u"已熔断"_s;
         modeTone = u"bad"_s;
-        modeTip = u"熔断中:所有自动执行暂停,解除后恢复"_s;
+        modeTip = u"熔断中:不再发出任何新单,解除后恢复"_s;
     } else if (guarded) {
         modeText = u"保护暂停"_s;
         modeTone = u"warn"_s;
         const QString reason = protections.value(u"reason").toString();
         modeTip = u"%1。平仓不受影响。"_s.arg(reason.isEmpty() ? u"保护规则已触发"_s : reason);
-    } else if (status.value(u"auto_execute").toBool()) {
-        const bool live = status.value(u"allow_live_trading").toBool();
-        modeText = live ? u"自动执行(含实盘)"_s : u"自动执行(仅纸面)"_s;
-        modeTone = u"warn"_s;
-        modeTip = live ? u"解析通过的订单会直接发出,实盘账户也不拦"_s : u"解析通过的订单会直接发出;指向实盘账户的会被拦下"_s;
     }
     if (!engaged && !guarded && !accountPauses.isEmpty()) {
         QStringList names, reasons;
@@ -110,7 +73,6 @@ QJsonObject topbarState(const QJsonObject& status, int engineOk) {
     return {
         {u"broker"_s, chip(brokerText, brokerTone, brokerTip)},
         {u"mode"_s, chip(modeText, modeTone, modeTip)},
-        {u"live"_s, QJsonObject{{u"text"_s, liveText}, {u"tone"_s, liveOpen ? u"bad"_s : u"idle"_s}, {u"tip"_s, liveTip}, {u"on"_s, liveOpen}}},
         {u"market"_s, chip(marketText, marketTone, has ? u"美东时间 %1"_s.arg(status.value(u"now_et").toString()) : QString())},
         {u"model"_s, chip(model, u"idle"_s, status.value(u"model").toString().isEmpty() ? QString() : u"解析用的模型:%1"_s.arg(status.value(u"model").toString()))},
         {u"engine"_s, chip(QString(), engineOk == -1 ? u"idle"_s : engineOk == 1 ? u"ok"_s : u"bad"_s,

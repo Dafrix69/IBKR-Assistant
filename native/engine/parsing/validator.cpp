@@ -300,12 +300,6 @@ std::pair<QList<Issue>, std::optional<ApprovedOrder>> Validator::validateOne(OJs
         QString aliases = settings_.aliasList().join(u"、"_s);
         if (aliases.isEmpty()) aliases = u"(未配置)"_s;
         issues.append({u"UNKNOWN_ACCOUNT"_s, u"账户别名 '"_s + accountAlias + u"' 不在别名表中(可用:"_s + aliases + u")。请改写指令或先在设置里添加别名。"_s});
-    } else if (!account->is_paper && !settings_.policies.allow_live_trading) {
-        const QString unflagged = settings_.paper_flag_missing.contains(account->alias)
-                                      ? u"(配置里没写 is_paper,按实盘处理;若它是模拟账户,请写明 \"is_paper\": true)"_s
-                                      : QString();
-        issues.append({u"LIVE_TRADING_DISABLED"_s, u"订单指向实盘账户 "_s + account->alias + unflagged +
-                                                       u",但当前没有允许实盘下单(默认关闭)。请先在纸面账户跑够回归测试,再到「设置」里打开「允许实盘账户下单」。"_s});
     }
 
     // 3. 合约复核(就地复核 tradingClass)

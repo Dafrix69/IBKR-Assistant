@@ -88,7 +88,7 @@ struct PageInput {
 
 /// { title, limits, readiness: { title, sub, steps: [{ title, done, text, action, tab }] } | null, picked, usable,
 ///   send: { label, warn, canExecute, blockers, tip }, hotkeys, picker: { accounts: [{ alias, on, live, tip, text }], hint } | null,
-///   liveGate: text | null, guard: text | null, accountPauses: text | null, chips, primer: { summary, items },
+///   guard: text | null, accountPauses: text | null, chips, primer: { summary, items },
 ///   pane, panes, result: { kind: working|failure|cards|empty, text, cards } }
 QJsonObject tradePageModel(const PageInput& in);
 /// 按 React 版的文档次序吐出来的每一段字(输入框里的字也算一段,同 SSR)

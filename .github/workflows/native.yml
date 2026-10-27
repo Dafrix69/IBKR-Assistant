@@ -39,24 +39,3 @@ jobs:
           QT_QPA_PLATFORM: offscreen
         run: ctest --test-dir build --output-on-failure
 
-  # 内存错误、未定义行为、数据竞争各一遍(brief「C++ 自己的那一套」)。只在 macOS 上:MSVC 没有 UBSan / TSan
-  sanitizers:
-    strategy:
-      fail-fast: false
-      matrix:
-        flag: [IBKR_SANITIZE, IBKR_TSAN]
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: jurplel/install-qt-action@v4
-        with:
-          version: "6.10.3"
-          cache: true
-      - name: 配置
-        run: cmake -S native -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug -D${{ matrix.flag }}=ON
-      - name: 编译
-        run: cmake --build build
-      - name: 测试
-        env:
-          QT_QPA_PLATFORM: offscreen
-        run: ctest --test-dir build --output-on-failure

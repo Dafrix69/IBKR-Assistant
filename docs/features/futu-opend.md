@@ -45,7 +45,7 @@ IBKR 用不了时的备用券商通道。`FutuRouter`(`engine-ts/src/futuBroker.
 | 没有原生条件单 | `SUPPORTS_NATIVE_CONDITIONS = false`,所有条件单进软件盯盘队列,软件必须开着 |
 | 回报靠拉取 | `pollOrderUpdates()` 由 `pending.poll`(`Engine.syncBrokerOrders()`)拉订单与成交,包成和 IBKR 同形的对象走同一套入库;富途下界面与主进程在没有排队单时也发 `pending.poll` |
 | 模拟盘不支持成交查询 | 按订单行的 `dealt_qty` / `dealt_avg_price` 增量合成成交,`exec_id` 标「(合成)」,不能用来做滑点归因;实盘走逐笔成交 |
-| `is_paper` 要和 `trd_env` 一致 | 连接时读回每个账号的 `trd_env`,诊断里标红不一致的,下单前再核对,对不上拒绝;`is_paper` 是实盘闸门的输入 |
+| `is_paper` 要和 `trd_env` 一致 | 连接时读回每个账号的 `trd_env`,诊断里标红不一致的,下单前再核对,对不上拒绝;`is_paper` 决定界面上标纸面还是实盘 |
 | 没有 2 分钟 K 线 | 最小 1 分钟,往上 5 / 15 / 30 / 60 分钟与日线;缺的周期拒绝,不用 1 分钟线合成 |
 | 没有美股指数 | `quoteCapability()` 闸门:涉及 SPX / NDX / VIX / RUT 的报价、K 线当场拒绝,条件单在进队列之前拒绝,并给出可选替代(SPY / QQQ / IWM / VIXY),软件不替用户换标的;`symbol_map` 映射成 ETF 也绕不过去(闸门认配置里的 `index_symbols`)。期权链不挡 |
 | 行情带的连续期货、指数、加密货币 | 一律跳过,七格走公开源 |

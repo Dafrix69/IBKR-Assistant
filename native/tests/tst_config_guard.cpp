@@ -64,7 +64,6 @@ private slots:
             const QJsonObject want = s.value(u"restore"_s).toObject();
             QCOMPARE(bool(r), want.value(u"ok"_s).toBool());
             if (r) {
-                QCOMPARE(QJsonArray::fromStringList(r->closedGates), want.value(u"closedGates"_s).toArray());
                 QCOMPARE(r->brokenCopy.isEmpty() ? QJsonValue() : QJsonValue(QFileInfo(r->brokenCopy).fileName()), want.value(u"brokenCopy"_s));
                 QFile written(cfg);
                 QVERIFY(written.open(QIODevice::ReadOnly));

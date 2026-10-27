@@ -249,7 +249,7 @@ void TrackerController::refreshWatch(const QString& watchId) {
 }
 
 void TrackerController::startTrack(const QJsonObject& position, const QJsonObject& values) {
-    const track::FormState state = track::FormState::fromJson(position, status_ && status_->status().value("auto_execute"_L1).toBool(), values);
+    const track::FormState state = track::FormState::fromJson(position, values);
     const QString key = position.value("key"_L1).toString();
     const QPointer<TrackerController> self(this);
     track::FormDeps d;
@@ -307,8 +307,6 @@ int TrackerController::preview(const QString& key, double target, const QVariant
     bridge_->rpc(this, u"tracker.target_preview"_s, p, [this, seq, target](const EngineReply& r) { emit previewed(seq, target, r.result, r.ok ? QString() : r.error); });
     return seq;
 }
-
-bool TrackerController::autoExecute() const { return status_ && status_->status().value("auto_execute"_L1).toBool(); }
 
 bool TrackerController::isPaper(const QString& account) const {
     if (!status_) return false;

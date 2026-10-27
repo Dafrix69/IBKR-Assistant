@@ -1,8 +1,8 @@
 #include "shell/macro_store.h"
 
 #include "shell/bridge.h"
-#include "shell/confirm_grants.h"
 #include "shell/jsvalue.h"
+#include "shell/locale_format.h"
 #include "shell/status_store.h"
 
 #include <QDateTime>

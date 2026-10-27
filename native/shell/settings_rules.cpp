@@ -57,8 +57,6 @@ QJsonObject toForm(const QJsonValue& settings) {
     }
     const QJsonValue mid = l.value("auto_mid_spread_share"_L1);
     return QJsonObject{
-        {u"autoExecute"_s, jsTruthy(p.value("auto_execute"_L1))},
-        {u"allowLive"_s, jsTruthy(p.value("allow_live_trading"_L1))},
         {u"triggerVerify"_s, jsTruthy(p.value("require_trigger_price_verification"_L1))},
         {u"notional"_s, orNull(l.value("max_order_notional"_L1))},
         {u"contracts"_s, orNull(l.value("max_option_contracts"_L1))},
@@ -215,9 +213,7 @@ QJsonObject toPatch(const QJsonObject& f, const QJsonValue& savedValue) {
     keep(budget, rb, u"max_position_pct"_s, v("rbPosition"));
 
     return QJsonObject{
-        {u"policies"_s, QJsonObject{{u"auto_execute"_s, v("autoExecute").toBool()},
-                                    {u"allow_live_trading"_s, v("allowLive").toBool()},
-                                    {u"require_trigger_price_verification"_s, v("triggerVerify").toBool()}}},
+        {u"policies"_s, QJsonObject{{u"require_trigger_price_verification"_s, v("triggerVerify").toBool()}}},
         {u"limits"_s, limits},
         {u"protections"_s, QJsonObject{{u"stoploss_guard"_s, sg}, {u"max_drawdown"_s, dd}, {u"cooldown"_s, cd}, {u"daily_loss"_s, dl}}},
         {u"risk_budget"_s, budget},
@@ -269,7 +265,7 @@ QJsonArray options(std::initializer_list<QPair<QString, QString>> list) {
 const QString kProtectHint1 = u"比熔断细一档:接连止损、盈亏回撤过大、当天亏到上限、同一只刚平过仓,就先停一会儿自动执行。到点自己解除,不用人工。"_s;
 const QString kProtectHint2 = u"只挡新单,永远不挡平仓。"_s;
 const QString kProtectHint3 = u"被挡下的单停在「仅校验未发送」,保护期过了还能再发。"_s;
-const QString kAccountsHint = u"只填要和上面不一样的那几项,空着的用上面的;往松了改同样要确认。"_s;
+const QString kAccountsHint = u"只填要和上面不一样的那几项,空着的用上面的。"_s;
 const QString kBudgetHint = u"一单占账户权益太多时,在订单卡片上多一句提醒;只提醒,不拦单,平仓单不受影响。权益填了就用填的;空着的 IBKR 美元账户用券商报的净值。"_s;
 const QString kConfigHint = u"账户在「接入 → 账户」里配。连接(端口、client id)只能手动编辑配置文件,改完重启交易引擎生效。"_s;
 const QString kEventsHint = u"今天要公布的数(CPI、非农、FOMC…)一直挂在顶栏下面,直到公布过了一阵;公布前弹窗提醒,「应对」能把一句对冲指令写进指令框。板块联动:一个板块里多数成分股同向走出一大截时也挂上去。"_s;
@@ -342,8 +338,6 @@ QJsonObject pageModel(const PageInput& in, const QTimeZone& zone) {
     m[u"dirty"_s] = isDirty(f, in.saved);
     m[u"saving"_s] = in.saving;
     m[u"gates"_s] = QJsonArray{
-        switchRow(u"autoExecute"_s, u"sf-bolt"_s, u"orange"_s, u"允许自动执行"_s, u"关闭时只解析校验,永不发单。关是当场生效的,开要点保存"_s, v("autoExecute").toBool()),
-        switchRow(u"allowLive"_s, u"sf-dollar"_s, u"red"_s, u"允许实盘账户下单"_s, u"默认关闭,纸面账户不受此限。关是当场生效的,开要点保存"_s, v("allowLive").toBool()),
         switchRow(u"triggerVerify"_s, u"sf-shield"_s, u"blue"_s, u"触发方向必须有现价"_s, u"拿不到现价就拒绝条件单"_s, v("triggerVerify").toBool()),
     };
     m[u"limits"_s] = QJsonArray{
@@ -448,7 +442,7 @@ QStringList pageTexts(const QJsonObject& m) {
         << u"Liquid Glass"_s << u"侧栏、工具栏这些玻璃面有多透:左边通透,右边着色(更好读)"_s
         << u"涨跌配色"_s << u"K 线、行情带、盈亏数字统一跟随;默认美股习惯"_s << u"绿涨红跌"_s << u"红涨绿跌"_s;
     if (!m.value("loading"_L1).toBool()) {
-        out << u"执行闸门"_s;
+        out << u"条件单"_s;
         rowTexts(out, m.value("gates"_L1).toArray());
         out << u"风控限额"_s;
         rowTexts(out, m.value("limits"_L1).toArray());

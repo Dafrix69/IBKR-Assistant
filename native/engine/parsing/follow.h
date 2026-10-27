@@ -32,7 +32,6 @@ Triage triage(const contract::FollowConfig& cfg, const FollowMessage& message, d
 
 struct FollowGates {
     std::optional<QString> breaker;
-    bool autoExecute = false;
     bool connected = false;
 };
 struct Decision {

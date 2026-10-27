@@ -19,9 +19,7 @@ namespace ibkr::shell::track {
 struct FormState {
     /// 这份持仓(positions.list 的一行):key、symbol、sec_type、quantity、account
     QJsonObject position;
-    /// 全局「自动执行」开着没有(status.auto_execute):到价自动平仓的默认值跟它
-    bool autoExecute = false;
-    /// 人拨过「到价自动平仓」就以人拨的为准
+    /// 人拨过「到价自动平仓」就以人拨的为准,没拨过是开着
     std::optional<bool> autoPicked;
     std::optional<double> tp, sl, trail, profitDd;
     /// 利润回撤的起算门槛,默认 10;清空 = 不设
@@ -39,7 +37,7 @@ struct FormState {
 
     /// 界面那一份 JSON(键同 React 版表单的各个 state):没给的照原版的初值(useState(...));数字走 formNumber,
     /// 读不成的进 invalid;开关与平仓方式类型不对也进 invalid
-    static FormState fromJson(const QJsonObject& position, bool autoExecute, const QJsonObject& values);
+    static FormState fromJson(const QJsonObject& position, const QJsonObject& values);
     QString orderTypeOrDefault() const;
     bool isCombo() const;
     bool derivative() const;

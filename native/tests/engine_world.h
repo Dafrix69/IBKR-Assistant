@@ -127,10 +127,7 @@ public:
 
     static OJson bs(const ibkr::util::BreakerState& s) {
         return js::object({{u"engaged"_s, js::B(s.engaged)},
-                           {u"reason"_s, js::S(s.reason)},
-                           {u"consecutive_failures"_s, js::N(s.consecutive_failures)},
-                           {u"consecutive_parse_failures"_s, js::N(s.consecutive_parse_failures)},
-                           {u"auto"_s, js::B(s.autoEngaged)}});
+                           {u"reason"_s, js::S(s.reason)}});
     }
 
     // ---- 名字 → id
@@ -278,17 +275,6 @@ public:
         w_.rec(js::object({{u"c"_s, js::S(u"breaker"_s)}, {u"m"_s, js::S(u"state"_s)}, {u"r"_s, World::bs(s)}}));
         return s;
     }
-    std::optional<ibkr::util::BreakerState> recordFailure(const QString& reason, const QString& kind) override {
-        const auto r = w_.ksReal->recordFailure(reason, kind);
-        w_.rec(js::object({{u"c"_s, js::S(u"breaker"_s)}, {u"m"_s, js::S(u"recordFailure"_s)}, {u"a"_s, js::array({js::S(reason), js::S(kind)})},
-                           {u"r"_s, r ? World::bs(*r) : js::Null()}}));
-        return r;
-    }
-    void recordSuccess(const QString& kind) override {
-        w_.ksReal->recordSuccess(kind);
-        w_.rec(js::object({{u"c"_s, js::S(u"breaker"_s)}, {u"m"_s, js::S(u"recordSuccess"_s)}, {u"a"_s, js::array({js::S(kind)})}}));
-    }
-
 private:
     World& w_;
 };
@@ -598,7 +584,7 @@ inline World::World(const OJson& s, const OJson& b) : script(s), base(b) {
     real = std::make_unique<ibkr::domain::TradeStore>(settings->db_path);
     realPort = orch::makeStorePort(*real);
     store = std::make_unique<LoggedStore>(*this, *realPort);
-    ksReal = std::make_unique<ibkr::util::KillSwitch>(dir.path() + u"/breaker.json"_s, settings->policies.consecutive_failure_breaker);
+    ksReal = std::make_unique<ibkr::util::KillSwitch>(dir.path() + u"/breaker.json"_s);
     ks = std::make_unique<LoggedBreaker>(*this);
     ibkr::util::Notifier::Sink sink = [this](const QString& title, const QString& subtitle, const QString& body) {
         rec(js::object({{u"c"_s, js::S(u"notify"_s)}, {u"a"_s, js::array({js::S(title), js::S(subtitle), js::S(body)})}}));
@@ -836,18 +822,10 @@ inline Task<OJson> World::doOp(OJson step) {
     if (op == u"breaker") {
         const QString action = str(step, u"action"_s);
         const QString reason = step.get(u"reason"_s) ? str(step, u"reason"_s) : u"x"_s;
-        const QString kind = step.get(u"kind"_s) ? str(step, u"kind"_s) : u"broker"_s;
-        if (action == u"engage") co_return bs(ksReal->engage(reason, false));
-        if (action == u"engageAuto") co_return bs(ksReal->engage(reason, true));
+        if (action == u"engage") co_return bs(ksReal->engage(reason));
         if (action == u"release") co_return bs(ksReal->release());
-        if (action == u"fail") {
-            const auto r = ksReal->recordFailure(reason, kind);
-            co_return r ? bs(*r) : js::Null();
-        }
-        if (action == u"ok") {
-            ksReal->recordSuccess(kind);
-            co_return js::Null();
-        }
+        // 自动熔断已撤掉:连续失败不再计数、不再自己合上。老脚本里的这几步照走,什么也不做
+        if (action == u"engageAuto" || action == u"fail" || action == u"ok") co_return js::Null();
         qFatal("脚本写错:breaker %s", qPrintable(action));
     }
     if (op == u"status" || op == u"error" || op == u"exec" || op == u"commission") {

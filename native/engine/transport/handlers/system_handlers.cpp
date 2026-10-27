@@ -69,9 +69,7 @@ OJson SystemHandlers::systemStatus() {
     out.set(u"prompt_version"_s, js::S(engine.bundle().version));
     out.set(u"prompt_fingerprint"_s, js::S(parsing::prompts::fingerprint(engine.bundle())));
     out.set(u"model"_s, js::S(settings().llm.model));
-    out.set(u"auto_execute"_s, js::B(settings().policies.auto_execute));
-    out.set(u"allow_live_trading"_s, js::B(settings().policies.allow_live_trading));
-    out.set(u"breaker"_s, js::object({{u"engaged"_s, js::B(breaker.engaged)}, {u"reason"_s, js::S(breaker.reason)}, {u"consecutive_failures"_s, js::N(breaker.consecutive_failures)}}));
+    out.set(u"breaker"_s, js::object({{u"engaged"_s, js::B(breaker.engaged)}, {u"reason"_s, js::S(breaker.reason)}}));
     // 保护规则(接连止损 / 回撤过大 / 同标的冷却):到点自己解除,所以带上解除时刻,界面直接显示"还剩几分钟",不用再问一次
     out.set(u"protections"_s, protectionsJson(engine.protectionState(moment.epochMs), moment.epochMs));
     out.set(u"broker_provider"_s, js::S(settings().broker.provider));

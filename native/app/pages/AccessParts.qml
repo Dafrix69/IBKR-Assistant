@@ -695,7 +695,7 @@ QtObject {
                 GroupRow {
                     width: parent.width
                     stacked: true
-                    label: "发到这些账户"; sub: "一个都不勾 = 默认账户。勾两个就每单各发一份,上限各算各的;实盘账户还要「允许实盘账户下单」开着。"
+                    label: "发到这些账户"; sub: "一个都不勾 = 默认账户。勾两个就每单各发一份,上限各算各的。"
                     Flow {
                         width: parent.width
                         spacing: 8
@@ -764,18 +764,12 @@ QtObject {
                 SwitchRow {
                     width: parent.width
                     icon: "sf-bolt"; tint: "orange"
-                    label: "自动跟单"; sub: "关着 = 只观察。关是当场生效的,开要点保存并在确认框里确认"
+                    label: "自动跟单"; sub: "关着 = 只观察。关是当场生效的,开要点保存"
                     checked: !!fp.m.enabled
                     onToggled: function (on) { if (fp.controller) fp.controller.setFollowEnabled(on) }
                 }
             }
             Item { width: 1; height: 14 }
-            Column {
-                visible: !!fp.m.autoExecuteOff
-                width: parent.width
-                Alert { width: parent.width; tone: "warn"; text: "「设置 → 允许自动执行」现在关着:打开跟单之后信号仍然发不出去,会记成「闸门关着」。" }
-                Item { width: 1; height: 14 }
-            }
             Column {
                 visible: (fp.m.problems || []).length > 0
                 width: parent.width

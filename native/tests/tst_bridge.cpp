@@ -6,6 +6,7 @@
 #include "shell_harness.h"
 
 #include <QFile>
+#include <QJsonArray>
 #include <QRegularExpression>
 #include <QTemporaryDir>
 
@@ -158,8 +159,6 @@ private slots:
         QVERIFY2(blocked.error.startsWith(u"还没有同意《风险揭示与使用条款》"_s), qPrintable(blocked.error));
         // 只解析不发单不挡
         QVERIFY(r.rpc(u"instruction.submit"_s, obj(R"({"text":"买 AAPL 1 股","execute":false,"accounts":["模拟"],"__confirmed":true})")).ok);
-        // 条款挡在凭据前面:没同意时不白烧凭据;同意之后那张凭据照样用得上
-        QVERIFY(r.confirm(obj(R"({"purpose":"instruction.submit","binding":{"text":"买 AAPL 1 股","accounts":["模拟"]}})")).first);
         QVERIFY(!r.rpc(u"instruction.submit"_s, obj(R"({"text":"买 AAPL 1 股","execute":true,"accounts":["模拟"],"__confirmed":true})")).ok);
         QString error;
         QVERIFY(r.consent.accept(QLatin1StringView(shell::kTermsVersion), u"test"_s, 2'000, &error));
@@ -167,123 +166,33 @@ private slots:
         QVERIFY2(sent.ok, qPrintable(sent.error));
     }
 
-    void submitNeedsAGrantForExactlyThisContent() {
+    // 带用途的确认(发单、立即平仓、放宽限额、打开跟单……)不弹框、直接回确认;发单不再要凭据
+    void purposedConfirmDoesNotAsk() {
         Rig r;
-        const QJsonObject submit = obj(R"({"text":"买 AAPL 1 股","execute":true,"accounts":["模拟","主账户"],"__confirmed":true})");
-        const auto noGrant = r.rpc(u"instruction.submit"_s, submit);
-        QCOMPARE(noGrant.error, u"这一步要先在确认框里点确认(发送真实订单)。没有确认、确认已过期、或内容在确认之后变了,都不会放行。"_s);
-        QCOMPARE(r.reached(u"instruction.submit"_s), 0);
-        // 确认的是另一句话:不放行
-        QVERIFY(r.confirm(obj(R"({"purpose":"instruction.submit","binding":{"text":"买 TSLA 1000 股","accounts":["模拟","主账户"]}})")).first);
-        QVERIFY(!r.rpc(u"instruction.submit"_s, submit).ok);
-        // 确认的就是这一句:放行一次,用过作废
-        QVERIFY(r.confirm(obj(R"({"purpose":"instruction.submit","message":"按下方指令发单","binding":{"text":"买 AAPL 1 股","accounts":["模拟","主账户"]}})")).first);
-        const auto sent = r.rpc(u"instruction.submit"_s, submit);
+        for (const char* purpose : {"instruction.submit", "tracker.close_now", "tracker.add", "broker.select", "limits.loosen", "gate.follow", "anything"}) {
+            const auto [ok, error] = r.confirm(QJsonObject{{u"purpose"_s, QString::fromLatin1(purpose)}, {u"binding"_s, QJsonObject{}}, {u"title"_s, u"t"_s}});
+            QVERIFY(ok);
+            QVERIFY(error.isEmpty());
+        }
+        QVERIFY(r.prompter.boxes.isEmpty());
+        const auto sent = r.rpc(u"instruction.submit"_s, obj(R"({"text":"买 AAPL 1 股","execute":true,"accounts":["模拟","主账户"],"__confirmed":true})"));
         QVERIFY2(sent.ok, qPrintable(sent.error));
         QCOMPARE(r.reached(u"instruction.submit"_s), 1);
-        QVERIFY(!r.rpc(u"instruction.submit"_s, submit).ok);
-        QCOMPARE(r.reached(u"instruction.submit"_s), 1);
-        // 框上的字由桥写:标题按用途,账户类别问引擎(主账户是实盘)
-        const shell::ConfirmBox& box = r.prompter.boxes.last();
-        QCOMPARE(box.title, u"发送真实订单"_s);
-        QCOMPARE(box.message, u"发送真实订单(含实盘账户)"_s);
-        QCOMPARE(box.detail, u"按下方指令发单\n\n指令:买 AAPL 1 股\n账户:模拟(纸面)、主账户(实盘)\n每笔订单各发 2 份。"_s);
-        QCOMPARE(box.confirmLabel, u"确认"_s);
+        QVERIFY(r.rpc(u"tracker.close_now"_s, obj(R"({"id":"t1","__confirmed":true})")).ok);
+        QVERIFY(r.rpc(u"settings.patch"_s, obj(R"({"patch":{"limits":{"max_order_notional":50000}},"__confirmed":true})")).ok);
+        QCOMPARE(r.reached(u"settings.get"_s), 0);  // 放宽限额不再先读一次设置
     }
 
-    void declinedConfirmIssuesNothing() {
+    // 不带用途的确认照旧弹框:标题、正文、按钮由页面给
+    void plainConfirmStillAsks() {
         Rig r;
         r.prompter.answer = false;
-        const auto [ok, error] = r.confirm(obj(R"({"purpose":"tracker.close_now","binding":{"id":"t1"},"confirmLabel":"立即平仓"})"));
+        const auto [ok, error] = r.confirm(obj(R"({"message":"真的要删掉这条想法吗?","confirmLabel":"删掉"})"));
         QVERIFY(!ok);
         QVERIFY(error.isEmpty());
-        QCOMPARE(r.prompter.boxes.last().confirmLabel, u"立即平仓"_s);
-        QVERIFY(!r.rpc(u"tracker.close_now"_s, obj(R"({"id":"t1","__confirmed":true})")).ok);
-    }
-
-    void grantsExpireAfterAMinute() {
-        Rig r;
-        qint64 t = 10'000'000;
-        r.bridge.now = [&t] { return t; };
-        QVERIFY(r.confirm(obj(R"({"purpose":"tracker.close_now","binding":{"id":"t1"}})")).first);
-        t += shell::kGrantTtlMs + 1;
-        QVERIFY(!r.rpc(u"tracker.close_now"_s, obj(R"({"id":"t1","__confirmed":true})")).ok);
-    }
-
-    void unknownPurposeIsRefused() {
-        Rig r;
-        const auto [ok, error] = r.confirm(obj(R"({"purpose":"anything.goes","binding":{}})"));
-        QVERIFY(!ok);
-        QCOMPARE(error, u"未知的确认用途:anything.goes"_s);
-        QVERIFY(r.prompter.boxes.isEmpty());  // 连框都不弹
-    }
-
-    void unboundConfirmGivesNoGrant() {
-        Rig r;
-        const auto [ok, error] = r.confirm(obj(R"({"message":"真的要删掉这条想法吗?"})"));
-        QVERIFY(ok);
         QCOMPARE(r.prompter.boxes.last().title, u"确认"_s);
         QCOMPARE(r.prompter.boxes.last().message, u"真的要删掉这条想法吗?"_s);
-        // 没有用途:不发凭据,发单照样过不去
-        QVERIFY(!r.rpc(u"tracker.close_now"_s, obj(R"({"id":"t1","__confirmed":true})")).ok);
-    }
-
-    void gatesAndLimitsAreJudgedAgainstTheEngineSettings() {
-        Rig r;
-        // 打开自动执行:从关到开要凭据,框上的话由桥写
-        const QJsonObject open = obj(R"({"patch":{"policies":{"auto_execute":true}},"__confirmed":true})");
-        QVERIFY(r.rpc(u"settings.patch"_s, open).error.contains(u"打开自动执行"_s));
-        QVERIFY(r.confirm(obj(R"({"purpose":"gate.auto_execute"})")).first);
-        QVERIFY(r.prompter.boxes.last().detail.startsWith(u"打开后,解析通过的订单会被直接发送到券商"_s));
-        QVERIFY(r.rpc(u"settings.patch"_s, open).ok);
-        // 放宽限额:从多少改到多少对着引擎的设置算,框上写明;只放宽了的那几项才绑进凭据
-        const QJsonObject loosen = obj(R"({"patch":{"limits":{"max_order_notional":50000,"min_confidence":0.95}},"__confirmed":true})");
-        QVERIFY(r.rpc(u"settings.patch"_s, loosen).error.contains(u"放宽风控限额"_s));
-        QVERIFY(r.confirm(obj(R"({"purpose":"limits.loosen","binding":{"limits":{"max_order_notional":50000,"min_confidence":0.95}}})")).first);
-        QCOMPARE(r.prompter.boxes.last().detail, u"单笔名义金额上限(USD):5,000 → 50,000\n\n这些限额是每一笔订单都要过的闸:放宽之后,解析错了的指令能造成的损失也跟着变大。"_s);
-        QVERIFY(r.rpc(u"settings.patch"_s, loosen).ok);
-        // 只是收紧:不弹框、不发凭据,放行那一头也不要
-        const qsizetype boxes = r.prompter.boxes.size();
-        QVERIFY(r.confirm(obj(R"({"purpose":"limits.loosen","binding":{"limits":{"max_order_notional":10}}})")).first);
-        QCOMPARE(r.prompter.boxes.size(), boxes);
-        QVERIFY(r.rpc(u"settings.patch"_s, obj(R"({"patch":{"limits":{"max_order_notional":10}},"__confirmed":true})")).ok);
-    }
-
-    // 别的用途(立即平仓、新建追踪):标题行按用途写,正文 = 页面给的 message 与 detail,各截 1200 字、空一行连起来(main.js 的 lines)
-    void plainBoxJoinsMessageAndDetail() {
-        Rig r;
-        const QString detail = QString(1300, u'x');
-        const QJsonObject options{{u"purpose"_s, u"tracker.close_now"_s}, {u"binding"_s, QJsonObject{{u"id"_s, u"t1"_s}}}, {u"title"_s, u"页面的标题"_s},
-                                  {u"message"_s, u"现在平掉 SPX?"_s}, {u"detail"_s, detail}, {u"confirmLabel"_s, u"平仓"_s}};
-        QVERIFY(r.confirm(options).first);
-        const shell::ConfirmBox& box = r.prompter.boxes.last();
-        QCOMPARE(box.title, u"立即平仓"_s);
-        QCOMPARE(box.message, u"立即平仓"_s);
-        QCOMPARE(box.detail, u"现在平掉 SPX?\n\n"_s + detail.left(1200));
-        QCOMPARE(box.confirmLabel, u"平仓"_s);
-        // 空白的那一段不进正文
-        QVERIFY(r.confirm(QJsonObject{{u"purpose"_s, u"tracker.close_now"_s}, {u"binding"_s, QJsonObject{{u"id"_s, u"t1"_s}}}, {u"message"_s, u"  "_s}, {u"detail"_s, u"只有这一段"_s}}).first);
-        QCOMPARE(r.prompter.boxes.last().detail, u"只有这一段"_s);
-    }
-
-    void followConfirmOnlyWhenWidening() {
-        Rig r;
-        const char* follow = R"({"enabled":true,"channel_id":"1100000000000000001","author_ids":["220000000000000002"],"accounts":["主账户"],
-            "max_age_seconds":30,"max_orders_per_day":3,"max_risk_usd":300})";
-        QJsonObject options{{u"purpose"_s, u"gate.follow"_s}, {u"binding"_s, obj(follow)}};
-        QVERIFY(r.confirm(options).first);
-        QCOMPARE(r.prompter.boxes.last().message, u"打开 Discord 自动跟单(含实盘账户)"_s);
-        QVERIFY(r.prompter.boxes.last().detail.contains(u"发到账户:主账户(实盘)"_s));
-        const auto saved = r.rpc(u"settings.patch"_s, QJsonObject{{u"patch"_s, QJsonObject{{u"follow"_s, obj(follow)}}}, {u"__confirmed"_s, true}});
-        QVERIFY2(saved.ok, qPrintable(saved.error));
-    }
-
-    void settingsReadFailureBlocksThePatch() {
-        // 读不到引擎现在的设置:不放行(要不要确认是对着它算的)
-        Rig r(true, {{u"FAKE_DELAY_METHODS"_s, u"settings.get=20000"_s}});
-        const auto reply = r.rpc(u"settings.patch"_s, obj(R"({"patch":{"policies":{"auto_execute":true}},"__confirmed":true})"));
-        QVERIFY2(reply.error.contains(u"settings.get 超时"_s), qPrintable(reply.error));
-        QCOMPARE(r.reached(u"settings.patch"_s), 0);
+        QCOMPARE(r.prompter.boxes.last().confirmLabel, u"删掉"_s);
     }
 
     void exportPathMustBeThePickedOne() {

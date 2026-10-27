@@ -1,7 +1,7 @@
 // 顶栏宏观行情带的取值(shell/macro_store,照 store/macro.ts + shell/MacroStrip.tsx):对着假引擎。
 // 每格写什么(格式化、涨跌方向、读的是哪条行情)、迷你走势只收新读数、连没连券商决定多久读一次、入参的 force。
 #include "shell/bridge.h"
-#include "shell/confirm_grants.h"
+#include "shell/locale_format.h"
 #include "shell/consent.h"
 #include "shell/macro_store.h"
 #include "shell/status_store.h"

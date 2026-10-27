@@ -20,7 +20,7 @@ class TstEngineCore : public QObject {
 private:
     static int runFile(const QString& name, QStringList* failures) {
         if (!QFile::exists(QStringLiteral(IBKR_FIXTURES_DIR) + u'/' + name)) return 0;
-        const OJson fx = jsfix::load(name);
+        OJson fx = jsfix::load(name);  // 重做基线时 same() 就地改它的 expected
         const OJson& base = *fx.get(u"base"_s);
         int count = 0;
         const QString only = qEnvironmentVariable("ENGINE_ONLY");
@@ -40,6 +40,7 @@ private:
             if (!jsfix::same(*sc.get(u"expected"_s), got, what)) failures->append(what);
             ++count;
         }
+        jsfix::rewrite(name, fx);
         return count;
     }
 

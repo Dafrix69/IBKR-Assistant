@@ -31,8 +31,6 @@ class TrackerController : public QObject {
     /// 持仓卡片与追踪卡片:按 key / id 原地更新的列表(持仓每秒刷新时卡片不重建,展开着的表单不回初值)
     Q_PROPERTY(QObject* positions READ positions CONSTANT)
     Q_PROPERTY(QObject* tracks READ tracks CONSTANT)
-    /// 全局「自动执行」开着没有(跟着状态变:新建追踪的「到价自动平仓」默认跟它)
-    Q_PROPERTY(bool autoExecuteOn READ autoExecute NOTIFY statusTick)
     /// 状态 / 价位警告每变一次加一:QML 里调 isPaper / levelPicker 的绑定靠它知道该重算
     Q_PROPERTY(int statusRev READ statusRev NOTIFY statusTick)
     Q_PROPERTY(int alertsRev READ alertsRev NOTIFY alertsTick)
@@ -68,8 +66,6 @@ public:
     Q_INVOKABLE int preview(const QString& key, double target, const QVariant& chaseMax);
     /// 价位弹窗的「查看」跳过来:滚到「正在追踪」,把这只标的的卡片闪一下(2.2 秒)
     Q_INVOKABLE void focusSymbol(const QString& symbol);
-    /// 全局「自动执行」开着没有:新建追踪的「到价自动平仓」默认跟它
-    Q_INVOKABLE bool autoExecute() const;
     /// 这个账户是不是纸面账户(当前券商通道下配了别名的那几个里找;认不出按实盘说——提示宁可偏严)
     Q_INVOKABLE bool isPaper(const QString& account) const;
     /// 表单顶上的关键价位(shell/track_form 的 levelPickerModel)

@@ -23,7 +23,7 @@ QJsonValue numOrNull(const QVariant& v) {
     return ok ? QJsonValue(x) : QJsonValue(QJsonValue::Null);
 }
 
-const QStringList kSwitches{u"autoExecute"_s, u"allowLive"_s, u"triggerVerify"_s, u"slGuard"_s, u"ddGuard"_s, u"coolOn"_s, u"dailyOn"_s, u"rbOn"_s};
+const QStringList kSwitches{u"triggerVerify"_s, u"slGuard"_s, u"ddGuard"_s, u"coolOn"_s, u"dailyOn"_s, u"rbOn"_s};
 
 }  // namespace
 
@@ -135,41 +135,6 @@ void SettingsController::setAccountLimit(const QString& alias, const QString& ke
     rebuild();
 }
 
-void SettingsController::setGate(const QString& key, bool on) {
-    if (!form_.isObject() || (key != u"autoExecute" && key != u"allowLive")) return;
-    const QString policy = key == u"autoExecute" ? u"auto_execute"_s : u"allow_live_trading"_s;
-    QJsonObject f = form_.toObject();
-    f[key] = on;
-    form_ = f;
-    rebuild();
-    // 关是当场生效的,不等「保存设置」(切走页面这次修改就丢了——人以为关了,其实还开着);开照旧跟着保存走
-    if (on || !jsTruthy(saved_.toObject()[u"policies"_s].toObject()[policy])) return;
-    const int gen = generation_;
-    QPointer<SettingsController> self(this);
-    bridge_->rpc(this, u"settings.patch"_s, QJsonObject{{u"patch"_s, QJsonObject{{u"policies"_s, QJsonObject{{policy, false}}}}}, {u"__confirmed"_s, true}},
-                 [self, gen, key, policy](const EngineReply& r) {
-                     if (!self) return;
-                     if (r.ok) {
-                         if (gen == self->generation_) {
-                             self->saved_ = r.result;
-                             self->rebuild();
-                         }
-                         if (self->status_) {
-                             self->status_->showInfo(policy == u"auto_execute" ? u"已关闭自动执行,当场生效。"_s : u"已关闭实盘账户下单,当场生效。"_s);
-                             self->status_->refresh();
-                         }
-                         return;
-                     }
-                     if (gen == self->generation_ && self->form_.isObject()) {
-                         QJsonObject back = self->form_.toObject();
-                         back[key] = true;
-                         self->form_ = back;
-                         self->rebuild();
-                     }
-                     if (self->status_) self->status_->showError(u"没有关掉:"_s + r.error);
-                 });
-}
-
 void SettingsController::save() {
     if (!form_.isObject()) return;
     const QJsonObject form = form_.toObject();
@@ -181,65 +146,27 @@ void SettingsController::save() {
             status_->showError(u"还不能保存:%1%2"_s.arg(problems.first(), problems.size() > 1 ? u"(另有 %1 处)"_s.arg(problems.size() - 1) : QString()));
         return;
     }
-    const QJsonObject policies = saved_.toObject()[u"policies"_s].toObject();
+    const QJsonObject next = settings::toPatch(form, saved_);
     const int gen = generation_;
     QPointer<SettingsController> self(this);
-    // 三步依次:打开自动执行 → 允许实盘 → 放宽限额;任一步点了取消就停(前两步还把那个开关拨回去)
-    const auto unset = [self, gen](const QString& key) {
-        if (!self || gen != self->generation_ || !self->form_.isObject()) return;
-        QJsonObject f = self->form_.toObject();
-        f[key] = false;
-        self->form_ = f;
+    saving_ = true;
+    rebuild();
+    bridge_->rpc(this, u"settings.patch"_s, QJsonObject{{u"patch"_s, next}, {u"__confirmed"_s, true}}, [self, gen](const EngineReply& r) {
+        if (!self) return;
+        if (r.ok) {
+            if (self->status_) self->status_->showInfo(u"设置已保存,提示词与限额已同步更新。"_s);
+            if (gen == self->generation_) {
+                self->checked_ = false;
+                self->load();
+            }
+            if (self->status_) self->status_->refresh();
+        } else if (self->status_) {
+            self->status_->showError(u"保存失败(配置未改动):"_s + r.error);
+        }
+        if (gen != self->generation_) return;
+        self->saving_ = false;
         self->rebuild();
-    };
-    const auto send = [self, gen, form] {
-        if (!self || gen != self->generation_) return;
-        const QJsonObject next = settings::toPatch(form, self->saved_);
-        self->bridge_->confirm(self, QJsonObject{{u"purpose"_s, u"limits.loosen"_s}, {u"binding"_s, QJsonObject{{u"limits"_s, next[u"limits"_s]}}},
-                                                 {u"title"_s, u"放宽风控限额"_s}, {u"message"_s, QString()}, {u"confirmLabel"_s, u"我明白,放宽"_s}},
-                               [self, gen, next](bool ok, const QString&) {
-                                   if (!ok || !self || gen != self->generation_) return;
-                                   self->saving_ = true;
-                                   self->rebuild();
-                                   self->bridge_->rpc(self, u"settings.patch"_s, QJsonObject{{u"patch"_s, next}, {u"__confirmed"_s, true}}, [self, gen](const EngineReply& r) {
-                                       if (!self) return;
-                                       if (r.ok) {
-                                           if (self->status_) self->status_->showInfo(u"设置已保存,提示词与限额已同步更新。"_s);
-                                           if (gen == self->generation_) {
-                                               self->checked_ = false;
-                                               self->load();
-                                           }
-                                           if (self->status_) self->status_->refresh();
-                                       } else if (self->status_) {
-                                           self->status_->showError(u"保存失败(配置未改动):"_s + r.error);
-                                       }
-                                       if (gen != self->generation_) return;
-                                       self->saving_ = false;
-                                       self->rebuild();
-                                   });
-                               });
-    };
-    const bool askLive = form[u"allowLive"_s].toBool() && !jsTruthy(policies[u"allow_live_trading"_s]);
-    const auto live = [self, gen, askLive, send, unset] {
-        if (!self || gen != self->generation_) return;
-        if (!askLive) return send();
-        self->bridge_->confirm(self, QJsonObject{{u"purpose"_s, u"gate.allow_live_trading"_s}, {u"title"_s, u"允许实盘下单"_s}, {u"message"_s, QString()},
-                                                 {u"confirmLabel"_s, u"我明白,打开实盘"_s}},
-                               [send, unset](bool ok, const QString&) {
-                                   if (!ok) return unset(u"allowLive"_s);
-                                   send();
-                               });
-    };
-    if (form[u"autoExecute"_s].toBool() && !jsTruthy(policies[u"auto_execute"_s])) {
-        bridge_->confirm(this, QJsonObject{{u"purpose"_s, u"gate.auto_execute"_s}, {u"title"_s, u"打开自动执行"_s}, {u"message"_s, QString()},
-                                           {u"confirmLabel"_s, u"我明白,打开"_s}},
-                         [live, unset](bool ok, const QString&) {
-                             if (!ok) return unset(u"autoExecute"_s);
-                             live();
-                         });
-        return;
-    }
-    live();
+    });
 }
 
 // ---- 重要事件的口径 ---------------------------------------------------------------------------------

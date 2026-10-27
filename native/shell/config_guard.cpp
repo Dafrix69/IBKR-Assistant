@@ -89,17 +89,7 @@ std::optional<Restored> restoreBackup(const QString& configPath, double nowMs, Q
         QFile::remove(out.brokenCopy);
         QFile::copy(configPath, out.brokenCopy);
     }
-    static const QList<QPair<QString, QString>> gates{{u"auto_execute"_s, u"允许自动执行"_s}, {u"allow_live_trading"_s, u"允许实盘账户下单"_s}};
-    OJson& value = backup.value;
-    if (OJson* policies = value.get(u"policies"_s); policies && policies->isObject()) {
-        for (const auto& [gate, label] : gates) {
-            OJson* v = policies->get(gate);
-            if (!v || v->type != OJson::Bool || !v->b) continue;
-            *v = OJson::boolean(false);
-            out.closedGates.append(label);
-        }
-    }
-    if (!writeAtomic(configPath, stringifyOJson(value, 2).toUtf8())) {
+    if (!writeAtomic(configPath, stringifyOJson(backup.value, 2).toUtf8())) {
         if (error) *error = u"写不进配置文件:"_s + configPath;
         return std::nullopt;
     }

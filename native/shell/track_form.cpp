@@ -22,10 +22,9 @@ bool nullish(const QJsonValue& v) { return v.isNull() || v.isUndefined(); }
 
 }  // namespace
 
-FormState FormState::fromJson(const QJsonObject& position, bool autoExecute, const QJsonObject& v) {
+FormState FormState::fromJson(const QJsonObject& position, const QJsonObject& v) {
     FormState s;
     s.position = position;
-    s.autoExecute = autoExecute;
     const auto number = [&s, &v](const char* key, std::optional<double> fallback) {
         const QString k = QString::fromLatin1(key);
         return v.contains(k) ? formNumber(v.value(k), k, &s.invalid) : fallback;
@@ -66,7 +65,7 @@ bool FormState::derivative() const {
     const QString t = position.value("sec_type"_L1).toString();
     return isCombo() || t == u"OPT" || t == u"FOP";
 }
-bool FormState::autoClose() const { return autoPicked.value_or(autoExecute); }
+bool FormState::autoClose() const { return autoPicked.value_or(true); }
 bool FormState::hasSpotTarget() const { return spotTarget && *spotTarget > 0; }
 bool FormState::hostAllowed() const { return !isCombo() || hasSpotTarget() || (brokerSpotStop && (stopBelow || stopAbove)); }
 bool FormState::hostOn() const { return host && hostAllowed(); }

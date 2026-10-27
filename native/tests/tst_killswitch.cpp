@@ -1,12 +1,10 @@
-// engine/util/killswitch 对着原模块(engine-ts/src/killswitch.ts)在同一串操作上的结果(tests/fixtures/gen_killswitch.mjs):
-// 9 种起始文件(没有、正常、类型不对、坏的、顶层标量、数组、空对象……)× 4 种阈值 × 4 串操作,每一步的返回、之后的 state()、文件里写了什么。
-// at 是当时的钟:比"有没有"与形状(本机时区、到秒)。
+// engine/util/killswitch:只有手动熔断。起始文件的几种样子(没有、正常、老版本的自动熔断、坏的、顶层标量 / 数组)怎么读,
+// engage / release 返回什么、之后读到什么、文件里写了什么;写不进去必须抛。at 是当时的钟:比"有没有"与形状(本机时区、到秒)。
 #include "util/error.h"
 #include "util/killswitch.h"
 
 #include <QDir>
 #include <QFile>
-#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QRegularExpression>
@@ -17,71 +15,104 @@ using namespace ibkr::util;
 using namespace Qt::StringLiterals;
 
 namespace {
-QJsonObject masked(const BreakerState& s) {
-    QJsonObject o = s.toJson();
-    o[u"at"_s] = s.at.isEmpty() ? QString() : u"<AT>"_s;
-    return o;
-}
-QJsonValue maskedFile(const QString& path) {
+void put(const QString& path, const QByteArray& text) {
+    QDir().mkpath(QFileInfo(path).absolutePath());
     QFile f(path);
-    if (!f.open(QIODevice::ReadOnly)) return QJsonValue::Null;
-    QString text = QString::fromUtf8(f.readAll());
-    static const QRegularExpression at(u"\"at\":\"[^\"]*\""_s);
-    text.replace(at, u"\"at\":\"<AT>\""_s);
-    QJsonParseError err;
-    const QJsonDocument doc = QJsonDocument::fromJson(("[" + text + "]").toUtf8(), &err);
-    if (err.error != QJsonParseError::NoError) return QJsonObject{{u"raw"_s, text}};
-    return QJsonObject{{u"json"_s, doc.array().at(0)}};
+    QVERIFY(f.open(QIODevice::WriteOnly | QIODevice::Truncate));
+    f.write(text);
 }
+QJsonObject fileJson(const QString& path) {
+    QFile f(path);
+    if (!f.open(QIODevice::ReadOnly)) return {};
+    return QJsonDocument::fromJson(f.readAll()).object();
+}
+const QRegularExpression kIso(u"^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}[+-]\\d{2}:\\d{2}$"_s);
 }  // namespace
 
 class TestKillSwitch : public QObject {
     Q_OBJECT
 private slots:
-    void scripts() {
-        QFile fx(QStringLiteral(IBKR_FIXTURES_DIR "/killswitch.json"));
-        QVERIFY(fx.open(QIODevice::ReadOnly));
-        const QJsonObject j = QJsonDocument::fromJson(fx.readAll()).object();
-        const QJsonArray scripts = j[u"scripts"_s].toArray();
-        int n = 0;
-        for (const QJsonValue& v : j[u"cases"_s].toArray()) {
-            QTemporaryDir dir;
-            const QString file = dir.filePath(u"sub/breaker.json"_s);
-            KillSwitch ks(file, v[u"threshold"_s].toDouble());
-            if (!v[u"start"_s].isNull()) {
-                QFile f(file);
-                QVERIFY(f.open(QIODevice::WriteOnly));
-                f.write(v[u"start"_s].toString().toUtf8());
-            }
-            const QJsonArray steps = v[u"steps"_s].toArray();
-            const QString label = u"第 %1 串(起始 %2,阈值 %3)"_s.arg(n++).arg(v[u"start"_s].toString(), QString::number(v[u"threshold"_s].toDouble()));
-            QVERIFY2(masked(ks.state()) == steps[0][u"state"_s].toObject(), qPrintable(label + u" 起始"_s));
-            for (qsizetype i = 1; i < steps.size(); ++i) {
-                const QJsonObject s = steps[i].toObject();
-                const QString op = s[u"op"_s].toString();
-                QJsonValue ret = QJsonValue::Null;
-                if (op == u"engage") ret = masked(ks.engage(s[u"a"_s].toString(), s[u"b"_s].toBool()));
-                else if (op == u"release") ret = masked(s[u"a"_s].isNull() ? ks.release() : ks.release(s[u"a"_s].toString()));
-                else if (op == u"success") s[u"a"_s].isNull() ? ks.recordSuccess() : ks.recordSuccess(s[u"a"_s].toString());
-                else {
-                    const auto r = s[u"b"_s].isNull() ? ks.recordFailure(s[u"a"_s].toString()) : ks.recordFailure(s[u"a"_s].toString(), s[u"b"_s].toString());
-                    if (r) ret = masked(*r);
-                }
-                const QString at = label + u" 第 %1 步 %2"_s.arg(i).arg(op);
-                QVERIFY2(ret == s[u"ret"_s], qPrintable(at + u" 返回"_s));
-                QVERIFY2(masked(ks.state()) == s[u"state"_s].toObject(), qPrintable(at + u" 状态"_s));
-                QVERIFY2(maskedFile(file) == s[u"file"_s], qPrintable(at + u" 文件"_s));
-            }
-        }
-        QCOMPARE(n, 144);
+    void startingFiles_data() {
+        QTest::addColumn<QByteArray>("start");
+        QTest::addColumn<bool>("engaged");
+        QTest::addColumn<QString>("reason");
+        QTest::newRow("正常、没合上") << QByteArray(R"({"engaged":false,"reason":"","at":""})") << false << QString();
+        QTest::newRow("手动合上") << QByteArray(R"({"engaged":true,"reason":"用户按下暂停","at":"2026-10-01T09:00:00+08:00"})") << true << u"用户按下暂停"_s;
+        QTest::newRow("老版本的手动熔断(带计数)")
+            << QByteArray(R"({"engaged":true,"reason":"手动","at":"x","consecutive_failures":2,"consecutive_parse_failures":0,"auto":false})") << true << u"手动"_s;
+        QTest::newRow("老版本的自动熔断:按没合上读")
+            << QByteArray(R"j({"engaged":true,"reason":"连续 3 次失败后自动熔断(最近一次:x)","at":"x","consecutive_failures":3,"consecutive_parse_failures":0,"auto":true})j")
+            << false << u"连续 3 次失败后自动熔断(最近一次:x)"_s;
+        QTest::newRow("类型不对:engaged 是字符串") << QByteArray(R"({"engaged":"yes","reason":7})") << true << u"7"_s;
+        QTest::newRow("空对象") << QByteArray("{}") << false << QString();
+        QTest::newRow("坏的 JSON:按已熔断") << QByteArray("{\"engaged\":") << true << u"熔断状态文件损坏,已按安全侧处理"_s;
+        QTest::newRow("顶层标量") << QByteArray("1") << false << QString();
+        QTest::newRow("顶层数组") << QByteArray("[true]") << false << QString();
+    }
+    void startingFiles() {
+        QFETCH(QByteArray, start);
+        QFETCH(bool, engaged);
+        QFETCH(QString, reason);
+        QTemporaryDir dir;
+        const QString file = dir.filePath(u"sub/breaker.json"_s);
+        put(file, start);
+        const BreakerState s = KillSwitch(file).state();
+        QCOMPARE(s.engaged, engaged);
+        QCOMPARE(s.reason, reason);
     }
 
-    // 写不进去时 engage 必须抛(同 TS 的 writeFileSync 抛),而且文件里不能是已熔断——不然界面说熔断了,盯盘读到的却没熔断
+    void noFileIsReleased() {
+        QTemporaryDir dir;
+        KillSwitch ks(dir.filePath(u"sub/breaker.json"_s));
+        QVERIFY(QDir(dir.filePath(u"sub"_s)).exists());  // 构造时把目录建好
+        const BreakerState s = ks.state();
+        QVERIFY(!s.engaged);
+        QVERIFY(s.reason.isEmpty());
+        QVERIFY(s.at.isEmpty());
+        QVERIFY(!QFile::exists(ks.path()));
+    }
+
+    void engageThenRelease() {
+        QTemporaryDir dir;
+        KillSwitch ks(dir.filePath(u"breaker.json"_s));
+        const BreakerState on = ks.engage(u"用户在界面上按下暂停"_s);
+        QVERIFY(on.engaged);
+        QCOMPARE(on.reason, u"用户在界面上按下暂停"_s);
+        QVERIFY(kIso.match(on.at).hasMatch());
+        QVERIFY(ks.isEngaged());
+        QCOMPARE(ks.state().reason, on.reason);
+        // 文件只有这三项,键序 engaged / reason / at
+        QFile f(ks.path());
+        QVERIFY(f.open(QIODevice::ReadOnly));
+        QVERIFY(f.readAll().startsWith(QString(u"{\"engaged\":true,\"reason\":\"用户在界面上按下暂停\",\"at\":\""_s).toUtf8()));
+        QCOMPARE(fileJson(ks.path()).keys(), (QStringList{u"at"_s, u"engaged"_s, u"reason"_s}));
+
+        const BreakerState off = ks.release();
+        QVERIFY(!off.engaged);
+        QCOMPARE(off.reason, u"由 user 手动解除"_s);
+        QVERIFY(kIso.match(off.at).hasMatch());
+        QVERIFY(!ks.isEngaged());
+        QCOMPARE(ks.release(u"cli"_s).reason, u"由 cli 手动解除"_s);
+    }
+
+    // 老版本自动合上的那一份:读出来没合上;再手动合上一次,写回去的是新格式
+    void legacyAutoFileThenEngage() {
+        QTemporaryDir dir;
+        const QString file = dir.filePath(u"breaker.json"_s);
+        put(file, R"({"engaged":true,"reason":"连续 3 次失败后自动熔断","at":"x","consecutive_failures":3,"consecutive_parse_failures":0,"auto":true})");
+        KillSwitch ks(file);
+        QVERIFY(!ks.isEngaged());
+        ks.engage(u"手动"_s);
+        QVERIFY(ks.isEngaged());
+        QVERIFY(!fileJson(file).contains(u"auto"_s));
+    }
+
+    // 写不进去时 engage 必须抛,而且文件里不能是已熔断——不然界面说熔断了,盯盘读到的却没熔断
     void writeFailureThrows() {
         QTemporaryDir dir;
         const QString sub = dir.path() + u"/ro"_s;
         QVERIFY(QDir().mkpath(sub));
-        KillSwitch ks(sub + u"/breaker.json"_s, 3);
+        KillSwitch ks(sub + u"/breaker.json"_s);
         QVERIFY(QFile::setPermissions(sub, QFileDevice::ReadOwner | QFileDevice::ExeOwner));
         bool threw = false;
         try {
@@ -92,19 +123,10 @@ private slots:
         }
         QVERIFY(threw);
         QVERIFY(!ks.state().engaged);
-        threw = false;
-        try {
-            ks.recordFailure(u"x"_s);
-        } catch (const JsError&) {
-            threw = true;
-        }
-        QVERIFY(threw);
         QFile::setPermissions(sub, QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner);
     }
 
-    void localIsoShape() {
-        QVERIFY(QRegularExpression(u"^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}[+-]\\d{2}:\\d{2}$"_s).match(localIsoSeconds()).hasMatch());
-    }
+    void localIsoShape() { QVERIFY(kIso.match(localIsoSeconds()).hasMatch()); }
 };
 
 QTEST_GUILESS_MAIN(TestKillSwitch)

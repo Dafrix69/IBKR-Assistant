@@ -134,11 +134,10 @@ StatusCard {
             width: parent.width
             visible: active
             source: "TrackForm.qml"
-            // 都是绑定,不是一次性赋值:持仓的现价、全局「自动执行」、账户类别变了,表单当场跟着变(React 版每次渲染都现取)
+            // 都是绑定,不是一次性赋值:持仓的现价、账户类别变了,表单当场跟着变(React 版每次渲染都现取)
             onLoaded: {
                 item.position = Qt.binding(function () { return body.m.position })
                 item.controller = body.controller
-                item.statusAuto = Qt.binding(function () { return body.controller ? body.controller.autoExecuteOn : false })
                 item.paper = Qt.binding(function () { return body.controller ? (body.controller.statusRev, body.controller.isPaper(body.m.position.account)) : false })
             }
         }

@@ -34,8 +34,6 @@ export type AccountLimits = {
 };
 
 export interface Policies {
-  auto_execute: boolean;
-  allow_live_trading: boolean;
   /** 合约此刻在盘外时段能交易时,自动给订单打上 outsideRth。
    * 不打这个标志的后果是单子挂着不动——IBKR 会等到常规时段才送交易所。
    * 默认开;盘外流动性薄、点差宽,不想在那个时段成交就关掉它。 */
@@ -43,7 +41,6 @@ export interface Policies {
   require_trigger_price_verification: boolean;
   trigger_min_gap_bps: number;
   closed_market_policy: string;
-  consecutive_failure_breaker: number;
   review_feature_enabled: boolean;
 }
 

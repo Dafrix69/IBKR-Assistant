@@ -17,7 +17,7 @@ QJsonObject obj(const char* t) { return QJsonDocument::fromJson(t).object(); }
 QJsonObject chip(const QJsonObject& s, int ok, const char* name) { return shell::topbarState(s, ok).value(QLatin1StringView(name)).toObject(); }
 
 const char* kBase = R"({"protocol":"1.0","now_et":"2026-10-08 09:42:11","market_status":"盘中","model":"claude-opus-5","broker_provider":"ibkr","broker_connected":true,
-  "broker_upstream_ok":true,"auto_execute":false,"allow_live_trading":false,"breaker":{"engaged":false},"protections":{"paused":false,"accounts":[]},
+  "broker_upstream_ok":true,"breaker":{"engaged":false},"protections":{"paused":false,"accounts":[]},
   "accounts":[{"alias":"模拟","is_paper":true,"broker":"ibkr"},{"alias":"主账户","is_paper":false,"broker":"ibkr"},{"alias":"富途模拟","is_paper":true,"broker":"futu"}]})";
 
 }  // namespace
@@ -43,32 +43,14 @@ private slots:
         QCOMPARE(shell::topbarState(obj(kBase), 1)[u"connectLabel"].toString(), u"断开 TWS"_s);
     }
 
-    void liveGateIsAlwaysShown() {
-        // 只列当前券商通道下的实盘账户:富途模拟不算,IBKR 的主账户算
-        QCOMPARE(chip(obj(kBase), 1, "live")[u"text"].toString(), u"仅纸面"_s);
-        QVERIFY(chip(obj(kBase), 1, "live")[u"tip"].toString().contains(u"主账户"_s));
-        QJsonObject open = obj(kBase);
-        open[u"allow_live_trading"_s] = true;
-        const QJsonObject live = chip(open, 1, "live");
-        QCOMPARE(live[u"text"].toString(), u"实盘已放开"_s);
-        QCOMPARE(live[u"tone"].toString(), u"bad"_s);
-        QVERIFY(live[u"tip"].toString().contains(u"现在自动执行关着"_s));
-        // 没有实盘账户:放开了也显示仅纸面
-        QJsonObject none = open;
-        none[u"accounts"_s] = QJsonArray{obj(R"({"alias":"模拟","is_paper":true,"broker":"ibkr"})")};
-        QCOMPARE(chip(none, 1, "live")[u"text"].toString(), u"仅纸面"_s);
-        QCOMPARE(chip(none, 1, "live")[u"tip"].toString(), u"这家券商下没有配置实盘账户。"_s);
-        QCOMPARE(chip({}, 1, "live")[u"text"].toString(), u"—"_s);
-    }
+    // 实盘那一格已撤掉:实盘账户不再有闸门
+    void noLiveChip() { QVERIFY(!shell::topbarState(obj(kBase), 1).contains(u"live"_s)); }
 
     void modeChip() {
-        QCOMPARE(chip(obj(kBase), 1, "mode")[u"text"].toString(), u"仅解析"_s);
+        QCOMPARE(chip(obj(kBase), 1, "mode")[u"text"].toString(), u"直接发单"_s);
+        QCOMPARE(chip(obj(kBase), 1, "mode")[u"tone"].toString(), u"warn"_s);
         QJsonObject s = obj(kBase);
-        s[u"auto_execute"_s] = true;
-        QCOMPARE(chip(s, 1, "mode")[u"text"].toString(), u"自动执行(仅纸面)"_s);
-        s[u"allow_live_trading"_s] = true;
-        QCOMPARE(chip(s, 1, "mode")[u"text"].toString(), u"自动执行(含实盘)"_s);
-        // 保护暂停盖过自动执行;熔断盖过保护暂停
+        // 保护暂停盖过直接发单;熔断盖过保护暂停
         s[u"protections"_s] = obj(R"({"paused":true,"reason":"接连止损","accounts":[]})");
         QCOMPARE(chip(s, 1, "mode")[u"text"].toString(), u"保护暂停"_s);
         QCOMPARE(chip(s, 1, "mode")[u"tip"].toString(), u"接连止损。平仓不受影响。"_s);
@@ -79,8 +61,8 @@ private slots:
         // 只停了某个账户:不占「保护暂停」那一格,写在模式后面
         QJsonObject acct = obj(kBase);
         acct[u"protections"_s] = obj(R"({"paused":false,"accounts":[{"account":"主账户","until_ms":1,"reason":"日内亏损上限"}]})");
-        QCOMPARE(chip(acct, 1, "mode")[u"text"].toString(), u"仅解析 · 主账户 暂停"_s);
-        QCOMPARE(chip(acct, 1, "mode")[u"tip"].toString(), u"自动执行未打开:校验通过也不发单。日内亏损上限。平仓不受影响。"_s);
+        QCOMPARE(chip(acct, 1, "mode")[u"text"].toString(), u"直接发单 · 主账户 暂停"_s);
+        QCOMPARE(chip(acct, 1, "mode")[u"tip"].toString(), u"解析、校验通过的订单直接发到券商,实盘账户也一样。日内亏损上限。平仓不受影响。"_s);
     }
 
     void marketAndModelChips() {

@@ -4,7 +4,6 @@
 // 引擎的生与死(配置 / 交易库坏了不重启、别的退避重启、心跳、条件单轮询)、状态快照、单实例。页面从这里往后一页页搬。
 //
 //   Datrix [--engine native|preview|none] [--config 配置] [--native-engine ibkr-engine]
-//   Datrix --smoke-test     # 不拉引擎;窗口建出来、真的画完第一帧就退出(测试与 CI 用);15 秒画不出来退出码 4
 //
 // 配置的找法同 Electron 版开发时:--config → 环境变量 DAFRI_CONFIG → 仓库里的 config/settings.json(真配置:连 TWS、真的交易库)。
 // Electron 版开着时不拉引擎(两个引擎会同时盯同一个交易库),见 shell/instance_guard.h。
@@ -149,7 +148,6 @@ int main(int argc, char* argv[]) {
 
     QCommandLineParser cli;
     cli.addHelpOption();
-    const QCommandLineOption smokeOption(u"smoke-test"_s, u"不拉引擎,画完第一帧就退出"_s);
     const QCommandLineOption engineOption(u"engine"_s, u"拉哪个引擎:native(默认,C++ 引擎)、preview、none"_s, u"kind"_s, u"native"_s);
     const QCommandLineOption configOption(u"config"_s, u"配置文件"_s, u"path"_s);
     const QCommandLineOption dumpOption(u"dump-texts"_s, u"截图时顺带把看得见的每一段字(内容、在窗口里的位置、字号字重、颜色)写成 JSON(和 React 版对排版用)"_s, u"json"_s);
@@ -158,14 +156,12 @@ int main(int argc, char* argv[]) {
     const QCommandLineOption openOption(u"open"_s, u"截图前先打开:all = 重要事件的「全部」,act = 第一条事件的「应对」,popup = 提醒小窗,page:<页>[@y] = 切到那一页再滚到 y(截图对比用)"_s, u"what"_s);
     const QCommandLineOption quitAfterOption(u"quit-after"_s, u"这么多毫秒后按 ⌘Q 那条路退出(测试退出的收尾用)"_s, u"ms"_s);
     const QCommandLineOption schemeOption(u"color-scheme"_s, u"light 或 dark:不跟系统,按这个画(截图对比用)"_s, u"scheme"_s);
-    cli.addOptions({smokeOption, engineOption, configOption, nativeOption, shotOption, dumpOption, schemeOption, openOption, quitAfterOption});
+    cli.addOptions({engineOption, configOption, nativeOption, shotOption, dumpOption, schemeOption, openOption, quitAfterOption});
     cli.process(app);
 
-    const bool smoke = cli.isSet(smokeOption);
-    // 自检一律不拉引擎:测试与 CI 里绝不能顺手按真配置连 TWS、开真的交易库
     // 图表样例(--open chart:<n>)只放 fixtures 里的场景:没说用哪个引擎就用预览台的,别顺手按真配置拉起交易引擎
     const bool chartFixture = cli.value(openOption).startsWith(u"chart:"_s);
-    const QString engineKind = smoke ? u"none"_s : chartFixture && !cli.isSet(engineOption) ? u"preview"_s : cli.value(engineOption);
+    const QString engineKind = chartFixture && !cli.isSet(engineOption) ? u"preview"_s : cli.value(engineOption);
     if (engineKind != u"native" && engineKind != u"none" && engineKind != u"preview") {
         std::fprintf(stderr, "--engine 只认 native、preview、none(收到 %s)\n", qPrintable(engineKind));
         return 2;
@@ -204,8 +200,7 @@ int main(int argc, char* argv[]) {
     QSettings::setDefaultFormat(QSettings::IniFormat);
     QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, userDataDir);
     // 同一份 userData 已经开着一个 Qt 版:叫它到前台,自己退出(同 Electron 的 requestSingleInstanceLock + second-instance)。
-    // 自检不查:测试与 CI 里不能去碰用户正开着的那一个
-    if (!smoke && app::DesktopShell::handOffToRunningInstance(userDataDir)) {
+    if (app::DesktopShell::handOffToRunningInstance(userDataDir)) {
         std::printf("已经开着一个,叫它到前台\n");
         return 0;
     }
@@ -287,7 +282,7 @@ int main(int argc, char* argv[]) {
     QObject::connect(&actions, &shell::ShellActions::systemNotice, &alerter, [&alerter](const QString& title, const QString& body) { alerter.systemNotify(title, body); });
     // 电源与合盖(app/power_controller):阻止闲置睡眠、换电源 / 睡下 / 醒来记日志、用电池又在盯盘时提醒、盯盘时合盖不睡
     app::PowerController power(&logFile, &alerter, userDataDir);
-    if (!smoke) power.start();
+    power.start();
     QObject::connect(&supervisor, &shell::EngineSupervisor::statusSeen, &power, &app::PowerController::observeStatus);
     // 菜单、Dock 菜单、关窗只藏、窗口位置、单实例(app/desktop_shell)
     app::DesktopShell desktop({&actions, &store, &alerter, logFile.path(), userDataDir, &power});
@@ -349,7 +344,7 @@ int main(int argc, char* argv[]) {
             power.restoreLidSleep([&] { desktop.finishQuit(); });
         });
     });
-    if (!smoke) desktop.listenForSecondInstances();
+    desktop.listenForSecondInstances();
     QObject::connect(&events, &shell::EventsStore::announce, &alerter, [&alerter](const QJsonObject& item, const QString& direction) { alerter.announce(item, direction); });
     shell::MacroStore macro(&bridge, &store);
     // 持仓追踪:盯盘结果与托管对账一秒读一次(判断与发单在引擎里)。比价位警告先建(后析构):它的快照要给价位提醒用
@@ -585,9 +580,9 @@ int main(int argc, char* argv[]) {
                               // 自检不读不写同意记录:没有引擎就没有钱路径,也不该把同意页挡在第一帧上
                               {u"consent"_s, QVariant::fromValue<QObject*>(withEngine ? &consentModel : nullptr)},
                               {u"engineMode"_s, engineKind}});
-    // 上次的窗口位置与大小(自检与截图用固定的默认大小,图才比得了)
+    // 上次的窗口位置与大小(截图用固定的默认大小,图才比得了)
     bool maximized = false;
-    const QRect saved = smoke || cli.isSet(shotOption) ? QRect() : desktop.savedBounds(&maximized);
+    const QRect saved = cli.isSet(shotOption) ? QRect() : desktop.savedBounds(&maximized);
     QObject::connect(&qml, &QQmlApplicationEngine::objectCreationFailed, &app, [] {
         std::fprintf(stderr, "界面的 QML 加载失败\n");
         QCoreApplication::exit(2);
@@ -663,23 +658,6 @@ int main(int argc, char* argv[]) {
     }
 
     if (cli.isSet(quitAfterOption)) QTimer::singleShot(cli.value(quitAfterOption).toInt(), &app, [] { QCoreApplication::quit(); });
-    if (smoke) {
-        auto* window = qobject_cast<QQuickWindow*>(qml.rootObjects().value(0));
-        if (window == nullptr) {
-            std::fprintf(stderr, "没有建出窗口\n");
-            return 3;
-        }
-        // 等第一帧真的画出来(场景图、着色器、图形后端都走过一遍),不是窗口对象建出来就算
-        QObject::connect(window, &QQuickWindow::frameSwapped, &app, [window, exitCode] {
-            std::printf("shell ok %dx%d, first frame drawn, engine none\n", window->width(), window->height());
-            std::fflush(stdout);
-            QCoreApplication::exit(exitCode(0));
-        }, Qt::SingleShotConnection);
-        QTimer::singleShot(15'000, &app, [] {
-            std::fprintf(stderr, "15 秒内没画出第一帧\n");
-            QCoreApplication::exit(4);
-        });
-    }
     if (cli.isSet(shotOption) && withEngine) {
         // 等引擎回了第一份状态,再等一帧画完,抓下来。20 秒还没回就带着现状抓(截图也是证据:它会写着"正在连引擎")
         const QString png = cli.value(shotOption);

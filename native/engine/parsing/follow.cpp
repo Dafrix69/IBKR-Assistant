@@ -177,7 +177,6 @@ Decision decide(const contract::FollowConfig& cfg, const OJson& payload, const F
     }
     if (!cfg.enabled) return {u"observed"_s, u"只观察,没有发单(这一单最坏亏 $"_s + G(risk) + u")"_s, summary};
     if (gates.breaker) return {u"blocked"_s, u"熔断中("_s + *gates.breaker + u"),没有发单"_s, summary};
-    if (!gates.autoExecute) return {u"blocked"_s, u"「允许自动执行」没有打开,没有发单"_s, summary};
     if (!gates.connected) return {u"blocked"_s, u"没有连接券商,没有发单"_s, summary};
     if (sentToday >= cfg.max_orders_per_day)
         return {u"capped"_s, u"今天已经跟了 %1 单,到了每天 %2 单的上限"_s.arg(util::jsNumberToString(sentToday), util::jsNumberToString(cfg.max_orders_per_day)), summary};
