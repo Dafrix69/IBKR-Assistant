@@ -730,6 +730,12 @@ void IbApi::reqAccountSummary(double reqId, const QString& group, const QString&
 }
 void IbApi::cancelAccountSummary(double reqId) { schedule([=, this] { deliver(wire::cancelAccountSummary(IBNEXT_SV, Nn(reqId))); }); }
 void IbApi::reqPnL(double reqId, const QString& account) { schedule([=, this] { deliver(wire::api::reqPnL(IBNEXT_SV, Nn(reqId), Sv(account), wire::Arg())); }); }
+void IbApi::reqTickByTickData(double reqId, const OJson& contract, const QString& tickType) {
+    // numberOfTicks 0 = 只要实时的。盘口只要价变了才推(ignoreSize):只变量的盘口抖动一秒几十次,对照用不上,却能把一天的文件撑到几百 MB
+    const bool ignoreSize = tickType == u"BidAsk";
+    schedule([=, this] { deliver(wire::reqTickByTickData(IBNEXT_SV, Nn(reqId), A(contract), Sv(tickType), Nn(0), Bv(ignoreSize))); });
+}
+void IbApi::cancelTickByTickData(double reqId) { schedule([this, reqId] { deliver(wire::cancelTickByTickData(IBNEXT_SV, Nn(reqId))); }); }
 void IbApi::cancelPnL(double reqId) { schedule([=, this] { deliver(wire::cancelPnL(IBNEXT_SV, Nn(reqId))); }); }
 void IbApi::reqIds() { schedule([this] { deliver(wire::api::reqIds(IBNEXT_SV, wire::Arg())); }); }
 
@@ -1005,7 +1011,24 @@ std::shared_ptr<Subscription> ApiNext::getPnL(const QString& account) {
                        {{u"pnl"_s, [this](Subs& s, const OJson& a) { onPnL(s, a); }}}, u"getPnl+%1:undefined"_s.arg(account));
 }
 
+std::shared_ptr<Subscription> ApiNext::getTickByTick(const OJson& contract, const QString& tickType) {
+    return registerSub([=, this](double reqId) { api_.reqTickByTickData(reqId, contract, tickType); },
+                       [this](double reqId) { api_.cancelTickByTickData(reqId); },
+                       {{u"tickByTickAllLast"_s, [this](Subs& s, const OJson& a) { onTickByTick(s, u"tickByTickAllLast"_s, a); }},
+                        {u"tickByTickBidAsk"_s, [this](Subs& s, const OJson& a) { onTickByTick(s, u"tickByTickBidAsk"_s, a); }}},
+                       u"getTickByTick+%1:%2"_s.arg(js::stringify(contract), tickType));
+}
+
 // ---- 事件处理
+
+void ApiNext::onTickByTick(Subs& subs, const QString& event, const OJson& a) {
+    auto* p = subs.get(argNum(a, 0));
+    if (!p) return;
+    Upd u;
+    u.all = js::object({{u"e"_s, js::S(event)}, {u"a"_s, a}});
+    auto keep = *p;
+    keep->next(u);
+}
 
 void ApiNext::onManagedAccts(Subs& subs, const OJson& a) {
     const QStringList accounts = js::str(arg(a, 0)).split(u',');

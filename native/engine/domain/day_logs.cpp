@@ -31,6 +31,17 @@ void JsonlDayFiles::append(const QString& date, const OJson& record) const {
     if (f.write(line) != line.size() || !f.flush()) throw util::JsError(u"ENOSPC: no space left on device, write"_s);
 }
 
+void JsonlDayFiles::appendAll(const QString& date, const QList<OJson>& records) const {
+    if (records.isEmpty()) return;
+    QDir().mkpath(dir_);
+    QFile f(fileOf(date));
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Unbuffered, QFileDevice::ReadOwner | QFileDevice::WriteOwner))
+        throw util::JsError(u"EACCES: permission denied, open '%1'"_s.arg(fileOf(date)));
+    QByteArray lines;
+    for (const OJson& r : records) lines += util::toNodeUtf8(js::stringify(r) + u'\n');
+    if (f.write(lines) != lines.size() || !f.flush()) throw util::JsError(u"ENOSPC: no space left on device, write"_s);
+}
+
 QList<OJson> JsonlDayFiles::readValid(const QString& date, const std::function<bool(const OJson&)>& valid) const {
     QFile f(fileOf(date));
     if (!f.open(QIODevice::ReadOnly)) return {};

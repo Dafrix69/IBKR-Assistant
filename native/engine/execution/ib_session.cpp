@@ -443,6 +443,8 @@ public:
             if (auto s = weak.lock()) s->optionTickListeners_.remove(id);
         };
     }
+    std::function<void()> tickByTick(const IbContract& contract, const QString& type, std::function<void(const TickByTick&)> onTick,
+                                     std::function<void(const QString&)> onError) override;
     Task<> settle(int ms) override {
         Runtime::Scope s(*rt_);
         return sleep(ms);
@@ -756,6 +758,62 @@ Task<> IbApiNextSession::disconnect() {
     return Task<>::resolved();
 }
 
+
+std::function<void()> IbApiNextSession::tickByTick(const IbContract& contract, const QString& type, std::function<void(const TickByTick&)> onTick,
+                                                    std::function<void(const QString&)> onError) {
+    Runtime::Scope scope(*rt_);
+    auto sub = api_->getTickByTick(toIbContract(contract), type);
+    ibnext::Observer o;
+    o.next = [onTick](const Upd& u) {
+        const OJson* e = std::any_cast<OJson>(&u.all);
+        if (!e || !onTick) return;
+        const OJson* a = e->get(u"a"_s);
+        if (!a) return;
+        const auto at = [a](int i) -> std::optional<double> {
+            if (i >= a->items.size()) return std::nullopt;
+            const OJson& v = a->items[i];
+            if (v.type == OJson::Number && std::isfinite(v.n)) return v.n;
+            if (v.type == OJson::String) {  // 量是 Decimal:库给的是串
+                bool ok = false;
+                const double d = v.s.toDouble(&ok);
+                if (ok && std::isfinite(d)) return d;
+            }
+            return std::nullopt;
+        };
+        const auto flag = [a](int i, const QString& k) {
+            const OJson* o = i < a->items.size() ? &a->items[i] : nullptr;
+            const OJson* f = o ? o->get(k) : nullptr;
+            return f && f->type == OJson::Bool && f->b;
+        };
+        TickByTick t;
+        if (js::str(e->get(u"e"_s)) == u"tickByTickAllLast") {
+            t.kind = u"last"_s;
+            t.time = at(2).value_or(0);
+            t.price = at(3);
+            t.size = at(4);
+            t.pastLimit = flag(5, u"pastLimit"_s);
+            t.unreported = flag(5, u"unreported"_s);
+            t.exchange = a->items.size() > 6 ? js::str(&a->items[6]) : QString();
+            t.special = a->items.size() > 7 ? js::str(&a->items[7]) : QString();
+        } else {
+            t.kind = u"bidask"_s;
+            t.time = at(1).value_or(0);
+            t.bid = at(2);
+            t.ask = at(3);
+            t.bidSize = at(4);
+            t.askSize = at(5);
+        }
+        try {
+            onTick(t);
+        } catch (...) {
+        }
+    };
+    o.error = [onError](const ibnext::ApiError& err) {
+        if (onError) onError(u"%1 %2"_s.arg(util::jsNumberToString(err.code), err.message));
+    };
+    auto handle = sub->subscribe(std::move(o));
+    return [handle]() { handle->unsubscribe(); };
+}
 
 std::shared_ptr<TickerHandle> IbApiNextSession::subscribeTicker(const IbContract& contract, const QString& genericTicks) {
     Runtime::Scope scope(*rt_);

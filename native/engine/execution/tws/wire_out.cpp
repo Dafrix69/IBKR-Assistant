@@ -32,7 +32,9 @@ constexpr int kExtOperator = 105;
 constexpr int kSoftDollarTier = 106;
 constexpr int kCashQty = 111;
 constexpr int kReqSmartComponents = 114;
+constexpr int kTickByTick = 137;
 constexpr int kDecisionMaker = 138;
+constexpr int kTickByTickIgnoreSize = 140;
 constexpr int kMifidExecution = 139;
 constexpr int kAutoPriceForHedge = 141;
 constexpr int kOrderContainer = 145;
@@ -288,6 +290,40 @@ Encoded cancelMktData(int serverVersion, const Arg& reqId) {
     Tokens t(serverVersion);
     t.num(2);
     t.num(1);
+    t.push(reqId);
+    return t.send();
+}
+
+Encoded reqTickByTickData(int serverVersion, const Arg& reqIdArg, const Arg& contractArg, const Arg& tickType, const Arg& numberOfTicks, const Arg& ignoreSize) {
+    Tokens t(serverVersion);
+    V reqId = ptr(reqIdArg), c = ptr(contractArg);
+    if (t.sv < mv::kTickByTick) return t.error(u"It does not support tick-by-tick requests."_s, reqId);
+    t.num(97);  // REQ_TICK_BY_TICK_DATA,没有版本格
+    t.push(reqId);
+    t.push(get(c, u"conId"_s));
+    t.push(get(c, u"symbol"_s));
+    t.push(get(c, u"secType"_s));
+    t.push(get(c, u"lastTradeDateOrContractMonth"_s));
+    t.push(get(c, u"strike"_s));
+    t.push(get(c, u"right"_s));
+    t.push(get(c, u"multiplier"_s));
+    t.push(get(c, u"exchange"_s));
+    t.push(get(c, u"primaryExch"_s));
+    t.push(get(c, u"currency"_s));
+    t.push(get(c, u"localSymbol"_s));
+    t.push(get(c, u"tradingClass"_s));
+    t.push(tickType);
+    if (t.sv >= mv::kTickByTickIgnoreSize) {
+        t.push(numberOfTicks);
+        t.push(ignoreSize);
+    }
+    return t.send();
+}
+
+Encoded cancelTickByTickData(int serverVersion, const Arg& reqId) {
+    Tokens t(serverVersion);
+    if (t.sv < mv::kTickByTick) return t.error(u"It does not support tick-by-tick requests."_s, ptr(reqId));
+    t.num(98);
     t.push(reqId);
     return t.send();
 }

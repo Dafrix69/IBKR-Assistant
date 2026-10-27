@@ -121,6 +121,34 @@ OJson runDecode(int sv, const QStringList& tokens) {
 class TestIbWire : public QObject {
     Q_OBJECT
 private slots:
+    // 逐笔:没有原版可对照,期望值照 IBKR 公开的 API 文档的字段次序手写
+    void tickByTickProtocol() {
+        const OJson c=*js::parse(uR"({"conId":123,"symbol":"SPX","secType":"OPT","lastTradeDateOrContractMonth":"20261028","strike":6800,"right":"C","multiplier":"100","exchange":"SMART","currency":"USD","tradingClass":"SPXW"})"_s);
+        QCOMPARE(fieldsOf(*reqTickByTickData(176,js::N(7),c,js::S(u"AllLast"_s),js::N(0),js::B(false)).tokens),
+            (QStringList{"97","7","123","SPX","OPT","20261028","6800","C","100","SMART","","USD","","SPXW","AllLast","0","0"}));
+        // 版本 < 140 不带 numberOfTicks / ignoreSize;< 137 不发
+        QCOMPARE(fieldsOf(*reqTickByTickData(138,js::N(7),c,js::S(u"BidAsk"_s),js::N(0),js::B(false)).tokens).size(),15);
+        const auto old=reqTickByTickData(136,js::N(7),c,js::S(u"BidAsk"_s),js::N(0),js::B(false));
+        QVERIFY(!old.tokens);
+        QCOMPARE(old.errors.size(),size_t(1));
+        QCOMPARE(fieldsOf(*cancelTickByTickData(176,js::N(7)).tokens),(QStringList{"98","7"}));
+
+        const auto last=runDecode(176,{"99","7","2","1793030400","2.35","5","2","CBOE","I"});
+        const auto* e=last.get(u"emits"_s);
+        QCOMPARE(e->items.size(),1);
+        QCOMPARE(e->items[0].get(u"name"_s)->s,u"tickByTickAllLast"_s);
+        QCOMPARE(js::stringify(*e->items[0].get(u"args"_s)),
+            u"[7,2,1793030400,2.35,5,{\"pastLimit\":false,\"unreported\":true},\"CBOE\",\"I\"]"_s);
+        const auto quote=runDecode(176,{"99","7","3","1793030401","2.3","2.4","10","12","1"});
+        QCOMPARE(js::stringify(*quote.get(u"emits"_s)->items[0].get(u"args"_s)),
+            u"[7,1793030401,2.3,2.4,10,12,{\"bidPastLow\":true,\"askPastHigh\":false}]"_s);
+        QCOMPARE(quote.get(u"emits"_s)->items[0].get(u"name"_s)->s,u"tickByTickBidAsk"_s);
+        const auto mid=runDecode(176,{"99","7","4","1793030402","2.35"});
+        QCOMPARE(mid.get(u"emits"_s)->items[0].get(u"name"_s)->s,u"tickByTickMidPoint"_s);
+        // 读不够:同库的其它消息,发 error 不抛
+        const auto cut=runDecode(176,{"99","7","3","1793030401","2.3"});
+        QCOMPARE(cut.get(u"emits"_s)->items[0].get(u"name"_s)->s,u"error"_s);
+    }
     void wshProtocol() {
         QVERIFY(!wsh(172,102,9).tokens);
         QCOMPARE(fieldsOf(*wsh(173,100,9).tokens), (QStringList{"100","9"}));

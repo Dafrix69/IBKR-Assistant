@@ -17,6 +17,7 @@
 #include "orchestrate/services/idea_semantic.h"
 #include "orchestrate/services/intel.h"
 #include "orchestrate/services/iv_recorder.h"
+#include "orchestrate/services/flow_recorder.h"
 #include "orchestrate/services/market_data.h"
 #include "orchestrate/services/playbook_service.h"
 #include "orchestrate/services/pool.h"
@@ -158,6 +159,7 @@ struct EngineServer::Impl {
     std::unique_ptr<orch::BrokerLinkService> brokerLink;
     std::unique_ptr<orch::FlyPlannerService> flyPlanner;
     std::unique_ptr<orch::IvRecorderService> ivRecorder;
+    std::unique_ptr<orch::FlowRecorderService> flowRecorder;
     std::unique_ptr<orch::PlaybookService> playbook;
     std::unique_ptr<orch::FollowService> follow;
     std::unique_ptr<orch::EventsService> events;
@@ -396,6 +398,8 @@ void EngineServer::install() {
     // 记 IV 用的是测算那批自己的行情流;测算读到行情时也顺带记一笔
     i.ivRecorder = std::make_unique<orch::IvRecorderService>(h, i.flyPlanner->marks);
     i.flyPlanner->onMarks = [r = i.ivRecorder.get()](const OJson& sample) { r->recordPlan(sample); };
+    // 期权主动成交的记盘:自己订一批带 101 的流,只记不画
+    i.flowRecorder = std::make_unique<orch::FlowRecorderService>(h);
     // 日内剧本的跨式也走测算那批自己的行情流;期权墙走共用的那份缓存
     i.playbook = std::make_unique<orch::PlaybookService>(h, *i.flyPlanner->marks, *i.market);
     i.follow = std::make_unique<orch::FollowService>(h);
@@ -463,6 +467,8 @@ void EngineServer::install() {
         p->anomaly->start();
         // 当日到期期权 IV 的记录同理
         p->ivRecorder->start();
+        // 期权主动成交的记盘同理
+        p->flowRecorder->start();
         // SPX 日内剧本同理
         p->playbook->start();
         // 预热 SPX 公开现价:启动就取、之后每 4 分钟后台刷一次
@@ -480,6 +486,7 @@ void EngineServer::install() {
         if (p->test) return;
         p->anomaly->stop();
         p->ivRecorder->stop();
+        p->flowRecorder->stop();
         p->playbook->stop();
         p->follow->stop();
         p->fillSync->stop();

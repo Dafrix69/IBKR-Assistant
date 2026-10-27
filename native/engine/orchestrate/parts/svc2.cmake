@@ -18,4 +18,5 @@ target_sources(ibkr_orchestrate PRIVATE
     orchestrate/services/assignment_watch.h orchestrate/services/assignment_watch.cpp
     orchestrate/services/fly_planner.h orchestrate/services/fly_planner.cpp
     orchestrate/services/iv_recorder.h orchestrate/services/iv_recorder.cpp
+    orchestrate/services/flow_recorder.h orchestrate/services/flow_recorder.cpp
     orchestrate/services/idea_semantic.h orchestrate/services/idea_semantic.cpp)

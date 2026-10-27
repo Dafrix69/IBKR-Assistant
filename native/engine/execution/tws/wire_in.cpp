@@ -160,13 +160,44 @@ const QList<QPair<int, QString>>& inMsgIds() {
 /// 库里有解码、这里没搬的消息号(processMsg 的 case 里有,这里不认)
 bool unported(double id) {
     static const QList<int> ids = {6, 7, 8, 14, 16, 18, 19, 20, 47, 50, 51, 54, 56, 67, 68, 71, 72, 73, 74, 77, 78, 79, 80, 82, 83, 84, 85, 86, 87, 88,
-                                   89, 91, 92, 93, 95, 96, 97, 98, 99, 101, 102, 103, 104, 105, 106, 107};
+                                   89, 91, 92, 93, 95, 96, 97, 98, 101, 102, 103, 104, 105, 106, 107};
     for (int x : ids)
         if (id == x) return true;
     return false;
 }
 
 // ---------------------------------------------------------------- 各条消息
+
+// 逐笔(99)。库的对照里没有这一条(测试手写:tst_ib_wire.cpp 的 tickByTickProtocol),字段次序照 IBKR 公开的 API 文档:reqId、tickType、时刻(Unix 秒),再按类型——
+// 1 Last / 2 AllLast:价、量、掩码(1 越过涨跌停、2 未报告)、交易所、特殊条件;3 BidAsk:买价、卖价、买量、卖量、掩码(1 买价低于下限、2 卖价高于上限);
+// 4 MidPoint:中间价;0 没有内容。事件的参数次序同库的 EventName 文档
+void tickByTick(Decoder& d) {
+    const double reqId = d.readInt();
+    const double tickType = d.readInt();
+    const double time = d.readInt();
+    if (tickType == 1 || tickType == 2) {
+        const OJson price = d.readDouble();
+        const OJson size = d.readDecimal();
+        const double mask = d.readInt();
+        const QString exchange = d.readStr();
+        const QString special = d.readStr();
+        const qint64 m = std::isfinite(mask) ? qint64(mask) : 0;
+        OJson attribs = js::object({{u"pastLimit"_s, B((m & 1) != 0)}, {u"unreported"_s, B((m & 2) != 0)}});
+        d.queueEvent(u"tickByTickAllLast"_s, {N(reqId), N(tickType), N(time), price, size, attribs, S(exchange), S(special)});
+    } else if (tickType == 3) {
+        const OJson bid = d.readDouble();
+        const OJson ask = d.readDouble();
+        const OJson bidSize = d.readDecimal();
+        const OJson askSize = d.readDecimal();
+        const double mask = d.readInt();
+        const qint64 m = std::isfinite(mask) ? qint64(mask) : 0;
+        OJson attribs = js::object({{u"bidPastLow"_s, B((m & 1) != 0)}, {u"askPastHigh"_s, B((m & 2) != 0)}});
+        d.queueEvent(u"tickByTickBidAsk"_s, {N(reqId), N(time), bid, ask, bidSize, askSize, attribs});
+    } else if (tickType == 4) {
+        const OJson mid = d.readDouble();
+        d.queueEvent(u"tickByTickMidPoint"_s, {N(reqId), N(time), mid});
+    }
+}
 
 void tickPrice(Decoder& d) {
     const double version = d.readInt();
@@ -1255,6 +1286,7 @@ void Decoder::processMsg(double id) {
     else if (id == 81) tickReqParams(*this);
     else if (id == 90) historicalDataUpdate(*this);
     else if (id == 94) pnl(*this);
+    else if (id == 99) tickByTick(*this);
     else if (id == 100) orderBound(*this);
     else if (id == 104 || id == 105) {
         const double reqId = readInt();

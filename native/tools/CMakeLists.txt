@@ -14,3 +14,7 @@ endforeach()
 qt_add_executable(terrain-replay terrain_replay.cpp)
 target_link_libraries(terrain-replay PRIVATE ibkr_domain)
 set_target_properties(terrain-replay PROPERTIES MACOSX_BUNDLE FALSE WIN32_EXECUTABLE FALSE)
+
+qt_add_executable(option-flow-report option_flow_report.cpp)
+target_link_libraries(option-flow-report PRIVATE ibkr_analysis)
+set_target_properties(option-flow-report PROPERTIES MACOSX_BUNDLE FALSE WIN32_EXECUTABLE FALSE)

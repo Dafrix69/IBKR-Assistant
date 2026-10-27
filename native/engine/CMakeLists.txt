@@ -58,6 +58,7 @@ qt_add_library(ibkr_domain STATIC
     domain/positions.h domain/positions.cpp
     domain/day_logs.h domain/day_logs.cpp
     domain/terrain_log.h domain/terrain_log.cpp
+    domain/option_flow_log.h domain/option_flow_log.cpp
     domain/follow_inbox.h domain/follow_inbox.cpp
     domain/follow_reader.h domain/follow_reader.cpp
 )

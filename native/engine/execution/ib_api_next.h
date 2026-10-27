@@ -347,6 +347,8 @@ public:
     void cancelPositions();
     void reqAccountSummary(double reqId, const QString& group, const QString& tags);
     void cancelAccountSummary(double reqId);
+    void reqTickByTickData(double reqId, const OJson& contract, const QString& tickType);
+    void cancelTickByTickData(double reqId);
     void reqPnL(double reqId, const QString& account);
     void cancelPnL(double reqId);
     void reqIds();
@@ -461,6 +463,8 @@ public:
     std::shared_ptr<Subscription> getPositions();
     std::shared_ptr<Subscription> getAccountSummary(const QString& group, const QString& tags);
     std::shared_ptr<Subscription> getPnL(const QString& account);
+    /// 逐笔(库的 ApiNext 没有这一个):推的 all 是 OJson {e: 事件名, a: 事件参数}
+    std::shared_ptr<Subscription> getTickByTick(const OJson& contract, const QString& tickType);
 
 private:
     friend class Subscription;
@@ -491,6 +495,7 @@ private:
     void onSecDefOptParam(Subs& subs, const OJson& a);
     void onSecDefOptParamEnd(Subs& subs, const OJson& a);
     void onPnL(Subs& subs, const OJson& a);
+    void onTickByTick(Subs& subs, const QString& event, const OJson& a);
     void onTick(Subs& subs, const OJson& a);
     void onTickString(Subs& subs, const OJson& a);
     void onTickOptionComputation(Subs& subs, const OJson& a);

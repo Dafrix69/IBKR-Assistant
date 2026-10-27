@@ -42,6 +42,11 @@ Encoded reqMktData(int serverVersion, const Arg& reqId, const Arg& contract, con
                    const Arg& regulatorySnapshot);
 /// CANCEL_MKT_DATA
 Encoded cancelMktData(int serverVersion, const Arg& reqId);
+/// REQ_TICK_BY_TICK_DATA(97):逐笔。tickType 是 "Last" / "AllLast" / "BidAsk" / "MidPoint";版本 ≥ 140 才带 numberOfTicks 与 ignoreSize。
+/// 这一条库的 Decoder 对照(gen_ib_wire.mjs)里没有,字段次序照 IBKR 公开的 API 文档写,测试是手写的(tst_ib_wire.cpp 的 tickByTickProtocol)
+Encoded reqTickByTickData(int serverVersion, const Arg& reqId, const Arg& contract, const Arg& tickType, const Arg& numberOfTicks, const Arg& ignoreSize);
+/// CANCEL_TICK_BY_TICK_DATA(98)
+Encoded cancelTickByTickData(int serverVersion, const Arg& reqId);
 /// REQ_MARKET_DATA_TYPE(1 实时 / 2 冻结 / 3 延迟 / 4 延迟冻结)
 Encoded reqMarketDataType(int serverVersion, const Arg& marketDataType);
 /// REQ_HISTORICAL_DATA

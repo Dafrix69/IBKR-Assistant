@@ -20,6 +20,8 @@ public:
     explicit JsonlDayFiles(QString dir) : dir_(std::move(dir)) {}
     const QString& dir() const { return dir_; }
     void append(const QString& date, const util::OJson& record) const;
+    /// 一次打开写好几行(记盘那一路一秒刷一次,不为每一行开一次文件)
+    void appendAll(const QString& date, const QList<util::OJson>& records) const;
     /// 读出来、形状对的那几行(原样的 JS 对象)
     QList<util::OJson> readValid(const QString& date, const std::function<bool(const util::OJson&)>& valid) const;
     /// 有文件的日子,从早到晚

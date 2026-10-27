@@ -94,6 +94,16 @@ public:
     virtual TickerData read() = 0;
 };
 
+/// 逐笔的一笔(tick-by-tick):kind 是 "last"(成交,AllLast)或 "bidask"(盘口);time 是 TWS 给的 Unix 秒
+struct TickByTick {
+    QString kind;
+    double time = 0;
+    std::optional<double> price, size;            // last
+    std::optional<double> bid, ask, bidSize, askSize;  // bidask
+    QString exchange, special;
+    bool pastLimit = false, unreported = false;
+};
+
 struct RawBar {
     QString date;  // IBKR formatDate=1 文本
     double open = 0, high = 0, low = 0, close = 0;
@@ -206,6 +216,16 @@ public:
     /// 盯盘拿它在两拍之间提前醒(orchestrate/fast_exit);没有它就只按节拍读缓存
     virtual std::function<void()> onOptionTick(std::function<void()> listener) {
         (void)listener;
+        return {};
+    }
+    /// 逐笔订阅(type 同 reqTickByTickData:"AllLast" / "BidAsk"……)。回撤掉它的函数;不支持的会话回空函数、两个回调都不叫。
+    /// onError 拿到的是 TWS 的报错(含错误码,例如逐笔并发数满了)
+    virtual std::function<void()> tickByTick(const IbContract& contract, const QString& type, std::function<void(const TickByTick&)> onTick,
+                                             std::function<void(const QString&)> onError) {
+        (void)contract;
+        (void)type;
+        (void)onTick;
+        (void)onError;
         return {};
     }
     /// 事件泵(ib.sleep):等行情落地

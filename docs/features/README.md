@@ -4,6 +4,7 @@
 操作步骤在 [用户手册](../user-guide/README.md),事故经过在 [journal](../journal/),改动历史看 git 提交记录。
 
 - [地形记录与离线回放](terrain-replay.md):SPX GEX 地形观察底账、失败帧与按时刻读取。
+- [期权主动成交记盘](option-flow.md):SPX 近平值期权每次成交量增量与前后盘口的底账,按报价规则离线分类,次日持仓量对照;只记不画。
 
 ## 下单与执行
 
