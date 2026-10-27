@@ -155,7 +155,7 @@ export interface RpcMethods {
   "futu.unlock": { params: FutuUnlockParams; result: FutuUnlockResult };
   "futu.set_password": { params: FutuSetPasswordParams; result: { ok: true } };
 
-  /** Discord 跟单此刻的样子:配置、连接、今天跟了几单、最近的信号、频道里最近看到的消息 */
+  /** Discord 跟单此刻的样子:配置、连接、今天跟了几单、最近的信号、频道里最近的消息 */
   "follow.status": { params: NoParams; result: FollowStatus };
   /** 存 bot token(系统凭证库)并用它重新连接;回执是之后的 follow.status */
   "follow.set_token": { params: FollowSetTokenParams; result: FollowStatus };

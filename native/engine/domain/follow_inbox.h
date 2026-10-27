@@ -30,6 +30,9 @@ struct ParsedInboxLine {
     QString error;        // 不 ok 时
 };
 ParsedInboxLine parseInboxLine(const QString& line);
+/// 收件文件末尾最近的 max 条(旧 → 新),只给界面列出来:不进判定、不发单。文件没有、读不了就是空的;
+/// 认不出的行、最后那半行(脚本可能正写到一半)跳过。只看文件最后 256 KB
+QList<util::OJson> readInboxTail(const QString& path, int max);
 
 class FollowInbox : public QObject {
 public:

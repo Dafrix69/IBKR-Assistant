@@ -62,6 +62,39 @@ private slots:
         QVERIFY(errors.isEmpty());
     }
 
+    /// 文件末尾最近几条:旧 → 新,认不出的行与最后半行跳过,文件没有就是空的
+    void tail() {
+        QTemporaryDir dir;
+        const QString path = dir.path() + u"/follow-inbox.jsonl"_s;
+        QVERIFY(domain::readInboxTail(path, 5).isEmpty());
+        {
+            QFile f(path);
+            QVERIFY(f.open(QIODevice::WriteOnly));
+            for (int i = 1; i <= 4; ++i)
+                f.write(u"{\"v\":1,\"key\":\"k%1\",\"seen_at\":\"2026-08-14T14:3%1:00.000Z\",\"author\":\"老王\",\"content\":\"第%1条\"}\n"_s.arg(i).toUtf8());
+            f.write("坏行\n{\"v\":1,\"key\":\"k5\"");
+        }
+        const QList<OJson> got = domain::readInboxTail(path, 2);
+        QCOMPARE(got.size(), 2);
+        QCOMPARE(js::str(got[0].get(u"content"_s)), u"第3条"_s);
+        QCOMPARE(js::str(got[1].get(u"content"_s)), u"第4条"_s);
+        QCOMPARE(js::str(got[1].get(u"id"_s)), u"local:k4"_s);
+        QCOMPARE(domain::readInboxTail(path, 10).size(), 4);
+        QVERIFY(domain::readInboxTail(path, 0).isEmpty());
+
+        // 超过 256 KB:从中间读起,第一行不完整,丢掉;末尾的照读
+        {
+            QFile f(path);
+            QVERIFY(f.open(QIODevice::WriteOnly | QIODevice::Truncate));
+            const QByteArray pad = "{\"v\":1,\"key\":\"pad\",\"seen_at\":\"2026-08-14T14:00:00.000Z\",\"author\":\"老王\",\"content\":\"" + QByteArray(300, 'x') + "\"}\n";
+            for (int i = 0; i < 1000; ++i) f.write(pad);
+            f.write("{\"v\":1,\"key\":\"last\",\"seen_at\":\"2026-08-14T14:40:00.000Z\",\"author\":\"老王\",\"content\":\"最后\"}\n");
+        }
+        const QList<OJson> big = domain::readInboxTail(path, 1000);
+        QVERIFY(big.size() > 100 && big.size() < 1000);
+        QCOMPARE(js::str(big.last().get(u"content"_s)), u"最后"_s);
+    }
+
     void session() {
         QTemporaryDir dir;
         const QString path = dir.path() + u"/follow-inbox.jsonl"_s;

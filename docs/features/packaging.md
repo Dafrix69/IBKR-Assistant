@@ -8,6 +8,7 @@ macOS 安装包由 `native/tools/package_mac.sh` 出:一份能单独拷走的 `D
 |---|---|
 | `Contents/MacOS/Datrix` | 界面 |
 | `Contents/MacOS/ibkr-engine` | 交易引擎(界面拉起的子进程) |
+| `Contents/MacOS/discord-window-follow` | 跟单本地收件读窗口的程序(`native/tools/discord-window-follow.swift`,打包时 `swiftc` 编),引擎在填了频道名时拉起 |
 | `Contents/Resources/prompts/` | 提示词(`prompts/`) |
 | `Contents/Resources/llm/` | 大模型输出的 schema(`native/spec/baseline/llm/`) |
 | `Contents/Resources/legal/` | 条款文本(`docs/legal/`),同意页读它 |
@@ -28,7 +29,7 @@ macOS 安装包由 `native/tools/package_mac.sh` 出:一份能单独拷走的 `D
 ## 脚本做的事
 
 1. `cmake --preset mac-package`,只编 `ibkr_bundle`(界面、引擎、拷资源),不编测试。
-2. 拷到临时目录里加工,不动编译目录:画图标;`macdeployqt -qmldir=native/app -executable=…/ibkr-engine`,引擎是第二个可执行文件,要一起改引用;
+2. 拷到临时目录里加工,不动编译目录:画图标;编读窗口的程序;`macdeployqt -qmldir=native/app -executable=…/ibkr-engine`,引擎是第二个可执行文件,要一起改引用;
    两个可执行文件里还引用 `/opt/homebrew` 的就失败退出。
 3. ad-hoc 签名(`codesign --sign -`)并 `--verify --deep --strict`。
 4. `hdiutil` 做 DMG(里面有 `Applications` 的快捷方式)。输出目录默认 `~/Developer/ibkr/work/dist`,只留这一份 `.app` 与它的 DMG。

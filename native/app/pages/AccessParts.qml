@@ -658,7 +658,7 @@ QtObject {
                 StepList { width: parent.width; topPadding: 10; items: fp.m.inboxSteps || [] }
             }
             // Primer 下 12 与 p.hint 上 7 合并成 12(已在 Primer 里);p.hint 下面紧贴着组
-            HintP { topPadding: 0; text: "频道里最近看到的消息(只在内存里,重启引擎就清空):" }
+            HintP { topPadding: 0; text: "频道里最近的消息(这次看到的,加上收件文件里已有的):" }
             Group {
                 visible: (fp.m.seen || []).length > 0
                 width: parent.width
@@ -676,6 +676,8 @@ QtObject {
                                 Label { id: seenName; anchors.verticalCenter: parent.verticalCenter; text: seenRow.modelData.name; size: 13 }
                                 Label { anchors.baseline: seenName.baseline; text: seenRow.modelData.id; size: 11; color: Theme.labelSecondary }
                                 AntTag { visible: seenRow.modelData.local; anchors.verticalCenter: parent.verticalCenter; text: "本地收件" }
+                                // 收件文件里原有的:只列出来,没有拿去判定、发单
+                                AntTag { visible: !!seenRow.modelData.history; anchors.verticalCenter: parent.verticalCenter; text: "之前收到 · 未处理" }
                             }
                         }
                         Item {

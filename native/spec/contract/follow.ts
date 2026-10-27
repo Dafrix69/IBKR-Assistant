@@ -135,7 +135,7 @@ export interface FollowEntry {
   quote?: FollowQuote;
 }
 
-/** 频道里最近看到的消息(只在内存里):挑「信任谁」时照着它填发送者 ID。 */
+/** 频道里最近的消息(这次看到的在内存里,加上收件文件末尾已有的):挑「信任谁」时照着它填发送者 ID。 */
 export interface FollowSeen {
   at: string;
   /** 从哪儿来:bot 读的频道,还是本地收件 */
@@ -144,6 +144,8 @@ export interface FollowSeen {
   author_name: string;
   text: string;
   trusted: boolean;
+  /** 收件文件里原有的一条:只列出来,没有判定、没有发单。这次看到的没有这个键 */
+  history?: boolean;
 }
 
 /**
@@ -173,7 +175,7 @@ export interface FollowStatus {
   today: { sent: number; max: number };
   /** 最近的信号,新的在前 */
   recent: FollowEntry[];
-  /** 频道里最近看到的消息,新的在前 */
+  /** 频道里最近的消息,新的在前 */
   seen: FollowSeen[];
   /** 本地收件 */
   inbox: FollowInboxState;

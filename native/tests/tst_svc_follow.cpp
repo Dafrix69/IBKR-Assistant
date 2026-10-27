@@ -646,6 +646,55 @@ private slots:
         QVERIFY(!inbox->watching());
     }
 
+    /// 收件文件里原有的消息:没有在盯文件(服务没 start)也列进 status.seen,标 history,不判定、不发单;这次看见过的同一条只列一次
+    void statusListsInboxFileAsHistory() {
+        const OJson base = *fixture_.get(u"base"_s);
+        const OJson script = js::object({{u"start"_s, js::N(double(Date_UTC_20260814_143159) + 60000)},
+                                         {u"settings"_s, *js::parse(u"{\"follow\":{\"author_ids\":[\"local:老王\"],\"local_inbox\":true}}"_s)},
+                                         {u"steps"_s, *js::parse(u"[{\"op\":\"call\",\"m\":\"status\",\"a\":[]}]"_s)}});
+        Runner r(script, base);
+        {
+            QFile f(r.world.dir.path() + u"/follow-inbox.jsonl"_s);
+            QVERIFY(f.open(QIODevice::WriteOnly));
+            f.write("{\"v\":1,\"key\":\"k1\",\"seen_at\":\"2026-08-14T14:30:00.000Z\",\"author\":\"老王\",\"content\":\"早一条\"}\n"
+                    "认不出的一行\n"
+                    "{\"v\":1,\"key\":\"k2\",\"seen_at\":\"2026-08-14T14:31:59.000Z\",\"author\":\"路人\",\"content\":\"晚一条\"}\n"
+                    "{\"v\":1,\"key\":\"k3\",\"seen_at\":\"2026-08-14T14:32:00.000Z\"");  // 正写到一半
+        }
+        const OJson steps = r.run(script);
+        const OJson status = jsfix::dec(*steps.items[0].get(u"result"_s)->get(u"ok"_s));
+        const OJson& seen = *status.get(u"seen"_s);
+        QCOMPARE(seen.items.size(), 2);
+        QCOMPARE(js::str(seen.items[0].get(u"text"_s)), u"晚一条"_s);
+        QCOMPARE(js::str(seen.items[0].get(u"author_id"_s)), u"local:路人"_s);
+        QCOMPARE(js::str(seen.items[0].get(u"source"_s)), u"local"_s);
+        QVERIFY(!js::truthy(seen.items[0].get(u"trusted"_s)));
+        QVERIFY(js::truthy(seen.items[0].get(u"history"_s)));
+        QCOMPARE(js::str(seen.items[1].get(u"text"_s)), u"早一条"_s);
+        QVERIFY(js::truthy(seen.items[1].get(u"trusted"_s)));
+        // 只列出来:没有一条拿去判定、发单
+        QVERIFY(status.get(u"recent"_s)->items.isEmpty());
+        for (const OJson& e : r.world.log.items) QVERIFY(js::str(e.get(u"m"_s)) != u"engine.handleInstruction"_s);
+
+        // 这次看见过的同一条(本地收件读进来的)不重复,也不再标 history
+        DiscordMessage live;
+        live.id = u"local:k2"_s;
+        live.channel_id = u"local"_s;
+        live.author_id = u"local:路人"_s;
+        live.author_name = u"路人"_s;
+        live.content = u"晚一条"_s;
+        live.sentAtMs = double(Date_UTC_20260814_143159);
+        const OJson again = r.run(js::object({{u"steps"_s, *js::parse(u"[{\"op\":\"call\",\"m\":\"onMessage\",\"a\":[%1]},{\"op\":\"call\",\"m\":\"status\",\"a\":[]}]"_s
+                                                                            .arg(js::stringify(js::object({{u"id"_s, js::S(live.id)}, {u"channel_id"_s, js::S(live.channel_id)},
+                                                                                                           {u"author_id"_s, js::S(live.author_id)}, {u"author_name"_s, js::S(live.author_name)},
+                                                                                                           {u"content"_s, js::S(live.content)}, {u"sentAtMs"_s, js::N(live.sentAtMs)}}))))}}));
+        const OJson seen2 = *jsfix::dec(*again.items[1].get(u"result"_s)->get(u"ok"_s)).get(u"seen"_s);
+        QCOMPARE(seen2.items.size(), 2);
+        QCOMPARE(js::str(seen2.items[0].get(u"text"_s)), u"晚一条"_s);
+        QVERIFY(!js::truthy(seen2.items[0].get(u"history"_s)));
+        QVERIFY(js::truthy(seen2.items[1].get(u"history"_s)));
+    }
+
 private:
     static constexpr qint64 Date_UTC_20260814_143159 = 1786717919000LL;
     OJson fixture_;

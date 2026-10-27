@@ -9,6 +9,7 @@
 #include <QFileInfo>
 #include <QRegularExpression>
 
+#include <algorithm>
 #include <cmath>
 
 using namespace Qt::StringLiterals;
@@ -54,6 +55,25 @@ ParsedInboxLine parseInboxLine(const QString& line) {
                         {u"content"_s, js::S(*content)},
                         {u"sentAtMs"_s, js::N(sentAtMs)}}),
             {}};
+}
+
+QList<OJson> readInboxTail(const QString& path, int max) {
+    constexpr qint64 kTailBytes = 256 * 1024;
+    QFile f(path);
+    if (max <= 0 || !f.open(QIODevice::ReadOnly)) return {};
+    const qint64 from = std::max<qint64>(0, f.size() - kTailBytes);
+    if (!f.seek(from)) return {};
+    QStringList lines = util::nodeUtf8(f.readAll()).split(u'\n');
+    lines.removeLast();                     // 没有换行收尾的那一段(正写到一半,或文件本来就以换行结尾时的空串)
+    if (from > 0 && !lines.isEmpty()) lines.removeFirst();  // 从中间读起的第一行不完整
+    QList<OJson> out;
+    for (qsizetype i = lines.size() - 1; i >= 0 && out.size() < max; --i) {
+        const QString trimmed = util::jsTrim(lines[i]);
+        if (trimmed.isEmpty()) continue;
+        ParsedInboxLine parsed = parseInboxLine(trimmed);
+        if (parsed.ok) out.prepend(std::move(parsed.message));
+    }
+    return out;
 }
 
 FollowInbox::FollowInbox(QString path, Hooks hooks, int intervalMs, QObject* parent)

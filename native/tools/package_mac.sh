@@ -1,7 +1,7 @@
 #!/bin/zsh
 # 出 macOS 安装包(docs/features/packaging.md):
 #   1. 用 mac-package 预设编一份打包版 Datrix.app(引擎在 Contents/MacOS,提示词 / schema / 条款 / 示例配置在 Contents/Resources);
-#   2. 拷到一个临时目录里加工,不动编译目录:画图标、macdeployqt 带上 Qt(连引擎那个可执行文件一起)、检查不再引用 Homebrew;
+#   2. 拷到一个临时目录里加工,不动编译目录:画图标、编跟单本地收件读窗口的程序、macdeployqt 带上 Qt(连引擎那个可执行文件一起)、检查不再引用 Homebrew;
 #   3. ad-hoc 签名(没有 Developer ID 证书;别的 Mac 第一次打开要右键 → 打开);
 #   4. 做成 DMG(里面有 Datrix.app 与 Applications 的快捷方式)。
 # 输出目录里只留这一份 .app 与它的 DMG。
@@ -36,6 +36,9 @@ if swift tools/make_icon.swift "$stage/icon" >/dev/null && [[ -f $stage/icon/ico
 else
     echo "图标没画出来,先不带图标" >&2
 fi
+
+# 本地收件读窗口的程序:编好放在引擎旁边,界面拉引擎时把位置告诉它(DAFRI_INBOX_READER)。只链系统框架,不经 macdeployqt
+swiftc -O tools/discord-window-follow.swift -o "$app/Contents/MacOS/discord-window-follow"
 
 # Qt 的库与插件带进包里;引擎是另一个可执行文件,也要改它的引用
 macdeployqt "$app" -qmldir="$native/app" -executable="$app/Contents/MacOS/ibkr-engine" -always-overwrite

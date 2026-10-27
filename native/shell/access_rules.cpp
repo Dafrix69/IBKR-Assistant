@@ -542,7 +542,7 @@ const QJsonArray& setupSteps() {
         QJsonObject{{u"title"_s, u"让单子出现在 bot 看得到的频道里"_s},
                     {u"detail"_s, u"对方的频道是公告频道:点它的「关注」,转到你服务器的一个频道。不是公告频道:请对方同时在你的服务器里发一份,或者请那边的管理员把 bot 拉进去。"_s}},
         QJsonObject{{u"title"_s, u"填频道 ID、挑信任的发送者"_s},
-                    {u"detail"_s, u"Discord 设置 → 高级 → 开发者模式;之后右键频道 →「复制频道 ID」。存好之后等对方发一条消息,在下面「频道里最近看到的消息」里点「信任」。"_s}},
+                    {u"detail"_s, u"Discord 设置 → 高级 → 开发者模式;之后右键频道 →「复制频道 ID」。存好之后等对方发一条消息,在下面「频道里最近的消息」里点「信任」。"_s}},
     };
     return s;
 }
@@ -556,7 +556,7 @@ const QJsonArray& inboxSteps() {
         QJsonObject{{u"title"_s, u"给 Datrix 辅助功能权限"_s},
                     {u"detail"_s, u"头一次系统会弹提示:系统设置 → 隐私与安全性 → 辅助功能,打开 Datrix。授权之后几秒内「读窗口」那一行变成「在读」。换了新版本之后要重新授权一次,做法写在「读窗口」那一行里。"_s}},
         QJsonObject{{u"title"_s, u"信任显示名"_s},
-                    {u"detail"_s, u"对方发一条之后,在「频道里最近看到的消息」里点「信任」(条目是 local:显示名)。注意:频道里别人把昵称改成一样的,软件分不出来——只适合私密小群。"_s}},
+                    {u"detail"_s, u"对方发一条之后,在「频道里最近的消息」里点「信任」(条目是 local:显示名)。注意:频道里别人把昵称改成一样的,软件分不出来——只适合私密小群。"_s}},
         QJsonObject{{u"title"_s, u"不用安装包、或者想自己运行脚本"_s},
                     {u"detail"_s, u"频道名留空,自己运行仓库里的 native/tools/discord-window-follow.swift:swift 那个文件 --channel 频道名 --out 上面显示的收件文件路径;辅助功能权限给运行它的终端。"_s}},
     };
@@ -618,6 +618,7 @@ QJsonObject followModel(const QJsonObject& st, const QJsonValue& appStatus, cons
         seenRows.append(QJsonObject{{u"name"_s, T(s[u"author_name"_s]) ? S(s[u"author_name"_s]) : u"(没有名字)"_s},
                                     {u"id"_s, S(s[u"author_id"_s])},
                                     {u"local"_s, S(s[u"source"_s]) == u"local"},
+                                    {u"history"_s, T(s[u"history"_s])},
                                     {u"sub"_s, u"%1 · %2"_s.arg(records::fmtTime(s[u"at"_s], zone), T(s[u"text"_s]) ? S(s[u"text"_s]) : u"(没有文字内容)"_s)},
                                     {u"trusted"_s, authorIds.contains(S(s[u"author_id"_s]))}});
     }
@@ -814,7 +815,7 @@ QStringList pageTexts(const QString& sub, const QJsonObject& m) {
       << u"对方的私密频道拉不进 bot 时:从你屏幕上的 Discord 窗口把新消息抄进收件文件,软件读文件。不用任何 token,Discord 那边什么都收不到。"_s << u"读哪个频道"_s
       << u"Discord 窗口标题里的频道名(不含 #)。填了,软件自己读这个窗口,随软件启动和退出;留空就要自己运行脚本。"_s << u"读窗口"_s << m[u"reader"_s][u"text"_s].toString();
     if (m[u"reader"_s][u"tag"_s].isObject()) t << m[u"reader"_s][u"tag"_s][u"text"_s].toString();
-    t << u"收件文件"_s << m[u"inbox"_s][u"text"_s].toString() << m[u"inbox"_s][u"path"_s].toString() << u"本地收件怎么用"_s << u"频道里最近看到的消息(只在内存里,重启引擎就清空):"_s;
+    t << u"收件文件"_s << m[u"inbox"_s][u"text"_s].toString() << m[u"inbox"_s][u"path"_s].toString() << u"本地收件怎么用"_s << u"频道里最近的消息(这次看到的,加上收件文件里已有的):"_s;
     for (const QJsonValue& s : m[u"seen"_s].toArray()) {
         t << s[u"name"_s].toString() << s[u"id"_s].toString();
         if (s[u"local"_s].toBool()) t << u"本地收件"_s;

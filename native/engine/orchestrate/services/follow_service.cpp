@@ -170,6 +170,16 @@ DiscordMessage messageOf(const OJson& m) {
     return out;
 }
 
+/// 「频道里最近的消息」的一行
+OJson seenRow(const DiscordMessage& message, bool trusted) {
+    return js::object({{u"at"_s, js::S(util::utcIso(std::floor(message.sentAtMs / 1000) * 1000))},
+                       {u"source"_s, js::S(message.channel_id == domain::kLocalChannel ? u"local"_s : u"discord"_s)},
+                       {u"author_id"_s, js::S(message.author_id)},
+                       {u"author_name"_s, js::S(message.author_name.left(80))},
+                       {u"text"_s, js::S(message.content.left(domain::kFollowTextMax))},
+                       {u"trusted"_s, js::B(trusted)}});
+}
+
 class RealInbox : public InboxLike {
 public:
     RealInbox(const QString& path, InboxHooks hooks, int intervalMs)
@@ -490,12 +500,7 @@ Task<> FollowService::chainStep(Task<> prev, DiscordMessage message, std::option
 void FollowService::remember(const DiscordMessage& message) {
     const contract::FollowConfig& cfg = settings().follow;
     const bool trusted = cfg.author_ids.contains(message.author_id);
-    seen_.prepend(js::object({{u"at"_s, js::S(util::utcIso(std::floor(message.sentAtMs / 1000) * 1000))},
-                              {u"source"_s, js::S(message.channel_id == domain::kLocalChannel ? u"local"_s : u"discord"_s)},
-                              {u"author_id"_s, js::S(message.author_id)},
-                              {u"author_name"_s, js::S(message.author_name.left(80))},
-                              {u"text"_s, js::S(message.content.left(domain::kFollowTextMax))},
-                              {u"trusted"_s, js::B(trusted)}}));
+    seen_.prepend(seenRow(message, trusted));
     while (seen_.size() > kSeenMax) seen_.removeLast();
     emitEvent(u"follow"_s, js::object({{u"kind"_s, js::S(u"seen"_s)}}));
     if (onSeen) onSeen(message, trusted);
@@ -773,10 +778,30 @@ Task<OJson> FollowService::status() {
     const OJson today = js::object({{u"sent"_s, js::N(sentToday())}, {u"max"_s, js::N(cfg.max_orders_per_day)}});
     const OJson recent = js::array(store().follow().recent(30));
     OJson seen = js::array();
+    QSet<QString> listed;
+    const auto keyOf = [](const OJson& row) {
+        return js::str(row.get(u"author_id"_s)) + u'\n' + js::str(row.get(u"at"_s)) + u'\n' + js::str(row.get(u"text"_s));
+    };
     for (const OJson& s : seen_) {
         OJson row = s;
         row.set(u"trusted"_s, js::B(cfg.author_ids.contains(js::str(s.get(u"author_id"_s)))));
+        listed.insert(keyOf(row));
         seen.items.append(row);
+    }
+    // 收件文件里已有的(这次启动之前收到的、本地收件关着时脚本抄进来的):照样列出来,标 history,不判定、不发单;
+    // 这次已经看见过的同一条只列一次。按时刻新的在前,总数仍是 kSeenMax
+    bool fromFile = false;
+    for (const OJson& m : domain::readInboxTail(domain::inboxPath(settings().db_path), kSeenMax)) {
+        const DiscordMessage message = messageOf(m);
+        OJson row = seenRow(message, cfg.author_ids.contains(message.author_id));
+        if (listed.contains(keyOf(row))) continue;
+        row.set(u"history"_s, js::B(true));
+        seen.items.append(row);
+        fromFile = true;
+    }
+    if (fromFile) {
+        std::stable_sort(seen.items.begin(), seen.items.end(), [](const OJson& a, const OJson& b) { return js::str(a.get(u"at"_s)) > js::str(b.get(u"at"_s)); });
+        while (seen.items.size() > kSeenMax) seen.items.removeLast();
     }
     const OJson inbox = inboxView();
     double waiting = 0;

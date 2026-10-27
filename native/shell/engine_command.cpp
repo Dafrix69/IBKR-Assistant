@@ -37,6 +37,9 @@ ResolvedEngine resolveNativeEngine(const QString& enginePath, const QString& con
     const std::pair<const char*, QString> dirs[] = {{"DAFRI_PROMPT_DIR", promptDir}, {"DAFRI_SCHEMA_DIR", schemaDir}};
     for (const auto& [name, dir] : dirs)
         if (!dir.isEmpty() && !qEnvironmentVariableIsSet(name) && QFileInfo(dir).isDir()) cmd.env.insert(QString::fromLatin1(name), dir);
+    // 本地收件读窗口的程序(打包时编进 .app,和引擎放在一起):有就告诉引擎,填了频道名时由引擎拉起
+    const QString reader = QFileInfo(enginePath).absoluteDir().filePath(QStringLiteral("discord-window-follow"));
+    if (!qEnvironmentVariableIsSet("DAFRI_INBOX_READER") && QFileInfo(reader).isExecutable()) cmd.env.insert(QStringLiteral("DAFRI_INBOX_READER"), reader);
     cmd.workingDir = QFileInfo(enginePath).absolutePath();
     cmd.label = QStringLiteral("ibkr-engine");
     return {cmd, {}};
