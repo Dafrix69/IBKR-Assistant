@@ -104,7 +104,9 @@
 - EM 每天从记下来的盘口取:最早一笔取得到平值跨式(现价旁边那一档同时有看涨看跌)的样本,跨式 × √(π/2) 再折回全天
   (`playbook.makeBand` + `sessionEm.sessionSigmaOf`,和回放从剧本底账取 EM 是同一个式子)。取不到的天、提前收盘日不做回放;
   入场早于取到 EM 那一笔的情景也不做(那是入场时还不知道的数)。`--em 36` 改成一律用一个数。
-- 参数网格的键是 `flyexit.DEFAULTS` 上的(`stop`、`trail_arm`、`zone_hold`、`switch_k`……),`em` 除外。
+- 参数网格的键是 `flyexit.DEFAULTS` 上的(`stop`、`trail_arm`、`zone_hold`、`switch_k`……),`em` 除外;另外认回放的五个实验参数
+  (`zone_stop_sigma_k`、`b_keep_band`、`trail_capture_loose_below`、`trail_capture_tight_at`、`trail_arm_capture`,见 [交易分析](tradereview.md)「实验参数」)。
+  键名写错时报错里列的"可扫"只有 DEFAULTS 上的那些。
 
 ## 两笔之间
 

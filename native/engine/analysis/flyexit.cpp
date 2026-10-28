@@ -26,6 +26,12 @@ constexpr double kNaN = std::numeric_limits<double>::quiet_NaN();
 
 /// params[k] 当数用(TS 的 params["em"] * …:按 Number() 转)
 double P(const OJson& params, const char16_t* k) { return js::num(params.get(QString::fromUtf16(k))); }
+/// 实验参数:没给(不在 params 里)是空
+std::optional<double> X(const OJson& params, const char16_t* k) {
+    const OJson* v = params.get(QString::fromUtf16(k));
+    if (!v || v->type != OJson::Number) return std::nullopt;
+    return v->n;
+}
 double num(const OJson& o, const char16_t* k) { return js::num(js::prop(&o, QString::fromUtf16(k))); }
 const OJson* raw(const OJson& o, const char16_t* k) { return js::prop(&o, QString::fromUtf16(k)); }
 QString n2s(double v) { return util::jsNumberToString(v); }
@@ -71,12 +77,19 @@ const OJson& defaults() {
     return d;
 }
 
+const QStringList& experimentalKeys() {
+    static const QStringList k{u"zone_stop_sigma_k"_s, u"b_keep_band"_s, u"trail_capture_loose_below"_s, u"trail_capture_tight_at"_s,
+                               u"trail_arm_capture"_s};
+    return k;
+}
+
 OJson paramsFrom(const OJson* rawParams) {
     OJson out = defaults();
     // Object.entries:只有对象有自己的键(数组、串的下标键都不在 DEFAULTS 里)
     if (!js::isObj(rawParams)) return out;
     for (const auto& [key, value] : rawParams->fields) {
-        if ((!defaults().get(key) && !onObjectPrototype(key)) || value.type == OJson::Null) continue;
+        const bool experimental = experimentalKeys().contains(key);
+        if ((!defaults().get(key) && !experimental && !onObjectPrototype(key)) || value.type == OJson::Null) continue;
         if (isClockKey(key)) {
             out.set(key, js::S(js::str(&value)));
         } else {
@@ -157,6 +170,27 @@ double trailPct(double profitPeak, double d, double minute, const OJson& params)
 
 double trailStop(double profitPeak, double d, double minute, const OJson& params) {
     return util::pyRound(d + profitPeak * (1.0 - trailPct(profitPeak, d, minute, params)), 4);
+}
+
+double trailPct(double profitPeak, double d, double width, double minute, const OJson& params) {
+    const auto looseC = X(params, u"trail_capture_loose_below"), tightC = X(params, u"trail_capture_tight_at");
+    if (!looseC && !tightC) return trailPct(profitPeak, d, minute, params);
+    // 兑现占比:浮盈占这只蝶还能赚的上限(翼宽 − D)的几成;上限不是正数时按已兑现完
+    const double room = width - d;
+    const double c = room > 0 ? profitPeak / room : 1.0;
+    // 按兑现占比分级时两条线都按 c 判;只给了一条的,另一档不存在(不和按 D 的那条混用:混着判会同时落进两档)
+    const bool loose = looseC && c < *looseC;
+    const bool tight = tightC && c >= *tightC;
+    double pct;
+    if (loose) pct = P(params, u"trail_loose");
+    else if (tight) pct = P(params, u"trail_tight");
+    else pct = P(params, u"trail");
+    if (minute >= minutesOf(js::str(params.get(u"trail_late"_s)))) pct *= P(params, u"trail_late_factor");
+    return util::pyRound(pct, 6);
+}
+
+double trailStop(double profitPeak, double d, double width, double minute, const OJson& params) {
+    return util::pyRound(d + profitPeak * (1.0 - trailPct(profitPeak, d, width, minute, params)), 4);
 }
 
 namespace {
@@ -376,6 +410,10 @@ OJson simulate(const OJson& profile, const QString& entryBarTime, const OJson& s
     bool insideSeen = !entryOutside;
     double profitPeak = 0.0;
     bool armed = false;
+    // 实验参数(没给就是空,行为同 v2.1)
+    const std::optional<double> armCapture = X(params, u"trail_arm_capture");
+    const std::optional<double> stopSigmaK = X(params, u"zone_stop_sigma_k");
+    const std::optional<double> keepBand = X(params, u"b_keep_band");
     OJson events = js::array();
     OJson series = js::array();
     bool enteredB = false;
@@ -411,10 +449,10 @@ OJson simulate(const OJson& profile, const QString& entryBarTime, const OJson& s
         const QString phase = phaseAt(minute, w, params);
         const double r = remainingVariance(minute);
         if (remaining > 0) {
-            if (!armed && price >= P(params, u"trail_arm") * d) armed = true;
+            if (!armed && (armCapture ? price - d >= *armCapture * (w - d) : price >= P(params, u"trail_arm") * d)) armed = true;
             if (armed) profitPeak = jm::max(profitPeak, price - d);
         }
-        const OJson stopLine = armed ? js::N(trailStop(profitPeak, d, minute, params)) : js::Null();
+        const OJson stopLine = armed ? js::N(trailStop(profitPeak, d, w, minute, params)) : js::Null();
         series.items.append(js::object({{u"time"_s, js::S(t)},
                                         {u"price"_s, js::N(util::pyRound(price, 4))},
                                         {u"source"_s, js::S(source)},
@@ -437,7 +475,7 @@ OJson simulate(const OJson& profile, const QString& entryBarTime, const OJson& s
             continue;
         }
         if (dist <= zoneStop * w) insideSeen = true;
-        if (insideSeen && dist > zoneStop * w && r > P(params, u"stop_var")) {
+        if (insideSeen && dist > zoneStop * w && r > P(params, u"stop_var") && (!stopSigmaK || sigma <= *stopSigmaK * w)) {
             sell(t, remaining, price, phase,
                  u"止损:|S−K| = %1 > %2W 且剩余方差 %3% > %4%"_s.arg(F(dist, 1), F(zoneStop, 2), F(r * 100, 0), F(P(params, u"stop_var") * 100, 0)), source);
             continue;
@@ -456,11 +494,11 @@ OJson simulate(const OJson& profile, const QString& entryBarTime, const OJson& s
         const bool zoneTakesOver = phase == u"C" || (phase == u"B" && dist > P(params, u"zone_hold") * w);
         if (armed && !zoneTakesOver && profitPeak > 0) {
             const double giveBack = profitPeak - (price - d);
-            const double pct = trailPct(profitPeak, d, minute, params);
+            const double pct = trailPct(profitPeak, d, w, minute, params);
             if (giveBack >= profitPeak * pct && giveBack >= P(params, u"trail_floor")) {
                 sell(t, remaining, price, phase,
                      u"回撤追踪:浮盈从高水位 %1 回吐 %2(%3% 档,触发价 %4),清仓"_s.arg(F(profitPeak, 2), F(giveBack, 2), F(pct * 100, 0),
-                                                                                   F(trailStop(profitPeak, d, minute, params), 2)),
+                                                                                   F(trailStop(profitPeak, d, w, minute, params), 2)),
                      source);
                 continue;
             }
@@ -482,7 +520,8 @@ OJson simulate(const OJson& profile, const QString& entryBarTime, const OJson& s
         }
 
         if (phase == u"B") {
-            if (!enteredB) {
+            // b_keep_band:标的还贴着中心的不减仓,出了这一带才压
+            if (!enteredB && !(keepBand && dist <= *keepBand * w)) {
                 enteredB = true;
                 // 至少留 1 张
                 const double cap = jm::max(1, std::floor(qty / 3));

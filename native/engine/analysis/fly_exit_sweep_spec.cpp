@@ -304,7 +304,7 @@ QList<ReplayOverride> replaySets(const OJson* grid) {
     QList<ReplayOverride> combos{js::object()};
     if (grid) {
         for (const auto& [key, values] : grid->fields) {
-            if (!defaults.get(key) || key == u"em") {
+            if ((!defaults.get(key) && !flyexit::experimentalKeys().contains(key)) || key == u"em") {
                 QStringList scannable;
                 for (const QString& k : js::keys(&defaults))
                     if (k != u"em") scannable << k;

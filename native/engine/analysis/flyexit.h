@@ -10,6 +10,7 @@
 #include "util/ordered_json.h"
 
 #include <QString>
+#include <QStringList>
 
 #include <optional>
 #include <utility>
@@ -31,6 +32,15 @@ inline constexpr double kFlyTightenUsd = 200;
 const std::vector<double>& varianceWeights();
 /// DEFAULTS(键序同 TS)
 const util::OJson& defaults();
+/// 实验参数:不在 DEFAULTS 里、没给就不出现在 params 里,给了正数才生效(没给时行为与 v2.1 逐分钟相同)。
+/// 只给回放(simulate)与离线扫描用,实盘的蝶式预设不读。口径见 docs/features/tradereview.md「实验参数」。
+///   zone_stop_sigma_k        位置止损(|S−K| > zone_stop×W)只在 σ_剩余 ≤ k×W 时生效
+///   b_keep_band              进入阶段 B 时 |S−K| ≤ band×W 的不减仓,直到出了这一带才压到 1/3
+///   trail_capture_loose_below / trail_capture_tight_at
+///                            回撤档位按兑现占比 c = 浮盈高水位 ÷ (W − D) 分级(给了任一条就整套改按 c 判,没给的那一档不存在),
+///                            替换 trail_loose_below×D / trail_tight_at×D
+///   trail_arm_capture        回撤追踪的激活改成 浮盈 ≥ a × (W − D),替换 蝶价 ≥ trail_arm × D
+const QStringList& experimentalKeys();
 util::OJson paramsFrom(const util::OJson* raw);
 
 double minutesOf(const QString& hhmm);
@@ -42,6 +52,9 @@ double switchMinute(double width, const util::OJson& params);
 
 double trailPct(double profitPeak, double d, double minute, const util::OJson& params);
 double trailStop(double profitPeak, double d, double minute, const util::OJson& params);
+/// 同上,认 trail_capture_* 两个实验参数(要翼宽);没给它们时与上面两个相同
+double trailPct(double profitPeak, double d, double width, double minute, const util::OJson& params);
+double trailStop(double profitPeak, double d, double width, double minute, const util::OJson& params);
 /// [{above, pct}…]
 util::OJson drawdownTiers(const util::OJson* raw);
 /// {after, factor}
