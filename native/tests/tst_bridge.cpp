@@ -116,18 +116,15 @@ private slots:
         QCOMPARE(called, 10);
     }
 
-    // 确认框带 context 的那一路同理:框还开着时 context 没了,点完也不回
-    void contextGoneDropsTheConfirm() {
+    // 确认框带 context 的那一路:不弹框,当场回确认
+    void contextConfirmAnswersAtOnce() {
         Rig rig;
-        std::function<void(bool)> answer;
-        rig.prompter.hold = &answer;
         int called = 0;
         auto* store = new QObject;
-        rig.bridge.confirm(store, QJsonObject{{u"title"_s, u"t"_s}, {u"message"_s, u"m"_s}}, [&called](bool, const QString&) { ++called; });
-        QVERIFY(answer);
+        rig.bridge.confirm(store, QJsonObject{{u"title"_s, u"t"_s}, {u"message"_s, u"m"_s}}, [&called](bool ok, const QString&) { called += ok ? 1 : 100; });
+        QCOMPARE(called, 1);
+        QVERIFY(rig.prompter.boxes.isEmpty());
         delete store;
-        answer(true);
-        QCOMPARE(called, 0);
     }
     void rpcTablesNotEmpty() {
         QVERIFY(shell::allowedRpc().size() > 90);
@@ -183,16 +180,14 @@ private slots:
         QCOMPARE(r.reached(u"settings.get"_s), 0);  // 放宽限额不再先读一次设置
     }
 
-    // 不带用途的确认照旧弹框:标题、正文、按钮由页面给
-    void plainConfirmStillAsks() {
+    // 不带用途的确认(删除、切换……)也不弹框了:直接回确认
+    void plainConfirmDoesNotAskEither() {
         Rig r;
         r.prompter.answer = false;
         const auto [ok, error] = r.confirm(obj(R"({"message":"真的要删掉这条想法吗?","confirmLabel":"删掉"})"));
-        QVERIFY(!ok);
+        QVERIFY(ok);
         QVERIFY(error.isEmpty());
-        QCOMPARE(r.prompter.boxes.last().title, u"确认"_s);
-        QCOMPARE(r.prompter.boxes.last().message, u"真的要删掉这条想法吗?"_s);
-        QCOMPARE(r.prompter.boxes.last().confirmLabel, u"删掉"_s);
+        QVERIFY(r.prompter.boxes.isEmpty());
     }
 
     void exportPathMustBeThePickedOne() {

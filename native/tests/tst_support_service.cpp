@@ -182,22 +182,13 @@ private slots:
         QVERIFY(bad.done);
         QVERIFY(bad.error.startsWith(u"账号的格式不对"_s));
         QVERIFY(r.asked.isEmpty());
-        // 问了、点了取消:不写
+        // 不再问:就算框上会答取消,也直接写盘、留 .bak、重启引擎
         r.answer = 0;
-        Result canceled;
         const auto change = *shell::parseOJson(uR"({"action":"upsert","alias":"甲","account_id":"U12345678","is_paper":false,"connection":"live"})"_s);
-        r.support->changeAccount(change, canceled.cb());
-        QCOMPARE(canceled.value.value(u"canceled").toBool(), true);
-        QCOMPARE(r.asked.size(), 1);
-        QCOMPARE(r.asked[0].title, u"添加账户"_s);
-        QCOMPARE(r.asked[0].buttons, (QStringList{u"取消"_s, u"保存"_s}));
-        QVERIFY(r.asked[0].detail.contains(u"账号:U12345678"_s));
-        QCOMPARE(r.read(r.config), original);
-        // 保存:写盘、留 .bak、重启引擎
-        r.answer = 1;
         Result saved;
         r.support->changeAccount(change, saved.cb());
         QVERIFY(saved.value.value(u"ok").toBool());
+        QVERIFY(r.asked.isEmpty());
         QCOMPARE(r.read(r.config + u".bak"_s), original);
         QVERIFY(r.read(r.config).contains("\"account_id\": \"U12345678\""));
         QTRY_COMPARE(r.ready, 2);

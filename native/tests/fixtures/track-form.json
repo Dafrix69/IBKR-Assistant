@@ -513,7 +513,7 @@
       ]
     },
     {
-      "name": "托管却没开自动平仓",
+      "name": "托管时顺带打开自动平仓",
       "position": {
         "key": "k:NVDA",
         "symbol": "NVDA",
@@ -539,7 +539,7 @@
         "spot_target": "",
         "spot_stop_below": "",
         "spot_stop_above": "",
-        "auto_close": false,
+        "auto_close": true,
         "order_type": "MKT",
         "host_at_broker": true,
         "exit_at": "",
@@ -550,9 +550,29 @@
       "schemaIssues": [],
       "calls": [
         {
-          "call": "banner",
-          "text": "托管到券商需先打开「到价自动平仓」:挂托管单即发单授权。",
-          "info": false
+          "binding": {
+            "auto_close": true,
+            "exit_at": "",
+            "host_at_broker": true,
+            "key": "k:NVDA",
+            "order_type": "MKT",
+            "profit_drawdown_arm_pct": "",
+            "profit_drawdown_pct": "",
+            "spot_stop_above": "",
+            "spot_stop_below": "",
+            "spot_stop_confirm_s": "",
+            "spot_target": "",
+            "stop_loss": "170",
+            "take_profit": "",
+            "take_profit_tiers": "",
+            "trail_pct": ""
+          },
+          "call": "confirm",
+          "confirmLabel": "我确认",
+          "detail": "数量 100 · 账户 模拟\n这张 GTC 限价单会立刻挂到券商服务器上;软件关闭后它仍然有效,价格停在最后一次调整的位置。\n触发由券商实时行情决定,一张成交其余自动撤销(OCA)。",
+          "message": "NVDA 的止盈/止损将作为 GTC 单挂在券商服务器上。",
+          "purpose": "tracker.add",
+          "title": "托管到券商服务器"
         }
       ]
     },

@@ -76,20 +76,9 @@ void Bridge::confirm(QObject* context, const QJsonObject& options, ConfirmDone d
     });
 }
 
-void Bridge::confirm(const QJsonObject& options, ConfirmDone done) {
-    // 带用途的(发单、平仓、放宽限额……)不再弹框
-    const QJsonValue purpose = options.value(u"purpose");
-    if (!purpose.isUndefined() && !purpose.isNull()) return done(true, {});
-    const QJsonValue label = options.value(u"confirmLabel");
-    const QJsonValue title = options.value(u"title");
-    const QJsonValue message = options.value(u"message");
-    const QJsonValue detail = options.value(u"detail");
-    ConfirmBox box;
-    box.title = jsTruthy(title) ? jsString(title) : u"确认"_s;
-    box.message = jsTruthy(message) ? jsString(message) : QString();
-    box.detail = jsTruthy(detail) ? jsString(detail) : QString();
-    box.confirmLabel = (jsTruthy(label) ? jsString(label) : u"确认"_s).left(40);
-    prompter_->ask(box, [done](bool ok) { done(ok, {}); });
+void Bridge::confirm(const QJsonObject&, ConfirmDone done) {
+    // 不再弹任何确认框(发单、平仓、删除、切换……一律放行):这个项目尽量不要人工确认这一步
+    done(true, {});
 }
 
 }  // namespace ibkr::shell

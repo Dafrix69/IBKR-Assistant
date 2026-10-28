@@ -368,7 +368,7 @@ QtObject {
             SectionTitle { text: ap.d ? ap.d.title : "" }
             Group {
                 width: parent.width
-                hint: "连接(端口、client id)不能从这里改:账户只能挂到配置里已有的连接上。保存时会弹出确认框,请对着它核对账号。"
+                hint: "连接(端口、client id)不能从这里改:账户只能挂到配置里已有的连接上。保存后直接写进配置并重启引擎,不再弹确认框。"
                 GroupRow {
                     width: parent.width
                     label: "别名"; sub: "指令里怎么称呼它,如「模拟」「主账户」"
@@ -560,7 +560,7 @@ QtObject {
                 width: parent.width
                 tone: "warn"; title: "信任的人在频道里发的蝴蝶单与贷方价差,不经确认直接发到券商。"
                 text: "只认本地速记完整接住的两种写法:写明价格的买入蝴蝶(「1.8 挂15蝴蝶 15CM」)、写明方向与价格的贷方价差(「7770 7775 bear call -2 -2.5」,区间按收得多的一头挂)。 "
-                      + "没写价格、没写 bull put / bear call、带止损或条件的只提醒、不发,也不交给大模型猜。开关关着时只观察:照样解析、照样记在下面,但一张单都不发。\n"
+                      + "没写价格、没写 bull put / bear call、蝴蝶带止损、带条件的只提醒、不发,也不交给大模型猜。开关关着时只观察:照样解析、照样记在下面,但一张单都不发。\n"
                       + "对方发错一条、或者对方的 Discord 账号被盗,都会变成你账户里的订单——先只观察几天,再打开。"
             }
             SectionTitle { text: "1 · Bot 与连接" }
@@ -740,8 +740,8 @@ QtObject {
                 SwitchRow {
                     width: parent.width
                     icon: "sf-target"; tint: "green"
-                    label: "成交后自动建追踪(只管蝴蝶)"
-                    sub: "跟进来的蝴蝶成交之后,软件自己给它建一条持仓追踪并打开「到价自动平仓」:按蝶式预设(分档利润回撤)盯着,触发了直接发平仓单,不再问你。贷方价差不建。软件关着、电脑睡着时不盯。"
+                    label: "成交后自动建追踪"
+                    sub: "跟进来的单子成交之后,软件自己给它建一条持仓追踪并打开「到价自动平仓」:蝴蝶按蝶式预设(分档利润回撤),贷方价差收回 60% 权利金止盈、消息里写了「站稳 / 跌破 N 止损」的再加标的止损线;触发了直接发平仓单,不再问你。软件关着、电脑睡着时不盯。"
                     checked: !!fp.m.trackFly
                     onToggled: function (on) { if (fp.controller) fp.controller.setFollow("trackFly", on) }
                 }
@@ -756,8 +756,8 @@ QtObject {
                     visible: (fp.m.tracksPending || 0) > 0
                     width: parent.width
                     label: "在等成交"
-                    sub: "有 %1 只跟进去的蝴蝶还没成交(或刚成交):成交之后几秒内自动建追踪,建好、建不了都会发通知。".arg(fp.m.tracksPending || 0)
-                    AntTag { text: "%1 只".arg(fp.m.tracksPending || 0) }
+                    sub: "有 %1 张跟进去的单子还没成交(或刚成交):成交之后几秒内自动建追踪,建好、建不了都会发通知。".arg(fp.m.tracksPending || 0)
+                    AntTag { text: "%1 张".arg(fp.m.tracksPending || 0) }
                 }
             }
             SectionTitle { text: "5 · 开关" }

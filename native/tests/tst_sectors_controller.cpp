@@ -149,14 +149,10 @@ private slots:
         QTRY_COMPARE(added.size(), 1);
         QCOMPARE(rig.params(u"sectors.add_stock"_s).first(), u"{\"id\":\"s2\",\"symbol\":\"CEG\",\"tag\":\"电力\"}"_s);
         QTRY_COMPARE(rig.status.banner(), u"CEG:异动已达 30 只上限,CEG 没打开"_s);
-        // 删除:先问;取消就什么都不发
+        // 删除:不再先问(框上就算答了取消也照删)
         rig.prompt.answer = false;
         page.deleteSector(u"s2"_s, u"核电"_s);
-        QTRY_COMPARE(rig.prompt.asked, 1);
-        QTest::qWait(60);
-        QCOMPARE(rig.calls(u"sectors.delete"_s), 0);
-        rig.prompt.answer = true;
-        page.deleteSector(u"s2"_s, u"核电"_s);
+        QCOMPARE(rig.prompt.asked, 0);
         QTRY_COMPARE(page.page()[u"sectors"_s].toArray().size(), 1);
         QTRY_COMPARE(rig.status.banner(), u"CEG 已不在任何板块里,顺带把它的价位与异动监控一起撤了。"_s);
         // 移除:先改本地;失败退回并重读

@@ -270,6 +270,9 @@ OJson PendingTrack::toJson() const {
                           {u"summary"_s, js::S(summary)},
                           {u"at_ms"_s, js::N(at_ms)}});
     if (settled_fills) o.set(u"settled_fills"_s, js::N(*settled_fills));
+    if (!side.isEmpty()) o.set(u"side"_s, js::S(side));
+    if (stop_below) o.set(u"stop_below"_s, js::N(*stop_below));
+    if (stop_above) o.set(u"stop_above"_s, js::N(*stop_above));
     return o;
 }
 
@@ -285,6 +288,10 @@ std::vector<PendingTrack> pendingTracksOf(const OJson* raw) {
         PendingTrack row{text(u"record_id"), text(u"message_id"), text(u"account"), text(u"symbol"), text(u"leg"), text(u"summary"),
                          js::num(item.get(u"at_ms"_s)), std::nullopt};
         if (const OJson* settled = item.get(u"settled_fills"_s); js::isNum(settled) && std::isfinite(settled->n) && settled->n >= 0) row.settled_fills = settled->n;
+        row.side = text(u"side");
+        for (const auto& [k, slot] : {std::pair{u"stop_below", &row.stop_below}, std::pair{u"stop_above", &row.stop_above}}) {
+            if (const OJson* v = item.get(QString::fromUtf16(k)); js::isNum(v) && std::isfinite(v->n) && v->n > 0) *slot = v->n;
+        }
         if (!row.record_id.isEmpty() && !row.account.isEmpty() && !row.symbol.isEmpty() && !row.leg.isEmpty() && std::isfinite(row.at_ms)) out.push_back(row);
     }
     return out;
@@ -296,6 +303,76 @@ QString pendingLastDay(const QString& leg, double atMs) {
     static const QRegularExpression ymd(u"^[0-9]{8}\\z"_s);
     const QString expiry = ymd.match(raw).hasMatch() ? raw.left(4) + u'-' + raw.mid(4, 2) + u'-' + raw.mid(6, 2) : created;
     return expiry > created ? util::ordinalToDate(util::dateOrdinal(created) + 1) : created;
+}
+
+std::optional<double> creditTakeProfit(double unitCredit) {
+    if (!(unitCredit > 0) || !std::isfinite(unitCredit)) return std::nullopt;
+    const double tp = util::pyRound(unitCredit * (100 - kCreditTakeProfitPct) / 100, 2);
+    return tp > 0 ? std::optional(tp) : std::nullopt;
+}
+
+OJson creditTrackParams(const QString& key, const QString& exitAt, std::optional<double> takeProfit, std::optional<double> stopBelow,
+                        std::optional<double> stopAbove) {
+    const OJson empty = js::S(QString());
+    const auto numText = [&](std::optional<double> v) { return v ? js::S(util::jsNumberToString(*v)) : empty; };
+    return js::object({{u"key"_s, js::S(key)},
+                       {u"take_profit"_s, numText(takeProfit)},
+                       {u"stop_loss"_s, empty},
+                       {u"trail_pct"_s, empty},
+                       {u"profit_drawdown_pct"_s, empty},
+                       {u"profit_drawdown_arm_pct"_s, empty},
+                       {u"spot_target"_s, empty},
+                       {u"spot_stop_below"_s, numText(stopBelow)},
+                       {u"spot_stop_above"_s, numText(stopAbove)},
+                       {u"auto_close"_s, js::B(true)},
+                       {u"order_type"_s, js::S(u"LMT"_s)},
+                       {u"host_at_broker"_s, js::B(false)},
+                       {u"exit_at"_s, js::S(util::jsTrim(exitAt))},
+                       {u"spot_stop_confirm_s"_s, empty},
+                       {u"take_profit_tiers"_s, empty},
+                       {u"stop_basis"_s, js::S(u"mid"_s)},
+                       {u"note"_s, js::S(kFollowTrackNote)}});
+}
+
+StopClause takeStopClause(const QString& text) {
+    static const QRegularExpression spread(u"bull\\s*put|bear\\s*call"_s, QRegularExpression::CaseInsensitiveOption);
+    static const QRegularExpression clause(u"[,，。;；\\s]*(?:站稳|跌破|突破|破)\\s*(\\d{2,5}(?:\\.\\d+)?)\\s*(?:点)?\\s*(?:就)?\\s*止损[,，。!！\\s]*"_s);
+    if (!spread.match(text).hasMatch()) return {text, std::nullopt};
+    const QRegularExpressionMatch m = clause.match(text);
+    if (!m.hasMatch()) return {text, std::nullopt};
+    QString rest = text;
+    rest.replace(m.capturedStart(0), m.capturedLength(0), u" "_s);
+    return {util::jsTrim(rest), m.captured(1)};
+}
+
+SpreadStop resolveSpreadStop(const QString& level, bool bullPut, std::optional<double> spot) {
+    SpreadStop out;
+    const QString side = bullPut ? u"下方"_s : u"上方"_s;
+    if (!spot || !(*spot > 0)) {
+        out.note = u"拿不到标的现价,止损线「%1」没有设"_s.arg(level);
+        return out;
+    }
+    double at = level.toDouble();
+    if (at < 100) {
+        // 尾数:现价百位上的三个候选里,取这一侧离现价最近的
+        const double base = std::floor(*spot / 100.0) * 100.0 + at;
+        std::optional<double> best;
+        for (const double c : {base - 100, base, base + 100}) {
+            if (bullPut ? c < *spot && (!best || c > *best) : c > *spot && (!best || c < *best)) best = c;
+        }
+        // 离现价太远的那一档多半不是对方的意思(和「N蝴蝶」同一个上限):不猜
+        if (std::fabs(*best - *spot) > kRelativeCenterMaxPoints) {
+            out.note = u"止损线「%1」按现价 %2 落不到%3 %4 点以内,没有设"_s.arg(level, util::jsNumberToString(*spot), side,
+                                                                           util::jsNumberToString(kRelativeCenterMaxPoints));
+            return out;
+        }
+        at = *best;
+    } else if (bullPut ? !(at < *spot) : !(at > *spot)) {
+        out.note = u"止损线 %1 不在现价 %2 的%3(%4 只在%3设止损),没有设"_s.arg(level, util::jsNumberToString(*spot), side, bullPut ? u"bull put"_s : u"bear call"_s);
+        return out;
+    }
+    (bullPut ? out.below : out.above) = at;
+    return out;
 }
 
 QString pendingVerdict(const QString& leg, double atMs, const PendingFacts& facts) {
@@ -331,6 +408,11 @@ QString trackExitsText(const OJson& track, double nowMs) {
         parts << u"蝶式预设:"_s + armText + u"从峰值回撤 "_s + pcts.join(u" / "_s) + u"% 就平"_s +
                      (js::truthy(late) ? u",美东 "_s + js::str(js::prop(late, u"after"_s)) + u" 之后阈值乘 "_s + js::pyG(js::prop(late, u"factor"_s)) : QString());
     }
+    // 贷方价差那一份:止盈价与标的止损线
+    if (const OJson* tp = js::prop(t, u"take_profit"_s); js::isNum(tp) && std::isfinite(tp->n))
+        parts << u"组合买回价到 "_s + G(tp->n) + u" 就止盈"_s;
+    if (const OJson* below = js::prop(t, u"spot_stop_below"_s); js::isNum(below) && std::isfinite(below->n)) parts << u"标的跌破 "_s + G(below->n) + u" 止损"_s;
+    if (const OJson* above = js::prop(t, u"spot_stop_above"_s); js::isNum(above) && std::isfinite(above->n)) parts << u"标的突破 "_s + G(above->n) + u" 止损"_s;
     const OJson* exitAt = js::prop(t, u"exit_at"_s);
     if (js::truthy(exitAt)) {
         const OJson* atRaw = js::prop(t, u"exit_at_ms"_s);

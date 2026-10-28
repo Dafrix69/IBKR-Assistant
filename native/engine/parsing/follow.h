@@ -69,10 +69,34 @@ util::OJson followQuote(const LeaderPrice& leader, double signedMid, double sign
 /// TrackerAddParams(键序同 TS)
 util::OJson flyTrackParams(const QString& key, const QString& exitAt);
 
+/// 贷方价差的止盈:收回这么多权利金就平(用户定的数)
+inline constexpr double kCreditTakeProfitPct = 60;
+/// 贷方价差的止盈价(买回价,每股):收到的权利金 ×(1 − 60%),两位小数;收到的不是正数回空
+std::optional<double> creditTakeProfit(double unitCredit);
+/// 贷方价差的追踪入参:止盈价、标的止损线(消息里给了才有)、到点平仓;其余同蝶式那份(限价平仓、不托管、止损按中间价判)
+util::OJson creditTrackParams(const QString& key, const QString& exitAt, std::optional<double> takeProfit, std::optional<double> stopBelow,
+                              std::optional<double> stopAbove);
+
+/// 价差消息里的标的止损句「站稳 / 跌破 / 突破 / 破 N 止损」:摘掉它(速记不认止损),留下价位的原文。不是价差的消息原样返回
+struct StopClause {
+    QString text;                  // 摘掉之后的那句
+    std::optional<QString> level;  // 原文里的数:小于 100 = 现价百位上的尾数
+};
+StopClause takeStopClause(const QString& text);
+/// 把止损价位落到具体点位:bull put 只认现价下方(跌破就止损)、bear call 只认上方;两位尾数取那一侧离现价最近的一个。
+/// 落不下(没有现价、在错的一侧)回空,note 说为什么
+struct SpreadStop {
+    std::optional<double> below, above;
+    QString note;
+};
+SpreadStop resolveSpreadStop(const QString& level, bool bullPut, std::optional<double> spot);
+
 struct PendingTrack {
     QString record_id, message_id, account, symbol, leg, summary;
     double at_ms = 0;
     std::optional<double> settled_fills;
+    QString side;  // debit(买入蝴蝶,旧记录没有这个键)/ credit(贷方价差)
+    std::optional<double> stop_below, stop_above;
     util::OJson toJson() const;
 };
 std::vector<PendingTrack> pendingTracksOf(const util::OJson* raw);

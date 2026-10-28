@@ -149,23 +149,13 @@ private slots:
         QCOMPARE(rig.calls(u"review.performance"_s), 6);
     }
 
-    void adviceConfirmsThenPatchesOneRule() {
+    void advicePatchesOneRuleWithoutAsking() {
         Rig rig;
         shell::PerformanceController page(&rig.bridge, &rig.status, rig.ini);
         page.setVisible(true);
         QTRY_VERIFY(page.page()[u"hasData"_s].toBool());
-        // 取消:什么都不发
+        // 点了就填:不弹框,只带这一条;成了横幅、刷新状态、重新计算
         rig.asker.answer = false;
-        page.applyAdvice(u"daily_loss"_s);
-        QTRY_COMPARE(rig.asker.boxes.size(), 1);
-        QCOMPARE(rig.asker.boxes[0].title, u"打开日内亏损上限"_s);
-        QCOMPARE(rig.asker.boxes[0].message, u"当天净亏到 $1130 就停"_s);
-        QCOMPARE(rig.asker.boxes[0].detail, u"只挡新单,永远不挡平仓。之后可以在「设置 → 保护规则」里改或关掉。"_s);
-        QCOMPARE(rig.asker.boxes[0].confirmLabel, u"按建议填入"_s);
-        QTest::qWait(100);
-        QCOMPARE(rig.calls(u"settings.patch"_s), 0);
-        // 确认:只带这一条;成了横幅、刷新状态、重新计算
-        rig.asker.answer = true;
         page.applyAdvice(u"stoploss_guard"_s);
         QTRY_COMPARE(rig.calls(u"settings.patch"_s), 1);
         QCOMPARE(rig.params(u"settings.patch"_s).first(),
@@ -183,9 +173,12 @@ private slots:
         QTest::qWait(100);
         QCOMPARE(rig.calls(u"review.performance"_s), 2);
         QVERIFY(!page.page()[u"advice"_s].toArray()[0][u"busy"_s].toBool());
-        // 不认识的规则:不弹框
+        // 不认识的规则:什么都不发;从头到尾没弹过框
+        const int patches = rig.calls(u"settings.patch"_s);
         page.applyAdvice(u"cooldown"_s);
-        QCOMPARE(rig.asker.boxes.size(), 3);
+        QTest::qWait(100);
+        QCOMPARE(rig.calls(u"settings.patch"_s), patches);
+        QVERIFY(rig.asker.boxes.isEmpty());
     }
 
     void adviceBusyWhilePatching() {

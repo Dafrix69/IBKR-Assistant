@@ -65,7 +65,7 @@ bool FormState::derivative() const {
     const QString t = position.value("sec_type"_L1).toString();
     return isCombo() || t == u"OPT" || t == u"FOP";
 }
-bool FormState::autoClose() const { return autoPicked.value_or(true); }
+bool FormState::autoClose() const { return hostOn() || autoPicked.value_or(true); }  // 托管就是授权发单:打开托管即打开自动平仓
 bool FormState::hasSpotTarget() const { return spotTarget && *spotTarget > 0; }
 bool FormState::hostAllowed() const { return !isCombo() || hasSpotTarget() || (brokerSpotStop && (stopBelow || stopAbove)); }
 bool FormState::hostOn() const { return host && hostAllowed(); }
@@ -310,10 +310,6 @@ void startTrack(const FormState& s, const FormDeps& deps) {
             return deps.banner(u"IBKR 价格条件触线即发,请清空止损确认秒数或关闭标的条件单托管。"_s, false);
         if ((s.isCombo() || s.orderTypeOrDefault() == u"LMT") && (!s.spotStopLimit || *s.spotStopLimit <= 0))
             return deps.banner(u"请填写条件触发后的平仓限价(组合填净价),限价必须大于 0。"_s, false);
-    }
-    if (s.hostOn() && !s.autoClose()) {
-        // 托管单就是授权发单——没有总开关的托管是自相矛盾的设置
-        return deps.banner(u"托管到券商需先打开「到价自动平仓」:挂托管单即发单授权。"_s, false);
     }
     // 「同意价格后发单」:同意的那一刻现取一次价,不拿几秒前那份凑数。算不出来就不往下走——盲签一张会真发出去的单,比不发危险得多
     if (!(s.hasSpotTarget() && (s.autoClose() || s.hostOn()))) return confirmAndAdd(s, deps, spec, std::nullopt);

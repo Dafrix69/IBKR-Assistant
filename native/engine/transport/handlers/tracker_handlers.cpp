@@ -101,9 +101,10 @@ std::optional<double> flyUnitCost(const OJson& raw) {
     return std::isfinite(cost) && cost > 0 ? std::optional<double>(cost) : std::nullopt;
 }
 
-/// 托管到券商就是授权发单:「到价自动平仓」没开,托管单一张都挂不出去(closeBlockers 的 BLOCK_DISABLED),而且是静默的——设置那一刻就拒。
+/// 托管到券商就是授权发单:「到价自动平仓」没开,托管单一张都挂不出去(closeBlockers 的 BLOCK_DISABLED)。
+/// 打开托管就顺带打开它;只有明说要关掉自动平仓、托管却留着时才拒——那是自相矛盾的一份设置
 void requireAutoCloseForHosting(bool hostAtBroker, bool autoClose) {
-    if (hostAtBroker && !autoClose) throw RpcError(-32602, u"托管到券商需先打开「到价自动平仓」:挂托管单即发单授权。"_s);
+    if (hostAtBroker && !autoClose) throw RpcError(-32602, u"托管到券商时不能关掉「到价自动平仓」:要停自动平仓,先关托管。"_s);
 }
 
 std::optional<double> numField(const OJson& obj, const QString& key) { return hu::optNumber(obj.get(key)); }
@@ -460,7 +461,7 @@ util::Task<OJson> TrackerHandlers::trackerAddLocked(OJson params) {
     if (js::truthy(params.get(u"spot_stop_at_broker"_s)) && !js::nullish(requestedOrderType) &&
         js::str(requestedOrderType) != u"MKT" && js::str(requestedOrderType) != u"LMT")
         invalid(u"IBKR 标的条件平仓只支持 MKT 或 LMT。"_s);
-    autoIn.set(u"enabled"_s, js::B(js::truthy(params.get(u"auto_close"_s))));
+    autoIn.set(u"enabled"_s, js::B(js::truthy(params.get(u"auto_close"_s)) || js::truthy(params.get(u"host_at_broker"_s))));
     autoIn.set(u"order_type"_s, js::S(js::isStr(params.get(u"order_type"_s)) && params.get(u"order_type"_s)->s == u"LMT" ? u"LMT"_s : u"MKT"_s));
     autoIn.set(u"slippage_pct"_s, js::N(hu::numOrDefault(params.get(u"slippage_pct"_s), 0.3)));
     autoIn.set(u"close_fraction_pct"_s, js::N(hu::numOrDefault(params.get(u"close_fraction_pct"_s), 100)));
@@ -569,6 +570,8 @@ util::Task<OJson> TrackerHandlers::trackerUpdateLocked(OJson params, OJson rawPa
         stopSettingsOf(givenAuto);  // 范围不对当场拒;值照原样合并
         OJson merged = js::isObj(track.get(u"auto_close"_s)) ? *track.get(u"auto_close"_s) : js::object();
         for (const auto& [k, v] : givenAuto.fields) merged.set(k, v);
+        // 这一次打开了托管、又没明说自动平仓:顺带打开
+        if (js::truthy(givenAuto.get(u"host_at_broker"_s)) && !givenAuto.get(u"enabled"_s)) merged.set(u"enabled"_s, js::B(true));
         fields.set(u"auto_close"_s, merged);
         // 查的是合并之后的那一份:只关「到价自动平仓」、托管留着,和新建时两个一起填是同一件事
         const bool hosted = js::truthy(merged.get(u"host_at_broker"_s));

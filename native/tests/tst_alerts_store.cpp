@@ -274,14 +274,13 @@ private slots:
         QVERIFY(rig.logs.contains(u"[fake] alerts.set_touch_config {\"config\":{},\"cross_confirm\":\"immediate\"}"_s));
     }
 
-    void deleteAsksFirst() {
+    // 删除不再先问
+    void deleteDoesNotAsk() {
         Rig rig;
         rig.set(u"alerts.delete"_s, obj(R"({})"));
         rig.alerts.deleteWatch(u"w1"_s, u"NVDA"_s);
         QTRY_VERIFY(rig.logs.contains(u"[fake] alerts.delete {\"id\":\"w1\"}"_s));
-        QCOMPARE(rig.yes.asked.size(), 1);
-        QCOMPARE(rig.yes.asked.at(0).message, u"不再盯 NVDA?"_s);
-        QCOMPARE(rig.yes.asked.at(0).confirmLabel, u"删除"_s);
+        QCOMPARE(rig.yes.asked.size(), 0);
     }
 
     // 引擎推来的 alerts 事件:进流水,最多留 50 条

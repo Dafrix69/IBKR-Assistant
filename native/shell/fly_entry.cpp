@@ -17,7 +17,7 @@ QString money(double n) { return std::isfinite(n)?u"$%1"_s.arg(n,0,'f',2):u"—"
 QString text(double n) { return std::isfinite(n)?QString::number(n,'f',2):u"—"_s; }
 }
 QJsonObject entryReview(const QJsonObject& plan,const QJsonObject& e,double nowMs) {
-    QJsonArray checks,manual,metrics; int blocked=0,pending=0;
+    QJsonArray checks,manual,metrics; int blocked=0,pending=0,unchecked=0;
     const auto add=[&](QString title,QString state,QString detail) {
         checks.append(QJsonObject{{u"title"_s,title},{u"state"_s,state},{u"detail"_s,detail}});
         if(state==u"block")++blocked; else if(state==u"wait")++pending;
@@ -27,7 +27,8 @@ QJsonObject entryReview(const QJsonObject& plan,const QJsonObject& e,double nowM
         // 五分钟仅为复核工作流的有效期,不是统计校准的入场阈值。每项独立计时。
         const bool checked=e.value(key).toBool()&&std::isfinite(at)&&nowMs>=at&&nowMs-at<=300000;
         manual.append(QJsonObject{{u"key"_s,key},{u"label"_s,title},{u"source"_s,source},{u"checked"_s,checked}});
-        if(!checked)++pending;
+        // 人工勾选只做提示，不挡写入草稿
+        if(!checked)++unchecked;
     };
     const auto metric=[&](QString label,QString value){metrics.append(QJsonObject{{u"label"_s,label},{u"value"_s,value}});};
     const auto r=plan.value(u"result"_s).toObject(),form=plan.value(u"form"_s).toObject();
@@ -112,8 +113,8 @@ QJsonObject entryReview(const QJsonObject& plan,const QJsonObject& e,double nowM
     for(const auto& v:entryMarketChecks(plan,e,nowMs)) { const auto c=v.toObject(); add(c["title"].toString(),c["state"].toString(),c["detail"].toString()); }
     const bool ready=blocked==0&&pending==0;
     return {{u"evidence"_s,e},{u"checks"_s,checks},{u"manual"_s,manual},{u"metrics"_s,metrics},{u"ready"_s,ready},
-        {u"title"_s,blocked?u"计划存在冲突，先调整"_s:pending?u"等待证据与测算"_s:u"复核已填写，可生成草稿"_s},
-        {u"summary"_s,u"%1 项冲突 · %2 项待核实。人工证据每项有效五分钟，测算有效一分钟；这是复核时限，不是交易信号。"_s.arg(blocked).arg(pending)},
+        {u"title"_s,blocked?u"计划存在冲突，先调整"_s:pending?u"等待证据与测算"_s:unchecked?u"可生成草稿（人工核对项未全勾）"_s:u"复核已填写，可生成草稿"_s},
+        {u"summary"_s,u"%1 项冲突 · %2 项待核实 · %3 项人工核对未勾（不挡写入）。人工证据每项有效五分钟，测算有效一分钟；这是复核时限，不是交易信号。"_s.arg(blocked).arg(pending).arg(unchecked)},
         {u"directional"_s,directional},{u"range"_s,mode==u"range"},{u"maxQuantity"_s,maxQty}};
 }
 }

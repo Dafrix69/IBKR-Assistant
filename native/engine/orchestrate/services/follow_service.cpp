@@ -19,6 +19,7 @@
 #include "util/tz.h"
 #include "util/zod.h"
 
+#include <QRegularExpression>
 #include <QSet>
 
 #include <algorithm>
@@ -57,12 +58,12 @@ QString outcomeLabel(const QString& outcome) {
 QString dropText(const QString& verdict) {
     if (verdict == u"unfilled") return {};
     if (verdict == u"expired") return u"隔了一天仍没有等到这张单的成交回报,不再等;它之后成交的话不会自动建追踪,请自己到「持仓追踪」里设"_s;
-    if (verdict == u"covered") return u"这只蝶已经有一条在盯的追踪,没有另建:同一份持仓只能有一条,加进来的数量由它按触发那一刻的持仓一起平"_s;
+    if (verdict == u"covered") return u"这份持仓已经有一条在盯的追踪,没有另建:同一份持仓只能有一条,加进来的数量由它按触发那一刻的持仓一起平"_s;
     if (verdict == u"idle_track") {
-        return u"同一只蝶上留着一条已停用(或已触发过)的旧追踪,同一份持仓只能有一条,软件不替你删。这一单现在没有追踪在盯:"
+        return u"同一份持仓上留着一条已停用(或已触发过)的旧追踪,同一份持仓只能有一条,软件不替你删。这一单现在没有追踪在盯:"
                u"请到「持仓追踪」删掉旧的再建,或重新启用它"_s;
     }
-    if (verdict == u"no_position") return u"这张单成交了,但持仓里找不到这只蝶(已经平掉了,或者它的腿和同一到期日的别的持仓并在了一起),没有建追踪,请自己到「持仓追踪」里看"_s;
+    if (verdict == u"no_position") return u"这张单成交了,但持仓里找不到这份组合(已经平掉了,或者它的腿和同一到期日的别的持仓并在了一起),没有建追踪,请自己到「持仓追踪」里看"_s;
     return {};  // DROP_TEXT[verdict] 对别的值得 undefined,在 TS 里 `if (why)` 为假
 }
 
@@ -509,8 +510,10 @@ void FollowService::remember(const DiscordMessage& message) {
 Task<> FollowService::process(DiscordMessage message, std::optional<QString> stale) {
     domain::TradeStore& st = store();
     if (st.follow().has(message.id)) co_return;
-    // 摘掉 @everyone 这类提及再解析;交给引擎的也是这一份,日志里记原文
-    const QString text = pf::orderText(message.content);
+    // 摘掉 @everyone 这类提及再解析;交给引擎的也是这一份,日志里记原文。
+    // 价差消息里的「站稳 / 跌破 N 止损」也摘掉:速记不认止损,这一句由成交后建的追踪来执行
+    const pf::StopClause stopClause = pf::takeStopClause(pf::orderText(message.content));
+    const QString text = stopClause.text;
     if (stale) {
         conclude(message, Result{u"stale"_s, *stale, QString(), {}}, OJson::null(), js::array());
         co_return;
@@ -571,6 +574,13 @@ Task<> FollowService::process(DiscordMessage message, std::optional<QString> sta
             conclude(message, r, OJson::null(), js::array());
         }
         co_return;
+    }
+
+    if (stopClause.level) {
+        static const QRegularExpression bull(u"bull\\s*put"_s, QRegularExpression::CaseInsensitiveOption);
+        const OJson* px = snap.get(*symbol);
+        spreadStops_.insert(message.id, pf::resolveSpreadStop(*stopClause.level, bull.match(text).hasMatch(),
+                                                              js::isNum(px) ? std::optional(px->n) : std::nullopt));
     }
 
     OJson result;
@@ -668,9 +678,11 @@ void FollowService::postSubmit(const DiscordMessage& message, const OJson& resul
 void FollowService::conclude(const DiscordMessage& message, Result result, const OJson& payload, const OJson& submitted, bool postSubmit) {
     // 这两件事出了错只落一行日志:单子的下场已经定了,不能因为它们把一张发出去的单记成"出错"
     std::optional<TrackPlan> tracking;
+    // 价差的止损线只在发出去时用得上;别的下场也在这里取走,不留在表里
+    const pf::SpreadStop stop = spreadStops_.take(message.id);
     if (result.outcome == u"sent") {
         try {
-            tracking = trackPlan(message, submitted);
+            tracking = trackPlan(message, submitted, stop);
         } catch (...) {
             log(u"[follow] 登记待建的追踪出错(不影响这条信号的下场):"_s + excMessage(std::current_exception()));
         }
@@ -940,17 +952,26 @@ void FollowService::savePending(const std::vector<pf::PendingTrack>& items) {
 }
 
 /// 刚发出去的这几笔里,哪些要在成交之后建追踪,以及日志那一行该补哪句话。track_fly 关着回空(什么都不补)。
-/// 只管买入的蝴蝶;贷方价差照发、不建——蝶式预设不是给贷方结构定的,套上去的线没有意义
-std::optional<FollowService::TrackPlan> FollowService::trackPlan(const DiscordMessage& message, const OJson& submitted) {
+/// 买入的蝴蝶用蝶式预设;贷方价差用「收回 60% 权利金止盈」加消息里给的标的止损线
+std::optional<FollowService::TrackPlan> FollowService::trackPlan(const DiscordMessage& message, const OJson& submitted, const pf::SpreadStop& stop) {
     const contract::FollowConfig& cfg = settings().follow;
     if (!cfg.track_fly || !js::isArr(&submitted) || submitted.items.isEmpty()) return std::nullopt;
     TrackPlan plan;
+    bool fly = false, credit = false;
     for (const OJson& order : submitted.items) {
         const QString recordId = js::str(order.get(u"record_id"_s));
         const std::optional<OJson> record = store().getRecord(recordId);
         const auto signal = record ? signalOf(*record) : std::nullopt;
-        if (!signal || signal->leader.side != u"debit") continue;
+        if (!signal) continue;
         pf::PendingTrack t;
+        t.side = signal->leader.side;
+        if (t.side == u"credit") {
+            t.stop_below = stop.below;
+            t.stop_above = stop.above;
+            credit = true;
+        } else {
+            fly = true;
+        }
         t.record_id = recordId;
         t.message_id = message.id;
         t.account = js::str(order.get(u"account"_s));
@@ -960,9 +981,18 @@ std::optional<FollowService::TrackPlan> FollowService::trackPlan(const DiscordMe
         t.at_ms = domain::nowEt().epochMs;
         plan.items.push_back(t);
     }
-    plan.note = !plan.items.empty()
-                    ? u"成交后自动建持仓追踪(蝶式预设、到价自动平仓%1)"_s.arg(cfg.track_exit_at.isEmpty() ? QString() : u"、美东 %1 到点平仓"_s.arg(cfg.track_exit_at))
-                    : u"这一单不是买入的蝴蝶,不自动建追踪,平仓由你自己管"_s;
+    const QString exitText = cfg.track_exit_at.isEmpty() ? QString() : u"、美东 %1 到点平仓"_s.arg(cfg.track_exit_at);
+    if (fly) {
+        plan.note = u"成交后自动建持仓追踪(蝶式预设、到价自动平仓%1)"_s.arg(exitText);
+    } else if (credit) {
+        const QString stopText = stop.below ? u"、标的跌破 %1 止损"_s.arg(util::jsNumberToString(*stop.below))
+                                 : stop.above ? u"、标的突破 %1 止损"_s.arg(util::jsNumberToString(*stop.above))
+                                              : QString();
+        plan.note = u"成交后自动建持仓追踪(收回 %1% 权利金止盈%2%3、到价自动平仓)"_s.arg(util::jsNumberToString(pf::kCreditTakeProfitPct), stopText, exitText) +
+                    (stop.note.isEmpty() ? QString() : u";"_s + stop.note);
+    } else {
+        plan.note = u"这一单不是买入的蝴蝶或贷方价差,不自动建追踪,平仓由你自己管"_s;
+    }
     return plan;
 }
 
@@ -1016,7 +1046,7 @@ Task<> FollowService::trackOnce() {
         savePending({});
         if (!waiting.empty()) {
             notify(u"Discord 跟单:不再自动建追踪"_s,
-                   u"自动跟单或「成交后自动建追踪」已经关掉:还在等成交的 %1 只蝴蝶,成交之后不会自动建追踪,平仓由你自己管。"_s.arg(waiting.size()));
+                   u"自动跟单或「成交后自动建追踪」已经关掉:还在等成交的 %1 张单,成交之后不会自动建追踪,平仓由你自己管。"_s.arg(waiting.size()));
         }
         co_return;
     }
@@ -1098,7 +1128,7 @@ Task<std::optional<pf::PendingTrack>> FollowService::settleOne(pf::PendingTrack 
         if (verdict == u"late_fill") {
             auditDropped(item, verdict);
             notify(u"Discord 跟单:后成交的部分没有追踪"_s,
-                   u"%1 —— 这张单后来又有成交,而这只蝶上的追踪已经触发过(或已停用、被删掉):后成交的部分现在没有追踪在盯,请自己到「持仓追踪」里处理。"_s.arg(item.summary));
+                   u"%1 —— 这张单后来又有成交,而这份持仓上的追踪已经触发过(或已停用、被删掉):后成交的部分现在没有追踪在盯,请自己到「持仓追踪」里处理。"_s.arg(item.summary));
         }
         co_return std::nullopt;
     }
@@ -1106,7 +1136,8 @@ Task<std::optional<pf::PendingTrack>> FollowService::settleOne(pf::PendingTrack 
     const OJson* rowFound = nullptr;
     if (readable) {
         for (const OJson& r : *rows) {
-            if (js::str(r.get(u"key"_s)) == key && js::num(r.get(u"quantity"_s)) > 0) {
+            // 贷方价差是空头组合,数量是负的
+            if (js::str(r.get(u"key"_s)) == key && js::num(r.get(u"quantity"_s)) != 0) {
                 rowFound = &r;
                 break;
             }
@@ -1134,8 +1165,11 @@ Task<std::optional<pf::PendingTrack>> FollowService::settleOne(pf::PendingTrack 
         settled = t;
     }
     if (verdict == u"create") {
-        const double held2 = rowFound ? js::num(rowFound->get(u"quantity"_s)) : 0;
-        const QString outcome = co_await createTrack(item, key, exitAt, nowMs, held2);
+        const double held2 = rowFound ? std::fabs(js::num(rowFound->get(u"quantity"_s))) : 0;
+        // 每股收到的权利金:组合行的 avg_cost 含乘数
+        const double mult = rowFound ? js::num(rowFound->get(u"multiplier"_s)) : 0;
+        const double unitCredit = rowFound && mult > 0 ? std::fabs(js::num(rowFound->get(u"avg_cost"_s))) / mult : 0;
+        const QString outcome = co_await createTrack(item, key, exitAt, nowMs, held2, unitCredit);
         if (outcome == u"retry") co_return item;
         co_return outcome == u"created" ? settled : std::nullopt;
     }
@@ -1164,35 +1198,46 @@ Task<std::optional<QList<OJson>>> FollowService::positionRows() {
 
 /// 建一条追踪。retry = 这一轮没建成、下一轮再试;refused = 建不了,已经说明原因,不再试。
 /// 入参被拒(同一条 tracker.add 的校验)当场算 refused。`held` 是持仓里这只蝶现在有几张
-Task<QString> FollowService::createTrack(pf::PendingTrack item, QString key, QString exitAt, double nowMs, double held) {
+Task<QString> FollowService::createTrack(pf::PendingTrack item, QString key, QString exitAt, double nowMs, double held, double unitCredit) {
     domain::TradeStore& st = store();
     QString result;
     std::exception_ptr failure;
+    const bool credit = item.side == u"credit";
+    const QString what = credit ? u"这张价差"_s : u"这只蝶"_s;
     try {
         if (!wiring_.addTrack) throw util::JsError(u"建追踪的通道没有接上"_s);
-        // 到点平仓的钟点对这只蝶已经用不上(今天的已经过了,下一次落在它到期之后):tracker.add 会拒。这时追踪照建、只是不带到点平仓——
-        // 因为一个用不上的钟点让整条追踪建不成,那份持仓就什么保护都没有了
+        // 用不上的那一条线让 tracker.add 拒了:这条线不带、追踪照建——因为一条线建不成整条追踪,那份持仓就什么保护都没有了。
+        // 到点平仓的钟点已经过了(下一次落在到期之后);价差成交时已经跌到止盈价以下(止盈价得低于现价)
+        std::optional<double> takeProfit = credit ? pf::creditTakeProfit(unitCredit) : std::nullopt;
+        const auto params = [&] {
+            return credit ? pf::creditTrackParams(key, exitAt, takeProfit, item.stop_below, item.stop_above) : pf::flyTrackParams(key, exitAt);
+        };
         QString dropped;
         OJson reply;
-        std::exception_ptr first;
-        try {
-            reply = co_await wiring_.addTrack(pf::flyTrackParams(key, exitAt));
-        } catch (...) {
-            first = std::current_exception();
-        }
-        if (first) {
-            bool retryable = false;
-            if (!exitAt.isEmpty()) {
-                try {
-                    std::rethrow_exception(first);
-                } catch (const util::RpcError& e) {
-                    retryable = e.code() == -32602 && e.message().startsWith(u"到点平仓"_s);
-                } catch (...) {
-                }
+        for (int attempt = 0;; ++attempt) {
+            std::exception_ptr first;
+            try {
+                reply = co_await wiring_.addTrack(params());
+            } catch (...) {
+                first = std::current_exception();
             }
-            if (!retryable) std::rethrow_exception(first);
-            dropped = u";美东 %1 的到点平仓对这只蝶用不上(下一次到点已经在它到期之后),这条追踪没有带"_s.arg(exitAt);
-            reply = co_await wiring_.addTrack(pf::flyTrackParams(key, QString()));
+            if (!first) break;
+            QString refusal;
+            try {
+                std::rethrow_exception(first);
+            } catch (const util::RpcError& e) {
+                if (e.code() == -32602) refusal = e.message();
+            } catch (...) {
+            }
+            if (attempt < 2 && !exitAt.isEmpty() && refusal.startsWith(u"到点平仓"_s)) {
+                dropped += u";美东 %1 的到点平仓对%2用不上(下一次到点已经在它到期之后),这条追踪没有带"_s.arg(exitAt, what);
+                exitAt.clear();
+            } else if (attempt < 2 && takeProfit && refusal.contains(u"止盈价"_s)) {
+                dropped += u";成交时价差已经不到止盈价 %1(%2),这条追踪没有带止盈"_s.arg(util::jsNumberToString(*takeProfit), refusal);
+                takeProfit.reset();
+            } else {
+                std::rethrow_exception(first);
+            }
         }
         const OJson* trackP = reply.get(u"track"_s);
         const OJson track = trackP ? *trackP : OJson();
@@ -1208,7 +1253,7 @@ Task<QString> FollowService::createTrack(pf::PendingTrack item, QString key, QSt
         }
         st.audit(u"engine"_s, u"follow_track"_s, &detail);
         notify(u"Discord 跟单:已建持仓追踪"_s,
-               u"%1 —— 这只蝶现在持有 %2 张,追踪管的是这一整份:%3。对方自己什么时候走,软件仍然不知道。"_s.arg(item.summary, util::jsNumberToString(held), exits));
+               u"%1 —— %2现在持有 %3 张,追踪管的是这一整份:%4。对方自己什么时候走,软件仍然不知道。"_s.arg(item.summary, what, util::jsNumberToString(held), exits));
         result = u"created"_s;
     } catch (...) {
         failure = std::current_exception();
@@ -1233,8 +1278,8 @@ Task<QString> FollowService::createTrack(pf::PendingTrack item, QString key, QSt
                                              {u"error"_s, js::S(reason.left(300))}});
             st.audit(u"engine"_s, u"follow_track_failed"_s, &detail);
             notify(u"Discord 跟单:没有建追踪"_s,
-                   u"%1 —— %2。这只蝶现在没有追踪在盯,请自己到「持仓追踪」里设。"_s.arg(
-                       item.summary, refused ? reason : u"试了 %1 次都没建成(%2)"_s.arg(failures).arg(reason)));
+                   u"%1 —— %2。%3现在没有追踪在盯,请自己到「持仓追踪」里设。"_s.arg(
+                       item.summary, refused ? reason : u"试了 %1 次都没建成(%2)"_s.arg(failures).arg(reason), what));
             result = u"refused"_s;
         }
     }

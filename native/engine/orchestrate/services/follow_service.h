@@ -206,14 +206,14 @@ private:
     std::optional<Signal> signalFor(const QStringList& recordIds, const util::OJson& payload);
     util::Task<> recordQuote(util::DiscordMessage message, Signal signal);
 
-    // ---- 跟进来的蝴蝶:成交之后建追踪
+    // ---- 跟进来的蝴蝶与贷方价差:成交之后建追踪
     std::vector<parsing::follow::PendingTrack> pendingList();
     void savePending(const std::vector<parsing::follow::PendingTrack>& items);
     struct TrackPlan {
         std::vector<parsing::follow::PendingTrack> items;
         QString note;
     };
-    std::optional<TrackPlan> trackPlan(const util::DiscordMessage& message, const util::OJson& submitted);
+    std::optional<TrackPlan> trackPlan(const util::DiscordMessage& message, const util::OJson& submitted, const parsing::follow::SpreadStop& stop);
     void armTrackTimer();
     int pendingCount();
     util::Task<> trackStep(util::Task<> prev);
@@ -221,9 +221,11 @@ private:
     util::Task<std::optional<parsing::follow::PendingTrack>> settleOne(parsing::follow::PendingTrack item, OrderFacts order, QString exitAt, double nowMs,
                                                                          std::optional<QList<util::OJson>> rows, std::optional<QStringList> covered);
     util::Task<std::optional<QList<util::OJson>>> positionRows();
-    util::Task<QString> createTrack(parsing::follow::PendingTrack item, QString key, QString exitAt, double nowMs, double held);
+    util::Task<QString> createTrack(parsing::follow::PendingTrack item, QString key, QString exitAt, double nowMs, double held, double unitCredit);
     void auditDropped(const parsing::follow::PendingTrack& item, const QString& reason);
 
+    /// 这条消息里价差的止损线(发单前落好,登记待建追踪时取走)
+    QHash<QString, parsing::follow::SpreadStop> spreadStops_;
     FollowWiring wiring_;
     std::unique_ptr<GatewayLike> gateway_;
     quint64 gatewayId_ = 0, gatewayGen_ = 0;

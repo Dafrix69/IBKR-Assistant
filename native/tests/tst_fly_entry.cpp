@@ -41,6 +41,9 @@ private slots:
         for(const QString& key:{u"lower"_s,u"center"_s,u"upper"_s}) quotes.append(QJsonObject{{"strike",r[key]},
             {"market_data_type",1},{"bid_at",now},{"ask_at",now},{"bid_size",100},{"ask_size",100},{"bid_size_at",now},{"ask_size_at",now},{"iv_at",now},{"iv_value",0.2}});
         r[u"entry_quotes"]=quotes;p[u"result"]=r;QVERIFY(ready(p,e));
+        // 人工核对一项都不勾也不挡写入，只在标题与摘要里提示
+        auto bare=e;for(const auto& m:fly::entryReview(p,e,now)[u"manual"].toArray()){const QString k=m[u"key"].toString();bare.remove(k);bare.remove(k+u"At");}
+        QVERIFY(ready(p,bare));QVERIFY(fly::entryReview(p,bare,now)[u"title"].toString().contains(u"未全勾"_s));
         auto quote=quotes[0].toObject();quote["bid_at"]=now-60001;quotes[0]=quote;r[u"entry_quotes"]=quotes;p[u"result"]=r;QVERIFY(!ready(p,e));
     }
     void evidenceCannotBeInvented() {

@@ -194,13 +194,7 @@ void SupportService::changeAccount(const shell::OJson& change, Done done) {
     QString error;
     const auto plan = shell::accounts::planChange(deps_.configPath, change, &error);  // 校验不过在这里就拒,话是给人看的
     if (!plan) return done({}, error);
-    Confirm box;
-    box.title = box.message = plan->headline;
-    box.detail = plan->lines.join(u'\n');
-    box.buttons = {u"取消"_s, plan->headline == u"删除账户" ? u"删除"_s : u"保存"_s};
-    box.defaultIndex = 0;
-    box.cancelIndex = 0;
-    if (!deps_.confirm || deps_.confirm(box) != 1) return done(QJsonObject{{u"ok"_s, false}, {u"canceled"_s, true}}, {});
+    // 不再弹确认框:校验过了就写(改了什么照样进日志)
     if (!shell::accounts::commitChange(deps_.configPath, *plan)) return done({}, u"写不进配置文件:"_s + deps_.configPath);
     if (deps_.log) {
         const shell::OJson* alias = change.get(u"alias"_s);
