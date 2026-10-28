@@ -952,7 +952,7 @@ void FollowService::savePending(const std::vector<pf::PendingTrack>& items) {
 }
 
 /// 刚发出去的这几笔里,哪些要在成交之后建追踪,以及日志那一行该补哪句话。track_fly 关着回空(什么都不补)。
-/// 买入的蝴蝶用蝶式预设;贷方价差用「收回 60% 权利金止盈」加消息里给的标的止损线
+/// 买入的蝴蝶用蝶式预设;贷方价差用「收回 60% 权利金止盈」加消息里给的标的止损线,消息里没有可用的止损线就「亏到权利金的 50% 止损」
 std::optional<FollowService::TrackPlan> FollowService::trackPlan(const DiscordMessage& message, const OJson& submitted, const pf::SpreadStop& stop) {
     const contract::FollowConfig& cfg = settings().follow;
     if (!cfg.track_fly || !js::isArr(&submitted) || submitted.items.isEmpty()) return std::nullopt;
@@ -987,7 +987,7 @@ std::optional<FollowService::TrackPlan> FollowService::trackPlan(const DiscordMe
     } else if (credit) {
         const QString stopText = stop.below ? u"、标的跌破 %1 止损"_s.arg(util::jsNumberToString(*stop.below))
                                  : stop.above ? u"、标的突破 %1 止损"_s.arg(util::jsNumberToString(*stop.above))
-                                              : QString();
+                                              : u"、亏到权利金的 %1% 止损"_s.arg(util::jsNumberToString(pf::kCreditStopLossPct));
         plan.note = u"成交后自动建持仓追踪(收回 %1% 权利金止盈%2%3、到价自动平仓)"_s.arg(util::jsNumberToString(pf::kCreditTakeProfitPct), stopText, exitText) +
                     (stop.note.isEmpty() ? QString() : u";"_s + stop.note);
     } else {
@@ -1207,10 +1207,12 @@ Task<QString> FollowService::createTrack(pf::PendingTrack item, QString key, QSt
     try {
         if (!wiring_.addTrack) throw util::JsError(u"建追踪的通道没有接上"_s);
         // 用不上的那一条线让 tracker.add 拒了:这条线不带、追踪照建——因为一条线建不成整条追踪,那份持仓就什么保护都没有了。
-        // 到点平仓的钟点已经过了(下一次落在到期之后);价差成交时已经跌到止盈价以下(止盈价得低于现价)
+        // 到点平仓的钟点已经过了(下一次落在到期之后);价差成交时已经跌到止盈价以下(止盈价得低于现价)、已经涨过止损价(止损价得高于现价)
         std::optional<double> takeProfit = credit ? pf::creditTakeProfit(unitCredit) : std::nullopt;
+        // 按权利金的止损只在消息里没有可用的标的止损线时才带
+        std::optional<double> stopLoss = credit && !item.stop_below && !item.stop_above ? pf::creditStopLoss(unitCredit) : std::nullopt;
         const auto params = [&] {
-            return credit ? pf::creditTrackParams(key, exitAt, takeProfit, item.stop_below, item.stop_above) : pf::flyTrackParams(key, exitAt);
+            return credit ? pf::creditTrackParams(key, exitAt, takeProfit, stopLoss, item.stop_below, item.stop_above) : pf::flyTrackParams(key, exitAt);
         };
         QString dropped;
         OJson reply;
@@ -1229,12 +1231,15 @@ Task<QString> FollowService::createTrack(pf::PendingTrack item, QString key, QSt
                 if (e.code() == -32602) refusal = e.message();
             } catch (...) {
             }
-            if (attempt < 2 && !exitAt.isEmpty() && refusal.startsWith(u"到点平仓"_s)) {
+            if (attempt < 3 && !exitAt.isEmpty() && refusal.startsWith(u"到点平仓"_s)) {
                 dropped += u";美东 %1 的到点平仓对%2用不上(下一次到点已经在它到期之后),这条追踪没有带"_s.arg(exitAt, what);
                 exitAt.clear();
-            } else if (attempt < 2 && takeProfit && refusal.contains(u"止盈价"_s)) {
+            } else if (attempt < 3 && takeProfit && refusal.contains(u"止盈价"_s)) {
                 dropped += u";成交时价差已经不到止盈价 %1(%2),这条追踪没有带止盈"_s.arg(util::jsNumberToString(*takeProfit), refusal);
                 takeProfit.reset();
+            } else if (attempt < 3 && stopLoss && refusal.contains(u"止损价"_s)) {
+                dropped += u";成交时价差已经过了止损价 %1(%2),这条追踪没有带止损,请自己处理这张价差"_s.arg(util::jsNumberToString(*stopLoss), refusal);
+                stopLoss.reset();
             } else {
                 std::rethrow_exception(first);
             }

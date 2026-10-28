@@ -311,13 +311,18 @@ std::optional<double> creditTakeProfit(double unitCredit) {
     return tp > 0 ? std::optional(tp) : std::nullopt;
 }
 
-OJson creditTrackParams(const QString& key, const QString& exitAt, std::optional<double> takeProfit, std::optional<double> stopBelow,
-                        std::optional<double> stopAbove) {
+std::optional<double> creditStopLoss(double unitCredit) {
+    if (!(unitCredit > 0) || !std::isfinite(unitCredit)) return std::nullopt;
+    return util::pyRound(unitCredit * (100 + kCreditStopLossPct) / 100, 2);
+}
+
+OJson creditTrackParams(const QString& key, const QString& exitAt, std::optional<double> takeProfit, std::optional<double> stopLoss,
+                        std::optional<double> stopBelow, std::optional<double> stopAbove) {
     const OJson empty = js::S(QString());
     const auto numText = [&](std::optional<double> v) { return v ? js::S(util::jsNumberToString(*v)) : empty; };
     return js::object({{u"key"_s, js::S(key)},
                        {u"take_profit"_s, numText(takeProfit)},
-                       {u"stop_loss"_s, empty},
+                       {u"stop_loss"_s, numText(stopLoss)},
                        {u"trail_pct"_s, empty},
                        {u"profit_drawdown_pct"_s, empty},
                        {u"profit_drawdown_arm_pct"_s, empty},
@@ -408,9 +413,11 @@ QString trackExitsText(const OJson& track, double nowMs) {
         parts << u"蝶式预设:"_s + armText + u"从峰值回撤 "_s + pcts.join(u" / "_s) + u"% 就平"_s +
                      (js::truthy(late) ? u",美东 "_s + js::str(js::prop(late, u"after"_s)) + u" 之后阈值乘 "_s + js::pyG(js::prop(late, u"factor"_s)) : QString());
     }
-    // 贷方价差那一份:止盈价与标的止损线
+    // 贷方价差那一份:止盈价、止损价与标的止损线
     if (const OJson* tp = js::prop(t, u"take_profit"_s); js::isNum(tp) && std::isfinite(tp->n))
-        parts << u"组合买回价到 "_s + G(tp->n) + u" 就止盈"_s;
+        parts << u"组合价到 "_s + G(tp->n) + u" 就止盈"_s;
+    if (const OJson* sl = js::prop(t, u"stop_loss"_s); js::isNum(sl) && std::isfinite(sl->n))
+        parts << u"组合价到 "_s + G(sl->n) + u" 就止损"_s;
     if (const OJson* below = js::prop(t, u"spot_stop_below"_s); js::isNum(below) && std::isfinite(below->n)) parts << u"标的跌破 "_s + G(below->n) + u" 止损"_s;
     if (const OJson* above = js::prop(t, u"spot_stop_above"_s); js::isNum(above) && std::isfinite(above->n)) parts << u"标的突破 "_s + G(above->n) + u" 止损"_s;
     const OJson* exitAt = js::prop(t, u"exit_at"_s);

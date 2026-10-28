@@ -73,9 +73,14 @@ util::OJson flyTrackParams(const QString& key, const QString& exitAt);
 inline constexpr double kCreditTakeProfitPct = 60;
 /// 贷方价差的止盈价(买回价,每股):收到的权利金 ×(1 − 60%),两位小数;收到的不是正数回空
 std::optional<double> creditTakeProfit(double unitCredit);
-/// 贷方价差的追踪入参:止盈价、标的止损线(消息里给了才有)、到点平仓;其余同蝶式那份(限价平仓、不托管、止损按中间价判)
-util::OJson creditTrackParams(const QString& key, const QString& exitAt, std::optional<double> takeProfit, std::optional<double> stopBelow,
-                              std::optional<double> stopAbove);
+/// 消息里没有可用的标的止损线时,贷方价差亏到收到的权利金的这个百分比就止损
+inline constexpr double kCreditStopLossPct = 50;
+/// 贷方价差的止损价(买回价,每股):收到的权利金 ×(1 + 50%),两位小数;收到的不是正数回空
+std::optional<double> creditStopLoss(double unitCredit);
+/// 贷方价差的追踪入参:止盈价、止损价(没有标的止损线时才有)、标的止损线(消息里给了才有)、到点平仓;
+/// 其余同蝶式那份(限价平仓、不托管、止损按中间价判)
+util::OJson creditTrackParams(const QString& key, const QString& exitAt, std::optional<double> takeProfit, std::optional<double> stopLoss,
+                              std::optional<double> stopBelow, std::optional<double> stopAbove);
 
 /// 价差消息里的标的止损句「站稳 / 跌破 / 突破 / 破 N 止损」:摘掉它(速记不认止损),留下价位的原文。不是价差的消息原样返回
 struct StopClause {

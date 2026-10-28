@@ -87,13 +87,22 @@ private slots:
         QCOMPARE(fo::creditTakeProfit(2.5).value_or(0), 1.0);
         QCOMPARE(fo::creditTakeProfit(2.13).value_or(0), 0.85);
         QVERIFY(!fo::creditTakeProfit(0));
-        const OJson p = fo::creditTrackParams(u"k"_s, u"15:30"_s, 1.0, 7600.0, std::nullopt);
+        // 止损:亏到权利金的 50%,即买回价到收的 1.5 倍
+        QCOMPARE(fo::creditStopLoss(2.0).value_or(0), 3.0);
+        QCOMPARE(fo::creditStopLoss(2.14).value_or(0), 3.21);
+        QVERIFY(!fo::creditStopLoss(0));
+        QVERIFY(!fo::creditStopLoss(-1));
+        const OJson p = fo::creditTrackParams(u"k"_s, u"15:30"_s, 1.0, std::nullopt, 7600.0, std::nullopt);
         QCOMPARE(js::str(p.get(u"take_profit"_s)), u"1"_s);
+        QCOMPARE(js::str(p.get(u"stop_loss"_s)), QString());
         QCOMPARE(js::str(p.get(u"spot_stop_below"_s)), u"7600"_s);
         QCOMPARE(js::str(p.get(u"spot_stop_above"_s)), QString());
         QCOMPARE(js::str(p.get(u"exit_at"_s)), u"15:30"_s);
         QVERIFY(p.get(u"auto_close"_s)->b);
         QVERIFY(!p.get(u"profit_drawdown_preset"_s));  // 蝶式预设不套在价差上
+        const OJson q = fo::creditTrackParams(u"k"_s, QString(), 1.0, 3.0, std::nullopt, std::nullopt);
+        QCOMPARE(js::str(q.get(u"stop_loss"_s)), u"3"_s);
+        QCOMPARE(js::str(q.get(u"spot_stop_below"_s)), QString());
     }
 
     void pendingRoundTrip() {
