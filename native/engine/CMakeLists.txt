@@ -99,6 +99,7 @@ endif()
 # orchestrate 层的纯计算部分(追踪的规则);引擎、托管单、对账接上 execution 之后再进来
 qt_add_library(ibkr_orchestrate STATIC
     orchestrate/tracker.h orchestrate/tracker.cpp
+    orchestrate/sweep_tracker_rules.h
     orchestrate/host.h orchestrate/host.cpp
 )
 target_link_libraries(ibkr_orchestrate PUBLIC ibkr_parsing)

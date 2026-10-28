@@ -7,7 +7,7 @@
 这件事没有捷径——差别不大的参数要攒几年才证得了,几个月的数据只够说"见过的这些天上谁领先"。报告把两句话分开说。
 
 它只出报告,不改任何参数:`flyexit.ts`、`trackerDrawdown.ts` 里的数一个都不动,要不要改由人看过报告再定。
-没有界面,没有 RPC,引擎运行时不加载它。命令是 `npm run sweep:fly`(`engine-ts/scripts/sweep-fly-exit.mjs`)。
+没有界面,没有 RPC,引擎运行时不加载它。命令是诊断工具 `fly-exit-sweep`(`native/tools/fly_exit_sweep.cpp`,不进安装包)。
 
 要比的是两套出场规则:
 
@@ -210,16 +210,16 @@
 ## 命令
 
 ```
-cd engine-ts
-npm run build
-npm run sweep:fly -- --dir auto --wings 25 --entry-from 09:45 --entry-to 13:30 --debit-min 1 --debit-max 4 \
+B=~/Library/Caches/IBKR-Assistant/native-build/mac-debug   # 或自己 -B 指的构建目录
+cmake --build $B --target fly-exit-sweep
+$B/tools/fly-exit-sweep --dir auto --wings 25 --entry-from 09:45 --entry-to 13:30 --debit-min 1 --debit-max 4 \
     --arm 50,75,100,150 --tighten 150,200,300 --commission 0.65
-npm run sweep:fly -- --dir auto --entries D:/tmp/my-entries.json --by all --arm 50,100,150
-npm run sweep:fly -- --dir auto --replay --replay-grid '{"stop":[0.4,0.5,0.6],"trail_arm":[1.2,1.3,1.5]}' --out D:/tmp/sweep.json
+$B/tools/fly-exit-sweep --dir auto --entries /tmp/my-entries.json --by all --arm 50,100,150
+$B/tools/fly-exit-sweep --dir auto --replay --replay-grid '{"stop":[0.4,0.5,0.6],"trail_arm":[1.2,1.3,1.5]}' --out /tmp/sweep.json
 ```
 
-`--dir auto` 从配置里的 `storage.db_path` 找它旁边的 `fly-iv/`(`--config` 指定配置文件),和 `calibrate:fly -- --samples auto` 同一个找法;
-没有别的默认路径。目录在哪,`options.iv_recorder` 的 `dir` 写着。不认识的参数、`--ref` / `--grid` / `--entries` 里写错的键名
+`--dir auto` 从配置里的 `storage.db_path` 找它旁边的 `fly-iv/`;配置依次取 `--config`、`DAFRI_CONFIG`、`~/Library/Application Support/Datrix/settings.json`
+(应用自己用的那一份)。没有别的默认路径。目录在哪,`options.iv_recorder` 的 `dir` 写着。不认识的参数、`--ref` / `--grid` / `--entries` 里写错的键名
 (`--grid` 文件的顶层只认 `live` / `sets` / `replay`,真实入场只认 `time` / `center` / `wing` / `right` / `quantity` / `debit`)当场拒:
 一个写错名字的限定被悄悄忽略,报告说的就不是你以为的那群蝶、那几组参数。
 
@@ -240,7 +240,7 @@ npm run sweep:fly -- --dir auto --replay --replay-grid '{"stop":[0.4,0.5,0.6],"t
 | `--replay` `--replay-grid` `--em` | 不做;`auto` | 回放策略 |
 | `--objective` | `r` | 结论按 `r` 还是 `usd` 出 |
 | `--level` `--draws` `--seed` | 0.95、2000、1 | 置信水平、重抽次数、种子(同样的输入与种子,结果一位不变) |
-| `--out` | 不写文件 | 把结果与统计写成 JSON;路径不能在仓库里 |
+| `--out` | 不写文件 | 把结果与统计写成 JSON(`{dir, args, result, summary}`);路径不能在仓库里(和构建时记下的仓库根比,解开符号链接之后) |
 
 没有给任何要比的取值时,报告只有参照组自己的成绩。30 天、每天约 180 个情景、18 组参数,在开发机上约半分钟;整段是同步计算,
 数据多时按天往标准错误输出报进度。
@@ -249,21 +249,25 @@ npm run sweep:fly -- --dir auto --replay --replay-grid '{"stop":[0.4,0.5,0.6],"t
 
 | 文件 | 内容 |
 |---|---|
-| `engine-ts/src/flyExitSweepSpec.ts` | 盘口 → 三个价、实盘预设的参数与换算、回放的参数网格、配置与结果的形状、`TrackerRules` |
-| `engine-ts/src/flyExitSweep.ts` | 按天建价路径、枚举情景、跑两套规则、出 [组][天] 的矩阵 |
-| `engine-ts/src/flyExitSweepStats.ts` | 重抽、max-t、对半检验、不靠分布假设的下界、结论 |
-| `engine-ts/src/flyExitSweepReport.ts` | 报告的文字 |
-| `engine-ts/scripts/sweep-fly-exit.mjs` | 读目录、拼配置、打印;不含算法 |
+| `engine/analysis/fly_exit_sweep_spec.*` | 盘口 → 三个价、实盘预设的参数与换算、回放的参数网格、配置与结果的形状、`TrackerRules` |
+| `engine/analysis/fly_exit_sweep.*` | 按天建价路径、枚举情景、跑两套规则、出 [组][天] 的矩阵 |
+| `engine/analysis/fly_exit_sweep_stats.*` | 重抽、max-t、对半检验、不靠分布假设的下界、结论 |
+| `engine/analysis/fly_exit_sweep_report.*` | 报告的文字 |
+| `engine/analysis/fly_exit_sweep_json.h` | 结果与统计 → JSON(测试逐字比夹具、命令行写 `--out` 共用) |
+| `engine/orchestrate/sweep_tracker_rules.h` | 递给扫描的判定函数,就是实盘追踪的 `orchestrate::tracker`(测试与命令行共用) |
+| `tools/fly_exit_sweep.cpp` | 读目录、拼配置、打印;不含算法 |
 
-测试 `tests/fly-exit-sweep.spec.ts`,全部用测试里现造的"记下来的天":三个价对着手算的数与持仓那一行的口径;参照组的 `Targets` 与实盘存的逐字段相同;
+算法的测试是 `tst_fly_exit_sweep*`(期望值由 TS 原版现算,在 `tests/fixtures/fly-exit-sweep-*.json`),全部用测试里现造的"记下来的天":三个价对着手算的数与持仓那一行的口径;参照组的 `Targets` 与实盘存的逐字段相同;
 四十条随机路径上工具给的出场与直接问 `tracker.evaluate` 的一样,三十条上回放与直接调 `simulate` 再换价的一样;
 按构造有一组更好的数据:16 天是"下不了结论"、150 天是"更好";按构造参数不起作用的数据是"分不开";
 "更好"在偏得厉害的零均值差值上的误报(三千个种子一格)、见过的这些天上的区间在同样的数据上有多不可靠、三种做法的对照;同样的种子结果不变;
 缺报价、佣金(含成本里的那一份)、两种了结口径、到点与止损、入场那一笔的止损(两套规则)、提前收盘日、别的标的、文件里写错的键名、后台网格摆得出的四只蝶。
+命令行另有三条 ctest(`fly_exit_sweep_cli_*`):读 `tests/fixtures/fly-iv-smoke/`(合成盘口拆成一天一个文件,第一个文件末尾一行写了一半)出完整报告、
+写错的参数名当场拒、`--out` 指到仓库里当场拒。
 
 ## 当前状态
 
-只有离线测试,用的全是合成数据。**还没有在真实记下来的样本上跑过**:第一次跑先看「情景」一段的数说不说得通
+只有离线测试,用的全是合成数据;命令行在 macOS 上对合成目录跑通过。**还没有在真实记下来的样本上跑过**:第一次跑先看「情景」一段的数说不说得通
 (每天几个情景、入场价的范围、缺报价的占比),再看结论。记下来的天数还少时,预期的结论是"下不了结论"或"分不开";
 按「统计」里的算术,差别不大的参数在头一两年里拿不到"更好"——那时这份报告的用处是描述:谁在见过的天上领先、领先靠的是哪种出场、
 要推翻它得有多坏的一天。

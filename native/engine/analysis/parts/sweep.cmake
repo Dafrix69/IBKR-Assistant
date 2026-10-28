@@ -4,6 +4,7 @@ target_sources(ibkr_analysis PRIVATE
     analysis/fly_exit_sweep.h analysis/fly_exit_sweep.cpp
     analysis/fly_exit_sweep_stats.h analysis/fly_exit_sweep_stats.cpp
     analysis/fly_exit_sweep_report.h analysis/fly_exit_sweep_report.cpp
+    analysis/fly_exit_sweep_json.h
 )
 # 网关的核心只用 Qt Core(socket 与计时器都是递进来的),放在 util 层
 target_sources(ibkr_util PRIVATE util/discord_gateway.h util/discord_gateway.cpp)
