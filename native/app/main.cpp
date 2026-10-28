@@ -33,6 +33,7 @@
 #include "shell/fly_controller.h"
 #include "shell/terrain_controller.h"
 #include "shell/fly_store.h"
+#include "shell/wall_store.h"
 #include "shell/board_controller.h"
 #include "shell/records_controller.h"
 #include "shell/market_controller.h"
@@ -437,6 +438,7 @@ int main(int argc, char* argv[]) {
     tradePage.refreshPlaceholders();
     // 右栏的蝴蝶测算:表单与结果在 store 里,切页回来还在
     shell::FlyStore flyStore(&bridge);
+    shell::WallStore wallStore(&bridge);
     // SPX 走到 25 的整数倍时提醒:两秒一轮,不看当前在哪一页(store/spot.ts 的 startSpotLoop)
     shell::SpotStore spot(&bridge, &store, &alerter, QDir(userDataDir).filePath(u"qt-settings.ini"_s));
     // 三路引擎推来的提醒(日内剧本、异动、情报),同样不看当前在哪一页
@@ -594,6 +596,7 @@ int main(int argc, char* argv[]) {
                               {u"sectorsPage"_s, QVariant::fromValue<QObject*>(withEngine ? &sectorsPage : nullptr)},
                               {u"devCharts"_s, QVariant::fromValue<QObject*>(&devCharts)},
                               {u"flyStore"_s, QVariant::fromValue<QObject*>(withEngine ? &flyStore : nullptr)},
+                              {u"wallStore"_s, QVariant::fromValue<QObject*>(withEngine ? &wallStore : nullptr)},
                               {u"spot"_s, QVariant::fromValue<QObject*>(withEngine ? &spot : nullptr)},
                               {u"playbook"_s, QVariant::fromValue<QObject*>(withEngine ? &playbook : nullptr)},
                               {u"quality"_s, QVariant::fromValue<QObject*>(withEngine ? &quality : nullptr)},

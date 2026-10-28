@@ -64,7 +64,7 @@ qt_add_qml_module(ibkr_assistant
     QML_FILES Main.qml shell/Nav.qml shell/Sidebar.qml shell/Topbar.qml shell/Notice.qml shell/MacroStrip.qml shell/EventStrip.qml shell/EventList.qml shell/EventActions.qml shell/PagePlaceholder.qml shell/ConsentGate.qml shell/AlertPopup.qml shell/DossierDrawer.qml shell/LookupModal.qml
               pages/TrackerPage.qml pages/PositionCard.qml pages/TrackCard.qml pages/TrackForm.qml
               pages/TradePage.qml pages/OrderTicket.qml pages/PayoffChart.qml pages/SimilarTrades.qml
-              pages/FlyEntry.qml pages/FlyPlanner.qml pages/FlyResult.qml pages/FlyChart.qml pages/PlaybookPanel.qml pages/TerrainReplay.qml
+              pages/FlyEntry.qml pages/FlyPlanner.qml pages/FlyResult.qml pages/FlyChart.qml pages/PlaybookPanel.qml pages/WallStrip.qml pages/TerrainReplay.qml
               pages/BoardPage.qml pages/RecordsPage.qml pages/RecordDetail.qml
               pages/MarketPage.qml pages/PaCards.qml pages/BookBody.qml
               pages/IdeasPage.qml pages/SectorsPage.qml pages/EarningsPanel.qml pages/ScreenerPage.qml

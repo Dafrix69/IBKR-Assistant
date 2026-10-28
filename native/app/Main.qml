@@ -79,6 +79,8 @@ Window {
     property var aboutPage: null
     property var devCharts: null
     property var flyStore: null
+    /// 下单页上的 SPX / QQQ 期权墙(shell/wall_store)
+    property var wallStore: null
     property string engineMode: "native"
 
     readonly property var st: statusStore ? statusStore.status : ({})
@@ -470,7 +472,7 @@ Window {
         }
         Component {
             id: tradePageComp
-            TradePage { onOpenFlyEntry: flyEntryModal.open(); onOpenTerrain: { terrainModal.open(); if (root.terrain) root.terrain.refresh() } controller: root.tradePage; composer: root.composer; fly: root.fly; flyStore: root.flyStore; navigate: function (key) { Nav.navigate(key) } }
+            TradePage { onOpenFlyEntry: flyEntryModal.open(); onOpenTerrain: { terrainModal.open(); if (root.terrain) root.terrain.refresh() } controller: root.tradePage; composer: root.composer; fly: root.fly; flyStore: root.flyStore; wallStore: root.wallStore; navigate: function (key) { Nav.navigate(key) } }
         }
         Component {
             id: placeholder

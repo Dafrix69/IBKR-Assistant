@@ -14,6 +14,8 @@ ScrollPage {
     /// 右栏的蝴蝶测算与日内剧本(shell/fly_controller、shell/fly_store)
     property var fly: null
     property var flyStore: null
+    /// 右栏最上面的 SPX / QQQ 期权墙(shell/wall_store)
+    property var wallStore: null
     readonly property var m: controller ? controller.model : ({})
     readonly property bool stacked: width < 980 + 56
     Component.onCompleted: editor.forceActiveFocus()
@@ -218,6 +220,13 @@ ScrollPage {
             x: page.stacked ? 0 : split.barX + 16
             y: page.stacked ? editorCol.implicitHeight + 20 : 0
             width: page.stacked ? parent.width : parent.width - x
+            // SPX / QQQ 期权墙:三面(解析结果、蝴蝶测算、日内剧本)都看得见
+            Loader {
+                active: !!page.wallStore
+                visible: active
+                width: parent.width
+                sourceComponent: WallStrip { store: page.wallStore }
+            }
             // .pane-head:两端对齐,下 8
             Item {
                 width: parent.width

@@ -54,6 +54,7 @@ qt_add_library(ibkr_shell STATIC
     fly_entry.h fly_entry.cpp
     fly_rules.h fly_rules.cpp
     fly_store.h fly_store.cpp
+    wall_store.h wall_store.cpp
     fly_controller.h fly_controller.cpp
     order_rules.h order_rules.cpp
     order_stores.h order_stores.cpp
