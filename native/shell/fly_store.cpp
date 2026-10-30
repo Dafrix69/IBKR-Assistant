@@ -2,6 +2,7 @@
 
 #include "shell/bridge.h"
 #include "shell/fly_rules.h"
+#include "shell/jsvalue.h"
 
 #include <QDateTime>
 #include <QPointer>
@@ -15,6 +16,8 @@ FlyStore::FlyStore(fly::StoreDeps deps, QObject* parent) : QObject(parent), deps
              {u"auto"_s, false}, {u"at"_s, QJsonValue()}, {u"recorder"_s, QJsonValue()}};
     timer_.setInterval(kAutoRefreshMs);
     connect(&timer_, &QTimer::timeout, this, [this] { run(true); });
+    assistTimer_.setInterval(kAssistRefreshMs);
+    connect(&assistTimer_, &QTimer::timeout, this, [this] { loadAssist(); });
 }
 
 FlyStore::FlyStore(Bridge* bridge, QObject* parent) : FlyStore(fly::StoreDeps{}, parent) { deps_ = bridgeDeps(bridge, this); }
@@ -27,6 +30,7 @@ fly::StoreDeps FlyStore::bridgeDeps(Bridge* bridge, QObject* context) {
         bridge->rpc(context, u"options.iv_recorder_set"_s, QJsonObject{{u"enabled"_s, enabled}}, done);
     };
     d.entryContext = [bridge, context](fly::StoreDeps::Reply done) { bridge->rpc(context, u"options.entry_context"_s, QJsonObject{}, done); };
+    d.assist = [bridge, context](fly::StoreDeps::Reply done) { bridge->rpc(context, u"options.entry_assist"_s, QJsonObject{}, done); };
     d.nowMs = [] { return double(QDateTime::currentMSecsSinceEpoch()); };
     return d;
 }
@@ -56,13 +60,16 @@ void FlyStore::set(const QJsonObject& part) {
 }
 
 void FlyStore::patch(const QJsonObject& part) {
+    if (part.contains("width"_L1)) widthEdited_ = true;
     QJsonObject form = plan_.value("form"_L1).toObject();
     for (auto it = part.begin(); it != part.end(); ++it) form.insert(it.key(), it.value());
     set({{u"form"_s, form}});
 }
 
 void FlyStore::reset() {
+    widthEdited_ = false;
     set({{u"form"_s, fly::emptyForm()}, {u"result"_s, QJsonValue()}, {u"failure"_s, QJsonValue()}, {u"resultFor"_s, u""_s}, {u"auto"_s, false}, {u"at"_s, QJsonValue()}});
+    fillWidthFromAssist();
 }
 
 void FlyStore::run(bool quiet) {
@@ -98,6 +105,42 @@ void FlyStore::sync() {
     const bool want = visible_ && plan_.value("auto"_L1).toBool();
     if (want && !timer_.isActive()) timer_.start(autoRefreshMs);
     else if (!want && timer_.isActive()) timer_.stop();
+    // 入场助手只在面板看得见时问:一次要读两条期权链(有 60 秒缓存),人不在这一页问是白占行情线路
+    const bool wantAssist = visible_ && bool(deps_.assist);
+    if (wantAssist && !assistTimer_.isActive()) {
+        assistTimer_.start(assistRefreshMs);
+        loadAssist();
+    } else if (!wantAssist && assistTimer_.isActive()) {
+        assistTimer_.stop();
+    }
+}
+
+void FlyStore::loadAssist() {
+    if (!deps_.assist || assistBusy_) return;
+    assistBusy_ = true;
+    QPointer<FlyStore> self(this);
+    deps_.assist([self](const EngineReply& r) {
+        if (!self) return;
+        self->assistBusy_ = false;
+        // 失败不清掉屏幕上的上一份,只加一句原因;引擎还没起来时下一分钟再问
+        QJsonObject assist = r.ok ? r.result.toObject() : self->plan_.value("assist"_L1).toObject();
+        if (r.ok) assist.remove(u"error"_s);
+        else assist.insert(u"error"_s, r.error);
+        self->set({{u"assist"_s, assist}});
+        self->fillWidthFromAssist();
+    });
+}
+
+void FlyStore::fillWidthFromAssist() {
+    // 建议翼宽是表单的「默认值」:用户亲手改过、或屏幕上已经有一份结果(改表单会把它标成"改之前的")就不动
+    if (widthEdited_ || plan_.value("result"_L1).isObject()) return;
+    const QJsonValue pick = plan_.value("assist"_L1).toObject().value("width"_L1).toObject().value("pick"_L1);
+    if (!pick.isDouble() || !(pick.toDouble() > 0)) return;
+    const QString text = jsNumberToString(pick.toDouble());
+    QJsonObject form = plan_.value("form"_L1).toObject();
+    if (form.value("width"_L1).toString() == text) return;
+    form.insert(u"width"_s, text);
+    set({{u"form"_s, form}});
 }
 
 void FlyStore::setAuto(bool on) {

@@ -1,5 +1,6 @@
 #include "transport/handlers/market.h"
 
+#include "analysis/fly_entry_assist.h"
 #include "analysis/macro.h"
 #include "analysis/priceaction.h"
 #include "analysis/signal_outcomes.h"
@@ -9,14 +10,18 @@
 #include "domain/models.h"
 #include "domain/positions.h"
 #include "execution/broker_pricing.h"
+#include "orchestrate/services/market_data.h"
 #include "orchestrate/services/svc_util.h"
 #include "transport/handlers/handlers2_support.h"
 #include "transport/params.h"
 #include "util/jsobj.h"
 #include "util/jsvalue.h"
 
-#include <QSet>
+#include <QDate>
 #include <QDateTime>
+#include <QSet>
+
+#include <algorithm>
 
 #include <cmath>
 
@@ -73,6 +78,7 @@ MethodTable MarketHandlers::methods() {
         {u"book.snapshot"_s, [this](OJson p) { return bookSnapshot(std::move(p)); }},
         {u"options.wall"_s, [this](OJson p) { return optionsWall(std::move(p)); }},
         {u"options.entry_context"_s, [this](OJson) { return entryContext(); }},
+        {u"options.entry_assist"_s, [this](OJson) { return entryAssist(); }},
         {u"options.fly_plan"_s, [this](OJson p) { return optionsFlyPlan(std::move(p)); }},
         {u"options.iv_recorder"_s, syncImpl([this](const OJson&) { return ports_.ivRecorder().status(); })},
         {u"options.iv_recorder_set"_s,
@@ -136,6 +142,120 @@ util::Task<OJson> MarketHandlers::entryContext() {
         }
     }
     out.set(u"at"_s, js::N(QDateTime::currentMSecsSinceEpoch()));
+    co_return out;
+}
+
+// ---- 蝶式入场助手 ----------------------------------------------------
+// 四样输入各自 try:一样拿不到只少那一条建议,不让整个回执报错。纯规则在 analysis/fly_entry_assist。
+namespace {
+/// 每边取多少档行权价:和交易指令页墙条(shell/wall_store 的 kWidth)一样,缓存键才对得上
+constexpr double kAssistWallWidth = 15;
+double clockMinutes(const QString& hhmm) {
+    const QStringList p = hhmm.split(u':');
+    return p.size() == 2 ? p[0].toInt() * 60 + p[1].toInt() : 0;
+}
+analysis::flyentry::Config assistConfig(const contract::FlyEntryAssistConfig& c) {
+    analysis::flyentry::Config out;
+    out.enabled = c.enabled;
+    out.width_mult = c.width_mult;
+    out.width_floor_mult = c.width_floor_mult;
+    out.prior_drop_pct = c.prior_drop_pct;
+    out.prior_drop_after_min = clockMinutes(c.prior_drop_after_et);
+    out.thursday_before_min = clockMinutes(c.thursday_before_et);
+    out.spx_put_wall_straddle_mult = c.spx_put_wall_straddle_mult;
+    out.spy_put_wall_pct = c.spy_put_wall_pct;
+    out.late_entry_min = clockMinutes(c.late_entry_et);
+    return out;
+}
+std::optional<double> finiteNum(const OJson* v) {
+    if (!js::isNum(v) || !std::isfinite(v->n)) return std::nullopt;
+    return v->n;
+}
+}  // namespace
+
+util::Task<OJson> MarketHandlers::entryAssist() {
+    namespace fe = analysis::flyentry;
+    const fe::Config cfg = assistConfig(settings().fly_entry_assist);
+    const domain::EtNow now = domain::nowEt();
+    const QString todayCompact = QString(now.date).remove(u'-');
+    fe::Input in;
+    in.etMinutes = now.minutes;
+    in.weekday = QDate::fromString(now.date, Qt::ISODate).dayOfWeek();
+    if (!cfg.enabled) {
+        OJson off = fe::evaluate(cfg, in);
+        off.set(u"at"_s, js::N(now.epochMs));
+        co_return off;
+    }
+
+    // 平值跨式:复用日内剧本「当前剩余」那一格(call + put 的中间价,围着那一刻的现价,5 分钟一格)
+    try {
+        const OJson snap = ports_.playbook().snapshot();
+        const OJson* cur = js::path(&snap, {u"bands"_s, u"current"_s});
+        const std::optional<double> call = finiteNum(js::prop(cur, u"call"_s)), put = finiteNum(js::prop(cur, u"put"_s));
+        if (call && put && *call + *put > 0) {
+            in.straddle = *call + *put;
+            in.straddleAt = finiteNum(js::prop(cur, u"at"_s));
+            in.straddleStrike = finiteNum(js::prop(cur, u"strike"_s));
+        } else if (!js::truthy(js::prop(&snap, u"enabled"_s))) {
+            in.straddleNote = u"日内剧本关着(跨式由它每 5 分钟取一次)"_s;
+        } else if (const QString idle = js::strOr(js::prop(&snap, u"idle_reason"_s), QString()); !idle.isEmpty()) {
+            in.straddleNote = u"日内剧本没在取价:"_s + idle;
+        } else {
+            in.straddleNote = u"日内剧本还没取到当前区间的跨式"_s;
+        }
+    } catch (...) {
+        in.straddleNote = orchestrate::errMessage(std::current_exception());
+    }
+
+    // 昨日官方收盘对前日收盘:日线(10 分钟缓存),只认日期严格早于今天的两根
+    try {
+        const QList<OJson> bars = co_await ports_.market().dailyHistory(u"SPX"_s, double(orchestrate::MarketDataService::kHistSpanDays));
+        QList<std::pair<QString, double>> closes;
+        for (const OJson& b : bars) {
+            const OJson* d = js::prop(&b, u"date"_s);
+            const OJson* v = js::nullish(d) ? js::prop(&b, u"time"_s) : d;
+            const QString day = js::nullish(v) ? QString() : js::str(v).left(10);
+            const std::optional<double> close = finiteNum(js::prop(&b, u"close"_s));
+            if (day.size() == 10 && day < now.date && close && *close > 0) closes.append({day, *close});
+        }
+        std::sort(closes.begin(), closes.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
+        if (closes.size() >= 2) {
+            in.priorClose = closes[closes.size() - 1].second;
+            in.priorDate = closes[closes.size() - 1].first;
+            in.prevClose = closes[closes.size() - 2].second;
+            in.prevDate = closes[closes.size() - 2].first;
+        } else {
+            in.priorNote = u"日线不够两根"_s;
+        }
+    } catch (...) {
+        in.priorNote = orchestrate::errMessage(std::current_exception());
+    }
+
+    // 两条当天到期的 put 墙:和交易指令页的墙条同样的参数(最近到期、每边 15 档),命中引擎 60 秒的缓存;到期不是今天就当没有
+    const auto wall = [&](const QString& symbol, std::optional<double>* spot, std::optional<double>* putWall, std::optional<double>* windowLow, bool* thinned,
+                          QString* note) -> util::Task<> {
+        try {
+            const OJson w = co_await ports_.market().wallFor(symbol, std::nullopt, kAssistWallWidth);
+            const QString expiry = QString(js::strOr(js::prop(&w, u"expiry"_s), QString())).remove(u'-');
+            if (expiry != todayCompact) {
+                *note = u"%1 最近的到期日是 %2,不是今天"_s.arg(symbol, expiry.isEmpty() ? u"?"_s : expiry);
+                co_return;
+            }
+            *spot = finiteNum(js::prop(&w, u"spot"_s));
+            *putWall = finiteNum(js::prop(js::prop(&w, u"put_wall"_s), u"strike"_s));
+            const OJson* coverage = js::prop(&w, u"coverage"_s);
+            *windowLow = finiteNum(js::prop(coverage, u"lower"_s));
+            *thinned = js::truthy(js::prop(coverage, u"thinned"_s));
+            if (!*putWall) *note = u"%1 当天到期的链上现货下方没有持仓量"_s.arg(symbol);
+        } catch (...) {
+            *note = u"%1 的期权链取不到:%2"_s.arg(symbol, orchestrate::errMessage(std::current_exception()));
+        }
+    };
+    co_await wall(u"SPX"_s, &in.spxSpot, &in.spxPutWall, &in.spxWindowLow, &in.spxThinned, &in.spxWallNote);
+    co_await wall(u"SPY"_s, &in.spySpot, &in.spyPutWall, &in.spyWindowLow, &in.spyThinned, &in.spyWallNote);
+
+    OJson out = fe::evaluate(cfg, in);
+    out.set(u"at"_s, js::N(now.epochMs));
     co_return out;
 }
 

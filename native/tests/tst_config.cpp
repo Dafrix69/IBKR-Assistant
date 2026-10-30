@@ -402,6 +402,55 @@ private slots:
         QCOMPARE(defaultBrokerPort(u"futu"_s), d.get(u"ports"_s)->get(u"futu"_s)->n);
     }
 
+    // 蝶式入场助手那一段(fly_entry_assist):默认值 = 研究里的数;改了的照改;不认识的键、写错的时刻、下限大于倍数都拒
+    void flyEntryAssistSection() {
+        const auto parse = [&](const QString& extra) {
+            const QString base = at(u"original").s;
+            const qsizetype brace = base.indexOf(u'{');
+            const QString text = extra.isEmpty() ? base : base.left(brace + 1) + extra + u","_s + base.mid(brace + 1);
+            return fromDict(*util::parseOJson(text));
+        };
+        const Settings dflt = parse(QString());
+        const auto& a = dflt.fly_entry_assist;
+        QVERIFY(a.enabled);
+        QCOMPARE(a.width_mult, 2.0);
+        QCOMPARE(a.width_floor_mult, 1.5);
+        QCOMPARE(a.prior_drop_pct, 1.0);
+        QCOMPARE(a.prior_drop_after_et, u"12:00"_s);
+        QCOMPARE(a.thursday_before_et, u"12:00"_s);
+        QCOMPARE(a.spx_put_wall_straddle_mult, 5.9);
+        QCOMPARE(a.spy_put_wall_pct, 1.31);
+        QCOMPARE(a.late_entry_et, u"15:00"_s);
+
+        const Settings changed = parse(uR"("fly_entry_assist": {"enabled": false, "width_mult": 3, "width_floor_mult": 2, "prior_drop_pct": 1.5, "prior_drop_after_et": "9:45",
+                                             "thursday_before_et": "13:00", "spx_put_wall_straddle_mult": 5, "spy_put_wall_pct": 1, "late_entry_et": "14:30"})"_s);
+        const auto& b = changed.fly_entry_assist;
+        QVERIFY(!b.enabled);
+        QCOMPARE(b.width_mult, 3.0);
+        QCOMPARE(b.width_floor_mult, 2.0);
+        QCOMPARE(b.prior_drop_pct, 1.5);
+        QCOMPARE(b.prior_drop_after_et, u"09:45"_s);  // 补成两位
+        QCOMPARE(b.thursday_before_et, u"13:00"_s);
+        QCOMPARE(b.spx_put_wall_straddle_mult, 5.0);
+        QCOMPARE(b.spy_put_wall_pct, 1.0);
+        QCOMPARE(b.late_entry_et, u"14:30"_s);
+
+        const auto rejects = [&](const QString& extra, const QString& needle) {
+            try {
+                parse(extra);
+                QFAIL(qPrintable(u"应当拒:"_s + extra));
+            } catch (const util::JsError& e) {
+                QVERIFY2(e.message().contains(needle), qPrintable(e.message()));
+            }
+        };
+        rejects(uR"("fly_entry_assist": {"enable": true})"_s, u"fly_entry_assist"_s);
+        rejects(uR"("fly_entry_assist": {"late_entry_et": "25:00"})"_s, u"late_entry_et 必须是美东时刻 HH:MM"_s);
+        rejects(uR"("fly_entry_assist": {"prior_drop_after_et": 1200})"_s, u"prior_drop_after_et 必须是美东时刻 HH:MM"_s);
+        rejects(uR"("fly_entry_assist": {"enabled": "true"})"_s, u"必须是 true/false"_s);
+        rejects(uR"("fly_entry_assist": {"width_mult": 1.2, "width_floor_mult": 1.5})"_s, u"width_floor_mult 不能大于 width_mult"_s);
+        rejects(uR"("fly_entry_assist": {"spy_put_wall_pct": 0})"_s, u"spy_put_wall_pct 不能小于 0.01"_s);
+    }
+
     // OJson 的键序就是 JS 对象的键序:像下标的键按数值排在最前
     void ojsonKeyOrder() {
         const auto o = util::parseOJson(uR"({"b":1,"10":2,"a":3,"2":4,"01":5,"4294967295":6,"4294967294":7,"b":8})"_s);

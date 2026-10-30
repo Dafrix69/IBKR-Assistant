@@ -39,6 +39,8 @@ struct Fake {
     QJsonValue result;
     QJsonValue recorder;
     QJsonValue setResult;
+    /// 入场助手的回执;isUndefined = 没接这一路(老的步骤对拍就是这样跑的)
+    QJsonValue assist = QJsonValue(QJsonValue::Undefined);
     bool hold = false;
     std::function<void()> release;
     fly::StoreDeps deps() {
@@ -58,6 +60,11 @@ struct Fake {
             done(replyOf(setResult));
         };
         d.nowMs = [] { return fixture()[u"now"].toDouble(); };
+        if (!assist.isUndefined())
+            d.assist = [this](fly::StoreDeps::Reply done) {
+                calls.append(QJsonObject{{u"call"_s, u"entryAssist"_s}, {u"args"_s, QJsonArray{}}});
+                done(replyOf(assist));
+            };
         return d;
     }
 };
@@ -157,6 +164,63 @@ private slots:
         QTest::qWait(400);
         QCOMPARE(fake.calls.size(), after);
         QCOMPARE(FlyStore::kAutoRefreshMs, 10'000);  // 原版 AUTO_REFRESH_MS
+    }
+    /// 入场助手:只在看得见时问;建议翼宽是表单的默认值——没人改过翼宽、也没有结果时填进去,改过的不盖,reset 之后重新算
+    void assistFillsDefaultWidth() {
+        Fake fake;
+        fake.assist = QJsonObject{{u"enabled"_s, true}, {u"width"_s, QJsonObject{{u"pick"_s, 30}, {u"text"_s, u"建议翼宽 30 点"_s}}}, {u"flags"_s, QJsonArray{}}};
+        FlyStore store(fake.deps());
+        store.assistRefreshMs = 60'000;
+        QCOMPARE(fake.calls.size(), 0);  // 看不见不问
+        store.setVisible(true);
+        QCOMPARE(fake.calls.size(), 1);
+        QCOMPARE(fake.calls.at(0)[u"call"].toString(), u"entryAssist"_s);
+        QCOMPARE(store.plan()[u"form"][u"width"].toString(), u"30"_s);
+        QCOMPARE(store.plan()[u"assist"][u"width"][u"pick"].toDouble(), 30.0);
+
+        // 用户自己改了翼宽:再来的建议不盖
+        store.patch({{u"width"_s, u"25"_s}});
+        fake.assist = QJsonObject{{u"enabled"_s, true}, {u"width"_s, QJsonObject{{u"pick"_s, 50}}}, {u"flags"_s, QJsonArray{}}};
+        store.loadAssist();
+        QCOMPARE(store.plan()[u"form"][u"width"].toString(), u"25"_s);
+        QCOMPARE(store.plan()[u"assist"][u"width"][u"pick"].toDouble(), 50.0);
+
+        // 清空之后又是默认值:拿最近一次的建议
+        store.reset();
+        QCOMPARE(store.plan()[u"form"][u"width"].toString(), u"50"_s);
+
+        // 屏幕上有结果时不动表单(动了会把结果标成"改之前的")
+        store.patch({{u"center"_s, u"6700"_s}, {u"targetSpot"_s, u"6710"_s}, {u"targetTime"_s, u"14:30"_s}});
+        fake.result = QJsonObject{{u"center"_s, 6700}};
+        store.run(false);
+        QVERIFY(store.plan()[u"result"].isObject());
+        fake.assist = QJsonObject{{u"enabled"_s, true}, {u"width"_s, QJsonObject{{u"pick"_s, 20}}}, {u"flags"_s, QJsonArray{}}};
+        store.loadAssist();
+        QCOMPARE(store.plan()[u"form"][u"width"].toString(), u"50"_s);
+        QCOMPARE(store.plan()[u"assist"][u"width"][u"pick"].toDouble(), 20.0);
+
+        // 失败:留一句原因,表单不动;看不见了就停
+        fake.assist = u"throw:引擎没起来"_s;
+        store.loadAssist();
+        QCOMPARE(store.plan()[u"assist"][u"error"].toString(), u"引擎没起来"_s);
+        QCOMPARE(store.plan()[u"assist"][u"width"][u"pick"].toDouble(), 20.0);  // 上一份还在
+        fake.assist = QJsonObject{{u"enabled"_s, true}, {u"width"_s, QJsonObject{{u"pick"_s, 20}}}, {u"flags"_s, QJsonArray{}}};
+        store.loadAssist();
+        QVERIFY(!store.plan()[u"assist"].toObject().contains(u"error"_s));
+        const int before = fake.calls.size();
+        store.setVisible(false);
+        store.setVisible(true);
+        QCOMPARE(fake.calls.size(), before + 1);
+    }
+
+    /// 没接这一路(老接线、测试替身):一条都不问,plan 里也没有 assist
+    void assistAbsentIsNoop() {
+        Fake fake;
+        FlyStore store(fake.deps());
+        store.setVisible(true);
+        store.loadAssist();
+        QCOMPARE(fake.calls.size(), 0);
+        QVERIFY(!store.plan().contains(u"assist"_s));
     }
 };
 

@@ -561,6 +561,8 @@ QJsonObject plannerModel(const PlannerInput& in) {
         {u"at"_s, present(at) && hasResult ? QJsonValue(u"算于 "_s + localTime(n(at), in.localZone, true)) : QJsonValue()},
         {u"problems"_s, isTouched && !problems.isEmpty() ? QJsonValue(problems.join(u";"_s)) : QJsonValue()},
         {u"output"_s, output},
+        // 入场助手:引擎 options.entry_assist 的回执原样转给 QML(字都是引擎拼好的,见 docs/features/fly-entry-assist.md);没问过是 null
+        {u"assist"_s, plan.value("assist"_L1).isObject() ? plan.value("assist"_L1) : QJsonValue()},
     };
 }
 

@@ -70,6 +70,65 @@ Column {
     // .event-warning 写的是下 8,但 kit 的 Notice 那条下 14 排在后面、优先级一样,量出来是 14
     Item { width: 1; height: root.m.warning ? 14 : 0 }
 
+    // ---- 入场助手(shell/fly_store 每分钟问一次引擎 options.entry_assist;字由引擎拼好,这里只摆):
+    // 翼宽建议、「今日不开」的标记、时段提示。只是提醒,不拦任何按钮,也不弹确认。
+    readonly property var assist: m.assist && typeof m.assist === "object" ? m.assist : null
+    readonly property bool assistHasBody: !!root.assist && (!!root.assist.width || !!(root.assist.flags && root.assist.flags.length) || !!root.assist.timing
+                                                           || !!(root.assist.notes && root.assist.notes.length) || !!root.assist.error)
+    Rectangle {
+        visible: root.assistHasBody && root.assist.enabled !== false
+        width: parent.width
+        height: visible ? assistCol.implicitHeight + 20 : 0
+        radius: Theme.radiusCard
+        color: Theme.bgFill
+        Column {
+            id: assistCol
+            x: 12; y: 10
+            width: parent.width - 24
+            spacing: 6
+            Row {
+                spacing: 8
+                Label { text: "入场助手"; size: 12; weight: Theme.weightSemibold }
+                Label { text: "只是建议,不拦下单 · 研究样本 2022-05 至 2026-10"; size: 11; color: Theme.labelSecondary; css: 1.5 }
+            }
+            Label {
+                visible: !!(root.assist && root.assist.width)
+                width: parent.width; wrap: true
+                text: root.assist && root.assist.width ? root.assist.width.text : ""
+                size: 12; weight: Theme.weightMedium
+                Tip { text: root.assist && root.assist.width ? root.assist.width.basis : "" }
+            }
+            Repeater {
+                model: root.assist && root.assist.flags ? root.assist.flags : []
+                Column {
+                    required property var modelData
+                    width: parent.width
+                    spacing: 2
+                    Label { width: parent.width; wrap: true; text: "⚠ " + modelData.title; size: 12; weight: Theme.weightSemibold; color: Theme.orangeText }
+                    Label { width: parent.width; wrap: true; text: modelData.basis; size: 11; color: Theme.labelSecondary; css: 1.5 }
+                }
+            }
+            Column {
+                visible: !!(root.assist && root.assist.timing)
+                width: parent.width
+                spacing: 2
+                Label { width: parent.width; wrap: true; text: root.assist && root.assist.timing ? root.assist.timing.title : ""; size: 12; weight: Theme.weightMedium }
+                Label { width: parent.width; wrap: true; text: root.assist && root.assist.timing ? root.assist.timing.basis : ""; size: 11; color: Theme.labelSecondary; css: 1.5 }
+            }
+            Repeater {
+                model: root.assist && root.assist.notes ? root.assist.notes : []
+                Label { required property var modelData; width: parent.width; wrap: true; text: modelData; size: 11; color: Theme.labelSecondary; css: 1.5 }
+            }
+            Label {
+                visible: !!(root.assist && root.assist.error)
+                width: parent.width; wrap: true
+                text: root.assist && root.assist.error ? "入场助手这一次没取到:" + root.assist.error : ""
+                size: 11; color: Theme.labelSecondary
+            }
+        }
+    }
+    Item { width: 1; height: root.assistHasBody ? 10 : 0 }
+
     Button { text: "开仓复核 · 地形、确认与风险"; onClicked: root.openEntry() }
     Item { width: 1; height: 10 }
 

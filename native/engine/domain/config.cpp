@@ -676,6 +676,35 @@ contract::FollowConfig buildFollow(V raw) {
     return c;
 }
 
+/// "HH:MM"(美东,24 小时制)→ 当日分钟数;写错抛同一句
+double etClockMinutes(V raw, const QString& key, const QString& dflt, const QString& label, QString* keep) {
+    const V value = orElse(get(raw, key), lit(OJson::string(dflt)));
+    static const QRegularExpression re(u"^([01]?\\d|2[0-3]):([0-5]\\d)$"_s);
+    const QRegularExpressionMatch m = value.isStr() ? re.match(trim(value.p->s)) : QRegularExpressionMatch();
+    if (!m.hasMatch()) throw JsError(u"%1.%2 必须是美东时刻 HH:MM,收到 %3"_s.arg(label, key, repr(value)));
+    *keep = m.captured(1).rightJustified(2, u'0') + u':' + m.captured(2);
+    return m.captured(1).toInt() * 60 + m.captured(2).toInt();
+}
+
+contract::FlyEntryAssistConfig buildFlyEntryAssist(V raw) {
+    const QString label = u"fly_entry_assist"_s;
+    rejectUnknown({u"enabled"_s, u"width_mult"_s, u"width_floor_mult"_s, u"prior_drop_pct"_s, u"prior_drop_after_et"_s, u"thursday_before_et"_s,
+                   u"spx_put_wall_straddle_mult"_s, u"spy_put_wall_pct"_s, u"late_entry_et"_s},
+                  raw, label);
+    contract::FlyEntryAssistConfig c;
+    c.enabled = flag(raw, u"enabled"_s, true, label);
+    c.width_mult = numReq(raw, u"width_mult"_s, false, 2.0, label, {0.5, u"0.5"_s, 10.0, u"10"_s});
+    c.width_floor_mult = numReq(raw, u"width_floor_mult"_s, false, 1.5, label, {0.5, u"0.5"_s, 10.0, u"10"_s});
+    if (c.width_floor_mult > c.width_mult) throw JsError(u"fly_entry_assist.width_floor_mult 不能大于 width_mult(收到 %1 与 %2)"_s.arg(util::pyFloat(c.width_floor_mult), util::pyFloat(c.width_mult)));
+    c.prior_drop_pct = numReq(raw, u"prior_drop_pct"_s, false, 1.0, label, {0.1, u"0.1"_s, 20.0, u"20"_s});
+    etClockMinutes(raw, u"prior_drop_after_et"_s, u"12:00"_s, label, &c.prior_drop_after_et);
+    etClockMinutes(raw, u"thursday_before_et"_s, u"12:00"_s, label, &c.thursday_before_et);
+    c.spx_put_wall_straddle_mult = numReq(raw, u"spx_put_wall_straddle_mult"_s, false, 5.9, label, {0.1, u"0.1"_s, 100.0, u"100"_s});
+    c.spy_put_wall_pct = numReq(raw, u"spy_put_wall_pct"_s, false, 1.31, label, {0.01, u"0.01"_s, 20.0, u"20"_s});
+    etClockMinutes(raw, u"late_entry_et"_s, u"15:00"_s, label, &c.late_entry_et);
+    return c;
+}
+
 struct AccountLimitKey {
     QString key;
     bool isInt;
@@ -1012,6 +1041,7 @@ Settings fromDict(const OJson& rawJson, const std::optional<QString>& source) {
     s.protections = buildProtections(orElse(get(raw, u"protections"_s), emptyObject()));
     s.risk_budget = buildRiskBudget(orElse(get(raw, u"risk_budget"_s), emptyObject()));
     s.follow = buildFollow(orElse(get(raw, u"follow"_s), emptyObject()));
+    s.fly_entry_assist = buildFlyEntryAssist(orElse(get(raw, u"fly_entry_assist"_s), emptyObject()));
     s.accounts = accounts;
     s.connections = connections;
     const V aliasRaw = orElse(get(raw, u"symbol_aliases"_s), emptyObject());

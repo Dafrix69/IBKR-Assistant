@@ -8,7 +8,7 @@ stdout 只传协议,日志一律走 stderr。引擎单线程,请求按方法分�
 | 道 | 调度 | 放什么 |
 |---|---|---|
 | 本地道 | 来了就答 | 同步的本地库与配置读写:板块增删、想法列表与检索、记录、设置读取、熔断状态、追踪列表、`tracker.poll` / `tracker.reconcile`(只读引擎最近一轮盯盘的结果)、`quality.*`、`pool.set_watch`、`data.backups` / `data.backup`、`options.iv_recorder*`、`options.playbook*`、`system.status`、`keychain.set` / `futu.set_password` / `follow.set_token`(写系统凭证库,可能等 macOS 弹窗,不该挡住下单)、`follow.status` / `follow.reconnect` |
-| 读道 | 最多 4 个并发 | 只读的行情、探测与纯计算:`positions.list`、`pa.analyze`、`book.snapshot`、`macro.board`、`screener.*`、`backtest.run` / `sweep`、`options.fly_plan`、`options.spot`、`review.performance` / `signals`、`ideas.similar_trades`、`tracker.target_preview`、`tws.*` / `futu.*` 探测 |
+| 读道 | 最多 4 个并发 | 只读的行情、探测与纯计算:`positions.list`、`pa.analyze`、`book.snapshot`、`macro.board`、`screener.*`、`backtest.run` / `sweep`、`options.fly_plan`、`options.spot`、`options.entry_assist`、`review.performance` / `signals`、`ideas.similar_trades`、`tracker.target_preview`、`tws.*` / `futu.*` 探测 |
 | 交易道 | 严格顺序 | 其余全部:`instruction.submit`、`pending.poll`、熔断、连接与切换券商、`settings.patch`,以及调用大模型的 `ideas.analyze` / `ideas.digest` / `backtest.parse_rules` / AI 选股 |
 
 - 只有交易道需要顺序:下单、熔断、连接切换共享引擎状态,并发会让批内熔断、重复单这类检查出现竞态。

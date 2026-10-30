@@ -75,6 +75,8 @@ const LaneTable& defaultLaneTable() {
             u"options.fly_plan"_s,
             // 测算面板上的实时现价:读常驻行情流里的那一笔,界面两秒一次
             u"options.spot"_s,
+            // 蝶式入场助手:读剧本快照、日线缓存与两条期权墙(60 秒缓存),只给建议;面板看得见时一分钟一次
+            u"options.entry_assist"_s,
             // 重要事件的清单:从没拉到过日历源时同步等它(最多 8 秒),不该挡下单
             u"events.list"_s,
             // 信息链路:读本地库合成时间线,消息上"此刻的价"按批读已订着的行情;档案多读一次持仓(常驻缓存)

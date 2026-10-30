@@ -83,4 +83,17 @@ struct RiskBudgetConfig {
     double max_position_pct = 0;
 };
 
+/// 蝶式入场助手(只给建议和标记,不碰下单):阈值的默认值 = 研究里的数,见 docs/features/fly-entry-assist.md
+struct FlyEntryAssistConfig {
+    bool enabled = true;
+    double width_mult = 2.0;
+    double width_floor_mult = 1.5;
+    double prior_drop_pct = 1.0;
+    QString prior_drop_after_et;  // "HH:MM" 美东
+    QString thursday_before_et;
+    double spx_put_wall_straddle_mult = 5.9;
+    double spy_put_wall_pct = 1.31;
+    QString late_entry_et;
+};
+
 }  // namespace ibkr::contract

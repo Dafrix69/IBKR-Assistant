@@ -34,7 +34,7 @@ import type {
 } from "./ideas.js";
 import type {
   FlyPlanParams, FlyPlanResult, IvRecorderSetParams, IvRecorderStatus, OptionWall, OptionsSpot, OptionsSpotParams,
-  OptionsWallParams, PlaybookSetParams, PlaybookSnapshot,
+  OptionsWallParams, PlaybookSetParams, PlaybookSnapshot, FlyEntryAssist,
 } from "./options.js";
 import type { ReviewPerformanceParams, ReviewPerformanceResult } from "./performance.js";
 import type { ReviewSignalsParams, ReviewSignalsResult } from "./signals.js";
@@ -175,6 +175,8 @@ export interface RpcMethods {
   "options.wall": { params: OptionsWallParams; result: OptionWall };
   /** 蝴蝶测算:开仓之前估「标的在某个时刻走到某个点位」时这只蝶值多少、赚多少。只算不下单 */
   "options.entry_context": { params: NoParams; result: Record<string, unknown> };
+  /** 蝶式入场助手:翼宽建议、今日不开的标记、时段提示;只读 */
+  "options.entry_assist": { params: NoParams; result: FlyEntryAssist };
   "options.fly_plan": { params: FlyPlanParams; result: FlyPlanResult };
   /** 当日到期期权 IV 的记录现在是什么状态:开没开、攒了多少、上一轮为什么没记 */
   "options.iv_recorder": { params: NoParams; result: IvRecorderStatus };

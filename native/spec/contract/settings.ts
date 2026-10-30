@@ -44,6 +44,25 @@ export interface Policies {
   review_feature_enabled: boolean;
 }
 
+/** 蝶式入场助手(只给建议和标记,不碰下单):配置里一段 `fly_entry_assist`,只能手改配置文件。阈值的默认值 = 研究里的数,见 docs/features/fly-entry-assist.md */
+export interface FlyEntryAssistConfig {
+  /** 默认开 */
+  enabled: boolean;
+  /** 建议翼宽 = width_mult × 平值跨式(默认 2);下限 = width_floor_mult × 跨式(默认 1.5) */
+  width_mult: number;
+  width_floor_mult: number;
+  /** 昨日 SPX 跌幅 ≥ 这么多 %(默认 1)且此刻在 prior_drop_after_et(美东 HH:MM,默认 12:00)之后 → 标记 */
+  prior_drop_pct: number;
+  prior_drop_after_et: string;
+  /** 周四且此刻在这之前(默认 12:00)→ 标记 */
+  thursday_before_et: string;
+  /** SPX 当天到期 put 墙离现货 ≤ 这么多倍跨式(默认 5.9)且 SPY 当天到期 put 墙离现价 ≤ 这么多 %(默认 1.31)→ 标记 */
+  spx_put_wall_straddle_mult: number;
+  spy_put_wall_pct: number;
+  /** 此刻在这之后(默认 15:00)→ 时段提示 */
+  late_entry_et: string;
+}
+
 // ---------------------------------------------------------------- 保护规则
 /** 单条规则的开关与参数。全部默认关闭:老用户升级后行为一字不变。 */
 export interface StoplossGuardConfig {

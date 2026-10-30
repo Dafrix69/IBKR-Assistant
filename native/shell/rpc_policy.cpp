@@ -21,7 +21,7 @@ const QSet<QString>& allowedRpc() {
         u"screener.rs"_s, u"screener.inflection"_s, u"screener.deviation"_s, u"screener.leaders"_s,
         u"backtest.strategies"_s, u"backtest.run"_s, u"backtest.sweep"_s, u"backtest.parse_rules"_s,
         u"book.snapshot"_s, u"options.wall"_s, u"options.entry_context"_s, u"options.fly_plan"_s, u"options.iv_recorder"_s, u"options.iv_recorder_set"_s,
-        u"options.spot"_s, u"options.terrain"_s, u"options.playbook"_s, u"options.playbook_set"_s,
+        u"options.spot"_s, u"options.terrain"_s, u"options.playbook"_s, u"options.playbook_set"_s, u"options.entry_assist"_s,
         u"alerts.list"_s, u"alerts.create"_s, u"alerts.delete"_s, u"alerts.refresh"_s, u"alerts.poll"_s, u"alerts.set_touch_config"_s,
         u"pa.timeframes"_s, u"pa.analyze"_s, u"pa.comment"_s, u"macro.board"_s, u"positions.list"_s,
         u"review.candidates"_s, u"review.analyze"_s, u"review.performance"_s, u"review.signals"_s,

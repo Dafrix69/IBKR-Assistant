@@ -71,6 +71,7 @@ qt_add_library(ibkr_analysis STATIC
     analysis/flyexit.h analysis/flyexit.cpp
     analysis/playbook.h analysis/playbook.cpp
     analysis/fly_plan.h analysis/fly_plan.cpp
+    analysis/fly_entry_assist.h analysis/fly_entry_assist.cpp
     analysis/inference.h analysis/inference.cpp
     analysis/exec_quality.h analysis/exec_quality.cpp
 )

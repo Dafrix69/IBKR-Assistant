@@ -112,6 +112,7 @@ export const PARAMS_SCHEMAS: { readonly [M in RpcMethodName]: ParamsSchema<RpcPa
 
   "options.wall": OptionsWallParamsSchema,
   "options.entry_context": NoParamsSchema,
+  "options.entry_assist": NoParamsSchema,
   "options.fly_plan": FlyPlanParamsSchema,
   "options.iv_recorder": NoParamsSchema,
   "options.iv_recorder_set": IvRecorderSetParamsSchema,

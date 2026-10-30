@@ -382,6 +382,59 @@ export interface OptionsSpot {
   at: number;
 }
 
+// ---------------------------------------------------------------- 蝶式入场助手(options.entry_assist)
+// 只给建议和标记,不改任何下单逻辑。规则与数字来自 0DTE 蝶胜率研究,口径见 docs/features/fly-entry-assist.md。
+
+/** 一条「今日不开」的标记:措辞是提醒,不是禁止 */
+export interface FlyEntryFlag {
+  /** prior_drop = 前一日大跌后的下午;thursday = 周四中午前;put_walls = SPX 与 SPY 当天到期的 put 墙都离现货很近 */
+  key: "prior_drop" | "thursday" | "put_walls";
+  title: string;
+  /** 依据:这一次的数与研究里的数 */
+  basis: string;
+}
+
+export interface FlyEntryWidth {
+  /** 当日到期的平值跨式中间价(点),日内剧本「当前剩余」那一格的 call + put */
+  straddle: number;
+  straddle_at: number | null;
+  strike: number | null;
+  /** width_mult × 跨式;width_floor_mult × 跨式 */
+  raw: number;
+  floor: number;
+  /** 20 / 25 / 30 / 50 / 75 里最接近 raw 的那档(低于下限就再上一档) */
+  pick: number;
+  /** raw 超过最大的一档 */
+  capped: boolean;
+  text: string;
+  basis: string;
+}
+
+export interface FlyEntryAssist {
+  at: number;
+  enabled: boolean;
+  /** 拿不到跨式是 null,原因在 notes 里 */
+  width: FlyEntryWidth | null;
+  flags: FlyEntryFlag[];
+  /** late_entry_et 之后入场的提示 */
+  timing: { title: string; basis: string } | null;
+  /** 哪一条为什么没判 */
+  notes: string[];
+  inputs: {
+    /** 美东 HH:MM */
+    et: string;
+    /** 1 = 周一 … 7 = 周日 */
+    weekday: number;
+    straddle: number | null;
+    prior_change_pct: number | null;
+    prior_date: string | null;
+    spx_spot: number | null;
+    spx_put_wall: number | null;
+    spy_spot: number | null;
+    spy_put_wall: number | null;
+  };
+}
+
 // ---------------------------------------------------------------- SPX 日内剧本(options.playbook*)
 // 预期波动区间(昨日 / 盘初 / 当前剩余,以及由后两条拼出来的今日区间)、区间推出来的剧本状态、期权墙上的加速档。只读,不下单。
 // 设计与口径见 docs/features/playbook.md。
