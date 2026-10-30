@@ -56,7 +56,17 @@ def day_features(args):
         except KeyError:
             continue
         r = np.log(sofar).diff().dropna()
+        last60 = sofar[sofar.index > t - pd.Timedelta(minutes=60)]
+        last30 = sofar[sofar.index > t - pd.Timedelta(minutes=30)]
+        bars5 = sofar.resample("5min").last().dropna().diff().dropna().iloc[-12:]       # last hour in 5-min steps
+        day_hi, day_lo = sofar.max(), sofar.min()
         rec = {"date": date, "entry": e,
+               "ret_60m": (s0 - float(last60.iloc[0])) / implied, "abs_ret_60m": abs(s0 - float(last60.iloc[0])) / implied,
+               "ret_30m": (s0 - float(last30.iloc[0])) / implied,
+               "trend_consistency": float((np.sign(bars5) == np.sign(bars5.sum())).mean()) if len(bars5) and bars5.sum() != 0 else 0.5,
+               "at_day_extreme": float(min(day_hi - s0, s0 - day_lo) <= 0.1 * implied),
+               "dist_from_day_mean": (s0 - float(sofar.mean())) / implied, "abs_dist_from_day_mean": abs(s0 - float(sofar.mean())) / implied,
+               "pct_time_above_open": float((sofar > open_).mean()),
                "move_from_open": (s0 - open_) / implied, "abs_move_from_open": abs(s0 - open_) / implied,
                "pos_in_range": (s0 - sofar.min()) / (sofar.max() - sofar.min()) if sofar.max() > sofar.min() else 0.5,
                "range_sofar": (sofar.max() - sofar.min()) / implied,
