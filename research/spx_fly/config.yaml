@@ -1,0 +1,72 @@
+# SPX fly research — every parameter lives here, not in scripts.
+paths:
+  raw: data/raw            # symlink to ~/Data/thetadata (ThetaData downloads, read-only)
+  clean: data/clean
+  reports: reports
+
+data:
+  settlement: greeks_eod underlying_price   # official close; the 15:59 TWS bar is not it (step 0)
+  root: SPXW               # PM-settled weeklies/dailies only; SPX AM monthlies excluded from trading
+  gex_roots: [SPX, SPXW]   # GEX counts every root that carries dealer gamma
+  session: ["09:30", "16:00"]
+  tz: America/New_York
+
+entries: ["09:35", "10:30", "12:00", "14:00"]
+
+fills:
+  k_levels: [0.0, 0.25, 0.5]   # 0 = mid, 1 = full spread
+  k_default: 0.25
+  multiplier: 100
+  # USD per contract, public customer, IBKR Pro, as listed 2026-10-30; applied to the whole sample
+  commission:                  # by premium, interactivebrokers.com/en/pricing/commissions-options.php
+    - {below: 0.05, fee: 0.25}
+    - {below: 0.10, fee: 0.50}
+    - {below: .inf, fee: 0.65}
+  exchange:                    # Cboe SPXW, interactivebrokers.com/en/accounts/fees/CBOEoptfee.php
+    - {below: 1.00, fee: 0.36}
+    - {below: .inf, fee: 0.45}
+  execution_surcharge: 0.14    # Cboe SPXW execution surcharge, same page
+  regulatory_clearing: 0.03    # ORF + OCC, APPROXIMATE: rates change, not looked up per date
+
+quote_filters:
+  max_spread_to_mid: 1.0       # spread > 100% of mid -> flagged
+  bid0_ask_max: 1.00           # bid == 0 and ask above this -> flagged ("ask abnormally large")
+
+edge:
+  fly_widths: [25, 50, 75]
+  landing_bands: [25, 50, 75]        # points either side of the entry spot
+  implied_bands: [0.25, 0.5, 1.0]    # same, in units of the implied move
+  prev_ret_big: 0.01                 # |previous day's return| above this = big up / big down
+  bootstrap_n: 2000
+  seed: 20261030
+
+grid:
+  structures: [put_fly, call_fly, iron_fly]
+  widths: [25, 50, 75]
+  center: atm                  # gamma-shifted centers dropped after step 2 (no evidence)
+  rules:                       # tp / sl are multiples of the entry mid; time is a scheduled exit
+    hold: {}
+    tp2: {tp: 2}
+    tp3: {tp: 3}
+    sl50: {sl: 0.5}
+    t1400: {time: "14:00"}
+    t1500: {time: "15:00"}
+    tp2_sl50_t1400: {tp: 2, sl: 0.5, time: "14:00"}
+    tp2_sl50_t1500: {tp: 2, sl: 0.5, time: "15:00"}
+    tp3_sl50_t1400: {tp: 3, sl: 0.5, time: "14:00"}
+    tp3_sl50_t1500: {tp: 3, sl: 0.5, time: "15:00"}
+
+walkforward:
+  train_months: 12
+  valid_months: 3
+  step_months: 3
+  rank_k: 0.25                 # rank by expected value at this k
+  floor_k: 0.5                 # and require a positive expected value at this k
+  filter_min_n: 10             # a no-open condition needs this many training trades
+
+weekly:
+  entry: "15:00"
+  width: 50
+  centers: [0, -50]            # offset from the ATM strike: the two live positions
+  cross_x: [25, 50, 75]        # exit when spot moves this far from the center
+  tp: 3                        # multiple of the entry mid, checked at daily closes
