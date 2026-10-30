@@ -1,0 +1,25 @@
+rule,period,w_tercile,n_in,win_in,ev_in,n_out,win_out,ev_out
+vix_minus_rv20 < 3.157 & qqq_oi_0dte_k >= 241,train,w/impl T1,9,0.4444,95.5728,22,0.3636,-315.0061
+vix_minus_rv20 < 3.157 & qqq_oi_0dte_k >= 241,train,w/impl T2,97,0.6495,84.2985,318,0.5818,89.6933
+vix_minus_rv20 < 3.157 & qqq_oi_0dte_k >= 241,train,w/impl T3,19,0.6842,278.9282,78,0.5385,-53.647
+vix_minus_rv20 < 3.157 & qqq_oi_0dte_k >= 241,test,w/impl T1,4,1.0,1592.8575,19,0.4737,-128.1129
+vix_minus_rv20 < 3.157 & qqq_oi_0dte_k >= 241,test,w/impl T2,87,0.6322,69.251,236,0.6017,103.6994
+vix_minus_rv20 < 3.157 & qqq_oi_0dte_k >= 241,test,w/impl T3,21,0.619,86.6169,72,0.625,105.5617
+vix_minus_rv20 <= 2.095 & qqq_oi_0dte_k >= 280.7,train,w/impl T1,6,0.5,529.1908,25,0.36,-369.805
+vix_minus_rv20 <= 2.095 & qqq_oi_0dte_k >= 280.7,train,w/impl T2,50,0.6,9.1395,365,0.5973,99.2944
+vix_minus_rv20 <= 2.095 & qqq_oi_0dte_k >= 280.7,train,w/impl T3,9,0.6667,141.9822,88,0.5568,-1.8485
+vix_minus_rv20 <= 2.095 & qqq_oi_0dte_k >= 280.7,test,w/impl T1,2,1.0,2520.6075,21,0.5238,-52.5681
+vix_minus_rv20 <= 2.095 & qqq_oi_0dte_k >= 280.7,test,w/impl T2,49,0.6122,46.7446,274,0.6095,102.9468
+vix_minus_rv20 <= 2.095 & qqq_oi_0dte_k >= 280.7,test,w/impl T3,8,0.75,45.3269,85,0.6118,106.5504
+qqq_nearest_pct >= 0.6889 & vix_minus_rv20 < 3.157,train,w/impl T1,11,0.3636,-229.6368,20,0.4,-177.1988
+qqq_nearest_pct >= 0.6889 & vix_minus_rv20 < 3.157,train,w/impl T2,95,0.6632,177.5593,320,0.5781,61.9728
+qqq_nearest_pct >= 0.6889 & vix_minus_rv20 < 3.157,train,w/impl T3,16,0.75,199.02,81,0.5309,-25.5451
+qqq_nearest_pct >= 0.6889 & vix_minus_rv20 < 3.157,test,w/impl T1,5,0.8,513.995,18,0.5,75.9617
+qqq_nearest_pct >= 0.6889 & vix_minus_rv20 < 3.157,test,w/impl T2,59,0.6271,45.8431,264,0.6061,105.2771
+qqq_nearest_pct >= 0.6889 & vix_minus_rv20 < 3.157,test,w/impl T3,18,0.6667,-12.9247,75,0.6133,128.6939
+qqq_nearest_pct >= 1.011 & pos_in_range >= 0.7733,train,w/impl T1,5,0.4,-604.555,26,0.3846,-117.2002
+qqq_nearest_pct >= 1.011 & pos_in_range >= 0.7733,train,w/impl T2,32,0.6875,13.54,383,0.5901,94.6897
+qqq_nearest_pct >= 1.011 & pos_in_range >= 0.7733,train,w/impl T3,9,0.7778,162.1072,88,0.5455,-3.9068
+qqq_nearest_pct >= 1.011 & pos_in_range >= 0.7733,test,w/impl T1,1,0.0,-1156.33,22,0.5909,231.528
+qqq_nearest_pct >= 1.011 & pos_in_range >= 0.7733,test,w/impl T2,24,0.7083,277.9031,299,0.602,79.6931
+qqq_nearest_pct >= 1.011 & pos_in_range >= 0.7733,test,w/impl T3,7,0.7143,170.27,86,0.6163,95.6687

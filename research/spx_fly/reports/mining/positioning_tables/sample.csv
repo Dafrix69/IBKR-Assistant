@@ -1,0 +1,2 @@
+n_rows_train,n_rows_test,n_days_train,n_days_test,base_win_train,base_win_test,base_ev_train,base_ev_test,imp_tercile_cuts
+2481,1969,621,494,0.5405,0.5693,10.1327,68.9692,1.597 / 2.242
