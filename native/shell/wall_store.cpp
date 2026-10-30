@@ -36,6 +36,22 @@ QJsonObject levelItem(const QString& label, const QJsonValue& level, const QJson
             {u"tone"_s, pct && std::fabs(*pct) <= kNearPct ? u"near"_s : u""_s}};
 }
 
+/// 美元 GEX(每 1% 波动)→ "$1.63B" / "−$420M"
+QString gexAmount(const QJsonValue& v) {
+    if (!v.isDouble() || !std::isfinite(v.toDouble())) return {};
+    const double x = v.toDouble(), a = std::fabs(x);
+    const QString sign = x < 0 ? u"−"_s : QString();
+    if (a >= 1e9) return sign + u"$"_s + jsToFixed(a / 1e9, 2) + u'B';
+    if (a >= 1e6) return sign + u"$"_s + jsToFixed(a / 1e6, 0) + u'M';
+    return sign + u"$"_s + jsToFixed(a / 1e3, 0) + u'K';
+}
+
+/// GEX 称出来的那三道:提示里带上这一档的量
+QJsonObject gexItem(const QString& label, const QJsonValue& wall, const QJsonValue& spot, const QString& tip) {
+    const QString amount = wall.isObject() ? gexAmount(wall.toObject().value("gex"_L1)) : QString();
+    return levelItem(label, strikeOf(wall), spot, amount.isEmpty() ? tip : u"%1。这一档 %2 / 标的变动 1%"_s.arg(tip, amount));
+}
+
 QString expiryText(const QJsonValue& expiry) {
     const QString e = jsString(expiry);
     return e.size() == 8 ? u"%1-%2"_s.arg(e.mid(4, 2), e.mid(6, 2)) : e;
@@ -66,11 +82,15 @@ QJsonObject rowModel(const QString& symbol, const QJsonObject& state) {
     }
     const QJsonObject w = state.value("result"_L1).toObject();
     const QJsonValue spot = w.value("spot"_L1);
+    const QJsonObject gw = w.value("gex_walls"_L1).toObject();
     QJsonArray items{
         levelItem(u"看涨墙"_s, strikeOf(w.value("call_wall"_L1)), spot, u"现价上方未平仓量最大的看涨行权价:涨到这里常被压住"_s),
         levelItem(u"看跌墙"_s, strikeOf(w.value("put_wall"_L1)), spot, u"现价下方未平仓量最大的看跌行权价:跌到这里常被托住"_s),
         levelItem(u"Gamma 翻转"_s, w.value("gamma_flip"_L1), spot,
                   u"净 gamma 变号的价位里离现价最近的那个:越过它,正负 gamma 换边。取到的行权价范围里不变号、或推算它的那条曲线在现价处的正负和净 gamma 对不上,就不给"_s),
+        gexItem(u"GEX 墙 C"_s, gw.value("call_gex_wall"_L1), spot, u"看涨 GEX(gamma × 未平仓量 × 乘数 × 现价² × 1%)最大的行权价,不分现价上下"_s),
+        gexItem(u"GEX 墙 P"_s, gw.value("put_gex_wall"_L1), spot, u"看跌 GEX 最大的行权价,不分现价上下"_s),
+        gexItem(u"最大 Gamma"_s, gw.value("max_gamma"_L1), spot, u"净 GEX(看涨记正、看跌记负)绝对值最大的行权价,负号表示按「做市商空 put」的假设这里是负 gamma"_s),
         levelItem(u"最大痛点"_s, strikeOf(w.value("max_pain"_L1)), spot, u"按未平仓量算,到期时期权买方总共赚得最少的价位(统计量,不是预言)"_s),
         levelItem(u"量墙 C"_s, strikeOf(w.value("call_vol_wall"_L1)), spot, u"今天成交量最大的看涨行权价(现价上方):今天新开的仓,比未平仓量更新"_s),
         levelItem(u"量墙 P"_s, strikeOf(w.value("put_vol_wall"_L1)), spot, u"今天成交量最大的看跌行权价(现价下方)"_s),

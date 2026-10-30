@@ -338,6 +338,35 @@ std::optional<double> gammaFlip(const std::vector<OptionRow>& rows, const std::v
     return gexSignConflict(rows, spot, t, multiplier) ? std::nullopt : curveFlip(rows, strikes, spot, t, multiplier);
 }
 
+OJson gexWalls(const std::vector<OptionRow>& rows, double spot, double t, double multiplier) {
+    // 每档:看涨 GEX、看跌 GEX(都记正);按行权价第一次出现的先后排
+    std::vector<std::pair<double, std::pair<double, double>>> byK;
+    for (const OptionRow& row : rows) {
+        const Gex g = gexAt({row}, spot, t, multiplier);
+        if (g.rows == 0) continue;
+        auto it = std::find_if(byK.begin(), byK.end(), [&](const auto& e) { return e.first == row.strike; });
+        if (it == byK.end()) it = byK.insert(byK.end(), {row.strike, {0.0, 0.0}});
+        (row.right == u"C" ? it->second.first : it->second.second) += g.gross;
+    }
+    const auto pick = [&](auto&& sizeOf) -> OJson {
+        std::optional<std::pair<double, double>> best;  // strike, 带号的值
+        for (const auto& [strike, cp] : byK) {
+            const double v = sizeOf(cp);
+            if (!(std::fabs(v) > 0)) continue;
+            if (!best || std::fabs(v) > std::fabs(best->second) ||
+                (std::fabs(v) == std::fabs(best->second) && std::fabs(strike - spot) < std::fabs(best->first - spot)))
+                best = std::pair(strike, v);
+        }
+        if (!best) return OJson::null();
+        return js::object({{u"strike"_s, js::N(best->first)},
+                           {u"gex"_s, js::N(util::pyRound(best->second, 0))},
+                           {u"distance_pct"_s, spot && !std::isnan(spot) ? js::N(util::pyRound((best->first / spot - 1.0) * 100.0, 2)) : OJson::null()}});
+    };
+    return js::object({{u"call_gex_wall"_s, pick([](const auto& cp) { return cp.first; })},
+                       {u"put_gex_wall"_s, pick([](const auto& cp) { return cp.second; })},
+                       {u"max_gamma"_s, pick([](const auto& cp) { return cp.first - cp.second; })}});
+}
+
 OJson analyze(const QList<OJson>& raw, double spot, const QString& expiry, const QString& symbol, double multiplier, std::optional<double> nowEpochMs,
               const QString& tradingClass) {
     const std::vector<OptionRow> rows = toRows(raw);

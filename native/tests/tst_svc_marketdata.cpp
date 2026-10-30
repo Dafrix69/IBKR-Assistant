@@ -31,7 +31,14 @@ Svc buildMarket(World&, Host& host, const OJson&, Runner&) {
     s.methods[u"wallFor"_s] = [svc](OJson a) -> Task<OJson> {
         std::optional<double> span;
         if (const OJson* v = a.get(u"span"_s); v && v->type == OJson::Number) span = v->n;
-        co_return co_await svc->wallFor(str(a, u"symbol"_s), optStr(a, u"expiry"_s), num(a, u"width"_s, 10), span, str(a, u"preferClass"_s));
+        OJson wall = co_await svc->wallFor(str(a, u"symbol"_s), optStr(a, u"expiry"_s), num(a, u"width"_s, 10), span, str(a, u"preferClass"_s));
+        // gex_walls 是基线之后加的一样(数在 tst_optionwall 里按手算核对):这里只看三道都在,拿掉之后其余逐字比基线
+        const OJson* gw = wall.get(u"gex_walls"_s);
+        if (!gw || gw->type != OJson::Object) throw ibkr::util::JsError(u"wallFor 结果缺 gex_walls"_s);
+        for (const char16_t* k : {u"call_gex_wall", u"put_gex_wall", u"max_gamma"})
+            if (!gw->get(QString::fromUtf16(k))) throw ibkr::util::JsError(u"gex_walls 缺 "_s + QString::fromUtf16(k));
+        wall.remove(u"gex_walls"_s);
+        co_return wall;
     };
     s.methods[u"dailyHistory"_s] = [svc](OJson a) -> Task<OJson> {
         const OJson* v = a.get(u"spanDays"_s);

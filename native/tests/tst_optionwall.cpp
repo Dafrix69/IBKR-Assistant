@@ -64,6 +64,45 @@ private slots:
         QVERIFY(n > 140);
     }
 
+    // gexWalls:手算的合成链。现价 100、乘数 100,用券商 gamma ⇒ 一行的 GEX = gamma × OI × 100 × 100² × 1% = gamma × OI × 10000
+    void gexWalls() {
+        const auto row = [](double k, const char16_t* right, double oi, std::optional<double> gamma) {
+            ow::OptionRow r;
+            r.strike = k;
+            r.right = QString::fromUtf16(right);
+            r.oi = oi;
+            r.gamma = gamma;
+            return r;
+        };
+        const std::vector<ow::OptionRow> rows{
+            row(105, u"C", 1000, 0.01),  // +100k
+            row(110, u"C", 3000, 0.01),  // +300k ← 看涨 GEX 最大
+            row(110, u"P", 3500, 0.01),  // −350k ← 看跌 GEX 最大;110 净 −50k
+            row(95, u"C", 500, 0.02),    // +100k
+            row(95, u"P", 1000, 0.02),   // −200k;95 净 −100k
+            row(90, u"P", 1500, 0.01),   // −150k ← 净绝对值最大
+            row(120, u"C", 9000, std::nullopt),  // 没 gamma 也没 IV:不称
+        };
+        const OJson got = ow::gexWalls(rows, 100, 0.01);
+        QCOMPARE(js::stringify(got), js::stringify(js::object({
+            {u"call_gex_wall"_s, js::object({{u"strike"_s, js::N(110)}, {u"gex"_s, js::N(300000)}, {u"distance_pct"_s, js::N(10)}})},
+            {u"put_gex_wall"_s, js::object({{u"strike"_s, js::N(110)}, {u"gex"_s, js::N(350000)}, {u"distance_pct"_s, js::N(10)}})},
+            {u"max_gamma"_s, js::object({{u"strike"_s, js::N(90)}, {u"gex"_s, js::N(-150000)}, {u"distance_pct"_s, js::N(-10)}})},
+        })));
+        // 一样大取离现价近的(98 比 103 近),与先后无关
+        const OJson tie = ow::gexWalls({row(103, u"C", 1000, 0.01), row(98, u"C", 1000, 0.01)}, 100, 0.01);
+        QCOMPARE(tie.get(u"call_gex_wall"_s)->get(u"strike"_s)->n, 98.0);
+        QCOMPARE(tie.get(u"put_gex_wall"_s)->type, OJson::Null);
+        // 什么都称不出来:三道都是 null
+        const OJson none = ow::gexWalls({row(100, u"C", 1000, std::nullopt), row(100, u"P", 0, 0.01)}, 100, 0.01);
+        for (const char16_t* k : {u"call_gex_wall", u"put_gex_wall", u"max_gamma"}) QCOMPARE(none.get(QString::fromUtf16(k))->type, OJson::Null);
+        // 没有券商 gamma 只有 IV:按 BS 在现价处重算,和 bsGamma 对得上
+        ow::OptionRow ivOnly = row(100, u"C", 1000, std::nullopt);
+        ivOnly.iv = 0.2;
+        const double want = ow::bsGamma(100, 100, 0.01, 0.2) * 1000 * 10000;
+        QCOMPARE(ow::gexWalls({ivOnly}, 100, 0.01).get(u"call_gex_wall"_s)->get(u"gex"_s)->n, std::round(want));
+    }
+
     void pieces() {
         for (const OJson& c : fx_.get(u"rows"_s)->items) {
             const QList<OJson> raw = dec(*c.get(u"raw"_s)).items;

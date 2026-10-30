@@ -85,9 +85,11 @@ Task<OJson> MarketDataService::wallFor(QString symbol, std::optional<QString> ex
         if (!js::isArr(rowsP)) throw util::JsError(u"rows is not iterable"_s);
         const OJson* multiplier = js::prop(&chain, u"multiplier"_s);
         const OJson* tradingClass = js::prop(&chain, u"trading_class"_s);
-        OJson core = analysis::optionwall::analyze(rowsP->items, js::num(js::prop(&chain, u"spot"_s)), js::str(js::prop(&chain, u"expiry"_s)), symbol,
-                                                   js::nullish(multiplier) ? 100.0 : js::num(multiplier), domain::nowEt().epochMs,
-                                                   js::nullish(tradingClass) ? QString() : js::str(tradingClass));
+        const double spot = js::num(js::prop(&chain, u"spot"_s)), mult = js::nullish(multiplier) ? 100.0 : js::num(multiplier), nowMs = domain::nowEt().epochMs;
+        const QString chainExpiry = js::str(js::prop(&chain, u"expiry"_s)), cls = js::nullish(tradingClass) ? QString() : js::str(tradingClass);
+        OJson core = analysis::optionwall::analyze(rowsP->items, spot, chainExpiry, symbol, mult, nowMs, cls);
+        const OJson gexWalls = analysis::optionwall::gexWalls(analysis::optionwall::toRows(rowsP->items), spot,
+                                                              analysis::optionwall::yearsToExpiry(chainExpiry, nowMs, symbol, cls), mult);
         QList<double> strikes;
         if (const OJson* ss = js::prop(&core, u"strikes"_s); js::isArr(ss))
             for (const OJson& st : ss->items) strikes.append(js::num(js::prop(&st, u"strike"_s)));
@@ -102,6 +104,7 @@ Task<OJson> MarketDataService::wallFor(QString symbol, std::optional<QString> ex
         result.set(u"expiries"_s, js::nullish(expiries) ? js::array() : *expiries);
         result.set(u"spot_source"_s, js::nullish(spotSource) ? js::S(u"quote"_s) : *spotSource);
         result.set(u"coverage"_s, coverage);
+        result.set(u"gex_walls"_s, gexWalls);
     } catch (const BrokerError& exc) {
         throw RpcError(-32017, exc.message());
     } catch (const analysis::optionwall::OptionWallError& exc) {

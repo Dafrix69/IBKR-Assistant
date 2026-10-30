@@ -32,6 +32,13 @@ export interface MaxPain {
   pain: number;
 }
 
+export interface GexWall {
+  strike: number;
+  /** 这一档的 GEX(美元 / 每 1% 波动):看涨 / 看跌墙记正,max_gamma 带正负号 */
+  gex: number;
+  distance_pct: number | null;
+}
+
 /** 纯计算的那一份(optionwall.analyze):不知道链是从哪家券商、用什么现价取来的。 */
 export interface OptionWallCore {
   symbol: string;
@@ -89,13 +96,19 @@ export interface WallCoverage {
   thinned: boolean;
 }
 
-/** 取链的那一层(services/marketData 的 wallFor)再补三样。 */
+/** 取链的那一层(services/marketData 的 wallFor)再补四样。 */
 export interface OptionWall extends OptionWallCore {
   /** 这个标的可选的到期日 */
   expiries: string[];
   /** 现价是怎么来的:quote = 标的的报价;parity = 拿不到报价,用期权的买卖权平价反推的(富途),界面要标出来 */
   spot_source: "quote" | "parity";
   coverage: WallCoverage;
+  /** 按 GEX 称的三道位(optionwall.gexWalls),不分现价上下;称不出来的是 null */
+  gex_walls: {
+    call_gex_wall: GexWall | null;
+    put_gex_wall: GexWall | null;
+    max_gamma: GexWall | null;
+  };
 }
 
 // ---------------------------------------------------------------- 蝴蝶测算(options.fly_plan)

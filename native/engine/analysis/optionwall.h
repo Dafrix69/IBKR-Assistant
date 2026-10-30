@@ -46,6 +46,11 @@ Gex bsGexAt(const std::vector<OptionRow>& rows, double at, double t, double mult
 bool gexSignConflict(const std::vector<OptionRow>& rows, double spot, double t, double multiplier = kMultiplier);
 std::optional<double> gammaFlip(const std::vector<OptionRow>& rows, const std::vector<double>& strikes, double spot, double t, double multiplier = kMultiplier);
 
+/// 按 GEX(gamma × OI × 乘数 × S² × 1%,gamma 取法同 gexAt)称出来的三道位,不分现价上下:
+/// { call_gex_wall: { strike, gex, distance_pct } | null(看涨 GEX 最大的行权价), put_gex_wall(看跌 GEX 最大,gex 记正),
+///   max_gamma(净 GEX 绝对值最大的行权价,gex 带正负号) }。一样大的取离现价近的;称不出分量(全是 0)的那一道是 null。
+util::OJson gexWalls(const std::vector<OptionRow>& rows, double spot, double t, double multiplier = kMultiplier);
+
 /// OptionWallCore(键序同 TS)
 util::OJson analyze(const QList<util::OJson>& raw, double spot, const QString& expiry = {}, const QString& symbol = {}, double multiplier = kMultiplier,
                     std::optional<double> nowEpochMs = std::nullopt, const QString& tradingClass = {});

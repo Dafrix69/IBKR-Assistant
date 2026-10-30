@@ -27,6 +27,9 @@ QJsonObject wallResult(double spot) {
         {u"gross_gex"_s, 100.0},
         {u"net_gex_ratio"_s, 0.25},
         {u"oi_missing"_s, 0},
+        {u"gex_walls"_s, QJsonObject{{u"call_gex_wall"_s, QJsonObject{{u"strike"_s, 7750}, {u"gex"_s, 1.63e9}}},
+                                     {u"put_gex_wall"_s, QJsonObject{{u"strike"_s, 7700}, {u"gex"_s, 4.2e8}}},
+                                     {u"max_gamma"_s, QJsonValue()}}},
         {u"coverage"_s, QJsonObject{{u"lower"_s, 7675}, {u"upper"_s, 7825}, {u"strikes"_s, 31}, {u"grid_strikes"_s, 31}, {u"thinned"_s, false}}},
     };
 }
@@ -125,7 +128,7 @@ private slots:
         store.refresh();
         fake.fail(u"超时"_s);
         rows = store.rows();
-        QCOMPARE(rows[0][u"items"].toArray().size(), 7);
+        QCOMPARE(rows[0][u"items"].toArray().size(), 10);
         QCOMPARE(rows[0][u"failure"].toString(), u"超时"_s);
         QVERIFY(rows[0][u"note"].toString().contains(u"上一次"_s));
     }
@@ -136,6 +139,12 @@ private slots:
         QCOMPARE(itemNamed(row, u"看涨墙"_s).value("text"_L1).toString(), u"看涨墙 7800(+0.62%)"_s);
         QCOMPARE(itemNamed(row, u"看跌墙"_s).value("text"_L1).toString(), u"看跌墙 7700(−0.67%)"_s);
         QCOMPARE(itemNamed(row, u"量墙 P"_s).value("text"_L1).toString(), u"量墙 P —"_s);
+        QCOMPARE(itemNamed(row, u"GEX 墙 C"_s).value("text"_L1).toString(), u"GEX 墙 C 7750(−0.03%)"_s);
+        QVERIFY(itemNamed(row, u"GEX 墙 C"_s).value("tip"_L1).toString().endsWith(u"这一档 $1.63B / 标的变动 1%"_s));
+        QVERIFY(itemNamed(row, u"GEX 墙 P"_s).value("tip"_L1).toString().contains(u"$420M"_s));
+        // 没称出来:横杠,提示里不带量
+        QCOMPARE(itemNamed(row, u"最大 Gamma"_s).value("text"_L1).toString(), u"最大 Gamma —"_s);
+        QVERIFY(!itemNamed(row, u"最大 Gamma"_s).value("tip"_L1).toString().contains(u'$'));
         // 0.25% 以内标橙:最大痛点 7750 离 7752 只有 0.03%
         QCOMPARE(itemNamed(row, u"最大痛点"_s).value("tone"_L1).toString(), u"near"_s);
         QCOMPARE(itemNamed(row, u"看涨墙"_s).value("tone"_L1).toString(), u""_s);
