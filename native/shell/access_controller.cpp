@@ -37,7 +37,7 @@ QJsonValue numOrNull(const QVariant& v) {
 AccessController::AccessController(Bridge* bridge, StatusStore* status, LlmStore* llm, ShellActions* actions, QString settingsPath, QObject* parent)
     : QObject(parent), bridge_(bridge), status_(status), llm_(llm), actions_(actions), settingsPath_(std::move(settingsPath)) {
     const QString saved = QSettings(settingsPath_, QSettings::IniFormat).value(u"access/subtab"_s).toString();
-    if (saved == u"tws" || saved == u"futu" || saved == u"accounts" || saved == u"llm" || saved == u"follow") sub_ = saved;
+    if (saved == u"tws" || saved == u"accounts" || saved == u"llm" || saved == u"follow") sub_ = saved;
     if (status_) connect(status_, &StatusStore::statusChanged, this, [this] { if (visible_) rebuild(); });
     if (llm_)
         connect(llm_, &LlmStore::changed, this, [this] {
@@ -86,10 +86,7 @@ void AccessController::setSub(const QString& sub) {
 
 void AccessController::mount() {
     if (sub_ == u"tws") loadTwsScan();
-    else if (sub_ == u"futu") {
-        loadCatalog();
-        loadFutuScan();
-    } else if (sub_ == u"accounts") loadAccounts();
+    else if (sub_ == u"accounts") loadAccounts();
     else if (sub_ == u"llm") {
         if (llm_) llm_->load();
         reseedLlm();
@@ -100,7 +97,6 @@ void AccessController::rebuild() {
     const QJsonObject st = status_ ? status_->status() : QJsonObject{};
     const QJsonValue status = st.isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(st);
     if (sub_ == u"tws") model_ = access::twsModel(state_, bits_, status);
-    else if (sub_ == u"futu") model_ = access::futuModel(state_, bits_, status);
     else if (sub_ == u"accounts") model_ = access::accountsModel(state_, status);
     else if (sub_ == u"llm") model_ = access::llmModel(state_, llm_ ? llm_->catalog() : QJsonValue());
     else {
@@ -109,7 +105,7 @@ void AccessController::rebuild() {
     emit changed();
 }
 
-// ---- TWS / 富途 --------------------------------------------------------------------------------------------
+// ---- TWS --------------------------------------------------------------------------------------------
 
 void AccessController::loadTwsScan() {
     const int gen = generation_;
@@ -130,48 +126,18 @@ void AccessController::loadTwsScan() {
     });
 }
 
-void AccessController::loadCatalog() {
-    const int gen = generation_;
-    QPointer<AccessController> self(this);
-    bridge_->rpc(this, u"broker.catalog"_s, QJsonObject{}, [self, gen](const EngineReply& r) {
-        if (!self || gen != self->generation_) return;
-        if (r.ok) {
-            self->state_[u"catalog"_s] = r.result;
-            self->state_[u"catalogError"_s] = QJsonValue::Null;
-        } else self->state_[u"catalogError"_s] = r.error;
-        self->rebuild();
-    });
-}
-
-void AccessController::loadFutuScan() {
-    const int gen = generation_;
-    QPointer<AccessController> self(this);
-    bridge_->rpc(this, u"futu.scan"_s, QJsonObject{}, [self, gen](const EngineReply& r) {
-        if (!self || gen != self->generation_) return;
-        if (r.ok) {
-            self->state_[u"scan"_s] = r.result;
-            self->state_[u"scanError"_s] = QJsonValue::Null;
-        } else self->state_[u"scanError"_s] = r.error;
-        self->rebuild();
-    });
-}
-
 void AccessController::rescan() {
     if (sub_ == u"tws") loadTwsScan();
-    else if (sub_ == u"futu") {
-        loadCatalog();
-        loadFutuScan();
-    }
 }
 
 void AccessController::diagnose() {
-    if (sub_ != u"tws" && sub_ != u"futu") return;
+    if (sub_ != u"tws") return;
     state_[u"diagState"_s] = u"working"_s;
     rebuild();
     const int gen = generation_;
     QPointer<AccessController> self(this);
-    // diagnoseTws() / diagnoseFutu() 不带连接:{ connections: undefined } 在 JSON 里没有这个键
-    bridge_->rpc(this, sub_ == u"tws" ? u"tws.diagnose"_s : u"futu.diagnose"_s, QJsonObject{}, [self, gen](const EngineReply& r) {
+    // diagnoseTws() 不带连接:{ connections: undefined } 在 JSON 里没有这个键
+    bridge_->rpc(this, u"tws.diagnose"_s, QJsonObject{}, [self, gen](const EngineReply& r) {
         if (!self || gen != self->generation_) return;
         if (r.ok) {
             self->state_[u"diag"_s] = r.result[u"results"_s].isArray() ? r.result[u"results"_s] : QJsonValue(QJsonArray{});
@@ -185,21 +151,19 @@ void AccessController::diagnose() {
 }
 
 void AccessController::launch(const QString& key, const QString& name) {
-    if (sub_ != u"tws" && sub_ != u"futu") return;
-    const bool tws = sub_ == u"tws";
+    if (sub_ != u"tws") return;
     bits_[u"launching"_s] = key;
     rebuild();
     const int gen = generation_;
     QPointer<AccessController> self(this);
-    const QJsonObject params = tws ? QJsonObject{{u"app"_s, key}, {u"__confirmed"_s, true}} : QJsonObject{{u"app"_s, u"opend"_s}, {u"__confirmed"_s, true}};
-    bridge_->rpc(this, tws ? u"tws.launch"_s : u"futu.launch"_s, params, [self, gen, tws, name](const EngineReply& r) {
+    const QJsonObject params{{u"app"_s, key}, {u"__confirmed"_s, true}};
+    bridge_->rpc(this, u"tws.launch"_s, params, [self, gen, name](const EngineReply& r) {
         if (!self) return;
         if (r.ok) {
             emit self->notify(u"已启动 "_s + name, u"请在它自己的窗口里登录"_s);
-            QTimer::singleShot(self->relaunchScanMs, self, [self, gen, tws] {
+            QTimer::singleShot(self->relaunchScanMs, self, [self, gen] {
                 if (!self || gen != self->generation_) return;
-                if (tws) self->loadTwsScan();
-                else self->loadFutuScan();
+                self->loadTwsScan();
             });
         } else if (self->status_) self->status_->showError(withPrefix(u"启动失败:"_s, r.error));
         if (gen != self->generation_) return;
@@ -217,96 +181,6 @@ void AccessController::toggleConnection() {
         bits_[u"busy"_s] = false;
         rebuild();
     }
-}
-
-void AccessController::switchBroker(const QString& key, const QString& label) {
-    if (sub_ != u"futu") return;
-    const QJsonObject box{{u"purpose"_s, u"broker.select"_s},
-                          {u"binding"_s, QJsonObject{{u"provider"_s, key}}},
-                          {u"title"_s, u"切换券商"_s},
-                          {u"message"_s, u"把下单出口切到「%1」?"_s.arg(label)},
-                          {u"detail"_s, u"现有的券商连接会先断开,选择会写进配置文件。"_s +
-                                            (key == u"futu" ? u" 富途不支持组合单:价差 / 蝴蝶 / 铁鹰会被引擎拒绝。"_s : QString())},
-                          {u"confirmLabel"_s, u"切换"_s}};
-    const int gen = generation_;
-    QPointer<AccessController> self(this);
-    bridge_->confirm(this, box, [self, gen, key, label](bool ok, const QString&) {
-        if (!ok || !self || gen != self->generation_) return;
-        self->state_[u"switching"_s] = key;
-        self->rebuild();
-        self->bridge_->rpc(self, u"broker.select"_s, QJsonObject{{u"provider"_s, key}, {u"__confirmed"_s, true}}, [self, gen, label](const EngineReply& r) {
-            if (!self) return;
-            if (r.ok) {
-                if (self->status_) self->status_->showInfo(u"已切到 %1。请在下面点「连接 / 断开交易引擎」重新连接。"_s.arg(label));
-                if (gen == self->generation_) self->loadCatalog();
-                if (self->status_) self->status_->refresh();
-            } else if (self->status_) self->status_->showError(u"切换失败:"_s + r.error);
-            if (gen != self->generation_) return;
-            self->state_[u"switching"_s] = QJsonValue::Null;
-            self->rebuild();
-        });
-    });
-}
-
-void AccessController::setFutuPassword(const QString& text) {
-    state_[u"password"_s] = text;
-    rebuild();
-}
-
-void AccessController::setFutuMd5(bool on) {
-    state_[u"isMd5"_s] = on;
-    rebuild();
-}
-
-void AccessController::saveFutuPassword() {
-    const QString password = state_[u"password"_s].toString();
-    if (password.isEmpty()) return;
-    state_[u"saving"_s] = true;
-    rebuild();
-    const int gen = generation_;
-    QPointer<AccessController> self(this);
-    // 明文只在这一次调用里:引擎算完 md5 就丢,不落配置、不进日志
-    bridge_->rpc(this, u"futu.set_password"_s, QJsonObject{{u"password"_s, password}, {u"already_md5"_s, state_[u"isMd5"_s].toBool()}, {u"__confirmed"_s, true}},
-                 [self, gen](const EngineReply& r) {
-                     if (!self) return;
-                     if (r.ok) {
-                         if (gen == self->generation_) {
-                             self->state_[u"password"_s] = QString();
-                             self->loadCatalog();
-                         }
-                         if (self->status_) self->status_->showInfo(u"交易密码已写入 Keychain(只存 md5)。"_s);
-                     } else if (self->status_) self->status_->showError(u"写入失败:"_s + r.error);
-                     if (gen != self->generation_) return;
-                     self->state_[u"saving"_s] = false;
-                     self->rebuild();
-                 });
-}
-
-void AccessController::unlockFutu() {
-    state_[u"unlocking"_s] = true;
-    rebuild();
-    const int gen = generation_;
-    QPointer<AccessController> self(this);
-    // unlockFutu() 不带连接:{ connection: undefined } 在 JSON 里没有这个键
-    bridge_->rpc(this, u"futu.unlock"_s, QJsonObject{{u"__confirmed"_s, true}}, [self, gen](const EngineReply& r) {
-        if (!self) return;
-        if (self->status_) {
-            if (r.ok) {
-                QStringList failed, unlocked;
-                const QJsonObject f = r.result[u"failed"_s].toObject();
-                for (auto it = f.begin(); it != f.end(); ++it) failed << u"%1(%2)"_s.arg(it.key(), S(it.value()));
-                for (const QJsonValue& u : r.result[u"unlocked"_s].toArray()) unlocked << S(u);
-                if (!unlocked.isEmpty()) {
-                    const QString text = u"已解锁:%1%2"_s.arg(unlocked.join(u"、"_s), failed.isEmpty() ? QString() : u";失败:"_s + failed.join(u"、"_s));
-                    if (failed.isEmpty()) self->status_->showInfo(text);
-                    else self->status_->showError(text);
-                } else self->status_->showError(u"解锁失败:"_s + (failed.isEmpty() ? u"没有可解锁的连接"_s : failed.join(u"、"_s)));
-            } else self->status_->showError(u"解锁失败:"_s + r.error);
-        }
-        if (gen != self->generation_) return;
-        self->state_[u"unlocking"_s] = false;
-        self->rebuild();
-    });
 }
 
 // ---- 账户 ---------------------------------------------------------------------------------------------------

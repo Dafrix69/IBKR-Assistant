@@ -322,7 +322,7 @@ QJsonObject button(const QString& text, bool loading = false, bool disabled = fa
 QJsonArray subtabs() {
     QJsonArray out;
     for (const auto& [v, l] : std::initializer_list<std::pair<QString, QString>>{
-             {u"tws"_s, u"TWS"_s}, {u"futu"_s, u"富途 OpenD"_s}, {u"accounts"_s, u"账户"_s}, {u"llm"_s, u"大模型"_s}, {u"follow"_s, u"Discord 跟单"_s}})
+             {u"tws"_s, u"TWS"_s}, {u"accounts"_s, u"账户"_s}, {u"llm"_s, u"大模型"_s}, {u"follow"_s, u"Discord 跟单"_s}})
         out.append(QJsonObject{{u"value"_s, v}, {u"label"_s, l}});
     return out;
 }
@@ -334,7 +334,7 @@ QJsonObject twsModel(const QJsonObject& st, const QJsonObject& bits, const QJson
     QJsonArray notices;
     const QJsonValue current = st[u"current"_s];
     if (S(current) == u"ibkr" && has(current)) notices.append(notice(u"info"_s, u"当前券商接入:IBKR。"_s, u"引擎正通过此通道下单。"_s));
-    else if (T(current)) notices.append(notice(u"warn"_s, u"当前券商接入:富途 OpenD。"_s, u"本页仅检测 IBKR,引擎不经此下单;切换请到「富途 OpenD」页。"_s));
+    else if (T(current)) notices.append(notice(u"warn"_s, u"当前配置的券商接入不是 IBKR。"_s, u"引擎只接 IBKR / TWS:请把配置里的 broker.provider 改回 ibkr。"_s));
     notices.append(notice(u"info"_s, u"不接触你的 IBKR 账号密码。"_s, u"登录在 TWS / IB Gateway 自己的窗口完成;这里只检测本机 API 端口、诊断握手、核对账户别名。"_s));
     const QJsonValue scan = st[u"scan"_s];
     const bool scanned = scan.isObject();
@@ -355,68 +355,6 @@ QJsonObject twsModel(const QJsonObject& st, const QJsonObject& bits, const QJson
                                     [](const QJsonValue& r) { return QStringList{u"clientId "_s + S(r[u"client_id"_s])}; })},
             {u"connect"_s, connectRow(status, bits)},
             {u"guide"_s, guide(u"tws-primer"_s, scan[u"guide"_s], connected)}};
-}
-
-// ==== 富途 ==================================================================================================
-QJsonObject futuModel(const QJsonObject& st, const QJsonObject& bits, const QJsonValue& status) {
-    static const QHash<QString, QString> hint{{u"ibkr"_s, u"需本机运行并登录 TWS 或 IB Gateway。支持组合单(价差 / 蝴蝶 / 铁鹰)。"_s},
-                                              {u"futu"_s, u"需本机运行并登录富途 OpenD。不支持组合单,多腿结构会被拒绝。"_s}};
-    const bool connected = T(status[u"broker_connected"_s]);
-    const QJsonValue catalog = st[u"catalog"_s];
-    QJsonObject providers;
-    if (T(st[u"catalogError"_s])) providers = {{u"empty"_s, u"读取失败:"_s + S(st[u"catalogError"_s])}};
-    else if (!catalog.isObject()) providers = {{u"loading"_s, true}};
-    else {
-        QJsonArray cards;
-        for (const QJsonValue& p : arr(catalog[u"providers"_s])) {
-            const bool current = T(p[u"current"_s]);
-            QStringList conns;
-            const QJsonValue cs = p[u"connections"_s];
-            for (const QString& k : keysOf(cs)) conns << u"%1 %2:%3"_s.arg(k, S(cs[k][u"host"_s]), S(cs[k][u"port"_s]));
-            QJsonObject card = infoCard(current ? u"ok"_s : u"warn"_s, S(p[u"label"_s]) + (current ? u" · 当前生效"_s : QString()), hint.value(S(p[u"key"_s])),
-                                        {conns.isEmpty() ? u"未配置连接"_s : conns.join(u" · "_s), u"%1 个账户"_s.arg(arr(p[u"accounts"_s]).size())});
-            if (T(p[u"config_snippet"_s])) card[u"snippet"_s] = S(p[u"config_snippet"_s]);
-            else if (!current)
-                card[u"action"_s] = QJsonObject{{u"text"_s, u"切到"_s + S(p[u"label"_s])}, {u"key"_s, S(p[u"key"_s])}, {u"label"_s, S(p[u"label"_s])},
-                                                {u"loading"_s, has(st[u"switching"_s]) && S(st[u"switching"_s]) == S(p[u"key"_s])}};
-            cards.append(card);
-        }
-        providers = {{u"cards"_s, cards}};
-    }
-    const QJsonValue scan = st[u"scan"_s];
-    const bool scanned = scan.isObject(), scanFailed = T(st[u"scanError"_s]);
-    QJsonObject apps, ports;
-    if (scanFailed) apps = {{u"empty"_s, u"检测失败:"_s + S(st[u"scanError"_s])}};
-    else if (!scanned) apps = {{u"loading"_s, true}};
-    else {
-        QJsonArray cards;
-        if (scan[u"sdk_installed"_s] == QJsonValue(false))
-            cards.append(infoCard(u"warn"_s, u"这个版本没有带富途的接口库"_s,
-                                  u"富途通道的适配桥还没有完成真机核对,暂未开放。进程检测与端口探测照常可用;端口通的时候,「检测连接」的握手会停在「适配桥尚未完成真机核对」。IBKR 通道不受影响。"_s));
-        for (const QJsonValue& c : appsCards(scan[u"apps"_s], u"未找到(绿色包放在非常见目录时检测不到,可手动启动)"_s, bits)) cards.append(c);
-        apps = {{u"cards"_s, cards}};
-    }
-    if (scanned) ports = {{u"cells"_s, portsGrid(scan[u"ports"_s], scan[u"connected"_s])}};
-    else if (scanFailed) ports = {{u"empty"_s, u"—"_s}};
-    else ports = {{u"loading"_s, true}};
-    const QString diagState = st.contains(u"diagState"_s) ? S(st[u"diagState"_s]) : u"idle"_s;
-    const auto login = [](const QJsonValue& v) { return v == QJsonValue(true) ? u"已登录"_s : v == QJsonValue(false) ? u"未登录"_s : u"未知"_s; };
-    const QString unlockState = !catalog.isObject() ? u"检测中…"_s
-                                : T(catalog[u"futu"_s][u"unlock_password_saved"_s]) ? u"已存密码(md5),连接引擎后点「交易解锁」"_s
-                                                                                    : u"未存密码,模拟盘不受影响,实盘单会被拦下"_s;
-    return {{u"providers"_s, providers},
-            {u"buttons"_s, QJsonArray{button(u"重新检测"_s), button(u"检测连接"_s, diagState == u"working", false, u"primary"_s)}},
-            {u"apps"_s, apps},
-            {u"ports"_s, ports},
-            {u"diag"_s, diagSection(st, u"正在握手…(OpenD 需已登录,否则超时)"_s, u"OpenD 版本"_s,
-                                    [&](const QJsonValue& r) { return QStringList{u"行情登录 "_s + login(r[u"qot_logined"_s]), u"交易登录 "_s + login(r[u"trd_logined"_s])}; })},
-            {u"connect"_s, connectRow(status, bits)},
-            {u"password"_s, st[u"password"_s].toString()},
-            {u"isMd5"_s, st[u"isMd5"_s].toBool()},
-            {u"saving"_s, st[u"saving"_s].toBool()},
-            {u"unlocking"_s, st[u"unlocking"_s].toBool()},
-            {u"unlockState"_s, unlockState},
-            {u"guide"_s, guide(u"futu-primer"_s, scan[u"guide"_s], connected)}};
 }
 
 // ==== 账户 ==================================================================================================
@@ -461,7 +399,7 @@ QJsonObject accountsModel(const QJsonObject& st, const QJsonValue& status) {
     QJsonArray connOptions;
     for (const QJsonValue& c : connections)
         connOptions.append(QJsonObject{{u"value"_s, S(c[u"name"_s])},
-                                       {u"label"_s, u"%1 · %2%3"_s.arg(S(c[u"name"_s]), S(c[u"broker"_s]) == u"futu" ? u"富途"_s : u"IBKR"_s,
+                                       {u"label"_s, u"%1 · %2%3"_s.arg(S(c[u"name"_s]), u"IBKR"_s,
                                                                       T(c[u"port"_s]) ? u" · 端口 "_s + S(c[u"port"_s]) : QString())}});
     const bool editing = has(d[u"editing"_s]);
     m[u"draft"_s] = QJsonObject{
@@ -472,7 +410,7 @@ QJsonObject accountsModel(const QJsonObject& st, const QJsonValue& status) {
         {u"paper"_s, paper},
         {u"connection"_s, S(d[u"connection"_s])},
         {u"makeDefault"_s, d[u"makeDefault"_s].toBool()},
-        {u"idSub"_s, editing ? u"为了不把账号显示出来,修改时要重新填一遍"_s : u"IBKR:U 或 DU 开头加数字;富途:纯数字"_s},
+        {u"idSub"_s, editing ? u"为了不把账号显示出来,修改时要重新填一遍"_s : u"U 或 DU 开头加数字"_s},
         {u"kindSub"_s, mismatch ? u"这个账号不是模拟账号的样子(模拟账号以 D 开头),不能标成纸面"_s : u"实盘账户的订单会用真钱成交"_s},
         {u"mismatch"_s, mismatch},
         {u"connections"_s, connOptions},
@@ -732,15 +670,8 @@ QStringList badge(int n) {
 QStringList pageTexts(const QString& sub, const QJsonObject& m) {
     QStringList t{u"接入"_s};
     for (const QJsonValue& s : subtabs()) t << s[u"label"_s].toString();
-    if (sub == u"tws" || sub == u"futu") {
-        const bool futu = sub == u"futu";
-        if (futu) {
-            t << u"IBKR API 跑不起来时的备用通道。"_s << u"同样不接触你的富途账号密码,登录在 OpenD 自己的窗口完成;这里只检测端口、诊断握手、核对账户别名。"_s << u"不支持组合单"_s
-              << u":价差 / 蝴蝶 / 铁鹰拆单有腿风险,引擎会直接拒绝,请切回 IBKR。"_s << u"没有原生条件单"_s << u":条件单由本软件盯盘,"_s << u"软件关掉就不会触发"_s
-              << u"(IBKR 的条件单挂在券商服务器,掉线仍有效)。"_s << u"0 · 当前券商接入"_s;
-            blockTexts(t, m[u"providers"_s]);
-            t << u"同一时刻只连一家。切换会断开现有连接并写入配置;别名、限额、校验层不变。"_s;
-        } else noticeTexts(t, m[u"notices"_s]);
+    if (sub == u"tws") {
+        noticeTexts(t, m[u"notices"_s]);
         t << u"重新检测"_s << u"检测连接"_s << u"1 · 程序"_s;
         blockTexts(t, m[u"apps"_s]);
         t << u"2 · API 端口"_s;
@@ -748,10 +679,6 @@ QStringList pageTexts(const QString& sub, const QJsonObject& m) {
         t << u"3 · 握手与账户"_s;
         blockTexts(t, m[u"diag"_s]);
         t << u"4 · 连接引擎"_s << m[u"connect"_s][u"text"_s].toString() << u"「检测连接」是一次性只读探测;这里才是引擎下单用的长连接。"_s;
-        if (futu)
-            t << u"5 · 交易解锁(仅实盘需要)"_s << u"只存 md5"_s << u"于 Keychain / DPAPI,明文算完即丢,不写配置、不进日志。模拟盘无需解锁。"_s << u"我填的已经是 md5"_s
-              << u"不勾则由引擎本机计算"_s << u"解锁状态"_s << m[u"unlockState"_s].toString() << u"保存"_s << u"交易解锁"_s
-              << u"解锁随 OpenD 会话失效,重启 OpenD 后需重新解锁;未解锁时实盘单会在引擎侧被拦下。"_s;
         guideTexts(t, m[u"guide"_s], m[u"guide"_s][u"defaultOpen"_s].toBool());
         return t;
     }

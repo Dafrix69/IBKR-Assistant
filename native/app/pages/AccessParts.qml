@@ -138,8 +138,7 @@ QtObject {
                 controller: cb.controller
                 onAction: function (a) {
                     if (!cb.controller) return
-                    if (a.label !== undefined) cb.controller.switchBroker(a.key, a.label)
-                    else cb.controller.launch(a.key, modelData.title)
+                    cb.controller.launch(a.key, modelData.title)
                 }
             }
         }
@@ -201,33 +200,19 @@ QtObject {
         wrap: true; size: 11; css: 1.55; color: Theme.labelSecondary
     }
 
-    // ---- TWS / 富途 ---------------------------------------------------------------------------
+    // ---- TWS ---------------------------------------------------------------------------
     component BrokerPanel: Column {
         id: bp
         property var m: ({})
-        property bool futu: false
         property var controller: null
         Repeater {
-            model: bp.futu ? [] : bp.m.notices || []
+            model: bp.m.notices || []
             Column {
                 required property var modelData
                 width: bp.width
                 Alert { width: parent.width; tone: parent.modelData.tone; title: parent.modelData.title; text: parent.modelData.text }
                 Item { width: 1; height: 14 }
             }
-        }
-        Column {
-            visible: bp.futu
-            width: parent.width
-            Alert {
-                width: parent.width
-                tone: "info"; title: "IBKR API 跑不起来时的备用通道。"; rich: true
-                text: "同样不接触你的富途账号密码,登录在 OpenD 自己的窗口完成;这里只检测端口、诊断握手、核对账户别名。<br><b>不支持组合单</b>:价差 / 蝴蝶 / 铁鹰拆单有腿风险,引擎会直接拒绝,请切回 IBKR。"
-                      + "<br><b>没有原生条件单</b>:条件单由本软件盯盘,<i>软件关掉就不会触发</i>(IBKR 的条件单挂在券商服务器,掉线仍有效)。"
-            }
-            SectionTitle { text: "0 · 当前券商接入" }
-            CardsBlock { width: parent.width; b: bp.m.providers || ({}); controller: bp.controller }
-            HintP { text: "同一时刻只连一家。切换会断开现有连接并写入配置;别名、限额、校验层不变。" }
         }
         ButtonRow {
             width: parent.width; collapsed: true
@@ -243,42 +228,6 @@ QtObject {
         SectionTitle { text: "3 · 握手与账户" }
         CardsBlock { width: parent.width; b: bp.m.diag || ({}); controller: bp.controller }
         ConnectRow { width: parent.width; c: bp.m.connect || ({}); controller: bp.controller }
-        Column {
-            visible: bp.futu
-            width: parent.width
-            SectionTitle { text: "5 · 交易解锁(仅实盘需要)" }
-            Group {
-                width: parent.width
-                GroupRow {
-                    width: parent.width
-                    stacked: true; richLabel: true
-                    label: "<b>只存 md5</b>于 Keychain / DPAPI,明文算完即丢,不写配置、不进日志。模拟盘无需解锁。"
-                    Input {
-                        width: parent.width
-                        password: true; placeholder: "富途交易密码"
-                        text: bp.m.password || ""
-                        onEdited: function (t) { if (bp.controller) bp.controller.setFutuPassword(t) }
-                    }
-                }
-                SwitchRow {
-                    width: parent.width
-                    label: "我填的已经是 md5"; sub: "不勾则由引擎本机计算"
-                    checked: !!bp.m.isMd5
-                    onToggled: function (on) { if (bp.controller) bp.controller.setFutuMd5(on) }
-                }
-                GroupRow {
-                    width: parent.width
-                    label: "解锁状态"; sub: bp.m.unlockState || ""
-                    Row {
-                        spacing: 6
-                        Button { text: "保存"; busy: !!bp.m.saving; onClicked: if (bp.controller) bp.controller.saveFutuPassword() }
-                        Button { kind: "primary"; text: "交易解锁"; busy: !!bp.m.unlocking; onClicked: if (bp.controller) bp.controller.unlockFutu() }
-                    }
-                }
-            }
-            // 组下 14,与 p.hint 的上 7 合并成 14
-            HintP { topPadding: 14; text: "解锁随 OpenD 会话失效,重启 OpenD 后需重新解锁;未解锁时实盘单会在引擎侧被拦下。" }
-        }
         GuidePrimer { width: parent.width; g: bp.m.guide || ({}) }
     }
 

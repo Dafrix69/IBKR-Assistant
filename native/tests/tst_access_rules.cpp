@@ -1,5 +1,5 @@
-// 「接入」五节(shell/access_rules)对着原版现算的期望值(tests/fixtures/gen_access.mjs,本机时区 Asia/Shanghai):
-//   · 46 个页面场景:整节的字、按钮(读着、点不动、主次、危险)、卡片的状态色、提示条、端口开没开、状态点、标签、胶囊、
+// 「接入」四节(shell/access_rules)对着原版现算的期望值(tests/fixtures/gen_access.mjs,本机时区 Asia/Shanghai):
+//   · 39 个页面场景:整节的字、按钮(读着、点不动、主次、危险)、卡片的状态色、提示条、端口开没开、状态点、标签、胶囊、
 //     跟单的连接 / 读窗口 / 收件那三行的颜色、账户勾选、开关、分段、输入框、参考资料展开没有;
 //   · followForm.ts:表单的检查、拼出要存的那一份、改过没有、加信任的人、读窗口那一行、盘口那一行。
 // fixture 按原文的键序读(OJson::toQJsonKeyed):券商目录里连接的次序就是 Object.entries 的次序。
@@ -71,7 +71,6 @@ QJsonObject modelOf(const QJsonObject& c) {
     const QJsonObject st = seed[sub].toObject(), bits = seed[u"bits"_s].toObject();
     const QJsonValue status = c[u"status"_s];
     if (sub == u"tws") return access::twsModel(st, bits, status);
-    if (sub == u"futu") return access::futuModel(st, bits, status);
     if (sub == u"accounts") return access::accountsModel(st, status);
     if (sub == u"llm") return access::llmModel(st, c[u"llm"_s]);
     return access::followModel(st, status, kZone);
@@ -99,7 +98,7 @@ private slots:
         };
         const auto alertType = [](const QString& tone) { return tone == u"warn"_s ? u"warning"_s : tone == u"bad"_s ? u"error"_s : tone; };
         QJsonArray buttons, cards, notices, badges, tags, pills, ports, tones, checks, switches, inputs, primers;
-        QJsonArray segments{QJsonValue(QJsonArray{sub == u"tws", sub == u"futu", sub == u"accounts", sub == u"llm", sub == u"follow"})};
+        QJsonArray segments{QJsonValue(QJsonArray{sub == u"tws", sub == u"accounts", sub == u"llm", sub == u"follow"})};
         const auto cardsOf = [&](const QJsonValue& block) {
             for (const QJsonValue& cd : block[u"cards"_s].toArray()) {
                 cards.append(cd[u"tone"_s].toString());
@@ -107,11 +106,8 @@ private slots:
                 for (const QJsonValue& r : cd[u"rows"_s].toArray()) badges.append(r[u"resolved"_s].toBool() ? u"success"_s : u"error"_s);
             }
         };
-        if (sub == u"tws" || sub == u"futu") {
-            const bool futu = sub == u"futu";
-            if (futu) cardsOf(m[u"providers"_s]);
+        if (sub == u"tws") {
             for (const QJsonValue& n : m[u"notices"_s].toArray()) notices.append(alertType(n[u"tone"_s].toString()));
-            if (futu) notices.append(u"info"_s);
             for (const QJsonValue& b : m[u"buttons"_s].toArray()) buttons.append(fromModel(b));
             cardsOf(m[u"apps"_s]);
             for (const QJsonValue& cell : m[u"ports"_s][u"cells"_s].toArray()) {
@@ -120,12 +116,6 @@ private slots:
             }
             cardsOf(m[u"diag"_s]);
             buttons.append(btn(m[u"connect"_s][u"text"_s].toString(), m[u"connect"_s][u"busy"_s].toBool()));
-            if (futu) {
-                buttons.append(btn(u"保存"_s, m[u"saving"_s].toBool()));
-                buttons.append(btn(u"交易解锁"_s, m[u"unlocking"_s].toBool(), false, true));
-                switches.append(m[u"isMd5"_s].toBool());
-                inputs.append(QJsonObject{{u"type"_s, u"password"_s}, {u"value"_s, m[u"password"_s]}, {u"placeholder"_s, u"富途交易密码"_s}, {u"disabled"_s, false}, {u"checked"_s, false}});
-            }
             primers.append(m[u"guide"_s][u"defaultOpen"_s].toBool());
         } else if (sub == u"accounts") {
             for (const QJsonValue& n : m[u"notices"_s].toArray()) notices.append(alertType(n[u"tone"_s].toString()));

@@ -1,8 +1,8 @@
-// 「接入」一页的接线(pages/Access.tsx 与五节 lib/TwsPanel、FutuPanel、AccountsPanel、LlmPanel、FollowPanel,共用的 lib/connectBits):
-//   · 五节各自的状态照原版的 useState 存成一份 JSON(同名字段),模型由 shell/access_rules 摆;一次只挂一节,换子页签 = 旧的那节卸载(状态清掉)、
+// 「接入」一页的接线(pages/Access.tsx 与四节 lib/TwsPanel、AccountsPanel、LlmPanel、FollowPanel,共用的 lib/connectBits;富途那一节已删):
+//   · 四节各自的状态照原版的 useState 存成一份 JSON(同名字段),模型由 shell/access_rules 摆;一次只挂一节,换子页签 = 旧的那节卸载(状态清掉)、
 //     新的那节挂上(读一次);子页签记在本机(access/subtab);
-//   · TWS / 富途:进来检测程序与端口、读券商目录;「检测连接」是一次只读握手;启动程序(tws.launch / futu.launch,带 __confirmed)成了发一条通知、
-//     4 秒后重新检测;换券商先弹确认框(purpose broker.select,绑着要换的那一家),确认了才 broker.select;交易密码只往 futu.set_password 送;
+//   · TWS:进来检测程序与端口、读当前券商;「检测连接」是一次只读握手;启动程序(tws.launch,带 __confirmed)成了发一条通知、
+//     4 秒后重新检测;
 //     「连接 / 断开交易引擎」借壳上的同一个动作(ShellActions),按钮自己记着读着;
 //   · 账户:改动交给壳(main.js 的 accounts-change:校验、原生确认框、写配置、重启引擎),成了 2.5 秒后刷新状态与连接列表;
 //   · 大模型:目录在 LlmStore;表单在目录或供应商真的变了时才重填(签名 = [供应商, 已存配置]);测试可以带一把还没存的 key;
@@ -28,7 +28,7 @@ class StatusStore;
 class AccessController : public QObject {
     Q_OBJECT
     Q_PROPERTY(QString sub READ sub NOTIFY changed)
-    /// 当前那一节的模型(access_rules 的 twsModel / futuModel / accountsModel / llmModel / followModel)
+    /// 当前那一节的模型(access_rules 的 twsModel / accountsModel / llmModel / followModel)
     Q_PROPERTY(QJsonObject model READ model NOTIFY changed)
 
 public:
@@ -39,16 +39,11 @@ public:
 
     Q_INVOKABLE void setVisible(bool on);
     Q_INVOKABLE void setSub(const QString& sub);
-    // ---- TWS / 富途
+    // ---- TWS
     Q_INVOKABLE void rescan();
     Q_INVOKABLE void diagnose();
     Q_INVOKABLE void launch(const QString& key, const QString& name);
     Q_INVOKABLE void toggleConnection();
-    Q_INVOKABLE void switchBroker(const QString& key, const QString& label);
-    Q_INVOKABLE void setFutuPassword(const QString& text);
-    Q_INVOKABLE void setFutuMd5(bool on);
-    Q_INVOKABLE void saveFutuPassword();
-    Q_INVOKABLE void unlockFutu();
     // ---- 账户
     /// alias 空 = 新加
     Q_INVOKABLE void openDraft(const QString& alias);
@@ -96,8 +91,6 @@ private:
     void writeSub(const QString& sub) const;
     QJsonObject& panel();
     void loadTwsScan();
-    void loadCatalog();
-    void loadFutuScan();
     void loadAccounts();
     void submitAccount(const QJsonObject& change);
     void reseedLlm();

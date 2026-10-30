@@ -1,7 +1,6 @@
-// 「接入」的接线(shell/access_controller,照 pages/Access.tsx 与五节):对着假引擎。
-//   · 子页签记在本机;一次只挂一节:进来读、换走清掉、晚到的回包不落地;
+// 「接入」的接线(shell/access_controller,照 pages/Access.tsx 与四节):对着假引擎。
+//   · 子页签记在本机(旧版记下的「futu」不再认,回到 TWS);一次只挂一节:进来读、换走清掉、晚到的回包不落地;
 //   · TWS:检测程序与端口、读券商目录;「检测连接」的入参与读着 / 失败;启动程序带 __confirmed、发通知、过一会儿重新检测、失败横幅带「启动失败:」;
-//   · 富途:换券商不弹框,直接发;交易密码只往 futu.set_password 送、存完清掉;解锁的几种说法;
 //   · 账户:改动交给壳,成了清掉表单、横幅、过一会儿刷新;取消不说话;失败横幅;
 //   · 大模型:按目录与供应商重填表单(同一份目录再来不冲掉没存的);数字框不合规先说;测试带一把还没存的 key;保存与存 key 的入参;
 //   · 跟单:读状态、引擎报 follow 时重读但不动表单;关是当场生效的;有毛病不发;打开着保存要过确认框(gate.follow)。
@@ -67,13 +66,10 @@ struct Rig {
         QString error;
         if (!consent.accept(QLatin1StringView(shell::kTermsVersion), u"test"_s, 1'000, &error)) qFatal("%s", qPrintable(error));
         set(u"tws.scan"_s, seedOf(u"TWS:检测到了、当前是 IBKR"_s, u"tws"_s, u"scan"_s));
-        set(u"broker.catalog"_s, seedOf(u"富途:都读到了"_s, u"futu"_s, u"catalog"_s));
-        set(u"futu.scan"_s, seedOf(u"富途:都读到了"_s, u"futu"_s, u"scan"_s));
+        set(u"broker.catalog"_s, QJsonObject{{u"current"_s, u"ibkr"_s}});
         set(u"tws.diagnose"_s, QJsonObject{{u"results"_s, QJsonArray{}}});
         set(u"tws.launch"_s, QJsonObject{{u"ok"_s, true}});
         set(u"broker.select"_s, QJsonObject{{u"ok"_s, true}});
-        set(u"futu.set_password"_s, QJsonObject{{u"ok"_s, true}});
-        set(u"futu.unlock"_s, QJsonObject{{u"unlocked"_s, QJsonArray{u"opend"_s}}, {u"failed"_s, QJsonObject{}}});
         set(u"llm.catalog"_s, QJsonDocument::fromJson(R"J({"providers":[{"key":"anthropic","label":"Anthropic(Claude)","default_model":"claude-opus-5","models":["claude-opus-5","claude-sonnet-5"],"supports_effort":true,"supports_temperature":false,"needs_base_url":false,"default_base_url":"","docs":"d"},{"key":"openai_compatible","label":"OpenAI 兼容端点","default_model":"","models":["deepseek-chat"],"supports_effort":false,"supports_temperature":true,"needs_base_url":true,"default_base_url":"https://api.deepseek.com/v1","docs":"x"}],"current":{"provider":"anthropic","model":"claude-opus-5","base_url":"","effort":"high","temperature":null,"max_tokens":8000,"timeout_s":60},"key_configured":{"anthropic":true}})J").object());
         set(u"llm.test"_s, QJsonObject{{u"ok"_s, true}, {u"model"_s, u"claude-opus-5"_s}, {u"latency_ms"_s, 500}, {u"structured_mode"_s, u"json_schema"_s}});
         set(u"llm.patch"_s, QJsonObject{{u"ok"_s, true}});
@@ -145,47 +141,17 @@ private slots:
         {
             shell::AccessController page(&rig.bridge, &rig.status, &rig.llm, &rig.actions, rig.ini);
             page.setVisible(true);
-            page.setSub(u"futu"_s);  // tws.scan 还在路上:那一节已经卸载,回来不落地
-            QTRY_VERIFY(page.model()[u"providers"_s][u"cards"_s].isArray());
-            QTRY_VERIFY(page.model()[u"apps"_s][u"cards"_s].isArray());
+            page.setSub(u"accounts"_s);  // tws.scan 还在路上:那一节已经卸载,回来不落地
             QTest::qWait(300);
-            QCOMPARE(page.model()[u"apps"_s][u"cards"_s].toArray().size(), 1);  // 富途的那一张,不是 TWS 的
-            QCOMPARE(QSettings(rig.ini, QSettings::IniFormat).value(u"access/subtab"_s).toString(), u"futu"_s);
+            QVERIFY(!page.model().contains(u"apps"_s));
+            QCOMPARE(QSettings(rig.ini, QSettings::IniFormat).value(u"access/subtab"_s).toString(), u"accounts"_s);
         }
         shell::AccessController again(&rig.bridge, &rig.status, &rig.llm, &rig.actions, rig.ini);
-        QCOMPARE(again.sub(), u"futu"_s);
-    }
-
-    void futuSwitchPasswordUnlock() {
-        Rig rig;
-        shell::AccessController page(&rig.bridge, &rig.status, &rig.llm, &rig.actions, rig.ini);
-        page.setSub(u"futu"_s);
-        page.setVisible(true);
-        QTRY_VERIFY(page.model()[u"providers"_s][u"cards"_s].isArray());
-        // 换券商:不弹框,直接发
-        page.switchBroker(u"futu"_s, u"富途证券(OpenD)"_s);
-        QTRY_COMPARE(rig.calls(u"broker.select"_s), 1);
-        QCOMPARE(rig.asker.boxes.size(), 0);
-        QCOMPARE(rig.params(u"broker.select"_s).first(), u"{\"provider\":\"futu\"}"_s);
-        QTRY_COMPARE(rig.status.banner(), u"已切到 富途证券(OpenD)。请在下面点「连接 / 断开交易引擎」重新连接。"_s);
-        // 交易密码:空着不发;存完清掉、横幅
-        page.saveFutuPassword();
-        QTest::qWait(50);
-        QCOMPARE(rig.calls(u"futu.set_password"_s), 0);
-        page.setFutuPassword(u"pw"_s);
-        page.setFutuMd5(true);
-        page.saveFutuPassword();
-        QVERIFY(page.model()[u"saving"_s].toBool());
-        QTRY_COMPARE(rig.calls(u"futu.set_password"_s), 1);
-        QTRY_VERIFY(!page.model()[u"saving"_s].toBool());
-        QCOMPARE(page.model()[u"password"_s].toString(), QString());
-        QCOMPARE(rig.status.banner(), u"交易密码已写入 Keychain(只存 md5)。"_s);
-        // 解锁:成了一句;有失败的也说
-        page.unlockFutu();
-        QTRY_COMPARE(rig.status.banner(), u"已解锁:opend"_s);
-        rig.set(u"futu.unlock"_s, QJsonObject{{u"unlocked"_s, QJsonArray{}}, {u"failed"_s, QJsonObject{{u"opend"_s, u"密码不对"_s}}}});
-        page.unlockFutu();
-        QTRY_COMPARE(rig.status.banner(), u"解锁失败:opend(密码不对)"_s);
+        QCOMPARE(again.sub(), u"accounts"_s);
+        // 旧版本记下的富途子页签:那一节已经删了,回到 TWS
+        QSettings(rig.ini, QSettings::IniFormat).setValue(u"access/subtab"_s, u"futu"_s);
+        shell::AccessController old(&rig.bridge, &rig.status, &rig.llm, &rig.actions, rig.ini);
+        QCOMPARE(old.sub(), u"tws"_s);
     }
 
     void accountsGoThroughTheShell() {

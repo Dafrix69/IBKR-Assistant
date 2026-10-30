@@ -1,6 +1,7 @@
 // BrokerLinkService(services/brokerLink.ts)对着原模块现跑的答案:真的 BrokerRouter + 脚本驱动的假会话 + 虚拟钟 + 真的交易库,
 // 宿主 / 引擎 / 通知器 / stderr / 会话上每一次调用的日志、各步结果、库里变了的表,逐项精确比较。夹具:fixtures/svc_brokerlink.json(gen_svc_brokerlink.mjs)。
 #include "orchestrate/services/broker_link.h"
+#include "orchestrate/services/svc1_ports.h"
 #include "svc_world.h"
 
 #include <QTest>
@@ -57,6 +58,17 @@ Svc buildLink(World& w, Host& host, const OJson&, Runner& runner) {
 class TstSvcBrokerLink : public QObject {
     Q_OBJECT
 private slots:
+    // 生产里 routerPort() 就是 adaptBrokerRouter(真的 BrokerRouter):它得认得出 Svc1Router 那一面,
+    // 否则异动监控永远报「当前券商暂不支持」、跟单的 coveredAccounts 永远是空(测试替身两面都实现,盖不住这个)
+    void realAdapterHasSvc1Face() {
+        auto router = std::make_shared<BrokerRouter>(ibkr::domain::Settings());
+        const std::shared_ptr<RouterPort> port = adaptBrokerRouter(router);
+        QVERIFY(port);
+        const auto svc1 = std::dynamic_pointer_cast<Svc1Router>(port);
+        QVERIFY(svc1);
+        QVERIFY(svc1->supportsVolumeQuotes());
+        QVERIFY(svc1->coveredAccounts().has_value());
+    }
     void scenarios() {
         const OJson fx = jsfix::load(u"svc_brokerlink.json"_s);
         const OJson& base = *fx.get(u"base"_s);

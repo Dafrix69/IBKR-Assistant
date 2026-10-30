@@ -1,10 +1,13 @@
 #include "orchestrate/services/svc_host.h"
 
+#include "orchestrate/services/svc1_ports.h"
+
 namespace ibkr::orchestrate {
 
 namespace {
 
-class BrokerRouterPort : public RouterPort {
+// RouterPort 与 Svc1Router 两面都由它实现:异动的量能流、跟单的 coveredAccounts 都靠 dynamic_pointer_cast<Svc1Router> 认这一面
+class BrokerRouterPort : public RouterPort, public Svc1Router {
 public:
     explicit BrokerRouterPort(std::shared_ptr<execution::BrokerRouter> r) : r_(std::move(r)) {}
     bool hasSessions() override { return !r_->sessions().empty(); }
@@ -24,6 +27,10 @@ public:
     util::Task<execution::TaggedBars> intradayBars(QString symbol, QString timeframe, bool rth, std::optional<QString> endDay, bool indexProxy) override {
         return r_->intradayBars(std::move(symbol), std::move(timeframe), rth, std::move(endDay), indexProxy);
     }
+    bool supportsVolumeQuotes() override { return execution::BrokerRouter::kSupportsVolumeQuotes; }
+    util::Task<util::OJson> volumeQuotes(QStringList symbols) override { return r_->volumeQuotes(std::move(symbols)); }
+    int releaseVolumeStreams(QStringList keep) override { return r_->releaseVolumeStreams(keep); }
+    std::optional<QStringList> coveredAccounts() override { return r_->coveredAccounts(); }
 
 private:
     std::shared_ptr<execution::BrokerRouter> r_;

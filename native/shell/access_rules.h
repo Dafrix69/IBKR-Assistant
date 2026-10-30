@@ -41,7 +41,6 @@ QJsonArray subtabs();
 
 /// 各节:输入是那一节的 useState(同名字段),bits 是 connectBits 里两颗按钮的「读着」({ launching, busy }),status 是状态快照(没起来是 null)
 QJsonObject twsModel(const QJsonObject& st, const QJsonObject& bits, const QJsonValue& status);
-QJsonObject futuModel(const QJsonObject& st, const QJsonObject& bits, const QJsonValue& status);
 QJsonObject accountsModel(const QJsonObject& st, const QJsonValue& status);
 QJsonObject llmModel(const QJsonObject& st, const QJsonValue& catalog);
 QJsonObject followModel(const QJsonObject& st, const QJsonValue& status, const QTimeZone& zone = QTimeZone::systemTimeZone());

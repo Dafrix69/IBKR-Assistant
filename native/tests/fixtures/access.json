@@ -121,7 +121,6 @@
    "texts": [
     "接入",
     "TWS",
-    "富途 OpenD",
     "账户",
     "大模型",
     "Discord 跟单",
@@ -165,7 +164,6 @@
    "segments": [
     [
      true,
-     false,
      false,
      false,
      false
@@ -399,7 +397,6 @@
    "texts": [
     "接入",
     "TWS",
-    "富途 OpenD",
     "账户",
     "大模型",
     "Discord 跟单",
@@ -464,7 +461,6 @@
    "segments": [
     [
      true,
-     false,
      false,
      false,
      false
@@ -712,12 +708,11 @@
    "texts": [
     "接入",
     "TWS",
-    "富途 OpenD",
     "账户",
     "大模型",
     "Discord 跟单",
-    "当前券商接入:富途 OpenD。",
-    "本页仅检测 IBKR,引擎不经此下单;切换请到「富途 OpenD」页。",
+    "当前配置的券商接入不是 IBKR。",
+    "引擎只接 IBKR / TWS:请把配置里的 broker.provider 改回 ibkr。",
     "不接触你的 IBKR 账号密码。",
     "登录在 TWS / IB Gateway 自己的窗口完成;这里只检测本机 API 端口、诊断握手、核对账户别名。",
     "重新检测",
@@ -783,7 +778,6 @@
    "segments": [
     [
      true,
-     false,
      false,
      false,
      false
@@ -941,7 +935,6 @@
    "texts": [
     "接入",
     "TWS",
-    "富途 OpenD",
     "账户",
     "大模型",
     "Discord 跟单",
@@ -987,7 +980,6 @@
    "segments": [
     [
      true,
-     false,
      false,
      false,
      false
@@ -1222,7 +1214,6 @@
    "texts": [
     "接入",
     "TWS",
-    "富途 OpenD",
     "账户",
     "大模型",
     "Discord 跟单",
@@ -1287,7 +1278,6 @@
    "segments": [
     [
      true,
-     false,
      false,
      false,
      false
@@ -1536,7 +1526,6 @@
    "texts": [
     "接入",
     "TWS",
-    "富途 OpenD",
     "账户",
     "大模型",
     "Discord 跟单",
@@ -1599,7 +1588,6 @@
    "segments": [
     [
      true,
-     false,
      false,
      false,
      false
@@ -1919,7 +1907,6 @@
    "texts": [
     "接入",
     "TWS",
-    "富途 OpenD",
     "账户",
     "大模型",
     "Discord 跟单",
@@ -2001,7 +1988,6 @@
    "segments": [
     [
      true,
-     false,
      false,
      false,
      false
@@ -2254,7 +2240,6 @@
    "texts": [
     "接入",
     "TWS",
-    "富途 OpenD",
     "账户",
     "大模型",
     "Discord 跟单",
@@ -2335,7 +2320,6 @@
      true,
      false,
      false,
-     false,
      false
     ]
    ],
@@ -2358,2509 +2342,6 @@
    "ports": [
     "closed",
     "open",
-    "closed",
-    "closed"
-   ],
-   "rowTones": [],
-   "checks": [],
-   "primers": [
-    false
-   ]
-  },
-  {
-   "name": "富途:读着",
-   "sub": "futu",
-   "seed": {},
-   "status": {
-    "protocol": "1.0",
-    "now_et": "2026-08-21 09:42:11",
-    "market_status": "盘中",
-    "prompt_version": "v1.8.0",
-    "prompt_fingerprint": "a3f9",
-    "model": "claude-opus-5",
-    "auto_execute": true,
-    "allow_live_trading": false,
-    "breaker": {
-     "engaged": false,
-     "reason": "",
-     "consecutive_failures": 0
-    },
-    "protections": {
-     "paused": false,
-     "rule": "",
-     "reason": "",
-     "until_ms": null,
-     "cooldowns": []
-    },
-    "broker_provider": "ibkr",
-    "broker_connected": true,
-    "broker_upstream_ok": true,
-    "pending_count": 1,
-    "accounts": [
-     {
-      "alias": "模拟",
-      "account_masked": "DU***321",
-      "is_paper": true,
-      "connection": "paper",
-      "broker": "ibkr",
-      "default": true
-     },
-     {
-      "alias": "主账户",
-      "account_masked": "U1***567",
-      "is_paper": false,
-      "connection": "live",
-      "broker": "ibkr",
-      "default": false
-     },
-     {
-      "alias": "富途模拟",
-      "account_masked": "20***585",
-      "is_paper": true,
-      "connection": "opend",
-      "broker": "futu",
-      "default": false
-     }
-    ],
-    "limits": {
-     "max_order_notional": 5000,
-     "max_option_contracts": 5,
-     "max_mkt_shares": 200,
-     "min_confidence": 0.9,
-     "max_spread_slippage": 0.1,
-     "duplicate_window_minutes": 10
-    }
-   },
-   "local": {},
-   "llm": {
-    "providers": [
-     {
-      "key": "anthropic",
-      "label": "Anthropic(Claude)",
-      "default_model": "claude-opus-5",
-      "models": [
-       "claude-opus-5",
-       "claude-sonnet-5",
-       "claude-haiku-4-5"
-      ],
-      "supports_effort": true,
-      "supports_temperature": false,
-      "needs_base_url": false,
-      "default_base_url": "",
-      "key_hint": "sk-ant-...",
-      "docs": "https://platform.claude.com/"
-     },
-     {
-      "key": "openai_compatible",
-      "label": "OpenAI 兼容端点",
-      "default_model": "",
-      "models": [
-       "deepseek-chat",
-       "qwen-max",
-       "glm-4-plus"
-      ],
-      "supports_effort": false,
-      "supports_temperature": true,
-      "needs_base_url": true,
-      "default_base_url": "https://api.deepseek.com/v1",
-      "key_hint": "sk-...",
-      "docs": "填服务商给的 base_url"
-     }
-    ],
-    "current": {
-     "provider": "anthropic",
-     "model": "claude-opus-5",
-     "base_url": "",
-     "effort": "high",
-     "temperature": null,
-     "max_tokens": 8000,
-     "timeout_s": 60,
-     "keychain_service": "dafri-llm-api-key",
-     "keychain_account": "anthropic"
-    },
-    "key_configured": {
-     "anthropic": true,
-     "openai_compatible": false
-    }
-   },
-   "texts": [
-    "接入",
-    "TWS",
-    "富途 OpenD",
-    "账户",
-    "大模型",
-    "Discord 跟单",
-    "IBKR API 跑不起来时的备用通道。",
-    "同样不接触你的富途账号密码,登录在 OpenD 自己的窗口完成;这里只检测端口、诊断握手、核对账户别名。",
-    "不支持组合单",
-    ":价差 / 蝴蝶 / 铁鹰拆单有腿风险,引擎会直接拒绝,请切回 IBKR。",
-    "没有原生条件单",
-    ":条件单由本软件盯盘,",
-    "软件关掉就不会触发",
-    "(IBKR 的条件单挂在券商服务器,掉线仍有效)。",
-    "0 · 当前券商接入",
-    "同一时刻只连一家。切换会断开现有连接并写入配置;别名、限额、校验层不变。",
-    "重新检测",
-    "检测连接",
-    "1 · 程序",
-    "2 · API 端口",
-    "3 · 握手与账户",
-    "点「检测连接」做一次只读握手",
-    "4 · 连接引擎",
-    "断开交易引擎",
-    "「检测连接」是一次性只读探测;这里才是引擎下单用的长连接。",
-    "5 · 交易解锁(仅实盘需要)",
-    "只存 md5",
-    "于 Keychain / DPAPI,明文算完即丢,不写配置、不进日志。模拟盘无需解锁。",
-    "我填的已经是 md5",
-    "不勾则由引擎本机计算",
-    "解锁状态",
-    "检测中…",
-    "保存",
-    "交易解锁",
-    "解锁随 OpenD 会话失效,重启 OpenD 后需重新解锁;未解锁时实盘单会在引擎侧被拦下。",
-    "连不上时照着做"
-   ],
-   "buttons": [
-    {
-     "text": "重新检测",
-     "loading": false,
-     "disabled": false,
-     "primary": false,
-     "danger": false
-    },
-    {
-     "text": "检测连接",
-     "loading": false,
-     "disabled": false,
-     "primary": true,
-     "danger": false
-    },
-    {
-     "text": "断开交易引擎",
-     "loading": false,
-     "disabled": false,
-     "primary": false,
-     "danger": false
-    },
-    {
-     "text": "保存",
-     "loading": false,
-     "disabled": false,
-     "primary": false,
-     "danger": false
-    },
-    {
-     "text": "交易解锁",
-     "loading": false,
-     "disabled": false,
-     "primary": true,
-     "danger": false
-    }
-   ],
-   "inputs": [
-    {
-     "type": "password",
-     "value": "",
-     "placeholder": "富途交易密码",
-     "disabled": false,
-     "checked": false
-    }
-   ],
-   "segments": [
-    [
-     false,
-     true,
-     false,
-     false,
-     false
-    ]
-   ],
-   "switches": [
-    false
-   ],
-   "cards": [],
-   "notices": [
-    "info"
-   ],
-   "badges": [],
-   "tags": [],
-   "pills": [],
-   "ports": [],
-   "rowTones": [],
-   "checks": [],
-   "primers": [
-    false
-   ]
-  },
-  {
-   "name": "富途:都读到了",
-   "sub": "futu",
-   "seed": {
-    "futu": {
-     "catalog": {
-      "current": "ibkr",
-      "connected": [
-       "paper"
-      ],
-      "providers": [
-       {
-        "key": "ibkr",
-        "label": "盈透证券(IBKR / TWS)",
-        "current": true,
-        "connections": {
-         "paper": {
-          "host": "127.0.0.1",
-          "port": 7497,
-          "client_id": 11
-         },
-         "live": {
-          "host": "127.0.0.1",
-          "port": 7496,
-          "client_id": 12
-         }
-        },
-        "accounts": [
-         {
-          "alias": "模拟",
-          "account_masked": "DU***321",
-          "is_paper": true,
-          "connection": "paper",
-          "default": true
-         },
-         {
-          "alias": "主账户",
-          "account_masked": "U1***567",
-          "is_paper": false,
-          "connection": "live"
-         }
-        ],
-        "config_snippet": null
-       },
-       {
-        "key": "futu",
-        "label": "富途证券(OpenD)",
-        "current": false,
-        "connections": {
-         "opend": {
-          "host": "127.0.0.1",
-          "port": 11111,
-          "client_id": 11
-         }
-        },
-        "accounts": [
-         {
-          "alias": "富途模拟",
-          "account_masked": "20***585",
-          "is_paper": true,
-          "connection": "opend"
-         }
-        ],
-        "config_snippet": null
-       }
-      ],
-      "futu": {
-       "trd_market": "US",
-       "security_firm": "FUTUSECURITIES",
-       "symbol_map": {},
-       "unlock_password_saved": false
-      }
-     },
-     "scan": {
-      "ports": [
-       {
-        "port": 11111,
-        "label": "OpenD API",
-        "kind": "opend",
-        "paper": null,
-        "open": false,
-        "error": "端口未监听",
-        "configured_as": "opend"
-       },
-       {
-        "port": 22222,
-        "label": "OpenD 控制台(telnet,仅供参考)",
-        "kind": "telnet",
-        "paper": null,
-        "open": false,
-        "error": "连接超时",
-        "configured_as": null
-       }
-      ],
-      "apps": [
-       {
-        "key": "opend",
-        "name": "富途 OpenD",
-        "installed": true,
-        "paths": [
-         "/Applications/FutuOpenD.app"
-        ],
-        "running": false
-       }
-      ],
-      "guide": [
-       {
-        "step": 1,
-        "title": "下载并解压 OpenD",
-        "detail": "去富途 OpenAPI 官网下载 FutuOpenD(海外版叫 moomooOpenD)。"
-       },
-       {
-        "step": 2,
-        "title": "启动 OpenD 并登录",
-        "detail": "在 OpenD 自己的窗口里输入富途账号密码。本软件不接触、也不保存你的富途凭证。"
-       },
-       {
-        "step": 5,
-        "title": "确认行情权限",
-        "detail": "富途的美股行情要单独开通:LV1 够用报价与 K 线,多档盘口要 LV2,期权链还要单独的美股期权行情权限。"
-       }
-      ],
-      "connections": {
-       "opend": {
-        "host": "127.0.0.1",
-        "port": 11111
-       }
-      },
-      "connected": [],
-      "active": false,
-      "sdk_installed": true
-     }
-    }
-   },
-   "status": {
-    "protocol": "1.0",
-    "now_et": "2026-08-21 09:42:11",
-    "market_status": "盘中",
-    "prompt_version": "v1.8.0",
-    "prompt_fingerprint": "a3f9",
-    "model": "claude-opus-5",
-    "auto_execute": true,
-    "allow_live_trading": false,
-    "breaker": {
-     "engaged": false,
-     "reason": "",
-     "consecutive_failures": 0
-    },
-    "protections": {
-     "paused": false,
-     "rule": "",
-     "reason": "",
-     "until_ms": null,
-     "cooldowns": []
-    },
-    "broker_provider": "ibkr",
-    "broker_connected": true,
-    "broker_upstream_ok": true,
-    "pending_count": 1,
-    "accounts": [
-     {
-      "alias": "模拟",
-      "account_masked": "DU***321",
-      "is_paper": true,
-      "connection": "paper",
-      "broker": "ibkr",
-      "default": true
-     },
-     {
-      "alias": "主账户",
-      "account_masked": "U1***567",
-      "is_paper": false,
-      "connection": "live",
-      "broker": "ibkr",
-      "default": false
-     },
-     {
-      "alias": "富途模拟",
-      "account_masked": "20***585",
-      "is_paper": true,
-      "connection": "opend",
-      "broker": "futu",
-      "default": false
-     }
-    ],
-    "limits": {
-     "max_order_notional": 5000,
-     "max_option_contracts": 5,
-     "max_mkt_shares": 200,
-     "min_confidence": 0.9,
-     "max_spread_slippage": 0.1,
-     "duplicate_window_minutes": 10
-    }
-   },
-   "local": {},
-   "llm": {
-    "providers": [
-     {
-      "key": "anthropic",
-      "label": "Anthropic(Claude)",
-      "default_model": "claude-opus-5",
-      "models": [
-       "claude-opus-5",
-       "claude-sonnet-5",
-       "claude-haiku-4-5"
-      ],
-      "supports_effort": true,
-      "supports_temperature": false,
-      "needs_base_url": false,
-      "default_base_url": "",
-      "key_hint": "sk-ant-...",
-      "docs": "https://platform.claude.com/"
-     },
-     {
-      "key": "openai_compatible",
-      "label": "OpenAI 兼容端点",
-      "default_model": "",
-      "models": [
-       "deepseek-chat",
-       "qwen-max",
-       "glm-4-plus"
-      ],
-      "supports_effort": false,
-      "supports_temperature": true,
-      "needs_base_url": true,
-      "default_base_url": "https://api.deepseek.com/v1",
-      "key_hint": "sk-...",
-      "docs": "填服务商给的 base_url"
-     }
-    ],
-    "current": {
-     "provider": "anthropic",
-     "model": "claude-opus-5",
-     "base_url": "",
-     "effort": "high",
-     "temperature": null,
-     "max_tokens": 8000,
-     "timeout_s": 60,
-     "keychain_service": "dafri-llm-api-key",
-     "keychain_account": "anthropic"
-    },
-    "key_configured": {
-     "anthropic": true,
-     "openai_compatible": false
-    }
-   },
-   "texts": [
-    "接入",
-    "TWS",
-    "富途 OpenD",
-    "账户",
-    "大模型",
-    "Discord 跟单",
-    "IBKR API 跑不起来时的备用通道。",
-    "同样不接触你的富途账号密码,登录在 OpenD 自己的窗口完成;这里只检测端口、诊断握手、核对账户别名。",
-    "不支持组合单",
-    ":价差 / 蝴蝶 / 铁鹰拆单有腿风险,引擎会直接拒绝,请切回 IBKR。",
-    "没有原生条件单",
-    ":条件单由本软件盯盘,",
-    "软件关掉就不会触发",
-    "(IBKR 的条件单挂在券商服务器,掉线仍有效)。",
-    "0 · 当前券商接入",
-    "盈透证券(IBKR / TWS) · 当前生效",
-    "需本机运行并登录 TWS 或 IB Gateway。支持组合单(价差 / 蝴蝶 / 铁鹰)。",
-    "paper 127.0.0.1:7497 · live 127.0.0.1:7496",
-    "2 个账户",
-    "富途证券(OpenD)",
-    "需本机运行并登录富途 OpenD。不支持组合单,多腿结构会被拒绝。",
-    "opend 127.0.0.1:11111",
-    "1 个账户",
-    "切到富途证券(OpenD)",
-    "同一时刻只连一家。切换会断开现有连接并写入配置;别名、限额、校验层不变。",
-    "重新检测",
-    "检测连接",
-    "1 · 程序",
-    "富途 OpenD",
-    "已安装,未运行",
-    "/Applications/FutuOpenD.app",
-    "启动 富途 OpenD",
-    "2 · API 端口",
-    "11111",
-    "OpenD API",
-    "端口未监听",
-    "配置为opend",
-    "22222",
-    "OpenD 控制台(telnet,仅供参考)",
-    "连接超时",
-    "3 · 握手与账户",
-    "点「检测连接」做一次只读握手",
-    "4 · 连接引擎",
-    "断开交易引擎",
-    "「检测连接」是一次性只读探测;这里才是引擎下单用的长连接。",
-    "5 · 交易解锁(仅实盘需要)",
-    "只存 md5",
-    "于 Keychain / DPAPI,明文算完即丢,不写配置、不进日志。模拟盘无需解锁。",
-    "我填的已经是 md5",
-    "不勾则由引擎本机计算",
-    "解锁状态",
-    "未存密码,模拟盘不受影响,实盘单会被拦下",
-    "保存",
-    "交易解锁",
-    "解锁随 OpenD 会话失效,重启 OpenD 后需重新解锁;未解锁时实盘单会在引擎侧被拦下。",
-    "连不上时照着做"
-   ],
-   "buttons": [
-    {
-     "text": "切到富途证券(OpenD)",
-     "loading": false,
-     "disabled": false,
-     "primary": false,
-     "danger": false
-    },
-    {
-     "text": "重新检测",
-     "loading": false,
-     "disabled": false,
-     "primary": false,
-     "danger": false
-    },
-    {
-     "text": "检测连接",
-     "loading": false,
-     "disabled": false,
-     "primary": true,
-     "danger": false
-    },
-    {
-     "text": "启动 富途 OpenD",
-     "loading": false,
-     "disabled": false,
-     "primary": false,
-     "danger": false
-    },
-    {
-     "text": "断开交易引擎",
-     "loading": false,
-     "disabled": false,
-     "primary": false,
-     "danger": false
-    },
-    {
-     "text": "保存",
-     "loading": false,
-     "disabled": false,
-     "primary": false,
-     "danger": false
-    },
-    {
-     "text": "交易解锁",
-     "loading": false,
-     "disabled": false,
-     "primary": true,
-     "danger": false
-    }
-   ],
-   "inputs": [
-    {
-     "type": "password",
-     "value": "",
-     "placeholder": "富途交易密码",
-     "disabled": false,
-     "checked": false
-    }
-   ],
-   "segments": [
-    [
-     false,
-     true,
-     false,
-     false,
-     false
-    ]
-   ],
-   "switches": [
-    false
-   ],
-   "cards": [
-    "ok",
-    "warn",
-    "warn"
-   ],
-   "notices": [
-    "info"
-   ],
-   "badges": [
-    "default",
-    "default"
-   ],
-   "tags": [],
-   "pills": [],
-   "ports": [
-    "closed",
-    "closed"
-   ],
-   "rowTones": [],
-   "checks": [],
-   "primers": [
-    false
-   ]
-  },
-  {
-   "name": "富途:都读不到",
-   "sub": "futu",
-   "seed": {
-    "futu": {
-     "catalogError": "引擎没起来",
-     "scanError": "超时"
-    }
-   },
-   "status": {
-    "protocol": "1.0",
-    "now_et": "2026-08-21 09:42:11",
-    "market_status": "盘中",
-    "prompt_version": "v1.8.0",
-    "prompt_fingerprint": "a3f9",
-    "model": "claude-opus-5",
-    "auto_execute": true,
-    "allow_live_trading": false,
-    "breaker": {
-     "engaged": false,
-     "reason": "",
-     "consecutive_failures": 0
-    },
-    "protections": {
-     "paused": false,
-     "rule": "",
-     "reason": "",
-     "until_ms": null,
-     "cooldowns": []
-    },
-    "broker_provider": "ibkr",
-    "broker_connected": false,
-    "broker_upstream_ok": true,
-    "pending_count": 1,
-    "accounts": [
-     {
-      "alias": "模拟",
-      "account_masked": "DU***321",
-      "is_paper": true,
-      "connection": "paper",
-      "broker": "ibkr",
-      "default": true
-     },
-     {
-      "alias": "主账户",
-      "account_masked": "U1***567",
-      "is_paper": false,
-      "connection": "live",
-      "broker": "ibkr",
-      "default": false
-     },
-     {
-      "alias": "富途模拟",
-      "account_masked": "20***585",
-      "is_paper": true,
-      "connection": "opend",
-      "broker": "futu",
-      "default": false
-     }
-    ],
-    "limits": {
-     "max_order_notional": 5000,
-     "max_option_contracts": 5,
-     "max_mkt_shares": 200,
-     "min_confidence": 0.9,
-     "max_spread_slippage": 0.1,
-     "duplicate_window_minutes": 10
-    }
-   },
-   "local": {},
-   "llm": {
-    "providers": [
-     {
-      "key": "anthropic",
-      "label": "Anthropic(Claude)",
-      "default_model": "claude-opus-5",
-      "models": [
-       "claude-opus-5",
-       "claude-sonnet-5",
-       "claude-haiku-4-5"
-      ],
-      "supports_effort": true,
-      "supports_temperature": false,
-      "needs_base_url": false,
-      "default_base_url": "",
-      "key_hint": "sk-ant-...",
-      "docs": "https://platform.claude.com/"
-     },
-     {
-      "key": "openai_compatible",
-      "label": "OpenAI 兼容端点",
-      "default_model": "",
-      "models": [
-       "deepseek-chat",
-       "qwen-max",
-       "glm-4-plus"
-      ],
-      "supports_effort": false,
-      "supports_temperature": true,
-      "needs_base_url": true,
-      "default_base_url": "https://api.deepseek.com/v1",
-      "key_hint": "sk-...",
-      "docs": "填服务商给的 base_url"
-     }
-    ],
-    "current": {
-     "provider": "anthropic",
-     "model": "claude-opus-5",
-     "base_url": "",
-     "effort": "high",
-     "temperature": null,
-     "max_tokens": 8000,
-     "timeout_s": 60,
-     "keychain_service": "dafri-llm-api-key",
-     "keychain_account": "anthropic"
-    },
-    "key_configured": {
-     "anthropic": true,
-     "openai_compatible": false
-    }
-   },
-   "texts": [
-    "接入",
-    "TWS",
-    "富途 OpenD",
-    "账户",
-    "大模型",
-    "Discord 跟单",
-    "IBKR API 跑不起来时的备用通道。",
-    "同样不接触你的富途账号密码,登录在 OpenD 自己的窗口完成;这里只检测端口、诊断握手、核对账户别名。",
-    "不支持组合单",
-    ":价差 / 蝴蝶 / 铁鹰拆单有腿风险,引擎会直接拒绝,请切回 IBKR。",
-    "没有原生条件单",
-    ":条件单由本软件盯盘,",
-    "软件关掉就不会触发",
-    "(IBKR 的条件单挂在券商服务器,掉线仍有效)。",
-    "0 · 当前券商接入",
-    "读取失败:引擎没起来",
-    "同一时刻只连一家。切换会断开现有连接并写入配置;别名、限额、校验层不变。",
-    "重新检测",
-    "检测连接",
-    "1 · 程序",
-    "检测失败:超时",
-    "2 · API 端口",
-    "—",
-    "3 · 握手与账户",
-    "点「检测连接」做一次只读握手",
-    "4 · 连接引擎",
-    "连接交易引擎",
-    "「检测连接」是一次性只读探测;这里才是引擎下单用的长连接。",
-    "5 · 交易解锁(仅实盘需要)",
-    "只存 md5",
-    "于 Keychain / DPAPI,明文算完即丢,不写配置、不进日志。模拟盘无需解锁。",
-    "我填的已经是 md5",
-    "不勾则由引擎本机计算",
-    "解锁状态",
-    "检测中…",
-    "保存",
-    "交易解锁",
-    "解锁随 OpenD 会话失效,重启 OpenD 后需重新解锁;未解锁时实盘单会在引擎侧被拦下。",
-    "连不上时照着做"
-   ],
-   "buttons": [
-    {
-     "text": "重新检测",
-     "loading": false,
-     "disabled": false,
-     "primary": false,
-     "danger": false
-    },
-    {
-     "text": "检测连接",
-     "loading": false,
-     "disabled": false,
-     "primary": true,
-     "danger": false
-    },
-    {
-     "text": "连接交易引擎",
-     "loading": false,
-     "disabled": false,
-     "primary": false,
-     "danger": false
-    },
-    {
-     "text": "保存",
-     "loading": false,
-     "disabled": false,
-     "primary": false,
-     "danger": false
-    },
-    {
-     "text": "交易解锁",
-     "loading": false,
-     "disabled": false,
-     "primary": true,
-     "danger": false
-    }
-   ],
-   "inputs": [
-    {
-     "type": "password",
-     "value": "",
-     "placeholder": "富途交易密码",
-     "disabled": false,
-     "checked": false
-    }
-   ],
-   "segments": [
-    [
-     false,
-     true,
-     false,
-     false,
-     false
-    ]
-   ],
-   "switches": [
-    false
-   ],
-   "cards": [],
-   "notices": [
-    "info"
-   ],
-   "badges": [],
-   "tags": [],
-   "pills": [],
-   "ports": [],
-   "rowTones": [],
-   "checks": [],
-   "primers": [
-    true
-   ]
-  },
-  {
-   "name": "富途:当前富途、IBKR 没配、没带接口库",
-   "sub": "futu",
-   "seed": {
-    "futu": {
-     "catalog": {
-      "current": "futu",
-      "connected": [
-       "paper"
-      ],
-      "providers": [
-       {
-        "key": "ibkr",
-        "label": "盈透证券(IBKR / TWS)",
-        "current": false,
-        "connections": {},
-        "accounts": [
-         {
-          "alias": "模拟",
-          "account_masked": "DU***321",
-          "is_paper": true,
-          "connection": "paper",
-          "default": true
-         },
-         {
-          "alias": "主账户",
-          "account_masked": "U1***567",
-          "is_paper": false,
-          "connection": "live"
-         }
-        ],
-        "config_snippet": "\"connections\": { \"paper\": { \"host\": \"127.0.0.1\", \"port\": 7497 } }"
-       },
-       {
-        "key": "futu",
-        "label": "富途证券(OpenD)",
-        "current": true,
-        "connections": {
-         "opend": {
-          "host": "127.0.0.1",
-          "port": 11111,
-          "client_id": 11
-         }
-        },
-        "accounts": [
-         {
-          "alias": "富途模拟",
-          "account_masked": "20***585",
-          "is_paper": true,
-          "connection": "opend"
-         }
-        ],
-        "config_snippet": null
-       }
-      ],
-      "futu": {
-       "trd_market": "US",
-       "security_firm": "FUTUSECURITIES",
-       "symbol_map": {},
-       "unlock_password_saved": true
-      }
-     },
-     "scan": {
-      "ports": [
-       {
-        "port": 11111,
-        "label": "OpenD API",
-        "kind": "opend",
-        "paper": null,
-        "open": false,
-        "error": "端口未监听",
-        "configured_as": "opend"
-       },
-       {
-        "port": 22222,
-        "label": "OpenD 控制台(telnet,仅供参考)",
-        "kind": "telnet",
-        "paper": null,
-        "open": false,
-        "error": "连接超时",
-        "configured_as": null
-       }
-      ],
-      "apps": [
-       {
-        "key": "opend",
-        "name": "富途 OpenD",
-        "installed": true,
-        "paths": [
-         "/Applications/FutuOpenD.app"
-        ],
-        "running": false
-       }
-      ],
-      "guide": [
-       {
-        "step": 1,
-        "title": "下载并解压 OpenD",
-        "detail": "去富途 OpenAPI 官网下载 FutuOpenD(海外版叫 moomooOpenD)。"
-       },
-       {
-        "step": 2,
-        "title": "启动 OpenD 并登录",
-        "detail": "在 OpenD 自己的窗口里输入富途账号密码。本软件不接触、也不保存你的富途凭证。"
-       },
-       {
-        "step": 5,
-        "title": "确认行情权限",
-        "detail": "富途的美股行情要单独开通:LV1 够用报价与 K 线,多档盘口要 LV2,期权链还要单独的美股期权行情权限。"
-       }
-      ],
-      "connections": {
-       "opend": {
-        "host": "127.0.0.1",
-        "port": 11111
-       }
-      },
-      "connected": [],
-      "active": false,
-      "sdk_installed": false
-     }
-    }
-   },
-   "status": {
-    "protocol": "1.0",
-    "now_et": "2026-08-21 09:42:11",
-    "market_status": "盘中",
-    "prompt_version": "v1.8.0",
-    "prompt_fingerprint": "a3f9",
-    "model": "claude-opus-5",
-    "auto_execute": true,
-    "allow_live_trading": false,
-    "breaker": {
-     "engaged": false,
-     "reason": "",
-     "consecutive_failures": 0
-    },
-    "protections": {
-     "paused": false,
-     "rule": "",
-     "reason": "",
-     "until_ms": null,
-     "cooldowns": []
-    },
-    "broker_provider": "ibkr",
-    "broker_connected": true,
-    "broker_upstream_ok": true,
-    "pending_count": 1,
-    "accounts": [
-     {
-      "alias": "模拟",
-      "account_masked": "DU***321",
-      "is_paper": true,
-      "connection": "paper",
-      "broker": "ibkr",
-      "default": true
-     },
-     {
-      "alias": "主账户",
-      "account_masked": "U1***567",
-      "is_paper": false,
-      "connection": "live",
-      "broker": "ibkr",
-      "default": false
-     },
-     {
-      "alias": "富途模拟",
-      "account_masked": "20***585",
-      "is_paper": true,
-      "connection": "opend",
-      "broker": "futu",
-      "default": false
-     }
-    ],
-    "limits": {
-     "max_order_notional": 5000,
-     "max_option_contracts": 5,
-     "max_mkt_shares": 200,
-     "min_confidence": 0.9,
-     "max_spread_slippage": 0.1,
-     "duplicate_window_minutes": 10
-    }
-   },
-   "local": {},
-   "llm": {
-    "providers": [
-     {
-      "key": "anthropic",
-      "label": "Anthropic(Claude)",
-      "default_model": "claude-opus-5",
-      "models": [
-       "claude-opus-5",
-       "claude-sonnet-5",
-       "claude-haiku-4-5"
-      ],
-      "supports_effort": true,
-      "supports_temperature": false,
-      "needs_base_url": false,
-      "default_base_url": "",
-      "key_hint": "sk-ant-...",
-      "docs": "https://platform.claude.com/"
-     },
-     {
-      "key": "openai_compatible",
-      "label": "OpenAI 兼容端点",
-      "default_model": "",
-      "models": [
-       "deepseek-chat",
-       "qwen-max",
-       "glm-4-plus"
-      ],
-      "supports_effort": false,
-      "supports_temperature": true,
-      "needs_base_url": true,
-      "default_base_url": "https://api.deepseek.com/v1",
-      "key_hint": "sk-...",
-      "docs": "填服务商给的 base_url"
-     }
-    ],
-    "current": {
-     "provider": "anthropic",
-     "model": "claude-opus-5",
-     "base_url": "",
-     "effort": "high",
-     "temperature": null,
-     "max_tokens": 8000,
-     "timeout_s": 60,
-     "keychain_service": "dafri-llm-api-key",
-     "keychain_account": "anthropic"
-    },
-    "key_configured": {
-     "anthropic": true,
-     "openai_compatible": false
-    }
-   },
-   "texts": [
-    "接入",
-    "TWS",
-    "富途 OpenD",
-    "账户",
-    "大模型",
-    "Discord 跟单",
-    "IBKR API 跑不起来时的备用通道。",
-    "同样不接触你的富途账号密码,登录在 OpenD 自己的窗口完成;这里只检测端口、诊断握手、核对账户别名。",
-    "不支持组合单",
-    ":价差 / 蝴蝶 / 铁鹰拆单有腿风险,引擎会直接拒绝,请切回 IBKR。",
-    "没有原生条件单",
-    ":条件单由本软件盯盘,",
-    "软件关掉就不会触发",
-    "(IBKR 的条件单挂在券商服务器,掉线仍有效)。",
-    "0 · 当前券商接入",
-    "盈透证券(IBKR / TWS)",
-    "需本机运行并登录 TWS 或 IB Gateway。支持组合单(价差 / 蝴蝶 / 铁鹰)。",
-    "未配置连接",
-    "2 个账户",
-    "尚未配置连接与账户。把下面这段并入 config/settings.json 后再切换:",
-    "\"connections\": { \"paper\": { \"host\": \"127.0.0.1\", \"port\": 7497 } }",
-    "富途证券(OpenD) · 当前生效",
-    "需本机运行并登录富途 OpenD。不支持组合单,多腿结构会被拒绝。",
-    "opend 127.0.0.1:11111",
-    "1 个账户",
-    "同一时刻只连一家。切换会断开现有连接并写入配置;别名、限额、校验层不变。",
-    "重新检测",
-    "检测连接",
-    "1 · 程序",
-    "这个版本没有带富途的接口库",
-    "富途通道的适配桥还没有完成真机核对,暂未开放。进程检测与端口探测照常可用;端口通的时候,「检测连接」的握手会停在「适配桥尚未完成真机核对」。IBKR 通道不受影响。",
-    "富途 OpenD",
-    "已安装,未运行",
-    "/Applications/FutuOpenD.app",
-    "启动 富途 OpenD",
-    "2 · API 端口",
-    "11111",
-    "OpenD API",
-    "端口未监听",
-    "配置为opend",
-    "22222",
-    "OpenD 控制台(telnet,仅供参考)",
-    "连接超时",
-    "3 · 握手与账户",
-    "点「检测连接」做一次只读握手",
-    "4 · 连接引擎",
-    "断开交易引擎",
-    "「检测连接」是一次性只读探测;这里才是引擎下单用的长连接。",
-    "5 · 交易解锁(仅实盘需要)",
-    "只存 md5",
-    "于 Keychain / DPAPI,明文算完即丢,不写配置、不进日志。模拟盘无需解锁。",
-    "我填的已经是 md5",
-    "不勾则由引擎本机计算",
-    "解锁状态",
-    "已存密码(md5),连接引擎后点「交易解锁」",
-    "保存",
-    "交易解锁",
-    "解锁随 OpenD 会话失效,重启 OpenD 后需重新解锁;未解锁时实盘单会在引擎侧被拦下。",
-    "连不上时照着做"
-   ],
-   "buttons": [
-    {
-     "text": "重新检测",
-     "loading": false,
-     "disabled": false,
-     "primary": false,
-     "danger": false
-    },
-    {
-     "text": "检测连接",
-     "loading": false,
-     "disabled": false,
-     "primary": true,
-     "danger": false
-    },
-    {
-     "text": "启动 富途 OpenD",
-     "loading": false,
-     "disabled": false,
-     "primary": false,
-     "danger": false
-    },
-    {
-     "text": "断开交易引擎",
-     "loading": false,
-     "disabled": false,
-     "primary": false,
-     "danger": false
-    },
-    {
-     "text": "保存",
-     "loading": false,
-     "disabled": false,
-     "primary": false,
-     "danger": false
-    },
-    {
-     "text": "交易解锁",
-     "loading": false,
-     "disabled": false,
-     "primary": true,
-     "danger": false
-    }
-   ],
-   "inputs": [
-    {
-     "type": "password",
-     "value": "",
-     "placeholder": "富途交易密码",
-     "disabled": false,
-     "checked": false
-    }
-   ],
-   "segments": [
-    [
-     false,
-     true,
-     false,
-     false,
-     false
-    ]
-   ],
-   "switches": [
-    false
-   ],
-   "cards": [
-    "warn",
-    "ok",
-    "warn",
-    "warn"
-   ],
-   "notices": [
-    "info"
-   ],
-   "badges": [
-    "default",
-    "default"
-   ],
-   "tags": [],
-   "pills": [],
-   "ports": [
-    "closed",
-    "closed"
-   ],
-   "rowTones": [],
-   "checks": [],
-   "primers": [
-    false
-   ]
-  },
-  {
-   "name": "富途:握手结果",
-   "sub": "futu",
-   "seed": {
-    "futu": {
-     "catalog": {
-      "current": "ibkr",
-      "connected": [
-       "paper"
-      ],
-      "providers": [
-       {
-        "key": "ibkr",
-        "label": "盈透证券(IBKR / TWS)",
-        "current": true,
-        "connections": {
-         "paper": {
-          "host": "127.0.0.1",
-          "port": 7497,
-          "client_id": 11
-         },
-         "live": {
-          "host": "127.0.0.1",
-          "port": 7496,
-          "client_id": 12
-         }
-        },
-        "accounts": [
-         {
-          "alias": "模拟",
-          "account_masked": "DU***321",
-          "is_paper": true,
-          "connection": "paper",
-          "default": true
-         },
-         {
-          "alias": "主账户",
-          "account_masked": "U1***567",
-          "is_paper": false,
-          "connection": "live"
-         }
-        ],
-        "config_snippet": null
-       },
-       {
-        "key": "futu",
-        "label": "富途证券(OpenD)",
-        "current": false,
-        "connections": {
-         "opend": {
-          "host": "127.0.0.1",
-          "port": 11111,
-          "client_id": 11
-         }
-        },
-        "accounts": [
-         {
-          "alias": "富途模拟",
-          "account_masked": "20***585",
-          "is_paper": true,
-          "connection": "opend"
-         }
-        ],
-        "config_snippet": null
-       }
-      ],
-      "futu": {
-       "trd_market": "US",
-       "security_firm": "FUTUSECURITIES",
-       "symbol_map": {},
-       "unlock_password_saved": false
-      }
-     },
-     "scan": {
-      "ports": [
-       {
-        "port": 11111,
-        "label": "OpenD API",
-        "kind": "opend",
-        "paper": null,
-        "open": false,
-        "error": "端口未监听",
-        "configured_as": "opend"
-       },
-       {
-        "port": 22222,
-        "label": "OpenD 控制台(telnet,仅供参考)",
-        "kind": "telnet",
-        "paper": null,
-        "open": false,
-        "error": "连接超时",
-        "configured_as": null
-       }
-      ],
-      "apps": [
-       {
-        "key": "opend",
-        "name": "富途 OpenD",
-        "installed": true,
-        "paths": [
-         "/Applications/FutuOpenD.app"
-        ],
-        "running": false
-       }
-      ],
-      "guide": [
-       {
-        "step": 1,
-        "title": "下载并解压 OpenD",
-        "detail": "去富途 OpenAPI 官网下载 FutuOpenD(海外版叫 moomooOpenD)。"
-       },
-       {
-        "step": 2,
-        "title": "启动 OpenD 并登录",
-        "detail": "在 OpenD 自己的窗口里输入富途账号密码。本软件不接触、也不保存你的富途凭证。"
-       },
-       {
-        "step": 5,
-        "title": "确认行情权限",
-        "detail": "富途的美股行情要单独开通:LV1 够用报价与 K 线,多档盘口要 LV2,期权链还要单独的美股期权行情权限。"
-       }
-      ],
-      "connections": {
-       "opend": {
-        "host": "127.0.0.1",
-        "port": 11111
-       }
-      },
-      "connected": [],
-      "active": false,
-      "sdk_installed": true
-     },
-     "diag": [
-      {
-       "connection": "opend",
-       "broker": "futu",
-       "host": "127.0.0.1",
-       "port": 11111,
-       "port_open": true,
-       "port_latency_ms": 2,
-       "connected": true,
-       "server_version": 900,
-       "qot_logined": true,
-       "trd_logined": false,
-       "error": null,
-       "hint": null,
-       "accounts": [
-        {
-         "alias": "富途模拟",
-         "account_masked": "20***585",
-         "is_paper": true,
-         "connection": "opend",
-         "resolved": true
-        }
-       ]
-      },
-      {
-       "connection": "opend",
-       "broker": "futu",
-       "host": "127.0.0.1",
-       "port": 11111,
-       "port_open": false,
-       "connected": false,
-       "error": "端口 11111 拒绝连接",
-       "hint": "OpenD 没有在跑,或者它的 API 端口不是 11111。"
-      }
-     ]
-    }
-   },
-   "status": {
-    "protocol": "1.0",
-    "now_et": "2026-08-21 09:42:11",
-    "market_status": "盘中",
-    "prompt_version": "v1.8.0",
-    "prompt_fingerprint": "a3f9",
-    "model": "claude-opus-5",
-    "auto_execute": true,
-    "allow_live_trading": false,
-    "breaker": {
-     "engaged": false,
-     "reason": "",
-     "consecutive_failures": 0
-    },
-    "protections": {
-     "paused": false,
-     "rule": "",
-     "reason": "",
-     "until_ms": null,
-     "cooldowns": []
-    },
-    "broker_provider": "ibkr",
-    "broker_connected": true,
-    "broker_upstream_ok": true,
-    "pending_count": 1,
-    "accounts": [
-     {
-      "alias": "模拟",
-      "account_masked": "DU***321",
-      "is_paper": true,
-      "connection": "paper",
-      "broker": "ibkr",
-      "default": true
-     },
-     {
-      "alias": "主账户",
-      "account_masked": "U1***567",
-      "is_paper": false,
-      "connection": "live",
-      "broker": "ibkr",
-      "default": false
-     },
-     {
-      "alias": "富途模拟",
-      "account_masked": "20***585",
-      "is_paper": true,
-      "connection": "opend",
-      "broker": "futu",
-      "default": false
-     }
-    ],
-    "limits": {
-     "max_order_notional": 5000,
-     "max_option_contracts": 5,
-     "max_mkt_shares": 200,
-     "min_confidence": 0.9,
-     "max_spread_slippage": 0.1,
-     "duplicate_window_minutes": 10
-    }
-   },
-   "local": {},
-   "llm": {
-    "providers": [
-     {
-      "key": "anthropic",
-      "label": "Anthropic(Claude)",
-      "default_model": "claude-opus-5",
-      "models": [
-       "claude-opus-5",
-       "claude-sonnet-5",
-       "claude-haiku-4-5"
-      ],
-      "supports_effort": true,
-      "supports_temperature": false,
-      "needs_base_url": false,
-      "default_base_url": "",
-      "key_hint": "sk-ant-...",
-      "docs": "https://platform.claude.com/"
-     },
-     {
-      "key": "openai_compatible",
-      "label": "OpenAI 兼容端点",
-      "default_model": "",
-      "models": [
-       "deepseek-chat",
-       "qwen-max",
-       "glm-4-plus"
-      ],
-      "supports_effort": false,
-      "supports_temperature": true,
-      "needs_base_url": true,
-      "default_base_url": "https://api.deepseek.com/v1",
-      "key_hint": "sk-...",
-      "docs": "填服务商给的 base_url"
-     }
-    ],
-    "current": {
-     "provider": "anthropic",
-     "model": "claude-opus-5",
-     "base_url": "",
-     "effort": "high",
-     "temperature": null,
-     "max_tokens": 8000,
-     "timeout_s": 60,
-     "keychain_service": "dafri-llm-api-key",
-     "keychain_account": "anthropic"
-    },
-    "key_configured": {
-     "anthropic": true,
-     "openai_compatible": false
-    }
-   },
-   "texts": [
-    "接入",
-    "TWS",
-    "富途 OpenD",
-    "账户",
-    "大模型",
-    "Discord 跟单",
-    "IBKR API 跑不起来时的备用通道。",
-    "同样不接触你的富途账号密码,登录在 OpenD 自己的窗口完成;这里只检测端口、诊断握手、核对账户别名。",
-    "不支持组合单",
-    ":价差 / 蝴蝶 / 铁鹰拆单有腿风险,引擎会直接拒绝,请切回 IBKR。",
-    "没有原生条件单",
-    ":条件单由本软件盯盘,",
-    "软件关掉就不会触发",
-    "(IBKR 的条件单挂在券商服务器,掉线仍有效)。",
-    "0 · 当前券商接入",
-    "盈透证券(IBKR / TWS) · 当前生效",
-    "需本机运行并登录 TWS 或 IB Gateway。支持组合单(价差 / 蝴蝶 / 铁鹰)。",
-    "paper 127.0.0.1:7497 · live 127.0.0.1:7496",
-    "2 个账户",
-    "富途证券(OpenD)",
-    "需本机运行并登录富途 OpenD。不支持组合单,多腿结构会被拒绝。",
-    "opend 127.0.0.1:11111",
-    "1 个账户",
-    "切到富途证券(OpenD)",
-    "同一时刻只连一家。切换会断开现有连接并写入配置;别名、限额、校验层不变。",
-    "重新检测",
-    "检测连接",
-    "1 · 程序",
-    "富途 OpenD",
-    "已安装,未运行",
-    "/Applications/FutuOpenD.app",
-    "启动 富途 OpenD",
-    "2 · API 端口",
-    "11111",
-    "OpenD API",
-    "端口未监听",
-    "配置为opend",
-    "22222",
-    "OpenD 控制台(telnet,仅供参考)",
-    "连接超时",
-    "3 · 握手与账户",
-    "连接 opend · 127.0.0.1:11111",
-    "握手成功",
-    "OpenD 版本 900",
-    "行情登录 已登录",
-    "交易登录 未登录",
-    "2 ms",
-    "富途模拟 → 20***585",
-    "对得上",
-    "连接 opend · 127.0.0.1:11111",
-    "未连接",
-    "端口 11111 拒绝连接",
-    "OpenD 没有在跑,或者它的 API 端口不是 11111。",
-    "4 · 连接引擎",
-    "断开交易引擎",
-    "「检测连接」是一次性只读探测;这里才是引擎下单用的长连接。",
-    "5 · 交易解锁(仅实盘需要)",
-    "只存 md5",
-    "于 Keychain / DPAPI,明文算完即丢,不写配置、不进日志。模拟盘无需解锁。",
-    "我填的已经是 md5",
-    "不勾则由引擎本机计算",
-    "解锁状态",
-    "未存密码,模拟盘不受影响,实盘单会被拦下",
-    "保存",
-    "交易解锁",
-    "解锁随 OpenD 会话失效,重启 OpenD 后需重新解锁;未解锁时实盘单会在引擎侧被拦下。",
-    "连不上时照着做"
-   ],
-   "buttons": [
-    {
-     "text": "切到富途证券(OpenD)",
-     "loading": false,
-     "disabled": false,
-     "primary": false,
-     "danger": false
-    },
-    {
-     "text": "重新检测",
-     "loading": false,
-     "disabled": false,
-     "primary": false,
-     "danger": false
-    },
-    {
-     "text": "检测连接",
-     "loading": false,
-     "disabled": false,
-     "primary": true,
-     "danger": false
-    },
-    {
-     "text": "启动 富途 OpenD",
-     "loading": false,
-     "disabled": false,
-     "primary": false,
-     "danger": false
-    },
-    {
-     "text": "断开交易引擎",
-     "loading": false,
-     "disabled": false,
-     "primary": false,
-     "danger": false
-    },
-    {
-     "text": "保存",
-     "loading": false,
-     "disabled": false,
-     "primary": false,
-     "danger": false
-    },
-    {
-     "text": "交易解锁",
-     "loading": false,
-     "disabled": false,
-     "primary": true,
-     "danger": false
-    }
-   ],
-   "inputs": [
-    {
-     "type": "password",
-     "value": "",
-     "placeholder": "富途交易密码",
-     "disabled": false,
-     "checked": false
-    }
-   ],
-   "segments": [
-    [
-     false,
-     true,
-     false,
-     false,
-     false
-    ]
-   ],
-   "switches": [
-    false
-   ],
-   "cards": [
-    "ok",
-    "warn",
-    "warn",
-    "ok",
-    "bad"
-   ],
-   "notices": [
-    "info"
-   ],
-   "badges": [
-    "default",
-    "default",
-    "success"
-   ],
-   "tags": [],
-   "pills": [],
-   "ports": [
-    "closed",
-    "closed"
-   ],
-   "rowTones": [],
-   "checks": [],
-   "primers": [
-    false
-   ]
-  },
-  {
-   "name": "富途:切换着、填了密码、保存着解锁着",
-   "sub": "futu",
-   "seed": {
-    "futu": {
-     "catalog": {
-      "current": "ibkr",
-      "connected": [
-       "paper"
-      ],
-      "providers": [
-       {
-        "key": "ibkr",
-        "label": "盈透证券(IBKR / TWS)",
-        "current": true,
-        "connections": {
-         "paper": {
-          "host": "127.0.0.1",
-          "port": 7497,
-          "client_id": 11
-         },
-         "live": {
-          "host": "127.0.0.1",
-          "port": 7496,
-          "client_id": 12
-         }
-        },
-        "accounts": [
-         {
-          "alias": "模拟",
-          "account_masked": "DU***321",
-          "is_paper": true,
-          "connection": "paper",
-          "default": true
-         },
-         {
-          "alias": "主账户",
-          "account_masked": "U1***567",
-          "is_paper": false,
-          "connection": "live"
-         }
-        ],
-        "config_snippet": null
-       },
-       {
-        "key": "futu",
-        "label": "富途证券(OpenD)",
-        "current": false,
-        "connections": {
-         "opend": {
-          "host": "127.0.0.1",
-          "port": 11111,
-          "client_id": 11
-         }
-        },
-        "accounts": [
-         {
-          "alias": "富途模拟",
-          "account_masked": "20***585",
-          "is_paper": true,
-          "connection": "opend"
-         }
-        ],
-        "config_snippet": null
-       }
-      ],
-      "futu": {
-       "trd_market": "US",
-       "security_firm": "FUTUSECURITIES",
-       "symbol_map": {},
-       "unlock_password_saved": false
-      }
-     },
-     "scan": {
-      "ports": [
-       {
-        "port": 11111,
-        "label": "OpenD API",
-        "kind": "opend",
-        "paper": null,
-        "open": false,
-        "error": "端口未监听",
-        "configured_as": "opend"
-       },
-       {
-        "port": 22222,
-        "label": "OpenD 控制台(telnet,仅供参考)",
-        "kind": "telnet",
-        "paper": null,
-        "open": false,
-        "error": "连接超时",
-        "configured_as": null
-       }
-      ],
-      "apps": [
-       {
-        "key": "opend",
-        "name": "富途 OpenD",
-        "installed": true,
-        "paths": [
-         "/Applications/FutuOpenD.app"
-        ],
-        "running": false
-       }
-      ],
-      "guide": [
-       {
-        "step": 1,
-        "title": "下载并解压 OpenD",
-        "detail": "去富途 OpenAPI 官网下载 FutuOpenD(海外版叫 moomooOpenD)。"
-       },
-       {
-        "step": 2,
-        "title": "启动 OpenD 并登录",
-        "detail": "在 OpenD 自己的窗口里输入富途账号密码。本软件不接触、也不保存你的富途凭证。"
-       },
-       {
-        "step": 5,
-        "title": "确认行情权限",
-        "detail": "富途的美股行情要单独开通:LV1 够用报价与 K 线,多档盘口要 LV2,期权链还要单独的美股期权行情权限。"
-       }
-      ],
-      "connections": {
-       "opend": {
-        "host": "127.0.0.1",
-        "port": 11111
-       }
-      },
-      "connected": [],
-      "active": false,
-      "sdk_installed": true
-     },
-     "switching": "futu",
-     "password": "secret",
-     "isMd5": true,
-     "saving": true,
-     "unlocking": true,
-     "diagState": "working"
-    }
-   },
-   "status": {
-    "protocol": "1.0",
-    "now_et": "2026-08-21 09:42:11",
-    "market_status": "盘中",
-    "prompt_version": "v1.8.0",
-    "prompt_fingerprint": "a3f9",
-    "model": "claude-opus-5",
-    "auto_execute": true,
-    "allow_live_trading": false,
-    "breaker": {
-     "engaged": false,
-     "reason": "",
-     "consecutive_failures": 0
-    },
-    "protections": {
-     "paused": false,
-     "rule": "",
-     "reason": "",
-     "until_ms": null,
-     "cooldowns": []
-    },
-    "broker_provider": "ibkr",
-    "broker_connected": true,
-    "broker_upstream_ok": true,
-    "pending_count": 1,
-    "accounts": [
-     {
-      "alias": "模拟",
-      "account_masked": "DU***321",
-      "is_paper": true,
-      "connection": "paper",
-      "broker": "ibkr",
-      "default": true
-     },
-     {
-      "alias": "主账户",
-      "account_masked": "U1***567",
-      "is_paper": false,
-      "connection": "live",
-      "broker": "ibkr",
-      "default": false
-     },
-     {
-      "alias": "富途模拟",
-      "account_masked": "20***585",
-      "is_paper": true,
-      "connection": "opend",
-      "broker": "futu",
-      "default": false
-     }
-    ],
-    "limits": {
-     "max_order_notional": 5000,
-     "max_option_contracts": 5,
-     "max_mkt_shares": 200,
-     "min_confidence": 0.9,
-     "max_spread_slippage": 0.1,
-     "duplicate_window_minutes": 10
-    }
-   },
-   "local": {},
-   "llm": {
-    "providers": [
-     {
-      "key": "anthropic",
-      "label": "Anthropic(Claude)",
-      "default_model": "claude-opus-5",
-      "models": [
-       "claude-opus-5",
-       "claude-sonnet-5",
-       "claude-haiku-4-5"
-      ],
-      "supports_effort": true,
-      "supports_temperature": false,
-      "needs_base_url": false,
-      "default_base_url": "",
-      "key_hint": "sk-ant-...",
-      "docs": "https://platform.claude.com/"
-     },
-     {
-      "key": "openai_compatible",
-      "label": "OpenAI 兼容端点",
-      "default_model": "",
-      "models": [
-       "deepseek-chat",
-       "qwen-max",
-       "glm-4-plus"
-      ],
-      "supports_effort": false,
-      "supports_temperature": true,
-      "needs_base_url": true,
-      "default_base_url": "https://api.deepseek.com/v1",
-      "key_hint": "sk-...",
-      "docs": "填服务商给的 base_url"
-     }
-    ],
-    "current": {
-     "provider": "anthropic",
-     "model": "claude-opus-5",
-     "base_url": "",
-     "effort": "high",
-     "temperature": null,
-     "max_tokens": 8000,
-     "timeout_s": 60,
-     "keychain_service": "dafri-llm-api-key",
-     "keychain_account": "anthropic"
-    },
-    "key_configured": {
-     "anthropic": true,
-     "openai_compatible": false
-    }
-   },
-   "texts": [
-    "接入",
-    "TWS",
-    "富途 OpenD",
-    "账户",
-    "大模型",
-    "Discord 跟单",
-    "IBKR API 跑不起来时的备用通道。",
-    "同样不接触你的富途账号密码,登录在 OpenD 自己的窗口完成;这里只检测端口、诊断握手、核对账户别名。",
-    "不支持组合单",
-    ":价差 / 蝴蝶 / 铁鹰拆单有腿风险,引擎会直接拒绝,请切回 IBKR。",
-    "没有原生条件单",
-    ":条件单由本软件盯盘,",
-    "软件关掉就不会触发",
-    "(IBKR 的条件单挂在券商服务器,掉线仍有效)。",
-    "0 · 当前券商接入",
-    "盈透证券(IBKR / TWS) · 当前生效",
-    "需本机运行并登录 TWS 或 IB Gateway。支持组合单(价差 / 蝴蝶 / 铁鹰)。",
-    "paper 127.0.0.1:7497 · live 127.0.0.1:7496",
-    "2 个账户",
-    "富途证券(OpenD)",
-    "需本机运行并登录富途 OpenD。不支持组合单,多腿结构会被拒绝。",
-    "opend 127.0.0.1:11111",
-    "1 个账户",
-    "切到富途证券(OpenD)",
-    "同一时刻只连一家。切换会断开现有连接并写入配置;别名、限额、校验层不变。",
-    "重新检测",
-    "检测连接",
-    "1 · 程序",
-    "富途 OpenD",
-    "已安装,未运行",
-    "/Applications/FutuOpenD.app",
-    "启动 富途 OpenD",
-    "2 · API 端口",
-    "11111",
-    "OpenD API",
-    "端口未监听",
-    "配置为opend",
-    "22222",
-    "OpenD 控制台(telnet,仅供参考)",
-    "连接超时",
-    "3 · 握手与账户",
-    "正在握手…(OpenD 需已登录,否则超时)",
-    "4 · 连接引擎",
-    "断开交易引擎",
-    "「检测连接」是一次性只读探测;这里才是引擎下单用的长连接。",
-    "5 · 交易解锁(仅实盘需要)",
-    "只存 md5",
-    "于 Keychain / DPAPI,明文算完即丢,不写配置、不进日志。模拟盘无需解锁。",
-    "我填的已经是 md5",
-    "不勾则由引擎本机计算",
-    "解锁状态",
-    "未存密码,模拟盘不受影响,实盘单会被拦下",
-    "保存",
-    "交易解锁",
-    "解锁随 OpenD 会话失效,重启 OpenD 后需重新解锁;未解锁时实盘单会在引擎侧被拦下。",
-    "连不上时照着做"
-   ],
-   "buttons": [
-    {
-     "text": "切到富途证券(OpenD)",
-     "loading": true,
-     "disabled": false,
-     "primary": false,
-     "danger": false
-    },
-    {
-     "text": "重新检测",
-     "loading": false,
-     "disabled": false,
-     "primary": false,
-     "danger": false
-    },
-    {
-     "text": "检测连接",
-     "loading": true,
-     "disabled": false,
-     "primary": true,
-     "danger": false
-    },
-    {
-     "text": "启动 富途 OpenD",
-     "loading": false,
-     "disabled": false,
-     "primary": false,
-     "danger": false
-    },
-    {
-     "text": "断开交易引擎",
-     "loading": false,
-     "disabled": false,
-     "primary": false,
-     "danger": false
-    },
-    {
-     "text": "保存",
-     "loading": true,
-     "disabled": false,
-     "primary": false,
-     "danger": false
-    },
-    {
-     "text": "交易解锁",
-     "loading": true,
-     "disabled": false,
-     "primary": true,
-     "danger": false
-    }
-   ],
-   "inputs": [
-    {
-     "type": "password",
-     "value": "secret",
-     "placeholder": "富途交易密码",
-     "disabled": false,
-     "checked": false
-    }
-   ],
-   "segments": [
-    [
-     false,
-     true,
-     false,
-     false,
-     false
-    ]
-   ],
-   "switches": [
-    true
-   ],
-   "cards": [
-    "ok",
-    "warn",
-    "warn"
-   ],
-   "notices": [
-    "info"
-   ],
-   "badges": [
-    "default",
-    "default"
-   ],
-   "tags": [],
-   "pills": [],
-   "ports": [
-    "closed",
-    "closed"
-   ],
-   "rowTones": [],
-   "checks": [],
-   "primers": [
-    false
-   ]
-  },
-  {
-   "name": "富途:握手失败",
-   "sub": "futu",
-   "seed": {
-    "futu": {
-     "catalog": {
-      "current": "ibkr",
-      "connected": [
-       "paper"
-      ],
-      "providers": [
-       {
-        "key": "ibkr",
-        "label": "盈透证券(IBKR / TWS)",
-        "current": true,
-        "connections": {
-         "paper": {
-          "host": "127.0.0.1",
-          "port": 7497,
-          "client_id": 11
-         },
-         "live": {
-          "host": "127.0.0.1",
-          "port": 7496,
-          "client_id": 12
-         }
-        },
-        "accounts": [
-         {
-          "alias": "模拟",
-          "account_masked": "DU***321",
-          "is_paper": true,
-          "connection": "paper",
-          "default": true
-         },
-         {
-          "alias": "主账户",
-          "account_masked": "U1***567",
-          "is_paper": false,
-          "connection": "live"
-         }
-        ],
-        "config_snippet": null
-       },
-       {
-        "key": "futu",
-        "label": "富途证券(OpenD)",
-        "current": false,
-        "connections": {
-         "opend": {
-          "host": "127.0.0.1",
-          "port": 11111,
-          "client_id": 11
-         }
-        },
-        "accounts": [
-         {
-          "alias": "富途模拟",
-          "account_masked": "20***585",
-          "is_paper": true,
-          "connection": "opend"
-         }
-        ],
-        "config_snippet": null
-       }
-      ],
-      "futu": {
-       "trd_market": "US",
-       "security_firm": "FUTUSECURITIES",
-       "symbol_map": {},
-       "unlock_password_saved": false
-      }
-     },
-     "scan": {
-      "ports": [
-       {
-        "port": 11111,
-        "label": "OpenD API",
-        "kind": "opend",
-        "paper": null,
-        "open": false,
-        "error": "端口未监听",
-        "configured_as": "opend"
-       },
-       {
-        "port": 22222,
-        "label": "OpenD 控制台(telnet,仅供参考)",
-        "kind": "telnet",
-        "paper": null,
-        "open": false,
-        "error": "连接超时",
-        "configured_as": null
-       }
-      ],
-      "apps": [
-       {
-        "key": "opend",
-        "name": "富途 OpenD",
-        "installed": true,
-        "paths": [
-         "/Applications/FutuOpenD.app"
-        ],
-        "running": false
-       }
-      ],
-      "guide": [
-       {
-        "step": 1,
-        "title": "下载并解压 OpenD",
-        "detail": "去富途 OpenAPI 官网下载 FutuOpenD(海外版叫 moomooOpenD)。"
-       },
-       {
-        "step": 2,
-        "title": "启动 OpenD 并登录",
-        "detail": "在 OpenD 自己的窗口里输入富途账号密码。本软件不接触、也不保存你的富途凭证。"
-       },
-       {
-        "step": 5,
-        "title": "确认行情权限",
-        "detail": "富途的美股行情要单独开通:LV1 够用报价与 K 线,多档盘口要 LV2,期权链还要单独的美股期权行情权限。"
-       }
-      ],
-      "connections": {
-       "opend": {
-        "host": "127.0.0.1",
-        "port": 11111
-       }
-      },
-      "connected": [],
-      "active": false,
-      "sdk_installed": true
-     },
-     "diagState": "error",
-     "diagError": "没登录"
-    }
-   },
-   "status": {
-    "protocol": "1.0",
-    "now_et": "2026-08-21 09:42:11",
-    "market_status": "盘中",
-    "prompt_version": "v1.8.0",
-    "prompt_fingerprint": "a3f9",
-    "model": "claude-opus-5",
-    "auto_execute": true,
-    "allow_live_trading": false,
-    "breaker": {
-     "engaged": false,
-     "reason": "",
-     "consecutive_failures": 0
-    },
-    "protections": {
-     "paused": false,
-     "rule": "",
-     "reason": "",
-     "until_ms": null,
-     "cooldowns": []
-    },
-    "broker_provider": "ibkr",
-    "broker_connected": true,
-    "broker_upstream_ok": true,
-    "pending_count": 1,
-    "accounts": [
-     {
-      "alias": "模拟",
-      "account_masked": "DU***321",
-      "is_paper": true,
-      "connection": "paper",
-      "broker": "ibkr",
-      "default": true
-     },
-     {
-      "alias": "主账户",
-      "account_masked": "U1***567",
-      "is_paper": false,
-      "connection": "live",
-      "broker": "ibkr",
-      "default": false
-     },
-     {
-      "alias": "富途模拟",
-      "account_masked": "20***585",
-      "is_paper": true,
-      "connection": "opend",
-      "broker": "futu",
-      "default": false
-     }
-    ],
-    "limits": {
-     "max_order_notional": 5000,
-     "max_option_contracts": 5,
-     "max_mkt_shares": 200,
-     "min_confidence": 0.9,
-     "max_spread_slippage": 0.1,
-     "duplicate_window_minutes": 10
-    }
-   },
-   "local": {},
-   "llm": {
-    "providers": [
-     {
-      "key": "anthropic",
-      "label": "Anthropic(Claude)",
-      "default_model": "claude-opus-5",
-      "models": [
-       "claude-opus-5",
-       "claude-sonnet-5",
-       "claude-haiku-4-5"
-      ],
-      "supports_effort": true,
-      "supports_temperature": false,
-      "needs_base_url": false,
-      "default_base_url": "",
-      "key_hint": "sk-ant-...",
-      "docs": "https://platform.claude.com/"
-     },
-     {
-      "key": "openai_compatible",
-      "label": "OpenAI 兼容端点",
-      "default_model": "",
-      "models": [
-       "deepseek-chat",
-       "qwen-max",
-       "glm-4-plus"
-      ],
-      "supports_effort": false,
-      "supports_temperature": true,
-      "needs_base_url": true,
-      "default_base_url": "https://api.deepseek.com/v1",
-      "key_hint": "sk-...",
-      "docs": "填服务商给的 base_url"
-     }
-    ],
-    "current": {
-     "provider": "anthropic",
-     "model": "claude-opus-5",
-     "base_url": "",
-     "effort": "high",
-     "temperature": null,
-     "max_tokens": 8000,
-     "timeout_s": 60,
-     "keychain_service": "dafri-llm-api-key",
-     "keychain_account": "anthropic"
-    },
-    "key_configured": {
-     "anthropic": true,
-     "openai_compatible": false
-    }
-   },
-   "texts": [
-    "接入",
-    "TWS",
-    "富途 OpenD",
-    "账户",
-    "大模型",
-    "Discord 跟单",
-    "IBKR API 跑不起来时的备用通道。",
-    "同样不接触你的富途账号密码,登录在 OpenD 自己的窗口完成;这里只检测端口、诊断握手、核对账户别名。",
-    "不支持组合单",
-    ":价差 / 蝴蝶 / 铁鹰拆单有腿风险,引擎会直接拒绝,请切回 IBKR。",
-    "没有原生条件单",
-    ":条件单由本软件盯盘,",
-    "软件关掉就不会触发",
-    "(IBKR 的条件单挂在券商服务器,掉线仍有效)。",
-    "0 · 当前券商接入",
-    "盈透证券(IBKR / TWS) · 当前生效",
-    "需本机运行并登录 TWS 或 IB Gateway。支持组合单(价差 / 蝴蝶 / 铁鹰)。",
-    "paper 127.0.0.1:7497 · live 127.0.0.1:7496",
-    "2 个账户",
-    "富途证券(OpenD)",
-    "需本机运行并登录富途 OpenD。不支持组合单,多腿结构会被拒绝。",
-    "opend 127.0.0.1:11111",
-    "1 个账户",
-    "切到富途证券(OpenD)",
-    "同一时刻只连一家。切换会断开现有连接并写入配置;别名、限额、校验层不变。",
-    "重新检测",
-    "检测连接",
-    "1 · 程序",
-    "富途 OpenD",
-    "已安装,未运行",
-    "/Applications/FutuOpenD.app",
-    "启动 富途 OpenD",
-    "2 · API 端口",
-    "11111",
-    "OpenD API",
-    "端口未监听",
-    "配置为opend",
-    "22222",
-    "OpenD 控制台(telnet,仅供参考)",
-    "连接超时",
-    "3 · 握手与账户",
-    "诊断失败:没登录",
-    "4 · 连接引擎",
-    "断开交易引擎",
-    "「检测连接」是一次性只读探测;这里才是引擎下单用的长连接。",
-    "5 · 交易解锁(仅实盘需要)",
-    "只存 md5",
-    "于 Keychain / DPAPI,明文算完即丢,不写配置、不进日志。模拟盘无需解锁。",
-    "我填的已经是 md5",
-    "不勾则由引擎本机计算",
-    "解锁状态",
-    "未存密码,模拟盘不受影响,实盘单会被拦下",
-    "保存",
-    "交易解锁",
-    "解锁随 OpenD 会话失效,重启 OpenD 后需重新解锁;未解锁时实盘单会在引擎侧被拦下。",
-    "连不上时照着做"
-   ],
-   "buttons": [
-    {
-     "text": "切到富途证券(OpenD)",
-     "loading": false,
-     "disabled": false,
-     "primary": false,
-     "danger": false
-    },
-    {
-     "text": "重新检测",
-     "loading": false,
-     "disabled": false,
-     "primary": false,
-     "danger": false
-    },
-    {
-     "text": "检测连接",
-     "loading": false,
-     "disabled": false,
-     "primary": true,
-     "danger": false
-    },
-    {
-     "text": "启动 富途 OpenD",
-     "loading": false,
-     "disabled": false,
-     "primary": false,
-     "danger": false
-    },
-    {
-     "text": "断开交易引擎",
-     "loading": false,
-     "disabled": false,
-     "primary": false,
-     "danger": false
-    },
-    {
-     "text": "保存",
-     "loading": false,
-     "disabled": false,
-     "primary": false,
-     "danger": false
-    },
-    {
-     "text": "交易解锁",
-     "loading": false,
-     "disabled": false,
-     "primary": true,
-     "danger": false
-    }
-   ],
-   "inputs": [
-    {
-     "type": "password",
-     "value": "",
-     "placeholder": "富途交易密码",
-     "disabled": false,
-     "checked": false
-    }
-   ],
-   "segments": [
-    [
-     false,
-     true,
-     false,
-     false,
-     false
-    ]
-   ],
-   "switches": [
-    false
-   ],
-   "cards": [
-    "ok",
-    "warn",
-    "warn"
-   ],
-   "notices": [
-    "info"
-   ],
-   "badges": [
-    "default",
-    "default"
-   ],
-   "tags": [],
-   "pills": [],
-   "ports": [
     "closed",
     "closed"
    ],
@@ -4937,7 +2418,6 @@
    "texts": [
     "接入",
     "TWS",
-    "富途 OpenD",
     "账户",
     "大模型",
     "Discord 跟单",
@@ -4960,7 +2440,6 @@
    "inputs": [],
    "segments": [
     [
-     false,
      false,
      true,
      false,
@@ -5122,7 +2601,6 @@
    "texts": [
     "接入",
     "TWS",
-    "富途 OpenD",
     "账户",
     "大模型",
     "Discord 跟单",
@@ -5202,7 +2680,6 @@
    "inputs": [],
    "segments": [
     [
-     false,
      false,
      true,
      false,
@@ -5356,7 +2833,6 @@
    "texts": [
     "接入",
     "TWS",
-    "富途 OpenD",
     "账户",
     "大模型",
     "Discord 跟单",
@@ -5438,7 +2914,6 @@
    "inputs": [],
    "segments": [
     [
-     false,
      false,
      true,
      false,
@@ -5581,7 +3056,6 @@
    "texts": [
     "接入",
     "TWS",
-    "富途 OpenD",
     "账户",
     "大模型",
     "Discord 跟单",
@@ -5604,7 +3078,6 @@
    "inputs": [],
    "segments": [
     [
-     false,
      false,
      true,
      false,
@@ -5774,7 +3247,6 @@
    "texts": [
     "接入",
     "TWS",
-    "富途 OpenD",
     "账户",
     "大模型",
     "Discord 跟单",
@@ -5802,7 +3274,7 @@
     "别名",
     "指令里怎么称呼它,如「模拟」「主账户」",
     "账号",
-    "IBKR:U 或 DU 开头加数字;富途:纯数字",
+    "U 或 DU 开头加数字",
     "类别",
     "实盘账户的订单会用真钱成交",
     "纸面(模拟)",
@@ -5887,7 +3359,6 @@
    ],
    "segments": [
     [
-     false,
      false,
      true,
      false,
@@ -6071,7 +3542,6 @@
    "texts": [
     "接入",
     "TWS",
-    "富途 OpenD",
     "账户",
     "大模型",
     "Discord 跟单",
@@ -6191,7 +3661,6 @@
    ],
    "segments": [
     [
-     false,
      false,
      true,
      false,
@@ -6374,7 +3843,6 @@
    "texts": [
     "接入",
     "TWS",
-    "富途 OpenD",
     "账户",
     "大模型",
     "Discord 跟单",
@@ -6402,14 +3870,14 @@
     "别名",
     "指令里怎么称呼它,如「模拟」「主账户」",
     "账号",
-    "IBKR:U 或 DU 开头加数字;富途:纯数字",
+    "U 或 DU 开头加数字",
     "类别",
     "实盘账户的订单会用真钱成交",
     "纸面(模拟)",
     "实盘",
     "连接",
     "经哪条连接下单",
-    "futu · 富途 · 端口 11111",
+    "futu · IBKR · 端口 11111",
     "默认账户",
     "指令里没点名账户时发到它",
     "是",
@@ -6494,7 +3962,6 @@
    ],
    "segments": [
     [
-     false,
      false,
      true,
      false,
@@ -6596,7 +4063,6 @@
    "texts": [
     "接入",
     "TWS",
-    "富途 OpenD",
     "账户",
     "大模型",
     "Discord 跟单",
@@ -6659,7 +4125,6 @@
    ],
    "segments": [
     [
-     false,
      false,
      false,
      true,
@@ -6812,7 +4277,6 @@
    "texts": [
     "接入",
     "TWS",
-    "富途 OpenD",
     "账户",
     "大模型",
     "Discord 跟单",
@@ -6896,7 +4360,6 @@
    ],
    "segments": [
     [
-     false,
      false,
      false,
      true,
@@ -7053,7 +4516,6 @@
    "texts": [
     "接入",
     "TWS",
-    "富途 OpenD",
     "账户",
     "大模型",
     "Discord 跟单",
@@ -7152,7 +4614,6 @@
    ],
    "segments": [
     [
-     false,
      false,
      false,
      true,
@@ -7312,7 +4773,6 @@
    "texts": [
     "接入",
     "TWS",
-    "富途 OpenD",
     "账户",
     "大模型",
     "Discord 跟单",
@@ -7397,7 +4857,6 @@
    ],
    "segments": [
     [
-     false,
      false,
      false,
      true,
@@ -7564,7 +5023,6 @@
    "texts": [
     "接入",
     "TWS",
-    "富途 OpenD",
     "账户",
     "大模型",
     "Discord 跟单",
@@ -7653,7 +5111,6 @@
    ],
    "segments": [
     [
-     false,
      false,
      false,
      true,
@@ -7819,7 +5276,6 @@
    "texts": [
     "接入",
     "TWS",
-    "富途 OpenD",
     "账户",
     "大模型",
     "Discord 跟单",
@@ -7907,7 +5363,6 @@
    ],
    "segments": [
     [
-     false,
      false,
      false,
      true,
@@ -8071,7 +5526,6 @@
    "texts": [
     "接入",
     "TWS",
-    "富途 OpenD",
     "账户",
     "大模型",
     "Discord 跟单",
@@ -8157,7 +5611,6 @@
    ],
    "segments": [
     [
-     false,
      false,
      false,
      true,
@@ -8304,7 +5757,6 @@
    "texts": [
     "接入",
     "TWS",
-    "富途 OpenD",
     "账户",
     "大模型",
     "Discord 跟单"
@@ -8313,7 +5765,6 @@
    "inputs": [],
    "segments": [
     [
-     false,
      false,
      false,
      false,
@@ -8454,7 +5905,6 @@
    "texts": [
     "接入",
     "TWS",
-    "富途 OpenD",
     "账户",
     "大模型",
     "Discord 跟单",
@@ -8464,7 +5914,6 @@
    "inputs": [],
    "segments": [
     [
-     false,
      false,
      false,
      false,
@@ -8732,7 +6181,6 @@
    "texts": [
     "接入",
     "TWS",
-    "富途 OpenD",
     "账户",
     "大模型",
     "Discord 跟单",
@@ -8932,7 +6380,6 @@
    ],
    "segments": [
     [
-     false,
      false,
      false,
      false,
@@ -9196,7 +6643,6 @@
    "texts": [
     "接入",
     "TWS",
-    "富途 OpenD",
     "账户",
     "大模型",
     "Discord 跟单",
@@ -9407,7 +6853,6 @@
    ],
    "segments": [
     [
-     false,
      false,
      false,
      false,
@@ -9708,7 +7153,6 @@
    "texts": [
     "接入",
     "TWS",
-    "富途 OpenD",
     "账户",
     "大模型",
     "Discord 跟单",
@@ -9908,7 +7352,6 @@
    ],
    "segments": [
     [
-     false,
      false,
      false,
      false,
@@ -10223,7 +7666,6 @@
    "texts": [
     "接入",
     "TWS",
-    "富途 OpenD",
     "账户",
     "大模型",
     "Discord 跟单",
@@ -10423,7 +7865,6 @@
    ],
    "segments": [
     [
-     false,
      false,
      false,
      false,
@@ -10739,7 +8180,6 @@
    "texts": [
     "接入",
     "TWS",
-    "富途 OpenD",
     "账户",
     "大模型",
     "Discord 跟单",
@@ -10939,7 +8379,6 @@
    ],
    "segments": [
     [
-     false,
      false,
      false,
      false,
@@ -11254,7 +8693,6 @@
    "texts": [
     "接入",
     "TWS",
-    "富途 OpenD",
     "账户",
     "大模型",
     "Discord 跟单",
@@ -11454,7 +8892,6 @@
    ],
    "segments": [
     [
-     false,
      false,
      false,
      false,
@@ -11767,7 +9204,6 @@
    "texts": [
     "接入",
     "TWS",
-    "富途 OpenD",
     "账户",
     "大模型",
     "Discord 跟单",
@@ -11966,7 +9402,6 @@
    ],
    "segments": [
     [
-     false,
      false,
      false,
      false,
@@ -12276,7 +9711,6 @@
    "texts": [
     "接入",
     "TWS",
-    "富途 OpenD",
     "账户",
     "大模型",
     "Discord 跟单",
@@ -12475,7 +9909,6 @@
    ],
    "segments": [
     [
-     false,
      false,
      false,
      false,
@@ -12785,7 +10218,6 @@
    "texts": [
     "接入",
     "TWS",
-    "富途 OpenD",
     "账户",
     "大模型",
     "Discord 跟单",
@@ -12985,7 +10417,6 @@
    ],
    "segments": [
     [
-     false,
      false,
      false,
      false,
@@ -13300,7 +10731,6 @@
    "texts": [
     "接入",
     "TWS",
-    "富途 OpenD",
     "账户",
     "大模型",
     "Discord 跟单",
@@ -13499,7 +10929,6 @@
    ],
    "segments": [
     [
-     false,
      false,
      false,
      false,
@@ -13809,7 +11238,6 @@
    "texts": [
     "接入",
     "TWS",
-    "富途 OpenD",
     "账户",
     "大模型",
     "Discord 跟单",
@@ -14009,7 +11437,6 @@
    ],
    "segments": [
     [
-     false,
      false,
      false,
      false,
@@ -14324,7 +11751,6 @@
    "texts": [
     "接入",
     "TWS",
-    "富途 OpenD",
     "账户",
     "大模型",
     "Discord 跟单",
@@ -14524,7 +11950,6 @@
    ],
    "segments": [
     [
-     false,
      false,
      false,
      false,
@@ -14839,7 +12264,6 @@
    "texts": [
     "接入",
     "TWS",
-    "富途 OpenD",
     "账户",
     "大模型",
     "Discord 跟单",
@@ -15039,7 +12463,6 @@
    ],
    "segments": [
     [
-     false,
      false,
      false,
      false,
@@ -15355,7 +12778,6 @@
    "texts": [
     "接入",
     "TWS",
-    "富途 OpenD",
     "账户",
     "大模型",
     "Discord 跟单",
@@ -15555,7 +12977,6 @@
    ],
    "segments": [
     [
-     false,
      false,
      false,
      false,
@@ -15874,7 +13295,6 @@
    "texts": [
     "接入",
     "TWS",
-    "富途 OpenD",
     "账户",
     "大模型",
     "Discord 跟单",
@@ -16075,7 +13495,6 @@
    ],
    "segments": [
     [
-     false,
      false,
      false,
      false,

@@ -443,7 +443,7 @@ OJson AnomalyService::monitor() {
     const QString session = anomalySessionOf(settings().marketStatus(domain::nowEt()));
     QString note;
     if (!connected) note = u"未连接券商"_s;
-    else if (!supported) note = u"当前券商(富途)暂不支持异动监控"_s;
+    else if (!supported) note = u"当前券商暂不支持异动监控"_s;
     else if (session == u"closed") note = u"休市:开盘后开始检测"_s;
     else if (session == u"pre") note = u"盘前:开盘后开始检测"_s;
     else if (session == u"post") note = u"盘后:今日检测已结束"_s;
