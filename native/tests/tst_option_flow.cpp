@@ -110,7 +110,7 @@ private slots:
         QCOMPARE(f[2].buy + f[2].sell, 0.0);
     }
     void observeStream() {
-        orchestrate::FlowStreamState s{u"20261028"_s, 6800, u"C"_s, {}, {}, {}, false};
+        orchestrate::FlowStreamState s{u"20261028"_s, 6800, u"C"_s, {}, {}, {}, false, {}};
         execution::TickerData t;
         t.bid = 2.0;
         t.ask = 2.2;
@@ -155,6 +155,59 @@ private slots:
         QCOMPARE(js::str(rows[0].get(u"kind"_s)), u"vol"_s);
         t.volume = 91;
         QCOMPARE(orchestrate::observeFlow(s, t, 1500)[0].get(u"dv"_s)->n, 1.0);
+    }
+    void observeQuoteRows() {
+        orchestrate::FlowStreamState s{u"20261030"_s, 6800, u"P"_s, {}, {}, {}, false, {}};
+        execution::TickerData t;
+        // 还没有盘口:不记
+        QVERIFY(!orchestrate::observeQuote(s, t, 1000));
+        // 第一口:记一笔作底,量跟着带上
+        t.bid = 3.0;
+        t.ask = 3.2;
+        t.bidSize = 10;
+        t.askSize = 12;
+        auto q = orchestrate::observeQuote(s, t, 1100);
+        QVERIFY(q);
+        QCOMPARE(js::str(q->get(u"kind"_s)), u"quote"_s);
+        QCOMPARE(js::str(q->get(u"expiry"_s)), u"20261030"_s);
+        QCOMPARE(q->get(u"b"_s)->n, 3.0);
+        QCOMPARE(q->get(u"a"_s)->n, 3.2);
+        QCOMPARE(q->get(u"bs"_s)->n, 10.0);
+        // 只变量:不记
+        t.bidSize = 40;
+        QVERIFY(!orchestrate::observeQuote(s, t, 1200));
+        // 只变买价:记,卖价沿用
+        t.bid = 3.1;
+        q = orchestrate::observeQuote(s, t, 1300);
+        QVERIFY(q);
+        QCOMPARE(q->get(u"b"_s)->n, 3.1);
+        QCOMPARE(q->get(u"a"_s)->n, 3.2);
+        QCOMPARE(q->get(u"bs"_s)->n, 40.0);
+        // 这一次没带卖价(NaN):不算变,也不清掉
+        t.ask = std::nan("");
+        QVERIFY(!orchestrate::observeQuote(s, t, 1400));
+        QCOMPARE(*s.shown.ask, 3.2);
+        // 报价行和成交行各管各的:同一次推送里既有成交又挪了盘口,成交行的"之前那口"仍是上一次读到的
+        orchestrate::FlowStreamState f{u"20261030"_s, 6800, u"C"_s, {}, {}, {}, false, {}};
+        execution::TickerData u;
+        u.bid = 2.0;
+        u.ask = 2.2;
+        u.volume = 10;
+        QVERIFY(orchestrate::observeQuote(f, u, 2000));
+        QCOMPARE(orchestrate::observeFlow(f, u, 2000).size(), 1);  // vol 底
+        u.volume = 12;
+        u.last = 2.2;
+        u.lastTradeAt = 7;
+        u.bid = 2.2;
+        u.ask = 2.4;
+        q = orchestrate::observeQuote(f, u, 2100);
+        QVERIFY(q);
+        QCOMPARE(q->get(u"b"_s)->n, 2.2);
+        const auto rows = orchestrate::observeFlow(f, u, 2100);
+        QCOMPARE(rows.size(), 1);
+        QCOMPARE(rows[0].get(u"pb"_s)->n, 2.0);
+        QCOMPARE(rows[0].get(u"pa"_s)->n, 2.2);
+        QCOMPARE(rows[0].get(u"b"_s)->n, 2.2);
     }
     void oiCheckAndLog() {
         QTemporaryDir dir;

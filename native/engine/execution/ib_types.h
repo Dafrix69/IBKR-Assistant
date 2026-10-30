@@ -208,6 +208,8 @@ public:
     virtual void setBaselineMarketDataType(int) {}
     /// 同一合约带不同 generic ticks 是不同的流
     virtual std::shared_ptr<TickerHandle> subscribeTicker(const IbContract& contract, const QString& genericTicks = {}) = 0;
+    /// 这个会话此刻占着几条行情线路(订着的行情流条数);不知道给 -1
+    virtual int activeTickers() const { return -1; }
     /// genericTicks 不传(nullopt)撤这个合约的所有变体
     virtual void cancelTicker(const IbContract& contract, const std::optional<QString>& genericTicks = std::nullopt) = 0;
     /// Cap::QuoteDelayed。没见过成交价 nullopt(缺了同)

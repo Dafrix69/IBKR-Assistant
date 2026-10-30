@@ -430,6 +430,7 @@ public:
         api_->setMarketDataType(type);
     }
     std::shared_ptr<TickerHandle> subscribeTicker(const IbContract& contract, const QString& genericTicks) override;
+    int activeTickers() const override { return int(tickers_.items.size()); }
     void cancelTicker(const IbContract& contract, const std::optional<QString>& genericTicks) override;
     std::optional<bool> quoteDelayed(const IbContract& contract) override {
         if (const bool* v = lastFeed_.get(tickerKey(contract))) return *v;

@@ -2,6 +2,7 @@
 
 #include "domain/config.h"
 #include "execution/broker.h"
+#include "execution/ib_link.h"
 #include "execution/ib_contracts.h"
 #include "orchestrate/services/svc_util.h"
 #include "util/js_runtime.h"
@@ -69,6 +70,20 @@ QList<OJson> observeFlow(FlowStreamState& s, const execution::TickerData& t, dou
     return out;
 }
 
+std::optional<OJson> observeQuote(FlowStreamState& s, const execution::TickerData& t, double nowMs) {
+    const std::optional<double> bid = finiteOr(t.bid), ask = finiteOr(t.ask);
+    const bool moved = (bid && bid != s.shown.bid) || (ask && ask != s.shown.ask);
+    if (!moved) return std::nullopt;
+    if (bid) s.shown.bid = bid;
+    if (ask) s.shown.ask = ask;
+    OJson r = contractRec(u"quote"_s, nowMs, s);
+    r.set(u"b"_s, nOrNull(s.shown.bid));
+    r.set(u"a"_s, nOrNull(s.shown.ask));
+    r.set(u"bs"_s, nOrNull(finiteOr(t.bidSize)));
+    r.set(u"as"_s, nOrNull(finiteOr(t.askSize)));
+    return r;
+}
+
 FlowRecorderService::FlowRecorderService(SvcHost& host) : SvcBase(host) {}
 
 FlowRecorderService::~FlowRecorderService() {
@@ -77,6 +92,16 @@ FlowRecorderService::~FlowRecorderService() {
 }
 
 domain::OptionFlowLog FlowRecorderService::tbtLog() const { return domain::OptionFlowLog(QFileInfo(settings().db_path).path() + u"/option-flow-tbt"_s); }
+
+domain::OptionFlowLog FlowRecorderService::quoteLog() const { return domain::OptionFlowLog(QFileInfo(settings().db_path).path() + u"/option-flow-quotes"_s); }
+
+void FlowRecorderService::idle(const QString& reason) {
+    idleReason_ = reason;
+    // 只在原因变了的时候写日志:盘外每秒都会走到这里
+    if (reason == loggedReason_) return;
+    loggedReason_ = reason;
+    execution::logStderr(u"[记盘] 停着:%1"_s.arg(reason));
+}
 
 domain::OptionFlowLog FlowRecorderService::log() const { return domain::OptionFlowLog(QFileInfo(settings().db_path).path() + u"/option-flow"_s); }
 
@@ -173,6 +198,7 @@ Task<> FlowRecorderService::tickInner(double nowMs) {
         co_await setup(date, nowMs);
         if (alive.expired()) co_return;
     } else {
+        dropRejected(nowMs);
         onPush();  // 推送回调之外每秒也读一遍:回调漏了、或者会话不给回调
         if (nowMs - lastRoveAt_ >= kRoveEveryMs) co_await rove(nowMs);
         if (alive.expired()) co_return;
@@ -208,26 +234,31 @@ Task<> FlowRecorderService::setup(const QString& date, double nowMs) {
     const OJson* src = info ? js::prop(&*info, u"source"_s) : nullptr;
     if ((js::isStr(src) && src->s == u"index_stale") || !spot || !(*spot > 0)) co_return idle(u"拿不到现价"_s);
 
-    // 下一个交易日到期:当日到期的合约第二天就没有持仓量可对照
+    // 两圈:当日到期(0DTE,今天是交易日才有)在前,线路不够时先保它;下一个交易日到期的那圈留给次日持仓量对照
     QDate d = QDate::fromString(date, Qt::ISODate);
-    QString expiryDate;
-    for (int i = 1; i <= 10 && expiryDate.isEmpty(); ++i) {
+    QString nextDate;
+    for (int i = 1; i <= 10 && nextDate.isEmpty(); ++i) {
         const QString s = d.addDays(i).toString(Qt::ISODate);
-        if (settings().isTradingDay(s)) expiryDate = s;
+        if (settings().isTradingDay(s)) nextDate = s;
     }
-    if (expiryDate.isEmpty()) co_return idle(u"十天里找不到下一个交易日"_s);
+    if (nextDate.isEmpty()) co_return idle(u"十天里找不到下一个交易日"_s);
     date_ = date;
-    expiry_ = compact(expiryDate);
     tradingClass_ = cfg->daily_trading_class;
-    anchor_ = std::round(*spot / kStrikeStep) * kStrikeStep;
     session_ = router->marketSession();
+    const double anchor = std::round(*spot / kStrikeStep) * kStrikeStep;
+    batches_.clear();
+    if (settings().isTradingDay(date)) batches_ << Batch{compact(date), anchor};
+    batches_ << Batch{compact(nextDate), anchor};
     std::vector<double> strikes;
-    for (double k = anchor_ - kHalfBand; k <= anchor_ + kHalfBand + 1e-9; k += kStrikeStep) strikes.push_back(k);
-    const int got = co_await subscribe(strikes, nowMs, *spot);
-    if (alive.expired()) co_return;
-    if (!session_) co_return;  // 等的时候被撤了:原因已经写好
+    for (double k = anchor - kHalfBand; k <= anchor + kHalfBand + 1e-9; k += kStrikeStep) strikes.push_back(k);
+    int got = 0;
+    for (const Batch& b : QList<Batch>(batches_)) {
+        got += co_await subscribe(b, strikes, nowMs, *spot);
+        if (alive.expired()) co_return;
+        if (!session_) co_return;  // 等的时候被撤了:原因已经写好
+    }
     if (got == 0) {
-        teardown(u"%1 %2 这批合约一个都确认不了"_s.arg(tradingClass_, expiry_), nowMs);
+        teardown(u"%1 这几个到期日的合约一个都确认不了或订不上"_s.arg(tradingClass_), nowMs);
         co_return;
     }
     // 推送回调:会话给就挂上,不给就退到定时轮询
@@ -245,24 +276,46 @@ Task<> FlowRecorderService::setup(const QString& date, double nowMs) {
     lastVolAt_ = nowMs;  // 订上时的累计量由第一次读数记(observeFlow 的底)
     lastRoveAt_ = nowMs;
     idleReason_.clear();
+    loggedReason_.clear();
     lastError_.clear();
 }
 
-Task<int> FlowRecorderService::subscribe(std::vector<double> strikes, double nowMs, double spot) {
+Task<int> FlowRecorderService::subscribe(Batch batch, std::vector<double> strikes, double nowMs, double spot) {
     const std::weak_ptr<bool> alive = alive_;
     const auto* cfg = settings().indexConfig(kSymbol);
     QSet<QString> have;
-    for (const Watch& w : watches_) have.insert(util::jsNumberToString(w.state.strike) + w.state.right);
+    const auto key = [](const QString& expiry, double k, const QString& right) { return expiry + u'|' + util::jsNumberToString(k) + right; };
+    for (const Watch& w : watches_) have.insert(key(w.state.expiry, w.state.strike, w.state.right));
+    have.unite(rejected_);
+    const auto session = session_;
+    if (!session) co_return 0;
+    // 线路:会话已经占的 + 这一批不过 kLineCeiling;不知道占了几条(-1)只按 kMaxContracts 管
+    const int inUse = session->activeTickers();
+    const qsizetype room = std::min<qsizetype>(kMaxContracts - watches_.size(), inUse < 0 ? kMaxContracts : kLineCeiling - inUse);
     std::vector<execution::IbContract> contracts;
+    int over = 0;
     for (const double k : strikes) {
         for (const QString& right : {u"C"_s, u"P"_s}) {
-            if (k <= 0 || have.contains(util::jsNumberToString(k) + right)) continue;
-            if (watches_.size() + qsizetype(contracts.size()) >= kMaxContracts) break;
-            contracts.push_back(execution::optionContract(kSymbol, expiry_, k, right, cfg ? cfg->exchange : u"SMART"_s, u"USD"_s, u"100"_s, tradingClass_));
+            if (k <= 0 || have.contains(key(batch.expiry, k, right))) continue;
+            if (qsizetype(contracts.size()) >= room) {
+                ++over;
+                continue;
+            }
+            contracts.push_back(execution::optionContract(kSymbol, batch.expiry, k, right, cfg ? cfg->exchange : u"SMART"_s, u"USD"_s, u"100"_s, tradingClass_));
         }
     }
-    const auto session = session_;
-    if (contracts.empty() || !session) co_return 0;
+    if (over == 0) lastSkipped_.remove(batch.expiry);
+    if (over > 0 && lastSkipped_.value(batch.expiry, -1) != over) {
+        lastSkipped_.insert(batch.expiry, over);
+        // 线路或条数到顶:这几档不订,记下来(第一天看它决定要不要买线路)
+        OJson r = js::object({{u"kind"_s, js::S(u"sub_skip"_s)}, {u"t"_s, js::N(nowMs)}, {u"expiry"_s, js::S(batch.expiry)}, {u"skipped"_s, js::N(over)},
+                              {u"in_use"_s, js::N(inUse)}, {u"ceiling"_s, js::N(kLineCeiling)}});
+        pending_ << r;
+        if (pendingDate_.isEmpty()) pendingDate_ = etDate(nowMs);
+        skipped_ += over;
+        execution::logStderr(u"[记盘] %1 少订 %2 条:会话已占 %3 条线路,上限 %4"_s.arg(batch.expiry).arg(over).arg(inUse).arg(kLineCeiling));
+    }
+    if (contracts.empty()) co_return 0;
     std::vector<execution::IbContract*> ptrs;
     for (auto& c : contracts) ptrs.push_back(&c);
     co_await session->qualifyContracts(ptrs, kQualifyTimeoutMs);
@@ -273,7 +326,7 @@ Task<int> FlowRecorderService::subscribe(std::vector<double> strikes, double now
     for (const auto& c : contracts) {
         if (!c.conId || *c.conId == 0) continue;
         Watch w{c, session->subscribeTicker(c, kTicks), {}};
-        w.state.expiry = expiry_;
+        w.state.expiry = batch.expiry;
         w.state.strike = c.strike.value_or(0);
         w.state.right = c.right.value_or(QString());
         list.items.append(js::array({js::N(w.state.strike), js::S(w.state.right)}));
@@ -283,13 +336,14 @@ Task<int> FlowRecorderService::subscribe(std::vector<double> strikes, double now
     if (n > 0) {
         pending_ << js::object({{u"kind"_s, js::S(u"sub"_s)},
                                 {u"t"_s, js::N(nowMs)},
-                                {u"expiry"_s, js::S(expiry_)},
+                                {u"expiry"_s, js::S(batch.expiry)},
                                 {u"trading_class"_s, js::S(tradingClass_)},
-                                {u"anchor"_s, js::N(anchor_)},
+                                {u"anchor"_s, js::N(batch.anchor)},
                                 {u"spot"_s, js::N(spot)},
                                 {u"rule"_s, js::S(analysis::optionflow::kRuleVersion)},
                                 {u"contracts"_s, list}});
         pendingDate_ = etDate(nowMs);
+        execution::logStderr(u"[记盘] 订上 %1 %2 张(会话共占 %3 条线路)"_s.arg(batch.expiry).arg(n).arg(session->activeTickers()));
     }
     co_return n;
 }
@@ -299,7 +353,7 @@ Task<> FlowRecorderService::rove(double nowMs) {
     lastRoveAt_ = nowMs;
     if (watches_.size() >= kMaxContracts) co_return;
     const std::optional<double> spot = co_await routerPort()->indexPrice(kSymbol);
-    if (alive.expired() || !spot || !(*spot > 0) || std::fabs(*spot - anchor_) < kRovePoints || watches_.isEmpty()) co_return;
+    if (alive.expired() || !spot || !(*spot > 0) || watches_.isEmpty()) co_return;
     const double atm = std::round(*spot / kStrikeStep) * kStrikeStep;
     std::vector<double> strikes;
     // 离现价近的先订:线路不够时留下的是平值附近
@@ -308,7 +362,11 @@ Task<> FlowRecorderService::rove(double nowMs) {
         strikes.push_back(atm - off);
         strikes.push_back(atm + off);
     }
-    co_await subscribe(strikes, nowMs, *spot);
+    for (const Batch& b : QList<Batch>(batches_)) {
+        if (std::fabs(*spot - b.anchor) < kRovePoints) continue;
+        co_await subscribe(b, strikes, nowMs, *spot);
+        if (alive.expired() || !session_) co_return;
+    }
 }
 
 Task<> FlowRecorderService::snapshotYesterdayOi(const QString& date, double nowMs) {
@@ -322,6 +380,9 @@ Task<> FlowRecorderService::snapshotYesterdayOi(const QString& date, double nowM
     const QString today = compact(date);
     std::vector<execution::IbContract> contracts;
     QSet<QString> seen;
+    // 今天 0DTE 那一圈已经订着的不再短订:同一条流(同合约、同 generic),撤短订会把那圈的一起撤掉;它们的持仓量那圈自己会记
+    for (const Watch& w : watches_)
+        if (w.state.expiry == today) seen.insert(util::jsNumberToString(w.state.strike) + w.state.right);
     const auto* cfg = settings().indexConfig(kSymbol);
     if (!prev.isEmpty()) {
         for (const OJson& r : store.read(prev)) {
@@ -367,7 +428,7 @@ Task<> FlowRecorderService::snapshotYesterdayOi(const QString& date, double nowM
         } catch (...) {
         }
         if (!oi) continue;
-        FlowStreamState s{today, c.strike.value_or(0), right, {}, {}, {}, false};
+        FlowStreamState s{today, c.strike.value_or(0), right, {}, {}, {}, false, {}};
         OJson r = contractRec(u"oi"_s, t, s);
         r.set(u"oi"_s, js::N(*oi));
         pending_ << r;
@@ -452,7 +513,12 @@ void FlowRecorderService::onPush() {
     if (watches_.isEmpty()) return;
     const double now = util::dateNow();
     for (Watch& w : watches_) {
-        const QList<OJson> rows = observeFlow(w.state, w.handle->read(), now);
+        const execution::TickerData t = w.handle->read();
+        if (auto q = observeQuote(w.state, t, now)) {
+            pendingQuotes_ << *q;
+            quoteRows_ += 1;
+        }
+        const QList<OJson> rows = observeFlow(w.state, t, now);
         for (const OJson& r : rows) {
             if (js::str(js::prop(&r, u"kind"_s)) == u"print") {
                 prints_ += 1;
@@ -462,6 +528,23 @@ void FlowRecorderService::onPush() {
         pending_ << rows;
     }
     if (!pending_.isEmpty() && pendingDate_.isEmpty()) pendingDate_ = etDate(now);
+}
+
+void FlowRecorderService::dropRejected(double nowMs) {
+    for (qsizetype i = watches_.size() - 1; i >= 0; --i) {
+        const execution::TickerData t = watches_[i].handle->read();
+        if (!t.error || t.error->isEmpty()) continue;
+        // TWS 拒了这条流(线路满了是 101),或者别处把这个合约的流全撤了:会话已经把它摘掉了,这里记一笔、不再读它
+        const FlowStreamState& s = watches_[i].state;
+        rejected_.insert(s.expiry + u'|' + util::jsNumberToString(s.strike) + s.right);
+        OJson r = contractRec(u"sub_err"_s, nowMs, s);
+        r.set(u"error"_s, js::S(sliceUnits(*t.error, 300)));
+        pending_ << r;
+        if (pendingDate_.isEmpty()) pendingDate_ = etDate(nowMs);
+        subErrors_ += 1;
+        execution::logStderr(u"[记盘] %1 %2%3 被拒或被撤:%4"_s.arg(s.expiry, util::jsNumberToString(s.strike), s.right, sliceUnits(*t.error, 120)));
+        watches_.removeAt(i);
+    }
 }
 
 void FlowRecorderService::writeVolumes(double nowMs) {
@@ -484,6 +567,16 @@ void FlowRecorderService::flush() {
         if (day != tbtPrunedFor_) {
             tbtPrunedFor_ = day;
             tbt.prune(kTruthKeepDays);
+        }
+    }
+    if (!pendingQuotes_.isEmpty()) {
+        const QList<OJson> quotes = std::exchange(pendingQuotes_, {});
+        const QString day = etDate(util::dateNow());
+        const domain::OptionFlowLog q = quoteLog();
+        q.appendAll(day, quotes);
+        if (day != quotesPrunedFor_) {
+            quotesPrunedFor_ = day;
+            q.prune(kQuoteKeepDays);
         }
     }
     if (pending_.isEmpty()) return;
@@ -521,7 +614,11 @@ void FlowRecorderService::teardown(const QString& reason, double nowMs) {
         } catch (...) {
         }
     }
+    const bool wasRecording = !watches_.isEmpty();
     watches_.clear();
+    batches_.clear();
+    rejected_.clear();
+    lastSkipped_.clear();
     session_.reset();
     date_.clear();
     try {
@@ -529,22 +626,30 @@ void FlowRecorderService::teardown(const QString& reason, double nowMs) {
     } catch (...) {
         lastError_ = sliceUnits(errMessage(std::current_exception()), 200);
     }
-    idleReason_ = reason;
+    if (wasRecording) loggedReason_.clear();  // 记着的时候停下:一定写一行
+    idle(reason);
 }
 
 OJson FlowRecorderService::status() {
     const bool en = enabled();
     OJson contracts = js::array();
-    for (const Watch& w : watches_) contracts.items.append(js::array({js::N(w.state.strike), js::S(w.state.right)}));
+    for (const Watch& w : watches_) contracts.items.append(js::array({js::S(w.state.expiry), js::N(w.state.strike), js::S(w.state.right)}));
+    OJson expiries = js::array();
+    if (!watches_.isEmpty())
+        for (const Batch& b : batches_) expiries.items.append(js::object({{u"expiry"_s, js::S(b.expiry)}, {u"anchor"_s, js::N(b.anchor)}}));
+    const OJson lines = session_ && session_->activeTickers() >= 0 ? js::N(session_->activeTickers()) : js::Null();
     return js::object({{u"enabled"_s, js::B(en)},
                        {u"running"_s, js::B(running_)},
                        {u"symbol"_s, js::S(kSymbol)},
                        {u"rule"_s, js::S(analysis::optionflow::kRuleVersion)},
                        {u"dir"_s, js::S(log().dir())},
-                       {u"expiry"_s, expiry_.isEmpty() || watches_.isEmpty() ? js::Null() : js::S(expiry_)},
-                       {u"anchor"_s, watches_.isEmpty() ? js::Null() : js::N(anchor_)},
+                       {u"expiries"_s, expiries},
+                       {u"lines_in_use"_s, lines},
                        {u"contracts"_s, contracts},
                        {u"prints"_s, js::N(prints_)},
+                       {u"quote_rows"_s, js::N(quoteRows_)},
+                       {u"sub_errors"_s, js::N(subErrors_)},
+                       {u"skipped"_s, js::N(skipped_)},
                        {u"truth_contracts"_s, truthContracts_},
                        {u"truth_ticks"_s, js::N(truthTicks_)},
                        {u"truth_errors"_s, js::N(truthErrors_)},

@@ -1,7 +1,10 @@
-// 期权主动成交的记盘(P0,只记不画):连着 IBKR、在常规时段里,订一圈 SPX 下一个到期日的近平值期权,每来一次行情推送就看成交量有没有涨,
-// 涨了就把这次的成交量增量、成交价、前后两口盘口原样记一行(domain/option_flow_log,option-flow/ 日文件)。分类是 analysis/option_flow 的事,不落盘。
+// 期权主动成交的记盘(P0,只记不画):连着 IBKR、在常规时段里,订两圈 SPX 近平值期权——当日到期(0DTE)和下一个交易日到期,
+// 每来一次行情推送就看成交量有没有涨,涨了就把这次的成交量增量、成交价、前后两口盘口原样记一行(domain/option_flow_log,option-flow/ 日文件);
+// 买价或卖价变了另记一行报价(option-flow-quotes/,行多,单放一个目录)。分类是 analysis/option_flow 的事,不落盘。
 // 只读行情,不碰交易。行情线路:自己那一批流带 generic "101"(持仓量),和盯盘(不带)、期权链("100,101,106")、测算("106")的流各是各的,
-// 撤也只撤自己那一批;最多 kMaxContracts 条。为什么订下一个到期日而不是当日到期:当日到期的合约第二天就没了,拿不到次日持仓量对照。
+// 撤也只撤自己那一批;最多 kMaxContracts 条,且订之前看这个会话已经占了几条线路,不让总数过 kLineCeiling(留给期权墙、持仓、盯盘)。
+// 被 TWS 拒的流(例如线路满了的 101)记一行 sub_err 并丢掉。下一个交易日到期那一圈是为了次日持仓量对照(当日到期的第二天就没了);
+// 0DTE 那一圈是成交最多的地方,只是没有次日持仓量可对。
 // 每天开盘后(kOiAfterMinutes)还把前一天记过的那批合约(今天到期)短订一次,读它们的持仓量——那是前一天收盘后的数,对照用。
 // 逐笔对照:离现价最近的 kTruthContracts 张另订逐笔(AllLast + BidAsk,一张两条),每笔原样记进 option-flow-tbt/,
 // 用来量记盘分类的误差(analysis/option_flow 的 accuracy)。逐笔的并发数 IBKR 卡得很紧,被拒就记一行 tbt_err、不重试;
@@ -14,7 +17,9 @@
 #include "execution/ib_types.h"
 #include "orchestrate/services/svc_host.h"
 
+#include <QHash>
 #include <QList>
+#include <QSet>
 
 #include <functional>
 #include <memory>
@@ -30,9 +35,13 @@ struct FlowStreamState {
     std::optional<double> volume, lastAt;
     analysis::optionflow::Quote quote;
     bool oiDone = false;
+    analysis::optionflow::Quote shown;  // 上一次记进报价行的买卖价
 };
 /// 一次读数 → 该落盘的行(第一次见到成交量记一笔 vol 作底;涨了记 print;往回跳记 vol 不记 print),并把 state 挪到这一次
 QList<util::OJson> observeFlow(FlowStreamState& state, const execution::TickerData& t, double nowMs);
+/// 一次读数 → 报价行:买价或卖价和上一次记的不一样才记(第一次有价记一笔作底);只变量不记,量跟着价那一行带上。
+/// 不动 observeFlow 用的 state.quote(那是成交前的那一口)
+std::optional<util::OJson> observeQuote(FlowStreamState& state, const execution::TickerData& t, double nowMs);
 
 class FlowRecorderService : public SvcBase {
 public:
@@ -42,10 +51,11 @@ public:
     static constexpr int kTickMs = 1'000;
     static constexpr int kPollMs = 250;  // 会话不给推送回调时的退路
     static constexpr double kStrikeStep = 5;
-    static constexpr double kHalfBand = 25;    // 开盘后第一笔现价取整 ± 25 点:11 档 × C/P = 22 条
+    static constexpr double kHalfBand = 25;    // 开盘后第一笔现价取整 ± 25 点:11 档 × C/P = 每个到期日 22 条
     static constexpr double kRovePoints = 20;  // 现价离锚这么远就在新的平值附近 ± 10 点补档
     static constexpr double kRoveHalf = 10;
-    static constexpr int kMaxContracts = 30;
+    static constexpr int kMaxContracts = 60;  // 两个到期日合计
+    static constexpr int kLineCeiling = 75;   // 订之前会话里已占的线路 + 这一批不超过它;IBKR 默认一个账户 100 条,TWS 自己的窗口也占
     static constexpr double kVolEveryMs = 5 * 60'000;
     static constexpr double kRoveEveryMs = 60'000;
     static constexpr double kRetryMs = 60'000;
@@ -54,6 +64,7 @@ public:
     static constexpr int kOiSettleMs = 5'000;
     static constexpr int kTruthContracts = 3;
     static constexpr double kTruthKeepDays = 10;  // 逐笔的文件大小要等真机跑一天才知道,先留得短
+    static constexpr double kQuoteKeepDays = 30;  // 报价行一天可能几百 MB,先留一个月
 
     explicit FlowRecorderService(SvcHost& host);
     ~FlowRecorderService();
@@ -75,30 +86,41 @@ private:
     };
     domain::OptionFlowLog log() const;
     domain::OptionFlowLog tbtLog() const;
+    domain::OptionFlowLog quoteLog() const;
+    /// 一个到期日一圈:锚和补档各算各的
+    struct Batch {
+        QString expiry;
+        double anchor = 0;
+    };
     void startTruth(double spot);
     util::Task<> tickInner(double nowMs);
     util::Task<> setup(const QString& date, double nowMs);
     util::Task<> rove(double nowMs);
-    util::Task<int> subscribe(std::vector<double> strikes, double nowMs, double spot);
+    util::Task<int> subscribe(Batch batch, std::vector<double> strikes, double nowMs, double spot);
+    void dropRejected(double nowMs);
     util::Task<> snapshotYesterdayOi(const QString& date, double nowMs);
     void writeVolumes(double nowMs);
     void teardown(const QString& reason, double nowMs);
     void flush();
-    void idle(const QString& reason) { idleReason_ = reason; }
+    void idle(const QString& reason);
     util::Task<> loop(int tickMs, int gen);
 
     int timer_ = 0, poll_ = 0, gen_ = 0;
     bool running_ = false, busy_ = false;
     std::shared_ptr<execution::IbSession> session_;
     std::function<void()> detach_;
-    QString date_, expiry_, tradingClass_;
-    double anchor_ = 0;
+    QString date_, tradingClass_;
+    QList<Batch> batches_;
     QList<Watch> watches_;
-    QList<util::OJson> pending_, pendingTbt_;
+    QList<util::OJson> pending_, pendingTbt_, pendingQuotes_;
     QList<std::function<void()>> truthCancels_;
     util::OJson truthContracts_ = util::OJson::null();
     double truthTicks_ = 0, truthErrors_ = 0;
-    QString tbtPrunedFor_;
+    QString tbtPrunedFor_, quotesPrunedFor_;
+    double quoteRows_ = 0, subErrors_ = 0, skipped_ = 0;
+    QString loggedReason_;
+    QSet<QString> rejected_;             // 被拒过的合约(到期|行权价|C/P):这一轮订阅里不再订
+    QHash<QString, int> lastSkipped_;    // 每个到期日上一次少订了几条:一样就不再记,补档每分钟都会走到
     QString pendingDate_, prunedFor_;
     double lastVolAt_ = 0, lastRoveAt_ = 0, lastSetupAt_ = 0;
     QString oiDate_, oiTryDate_;
