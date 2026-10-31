@@ -345,6 +345,7 @@ public:
     void reqExecutions(double reqId, const OJson& filter);
     void reqPositions();
     void cancelPositions();
+    void reqAccountUpdates(bool subscribe, const QString& account);
     void reqAccountSummary(double reqId, const QString& group, const QString& tags);
     void cancelAccountSummary(double reqId);
     void reqTickByTickData(double reqId, const OJson& contract, const QString& tickType);
@@ -461,6 +462,8 @@ public:
     Task<JsList> getAllOpenOrders();
     Task<JsList> getExecutionDetails(const OJson& filter);
     std::shared_ptr<Subscription> getPositions();
+    /// 一个账户的账户推送(库的 ApiNext 没有这一个):收齐一轮(accountDownloadEnd)推一次,all 是 shared_ptr<JsList>,每项 {contract, position, marketPrice, averageCost, account}
+    std::shared_ptr<Subscription> getPortfolio(const QString& account);
     std::shared_ptr<Subscription> getAccountSummary(const QString& group, const QString& tags);
     std::shared_ptr<Subscription> getPnL(const QString& account);
     /// 逐笔(库的 ApiNext 没有这一个):推的 all 是 OJson {e: 事件名, a: 事件参数}
@@ -495,6 +498,8 @@ private:
     void onSecDefOptParam(Subs& subs, const OJson& a);
     void onSecDefOptParamEnd(Subs& subs, const OJson& a);
     void onPnL(Subs& subs, const OJson& a);
+    void onUpdatePortfolio(Subs& subs, const OJson& a);
+    void onAccountDownloadEnd(Subs& subs, const OJson& a);
     void onTickByTick(Subs& subs, const QString& event, const OJson& a);
     void onTick(Subs& subs, const OJson& a);
     void onTickString(Subs& subs, const OJson& a);

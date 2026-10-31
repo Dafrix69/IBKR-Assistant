@@ -242,6 +242,8 @@ public:
     /// Cap::OpenTradesDetailed
     virtual Task<std::vector<OpenTradeDetail>> openTradesDetailed() { co_return std::vector<OpenTradeDetail>{}; }
     virtual Task<std::vector<PortfolioItemLike>> portfolio() = 0;
+    /// 券商算的持仓标记价(休市也有)。只读缓存、不等网络;marketPrice 之外的字段不保证有。只给界面估值,绝不进 market_price
+    virtual std::vector<PortfolioItemLike> positionMarks() { return {}; }
     virtual Task<std::vector<PositionItemLike>> positions() = 0;
     /// Cap::AccountPnl / NetLiquidation(缺了等于 nullopt)
     virtual std::optional<AccountPnl> accountPnl(const QString&) { return std::nullopt; }

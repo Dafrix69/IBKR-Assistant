@@ -273,6 +273,7 @@ private:
     util::Task<> fillOptionPrices(QList<util::OJson>* rows);
     util::Task<> ensureOptionStreams(SessionPtr session, QList<util::OJson> legs);
     util::Task<> fillPositionPrices(QList<util::OJson>* rows);
+    void fillPositionMarks(const std::vector<SessionPtr>& live, QList<util::OJson>* rows, const QHash<QString, QString>& aliasOf);
 
     // broker_orders.cpp
     util::Task<util::OJson> priceCondition(SessionPtr session, std::optional<util::OJson> trigger);

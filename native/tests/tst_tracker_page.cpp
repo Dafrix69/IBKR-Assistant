@@ -37,6 +37,22 @@ private slots:
                 QFAIL(qPrintable(u"第 %1 段:期望「%2」,实际「%3」\n前后:%4"_s.arg(i).arg(expected.value(i), got.value(i), expected.mid(std::max<qsizetype>(0, i - 3), 6).join(u" | "_s))));
         }
     }
+    // 休市有券商标记价:盈亏和价都按它,不写成昨收;成本折回每股价,和价同单位
+    void markBeatsCloseWhenMarketClosed() {
+        const QJsonObject p{{u"key"_s, u"k"_s}, {u"symbol"_s, u"SPX"_s}, {u"sec_type"_s, u"OPT"_s}, {u"quantity"_s, 1}, {u"multiplier"_s, 100}, {u"avg_cost"_s, 586.63},
+                            {u"market_price"_s, QJsonValue()}, {u"unrealized_pnl"_s, QJsonValue()}, {u"mark_price"_s, 8.58}, {u"close_price"_s, 83.6},
+                            {u"close_pnl"_s, 271.37}, {u"close_pct"_s, 46.26}, {u"account"_s, u"main"_s}};
+        const QJsonObject m = track::positionModel(p, false, QString());
+        QCOMPARE(m[u"hero"_s].toString(), u"+271.37"_s);
+        const QJsonArray facts = m[u"facts"_s].toArray();
+        QCOMPARE(facts[1][u"value"_s].toString(), u"5.87"_s);
+        QCOMPARE(facts[2][u"value"_s].toString(), u"8.58"_s);
+        QCOMPARE(facts[2][u"label"_s].toString(), u"标记价"_s);
+        QVERIFY(m[u"heroNotes"_s].toArray()[0][u"text"_s].toString().contains(u"券商标记价"_s));
+        QJsonObject noMark = p;
+        noMark.remove(u"mark_price"_s);
+        QCOMPARE(track::positionModel(noMark, false, QString())[u"facts"_s].toArray()[2][u"label"_s].toString(), u"昨收"_s);
+    }
 };
 
 QTEST_GUILESS_MAIN(TestTrackerPage)

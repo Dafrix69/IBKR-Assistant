@@ -639,6 +639,21 @@ public:
         co_return out;
     }
 
+    std::vector<PortfolioItemLike> positionMarks() override {
+        std::vector<PortfolioItemLike> out;
+        const OJson* marks = cfg_.get(u"marks"_s);
+        if (!marks) return out;
+        for (const OJson& d : marks->items) {
+            PortfolioItemLike p;
+            if (const OJson* c = d.get(u"contract"_s)) p.contract = *c;
+            p.position = num(d, u"position"_s);
+            p.marketPrice = num(d, u"marketPrice"_s);
+            if (const OJson* a = d.get(u"account"_s); a && a->type == OJson::String) p.account = a->s;
+            out.push_back(p);
+        }
+        return out;
+    }
+
     Task<std::vector<PositionItemLike>> positions() override {
         const OJson r = listResult(u"positions"_s);
         const double delay = num(r, u"delay"_s);

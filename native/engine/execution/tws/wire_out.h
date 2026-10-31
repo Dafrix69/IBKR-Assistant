@@ -59,6 +59,8 @@ Encoded cancelHistoricalData(int serverVersion, const Arg& reqId);
 Encoded reqPositions(int serverVersion);
 /// CANCEL_POSITIONS
 Encoded cancelPositions(int serverVersion);
+/// REQ_ACCT_DATA(reqAccountUpdates):同一时刻只能订一个账户
+Encoded reqAccountUpdates(int serverVersion, bool subscribe, const Arg& account);
 /// REQ_ACCOUNT_SUMMARY
 Encoded reqAccountSummary(int serverVersion, const Arg& reqId, const Arg& group, const Arg& tags);
 /// CANCEL_ACCOUNT_SUMMARY

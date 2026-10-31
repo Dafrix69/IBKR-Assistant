@@ -4,6 +4,7 @@
 #include "util/jsobj.h"
 
 #include <QFile>
+#include <optional>
 #include <QTest>
 
 using namespace ibkr;
@@ -17,6 +18,21 @@ class TestPositions : public QObject {
     static const OJson* undefOr(const OJson* v) { return v->type == OJson::String && v->s == u"__undefined__" ? nullptr : v; }
 
 private slots:
+    // 一腿有现价、一腿只有标记价(休市边上常见):净标记价两腿都算上,不能因为缺一腿退回前一日的昨收
+    void comboMarkUsesQuoteWhereLegHasOne() {
+        const auto leg = [](const QString& key, double qty, double cost, std::optional<double> price, std::optional<double> mark, double close) {
+            OJson r = js::object({{u"key"_s, js::S(key)}, {u"quantity"_s, js::N(qty)}, {u"avg_cost"_s, js::N(cost)}, {u"multiplier"_s, js::N(100)},
+                                  {u"market_price"_s, price ? js::N(*price) : js::Null()}, {u"close_price"_s, js::N(close)}});
+            if (mark) r.set(u"mark_price"_s, js::N(*mark));
+            return r;
+        };
+        const OJson combo = js::object({{u"account"_s, js::S(u"main"_s)}, {u"symbol"_s, js::S(u"SPX"_s)}, {u"kind"_s, js::S(u"vertical"_s)}, {u"quantity"_s, js::N(1)},
+                                        {u"legs"_s, js::array({js::S(u"a"_s), js::S(u"b"_s)})}});
+        const OJson row = domain::comboRow(combo, {leg(u"a"_s, 1, 586.63, std::nullopt, 8.58, 83.6), leg(u"b"_s, -1, 518.37, 7.6, std::nullopt, 79.5)});
+        QVERIFY(js::nullish(row.get(u"market_price"_s)));
+        QCOMPARE(row.get(u"mark_price"_s)->n, 0.98);
+        QCOMPARE(row.get(u"close_price"_s)->n, 4.1);
+    }
     void initTestCase() {
         QFile f(QStringLiteral(IBKR_FIXTURES_DIR) + u"/positions.json"_s);
         QVERIFY(f.open(QIODevice::ReadOnly));

@@ -159,7 +159,7 @@ const QList<QPair<int, QString>>& inMsgIds() {
 
 /// 库里有解码、这里没搬的消息号(processMsg 的 case 里有,这里不认)
 bool unported(double id) {
-    static const QList<int> ids = {6, 7, 8, 14, 16, 18, 19, 20, 47, 50, 51, 54, 56, 67, 68, 71, 72, 73, 74, 77, 78, 79, 80, 82, 83, 84, 85, 86, 87, 88,
+    static const QList<int> ids = {6, 8, 14, 16, 18, 19, 20, 47, 50, 51, 56, 67, 68, 71, 72, 73, 74, 77, 78, 79, 80, 82, 83, 84, 85, 86, 87, 88,
                                    89, 91, 92, 93, 95, 96, 97, 98, 101, 102, 103, 104, 105, 106, 107};
     for (int x : ids)
         if (id == x) return true;
@@ -1091,6 +1091,31 @@ void position(Decoder& d) {
     d.queueEvent(u"position"_s, {S(account), c, pos, avgCost});
 }
 
+// PORTFOLIO_VALUE(7):reqAccountUpdates 推的每行持仓。事件名和参数次序同库,字段按 TWS 现在发的 v8
+void portfolioValue(Decoder& d) {
+    d.readInt();  // 版本
+    OJson c = obj();
+    c.set(u"conId"_s, N(d.readInt()));
+    c.set(u"symbol"_s, S(d.readStr()));
+    c.set(u"secType"_s, S(d.readStr()));
+    c.set(u"lastTradeDateOrContractMonth"_s, S(d.readStr()));
+    c.set(u"strike"_s, d.readDouble());
+    c.set(u"right"_s, optionType(d.readStr()));
+    c.set(u"multiplier"_s, d.readDouble());
+    c.set(u"primaryExch"_s, S(d.readStr()));
+    c.set(u"currency"_s, S(d.readStr()));
+    c.set(u"localSymbol"_s, S(d.readStr()));
+    c.set(u"tradingClass"_s, S(d.readStr()));
+    const OJson pos = d.readDecimal();
+    const OJson marketPrice = d.readDouble();
+    const OJson marketValue = d.readDouble();
+    const OJson averageCost = d.readDouble();
+    const OJson unrealized = d.readDouble();
+    const OJson realized = d.readDouble();
+    const QString account = d.readStr();
+    d.queueEvent(u"updatePortfolio"_s, {c, pos, marketPrice, marketValue, averageCost, unrealized, realized, S(account)});
+}
+
 void accountSummary(Decoder& d) {
     d.readInt();  // 版本
     const double reqId = d.readInt();
@@ -1252,6 +1277,7 @@ void Decoder::processMsg(double id) {
     else if (id == 3) orderStatus(*this);
     else if (id == 4) decodeErrMsg();
     else if (id == 5) openOrder(*this);
+    else if (id == 7) portfolioValue(*this);
     else if (id == 9) nextValidId(*this);
     else if (id == 10) contractData(*this);
     else if (id == 11) executionData(*this);
@@ -1267,6 +1293,9 @@ void Decoder::processMsg(double id) {
     else if (id == 53) {
         readInt();  // 版本
         queueEvent(u"openOrderEnd"_s, {});
+    } else if (id == 54) {
+        readInt();  // 版本
+        queueEvent(u"accountDownloadEnd"_s, {S(readStr())});
     } else if (id == 55) versionedEnd(*this, u"execDetailsEnd"_s);
     else if (id == 57) versionedEnd(*this, u"tickSnapshotEnd"_s);
     else if (id == 58) {

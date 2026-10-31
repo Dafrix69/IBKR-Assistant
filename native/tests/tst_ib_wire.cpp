@@ -122,6 +122,24 @@ class TestIbWire : public QObject {
     Q_OBJECT
 private slots:
     // 逐笔:没有原版可对照,期望值照 IBKR 公开的 API 文档的字段次序手写
+    // 字段次序取自 2026-10-31 真实 TWS(server 176)的 PORTFOLIO_VALUE
+    void portfolioProtocol() {
+        QCOMPARE(fieldsOf(*reqAccountUpdates(176,true,js::S(u"U1"_s)).tokens),(QStringList{"6","2","1","U1"}));
+        QCOMPARE(fieldsOf(*reqAccountUpdates(176,false,js::S(u"U1"_s)).tokens),(QStringList{"6","2","0","U1"}));
+        const auto got=runDecode(176,{"7","8","927878273","SPX","OPT","20261102","7650","C","100","CBOE","USD","SPXW  261102C07650000","SPXW","1","8.5835085","858.35","586.63028","271.72","0.0","U1"});
+        const auto* e=got.get(u"emits"_s);
+        QCOMPARE(e->items.size(),1);
+        QCOMPARE(e->items[0].get(u"name"_s)->s,u"updatePortfolio"_s);
+        const auto& a=e->items[0].get(u"args"_s)->items;
+        QCOMPARE(a.size(),8);
+        QCOMPARE(a[0].get(u"tradingClass"_s)->s,u"SPXW"_s);
+        QCOMPARE(a[0].get(u"lastTradeDateOrContractMonth"_s)->s,u"20261102"_s);
+        QCOMPARE(a[2].n,8.5835085);
+        QCOMPARE(a[4].n,586.63028);
+        QCOMPARE(a[7].s,u"U1"_s);
+        const auto end=runDecode(176,{"54","1","U1"});
+        QCOMPARE(end.get(u"emits"_s)->items[0].get(u"name"_s)->s,u"accountDownloadEnd"_s);
+    }
     void tickByTickProtocol() {
         const OJson c=*js::parse(uR"({"conId":123,"symbol":"SPX","secType":"OPT","lastTradeDateOrContractMonth":"20261028","strike":6800,"right":"C","multiplier":"100","exchange":"SMART","currency":"USD","tradingClass":"SPXW"})"_s);
         QCOMPARE(fieldsOf(*reqTickByTickData(176,js::N(7),c,js::S(u"AllLast"_s),js::N(0),js::B(false)).tokens),
@@ -228,6 +246,8 @@ private slots:
         const OJson f = jsfix::load(file);
         QList<double> unportedIds;
         for (const OJson& x : f.get(u"unportedIds"_s)->items) unportedIds << x.n;
+        unportedIds.removeAll(7);  // 对照生成时还没搬,后来搬了
+        unportedIds.removeAll(54);
         int n = 0, skipped = 0;
         for (const OJson& c : f.get(u"messages"_s)->items) {
             const int sv = int(c.get(u"sv"_s)->n);
@@ -244,7 +264,7 @@ private slots:
             JSFIX_SAME(expected(c, {u"name"_s, u"sv"_s, u"tokens"_s}), runDecode(sv, tokens), what);
         }
         QVERIFY(n > minCases);
-        QVERIFY(skipped > 20 || file != u"ib-wire-in.json");
+        QVERIFY(skipped > 15 || file != u"ib-wire-in.json");
     }
     void streamsMatchStoqey() {
         const OJson f = jsfix::load(u"ib-wire-in.json"_s);

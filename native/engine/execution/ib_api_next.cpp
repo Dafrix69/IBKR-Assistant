@@ -725,6 +725,9 @@ void IbApi::reqAllOpenOrders() { schedule([this] { deliver(wire::reqAllOpenOrder
 void IbApi::reqExecutions(double reqId, const OJson& filter) { schedule([=, this] { deliver(wire::reqExecutions(IBNEXT_SV, Nn(reqId), A(filter))); }); }
 void IbApi::reqPositions() { schedule([this] { deliver(wire::reqPositions(IBNEXT_SV)); }); }
 void IbApi::cancelPositions() { schedule([this] { deliver(wire::cancelPositions(IBNEXT_SV)); }); }
+void IbApi::reqAccountUpdates(bool subscribe, const QString& account) {
+    schedule([=, this] { deliver(wire::reqAccountUpdates(IBNEXT_SV, subscribe, Sv(account))); });
+}
 void IbApi::reqAccountSummary(double reqId, const QString& group, const QString& tags) {
     schedule([=, this] { deliver(wire::reqAccountSummary(IBNEXT_SV, Nn(reqId), Sv(group), Sv(tags))); });
 }
@@ -999,6 +1002,13 @@ std::shared_ptr<Subscription> ApiNext::getPositions() {
                        u"getPositions"_s);
 }
 
+std::shared_ptr<Subscription> ApiNext::getPortfolio(const QString& account) {
+    return registerSub([=, this](double) { api_.reqAccountUpdates(true, account); }, [=, this](double) { api_.reqAccountUpdates(false, account); },
+                       {{u"updatePortfolio"_s, [this](Subs& s, const OJson& a) { onUpdatePortfolio(s, a); }},
+                        {u"accountDownloadEnd"_s, [this](Subs& s, const OJson& a) { onAccountDownloadEnd(s, a); }}},
+                       u"getPortfolio+%1"_s.arg(account));
+}
+
 std::shared_ptr<Subscription> ApiNext::getAccountSummary(const QString& group, const QString& tags) {
     return registerSub([=, this](double reqId) { api_.reqAccountSummary(reqId, group, tags); }, [this](double reqId) { api_.cancelAccountSummary(reqId); },
                        {{u"accountSummary"_s, [this](Subs& s, const OJson& a) { onAccountSummary(s, a); }},
@@ -1123,6 +1133,33 @@ void ApiNext::onPosition(Subs& subs, const OJson& a) {
         if (hasAdded) u.added = delta;
         else if (hasRemoved) u.removed = delta;
         else u.changed = delta;
+        sub->next(u);
+    });
+}
+
+void ApiNext::onUpdatePortfolio(Subs& subs, const OJson& a) {
+    OJson row = js::object();
+    setIf(row, u"contract"_s, defined(arg(a, 0)));
+    setIf(row, u"position"_s, arg(a, 1));
+    setIf(row, u"marketPrice"_s, arg(a, 2));
+    setIf(row, u"averageCost"_s, arg(a, 4));
+    setIf(row, u"account"_s, arg(a, 7));
+    forEachSub(subs, [&](const std::shared_ptr<Subscription>& sub) {
+        auto cached = anyPtr<JsList>(sub->lastAllValue);
+        if (!cached) cached = std::make_shared<JsList>();
+        cached->append(row);
+        sub->lastAllValue = cached;
+    });
+}
+
+void ApiNext::onAccountDownloadEnd(Subs& subs, const OJson&) {
+    forEachSub(subs, [](const std::shared_ptr<Subscription>& sub) {
+        auto rows = anyPtr<JsList>(sub->lastAllValue);
+        if (!rows) rows = std::make_shared<JsList>();
+        sub->lastAllValue = std::make_shared<JsList>();  // 下一轮从空开始
+        sub->endEventReceived = true;
+        Upd u;
+        u.all = rows;
         sub->next(u);
     });
 }

@@ -273,6 +273,18 @@ OJson comboRow(const OJson& combo, const QList<OJson>& rows) {
         }
         if (all) netClose = sum;
     }
+    std::optional<double> netMark;  // 券商标记价:有现价的腿用现价(标记价只写在没现价的腿上),都没有才算缺
+    {
+        bool all = !legs.isEmpty();
+        double sum = 0;
+        for (qsizetype i = 0; i < legs.size(); ++i) {
+            auto c = finiteOrNull(f(&legs[i], u"market_price"));
+            if (!c) c = finiteOrNull(f(&legs[i], u"mark_price"));
+            if (!c) all = false;
+            else sum += ratios[i] * *c;
+        }
+        if (all) netMark = sum;
+    }
     const bool longSide = netCost >= 0;
     const bool signedMark = js::isStr(f(&combo, u"kind")) && f(&combo, u"kind")->s == u"custom";
     const auto mark = [&](double v) { return util::pyRound(signedMark ? (longSide ? v : 0 - v) : std::abs(v), 4); };
@@ -320,6 +332,7 @@ OJson comboRow(const OJson& combo, const QList<OJson>& rows) {
     out.set(u"avg_cost"_s, js::N(util::pyRound(std::abs(netCost), 4)));
     out.set(u"market_price"_s, netPrice ? js::N(mark(*netPrice)) : js::Null());
     if (netClose) out.set(u"close_price"_s, js::N(mark(*netClose)));  // 没有就不带这个键
+    if (netMark && !netPrice) out.set(u"mark_price"_s, js::N(mark(*netMark)));  // 有现价就不需要它
     out.set(u"net_side"_s, js::S(longSide ? u"debit"_s : u"credit"_s));
     out.set(u"market_value"_s, js::copyOrNull(f(&combo, u"market_value")));
     out.set(u"unrealized_pnl"_s, js::copyOrNull(f(&combo, u"unrealized_pnl")));

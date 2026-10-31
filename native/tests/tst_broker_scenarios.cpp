@@ -83,6 +83,29 @@ private slots:
         QCOMPARE(orders[1].get(u"conditions"_s)->items[0].get(u"price"_s)->n, 6010.0);
     }
 
+    // 休市只有昨收:券商标记价只进 mark_price,market_price 必须还是 null(追踪拿它判止损);有现价的行不写标记价
+    void marksStayOutOfMarketPrice() {
+        using namespace ibkr;
+        const auto fx = jsfix::load(u"broker_router.json"_s);
+        const auto script = *util::parseOJson(R"({"start":1791815400000,"factory":{"paper":["P"]},"sessions":[{
+            "name":"P","connected":true,"accounts":["DU7654321"],"caps":[],
+            "initial":{"OPT|SPX|20261102|7650|C|SPXW":{"close":83.6},"OPT|SPX|20261102|7655|C|SPXW":{"bid":7.4,"ask":7.8,"close":79.5}},
+            "portfolio":[{"items":[]}],
+            "positions":[{"items":[
+              {"contract":{"symbol":"SPX","secType":"OPT","lastTradeDateOrContractMonth":"20261102","strike":7650,"right":"C","multiplier":"100","tradingClass":"SPXW"},"position":1,"avgCost":586.63,"account":"DU7654321"},
+              {"contract":{"symbol":"SPX","secType":"OPT","lastTradeDateOrContractMonth":"20261102","strike":7655,"right":"C","multiplier":"100","tradingClass":"SPXW"},"position":-1,"avgCost":518.37,"account":"DU7654321"}]}],
+            "marks":[
+              {"contract":{"symbol":"SPX","secType":"OPT","lastTradeDateOrContractMonth":"20261102","strike":7650,"right":"C","multiplier":100,"tradingClass":"SPXW"},"position":1,"marketPrice":8.58,"account":"DU7654321"},
+              {"contract":{"symbol":"SPX","secType":"OPT","lastTradeDateOrContractMonth":"20261102","strike":7655,"right":"C","multiplier":100,"tradingClass":"SPXW"},"position":-1,"marketPrice":7.59,"account":"DU7654321"}]
+            }],"steps":[{"op":"call","m":"connect","a":{"name":"paper"}},{"op":"call","m":"positions"}]})");
+        bw::Runner runner(script, *fx.get(u"base"_s));
+        const auto result = runner.run();
+        const QString text = util::js::stringify(result);
+        QVERIFY2(text.contains(u"\"mark_price\":8.58"_s), qPrintable(text.right(1500)));
+        QVERIFY2(!text.contains(u"\"market_price\":8.58"_s), qPrintable(text.right(1500)));
+        QVERIFY2(text.contains(u"\"market_price\":7.6"_s), qPrintable(text.right(1500)));  // 有盘口的腿用中间价
+        QVERIFY2(!text.contains(u"\"mark_price\":7.59"_s), qPrintable(text.right(1500)));
+    }
     void adoptedConditionsSurviveQuantityChange() {
         using namespace ibkr;
         namespace js = util::js;

@@ -25,15 +25,16 @@ QJsonObject positionModel(const QJsonObject& p, bool compact, const QString& ope
     const bool isCombo = secType == u"BAG";
     const bool credit = p.value("net_side"_L1) == u"credit"_s;
     const QString unit = isCombo ? u"组"_s : secType == u"OPT" ? u"张"_s : u"股"_s;
-    // 组合的成本 / 现价是"每组净价"(IBKR 口径含乘数的成本 → 按乘数折回每股价),借方 / 贷方要标出来
+    // 组合和期权的成本都折回每股价,才能和现价放一起比(IBKR 口径的成本含乘数);组合是"每组净价",借方 / 贷方要标出来
     const auto perUnit = [&](const QJsonValue& v) -> QJsonValue {
-        if (!isCombo || nullish(v)) return v;
+        if ((!isCombo && secType != u"OPT" && secType != u"FOP") || nullish(v)) return v;
         const double mult = jsTruthy(p.value("multiplier"_L1)) ? jsNumber(p.value("multiplier"_L1)) : 100;
         return v.toDouble() / mult;
     };
     const QJsonValue cost = perUnit(p.value("avg_cost"_L1));
-    // 休市没有现价(个股期权没有夜盘):退到昨收估一个数,并明说它是昨收
-    const bool stale = nullish(p.value("unrealized_pnl"_L1)) && nullish(p.value("market_price"_L1)) && !nullish(p.value("close_price"_L1));
+    // 休市没有现价(个股期权没有夜盘):按券商标记价估,没有再退昨收,并明说用的是哪个
+    const bool hasMark = !nullish(p.value("mark_price"_L1));
+    const bool stale = nullish(p.value("unrealized_pnl"_L1)) && nullish(p.value("market_price"_L1)) && (hasMark || !nullish(p.value("close_price"_L1)));
     const QJsonValue pnl = stale ? p.value("close_pnl"_L1) : p.value("unrealized_pnl"_L1);
     const QJsonValue pct = stale ? p.value("close_pct"_L1) : p.value("unrealized_pct"_L1);
     const QString dir = nullish(pnl) || pnl.toDouble() == 0 ? QString() : pnl.toDouble() > 0 ? u"up"_s : u"down"_s;
@@ -46,7 +47,10 @@ QJsonObject positionModel(const QJsonObject& p, bool compact, const QString& ope
     else pill = {{u"tint"_s, qty > 0 ? u"up"_s : u"down"_s}, {u"text"_s, qty > 0 ? u"多头"_s : u"空头"_s}, {u"tri"_s, qty > 0 ? u"up"_s : u"down"_s}};
 
     QJsonArray notes;
-    if (stale) notes.append(QJsonObject{{u"text"_s, u" · 按昨收估算(休市无报价)"_s},
+    if (stale && hasMark)
+        notes.append(QJsonObject{{u"text"_s, u" · 按券商标记价估算(休市无报价)"_s},
+                                 {u"tip"_s, u"这个合约此刻休市没有买卖价。这里用券商账户里的标记价估算,和 TWS 的未实现盈亏同一口径,仅供参考;追踪的触发与挂单定价不用它,开盘有报价后自动换回现价。"_s}});
+    else if (stale) notes.append(QJsonObject{{u"text"_s, u" · 按昨收估算(休市无报价)"_s},
                                         {u"tip"_s, u"这个合约此刻休市,券商不报买卖价也没有最新成交,只有昨收。这里按昨收估算,仅供参考;追踪的触发与挂单定价不用它,开盘有报价后自动换回现价。"_s}});
     if (p.value("pnl_source"_L1) == u"computed"_s)
         notes.append(QJsonObject{{u"text"_s, u" · 本地按现价计算"_s}, {u"tip"_s, u"券商这条路没报盈亏(只给了成本),这里用与追踪器同一套口径算出来;对账以券商为准。"_s}});
@@ -54,8 +58,8 @@ QJsonObject positionModel(const QJsonObject& p, bool compact, const QString& ope
     QJsonArray facts{
         QJsonObject{{u"value"_s, jsNumberToString(std::fabs(qty))}, {u"label"_s, unit}},
         QJsonObject{{u"value"_s, fmtMoney(cost)}, {u"label"_s, isCombo ? (credit ? u"净收"_s : u"净付"_s) : u"成本"_s}},
-        QJsonObject{{u"value"_s, !nullish(p.value("market_price"_L1)) ? fmtMoney(p.value("market_price"_L1)) : stale ? fmtMoney(p.value("close_price"_L1)) : u"—"_s},
-                    {u"label"_s, stale ? (isCombo ? u"组合昨收"_s : u"昨收"_s) : isCombo ? u"组合现价"_s : u"现价"_s}},
+        QJsonObject{{u"value"_s, !nullish(p.value("market_price"_L1)) ? fmtMoney(p.value("market_price"_L1)) : stale ? fmtMoney(p.value(hasMark ? "mark_price"_L1 : "close_price"_L1)) : u"—"_s},
+                    {u"label"_s, stale ? (hasMark ? (isCombo ? u"组合标记价"_s : u"标记价"_s) : isCombo ? u"组合昨收"_s : u"昨收"_s) : isCombo ? u"组合现价"_s : u"现价"_s}},
     };
     if (!compact) facts.append(QJsonObject{{u"value"_s, jsString(p.value("account"_L1))}, {u"label"_s, u"账户"_s}, {u"text"_s, true}});
 

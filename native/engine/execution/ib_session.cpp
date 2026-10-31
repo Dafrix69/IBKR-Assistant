@@ -498,6 +498,7 @@ public:
         return openDetailedCo(shared_from_this());
     }
     Task<std::vector<PortfolioItemLike>> portfolio() override { return Task<std::vector<PortfolioItemLike>>::resolved({}); }
+    std::vector<PortfolioItemLike> positionMarks() override;
     Task<std::vector<PositionItemLike>> positions() override {
         Runtime::Scope s(*rt_);
         return positionsCo(shared_from_this());
@@ -630,6 +631,12 @@ private:
     std::shared_ptr<ibnext::SubHandle> summarySub_;
     OrderedMap<QString, PnlLatest> pnlLatest_;
     OrderedMap<QString, std::shared_ptr<ibnext::SubHandle>> pnlSubs_;
+    // 账户推送一次只能订一个账户:轮着订,收齐一轮就退订,下一个账户下一次调用再订
+    OrderedMap<QString, std::vector<PortfolioItemLike>> marks_;
+    std::shared_ptr<ibnext::SubHandle> markSub_;
+    bool markDone_ = false;
+    qsizetype markNext_ = 0;
+    double markStartMs_ = 0, markRoundMs_ = 0;
 };
 
 template <class T>
@@ -966,6 +973,52 @@ void IbApiNextSession::ensurePnl(const QString& accountId) {
     // pnlSubs.set(accountId, …subscribe(…)):订阅的那一刻出错的话,先删再设(同 TS 的求值次序)
     auto handle = api_->getPnL(accountId)->subscribe(std::move(o));
     pnlSubs_.set(accountId, handle);
+}
+
+std::vector<PortfolioItemLike> IbApiNextSession::positionMarks() {
+    Runtime::Scope scope(*rt_);
+    static constexpr double kRoundMs = 60'000, kGiveUpMs = 15'000;
+    const double now = rt_->now();
+    if (markSub_ && (markDone_ || now - markStartMs_ > kGiveUpMs || !connected_)) {
+        markSub_->unsubscribe();
+        markSub_.reset();
+    }
+    if (!markSub_ && connected_ && !managed_.isEmpty()) {
+        if (markNext_ >= managed_.size() && now - markRoundMs_ >= kRoundMs) markNext_ = 0;
+        if (markNext_ < managed_.size()) {
+            if (markNext_ == 0) markRoundMs_ = now;
+            const QString account = managed_.at(markNext_++);
+            std::weak_ptr<IbApiNextSession> weak = weak_from_this();
+            ibnext::Observer o;
+            o.next = [weak, account](const Upd& u) {
+                auto s = weak.lock();
+                if (!s) return;
+                s->markDone_ = true;
+                auto rows = anyPtr<ibnext::JsList>(u.all);
+                if (!rows) return;
+                std::vector<PortfolioItemLike> items;
+                for (const OJson& r : *rows) {
+                    PortfolioItemLike item;
+                    if (const OJson* c = r.get(u"contract"_s)) item.contract = *c;
+                    item.position = realNumber(r.get(u"position"_s)).value_or(0);
+                    item.marketPrice = realNumber(r.get(u"marketPrice"_s)).value_or(0);
+                    item.averageCost = realNumber(r.get(u"averageCost"_s)).value_or(0);
+                    item.account = account;
+                    items.push_back(std::move(item));
+                }
+                s->marks_.set(account, std::move(items));
+            };
+            o.error = [weak](const ibnext::ApiError&) {
+                if (auto s = weak.lock()) s->markDone_ = true;
+            };
+            markDone_ = false;
+            markStartMs_ = now;
+            markSub_ = api_->getPortfolio(account)->subscribe(std::move(o));
+        }
+    }
+    std::vector<PortfolioItemLike> out;
+    for (const auto& [account, items] : marks_.items) out.insert(out.end(), items.begin(), items.end());
+    return out;
 }
 
 std::optional<AccountPnl> IbApiNextSession::accountPnl(const QString& accountId) {

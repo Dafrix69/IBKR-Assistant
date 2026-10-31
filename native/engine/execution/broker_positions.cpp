@@ -162,6 +162,7 @@ Task<QList<OJson>> BrokerRouter::positions() {
     }
     releaseClosed(rows);
     co_await fillPositionPrices(&rows);
+    fillPositionMarks(live, &rows, aliasOf);
     std::vector<OJson> sorted(rows.begin(), rows.end());
     util::market::jsSort(sorted, [](const OJson& a, const OJson& b) {
         const int first = util::localeCompare(js::str(prop(a, u"account"_s)), js::str(prop(b, u"account"_s)));
@@ -169,6 +170,28 @@ Task<QList<OJson>> BrokerRouter::positions() {
         return double(util::localeCompare(js::str(prop(a, u"symbol"_s)), js::str(prop(b, u"symbol"_s))));
     });
     co_return QList<OJson>(sorted.begin(), sorted.end());
+}
+
+/**
+ * 没现价的行(休市)补券商的标记价。"昨收"是前一交易日的,当天开的仓或大行情之后差得很远,界面估值先用它。
+ * 标记价是上一次报价留下的,只放 mark_price:追踪和托管读 market_price,不能拿它判止损。开市有现价的行不写。
+ */
+void BrokerRouter::fillPositionMarks(const std::vector<SessionPtr>& live, QList<OJson>* rows, const QHash<QString, QString>& aliasOf) {
+    const bool need = std::any_of(rows->cbegin(), rows->cend(), [](const OJson& r) { return priceIsNull(r); });
+    if (!need) return;
+    QHash<QString, double> marks;
+    for (const SessionPtr& session : live) {
+        for (const PortfolioItemLike& item : session->positionMarks()) {
+            if (!aliasOf.contains(item.account.value_or(QString()))) continue;
+            const auto row = positionRow(item.contract, item.position, aliasOf, item.account.value_or(QString()));
+            const std::optional<double> mark = cleanPrice(item.marketPrice);
+            if (row && mark) marks.insert(js::str(prop(*row, u"key"_s)), *mark);
+        }
+    }
+    for (OJson& row : *rows) {
+        const auto it = marks.constFind(js::str(prop(row, u"key"_s)));
+        if (priceIsNull(row) && it != marks.cend()) row.set(u"mark_price"_s, js::N(*it));
+    }
 }
 
 /** 平掉的腿 / 正股撤掉常驻订阅(heldStreams.ts),不然一直占着行情线路。读不到 ≠ 平仓了:读持仓报错的那一轮走不到这里;

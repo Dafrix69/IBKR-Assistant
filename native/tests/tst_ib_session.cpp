@@ -553,6 +553,11 @@ private:
             result(id, p ? js::object({{u"daily"_s, optJ(p->daily)}, {u"unrealized"_s, optJ(p->unrealized)}, {u"realized"_s, optJ(p->realized)},
                                        {u"atMs"_s, js::N(p->atMs)}, {u"currency"_s, js::S(p->currency)}})
                          : OJson::null());
+        } else if (m == u"positionMarks") {
+            OJson rows = js::array();
+            for (const auto& item : s.positionMarks())
+                rows.items.append(js::object({{u"account"_s, js::S(item.account.value_or(QString()))}, {u"marketPrice"_s, js::N(item.marketPrice)}}));
+            result(id, rows);
         } else if (m == u"netLiquidation") {
             const auto n = s.netLiquidation(arg(0).s);
             result(id, n ? js::object({{u"amount"_s, js::N(n->amount)}, {u"currency"_s, js::S(n->currency)}}) : OJson::null());
@@ -808,6 +813,32 @@ private slots:
             if(price)QVERIFY(callbacks&&!callbacks->items.isEmpty()); else QVERIFY(!callbacks||callbacks->items.isEmpty());
             QVERIFY2(h.afterlife(&error),qPrintable(error));
         }
+    }
+    // 账户推送一次只能订一个账户:收齐一轮才退订、才轮到下一个;两个账户的标记价都留着
+    void positionMarksRotateAccounts() {
+        const auto* all=fixture().get(u"scenarios"_s);
+        OJson steps=js::array();
+        for(int i=0;i<5;++i)steps.items.append(all->items[0].get(u"steps"_s)->items[i]);
+        auto marks=[&](int id){steps.items.append(js::object({{u"op"_s,js::S(u"call"_s)},{u"id"_s,js::N(id)},{u"m"_s,js::S(u"positionMarks"_s)},{u"a"_s,js::array()}}));};
+        auto send=[&](QStringList fields){steps.items.append(js::object({{u"op"_s,js::S(u"send"_s)},{u"msgs"_s,js::array({js::strings(fields)})}}));};
+        auto bulk=[&](const QString& a,const QString& price){
+            send({u"7"_s,u"8"_s,u"1"_s,u"SPX"_s,u"OPT"_s,u"20261102"_s,u"7650"_s,u"C"_s,u"100"_s,u"CBOE"_s,u"USD"_s,u"L"_s,u"SPXW"_s,u"1"_s,price,u"1"_s,u"586"_s,u"1"_s,u"0"_s,a});
+            send({u"54"_s,u"1"_s,a});
+        };
+        const QString first=u"U1234567"_s,second=u"DU7654321"_s;
+        marks(50);bulk(first,u"8.5"_s);marks(51);
+        {   // 第二次调用:先退订第一个账户,再订第二个
+            OJson scenario=js::object({{u"steps"_s,steps}});Harness h(scenario);QString error;
+            QVERIFY2(h.run(&error,false),qPrintable(error));
+            QCOMPARE(js::stringify(*h.step.get(u"sent"_s)),js::stringify(js::array({js::strings({u"6"_s,u"2"_s,u"0"_s,first}),js::strings({u"6"_s,u"2"_s,u"1"_s,second})})));
+            QVERIFY2(h.afterlife(&error),qPrintable(error));
+        }
+        bulk(second,u"7.5"_s);marks(52);
+        OJson scenario=js::object({{u"steps"_s,steps}});Harness h(scenario);QString error;
+        QVERIFY2(h.run(&error,false),qPrintable(error));
+        const QString got=js::stringify(*h.step.get(u"res"_s));
+        QVERIFY2(got.contains(first)&&got.contains(second)&&got.contains(u"8.5"_s)&&got.contains(u"7.5"_s),qPrintable(got));
+        QVERIFY2(h.afterlife(&error),qPrintable(error));
     }
     void wshLifecycle() {
         const auto* all=fixture().get(u"scenarios"_s);

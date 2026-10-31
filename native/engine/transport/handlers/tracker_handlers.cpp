@@ -55,8 +55,8 @@ void fillPnl(OJson& row) {
     };
     if (js::nullish(price)) {
         if (js::nullish(row.get(u"pnl_source"_s))) row.set(u"pnl_source"_s, js::Null());
-        // 休市没有现价:按昨收另算一份盈亏给界面(close_pnl),不写进 unrealized_pnl——那个字段是"此刻"的口径
-        const OJson* closePrice = row.get(u"close_price"_s);
+        // 休市没有现价:按券商标记价(没有再退昨收)另算一份盈亏给界面(close_pnl),不写进 unrealized_pnl——那个字段是"此刻"的口径
+        const OJson* closePrice = js::nullish(row.get(u"mark_price"_s)) ? row.get(u"close_price"_s) : row.get(u"mark_price"_s);
         const double close = js::num(closePrice);
         if (!js::nullish(closePrice) && std::isfinite(close)) {
             const OJson at = tk::unrealized(positionOf(js::N(close)), close);

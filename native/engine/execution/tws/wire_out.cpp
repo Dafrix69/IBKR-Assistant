@@ -386,6 +386,15 @@ Encoded reqPositions(int serverVersion) {
     return t.send();
 }
 
+Encoded reqAccountUpdates(int serverVersion, bool subscribe, const Arg& account) {
+    Tokens t(serverVersion);
+    t.num(6);
+    t.num(2);
+    t.num(subscribe ? 1 : 0);
+    t.push(account);
+    return t.send();
+}
+
 Encoded cancelPositions(int serverVersion) {
     Tokens t(serverVersion);
     t.num(64);
