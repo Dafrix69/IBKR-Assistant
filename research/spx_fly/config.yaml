@@ -15,7 +15,7 @@ entries: ["09:35", "10:30", "12:00", "14:00"]
 
 fills:
   k_levels: [0.0, 0.25, 0.5]   # 0 = mid, 1 = full spread
-  k_default: 0.25
+  k_default: 0.20              # was 0.25. Calibrated 2026-10-31: median effective combo k of the trader's own fills, 21 combos / 64 0DTE legs, 2026-10 (reports/calibration.md). Nothing in src/ requires it to be in k_levels
   multiplier: 100
   # USD per contract, public customer, IBKR Pro, as listed 2026-10-30; applied to the whole sample
   commission:                  # by premium, interactivebrokers.com/en/pricing/commissions-options.php
@@ -26,7 +26,11 @@ fills:
     - {below: 1.00, fee: 0.36}
     - {below: .inf, fee: 0.45}
   execution_surcharge: 0.14    # Cboe SPXW execution surcharge, same page
-  regulatory_clearing: 0.03    # ORF + OCC, APPROXIMATE: rates change, not looked up per date
+  # Calibrated 2026-10-31 against the trader's own IBKR commission reports (reports/calibration.md):
+  # 6 SPXW legs / 8 contracts, 2026-09-30 and 2026-10-07, every one reproduced to the cent by
+  # max(commission*qty, commission_min_per_leg) + qty*(exchange + execution_surcharge + regulatory_clearing).
+  regulatory_clearing: 0.04028 # was 0.03 (approximate); observed ORF + OCC per contract, n = 8 contracts
+  commission_min_per_leg: 1.00 # IBKR USD 1.00 order minimum, charged per leg of a combo (1-lot legs paid 1.00, not 0.65); not yet applied by src/fills.py
 
 quote_filters:
   max_spread_to_mid: 1.0       # spread > 100% of mid -> flagged
