@@ -133,6 +133,50 @@ private slots:
         QVERIFY(keysOf(out).isEmpty());
     }
 
+    // ---- FOMC 会议纪要日:公布前建议 13:55;公布后不提;15:00 后尾盘那一条优先;不是纪要日没有
+    void fomcMinutesDayBeforeReleaseSuggests1355() {
+        fe::Input in = baseInput();
+        in.fomcMinutesToday = true;
+        in.etMinutes = 13 * 60;
+        const OJson out = fe::evaluate(fe::Config{}, in);
+        const OJson* t = out.get(u"timing"_s);
+        QVERIFY(js::isObj(t));
+        const QString title = js::str(js::prop(t, u"title"_s)), basis = js::str(js::prop(t, u"basis"_s));
+        QVERIFY2(title.contains(u"14:00 公布 FOMC 会议纪要") && title.contains(u"13:55"), qPrintable(title));
+        QVERIFY2(basis.contains(u"V-0015") && basis.contains(u"13:59:45") && basis.contains(u"2 美元"), qPrintable(basis));
+        QVERIFY(js::truthy(js::path(&out, {u"inputs"_s, u"fomc_minutes_today"_s})));
+        QVERIFY(keysOf(out).isEmpty());  // 只是时段提示,不是标记,也不拦
+    }
+    void fomcMinutesDayAfterReleaseSaysNothing() {
+        fe::Input in = baseInput();
+        in.fomcMinutesToday = true;
+        in.etMinutes = 14 * 60;
+        QVERIFY(fe::evaluate(fe::Config{}, in).get(u"timing"_s)->type == OJson::Null);
+        in.etMinutes = 14 * 60 + 30;
+        QVERIFY(fe::evaluate(fe::Config{}, in).get(u"timing"_s)->type == OJson::Null);
+    }
+    void fomcMinutesDayLateEntryWins() {
+        fe::Input in = baseInput();
+        in.fomcMinutesToday = true;
+        in.etMinutes = 15 * 60;
+        const OJson out = fe::evaluate(fe::Config{}, in);
+        const OJson* t = out.get(u"timing"_s);
+        QVERIFY(js::isObj(t));
+        QVERIFY(js::str(js::prop(t, u"title"_s)).contains(u"15:00 以后入场"));
+    }
+    void ordinaryDayHasNoMinutesHint() {
+        fe::Input in = baseInput();
+        in.etMinutes = 13 * 60;
+        const OJson out = fe::evaluate(fe::Config{}, in);
+        QVERIFY(out.get(u"timing"_s)->type == OJson::Null);
+        QVERIFY(!js::truthy(js::path(&out, {u"inputs"_s, u"fomc_minutes_today"_s})));
+    }
+    void eventsNoteSurfacesWhenCalendarUnavailable() {
+        fe::Input in = baseInput();
+        in.eventsNote = u"事件表没有清单"_s;
+        QVERIFY(anyContains(notesOf(fe::evaluate(fe::Config{}, in)), u"纪要日没判:事件表没有清单"_s));
+    }
+
     // ---- 前一日大跌后的下午
     void priorDropFiresAtThresholdAfterNoon() {
         fe::Input in = baseInput();

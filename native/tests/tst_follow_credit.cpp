@@ -131,6 +131,23 @@ private slots:
         QVERIFY(!back[1].stop_below);
     }
 
+    // 频道里出现「铁蝶」:本地速记接得住(语法 v8),但跟单只认买入蝴蝶与贷方价差——不发单、不建追踪,原因写明
+    void ironFlyMessageIsNotFollowed() {
+        const domain::EtNow moment = domain::etNowFromEpoch(QDateTime::fromString(u"2026-10-28T14:00:00Z"_s, Qt::ISODate).toMSecsSinceEpoch());
+        const OJson snap = js::object({{u"SPX"_s, js::N(7640)}});
+        const OJson parsed = parsing::shorthand::tryParseShorthand(u"7650铁蝶 25cm -19.5"_s, snap, moment);
+        QVERIFY2(parsed.type == OJson::Object, "速记没接住");
+        QCOMPARE(js::str(js::path(&parsed.get(u"orders"_s)->items.at(0), {u"contract"_s, u"combo_strategy"_s})), u"IRON_CONDOR"_s);
+        contract::FollowConfig cfg;
+        cfg.enabled = true;
+        fo::FollowGates gates;
+        gates.connected = true;
+        const fo::Decision d = fo::decide(cfg, parsed, gates, 0);
+        QCOMPARE(d.outcome, u"unparsed"_s);
+        QVERIFY2(d.detail.contains(u"不是恰好一张买入蝴蝶或一张贷方价差"), qPrintable(d.detail));
+        QVERIFY(!fo::leaderPrice(*js::path(&parsed.get(u"orders"_s)->items.at(0), {u"contract"_s}), *js::path(&parsed.get(u"orders"_s)->items.at(0), {u"order"_s})));
+    }
+
     // 成交之后按 key 找持仓:速记解析出来的 bull put 记下的腿身份,要和券商报来的两条腿合成的空头组合行一致
     void shortVerticalRowMatchesTheOrdersLeg() {
         const domain::EtNow moment = domain::etNowFromEpoch(QDateTime::fromString(u"2026-10-28T14:00:00Z"_s, Qt::ISODate).toMSecsSinceEpoch());

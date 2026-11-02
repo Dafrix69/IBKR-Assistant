@@ -63,7 +63,7 @@ private slots:
         composer.setText(u"已经写的"_s);
         c.writeInstruction();
         // 当日到期:本地速记认得的写法,接在已经写的下面一行
-        QCOMPARE(composer.text(), u"已经写的\nSPX 7750蝴蝶 25cm 看涨 2张 5.5"_s);
+        QCOMPARE(composer.text(), u"已经写的\nSPX 7750铁蝶 25cm 2张 -19.5"_s);
         // 表单改过:结果过期,「写进指令」灰掉
         c.patch({{u"targetSpot"_s, u"7760"_s}});
         QVERIFY(!c.planner()[u"canWrite"].toBool());

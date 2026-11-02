@@ -199,7 +199,7 @@ const QRegularExpression& digits() {
 
 OJson parseCreditSpread(const QString& full, const QString& text, const QString& reason, const OJson& snapshot, const domain::EtNow& moment) {
     static const QRegularExpression block = rx(
-        u"[;;\\n]|时候|时,|涨到|跌到|突破|跌破|破了|站稳|卖|做空|平仓|取消|理由|止盈|止损|接货|加仓|撤单|上移|下移|日历|正股|海鸥|或者|如果|守不住|翻倍|蝴蝶"_s);
+        u"[;;\\n]|时候|时,|涨到|跌到|突破|跌破|破了|站稳|卖|做空|平仓|取消|理由|止盈|止损|接货|加仓|撤单|上移|下移|日历|正股|海鸥|或者|如果|守不住|翻倍|蝴蝶|铁蝶"_s);
     if (test(block, text) || test(wingHint(), text)) return OJson::null();
     QString work = text;
     QStringList warnings;
@@ -303,11 +303,151 @@ OJson parseCreditSpread(const QString& full, const QString& text, const QString&
     return payload(summary, symbol, u"VERTICAL"_s, js::array({legOf(u"BUY"_s, 1, exp->expiry, buyStrike, right, spx), legOf(u"SELL"_s, 1, exp->expiry, sellStrike, right, spx)}),
                    u"SELL"_s, *qty, credit, c.tif, c.outsideRth, reason, warnings);
 }
+
+/// 铁蝶(空铁蝶,贷方):「7750铁蝶 25cm 2张 -23.15」—— 同中心同翼宽的四腿组合:买 K−w put、卖 K put、卖 K call、买 K+w call。
+/// 中心 / 翼宽 / 张数 / 到期 / 盘外 / 标的的写法与蝴蝶一样;没有看涨 / 看跌(写了就说明不是铁蝶,交给大模型)。
+/// 价格是收到的权利金:负数(和贷方价差一样)或「权利金 N」;孤立的正数也按收到的权利金理解(铁蝶在本系统里只能卖出),并提醒一句。
+/// 产出 combo_strategy = IRON_CONDOR(内侧同价)、order.action = SELL、lmtPrice 是正的权利金,与铁鹰同形,走同一套校验。
+OJson parseIronFly(const QString& fullRaw, const QString& text, const QString& reason, const OJson& snapshot, const domain::EtNow& moment, ShorthandMeta* meta) {
+    static const QRegularExpression block = rx(
+        u"[;;\\n]|时候|时,|的时候|涨到|跌到|突破|跌破|做空|平仓|取消|理由|止盈|止损|接货|加仓|撤单|日历|spread|正股|海鸥|或者|如果|守不住|翻倍|蝴蝶|看涨|看跌|call|put|买"_s, true);
+    if (test(block, text)) return OJson::null();
+
+    QString work = text;
+    QStringList warnings;
+    const Common c = takeCommon(work);
+
+    // 翼宽(必填)
+    static const QRegularExpression w1 = rx(u"(\\d+(?:\\.\\d+)?)"_s + sp() + u"*cm"_s, true);
+    static const QRegularExpression w2 = rx(u"翼宽"_s + sp() + u"*(\\d+(?:\\.\\d+)?)"_s + sp() + u"*点?"_s);
+    static const QRegularExpression w3 = rx(u"±"_s + sp() + u"*(\\d+(?:\\.\\d+)?)"_s + sp() + u"*点"_s);
+    auto mWing = take(work, w1);
+    if (!mWing) mWing = take(work, w2);
+    if (!mWing) mWing = take(work, w3);
+    if (!mWing) return OJson::null();
+    const double wing = num(mWing->captured(1));
+    if (!(wing > 0 && wing <= 500)) return OJson::null();
+
+    // 收到的权利金:负数(区间按收得多的一头)或「权利金 N」「N 块」
+    static const QRegularExpression creditRe = rx(u"(?<![\\d.])-"_s + sp() + u"*(\\d+(?:\\.\\d+)?)(?:"_s + sp() + u"*(?:到|至|~|-)?"_s + sp() + u"*-"_s + sp() +
+                                                  u"*(\\d+(?:\\.\\d+)?))?"_s);
+    static const QRegularExpression negRe = rx(u"(?<![\\d.])-"_s + sp() + u"*\\d"_s);
+    const auto mCredit = take(work, creditRe);
+    if (test(negRe, work)) return OJson::null();
+    std::vector<double> quoted;
+    if (mCredit) quoted.push_back(num(mCredit->captured(1)));
+    if (mCredit && mCredit->capturedStart(2) >= 0) quoted.push_back(num(mCredit->captured(2)));
+    std::optional<double> credit;
+    for (double q : quoted) credit = credit ? jm::max(*credit, q) : q;
+    static const QRegularExpression p1 = rx(u"权利金"_s + sp() + u"*(?:不低于|不少于|至少)?"_s + sp() + u"*(\\d+(?:\\.\\d+)?)"_s);
+    static const QRegularExpression p2 = rx(u"(\\d+(?:\\.\\d+)?)"_s + sp() + u"*(?:块钱|块|刀|美元|美金)"_s);
+    auto mPrem = take(work, p1);
+    if (!mPrem) mPrem = take(work, p2);
+    if (mPrem) {
+        if (credit) return OJson::null();
+        credit = num(mPrem->captured(1));
+    }
+
+    static const QStringList sellWords{u"卖出"_s, u"卖"_s, u"空"_s};
+    for (const QString& f : sellWords) work.replace(f, u" "_s);
+    for (const QString& f : spreadFillers()) work.replace(f, u" "_s);
+    for (const QString& f : fillers()) work.replace(f, u" "_s);
+    static const QRegularExpression dte = rx(u"0dte"_s, true);
+    work.replace(dte, u" "_s);
+    const auto qty = takeQty(work, warnings);
+    if (!qty) return OJson::null();
+
+    // 中心:三种显式写法,最多命中一种
+    static const QRegularExpression c1 = rx(u"(?<![\\d.])(\\d{4,5}(?:\\.\\d+)?)"_s + sp() + u"*(?=铁蝶)"_s);
+    static const QRegularExpression c2 = rx(u"(?<![\\d.])(\\d{1,2})"_s + sp() + u"*(?=铁蝶)"_s);
+    static const QRegularExpression c3 = rx(u"(?<![\\d.])(\\d{3,5}(?:\\.\\d+)?)"_s + sp() + u"*的"_s);
+    const auto mC1 = take(work, c1);
+    const auto mC2 = take(work, c2);
+    const auto mC3 = take(work, c3);
+    std::vector<const QRegularExpressionMatch*> hits;
+    for (const auto* m : {&mC1, &mC2, &mC3})
+        if (*m) hits.push_back(&**m);
+    if (hits.size() > 1) return OJson::null();
+    const std::optional<double> centerTail = mC2 ? std::optional(num(mC2->captured(1))) : std::nullopt;
+    std::optional<double> centerAbs = !mC2 && !hits.empty() ? std::optional(num(hits[0]->captured(1))) : std::nullopt;
+    if (meta) {
+        meta->relativeCenter = centerTail.has_value();
+        meta->set = true;
+    }
+
+    static const QRegularExpression symRe = rx(u"[A-Za-z]{2,5}"_s);
+    static const QRegularExpression letter = rx(u"[A-Za-z]"_s);
+    const auto mSym = take(work, symRe);
+    const QString symbol = mSym ? mSym->captured(0).toUpper() : u"SPX"_s;
+    if (!mSym) warnings << u"未写标的,默认按 SPX 处理"_s;
+    if (test(letter, work)) return OJson::null();
+
+    static const QRegularExpression noise = rx(u"铁蝶|[的吧哦呢啦呀嘛了个到至]|[,。、~!?():;]|"_s + sp() + u"+"_s);
+    work.replace(noise, u" "_s);
+    std::vector<double> numbers;
+    for (const QString& t : allMatches(digits(), work)) numbers.push_back(num(t));
+    work.replace(digits(), u" "_s);
+    if (!util::jsTrim(work).isEmpty()) return OJson::null();
+    bool bareCredit = false;
+    if (!centerAbs && !centerTail) {
+        std::vector<double> bigs, smalls;
+        for (double x : numbers) (x >= 1000 && x > 2 * wing ? bigs : smalls).push_back(x);
+        if (bigs.size() != 1 || smalls.size() > 1) return OJson::null();
+        centerAbs = bigs[0];
+        if (!smalls.empty()) {
+            if (credit) return OJson::null();
+            credit = smalls[0];
+            bareCredit = true;
+        }
+    } else {
+        if (numbers.size() > 1) return OJson::null();
+        if (!numbers.empty()) {
+            if (credit) return OJson::null();
+            credit = numbers[0];
+            bareCredit = true;
+        }
+    }
+    if (credit && !(*credit > 0 && *credit < wing)) return OJson::null();
+
+    OJson rejection;
+    const auto exp = expiryOf(c.tomorrow, moment, warnings, fullRaw, u"铁蝶"_s, rejection);
+    if (!exp) return rejection;
+
+    const std::optional<double> spot = spotOf(snapshot, symbol);
+    double center;
+    if (centerTail) {
+        if (!spot) return OJson::null();
+        center = std::floor(*spot / 100.0) * 100.0 + *centerTail;
+        warnings << u"「%1铁蝶」按中心 %2(现价百位+%3)理解"_s.arg(util::jsNumberToString(*centerTail), fmt(center), util::jsNumberToString(*centerTail));
+    } else {
+        center = *centerAbs;
+    }
+    if (!(center > wing)) return OJson::null();
+    if (spot && std::fabs(center - *spot) / *spot > 0.2) return OJson::null();
+
+    if (quoted.size() == 2 && quoted[0] != quoted[1]) {
+        const double qmin = jm::min(quoted[0], quoted[1]), qmax = jm::max(quoted[0], quoted[1]);
+        warnings << u"权利金写的是区间 %1–%2,按收得多的一头 %3 挂单(可能成交不了,不会比写的差)"_s.arg(fmt(qmin), fmt(qmax), fmt(qmax));
+    }
+    if (bareCredit) warnings << u"铁蝶是贷方单:%1 按收到的净权利金(不低于)理解"_s.arg(fmt(*credit));
+    if (!credit) warnings << u"未写收的权利金,将在下单时按盘口中间价定价(AUTO_MID);若对收多少敏感,请写成负数,如 '-23.5'"_s;
+    warnings << u"本地速记解析(未经大模型),语法 "_s + kGrammarVersion;
+
+    const bool spx = symbol == u"SPX";
+    const double lo = center - wing, hi = center + wing;
+    const QString priceText = credit ? u"净权利金不低于 "_s + fmt(*credit) : u"净权利金按下单时盘口中间价确定"_s;
+    const QString summary = u"卖出(贷方)"_s + util::jsNumberToString(*qty) + u" 张 "_s + exp->label + u"的 "_s + symbol + u" "_s + fmt(lo) + u"/"_s + fmt(center) + u"/"_s +
+                            fmt(hi) + u" 铁蝶(卖 "_s + fmt(center) + u" 看涨与看跌、买 "_s + fmt(lo) + u"P 与 "_s + fmt(hi) + u"C,翼宽 "_s + fmt(wing) + u" 点),"_s + priceText;
+    return payload(summary, symbol, u"IRON_CONDOR"_s,
+                   js::array({legOf(u"BUY"_s, 1, exp->expiry, lo, u"P"_s, spx), legOf(u"SELL"_s, 1, exp->expiry, center, u"P"_s, spx),
+                              legOf(u"SELL"_s, 1, exp->expiry, center, u"C"_s, spx), legOf(u"BUY"_s, 1, exp->expiry, hi, u"C"_s, spx)}),
+                   u"SELL"_s, *qty, credit, c.tif, c.outsideRth, reason, warnings);
+}
 }  // namespace
 
 bool looksLikeShorthand(const QString& text) {
     const QString t = maskSurrogates(util::jsNormalizeNfkc(text));
-    return t.contains(u"蝴蝶"_s) || test(wingHint(), t) || test(spreadType(), t);
+    return t.contains(u"蝴蝶"_s) || t.contains(u"铁蝶"_s) || test(wingHint(), t) || test(spreadType(), t);
 }
 
 bool looksLikeOrder(const QString& text) {
@@ -355,10 +495,11 @@ OJson tryParseShorthand(const QString& instruction, const OJson& snapshot, const
         }
         return parseCreditSpread(fullRaw, text, reason, snapshot, moment);
     }
+    if (text.contains(u"铁蝶"_s)) return parseIronFly(fullRaw, text, reason, snapshot, moment, meta);
     const bool hasButterflyWord = text.contains(u"蝴蝶"_s);
     if (!hasButterflyWord && !test(wingHint(), text)) return OJson::null();
     static const QRegularExpression block = rx(
-        u"[;;\\n]|时候|时,|的时候|涨到|跌到|突破|跌破|卖|做空|平仓|取消|理由|止盈|止损|接货|加仓|撤单|日历|spread|正股|海鸥|或者|如果|守不住|翻倍"_s, true);
+        u"[;;\\n]|时候|时,|的时候|涨到|跌到|突破|跌破|卖|做空|平仓|取消|理由|止盈|止损|接货|加仓|撤单|日历|spread|正股|海鸥|或者|如果|守不住|翻倍|铁蝶"_s, true);
     if (test(block, text)) return OJson::null();
 
     QString work = text;

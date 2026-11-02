@@ -3,6 +3,7 @@
 #include "broker_runner.h"
 
 #include <QDir>
+#include <QSet>
 #include <QTest>
 
 using namespace Qt::StringLiterals;
@@ -133,6 +134,54 @@ private slots:
             QVERIFY(!order.get(u"conditionsIgnoreRth"_s)->b);
         }
         QCOMPARE(modifications, 1);
+    }
+    // 四腿铁蝶(IRON_CONDOR、内侧同价)的组合单构造:四条腿各自认领 conId、方向按腿、比例 1;BAG 以 BUY 提交、净价为负(贷方)、LMT。
+    // 只到假会话的 placeOrder 为止——IBKR 对 4 腿组合接哪些订单类型没在真机上试过,待用户 whatIf 核对
+    void ironFlyComboOrder() {
+        using namespace ibkr;
+        namespace js = util::js;
+        const auto fx = jsfix::load(u"broker_router.json"_s);
+        auto script = *util::parseOJson(R"({"start":1791815400000,"factory":{"paper":["P"]},
+            "sessions":[{"name":"P","connected":true,"accounts":["DU7654321"],"caps":["ContractHours","SetBaselineMarketDataType","OpenTradesDetailed","Executions","OnLink","OnError","QuoteDelayed"]}],"steps":[]})");
+        const auto approved = *util::parseOJson(R"({"order":{"intent_summary":"卖出(贷方)2 张 7625/7650/7675 铁蝶","contract":{"secType":"BAG","symbol":"SPX","exchange":"SMART","currency":"USD",
+            "lastTradeDateOrContractMonth":null,"strike":null,"right":null,"multiplier":"100","tradingClass":null,"combo_strategy":"IRON_CONDOR","legs":[
+            {"action":"BUY","ratio":1,"lastTradeDateOrContractMonth":"20261016","strike":7625,"right":"P","tradingClass":"SPXW","multiplier":"100"},
+            {"action":"SELL","ratio":1,"lastTradeDateOrContractMonth":"20261016","strike":7650,"right":"P","tradingClass":"SPXW","multiplier":"100"},
+            {"action":"SELL","ratio":1,"lastTradeDateOrContractMonth":"20261016","strike":7650,"right":"C","tradingClass":"SPXW","multiplier":"100"},
+            {"action":"BUY","ratio":1,"lastTradeDateOrContractMonth":"20261016","strike":7675,"right":"C","tradingClass":"SPXW","multiplier":"100"}]},
+            "order":{"action":"SELL","orderType":"LMT","totalQuantity":2,"price_mode":"EXPLICIT","lmtPrice":19.5,"auxPrice":null,"trailingPercent":null,"tif":"DAY","outsideRth":false},
+            "trigger":null},"account":"模拟","notional":1100,"signature":"sig","warnings":[]})");
+        const auto call = [](const QString& m, const OJson& a) { return js::object({{u"op"_s, js::S(u"call"_s)}, {u"m"_s, js::S(m)}, {u"a"_s, a}}); };
+        script.set(u"steps"_s, js::array({call(u"connect"_s, js::object({{u"name"_s, js::S(u"paper"_s)}})),
+                                          call(u"place"_s, js::object({{u"recordId"_s, js::S(u"if1"_s)}, {u"approved"_s, approved}}))}));
+        bw::Runner runner(script, *fx.get(u"base"_s));
+        const auto result = runner.run();
+        int placed = 0;
+        for (const auto& e : result.get(u"log"_s)->items) {
+            if (e.get(u"m"_s)->s != u"placeOrder") continue;
+            ++placed;
+            const OJson& contract = e.get(u"a"_s)->items[0];
+            const OJson& order = e.get(u"a"_s)->items[1];
+            QCOMPARE(contract.get(u"secType"_s)->s, u"BAG"_s);
+            const QList<OJson>& legs = contract.get(u"comboLegs"_s)->items;
+            QCOMPARE(legs.size(), qsizetype(4));
+            QStringList actions;
+            QSet<int> conIds;
+            for (const OJson& l : legs) {
+                actions << l.get(u"action"_s)->s;
+                QCOMPARE(l.get(u"ratio"_s)->n, 1.0);
+                QCOMPARE(l.get(u"exchange"_s)->s, u"SMART"_s);
+                conIds.insert(int(l.get(u"conId"_s)->n));
+            }
+            QCOMPARE(actions, (QStringList{u"BUY"_s, u"SELL"_s, u"SELL"_s, u"BUY"_s}));
+            QCOMPARE(conIds.size(), 4);  // 同一行权价上的 put 与 call 是两张不同的合约
+            QCOMPARE(order.get(u"action"_s)->s, u"BUY"_s);
+            QCOMPARE(order.get(u"orderType"_s)->s, u"LMT"_s);
+            QCOMPARE(order.get(u"lmtPrice"_s)->n, -19.5);
+            QCOMPARE(order.get(u"totalQuantity"_s)->n, 2.0);
+            QCOMPARE(order.get(u"orderRef"_s)->s, u"if1"_s);
+        }
+        QCOMPARE(placed, 1);
     }
     void named() {
         QStringList failures;

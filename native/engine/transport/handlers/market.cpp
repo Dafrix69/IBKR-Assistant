@@ -1,5 +1,6 @@
 #include "transport/handlers/market.h"
 
+#include "analysis/econ_calendar.h"
 #include "analysis/fly_entry_assist.h"
 #include "analysis/macro.h"
 #include "analysis/priceaction.h"
@@ -253,6 +254,25 @@ util::Task<OJson> MarketHandlers::entryAssist() {
     };
     co_await wall(u"SPX"_s, &in.spxSpot, &in.spxPutWall, &in.spxWindowLow, &in.spxThinned, &in.spxWallNote);
     co_await wall(u"SPY"_s, &in.spySpot, &in.spyPutWall, &in.spyWindowLow, &in.spyThinned, &in.spyWallNote);
+
+    // FOMC 会议纪要日:内置日程里今天(美东)有一条就算;再看重要事件那一份合成清单(内置 + 日历源 + 自定义,缓存命中就不拉),
+    // 日历源临时改期、用户自己记的也认。事件功能关着或最低星级调到 5 时清单里没有它,内置那一份照样判
+    for (const analysis::econ_calendar::Release& r : analysis::econ_calendar::builtinReleases()) {
+        if (r.kind == u"fomc_minutes" && r.date == now.date) in.fomcMinutesToday = true;
+    }
+    try {
+        const OJson ev = co_await ports_.events().list(false);
+        const OJson* list = js::prop(&ev, u"events"_s);
+        if (js::isArr(list)) {
+            for (const OJson& e : list->items) {
+                if (js::strOr(js::prop(&e, u"kind"_s), QString()) == u"fomc_minutes" && js::strOr(js::prop(&e, u"date_et"_s), QString()) == now.date) in.fomcMinutesToday = true;
+            }
+        } else {
+            in.eventsNote = u"事件表没有清单"_s;
+        }
+    } catch (...) {
+        in.eventsNote = orchestrate::errMessage(std::current_exception());
+    }
 
     OJson out = fe::evaluate(cfg, in);
     out.set(u"at"_s, js::N(now.epochMs));

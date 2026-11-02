@@ -28,6 +28,9 @@ struct Config {
     double spy_put_wall_pct = 1.31;
     /// 此刻 ≥ 这个美东分钟数 → 时段提示
     double late_entry_min = 15 * 60;
+    /// FOMC 会议纪要日(14:00 公布):此刻在公布前 → 建议改在这个美东分钟数挂单(研究 V-0015:13:55)
+    double fomc_minutes_entry_min = 13 * 60 + 55;
+    double fomc_minutes_release_min = 14 * 60;
 };
 
 /// handler 凑齐的输入;拿不到的留空并在 *Note 里写原因(原因会原样出现在 notes 里)
@@ -52,6 +55,9 @@ struct Input {
     std::optional<double> spySpot, spyPutWall, spyWindowLow;
     bool spyThinned = false;
     QString spyWallNote;
+    /// 今天(美东)事件表里有 FOMC 会议纪要(kind = fomc_minutes);事件表取不到时留 false 并在 eventsNote 里写原因
+    bool fomcMinutesToday = false;
+    QString eventsNote;
 };
 
 /// 翼宽的档:行权价每 5 点一档,研究里比过的是这几档

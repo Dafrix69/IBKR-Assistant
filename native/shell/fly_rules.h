@@ -39,7 +39,12 @@ QString minutesFromNow(double nowMs, double ahead);
 QJsonArray timeChips(double nowMs);
 
 // ---- 写成指令 / 格式 ----------------------------------------------------------------------------------------------
+/// 写进指令框的那一句:当日 / 下一个工作日到期写成铁蝶速记(收的权利金 = 翼宽 − 成本,负数),别的到期日写成买入蝴蝶交给大模型
 QString instructionFor(const QJsonObject& r, const QString& todayEt);
+/// 同中心同翼宽的铁蝶该收的净权利金(两位小数):翼宽 − 这只蝶的成本
+double ironFlyCredit(const QJsonObject& r);
+/// 这只蝶写进指令时会写成铁蝶(到期是美东今天或下一个工作日)
+bool writesIronFly(const QJsonObject& r, const QString& todayEt);
 QString signedUsd(double value);
 QString signedPct(double value, int digits = 1);
 QString pct(double fraction, int digits = 1);

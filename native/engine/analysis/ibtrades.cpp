@@ -102,14 +102,24 @@ OJson butterflyFromRows(const QList<const OJson*>& rows, const QList<std::pair<Q
             a.hasComm = true;
         }
     }
-    if (legs.size() != 3) return OJson::null();
+    // 三腿同权利的 1:2:1 是蝴蝶;四腿 P,P,C,C、比例全 1、内侧两腿同价的是铁蝶(按铁鹰 IRON_CONDOR 记,和下单、平仓同一个口径)。别的结构不认
+    if (legs.size() != 3 && legs.size() != 4) return OJson::null();
     std::stable_sort(legs.begin(), legs.end(), [](const Leg& a, const Leg& b) {
         const double d = a.strike - b.strike;
         if (d != 0 && !std::isnan(d)) return d < 0;
-        if (a.right != b.right) return a.right < b.right;
+        if (a.right != b.right) return a.right > b.right;  // 同一行权价上 P 排在 C 前面
         return a.expiry < b.expiry;
     });
-    if (legs[0].right != legs[1].right || legs[1].right != legs[2].right || legs[0].expiry != legs[1].expiry || legs[1].expiry != legs[2].expiry) return OJson::null();
+    const bool ironFly = legs.size() == 4;
+    for (qsizetype i = 1; i < legs.size(); ++i)
+        if (legs[i].expiry != legs[0].expiry) return OJson::null();
+    if (ironFly) {
+        if (legs[0].right != u"P" || legs[1].right != u"P" || legs[2].right != u"C" || legs[3].right != u"C") return OJson::null();
+        if (legs[1].strike != legs[2].strike) return OJson::null();
+        if (std::fabs((legs[1].strike - legs[0].strike) - (legs[3].strike - legs[2].strike)) > 1e-9) return OJson::null();
+    } else {
+        if (legs[0].right != legs[1].right || legs[1].right != legs[2].right) return OJson::null();
+    }
 
     struct Sized {
         const Leg* leg;
@@ -126,9 +136,17 @@ OJson butterflyFromRows(const QList<const OJson*>& rows, const QList<std::pair<Q
     for (const Sized& s : sized) qtyF = jm::min(qtyF, s.size);
     QList<double> ratios;
     for (const Sized& s : sized) ratios << util::jsRound(s.size / qtyF);
-    if (ratios[0] != 1 || ratios[1] != 2 || ratios[2] != 1) return OJson::null();
-    const Sized &s1 = sized[0], &s2 = sized[1], &s3 = sized[2];
-    if (s1.action != s3.action || s2.action == s1.action) return OJson::null();
+    if (ironFly) {
+        if (ratios[0] != 1 || ratios[1] != 1 || ratios[2] != 1 || ratios[3] != 1) return OJson::null();
+        // 两翼同向、两条内侧腿同向且与两翼相反:卖出铁蝶是 BUY / SELL / SELL / BUY
+        if (sized[0].action != sized[3].action || sized[1].action != sized[2].action || sized[1].action == sized[0].action) return OJson::null();
+    } else {
+        if (ratios[0] != 1 || ratios[1] != 2 || ratios[2] != 1) return OJson::null();
+        if (sized[0].action != sized[2].action || sized[1].action == sized[0].action) return OJson::null();
+    }
+    const Sized &s1 = sized[0], &s2 = sized[1], &s3 = sized[ironFly ? 3 : 2];
+    // 组合的方向:蝴蝶看翼(买翼 = 买入蝴蝶),铁蝶看内侧(卖内侧 = 卖出铁蝶)
+    const QString comboAction = ironFly ? s2.action : s1.action;
     const double qty = util::jsRound(qtyF);
     if (qty <= 0) return OJson::null();
 
@@ -181,11 +199,11 @@ OJson butterflyFromRows(const QList<const OJson*>& rows, const QList<std::pair<Q
         fillsOut.items << js::object({{u"time"_s, js::S(firstTime)}, {u"price"_s, js::N(premium)}, {u"qty"_s, js::N(qty)}, {u"exec_id"_s, js::S(u"(合成)"_s)}});
     }
 
-    const QString verb = s1.action == u"BUY" ? u"买入"_s : u"卖出"_s;
+    const QString verb = comboAction == u"BUY" ? u"买入"_s : u"卖出"_s;
     const QString rightLabel = right == u"P" ? u"看跌"_s : u"看涨"_s;
     const double width = util::pyRound(s2.leg->strike - s1.leg->strike, 4);
     const QString summary = verb + u' ' + n2s(qty) + u" 张 "_s + symbol + u' ' + fmt(s1.leg->strike) + u'/' + fmt(s2.leg->strike) + u'/' + fmt(s3.leg->strike) + u' ' +
-                            rightLabel + u"蝴蝶(翼宽 "_s + fmt(width) + u")@ "_s + fmt(premium);
+                            (ironFly ? u"铁蝶(翼宽 "_s : rightLabel + u"蝴蝶(翼宽 "_s) + fmt(width) + u")@ "_s + fmt(premium);
     const OJson* permRaw = js::prop(rows[0], u"perm_id"_s);
     const bool hasPerm = js::truthy(permRaw);
     const QString rid = u"ib:"_s + (hasPerm ? n2s(std::trunc(js::num(permRaw))) : groupKey(*rows[0]));
@@ -198,7 +216,7 @@ OJson butterflyFromRows(const QList<const OJson*>& rows, const QList<std::pair<Q
         legsOut.items << js::object({{u"action"_s, js::S(s.action)},
                                      {u"ratio"_s, js::N(ratios[i])},
                                      {u"strike"_s, js::N(s.leg->strike)},
-                                     {u"right"_s, js::S(right)},
+                                     {u"right"_s, js::S(s.leg->right)},
                                      {u"lastTradeDateOrContractMonth"_s, js::S(expiryRaw)},
                                      {u"tradingClass"_s, js::S(js::strOr(js::prop(s.leg->agg.contract, u"tradingClass"_s), QString()))},
                                      {u"multiplier"_s, js::S(multStr)},
@@ -216,10 +234,10 @@ OJson butterflyFromRows(const QList<const OJson*>& rows, const QList<std::pair<Q
                                     {u"symbol"_s, js::S(symbol)},
                                     {u"exchange"_s, js::S(u"SMART"_s)},
                                     {u"currency"_s, js::S(js::truthy(currency) ? js::str(currency) : u"USD"_s)},
-                                    {u"combo_strategy"_s, js::S(u"BUTTERFLY"_s)},
+                                    {u"combo_strategy"_s, js::S(ironFly ? u"IRON_CONDOR"_s : u"BUTTERFLY"_s)},
                                     {u"multiplier"_s, js::S(multStr)},
                                     {u"legs"_s, legsOut}})},
-        {u"order"_s, js::object({{u"action"_s, js::S(s1.action)},
+        {u"order"_s, js::object({{u"action"_s, js::S(comboAction)},
                                  {u"totalQuantity"_s, js::N(qty)},
                                  {u"orderType"_s, js::S(QString())},
                                  {u"lmtPrice"_s, js::Null()},

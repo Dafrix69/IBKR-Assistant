@@ -201,15 +201,26 @@ QJsonArray timeChips(double nowMs) {
 
 // ---- 写成指令 / 格式 ----------------------------------------------------------------------------------------------
 
+double ironFlyCredit(const QJsonObject& r) { return std::round((n(r.value("width"_L1)) - n(r.value("cost"_L1))) * 100.0) / 100.0; }
+
+bool writesIronFly(const QJsonObject& r, const QString& todayEt) {
+    const QString e = r.value("expiry"_L1).toString();
+    const QString expiry = u"%1-%2-%3"_s.arg(e.left(4), e.mid(4, 2), e.mid(6, 2));
+    return expiry == todayEt || expiry == nextWeekday(todayEt);
+}
+
 QString instructionFor(const QJsonObject& r, const QString& todayEt) {
     const QString e = r.value("expiry"_L1).toString();
     const QString expiry = u"%1-%2-%3"_s.arg(e.left(4), e.mid(4, 2), e.mid(6, 2));
     const QString side = r.value("right"_L1) == QJsonValue(u"C"_s) ? u"看涨"_s : u"看跌"_s;
     const QString symbol = tpl(r.value("symbol"_L1));
-    const QString body = u"%1蝴蝶 %2cm %3 %4张"_s.arg(plain(n(r.value("center"_L1))), plain(n(r.value("width"_L1))), side, tpl(r.value("quantity"_L1)));
+    // 当日与下一个工作日到期的写成铁蝶(同中心同翼宽的四腿贷方组合,赔付、最大亏损与保证金和这只蝶相同,只是点差更窄):
+    // 收的权利金 = 翼宽 − 这只蝶的成本(平价关系),写成负数交给本地速记;铁蝶没有看涨 / 看跌
+    const QString body = u"%1铁蝶 %2cm %3张"_s.arg(plain(n(r.value("center"_L1))), plain(n(r.value("width"_L1))), tpl(r.value("quantity"_L1)));
+    const QString credit = u"-"_s + plain(ironFlyCredit(r));
+    if (expiry == todayEt) return u"%1 %2 %3"_s.arg(symbol, body, credit);
+    if (expiry == nextWeekday(todayEt)) return u"%1 明天 %2 %3"_s.arg(symbol, body, credit);
     const QString cost = plain(n(r.value("cost"_L1)));
-    if (expiry == todayEt) return u"%1 %2 %3"_s.arg(symbol, body, cost);
-    if (expiry == nextWeekday(todayEt)) return u"%1 明天 %2 %3"_s.arg(symbol, body, cost);
     return u"买入 %1 张 %2 %3 到期的 %4/%5/%6 %7蝴蝶,权利金不超过 %8"_s.arg(tpl(r.value("quantity"_L1)), symbol, expiry, plain(n(r.value("lower"_L1))),
                                                                             plain(n(r.value("center"_L1))), plain(n(r.value("upper"_L1))), side, cost);
 }
@@ -369,6 +380,10 @@ QJsonObject resultModel(const QJsonObject& r, const QTimeZone& localZone) {
                                                     : u"(不变)"_s),
         iv.value("range"_L1).isObject() ? QJsonValue(u"半数情况下 %1 ~ %2"_s.arg(pct(n(ivRange.value("low"_L1))), pct(n(ivRange.value("high"_L1))))) : QJsonValue(),
         u"成本:"_s + labelOf(costSourceLabel(), r.value("cost_source"_L1)),
+        writesIronFly(r, etClock(n(r.value("now_ms"_L1))).date)
+            ? QJsonValue(u"写进指令按铁蝶:同中心同翼宽,收 %1(= 翼宽 %2 − 成本 %3),最大亏损与保证金相同"_s.arg(fmtNum(ironFlyCredit(r)), fmtNum(r.value("width"_L1)),
+                                                                                                    fmtNum(r.value("cost"_L1))))
+            : QJsonValue(),
         !market.value("mid"_L1).isNull()
             ? QJsonValue(u"盘口 买 %1 / 中 %2 / 卖 %3%4"_s.arg(fmtNum(market.value("bid"_L1)), fmtNum(market.value("mid"_L1)), fmtNum(market.value("ask"_L1)),
                                                              jsTruthy(r.value("anchored"_L1)) ? u" · 已锚定"_s : QString()))

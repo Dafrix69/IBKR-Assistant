@@ -1,4 +1,4 @@
-// shorthand.ts:本地速记解析(语法 v7)——固定的蝴蝶 / 贷方价差行话跳过大模型。红线只有一条:绝不猜,
+// shorthand.ts:本地速记解析(语法 v8)——固定的蝴蝶 / 铁蝶 / 贷方价差行话跳过大模型。红线只有一条:绝不猜,
 // 整条指令必须被语法完整覆盖,否则回 null 交给大模型。产出与大模型同形,走同一套校验。
 #pragma once
 
@@ -11,7 +11,7 @@
 namespace ibkr::parsing::shorthand {
 
 inline const QString kLocalModel = QStringLiteral("local-shorthand");
-inline const QString kGrammarVersion = QStringLiteral("shorthand-v7");
+inline const QString kGrammarVersion = QStringLiteral("shorthand-v8");
 
 bool looksLikeShorthand(const QString& text);
 bool looksLikeOrder(const QString& text);

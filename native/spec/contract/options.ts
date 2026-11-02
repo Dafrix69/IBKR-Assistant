@@ -416,7 +416,7 @@ export interface FlyEntryAssist {
   /** 拿不到跨式是 null,原因在 notes 里 */
   width: FlyEntryWidth | null;
   flags: FlyEntryFlag[];
-  /** late_entry_et 之后入场的提示 */
+  /** late_entry_et 之后入场的提示;FOMC 会议纪要日 14:00 之前是「13:55 挂单」的提示(尾盘那一条优先) */
   timing: { title: string; basis: string } | null;
   /** 哪一条为什么没判 */
   notes: string[];
@@ -425,6 +425,8 @@ export interface FlyEntryAssist {
     et: string;
     /** 1 = 周一 … 7 = 周日 */
     weekday: number;
+    /** 美东今天是 FOMC 会议纪要公布日(内置日程或重要事件清单里有 fomc_minutes) */
+    fomc_minutes_today: boolean;
     straddle: number | null;
     prior_change_pct: number | null;
     prior_date: string | null;

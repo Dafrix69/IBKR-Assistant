@@ -4,6 +4,7 @@
 #include "js_fixture.h"
 #include "util/intel_dateparse.h"
 
+#include <QDate>
 #include <QTest>
 
 using namespace ibkr;
@@ -43,6 +44,26 @@ private slots:
         QCOMPARE(js::stringify(releases(ec::builtinReleases())), js::stringify(*t.get(u"releases"_s)));
         QCOMPARE(js::stringify(js::strings(ec::builtinProblems())), js::stringify(*fx_.get(u"problems"_s)));
         for (const OJson& c : fx_.get(u"impact"_s)->items) QCOMPARE(ec::impactOfStars(dec(*c.get(u"s"_s)).n), c.get(u"out"_s)->s);
+    }
+
+    // FOMC 会议纪要:每个内置的 FOMC 决议后三周的周三 14:00 各一条(美联储「三周后公布」的规则),自检表里没有它们的问题
+    void fomcMinutes() {
+        QStringList fomc, minutes;
+        for (const ec::Release& r : ec::builtinReleases()) {
+            if (r.kind == u"fomc") fomc << r.date;
+            if (r.kind == u"fomc_minutes") {
+                minutes << r.date;
+                QCOMPARE(r.time, u"14:00"_s);
+                QCOMPARE(QDate::fromString(r.date, Qt::ISODate).dayOfWeek(), 3);
+                QVERIFY2(r.title.startsWith(u"FOMC 会议纪要("), qPrintable(r.title));
+            }
+        }
+        QVERIFY(!fomc.isEmpty());
+        QCOMPARE(minutes.size(), fomc.size());
+        for (qsizetype i = 0; i < fomc.size(); ++i) QCOMPARE(minutes[i], QDate::fromString(fomc[i], Qt::ISODate).addDays(21).toString(Qt::ISODate));
+        QVERIFY(ec::builtinProblems().isEmpty());
+        QCOMPARE(js::num(ec::starsTable().get(u"fomc_minutes"_s)), 4.0);
+        QCOMPARE(js::num(ec::lingerMinTable().get(u"fomc_minutes"_s)), 60.0);
     }
 
     void dates() {

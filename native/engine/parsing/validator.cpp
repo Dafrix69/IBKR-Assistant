@@ -483,18 +483,36 @@ QList<Issue> Validator::checkIronCondor(const OJson& contract, const OJson& orde
     }
     if (distinctCount(expiries) != 1) issues.append(bad(u"铁鹰四条腿到期日必须相同。"_s));
     if (std::any_of(legs.begin(), legs.end(), [](const OJson* l) { return !isNumEq(P(*l, u"ratio"), 1); })) issues.append(bad(u"铁鹰四条腿比例必须都是 1。"_s));
-    if (distinctCount(strikes) != 4) issues.append(bad(u"铁鹰四条腿行权价必须互不相同(内侧同价的铁蝶结构不支持)。"_s));
+    // 四个不同行权价是铁鹰;内侧同价(三个行权价)是铁蝶,同一套腿方向与贷方口径
+    const qsizetype distinctStrikes = distinctCount(strikes);
+    if (distinctStrikes != 4 && distinctStrikes != 3) issues.append(bad(u"铁鹰四条腿行权价必须互不相同(铁蝶只有内侧两腿同价)。"_s));
 
     const std::vector<const OJson*> puts = filterRight(legs, u"P");
     const std::vector<const OJson*> calls = filterRight(legs, u"C");
     if (puts.size() != 2 || calls.size() != 2) issues.append(bad(u"铁鹰必须由两条 Put 腿与两条 Call 腿组成。"_s));
     if (!issues.isEmpty()) return issues;
 
-    if (Nx(*puts.back(), u"strike") >= Nx(*calls.front(), u"strike")) issues.append(bad(u"铁鹰的 Put 侧行权价必须整体低于 Call 侧。"_s));
+    const double putLo = Nx(*puts[0], u"strike"), putHi = Nx(*puts[1], u"strike");
+    const double callLo = Nx(*calls[0], u"strike"), callHi = Nx(*calls[1], u"strike");
+    const bool ironFly = distinctStrikes == 3;
+    if (ironFly ? (putHi != callLo || putLo == putHi || callLo == callHi) : (putHi >= callLo))
+        issues.append(bad(ironFly ? u"铁蝶的两条卖出腿必须是同一行权价的 Put 与 Call,两翼在它两侧。"_s : u"铁鹰的 Put 侧行权价必须整体低于 Call 侧。"_s));
     if (!isStrEq(P(*puts[0], u"action"), u"BUY") || !isStrEq(P(*puts[1], u"action"), u"SELL"))
         issues.append(bad(u"Put 侧腿方向不对:应买入低行权价、卖出高行权价。"_s));
     if (!isStrEq(P(*calls[0], u"action"), u"SELL") || !isStrEq(P(*calls[1], u"action"), u"BUY"))
         issues.append(bad(u"Call 侧腿方向不对:应卖出低行权价、买入高行权价。"_s));
+    if (!issues.isEmpty()) return issues;
+
+    const double wingLo = putHi - putLo, wingHi = callHi - callLo;
+    if (ironFly && std::fabs(wingLo - wingHi) > 0.01) {
+        return {bad(u"铁蝶两翼必须等距(当前 "_s + util::fmtF(wingLo, 2) + u" / "_s + util::fmtF(wingHi, 2) + u")。不等翼结构不支持。"_s)};
+    }
+    // 铁蝶收到的净权利金不可能达到翼宽(那是无风险结构,盘口不会给);到了说明价写反了。铁鹰沿用原来的口径,不加这一条
+    const OJson* lmt = P(order, u"lmtPrice");
+    if (ironFly && isStrEq(P(order, u"price_mode"), u"EXPLICIT") && notNull(lmt) && js::num(lmt) >= wingLo) {
+        issues.append(bad(u"铁蝶收到的净权利金 "_s + util::fmtF(js::num(lmt), 2) + u" 不低于翼宽 "_s + util::fmtF(wingLo, 2) +
+                          u",盘口不可能成交(最大亏损 = 翼宽 − 权利金 会变成 0 或负数),多半是价写反了。"_s));
+    }
     return issues;
 }
 

@@ -146,17 +146,25 @@ OJson evaluate(const Config& cfg, const Input& in) {
             }
         }
 
-        // ---- 时段提示
+        // ---- 时段提示:尾盘那一条优先;FOMC 会议纪要日公布之前改成「13:55 挂单」(只是提示,不是闸门)
         if (in.etMinutes >= cfg.late_entry_min) {
             timing = js::object({{u"title"_s, js::S(u"%1 以后入场:研究里胜率略高但期望归零"_s.arg(hhmm(cfg.late_entry_min)))},
                                  {u"basis"_s, js::S(u"研究:25 宽 ATM 蝶 15:00 入场胜率 58.3%、15:30 59.1%,但盈亏比掉到 0.75,点差把期望吃光(k=0.5 时为 0);"
                                                     u"13:00–14:00 是胜率与期望的平衡点(52–56%,+24 ~ +35)"_s)}});
+        } else if (in.fomcMinutesToday && in.etMinutes < cfg.fomc_minutes_release_min) {
+            timing = js::object({{u"title"_s, js::S(u"今天 %1 公布 FOMC 会议纪要:入场建议改在 %2 挂限价组合单"_s.arg(hhmm(cfg.fomc_minutes_release_min), hhmm(cfg.fomc_minutes_entry_min)))},
+                                 {u"basis"_s, js::S(u"执行成本研究 V-0015(2022-05 至 2026-10 的纪要日,样本外 16 天):公布那一刻起约 80 秒腿点差加宽 2–3 倍,"
+                                                    u"%1 入场比 14:00 每组少付约 2 美元,赔付与胜率不变;%2:45 前没成交别在 %3 追单,等约 14:01:30 点差回落再挂(那时已是公布后的价)。"
+                                                    u"褐皮书日两期都看不到效应,不提示"_s.arg(hhmm(cfg.fomc_minutes_entry_min), hhmm(cfg.fomc_minutes_release_min - 1),
+                                                                                                    hhmm(cfg.fomc_minutes_release_min)))}});
         }
+        if (!in.eventsNote.isEmpty()) notes << u"纪要日没判:"_s + in.eventsNote;
     }
 
     OJson inputs = js::object({
         {u"et"_s, js::S(hhmm(in.etMinutes))},
         {u"weekday"_s, js::N(in.weekday)},
+        {u"fomc_minutes_today"_s, js::B(in.fomcMinutesToday)},
         {u"straddle"_s, js::NOrNull(in.straddle)},
         {u"prior_change_pct"_s, change ? js::N(util::pyRound(*change, 2)) : OJson::null()},
         {u"prior_date"_s, in.priorDate.isEmpty() ? OJson::null() : js::S(in.priorDate)},

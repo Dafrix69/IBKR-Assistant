@@ -151,6 +151,12 @@ std::optional<double> strikeWidth(const OJson& contract) {
     if (js::isStr(strategy) && strategy->s == u"BUTTERFLY" && legs.size() == 3) {
         return js::num(prop(legs[1], u"strike"_s)) - js::num(prop(legs[0], u"strike"_s));
     }
+    if (js::isStr(strategy) && strategy->s == u"IRON_CONDOR" && legs.size() == 4) {
+        // 铁鹰 / 铁蝶:宽的那一翼(铁蝶两翼等距)
+        std::vector<double> puts, calls;
+        for (const OJson& l : legs) (js::str(prop(l, u"right"_s)) == u"P" ? puts : calls).push_back(js::num(prop(l, u"strike"_s)));
+        if (puts.size() == 2 && calls.size() == 2) return std::max(puts[1] - puts[0], calls[1] - calls[0]);
+    }
     if (legs.size() == 2) return std::fabs(js::num(prop(legs[0], u"strike"_s)) - js::num(prop(legs[1], u"strike"_s)));
     return std::nullopt;
 }
