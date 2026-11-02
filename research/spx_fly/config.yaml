@@ -16,6 +16,12 @@ entries: ["09:35", "10:30", "12:00", "14:00"]
 fills:
   k_levels: [0.0, 0.25, 0.5]   # 0 = mid, 1 = full spread
   k_default: 0.20              # was 0.25. Calibrated 2026-10-31: median effective combo k of the trader's own fills, 21 combos / 64 0DTE legs, 2026-10 (reports/calibration.md). Nothing in src/ requires it to be in k_levels
+  # Fill-model note from the quant loop (research/quant_loop, validations V-0019 / V-0020; NOT applied, values above unchanged):
+  #   - Iron fly / butterfly combos on the exchange combo book clear about 2 USD/combo against the seller of the iron fly
+  #     (= buyer of the put fly). In D_own terms (|fill - own-leg NBBO mid| / own half-spread H) the effective k is asymmetric:
+  #     ~0.285 on the opening side, ~0.115 on the closing side (V-0019, out-of-sample 2024-11 -> 2026-10, tick-by-tick combo prints).
+  #     Use these two numbers when a backtest wants separate open/close fills for flies; k_default stays the symmetric pooled value.
+  #   - Vertical spreads showed no such asymmetry: keep the symmetric 0.20 (V-0020).
   multiplier: 100
   # USD per contract, public customer, IBKR Pro, as listed 2026-10-30; applied to the whole sample
   commission:                  # by premium, interactivebrokers.com/en/pricing/commissions-options.php
