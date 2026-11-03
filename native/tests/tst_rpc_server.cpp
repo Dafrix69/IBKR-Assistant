@@ -17,6 +17,9 @@
 #include <QElapsedTimer>
 #include <QTest>
 
+#include <chrono>
+#include <thread>
+
 using namespace ibkr;
 using namespace Qt::StringLiterals;
 using util::OJson;
@@ -220,6 +223,78 @@ private slots:
             if (!got.finished || got.exitCode != int(s.get(u"code"_s)->n)) failures << name + u":没有按 TS 的退出码收尾"_s;
         }
         QVERIFY2(failures.isEmpty(), qPrintable(u"%1 个场景不同:\n"_s.arg(failures.size()) + failures.join(u"\n"_s)));
+    }
+
+    /// 读道的期限:四个永远等不到回音的读请求不能把名额占死。过期的回 -32020、让出名额;之后才答完的不写第二个回执;排队过了期限的不再去跑
+    void readLaneDeadlineFreesStuckSlots() {
+        QStringList out, err;
+        RpcServer server([&out](const QByteArray& line) { out << QString::fromUtf8(line); });
+        server.hooks.stderrLine = [&err](const QString& line) { err << line; };
+        server.setReadDeadlineMs(300);
+        std::vector<util::Deferred<OJson>> stuck;
+        server.addAsync(u"options.wall"_s, [&stuck](const OJson&) {
+            stuck.emplace_back();
+            return stuck.back().task();
+        });
+        server.addAsync(u"macro.board"_s, [](const OJson&) { return delayed(5, js::object({{u"ok"_s, js::B(true)}})); });
+        server.begin(u"<CONFIG>"_s);
+        for (int id = 1; id <= 4; ++id) server.handleLine(u"{\"jsonrpc\":\"2.0\",\"id\":%1,\"method\":\"options.wall\"}"_s.arg(id).toUtf8());
+        server.handleLine(R"({"jsonrpc":"2.0","id":5,"method":"macro.board"})");
+        QTest::qWait(100);
+        QCOMPARE(out.size(), 1);  // 只有 ready:四个名额全被占着,macro.board 在排队
+        QTRY_VERIFY_WITH_TIMEOUT(out.size() == 6, 3000);
+        for (int id = 1; id <= 4; ++id) {
+            const QString line = out.filter(u"\"id\":%1,"_s.arg(id)).value(0);
+            QVERIFY2(line.contains(u"\"code\":-32020"_s), qPrintable(line));
+        }
+        // 排在后面的 macro.board 收到时离期限只差一点:要么答成,要么同样回超时,但一定有回执
+        QCOMPARE(out.filter(u"\"id\":5,"_s).size(), 1);
+        QCOMPARE(err.filter(u"期限"_s).size(), 5);
+
+        // 过期之后才答完的:结果丢掉,不写第二个回执(机器慢时 id 5 也可能是开跑之后才过期的,所以只数这一次多出来的)
+        QTest::qWait(100);  // 等 id 5 若在跑,把它自己那一行写完
+        const qsizetype lateBefore = err.filter(u"过期之后才答完"_s).size();
+        stuck[0].resolve(js::object({{u"late"_s, js::B(true)}}));
+        QTest::qWait(50);
+        QCOMPARE(out.size(), 6);
+        QVERIFY(!out.join(u"\n"_s).contains(u"late"_s));
+        QCOMPARE(err.filter(u"过期之后才答完"_s).size(), lateBefore + 1);
+
+        // 名额都让出来了:新的读请求照常答
+        server.handleLine(R"({"jsonrpc":"2.0","id":6,"method":"macro.board"})");
+        QTRY_VERIFY_WITH_TIMEOUT(out.filter(u"\"id\":6,\"result\""_s).size() == 1, 2000);
+
+        // EOF 时不等过期的那几个(它们永远不答):照常收尾
+        bool finished = false;
+        server.setOnFinished([&finished](int) { finished = true; });
+        server.handleEof();
+        QTRY_VERIFY_WITH_TIMEOUT(finished, 2000);
+    }
+
+    /// 排队就排过了期限的读请求:不去跑 handler,直接回超时
+    void readQueuedPastDeadlineIsNotRun() {
+        QStringList out;
+        RpcServer server([&out](const QByteArray& line) { out << QString::fromUtf8(line); });
+        server.hooks.stderrLine = [](const QString&) {};
+        server.setReadDeadlineMs(200);
+        std::vector<util::Deferred<OJson>> stuck;
+        int boardRuns = 0;
+        server.addAsync(u"options.wall"_s, [&stuck](const OJson&) {
+            stuck.emplace_back();
+            return stuck.back().task();
+        });
+        server.addAsync(u"macro.board"_s, [&boardRuns](const OJson&) {
+            ++boardRuns;
+            return delayed(1, js::object());
+        });
+        server.begin(u"<CONFIG>"_s);
+        for (int id = 1; id <= 4; ++id) server.handleLine(u"{\"jsonrpc\":\"2.0\",\"id\":%1,\"method\":\"options.wall\"}"_s.arg(id).toUtf8());
+        server.handleLine(R"({"jsonrpc":"2.0","id":5,"method":"macro.board"})");
+        // 不转事件循环、直接睡过期限:第一个过期的名额让出来时,macro.board 一定已经排过了期限(不然它晚到的那几毫秒会让它赶上)
+        std::this_thread::sleep_for(std::chrono::milliseconds(350));
+        QTRY_VERIFY_WITH_TIMEOUT(out.filter(u"\"id\":5,"_s).size() == 1, 3000);
+        QVERIFY2(out.filter(u"\"id\":5,"_s)[0].contains(u"-32020"_s), qPrintable(out.join(u"\n"_s)));
+        QCOMPARE(boardRuns, 0);
     }
 
     /// TS 里让 line 监听抛死的请求:C++ 照数组那样答「未知方法:」(id null),引擎不死

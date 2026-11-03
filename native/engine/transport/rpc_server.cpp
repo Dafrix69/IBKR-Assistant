@@ -2,6 +2,7 @@
 
 #include "util/awake_clock.h"
 #include "util/error.h"
+#include "util/jsformat.h"
 #include "util/jsobj.h"
 #include "util/jsvalue.h"
 #include "util/post.h"
@@ -281,6 +282,12 @@ namespace {
 /// String(request["method"] ?? "")
 QString methodOf(const OJson& request) { return js::strOr(js::prop(&request, u"method"_s), QString()); }
 
+OJson errorMessage(const OJson& id, int code, const QString& message) {
+    return js::object({{u"jsonrpc"_s, js::S(u"2.0"_s)},
+                       {u"id"_s, id},
+                       {u"error"_s, js::object({{u"code"_s, js::N(code)}, {u"message"_s, js::S(message)}})}});
+}
+
 }  // namespace
 
 void RpcServer::dispatch(Pending request) {
@@ -312,18 +319,61 @@ void RpcServer::pumpReads() {
     while (readsInFlight_ < kReadConcurrency && !reads_.empty()) {
         Pending next = std::move(reads_.front());
         reads_.pop_front();
+        const QString method = methodOf(next.request);
+        const OJson* idPtr = js::prop(&next.request, u"id"_s);
+        const OJson id = js::nullish(idPtr) ? OJson::null() : *idPtr;
+        const double ageMs = double(util::awakeMicros() - next.receivedUs) / 1000.0;
+        if (ageMs >= readDeadlineMs_) {
+            answerReadTimeout(id, method, ageMs);  // 排队就排过了期限:界面早不等了,不再去问 TWS
+            continue;
+        }
+        auto abandoned = std::make_shared<bool>(false);
+        auto done = std::make_shared<bool>(false);
+        next.abandoned = abandoned;
+        const qint64 receivedUs = next.receivedUs;
         ++readsInFlight_;
         ++detached_;
-        handle(std::move(next)).onDone([self] {
-            if (!self) return;
+        util::Task<void> task = handle(std::move(next));
+        if (!self) return;
+        task.onDone([self, abandoned, done] {
+            *done = true;
+            if (!self || *abandoned) return;  // 过期时名额已经让出去了
             --self->readsInFlight_;
             --self->detached_;
             self->pumpReads();
             self->schedulePump();
         });
         if (!self) return;
+        if (!*done) armReadDeadline(abandoned, done, id, method, receivedUs);
     }
     pumpingReads_ = false;
+}
+
+void RpcServer::armReadDeadline(std::shared_ptr<bool> abandoned, std::shared_ptr<bool> done, OJson id, QString method, qint64 receivedUs) {
+    const double ageMs = double(util::awakeMicros() - receivedUs) / 1000.0;
+    const int remaining = std::max(1, int(readDeadlineMs_ - ageMs));
+    QPointer<RpcServer> self(this);
+    QTimer::singleShot(remaining, this, [self, abandoned, done, id, method, receivedUs] {
+        if (!self || *done || *abandoned) return;
+        const double age = double(util::awakeMicros() - receivedUs) / 1000.0;
+        if (age < self->readDeadlineMs_) {
+            // 计时器把睡眠也算进去了(macOS):按醒着的时间再等剩下的
+            self->armReadDeadline(abandoned, done, id, method, receivedUs);
+            return;
+        }
+        *abandoned = true;
+        --self->readsInFlight_;
+        --self->detached_;
+        self->answerReadTimeout(id, method, age);
+        self->pumpReads();
+        self->schedulePump();
+    });
+}
+
+void RpcServer::answerReadTimeout(const OJson& id, const QString& method, double ageMs) {
+    const QString seconds = util::jsNumberToString(util::jsRound(readDeadlineMs_ / 1000.0));
+    stderrLine(u"[rpc] 读道请求 %1 过了 %2 s 期限(已 %3 ms)没答完,回超时并让出名额"_s.arg(method, seconds, util::jsNumberToString(util::jsRound(ageMs))));
+    write(errorMessage(id, -32020, u"%1 在 %2 秒内没有答完(TWS 一直没回音),这次放弃;下一轮会重新取"_s.arg(method, seconds)));
 }
 
 void RpcServer::pumpTrade() {
@@ -376,16 +426,6 @@ util::Task<OJson> RpcServer::call(const QString& method, const OJson& params) {
     }
 }
 
-namespace {
-
-OJson errorMessage(const OJson& id, int code, const QString& message) {
-    return js::object({{u"jsonrpc"_s, js::S(u"2.0"_s)},
-                       {u"id"_s, id},
-                       {u"error"_s, js::object({{u"code"_s, js::N(code)}, {u"message"_s, js::S(message)}})}});
-}
-
-}  // namespace
-
 util::Task<void> RpcServer::handle(Pending pending) {
     QPointer<RpcServer> self(this);
     const qint64 startedUs = util::awakeMicros();
@@ -413,6 +453,11 @@ util::Task<void> RpcServer::handle(Pending pending) {
     if (!self) co_return;
     co_await NextTick{this};
     if (!self) co_return;
+    if (pending.abandoned && *pending.abandoned) {
+        // 已经替它回过超时:不写第二个回执(同一个 id 答两次,界面会认错人),只记一笔它最后用了多久
+        stderrLine(u"[rpc] 读道请求 %1 过期之后才答完,用了 %2 ms,结果丢弃"_s.arg(method, util::jsNumberToString(util::jsRound(double(util::awakeMicros() - startedUs) / 1000.0))));
+        co_return;
+    }
     OJson message;
     if (!failure) {
         message = js::object({{u"jsonrpc"_s, js::S(u"2.0"_s)}, {u"id"_s, requestId}, {u"result"_s, result}});

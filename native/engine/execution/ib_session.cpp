@@ -450,14 +450,17 @@ public:
         Runtime::Scope s(*rt_);
         return sleep(ms);
     }
+    // 这两样 TWS 有时一直不回(没有报错、连接也还在):不设上限,等它的读请求就永远挂着
     Task<std::vector<RawBar>> historicalData(IbContract contract, HistoricalRequest opts) override {
         Runtime::Scope s(*rt_);
-        return historicalCo(shared_from_this(), std::move(contract), std::move(opts));
+        return withTimeout(historicalCo(shared_from_this(), std::move(contract), std::move(opts)), kHistoricalTimeoutMs, u"历史 K 线 90 秒没有回音"_s);
     }
     Task<std::vector<OptChainParam>> secDefOptParams(QString symbol, QString secType, int conId) override {
         Runtime::Scope s(*rt_);
-        return secDefCo(shared_from_this(), std::move(symbol), std::move(secType), conId);
+        return withTimeout(secDefCo(shared_from_this(), std::move(symbol), std::move(secType), conId), kSecDefTimeoutMs, u"期权链定义 30 秒没有回音"_s);
     }
+    static constexpr double kHistoricalTimeoutMs = 90'000;
+    static constexpr double kSecDefTimeoutMs = 30'000;
     Task<QString> wshEvents(const QString& filter, const QString& start, const QString& end) override {
         Runtime::Scope scope(*rt_);
         return wshCo(shared_from_this(), filter, start, end);

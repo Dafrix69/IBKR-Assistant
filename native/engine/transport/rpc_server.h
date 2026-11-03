@@ -41,6 +41,7 @@
 
 #include <deque>
 #include <functional>
+#include <memory>
 #include <optional>
 #include <stdexcept>
 
@@ -73,6 +74,9 @@ struct LaneTable {
 const LaneTable& defaultLaneTable();
 inline constexpr int kReadConcurrency = 4;  // RpcServer.READ_CONCURRENCY
 inline constexpr double kSlowMs = 1000;     // RpcServer.SLOW_MS:超过这个时长的请求记到 stderr
+/// 读道的期限(从收到算起,含排队):过了就回 -32020 并让出名额。界面那边每个调用等 120 s(shell/engine_client.cpp 的 kCallTimeoutMs),
+/// 过了期限的结果没人要;不放的话,几个永远等不到 TWS 回音的读请求会把 4 个名额占死,之后所有读道方法都超时,直到引擎重启(2026-11-03 17:37 起就是这样)
+inline constexpr int kReadDeadlineMs = 110'000;
 
 /// 生命周期的接口:TS 的 serve() 在起、停时碰的那些 service(行情循环、预热现价、各路后台同步……)还没搬过来,由搬它们的人把函数接在这里
 struct LifecycleHooks {
@@ -129,6 +133,7 @@ public:
     /// 测试用:缩短每十分钟一行汇总的间隔、慢请求的门槛(缺省 kFlushMs / kSlowMs)
     void setFlushIntervalMs(int ms) { flushTimer_.setInterval(ms); }
     void setSlowMs(double ms) { slowMs_ = ms; }
+    void setReadDeadlineMs(int ms) { readDeadlineMs_ = ms; }
 
     /// 直接调一个方法:不包 JSON-RPC 信封、不写 stdout,失败原样抛(RpcError 带码)。method 没登记抛 -32601「未知方法:<名字>」
     util::Task<util::OJson> call(const QString& method, const util::OJson& params);
@@ -142,6 +147,8 @@ private:
         util::OJson request;
         bool bad = false;  // 解析不了的那一行(TS 的 BAD 哨兵)
         qint64 receivedUs = 0;
+        /// 读道才有:过了期限、已经替它答过超时,handler 之后再答完就不写回执
+        std::shared_ptr<bool> abandoned;
     };
 
     void processLine(const QString& rawLine);
@@ -151,6 +158,8 @@ private:
     void stderrLine(const QString& line);
     void pumpTrade();
     void pumpReads();
+    void armReadDeadline(std::shared_ptr<bool> abandoned, std::shared_ptr<bool> done, util::OJson id, QString method, qint64 receivedUs);
+    void answerReadTimeout(const util::OJson& id, const QString& method, double ageMs);
     void schedulePump();
     void enqueueMicro(std::function<void()> f);
     void maybeFinish();
@@ -170,6 +179,7 @@ private:
     bool closed_ = false, finished_ = false, requireStartup_ = false;
     QTimer flushTimer_;
     double slowMs_ = kSlowMs;
+    int readDeadlineMs_ = kReadDeadlineMs;
     std::function<void(int)> onFinished_;
 };
 
