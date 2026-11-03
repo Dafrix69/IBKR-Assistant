@@ -110,9 +110,17 @@ Task<std::optional<std::array<QString, 3>>> BrokerRouter::contractHours(OJson ro
     co_return out;
 }
 
+QStringList BrokerRouter::hiddenAccounts() const {
+    QStringList masked;
+    for (const QString& a : hiddenAccounts_) masked.append(redactForLog(a));
+    masked.sort();
+    return masked;
+}
+
 /** 账户里现在拿着什么。优先 portfolio()(TWS 自己算的口径),退 positions()。 */
 Task<QList<OJson>> BrokerRouter::positions() {
     contract::OrderedMap<OJson> out;
+    hiddenAccounts_.clear();
     QHash<QString, QString> aliasOf;
     for (const contract::AccountConfig& a : settings.accounts) aliasOf.insert(a.account_id, a.alias);
 
@@ -205,7 +213,8 @@ std::optional<OJson> BrokerRouter::positionRow(const OJson& contract, double qua
         alias = it.value();
     } else {
         if (!account.isEmpty()) {
-            // 券商报了账号但别名表里没有:不是本软件管的账户,不显示、不追踪(每个账号只提醒一次)
+            // 券商报了账号但别名表里没有(每个账号只提醒一次)
+            hiddenAccounts_.insert(account);
             if (!unmappedAccounts_.contains(account)) {
                 unmappedAccounts_.insert(account);
                 logStderr(u"[ibkr] 账户 %1 不在配置的别名表里,它的持仓不显示、不追踪。"_s.arg(redactForLog(account)) +

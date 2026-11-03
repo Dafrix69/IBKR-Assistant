@@ -100,9 +100,10 @@ Task<BrokerConnectResult> BrokerLinkService::connectNow(std::optional<QStringLis
     const QStringList list = names ? *names : sortedConnectionNames(provider);
     for (const QString& name : list) {
         try {
-            co_await router->connect(name);
+            const auto session = co_await router->connect(name);
             result.connected.append(name);
             seen_.insert(name);
+            adoptAccounts(*router, name, session->managedAccounts());
         } catch (const BrokerError& exc) {
             result.failed.insert(name, exc.message());
         }
@@ -119,6 +120,22 @@ Task<BrokerConnectResult> BrokerLinkService::connectNow(std::optional<QStringLis
     ensureTimer();
     result.listeners = attached;
     co_return result;
+}
+
+/// 账号以 TWS 报的为准,不用用户填。写不进文件也照用,这次运行里持仓不会丢。
+void BrokerLinkService::adoptAccounts(BrokerRouter& router, const QString& connection, const QStringList& managed) {
+    const auto accounts = domain::adoptManagedAccounts(host_.settings().accounts, connection, managed);
+    if (!accounts) return;
+    domain::Settings next = host_.settings();
+    next.accounts = *accounts;
+    try {
+        next = domain::patchConfigFile(next.source_path, domain::accountsPatch(*accounts));
+    } catch (const util::JsError& exc) {
+        logStderr(u"[link] 账户写不进配置,这次运行先用内存里的:%1"_s.arg(exc.message()));
+    }
+    router.settings = next;
+    host_.adoptSettings(std::move(next));
+    logStderr(u"[link] 账户表已按连接 %1 报的账号更新"_s.arg(connection));
 }
 
 Task<> BrokerLinkService::disconnect() {

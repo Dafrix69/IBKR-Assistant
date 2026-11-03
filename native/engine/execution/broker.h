@@ -158,6 +158,8 @@ public:
     // ---- 连接
     contract::OrderedMap<contract::ConnectionConfig> connections() const;
     util::Task<SessionPtr> connect(QString connectionName);
+    /// 上一轮 positions() 里被别名表挡掉的账号(已打码)
+    QStringList hiddenAccounts() const;
     /// 常规时段之外,连上就在后台把期货推算暖起来;不等它、也不让它的失败冒出去
     void warmIndexFutures();
     bool upstreamOk() const;
@@ -299,6 +301,7 @@ private:
     contract::OrderedMap<std::optional<VolumeStream>> volumeStreams_;  // nullopt = null(认不出的标的)
     contract::OrderedMap<std::pair<double, QString>> volumeRetry_;
     QSet<QString> unmappedAccounts_;
+    QSet<QString> hiddenAccounts_;  // 这一轮读持仓时被别名表挡掉的账号
     QHash<int, HostedEntry> hostedTrades_;
     std::shared_ptr<bool> alive_ = std::make_shared<bool>(true);
 };

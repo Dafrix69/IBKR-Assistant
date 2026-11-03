@@ -225,6 +225,7 @@ public:
     std::shared_ptr<execution::BrokerRouter> broker() const override { return i_.router; }
     orch::SvcEngine& svcEngine() override { return i_.engine().svcView(); }
     void setBroker(std::shared_ptr<execution::BrokerRouter> r) override { i_.router = std::move(r); }
+    void adoptSettings(domain::Settings s) override { i_.settings = std::move(s); }
     void dropEngine() override { i_.dropEngine(); }
 
 private:

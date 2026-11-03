@@ -544,6 +544,7 @@ public:
     void emitEvent(const QString& event, const OJson& payload) override { w_->rec(u"host"_s, u"emit"_s, js::array({js::S(event), payload})); }
     std::shared_ptr<BrokerRouter> broker() const override { return router_; }
     void setBroker(std::shared_ptr<BrokerRouter> r) override { router_ = std::move(r); }
+    void adoptSettings(ibkr::domain::Settings s) override { settings_ = std::move(s); }
     void dropEngine() override { w_->rec(u"host"_s, u"dropEngine"_s, js::array()); }
     SvcEngine& svcEngine() override {
         if (w_->trackEngine) w_->rec(u"host"_s, u"engine"_s, js::array());

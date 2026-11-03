@@ -195,6 +195,28 @@ class TestConfig : public QObject {
 
 private slots:
     void cleanupTestCase() { jsfix::rewrite(u"config.json"_s, fx); }
+    void adoptsManagedAccounts() {
+        using contract::AccountConfig;
+        const std::vector<AccountConfig> placeholders{{u"模拟"_s, u"DU0000000"_s, true, u"paper"_s, true}, {u"主账户"_s, u"U0000000"_s, false, u"live"_s, false}};
+        // 真账号进同类占位,默认从占位挪过来,模拟占位不动
+        auto got = domain::adoptManagedAccounts(placeholders, u"live"_s, {u"U1234567"_s});
+        QVERIFY(got);
+        QCOMPARE((*got)[1].account_id, u"U1234567"_s);
+        QVERIFY((*got)[1].isDefault);
+        QVERIFY(!(*got)[0].isDefault);
+        QCOMPARE((*got)[0].account_id, u"DU0000000"_s);
+        // 实盘账号绝不进模拟占位;多出来的账号新加一条,默认不变
+        got = domain::adoptManagedAccounts(*got, u"live"_s, {u"U1234567"_s, u"U7654321"_s});
+        QVERIFY(got);
+        QCOMPARE(got->size(), std::size_t(3));
+        QCOMPARE((*got)[2].alias, u"账户4321"_s);
+        QVERIFY(!(*got)[2].is_paper);
+        QVERIFY(!(*got)[2].isDefault);
+        QVERIFY((*got)[1].isDefault);
+        // 都配过了、或 TWS 没报:不动
+        QVERIFY(!domain::adoptManagedAccounts(*got, u"live"_s, {u"U1234567"_s}));
+        QVERIFY(!domain::adoptManagedAccounts(placeholders, u"live"_s, {}));
+    }
     /// 重做基线:把这一格的期望换成 C++ 现算的(抛错的话换成 error)
     static void rebase(const OJson& c, const QString& got) {
         OJson& m = const_cast<OJson&>(c);
