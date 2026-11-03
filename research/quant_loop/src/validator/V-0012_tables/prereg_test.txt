@@ -1,0 +1,15 @@
+V-0012 test-period pre-registration (written 2026-11-01 after training reconciliation, before days_test.csv exists)
+Metrics: as listed in V-0012_analyze.py header. Test run: V-0012_build.py test, V-0012_analyze.py test, each once.
+Tercile cuts for I10/S: train 0.00401 / 0.00590 (cuts.txt), unchanged.
+Baseline A: winrate_panel 14:00 put_fly, w/I closest to 2 (tie narrower), skip spx_ret_prev <= -1%; pnl k 0.25 (panel); expect 439 days / 61.0% / +100.
+Increment vs baseline A = EV_m on PNT non-event days (other base days 0); morning segment does not overlap base A (closes 14:00).
+
+PROPOSER PASS (all): G_M > 0; EV_m > 0; EV_m(2025) > 0 and EV_m(2026) > 0; I-high-tercile EV_m > 0; |G_M placebo PNT+1| < |G_M|;
+  mechanism: M ~ m + PNT (HC1) PNT coef > 0 (if G_M > 0 and coef <= 0 -> mechanism fails).
+PROTOCOL PASS (all):
+  (1) significance: EV_m bootstrap 95% lower bound > 0 AND permutation (PNT labels, 2000, two-sided) p for dEV and G_M,
+      multiplied by 64 variants, < 0.05 (resolution of 2000 draws ~0.0005; Bonferroni threshold 0.00078);
+  (2) by year: EV_m 2025 and 2026 both > 0 (2024-11~12 report only);
+  (3) robustness, EV_m sign must not flip: k 0.5, w-5, w+5, drop best 5, exit 13:00, exit 15:00;
+  (4) mechanism coefficient > 0 (proposer's criterion, adopted).
+Any of (1)-(4) failing = FAIL. Direction partially known (V-0011 c, x_m): no one-sided discount.

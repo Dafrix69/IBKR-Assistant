@@ -1,0 +1,7 @@
+pairs 498 reasons {'': 470, 'quote': 23, 'missing': 5} half 10; usable 465
+PNT nights (gap>=2): n 102 pnl k0.20 (np.float64(-10.9), np.float64(-615.2), np.float64(581.9)) k0 +4.0 k0.5 -33.4 win 0.520 x 0.987
+1-night: n 363 pnl k0.20 (np.float64(-29.6), np.float64(-326.7), np.float64(259.6)) k0 -16.5 k0.5 -49.2 win 0.526 x 0.992
+all: n 465 pnl k0.20 (np.float64(-25.5), np.float64(-284.6), np.float64(238.6)) k0 -12.0 k0.5 -45.8 win 0.525 x 0.991
+  PNT nights N year 2024: n 8 pnl -157.4 x 0.957
+  PNT nights N year 2025: n 51 pnl -591.9 x 1.053
+  PNT nights N year 2026: n 43 pnl +705.4 x 0.913

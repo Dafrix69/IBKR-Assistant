@@ -1,0 +1,110 @@
+prints 245362 days 249  signed 0.619  s+ 0.430  s- 0.189  exact-mid 0.175
+E signed mean 9.17 median 7.50;  H mean 0.285
+quote age of ML leg rows (trade_ts - quote_ts, s), all train days, n=52929023: median 0.024 p90 0.524 p99 10.71  share > 1 s 0.066
+
+== 1. judged I_tau (sign = own, start = own, end = chain floor+tau) ==
+I_1                                                        n=249 trim   +4.38 [ +4.14, +4.62] med   +4.33 mean   +4.56 seg1  +4.90 seg2  +3.97
+I_5                                                        n=249 trim   +4.92 [ +4.47, +5.35] med   +5.07 mean   +4.86 seg1  +5.13 seg2  +4.71
+I_15                                                       n=249 trim   +5.91 [ +5.26, +6.56] med   +6.13 mean   +6.05 seg1  +6.56 seg2  +5.44
+perm null I_5 (200, shuffle s among signed prints within bucket): mean -0.01 p97.5 +0.32  real +4.92
+
+== 2. I'_tau (start = chain floor(t)) and decomposition, sign = own ==
+I'_1 start=ch_0                                            n=249 trim   -1.50 [  +nan,  +nan] med   -1.61 mean   -1.34 seg1  -1.57 seg2  -1.44
+I'_5 start=ch_0                                            n=249 trim   -1.13 [ -1.55, -0.71] med   -1.04 mean   -1.05 seg1  -1.58 seg2  -0.71
+I'_15 start=ch_0                                           n=249 trim   -0.16 [  +nan,  +nan] med   -0.15 mean   +0.08 seg1  +0.07 seg2  -0.24
+pre   ch_0 - ch_-1                                         n=249 trim   +0.21 [  +nan,  +nan] med   +0.15 mean   +0.21 seg1  -0.09 seg2  +0.44
+disp  own - ch_0                                           n=249 trim   -6.04 [  +nan,  +nan] med   -5.92 mean   -5.92 seg1  -6.70 seg2  -5.50
+dispI own - interp                                         n=249 trim   -5.30 [ -5.49, -5.11] med   -5.11 mean   -5.38 seg1  -5.80 seg2  -4.85
+trade - interp                                             n=249 trim   +3.12 [  +nan,  +nan] med   +3.19 mean   +3.50 seg1  +3.06 seg2  +3.17
+absorb u*(ch_1 - ch_0) = interp - ch_0                     n=249 trim   -0.66 [ -0.83, -0.50] med   -0.71 mean   -0.52 seg1  -0.78 seg2  -0.57
+post  ch_1 - interp                                        n=249 trim   -0.86 [ -1.01, -0.71] med   -0.83 mean   -0.82 seg1  -0.84 seg2  -0.88
+post  ch_5 - interp                                        n=249 trim   -0.45 [ -0.85, -0.04] med   -0.28 mean   -0.52 seg1  -0.64 seg2  -0.27
+post  ch_15 - interp                                       n=249 trim   +0.47 [ -0.12, +1.06] med   +0.62 mean   +0.63 seg1  +0.74 seg2  +0.30
+dispI |dev| [0.05,0.1)                                     n=249 trim   -3.64 [  +nan,  +nan] med   -3.63 mean   -3.69 seg1  -3.79 seg2  -3.53
+post5-interp |dev| [0.05,0.1)                              n=249 trim   -0.38 [  +nan,  +nan] med   -0.25 mean   -0.38 seg1  -0.76 seg2  -0.03
+dispI |dev| [0.1,0.2)                                      n=245 trim   -7.13 [  +nan,  +nan] med   -7.17 mean   -7.24 seg1  -7.51 seg2  -6.81
+post5-interp |dev| [0.1,0.2)                               n=245 trim   -0.91 [  +nan,  +nan] med   -0.95 mean   -1.08 seg1  -0.05 seg2  -1.69
+dispI |dev| [0.2,99)                                       n= 99 trim  -26.74 [  +nan,  +nan] med  -26.88 mean  -33.47 seg1 -23.74 seg2 -31.08
+post5-interp |dev| [0.2,99)                                n= 98 trim   +0.41 [  +nan,  +nan] med   -0.01 mean   +1.23 seg1  +0.17 seg2  +0.83
+unsigned own - interp, all prints: mean +0.04 median +0.04 mean|.| 8.14; exact-mid prints mean|.| 6.07
+  s=+1: own-interp -4.15  trade-interp +4.88
+  s=-1: own-interp +6.85  trade-interp -2.64
+  mid: own-interp +1.75  trade-interp +1.75
+
+== 3. cross matrix: sign source x start reference (end = chain floor+tau; also end = own-tape asof NBBO) ==
+sign by own   : signed share 0.619 (s+ 0.430, s- 0.189)
+sign by interp: signed share 0.540 (s+ 0.367, s- 0.173)
+sign by ch_0  : signed share 0.735 (s+ 0.486, s- 0.249)
+sign by prior : signed share 0.764 (s+ 0.444, s- 0.319)
+sign=own    start=own    end=chain+5                       n=249 trim   +4.92 [ +4.47, +5.34] med   +5.07 mean   +4.86 seg1  +5.13 seg2  +4.71
+sign=own    start=own    end=chain+15                      n=249 trim   +5.91 [ +5.27, +6.56] med   +6.13 mean   +6.05 seg1  +6.56 seg2  +5.44
+sign=own    start=interp end=chain+5                       n=249 trim   -0.45 [ -0.85, -0.04] med   -0.28 mean   -0.52 seg1  -0.64 seg2  -0.27
+sign=own    start=interp end=chain+15                      n=249 trim   +0.47 [ -0.12, +1.06] med   +0.62 mean   +0.63 seg1  +0.74 seg2  +0.30
+sign=own    start=ch_0   end=chain+5                       n=249 trim   -1.13 [ -1.54, -0.71] med   -1.04 mean   -1.05 seg1  -1.58 seg2  -0.71
+sign=own    start=ch_0   end=chain+15                      n=249 trim   -0.16 [ -0.75, +0.48] med   -0.15 mean   +0.08 seg1  +0.07 seg2  -0.24
+sign=own    start=prior  end=chain+5                       n=249 trim   +0.59 [  +nan,  +nan] med   +0.61 mean   +0.18 seg1  +0.38 seg2  +0.68
+sign=own    start=prior  end=chain+15                      n=249 trim   +1.64 [  +nan,  +nan] med   +1.51 mean   +1.34 seg1  +1.86 seg2  +1.41
+sign=interp start=own    end=chain+5                       n=249 trim   -8.99 [ -9.73, -8.27] med   -8.87 mean   -9.13 seg1  -7.90 seg2  -9.90
+sign=interp start=own    end=chain+15                      n=249 trim   -8.89 [ -9.71, -7.99] med   -8.86 mean   -8.86 seg1  -8.63 seg2  -9.11
+sign=interp start=interp end=chain+5                       n=249 trim   +0.63 [ -0.04, +1.29] med   +0.43 mean   +0.69 seg1  +1.48 seg2  -0.09
+sign=interp start=interp end=chain+15                      n=249 trim   +0.61 [ -0.21, +1.46] med   +0.23 mean   +0.88 seg1  +0.62 seg2  +0.61
+sign=interp start=ch_0   end=chain+5                       n=249 trim   +1.31 [ +0.63, +1.99] med   +1.15 mean   +1.56 seg1  +1.91 seg2  +0.80
+sign=interp start=ch_0   end=chain+15                      n=249 trim   +1.29 [ +0.51, +2.13] med   +0.90 mean   +1.69 seg1  +1.16 seg2  +1.48
+sign=interp start=prior  end=chain+5                       n=249 trim   -9.08 [  +nan,  +nan] med   -8.98 mean   -9.84 seg1  -8.48 seg2  -9.67
+sign=interp start=prior  end=chain+15                      n=249 trim   -9.01 [  +nan,  +nan] med   -8.69 mean   -9.57 seg1  -9.12 seg2  -8.96
+sign=ch_0   start=own    end=chain+5                       n=249 trim   -5.74 [ -6.28, -5.18] med   -5.66 mean   -5.79 seg1  -4.75 seg2  -6.60
+sign=ch_0   start=own    end=chain+15                      n=249 trim   -8.70 [ -9.40, -7.99] med   -8.95 mean   -8.46 seg1  -7.88 seg2  -9.41
+sign=ch_0   start=interp end=chain+5                       n=249 trim   +0.17 [ -0.31, +0.67] med   +0.11 mean   +0.30 seg1  +1.08 seg2  -0.68
+sign=ch_0   start=interp end=chain+15                      n=249 trim   -2.87 [ -3.55, -2.19] med   -3.03 mean   -2.44 seg1  -2.09 seg2  -3.55
+sign=ch_0   start=ch_0   end=chain+5                       n=249 trim   +7.30 [ +6.79, +7.84] med   +6.98 mean   +7.47 seg1  +8.17 seg2  +6.52
+sign=ch_0   start=ch_0   end=chain+15                      n=249 trim   +4.26 [ +3.60, +4.91] med   +3.93 mean   +4.67 seg1  +4.97 seg2  +3.62
+sign=ch_0   start=prior  end=chain+5                       n=249 trim   -5.20 [  +nan,  +nan] med   -5.69 mean   -4.98 seg1  -3.90 seg2  -6.24
+sign=ch_0   start=prior  end=chain+15                      n=249 trim   -8.05 [  +nan,  +nan] med   -8.56 mean   -7.66 seg1  -6.68 seg2  -9.12
+sign=prior  start=own    end=chain+5                       n=249 trim   +0.22 [  +nan,  +nan] med   +0.21 mean   +0.10 seg1  +0.07 seg2  +0.35
+sign=prior  start=own    end=chain+15                      n=249 trim   +0.66 [  +nan,  +nan] med   +0.64 mean   +0.44 seg1  +0.44 seg2  +0.87
+sign=prior  start=interp end=chain+5                       n=249 trim   -0.25 [  +nan,  +nan] med   -0.21 mean   -0.27 seg1  -0.31 seg2  -0.19
+sign=prior  start=interp end=chain+15                      n=249 trim   +0.17 [  +nan,  +nan] med   +0.13 mean   +0.05 seg1  +0.05 seg2  +0.29
+sign=prior  start=ch_0   end=chain+5                       n=249 trim   -0.22 [  +nan,  +nan] med   -0.17 mean   -0.21 seg1  -0.26 seg2  -0.18
+sign=prior  start=ch_0   end=chain+15                      n=249 trim   +0.17 [  +nan,  +nan] med   -0.05 mean   +0.10 seg1  +0.02 seg2  +0.32
+sign=prior  start=prior  end=chain+5                       n=249 trim  +18.07 [  +nan,  +nan] med  +16.93 mean  +19.45 seg1 +21.68 seg2 +15.14
+sign=prior  start=prior  end=chain+15                      n=249 trim  +18.72 [  +nan,  +nan] med  +17.82 mean  +19.89 seg1 +22.47 seg2 +15.87
+-- end = own-tape asof NBBO at t+tau (last print of each leg at or before t+tau) --
+sign=own    start=own    end=asof+5                        n=249 trim   +5.15 [  +nan,  +nan] med   +4.98 mean   +4.95 seg1  +5.51 seg2  +4.83
+sign=own    start=own    end=asof+15                       n=249 trim   +5.68 [  +nan,  +nan] med   +5.77 mean   +5.46 seg1  +6.32 seg2  +5.25
+sign=own    start=interp end=asof+5                        n=249 trim   -0.22 [  +nan,  +nan] med   -0.12 mean   -0.43 seg1  -0.34 seg2  -0.12
+sign=own    start=interp end=asof+15                       n=249 trim   +0.35 [  +nan,  +nan] med   +0.59 mean   +0.06 seg1  +0.56 seg2  +0.25
+sign=own    start=ch_0   end=asof+5                        n=249 trim   -0.86 [  +nan,  +nan] med   -0.86 mean   -0.97 seg1  -1.13 seg2  -0.58
+sign=own    start=ch_0   end=asof+15                       n=249 trim   -0.31 [  +nan,  +nan] med   -0.02 mean   -0.48 seg1  -0.23 seg2  -0.26
+sign=interp start=own    end=asof+5                        n=249 trim  -10.07 [  +nan,  +nan] med  -10.40 mean  -10.94 seg1  -9.43 seg2 -10.67
+sign=interp start=own    end=asof+15                       n=249 trim   -8.69 [  +nan,  +nan] med   -8.53 mean   -9.22 seg1  -8.10 seg2  -9.09
+sign=interp start=interp end=asof+5                        n=249 trim   -0.49 [  +nan,  +nan] med   -0.27 mean   -1.13 seg1  -0.05 seg2  -0.91
+sign=interp start=interp end=asof+15                       n=249 trim   +0.79 [  +nan,  +nan] med   +0.60 mean   +0.53 seg1  +0.97 seg2  +0.69
+sign=interp start=ch_0   end=asof+5                        n=249 trim   +0.44 [  +nan,  +nan] med   +0.25 mean   -0.26 seg1  +0.76 seg2  +0.08
+sign=interp start=ch_0   end=asof+15                       n=249 trim   +1.68 [  +nan,  +nan] med   +1.71 mean   +1.35 seg1  +1.77 seg2  +1.68
+sign=ch_0   start=own    end=asof+5                        n=249 trim   -6.68 [  +nan,  +nan] med   -6.76 mean   -7.31 seg1  -6.01 seg2  -7.23
+sign=ch_0   start=own    end=asof+15                       n=249 trim   -8.29 [  +nan,  +nan] med   -8.23 mean   -8.11 seg1  -7.42 seg2  -9.08
+sign=ch_0   start=interp end=asof+5                        n=249 trim   -0.85 [  +nan,  +nan] med   -1.15 mean   -1.24 seg1  -0.18 seg2  -1.37
+sign=ch_0   start=interp end=asof+15                       n=249 trim   -2.38 [  +nan,  +nan] med   -2.47 mean   -2.09 seg1  -1.45 seg2  -3.21
+sign=ch_0   start=ch_0   end=asof+5                        n=249 trim   +6.35 [  +nan,  +nan] med   +6.00 mean   +5.93 seg1  +6.98 seg2  +5.83
+sign=ch_0   start=ch_0   end=asof+15                       n=249 trim   +4.70 [  +nan,  +nan] med   +4.33 mean   +5.03 seg1  +5.55 seg2  +4.04
+-- sign by prior-asof (stale) with prior start, and own-tape displacement vs prior --
+sign=own start=prior end=chain+5 (prior age<=2s only)      n=247 trim   +1.53 [  +nan,  +nan] med   +1.65 mean   +1.42 seg1  +2.03 seg2  +1.04
+sign=own, own - prior (prior age<=2s)                      n=247 trim   -3.50 [  +nan,  +nan] med   -3.24 mean   -3.90 seg1  -3.71 seg2  -3.30
+prior age median 3.61s p90 25.3s
+-- passive realized spread vs trade price, sign by interp (s*(trade - end)) --
+realized half-spread to passive, sign=interp, tau=5        n=249 trim  +11.66 [  +nan,  +nan] med  +11.23 mean  +12.20 seg1 +10.99 seg2 +12.22
+realized half-spread to passive, sign=interp, tau=15       n=249 trim  +11.55 [  +nan,  +nan] med  +11.68 mean  +11.92 seg1 +11.56 seg2 +11.53
+
+== 4. V-0013 effective k, iron only (|trade - ref| / H) ==
+ref own   : k mean 0.238 median 0.200;  |slip| USD mean 5.66 median 5.00  share >10 0.084
+ref interp: k mean 0.333 median 0.231;  |slip| USD mean 7.77 median 5.10  share >10 0.230
+ref ch_0  : k mean 0.479 median 0.300;  |slip| USD mean 11.04 median 7.50  share >10 0.303
+ref prior : k mean 0.415 median 0.300;  |slip| USD mean 10.43 median 7.50  share >10 0.278
+iron signed by own (|dev|>=0.05): n 122538; sign by interp same 0.445, opposite 0.134, interp unsigned 0.421
+  k_own mean s=+1 (Pi buyer aggr = sells iron fly): 0.358  median 0.333
+  k_own mean s=-1: 0.336  median 0.273
+  k_own mean all iron: 0.238  median 0.200
+  signed (trade - interp)/H own s=+1: mean +0.223 median +0.201
+  signed (trade - interp)/H own s=-1: mean -0.088 median -0.048
+  signed (trade - interp)/H own mid: mean +0.090 median +0.070
+  signed (trade - interp)/H all iron: mean +0.115 median +0.111

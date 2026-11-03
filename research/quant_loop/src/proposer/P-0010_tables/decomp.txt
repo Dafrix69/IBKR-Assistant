@@ -1,0 +1,4 @@
+all: n 599 (imp_on>0: 582) x_on(mean|S0-F|/mean imp_on) 0.955 median x_on 0.835 | short straddle mid $ 40.3 wings net $ -70.2 fees $ 6.4 pnl_k0 -36.3 pnl_k0.2 -51.8
+1-night: n 476 (imp_on>0: 461) x_on(mean|S0-F|/mean imp_on) 0.982 median x_on 0.886 | short straddle mid $ -68.9 wings net $ -54.5 fees $ 6.4 pnl_k0 -129.8 pnl_k0.2 -144.8
+weekend: n 123 (imp_on>0: 121) x_on(mean|S0-F|/mean imp_on) 0.856 median x_on 0.666 | short straddle mid $ 463.0 wings net $ -131.0 fees $ 6.4 pnl_k0 325.5 pnl_k0.2 308.0
+x_day: weekend(Mon session) 0.838 sd 0.702 n 123 | 1-night 1.053 sd 0.814

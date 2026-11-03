@@ -1,0 +1,119 @@
+dropped by cap 2.0 at 14:00: 34 of 539
+
+=== 14:00 baseline days, cap 2.0: 505 days, 505 rows
+ G_a k0.20: +5.79 [+5.52, +6.05] n=505
+ G_a k0   : -0.62 [-0.62, -0.61] n=505   k0.5: +15.40 [+14.73, +16.06] n=505
+ by year k0.20: {2022.0: np.float64(9.01), 2023.0: np.float64(4.91), 2024.0: np.float64(4.89)}
+ dmid put-iron (USD): +0.28 [-0.41, +0.98] n=505  call-iron: +0.00 [-0.65, +0.65] n=505
+ k*dH part (USD): +6.40 [+6.14, +6.67] n=505  dfee part: -0.62 [-0.62, -0.61] n=505
+  E_put k0.20 mean 16.94  H 0.559
+  E_call k0.20 mean 16.58  H 0.542
+  E_iron k0.20 mean 11.15  H 0.239
+  E_rev k0.20 mean 23.77  H 0.862
+ cheapest share (rows): {'iron': 1.0}
+ cheapest by total debit incl mid: {'iron': 0.612, 'put': 0.194, 'call': 0.188, 'rev': 0.006}
+
+=== 14:00 cap 1.0: 433 days, 433 rows
+ G_a k0.20: +4.83 [+4.66, +4.99] n=433
+ G_a k0   : -0.61 [-0.62, -0.61] n=433   k0.5: +12.99 [+12.58, +13.39] n=433
+ by year k0.20: {2022.0: np.float64(6.6), 2023.0: np.float64(4.66), 2024.0: np.float64(4.47)}
+ dmid put-iron (USD): +0.13 [-0.44, +0.70] n=433  call-iron: -0.13 [-0.70, +0.44] n=433
+ k*dH part (USD): +5.44 [+5.28, +5.60] n=433  dfee part: -0.61 [-0.62, -0.61] n=433
+  E_put k0.20 mean 15.63  H 0.494
+  E_call k0.20 mean 15.44  H 0.485
+  E_iron k0.20 mean 10.80  H 0.222
+  E_rev k0.20 mean 21.67  H 0.757
+ cheapest share (rows): {'iron': 1.0}
+ cheapest by total debit incl mid: {'iron': 0.594, 'put': 0.21, 'call': 0.192, 'rev': 0.005}
+
+=== 14:00 cap 2.0 no FOMC: 505 days, 505 rows
+ G_a k0.20: +5.79 [+5.52, +6.05] n=505
+ G_a k0   : -0.62 [-0.62, -0.61] n=505   k0.5: +15.40 [+14.73, +16.06] n=505
+ by year k0.20: {2022.0: np.float64(9.01), 2023.0: np.float64(4.91), 2024.0: np.float64(4.89)}
+ dmid put-iron (USD): +0.28 [-0.41, +0.98] n=505  call-iron: +0.00 [-0.65, +0.65] n=505
+ k*dH part (USD): +6.40 [+6.14, +6.67] n=505  dfee part: -0.62 [-0.62, -0.61] n=505
+  E_put k0.20 mean 16.94  H 0.559
+  E_call k0.20 mean 16.58  H 0.542
+  E_iron k0.20 mean 11.15  H 0.239
+  E_rev k0.20 mean 23.77  H 0.862
+ cheapest share (rows): {'iron': 1.0}
+ cheapest by total debit incl mid: {'iron': 0.612, 'put': 0.194, 'call': 0.188, 'rev': 0.006}
+
+=== grid 10:00-10:59: 541 days, 29885 rows
+ G_a k0.20: +6.85 [+6.62, +7.09] n=541
+ G_a k0   : -0.63 [-0.63, -0.63] n=541   k0.5: +18.08 [+17.49, +18.67] n=541
+ by year k0.20: {2022.0: np.float64(10.39), 2023.0: np.float64(5.53), 2024.0: np.float64(6.06)}
+ dmid put-iron (USD): -0.05 [-0.24, +0.15] n=541  call-iron: -0.29 [-0.44, -0.13] n=541
+ k*dH part (USD): +7.48 [+7.25, +7.72] n=541  dfee part: -0.63 [-0.63, -0.63] n=541
+  E_put k0.20 mean 18.62  H 0.642
+  E_call k0.20 mean 18.05  H 0.615
+  E_iron k0.20 mean 11.77  H 0.267
+  E_rev k0.20 mean 26.31  H 0.989
+ cheapest share (rows): {'iron': 1.0}
+ cheapest by total debit incl mid: {'iron': 0.599, 'call': 0.211, 'put': 0.187, 'rev': 0.003}
+
+=== grid 11:00-11:59: 540 days, 30899 rows
+ G_a k0.20: +6.27 [+6.05, +6.49] n=540
+ G_a k0   : -0.63 [-0.63, -0.62] n=540   k0.5: +16.60 [+16.05, +17.16] n=540
+ by year k0.20: {2022.0: np.float64(9.6), 2023.0: np.float64(5.04), 2024.0: np.float64(5.51)}
+ dmid put-iron (USD): -0.17 [-0.36, +0.02] n=540  call-iron: -0.14 [-0.32, +0.03] n=540
+ k*dH part (USD): +6.89 [+6.67, +7.11] n=540  dfee part: -0.63 [-0.63, -0.62] n=540
+  E_put k0.20 mean 17.74  H 0.598
+  E_call k0.20 mean 17.21  H 0.573
+  E_iron k0.20 mean 11.47  H 0.253
+  E_rev k0.20 mean 24.88  H 0.918
+ cheapest share (rows): {'iron': 1.0, 'call': 0.0}
+ cheapest by total debit incl mid: {'iron': 0.607, 'call': 0.197, 'put': 0.192, 'rev': 0.003}
+
+=== grid 12:00-12:59: 539 days, 31280 rows
+ G_a k0.20: +5.96 [+5.75, +6.17] n=539
+ G_a k0   : -0.62 [-0.62, -0.62] n=539   k0.5: +15.83 [+15.30, +16.37] n=539
+ by year k0.20: {2022.0: np.float64(9.24), 2023.0: np.float64(4.77), 2024.0: np.float64(5.21)}
+ dmid put-iron (USD): -0.09 [-0.25, +0.06] n=539  call-iron: -0.09 [-0.24, +0.06] n=539
+ k*dH part (USD): +6.58 [+6.37, +6.80] n=539  dfee part: -0.62 [-0.62, -0.62] n=539
+  E_put k0.20 mean 17.28  H 0.576
+  E_call k0.20 mean 16.78  H 0.552
+  E_iron k0.20 mean 11.32  H 0.246
+  E_rev k0.20 mean 24.14  H 0.881
+ cheapest share (rows): {'iron': 0.999, 'call': 0.0, 'put': 0.0}
+ cheapest by total debit incl mid: {'iron': 0.62, 'call': 0.194, 'put': 0.183, 'rev': 0.003}
+
+=== grid 13:00-13:59: 540 days, 31343 rows
+ G_a k0.20: +5.84 [+5.64, +6.04] n=540
+ G_a k0   : -0.62 [-0.62, -0.62] n=540   k0.5: +15.53 [+15.02, +16.04] n=540
+ by year k0.20: {2022.0: np.float64(8.97), 2023.0: np.float64(4.75), 2024.0: np.float64(5.07)}
+ dmid put-iron (USD): -0.12 [-0.33, +0.09] n=540  call-iron: -0.03 [-0.19, +0.13] n=540
+ k*dH part (USD): +6.46 [+6.26, +6.66] n=540  dfee part: -0.62 [-0.62, -0.62] n=540
+  E_put k0.20 mean 17.12  H 0.568
+  E_call k0.20 mean 16.67  H 0.547
+  E_iron k0.20 mean 11.27  H 0.245
+  E_rev k0.20 mean 23.92  H 0.870
+ cheapest share (rows): {'iron': 0.999, 'call': 0.0, 'put': 0.0}
+ cheapest by total debit incl mid: {'iron': 0.626, 'call': 0.188, 'put': 0.183, 'rev': 0.003}
+
+=== (a') E_call - E_put by sign(d), 14:00
+ all: -0.36 [-0.58, -0.15] n=505  up: +0.12 [-0.16, +0.39] n=269  down: -0.93 [-1.25, -0.60] n=235
+  2022: T = +0.16  mean CP -0.58 n=109
+  2023: T = +1.28  mean CP -0.27 n=210
+  2024: T = +1.34  mean CP -0.34 n=186
+ T = +1.05 [+0.62, +1.47]
+ ITM spreads mean: put(K+w) 0.706 call(K-w) 0.672 ; OTM put(K-w) 0.068 call(K+w) 0.064
+ grid 10:00-14:00 T per day: +0.76 [+0.72, +0.80] n=541 {2022: np.float64(0.77), 2023: np.float64(0.74), 2024: np.float64(0.77)}
+
+=== (b) neighbour log-spread ratio
+ share at min tick by class: {'non': 0.283, 'r25': 0.284, 'r50': 0.303}
+ r25 - non (log): +0.01 [+0.00, +0.01] n=541  by year {2022: np.float64(0.0046), 2023: np.float64(0.009), 2024: np.float64(0.0021)}
+ r50 - non (log): -0.05 [-0.05, -0.04] n=541  by year {2022: np.float64(-0.0838), 2023: np.float64(-0.043), 2024: np.float64(-0.024)}
+ any25 - non (log): -0.02 [-0.02, -0.02] n=541  by year {2022: np.float64(-0.0396), 2023: np.float64(-0.017), 2024: np.float64(-0.011)}
+  |K-S| in (0, 10): any25-non -0.01 [-0.01, -0.00] n=541
+  |K-S| in (10, 25): any25-non -0.02 [-0.02, -0.01] n=541
+  |K-S| in (25, 50): any25-non -0.02 [-0.03, -0.02] n=541
+ raw mean lr by class: {'non': 0.0038, 'r25': 0.0094, 'r50': -0.0414}
+
+=== R_b (shift centre to adjacent 25-multiple), 14:00
+ put: n=115 dE(saving)=-0.25 [-0.71, +0.21] n=115  dmid(K2-K, USD)=-27.11 [-34.68, -19.53] n=115  dpayoff(K2-K, USD)=-16.21 [-96.18, +63.76] n=115
+   by year dE: {2022: np.float64(0.13), 2023: np.float64(0.08), 2024: np.float64(-0.88)}  shift up/down share: 0.513
+ iron: n=115 dE(saving)=-0.12 [-0.31, +0.08] n=115  dmid(K2-K, USD)=-26.48 [-33.88, -19.07] n=115  dpayoff(K2-K, USD)=-16.21 [-96.18, +63.76] n=115
+   by year dE: {2022: np.float64(-0.05), 2023: np.float64(0.06), 2024: np.float64(-0.37)}  shift up/down share: 0.513
+ panel check put_fly: n=505 median |dmid| 0.0000
+ panel check iron_fly: n=505 median |dmid| 0.0000

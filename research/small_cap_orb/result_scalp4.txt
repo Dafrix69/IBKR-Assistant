@@ -1,0 +1,47 @@
+names ['IREN', 'AXTI', 'LITE', 'OKLO']  days 504  2024-10-28..2026-10-30  OOS from 2026-03-04 (168 days)
+  IREN: 504 days from 2024-10-28
+  AXTI: 504 days from 2024-10-28
+  LITE: 504 days from 2024-10-28
+  OKLO: 504 days from 2024-10-28
+rule   tp side  is_sh  oos_sh  oos_bps  oos_trades  tp_hits
+ ORB  NaN long   0.45    0.09     1.17         357        0
+ ORB 0.03 long   0.31   -1.05    -9.84         357      445
+  V1  NaN both   0.30    0.50     5.92         612        0
+  V1 0.03 both   0.26   -0.31    -2.94         612      671
+  V1 0.02 both   0.06   -0.03    -0.28         612      936
+ ORB 0.02 long  -0.51   -1.17    -8.92         357      598
+ ORB 0.03 both  -0.56   -0.08    -1.01         646      774
+ ORB 0.01 long  -0.63   -1.69    -9.39         357      817
+ ORB  NaN both  -0.68    0.63    10.49         646        0
+ ORB 0.02 both  -0.94   -0.62    -6.19         646     1044
+  V1 0.03 long  -1.05   -1.15    -9.50         471      462
+  V1 0.01 both  -1.23   -0.18    -1.01         612     1264
+  V1  NaN long  -1.28   -1.04   -10.95         471        0
+  V2  NaN long  -1.56   -1.37   -10.94         314        0
+  V1 0.02 long  -1.71   -1.06    -7.49         471      650
+ ORB 0.01 both  -1.78   -1.15    -8.53         646     1396
+ ORB 0.00 long  -1.85   -2.33   -10.25         357      936
+  V2  NaN both  -1.91    0.90    11.07         609        0
+  V1 0.00 both  -2.51   -0.33    -1.41         612     1476
+  V1 0.01 long  -2.58   -1.56    -8.28         471      927
+ ORB 0.00 both  -2.72   -1.38    -7.98         646     1599
+  V2 0.03 long  -2.85   -2.96   -18.56         314      305
+  V2 0.03 both  -2.87   -0.84    -7.94         609      606
+  V2 0.02 long  -3.21   -3.05   -15.85         314      433
+  V2 0.02 both  -3.28   -1.06    -7.77         609      835
+  V1 0.00 long  -3.56   -1.98    -7.27         471     1122
+  V2 0.01 long  -3.63   -2.87   -11.33         314      620
+  V2 0.01 both  -3.72   -2.41   -12.99         609     1152
+  V2 0.00 long  -4.13   -2.99    -9.61         314      736
+  V2 0.00 both  -4.65   -3.33   -14.50         609     1363
+OOS mean>0: 4 of 30
+best ORB in-sample Sharpe from grid.csv: 0.57  (this grid: 0.45)
+PICK (best in-sample among the 30): ('ORB', None, 'long')
+OOS net 1.2 bps/day  95% CI [-29.0, 31.4]  99.9% CI [-46.6, 52.4]  Sharpe 0.09  2x cost -5.3 bps/day  (168 days)
+IS  net 5.2 bps/day  Sharpe 0.45
+  IREN: OOS -20.9 bps/day, 93 trades, stopped 35%, took profit 0%
+  AXTI: OOS 34.3 bps/day, 84 trades, stopped 15%, took profit 0%
+  LITE: OOS -12.1 bps/day, 98 trades, stopped 24%, took profit 0%
+  OKLO: OOS 3.3 bps/day, 82 trades, stopped 30%, took profit 0%
+baseline random side: mean -7.2, 95th pct 11.0 bps/day
+multiple testing: 66 configurations in all; a pick needs the 99.9% CI to exclude 0

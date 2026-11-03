@@ -1,0 +1,4 @@
+       count      mean  <lambda_0>
+pnt                               
+False    362  0.314917    0.314917
+True     127  0.307087    0.307087

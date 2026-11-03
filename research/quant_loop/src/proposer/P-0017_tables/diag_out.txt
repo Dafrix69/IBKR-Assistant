@@ -1,0 +1,22 @@
+pre  : pi_ch0 - pi_pre                       n= 249 trim= +0.209 [   +nan,   +nan] med= +0.151 mean= +0.205 seg1= -0.090 seg2= +0.443
+disp : pi0 - pi_ch0 (attached vs chain minute) n= 249 trim= -6.042 [   +nan,   +nan] med= -5.922 mean= -5.918 seg1= -6.699 seg2= -5.499
+dispI: pi0 - chain interp to trade second    n= 249 trim= -5.298 [   +nan,   +nan] med= -5.111 mean= -5.384 seg1= -5.796 seg2= -4.848
+trade vs chain interp (E_chain, unhedged sign) n= 249 trim= +3.121 [   +nan,   +nan] med= +3.187 mean= +3.502 seg1= +3.058 seg2= +3.173
+post : pi_5 - pi_ch0                         n= 249 trim= -1.131 [   +nan,   +nan] med= -1.036 mean= -1.051 seg1= -1.580 seg2= -0.711
+post : pi_5 - interp                         n= 249 trim= -0.448 [   +nan,   +nan] med= -0.283 mean= -0.518 seg1= -0.641 seg2= -0.265
+post : pi_15 - interp                        n= 249 trim= +0.469 [   +nan,   +nan] med= +0.617 mean= +0.632 seg1= +0.736 seg2= +0.303
+total: pi_5 - pi0 (= I_5)                    n= 249 trim= +4.916 [   +nan,   +nan] med= +5.068 mean= +4.863 seg1= +5.126 seg2= +4.706
+dispI |dev| in [0.05,0.1)                    n= 249 trim= -3.640 [   +nan,   +nan] med= -3.634 mean= -3.687 seg1= -3.790 seg2= -3.530
+post5-interp |dev| in [0.05,0.1)             n= 249 trim= -0.382 [   +nan,   +nan] med= -0.246 mean= -0.377 seg1= -0.761 seg2= -0.029
+dispI |dev| in [0.1,0.2)                     n= 245 trim= -7.128 [   +nan,   +nan] med= -7.174 mean= -7.240 seg1= -7.505 seg2= -6.814
+post5-interp |dev| in [0.1,0.2)              n= 245 trim= -0.910 [   +nan,   +nan] med= -0.948 mean= -1.084 seg1= -0.049 seg2= -1.691
+dispI |dev| in [0.2,9)                       n=  99 trim=-27.057 [   +nan,   +nan] med=-26.881 mean=-33.724 seg1=-23.741 seg2=-31.703
+post5-interp |dev| in [0.2,9)                n=  98 trim= +0.395 [   +nan,   +nan] med= -0.012 mean= +1.223 seg1= +0.168 seg2= +0.762
+exact-mid prints: |pi0 - interp| mean 6.07 USD; signed prints: 9.23
+CI post1 - interp                            n= 249 trim= -0.861 [ -1.012, -0.708] med= -0.826 mean= -0.819 seg1= -0.840 seg2= -0.878
+CI post5 - interp                            n= 249 trim= -0.448 [ -0.850, -0.033] med= -0.283 mean= -0.518 seg1= -0.641 seg2= -0.265
+CI post15 - interp                           n= 249 trim= +0.469 [ -0.124, +1.071] med= +0.617 mean= +0.632 seg1= +0.736 seg2= +0.303
+ALL prints pi0 - interp: mean +0.04 median +0.04 |mean| 8.14 USD; by struct mean: {'fly_C': 0.15, 'fly_P': -0.08, 'iron': 0.03}
+  s=+1: pi0-interp mean -4.15  trade-interp mean +4.88
+  s=-1: pi0-interp mean +6.85  trade-interp mean -2.64
+  mid: pi0-interp mean +1.39  trade-interp mean +1.64

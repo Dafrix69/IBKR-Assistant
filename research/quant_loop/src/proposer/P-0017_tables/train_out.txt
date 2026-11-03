@@ -1,0 +1,29 @@
+prints 245362  days 249  struct {'iron': 199521, 'fly_C': 29116, 'fly_P': 16725}
+signed (|dev|>=0.05): 0.619  s=+1 0.430  s=-1 0.189  exact-mid 0.175
+E (signed, USD) mean 9.17 median 7.50; H mean 0.285 pts; 0.20*H*100 = 5.71
+
+== judged cells (day-level 10% trimmed mean, USD/combo, day bootstrap) ==
+I_1                                          n= 249 trim= +4.379 [ +4.147, +4.622] med= +4.328 mean= +4.562 seg1= +4.896 seg2= +3.970
+I_5                                          n= 249 trim= +4.916 [ +4.475, +5.369] med= +5.068 mean= +4.863 seg1= +5.126 seg2= +4.706
+I_15                                         n= 249 trim= +5.913 [ +5.283, +6.558] med= +6.127 mean= +6.049 seg1= +6.561 seg2= +5.439
+perm null I_5 (n=200): mean -0.008 p2.5 -0.409 p97.5 +0.355  real +4.916  frac>=real 0.000
+
+== report only ==
+I_5 / (0.20*H*100) = 0.861;  I_5 / E_mean = 0.536
+I'_1 (start = chain floor(t))                n= 249 trim= -1.498 [   +nan,   +nan] med= -1.609 mean= -1.340 seg1= -1.565 seg2= -1.442
+I'_5 (start = chain floor(t))                n= 249 trim= -1.131 [   +nan,   +nan] med= -1.036 mean= -1.051 seg1= -1.580 seg2= -0.711
+I'_15 (start = chain floor(t))               n= 249 trim= -0.156 [   +nan,   +nan] med= -0.149 mean= +0.083 seg1= +0.075 seg2= -0.240
+I_5 sign threshold >0                        n= 249 trim= +3.911 [   +nan,   +nan] med= +4.058 mean= +3.781 seg1= +4.106 seg2= +3.744
+I_5 size-weighted                            n= 249 trim= +4.881 [   +nan,   +nan] med= +4.871 mean= +4.818 seg1= +5.026 seg2= +4.719
+I_5 struct=iron                              n= 249 trim= +4.214 [   +nan,   +nan] med= +4.239 mean= +4.041 seg1= +4.204 seg2= +4.225
+I_5 struct=fly                               n= 248 trim= +9.131 [   +nan,   +nan] med= +8.547 mean= +9.910 seg1=+10.142 seg2= +8.224
+I_5 09:45-12:00                              n= 248 trim= +6.222 [   +nan,   +nan] med= +6.155 mean= +6.445 seg1= +6.784 seg2= +5.664
+I_5 12:00-14:00                              n= 247 trim= +4.579 [   +nan,   +nan] med= +5.000 mean= +4.792 seg1= +4.668 seg2= +4.538
+I_5 14:00-15:30                              n= 249 trim= +3.281 [   +nan,   +nan] med= +3.587 mean= +2.980 seg1= +3.684 seg2= +2.889
+I_5 base-A days                              n= 221 trim= +4.930 [   +nan,   +nan] med= +5.091 mean= +4.878 seg1= +5.201 seg2= +4.695
+I_5 excl 2025-04-03..04-11                   n= 242 trim= +4.935 [   +nan,   +nan] med= +5.064 mean= +4.935 seg1= +5.163 seg2= +4.706
+I_5 FOMC days only                           n=   9 trim= +3.562 [   +nan,   +nan] med= +5.724 mean= +3.562 seg1= +4.223 seg2= +3.033
+side tau= 5: A+ (Pi-buyer aggr) trim -9.034   A- (Pi-seller aggr, hits a resting Pi-buyer = user) trim +18.425
+side tau=15: A+ (Pi-buyer aggr) trim -11.733   A- (Pi-seller aggr, hits a resting Pi-buyer = user) trim +22.523
+pre-trade drift s*(pi0 - pi_chain(floor-1)) trim -2.460
+days with buckets (I_5): 249

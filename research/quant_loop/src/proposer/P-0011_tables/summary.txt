@@ -1,0 +1,47 @@
+n ok days 597; PNT non-event 127; control 367; all non-PNT 469
+x1000 mean PNT 0.811  control 1.065  allnonPNT 1.062
+G_x 10:00 (vs non-event control): -0.255 [-0.405, -0.098]
+G_x 10:00 (vs all non-PNT): -0.252 [-0.397, -0.101]
+EV_PNT k0.20: +358.6 [+102.8, +615.7]  win 0.638
+EV_control: -84.7  win 0.501
+dEV: +443.2 [+143.0, +739.2]
+  _k0: EV_PNT 365.6  dEV 441.6
+  _k05: EV_PNT 348.1  dEV 445.8
+median credit pts PNT 19.22, I 21.05, w/I 2.00; control I 22.35; pnl sd PNT 1466
+Pred V: D mean PNT 0.6846 control 0.6620 raw diff +0.0226
+  OLS D ~ m + PNT (n 494): c = +0.0136 (HC1 se 0.0097, t +1.40); b(m) -0.0568
+Pred S: x_m PNT 0.891 control 1.096 diff -0.206 [-0.414, +0.046]
+        x_a PNT 0.831 control 0.964 diff -0.133 [-0.292, +0.026]
+Pred L: L PNT 0.478 control 0.494 diff -0.015 [-0.034, +0.004]
+
+-- gates / cells (G_x vs control, dEV) --
+                                          cell  n_pnt  n_ctl  x_pnt  x_ctl    G_x   G_lo   G_hi   EV_pnt   EV_ctl      dEV  win_pnt
+                                     year 2022     32     89  0.827  0.960 -0.133 -0.420  0.152  490.751   76.059  414.692    0.531
+                                     year 2023     51    150  0.690  1.150 -0.460 -0.666 -0.252  468.260 -208.825  677.085    0.686
+                                     year 2024     44    128  0.938  1.039 -0.101 -0.392  0.219  135.364  -50.879  186.243    0.659
+                                         I low     52    130  0.791  1.128 -0.337 -0.590 -0.077  251.021 -156.518  407.540    0.692
+                                         I mid     42    123  1.005  1.064 -0.059 -0.338  0.225 -112.602  -74.711  -37.892    0.524
+                                        I high     33    114  0.595  0.995 -0.400 -0.634 -0.143 1127.803  -13.422 1141.225    0.697
+                                    settle>S10     65    194  0.816  0.994 -0.179 -0.367  0.021  412.806  -81.056  493.862    0.646
+                                   settle<=S10     62    173  0.806  1.145 -0.340 -0.584 -0.098  301.756  -88.683  390.439    0.629
+                                PNT drop best5    122    367  0.838  1.065 -0.228 -0.382 -0.071  243.334  -84.651  327.985    0.623
+                       pure Monday (non-event)    109    367  0.845  1.065 -0.221 -0.377 -0.056  316.160  -84.651  400.811    0.615
+                                PNT non-Monday     18    367  0.604  1.065 -0.461 -0.780 -0.094  615.548  -84.651  700.199    0.778
+                PNT incl events vs all non-PNT    128    469  0.815  1.062 -0.247 -0.390 -0.095  349.226 -111.989  461.215    0.633
+                     control excl Thu (report)    127    260  0.811  1.011 -0.200 -0.359 -0.041  358.593  -42.085  400.678    0.638
+                            placebo Tue vs Wed    101     95  1.017  1.078 -0.061 -0.292  0.170  -51.514 -107.252   55.738    0.525
+weekday Mon (all ok days, incl events) vs rest    109    488  0.845  1.046 -0.201 -0.353 -0.045  316.160  -86.647  402.807    0.615
+weekday Tue (all ok days, incl events) vs rest    126    471  0.956  1.024 -0.067 -0.222  0.089   34.047  -25.716   59.763    0.563
+weekday Wed (all ok days, incl events) vs rest    127    470  1.045  1.000  0.045 -0.117  0.213  -87.069    6.884  -93.954    0.480
+weekday Thu (all ok days, incl events) vs rest    121    476  1.211  0.958  0.253  0.055  0.461 -240.526   44.709 -285.235    0.463
+weekday Fri (all ok days, incl events) vs rest    114    483  0.972  1.018 -0.046 -0.193  0.104  -56.246   -2.919  -53.327    0.561
+x0935: PNT 0.838 (n 131) control 1.049  G -0.211 [-0.353, -0.061]
+x1030: PNT 0.845 (n 131) control 0.985  G -0.140 [-0.289, +0.008]
+10:30 fly: EV_PNT 269.5 dEV 207.1 (n 129)
+PNT pnl sum by year: {2022: 15704.0, 2023: 23881.0, 2024: 5956.0}
+corr(PNT 10:00 fly, baseline A same day) +0.37 (n 111)
+best 5 PNT days: [[datetime.date(2023, 3, 13), 4089.4788800000215], [datetime.date(2022, 5, 16), 3214.478879999978], [datetime.date(2022, 6, 21), 3177.5688799999966], [datetime.date(2022, 6, 27), 2807.4788799999874], [datetime.date(2022, 10, 17), 2565.568880000018]]
+worst 5 PNT days: [[datetime.date(2022, 7, 5), -4067.43112], [datetime.date(2024, 9, 3), -3324.43112], [datetime.date(2024, 4, 15), -2694.43112], [datetime.date(2022, 7, 18), -2592.43112], [datetime.date(2024, 8, 19), -2140.43112]]
+PNT max drawdown -5962
+
+GATES triggered: []  (all: {1: np.False_, 2: np.False_, 3: np.False_, 4: np.False_, 5: np.False_, 6: np.False_, 7: np.False_, 8: np.False_, 9: np.False_})

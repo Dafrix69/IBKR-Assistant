@@ -1,0 +1,23 @@
+n 511 lag days max 4
+cuts 0.9118 0.9821 describe {'count': 511.0, 'mean': 0.949, 'std': 0.082, 'min': 0.703, '25%': 0.897, '50%': 0.95, '75%': 1.001, 'max': 1.228}
+date  2022  2023  2024
+st                    
+L     0.11  0.43  0.46
+M     0.28  0.42  0.30
+H     0.27  0.38  0.35
+date  2022  2023  2024
+st                    
+L       19    74    78
+M       47    72    51
+H       46    64    60
+spearman s~I 0.419  s~mom 0.091
+st   L   M   H
+I             
+iL  94  52  27
+iM  52  67  49
+iH  25  51  94
+I cuts [10.6, 14.25]
+spearman s~FE 0.23  s~VIXprev 0.315
+iL s~FE within I tercile 0.123 n 173
+iM s~FE within I tercile -0.022 n 168
+iH s~FE within I tercile 0.032 n 170

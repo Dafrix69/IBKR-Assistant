@@ -1,0 +1,106 @@
+train: combos stored 593174, main 244736 prints / 249 days, late 14653; calendar non-half 0DTE days 249
+main struct share {'iron': 0.813, 'fly_C': 0.119, 'fly_P': 0.068}
+
+== PRE-REGISTERED GATES (proposer 5.2) ==
+D (px - chain interp)                           +2.45 [+2.35, +2.55]   med  +2.39 seg  +2.50 /  +2.42  yr 2024:+2.53 2025:+2.44  days 249 n 244736
+P_own (single px - own mid, Pi)                 +0.01 [-0.01, +0.04]   med  +0.01 seg  -0.02 /  +0.04  yr 2024:-0.04 2025:+0.02  days 249 n 242191
+F (combo own mid - chain interp)                +0.24 [+0.16, +0.32]   med  +0.26 seg  +0.22 /  +0.26  yr 2024:+0.50 2025:+0.19  days 249 n 244736
+D_own (px - own mid)                            +2.27 [+2.19, +2.36]   med  +2.24 seg  +2.38 /  +2.18  yr 2024:+2.11 2025:+2.30  days 249 n 244736
+P_own coverage 0.990
+gate1 True  gate2 True  gate3 True (|P_own| 0.01 vs D/2 1.23)  gate4 True (|F| 0.24 vs D/4 0.61, F/D 0.098)
+PASS (all four)
+F/D joint day bootstrap: [0.067, 0.128], P(|F|/D >= 1/4) 0.000
+
+== multiple comparisons (68 quantities) ==
+D Bonferroni-68 two-sided interval [+2.28, +2.62]
+D sign-flip permutation (1000): p = 0.0010; luck expectation 0.05x68 = 3.4 false positives
+D_own sign-flip p = 0.0010
+share of days with daily D > 0: 1.000; daily D_own > 0: 1.000
+
+== k translation ==
+all   H_bar 0.2646 pts  D/(100H) 0.093  k_buy 0.293  k_sell 0.107   (D_own based: 0.286 / 0.114)
+seg1  H_bar 0.2905 pts  D/(100H) 0.086  k_buy 0.286  k_sell 0.114   (D_own based: 0.282 / 0.118)
+seg2  H_bar 0.2461 pts  D/(100H) 0.098  k_buy 0.298  k_sell 0.102   (D_own based: 0.289 / 0.111)
+
+== +-1 s / +-5 s neighbour quotes (report only in test) ==
+-- (b) multi-leg, 1 s: coverage 0.0731 (17891 prints, 249 days)
+   A = own - nb                                 -0.03 [-0.08, +0.03]   med  -0.02 seg  -0.01 /  -0.04  yr 2024:+0.01 2025:-0.04  days 249 n 17891
+   B = nb - chain                               +0.25 [-0.10, +0.60]   med  +0.25 seg  +0.50 /  +0.03  yr 2024:+1.14 2025:+0.08  days 249 n 17891
+   F on subset                                  +0.28                  med  +0.23 seg  +0.59 /  -0.01  yr 2024:+1.19 2025:+0.11  days 249 n 17891
+   D on subset                                  +4.19                  med  +3.96 seg  +5.20 /  +3.35  yr 2024:+5.50 2025:+3.95  days 249 n 17891
+   D_own on subset                              +4.19                  med  +4.04 seg  +4.90 /  +3.60  yr 2024:+4.69 2025:+4.09  days 249 n 17891
+   Dnb_b1 on subset                             +4.12                  med  +4.06 seg  +4.83 /  +3.51  yr 2024:+4.70 2025:+4.01  days 249 n 17891
+   agrees with chain |B|<D/4: True; convicts: False
+-- (a) single, 1 s: coverage 0.0125 (3061 prints, 235 days)
+   A = own - nb                                 -0.14 [-0.75, +0.44]   med  +0.00 seg  -0.78 /  +0.06  yr 2024:-0.12 2025:-0.11  days 235 n 3061
+   B = nb - chain                               -1.74 [-2.72, -0.73]   med  -2.36 seg  -1.12 /  -2.16  yr 2024:-2.41 2025:-1.72  days 235 n 3061
+   F on subset                                  -2.30                  med  -1.91 seg  -1.94 /  -2.47  yr 2024:-3.01 2025:-2.17  days 235 n 3061
+   D on subset                                  -0.35                  med  -0.08 seg  -0.22 /  -0.38  yr 2024:-1.04 2025:-0.28  days 235 n 3061
+   D_own on subset                              +1.69                  med  +1.71 seg  +1.55 /  +1.91  yr 2024:+1.23 2025:+1.75  days 235 n 3061
+   Dnb_a1 on subset                             +1.83                  med  +1.95 seg  +1.28 /  +1.93  yr 2024:+1.65 2025:+1.84  days 235 n 3061
+   agrees with chain |B|<D/4: False; convicts: False
+-- (b) multi-leg, 5 s: coverage 0.1891 (46268 prints, 249 days)
+   A = own - nb                                 -0.15 [-0.21, -0.08]   med  -0.11 seg  -0.09 /  -0.20  yr 2024:-0.06 2025:-0.17  days 249 n 46268
+   B = nb - chain                               +0.13 [-0.11, +0.38]   med  +0.06 seg  +0.34 /  -0.01  yr 2024:+0.70 2025:+0.06  days 249 n 46268
+   F on subset                                  -0.03                  med  -0.01 seg  +0.23 /  -0.24  yr 2024:+0.70 2025:-0.15  days 249 n 46268
+   D on subset                                  +3.38                  med  +3.19 seg  +4.29 /  +2.72  yr 2024:+4.35 2025:+3.20  days 249 n 46268
+   D_own on subset                              +3.60                  med  +3.43 seg  +4.27 /  +3.12  yr 2024:+3.80 2025:+3.56  days 249 n 46268
+   Dnb_b5 on subset                             +3.52                  med  +3.28 seg  +4.22 /  +2.98  yr 2024:+3.81 2025:+3.46  days 249 n 46268
+-- (a) single, 5 s: coverage 0.2063 (50491 prints, 249 days)
+   A = own - nb                                 -0.23 [-0.38, -0.09]   med  -0.23 seg  -0.14 /  -0.30  yr 2024:-0.15 2025:-0.24  days 249 n 50491
+   B = nb - chain                               -0.53 [-0.75, -0.30]   med  -0.39 seg  -0.53 /  -0.52  yr 2024:+0.08 2025:-0.62  days 249 n 50491
+   F on subset                                  -0.60                  med  -0.51 seg  -0.47 /  -0.69  yr 2024:-0.01 2025:-0.69  days 249 n 50491
+   D on subset                                  +1.63                  med  +1.63 seg  +1.93 /  +1.43  yr 2024:+2.31 2025:+1.52  days 249 n 50491
+   D_own on subset                              +2.29                  med  +2.30 seg  +2.47 /  +2.16  yr 2024:+2.24 2025:+2.30  days 249 n 50491
+   Dnb_a5 on subset                             +2.03                  med  +1.87 seg  +2.37 /  +1.82  yr 2024:+1.93 2025:+2.05  days 249 n 50491
+
+== report-only splits ==
+iron D                                          +2.70                  med  +2.71 seg  +2.86 /  +2.58  yr 2024:+2.79 2025:+2.68  days 249 n 198935
+iron P_own                                      +0.02                  med  +0.02 seg  -0.01 /  +0.04  yr 2024:-0.03 2025:+0.03  days 249 n 198754
+iron F                                          +0.27                  med  +0.28 seg  +0.25 /  +0.28  yr 2024:+0.53 2025:+0.21  days 249 n 198935
+iron D_own                                      +2.49                  med  +2.48 seg  +2.68 /  +2.32  yr 2024:+2.31 2025:+2.52  days 249 n 198935
+fly_C D                                         +1.43                  med  +1.41 seg  +1.36 /  +1.49  yr 2024:+1.61 2025:+1.40  days 249 n 29082
+fly_C P_own                                     +0.01                  med  +0.02 seg  -0.09 /  +0.10  yr 2024:-0.13 2025:+0.03  days 249 n 28141
+fly_C F                                         +0.19                  med  +0.25 seg  +0.18 /  +0.21  yr 2024:+0.40 2025:+0.16  days 249 n 29082
+fly_C D_own                                     +1.33                  med  +1.43 seg  +1.25 /  +1.39  yr 2024:+1.23 2025:+1.35  days 249 n 29082
+fly_P D                                         +1.33                  med  +1.46 seg  +1.09 /  +1.52  yr 2024:+1.39 2025:+1.31  days 249 n 16719
+fly_P P_own                                     -0.09                  med  -0.11 seg  +0.08 /  -0.20  yr 2024:+0.08 2025:-0.11  days 249 n 15296
+fly_P F                                         +0.01                  med  +0.05 seg  -0.06 /  +0.07  yr 2024:-0.02 2025:+0.01  days 249 n 16719
+fly_P D_own                                     +1.34                  med  +1.37 seg  +1.22 /  +1.46  yr 2024:+1.48 2025:+1.32  days 249 n 16719
+D 09:45-12:00                                   +2.26                  med  +2.21 seg  +2.36 /  +2.20  yr 2024:+2.74 2025:+2.17  days 249 n 109471
+D 12:00-14:00                                   +2.34                  med  +2.33 seg  +2.28 /  +2.39  yr 2024:+2.16 2025:+2.38  days 249 n 71179
+D 14:00-15:30                                   +2.72                  med  +2.65 seg  +2.78 /  +2.70  yr 2024:+2.29 2025:+2.81  days 249 n 64086
+D 15:30-15:59 (m-row fallback)                  +3.26                  med  +2.99 seg  +4.27 /  +2.40  yr 2024:+3.55 2025:+3.21  days 249 n 14315
+F 15:30-15:59 (both rows)                       +1.66                  med  +1.69 seg  +1.70 /  +1.58  yr 2024:+2.42 2025:+1.57  days 249 n 12963
+D 1-2 lots                                      +2.42                  med  +2.39 seg  +2.49 /  +2.38  yr 2024:+2.39 2025:+2.43  days 249 n 197556
+D 3-9 lots                                      +2.56                  med  +2.56 seg  +2.61 /  +2.54  yr 2024:+3.21 2025:+2.45  days 249 n 37004
+D >=10 lots                                     +2.53                  med  +2.46 seg  +2.52 /  +2.54  yr 2024:+2.65 2025:+2.51  days 249 n 10176
+D ref chain m row only                          +3.20                  med  +3.21 seg  +3.34 /  +3.07  yr 2024:+3.16 2025:+3.20  days 249 n 244736
+D baseline-A days                               +2.45                  med  +2.39 seg  +2.50 /  +2.42  yr 2024:+2.49 2025:+2.44  days 221 n 226174
+
+== robustness (gates re-evaluated) ==
+base                               D +2.45 [+2.36,+2.55] seg +2.50/+2.42 P_own +0.01 F +0.24 F/D 0.098 D_own +2.27 -> pass  n 244736
+|K-S|<=2.5                         D +2.56 [+2.45,+2.67] seg +2.62/+2.51 P_own +0.03 F +0.10 F/D 0.040 D_own +2.58 -> pass  n 154267
+|K-S|<=10                          D +2.26 [+2.17,+2.35] seg +2.30/+2.24 P_own +0.01 F +0.48 F/D 0.214 D_own +1.68 -> pass  n 350840
+w 15-29                            D +2.04 [+1.93,+2.16] seg +2.10/+2.00 P_own +0.02 F +0.09 F/D 0.043 D_own +2.03 -> pass  n 104411
+w 30-79                            D +2.77 [+2.65,+2.89] seg +2.83/+2.74 P_own -0.00 F +0.36 F/D 0.131 D_own +2.44 -> pass  n 140325
+w 10-99                            D +2.30 [+2.21,+2.39] seg +2.35/+2.26 P_own +0.01 F +0.16 F/D 0.068 D_own +2.22 -> pass  n 293125
+drop best-5 D days                 D +2.43 [+2.33,+2.52] seg +2.44/+2.42 P_own +0.01 F +0.24 F/D 0.099 D_own +2.25 -> pass  n 243190
+iron only                          D +2.70 [+2.59,+2.81] seg +2.86/+2.58 P_own +0.02 F +0.27 F/D 0.098 D_own +2.49 -> pass  n 198935
+(TRIM env var re-runs the whole script at another trim level)
+
+== aggressor composition (09:45-15:30, legs with valid quote) ==
+                n  ge_ask  le_bid  at_mid  inside  net_buy
+S 0-5    20499242   0.458   0.472   0.061   0.010   -0.014
+  6-15   24651823   0.460   0.472   0.052   0.016   -0.012
+  16-30  19159304   0.460   0.478   0.044   0.017   -0.018
+  31-50  11510124   0.465   0.485   0.039   0.011   -0.021
+  51-85   7266447   0.463   0.494   0.033   0.010   -0.031
+M 0-5     5835380   0.055   0.088   0.245   0.612   -0.032
+  6-15    9550340   0.059   0.140   0.206   0.595   -0.080
+  16-30  11417882   0.069   0.152   0.171   0.609   -0.083
+  31-50   9915320   0.085   0.140   0.151   0.624   -0.056
+  51-85   8107584   0.105   0.131   0.143   0.621   -0.025
+combo package (Pi) vs own Pi NBBO: >= Pi ask 0.010, <= Pi bid 0.004, = Pi mid 0.175, above mid inside 0.543, below mid inside 0.269
+print-level D_own > 0 0.552, = 0 (|.|<=0.5) 0.175, < 0 0.273; quantiles D_own [-5.0, -2.5, 2.5, 5.0, 10.0]
+Pi half-spread own NBBO (USD) median 25.0; D_own / own half-spread trimmed 0.090

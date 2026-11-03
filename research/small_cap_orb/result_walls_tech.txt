@@ -1,0 +1,45 @@
+names ['CRDO', 'NBIS', 'QUBT', 'NVTS', 'APLD', 'CLSK', 'SNDK', 'WOLF', 'ALAB', 'QBTS', 'RKLB']  days 504  2024-10-28..2026-10-30  OOS from 2026-03-04 (168 days)
+  CRDO: 504 days from 2024-10-28
+  NBIS: 504 days from 2024-10-28
+  QUBT: 504 days from 2024-10-28
+  NVTS: 504 days from 2024-10-28
+  APLD: 504 days from 2024-10-28
+  CLSK: 503 days from 2024-10-28
+  SNDK: 431 days from 2025-02-13
+  WOLF: 275 days from 2025-09-29
+  ALAB: 504 days from 2024-10-28
+  QBTS: 503 days from 2024-10-28
+  RKLB: 504 days from 2024-10-28
+CRDO: wall days 493, call wall 99%, put wall 99%, from 2024-11-01
+NBIS: wall days 498, call wall 100%, put wall 100%, from 2024-11-01
+QUBT: wall days 496, call wall 98%, put wall 98%, from 2024-11-05
+NVTS: wall days 495, call wall 99%, put wall 86%, from 2024-11-01
+APLD: wall days 500, call wall 100%, put wall 100%, from 2024-11-01
+CLSK: wall days 499, call wall 100%, put wall 100%, from 2024-11-01
+SNDK: wall days 415, call wall 97%, put wall 91%, from 2025-03-04
+WOLF: wall days 485, call wall 93%, put wall 87%, from 2024-11-01
+ALAB: wall days 497, call wall 100%, put wall 97%, from 2024-11-01
+QBTS: wall days 495, call wall 99%, put wall 97%, from 2024-11-01
+RKLB: wall days 500, call wall 100%, put wall 100%, from 2024-11-01
+
+A. after first touch, 30-minute return, + = rejected by the wall, bps
+  CRDO: n=91 real -58.2  placebo -55.5
+  NBIS: n=87 real -48.2  placebo -54.1
+  QUBT: n=104 real -43.9  placebo -33.6
+  NVTS: n=92 real -81.2  placebo -112.8
+  APLD: n=102 real -39.9  placebo -53.5
+  CLSK: n=91 real 11.5  placebo -34.6
+  SNDK: n=63 real -129.5  placebo -114.4
+  WOLF: n=26 real -112.4  placebo -17.5
+  ALAB: n=87 real -87.0  placebo -76.4
+  QBTS: n=122 real -77.8  placebo -76.7
+  RKLB: n=100 real -30.2  placebo -69.9
+  pooled paired difference 5.0 bps  CI [-15.2, 25.1]  days 405
+
+B. overlays on base (15, 1.0, 'long', 1.0), bps/day
+  BASE  IS    5.7  OOS    5.9  Sharpe  1.35  OOS diff    0.0  98.75% CI [0.0, 0.0]  IS diff 0.0
+  W1    IS    5.4  OOS    8.1  Sharpe  2.09  OOS diff    2.2  98.75% CI [-0.7, 5.6]  IS diff -0.3
+  W2    IS    5.8  OOS    7.8  Sharpe  1.83  OOS diff    1.9  98.75% CI [-1.2, 5.2]  IS diff 0.1
+  W3    IS    2.2  OOS    5.8  Sharpe  2.38  OOS diff   -0.1  98.75% CI [-11.5, 10.0]  IS diff -3.5
+  W4-   IS    3.7  OOS    4.3  Sharpe  1.55  OOS diff   -1.6  98.75% CI [-11.8, 8.4]  IS diff -2.1
+  W4+   IS    2.1  OOS    1.6  Sharpe  0.54  OOS diff   -4.3  98.75% CI [-13.4, 3.2]  IS diff -3.7

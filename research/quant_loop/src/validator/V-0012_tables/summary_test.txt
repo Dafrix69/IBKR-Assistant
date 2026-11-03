@@ -1,0 +1,66 @@
+PHASE test; ok 476; PNT non-event 105 (Mon 93); control 288
+PNT: M missing 0; exit14 exact 105 deferred 0 held 0; prop-variant deferred 0 held 0; days spec!=prop pnl 0
+  kept wing days 15 (14.3%), mean resid intrinsic USD +0.0, days resid>0 0
+control: M missing 0; exit14 exact 286 deferred 2 held 0; prop-variant deferred 2 held 0; days spec!=prop pnl 0
+  kept wing days 38 (13.2%), mean resid intrinsic USD +0.0, days resid>0 0
+median I10 PNT/C 26.00/27.27; median w 50/55
+
+M: PNT -0.0142 C -0.0067 G -0.0076 [-0.099, +0.079]
+H: PNT +0.0338 C -0.0070 G +0.0408 [-0.089, +0.169]
+A: PNT +0.0480 C -0.0004 G +0.0484 [-0.045, +0.143]
+M13: PNT -0.0180 C -0.0121 G -0.0059 [-0.083, +0.069]
+M15: PNT -0.0359 C -0.0105 G -0.0255 [-0.136, +0.084]
+
+EV_m k20: -59.6 [-278, +149] win 60.0% [50.4, 68.9] | control -85.9 win 55.9% | dEV +26.3 [-245, +300]
+EV_m k0: -46.6 [-260, +163] win 60.0% [50.4, 68.9] | control -72.0 win 55.9% | dEV +25.4 [-248, +302]
+EV_m k50: -79.2 [-297, +129] win 56.2% [46.6, 65.3] | control -106.8 win 55.6% | dEV +27.6 [-242, +299]
+sd 1125; cum -6261; maxDD -9630
+mid USD (V10-V14)*100 PNT -33.6 C -58.3
+cost total (mid_usd - pnl k.20) PNT 26.0 C 27.6; of which spread k.20 part PNT 13.1
+hold to settle k.20 PNT +58.3 C -16.5
+exit 1300: EV_m -73.5 [-248, +90] control -51.1
+exit 1500: EV_m -146.7 [-425, +123] control -78.7
+w-5: n 105/288 EV_m -67.4 [-275, +134] control -88.8 G_M -0.0082 [-0.092, +0.073]
+w+5: n 104/288 EV_m -56.2 [-285, +162] control -83.7 G_M -0.0079 [-0.105, +0.087]
+
+by year:
+2024-11~12: n 10/21 G_M -0.0625 [-0.328, +0.199] EV_m -200.7 [-816, +315] win 40.0% control -102.4 coef +0.0255 (t 0.93) A diff +0.2423
+2025: n 51/142 G_M +0.0760 [-0.046, +0.196] EV_m +58.1 [-261, +354] win 68.6% control -183.3 coef +0.0179 (t 0.87) A diff +0.0399
+2026: n 44/125 G_M -0.0927 [-0.242, +0.053] EV_m -164.0 [-507, +172] win 54.5% control +27.6 coef -0.0259 (t -1.34) A diff +0.0218
+
+I10/S cuts (train) 0.00401 0.00590
+I low: n 56/143 G_M -0.0255 [-0.159, +0.104] EV_m -62.0 [-306, +166] control -13.4
+I mid: n 32/91 G_M +0.0225 [-0.130, +0.170] EV_m -94.9 [-482, +273] control -127.0
+I high: n 17/54 G_M -0.0064 [-0.201, +0.182] EV_m +14.6 [-779, +786] control -208.4
+
+settle>F10: n 61/153 G_M -0.0062 [-0.121, +0.104] EV_m -74.6 control -146.6
+settle<=F10: n 44/135 G_M -0.0090 [-0.158, +0.136] EV_m -38.9 control -17.1
+S14>S10: n 58/159 G_M -0.0303 [-0.146, +0.085] EV_m -80.8 control -108.3
+S14<=S10: n 47/129 G_M +0.0204 [-0.120, +0.158] EV_m -33.5 control -58.3
+
+drop best 5: EV_m -158.7; G_M -0.0285
+best5 ['2025-04-14', '2026-06-08', '2026-03-30', '2025-10-13', '2026-03-23'] [2582.0, 2368.0, 1878.0, 1505.0, 1280.0]
+worst5 ['2025-04-21', '2025-01-02', '2026-02-17', '2024-12-30', '2026-06-22'] [-3203.0, -3047.0, -2751.0, -2441.0, -2404.0]
+pure Monday n 93 EV_m +9.4 M +0.0031; post-holiday non-Mon n 12 EV_m -594.4 M -0.1486
+
+placebo PNT+1: n 95/193 G_M +0.0045 [-0.099, +0.105] EV -112.7 vs -72.7; |placebo| 0.0045 vs |G_M| 0.0076
+weekday 1: n 85 G_M -0.0331 dEV -148.4
+weekday 2: n 67 G_M -0.0243 dEV -229.8
+weekday 3: n 79 G_M +0.0229 dEV +192.9
+weekday 4: n 57 G_M +0.0419 dEV +210.9
+
+D~m+PNT: PNT +0.0351 se 0.0121 t 2.90 (n 393)
+D~m+m2+PNT: PNT +0.0301 se 0.0115 t 2.62 (n 393)
+M~m+PNT: PNT -0.0068 se 0.0146 t -0.47 (n 393)
+M~m+m2+PNT: PNT +0.0080 se 0.0101 t 0.79 (n 393)
+m mean PNT 0.854 C 0.852
+
+perm G_M: obs -0.0076 two-sided p 0.8746; x64 1.000
+perm dEV: obs +26.2587 two-sided p 0.8691; x64 1.000
+perm coef: obs -0.0068 two-sided p 0.6962; x64 1.000
+
+baseline A: n 439 win 61.0% EV +99.9
+corr EV_m with same-day base A (n 89): +0.036
+increment per base day -14.3; morning win 60.0% vs base 61.0%
+base: total +43855 daily sharpe 0.094 maxDD -11892
+base+morning: total +37594 daily sharpe 0.071 maxDD -14308

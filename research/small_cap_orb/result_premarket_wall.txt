@@ -1,0 +1,29 @@
+names ['IREN', 'AXTI', 'LITE', 'OKLO']  days 504  2024-10-28..2026-10-30  OOS from 2026-03-04 (168 days)
+  IREN: 504 days from 2024-10-28
+  AXTI: 504 days from 2024-10-28
+  LITE: 504 days from 2024-10-28
+  OKLO: 504 days from 2024-10-28
+  IREN: wall days 499, call wall on 100%; spread night 14.4 pre 16.6 bps
+  AXTI: wall days 395, call wall on 84%; spread night 28.1 pre 39.5 bps
+  LITE: wall days 493, call wall on 90%; spread night 26.9 pre 32.7 bps
+  OKLO: wall days 500, call wall on 100%; spread night 31.4 pre 34.7 bps
+
+A. first pre-market / night touch of the call wall from below, + = pushed down, bps
+  IREN: n=15  real 30 traded min +17 (placebo +2)  to 09:30 open -51 (placebo +13)  pushed down by the open 33%
+  AXTI: n=7  real 30 traded min +16 (placebo -61)  to 09:30 open -117 (placebo -269)  pushed down by the open 57%
+  LITE: n=9  real 30 traded min -60 (placebo -38)  to 09:30 open -74 (placebo +50)  pushed down by the open 44%
+  OKLO: n=12  real 30 traded min -223 (placebo -129)  to 09:30 open -126 (placebo -170)  pushed down by the open 58%
+  pooled paired difference 30 traded min: -13.1 bps  95% CI [-63.1, 33.4]  days 40
+  pooled paired difference to the open: -13.6 bps  95% CI [-69.7, 39.4]  days 40
+
+B. short near the call wall in 20:00-09:20, stop wall x 1.025, cover 09:30; gated = name-sessions under 30 bps
+  gated=True: IS -5.4 bps/day Sharpe -2.64  OOS -7.4 bps/day  95% CI [-13.8, -1.1]  99.95% CI [-19.6, 3.0]  Sharpe -2.88
+    IREN: 158 trades (52 OOS)  per-trade net -31 bps  win 24%  stopped 61%  IS -39  OOS -14  night/pre 107/51
+    AXTI: 50 trades (38 OOS)  per-trade net -58 bps  win 10%  stopped 90%  IS -106  OOS -43  night/pre 50/0
+    LITE: 77 trades (51 OOS)  per-trade net -58 bps  win 13%  stopped 78%  IS -71  OOS -51  night/pre 77/0
+    OKLO: no trades
+  gated=False: IS -10.9 bps/day Sharpe -3.86  OOS -14.3 bps/day  95% CI [-27.1, -2.2]  99.95% CI [-38.0, 6.0]  Sharpe -3.54
+    IREN: 158 trades (52 OOS)  per-trade net -31 bps  win 24%  stopped 61%  IS -39  OOS -14  night/pre 107/51
+    AXTI: 78 trades (56 OOS)  per-trade net -88 bps  win 18%  stopped 77%  IS -108  OOS -80  night/pre 50/28
+    LITE: 128 trades (74 OOS)  per-trade net -40 bps  win 27%  stopped 59%  IS -50  OOS -32  night/pre 77/51
+    OKLO: 141 trades (40 OOS)  per-trade net -52 bps  win 26%  stopped 58%  IS -53  OOS -50  night/pre 93/48

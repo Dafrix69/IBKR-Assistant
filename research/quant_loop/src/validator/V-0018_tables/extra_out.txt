@@ -1,0 +1,10 @@
+(a) single-leg prints |K-S|<=15: own mid - chain interp (USD/contract) by number of single-leg prints in that contract-minute; day-trimmed mean of daily means; share of prints
+  C 1-5     oc  +0.46  share 0.006
+  C 21-100  oc  +0.39  share 0.555
+  C 6-20    oc  -0.70  share 0.067
+  C >100    oc  +8.50  share 0.372
+  P 1-5     oc  +0.53  share 0.008
+  P 21-100  oc  +1.41  share 0.606
+  P 6-20    oc  -0.63  share 0.088
+  P >100    oc +15.68  share 0.298
+(b) single-leg price - own mid, |K-S|<=15, USD/contract: {'C': np.float64(-0.028), 'P': np.float64(-0.075)}

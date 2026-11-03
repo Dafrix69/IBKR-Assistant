@@ -1,0 +1,57 @@
+drops {'': 608, 'wide': 12, 'missing': 3}; baseline days 530; FE tercile cuts q1=0.01457 q2=0.01737; w/I cuts 1.916 2.113
+
+spearman:
+             FE  w_over_I      I  vix_prev
+FE        1.000    -0.407  0.800     0.262
+w_over_I -0.407     1.000 -0.537    -0.371
+I         0.800    -0.537  1.000     0.678
+vix_prev  0.262    -0.371  0.678     1.000
+
+by FE tier:
+        n    FE      I      w      G    dIC  dIC_k05      IF      IC      PF  winIF  winIC           G_ci         dIC_ci
+tier                                                                                                                    
+L     177  0.01   9.25  21.24  -5.76   6.65     7.98  -51.83  -45.18  -56.39   0.55   0.59  (-25.4, 14.1)  (-14.4, 25.7)
+M     176  0.02  12.20  24.97  16.88 -16.27   -15.36  125.89  109.62  118.95   0.62   0.64   (-4.3, 40.0)   (-38.3, 4.6)
+H     177  0.02  17.40  36.02  12.63 -12.16   -11.45  159.92  147.76  145.40   0.60   0.61   (-5.4, 31.8)   (-30.9, 5.8)
+
+G_H - G_L = 18.4  CI [-8.7 44.9]
+
+by year:
+       n             G               dIC            
+tier   H   L   M     H     L     M     H     L     M
+year                                                
+2022  61  17  42  10.7  -9.9  56.2 -10.0  10.6 -55.7
+2023  62  80  74  -4.9   0.5  -8.9   5.1   0.7   9.6
+2024  54  80  60  35.0 -11.1  21.2 -34.4  11.8 -20.6
+
+low tier within w/I terciles:
+         n   dIC     G
+wtier                 
+w1      28  12.7 -12.4
+w2      47  -7.3   8.0
+w3     102  11.4 -10.3
+
+low tier by settle-F month segment:
+        n   dIC     G
+seg                  
+down   73  -1.0   1.9
+up    104  12.0 -11.1
+
+G by segment x tier:
+tier     H     L     M
+seg                   
+down  -0.2   1.9  -6.6
+up    17.3 -11.1  29.0
+
+ex-FOMC: low n 177 dIC 6.7; G_H-G_L 17.4
+
+Delta_L k0.20 6.7 CI (np.float64(-14.4), np.float64(26.9)); k0.5 8.0; k0 5.8; sd 137
+
+rules:
+                  rule   n   win     ev  ev_k05
+PF (protocol baseline) 530 0.585 69.224  48.841
+     IF every day (R0) 530 0.589 77.903  69.922
+   R: IC on L, IF else 530 0.604 80.124  72.589
+          IC every day 530 0.615 70.662  63.667
+
+R - R0 per day 2.2 CI (np.float64(-4.6), np.float64(8.8))

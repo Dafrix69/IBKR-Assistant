@@ -1,0 +1,52 @@
+names ['CRDO', 'NBIS', 'QUBT', 'NVTS', 'APLD', 'CLSK', 'SNDK', 'WOLF', 'ALAB', 'QBTS', 'RKLB']  days 504  2024-10-28..2026-10-30  OOS from 2026-03-04 (168 days)
+  CRDO: 504 days from 2024-10-28
+  NBIS: 504 days from 2024-10-28
+  QUBT: 504 days from 2024-10-28
+  NVTS: 504 days from 2024-10-28
+  APLD: 504 days from 2024-10-28
+  CLSK: 503 days from 2024-10-28
+  SNDK: 431 days from 2025-02-13
+  WOLF: 275 days from 2025-09-29
+  ALAB: 504 days from 2024-10-28
+  QBTS: 503 days from 2024-10-28
+  RKLB: 504 days from 2024-10-28
+  CRDO: median spread night 39.6  pre 45.9  rth 14.4 bps  -> entries allowed in none
+  NBIS: median spread night 20.4  pre 21.5  rth 8.5 bps  -> entries allowed in ['night', 'pre']
+  QUBT: median spread night 46.6  pre 17.5  rth 12.6 bps  -> entries allowed in ['pre']
+  NVTS: median spread night 56.1  pre 44.8  rth 9.1 bps  -> entries allowed in none
+  APLD: median spread night 38.9  pre 36.9  rth 4.6 bps  -> entries allowed in none
+  CLSK: median spread night 62.0  pre 53.5  rth 8.5 bps  -> entries allowed in none
+  SNDK: median spread night 11.2  pre 13.2  rth 6.5 bps  -> entries allowed in ['night', 'pre']
+  WOLF: median spread night 183.5  pre 115.4  rth 20.4 bps  -> entries allowed in none
+  ALAB: median spread night 84.6  pre 92.7  rth 18.3 bps  -> entries allowed in none
+  QBTS: median spread night 31.9  pre 31.8  rth 6.3 bps  -> entries allowed in none
+  RKLB: median spread night 15.1  pre 15.8  rth 4.3 bps  -> entries allowed in ['night', 'pre']
+
+Grid, short only, pooled by day over the names, bps/day. 'gated' = only name-sessions under 30 bps
+   x  exit  gated  is_sh  is_trades  oos_sh  oos_bps  oos_trades  per_trade_bps   win  stopped
+0.05     0   True -0.591        147  -0.129   -0.146          89        -10.672 0.475    0.355
+0.05     0  False -1.297        471  -2.673   -8.189         258        -38.212 0.422    0.348
+0.05    30   True -0.422        147   1.139    2.079          89          5.175 0.381    0.589
+0.05    30  False -1.248        471  -1.071   -4.152         258        -35.401 0.361    0.573
+0.08     0   True  0.348         63  -0.954   -0.797          28          4.113 0.484    0.293
+0.08     0  False -0.958        178  -1.298   -2.611          75        -43.637 0.458    0.325
+0.08    30   True  0.090         63   1.165    1.813          28         45.314 0.440    0.448
+0.08    30  False -0.400        178   0.289    0.742          75         -9.724 0.395    0.476
+
+PICK (best in-sample among the 4, gated): (0.08, 0)
+OOS net -0.8 bps/day  95% CI [-2.6, 1.0]  99.95% CI [-3.9, 2.4]  Sharpe -0.95  2x cost -1.1 bps/day
+IS  net 0.4 bps/day  Sharpe 0.35
+  CRDO: no trades
+  NBIS: 30 trades (13 OOS)  per-trade net 4 bps  win 47%  stopped 30%  night/pre 13/17  median entry-bar volume 1866 sh  gross 28 bps
+  QUBT: 28 trades (3 OOS)  per-trade net -37 bps  win 50%  stopped 39%  night/pre 0/28  median entry-bar volume 20010 sh  gross -4 bps
+  NVTS: no trades
+  APLD: no trades
+  CLSK: no trades
+  SNDK: 15 trades (6 OOS)  per-trade net -16 bps  win 40%  stopped 20%  night/pre 8/7  median entry-bar volume 1871 sh  gross -1 bps
+  WOLF: no trades
+  ALAB: no trades
+  QBTS: no trades
+  RKLB: 18 trades (6 OOS)  per-trade net 85 bps  win 56%  stopped 28%  night/pre 8/10  median entry-bar volume 5516 sh  gross 104 bps
+baseline random side: mean -0.3, 95th pct 1.0 bps/day
+
+all 91 trades of the pick written to trades_premarket_short_tech11.csv

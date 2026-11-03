@@ -1,0 +1,28 @@
+=== test: rows 439, cap2 dropped 20, FOMC rows 16 (of which cap2-dropped 15)
+
+-- cap 2.0: 419 days
+ G_a k0.20: +3.71 [+3.50, +3.94] n=419  share>0 0.993  min -0.2
+ G_a k0   : -0.62 [-0.63, -0.62] n=419   k0.5: +10.21 [+9.67, +10.77] n=419
+ segments k0.20: {'2024-11~12': np.float64(4.36), '2025': np.float64(4.08), '2026': np.float64(3.16)} {'2024-11~12': 31, '2025': 210, '2026': 178}
+ segments k0   : {'2024-11~12': np.float64(-0.61), '2025': np.float64(-0.62), '2026': np.float64(-0.62)}
+ split  k*dH: +4.33 [+4.12, +4.56] n=419  dfee: -0.62 [-0.63, -0.62] n=419  dmid put-iron USD: -0.34 [-0.92, +0.21] n=419  call-iron: -0.27 [-0.81, +0.29] n=419
+ H put/call/iron: [np.float64(0.425), np.float64(0.4), np.float64(0.209)]  E k0.20 put/call/iron: [np.float64(14.28), np.float64(13.73), np.float64(10.57)]
+ G_a by w: {20: np.float64(2.85), 25: np.float64(3.5), 30: np.float64(3.46), 50: np.float64(6.08), 75: np.float64(6.66)} {20: 157, 25: 89, 30: 100, 50: 60, 75: 13}
+ drop best 5 days: +3.58 [+3.39, +3.77] n=414
+ w _wm: +3.24 [+3.04, +3.44] n=257
+ w _wp: +4.60 [+4.32, +4.88] n=400
+ no FOMC: +3.69 [+3.48, +3.92] n=418  FOMC rows kept: 1
+
+ T: mean CP -0.55 [-0.73, -0.36] n=419  up 0.01 208  down -1.1 211
+ T = +1.11 [+0.76, +1.49]
+ T segments: {'2024-11~12': (np.float64(0.41), 12, 19), '2025': (np.float64(1.41), 112, 98), '2026': (np.float64(0.9), 84, 94)}
+ T k0 (spread-only check): 0.02
+
+-- cap 1.0: 404 days
+ G_a k0.20: +3.46 [+3.29, +3.63] n=404  share>0 0.993  min -0.2
+ G_a k0   : -0.62 [-0.62, -0.62] n=404   k0.5: +9.58 [+9.15, +10.02] n=404
+ segments k0.20: {'2024-11~12': np.float64(4.36), '2025': np.float64(3.74), '2026': np.float64(2.97)} {'2024-11~12': 31, '2025': 201, '2026': 172}
+ segments k0   : {'2024-11~12': np.float64(-0.61), '2025': np.float64(-0.62), '2026': np.float64(-0.62)}
+ split  k*dH: +4.08 [+3.91, +4.25] n=404  dfee: -0.62 [-0.62, -0.62] n=404  dmid put-iron USD: -0.19 [-0.67, +0.29] n=404  call-iron: -0.30 [-0.76, +0.18] n=404
+ H put/call/iron: [np.float64(0.409), np.float64(0.381), np.float64(0.205)]  E k0.20 put/call/iron: [np.float64(13.95), np.float64(13.35), np.float64(10.49)]
+ G_a by w: {20: np.float64(2.76), 25: np.float64(3.36), 30: np.float64(3.32), 50: np.float64(5.58), 75: np.float64(5.26)} {20: 156, 25: 88, 30: 97, 50: 55, 75: 8}

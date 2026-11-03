@@ -1,0 +1,11 @@
+single-leg print level - chain interp mid (USD per contract), day-level 10% trimmed mean; net aggressor = share(at/above ask) - share(at/below bid)
+  body<=5  C  ell  +2.99  net-aggr -0.012  px-own  -0.03  own-chain  +3.03  prints/day    44205
+  body<=5  P  ell  +5.11  net-aggr -0.019  px-own  -0.08  own-chain  +5.16  prints/day    38118
+  6-15     C  ell  +2.03  net-aggr -0.009  px-own  -0.02  own-chain  +2.07  prints/day    54417
+  6-15     P  ell  +3.97  net-aggr -0.017  px-own  -0.07  own-chain  +4.04  prints/day    44582
+  16-30    C  ell  +1.01  net-aggr -0.010  px-own  +0.00  own-chain  +1.00  prints/day    40395
+  16-30    P  ell  +2.47  net-aggr -0.026  px-own  -0.08  own-chain  +2.53  prints/day    36535
+  31-50    C  ell  +0.56  net-aggr +0.000  px-own  +0.03  own-chain  +0.52  prints/day    21504
+  31-50    P  ell  +1.61  net-aggr -0.032  px-own  -0.07  own-chain  +1.67  prints/day    24681
+  51-85    C  ell  +0.38  net-aggr -0.014  px-own  -0.04  own-chain  +0.42  prints/day    11710
+  51-85    P  ell  +0.88  net-aggr -0.034  px-own  -0.09  own-chain  +0.99  prints/day    17360

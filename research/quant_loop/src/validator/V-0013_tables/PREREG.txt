@@ -1,0 +1,43 @@
+V-0013 pre-registration (written 2026-11-01 before any test-period number was computed)
+
+Chain side (V-0013_chain.py), 14:00, baseline days (not half day, has_0dte, spx_ret_prev > -1%),
+K = nearest quoted strike to spot.parquet(14:00), I = C(K).mid + P(K).mid, w in {20,25,30,50,75} with w/I
+closest to 2 (tol 1e-9, tie -> narrower); legs not flag_bad, ask > bid, bid >= 0; all 6 legs present;
+cap: max leg spread <= 2.0 (also 1.0 reported). Fill = mid +/- k*half-spread per leg; fee per leg =
+max(comm(fill)*qty, 1.00) + qty*(exch(fill) + 0.14 + 0.04028).
+Metrics reported once on test (>= 2024-11-01):
+ G_a = E_put - E_iron (USD/day), k 0.20: n, mean, day-bootstrap 95% (5000), segments 2024-11~12 / 2025 / 2026,
+   split k*dH / dfee / dmid, k 0 and k 0.5, cap 1.0, w -1/+1 tier (same K), drop best 5 days, share of days G_a > 0.
+ T = mean(E_call-E_put | d>0) - mean(.. | d<0), bootstrap 95%, segments; also mean E_call - E_put.
+Tape side (V-0013_tape.py), test days only:
+ Rule V (mine): multileg conditions {130,131,134,137,144}; block = same trade_timestamp and sequence gap <= 10;
+   aggregate within block by (strike,right): summed size, size-weighted price, size-weighted bid/ask;
+   then identify put/call fly (1 right, 3 equidistant strikes, sizes 1:2:1) or iron fly (P(K-w),P(K),C(K),C(K+w), equal sizes);
+   every leg needs ask > bid, bid > 0 (checked AFTER identification); |K - spot(floor min)| <= 5; w >= 15.
+ Rule P (proposer's, as in P-0013_tape.py, rewritten): drop block if a (strike,right) repeats; leg filter before grouping.
+ References: own = signed leg NBBO mids at trade time; common = w - iron credit from chain mids at floor(ts,min).
+ M = mean|net - common| (put+call flies) / mean|net - common| (iron); bands w 15-29, 30-79; day-cluster bootstrap 95%.
+ Effective k: k_own = |net - own|/H_own, H_own = sum qty*half-spread at trade time; medians and means per structure x band.
+ Slope test: |net - own| ~ a + b*H_own across all combos (pooled and within band), day-cluster bootstrap CI for b.
+   Prediction if proportional (k-model true): b ~ 0.2, k_eff(fly) ~ k_eff(iron).
+   Prediction if flat (same absolute slip): b ~ 0, k_eff(fly) well below k_eff(iron).
+ Noise floor: iron mean|net-common| - mean|net-own|.
+Decision (from the task brief): PASS needs G_a > 0 both periods, all segments >0; T > 0 both periods, all segments > 0;
+ M > 1.0 in both bands; effective-k evidence not contradicting the spread term.
+
+Addendum (still before any test-period run): third reference "asof" = w - iron credit from the tape itself:
+ for each of P(K-w), P(K), C(K), C(K+w), the NBBO attached to the last print (any condition) of that option with
+ trade_timestamp strictly before the combo's timestamp, all four within 10 s. Removes both the deep-ITM own-mid noise
+ and the chain minute-snapshot timing noise. M_asof and k_eff_asof = |net - asof| / H_own reported alongside.
+ Primary M for the PASS rule = proposer's declared one (common ref, chain floor-minute), as declared in P-0013 sec. 10;
+ rule V and asof are reported as checks. Permutation: within-day, within-band shuffle of fly/iron labels, 1000 times,
+ one-sided p for ratio >= observed.
+
+Addendum 2 (after the 2 training days only, before any test run): mean-absolute comparisons against a noisy reference
+are attenuated toward ratio 1, so add a variance deconvolution. Within each exact w (asof reference, stale <= 10 s):
+ msq_slip_fly(w) = msq(net-asof | fly, w) - msq(net-asof | iron, w) + msq(net-own | iron, w)
+ (reference noise depends on the iron legs at K,w and time, not on which structure printed; iron own-leg mids are OTM/ATM
+ and taken at the trade itself, so msq(net-own | iron) is the iron's own slip). Aggregate over w with fly-count weights,
+ compare rms slip fly vs iron (same weights) and k_rms = rms / mean H. Day-cluster bootstrap CI.
+ Reading: proportional model -> k_rms(put fly) ~ k_rms(iron) ~ 0.2; flat -> k_rms(put fly) ~ k_rms(iron) * H_iron/H_put.
+ Implied daily USD spread term = 100 * (rms_put - rms_iron) compared with model 20 * (H_put - H_iron).

@@ -1,0 +1,25 @@
+model,period,w_tercile,n_Q5,win_Q5,ev_Q5,n_rest,win_rest,ev_rest
+lr1_w_over_implied,train(OOF),w/impl T1,0,,,18,0.5,-66.0869
+lr1_w_over_implied,train(OOF),w/impl T2,58,0.569,-32.3284,297,0.5758,72.6267
+lr1_w_over_implied,train(OOF),w/impl T3,34,0.5588,33.2581,53,0.5849,66.2697
+lr1_w_over_implied,test,w/impl T1,0,,,23,0.5652,171.1863
+lr1_w_over_implied,test,w/impl T2,0,,,323,0.6099,94.4208
+lr1_w_over_implied,test,w/impl T3,3,0.6667,126.2183,90,0.6222,100.4527
+lr_l1,train(OOF),w/impl T1,0,,,18,0.5,-66.0869
+lr_l1,train(OOF),w/impl T2,72,0.625,78.0156,283,0.5618,49.7455
+lr_l1,train(OOF),w/impl T3,20,0.5,-234.6525,67,0.597,139.3451
+lr_l1,test,w/impl T1,1,1.0,1466.795,22,0.5455,112.295
+lr_l1,test,w/impl T2,239,0.5983,66.0741,84,0.6429,175.0737
+lr_l1,test,w/impl T3,63,0.6032,-14.8208,30,0.6667,345.1037
+gbdt_depth1,train(OOF),w/impl T1,2,0.5,-68.2675,16,0.5,-65.8144
+gbdt_depth1,train(OOF),w/impl T2,69,0.6232,139.5081,286,0.5629,35.2064
+gbdt_depth1,train(OOF),w/impl T3,21,0.3333,-284.9288,66,0.6515,161.0087
+gbdt_depth1,test,w/impl T1,3,0.3333,-341.9967,20,0.6,248.1638
+gbdt_depth1,test,w/impl T2,62,0.5323,5.1945,261,0.6284,115.6163
+gbdt_depth1,test,w/impl T3,15,0.8,289.679,78,0.5897,65.054
+gbdt_depth3,train(OOF),w/impl T1,3,0.6667,236.0033,15,0.4667,-126.505
+gbdt_depth3,train(OOF),w/impl T2,72,0.5417,17.4847,283,0.583,65.1456
+gbdt_depth3,train(OOF),w/impl T3,17,0.3529,-217.4385,70,0.6286,119.1361
+gbdt_depth3,test,w/impl T1,1,1.0,3447.42,22,0.5455,22.2666
+gbdt_depth3,test,w/impl T2,69,0.5652,8.689,254,0.622,117.7101
+gbdt_depth3,test,w/impl T3,16,0.6875,151.0378,77,0.6104,90.9454

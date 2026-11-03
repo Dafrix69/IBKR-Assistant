@@ -1,0 +1,115 @@
+n 509 max lag days 4 lag>3 days: 18
+states {'L': 172, 'H': 169, 'M': 168} own I cuts on 509: [10.6, 14.1]
+     cell   n     Mc     Mt     Mx  nL  nH skip           Mc_ci         Mt_ci          Mx_ci
+      all 509  0.060 -0.001 -0.082 172 169      (-0.052, 0.175) (-0.101, 0.1) (-0.285, 0.12)
+year 2022 112  0.228  0.088  0.227  19  46   iL             NaN           NaN            NaN
+year 2023 210 -0.028 -0.106 -0.224  75  65                  NaN           NaN            NaN
+year 2024 187  0.021  0.042 -0.014  78  58                  NaN           NaN            NaN
+     I iL 173  0.087  0.059  0.012  94  28  NaN             NaN           NaN            NaN
+     I iM 168  0.092 -0.025 -0.028  53  49  NaN             NaN           NaN            NaN
+     I iH 168  0.001 -0.037 -0.230  25  92  NaN             NaN           NaN            NaN
+   mom_hi 254 -0.010 -0.075 -0.216  71  98                  NaN           NaN            NaN
+   mom_lo 255  0.165  0.079  0.115 101  71                  NaN           NaN            NaN
+ seg down 209  0.016 -0.104 -0.143  76  71                  NaN           NaN            NaN
+   seg up 300  0.090  0.069 -0.039  96  98                  NaN           NaN            NaN
+  no FOMC 508  0.059 -0.004 -0.085 172 168                  NaN           NaN            NaN
+2022 with min-n 1 (rule off): {'Mc': np.float64(0.228), 'Mt': np.float64(0.088), 'Mx': np.float64(0.227), 'nL': 19, 'nH': 46, 'skip': 'iL'}
+2022 cells:
+ st   H   L   M
+it            
+iL   0   0   1
+iM   6   8  12
+iH  40  11  34
+k0.20 Delta vs w2: -24.5 [-44.5, -5.3]
+k0.20 Delta vs wB: -22.6 [-42.2, -4.6]
+k_k05 Delta vs w2: -24.8 [-44.7, -5.8]
+k_k05 Delta vs wB: -22.9 [-42.5, -4.3]
+k_k0 Delta vs w2: -24.3 [-43.1, -5.0]
+k_k0 Delta vs wB: -22.5 [-41.2, -3.7]
+sd daily D 224.2
+        n       D       R       R2        B   winR  winR2
+yr                                                       
+2022  112 -28.432  56.037   84.470   84.582  0.554  0.607
+2023  210 -17.657 -16.037    1.620    3.694  0.552  0.557
+2024  187 -29.873  83.925  113.797  106.285  0.594  0.599
+totals R 36.5 0.568 R2 61.1 B 59.2
+      D3   D15
+st            
+H   29.7 -37.0
+L  -36.2  -1.6
+M    7.3  -2.3
+I1 -65.9 [-125.0,-5.9]  I2 -35.3 [-79.4,8.6]
+within I tercile:
+       D3               D15           
+st     H     L     M     H    L     M
+it                                   
+iL -34.9 -19.9  34.7 -21.1 -4.8 -16.3
+iM  21.2 -52.9 -30.9 -22.9  6.6  33.2
+iH  53.9 -62.5  29.4 -49.3 -7.3 -34.2
+
+=== item 3 ===
+mean x by I tercile: {'iL': 0.954, 'iM': 1.02, 'iH': 0.851}
+mean I by I tercile x state:
+ st      H      L      M
+it                     
+iL   8.91   8.94   9.25
+iM  12.63  11.99  12.28
+iH  19.21  17.33  17.63
+mean x by I tercile x state:
+ st      H      L      M
+it                     
+iL  1.010  0.998  0.841
+iM  0.951  0.980  1.102
+iH  0.814  1.044  0.822
+spearman(s,x) all -0.009
+  iL spearman(s,x) 0.061 spearman(I,x) -0.089 spearman(s,I) -0.024 n 173
+  iM spearman(s,x) 0.005 spearman(I,x) -0.096 spearman(s,I) 0.24 n 168
+  iH spearman(s,x) -0.015 spearman(I,x) 0.006 spearman(s,I) 0.215 n 168
+x resid on ['lI']: beta [ 1.406 -0.184]  strat Mx -0.073  raw H-L -0.054 [-0.207,0.111]
+    iL: resid H-L 0.007
+    iM: resid H-L -0.010
+    iH: resid H-L -0.231
+x resid on ['lI', 'lFE']: beta [ 1.294 -0.15  -0.083]  strat Mx -0.076  raw H-L -0.054 [-0.214,0.105]
+    iL: resid H-L 0.002
+    iM: resid H-L -0.011
+    iH: resid H-L -0.246
+x resid on ['lV']: beta [ 1.299 -0.125]  strat Mx -0.075  raw H-L -0.088 [-0.258,0.082]
+    iL: resid H-L -0.003
+    iM: resid H-L -0.025
+    iH: resid H-L -0.251
+x resid on ['lI', 'lV']: beta [ 1.294 -0.233  0.083]  strat Mx -0.076  raw H-L -0.054 [-0.211,0.102]
+    iL: resid H-L 0.002
+    iM: resid H-L -0.011
+    iH: resid H-L -0.246
+x ~ ['s']: coef on s -0.219 [-1.030,0.564]
+     2022: 0.359
+     2023: -0.665
+     2024: -0.116
+x ~ ['s', 'lI']: coef on s 0.073 [-0.800,0.895]
+     2022: 0.423
+     2023: -0.576
+     2024: 0.357
+x ~ ['s', 'lI', 'lFE']: coef on s 0.067 [-0.798,0.913]
+     2022: 0.475
+     2023: -0.584
+     2024: 0.355
+x ~ ['s', 'lV']: coef on s -0.109 [-0.983,0.679]
+     2022: 0.482
+     2023: -0.557
+     2024: -0.056
+high-I L cell years: {2022: 11, 2023: 3, 2024: 11}  H cell years: {2022: 40, 2023: 24, 2024: 28}
+  high I 2022: nL 11 nH 40 Mx -0.185
+  high I 2023: nL 3 nH 24 Mx -0.013
+  high I 2024: nL 11 nH 28 Mx -0.398
+  high-I L top x: [3.31, 2.88, 2.21, 1.68, 1.53, 1.47]  median L 0.925  median H 0.713
+  drop top 1 L days: Mx -0.135
+  drop top 3 L days: Mx 0.010
+  drop top 5 L days: Mx 0.090
+  high I P(x>1.5) L/H 0.2 0.163  P(x<=.5) L/H 0.36 0.359
+low I: mean x L/M/H {'H': 1.01, 'L': 0.998, 'M': 0.841} n {'L': 94, 'M': 51, 'H': 28}
+x by I tercile x FE half:
+ fe_r     lo     hi
+it                
+iL    1.033  0.873
+iM    1.042  0.997
+iH    0.889  0.812

@@ -1,0 +1,81 @@
+names ['IREN', 'AXTI', 'LITE', 'OKLO']  days 504  2024-10-28..2026-10-30  OOS from 2026-03-04 (168 days)
+  IREN: 504 days from 2024-10-28
+  AXTI: 504 days from 2024-10-28
+  LITE: 504 days from 2024-10-28
+  OKLO: 504 days from 2024-10-28
+
+Coverage: first bar on disk, first overnight bar, days with pre-market bars
+  IREN: first bar 2024-10-27 21:37:00-04:00  first overnight bar 2024-10-27 21:37:00-04:00  overnight days 486 of 503  pre-market days 503
+  AXTI: first bar 2024-10-28 04:02:00-04:00  first overnight bar 2025-06-12 20:55:00-04:00  overnight days 283 of 466  pre-market days 466
+  LITE: first bar 2024-10-28 08:00:00-04:00  first overnight bar 2025-06-23 22:59:00-04:00  overnight days 292 of 486  pre-market days 486
+  OKLO: first bar 2024-10-27 21:24:00-04:00  first overnight bar 2024-10-27 21:24:00-04:00  overnight days 503 of 503  pre-market days 503
+
+Spread outside regular hours, median bps of mid (gate 30 bps for pre-market / night entries)
+  IREN: night 14.4 bps (n=20679)  pre 16.6 bps (n=14520)  rth 3.6 bps (n=17160)  post 11.7 bps (n=11640)
+  AXTI: night 28.1 bps (n=20680)  pre 39.5 bps (n=14520)  rth 14.7 bps (n=17160)  post 33.3 bps (n=11639)
+  LITE: night 26.9 bps (n=20680)  pre 32.7 bps (n=14520)  rth 11.7 bps (n=17160)  post 19.5 bps (n=11640)
+  OKLO: night 31.4 bps (n=20680)  pre 34.7 bps (n=14520)  rth 7.2 bps (n=17160)  post 25.9 bps (n=11640)
+
+H1 descriptive: open-to-t return by pm_ret bucket (pooled over names), + = up from the open
+  all            n=1958 | r30 +0.05% [-0.12,+0.22] <0 50% | r60 +0.08% [-0.11,+0.28] <0 51% | r385 +0.15% [-0.11,+0.42] <0 51% | pm_high touched 63%
+  pm>=3%         n= 404 | r30 +0.21% [-0.26,+0.66] <0 50% | r60 +0.25% [-0.24,+0.73] <0 50% | r385 +0.08% [-0.57,+0.71] <0 51% | pm_high touched 75%
+  pm>=5%         n= 184 | r30 +0.20% [-0.48,+0.90] <0 48% | r60 +0.01% [-0.73,+0.77] <0 52% | r385 -0.39% [-1.35,+0.56] <0 52% | pm_high touched 77%
+  pm>=8%         n=  51 | r30 +0.46% [-1.23,+2.16] <0 51% | r60 +0.30% [-1.35,+2.08] <0 55% | r385 +0.72% [-1.42,+2.81] <0 43% | pm_high touched 71%
+  pm>=5% & fade  n= 111 | r30 +0.33% [-0.62,+1.28] <0 46% | r60 -0.01% [-0.97,+0.98] <0 50% | r385 -0.56% [-1.82,+0.71] <0 50% | pm_high touched 68%
+  pm<=-3%        n= 290 | r30 +0.42% [-0.06,+0.92] <0 46% | r60 +0.55% [-0.06,+1.17] <0 49% | r385 +0.42% [-0.37,+1.20] <0 52% | pm_high touched 40%
+  per name, pm_ret >= 5 % (descriptive only, the user's claim is about IREN):
+    IREN  n= 42 | r30 +0.60% <0 50% | r60 +0.57% <0 45% | r385 -0.46% [-2.58,+1.61] <0 50% | pm_high touched 76%
+    AXTI  n= 52 | r30 +0.67% <0 38% | r60 +0.38% <0 44% | r385 +0.64% [-1.56,+2.79] <0 46% | pm_high touched 79%
+    LITE  n= 45 | r30 +0.06% <0 51% | r60 -0.09% <0 62% | r385 -0.13% [-1.18,+0.94] <0 51% | pm_high touched 80%
+    OKLO  n= 45 | r30 -0.56% <0 56% | r60 -0.84% <0 56% | r385 -1.78% [-3.83,+0.33] <0 62% | pm_high touched 73%
+
+H1 grid: short at 09:31 when pm_ret >= x, stop pm_high, TP ladder; pooled by day, bps/day
+   x   tp  fade  is_sh  is_trades  oos_sh  oos_bps  oos_trades  per_trade_bps
+0.08  NaN False   0.25         20   -1.11    -2.03          18         -10.19
+0.08 0.03 False  -0.02         20   -0.95    -1.34          18         -25.05
+0.08  NaN  True  -0.13         19   -0.46    -0.75          13         -29.69
+0.08 0.03  True  -0.14         19   -1.36    -1.76          13         -47.56
+0.08 0.02 False  -0.42         20   -1.22    -1.57          18         -52.54
+0.08 0.01 False  -0.50         20   -0.67    -0.80          18         -42.49
+0.08 0.02  True  -0.51         19   -1.39    -1.68          13         -70.92
+0.08 0.00 False  -0.57         20   -0.61    -0.68          18         -42.57
+0.08 0.01  True  -0.60         19   -1.05    -1.14          13         -63.74
+0.08 0.00  True  -0.67         19   -1.02    -1.01          13         -63.85
+0.03  NaN  True  -1.33        164    1.57     8.58          63         -19.65
+0.03  NaN False  -1.40        214    1.12     6.64         102         -22.20
+0.05  NaN False  -1.44         93    0.90     3.46          48         -39.50
+0.05  NaN  True  -1.66         65    1.37     4.56          29         -47.21
+0.03 0.03  True  -1.66        164    0.81     2.73          63         -32.41
+0.05 0.03  True  -1.68         65   -0.02    -0.03          29         -65.19
+0.03 0.03 False  -1.87        214    0.46     1.71         102         -30.79
+0.05 0.03 False  -1.91         93   -0.00    -0.01          48         -53.20
+0.05 0.01  True  -2.21         65   -0.82    -1.31          29         -79.35
+0.03 0.02  True  -2.22        164   -0.39    -1.15          63         -53.57
+0.03 0.01  True  -2.24        164   -0.84    -2.29          63         -51.56
+0.05 0.02  True  -2.29         65   -0.57    -1.02          29         -88.80
+0.05 0.02 False  -2.29         93   -0.67    -1.40          48         -65.23
+0.03 0.02 False  -2.37        214   -0.90    -2.89         102         -46.57
+0.05 0.01 False  -2.48         93   -0.72    -1.29          48         -62.32
+0.05 0.00  True  -2.49         65   -0.92    -1.35          29         -85.42
+0.03 0.01 False  -2.61        214   -0.96    -2.78         102         -45.26
+0.03 0.00  True  -2.72        164   -0.68    -1.71          63         -56.84
+0.05 0.00 False  -2.77         93   -0.71    -1.14          48         -66.12
+0.03 0.00 False  -3.15        214   -0.69    -1.83         102         -49.11
+OOS mean>0: 6 of 30
+PICK (best in-sample among the 30): (0.08, None, False)
+OOS net -2.0 bps/day  95% CI [-7.1, 3.0]  99.95% CI [-11.2, 6.4]  Sharpe -1.11  2x cost -2.7 bps/day
+IS  net 0.7 bps/day  Sharpe 0.25
+  IREN: 10 trades (4 OOS), stopped 60%, per-trade net 140 bps
+  AXTI: 9 trades (7 OOS), stopped 78%, per-trade net -339 bps
+  LITE: 7 trades (3 OOS), stopped 43%, per-trade net -139 bps
+  OKLO: 12 trades (4 OOS), stopped 42%, per-trade net 186 bps
+baseline random side: mean -0.6, 95th pct 3.3 bps/day
+
+H2: ORB(15, 1.0, long) only when the breakout close is above pm_high, vs the same ORB without the filter
+  IREN: ORB long 299 trades, with pm_high filter 127
+  AXTI: ORB long 279 trades, with pm_high filter 138
+  LITE: ORB long 302 trades, with pm_high filter 173
+  OKLO: ORB long 274 trades, with pm_high filter 136
+  ORB long  IS    5.2 bps/day Sharpe  0.45  OOS    1.2 Sharpe  0.09
+  H2        IS   -0.6 bps/day Sharpe -0.08  OOS   -7.7 Sharpe -1.07
+  OOS diff H2 - ORB -8.8 bps/day  99.95% CI [-45.8, 27.0]  IS diff -5.8

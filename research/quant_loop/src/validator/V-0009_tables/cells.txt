@@ -1,0 +1,8 @@
+I_10:30 tercile cuts (all train 0DTE days incl FOMC) 18.45 25.45
+I_low n 73 85 D_call -0.0147 D_put 0.0788 D_2 0.0321 dPnL c/p 10.4 96.9
+I_mid n 133 153 D_call -0.0254 D_put 0.0954 D_2 0.035 dPnL c/p -53.0 137.1
+I_high n 168 180 D_call -0.0357 D_put 0.0124 D_2 -0.0117 dPnL c/p -20.1 -0.4
+prevdrop<=-1% n 59 71 D_call -0.1037 D_put 0.0058 dPnL c/p -167.3 -19.4
+mono 12:00 n 463 546 D_call -0.011 D_put 0.0253 D_2 0.0071 dPnL c/p -25.8 24.7
+mono 13:00 n 436 499 D_call -0.0384 D_put 0.0258 D_2 -0.0063 dPnL c/p -42.7 19.7
+mono 14:00 n 374 418 D_call -0.0279 D_put 0.0564 D_2 0.0142 dPnL c/p -25.9 69.7

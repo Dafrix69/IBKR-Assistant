@@ -1,0 +1,12 @@
+minute rank without 15:50-15:57 (minutes 3..57, incl :15 :30 :45):
+  mean: hour +0.297; minutes >= hour: 1 of 55; top: {38: 0.525, 30: 0.165, 39: 0.114, 56: 0.096}
+  median: hour +0.117; minutes >= hour: 1 of 55; top: {30: 0.167, 15: 0.104, 45: 0.096, 52: 0.092}
+  excluding :15/:30/:45 too: median minutes >= hour 0 of 52
+  main blind: mean +0.297; without 2025-04-14: +0.142; without 2025-04 (whole month): +0.101
+  placebo :37: mean -0.333; without 2025-10-14: -0.127; without 2025-04 (whole month): -0.249
+             S       K   w      HA      HB  medB  okB   ageA      ageB
+68315  6665.81  6665.0  20  0.4675  5.0575  4.35   30  1.695  1.097033
+  leg (np.float64(6645.0), 'P'): half-spread [4.7, 3.8, 3.7, 3.3, 0.45, 2.05, 2.05, 1.5]  age s [0.3, 0.0, 0.2, 0.4, 0.7, 0.5, 1.1, 0.2]
+  leg (np.float64(6665.0), 'P'): half-spread [2.25, 2.45, 3.75, 3.6, 1.55, 0.45, 1.95, 0.55]  age s [0.6, 0.1, 0.3, 0.7, 0.4, 1.3, 0.7, 0.0]
+  leg (np.float64(6665.0), 'C'): half-spread [0.8, 0.15, 0.55, 0.45, 0.2, 0.22, 0.43, 0.45]  age s [0.2, 0.1, 0.4, 0.3, 1.6, 0.8, 0.4, 0.0]
+  leg (np.float64(6685.0), 'C'): half-spread [0.1, 0.12, 0.08, 0.08, 0.1, 0.03, 0.02, 0.05]  age s [0.5, 0.8, 0.7, 1.3, 2.6, 1.3, 0.1, 0.8]

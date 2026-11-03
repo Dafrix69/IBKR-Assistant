@@ -1,0 +1,24 @@
+names ['IREN', 'AXTI', 'LITE', 'OKLO']  days 504  2024-10-28..2026-10-30  OOS from 2026-03-04 (168 days)
+  IREN: 504 days from 2024-10-28
+  AXTI: 504 days from 2024-10-28
+  LITE: 504 days from 2024-10-28
+  OKLO: 504 days from 2024-10-28
+IREN: wall days 499, call wall 100%, put wall 100%, from 2024-11-01
+AXTI: wall days 395, call wall 84%, put wall 52%, from 2024-11-01
+LITE: wall days 493, call wall 90%, put wall 74%, from 2024-11-01
+OKLO: wall days 500, call wall 100%, put wall 100%, from 2024-11-01
+
+A. after first touch, 30-minute return, + = rejected by the wall, bps
+  IREN: n=76 real -82.9  placebo -50.5
+  AXTI: n=68 real -36.7  placebo -164.9
+  LITE: n=80 real -50.7  placebo -60.0
+  OKLO: n=110 real -72.5  placebo -48.2
+  pooled paired difference 9.4 bps  CI [-20.1, 39.6]  days 252
+
+B. overlays on base (15, 1.0, 'long', 1.0), bps/day
+  BASE  IS    2.6  OOS    4.5  Sharpe  0.64  OOS diff    0.0  98.75% CI [0.0, 0.0]  IS diff 0.0
+  W1    IS    0.4  OOS    4.4  Sharpe  0.77  OOS diff   -0.1  98.75% CI [-9.9, 8.9]  IS diff -2.2
+  W2    IS    2.1  OOS    4.6  Sharpe  0.71  OOS diff    0.1  98.75% CI [-6.1, 5.6]  IS diff -0.5
+  W3    IS   -2.4  OOS   -1.7  Sharpe -0.54  OOS diff   -6.2  98.75% CI [-27.6, 11.6]  IS diff -5.1
+  W4-   IS    4.6  OOS    8.9  Sharpe  1.82  OOS diff    4.4  98.75% CI [-5.4, 14.0]  IS diff 1.9
+  W4+   IS   -1.9  OOS   -4.4  Sharpe -1.01  OOS diff   -8.9  98.75% CI [-25.3, 5.3]  IS diff -4.6

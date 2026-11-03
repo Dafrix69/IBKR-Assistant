@@ -1,0 +1,12 @@
+mean 30-minute return after first touch, + = rejected, bps
+                   mean  count
+sym  side kind                
+AXTI -1   placebo  35.1   1075
+          real     44.3     48
+      1   placebo -22.4   1361
+          real     89.7     81
+IREN -1   placebo   8.0   2056
+          real      8.3     95
+      1   placebo   7.6   2069
+          real    -34.9    102
+real - placebo, days with a real touch: -2.0 bps  CI [-30.8, 27.9]  days 253

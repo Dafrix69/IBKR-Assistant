@@ -1,0 +1,87 @@
+prints total 260015; main 244736; late 14653; days 249
+
+== GATED (5.1 / 5.2) ==
+D (chain interp) [1,2]                             trim  +2.45 [+2.35, +2.55]    med  +2.39 mean  +2.56 seg1  +2.50 seg2  +2.42 days 249 prints 244736
+P_own placebo (single px - own mid) [3]            trim  +0.01 [-0.01, +0.04]    med  +0.01 mean  +0.02 seg1  -0.02 seg2  +0.04 days 249 prints 242191
+F (combo own mid - chain interp) [4]               trim  +0.24 [+0.16, +0.32]    med  +0.26 mean  +0.24 seg1  +0.22 seg2  +0.26 days 249 prints 244736
+D_own (px - own mid; named co-quantity)            trim  +2.27 [+2.19, +2.36]    med  +2.24 mean  +2.39 seg1  +2.38 seg2  +2.18 days 249 prints 244736
+placebo coverage 0.990
+gate1 D>0 & CI excl 0 ; gate2 halves>0 ; gate3 |P_own|<D/2: True (0.01 vs 1.23) ; gate4 |F|<D/4: True (0.24 vs 0.61)
+
+== +-1 s neighbour quotes (3.5; gate 5 on the 1 s rows) ==
+-- (a) single-leg, 1 s: coverage 0.0125 (3061 prints, 235 days); iron share 0.905, median w 20 (main 30)
+   A = own mid - nb                                trim  -0.14 [-0.77, +0.46]    med  +0.00 mean  -0.31 seg1  -0.78 seg2  +0.06 days 235 prints 3061
+   B = nb - chain interp                           trim  -1.74 [-2.73, -0.71]    med  -2.36 mean  -1.54 seg1  -1.12 seg2  -2.16 days 235 prints 3061
+   F on covered subset                             trim  -2.30                   med  -1.91 mean  -1.79 seg1  -1.94 seg2  -2.47 days 235 prints 3061
+   D on covered subset                             trim  -0.35                   med  -0.08 mean  -0.38 seg1  -0.22 seg2  -0.38 days 235 prints 3061
+   D_own on covered subset                         trim  +1.69                   med  +1.71 mean  +1.40 seg1  +1.55 seg2  +1.91 days 235 prints 3061
+   D_nb = px - nb                                  trim  +1.83                   med  +1.95 mean  +1.18 seg1  +1.28 seg2  +1.93 days 235 prints 3061
+   agrees with chain (|B|<D/4=0.61): False; convicts (agrees & |A|>=D/4): False
+-- (b) multi-leg-coded, 1 s: coverage 0.0731 (17891 prints, 249 days); iron share 0.921, median w 30 (main 30)
+   A = own mid - nb                                trim  -0.03 [-0.08, +0.03]    med  -0.02 mean  +0.02 seg1  -0.01 seg2  -0.04 days 249 prints 17891
+   B = nb - chain interp                           trim  +0.25 [-0.10, +0.60]    med  +0.25 mean  +0.41 seg1  +0.50 seg2  +0.03 days 249 prints 17891
+   F on covered subset                             trim  +0.28                   med  +0.23 mean  +0.45 seg1  +0.59 seg2  -0.01 days 249 prints 17891
+   D on covered subset                             trim  +4.19                   med  +3.96 mean  +4.61 seg1  +5.20 seg2  +3.35 days 249 prints 17891
+   D_own on covered subset                         trim  +4.19                   med  +4.04 mean  +4.26 seg1  +4.90 seg2  +3.60 days 249 prints 17891
+   D_nb = px - nb                                  trim  +4.12                   med  +4.06 mean  +4.26 seg1  +4.83 seg2  +3.51 days 249 prints 17891
+   agrees with chain (|B|<D/4=0.61): True; convicts (agrees & |A|>=D/4): False
+-- (a) single-leg, 5 s [report]: coverage 0.2063 (50491 prints, 249 days); iron share 0.926, median w 25 (main 30)
+   A = own mid - nb                                trim  -0.23 [-0.37, -0.08]    med  -0.23 mean  -0.11 seg1  -0.14 seg2  -0.30 days 249 prints 50491
+   B = nb - chain interp                           trim  -0.53 [-0.75, -0.31]    med  -0.39 mean  -1.08 seg1  -0.53 seg2  -0.52 days 249 prints 50491
+   F on covered subset                             trim  -0.60                   med  -0.51 mean  -1.14 seg1  -0.47 seg2  -0.69 days 249 prints 50491
+   D on covered subset                             trim  +1.63                   med  +1.63 mean  +1.24 seg1  +1.93 seg2  +1.43 days 249 prints 50491
+   D_own on covered subset                         trim  +2.29                   med  +2.30 mean  +2.36 seg1  +2.47 seg2  +2.16 days 249 prints 50491
+   D_nb = px - nb                                  trim  +2.03                   med  +1.87 mean  +2.27 seg1  +2.37 seg2  +1.82 days 249 prints 50491
+-- (b) multi-leg-coded, 5 s [report]: coverage 0.1891 (46268 prints, 249 days); iron share 0.926, median w 30 (main 30)
+   A = own mid - nb                                trim  -0.15 [-0.21, -0.08]    med  -0.11 mean  -0.13 seg1  -0.09 seg2  -0.20 days 249 prints 46268
+   B = nb - chain interp                           trim  +0.13 [-0.12, +0.38]    med  +0.06 mean  +0.11 seg1  +0.34 seg2  -0.01 days 249 prints 46268
+   F on covered subset                             trim  -0.03                   med  -0.01 mean  -0.07 seg1  +0.23 seg2  -0.24 days 249 prints 46268
+   D on covered subset                             trim  +3.38                   med  +3.19 mean  +3.76 seg1  +4.29 seg2  +2.72 days 249 prints 46268
+   D_own on covered subset                         trim  +3.60                   med  +3.43 mean  +3.96 seg1  +4.27 seg2  +3.12 days 249 prints 46268
+   D_nb = px - nb                                  trim  +3.52                   med  +3.28 mean  +3.88 seg1  +4.22 seg2  +2.98 days 249 prints 46268
+gate5 (no neighbour set convicts): True
+
+== k translation ==
+H_bar 0.2646 pts; k_buy ~ 0.293, k_sell ~ 0.107
+
+== REPORT ONLY ==
+D struct iron                                      trim  +2.70                   med  +2.71 mean  +2.86 seg1  +2.86 seg2  +2.58 days 249 prints 198935
+P_own struct iron                                  trim  +0.02                   med  +0.02 mean  +0.03 seg1  -0.01 seg2  +0.04 days 249 prints 198754
+F struct iron                                      trim  +0.27                   med  +0.28 mean  +0.26 seg1  +0.25 seg2  +0.28 days 249 prints 198935
+D struct fly_C                                     trim  +1.43                   med  +1.41 mean  +1.47 seg1  +1.36 seg2  +1.49 days 249 prints 29082
+P_own struct fly_C                                 trim  +0.01                   med  +0.02 mean  +0.02 seg1  -0.09 seg2  +0.10 days 249 prints 28141
+F struct fly_C                                     trim  +0.19                   med  +0.25 mean  +0.20 seg1  +0.18 seg2  +0.21 days 249 prints 29082
+D struct fly_P                                     trim  +1.33                   med  +1.46 mean  +1.30 seg1  +1.09 seg2  +1.52 days 249 prints 16719
+P_own struct fly_P                                 trim  -0.09                   med  -0.11 mean  -0.03 seg1  +0.08 seg2  -0.20 days 249 prints 15296
+F struct fly_P                                     trim  +0.01                   med  +0.05 mean  +0.00 seg1  -0.06 seg2  +0.07 days 249 prints 16719
+D time 09:45-12:00                                 trim  +2.26                   med  +2.21 mean  +2.35 seg1  +2.36 seg2  +2.20 days 249 prints 109471
+D time 12:00-14:00                                 trim  +2.34                   med  +2.33 mean  +2.38 seg1  +2.28 seg2  +2.39 days 249 prints 71179
+D time 14:00-15:30                                 trim  +2.72                   med  +2.65 mean  +2.93 seg1  +2.78 seg2  +2.70 days 249 prints 64086
+D time 15:30-15:59                                 trim  +3.26                   med  +2.99 mean  +3.69 seg1  +4.27 seg2  +2.40 days 249 prints 14315
+D size 1-2 lots                                    trim  +2.42                   med  +2.39 mean  +2.54 seg1  +2.49 seg2  +2.38 days 249 prints 197556
+D size 3-9 lots                                    trim  +2.56                   med  +2.56 mean  +2.68 seg1  +2.61 seg2  +2.54 days 249 prints 37004
+D size >=10 lots                                   trim  +2.53                   med  +2.46 mean  +2.75 seg1  +2.52 seg2  +2.54 days 249 prints 10176
+D ref = chain m row only                           trim  +3.20                   med  +3.21 mean  +3.31 seg1  +3.34 seg2  +3.07 days 249 prints 244736
+D baseline-A days                                  trim  +2.45                   med  +2.39 mean  +2.49 seg1  +2.50 seg2  +2.42 days 221 prints 226174
+D ex 2025-04-03..04-11                             trim  +2.42                   med  +2.37 mean  +2.43 seg1  +2.43 seg2  +2.42 days 242 prints 242696
+
+== single-leg diagnostics (USD per contract, day-level 10% trimmed means of daily means) ==
+  body<=5  C  own-chain  +3.03  own - nb(+-1s)  -0.05  nb - chain  +6.39  nb coverage 0.478  prints/day 44206
+  body<=5  P  own-chain  +5.16  own - nb(+-1s)  -0.02  nb - chain +11.18  nb coverage 0.449  prints/day 38120
+  6-15     C  own-chain  +2.07  own - nb(+-1s)  -0.02  nb - chain  +4.84  nb coverage 0.412  prints/day 54419
+  6-15     P  own-chain  +4.04  own - nb(+-1s)  -0.00  nb - chain  +9.53  nb coverage 0.372  prints/day 44584
+  16-30    C  own-chain  +1.00  own - nb(+-1s)  -0.02  nb - chain  +2.91  nb coverage 0.327  prints/day 40407
+  16-30    P  own-chain  +2.53  own - nb(+-1s)  +0.01  nb - chain  +6.60  nb coverage 0.302  prints/day 36538
+  31-50    C  own-chain  +0.52  own - nb(+-1s)  -0.02  nb - chain  +1.62  nb coverage 0.244  prints/day 21535
+  31-50    P  own-chain  +1.67  own - nb(+-1s)  +0.00  nb - chain  +4.96  nb coverage 0.234  prints/day 24690
+  51-85    C  own-chain  +0.42  own - nb(+-1s)  -0.01  nb - chain  +0.67  nb coverage 0.170  prints/day 11786
+  51-85    P  own-chain  +0.99  own - nb(+-1s)  -0.00  nb - chain  +2.90  nb coverage 0.165  prints/day 17397
+  single-leg own mid - chain interp by quote age (body<=5 and 6-15, C+P pooled):
+    <5ms       +3.47  share 0.394
+    5-50ms     +4.15  share 0.433
+    50-500ms   +2.68  share 0.168
+    0.5-5s     +0.62  share 0.005
+    >=5s       +0.66  share 0.000
+  quote age (ms) 09:45-15:30, day medians of daily median / p90 / share > 1 s:
+    combo  med 25.0  p90 540.0  >1s 0.0680
+    single med 13.0  p90 130.0  >1s 0.0147

@@ -1,0 +1,32 @@
+17 label-dependent cells, 2000 stratified shuffles
+G main           obs    +1.122  z  +2.69  two-sided p 0.0065  max-T adjusted p 0.0755
+G minutes        obs    +2.158  z  +3.88  two-sided p 0.0015  max-T adjusted p 0.0085
+G beige          obs    +0.154  z  +0.27  two-sided p 0.8026  max-T adjusted p 1.0000
+G 13:54          obs    +1.168  z  +2.93  two-sided p 0.0015  max-T adjusted p 0.0465
+G 13:56          obs    +1.131  z  +2.84  two-sided p 0.0035  max-T adjusted p 0.0560
+G 13:58          obs    +1.400  z  +3.51  two-sided p 0.0005  max-T adjusted p 0.0150
+G 14:10-13:55    obs    -0.070  z  -0.26  two-sided p 0.7836  max-T adjusted p 1.0000
+G cap1           obs    +1.109  z  +2.76  two-sided p 0.0040  max-T adjusted p 0.0670
+G k05            obs    +2.803  z  +2.69  two-sided p 0.0060  max-T adjusted p 0.0765
+G put            obs    +2.496  z  +3.08  two-sided p 0.0020  max-T adjusted p 0.0350
+dPnL             obs    +7.329  z  +0.10  two-sided p 0.9170  max-T adjusted p 1.0000
+pnl14            obs   +32.657  z  +0.17  two-sided p 0.8581  max-T adjusted p 1.0000
+x1355            obs    -0.118  z  -0.62  two-sided p 0.5497  max-T adjusted p 0.9985
+step             obs    +0.031  z  +2.81  two-sided p 0.0035  max-T adjusted p 0.0595
+step minutes     obs    +0.055  z  +3.81  two-sided p 0.0010  max-T adjusted p 0.0095
+step beige       obs    +0.009  z  +0.62  two-sided p 0.5407  max-T adjusted p 0.9985
+P_w              obs    -0.002  z  -0.13  two-sided p 0.8916  max-T adjusted p 1.0000
+
+one-sided max-T over 12 directional cells (G / step variants):
+G main           z  +2.69  one-sided p 0.0035  max-T adjusted p 0.0320
+G minutes        z  +3.88  one-sided p 0.0005  max-T adjusted p 0.0015
+G beige          z  +0.27  one-sided p 0.3583  max-T adjusted p 0.7536
+G 13:54          z  +2.93  one-sided p 0.0010  max-T adjusted p 0.0205
+G 13:56          z  +2.84  one-sided p 0.0035  max-T adjusted p 0.0245
+G 13:58          z  +3.51  one-sided p 0.0005  max-T adjusted p 0.0045
+G cap1           z  +2.76  one-sided p 0.0035  max-T adjusted p 0.0295
+G k05            z  +2.69  one-sided p 0.0030  max-T adjusted p 0.0325
+G put            z  +3.08  one-sided p 0.0010  max-T adjusted p 0.0155
+step             z  +2.81  one-sided p 0.0030  max-T adjusted p 0.0250
+step minutes     z  +3.81  one-sided p 0.0010  max-T adjusted p 0.0025
+step beige       z  +0.62  one-sided p 0.2609  max-T adjusted p 0.6147

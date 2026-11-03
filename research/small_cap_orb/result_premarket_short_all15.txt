@@ -1,0 +1,64 @@
+names ['IREN', 'AXTI', 'LITE', 'OKLO', 'CRDO', 'NBIS', 'QUBT', 'NVTS', 'APLD', 'CLSK', 'SNDK', 'WOLF', 'ALAB', 'QBTS', 'RKLB']  days 504  2024-10-28..2026-10-30  OOS from 2026-03-04 (168 days)
+  IREN: 504 days from 2024-10-28
+  AXTI: 504 days from 2024-10-28
+  LITE: 504 days from 2024-10-28
+  OKLO: 504 days from 2024-10-28
+  CRDO: 504 days from 2024-10-28
+  NBIS: 504 days from 2024-10-28
+  QUBT: 504 days from 2024-10-28
+  NVTS: 504 days from 2024-10-28
+  APLD: 504 days from 2024-10-28
+  CLSK: 503 days from 2024-10-28
+  SNDK: 431 days from 2025-02-13
+  WOLF: 275 days from 2025-09-29
+  ALAB: 504 days from 2024-10-28
+  QBTS: 503 days from 2024-10-28
+  RKLB: 504 days from 2024-10-28
+  IREN: median spread night 14.4  pre 16.6  rth 3.6 bps  -> entries allowed in ['night', 'pre']
+  AXTI: median spread night 28.1  pre 39.5  rth 14.7 bps  -> entries allowed in ['night']
+  LITE: median spread night 26.9  pre 32.7  rth 11.7 bps  -> entries allowed in ['night']
+  OKLO: median spread night 31.4  pre 34.7  rth 7.2 bps  -> entries allowed in none
+  CRDO: median spread night 39.6  pre 45.9  rth 14.4 bps  -> entries allowed in none
+  NBIS: median spread night 20.4  pre 21.5  rth 8.5 bps  -> entries allowed in ['night', 'pre']
+  QUBT: median spread night 46.6  pre 17.5  rth 12.6 bps  -> entries allowed in ['pre']
+  NVTS: median spread night 56.1  pre 44.8  rth 9.1 bps  -> entries allowed in none
+  APLD: median spread night 38.9  pre 36.9  rth 4.6 bps  -> entries allowed in none
+  CLSK: median spread night 62.0  pre 53.5  rth 8.5 bps  -> entries allowed in none
+  SNDK: median spread night 11.2  pre 13.2  rth 6.5 bps  -> entries allowed in ['night', 'pre']
+  WOLF: median spread night 183.5  pre 115.4  rth 20.4 bps  -> entries allowed in none
+  ALAB: median spread night 84.6  pre 92.7  rth 18.3 bps  -> entries allowed in none
+  QBTS: median spread night 31.9  pre 31.8  rth 6.3 bps  -> entries allowed in none
+  RKLB: median spread night 15.1  pre 15.8  rth 4.3 bps  -> entries allowed in ['night', 'pre']
+
+Grid, short only, pooled by day over the names, bps/day. 'gated' = only name-sessions under 30 bps
+   x  exit  gated  is_sh  is_trades  oos_sh  oos_bps  oos_trades  per_trade_bps   win  stopped
+0.05     0   True  0.579        230  -0.267   -0.358         150          7.741 0.508    0.346
+0.05     0  False -0.619        663  -2.803   -8.368         379        -27.807 0.440    0.342
+0.05    30   True  0.147        230   0.674    1.501         150         12.950 0.389    0.602
+0.05    30  False -0.707        663  -1.140   -4.682         379        -24.323 0.366    0.574
+0.08     0   True  0.211         85  -0.721   -0.542          45         -0.382 0.492    0.336
+0.08     0  False -0.742        236  -1.049   -1.859         119        -28.539 0.482    0.294
+0.08    30   True -0.027         85   1.278    1.813          45         34.685 0.431    0.505
+0.08    30  False -0.463        236   0.411    1.037         119         -8.189 0.403    0.469
+
+PICK (given on the command line, not the in-sample pick): (0.08, 0)
+OOS net -0.5 bps/day  95% CI [-2.3, 1.0]  99.95% CI [-3.6, 2.2]  Sharpe -0.72  2x cost -0.9 bps/day
+IS  net 0.2 bps/day  Sharpe 0.21
+  IREN: 25 trades (8 OOS)  per-trade net 28 bps  win 56%  stopped 24%  night/pre 15/10  median entry-bar volume 8588 sh  gross 46 bps
+  AXTI: 11 trades (8 OOS)  per-trade net -55 bps  win 45%  stopped 27%  night/pre 11/0  median entry-bar volume 1100 sh  gross -18 bps
+  LITE: 3 trades (1 OOS)  per-trade net -171 bps  win 33%  stopped 67%  night/pre 3/0  median entry-bar volume 177 sh  gross -128 bps
+  OKLO: no trades
+  CRDO: no trades
+  NBIS: 30 trades (13 OOS)  per-trade net 4 bps  win 47%  stopped 30%  night/pre 13/17  median entry-bar volume 1866 sh  gross 28 bps
+  QUBT: 28 trades (3 OOS)  per-trade net -37 bps  win 50%  stopped 39%  night/pre 0/28  median entry-bar volume 20010 sh  gross -4 bps
+  NVTS: no trades
+  APLD: no trades
+  CLSK: no trades
+  SNDK: 15 trades (6 OOS)  per-trade net -16 bps  win 40%  stopped 20%  night/pre 8/7  median entry-bar volume 1871 sh  gross -1 bps
+  WOLF: no trades
+  ALAB: no trades
+  QBTS: no trades
+  RKLB: 18 trades (6 OOS)  per-trade net 85 bps  win 56%  stopped 28%  night/pre 8/10  median entry-bar volume 5516 sh  gross 104 bps
+baseline random side: mean -0.3, 95th pct 0.8 bps/day
+
+all 130 trades of the pick written to trades_premarket_short_all15.csv

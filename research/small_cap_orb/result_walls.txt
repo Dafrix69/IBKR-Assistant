@@ -1,0 +1,15 @@
+IREN: wall days 499, call wall 100%, put wall 100%, from 2024-11-01
+AXTI: wall days 395, call wall 84%, put wall 52%, from 2024-11-01
+
+A. after first touch, 30-minute return, + = rejected by the wall, bps
+  IREN: n=85 real -77.2  placebo -52.5
+  AXTI: n=62 real -22.1  placebo -58.7
+  pooled paired difference -1.5 bps  CI [-52.7, 52.8]  days 131
+
+B. overlays on base (15, 1.0, 'long', 1.0), bps/day
+  BASE  IS   -0.4  OOS    4.7  Sharpe  0.49  OOS diff    0.0  98.75% CI [0.0, 0.0]  IS diff 0.0
+  W1    IS    2.2  OOS    3.2  Sharpe  0.43  OOS diff   -1.4  98.75% CI [-18.1, 11.8]  IS diff 2.6
+  W2    IS    2.1  OOS    4.4  Sharpe  0.50  OOS diff   -0.2  98.75% CI [-10.0, 8.3]  IS diff 2.4
+  W3    IS   -1.5  OOS    2.9  Sharpe  0.61  OOS diff   -1.7  98.75% CI [-30.3, 22.0]  IS diff -1.2
+  W4-   IS    4.3  OOS    5.8  Sharpe  0.84  OOS diff    1.2  98.75% CI [-15.2, 17.3]  IS diff 4.7
+  W4+   IS   -4.7  OOS   -1.2  Sharpe -0.18  OOS diff   -5.8  98.75% CI [-31.6, 14.2]  IS diff -4.3

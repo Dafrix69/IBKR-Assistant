@@ -1,0 +1,46 @@
+U vs official close: max |U - calendar.settle[D]| 0.0
+n 599 1-night 476 weekend 123
+P [-0.0247 -0.0795  0.0307]
+x_full 0.9838 x_day 1.0085
+s_real 0.3417 s_imp 0.3505 diff -0.0088 [-0.0529  0.0394]
+pnl k0.2 [ -51.9 -233.4  126.8] k0 -36.3 k0.5 -75.1 win 0.538 fee 6.45
+  year 2022: n 158 P +0.025 pnl -229.6
+  year 2023: n 238 P -0.033 pnl -25.4
+  year 2024: n 203 P -0.054 pnl +55.4
+
+# item 3: spread/I halves
+hi=False: n 300 P -0.002 x_full 1.025 x_day 1.027 I/F 0.879% spr_abs med 1.00 F-U mean +1.20 med|F-U| 3.53 F5-F10 med|.| 0.000 impl day share 0.682 x_on mean 0.987 x_day med 0.882 x_full med 0.948 C mid-last med +0.150 P mid-last med -0.190 size imb mean -0.017 years {2022: 114, 2023: 119, 2024: 67} weekend share 0.12 pnl -235.5
+hi=True: n 299 P -0.048 x_full 0.942 x_day 0.990 I/F 0.536% spr_abs med 1.20 F-U mean +1.29 med|F-U| 2.96 F5-F10 med|.| 0.025 impl day share 0.665 x_on mean 0.972 x_day med 0.786 x_full med 0.727 C mid-last med +0.000 P mid-last med -0.050 size imb mean +0.045 years {2022: 44, 2023: 119, 2024: 136} weekend share 0.29 pnl +132.4
+spearman(sprr, I/F) -0.552
+P by I/F tercile x spread half (n, P):
+  I tercile 0 hi=False: n 42 P -0.060 x_full 0.879 x_day 0.939
+  I tercile 0 hi=True: n 158 P -0.032 x_full 0.960 x_day 0.992
+  I tercile 1 hi=False: n 99 P -0.006 x_full 1.048 x_day 1.054
+  I tercile 1 hi=True: n 100 P -0.051 x_full 0.981 x_day 1.032
+  I tercile 2 hi=False: n 159 P +0.017 x_full 1.050 x_day 1.033
+  I tercile 2 hi=True: n 41 P -0.100 x_full 0.779 x_day 0.879
+abs-spread half (within I tercile) hi=False: n 314 P +0.005 [-0.063,+0.073]
+abs-spread half (within I tercile) hi=True: n 285 P -0.057 [-0.147,+0.030]
+centre F (spec): P all -0.025 hi -0.048 lo -0.002
+centre 16:00 close: P all -0.006 hi -0.022 lo +0.011
+centre F10: P all -0.025 hi -0.048 lo -0.002
+
+# item 4: weekend / Monday (training)
+x_day weekend(Mon session) mean 0.838 med 0.692 n 123 | other 1.053 med 0.889 n 476
+diff -0.215 se 0.073 z -2.92
+weekend: x_on 0.856 med 0.666 (n 121) strad mid $ +463.0 [+23,+878] med +973 win 0.667 fly k0.2 +308.0
+1-night: x_on 0.982 med 0.886 (n 461) strad mid $ -68.9 [-319,+171] med +374 win 0.548 fly k0.2 -144.8
+weekend robustness:
+  x_day weekend drop 5 lowest: 0.872; drop 10 lowest 0.908
+  strad weekend drop best 5: +297.7; drop best 10 +154.8; 1-night drop best 5 -136.5
+  x_on weekend drop 5 smallest: 0.899
+  max single-night weekend straddle share of total: 0.100; top5 share 0.383
+  2022: wk n 33 x_day 0.852 x_on 0.917 strad +358 | 1n n 125 x_day 1.051 x_on 1.062 strad -331
+  2023: wk n 47 x_day 0.721 x_on 0.797 strad +670 | 1n n 191 x_day 1.099 x_on 0.975 strad -57
+  2024: wk n 43 x_day 0.955 x_on 0.849 strad +318 | 1n n 160 x_day 0.998 x_on 0.903 strad +122
+x_day by day-after-weekend, all training edge_panel rows (not just paired):
+  09:35: after-weekend n 132 ratio 0.843 med 0.696 | other n 492 1.050 med 0.884
+  10:30: after-weekend n 132 ratio 0.851 med 0.633 | other n 492 1.001 med 0.821
+  12:00: after-weekend n 132 ratio 0.938 med 0.752 | other n 492 0.985 med 0.782
+  14:00: after-weekend n 132 ratio 0.825 med 0.653 | other n 492 0.965 med 0.749
+Mann-Whitney x_day weekend vs other p 0.0036
