@@ -1,0 +1,67 @@
+base days 543 win 0.5820 ev +62.02 c 1544.1 cvD 0.404
+width counts {20: 215, 25: 110, 30: 151, 50: 52, 75: 15}
+        n          D         sd        ev     win       u
+D                                                        
+low   181  1127.8521   575.9303    6.9711  0.5525  0.0042
+mid   182  1366.8328   852.7735  -21.3657  0.5659 -0.0144
+high  180  2142.0050  1255.6222  201.6839  0.6278  0.0972
+G1 2.180  G2 +0.0646 p 0.133
+   year    n      G1      G2     cvD        ev  sh_base  sh_rule   u_low   u_mid  u_high   ev_low   ev_mid   ev_high  sh_ratio
+0  2022  128  1.7519  0.1048  0.4161   76.3545   0.0623   0.0319 -0.0666 -0.0335  0.1598 -63.6862 -47.9040  337.7640    0.5125
+1  2023  220  1.7656 -0.0279  0.2906  -24.5046  -0.0313  -0.0110  0.0318 -0.0077 -0.0424  40.4962  -8.5306 -106.3698    0.3524
+2  2024  195  1.8828  0.0978  0.4039  150.2253   0.1705   0.1301  0.0514  0.0326  0.1367  54.8913  48.4635  347.3210    0.7635
+V1 sharpe base 0.0660 rule 0.0504 ratio 0.763
+V1 k0.5 sharpe base 0.0385 rule 0.0226; maxdd base 13973 rule(eq risk) 15413
+year counts by width:
+width   20  25  30  50  75
+year                      
+2022     3  20  65  32   8
+2023   122  48  39   9   2
+2024    90  42  47  11   5
+pooled_spearman                          +0.0646
+partial_year                             +0.0643
+within_year_rank                         +0.0485
+nweighted_year_rho                       +0.0486
+partial_width                            -0.0111
+partial_year_width                       -0.0299
+wI_1.5_2.5_n                             512
+wI_1.5_2.5_spearman                      +0.0611
+wI_1.5_2.5_partial_year                  +0.0544
+spearman_u_implied                       +0.0865
+partial_year_u_implied                   +0.0922
+partial_year_drop_best5                  +0.0619
+partial_year_lo                          -0.0202
+partial_year_hi                          +0.1423
+partial_year_perm_p_two                  +0.1230
+partial_year_perm_p_gt005                +0.6240
+partial_year_width_lo                    -0.1270
+partial_year_width_hi                    +0.0647
+partial_year_width_perm_p_two            +0.4670
+partial_year_width_perm_p_gt005          +0.0535
+pooled_lo                                -0.0166
+pooled_hi                                +0.1417
+null_ratio_bias_partial_year_mean        -0.2859
+within-year terciles pooled
+      n          D        ev       u     win    u_se
+tY                                                  
+0   182  1157.9717   21.0228  0.0156  0.5604  0.0421
+1   180  1366.0476    2.8635  0.0008  0.5778  0.0443
+2   181  2109.5374  162.0703  0.0699  0.6077  0.0411
+unit return by width
+         n       u    u_se      wI
+width                             
+20     215  0.0077  0.0342  2.1649
+25     110 -0.0296  0.0591  2.0018
+30     151  0.0634  0.0514  1.8542
+50      52  0.1622  0.0672  2.0648
+75      15 -0.0513  0.1961  1.8512
+by width x year
+         n                u                     ev                         wI              
+year  2022 2023 2024   2022   2023   2024     2022      2023      2024   2022   2023   2024
+width                                                                                      
+20       3  122   90 -0.195  0.014  0.006 -213.731    19.882    -0.215  1.911  2.229  2.087
+25      20   48   42 -0.080 -0.090  0.063 -113.836  -127.483    85.131  1.957  1.992  2.035
+30      65   39   47  0.011  0.081  0.121   30.913   111.906   178.670  1.778  1.939  1.889
+50      32    9   11  0.166 -0.086  0.354  513.661  -279.569  1066.220  2.020  2.010  2.239
+75       8    2    5 -0.157 -0.562  0.321 -719.401 -1772.821  1122.379  1.865  1.464  1.984
+null (pay/width shuffled) pooled spearman mean +0.0065 [-0.0733, +0.0896]

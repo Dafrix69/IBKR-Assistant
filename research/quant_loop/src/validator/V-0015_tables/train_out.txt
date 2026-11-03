@@ -1,0 +1,138 @@
+/Users/dafrix/Developer/ibkr/work/datrix-qt/research/quant_loop/src/validator/V-0015_stats.py:65: Pandas4Warning: DatetimeIndex.dayofweek is deprecated and will be removed in a future version. Use DatetimeIndex.day_of_week instead.
+  b["stratum"] = b.index.year * 10 + b.index.dayofweek
+/Users/dafrix/Developer/ibkr/work/datrix-qt/research/quant_loop/src/validator/V-0015_stats.py:172: Pandas4Warning: DatetimeIndex.dayofweek is deprecated and will be removed in a future version. Use DatetimeIndex.day_of_week instead.
+  f"({b[b.event].etype.value_counts().to_dict()}), weekday {b[b.event].index.dayofweek.value_counts().to_dict()}")
+/Users/dafrix/Developer/ibkr/work/datrix-qt/research/quant_loop/src/validator/V-0015_stats.py:208: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  pre = H[[0, 1, 2, 3, 4]].mean(1)
+/Users/dafrix/Developer/ibkr/work/datrix-qt/research/quant_loop/src/validator/V-0015_stats.py:209: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  post = H[[5, 6]].mean(1)
+/Users/dafrix/Developer/ibkr/work/datrix-qt/research/quant_loop/src/validator/V-0015_stats.py:278: Pandas4Warning: DatetimeIndex.dayofweek is deprecated and will be removed in a future version. Use DatetimeIndex.day_of_week instead.
+  bt = b[~(b.event & (b.index.dayofweek == 1))]
+/Users/dafrix/Developer/ibkr/work/datrix-qt/research/quant_loop/src/validator/V-0015_stats.py:65: Pandas4Warning: DatetimeIndex.dayofweek is deprecated and will be removed in a future version. Use DatetimeIndex.day_of_week instead.
+  b["stratum"] = b.index.year * 10 + b.index.dayofweek
+/Users/dafrix/Developer/ibkr/work/datrix-qt/research/quant_loop/src/validator/V-0015_stats.py:65: Pandas4Warning: DatetimeIndex.dayofweek is deprecated and will be removed in a future version. Use DatetimeIndex.day_of_week instead.
+  b["stratum"] = b.index.year * 10 + b.index.dayofweek
+/Users/dafrix/Developer/ibkr/work/datrix-qt/research/quant_loop/src/validator/V-0015_stats.py:65: Pandas4Warning: DatetimeIndex.dayofweek is deprecated and will be removed in a future version. Use DatetimeIndex.day_of_week instead.
+  b["stratum"] = b.index.year * 10 + b.index.dayofweek
+PERIOD train: base days 526, events in calendar 40, events in base 33 ({'beige_book': 17, 'minutes': 16}), weekday {2: 32, 1: 1}
+  calendar event not in base: 2023-02-22 minutes half False 0dte True ret_prev -0.0200 fomc False
+  calendar event not in base: 2023-03-08 beige_book half False 0dte True ret_prev -0.0153 fomc False
+  calendar event not in base: 2023-05-24 minutes half False 0dte True ret_prev -0.0112 fomc False
+  calendar event not in base: 2023-08-16 minutes half False 0dte True ret_prev -0.0116 fomc False
+  calendar event not in base: 2024-03-06 beige_book half False 0dte True ret_prev -0.0102 fomc False
+  calendar event not in base: 2024-07-03 minutes half True 0dte True ret_prev +0.0062 fomc False
+  calendar event not in base: 2024-09-04 beige_book half False 0dte True ret_prev -0.0212 fomc False
+  strata with events (year*10+dow: events/total): {20222: '10/25', 20231: '1/50', 20232: '11/37', 20242: '11/33'}
+
+== M1/M2 main (iron, k 0.20, cap 2.0)
+G_ev = E14:00 - E13:55 (USD)                   n  30 mean   +3.530 [  +2.116,   +5.059]  | 2022 +2.875(n8)  2023 +3.091(n11)  2024 +4.446(n11)
+   G_ev median +2.25, share>0 0.80; controls median +0.00, share>0 0.48
+G_ctrl (all controls)                          n 492 mean   +0.041 [  -0.107,   +0.237]  | 2022 +0.446(n112)  2023 +0.031(n201)  2024 -0.202(n179)
+DiD                                            n  30 mean   +3.282 [  +1.824,   +4.789]  | 2022 +2.354(n8)  2023 +2.703(n11)  2024 +4.537(n11)
+   stratified permutation DiD +3.282 one-sided p 0.0002  (Bonferroni x53: 0.0106)
+   DiD 2022: +2.354 n 8
+   DiD 2023: +2.703 n 11
+   DiD 2024: +4.537 n 11
+
+== M3 mechanism, fixed 13:55 legs (points)
+step event                                     n  33 mean   +0.211 [  +0.125,   +0.308]  | 2022 +0.365(n10)  2023 +0.174(n12)  2024 +0.113(n11)
+step control                                   n 492 mean   +0.004 [  -0.000,   +0.010]  | 2022 +0.017(n112)  2023 -0.001(n201)  2024 +0.002(n179)
+D_step                                         n  33 mean   +0.207 [  +0.125,   +0.302]  | 2022 +0.352(n10)  2023 +0.167(n12)  2024 +0.118(n11)
+   D_step perm obs +0.2068 one-sided p 0.0002
+P_w = H(13:55) event - ctrl                    n  33 mean   +0.004 [  -0.017,   +0.029]  | 2022 +0.036(n10)  2023 -0.010(n12)  2024 -0.010(n11)
+
+== M4 by type
+G_ev minutes                                   n  13 mean   +7.339 [  +5.626,   +9.161]  | 2022 +6.803(n3)  2023 +6.500(n4)  2024 +8.167(n6)
+DiD minutes                                    n  13 mean   +7.150 [  +5.441,   +9.009]  | 2022 +6.282(n3)  2023 +6.139(n4)  2024 +8.258(n6)
+D_step minutes                                 n  16 mean   +0.359 [  +0.227,   +0.507]  | 2022 +0.635(n5)  2023 +0.253(n5)  2024 +0.217(n6)
+G_ev beige_book                                n  17 mean   +0.618 [  -0.417,   +1.559]  | 2022 +0.518(n5)  2023 +1.143(n7)  2024 -0.018(n5)
+DiD beige_book                                 n  17 mean   +0.325 [  -0.681,   +1.256]  | 2022 -0.003(n5)  2023 +0.739(n7)  2024 +0.073(n5)
+D_step beige_book                              n  17 mean   +0.063 [  +0.011,   +0.134]  | 2022 +0.069(n5)  2023 +0.105(n7)  2024 -0.001(n5)
+
+== M5 placebo (same weekday one week earlier)
+   pseudo events 19
+placebo DiD (G)                                n  19 mean   -0.007 [  -0.444,   +0.454]  | 2022 -0.959(n5)  2023 +0.464(n7)  2024 +0.200(n7)
+placebo D_step                                 n  19 mean   -0.002 [  -0.032,   +0.024]  | 2022 -0.018(n5)  2023 -0.018(n7)  2024 +0.026(n7)
+
+== M6 P&L (k 0.20, hold to settlement)
+dPnL = pnl13:55 - pnl14:00, events             n  30 mean  +27.064 [ -80.198, +130.373]  | 2022 +27.750(n8)  2023 +29.364(n11)  2024 +24.265(n11)
+dPnL controls                                  n 492 mean   +8.899 [ -17.581,  +36.295]  | 2022 +44.115(n112)  2023 +12.735(n201)  2024 -17.442(n179)
+dPnL DiD                                       n  30 mean   -2.778 [-107.629, +102.743]  | 2022 -31.038(n8)  2023 +13.506(n11)  2024 +1.492(n11)
+base-A pnl 14:00, events                       n  30 mean  +24.184 [-348.412, +361.915]  | 2022 +336.933(n8)  2023 -315.159(n11)  2024 +136.073(n11)
+base-A pnl 14:00, controls                     n 492 mean  +83.717 [ +11.452, +154.705]  | 2022 +108.963(n112)  2023 +21.449(n201)  2024 +137.841(n179)
+x(13:55) event - ctrl                          n  33 mean   -0.087 [  -0.315,   +0.185]  | 2022 +0.197(n10)  2023 -0.131(n12)  2024 -0.296(n11)
+
+== M7 participation (14:00 invalid, 13:55 valid) on event days
+   2022-10-12 minutes    E13:55 13.52  E14:00(uncapped) 144.52 widest14:00 8.10  pnl13:55 +1219  pnl14:00(uncapped) +1533
+   2022-11-23 minutes    E13:55 12.43  E14:00(uncapped) 68.43 widest14:00 4.10  pnl13:55 +952  pnl14:00(uncapped) +911
+   2023-01-04 minutes    E13:55 10.93  E14:00(uncapped) 94.43 widest14:00 4.40  pnl13:55 +1139  pnl14:00(uncapped) +1528
+ITT G_ev (14:00 cap lifted)                    n  33 mean  +11.406 [  +3.603,  +21.356]  | 2022 +21.000(n10)  2023 +9.792(n12)  2024 +4.446(n11)
+rule - base pnl per event day (no-trade = 0)   n  33 mean +124.895 [  -6.258, +274.264]  | 2022 +239.305(n10)  2023 +121.797(n12)  2024 +24.265(n11)
+
+== M8 win rate / drawdown on event days
+   pnl 13:55: n 33 win 0.576 [0.408,0.728] mean +146.9
+   pnl 14:00: n 30 win 0.567 [0.392,0.726] mean +24.2
+   cum pnl rule: total +4847, max drawdown -6182
+   cum pnl base: total +726, max drawdown -7956
+
+== M9 robustness
+[cap 1.0] n_ev 30  G_ev +3.530 [+2.094,+5.088]  DiD +3.282 [+1.726,+4.807]  perm p 0.0002  | 2022 +2.875(n8)  2023 +3.091(n11)  2024 +4.446(n11)
+[k 0.5] n_ev 30  G_ev +8.830 [+5.033,+12.840]  DiD +8.206 [+4.385,+12.261]  perm p 0.0002  | 2022 +7.188(n8)  2023 +7.727(n11)  2024 +11.128(n11)
+[put fly] n_ev 23  G_ev +5.866 [+3.139,+9.040]  DiD +5.762 [+2.885,+9.213]  perm p 0.0002  | 2022 +2.900(n5)  2023 +4.889(n9)  2024 +8.490(n9)
+[drop Tuesday events] n_ev 29  G_ev +3.359 [+1.896,+4.974]  DiD +3.110 [+1.650,+4.648]  perm p 0.0002  | 2022 +2.875(n8)  2023 +2.550(n10)  2024 +4.446(n11)
+[FOMC statement days as events] n_ev 39  G_ev +7.118 [+4.444,+10.133]  DiD +6.881 [+4.145,+9.772]  perm p 0.0002  | 2022 +6.222(n9)  2023 +5.739(n15)  2024 +9.033(n15)
+[FOMC out of controls (= main)] n_ev 30  G_ev +3.530 [+2.094,+5.099]  DiD +3.282 [+1.813,+4.837]  perm p 0.0002  | 2022 +2.875(n8)  2023 +3.091(n11)  2024 +4.446(n11)
+[entry 13:54 instead of 13:55] n_ev 30  G_ev +3.330 [+2.008,+4.789]  DiD +3.169 [+1.821,+4.582]  perm p 0.0002  | 2022 +3.114(n8)  2023 +2.591(n11)  2024 +4.227(n11)
+[entry 13:56 instead of 13:55] n_ev 30  G_ev +3.720 [+2.417,+5.173]  DiD +3.242 [+1.913,+4.617]  perm p 0.0002  | 2022 +3.699(n8)  2023 +3.364(n11)  2024 +4.091(n11)
+[entry 13:58 instead of 13:55] n_ev 30  G_ev +3.556 [+2.220,+5.015]  DiD +3.129 [+1.794,+4.645]  perm p 0.0002  | 2022 +3.648(n8)  2023 +2.818(n11)  2024 +4.227(n11)
+   remove best 5 event days (['2022-07-06', '2022-05-25', '2023-04-12', '2024-04-10', '2024-08-21']): G_ev +2.113 [+0.976,+3.257]  DiD +1.866 (np.float64(0.7136554314257183), np.float64(3.0865761799153204))
+
+== M10 profiles
+fixed-leg H by offset from 13:55:
+ off      -5     -4     -3     -2     -1      0      1      2      3      4      5      6      7      8      9      10     11     12     13     14     15     16     17     18     19     20
+event  0.252  0.255  0.255  0.267  0.267  0.254  0.249  0.255  0.248  0.260  0.455  0.464  0.327  0.369  0.344  0.350  0.327  0.339  0.325  0.334  0.338  0.333  0.343  0.332  0.323  0.336
+ctrl   0.242  0.243  0.244  0.237  0.240  0.239  0.240  0.235  0.239  0.243  0.243  0.245  0.248  0.243  0.247  0.248  0.246  0.252  0.246  0.249  0.249  0.247  0.248  0.248  0.249  0.251
+diff   0.010  0.012  0.011  0.030  0.027  0.015  0.009  0.020  0.009  0.017  0.212  0.220  0.079  0.126  0.098  0.102  0.082  0.086  0.079  0.085  0.089  0.086  0.095  0.084  0.075  0.085
+|S(t)-S(13:55)|:
+ off     -5    -4    -3    -2    -1    0     1     2     3     4     5     6     7     8     9     10    11    12    13    14    15    16    17   18    19    20
+event  2.54  2.03  1.63  1.16  0.89  0.0  0.97  1.59  2.14  2.23  2.24  3.66  3.91  5.39  5.65  5.91  5.42  5.33  5.52  6.20  6.01  5.65  5.43  6.2  5.77  6.14
+ctrl   1.91  1.72  1.42  1.15  0.76  0.0  0.91  1.30  1.47  1.69  1.90  2.28  2.57  2.81  2.92  3.03  3.14  3.23  3.41  3.63  3.70  3.87  3.98  4.1  4.18  4.33
+E14:10 - E13:55, events                        n  33 mean   +1.004 [  +0.304,   +1.810]  | 2022 +1.573(n10)  2023 +1.341(n12)  2024 +0.120(n11)
+E14:10 - E13:55 DiD                            n  33 mean   +0.854 [  +0.121,   +1.642]  | 2022 +0.967(n10)  2023 +0.909(n12)  2024 +0.692(n11)
+
+== per event day
+                  type      G   step  H1355  H1400  w1400   dPnL
+date                                                            
+2022-05-25     minutes   8.59  0.680  0.400  0.825    0.7  -39.0
+2022-06-01  beige_book   2.00 -0.017  0.300  0.400    0.3  216.0
+2022-07-06     minutes   8.50  0.787  0.375  0.800    0.8    1.0
+2022-07-13  beige_book   0.50  0.335  0.325  0.350    0.3   28.0
+2022-08-17     minutes   3.32  0.483  0.275  0.450    0.4 -299.0
+2022-09-07  beige_book   4.59 -0.002  0.225  0.450    0.6  482.0
+2022-10-12     minutes    NaN  1.128  0.350  6.900    8.1    NaN
+2022-10-19  beige_book   0.50  0.030  0.400  0.425    0.3 -482.0
+2022-11-23     minutes    NaN  0.160  0.300  3.100    4.1    NaN
+2022-11-30  beige_book  -5.00  0.063  0.625  0.375    0.4  315.0
+2023-01-04     minutes    NaN  0.505  0.225  4.400    4.4    NaN
+2023-01-18  beige_book   4.00  0.105  0.225  0.425    0.4 -347.0
+2023-04-12     minutes  10.00  0.382  0.175  0.675    0.6   50.0
+2023-04-19  beige_book   0.50  0.493  0.200  0.225    0.2  548.0
+2023-05-31  beige_book  -0.00  0.010  0.250  0.250    0.2   25.0
+2023-07-05     minutes   2.50  0.070  0.150  0.275    0.2    0.0
+2023-07-12  beige_book   0.00  0.025  0.200  0.200    0.2 -505.0
+2023-09-06  beige_book   2.00  0.047  0.175  0.275    0.2   -8.0
+2023-10-11     minutes   5.00  0.105  0.175  0.425    0.4  -15.0
+2023-10-18  beige_book  -0.00  0.030  0.200  0.200    0.2  550.0
+2023-11-21     minutes   8.50  0.232  0.225  0.650    0.8    1.0
+2023-11-29  beige_book   1.50  0.080  0.200  0.275    0.2   24.0
+2024-01-03     minutes   7.00  0.240  0.200  0.550    0.6    7.0
+2024-01-17  beige_book   0.50  0.022  0.200  0.225    0.2   -7.0
+2024-02-21     minutes   5.50  0.123  0.150  0.425    0.4   -2.0
+2024-04-10     minutes  13.00  0.190  0.200  0.850    0.8 -527.0
+2024-04-17  beige_book   1.50  0.018  0.225  0.300    0.2  534.0
+2024-05-22     minutes   6.50  0.160  0.200  0.525    0.5  187.0
+2024-05-29  beige_book  -0.00 -0.035  0.200  0.200    0.2  -10.0
+2024-07-17  beige_book  -0.50 -0.025  0.275  0.250    0.2   17.0
+2024-08-21     minutes  13.00  0.517  0.200  0.850    0.8  -12.0
+2024-10-09     minutes   4.00  0.047  0.275  0.475    0.6 -406.0
+2024-10-23  beige_book  -1.59 -0.010  0.275  0.200    0.1  486.0

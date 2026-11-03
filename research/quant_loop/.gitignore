@@ -1,0 +1,4 @@
+# 衍生数据不进仓库（ThetaData 许可 + 体积）
+*.parquet
+*.csv.gz
+__pycache__/

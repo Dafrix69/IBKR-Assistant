@@ -1,0 +1,23 @@
+  CRDO: 94 trades (30 OOS) per-trade net -29 bps  OOS per-trade -35  win 50%
+  NBIS: 118 trades (44 OOS) per-trade net 1 bps  OOS per-trade 41  win 50%
+  QUBT: 85 trades (30 OOS) per-trade net 185 bps  OOS per-trade 50  win 59%
+  NVTS: 94 trades (28 OOS) per-trade net 69 bps  OOS per-trade 97  win 49%
+  APLD: 101 trades (34 OOS) per-trade net -10 bps  OOS per-trade -5  win 46%
+  CLSK: 104 trades (32 OOS) per-trade net -22 bps  OOS per-trade -43  win 45%
+  SNDK: 94 trades (41 OOS) per-trade net 65 bps  OOS per-trade 69  win 56%
+  WOLF: 49 trades (31 OOS) per-trade net -63 bps  OOS per-trade 29  win 43%
+  ALAB: 100 trades (32 OOS) per-trade net 15 bps  OOS per-trade 77  win 51%
+  QBTS: 103 trades (27 OOS) per-trade net 46 bps  OOS per-trade 39  win 54%
+  RKLB: 108 trades (34 OOS) per-trade net 41 bps  OOS per-trade 7  win 47%
+base (15, 1.0, 'long', 1.0) on 11 new names: IS 5.7 bps/day Sharpe 0.82  OOS 5.9 bps/day 95% CI [-5.3, 17.3]  99.95% CI [-13.2, 26.1]  Sharpe 1.35  days 168
+        mean  count
+date               
+2024Q4  12.8     45
+2025Q1  -0.9     60
+2025Q2  20.4     62
+2025Q3  -3.7     64
+2025Q4  -9.2     64
+2026Q1  22.8     61
+2026Q2   2.7     62
+2026Q3   0.6     64
+2026Q4  16.5     22

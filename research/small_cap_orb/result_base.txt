@@ -1,0 +1,51 @@
+days 504  2024-10-28..2026-10-30  OOS from 2026-03-04 (168 days)
+median spread, bps of mid: {'IREN': 3.5, 'AXTI': 13.8, 'IRE': 14.8, 'AXTX': 38.7}
+ n   f side  vol  is_sh  oos_sh  oos_bps  oos_trades
+15 1.0 long  1.0   0.29    0.49     4.65          76
+15 1.0 long  0.0  -0.18    0.39     6.71         177
+ 5 1.0 long  0.0  -0.32    0.29     5.74         213
+ 5 1.0 long  1.0  -0.49    0.72     8.92          84
+30 1.0 long  0.0  -0.55   -0.49    -6.84         157
+30 0.5 long  1.0  -0.65   -0.35    -2.72          72
+ 5 1.0 long  1.5  -0.69    1.24    10.54          33
+ 5 0.5 long  1.0  -0.73    0.35     3.79          84
+15 0.5 long  1.0  -0.79   -1.23   -10.44          76
+30 1.0 long  1.0  -0.85   -0.23    -1.86          72
+ 5 0.5 long  0.0  -0.85    0.82    14.57         213
+30 0.5 long  0.0  -1.00   -0.16    -1.95         157
+15 1.0 long  1.5  -1.04   -0.42    -2.15          26
+ 5 0.5 long  1.5  -1.04    1.64    13.27          33
+30 1.0 both  0.0  -1.20    0.38     7.13         295
+15 1.0 both  1.0  -1.35    0.72     9.75         135
+ 5 1.0 both  0.0  -1.43    1.26    31.03         331
+15 0.5 long  0.0  -1.51   -0.13    -2.04         177
+30 0.5 both  0.0  -1.54    0.40     7.00         295
+ 5 1.0 both  1.0  -1.57    0.68    10.30         133
+15 0.5 long  1.5  -1.61   -1.82    -9.71          26
+15 1.0 both  0.0  -1.62    1.22    27.47         319
+ 5 1.0 both  1.5  -1.67    0.68     7.46          54
+ 5 0.5 both  1.0  -1.71    1.13    15.10         133
+30 0.5 both  1.0  -1.74    0.17     1.68         120
+30 0.5 long  1.5  -1.75   -1.50    -6.83          20
+ 5 0.5 both  1.5  -1.81    1.53    15.07          54
+15 0.5 both  1.0  -1.86   -0.34    -4.23         135
+30 1.0 long  1.5  -1.94   -1.23    -5.95          20
+30 1.0 both  1.0  -1.94    0.22     2.34         120
+ 5 0.5 both  0.0  -2.02    2.13    47.23         331
+30 0.5 both  1.5  -2.03   -1.21    -6.82          32
+30 1.0 both  1.5  -2.11   -1.06    -6.10          32
+15 1.0 both  1.5  -2.31   -0.50    -4.14          44
+15 0.5 both  0.0  -2.45    0.59    12.29         319
+15 0.5 both  1.5  -2.49   -1.08    -8.16          44
+OOS mean>0: 21 of 36
+PICK (best in-sample): (15, 1.0, 'long', 1.0)
+OOS net 4.7 bps/day  CI [-17.1, 29.5]  Sharpe 0.49  2x cost 2.1 bps/day
+IS  net 2.5 bps/day  Sharpe 0.29  2x cost -2.1 bps/day
+  IREN: OOS -3.7 bps/day, 40 trades, stopped 28%
+  AXTI: OOS 13.0 bps/day, 36 trades, stopped 11%
+baseline long open->15:55, gross: -19.2 bps/day
+baseline random side: mean -3.3, 95th pct 14.3 bps/day
+
+Same signal, long trades only: stock vs real 2x ETF, ETF life only, per unit of exposure
+  IRE: 62 trades  ETF net/2 -1.7 bps  stock net -0.5 bps  stock cost 5.8 bps  ETF spread 14.8 bps
+  AXTX: 25 trades  ETF net/2 -14.3 bps  stock net -12.4 bps  stock cost 17.7 bps  ETF spread 38.7 bps

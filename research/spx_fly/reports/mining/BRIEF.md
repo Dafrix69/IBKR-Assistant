@@ -51,3 +51,7 @@
 - 行权价间距 5 点，ATM 距现货最多 2.5 点。
 - 入场时刻的"现货"用 `spot.parquet`，别用 chain 自己反推。
 - 每个因子的样本量：训练期约 620 天、测试期约 500 天（13:00 和 14:00 各一笔时 ×2，但两笔高度相关，区间按天算更诚实）。
+
+## 补充（2026-11-01）：VIX 期限结构日线
+
+`data/tws/vix_term_1d.parquet`：`date`、`vix1d_close`（2023-04-26 起，CBOE 当日才推出）、`vix9d_close`、`vix3m_close`（2021-11-01 起），TWS 日线收盘，由 `src/fetch_vix_term_tws.py` 拉取。配合 `vix_1d.parquet`（VIX）可做 VIX1D/VIX、VIX9D/VIX、VIX/VIX3M 等比值。注意 VIX1D 训练期只有 2023-04 → 2024-10（约 380 天），用它做信号要在提案里写明样本。日期 D 的收盘只能用于 D+1 的信号。

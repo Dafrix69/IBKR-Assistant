@@ -1,0 +1,53 @@
+/Users/dafrix/Developer/ibkr/work/datrix-qt/research/quant_loop/src/validator/V-0016_stats.py:101: UserWarning: obj.round has no effect with datetime, timedelta, or period dtypes. Use obj.dt.round(...) instead.
+  [["date", "hour", "w", "HA", "HB", "G"]].round(3).to_dict("records"))
+/Users/dafrix/Developer/ibkr/work/datrix-qt/research/quant_loop/src/validator/V-0016_stats.py:101: UserWarning: obj.round has no effect with datetime, timedelta, or period dtypes. Use obj.dt.round(...) instead.
+  [["date", "hour", "w", "HA", "HB", "G"]].round(3).to_dict("records"))
+main cells (m=0, base, non-event, 11-15): 988; event cells dropped (13-15): 117
+cells per hour: {11: 221, 12: 221, 13: 133, 14: 200, 15: 213}  valid HA/HB: {11: '219/220', 12: '220/220', 13: '133/133', 14: '200/200', 15: '212/212'}
+
+== 1. pre-registered (mean) cells, $/group, k 0.20, day-clustered bootstrap
+  G_q blind (13+15)                      n 213  mean +0.297 [+0.073, +0.662]  seg1 +0.570 seg2 +0.077 | median +0.117 [+0.058, +0.167]  trim5 +0.105  >0 0.64
+  G_q 13                                 n 133  mean +0.641 [+0.090, +1.666]  seg1 +1.219 seg2 +0.180 | median +0.150 [+0.050, +0.233]  trim5 +0.162  >0 0.63
+  G_q 15                                 n 212  mean +0.180 [+0.051, +0.322]  seg1 +0.335 seg2 +0.054 | median +0.150 [+0.033, +0.200]  trim5 +0.091  >0 0.60
+  G_q 14 (non-blind)                     n 200  mean +0.227 [+0.106, +0.368]  seg1 +0.281 seg2 +0.182 | median +0.167 [+0.117, +0.250]  trim5 +0.182  >0 0.66
+  G_q pool                               n 213  mean +0.273 [+0.116, +0.530]  seg1 +0.477 seg2 +0.109 | median +0.128 [+0.072, +0.167]  trim5 +0.139  >0 0.63
+  G_q placebo :37 (13+15), no event filter n 221  mean -0.333 [-0.857, -0.018]  seg1 -0.286 seg2 -0.371 | median -0.008 [-0.067, +0.050]  trim5 -0.027  >0 0.48
+  G_q placebo :37 (13+15), same event filter n 212  mean -0.284 [-0.782, -0.007]  seg1 -0.155 seg2 -0.388 | median +0.004 [-0.067, +0.067]  trim5 -0.027  >0 0.50
+  G_r blind                              n 137  mean +0.530 [-0.244, +1.327]  seg1 +1.490 seg2 -0.057 | median +0.133 [-0.328, +0.977]  trim5 +0.263  >0 0.52
+  G_r 14                                 n 134  mean +0.762 [+0.070, +1.519]  seg1 +1.412 seg2 +0.363 | median +0.469 [+0.043, +1.025]  trim5 +0.537  >0 0.59
+  dk blind                               n 137  mean +0.013 [-0.019, +0.046]  seg1 +0.042 seg2 -0.004 | median +0.007 [-0.037, +0.048]  trim5 +0.009  >0 0.52
+  G_q k0.5 blind                         n 213  mean +0.742 [+0.178, +1.678]  seg1 +1.425 seg2 +0.192 | median +0.292 [+0.146, +0.417]  trim5 +0.261  >0 0.64
+  G_pre blind (hh-1:59:30..hh:00 vs B)   n 212  mean -0.042 [-0.119, +0.035]  seg1 -0.023 seg2 -0.058 | median +0.033 [+0.000, +0.067]  trim5 -0.018  >0 0.57
+  G_q 11 (no excl)                       n 219  mean +0.204 [-0.012, +0.419]  seg1 +0.063 seg2 +0.318 | median +0.150 [+0.033, +0.217]  trim5 +0.159  >0 0.59
+  G_q 12 (no excl)                       n 220  mean +0.171 [+0.065, +0.274]  seg1 +0.284 seg2 +0.080 | median +0.117 [+0.008, +0.208]  trim5 +0.150  >0 0.58
+  G_q blind using window medians         n 213  mean +0.311 [+0.085, +0.681]  seg1 +0.554 seg2 +0.115 | median +0.125 [+0.000, +0.250]  trim5 +0.129  >0 0.60
+  combo flies / s, A vs B: blind 0.290 / 0.042  14 0.469 / 0.053  placebo:37 (13+15) 0.063 / 0.036
+  gate5: |placebo| 0.333 vs G_blind/2 0.148 -> fail
+  quote age (s, mean of max-leg age): blind A 3.8  B 6.0
+
+  per-cell (13+15): main mean/median/trim5/>0: +0.358 +0.150 +0.117 0.61 | placebo: -0.335 -0.017 -0.027 0.47
+  main extremes: [{'date': Timestamp('2025-04-14 00:00:00'), 'hour': 13, 'w': 75, 'HA': 3.715, 'HB': 0.478, 'G': 64.733}, {'date': Timestamp('2025-04-02 00:00:00'), 'hour': 15, 'w': 50, 'HA': 0.558, 'HB': 0.208, 'G': 6.983}, {'date': Timestamp('2024-11-14 00:00:00'), 'hour': 15, 'w': 20, 'HA': 0.7, 'HB': 0.378, 'G': 6.433}, {'date': Timestamp('2025-04-10 00:00:00'), 'hour': 15, 'w': 75, 'HA': 0.875, 'HB': 0.598, 'G': 5.533}]
+  placebo extremes: [{'date': Timestamp('2025-10-14 00:00:00'), 'hour': 15, 'w': 20, 'HA': 0.467, 'HB': 5.058, 'G': -91.8}, {'date': Timestamp('2025-04-10 00:00:00'), 'hour': 13, 'w': 75, 'HA': 1.015, 'HB': 2.445, 'G': -28.595}, {'date': Timestamp('2025-04-25 00:00:00'), 'hour': 13, 'w': 50, 'HA': 0.21, 'HB': 0.684, 'G': -9.483}, {'date': Timestamp('2025-04-10 00:00:00'), 'hour': 15, 'w': 75, 'HA': 0.41, 'HB': 0.661, 'G': -5.017}]
+
+== 2. minute placebo (validator): every minute m = 3..57 except 30, same day x hour cells as main
+  mean     hour +0.297   placebo minutes: median -0.013  [min -1.269, max +3.075]  rank of hour: 3 of 54 minutes >= hour
+  median   hour +0.117   placebo minutes: median -0.015  [min -1.008, max +1.600]  rank of hour: 2 of 54 minutes >= hour
+  trim5    hour +0.105   placebo minutes: median -0.015  [min -1.130, max +2.285]  rank of hour: 2 of 54 minutes >= hour
+  share>0  hour +0.643   placebo minutes: median +0.488  [min +0.057, max +0.910]  rank of hour: 2 of 54 minutes >= hour
+  minute :30  mean +0.165 median +0.167 >0 0.61
+  paired D = G(hh:00) - median_m G(hh:m) same day-hour: mean +0.324 [0.098 0.682]  median +0.150 [0.071 0.208]  >0 0.67  seg1 med +0.133 seg2 med +0.154
+  permutation (1000, minute labels within day-hour): median stat p_one = 0.000 (null 95% -0.092..+0.058); mean stat p_two = 0.031
+
+== 3. profile (fixed legs, base non-event, 13+14+15): H relative to the cell's own [-60,0) level, points
+  minute 00:
+bucket    -30     -10      0       10      20      30      40      60      90      120
+med     0.0004 -0.0029  0.0054  0.0062  0.0029  0.0010 -0.0004  0.0008 -0.0012  0.0004
+mean    0.0014 -0.0012  0.0176  0.0164  0.0071  0.0060  0.0022  0.0034  0.0021  0.0031
+pos     0.5064  0.4530  0.6073  0.6183  0.5376  0.5074  0.4972  0.5156  0.4844  0.5083
+nf      0.0424  0.0676  0.3556  0.1505  0.0892  0.0743  0.0494  0.0972  0.0428  0.0807
+  minute 37:
+bucket    -30     -10      0       10      20      30      40      60      90      120
+med    -0.0012 -0.0017 -0.0017 -0.0013 -0.0021 -0.0013 -0.0017 -0.0017 -0.0008 -0.0017
+mean   -0.0004 -0.0014 -0.0010  0.0024  0.0026  0.0031  0.0093  0.0259  0.0157  0.0059
+pos     0.4720  0.4562  0.4570  0.4728  0.4766  0.4856  0.4675  0.4781  0.4871  0.4659
+nf      0.0474  0.0470  0.0617  0.0464  0.0460  0.0445  0.0439  0.0581  0.0352  0.0517

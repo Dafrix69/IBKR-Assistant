@@ -1,0 +1,57 @@
+names ['IREN', 'AXTI', 'LITE', 'OKLO']  days 504  2024-10-28..2026-10-30  OOS from 2026-03-04 (168 days)
+  IREN: 504 days from 2024-10-28
+  AXTI: 504 days from 2024-10-28
+  LITE: 504 days from 2024-10-28
+  OKLO: 504 days from 2024-10-28
+median spread, bps of mid: {'IREN': 3.5, 'AXTI': 13.8, 'LITE': 11.3, 'OKLO': 6.9, 'IRE': 14.8, 'AXTX': 38.7}
+ n   f side  vol  is_sh  oos_sh  oos_bps  oos_trades
+15 1.0 long  1.0   0.57    0.65     4.55         147
+30 1.0 long  0.0   0.54   -0.10    -0.96         304
+15 1.0 long  0.0   0.45    0.09     1.17         357
+30 1.0 long  1.0   0.34    0.05     0.29         131
+ 5 1.0 long  0.0   0.22   -0.17    -2.49         428
+ 5 1.0 long  1.0   0.05    0.64     5.29         166
+30 0.5 long  1.0  -0.03   -0.23    -1.16         131
+30 0.5 long  0.0  -0.19   -0.21    -1.79         304
+ 5 0.5 long  1.0  -0.26    0.61     4.65         166
+15 1.0 long  1.5  -0.31   -0.86    -2.74          47
+ 5 1.0 long  1.5  -0.32    0.85     4.50          64
+30 1.0 long  1.5  -0.36   -0.99    -2.71          34
+ 5 0.5 long  0.0  -0.43    0.30     3.73         428
+30 1.0 both  0.0  -0.56    0.12     1.56         595
+ 5 0.5 long  1.5  -0.65    1.42     6.85          64
+30 0.5 long  1.5  -0.67   -1.38    -3.55          34
+15 1.0 both  0.0  -0.68    0.63    10.49         646
+30 1.0 both  1.0  -0.72    0.22     1.59         233
+15 0.5 long  1.0  -0.75   -0.46    -2.78         147
+15 1.0 both  1.0  -0.76    0.63     6.10         266
+30 0.5 both  1.0  -0.82   -0.10    -0.67         233
+15 0.5 long  1.5  -0.88   -1.94    -6.05          47
+15 0.5 long  0.0  -0.89   -0.27    -3.04         357
+ 5 1.0 both  0.0  -0.90    0.93    16.02         665
+ 5 1.0 both  1.0  -0.95    0.45     4.29         256
+30 0.5 both  1.5  -1.02   -1.78    -5.89          68
+30 1.0 both  1.5  -1.05   -1.41    -4.77          68
+ 5 0.5 both  1.0  -1.09    0.91     7.84         256
+30 0.5 both  0.0  -1.18   -0.24    -2.87         595
+ 5 0.5 both  0.0  -1.55    1.52    22.61         665
+ 5 1.0 both  1.5  -1.69    0.43     2.95         105
+15 0.5 both  1.0  -1.71   -0.28    -2.43         266
+ 5 0.5 both  1.5  -1.72    1.17     7.00         105
+15 0.5 both  0.0  -2.06    0.17     2.57         646
+15 1.0 both  1.5  -2.10   -0.81    -4.29          86
+15 0.5 both  1.5  -2.54   -1.63    -7.65          86
+OOS mean>0: 19 of 36
+PICK (best in-sample): (15, 1.0, 'long', 1.0)
+OOS net 4.6 bps/day  CI [-10.1, 20.5]  Sharpe 0.65  2x cost 1.9 bps/day
+IS  net 4.1 bps/day  Sharpe 0.57  2x cost 0.5 bps/day
+  IREN: OOS -3.7 bps/day, 40 trades, stopped 28%
+  AXTI: OOS 13.0 bps/day, 36 trades, stopped 11%
+  LITE: OOS -4.3 bps/day, 41 trades, stopped 22%
+  OKLO: OOS 13.2 bps/day, 30 trades, stopped 17%
+baseline long open->15:55, gross: -26.5 bps/day
+baseline random side: mean -2.9, 95th pct 7.7 bps/day
+
+Same signal, long trades only: stock vs real 2x ETF, ETF life only, per unit of exposure
+  IRE: 62 trades  ETF net/2 -1.7 bps  stock net -0.5 bps  stock cost 5.8 bps  ETF spread 14.8 bps
+  AXTX: 25 trades  ETF net/2 -14.3 bps  stock net -12.4 bps  stock cost 17.7 bps  ETF spread 38.7 bps

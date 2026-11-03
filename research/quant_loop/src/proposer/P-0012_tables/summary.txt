@@ -1,0 +1,70 @@
+n ok 597; PNT non-event 127 (Mon 109); control 367
+M missing (no 14:00 mid for some leg): PNT 0, control 0
+exit timing PNT: 14:00 exact 127, 14:01-14:10 0, held 0
+exit timing control: exact 362, delayed 5, held 0
+median I10 PNT/C 21.05/22.35; median w 40/45
+
+== M test (units of I10, mid, no costs) ==
+M (10->14): PNT +0.0886  C -0.0244  G +0.1130 [+0.0430, +0.1820]
+H (10->settle): PNT +0.1431  C -0.0429  G +0.1860 [+0.0622, +0.3051]
+A (14->settle): PNT +0.0546  C -0.0185  G +0.0730 [-0.0167, +0.1647]
+M13 (10->13, report): PNT +0.0886  C -0.0159  G +0.1045 [+0.0515, +0.1556]
+M15 (10->15, report): PNT +0.1110  C -0.0348  G +0.1458 [+0.0578, +0.2313]
+
+== EV_m (PNT morning segment, USD/day) ==
+k0.20: EV_m +194.7 [+58.1, +326.2] win 69.3%  | control -87.8 win 57.5%  | dEV +282.5
+k0: EV_m +208.5 [+68.7, +339.1] win 69.3%  | control -71.3 win 57.5%  | dEV +279.9
+k0.5: EV_m +174.0 [+40.0, +307.8] win 68.5%  | control -112.5 win 57.2%  | dEV +286.5
+sd 777; mid USD PNT +221.7 control -57.7; round-trip cost PNT 27.0 control 30.1
+cum +24729; max DD -6669
+hold-to-settle PNT (P-0011 口径) k0.20 +358.6; control -84.7
+exit 1300 (report): EV_m +198.4  control -66.7
+exit 1500 (report): EV_m +259.1  control -116.9
+
+== by year ==
+2022: n 32/89  M +0.0807/-0.0070 G_M +0.0877 [-0.046, +0.218]  EV_m +281.3  control -62.0
+2023: n 51/150  M +0.1121/-0.0426 G_M +0.1548 [+0.057, +0.250]  EV_m +214.9  control -97.9
+2024: n 44/128  M +0.0669/-0.0153 G_M +0.0822 [-0.058, +0.217]  EV_m +108.3  control -93.8
+
+== I10/S terciles (train cuts on PNT u control) ==
+cuts 0.00401 0.00590
+low: n 49/116 G_M +0.0729 [-0.049, +0.190] EV_m +142.8 control +15.6
+mid: n 40/124 G_M +0.0879 [-0.053, +0.222] EV_m -37.8 control -206.1
+high: n 38/127 G_M +0.1768 [+0.080, +0.274] EV_m +506.4 control -66.8
+
+== sign halves ==
+settle>F10: n 65/195 G_M +0.0945 [-0.002, +0.185] EV_m +226.9
+settle<=F10: n 62/172 G_M +0.1342 [+0.026, +0.238] EV_m +160.9
+S14>S10: n 69/196 G_M +0.1090 [+0.016, +0.200] EV_m +237.9
+S14<=S10: n 58/171 G_M +0.1168 [+0.005, +0.224] EV_m +143.3
+
+== robustness ==
+drop best 5: EV_m +141.5; best5 ['2022-06-13', '2022-10-24', '2023-03-13', '2022-06-27', '2022-06-21'] [1629.0, 1629.0, 1497.0, 1424.0, 1283.0]
+worst5 ['2024-04-15', '2024-06-17', '2024-09-03', '2023-01-23', '2022-12-05'] [-2563.0, -1914.0, -1815.0, -1678.0, -1516.0]
+pure Monday n 109 EV_m +198.1 M +0.0815; post-holiday non-Mon n 18 EV_m +174.3 M +0.1312
+
+== placebo PNT+1 (vs control without PNT+1) ==
+n 118/249 G_M +0.0114 [-0.077, +0.099] EV -85.2 vs -89.0
+|placebo| 0.0114 vs |G_M| 0.1130
+
+== weekday noise baseline (each weekday vs other non-PNT non-event days; Mon = PNT) ==
+wd 1: n 101 G_M +0.0103 dEV +9.4
+wd 2: n 95 G_M +0.0082 dEV +30.3
+wd 3: n 107 G_M -0.0239 dEV -61.5
+wd 4: n 64 G_M +0.0091 dEV +34.8
+
+== c and decomposition ==
+D~m+PNT: c +0.0136 se 0.0097 t 1.40 (n 494)
+D~m+m2+PNT: c +0.0146 se 0.0090 t 1.62 (n 494)
+M~m+PNT: PNT +0.0240 se 0.0095 t 2.54
+M~m+m2+PNT: PNT +0.0230 se 0.0088 t 2.61
+m mean PNT 0.677 control 0.834
+
+== cost gate ==
+mid USD PNT +221.7 vs 1.5 x cost 40.5
+
+== vs baseline A ==
+base days 525; increment per base day +47.1
+corr with same-day base A (n 111): +0.146
+base: total +36403 daily sharpe 0.074 maxDD -15538
+base+morning: total +61132 daily sharpe 0.112 maxDD -10258

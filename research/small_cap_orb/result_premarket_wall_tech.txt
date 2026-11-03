@@ -1,0 +1,66 @@
+names ['CRDO', 'NBIS', 'QUBT', 'NVTS', 'APLD', 'CLSK', 'SNDK', 'WOLF', 'ALAB', 'QBTS', 'RKLB']  days 504  2024-10-28..2026-10-30  OOS from 2026-03-04 (168 days)
+  CRDO: 504 days from 2024-10-28
+  NBIS: 504 days from 2024-10-28
+  QUBT: 504 days from 2024-10-28
+  NVTS: 504 days from 2024-10-28
+  APLD: 504 days from 2024-10-28
+  CLSK: 503 days from 2024-10-28
+  SNDK: 431 days from 2025-02-13
+  WOLF: 275 days from 2025-09-29
+  ALAB: 504 days from 2024-10-28
+  QBTS: 503 days from 2024-10-28
+  RKLB: 504 days from 2024-10-28
+  CRDO: wall days 493, call wall on 99%; spread night 39.6 pre 45.9 bps
+  NBIS: wall days 498, call wall on 100%; spread night 20.4 pre 21.5 bps
+  QUBT: wall days 496, call wall on 98%; spread night 46.6 pre 17.5 bps
+  NVTS: wall days 495, call wall on 99%; spread night 56.1 pre 44.8 bps
+  APLD: wall days 500, call wall on 100%; spread night 38.9 pre 36.9 bps
+  CLSK: wall days 499, call wall on 100%; spread night 62.0 pre 53.5 bps
+  SNDK: wall days 415, call wall on 97%; spread night 11.2 pre 13.2 bps
+  WOLF: wall days 485, call wall on 93%; spread night 183.5 pre 115.4 bps
+  ALAB: wall days 497, call wall on 100%; spread night 84.6 pre 92.7 bps
+  QBTS: wall days 495, call wall on 99%; spread night 31.9 pre 31.8 bps
+  RKLB: wall days 500, call wall on 100%; spread night 15.1 pre 15.8 bps
+
+A. first pre-market / night touch of the call wall from below, + = pushed down, bps
+  CRDO: n=4  real 30 traded min +29 (placebo +48)  to 09:30 open -33 (placebo -12)  pushed down by the open 50%
+  NBIS: n=21  real 30 traded min -76 (placebo -103)  to 09:30 open -214 (placebo -260)  pushed down by the open 33%
+  QUBT: n=14  real 30 traded min -58 (placebo +9)  to 09:30 open -55 (placebo -59)  pushed down by the open 50%
+  NVTS: n=11  real 30 traded min -135 (placebo -96)  to 09:30 open -123 (placebo -65)  pushed down by the open 36%
+  APLD: n=16  real 30 traded min -229 (placebo -195)  to 09:30 open -215 (placebo -153)  pushed down by the open 19%
+  CLSK: n=13  real 30 traded min -153 (placebo -183)  to 09:30 open -94 (placebo -172)  pushed down by the open 38%
+  SNDK: n=10  real 30 traded min -79 (placebo -29)  to 09:30 open -109 (placebo -39)  pushed down by the open 40%
+  WOLF: n=3  real 30 traded min -75 (placebo +6)  to 09:30 open -192 (placebo -264)  pushed down by the open 33%
+  ALAB: n=8  real 30 traded min +91 (placebo +56)  to 09:30 open +0 (placebo -67)  pushed down by the open 62%
+  QBTS: n=17  real 30 traded min -142 (placebo +91)  to 09:30 open -62 (placebo +77)  pushed down by the open 41%
+  RKLB: n=13  real 30 traded min -109 (placebo -38)  to 09:30 open -97 (placebo -35)  pushed down by the open 38%
+  pooled paired difference 30 traded min: -49.1 bps  95% CI [-97.3, -2.2]  days 101
+  pooled paired difference to the open: -25.3 bps  95% CI [-85.9, 41.0]  days 101
+
+B. short near the call wall in 20:00-09:20, stop wall x 1.025, cover 09:30; gated = name-sessions under 30 bps
+  gated=True: IS -2.9 bps/day Sharpe -2.42  OOS -2.0 bps/day  95% CI [-5.9, 1.9]  99.95% CI [-9.7, 4.9]  Sharpe -1.49
+    CRDO: no trades
+    NBIS: 175 trades (71 OOS)  per-trade net -29 bps  win 24%  stopped 57%  IS -30  OOS -29  night/pre 127/48
+    QUBT: 61 trades (20 OOS)  per-trade net -23 bps  win 38%  stopped 20%  IS -55  OOS 43  night/pre 0/61
+    NVTS: no trades
+    APLD: no trades
+    CLSK: no trades
+    SNDK: 130 trades (75 OOS)  per-trade net -25 bps  win 25%  stopped 62%  IS -36  OOS -16  night/pre 89/41
+    WOLF: no trades
+    ALAB: no trades
+    QBTS: no trades
+    RKLB: 174 trades (57 OOS)  per-trade net -22 bps  win 28%  stopped 57%  IS -22  OOS -22  night/pre 126/48
+  gated=False: IS -20.1 bps/day Sharpe -8.09  OOS -25.1 bps/day  95% CI [-36.9, -14.4]  99.95% CI [-46.5, -7.0]  Sharpe -7.45
+    CRDO: 112 trades (47 OOS)  per-trade net -47 bps  win 24%  stopped 50%  IS -47  OOS -48  night/pre 50/62
+    NBIS: 175 trades (71 OOS)  per-trade net -29 bps  win 24%  stopped 57%  IS -30  OOS -29  night/pre 127/48
+    QUBT: 159 trades (49 OOS)  per-trade net -72 bps  win 23%  stopped 53%  IS -88  OOS -37  night/pre 98/61
+    NVTS: 146 trades (65 OOS)  per-trade net -65 bps  win 29%  stopped 56%  IS -88  OOS -37  night/pre 89/57
+    APLD: 169 trades (47 OOS)  per-trade net -65 bps  win 25%  stopped 57%  IS -71  OOS -52  night/pre 110/59
+    CLSK: 157 trades (56 OOS)  per-trade net -114 bps  win 18%  stopped 60%  IS -106  OOS -130  night/pre 122/35
+    SNDK: 130 trades (75 OOS)  per-trade net -25 bps  win 25%  stopped 62%  IS -36  OOS -16  night/pre 89/41
+    WOLF: 51 trades (42 OOS)  per-trade net -312 bps  win 18%  stopped 71%  IS -166  OOS -343  night/pre 32/19
+    ALAB: 136 trades (60 OOS)  per-trade net -125 bps  win 17%  stopped 50%  IS -112  OOS -141  night/pre 63/73
+    QBTS: 171 trades (52 OOS)  per-trade net -80 bps  win 19%  stopped 66%  IS -90  OOS -57  night/pre 119/52
+    RKLB: 174 trades (57 OOS)  per-trade net -22 bps  win 28%  stopped 57%  IS -22  OOS -22  night/pre 126/48
+30 traded min: -49.1 bps  95% [-97.3, -2.2]  99.95% [-134.8, 32.7]  days 101
+to the open: -25.3 bps  95% [-85.9, 41.0]  99.95% [-122.8, 93.4]  days 101

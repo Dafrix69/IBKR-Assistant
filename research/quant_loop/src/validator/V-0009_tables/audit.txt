@@ -1,0 +1,50 @@
+== Anchor A: spread_credit_panel (winrate_study口径), train only, bear call 15 wide, credit (3,4]
+10:30 n 727 days 568 ev 33.38 win 0.748
+12:00 n 604 days 512 ev 5.09 win 0.715
+14:00 n 463 days 421 ev 21.5 win 0.719
+== my replica of WS口径 (all strikes, (3,4], k .25, fee on mid no min-leg, FOMC in, no cap)
+10:30 n 727 ev 33.36 win 0.748
+12:00 n 604 ev 5.07 win 0.715
+14:00 n 463 ev 21.48 win 0.719
+row match {'both': 1794, 'right_only': 542, 'left_only': 0} max |pnl diff| 0.0206
+== candidate days per time (spec filter, incl FOMC)
+time  10:30  12:00  13:00  14:00
+side                            
+C       571    513    491    412
+P       608    574    528    435
+== Anchor B: spec, paired 14:00-10:30, FOMC out, k .20 + min-leg
+C n 374 nD 374 D -0.0279 (np.float64(-0.076), np.float64(0.02)) G -0.0175 dPnL -25.87 (np.float64(-87.04), np.float64(34.035)) k.5 -25.46 k0 -26.15 pnl14/1030 19.13 45.01 win14/1030 0.709 0.759 distI14/1030 0.448 0.629
+    2022 n 141 D -0.0508 dPnL -38.8 pnl14/1030 26.7 65.5
+    2023 n 127 D -0.0215 dPnL -37.3 pnl14/1030 -27.4 9.9
+    2024 n 106 D -0.0052 dPnL 5.0 pnl14/1030 64.8 59.8
+P n 418 nD 417 D 0.0564 (np.float64(0.014), np.float64(0.101)) G 0.0462 dPnL 69.73 (np.float64(15.089), np.float64(124.691)) k.5 70.41 k0 69.27 pnl14/1030 63.72 -6.01 win14/1030 0.768 0.727 distI14/1030 0.362 0.541
+    2022 n 150 D 0.048 dPnL 47.7 pnl14/1030 72.6 25.0
+    2023 n 133 D 0.0046 dPnL 17.8 pnl14/1030 7.2 -10.6
+    2024 n 135 D 0.1167 dPnL 145.4 pnl14/1030 109.5 -35.9
+D_2 0.0142 G_2 0.0144
+FOMC incl C n 389 D -0.0286 dPnL -27.31
+FOMC incl P n 431 D 0.0571 dPnL 68.27
+== gate 3: month label union (proposer) vs per-side
+union down n 200 216 D_call -0.0026 D_put 0.0806 D_2 0.039 dPnL c/p -10.7 97.0
+union up n 174 202 D_call -0.0571 D_put 0.0307 D_2 -0.0132 dPnL c/p -43.3 40.5
+per-side down n 201 212 D_call -0.0113 D_put 0.0956 D_2 0.0422 dPnL c/p -31.0 119.3
+per-side up n 173 206 D_call -0.0472 D_put 0.0162 D_2 -0.0155 dPnL c/p -19.9 18.7
+months relabelled between口径: 6 (call) 6 (put)
+== decomposition (call side, train only). metric = mean pnl 14:00 - mean pnl 10:30
+WS口径 train: [np.float64(-11.88), np.float64(21.48), np.float64(33.36)] (463, 727)  spec口径 train: [np.float64(-25.87), np.float64(19.13), np.float64(45.01)] (374, 374)
+Shapley share of (spec - WS) gap: {'k020': np.float64(0.17), 'minleg': np.float64(0.0), 'fomc_out': np.float64(-0.83), 'cap2': np.float64(-1.73), 'band_edges': np.float64(-1.45), 'one_per_day': np.float64(14.99), 'paired': np.float64(-25.14)} sum -13.99
+one-at-a-time from WS: {'k020': np.float64(0.66), 'minleg': np.float64(0.0), 'fomc_out': np.float64(-3.47), 'cap2': np.float64(-5.66), 'band_edges': np.float64(1.78), 'one_per_day': np.float64(14.28), 'paired': np.float64(-22.19)}
+one-at-a-time removed from spec: {'k020': np.float64(-0.07), 'minleg': np.float64(0.0), 'fomc_out': np.float64(1.44), 'cap2': np.float64(0.0), 'band_edges': np.float64(-4.29), 'one_per_day': np.float64(15.2), 'paired': np.float64(-29.65)}
+FOMC rows in WS bucket (train): {'size': {'10:30': 44, '12:00': 44, '13:00': 41, '14:00': 37}, 'mean': {'10:30': 24.5, '12:00': 17.4, '13:00': -31.0, '14:00': 54.8}}
+strikes per day in WS bucket: {'10:30': 1.28, '12:00': 1.18, '13:00': 1.11, '14:00': 1.1}
+WS bucket by year, ev 14:00 / 10:30:
+   2022 34.8 51.7 176 261
+   2023 -46.3 2.1 155 250
+   2024 83.4 47.4 132 216
+== put side: distance-matched check (train, FOMC out, k .20+min, cap 2)
+  dist/I (0.2,0.35] 10:30: days 382 d +0.0202 pnl +6.9 | 14:00: days 254 d -0.0005 pnl +6.4
+  dist/I (0.35,0.5] 10:30: days 417 d +0.0197 pnl +19.0 | 14:00: days 261 d +0.0339 pnl +34.1
+  dist/I (0.5,0.65] 10:30: days 393 d +0.0138 pnl +10.2 | 14:00: days 258 d +0.0669 pnl +77.7
+  dist/I (0.65,0.8] 10:30: days 398 d +0.0005 pnl +8.5 | 14:00: days 247 d +0.0112 pnl +13.7
+spec picks dist/I quantiles put 10:30 / 14:00: [0.45, 0.54, 0.63] [0.2, 0.36, 0.49]
+put dPnL without best 5 days: 51.9 without worst 5: 89.1

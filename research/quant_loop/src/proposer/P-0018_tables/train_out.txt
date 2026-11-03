@@ -1,0 +1,35 @@
+prints total 260015; main (09:45-15:30, both chain rows) 244736; late 15:30-15:59 14653; days 249
+struct shares main: {'iron': 0.813, 'fly_C': 0.119, 'fly_P': 0.068}
+
+== GATED ==
+D (chain interp ref) [GATE 1,2]                      trim  +2.45 [+2.35, +2.55]     med  +2.39 mean  +2.56 seg1  +2.50 seg2  +2.42 days 249 prints 244736
+D_single placebo [GATE 3]                            trim  -3.50 [-3.71, -3.29]     med  -3.37 mean  -3.57 seg1  -3.79 seg2  -3.23 days 249 prints 242104
+placebo coverage: 0.989 of main prints
+GATE 1: D>0 & CI excl 0 ; GATE 2: seg1, seg2 > 0 ; GATE 3: |D_single| < D/2 = False  (3.50 vs 1.23)
+D on placebo-covered prints (report)                 trim  +2.45                    med  +2.40 mean  +2.56 seg1  +2.51 seg2  +2.41 days 249 prints 242104
+
+== k translation ==
+H_bar (chain m-row half-spread sum, pts) 0.2646; 0.20*H*100 = 5.29 USD; k_buy ~ 0.293, k_sell ~ 0.107
+
+== REPORT ONLY ==
+struct iron                                          trim  +2.70                    med  +2.71 mean  +2.86 seg1  +2.86 seg2  +2.58 days 249 prints 198935
+struct fly_C                                         trim  +1.43                    med  +1.41 mean  +1.47 seg1  +1.36 seg2  +1.49 days 249 prints 29082
+struct fly_P                                         trim  +1.33                    med  +1.46 mean  +1.30 seg1  +1.09 seg2  +1.52 days 249 prints 16719
+time 09:45-12:00                                     trim  +2.26                    med  +2.21 mean  +2.35 seg1  +2.36 seg2  +2.20 days 249 prints 109471
+time 12:00-14:00                                     trim  +2.34                    med  +2.33 mean  +2.38 seg1  +2.28 seg2  +2.39 days 249 prints 71179
+time 14:00-15:30                                     trim  +2.72                    med  +2.65 mean  +2.93 seg1  +2.78 seg2  +2.70 days 249 prints 64086
+time 15:30-15:59 (m+1 interp, 15:59 m row)           trim  +3.26                    med  +2.99 mean  +3.69 seg1  +4.27 seg2  +2.40 days 249 prints 14315
+size 1-2 lots                                        trim  +2.42                    med  +2.39 mean  +2.54 seg1  +2.49 seg2  +2.38 days 249 prints 197556
+size 3-9 lots                                        trim  +2.56                    med  +2.56 mean  +2.68 seg1  +2.61 seg2  +2.54 days 249 prints 37004
+size >=10 lots                                       trim  +2.53                    med  +2.46 mean  +2.75 seg1  +2.52 seg2  +2.54 days 249 prints 10176
+ref = own attached NBBO mid                          trim  +2.27                    med  +2.24 mean  +2.39 seg1  +2.38 seg2  +2.18 days 249 prints 244736
+ref = chain m row only                               trim  +3.20                    med  +3.21 mean  +3.31 seg1  +3.34 seg2  +3.07 days 249 prints 244736
+   share s=+1: 0.430
+signed split s=+1 (sign own NBBO, level chain)       trim  +4.71                    med  +4.74 mean  +4.95 seg1  +4.91 seg2  +4.58 days 249 prints 105296
+   share s=-1: 0.189
+signed split s=-1 (sign own NBBO, level chain)       trim  -1.45                    med  -1.50 mean  -1.51 seg1  -1.59 seg2  -1.34 days 249 prints 46210
+   share unsigned: 0.381
+signed split unsigned (sign own NBBO, level chain)   trim  +1.71                    med  +1.73 mean  +1.73 seg1  +1.67 seg2  +1.75 days 249 prints 93230
+baseline-A days (spx_ret_prev > -1%)                 trim  +2.45                    med  +2.39 mean  +2.49 seg1  +2.50 seg2  +2.42 days 221 prints 226174
+ex 2025-04-03..04-11                                 trim  +2.42                    med  +2.37 mean  +2.43 seg1  +2.43 seg2  +2.42 days 242 prints 242696
+print-level (unweighted) D mean +2.23 median +2.50; share D>0 0.626, D<0 0.365

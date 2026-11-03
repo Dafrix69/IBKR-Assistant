@@ -1,0 +1,31 @@
+names ['IREN', 'AXTI', 'LITE', 'OKLO']  days 504  2024-10-28..2026-10-30  OOS from 2026-03-04 (168 days)
+  IREN: 504 days from 2024-10-28
+  AXTI: 504 days from 2024-10-28
+  LITE: 504 days from 2024-10-28
+  OKLO: 504 days from 2024-10-28
+  IREN: median spread night 14.4  pre 16.6  rth 3.6 bps  -> entries allowed in ['night', 'pre']
+  AXTI: median spread night 28.1  pre 39.5  rth 14.7 bps  -> entries allowed in ['night']
+  LITE: median spread night 26.9  pre 32.7  rth 11.7 bps  -> entries allowed in ['night']
+  OKLO: median spread night 31.4  pre 34.7  rth 7.2 bps  -> entries allowed in none
+
+Grid, short only, pooled by day over the names, bps/day. 'gated' = only name-sessions under 30 bps
+   x  exit  gated  is_sh  is_trades  oos_sh  oos_bps  oos_trades  per_trade_bps   win  stopped
+0.05     0   True  3.280        106   0.015    0.044          63         94.508 0.609    0.308
+0.05     0  False  3.609        242  -1.639   -6.815         123         60.988 0.537    0.285
+0.05    30   True  1.795        106  -0.282   -1.415          63         50.133 0.438    0.601
+0.05    30  False  2.182        242  -0.775   -5.513         123         46.374 0.427    0.530
+0.08     0   True  0.687         26   0.171    0.231          17         39.207 0.558    0.373
+0.08     0  False  2.070         69   0.110    0.278          44         69.545 0.575    0.190
+0.08    30   True  0.352         26   0.675    1.885          17         54.499 0.465    0.538
+0.08    30  False  1.080         69   0.423    1.921          44         63.566 0.469    0.410
+
+PICK (best in-sample among the 4, gated): (0.05, 0)
+OOS net 0.0 bps/day  95% CI [-6.5, 7.1]  99.95% CI [-11.3, 13.4]  Sharpe 0.01  2x cost -2.9 bps/day
+IS  net 11.9 bps/day  Sharpe 3.28
+  IREN: 99 trades (23 OOS)  per-trade net 128 bps  win 65%  stopped 19%  night/pre 59/40  median entry-bar volume 1000 sh  gross 146 bps
+  AXTI: 47 trades (30 OOS)  per-trade net 68 bps  win 60%  stopped 38%  night/pre 47/0  median entry-bar volume 0 sh  gross 111 bps
+  LITE: 23 trades (10 OOS)  per-trade net 6 bps  win 48%  stopped 35%  night/pre 23/0  median entry-bar volume 0 sh  gross 40 bps
+  OKLO: no trades
+baseline random side: mean -2.9, 95th pct 1.9 bps/day
+
+all 169 trades of the pick written to trades_premarket_short.csv

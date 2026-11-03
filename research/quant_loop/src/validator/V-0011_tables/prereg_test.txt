@@ -1,0 +1,8 @@
+V-0011 test-period pre-registration (written 2026-11-01 after training replication matched exactly, before days_test.csv existed)
+Metrics: frozen list in V-0011_analyze.py header. Test analysis run exactly once (V-0011_build.py test; V-0011_analyze.py test; V-0011_friday.py).
+Proposer PASS (P-0011 spec): G_x < 0 AND EV_PNT > 0 AND dEV > 0 AND c > 0 (signs only).
+Protocol PASS (verdict): (a) significance: dEV 95% CI excludes 0 OR (EV_PNT - baseline A) paired CI excludes 0 OR win - 61.0% >= +3pp
+  with Wilson lower bound above baseline; (b) same sign of dEV and G_x in 2025 and 2026 (2024-11~12 reported, ~8 PNT days, not gating);
+  (c) robustness does not flip sign: k0.5, wing -5/+5, drop best 5, pure Monday, 10:30 entry dEV;
+  (d) multiple comparisons: permutation two-sided p for dEV and G_x x 52 < 0.05 (direction pre-known, no one-sided discount).
+Any of (a)-(d) failing -> FAIL. REVISE only for an implementation bug.

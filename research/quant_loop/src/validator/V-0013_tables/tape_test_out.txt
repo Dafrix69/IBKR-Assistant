@@ -1,0 +1,40 @@
+
+######## rule V (aggregate repeats): 721906 combos, 499 days
+             n     w      H  lots    own  own_med  common  common_med   asof  asof_med  k_own_med  k_own_mean  k_asof_med  k_asof_mean
+struct                                                                                                                                
+call     91616  20.0  0.397   1.0  0.078     0.05   0.122       0.075  0.109     0.075      0.143       0.201       0.214        0.299
+iron    577742  30.0  0.236   1.0  0.055     0.05   0.121       0.075  0.098     0.050      0.200       0.246       0.333        0.408
+put      52548  20.0  0.450   1.0  0.085     0.05   0.131       0.075  0.117     0.075      0.143       0.191       0.200        0.288
+ M[s_common] all: 1.036 [1.017, 1.054] | 15-29: 1.060 [1.036, 1.082] (fly 106502, iron 219313) | 30-79: 1.154 [1.120, 1.186] (fly 37662, iron 358429)
+ M[s_own] all: 1.463 [1.439, 1.489] | 15-29: 1.410 [1.384, 1.434] (fly 106502, iron 219313) | 30-79: 1.738 [1.684, 1.791] (fly 37662, iron 358429)
+ M[s_asof] all: 1.145 [1.129, 1.161] | 15-29: 1.189 [1.170, 1.210] (fly 106502, iron 219313) | 30-79: 1.244 [1.212, 1.280] (fly 37662, iron 358429)
+ perm (within day x band label shuffle, 1000) s_common: obs 1.036 p_one_sided 0.0010
+ perm (within day x band label shuffle, 1000) s_asof: obs 1.145 p_one_sided 0.0010
+ slope s_own ~ a + b*H: a -0.0149 b +0.2764 [+0.2085, +0.3664] | call b +0.2549 | iron b +0.3281 | put b +0.2524
+ slope s_asof ~ a + b*H: a +0.0387 b +0.2250 [+0.1556, +0.3212] | call b +0.1208 | iron b +0.3901 | put b +0.1001
+ slope s_common ~ a + b*H: a +0.0735 b +0.1771 [+0.1194, +0.2466] | call b +0.1345 | iron b +0.2868 | put b +0.0817
+ noise floor iron: mean|net-common| - mean|net-own| +0.0655; mean|net-asof| - mean|net-own| +0.0426
+ put-only band 15-29: n put 38096 iron 219313; ratio asof 1.250, common 1.116; mean k_asof put 0.298 iron 0.380; d mean|slip| asof USD +2.26 vs model +3.38
+ put-only band 30-79: n put 14452 iron 358429; ratio asof 1.266, common 1.185; mean k_asof put 0.253 iron 0.427; d mean|slip| asof USD +2.74 vs model +6.61
+  seg 2024-11~12: fly 8761 iron 33034 M_common 1.050 M_asof 1.123  bands common 15-29 1.050 30-79 1.129
+  seg 2025: fly 53937 iron 240258 M_common 1.011 M_asof 1.145  bands common 15-29 1.064 30-79 1.054
+  seg 2026: fly 81466 iron 304450 M_common 1.048 M_asof 1.166  bands common 15-29 1.049 30-79 1.271
+ asof coverage: 0.894  median stale s: 1.89
+
+ ## Addendum 2 deconvolution (asof ref, per exact w, fly-count weights; rms units)
+  put fly  all  : rms slip fly 0.1712 iron 0.1010 | k_rms fly 0.385 [0.327, 0.457] iron 0.420 [0.369, 0.494] | USD fly-iron +7.02 [4.107, 10.449] vs k-model +4.08 | fly own-ref k_rms (undeconvolved) 0.522
+  put fly  15-29: rms slip fly 0.1732 iron 0.0962 | k_rms fly 0.428 [0.352, 0.526] iron 0.401 [0.356, 0.451] | USD fly-iron +7.70 [4.564, 12.227] vs k-model +3.30 | fly own-ref k_rms (undeconvolved) 0.550
+  put fly  30-79: rms slip fly 0.1646 iron 0.1151 | k_rms fly 0.289 [0.202, 0.345] iron 0.477 [0.369, 0.654] | USD fly-iron +4.95 [-0.855, 9.627] vs k-model +6.58 | fly own-ref k_rms (undeconvolved) 0.455
+  put+call all  : rms slip fly 0.1487 iron 0.0994 | k_rms fly 0.360 [0.325, 0.393] iron 0.414 [0.361, 0.473] | USD fly-iron +4.93 [3.098, 6.606] vs k-model +3.45 | fly own-ref k_rms (undeconvolved) 0.476
+  put+call 15-29: rms slip fly 0.1444 iron 0.0962 | k_rms fly 0.377 [0.334, 0.416] iron 0.401 [0.359, 0.453] | USD fly-iron +4.82 [3.077, 6.464] vs k-model +2.86 | fly own-ref k_rms (undeconvolved) 0.457
+  put+call 30-79: rms slip fly 0.1624 iron 0.1096 | k_rms fly 0.316 [0.242, 0.368] iron 0.454 [0.371, 0.597] | USD fly-iron +5.27 [-0.226, 9.061] vs k-model +5.45 | fly own-ref k_rms (undeconvolved) 0.499
+
+######## rule P (drop repeats): 646321 combos, 499 days
+             n     w      H  lots    own  own_med  common  common_med   asof  asof_med  k_own_med  k_own_mean  k_asof_med  k_asof_mean
+struct                                                                                                                                
+call     82575  20.0  0.400   1.0  0.079     0.05   0.123       0.075  0.110     0.075      0.143       0.200       0.211        0.297
+iron    515928  30.0  0.237   1.0  0.055     0.05   0.121       0.075  0.098     0.050      0.200       0.242       0.333        0.408
+put      47818  20.0  0.454   1.0  0.086     0.05   0.132       0.075  0.118     0.075      0.143       0.191       0.200        0.288
+ M[s_common] all: 1.043 [1.024, 1.061] | 15-29: 1.069 [1.046, 1.094] (fly 95447, iron 195351) | 30-79: 1.159 [1.129, 1.190] (fly 34946, iron 320577)
+ M[s_own] all: 1.492 [1.466, 1.519] | 15-29: 1.437 [1.410, 1.463] (fly 95447, iron 195351) | 30-79: 1.773 [1.713, 1.832] (fly 34946, iron 320577)
+ M[s_asof] all: 1.144 [1.129, 1.162] | 15-29: 1.193 [1.173, 1.213] (fly 95447, iron 195351) | 30-79: 1.239 [1.206, 1.273] (fly 34946, iron 320577)

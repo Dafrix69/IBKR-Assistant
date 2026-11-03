@@ -1,0 +1,12 @@
+FOMC days in base: 16  with both minutes valid: 9
+FOMC G values: {Timestamp('2022-05-04 00:00:00'): 33.0, Timestamp('2023-06-14 00:00:00'): 27.0, Timestamp('2023-07-26 00:00:00'): 6.59, Timestamp('2023-09-20 00:00:00'): 4.5, Timestamp('2023-11-01 00:00:00'): 14.0, Timestamp('2024-01-31 00:00:00'): 10.0, Timestamp('2024-03-20 00:00:00'): 34.09, Timestamp('2024-06-12 00:00:00'): 20.5, Timestamp('2024-07-31 00:00:00'): 22.0}
+DiD, events = minutes+BB+FOMC                n  39  mean +6.881 [+4.268, +9.896]  2022:+5.701(n9) 2023:+5.347(n15) 2024:+9.124(n15)
+DiD, events = minutes+BB, FOMC out of controls n  30  mean +3.282 [+1.759, +4.851]  2022:+2.354(n8) 2023:+2.703(n11) 2024:+4.537(n11)
+
+G_ev median +2.25, share >0 0.80, =0 0.00, <0 0.20
+G_ctrl median +0.00, share >0 0.48, <0 0.49
+
+cap-dropped event days (cap lifted only to read them):
+  2022-10-12 pnl13:55 +1219  pnl14:00(uncapped) +1533  E13:55 13.52  E14:00 144.52  14:00 widest leg 8.1  H 6.90
+  2022-11-23 pnl13:55 +952  pnl14:00(uncapped) +911  E13:55 12.43  E14:00 68.43  14:00 widest leg 4.1  H 3.10
+  2023-01-04 pnl13:55 +1139  pnl14:00(uncapped) +1528  E13:55 10.93  E14:00 94.43  14:00 widest leg 4.4  H 4.40

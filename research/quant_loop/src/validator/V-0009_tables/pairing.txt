@@ -1,0 +1,10 @@
+C spec unpaired 14:00 - 10:30: (np.float64(3.8), [-66.4, 73.0]) n 397 551
+   10:30 on days WITHOUT a 14:00 candidate: n 177 pnl -61.5 I_10:30 med 18.4 settle-S_10:30 med 4.4 | with: n 374 pnl 45.0 I med 24.5 settle-S med -1.2
+P spec unpaired 14:00 - 10:30: (np.float64(49.8), [-16.0, 118.8]) n 422 588
+   10:30 on days WITHOUT a 14:00 candidate: n 170 pnl 63.1 I_10:30 med 16.8 settle-S_10:30 med 3.0 | with: n 418 pnl -6.0 I med 24.0 settle-S med 1.0
+WS口径 train 14:00 - 10:30 (trade-level, iid bootstrap): (np.float64(-11.9), [-76.5, 50.5])
+inferred from published full-sample table minus train (10:30): rest n 634 ev -1.4
+inferred from published full-sample table minus train (14:00): rest n 399 ev 56.6
+== per-eligible-day (no candidate -> 0), FOMC out, k .20 + min-leg; and unpaired D
+C days 604 per-day 14:00 - 10:30 -0.3 [-46.5, 46.3] by year {2022: np.float64(-17.4), 2023: np.float64(-4.8), 2024: np.float64(18.6)} | unpaired D -0.0014
+P days 604 per-day 14:00 - 10:30 30.9 [-11.5, 75.0] by year {2022: np.float64(47.3), 2023: np.float64(-19.9), 2024: np.float64(77.9)} | unpaired D 0.0408

@@ -1,0 +1,111 @@
+jobs 624 days 604 cand 50401 I median 12.90 quartiles 10.20/16.81 tercile cuts [11.05 15.25]
+credit-anchor dist_I median by cell (m check):
+side       w 
+bear_call  10    0.150
+           15    0.404
+bull_put   10    0.045
+           15    0.313
+Iq            high   low   mid
+side      w                   
+bear_call 10  0.25 -0.04  0.14
+          15  0.54  0.20  0.40
+bull_put  10  0.18 -0.13  0.01
+          15  0.50  0.10  0.31
+credit in [3,4] share:
+side       w 
+bear_call  10    0.81
+           15    0.67
+bull_put   10    0.82
+           15    0.74
+
+=== primary ===
+          n      D     lo     hi  frac_diff
+k020  603.0 -1.908 -6.209  2.120      0.338
+k050  603.0 -2.068 -6.384  2.121      0.338
+
+=== by_year ===
+          n      D      lo     hi
+year                             
+2022  159.0 -5.518 -15.264  4.215
+2023  240.0  0.120  -6.502  6.602
+2024  204.0 -1.480  -8.052  5.294
+
+=== by_Iq ===
+          n      D      lo     hi
+Iq                               
+high  200.0 -3.741 -13.674  5.559
+low   203.0 -0.124  -7.975  7.633
+mid   200.0 -1.886  -6.442  2.896
+
+=== by_year_Iq ===
+               n       D      lo      hi
+year Iq                                 
+2022 high  117.0  -8.664 -22.254   4.008
+     low     3.0  18.091 -36.478  90.750
+     mid    39.0   2.102  -4.822  10.082
+2023 high   34.0   2.140 -21.983  26.751
+     low   118.0   2.226  -8.057  11.951
+     mid    88.0  -3.484 -10.868   3.521
+2024 high   49.0   3.933  -9.605  16.938
+     low    82.0  -4.173 -16.381   8.593
+     mid    73.0  -2.090 -10.089   6.267
+
+=== by_cell ===
+                  n      D      lo     hi
+side      w                              
+bear_call 10  604.0 -1.594 -11.001  7.207
+          15  604.0 -1.045 -10.691  8.608
+bull_put  10  604.0 -3.235 -11.884  5.093
+          15  603.0 -2.254 -12.744  7.355
+
+=== by_cell_Iq ===
+Iq              high    low    mid
+side      w                       
+bear_call 10 -12.493  4.067  3.615
+          15  -1.516 -1.227 -0.386
+bull_put  10  -5.353  2.252 -6.675
+          15   2.975 -5.589 -4.097
+
+=== by_cell_year ===
+year            2022    2023    2024
+side      w                         
+bear_call 10  -5.512  -6.018   6.685
+          15 -12.210  -1.406   8.138
+bull_put  10  -5.894  10.255 -17.020
+          15  -0.220  -2.350  -3.725
+
+=== by_side ===
+               n      D      lo     hi
+side                                  
+bear_call  604.0 -1.319  -7.958  5.760
+bull_put   604.0 -3.097 -10.024  4.293
+
+=== levels ===
+              win_im   ev_im  ev05_im  win_cr   ev_cr  ev05_cr
+side      w                                                   
+bear_call 10   0.604  -5.640  -10.455   0.609  -4.046   -8.672
+          15   0.705   6.039    2.275   0.692   7.083    3.348
+bull_put  10   0.654  22.239   16.970   0.654  25.474   20.442
+          15   0.731  32.439   28.235   0.731  34.693   30.673
+
+=== p3 ===
+   q       side   w  range_dI  range_cr   sd_dI   sd_cr  nb_dI  nb_cr flatter  cr_minus_dI
+0  4  bear_call  10    54.601    83.029  29.364  42.603      4      4  dist_I       28.427
+1  4  bear_call  15    80.136    86.341  42.122  44.081      3      3  dist_I        6.205
+2  4   bull_put  10    38.784    32.302  21.190  16.878      4      3  credit       -6.482
+3  4   bull_put  15    59.695    59.919  30.003  31.610      3      3  dist_I        0.224
+4  5  bear_call  10    63.427    72.741  33.887  39.733      5      4  dist_I        9.314
+5  5  bear_call  15    81.583    94.177  42.832  48.291      4      4  dist_I       12.594
+6  5   bull_put  10    54.581    76.452  29.298  41.036      5      4  dist_I       21.871
+7  5   bull_put  15    63.174    97.979  34.221  50.402      4      4  dist_I       34.806
+
+=== p3_fixed_edges ===
+        side   w        anchor  buckets   range
+0  bear_call  10        dist_I        5  63.293
+1  bear_call  10  credit_ratio        4  51.409
+2  bear_call  15        dist_I        5  92.965
+3  bear_call  15  credit_ratio        4  80.044
+4   bull_put  10        dist_I        5  49.391
+5   bull_put  10  credit_ratio        4  30.958
+6   bull_put  15        dist_I        5  70.608
+7   bull_put  15  credit_ratio        4  77.345
