@@ -90,7 +90,13 @@ public:
     Task<OJson> streamQuotes(const QStringList& symbols) override { return r_->streamQuotes(symbols); }
     // Handlers1Router
     int sessionCount() override { return static_cast<int>(r_->sessions().size()); }
-    Task<QList<OJson>> positions() override { return r_->positions(); }
+    Task<QList<OJson>> positions() override {
+        QList<OJson> rows = co_await r_->positions();
+        // 全被别名表挡掉时不能回空列表:界面会说"没有持仓",而账户里其实有仓
+        if (rows.isEmpty() && !r_->hiddenAccounts().isEmpty())
+            throw execution::BrokerError(u"TWS 报了账户 %1,软件没能认出它,持仓读不出来。账户里实际有仓,不是空仓。"_s.arg(r_->hiddenAccounts().join(u"、"_s)));
+        co_return rows;
+    }
     QStringList connectedNames() override { return r_->connectedNames(); }
     bool upstreamOk() override { return r_->upstreamOk(); }
     bool hasOptionQuotes() const override { return true; }

@@ -108,6 +108,7 @@ private:
     util::Task<> serialVoid(std::function<util::Task<>()> fn);
 
     util::Task<BrokerConnectResult> connectNow(std::optional<QStringList> names);
+    void adoptAccounts(execution::BrokerRouter& router, const QString& connection, const QStringList& managed);
     util::Task<> retryBody();
     void ensureTimer();
     void watch(const std::shared_ptr<execution::BrokerRouter>& router);

@@ -123,5 +123,10 @@ QString configBackupPath(const QString& settingsPath);
 /// 深合并一份补丁到配置文件:先在内存里验,验不过不落盘;落盘前把改动前那一份存成 .bak,再原子写
 Settings patchConfigFile(const std::optional<QString>& settingsPath, const util::OJson& patch);
 util::OJson deepMerge(const util::OJson& base, const util::OJson& patch);
+/// 账号以 TWS 报的为准:连接 connection 报上来的账号没配过,就填进同类(实盘 / 模拟)的占位账户,没有占位就新加一条;
+/// 默认账户还是占位时,默认挪到第一个认出来的账号。没有要改的返回空。
+std::optional<std::vector<contract::AccountConfig>> adoptManagedAccounts(const std::vector<contract::AccountConfig>& accounts, const QString& connection,
+                                                                         const QStringList& managed);
+util::OJson accountsPatch(const std::vector<contract::AccountConfig>& accounts);
 
 }  // namespace ibkr::domain

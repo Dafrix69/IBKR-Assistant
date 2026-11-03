@@ -8,6 +8,8 @@ config/settings.json.tmp-*
 
 # TWS research cache and derived results: retain locally, never commit raw market data.
 data/
+# ThetaData EOD universe (412 MB, licence forbids redistribution) and its screen
+research/small_cap_orb/universe/
 
 # 桌面端:依赖、打包产物、预览与压测输出
 desktop/node_modules/

@@ -91,6 +91,8 @@ public:
 class BrokerLinkHost : public SvcHost {
 public:
     virtual void setBroker(std::shared_ptr<execution::BrokerRouter> router) = 0;
+    /// 账户表按 TWS 报的账号更新过的新配置
+    virtual void adoptSettings(domain::Settings settings) = 0;
     virtual void dropEngine() = 0;
 };
 

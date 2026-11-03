@@ -64,6 +64,8 @@ ibkr_test(tst_fly_model)
 target_link_libraries(tst_fly_model PRIVATE ibkr_analysis Qt6::Test)
 ibkr_test(tst_flyexit)
 target_link_libraries(tst_flyexit PRIVATE ibkr_analysis Qt6::Test)
+ibkr_test(tst_flyexit_experimental)
+target_link_libraries(tst_flyexit_experimental PRIVATE ibkr_analysis Qt6::Test)
 ibkr_test(tst_playbook)
 target_link_libraries(tst_playbook PRIVATE ibkr_analysis Qt6::Test)
 ibkr_test(tst_fly_entry_assist)
@@ -219,4 +221,17 @@ if(IBKR_BUILD_UI)
     target_link_libraries(tst_earnings_ui PRIVATE ibkr_kit ibkr_kitplugin Qt6::Quick Qt6::Qml Qt6::Test)
     target_compile_definitions(tst_earnings_ui PRIVATE EARNINGS_QML_PATH="${CMAKE_SOURCE_DIR}/app/pages/EarningsPanel.qml")
     set_tests_properties(tst_earnings_ui PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+endif()
+
+# fly-exit-sweep 命令行:读合成的 fly-iv 目录出报告(坏行跳过),以及写错的参数名当场拒。只读,不连券商
+if(TARGET fly-exit-sweep)
+    add_test(NAME fly_exit_sweep_cli_report
+             COMMAND fly-exit-sweep --dir ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/fly-iv-smoke --arm 50,100 --draws 200)
+    set_tests_properties(fly_exit_sweep_cli_report PROPERTIES PASS_REGULAR_EXPRESSION "样本目录:.*fly-iv-smoke" FAIL_REGULAR_EXPRESSION "扫描没做")
+    add_test(NAME fly_exit_sweep_cli_rejects_unknown_flag
+             COMMAND fly-exit-sweep --dir ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/fly-iv-smoke --wing 25)
+    set_tests_properties(fly_exit_sweep_cli_rejects_unknown_flag PROPERTIES PASS_REGULAR_EXPRESSION "没有 --wing 这个参数")
+    add_test(NAME fly_exit_sweep_cli_out_not_in_repo
+             COMMAND fly-exit-sweep --dir ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/fly-iv-smoke --out ${CMAKE_CURRENT_SOURCE_DIR}/sweep.json)
+    set_tests_properties(fly_exit_sweep_cli_out_not_in_repo PROPERTIES PASS_REGULAR_EXPRESSION "--out 不能指到仓库里")
 endif()

@@ -1,6 +1,7 @@
 #include "domain/config.h"
 
 #include "util/jsformat.h"
+#include "util/jsobj.h"
 #include "util/js_runtime.h"
 #include "util/jsvalue.h"
 #include "util/market_calendar.h"
@@ -17,6 +18,7 @@
 #include <QRegularExpression>
 #include <QSet>
 
+#include <algorithm>
 #include <cmath>
 #include <deque>
 
@@ -1138,6 +1140,49 @@ OJson deepMerge(const OJson& base, const OJson& patch) {
         else out.set(key, value);
     }
     return out;
+}
+
+std::optional<std::vector<contract::AccountConfig>> adoptManagedAccounts(const std::vector<contract::AccountConfig>& accounts, const QString& connection,
+                                                                         const QStringList& managed) {
+    static const QRegularExpression placeholder(uR"(\A[A-Za-z]*0+\z)"_s);
+    const auto isPlaceholder = [](const contract::AccountConfig& a) { return placeholder.match(a.account_id).hasMatch(); };
+    std::vector<contract::AccountConfig> next = accounts;
+    QString firstAdopted;
+    for (const QString& id : managed) {
+        if (id.isEmpty() || std::any_of(next.begin(), next.end(), [&](const auto& a) { return a.account_id == id; })) continue;
+        const bool paper = id.startsWith(u'D', Qt::CaseInsensitive);  // IBKR 模拟账号以 D 开头
+        auto slot = std::find_if(next.begin(), next.end(), [&](const auto& a) { return isPlaceholder(a) && a.is_paper == paper && a.connection == connection; });
+        if (slot == next.end()) slot = std::find_if(next.begin(), next.end(), [&](const auto& a) { return isPlaceholder(a) && a.is_paper == paper; });
+        if (slot != next.end()) {
+            slot->account_id = id;
+            slot->connection = connection;
+        } else {
+            contract::AccountConfig added;
+            added.alias = u"账户"_s + id.right(4);
+            added.account_id = id;
+            added.is_paper = paper;
+            added.connection = connection;
+            next.push_back(added);
+        }
+        if (firstAdopted.isEmpty()) firstAdopted = id;
+    }
+    if (firstAdopted.isEmpty()) return std::nullopt;
+    const auto dflt = std::find_if(next.begin(), next.end(), [](const auto& a) { return a.isDefault; });
+    if (dflt == next.end() || isPlaceholder(*dflt)) {
+        for (auto& a : next) a.isDefault = a.account_id == firstAdopted;
+    }
+    return next;
+}
+
+OJson accountsPatch(const std::vector<contract::AccountConfig>& accounts) {
+    namespace js = util::js;
+    OJson list = js::array();
+    for (const contract::AccountConfig& a : accounts) {
+        OJson one = js::object({{u"alias"_s, js::S(a.alias)}, {u"account_id"_s, js::S(a.account_id)}, {u"is_paper"_s, js::B(a.is_paper)}, {u"connection"_s, js::S(a.connection)}});
+        if (a.isDefault) one.set(u"default"_s, js::B(true));
+        list.items.push_back(one);
+    }
+    return js::object({{u"accounts"_s, list}});
 }
 
 Settings patchConfigFile(const std::optional<QString>& settingsPath, const OJson& patch) {
