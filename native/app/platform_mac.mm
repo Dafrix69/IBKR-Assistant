@@ -24,11 +24,13 @@ NSInteger g_attention = 0;
 
 }  // namespace
 
-void playWav(const QByteArray& wav) {
+void playSound(const QString& name) {
     @autoreleasepool {
-        NSData* data = [NSData dataWithBytes:wav.constData() length:NSUInteger(wav.size())];
-        NSSound* sound = [[NSSound alloc] initWithData:data];
-        [sound play];  // NSSound 在播放期间自己留着自己
+        // soundNamed 给的是系统缓存着的那一个(不归我们释放);正在响时再 play 不出声:从头再响一遍
+        NSSound* sound = [NSSound soundNamed:ns(name)];
+        if (!sound) return;
+        if ([sound isPlaying]) [sound stop];
+        [sound play];
     }
 }
 

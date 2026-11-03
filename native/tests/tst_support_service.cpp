@@ -69,7 +69,7 @@ struct Rig {
     shell::LogFile log{dir.filePath(u"logs/qt-main.log"_s)};
     struct Out : shell::AlertOutputs {
         QStringList notices;
-        void playWav(const QByteArray&) override {}
+        void playSound(const QString&) override {}
         bool notify(const QString& t, const QString&) override { notices << t; return true; }
     } outputs;
     shell::Alerter alerter{nullptr, &outputs, {}};

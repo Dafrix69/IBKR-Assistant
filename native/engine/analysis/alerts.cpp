@@ -79,9 +79,9 @@ AlertLevel AlertLevel::fromJson(const OJson& o) {
 }
 
 // ---------------------------------------------------------------- 价位生成
-double autoStep(double spot, double bandPct) {
-    if (!(spot > 0) || !(bandPct > 0 && bandPct < 100) || !std::isfinite(spot)) return 0;
-    const double need = (spot * 2 * bandPct) / (100 - bandPct);
+namespace {
+/// 不小于 need 的最小 1 / 2.5 / 5 × 10^k
+double ladderAtLeast(double need) {
     // 10^k ≤ need < 10^(k+1):这一个数量级里三档都不够,下一个数量级的第一档一定够
     static const double ladder[3] = {1, 2.5, 5};  // 1 / 2.5 / 5 × 10^k
     for (double k = std::floor(jm::log10(need));; k += 1) {
@@ -90,6 +90,17 @@ double autoStep(double spot, double bandPct) {
             if (step >= need - 1e-12) return step;
         }
     }
+}
+}  // namespace
+
+double autoStep(double spot, double bandPct) {
+    if (!(spot > 0) || !(bandPct > 0 && bandPct < 100) || !std::isfinite(spot)) return 0;
+    return ladderAtLeast((spot * 2 * bandPct) / (100 - bandPct));
+}
+
+double roundStep(double spot) {
+    if (!(spot > 0) || !std::isfinite(spot)) return 0;
+    return ladderAtLeast(spot * kRoundStepPct / 100.0);  // 3% 远大于重新上膛要的 2 × 0.3%,autoStep 那条下限自然满足
 }
 
 std::vector<double> roundLevels(double spot, double step) {
@@ -218,7 +229,7 @@ std::vector<AlertLevel> buildLevels(double spot, const OJson* wall, double step,
 
     std::vector<AlertLevel> levels = wallLevels(wall);
     for (const AlertLevel& l : trendLevels(history, spot, defaultMaPeriods(), kExtremeWindow, today)) levels.push_back(l);
-    for (double price : roundLevels(spot, step > 0 ? step : autoStep(spot))) {
+    for (double price : roundLevels(spot, step > 0 ? step : roundStep(spot))) {
         if (!(price > 0)) continue;  // 步长比现价还大时下面那一档是 0:不是一个价位
         levels.push_back(level(price, u"整数关口 "_s + util::pyG(price), u"round"_s, u"pivot"_s, kPriorityRound));
     }
@@ -314,7 +325,8 @@ std::pair<QList<OJson>, OJson> evaluate(const std::vector<AlertLevel>& levels, c
         const double at = levelPriceAt(lv, price);
 
         // 先看能不能重新上膛:离开得够远,而且过了冷却
-        if (!js::truthy(js::prop(&state, u"armed"_s)) && std::fabs(price - at) > band(at, bandPct)) {
+        const double away = lv.source == u"round" ? std::max(band(at, bandPct), band(at, kRoundRearmPct)) : band(at, bandPct);
+        if (!js::truthy(js::prop(&state, u"armed"_s)) && std::fabs(price - at) > away) {
             const OJson* last = js::prop(&state, u"last_fired_at"_s);
             const bool cooled = (last && last->type == OJson::Null) || nowTs - js::num(last) >= cooldown;
             if (cooled) state = arm(true, last);
@@ -383,8 +395,9 @@ std::pair<QList<OJson>, OJson> evaluate(const std::vector<AlertLevel>& levels, c
     return {events, out};
 }
 
-std::optional<std::vector<AlertLevel>> reroundLevels(const std::vector<AlertLevel>& levels, double price, double step, double mergePct) {
-    const double size = step > 0 ? step : autoStep(price);
+std::optional<std::vector<AlertLevel>> reroundLevels(const std::vector<AlertLevel>& levels, double price, double step, double mergePct,
+                                                     const QSet<QString>& hot) {
+    const double size = step > 0 ? step : roundStep(price);
     if (!(price > 0) || !(size > 0)) return std::nullopt;
     const double ratio = price / size;
     if (std::fabs(ratio - util::jsRound(ratio)) < 1e-9) return std::nullopt;
@@ -396,7 +409,7 @@ std::optional<std::vector<AlertLevel>> reroundLevels(const std::vector<AlertLeve
     for (const AlertLevel& l : levels) {
         bool inPair = false;
         for (double r : pair) inPair = inPair || same(r, l.price);
-        if (l.source != u"round" || inPair) kept.push_back(l);
+        if (l.source != u"round" || inPair || hot.contains(levelKey(l))) kept.push_back(l);
     }
     const double tol = (std::fabs(price) * mergePct) / 100.0;
     std::vector<AlertLevel> added;

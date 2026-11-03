@@ -1,14 +1,15 @@
-// 报一条提醒(shell/alerter)与提示音(shell/alert_tone):开关、退回系统通知、截断、记在本机;提示音的音高顺序与包络。
+// 报一条提醒(shell/alerter)与提示音(shell/alert_tone):开关、退回系统通知、截断、记在本机;提示音是三个不同的系统音。
 #include "shell/alert_tone.h"
 #include "shell/alerter.h"
 #include "shell/popup_rules.h"
 
+#include <QFileInfo>
 #include <QJsonArray>
+#include <QSet>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
 
-#include <cmath>
 
 using namespace ibkr;
 using namespace ibkr::shell;
@@ -17,10 +18,10 @@ using namespace Qt::StringLiterals;
 namespace {
 
 struct FakeOutputs : AlertOutputs {
-    QList<QByteArray> sounds;
+    QStringList sounds;
     QList<QPair<QString, QString>> notices;
     bool supported = true;
-    void playWav(const QByteArray& wav) override { sounds.append(wav); }
+    void playSound(const QString& name) override { sounds.append(name); }
     bool notify(const QString& t, const QString& b) override {
         notices.append({t, b});
         return supported;
@@ -29,22 +30,6 @@ struct FakeOutputs : AlertOutputs {
 
 QJsonObject item(const QString& id) {
     return {{u"id"_s, id}, {u"kind"_s, u"event"_s}, {u"symbol"_s, u"SPX"_s}, {u"title"_s, u"正在公布 CPI"_s}, {u"body"_s, u"盯住现价"_s}, {u"tone"_s, u"info"_s}, {u"at"_s, 5}, {u"page"_s, u"trade"_s}};
-}
-
-/// 某一时刻附近的最大振幅(0~1)
-double peakAround(const QList<qint16>& s, double t, double window = 0.005) {
-    int peak = 0;
-    for (int i = int((t - window) * tone::kSampleRate); i < int((t + window) * tone::kSampleRate); ++i)
-        if (i >= 0 && i < s.size()) peak = std::max(peak, std::abs(int(s[i])));
-    return peak / 32767.0;
-}
-
-/// 一段里的过零次数 → 频率
-double frequencyBetween(const QList<qint16>& s, double t0, double t1) {
-    int crossings = 0;
-    for (int i = int(t0 * tone::kSampleRate) + 1; i < int(t1 * tone::kSampleRate); ++i)
-        if ((s[i - 1] < 0) != (s[i] < 0)) ++crossings;
-    return crossings / 2.0 / (t1 - t0);
 }
 
 }  // namespace
@@ -59,7 +44,7 @@ private slots:
         QSignalSpy feed(&a, &Alerter::notified);
         a.announce(item(u"e:1"_s), u"down"_s);
         QCOMPARE(out.sounds.size(), 1);
-        QCOMPARE(out.sounds[0], tone::wav(u"down"_s));
+        QCOMPARE(out.sounds[0], tone::soundFor(u"down"_s));
         QCOMPARE(feed.size(), 1);
         QCOMPARE(feed[0][0].toString(), u"正在公布 CPI"_s);
         QCOMPARE(popup.items().size(), 1);
@@ -103,8 +88,8 @@ private slots:
         a.previewTone();  // 试听不看开关
         QCOMPARE(out.sounds.size(), 1);
         QTRY_COMPARE(out.sounds.size(), 2);
-        QCOMPARE(out.sounds[0], tone::wav(u"down"_s));
-        QCOMPARE(out.sounds[1], tone::wav(u"up"_s));
+        QCOMPARE(out.sounds[0], tone::soundFor(u"down"_s));
+        QCOMPARE(out.sounds[1], tone::soundFor(u"up"_s));
     }
 
     void systemNotifyTruncates() {
@@ -139,24 +124,11 @@ private slots:
         QCOMPARE(out.notices.size(), 1);
     }
 
-    // 提示音:升调先低后高、降调先高后低、没有方向两声一样;包络 20ms 爬到 0.6、0.22 秒收掉;两个音隔 0.24 秒
-    void toneShape() {
-        const QList<qint16> up = tone::samples(u"up"_s);
-        QVERIFY(std::abs(frequencyBetween(up, 0.03, 0.09) - 587.33) < 15);
-        QVERIFY(std::abs(frequencyBetween(up, 0.27, 0.33) - 880.0) < 15);
-        const QList<qint16> down = tone::samples(u"down"_s);
-        QVERIFY(std::abs(frequencyBetween(down, 0.03, 0.09) - 880.0) < 15);
-        QVERIFY(std::abs(frequencyBetween(down, 0.27, 0.33) - 587.33) < 15);
-        const QList<qint16> flat = tone::samples({});
-        QVERIFY(std::abs(frequencyBetween(flat, 0.03, 0.09) - frequencyBetween(flat, 0.27, 0.33)) < 15);
-        QVERIFY(std::abs(peakAround(up, 0.06) - tone::kPeak) < 0.02);
-        QVERIFY(peakAround(up, 0.002, 0.001) < 0.05);   // 起音不咔哒
-        QVERIFY(peakAround(up, 0.225, 0.002) < 0.02);   // 收干净了
-        QVERIFY(peakAround(up, 0.235, 0.004) < 0.001);  // 两个音之间是静的
-        QCOMPARE(up.size(), int(std::ceil(0.47 * tone::kSampleRate)));
-        const QByteArray w = tone::wav(u"up"_s);
-        QVERIFY(w.startsWith("RIFF") && w.mid(8, 4) == "WAVE");
-        QCOMPARE(w.size(), 44 + up.size() * 2);
+    // 提示音:系统自带的提示音,三个方向各一个,互不相同(听声音分得出方向)
+    void toneNames() {
+        const QStringList names{tone::soundFor(u"up"_s), tone::soundFor(u"down"_s), tone::soundFor({})};
+        QCOMPARE(QSet<QString>(names.begin(), names.end()).size(), 3);
+        for (const QString& n : names) QVERIFY(QFileInfo::exists(u"/System/Library/Sounds/%1.aiff"_s.arg(n)) || !QFileInfo::exists(u"/System/Library/Sounds"_s));
     }
 };
 

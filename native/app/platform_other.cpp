@@ -8,8 +8,8 @@
 
 namespace ibkr::app::platform {
 
-// 没有 Qt Multimedia,也还没接平台的放音接口:先不响(Windows 版接 PlaySound 时在这里补)
-void playWav(const QByteArray&) {}
+// 还没接平台的放音接口:先不响(Windows 版接系统提示音时在这里补)
+void playSound(const QString&) {}
 
 // Windows 的系统通知要有托盘图标或 WinRT 的 toast:还没接,如实说发不出去,调用方会记日志
 bool notify(const QString&, const QString&) { return false; }

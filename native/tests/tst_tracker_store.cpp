@@ -23,7 +23,7 @@ namespace {
 QJsonObject obj(const char* t) { return QJsonDocument::fromJson(t).object(); }
 
 struct NoOutputs : shell::AlertOutputs {
-    void playWav(const QByteArray&) override {}
+    void playSound(const QString&) override {}
     bool notify(const QString&, const QString&) override { return true; }
 };
 

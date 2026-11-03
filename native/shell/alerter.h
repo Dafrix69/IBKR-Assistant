@@ -2,7 +2,7 @@
 //   响一声(开着才响)→ 写进通知流(要的话)→ 交给置顶弹窗(开着才弹)→ 弹窗没收下的,补一条系统通知。
 // 提醒可以样子难看,但不能没了:弹窗关着、一批太大超了上限,都退回系统通知。
 // 两个开关(弹窗、声音)默认开,记在本机(React 版是 localStorage 的 dafri-alert-popup / dafri-alert-sound,这里是一个 ini)。
-// 声音与系统通知由平台做(AlertOutputs:macOS 是 NSSound 与 UNUserNotificationCenter),测试换成假的。
+// 声音与系统通知由平台做(AlertOutputs:macOS 是系统提示音 NSSound 与 UNUserNotificationCenter),测试换成假的。
 #pragma once
 
 #include <QJsonObject>
@@ -18,7 +18,8 @@ class PopupQueue;
 class AlertOutputs {
 public:
     virtual ~AlertOutputs() = default;
-    virtual void playWav(const QByteArray& wav) = 0;
+    /// name 是系统提示音名(tone::soundFor)
+    virtual void playSound(const QString& name) = 0;
     /// 发不出去(系统不支持、没授权)返回 false
     virtual bool notify(const QString& title, const QString& body) = 0;
 };

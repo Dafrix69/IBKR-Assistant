@@ -23,9 +23,9 @@ namespace {
 QJsonObject obj(const char* t) { return QJsonDocument::fromJson(t).object(); }
 
 struct FakeOutputs : shell::AlertOutputs {
-    QList<QByteArray> sounds;
+    QStringList sounds;
     QList<QPair<QString, QString>> notices;
-    void playWav(const QByteArray& wav) override { sounds.append(wav); }
+    void playSound(const QString& name) override { sounds.append(name); }
     bool notify(const QString& t, const QString& b) override {
         notices.append({t, b});
         return true;
@@ -85,7 +85,7 @@ private slots:
         pb.onEngineEvent(u"playbook"_s, obj(kPush));
         QCOMPARE(pb.snap()[u"state"].toString(), u"B2"_s);
         QCOMPARE(rig.outputs.sounds.size(), 1);
-        QCOMPARE(rig.outputs.sounds.at(0), shell::tone::wav(u"up"_s));
+        QCOMPARE(rig.outputs.sounds.at(0), shell::tone::soundFor(u"up"_s));
         QCOMPARE(rig.popup.items().size(), 1);
         const QJsonObject item = rig.popup.items().at(0).toObject();
         QCOMPARE(item[u"id"].toString(), u"playbook:enter:B2:7745.5:1792332300000"_s);
@@ -163,7 +163,7 @@ private slots:
         QCOMPARE(rig.fed.size(), 1);
         QCOMPARE(rig.fed.at(0).at(0).toString(), u"AMD 窗口放量 4.1×"_s);
         QCOMPARE(rig.outputs.sounds.size(), 1);
-        QCOMPARE(rig.outputs.sounds.at(0), shell::tone::wav(QString()));  // 放量是中性的那一声
+        QCOMPARE(rig.outputs.sounds.at(0), shell::tone::soundFor(QString()));  // 放量是中性的那一声
         QCOMPARE(rig.popup.items().size(), 1);
         const QJsonObject item = rig.popup.items().at(0).toObject();
         QCOMPARE(item[u"kind"].toString(), u"anomaly"_s);
@@ -313,7 +313,7 @@ private slots:
         QCOMPARE(rig.fed.size(), 1);
         QCOMPARE(rig.fed.at(0).at(0).toString(), u"NVDA 被提到(持仓)"_s);
         QCOMPARE(rig.outputs.sounds.size(), 1);
-        QCOMPARE(rig.outputs.sounds.at(0), shell::tone::wav(QString()));
+        QCOMPARE(rig.outputs.sounds.at(0), shell::tone::soundFor(QString()));
         QCOMPARE(rig.popup.items().at(0)[u"body"].toString(), u"Charlie:NVDA 180c 走了(当时 NVDA 180.50)"_s);
         // 连着来的几条合成一次重拉
         in.onEngineEvent(u"alerts"_s, QJsonObject{});

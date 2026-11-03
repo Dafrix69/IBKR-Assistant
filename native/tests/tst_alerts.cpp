@@ -3,7 +3,10 @@
 #include "analysis/alerts.h"
 #include "js_fixture.h"
 
+#include <QSet>
 #include <QTest>
+
+#include <algorithm>
 
 using namespace ibkr;
 using namespace Qt::StringLiterals;
@@ -67,6 +70,7 @@ private slots:
         fx_ = jsfix::load(u"alerts.json"_s);
         for (const OJson& h : fx_.get(u"histories"_s)->items) histories_ << dec(h);
     }
+    void cleanupTestCase() { jsfix::rewrite(u"alerts.json"_s, fx_); }
 
     void stepsAndRounds() {
         for (const OJson& c : fx_.get(u"autoStep"_s)->items)
@@ -167,6 +171,48 @@ private slots:
                 return r ? levelsJson(*r) : OJson::null();
             }, u"reround "_s + js::stringify(*c.get(u"price"_s)));
         }
+    }
+
+    // 整数关口的自动步长按现价 3% 取 1 / 2.5 / 5 × 10^k:几百块的股票不再 5 块一档
+    void roundStepByPrice() {
+        const QList<QPair<double, double>> cases{{31, 1}, {52.6, 2.5}, {123.8, 5}, {204.85, 10}, {475, 25}, {691, 25}, {1007, 50}, {6800, 250}};
+        for (const auto& [spot, step] : cases) QCOMPARE(al::roundStep(spot), step);
+        QCOMPARE(al::roundStep(0), 0.0);
+        for (const auto& [spot, step] : cases) QVERIFY(al::roundStep(spot) >= al::autoStep(spot));  // 重新上膛的距离放得下
+        std::vector<double> prices;
+        for (const al::AlertLevel& l : al::buildLevels(475.3)) if (l.source == u"round") prices.push_back(l.price);
+        QCOMPARE(prices, (std::vector<double>{475, 500}));
+    }
+
+    // 整数关口报过之后在线附近来回磨:离开不到 1% 不重新上膛,过了冷却也不报;离开够远再回来才报
+    void roundRearmsOnlyWhenFarAway() {
+        const std::vector<al::AlertLevel> levels = al::buildLevels(477, nullptr, 25);
+        const auto roundCount = [](const QList<OJson>& ev) { int n = 0; for (const OJson& e : ev) n += e.get(u"source"_s)->s == u"round"; return n; };
+        OJson states = js::object();
+        double t = 1000;
+        auto step = [&](double prev, double price) {
+            auto [ev, next] = al::evaluate(levels, states, prev, price, t);
+            states = next;
+            t += 400;  // 每一步都过了 5 分钟冷却
+            return roundCount(ev);
+        };
+        QCOMPARE(step(476, 474), 1);  // 下破 475
+        QCOMPARE(step(474, 477), 0);  // 离开 0.4%:还没上膛
+        QCOMPARE(step(477, 473.5), 0);
+        QCOMPARE(step(473.5, 470), 0);  // 离开 1% 以上:上膛,这一步没穿
+        QCOMPARE(step(470, 476), 1);  // 再穿才报
+    }
+
+    // 一笔跨过整整一档:刚报过的关口走出了这一对也留着,换回来时还带着冷却,不会当成新线马上又报
+    void reroundKeepsHotLevel() {
+        const std::vector<al::AlertLevel> levels = al::buildLevels(472, nullptr, 5);  // 470 / 475
+        QSet<QString> hot;
+        for (const al::AlertLevel& l : levels) if (l.source == u"round" && l.price == 470) hot.insert(al::levelKey(l));
+        const auto has = [](const std::vector<al::AlertLevel>& v, double p) { return std::any_of(v.begin(), v.end(), [&](const al::AlertLevel& l) { return l.source == u"round" && l.price == p; }); };
+        const auto plain = al::reroundLevels(levels, 477.5, 5);
+        QVERIFY(plain && !has(*plain, 470));
+        const auto kept = al::reroundLevels(levels, 477.5, 5, al::kDefaultMergePct, hot);
+        QVERIFY(kept && has(*kept, 470) && has(*kept, 475) && has(*kept, 480));
     }
 };
 

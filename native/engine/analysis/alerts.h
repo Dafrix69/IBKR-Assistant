@@ -7,6 +7,7 @@
 #include "util/error.h"
 #include "util/ordered_json.h"
 
+#include <QSet>
 #include <QString>
 #include <QStringList>
 
@@ -20,6 +21,10 @@ inline constexpr double kAutoStep = 0;
 inline constexpr double kDefaultMergePct = 0.15;
 inline constexpr double kDefaultBandPct = 0.3;
 inline constexpr double kDefaultCooldown = 300.0;
+/// 自动步长的整数关口离现价约这么远(%):几百块的股票是 25 一档(450 / 475 / 500),不是 5 块一档天天来回穿
+inline constexpr double kRoundStepPct = 3.0;
+/// 整数关口报过之后,要离开这么远(%)才重新上膛;0.3% 的通用距离在关口附近来回磨时每 5 分钟就报一次
+inline constexpr double kRoundRearmPct = 1.0;
 inline constexpr double kMaxLevels = 24;
 inline constexpr double kExtremeWindow = 250;  // 52 周 ≈ 250 个交易日
 inline constexpr double kMinExtremeBars = 20;  // 历史太短时高低点没意义,干脆不给
@@ -47,6 +52,8 @@ struct AlertLevel {
 };
 
 double autoStep(double spot, double bandPct = kDefaultBandPct);
+/// 整数关口的自动步长:不小于现价 kRoundStepPct% 的最小 1 / 2.5 / 5 × 10^k
+double roundStep(double spot);
 std::vector<double> roundLevels(double spot, double step);
 
 /// bars 是数组或 null(空指针 = undefined);today 空 = 整个序列都是完整日线
@@ -81,7 +88,9 @@ std::pair<QList<util::OJson>, util::OJson> evaluate(const std::vector<AlertLevel
                                                     double price, double nowTs, double bandPct = kDefaultBandPct, double cooldown = kDefaultCooldown,
                                                     const QString& confirm = QStringLiteral("immediate"));
 
-std::optional<std::vector<AlertLevel>> reroundLevels(const std::vector<AlertLevel>& levels, double price, double step, double mergePct = kDefaultMergePct);
+/// hot:还在冷却里的价位键——走出了关口对也留着,不然换回来时是一条没有记忆的新线,冷却形同虚设
+std::optional<std::vector<AlertLevel>> reroundLevels(const std::vector<AlertLevel>& levels, double price, double step, double mergePct = kDefaultMergePct,
+                                                     const QSet<QString>& hot = {});
 QStringList describe(const std::vector<AlertLevel>& levels, double spot);
 
 }  // namespace ibkr::analysis::alerts

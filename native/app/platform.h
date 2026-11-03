@@ -14,8 +14,8 @@ class QWindow;
 
 namespace ibkr::app::platform {
 
-/// 放一段 WAV(提示音);放不了就算了
-void playWav(const QByteArray& wav);
+/// 放一个系统提示音(按名字,见 shell::tone::soundFor);放不了就算了
+void playSound(const QString& name);
 /// 系统通知;系统不支持或用户没授权返回 false
 bool notify(const QString& title, const QString& body);
 /// Dock 图标跳 / 任务栏闪(on),或停下(off)。macOS 是 critical 那一种:一直跳到人回来
@@ -44,7 +44,7 @@ bool preventAppSuspension();
 /// shell::Alerter 要的声音与系统通知,接到上面两个函数
 class Outputs : public shell::AlertOutputs {
 public:
-    void playWav(const QByteArray& wav) override { platform::playWav(wav); }
+    void playSound(const QString& name) override { platform::playSound(name); }
     bool notify(const QString& title, const QString& body) override { return platform::notify(title, body); }
 };
 

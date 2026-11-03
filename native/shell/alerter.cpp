@@ -52,7 +52,7 @@ void Alerter::setUpdown(const QString& updown) {
 
 void Alerter::playTone(const QString& direction, bool force) {
     if (!soundOn_ && !force) return;
-    if (outputs_) outputs_->playWav(tone::wav(direction));
+    if (outputs_) outputs_->playSound(tone::soundFor(direction));
 }
 
 void Alerter::previewTone() {

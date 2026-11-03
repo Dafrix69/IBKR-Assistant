@@ -510,7 +510,13 @@ Task<OJson> AlertsService::poll() {
         // 现价走出了上下两个整数关口之间:这一对跟着换(刚穿过的那个留着,状态按键原样带着)
         std::vector<al::AlertLevel> rawLevels;
         for (const OJson& l : watch.get(u"levels"_s)->items) rawLevels.push_back(al::AlertLevel::fromJson(l));
-        const auto rerounded = al::reroundLevels(rawLevels, price, js::num(watch.get(u"step"_s)));
+        // 刚报过、还在冷却里的关口:走出了这一对也先留着,等它冷却完再换掉
+        QSet<QString> hot;
+        for (const auto& [key, st] : nextStates.fields) {
+            const OJson* last = js::prop(&st, u"last_fired_at"_s);
+            if (!js::truthy(js::prop(&st, u"armed"_s)) && js::isNum(last) && nowTs - last->n < al::kDefaultCooldown) hot.insert(key);
+        }
+        const auto rerounded = al::reroundLevels(rawLevels, price, js::num(watch.get(u"step"_s)), al::kDefaultMergePct, hot);
         if (rerounded) {
             QSet<QString> keep;
             for (const al::AlertLevel& l : *rerounded) keep.insert(al::levelKey(l));

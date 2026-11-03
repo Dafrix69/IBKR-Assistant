@@ -23,9 +23,9 @@ namespace {
 QJsonObject obj(const char* t) { return QJsonDocument::fromJson(t).object(); }
 
 struct FakeOutputs : shell::AlertOutputs {
-    QList<QByteArray> sounds;
+    QStringList sounds;
     QList<QPair<QString, QString>> notices;
-    void playWav(const QByteArray& wav) override { sounds.append(wav); }
+    void playSound(const QString& name) override { sounds.append(name); }
     bool notify(const QString& t, const QString& b) override {
         notices.append({t, b});
         return true;
@@ -118,7 +118,7 @@ private slots:
         rig.loadNow();
         rig.pollNow();
         QCOMPARE(rig.outputs.sounds.size(), 1);
-        QCOMPARE(rig.outputs.sounds.at(0), shell::tone::wav(u"up"_s));
+        QCOMPARE(rig.outputs.sounds.at(0), shell::tone::soundFor(u"up"_s));
         QCOMPARE(rig.outputs.notices.size(), 0);
         const QJsonArray items = rig.popup.items();
         QCOMPARE(items.size(), 2);
@@ -143,7 +143,7 @@ private slots:
         rig.loadNow();
         rig.pollNow();
         QCOMPARE(rig.outputs.sounds.size(), 1);
-        QCOMPARE(rig.outputs.sounds.at(0), shell::tone::wav(QString()));
+        QCOMPARE(rig.outputs.sounds.at(0), shell::tone::soundFor(QString()));
     }
 
     // 弹窗关着:这一批一条不落合成一条系统通知

@@ -52,9 +52,9 @@ Sample sampleOf(const QJsonObject& o) {
 }
 
 struct FakeOutputs : shell::AlertOutputs {
-    QList<QByteArray> sounds;
+    QStringList sounds;
     QList<QPair<QString, QString>> notices;
-    void playWav(const QByteArray& wav) override { sounds.append(wav); }
+    void playSound(const QString& name) override { sounds.append(name); }
     bool notify(const QString& t, const QString& b) override {
         notices.append({t, b});
         return true;
@@ -170,7 +170,7 @@ private slots:
         rig.quote(7726.4, u"quote"_s);
         rig.tick(true);
         QCOMPARE(rig.outputs.sounds.size(), 1);
-        QCOMPARE(rig.outputs.sounds.at(0), shell::tone::wav(u"up"_s));
+        QCOMPARE(rig.outputs.sounds.at(0), shell::tone::soundFor(u"up"_s));
         QCOMPARE(rig.popup.items().size(), 1);
         const QJsonObject item = rig.popup.items().at(0).toObject();
         QCOMPARE(item[u"id"].toString(), u"spot:SPX:7725:%1"_s.arg(qint64(rig.clock)));
