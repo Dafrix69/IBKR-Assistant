@@ -15,6 +15,8 @@ namespace ibkr::execution {
 class LinkDownError : public util::JsError {
 public:
     LinkDownError() : util::JsError(QStringLiteral("与 TWS 的连接已断开,正在自动重连")) {}
+    /// 本机连着 TWS、但 TWS 与 IBKR 服务器断了(1100 / 2110):单子同样到不了交易所,托管 / 追价按同一个类型等它恢复
+    explicit LinkDownError(const QString& message) : util::JsError(message) {}
     /// TS 的 `exc.name`
     static const QString& name() {
         static const QString n = QStringLiteral("LinkDownError");

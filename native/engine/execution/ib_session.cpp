@@ -21,6 +21,9 @@ using ibnext::Upd;
 
 namespace {
 
+QString upstreamDownMessage() { return QStringLiteral("TWS 与 IBKR 服务器的连接已中断(TWS 报 1100 / 2110),单子到不了交易所;TWS 恢复后再试"); }
+
+
 /// 协程醒来时会话已经没了(只在会话销毁之后才会走到:等的那个结果在订阅表里,表随会话一起走;没人在等这个结果)
 QString sessionClosed() { return u"会话已关闭"_s; }
 /// String(n) 的数
@@ -493,6 +496,7 @@ public:
         Runtime::Scope s(*rt_);
         // 断着就当场报错(同步抛,同 TS):库会把命令排进缓冲、重连后才发出
         if (!connected_) throw LinkDownError();
+        if (upstreamDown_) throw LinkDownError(upstreamDownMessage());
         api_->cancelOrder(orderId);
         return Task<>::resolved();
     }
@@ -571,6 +575,9 @@ private:
         return d.task();
     }
     void emitConnectivity(int code) {
+        // TWS 与 IBKR 服务器之间的通断:1100 / 2110 断,1101 / 1102 回来。本机 socket 不因此断开(见 ib_api_next.cpp),下单那几处看这个
+        if (code == 1100 || code == 2110) upstreamDown_ = true;
+        else if (code == 1101 || code == 1102) upstreamDown_ = false;
         for (std::size_t i = 0; i < connectivityCbs_.size(); ++i) {
             const auto cb = connectivityCbs_[i];
             cb(code);
@@ -608,6 +615,7 @@ private:
     std::shared_ptr<ibnext::ApiNext> api_;
 
     bool connected_ = false;
+    bool upstreamDown_ = false;
     bool established_ = false;
     bool closing_ = false;
     QStringList managed_;
@@ -731,6 +739,7 @@ void IbApiNextSession::onConnectionState(int state) {
     if (!established_ || closing_) return;
     if (state == ibnext::Connected && !connected_) {
         connected_ = true;
+        upstreamDown_ = false;  // 新连接:TWS 上游还断着的话,一连上就会再报 2110
         api_->setMarketDataType(mdBaseline_);
         for (auto& [k, live] : tickers_.items) live->data.requestedAt = rt_->now();
         // 库紧接着把每条行情流按原来的 reqId 重订一遍;从这一刻起算它们多久没来盘口
@@ -1202,6 +1211,7 @@ Task<TradeLike> IbApiNextSession::placeCo(std::weak_ptr<IbApiNextSession> weak, 
         if (!self) throw util::JsError(sessionClosed());
         // 断着就当场报错:库会把命令排进缓冲、重连后才发出(见 LinkDownError)。第一句,什么都还没碰
         if (!self->connected_) throw LinkDownError();
+        if (self->upstreamDown_) throw LinkDownError(upstreamDownMessage());
         const OJson ibOrder = orderForWire(order);
         // 带着原 orderId 就是改单:IBKR 的改单语义是同一个 id 重发
         if (order.orderId && *order.orderId != 0) {

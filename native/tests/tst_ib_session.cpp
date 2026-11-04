@@ -1214,6 +1214,33 @@ private slots:
         QCOMPARE(field(int(h.got.size()) - 1, u"res"_s), u"[[44,\"ok\",true]]"_s);
     }
 
+    /// 上游断着(1100 / 2110)时下单 / 撤单当场按 LinkDownError 拒(托管 / 追价按类型等它恢复),不排队;1102 之后照常发
+    void upstreamLossRefusesOrders() {
+        const QString place = QStringLiteral(R"({"op":"call","id":%1,"m":"placeOrder","a":[{"secType":"OPT","symbol":"SPX","exchange":"SMART","currency":"USD","lastTradeDateOrContractMonth":"20261020","strike":6700,"right":"P","multiplier":"100","tradingClass":"SPXW"},{"orderType":"LMT","action":"BUY","totalQuantity":1,"lmtPrice":2.5,"auxPrice":null,"trailingPercent":null,"tif":"DAY","outsideRth":false,"account":"U1234567","transmit":true}]})");
+        const OJson sc = *util::parseOJson(QStringLiteral(R"({"name":"upstream-orders","steps":[
+            {"op":"call","id":40,"m":"create","a":[{"host":"127.0.0.1","port":7497,"clientId":12,"readonly":false}]},
+            {"op":"accept"},{"op":"send","msgs":[["193","20261020 10:00:00 Asia/Shanghai"]]},{"op":"send","msgs":[["15","1","U1234567"]]},{"op":"send","msgs":[["9","1","700"]]},
+            {"op":"send","msgs":[["4","2","-1","2110","Connectivity between Trader Workstation and server is broken. It will be restored automatically.",""]]},
+            %1,
+            {"op":"call","id":51,"m":"cancelOrder","a":[700]},
+            {"op":"send","msgs":[["4","2","-1","1102","Connectivity between IB and Trader Workstation has been restored - data maintained.",""]]},
+            %2
+        ],"trace":[]})").arg(place.arg(50), place.arg(52)));
+        QString failure;
+        Harness h(sc);
+        QVERIFY2(h.run(&failure, false), qPrintable(failure));
+        const auto field = [&](int i, const QString& k) { return h.got[i].get(k) ? js::stringify(jsfix::enc(*h.got[i].get(k))) : QString(); };
+        QVERIFY2(field(6, u"res"_s).contains(u"\"err\""_s) && field(6, u"res"_s).contains(u"IBKR 服务器"_s), qPrintable(field(6, u"res"_s)));
+        QCOMPARE(field(6, u"sent"_s), QString());
+        QVERIFY2(field(7, u"res"_s).contains(u"\"err\""_s), qPrintable(field(7, u"res"_s)));
+        QCOMPARE(field(7, u"sent"_s), QString());
+        QCOMPARE(h.linkDownTyped, 2);
+        QCOMPARE(h.linkDownUntyped, 0);
+        // 恢复之后这一笔照常往 TWS 走(先要下一个单号 = "8"),不再当场拒
+        QVERIFY2(!field(9, u"res"_s).contains(u"\"err\""_s), qPrintable(field(9, u"res"_s)));
+        QCOMPARE(field(9, u"sent"_s), u"[[\"8\",\"1\",\"0\"]]"_s);
+    }
+
     void destroyedSessionLeavesNothing_data() {
         QTest::addColumn<int>("index");
         const OJson& list = at(fixture(), u"scenarios"_s);
