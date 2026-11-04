@@ -530,6 +530,88 @@ OJson parseIronFly(const QString& fullRaw, const QString& text, const QString& r
                               legOf(u"SELL"_s, 1, exp->expiry, center, u"C"_s, spx), legOf(u"BUY"_s, 1, exp->expiry, hi, u"C"_s, spx)}),
                    u"SELL"_s, *qty, credit, c.tif, c.outsideRth, reason, warnings);
 }
+/// v10:正股限价单(只在手动下单页)。「213买入be20股」「卖出 BE 20股 限价215.5」「买20股BE @213」:
+/// 一个买 / 卖、一个代码、「N股」、一个价,整句被覆盖才接;市价、条件、期权词、多笔、中文数量词一律交给大模型
+OJson parseStock(const QString& text, const QString& reason) {
+    if (text.size() > 40) return OJson::null();
+    static const QRegularExpression block = rx(
+        u"蝴蝶|铁蝶|call|put|spread|bull|bear|看涨|看跌|期权|张|cm|dte|到期|周|星期|礼拜|月|日|号|明天|时候|时,|涨到|跌到|突破|跌破|站稳|破了|如果|或者|"
+        u"止盈|止损|平仓|做空|加仓|减仓|撤单|取消|市价|条件|触发|和|跟|再|然后|并且|[;;\\n%×*/+]|万|千|百|[一两二三四五六七八九十]"_s,
+        true);
+    if (test(block, text)) return OJson::null();
+    QString work = text;
+    QStringList warnings;
+    const Common c = takeCommon(work);
+
+    static const QRegularExpression actionRe = rx(u"买入|买进|卖出|买|卖"_s);
+    const QStringList actions = allMatches(actionRe, work);
+    if (actions.size() != 1) return OJson::null();
+    const QString action = actions[0].startsWith(u'买') ? u"BUY"_s : u"SELL"_s;
+    take(work, actionRe);
+
+    static const QRegularExpression qtyRe = rx(u"(?<![\\d.])(\\d{1,7})"_s + sp() + u"*股(?!票)"_s);
+    if (allMatches(qtyRe, work).size() != 1) return OJson::null();
+    const double qty = num(take(work, qtyRe)->captured(1));
+    if (!(qty >= 1 && qty <= 1000000)) return OJson::null();
+
+    static const QRegularExpression tickerRe = rx(u"[A-Za-z]{1,5}(?![A-Za-z])"_s);
+    static const QRegularExpression anyLetters = rx(u"[A-Za-z]+"_s);
+    if (allMatches(anyLetters, work).size() != 1) return OJson::null();
+    const auto mSym = take(work, tickerRe);
+    if (!mSym) return OJson::null();
+    const QString typed = mSym->captured(0);
+    const QString symbol = typed.toUpper();
+    // 指数与行话词不是正股
+    static const QStringList notStocks{u"SPX"_s, u"SPXW"_s, u"NDX"_s, u"RUT"_s, u"VIX"_s, u"XSP"_s, u"GTC"_s, u"LMT"_s, u"MKT"_s, u"DAY"_s};
+    if (notStocks.contains(symbol)) return OJson::null();
+    if (typed != symbol) warnings << u"小写 '%1' 已按大写 ticker %2 理解"_s.arg(typed, symbol);
+
+    // 价:带标记的(限价 / @ / 以 / 在 / …块、刀、美元)优先,否则剩下唯一一个数
+    static const QRegularExpression p1 = rx(u"(?:限价|价格|价位|挂单?|@|以|在)"_s + sp() + u"*(\\d+(?:\\.\\d+)?)(?:"_s + sp() + u"*(?:块钱|块|刀|美元|美金))?"_s);
+    static const QRegularExpression p2 = rx(u"(\\d+(?:\\.\\d+)?)"_s + sp() + u"*(?:块钱|块|刀|美元|美金)"_s);
+    auto mPrice = take(work, p1);
+    if (!mPrice) mPrice = take(work, p2);
+    static const QRegularExpression noise = rx(u"正股|股票|限价单|的|吧|个|[,,。、:]|"_s + sp() + u"+"_s);
+    work.replace(noise, u" "_s);
+    const QStringList rest = allMatches(digits(), work);
+    std::optional<double> price;
+    if (mPrice) {
+        if (!rest.isEmpty()) return OJson::null();
+        price = num(mPrice->captured(1));
+    } else {
+        if (rest.size() != 1) return OJson::null();
+        price = num(rest[0]);
+    }
+    work.replace(digits(), u" "_s);
+    if (!util::jsTrim(work).isEmpty()) return OJson::null();
+    if (!(*price > 0 && *price < 1000000)) return OJson::null();
+
+    warnings << u"本地速记解析(未经大模型),语法 "_s + kGrammarVersion;
+    const QString summary = u"限价 "_s + fmt(*price) + u" 美元"_s + (action == u"BUY" ? u"买入 "_s : u"卖出 "_s) + util::jsNumberToString(qty) + u" 股 "_s + symbol;
+    return js::object({{u"orders"_s,
+                        js::array({js::object({
+                            {u"intent_summary"_s, js::S(summary)},
+                            {u"contract"_s, js::object({{u"secType"_s, js::S(u"STK"_s)},
+                                                        {u"symbol"_s, js::S(symbol)},
+                                                        {u"exchange"_s, js::S(u"SMART"_s)},
+                                                        {u"currency"_s, js::S(u"USD"_s)}})},
+                            {u"execution_type"_s, js::S(u"IMMEDIATE"_s)},
+                            {u"trigger"_s, OJson::null()},
+                            {u"account"_s, js::S(u"DEFAULT"_s)},
+                            {u"order"_s, js::object({{u"action"_s, js::S(action)},
+                                                     {u"orderType"_s, js::S(u"LMT"_s)},
+                                                     {u"totalQuantity"_s, js::N(qty)},
+                                                     {u"price_mode"_s, js::S(u"EXPLICIT"_s)},
+                                                     {u"lmtPrice"_s, js::N(*price)},
+                                                     {u"tif"_s, js::S(c.tif)},
+                                                     {u"outsideRth"_s, js::B(c.outsideRth)}})},
+                            {u"reason"_s, js::S(reason)},
+                            {u"confidence"_s, js::N(1.0)},
+                            {u"warnings"_s, js::strings(warnings)},
+                        })})},
+                       {u"rejections"_s, js::array()}});
+}
+
 }  // namespace
 
 bool looksLikeShorthand(const QString& text, bool manual) {
@@ -579,6 +661,8 @@ OJson tryParseShorthand(const QString& instruction, const OJson& snapshot, const
         text = util::jsTrim(full.left(m.capturedStart(0)));
     }
     if (text.isEmpty() || text.size() > 80) return OJson::null();
+    if (manual)
+        if (OJson stock = parseStock(text, reason); stock.type != OJson::Null) return stock;
     if (test(spreadType(), text)) {
         if (meta) {
             meta->relativeCenter = false;
