@@ -91,6 +91,20 @@ QString compact(const QJsonValue& v) { return QString::fromUtf8(QJsonDocument(QJ
 class TestTradeRules : public QObject {
     Q_OBJECT
 private slots:
+    /// 本机连着 TWS、但 TWS 与 IBKR 服务器断了(broker_upstream_ok = false):不当成能发,主按钮退回只解析,发送键说为什么
+    void upstreamDownBlocksSend() {
+        trade::PageInput in;
+        QJsonObject st{{u"broker_connected"_s, true}, {u"broker_provider"_s, u"ibkr"_s}, {u"breaker"_s, QJsonObject{{u"engaged"_s, false}}}};
+        in.status = st;
+        QVERIFY(trade::tradePageModel(in)[u"sendFirst"].toBool());
+        st.insert(u"broker_upstream_ok"_s, false);
+        in.status = st;
+        const QJsonObject m = trade::tradePageModel(in);
+        QVERIFY(!m[u"sendFirst"].toBool());
+        QVERIFY(!m[u"send"][u"canExecute"].toBool());
+        QVERIFY2(m[u"send"][u"blockers"].toString().contains(u"与 IBKR 服务器断开"_s), qPrintable(m[u"send"][u"blockers"].toString()));
+        QCOMPARE(m[u"parseLabel"].toString(), u"解析并校验"_s);
+    }
     void pageTexts_data() {
         QTest::addColumn<QJsonObject>("c");
         const QJsonArray pages = fixture()[u"pages"].toArray();

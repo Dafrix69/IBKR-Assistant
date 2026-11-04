@@ -574,6 +574,8 @@ QJsonObject tradePageModel(const PageInput& in) {
     }
     QStringList blockers;
     if (!connected) blockers << u"未连接 "_s + gateway;
+    // 本机连着 TWS、但 TWS 与 IBKR 服务器断了:单子到不了交易所,主按钮退回只解析(同顶栏的「上游中断」)
+    else if (st.contains("broker_upstream_ok"_L1) && !st.value("broker_upstream_ok"_L1).toBool(true)) blockers << gateway + u" 与 IBKR 服务器断开"_s;
     if (engaged) blockers << u"已熔断"_s;
 
     // 发单账户:只有一个账户时没什么可选,控件隐藏

@@ -248,6 +248,8 @@ public:
     }
 
     OJson step;
+    /// 每一步记下来的东西(run 一步一份),给不对照 TS 轨迹的用例自己看
+    std::vector<OJson> got;
     /// 在回调里销毁会话的探针(destroyOnNext):回调返回之后、这一拍宏任务收尾的时候,库那一层还得活着(被钉住)
     int apiNextBase = int(ibnext::LiveCounts::apiNext);
     bool destroyOnNext = false, probed = false, probeAlive = false;
@@ -280,6 +282,7 @@ public:
             step = js::object();
             doStep(steps.items[i]);
             settle();
+            got.push_back(step);
             if (!unmodelled.isEmpty()) {
                 *failure = u"走到了假 socket 没建模的路径:"_s + unmodelled;
                 return false;
@@ -1154,6 +1157,63 @@ private slots:
         QCOMPARE(h.linkDownUntyped, 0);
     }
 
+    /// 有意偏离原库的场景:原库收到 1100 / 2110(TWS 与 IBKR 服务器断了)就把本机 socket 断开重连,C++ 版不断(见 ib_api_next.cpp)。
+    /// 这几条 TS 轨迹拿 1100 当断线的触发,之后的每一步都按断开重连录的,对不上是应该的:照样跑(不许走到没建模的路径、放手后不许留东西),
+    /// 只是不逐步对照;新行为由 upstreamLossKeepsTheSocket 单独钉住
+    static bool deviates(const QString& name) {
+        return name == u"info_1100_2110" || name == u"disconnect_while_reconnecting" || name == u"callbacks_two_listeners" ||
+               name == u"disconnect_during_drop_same_tick";
+    }
+
+    /// 1100 / 2110:socket 留着、订阅照常推、不重连;1102 什么都不做;1101(订阅丢了)才断开重连一次,订阅跟着重建
+    void upstreamLossKeepsTheSocket() {
+        const OJson sc = *util::parseOJson(QStringLiteral(R"({"name":"upstream","steps":[
+            {"op":"call","id":40,"m":"create","a":[{"host":"127.0.0.1","port":7497,"clientId":12,"readonly":false}]},
+            {"op":"accept"},{"op":"send","msgs":[["193","20261020 10:00:00 Asia/Shanghai"]]},{"op":"send","msgs":[["15","1","U1234567"]]},{"op":"send","msgs":[["9","1","1"]]},
+            {"op":"call","id":39,"m":"subscribeTicker","a":[{"secType":"FUT","symbol":"ES","exchange":"CME","currency":"USD","lastTradeDateOrContractMonth":"202612"},""]},
+            {"op":"advance","ms":100},
+            {"op":"send","msgs":[["4","2","-1","1100","Connectivity between IB and Trader Workstation has been lost.",""]]},
+            {"op":"call","id":41,"m":"isConnected","a":[]},
+            {"op":"send","msgs":[["1","6","$f:1:2:0","4","6751","1","0"]]},
+            {"op":"call","id":42,"m":"read","a":[39]},
+            {"op":"send","msgs":[["4","2","-1","2110","Connectivity between Trader Workstation and server is broken. It will be restored automatically.",""]]},
+            {"op":"advance","ms":5000},
+            {"op":"call","id":43,"m":"isConnected","a":[]},
+            {"op":"send","msgs":[["4","2","-1","1102","Connectivity between IB and Trader Workstation has been restored - data maintained.",""]]},
+            {"op":"send","msgs":[["4","2","-1","1101","Connectivity between IB and Trader Workstation has been restored - data lost.",""]]},
+            {"op":"advance","ms":5000},
+            {"op":"accept"},{"op":"send","msgs":[["193","20261020 10:00:00 Asia/Shanghai"]]},{"op":"send","msgs":[["15","1","U1234567"]]},{"op":"send","msgs":[["9","1","20"]]},
+            {"op":"advance","ms":100},
+            {"op":"call","id":44,"m":"isConnected","a":[]}
+        ],"trace":[]})"));
+        QString failure;
+        Harness h(sc);
+        QVERIFY2(h.run(&failure, false), qPrintable(failure));
+        const auto field = [&](int i, const QString& k) { return h.got[i].get(k) ? js::stringify(jsfix::enc(*h.got[i].get(k))) : QString(); };
+        // 1100:只报连通码,不报掉线、不断 socket
+        QCOMPARE(field(7, u"cb"_s), u"[[\"conn\",1100]]"_s);
+        QCOMPARE(field(7, u"io"_s), QString());
+        QCOMPARE(field(8, u"res"_s), u"[[41,\"ok\",true]]"_s);
+        // 断着上游时 TWS 推来的行情照收
+        QVERIFY2(field(10, u"res"_s).contains(u"\"last\":6751"_s), qPrintable(field(10, u"res"_s)));
+        // 2110 同样不断;五秒过去也没有重连
+        QCOMPARE(field(11, u"cb"_s), u"[[\"conn\",2110]]"_s);
+        QCOMPARE(field(11, u"io"_s), QString());
+        QCOMPARE(field(12, u"io"_s), QString());
+        QCOMPARE(field(13, u"res"_s), u"[[43,\"ok\",true]]"_s);
+        // 1102:订阅还在,什么都不做;1101:订阅丢了,断开重连
+        QCOMPARE(field(14, u"cb"_s), u"[[\"conn\",1102]]"_s);
+        QCOMPARE(field(14, u"io"_s), QString());
+        QVERIFY2(field(15, u"cb"_s).contains(u"[\"link\",false]"_s), qPrintable(field(15, u"cb"_s)));
+        QVERIFY2(field(15, u"io"_s).contains(u"end"_s), qPrintable(field(15, u"io"_s)));
+        QVERIFY2(field(16, u"io"_s).contains(u"connect"_s), qPrintable(field(16, u"io"_s)));
+        // 连回来之后订阅重发(reqMktData = "1")
+        QString resent;
+        for (int i = 17; i < int(h.got.size()); ++i) resent += field(i, u"sent"_s);
+        QVERIFY2(resent.contains(u"[\"1\",\"11\""_s), qPrintable(resent));
+        QCOMPARE(field(int(h.got.size()) - 1, u"res"_s), u"[[44,\"ok\",true]]"_s);
+    }
+
     void destroyedSessionLeavesNothing_data() {
         QTest::addColumn<int>("index");
         const OJson& list = at(fixture(), u"scenarios"_s);
@@ -1168,7 +1228,7 @@ private slots:
         const int apiNext0 = ibnext::LiveCounts::apiNext, subs0 = ibnext::LiveCounts::subscriptions, entries0 = ibnext::LiveCounts::entries;
         {
             Harness h(sc);
-            QVERIFY2(h.run(&failure), qPrintable(failure));
+            QVERIFY2(h.run(&failure, !deviates(at(sc, u"name"_s).s)), qPrintable(failure));
             QVERIFY2(h.afterlife(&failure), qPrintable(failure));
         }
         // 库这一层(ApiNext / 订阅 / 订阅表条目)也都放干净了:没有互相拉着的强引用
@@ -1189,6 +1249,7 @@ private slots:
         for (const OJson& st : at(sc, u"steps"_s).items)
             if (js::str(st.get(u"m"_s)) == u"create") QVERIFY(js::str(at(st, u"a"_s).items[0].get(u"host"_s)) == u"127.0.0.1");
         QString failure;
+        if (deviates(at(sc, u"name"_s).s)) QSKIP("有意偏离原库:1100 / 2110 不断 socket,见 upstreamLossKeepsTheSocket");
         Harness h(sc);
         const bool ok = h.run(&failure);
         QVERIFY2(ok, qPrintable(failure));

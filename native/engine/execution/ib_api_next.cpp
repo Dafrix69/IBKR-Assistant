@@ -771,7 +771,7 @@ std::shared_ptr<ApiNext> ApiNext::make(std::shared_ptr<Runtime> rt, SocketFactor
 
 ApiNext::ApiNext(std::shared_ptr<Runtime> rt, SocketFactory sockets, QString host, double port, double reconnectInterval)
     : rt_(rt), api_(rt, std::move(sockets), std::move(host), port, reconnectInterval) {
-    // 构造里挂的两个:error → 派给订阅、再发给 errorSubject;info 里的 1100 / 2110 → 断开
+    // 构造里挂的两个:error → 派给订阅、再发给 errorSubject;info 里的 1101 → 重连
     api_.events.on(u"error"_s, [this](const OJson& a) {
         ApiError e;
         e.message = js::str(arg(a, 0));
@@ -785,7 +785,11 @@ ApiNext::ApiNext(std::shared_ptr<Runtime> rt, SocketFactory sockets, QString hos
     });
     api_.events.on(u"info"_s, [this](const OJson& a) {
         const OJson* code = arg(a, 1);
-        if (js::isNum(code) && (code->n == 1100 || code->n == 2110)) api_.onDisconnected();
+        // 与原库(IBApiNext)有意不同:1100 / 2110 说的是 TWS 与 IBKR 服务器之间断了,本机 socket 好好的——不断开。
+        // 原库在这里断开重连,而 TWS 断着时每个新连接一上来都会再报一次 2110,于是一分钟断几十次、界面一直「未连接」。
+        // 现在 socket 留着,上游的通断由 UpstreamWatch 记(界面显示「上游中断」),等 TWS 自己报 1101 / 1102。
+        // 1101 = 恢复了但订阅全丢了:断开重连一次,让订阅照常重建;1102 = 恢复且订阅还在:什么都不用做
+        if (js::isNum(code) && code->n == 1101) api_.onDisconnected();
     });
 }
 
