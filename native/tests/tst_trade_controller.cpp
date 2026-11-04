@@ -104,7 +104,7 @@ private slots:
         QCOMPARE(m[u"limits"].toString(), u"单笔 ≤ 5,000.00 USD · 期权 ≤ 5 张"_s);
         QVERIFY(m[u"readiness"].isNull());  // Key 配了、连着、自动执行开着、没有占位账号
         QCOMPARE(m[u"picked"].toArray(), (QJsonArray{u"模拟"_s}));
-        QCOMPARE(m[u"send"][u"label"].toString(), u"发送到IBKR"_s);
+        QCOMPARE(m[u"send"][u"label"].toString(), u"解析并发送到IBKR"_s);
         QVERIFY(m[u"send"][u"canExecute"].toBool());
         QCOMPARE(m[u"picker"][u"accounts"].toArray().size(), 2);
         // 占位账号:启动问一次;状态里的账户没变就不再问
@@ -151,21 +151,32 @@ private slots:
         QTRY_COMPARE(rig.received(u"ideas.similar_trades"_s).size(), 4);
     }
 
-    // 快捷键发送:发不出去时只说一句(不弹框、不发);发得出去时同按钮
-    void hotkeyObeysTheButtonGate() {
+    // ⌘↩:发不出去时退回只解析(不弹框、不发单);⌘⇧↩ 永远只解析;发得出去时 ⌘↩ 一趟解析并发送
+    void hotkeyFallsBackToParseWhenBlocked() {
         Rig rig;
         rig.set(u"system.status"_s, obj(R"({"breaker":{"engaged":true,"reason":"手动"}})"));
         rig.status.refresh();
         QTRY_VERIFY(!rig.controller.model()[u"send"][u"canExecute"].toBool());
+        QVERIFY(!rig.controller.model()[u"sendFirst"].toBool());
         rig.composer.setText(u"买 1 股 AAPL"_s);
-        rig.controller.hotkey(true);
-        QCOMPARE(rig.status.banner(), u"现在发不出去:已熔断"_s);
-        QTest::qWait(100);
-        QCOMPARE(rig.prompter.boxes.size(), 0);
-        QCOMPARE(rig.received(u"instruction.submit"_s).size(), 0);
         rig.controller.hotkey(false);
         QTRY_COMPARE(rig.received(u"instruction.submit"_s).size(), 1);
         QCOMPARE(rig.received(u"instruction.submit"_s).at(0)[u"execute"].toBool(), false);
+        QTRY_VERIFY(rig.composer.busy().isEmpty());
+        rig.controller.hotkey(true);
+        QTRY_COMPARE(rig.received(u"instruction.submit"_s).size(), 2);
+        QCOMPARE(rig.received(u"instruction.submit"_s).at(1)[u"execute"].toBool(), false);
+        QCOMPARE(rig.prompter.boxes.size(), 0);
+    }
+
+    void hotkeySendsInOneStepWhenConnected() {
+        Rig rig;
+        QTRY_VERIFY(rig.controller.model()[u"sendFirst"].toBool());
+        rig.composer.setText(u"买 1 股 AAPL"_s);
+        rig.controller.hotkey(false);
+        QTRY_COMPARE(rig.received(u"instruction.submit"_s).size(), 1);
+        QCOMPARE(rig.received(u"instruction.submit"_s).at(0)[u"execute"].toBool(), true);
+        QCOMPARE(rig.prompter.boxes.size(), 0);
     }
 
     void insertSnippetUpdatesTheText() {

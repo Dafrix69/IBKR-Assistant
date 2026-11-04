@@ -105,12 +105,21 @@ ScrollPage {
             Row {
                 topPadding: 10
                 spacing: 8
+                // 发得出去:主按钮「解析并发送」(一趟解析 + 发单),旁边「只解析」;发不出去:主按钮「解析并校验」,发送键灰着说为什么
                 Button {
-                    kind: "primary"; text: page.m.parseLabel || "解析并校验"
+                    visible: !!page.m.sendFirst
+                    kind: "primary"; text: page.m.send ? page.m.send.label : ""
+                    busy: page.m.busy === "execute"; enabled: page.m.busy !== "parse"
+                    Tip { text: page.m.send ? page.m.send.tip : "" }
+                    onClicked: page.controller.submit(true)
+                }
+                Button {
+                    kind: page.m.sendFirst ? "default" : "primary"; text: page.m.parseLabel || "解析并校验"
                     busy: page.m.busy === "parse"; enabled: page.m.busy !== "execute"
                     onClicked: page.controller.submit(false)
                 }
                 Button {
+                    visible: !page.m.sendFirst
                     text: page.m.send ? page.m.send.label : ""
                     textColor: enabled && page.m.send && page.m.send.warn ? Theme.orangeText : (enabled ? Theme.label : Theme.labelTertiary)
                     busy: page.m.busy === "execute"

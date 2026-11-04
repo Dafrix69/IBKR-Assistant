@@ -2,7 +2,7 @@
 //   · 模型(shell/trade_rules 的 tradePageModel)在状态、大模型目录、输入 / 结果、勾选、历史相似交易任何一样变了时重算;
 //   · 结果卡片里每张票据按内容取一次历史相似交易(ideas.similar_trades,只读);同一张票据留在新结果里就不重取;
 //   · 占位账号(accounts-info)在状态里的账户变了时重问;
-//   · ⌘⇧↩ 和「发送」按钮同一个口径:按钮灰着时快捷键也不发,横幅说为什么。
+//   · ⌘↩ 和主按钮同一个口径:发得出去就解析并发送,发不出去就只解析;⌘⇧↩ 只解析。
 #pragma once
 
 #include <QJsonArray>
@@ -45,8 +45,8 @@ public:
 
     /// 「解析并校验」/「发送」:发到此刻勾着的账户
     Q_INVOKABLE void submit(bool execute);
-    /// ⌘↩ / ⌘⇧↩
-    Q_INVOKABLE void hotkey(bool execute);
+    /// ⌘↩(parseOnly = false)/ ⌘⇧↩(parseOnly = true)
+    Q_INVOKABLE void hotkey(bool parseOnly);
     Q_INVOKABLE void togglePick(const QString& alias, bool on);
     /// 点速记片段:返回 { text, caret }(输入框照着改、光标放过去)
     Q_INVOKABLE QJsonObject insertSnippet(int start, int end, const QString& snippet);

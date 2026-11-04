@@ -644,12 +644,14 @@ QJsonObject tradePageModel(const PageInput& in) {
         {u"readiness"_s, readiness},
         {u"picked"_s, QJsonArray::fromStringList(pickedOut)},
         {u"usable"_s, usable},
-        {u"send"_s, QJsonObject{{u"label"_s, u"发送到"_s + broker}, {u"warn"_s, liveOn}, {u"canExecute"_s, blockers.isEmpty()},
+        // 发得出去时主按钮就是「解析并发送」(引擎一趟解析 + 发单,不先解析再点一次);发不出去才退回「解析并校验」,发送键灰着说为什么
+        {u"sendFirst"_s, blockers.isEmpty()},
+        {u"send"_s, QJsonObject{{u"label"_s, (blockers.isEmpty() ? u"解析并发送到"_s : u"发送到"_s) + broker}, {u"warn"_s, liveOn}, {u"canExecute"_s, blockers.isEmpty()},
                                 {u"blockers"_s, blockers.join(u"、"_s)},
                                 {u"tip"_s, blockers.isEmpty() ? u"解析通过后直接发送给券商"_s : u"不能发送:"_s + blockers.join(u"、"_s)}}},
-        {u"parseLabel"_s, u"解析并校验"_s},
-        // `${MOD_KEY}${ENTER_KEY} 解析 · ${MOD_KEY}${SHIFT_KEY}${ENTER_KEY} 发送`
-        {u"hotkeys"_s, in.mac ? u"⌘↩ 解析 · ⌘⇧↩ 发送"_s : u"Ctrl+Enter 解析 · Ctrl+Shift+Enter 发送"_s},
+        {u"parseLabel"_s, blockers.isEmpty() ? u"只解析"_s : u"解析并校验"_s},
+        {u"hotkeys"_s, blockers.isEmpty() ? (in.mac ? u"⌘↩ 解析并发送 · ⌘⇧↩ 只解析"_s : u"Ctrl+Enter 解析并发送 · Ctrl+Shift+Enter 只解析"_s)
+                                          : (in.mac ? u"⌘↩ 解析"_s : u"Ctrl+Enter 解析"_s)},
         {u"placeholder"_s, u"例:spx到7500时,开一张今天的 7520 7550 call spread。理由:突破 7500 整数关口后追动能"_s},
         {u"picker"_s, picker},
         {u"guard"_s, guard},
@@ -720,7 +722,10 @@ QStringList pageTexts(const QJsonObject& m, const QString& composerText) {
     }
     if (!composerText.isEmpty()) out << composerText;
     const QJsonObject send = m.value("send"_L1).toObject();
-    out << m.value("parseLabel"_L1).toString() << send.value("label"_L1).toString() << m.value("hotkeys"_L1).toString();
+    // 按钮从左到右:能发时「解析并发送」在前
+    if (m.value("sendFirst"_L1).toBool()) out << send.value("label"_L1).toString() << m.value("parseLabel"_L1).toString();
+    else out << m.value("parseLabel"_L1).toString() << send.value("label"_L1).toString();
+    out << m.value("hotkeys"_L1).toString();
     if (m.value("picker"_L1).isObject()) {
         const QJsonObject p = m.value("picker"_L1).toObject();
         out << u"发单账户"_s;

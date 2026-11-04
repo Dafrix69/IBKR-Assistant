@@ -115,14 +115,9 @@ void TradeController::submit(bool execute) {
     composer_->submit(execute, model_.value("picked"_L1).toVariant().toStringList());
 }
 
-void TradeController::hotkey(bool execute) {
-    const QJsonObject send = model_.value("send"_L1).toObject();
-    // 快捷键和按钮同一个口径:按钮此刻是灰的(发不出去),快捷键也不该发起一次注定被拦的发送
-    if (execute && !send.value("canExecute"_L1).toBool()) {
-        if (status_) status_->showError(u"现在发不出去:"_s + send.value("blockers"_L1).toString());
-        return;
-    }
-    submit(execute);
+void TradeController::hotkey(bool parseOnly) {
+    // 快捷键和主按钮同一个口径:⌘↩ 发得出去就解析并发送,发不出去就只解析;⌘⇧↩ 永远只解析
+    submit(!parseOnly && model_.value("send"_L1).toObject().value("canExecute"_L1).toBool());
 }
 
 void TradeController::togglePick(const QString& alias, bool on) {
