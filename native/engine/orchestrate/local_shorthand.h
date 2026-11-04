@@ -38,7 +38,8 @@ public:
 };
 
 /// 回空 = 交给大模型。snap 指向调用方的局部变量({代码: 现价}),调用方在 co_await 它;本地解析抛任何异常都静默回落到大模型
+/// manual = 手动下单页(见 shorthand.h);跟单不传
 util::Task<std::optional<util::OJson>> tryLocalShorthand(ShorthandHost& host, QString instruction, util::OJson* snap, domain::EtNow at,
-                                                         parsing::shorthand::ShorthandMeta* meta = nullptr);
+                                                         parsing::shorthand::ShorthandMeta* meta = nullptr, bool manual = false);
 
 }  // namespace ibkr::orchestrate

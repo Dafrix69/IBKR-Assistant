@@ -7,6 +7,7 @@
 #include "util/py.h"
 #include "util/tz.h"
 
+#include <QDate>
 #include <QRegularExpression>
 
 #include <cmath>
@@ -46,6 +47,11 @@ const QRegularExpression& spreadType() {
 const QRegularExpression& spreadShape() {
     static const QRegularExpression r = rx(u"(?<![\\d.])\\d{2,5}"_s + sp() + u"*["_s + S() + u"/-]"_s + sp() + u"*\\d{2,5}(?![\\d.])"_s + kDot +
                                            u"*(?<![\\d.])-"_s + sp() + u"*\\d"_s);
+    return r;
+}
+/// 只写了 put / call spread(没写 bull / bear):手动下单页才认。价格带负号 = 收钱(贷方),否则 = 付钱(借方)
+const QRegularExpression& plainSpread() {
+    static const QRegularExpression r = rx(u"(?<![A-Za-z])(put|call)"_s + sp() + u"*spread(?![A-Za-z])|(看跌|看涨)价差"_s, true);
     return r;
 }
 bool test(const QRegularExpression& r, const QString& s) { return r.match(s).hasMatch(); }
@@ -102,6 +108,12 @@ struct Common {
     QString tif;
     bool outsideRth = false;
     bool tomorrow = false;
+    // 写明的到期:「(这/本/下)周X」或「M月D日」。weekday 0=周一…4=周五,-1 = 没写
+    int weekday = -1;
+    bool nextWeek = false;
+    QString weekText;
+    int month = 0, day = 0;
+    bool clash = false;  // 「明天」/周X/M月D日 写了不止一种:说不清是哪天
 };
 /// 张数:「N张」或中文数量词;没有 → 1(加一句提示);越界 → 空
 std::optional<double> takeQty(QString& work, QStringList& warnings) {
@@ -119,12 +131,47 @@ std::optional<double> takeQty(QString& work, QStringList& warnings) {
     return qty;
 }
 
-/// 到期:默认当日;「明天」= 下一交易日(只跳周末)。周末默认当日的:回拒绝(rejection 放进 out)
+/// 到期:默认当日;「明天」= 下一交易日(只跳周末);「周五」「下周五」「11月6日」按写的那天。
+/// 周末默认当日的、写的那天已经过了或落在周末的:回拒绝(rejection 放进 out)。节假日不查,合约不存在时由券商确认那一步拦下
 struct Expiry {
     QString expiry, label;
 };
-std::optional<Expiry> expiryOf(bool tomorrow, const domain::EtNow& moment, QStringList& warnings, const QString& full, const QString& what, OJson& rejection) {
-    if (tomorrow) {
+OJson rejectionOf(const QString& full, const QString& message) {
+    return js::object({{u"orders"_s, js::array()},
+                       {u"rejections"_s, js::array({js::object({{u"original_text"_s, js::S(full)}, {u"code"_s, js::S(u"UNSUPPORTED"_s)}, {u"message"_s, js::S(message)}})})}});
+}
+std::optional<Expiry> expiryOf(const Common& c, const domain::EtNow& moment, QStringList& warnings, const QString& full, const QString& what, OJson& rejection) {
+    static const QStringList dayNames{u"周一"_s, u"周二"_s, u"周三"_s, u"周四"_s, u"周五"_s, u"周六"_s, u"周日"_s};
+    const QDate today = QDate::fromString(moment.date, Qt::ISODate);
+    if (c.weekday >= 0 || c.month > 0) {
+        QDate target;
+        QString written;
+        if (c.weekday >= 0) {
+            const int wd = today.dayOfWeek() - 1;  // 0=周一
+            target = today.addDays(c.weekday - wd + (c.nextWeek ? 7 : 0));
+            written = c.weekText;
+        } else {
+            target = QDate(today.year(), c.month, c.day);
+            written = u"%1月%2日"_s.arg(c.month).arg(c.day);
+            if (!target.isValid()) {
+                rejection = rejectionOf(full, u"「%1」不是一个有效日期,没有下单。"_s.arg(written));
+                return std::nullopt;
+            }
+        }
+        if (target < today) {
+            rejection = rejectionOf(full, u"今天是 %1(%2),「%3」已经过了;要下周的写「下%4」,或写明日期。"_s.arg(moment.date, dayNames[today.dayOfWeek() - 1], written,
+                                                                                                       c.weekday >= 0 ? dayNames[c.weekday] : u"周X"_s));
+            return std::nullopt;
+        }
+        if (target.dayOfWeek() >= 6) {
+            rejection = rejectionOf(full, u"「%1」是 %2(%3),不是交易日,没有到期的%4。"_s.arg(written, target.toString(Qt::ISODate), dayNames[target.dayOfWeek() - 1], what));
+            return std::nullopt;
+        }
+        const QString day = target.toString(Qt::ISODate);
+        warnings << u"「%1」按 %2(%3)到期处理"_s.arg(written, day, dayNames[target.dayOfWeek() - 1]);
+        return Expiry{QString(day).remove(u'-'), day == moment.date ? day + u" 当日到期"_s : day + u" 到期"_s};
+    }
+    if (c.tomorrow) {
         double ordinal = util::dateOrdinal(moment.date) + 1;
         while (util::weekdayOfDate(util::ordinalToDate(ordinal)) >= 5) ordinal += 1;
         const QString day = util::ordinalToDate(ordinal);
@@ -189,6 +236,18 @@ Common takeCommon(QString& work) {
     c.tif = take(work, gtc) ? u"GTC"_s : u"DAY"_s;
     c.outsideRth = take(work, orth).has_value();
     c.tomorrow = take(work, tom).has_value();
+    static const QRegularExpression week = rx(u"(下个?|这个?|本)?(?:周|星期|礼拜)([一二三四五])(?:到期)?"_s);
+    static const QRegularExpression md = rx(u"(?<![\\d.])(\\d{1,2})"_s + sp() + u"*月"_s + sp() + u"*(\\d{1,2})"_s + sp() + u"*[日号](?:到期)?"_s);
+    if (const auto m = take(work, week)) {
+        c.weekday = QStringList{u"一"_s, u"二"_s, u"三"_s, u"四"_s, u"五"_s}.indexOf(m->captured(2));
+        c.nextWeek = m->captured(1).startsWith(u'下');
+        c.weekText = m->captured(0).remove(u"到期"_s);
+    }
+    if (const auto m = take(work, md)) {
+        c.month = m->captured(1).toInt();
+        c.day = m->captured(2).toInt();
+    }
+    c.clash = int(c.tomorrow) + int(c.weekday >= 0) + int(c.month > 0) > 1;
     return c;
 }
 
@@ -197,18 +256,20 @@ const QRegularExpression& digits() {
     return r;
 }
 
-OJson parseCreditSpread(const QString& full, const QString& text, const QString& reason, const OJson& snapshot, const domain::EtNow& moment) {
+OJson parseCreditSpread(const QString& full, const QString& text, const QString& reason, const OJson& snapshot, const domain::EtNow& moment, bool plain = false) {
     static const QRegularExpression block = rx(
         u"[;;\\n]|时候|时,|涨到|跌到|突破|跌破|破了|站稳|卖|做空|平仓|取消|理由|止盈|止损|接货|加仓|撤单|上移|下移|日历|正股|海鸥|或者|如果|守不住|翻倍|蝴蝶|铁蝶"_s);
     if (test(block, text) || test(wingHint(), text)) return OJson::null();
     QString work = text;
     QStringList warnings;
 
-    const auto mType = take(work, spreadType());
-    if (!mType || test(spreadType(), work)) return OJson::null();  // 两个类型词:是两张单
+    const auto mType = take(work, plain ? plainSpread() : spreadType());
+    if (!mType || test(spreadType(), work) || (plain && test(plainSpread(), work))) return OJson::null();  // 两个类型词:是两张单
     static const QRegularExpression bull = rx(u"bull"_s, true);
-    const bool bullPut = test(bull, mType->captured(1));
+    static const QRegularExpression putWord = rx(u"put|看跌"_s, true);
+    const bool bullPut = plain ? test(putWord, mType->captured(0)) : test(bull, mType->captured(1));  // plain:是不是 put
     const Common c = takeCommon(work);
+    if (c.clash) return OJson::null();
 
     static const QRegularExpression creditRe = rx(u"(?<![\\d.])-"_s + sp() + u"*(\\d+(?:\\.\\d+)?)(?:"_s + sp() + u"*(?:到|至|~|-)?"_s + sp() + u"*-"_s + sp() +
                                                   u"*(\\d+(?:\\.\\d+)?))?"_s);
@@ -224,6 +285,7 @@ OJson parseCreditSpread(const QString& full, const QString& text, const QString&
         for (double q : quoted) m = jm::max(m, q);
         credit = m;
     }
+    const bool debit = plain && !credit;  // 只写 put / call spread、价格没带负号:买入借方价差
 
     for (const QString& f : spreadFillers()) work.replace(f, u" "_s);
     for (const QString& f : fillers()) work.replace(f, u" "_s);
@@ -242,13 +304,22 @@ OJson parseCreditSpread(const QString& full, const QString& text, const QString&
 
     static const QRegularExpression noise = rx(u"[的吧哦呢啦呀嘛了个到至]|[,。、~!?():;/-]|"_s + sp() + u"+"_s);
     work.replace(noise, u" "_s);
-    const QStringList tokens = allMatches(digits(), work);
+    QStringList tokens = allMatches(digits(), work);
     work.replace(digits(), u" "_s);
+    static const QRegularExpression rel = rx(u"^\\d{1,2}\\z"_s);
+    static const QRegularExpression abs = rx(u"^\\d{3,5}(?:\\.\\d+)?\\z"_s);
+    // 借方:两个 3–5 位的行权价之外,恰好一个别的数是付的权利金
+    std::optional<double> paid;
+    if (debit && tokens.size() == 3) {
+        QStringList strikes, others;
+        for (const QString& t : tokens) (test(abs, t) ? strikes : others) << t;
+        if (strikes.size() != 2 || others.size() != 1) return OJson::null();
+        paid = num(others[0]);
+        tokens = strikes;
+    }
     if (!util::jsTrim(work).isEmpty() || tokens.size() != 2) return OJson::null();
 
     const std::optional<double> spot = spotOf(snapshot, symbol);
-    static const QRegularExpression rel = rx(u"^\\d{1,2}\\z"_s);
-    static const QRegularExpression abs = rx(u"^\\d{3,5}(?:\\.\\d+)?\\z"_s);
     const bool relative = test(rel, tokens[0]) && test(rel, tokens[1]);
     const bool absolute = test(abs, tokens[0]) && test(abs, tokens[1]);
     double lo, hi;
@@ -281,22 +352,37 @@ OJson parseCreditSpread(const QString& full, const QString& text, const QString&
     const double width = hi - lo;
     if (!(width > 0 && width <= 500)) return OJson::null();
     if (credit && !(*credit > 0 && *credit < width)) return OJson::null();
+    if (paid && !(*paid > 0 && *paid < width)) return OJson::null();
 
     OJson rejection;
-    const auto exp = expiryOf(c.tomorrow, moment, warnings, full, u"价差"_s, rejection);
+    const auto exp = expiryOf(c, moment, warnings, full, u"价差"_s, rejection);
     if (!exp) return rejection;
 
     if (quoted.size() == 2 && quoted[0] != quoted[1]) {
         const double qmin = jm::min(quoted[0], quoted[1]), qmax = jm::max(quoted[0], quoted[1]);
         warnings << u"权利金写的是区间 %1–%2,按收得多的一头 %3 挂单(可能成交不了,不会比写的差)"_s.arg(fmt(qmin), fmt(qmax), fmt(qmax));
     }
+    const QString right = bullPut ? u"P"_s : u"C"_s;
+    const bool spx = symbol == u"SPX";
+    if (debit) {
+        // 借方:put 买高卖低,call 买低卖高
+        const double buyK = bullPut ? hi : lo;
+        const double sellK = bullPut ? lo : hi;
+        warnings << u"「%1」价格没带负号,按买入借方价差(付钱)理解:买 %2%4、卖 %3%4;要收钱请把价格写成负数,如 '-1.2'"_s.arg(mType->captured(0), fmt(buyK), fmt(sellK), right);
+        if (!paid) warnings << u"未写付的权利金,将在下单时按盘口中间价定价(AUTO_MID);若在意成本,请写明价格,如 '1.2'"_s;
+        warnings << u"本地速记解析(未经大模型),语法 "_s + kGrammarVersion;
+        const QString summary = u"买入(借方)"_s + util::jsNumberToString(*qty) + u" 张 "_s + exp->label + u"的 "_s + symbol + u" "_s + fmt(lo) + u"/"_s + fmt(hi) + u" "_s +
+                                (bullPut ? u"看跌"_s : u"看涨"_s) + u"借方价差"_s + u"(买 "_s + fmt(buyK) + right + u"、卖 "_s + fmt(sellK) + right + u",宽 "_s + fmt(width) +
+                                u" 点),"_s + (paid ? u"净权利金不超过 "_s + fmt(*paid) : u"净权利金按下单时盘口中间价确定"_s);
+        return payload(summary, symbol, u"VERTICAL"_s, js::array({legOf(u"BUY"_s, 1, exp->expiry, buyK, right, spx), legOf(u"SELL"_s, 1, exp->expiry, sellK, right, spx)}),
+                       u"BUY"_s, *qty, paid, c.tif, c.outsideRth, reason, warnings);
+    }
+    if (plain) warnings << u"「%1」价格带负号,按卖出贷方价差(收钱)理解"_s.arg(mType->captured(0));
     if (!credit) warnings << u"未写收的权利金,将在下单时按盘口中间价定价(AUTO_MID);若对收多少敏感,请写成负数,如 '-2.5'"_s;
     warnings << u"本地速记解析(未经大模型),语法 "_s + kGrammarVersion;
 
-    const QString right = bullPut ? u"P"_s : u"C"_s;
     const double sellStrike = bullPut ? hi : lo;
     const double buyStrike = bullPut ? lo : hi;
-    const bool spx = symbol == u"SPX";
     const QString summary = u"卖出(贷方)"_s + util::jsNumberToString(*qty) + u" 张 "_s + exp->label + u"的 "_s + symbol + u" "_s + fmt(lo) + u"/"_s + fmt(hi) + u" "_s +
                             (bullPut ? u"看跌"_s : u"看涨"_s) + u"贷方价差"_s + u"(卖 "_s + fmt(sellStrike) + right + u"、买 "_s + fmt(buyStrike) + right + u",宽 "_s +
                             fmt(width) + u" 点),"_s + (credit ? u"净权利金不低于 "_s + fmt(*credit) : u"净权利金按下单时盘口中间价确定"_s);
@@ -316,6 +402,7 @@ OJson parseIronFly(const QString& fullRaw, const QString& text, const QString& r
     QString work = text;
     QStringList warnings;
     const Common c = takeCommon(work);
+    if (c.clash) return OJson::null();
 
     // 翼宽(必填)
     static const QRegularExpression w1 = rx(u"(\\d+(?:\\.\\d+)?)"_s + sp() + u"*cm"_s, true);
@@ -410,7 +497,7 @@ OJson parseIronFly(const QString& fullRaw, const QString& text, const QString& r
     if (credit && !(*credit > 0 && *credit < wing)) return OJson::null();
 
     OJson rejection;
-    const auto exp = expiryOf(c.tomorrow, moment, warnings, fullRaw, u"铁蝶"_s, rejection);
+    const auto exp = expiryOf(c, moment, warnings, fullRaw, u"铁蝶"_s, rejection);
     if (!exp) return rejection;
 
     const std::optional<double> spot = spotOf(snapshot, symbol);
@@ -445,9 +532,9 @@ OJson parseIronFly(const QString& fullRaw, const QString& text, const QString& r
 }
 }  // namespace
 
-bool looksLikeShorthand(const QString& text) {
+bool looksLikeShorthand(const QString& text, bool manual) {
     const QString t = maskSurrogates(util::jsNormalizeNfkc(text));
-    return t.contains(u"蝴蝶"_s) || t.contains(u"铁蝶"_s) || test(wingHint(), t) || test(spreadType(), t);
+    return t.contains(u"蝴蝶"_s) || t.contains(u"铁蝶"_s) || test(wingHint(), t) || test(spreadType(), t) || (manual && test(plainSpread(), t));
 }
 
 bool looksLikeOrder(const QString& text) {
@@ -460,13 +547,17 @@ bool spreadWithoutType(const QString& text) {
     return test(spreadShape(), t) && !test(spreadType(), t) && !test(wingHint(), t);
 }
 
-QStringList shorthandSymbols(const QString& instruction) {
+QStringList shorthandSymbols(const QString& instruction, bool manual) {
     const QString text = maskSurrogates(util::jsNormalizeNfkc(instruction));
-    if (!looksLikeShorthand(text)) return {};
+    if (!looksLikeShorthand(text, manual)) return {};
     // 价差的类型词不是标的:先摘掉(只摘第一处)再找字母 token
     QString work = text;
     const QRegularExpressionMatch t = spreadType().match(work);
     if (t.hasMatch()) work = work.left(t.capturedStart(0)) + u' ' + work.mid(t.capturedEnd(0));
+    if (manual && !t.hasMatch()) {
+        const QRegularExpressionMatch p = plainSpread().match(work);
+        if (p.hasMatch()) work = work.left(p.capturedStart(0)) + u' ' + work.mid(p.capturedEnd(0));
+    }
     static const QRegularExpression tok = rx(u"(?!cm\\b|CM\\b)[A-Za-z]{2,5}"_s);
     const QRegularExpressionMatch m = tok.match(work);
     const QString token = m.hasMatch() ? m.captured(0).toUpper() : u"SPX"_s;
@@ -474,7 +565,7 @@ QStringList shorthandSymbols(const QString& instruction) {
     return junk.contains(token) ? QStringList{u"SPX"_s} : QStringList{token};
 }
 
-OJson tryParseShorthand(const QString& instruction, const OJson& snapshot, const domain::EtNow& moment, ShorthandMeta* meta) {
+OJson tryParseShorthand(const QString& instruction, const OJson& snapshot, const domain::EtNow& moment, ShorthandMeta* meta, bool manual) {
     // 全角统一成半角;原文(含落单的代理项)留着给 reason / original_text
     const QString fullRaw = util::jsTrim(util::jsNormalizeNfkc(instruction));
     const QString full = maskSurrogates(fullRaw);
@@ -495,6 +586,13 @@ OJson tryParseShorthand(const QString& instruction, const OJson& snapshot, const
         }
         return parseCreditSpread(fullRaw, text, reason, snapshot, moment);
     }
+    if (manual && test(plainSpread(), text)) {
+        if (meta) {
+            meta->relativeCenter = false;
+            meta->set = true;
+        }
+        return parseCreditSpread(fullRaw, text, reason, snapshot, moment, true);
+    }
     if (text.contains(u"铁蝶"_s)) return parseIronFly(fullRaw, text, reason, snapshot, moment, meta);
     const bool hasButterflyWord = text.contains(u"蝴蝶"_s);
     if (!hasButterflyWord && !test(wingHint(), text)) return OJson::null();
@@ -505,6 +603,7 @@ OJson tryParseShorthand(const QString& instruction, const OJson& snapshot, const
     QString work = text;
     QStringList warnings;
     const Common c = takeCommon(work);
+    if (c.clash) return OJson::null();
 
     static const QRegularExpression rightRe = rx(u"看涨|看跌|call|put"_s, true);
     std::optional<QString> explicitRight;
@@ -587,7 +686,7 @@ OJson tryParseShorthand(const QString& instruction, const OJson& snapshot, const
     if (premium && !(*premium > 0 && *premium < wing)) return OJson::null();
 
     OJson rejection;
-    const auto exp = expiryOf(c.tomorrow, moment, warnings, fullRaw, u"蝴蝶"_s, rejection);
+    const auto exp = expiryOf(c, moment, warnings, fullRaw, u"蝴蝶"_s, rejection);
     if (!exp) return rejection;
 
     const std::optional<double> spot = spotOf(snapshot, symbol);

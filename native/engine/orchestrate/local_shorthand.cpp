@@ -12,13 +12,13 @@ namespace js = ibkr::util::js;
 namespace ibkr::orchestrate {
 
 util::Task<std::optional<OJson>> tryLocalShorthand(ShorthandHost& host, QString instruction, OJson* snap, domain::EtNow at,
-                                                   parsing::shorthand::ShorthandMeta* meta) {
+                                                   parsing::shorthand::ShorthandMeta* meta, bool manual) {
     std::optional<OJson> localPayload;
     QString shorthandNote;
     try {
-        if (parsing::shorthand::looksLikeShorthand(instruction)) {
+        if (parsing::shorthand::looksLikeShorthand(instruction, manual)) {
             // 没连券商时快照里没有现价,「15蝴蝶」的中心算不出来——用宏观行情带同款公开源兜底
-            for (const QString& sym : parsing::shorthand::shorthandSymbols(instruction)) {
+            for (const QString& sym : parsing::shorthand::shorthandSymbols(instruction, manual)) {
                 // 「50蝴蝶」没写标的,上面的快照抽不到 SPX:先问券商(夜盘走期货推算),拿不到才退公开源
                 if (js::nullish(js::prop(snap, sym)) && host.router()) {
                     try {
@@ -47,7 +47,7 @@ util::Task<std::optional<OJson>> tryLocalShorthand(ShorthandHost& host, QString 
                 }
             }
         }
-        OJson payload = parsing::shorthand::tryParseShorthand(instruction, *snap, at, meta);
+        OJson payload = parsing::shorthand::tryParseShorthand(instruction, *snap, at, meta, manual);
         if (payload.type != OJson::Null) {
             if (!shorthandNote.isEmpty()) {
                 // for (const item of localPayload["orders"]) (item["warnings"]).push(note):缺了 / 不是数组 → TypeError → 外层 catch → 交给大模型
@@ -69,7 +69,7 @@ util::Task<std::optional<OJson>> tryLocalShorthand(ShorthandHost& host, QString 
         localPayload = std::nullopt;
     }
 
-    if (!localPayload && parsing::shorthand::looksLikeShorthand(instruction)) {
+    if (!localPayload && parsing::shorthand::looksLikeShorthand(instruction, manual)) {
         // 观测点:哪条蝴蝶写法没被本地语法接住(落到大模型)。不影响任何行为,只为日后照着真实落网样本扩语法
         const OJson detail = js::object({{u"instruction"_s, js::S(instruction.left(120))}});
         host.store().audit(u"engine"_s, u"shorthand_fallback"_s, &detail);

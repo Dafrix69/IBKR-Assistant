@@ -272,7 +272,7 @@ Task<EngineResult> TradingEngine::handleInstruction(QString instruction, QString
     }
 
     // 本地速记优先:固定行话不等大模型,解析不了回空交给大模型。它会往 snap 里补现价
-    const std::optional<Rec> localPayload = co_await tryLocalShorthand(*impl_->shorthandHost, instruction, &snap, at);
+    const std::optional<Rec> localPayload = co_await tryLocalShorthand(*impl_->shorthandHost, instruction, &snap, at, nullptr, true);
 
     providers::LLMResponse response;
     if (localPayload) {

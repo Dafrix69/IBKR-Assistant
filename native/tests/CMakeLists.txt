@@ -85,6 +85,8 @@ target_link_libraries(tst_follow_credit PRIVATE ibkr_orchestrate Qt6::Test)
 
 ibkr_test(tst_iron_fly)
 target_link_libraries(tst_iron_fly PRIVATE ibkr_orchestrate Qt6::Test)
+ibkr_test(tst_shorthand_v9)
+target_link_libraries(tst_shorthand_v9 PRIVATE ibkr_orchestrate Qt6::Test)
 ibkr_test(tst_tracker)
 target_link_libraries(tst_tracker PRIVATE ibkr_orchestrate Qt6::Test)
 ibkr_test(tst_prompts)
