@@ -754,7 +754,7 @@ Task<> GuardService::watchOptions(QList<OJson> rows, QList<OJson> tracks, QStrin
                 }
                 continue;
             }
-            // 持仓里有这个标的这个到期日的期权、却认不出这一只:多半是几只交错的组合被并成了一个自定义组合。说一次
+            // 持仓里有这个标的这个到期日的组合、却认不出这一只(行权价写错、腿切不成那个形状):说一次
             bool sameExpiry = false;
             const QString expiry = js::str(js::prop(body, u"expiry"_s)).remove(u'-');
             for (const OJson& c : combos)
@@ -766,7 +766,7 @@ Task<> GuardService::watchOptions(QList<OJson> rows, QList<OJson> tracks, QStrin
                 journal(u"guard_violation"_s, js::object({{u"kind"_s, js::S(u"combo_unmatched"_s)}, {u"account"_s, js::S(alias)}, {u"symbol"_s, js::S(symbol)},
                                                           {u"structure"_s, js::copyOrNull(js::prop(body, u"structure"_s))}, {u"intent"_s, js::N(id)}}));
                 tell(u"认不出这只组合"_s,
-                     u"%1 在持仓里认不出来(同一到期日的几只组合可能被并成了一个自定义组合),guard 管不了它的出场,请自己盯。"_s.arg(js::str(js::prop(body, u"structure"_s))),
+                     u"%1 在持仓的组合里找不到(行权价写错了,或腿切不成这个形状),guard 管不了它的出场,请自己盯。"_s.arg(js::str(js::prop(body, u"structure"_s))),
                      symbol, true);
                 bump(out, u"combo_unmatched"_s);
             }

@@ -832,21 +832,26 @@ private slots:
         rig.tick(6000, u"2026-11-09"_s);
         QVERIFY(rig.store().guard().listOpen().isEmpty());
     }
-    void interleavedFliesAreUnmatched() {
+    void interleavedFliesAreMatchedSeparately() {
         SvcRig rig;
         rig.store().guard().add(flyIntent(u"QQQ 660/670/680 call fly"_s));
+        rig.store().guard().add(flyIntent(u"QQQ 650/660/670 call fly"_s));  // 持仓里没有这一只
         const QString e = u"20261109"_s;
         rig.port().rows = {optRow(u"模拟"_s, u"QQQ"_s, e, 660, u"C"_s, 1, 1010), optRow(u"模拟"_s, u"QQQ"_s, e, 664, u"C"_s, 1, 868),
                            optRow(u"模拟"_s, u"QQQ"_s, e, 670, u"C"_s, -2, 568),  optRow(u"模拟"_s, u"QQQ"_s, e, 674, u"C"_s, -2, 461),
                            optRow(u"模拟"_s, u"QQQ"_s, e, 680, u"C"_s, 1, 281),   optRow(u"模拟"_s, u"QQQ"_s, e, 684, u"C"_s, 1, 213)};
+        // 两只交错的蝶在持仓里各成一条组合:660/670/680 那只认得出,建出场追踪
         const OJson t0 = rig.tick(0);
+        QCOMPARE(js::num(js::path(&t0, {u"positions"_s, u"combo_tracked"_s})), 1.0);
+        QCOMPARE(rig.added.size(), 1);
+        QVERIFY2(js::str(rig.added[0].get(u"key"_s)).contains(u"660C"_s) && !js::str(rig.added[0].get(u"key"_s)).contains(u"664C"_s),
+                 qPrintable(js::str(rig.added[0].get(u"key"_s))));
+        // 同一到期日有组合、却没有这一只的:只说一次
         QCOMPARE(js::num(js::path(&t0, {u"positions"_s, u"combo_unmatched"_s})), 1.0);
         rig.tick(2000);
-        QCOMPARE(rig.host->engine_.notifier_.titles.count(u"认不出这只组合"_s), 1);  // 只说一次
-        QVERIFY(rig.added.isEmpty());
-        QCOMPARE(rig.store().guard().listOpen().size(), 1);  // 没出现过,不当成平了
+        QCOMPARE(rig.host->engine_.notifier_.titles.count(u"认不出这只组合"_s), 1);
+        QCOMPARE(rig.store().guard().listOpen().size(), 2);  // 没出现过的那份不当成平了
     }
-    // ================================================================ Step 3:推送、断线、心跳、重启
     void pushRequests() {
         const auto t = ibkr::orchestrate::guard_push::telegram(u"TOK"_s, u"42"_s, u"标题"_s, u"正文"_s);
         QCOMPARE(t.url, u"https://api.telegram.org/botTOK/sendMessage"_s);
