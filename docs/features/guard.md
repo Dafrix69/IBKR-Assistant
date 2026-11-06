@@ -3,8 +3,9 @@
 把两件事从人手上拿走:**开仓前必须先写下止损**,**股票仓位必须有止损单**。它不出策略、不出信号,只管纪律。
 配置在 `settings.json` 的 `guard` 段,**默认关**。打开之后它会替没有止损的股票仓位在券商挂止损单,所以第一次打开之前先在纸面账户上看它跑一遍。
 
-分四步做,现在有前两步:交易意图、程序发单的开仓门槛、手动开仓没补录意图时的默认止损(第一步);
-按意图挂止损并守住它、期权组合按意图盯出场(第二步)。心跳与断线推送(第三步)、每日报告(第四步)还没有。
+分四步做,现在有前三步:交易意图、程序发单的开仓门槛、手动开仓没补录意图时的默认止损(第一步);
+按意图挂止损并守住它、期权组合按意图盯出场(第二步);心跳、手机推送、重启识别(第三步)。每日报告(第四步)还没有。
+部署(推送 token、防睡眠、崩了自己起来、验收)见 `guard/DEPLOY.md`。
 
 guard 自己不发单:股票止损与组合出场都经持仓追踪(`tracker.add` / `tracker.update`)落成追踪,下单、改单、对账、断线后认领都是持仓追踪的事。
 guard 只管"该有什么追踪、止损不许比哪条线松"。
@@ -131,6 +132,42 @@ guard 只管"该有什么追踪、止损不许比哪条线松"。
 **盘前盘后。** 托管的 STP 打了 `outsideRth`,但 IBKR 员工的答复是普通 STP 在常规时段以外不触发,盘外要用 STP LMT;
 IBKR 夜盘只有限价单。所以默认止损从 9:30 开盘起才保护,盘后跳空要到开盘按开盘价附近成交。这是接受滑点换确定性的代价。
 
+## 心跳与推送
+
+**心跳。** 每 `heartbeat_s`(默认 300 秒)写一次交易库旁边的 `guard/heartbeat.json`(任务书的 `state/heartbeat.json` 就是它):
+
+| 字段 | 含义 |
+|---|---|
+| `ts` | 写的时刻(UTC) |
+| `ib_connected` | 有连着的会话,而且 TWS 与 IBKR 服务器之间没断(1100 / 2110 算断) |
+| `n_positions` / `n_stops` | 上一轮读到的持仓行数 / 启用、没落闩、开了自动平仓、有止损价或跟踪止损的追踪条数;没读到持仓时是 null |
+| `last_price_change` | 最近一次有持仓现价变动的时刻。引擎没有"最后一笔行情"的时刻,拿这个代替任务书的 `last_price_tick` |
+| `disconnected_since` | 断开的起点,连着时是 null |
+| `push` | 推送通道、排着没发的条数、上一次发不出去的原因 |
+
+**推送什么。** 本机通知照旧都发;下面这些同时推到手机(Telegram 或 Pushover,`guard.push`):
+
+- IBKR 断开超过 `disconnect_alert_s`(默认 120 秒),恢复时再推一条(写明断了多久)。两分钟内恢复的不推。流水 `guard_disconnect` / `guard_reconnect`。
+- 软件或引擎上一次没正常退出、这次重新起来(下一节)。流水 `guard_restart`。
+- 止损、止盈、跟踪止损、到点平仓……任何一条持仓追踪触发:引擎盯的那一路从节拍的 `fired` 来,券商侧托管单成交从 `HostedOrders::onFill` 来。流水 `guard_fired`。
+- 门槛拒了一张程序发的开仓单。
+- 每一笔违规(`guard_violation` 的各种),以及"现在没有止损"的那几种挂不上(`guard_default_stop_failed`、`guard_stop_failed`、组合出场建不上)。
+
+意图收下、意图没收下、止损上抬这类只发本机通知,不推。
+
+**发不出去怎么办。** 排队,下一轮再发;失败后退避 30 秒。最多排 50 条,超过 24 小时的扔掉。晚了 90 秒以上才发出去的,正文末尾注明"推送延迟 N 分钟"。
+同一句话 10 分钟内只排一次,一小时最多推 20 条——五分钟一次的提醒不该变成每小时十几次震动。
+推送和 IBKR 走同一台机器的网络:网线拔了,"IBKR 断开"要等网络回来才推得出去。
+
+**token 只在凭证库。** `settings.json` 里只写通道、chat id 或 user key;token 存在钥匙串 `datrix-guard-push / token`(`keychain_service` / `keychain_account` 可改),
+每次发送现读(第一次会弹钥匙串授权窗)。试推:往收件文件写一行 `{"push_test": true}`,这一行里不带任何凭证——收件流水会把每一行原样记下来。
+推送正文里只有代码、方向、价格与账户别名,没有账号。
+
+**重启识别。** 界面进程与引擎各在 `settings.json` 同目录的 `guard-run/` 下写一个 `<名字>.running`,正常退出时删掉(`util/run_marker`)。
+起来时上一次的还在,就改名成 `<名字>.crashed`,guard 第一轮看到就推「Datrix重启了」或「交易引擎重启了」并删掉它。
+要两份是因为引擎分不清:界面崩了和界面正常退出,引擎看到的都是 stdin 关了。引擎单独崩了由界面约 3 秒内拉起(`shell/engine_supervisor`);
+界面崩了要靠 launchd 把它重新打开,见 `guard/DEPLOY.md`。guard 关着时 `.crashed` 留着不推,下次打开时再推(正文带着那一次的起始时刻)。
+
 ## 流水
 
 `audit_log` 里 `actor = 'guard'` 的行就是 guard 的流水,每日报告(第四步)从这里读:
@@ -143,6 +180,8 @@ IBKR 夜盘只有限价单。所以默认止损从 9:30 开盘起才保护,盘�
 | `guard_default_stop` / `guard_default_stop_failed` | 默认止损挂上 / 挂不上 |
 | `guard_stop_placed` / `guard_stop_raised` / `guard_trail` / `guard_stop_failed` | 按意图挂上止损 / 底线抬上去后改了追踪 / 底线抬了 / 挂不上 |
 | `guard_re_armed` | 触发过的追踪在仓位还在时重新上膛 |
+| `guard_fired` | 持仓追踪触发(止损、止盈……,含券商侧托管单成交) |
+| `guard_disconnect` / `guard_reconnect` / `guard_restart` | IBKR 断开超过时限 / 恢复(带分钟数)/ 上一次没正常退出 |
 | `guard_combo_tracked` / `guard_time_stop_set` | 组合出场追踪建好 / 到期日补上几点平 |
 
 默认止损走 `tracker.add`,那一条照旧会写 `actor = 'ui'`、`action = 'tracker_add'`,绩效体检会把它当成这笔建仓时计划的止损。
@@ -151,10 +190,14 @@ IBKR 夜盘只有限价单。所以默认止损从 9:30 开盘起才保护,盘�
 
 ```json
 "guard": { "enabled": false, "grace_s": 60, "max_loss_pct_nav": 2.0, "wide_stop_pct": 8.0,
-           "default_stop_pct": 8.0, "default_low_days": 10, "tick_s": 2, "trail_r": false, "inbox_path": "" }
+           "default_stop_pct": 8.0, "default_low_days": 10, "tick_s": 2, "trail_r": false, "inbox_path": "",
+           "heartbeat_s": 300, "disconnect_alert_s": 120,
+           "push": { "provider": "", "telegram_chat_id": "", "pushover_user": "",
+                     "keychain_service": "datrix-guard-push", "keychain_account": "token" } }
 ```
 
-写错时和别的段一样当场报中文原因:不认识的键、超出范围、`default_low_days` 不是整数、`tick_s` 大于 `grace_s`。
+写错时和别的段一样当场报中文原因:不认识的键、超出范围、`default_low_days` 不是整数、`tick_s` 大于 `grace_s`、
+`push.provider` 不是 telegram / pushover、选了 telegram 没填 `telegram_chat_id`、选了 pushover 没填 `pushover_user`。
 只能手改 `settings.json`,`settings.patch` 不认这一段。关着时后台每一轮什么都不做(不读文件、不读持仓),门槛也不问。
 
 `outsideRth` 不另设开关:持仓追踪挂正股托管单一律打上,而按 IBKR 员工的答复它对普通 STP 不起作用。
@@ -162,6 +205,9 @@ IBKR 夜盘只有限价单。所以默认止损从 9:30 开盘起才保护,盘�
 持仓追踪重连后按 orderRef 重新认领;guard 每一轮都按意图对一遍追踪。用户自己在 TWS 里挂的止损单 API 撤不动,guard 不碰。
 
 ## 当前状态
+
+第三步:推送的请求拼法、排队重试与延迟注明、去重、断开超时推送与恢复、心跳文件、重启标记都有离线测试;
+真正往 Telegram / Pushover 发、钥匙串授权窗、launchd 拉起界面、⌘Q 的退出码都没有试过。
 
 全部只有离线测试(`tst_guard`:规则、收件、盯仓位与默认止损、按意图挂止损、改松后恢复并保住其余目标、跟踪止损只升不降、
 被撤记违规、组合认出来建出场追踪与到期日补上几点平、交错的蝶认不出只说一次、发单那一步的门槛;用假券商、假的 tracker.add / update 与临时交易库)。

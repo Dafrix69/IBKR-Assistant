@@ -96,6 +96,15 @@ struct FlyEntryAssistConfig {
     QString late_entry_et;
 };
 
+/// 交易纪律守护的手机推送。token 在凭证库(keychain_service / keychain_account),不在这里
+struct GuardPushConfig {
+    QString provider;          // "" = 不推、"telegram"、"pushover"
+    QString telegram_chat_id;  // Telegram:发给哪个聊天
+    QString pushover_user;     // Pushover:用户 key
+    QString keychain_service = QStringLiteral("datrix-guard-push");
+    QString keychain_account = QStringLiteral("token");
+};
+
 /// 交易纪律守护(guard):开仓前要有交易意图、股票仓位必须有止损。见 docs/features/guard.md。
 /// enabled 默认关:它会替没有止损的股票仓位在券商挂止损单,第一次打开之前先在纸面账户上看它跑一遍
 struct GuardConfig {
@@ -108,6 +117,9 @@ struct GuardConfig {
     double tick_s = 2;              // 盯仓位的节拍(成交后几秒内要挂上止损,所以短)
     bool trail_r = false;           // 跟踪止损:盈利过 1R 抬到成本价,过 2R 抬到成本 + 1R
     QString inbox_path;             // 意图收件文件;空 = 交易库同目录下的 guard/intents.jsonl
+    double heartbeat_s = 300;       // 多久写一次 guard/heartbeat.json
+    double disconnect_alert_s = 120;  // IBKR 断开多久推送
+    GuardPushConfig push;
 };
 
 }  // namespace ibkr::contract

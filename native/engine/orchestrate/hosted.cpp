@@ -788,6 +788,13 @@ void HostedOrders::onStatus(const Rec& trade) {
                                                    {u"enabled"_s, js::B(false)}}));
         const std::optional<Rec> track = host_.store().getTrack(tid);
         const QString symbol = track ? js::str(js::prop(&*track, u"symbol"_s)) : u"?"_s;
+        if (onFill && track) {
+            try {
+                onFill(*track, firedState);
+            } catch (...) {
+                /* 回调出错不影响回报处理 */
+            }
+        }
         // 保护规则按审计表数"最近几次止损"、算同一标的的冷却。追价平仓触发时已经记过 hosted_sweep,这里只记券商自己触发的那些
         if (!sweep) {
             Rec detail = js::object({{u"track"_s, js::S(tid)}});

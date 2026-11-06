@@ -13,7 +13,11 @@
 //   · 券商侧的托管止损单不是我们撤的(onExternalCancel,由 HostedOrders 回调):记违规 stop_cancelled;重挂是持仓追踪自己的事(退避 60 秒)。
 //   · 意图对应的持仓出现过、后来没了:自动关掉那份意图(理由「持仓已平」)。那个账户的会话没连着时不下结论(持仓里没有它不等于平了)。
 //
-// guard.enabled 关着时一轮什么都不做(不读文件、不读持仓)。
+//   · 心跳与推送(第三步):每 heartbeat_s 写一次 guard/heartbeat.json;IBKR 断开超过 disconnect_alert_s、软件或引擎异常退出后被拉起、
+//     止损 / 止盈触发、门槛拒单、任何违规,推到手机(Telegram 或 Pushover,guard.push)。发不出去的排队,下一轮再发,正文注明延迟了多久;
+//     同一件事 10 分钟内只推一次,一小时最多 20 条。
+//
+// guard.enabled 关着时一轮什么都不做(不读文件、不读持仓、不写心跳、不推送)。
 #pragma once
 
 #include "domain/config.h"
@@ -38,6 +42,10 @@ struct GuardWiring {
     std::function<std::optional<QStringList>()> coveredAccounts;
     /// tracker.update 的 handler:入参同 RPC(params 与 raw 给同一份);被拒抛 RpcError
     std::function<util::Task<util::OJson>(util::OJson params)> updateTrack;
+    /// 推一条到手机(读凭证、拼请求、发出去);发不出去抛。空 = 不推
+    std::function<util::Task<>(QString title, QString body)> push;
+    /// 「上一次没正常退出」的标记目录(util::run_marker::dirFor(settings.json));空 = 不查
+    QString runDir;
 };
 
 class GuardService : public SvcBase {
@@ -59,6 +67,12 @@ public:
     util::Task<util::OJson> tickOnce(std::optional<double> nowMs = std::nullopt, std::optional<QString> todayEt = std::nullopt);
     /// 券商侧的托管单不是我们撤的:正股追踪的止损类(sl / trail / ptrail)记违规
     void onExternalCancel(const util::OJson& track, const QString& kind, const QString& reason);
+    /// 持仓追踪触发了(引擎盯的那一路,tracker 节拍的 fired;或券商侧托管单成交):记流水、推送
+    void onFired(const QString& account, const QString& symbol, const QString& state, const QString& how);
+    /// 门槛拒了一张程序发的开仓单:推送(流水由引擎记)
+    void onOrderRejected(const QString& account, const QString& symbol, const QString& reason);
+    /// 排着没推出去的条数(心跳与测试用)
+    qsizetype pendingPushes() const { return pushQueue_.size(); }
 
 private:
     struct Watch {
@@ -76,12 +90,39 @@ private:
     void bump(util::OJson* out, const QString& key);
     util::OJson handleLine(const QString& raw);
     void journal(const QString& action, const util::OJson& detail);
-    void tell(const QString& title, const QString& body, const QString& symbol);
+    /// 本机通知 + 界面事件;push = 同时推到手机
+    void tell(const QString& title, const QString& body, const QString& symbol, bool push = false);
+    void enqueuePush(const QString& title, const QString& body);
+    util::Task<> drainPushes(double nowMs);
+    void watchLink(double nowMs);
+    void writeHeartbeat(double nowMs);
+    void checkRestarts();
 
     GuardWiring wiring_;
     QHash<QString, Watch> watch_;
     QHash<QString, double> nagAt_;
     QSet<QString> told_;
+
+    struct PendingPush {
+        QString title, body;
+        double createdEpoch = 0;
+    };
+    QList<PendingPush> pushQueue_;
+    QHash<QString, double> pushSeen_;  // 正文 → 上一次排进队的时刻(单调钟)
+    QList<double> pushSent_;           // 最近一小时推出去的时刻
+    bool pushBusy_ = false;
+    double pushRetryAt_ = -1e18;
+    QString pushError_;
+    double now_ = 0;  // 最近一轮的单调钟,轮外的回调(被撤、触发)用它去重
+
+    std::optional<double> downSince_;  // IBKR 断开的起点(单调钟)
+    QString downSinceIso_;
+    bool downTold_ = false;
+    double heartbeatAt_ = -1e18;
+    std::optional<double> nPositions_, nStops_;
+    QHash<QString, double> lastPrices_;
+    QString lastPriceChangeIso_;
+    bool restartsChecked_ = false;
     int timer_ = 0;
     int gen_ = 0;
     bool running_ = false;

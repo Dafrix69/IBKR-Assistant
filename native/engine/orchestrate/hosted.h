@@ -109,6 +109,8 @@ public:
     /// 不是我们撤的托管单(券商撤了、置为失效,或有人在 TWS 里撤了):对账时说那一声的同时回调一次。
     /// kind = tp / sl / trail / ptrail / spot,reason = 给人看的原因。交易纪律守护据此记违规
     std::function<void(const Rec& track, const QString& kind, const QString& reason)> onExternalCancel;
+    /// 托管单成交了(追踪已落闩):track = 成交之后的追踪,state = 记的触发原因(stop_loss / take_profit / …)。交易纪律守护据此推送
+    std::function<void(const Rec& track, const QString& state)> onFill;
 
     /// 这条追踪的止盈单(界面要显示上一轮追到的价);没有就是空指针
     std::shared_ptr<Rec> tpEntry(const QString& trackId) const;

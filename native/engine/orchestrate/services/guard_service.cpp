@@ -2,7 +2,9 @@
 
 #include "analysis/guard_rules.h"
 #include "domain/positions.h"
+#include "orchestrate/services/guard_push.h"
 #include "orchestrate/tracker.h"
+#include "util/run_marker.h"
 #include "util/error.h"
 #include "util/jsformat.h"
 #include "util/js_runtime.h"
@@ -12,6 +14,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QSaveFile>
 
 #include <cmath>
 
@@ -104,7 +107,7 @@ void GuardService::onExternalCancel(const OJson& track, const QString& kind, con
                                               {u"symbol"_s, js::S(symbol)},
                                               {u"order"_s, js::S(kind)},
                                               {u"reason"_s, js::S(reason)}}));
-    tell(u"止损单被撤"_s, u"%1 的券商侧止损单被撤了(%2)。约 60 秒后重新挂上;要真的放开止损,只能在意图里写理由关掉。"_s.arg(symbol, reason), symbol);
+    tell(u"止损单被撤"_s, u"%1 的券商侧止损单被撤了(%2)。约 60 秒后重新挂上;要真的放开止损,只能在意图里写理由关掉。"_s.arg(symbol, reason), symbol, true);
 }
 
 GuardService::~GuardService() {
@@ -153,13 +156,154 @@ QString GuardService::inboxPath() const {
 
 void GuardService::journal(const QString& action, const OJson& detail) { store().audit(u"guard"_s, action, &detail); }
 
-void GuardService::tell(const QString& title, const QString& body, const QString& symbol) {
+void GuardService::tell(const QString& title, const QString& body, const QString& symbol, bool push) {
     try {
         eng().notifier().notify(title, body, symbol);
     } catch (...) {
         /* 通知发不出去不影响下一条 */
     }
     emitEvent(u"guard"_s, js::object({{u"title"_s, js::S(title)}, {u"body"_s, js::S(body)}, {u"symbol"_s, js::S(symbol)}}));
+    if (push) enqueuePush(title, body);
+}
+
+namespace {
+constexpr double kPushDedupMs = 10 * 60 * 1000;
+constexpr double kPushHourMs = 60 * 60 * 1000;
+constexpr int kPushPerHour = 20;
+constexpr int kPushQueueCap = 50;
+constexpr double kPushRetryMs = 30'000;
+constexpr double kPushMaxAgeMs = 24 * 60 * 60 * 1000;
+}  // namespace
+
+void GuardService::enqueuePush(const QString& title, const QString& body) {
+    const contract::GuardConfig& cfg = settings().guard;
+    if (!cfg.enabled || !wiring_.push || !guard_push::configured(cfg.push)) return;
+    // 同一件事 10 分钟内只推一次(五分钟一次的提醒不该变成每小时 12 次震动)
+    const QString key = title + u'\n' + body;
+    if (const auto it = pushSeen_.constFind(key); it != pushSeen_.cend() && now_ - *it < kPushDedupMs) return;
+    pushSeen_.insert(key, now_);
+    if (pushQueue_.size() >= kPushQueueCap) pushQueue_.removeFirst();
+    pushQueue_.append(PendingPush{title, body, util::dateNow()});
+}
+
+Task<> GuardService::drainPushes(double nowMs) {
+    if (pushBusy_ || pushQueue_.isEmpty() || nowMs < pushRetryAt_ || !wiring_.push) co_return;
+    pushBusy_ = true;
+    const std::weak_ptr<bool> alive = alive_;
+    while (!pushQueue_.isEmpty()) {
+        while (!pushSent_.isEmpty() && nowMs - pushSent_.first() >= kPushHourMs) pushSent_.removeFirst();
+        if (pushSent_.size() >= kPushPerHour) break;
+        const PendingPush item = pushQueue_.first();
+        const double age = util::dateNow() - item.createdEpoch;
+        if (age > kPushMaxAgeMs) {
+            pushQueue_.removeFirst();
+            continue;
+        }
+        QString body = item.body;
+        if (age >= 90'000) body += u"\n(推送延迟 %1 分钟:当时发不出去)"_s.arg(util::jsNumberToString(std::round(age / 60'000)));
+        std::exception_ptr failure;
+        try {
+            co_await wiring_.push(u"Datrix:"_s + item.title, body);
+        } catch (...) {
+            failure = std::current_exception();
+        }
+        if (alive.expired()) co_return;
+        if (failure) {
+            pushError_ = errorText(failure);
+            pushRetryAt_ = nowMs + kPushRetryMs;
+            break;
+        }
+        pushError_.clear();
+        if (!pushQueue_.isEmpty()) pushQueue_.removeFirst();
+        pushSent_.append(nowMs);
+    }
+    pushBusy_ = false;
+}
+
+void GuardService::onFired(const QString& account, const QString& symbol, const QString& state, const QString& how) {
+    if (!settings().guard.enabled) return;
+    static const QHash<QString, QString> names{{u"stop_loss"_s, u"止损"_s},       {u"take_profit"_s, u"止盈"_s},      {u"trail"_s, u"跟踪止损"_s},
+                                               {u"profit_drawdown"_s, u"利润回撤"_s}, {u"spot_stop"_s, u"标的止损"_s},  {u"spot_target"_s, u"标的目标价"_s},
+                                               {u"exit_at"_s, u"到点平仓"_s},      {u"rapid_exit"_s, u"急跌保护"_s}};
+    const QString name = names.value(state, state.isEmpty() ? u"平仓"_s : state);
+    journal(u"guard_fired"_s, js::object({{u"account"_s, js::S(account)}, {u"symbol"_s, js::S(symbol)}, {u"state"_s, js::S(state)}, {u"how"_s, js::S(how)}}));
+    tell(u"%1触发"_s.arg(name), u"%1 %2(%3)。"_s.arg(symbol, name, how), symbol, true);
+}
+
+void GuardService::onOrderRejected(const QString& account, const QString& symbol, const QString& reason) {
+    if (!settings().guard.enabled) return;
+    (void)account;
+    enqueuePush(u"拦下一张开仓单"_s, reason);
+}
+
+void GuardService::watchLink(double nowMs) {
+    const contract::GuardConfig& cfg = settings().guard;
+    const auto router = routerPort();
+    const bool up = router && router->hasSessions() && router->upstreamOk();
+    if (!up) {
+        if (!downSince_) {
+            downSince_ = nowMs;
+            downSinceIso_ = QDateTime::currentDateTimeUtc().toString(Qt::ISODate);
+        }
+        if (!downTold_ && nowMs - *downSince_ >= cfg.disconnect_alert_s * 1000) {
+            downTold_ = true;
+            const double minutes = std::round((nowMs - *downSince_) / 60'000);
+            journal(u"guard_disconnect"_s, js::object({{u"since"_s, js::S(downSinceIso_)}, {u"router"_s, js::B(router != nullptr)}}));
+            tell(u"IBKR 断开"_s,
+                 u"和 IBKR 的连接断了 %1 分钟(TWS 没开、登出了,或 TWS 与 IBKR 服务器断开)。这期间引擎盯的组合出场、补挂止损都停着;券商侧已挂的止损单不受影响。"_s
+                     .arg(util::jsNumberToString(std::max(1.0, minutes))),
+                 QString(), true);
+        }
+        return;
+    }
+    if (downSince_) {
+        if (downTold_) {
+            const double minutes = std::round((nowMs - *downSince_) / 60'000);
+            journal(u"guard_reconnect"_s, js::object({{u"since"_s, js::S(downSinceIso_)}, {u"minutes"_s, js::N(minutes)}}));
+            tell(u"IBKR 已恢复"_s, u"和 IBKR 的连接恢复了,断了约 %1 分钟。"_s.arg(util::jsNumberToString(std::max(1.0, minutes))), QString(), true);
+        }
+        downSince_.reset();
+        downSinceIso_.clear();
+        downTold_ = false;
+    }
+}
+
+void GuardService::checkRestarts() {
+    if (restartsChecked_) return;
+    restartsChecked_ = true;
+    if (wiring_.runDir.isEmpty()) return;
+    const QList<std::pair<QString, QString>> who{{u"app"_s, u"Datrix"_s}, {u"engine"_s, u"交易引擎"_s}};
+    for (const auto& [name, label] : who) {
+        const auto last = util::run_marker::takeCrashed(wiring_.runDir, name);
+        if (!last) continue;
+        journal(u"guard_restart"_s, js::object({{u"process"_s, js::S(name)}, {u"last_started"_s, js::S(*last)}}));
+        tell(u"%1重启了"_s.arg(label),
+             u"%1上一次没有正常退出(崩溃、被强制结束或断电;那一次起于 %2),现在重新起来了。请看一眼持仓和止损单。"_s.arg(label, last->isEmpty() ? u"未知时刻"_s : *last),
+             QString(), true);
+    }
+}
+
+void GuardService::writeHeartbeat(double nowMs) {
+    const contract::GuardConfig& cfg = settings().guard;
+    if (nowMs - heartbeatAt_ < cfg.heartbeat_s * 1000) return;
+    heartbeatAt_ = nowMs;
+    const auto router = routerPort();
+    const bool up = router && router->hasSessions() && router->upstreamOk();
+    const OJson hb = js::object({{u"ts"_s, js::S(QDateTime::currentDateTimeUtc().toString(Qt::ISODate))},
+                                 {u"ib_connected"_s, js::B(up)},
+                                 {u"n_positions"_s, nPositions_ ? js::N(*nPositions_) : js::Null()},
+                                 {u"n_stops"_s, nStops_ ? js::N(*nStops_) : js::Null()},
+                                 {u"last_price_change"_s, lastPriceChangeIso_.isEmpty() ? js::Null() : js::S(lastPriceChangeIso_)},
+                                 {u"disconnected_since"_s, downSince_ ? js::S(downSinceIso_) : js::Null()},
+                                 {u"push"_s, js::object({{u"provider"_s, js::S(cfg.push.provider)},
+                                                         {u"queued"_s, js::N(double(pushQueue_.size()))},
+                                                         {u"last_error"_s, pushError_.isEmpty() ? js::Null() : js::S(pushError_)}})}});
+    const QString path = QFileInfo(inboxPath()).path() + u"/heartbeat.json"_s;
+    QDir().mkpath(QFileInfo(path).path());
+    QSaveFile f(path);
+    if (!f.open(QIODevice::WriteOnly)) return;
+    f.write(util::stringifyOJson(hb, 2).toUtf8());
+    f.commit();
 }
 
 OJson GuardService::handleLine(const QString& raw) {
@@ -172,6 +316,12 @@ OJson GuardService::handleLine(const QString& raw) {
     if (!account) return js::object({{u"ok"_s, js::B(false)}, {u"error"_s, js::S(aliasIn.isEmpty() ? u"没有默认账户,请写 account"_s : u"不认识账户 "_s + aliasIn)}});
     const QString alias = account->alias;
 
+    // 试推一条:不带任何凭证,token 只在凭证库里
+    if (js::truthy(line.get(u"push_test"_s))) {
+        if (!guard_push::configured(settings().guard.push)) return js::object({{u"ok"_s, js::B(false)}, {u"error"_s, js::S(u"guard.push 没配(provider、chat_id / user)"_s)}});
+        enqueuePush(u"测试推送"_s, u"guard 的推送通了。"_s);
+        return js::object({{u"ok"_s, js::B(true)}, {u"push_test"_s, js::B(true)}});
+    }
     if (line.get(u"close"_s)) {
         const QString symbol = js::str(line.get(u"close"_s)).trimmed().toUpper();
         const QString reason = js::isStr(line.get(u"reason"_s)) ? line.get(u"reason"_s)->s.trimmed() : QString();
@@ -231,7 +381,7 @@ OJson GuardService::ingestInbox() {
                 result = js::object({{u"ok"_s, js::B(false)}, {u"error"_s, js::S(errorText(std::current_exception()))}});
             }
             const bool ok = js::truthy(result.get(u"ok"_s));
-            const bool closed = ok && result.get(u"closed"_s);
+            const bool closed = ok && (result.get(u"closed"_s) || result.get(u"push_test"_s));
             const QString key = closed ? u"closed"_s : ok ? u"accepted"_s : u"rejected"_s;
             summary.set(key, js::N(js::num(summary.get(key)) + 1));
             OJson entry = js::object({{u"at"_s, js::S(util::nowIsoSeconds())}, {u"line"_s, js::S(raw)}});
@@ -261,9 +411,16 @@ Task<OJson> GuardService::tickOnce(std::optional<double> nowArg, std::optional<Q
     OJson out = js::object();
     if (!settings().guard.enabled) co_return out;
     const double nowMs = nowArg ? *nowArg : rt().perfMs();
+    now_ = nowMs;
     const QString today = todayArg ? *todayArg : domain::nowEt().date;
+    const std::weak_ptr<bool> alive = alive_;
+    checkRestarts();
+    watchLink(nowMs);
     out.set(u"inbox"_s, ingestInbox());
     out.set(u"positions"_s, co_await watchPositions(nowMs, today));
+    if (alive.expired()) co_return out;
+    writeHeartbeat(nowMs);
+    co_await drainPushes(nowMs);
     co_return out;
 }
 
@@ -280,6 +437,25 @@ Task<OJson> GuardService::watchPositions(double nowMs, QString today) {
     }
     const contract::GuardConfig cfg = settings().guard;
     const QList<OJson> tracks = store().listTracks();
+    // 心跳用:几份持仓、几条在管的止损、最近一次有持仓现价变动是什么时候(没有逐笔行情的时刻,拿这个代替)
+    {
+        nPositions_ = double(rows.size());
+        double stops = 0;
+        for (const OJson& t : tracks)
+            if (trackProtects(t)) stops += 1;
+        nStops_ = stops;
+        bool changed = false;
+        QHash<QString, double> prices;
+        for (const OJson& r : rows) {
+            const double p = js::num(r.get(u"market_price"_s));
+            if (!std::isfinite(p)) continue;
+            const QString k = js::str(r.get(u"key"_s));
+            prices.insert(k, p);
+            if (const auto it = lastPrices_.constFind(k); it != lastPrices_.cend() && *it != p) changed = true;
+        }
+        if (changed) lastPriceChangeIso_ = QDateTime::currentDateTimeUtc().toString(Qt::ISODate);
+        lastPrices_ = prices;
+    }
     QSet<QString> present;
     QSet<QString> heldStocks;  // account|symbol
 
@@ -333,7 +509,7 @@ Task<OJson> GuardService::watchPositions(double nowMs, QString today) {
             tell(u"股票仓位没有交易意图"_s,
                  u"%1 %2 %3 股没有意图记录。%4 秒内补录意图,否则按默认规则挂止损。"_s.arg(symbol, what, util::jsNumberToString(std::abs(qty)),
                                                                                          util::jsNumberToString(cfg.grace_s)),
-                 symbol);
+                 symbol, true);
             out.set(u"warned"_s, js::N(js::num(out.get(u"warned"_s)) + 1));
             continue;
         }
@@ -347,7 +523,7 @@ Task<OJson> GuardService::watchPositions(double nowMs, QString today) {
             if (nowMs - w.lastNagMs >= kNagMs) {
                 w.lastNagMs = nowMs;
                 journal(u"guard_violation"_s, js::object({{u"kind"_s, js::S(u"track_without_stop"_s)}, {u"account"_s, js::S(alias)}, {u"symbol"_s, js::S(symbol)}}));
-                tell(u"股票仓位没有止损"_s, u"%1 的持仓追踪没有止损价或没开自动平仓。guard 不改已有的追踪,请补上止损或补录意图。"_s.arg(symbol), symbol);
+                tell(u"股票仓位没有止损"_s, u"%1 的持仓追踪没有止损价或没开自动平仓。guard 不改已有的追踪,请补上止损或补录意图。"_s.arg(symbol), symbol, true);
             }
             continue;
         }
@@ -400,7 +576,7 @@ Task<OJson> GuardService::watchPositions(double nowMs, QString today) {
             w.stopPlaced = true;
             journal(u"guard_default_stop"_s, detail);
             journal(u"guard_violation"_s, js::object({{u"kind"_s, js::S(u"default_stop"_s)}, {u"account"_s, js::S(alias)}, {u"symbol"_s, js::S(symbol)}, {u"stop"_s, js::N(stop)}}));
-            tell(u"已挂默认止损"_s, u"%1 没有补录交易意图,已按默认规则在券商挂止损 @%2。"_s.arg(symbol, money(stop)), symbol);
+            tell(u"已挂默认止损"_s, u"%1 没有补录交易意图,已按默认规则在券商挂止损 @%2。"_s.arg(symbol, money(stop)), symbol, true);
             out.set(u"stopped"_s, js::N(js::num(out.get(u"stopped"_s)) + 1));
         } else {
             const QString why = errorText(failure);
@@ -409,7 +585,7 @@ Task<OJson> GuardService::watchPositions(double nowMs, QString today) {
                 w.lastNagMs = nowMs;
                 detail.set(u"error"_s, js::S(why));
                 journal(u"guard_default_stop_failed"_s, detail);
-                tell(u"默认止损挂不上"_s, u"%1 默认止损 %2 挂不上:%3。这只股票现在没有止损,请立即处理。"_s.arg(symbol, money(stop), why), symbol);
+                tell(u"默认止损挂不上"_s, u"%1 默认止损 %2 挂不上:%3。这只股票现在没有止损,请立即处理。"_s.arg(symbol, money(stop), why), symbol, true);
             }
         }
     }
@@ -492,7 +668,8 @@ Task<> GuardService::protectStock(OJson row, OJson intentRow, QList<OJson> track
         if (latched && !staleLatch(t)) co_return;  // 刚触发 / 追价中:等它自己收尾
         if (enabled && autoOn && hosted && tightEnough && !latched) co_return;
         // 上一次的止损触发过、仓位还在(平完又按意图开了新仓):重新上膛,不算违规
-        const bool reArmOnly = latched && enabled && autoOn && hosted && tightEnough;
+        // 券商侧的托管止损成交时,托管对账把追踪落闩的同时也停用了(enabled = false):落了闩的不看 enabled
+        const bool reArmOnly = latched && autoOn && hosted && tightEnough;
         // 只差在底线刚抬上去(跟踪止损):不是违规,照抬
         const bool trailOnly = enabled && autoOn && hosted && current && prev && gr::atLeastAsTight(isLong, *current, *prev);
         const double want = tightEnough ? *current : floor;
@@ -519,7 +696,7 @@ Task<> GuardService::protectStock(OJson row, OJson intentRow, QList<OJson> track
                                            {u"auto_close"_s, js::B(autoOn)}, {u"host_at_broker"_s, js::B(hosted)}, {u"restored"_s, js::N(want)}});
                 journal(u"guard_violation"_s, detail);
                 tell(u"止损被放松,已恢复"_s,
-                     u"%1 的止损被改松或停掉了,已恢复到 %2。要真的放开止损,只能在意图里写理由关掉。"_s.arg(symbol, money(want)), symbol);
+                     u"%1 的止损被改松或停掉了,已恢复到 %2。要真的放开止损,只能在意图里写理由关掉。"_s.arg(symbol, money(want)), symbol, true);
             }
             bump(out, u"restored"_s);
             co_return;
@@ -529,7 +706,7 @@ Task<> GuardService::protectStock(OJson row, OJson intentRow, QList<OJson> track
     if (nag(u"stock|"_s + key, nowMs)) {
         const QString why = errorText(failure);
         journal(u"guard_stop_failed"_s, js::object({{u"account"_s, js::S(alias)}, {u"symbol"_s, js::S(symbol)}, {u"stop"_s, js::N(floor)}, {u"error"_s, js::S(why)}}));
-        tell(u"意图止损挂不上"_s, u"%1 止损 %2 挂不上:%3。这只股票现在没有止损,请立即处理。"_s.arg(symbol, money(floor), why), symbol);
+        tell(u"意图止损挂不上"_s, u"%1 止损 %2 挂不上:%3。这只股票现在没有止损,请立即处理。"_s.arg(symbol, money(floor), why), symbol, true);
     }
 }
 
@@ -570,7 +747,7 @@ Task<> GuardService::watchOptions(QList<OJson> rows, QList<OJson> tracks, QStrin
                                                           {u"structure"_s, js::copyOrNull(js::prop(body, u"structure"_s))}, {u"intent"_s, js::N(id)}}));
                 tell(u"认不出这只组合"_s,
                      u"%1 在持仓里认不出来(同一到期日的几只组合可能被并成了一个自定义组合),guard 管不了它的出场,请自己盯。"_s.arg(js::str(js::prop(body, u"structure"_s))),
-                     symbol);
+                     symbol, true);
                 bump(out, u"combo_unmatched"_s);
             }
             continue;
@@ -640,7 +817,7 @@ Task<> GuardService::watchOptions(QList<OJson> rows, QList<OJson> tracks, QStrin
             if (nag(u"combo|"_s + tag, nowMs)) {
                 const QString why = errorText(failure);
                 journal(u"guard_stop_failed"_s, js::object({{u"account"_s, js::S(alias)}, {u"symbol"_s, js::S(symbol)}, {u"intent"_s, js::N(id)}, {u"error"_s, js::S(why)}}));
-                tell(u"组合出场规则挂不上"_s, u"%1 的出场追踪建不上:%2。请自己盯。"_s.arg(js::str(js::prop(body, u"structure"_s)), why), symbol);
+                tell(u"组合出场规则挂不上"_s, u"%1 的出场追踪建不上:%2。请自己盯。"_s.arg(js::str(js::prop(body, u"structure"_s)), why), symbol, true);
             }
             continue;
         }
@@ -653,7 +830,7 @@ Task<> GuardService::watchOptions(QList<OJson> rows, QList<OJson> tracks, QStrin
             bump(out, u"combo_tracked"_s);
         } else if (done == u"restored"_s) {
             journal(u"guard_violation"_s, js::object({{u"kind"_s, js::S(u"stop_lowered"_s)}, {u"account"_s, js::S(alias)}, {u"symbol"_s, js::S(symbol)}, {u"intent"_s, js::N(id)}}));
-            tell(u"组合出场规则被放松,已恢复"_s, u"%1 的出场追踪被停掉或止损被改松,已恢复。"_s.arg(js::str(js::prop(body, u"structure"_s))), symbol);
+            tell(u"组合出场规则被放松,已恢复"_s, u"%1 的出场追踪被停掉或止损被改松,已恢复。"_s.arg(js::str(js::prop(body, u"structure"_s))), symbol, true);
             bump(out, u"restored"_s);
         } else if (done == u"re_armed"_s) {
             journal(u"guard_re_armed"_s, js::object({{u"account"_s, js::S(alias)}, {u"symbol"_s, js::S(symbol)}, {u"intent"_s, js::N(id)}}));

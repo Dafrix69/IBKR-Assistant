@@ -6,7 +6,9 @@
 #include "domain/config.h"
 #include "domain/positions.h"
 #include "orchestrate/engine.h"
+#include "orchestrate/services/guard_push.h"
 #include "orchestrate/services/guard_service.h"
+#include "util/run_marker.h"
 #include "util/error.h"
 #include "util/js_runtime.h"
 #include "util/jsobj.h"
@@ -101,6 +103,7 @@ public:
     QList<OJson> bars;
     bool failPositions = false;
     bool sessions = true;
+    bool upstream = true;
     bool hasSessions() override { return sessions; }
     Task<QList<OJson>> positions() override {
         if (failPositions) throw ibkr::util::JsError(u"读不到持仓"_s);
@@ -110,7 +113,7 @@ public:
     Task<OJson> stockQuotes(QStringList) override { co_return js::object(); }
     Task<std::optional<double>> indexPrice(QString) override { co_return std::nullopt; }
     std::optional<OJson> spotInfo(const QString&) override { return std::nullopt; }
-    bool upstreamOk() override { return true; }
+    bool upstreamOk() override { return upstream; }
     std::shared_ptr<ibkr::execution::IbSession> marketSession() override { throw ibkr::util::JsError(u"没有会话"_s); }
     Task<OJson> optionChain(QString, std::optional<QString>, double, std::optional<double>, QString) override { co_return js::object(); }
     Task<QList<OJson>> historicalBars(QString, QString, QString) override { co_return bars; }
@@ -178,9 +181,13 @@ struct SvcRig {
     QList<OJson> updated;
     std::optional<QString> addFails;
     std::optional<QStringList> covered;
+    QStringList pushed;
+    bool pushFails = false;
 
-    explicit SvcRig(bool enabled = true, bool trail = false) {
-        host = std::make_unique<FakeHost>(settingsWith(dir.path(), js::object({{u"enabled"_s, js::B(enabled)}, {u"trail_r"_s, js::B(trail)}})));
+    explicit SvcRig(bool enabled = true, bool trail = false, bool push = false) {
+        OJson g = js::object({{u"enabled"_s, js::B(enabled)}, {u"trail_r"_s, js::B(trail)}});
+        if (push) g.set(u"push"_s, js::object({{u"provider"_s, js::S(u"telegram"_s)}, {u"telegram_chat_id"_s, js::S(u"12345"_s)}}));
+        host = std::make_unique<FakeHost>(settingsWith(dir.path(), g));
         svc = std::make_unique<orch::GuardService>(*host);
         orch::GuardWiring w;
         w.addTrack = [this](OJson params) -> Task<OJson> {
@@ -233,6 +240,12 @@ struct SvcRig {
         };
         w.navOf = [](const QString&) -> std::optional<double> { return 15000.0; };
         w.coveredAccounts = [this] { return covered; };
+        w.push = [this](QString title, QString body) -> Task<> {
+            if (pushFails) throw ibkr::util::JsError(u"推送连不上"_s);
+            pushed << title + u'|' + body;
+            co_return;
+        };
+        w.runDir = dir.path() + u"/guard-run"_s;
         svc->attach(std::move(w));
     }
     FakePort& port() { return *host->port_; }
@@ -803,6 +816,151 @@ private slots:
         QCOMPARE(rig.host->engine_.notifier_.titles.count(u"认不出这只组合"_s), 1);  // 只说一次
         QVERIFY(rig.added.isEmpty());
         QCOMPARE(rig.store().guard().listOpen().size(), 1);  // 没出现过,不当成平了
+    }
+    // ================================================================ Step 3:推送、断线、心跳、重启
+    void pushRequests() {
+        const auto t = ibkr::orchestrate::guard_push::telegram(u"TOK"_s, u"42"_s, u"标题"_s, u"正文"_s);
+        QCOMPARE(t.url, u"https://api.telegram.org/botTOK/sendMessage"_s);
+        const auto tj = js::parse(QString::fromUtf8(t.body));
+        QCOMPARE(js::str(tj->get(u"chat_id"_s)), u"42"_s);
+        QCOMPARE(js::str(tj->get(u"text"_s)), u"标题\n正文"_s);
+        const auto p = ibkr::orchestrate::guard_push::pushover(u"APP"_s, u"USR"_s, u"标题"_s, u"正文"_s);
+        QCOMPARE(p.url, u"https://api.pushover.net/1/messages.json"_s);
+        const auto pj = js::parse(QString::fromUtf8(p.body));
+        QCOMPARE(js::str(pj->get(u"user"_s)), u"USR"_s);
+        QCOMPARE(js::str(pj->get(u"message"_s)), u"正文"_s);
+        ibkr::contract::GuardPushConfig none;
+        QVERIFY(!ibkr::orchestrate::guard_push::configured(none));
+        QVERIFY(ibkr::orchestrate::guard_push::build(none, u"TOK"_s, u"a"_s, u"b"_s).url.isEmpty());
+        QTemporaryDir dir;
+        bool threw = false;
+        try {
+            settingsWith(dir.path(), js::object({{u"push"_s, js::object({{u"provider"_s, js::S(u"telegram"_s)}})}}));
+        } catch (const ibkr::util::JsError& e) {
+            threw = e.message().contains(u"telegram_chat_id"_s);
+        }
+        QVERIFY(threw);
+        // 数字的 chat_id 也收
+        const auto s = settingsWith(dir.path(), js::object({{u"push"_s, js::object({{u"provider"_s, js::S(u"telegram"_s)}, {u"telegram_chat_id"_s, js::N(-1001)}})}}));
+        QCOMPARE(s.guard.push.telegram_chat_id, u"-1001"_s);
+        QCOMPARE(s.guard.heartbeat_s, 300.0);
+        QCOMPARE(s.guard.disconnect_alert_s, 120.0);
+    }
+    void violationsArePushedAndDeduped() {
+        SvcRig rig(true, false, true);
+        rig.port().rows = {stockRow(u"模拟"_s, u"TTWO"_s, 20, 202.5, 212.66)};
+        rig.tick(0);
+        QCOMPARE(rig.pushed.size(), 1);
+        QVERIFY(rig.pushed[0].startsWith(u"Datrix:股票仓位没有交易意图|"_s));
+        // 意图收下的本机通知不推
+        rig.writeInbox({u"{\"symbol\":\"BE\",\"side\":\"BUY\",\"qty\":10,\"entry_price\":195,\"stop_price\":186,\"stop_reason\":\"r\"}"_s});
+        rig.tick(1000);
+        QCOMPARE(rig.pushed.size(), 1);
+        // 同一句话 10 分钟内只推一次
+        const OJson stk = js::object({{u"account"_s, js::S(u"模拟"_s)}, {u"symbol"_s, js::S(u"BE"_s)}, {u"sec_type"_s, js::S(u"STK"_s)}});
+        rig.svc->onExternalCancel(stk, u"sl"_s, u"x"_s);
+        rig.svc->onExternalCancel(stk, u"sl"_s, u"x"_s);
+        rig.tick(2000);
+        QCOMPARE(rig.pushed.size(), 2);
+    }
+    void pushRetriesAndSaysHowLate() {
+        double clock = 1'800'000'000'000.0;
+        ibkr::util::setDateNowForTests([&clock] { return clock; });
+        SvcRig rig(true, false, true);
+        rig.pushFails = true;
+        rig.svc->onFired(u"模拟"_s, u"BE"_s, u"stop_loss"_s, u"券商侧托管单成交"_s);
+        rig.tick(0);
+        QVERIFY(rig.pushed.isEmpty());
+        QCOMPARE(rig.svc->pendingPushes(), 1);
+        rig.pushFails = false;
+        rig.tick(10'000);  // 30 秒退避里:不再试
+        QVERIFY(rig.pushed.isEmpty());
+        clock += 5 * 60'000;
+        rig.tick(31'000);
+        QCOMPARE(rig.pushed.size(), 1);
+        QVERIFY2(rig.pushed[0].startsWith(u"Datrix:止损触发|BE 止损"_s), qPrintable(rig.pushed[0]));
+        QVERIFY2(rig.pushed[0].contains(u"推送延迟 5 分钟"_s), qPrintable(rig.pushed[0]));
+        QCOMPARE(rig.svc->pendingPushes(), 0);
+        ibkr::util::setDateNowForTests({});
+    }
+    void disconnectPushedOnceThenRecovery() {
+        SvcRig rig(true, false, true);
+        rig.port().upstream = false;  // TWS 与 IBKR 服务器断开(1100 / 2110)也算
+        rig.tick(0);
+        rig.tick(100'000);
+        QVERIFY(rig.pushed.isEmpty());
+        rig.tick(121'000);
+        QCOMPARE(rig.pushed.size(), 1);
+        QVERIFY(rig.pushed[0].startsWith(u"Datrix:IBKR 断开|"_s));
+        rig.tick(200'000);
+        QCOMPARE(rig.pushed.size(), 1);
+        rig.port().upstream = true;
+        rig.tick(400'000);
+        QCOMPARE(rig.pushed.size(), 2);
+        QVERIFY2(rig.pushed[1].contains(u"断了约 7 分钟"_s), qPrintable(rig.pushed[1]));
+        QVERIFY(rig.auditActions().contains(u"guard_disconnect"_s));
+        QVERIFY(rig.auditActions().contains(u"guard_reconnect"_s));
+        // 两分钟内恢复的不推
+        rig.port().sessions = false;
+        rig.tick(500'000);
+        rig.port().sessions = true;
+        rig.tick(560'000);
+        QCOMPARE(rig.pushed.size(), 2);
+    }
+    void heartbeatFile() {
+        SvcRig rig;
+        rig.port().rows = {stockRow(u"模拟"_s, u"TTWO"_s, 20, 202.5, 212.66)};
+        rig.store().addTrack(js::object({{u"account"_s, js::S(u"模拟"_s)}, {u"symbol"_s, js::S(u"TTWO"_s)}, {u"sec_type"_s, js::S(u"STK"_s)},
+                                         {u"targets"_s, js::object({{u"stop_loss"_s, js::N(190)}})},
+                                         {u"auto_close"_s, js::object({{u"enabled"_s, js::B(true)}, {u"host_at_broker"_s, js::B(true)}})}}));
+        rig.tick(0);
+        const QString path = QFileInfo(rig.svc->inboxPath()).path() + u"/heartbeat.json"_s;
+        QFile f(path);
+        QVERIFY(f.open(QIODevice::ReadOnly));
+        const auto hb = js::parse(QString::fromUtf8(f.readAll()));
+        f.close();
+        QVERIFY(hb);
+        QVERIFY(js::truthy(hb->get(u"ib_connected"_s)));
+        QCOMPARE(js::num(hb->get(u"n_positions"_s)), 1.0);
+        QCOMPARE(js::num(hb->get(u"n_stops"_s)), 1.0);
+        QVERIFY(js::nullish(hb->get(u"last_price_change"_s)));
+        // 五分钟之后再写;价变过就记下时刻
+        rig.port().rows = {stockRow(u"模拟"_s, u"TTWO"_s, 20, 202.5, 213.10)};
+        rig.tick(2000);
+        rig.tick(300'000);
+        QVERIFY(f.open(QIODevice::ReadOnly));
+        const auto hb2 = js::parse(QString::fromUtf8(f.readAll()));
+        QVERIFY(js::isStr(hb2->get(u"last_price_change"_s)));
+    }
+    void restartMarkersArePushedOnce() {
+        SvcRig rig(true, false, true);
+        const QString runDir = rig.dir.path() + u"/guard-run"_s;
+        ibkr::util::run_marker::markRunning(runDir, u"app"_s);
+        ibkr::util::run_marker::markRunning(runDir, u"app"_s);  // 上一次的还在:改名成 crashed
+        QVERIFY(QFile::exists(runDir + u"/app.crashed"_s));
+        ibkr::util::run_marker::markRunning(runDir, u"engine"_s);
+        ibkr::util::run_marker::markStopped(runDir, u"engine"_s);
+        ibkr::util::run_marker::markRunning(runDir, u"engine"_s);  // 正常退出过:不算崩
+        QVERIFY(!QFile::exists(runDir + u"/engine.crashed"_s));
+        rig.tick(0);
+        QCOMPARE(rig.pushed.size(), 1);
+        QVERIFY(rig.pushed[0].startsWith(u"Datrix:Datrix重启了|"_s));
+        QVERIFY(!QFile::exists(runDir + u"/app.crashed"_s));
+        QVERIFY(rig.auditActions().contains(u"guard_restart"_s));
+        rig.tick(1000);
+        QCOMPARE(rig.pushed.size(), 1);
+    }
+    void pushTestCommand() {
+        SvcRig rig(true, false, true);
+        rig.writeInbox({u"{\"push_test\": true}"_s});
+        rig.tick(0);
+        QCOMPARE(rig.pushed.size(), 1);
+        QVERIFY(rig.pushed[0].startsWith(u"Datrix:测试推送|"_s));
+        // 没配推送:拒并说明
+        SvcRig bare;
+        bare.writeInbox({u"{\"push_test\": true}"_s});
+        const OJson out = bare.svc->ingestInbox();
+        QCOMPARE(js::num(out.get(u"rejected"_s)), 1.0);
     }
     void intentDirectionMustMatch() {
         SvcRig rig;

@@ -11,7 +11,9 @@
 #include "analysis/guard_rules.h"
 #include "execution/account_feeds.h"
 #include "orchestrate/services/assignment_watch.h"
+#include "orchestrate/services/guard_push.h"
 #include "orchestrate/services/guard_service.h"
+#include "util/run_marker.h"
 #include "orchestrate/services/broker_link.h"
 #include "orchestrate/services/events.h"
 #include "orchestrate/services/fill_sync.h"
@@ -291,17 +293,25 @@ orch::TradingEngine& EngineServer::Impl::engine() {
         engineInstance->onTrackerTick = [this](const OJson& poll, const OJson&) {
             const OJson* fired = js::prop(&poll, u"fired"_s);
             const OJson* blocked = js::prop(&poll, u"blocked"_s);
+            if (guard && fired)
+                for (const OJson& f : fired->items)
+                    guard->onFired(QString(), js::str(js::prop(&f, u"symbol"_s)), js::str(js::prop(&f, u"state"_s)), u"引擎发出平仓单"_s);
             if ((fired && !fired->items.isEmpty()) || (blocked && !blocked->items.isEmpty())) server.emitEvent(u"tracker"_s, poll);
         };
         // 交易纪律守护:程序发的股票开仓单要有交易意图。开关每次现读配置
         engineInstance->openGate = [this](const parsing::validator::ApprovedOrder& approved) -> std::optional<QString> {
             if (!settings.guard.enabled || !engineInstance) return std::nullopt;
             const QString symbol = analysis::guard::orderSymbol(approved.order);
-            return analysis::guard::gateOrder(engineInstance->store().guard().openStock(approved.account.alias, symbol), approved.order);
+            auto why = analysis::guard::gateOrder(engineInstance->store().guard().openStock(approved.account.alias, symbol), approved.order);
+            if (why && guard) guard->onOrderRejected(approved.account.alias, symbol, *why);
+            return why;
         };
         // 托管止损单被别人撤了:交易纪律守护记违规(重挂是托管对账自己的事)
         engineInstance->hostedOrders().onExternalCancel = [this](const OJson& track, const QString& kind, const QString& reason) {
             if (guard) guard->onExternalCancel(track, kind, reason);
+        };
+        engineInstance->hostedOrders().onFill = [this](const OJson& track, const QString& state) {
+            if (guard) guard->onFired(js::str(js::prop(&track, u"account"_s)), js::str(js::prop(&track, u"symbol"_s)), state, u"券商侧托管单成交"_s);
         };
         // 连着券商就起节拍器:建追踪、调价都靠它,不靠界面驱动
         if (router) engineInstance->startTrackerLoop();
@@ -483,6 +493,9 @@ void EngineServer::install() {
         return execution::accountNetLiquidation(execution::SessionList(live.begin(), live.end()), account->account_id);
     };
     guardWiring.updateTrack = [trackerPtr](OJson params) { return trackerPtr->trackerUpdateDirect(std::move(params)); };
+    // 推送:token 只从凭证库读;没配或读不到就抛,由排队重试
+    guardWiring.push = [p = &i](QString title, QString body) { return orch::guard_push::sendWithKeychain(p->settings.guard.push, std::move(title), std::move(body)); };
+    guardWiring.runDir = util::run_marker::dirFor(i.settingsPath.value_or(domain::defaultConfigPath()));
     guardWiring.coveredAccounts = [p = &i]() -> std::optional<QStringList> {
         if (!p->router) return std::nullopt;
         return p->router->coveredAccounts();
@@ -525,6 +538,8 @@ void EngineServer::install() {
         p->fillSync->stop();
         p->assignmentWatch->stop();
         p->guard->stop();
+        // 引擎正常收尾(stdin 关了):这一次不算崩。界面崩了引擎也走这里,那一份由界面自己的标记管
+        util::run_marker::markStopped(util::run_marker::dirFor(p->settingsPath.value_or(domain::defaultConfigPath())), u"engine"_s);
         p->flyPlanner->marks->close();
         p->brokerLink->stop();
     };
@@ -542,6 +557,8 @@ void EngineServer::startBackground() {
     // 到期日空头腿的指派提醒同理,只在这里起:它要读真的持仓与现价
     i.assignmentWatch->start();
     // 交易纪律守护同理:收意图、盯股票仓位;guard.enabled 关着时每一轮什么都不做
+    // 「上一次引擎是不是正常退出的」:上一次的 engine.running 还在 = 崩了 / 被杀了,留给 guard 推一条
+    util::run_marker::markRunning(util::run_marker::dirFor(i.settingsPath.value_or(domain::defaultConfigPath())), u"engine"_s);
     i.guard->start();
 }
 

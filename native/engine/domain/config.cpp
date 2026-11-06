@@ -710,7 +710,7 @@ contract::FlyEntryAssistConfig buildFlyEntryAssist(V raw) {
 contract::GuardConfig buildGuard(V raw) {
     const QString label = u"guard"_s;
     rejectUnknown({u"enabled"_s, u"grace_s"_s, u"max_loss_pct_nav"_s, u"wide_stop_pct"_s, u"default_stop_pct"_s, u"default_low_days"_s, u"tick_s"_s,
-                   u"inbox_path"_s, u"trail_r"_s},
+                   u"inbox_path"_s, u"trail_r"_s, u"heartbeat_s"_s, u"disconnect_alert_s"_s, u"push"_s},
                   raw, label);
     contract::GuardConfig c;
     c.enabled = flag(raw, u"enabled"_s, false, label);
@@ -722,6 +722,25 @@ contract::GuardConfig buildGuard(V raw) {
     if (c.default_low_days != std::floor(c.default_low_days)) throw JsError(u"guard.default_low_days 必须是整数,收到 %1"_s.arg(util::pyFloat(c.default_low_days)));
     c.tick_s = numReq(raw, u"tick_s"_s, false, 2.0, label, {1.0, u"1"_s, 60.0, u"60"_s});
     c.trail_r = flag(raw, u"trail_r"_s, false, label);
+    c.heartbeat_s = numReq(raw, u"heartbeat_s"_s, false, 300.0, label, {10.0, u"10"_s, 3600.0, u"3600"_s});
+    c.disconnect_alert_s = numReq(raw, u"disconnect_alert_s"_s, false, 120.0, label, {10.0, u"10"_s, 3600.0, u"3600"_s});
+    const V push = orElse(get(raw, u"push"_s), emptyObject());
+    if (push.nullish() || !push.typeofObject() || push.isArr()) throw JsError(u"guard.push 必须是一个对象,收到 %1"_s.arg(repr(push)));
+    const QString pl = u"guard.push"_s;
+    rejectUnknown({u"provider"_s, u"telegram_chat_id"_s, u"pushover_user"_s, u"keychain_service"_s, u"keychain_account"_s}, push, pl);
+    c.push.provider = choice(push, u"provider"_s, {QString(), u"telegram"_s, u"pushover"_s}, QString(), pl);
+    const auto text = [&](const QString& key, QString* out) {
+        const V v = get(push, key);
+        if (v.nullish()) return;
+        if (!v.isStr() && !v.isNum()) throw JsError(u"guard.push.%1 必须是字符串,收到 %2"_s.arg(key, repr(v)));
+        *out = trim(v.isStr() ? v.p->s : util::jsNumberToString(v.p->n));
+    };
+    text(u"telegram_chat_id"_s, &c.push.telegram_chat_id);
+    text(u"pushover_user"_s, &c.push.pushover_user);
+    text(u"keychain_service"_s, &c.push.keychain_service);
+    text(u"keychain_account"_s, &c.push.keychain_account);
+    if (c.push.provider == u"telegram" && c.push.telegram_chat_id.isEmpty()) throw JsError(u"guard.push 选了 telegram,要填 telegram_chat_id"_s);
+    if (c.push.provider == u"pushover" && c.push.pushover_user.isEmpty()) throw JsError(u"guard.push 选了 pushover,要填 pushover_user"_s);
     if (c.tick_s > c.grace_s) throw JsError(u"guard.tick_s 不能大于 grace_s(收到 %1 与 %2)"_s.arg(util::pyFloat(c.tick_s), util::pyFloat(c.grace_s)));
     const V inbox = get(raw, u"inbox_path"_s);
     if (!inbox.nullish()) {

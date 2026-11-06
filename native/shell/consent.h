@@ -16,7 +16,7 @@
 namespace ibkr::shell {
 
 /// 现行条款的版本号:同 desktop/consent.js 的 TERMS_VERSION 与 docs/legal/ 三份文档开头(tst_bridge 读那个文件比对)
-inline constexpr auto kTermsVersion = "2026-10-15";
+inline constexpr auto kTermsVersion = "2026-11-06";
 
 struct ConsentState {
     QString version;

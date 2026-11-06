@@ -38,6 +38,7 @@
 #include "shell/records_controller.h"
 #include "shell/market_controller.h"
 #include "shell/ideas_controller.h"
+#include "util/run_marker.h"
 #include "shell/backtest_controller.h"
 #include "shell/review_controller.h"
 #include "shell/performance_controller.h"
@@ -225,6 +226,10 @@ int main(int argc, char* argv[]) {
         std::printf("已经开着一个,叫它到前台\n");
         return 0;
     }
+    // 「上一次是不是正常退出的」(交易纪律守护推「重启了」用):上一次的 app.running 还在 = 崩了、被强制结束或断电。
+    // 只在确定由这一个进程接手之后写,正常退出(aboutToQuit)时删
+    const QString runDir = util::run_marker::dirFor(configPath);
+    util::run_marker::markRunning(runDir, u"app"_s);
 
     // 日志落盘(同 Electron 版的 electron-log):userData/logs/qt-main.log,4 MB 一份、留一份旧的,落盘前脱敏
     shell::LogFile logFile(QDir(userDataDir).filePath(u"logs/qt-main.log"_s));
@@ -265,7 +270,10 @@ int main(int argc, char* argv[]) {
     shell::ConsentStore consent(shell::electronUserDataDirs().first());
     shell::Bridge bridge(&engine, &prompter, &consent);
     // 退出:不再自动拉起;还活着的引擎由 EngineClient 析构时按 关 stdin → 等 → terminate → kill 收掉(在途的单答完再退)
-    QObject::connect(&app, &QCoreApplication::aboutToQuit, &supervisor, [&supervisor] { supervisor.prepareQuit(); });
+    QObject::connect(&app, &QCoreApplication::aboutToQuit, &supervisor, [&supervisor, runDir] {
+        supervisor.prepareQuit();
+        util::run_marker::markStopped(runDir, u"app"_s);
+    });
 
     shell::ShellActions actions(&bridge, &store);
     // 顶栏下面的两条:重要事件、宏观行情带。轮询不看当前在哪一页(同 React 版 main.tsx 的 start*Loop)

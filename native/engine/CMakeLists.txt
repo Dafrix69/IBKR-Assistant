@@ -27,6 +27,7 @@ qt_add_library(ibkr_util STATIC
     util/notify.h util/notify.cpp
     util/keychain.h util/keychain.cpp
     util/secrets.h util/secrets.cpp
+    util/run_marker.h util/run_marker.cpp
     contract/ordered_map.h contract/settings.h
     util/error.h
     util/redact.h util/redact.cpp
