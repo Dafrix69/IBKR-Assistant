@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <functional>
 
 using namespace Qt::StringLiterals;
 using ibkr::util::OJson;
@@ -122,7 +123,75 @@ std::optional<std::pair<QString, double>> shapeOf(const QList<OJson>& legs) {
     return std::nullopt;
 }
 
+namespace {
+
+/// 搜索切分的腿数上限:再多就只按相邻切(状态数按 2^n 长)
+constexpr int kSearchMaxLegs = 20;
+
+/// 把按行权价排好的腿整个切成认得出的结构(每条腿恰好进一个);切法不止一种时结构越少越好
+/// (大结构优先,和相邻切 4 → 3 → 2 的偏好一致),再一样取枚举里先到的那个。返回每个结构的腿下标(升序),
+/// 按最低那条腿的下标排;切不全是空。
+std::optional<QList<QList<int>>> fullPartition(const QList<OJson>& legs) {
+    const int n = int(legs.size());
+    // 以第 i 条腿为最低腿、能认出形状的每个 2 / 3 / 4 腿子集(下标升序,子集仍按行权价排好)
+    QList<QList<QList<int>>> byFirst(n);
+    for (int i = 0; i < n; ++i) {
+        const auto tryShape = [&](const QList<int>& idx) {
+            QList<OJson> sub;
+            for (int k : idx) sub << legs[k];
+            if (!shapeOf(sub)) return;
+            // 只要真的结构:同一看涨 / 看跌里行权价两两不同。同一合约在一个账户里只有一行,零宽的"价差 / 蝶"只出在拼凑的数据上
+            const LegFields lf = legFields(sub);
+            for (int x = 0; x < sub.size(); ++x)
+                for (int y = x + 1; y < sub.size(); ++y)
+                    if (lf.rights[x] == lf.rights[y] && same(lf.strikes[x], lf.strikes[y])) return;
+            byFirst[i] << idx;
+        };
+        for (int a = i + 1; a < n; ++a) {
+            for (int b = a + 1; b < n; ++b) {
+                for (int c = b + 1; c < n; ++c) tryShape({i, a, b, c});
+                tryShape({i, a, b});
+            }
+            tryShape({i, a});
+        }
+        // 大结构先试:并列时先到的留下
+        std::stable_sort(byFirst[i].begin(), byFirst[i].end(), [](const QList<int>& x, const QList<int>& y) { return x.size() > y.size(); });
+    }
+    // solve(used):把 used 以外的腿切全最少要几个结构;切不全是 -1。总是先安排最低的那条没用过的腿
+    QHash<quint32, std::pair<int, int>> memo;  // used → (结构数, byFirst[first] 里选的下标)
+    const quint32 all = (1u << n) - 1;         // n ≤ kSearchMaxLegs
+    std::function<int(quint32)> solve = [&](quint32 used) -> int {
+        if (used == all) return 0;
+        if (auto it = memo.constFind(used); it != memo.cend()) return it->first;
+        int first = 0;
+        while (used & (1u << first)) ++first;
+        std::pair<int, int> best{-1, -1};
+        for (int p = 0; p < byFirst[first].size(); ++p) {
+            quint32 bits = 0;
+            for (int k : byFirst[first][p]) bits |= 1u << k;
+            if (used & bits) continue;
+            const int sub = solve(used | bits);
+            if (sub >= 0 && (best.first < 0 || sub + 1 < best.first)) best = {sub + 1, p};
+        }
+        memo.insert(used, best);
+        return best.first;
+    };
+    if (solve(0) < 0) return std::nullopt;
+    QList<QList<int>> picked;
+    for (quint32 used = 0; used != all;) {
+        int first = 0;
+        while (used & (1u << first)) ++first;
+        const QList<int>& idx = byFirst[first][memo.value(used).second];
+        picked << idx;
+        for (int k : idx) used |= 1u << k;
+    }
+    return picked;
+}
+
+}  // namespace
+
 QList<QList<OJson>> splitStructures(const QList<OJson>& legs) {
+    // 先按相邻切:从最低行权价起,依次试前 4 / 3 / 2 条腿;切不下去的剩余腿合成一组
     QList<QList<OJson>> out;
     QList<OJson> rest = legs;
     while (rest.size() >= 2) {
@@ -137,8 +206,21 @@ QList<QList<OJson>> splitStructures(const QList<OJson>& legs) {
         }
         if (!matched) break;
     }
-    if (!rest.isEmpty()) out << rest;
-    return out.isEmpty() ? QList<QList<OJson>>{legs} : out;
+    if (rest.isEmpty()) return out.isEmpty() ? QList<QList<OJson>>{legs} : out;  // 每条腿都进了认得出的结构:不动它,已有组合的 key 不变
+    // 相邻切剩下了腿(交错的两只蝶……):搜索全部切法,每条腿都能进认得出的结构才换;切不全就照旧
+    if (legs.size() <= kSearchMaxLegs) {
+        if (const auto shapes = fullPartition(legs)) {
+            QList<QList<OJson>> found;
+            for (const QList<int>& idx : *shapes) {
+                QList<OJson> g;
+                for (int k : idx) g << legs[k];
+                found << g;
+            }
+            return found;
+        }
+    }
+    out << rest;
+    return out;
 }
 
 QList<OJson> groupLegs(const QList<OJson>& rows) {
