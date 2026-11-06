@@ -1,10 +1,12 @@
 #include "orchestrate/services/guard_service.h"
 
+#include "analysis/guard_report.h"
 #include "analysis/guard_rules.h"
 #include "domain/positions.h"
 #include "orchestrate/services/guard_push.h"
 #include "orchestrate/tracker.h"
 #include "util/run_marker.h"
+#include "util/tz.h"
 #include "util/error.h"
 #include "util/jsformat.h"
 #include "util/js_runtime.h"
@@ -175,9 +177,13 @@ constexpr double kPushRetryMs = 30'000;
 constexpr double kPushMaxAgeMs = 24 * 60 * 60 * 1000;
 }  // namespace
 
-void GuardService::enqueuePush(const QString& title, const QString& body) {
+void GuardService::enqueuePush(const QString& title, const QString& body, bool priority) {
     const contract::GuardConfig& cfg = settings().guard;
     if (!cfg.enabled || !wiring_.push || !guard_push::configured(cfg.push)) return;
+    if (priority) {
+        pushQueue_.prepend(PendingPush{title, body, util::dateNow(), true});
+        return;
+    }
     // 同一件事 10 分钟内只推一次(五分钟一次的提醒不该变成每小时 12 次震动)
     const QString key = title + u'\n' + body;
     for (auto it = pushSeen_.begin(); it != pushSeen_.end();) {
@@ -196,8 +202,8 @@ Task<> GuardService::drainPushes(double nowMs) {
     const std::weak_ptr<bool> alive = alive_;
     while (!pushQueue_.isEmpty()) {
         while (!pushSent_.isEmpty() && nowMs - pushSent_.first() >= kPushHourMs) pushSent_.removeFirst();
-        if (pushSent_.size() >= kPushPerHour) break;
         const PendingPush item = pushQueue_.first();
+        if (!item.priority && pushSent_.size() >= kPushPerHour) break;
         const double age = util::dateNow() - item.createdEpoch;
         if (age > kPushMaxAgeMs) {
             pushQueue_.removeFirst();
@@ -219,7 +225,7 @@ Task<> GuardService::drainPushes(double nowMs) {
         }
         pushError_.clear();
         if (!pushQueue_.isEmpty()) pushQueue_.removeFirst();
-        pushSent_.append(nowMs);
+        if (!item.priority) pushSent_.append(nowMs);
     }
     pushBusy_ = false;
 }
@@ -425,6 +431,8 @@ Task<OJson> GuardService::tickOnce(std::optional<double> nowArg, std::optional<Q
     out.set(u"positions"_s, co_await watchPositions(nowMs, today));
     if (alive.expired()) co_return out;
     writeHeartbeat(nowMs);
+    // 每日报告也不挡这一轮(要读 7 天成交);reportBusy_ 防重入
+    util::detach(maybeReport());
     // 推送不挡这一轮:读钥匙串最多等 20 秒、发送最多 15 秒,不能让下一轮盯仓位跟着晚。pushBusy_ 防重入
     util::detach(drainPushes(nowMs));
     co_return out;
@@ -851,6 +859,322 @@ Task<> GuardService::watchOptions(QList<OJson> rows, QList<OJson> tracks, QStrin
             journal(u"guard_time_stop_set"_s, js::object({{u"account"_s, js::S(alias)}, {u"symbol"_s, js::S(symbol)}, {u"intent"_s, js::N(id)}, {u"exit_at"_s, js::S(timeStop)}}));
         }
     }
+}
+
+
+// ================================================================ 每日报告
+namespace {
+
+namespace rp = analysis::guard_report;
+
+QString etDateOfIso(const QString& iso) {
+    const QDateTime t = QDateTime::fromString(iso, Qt::ISODate);
+    if (!t.isValid()) return {};
+    return domain::etNowFromEpoch(double(t.toMSecsSinceEpoch())).date;
+}
+
+QString addDays(const QString& date, int n) { return QDate::fromString(date, Qt::ISODate).addDays(n).toString(Qt::ISODate); }
+
+bool stopLike(const QString& state) {
+    static const QSet<QString> s{u"stop_loss"_s, u"trail"_s, u"profit_drawdown"_s, u"spot_stop"_s, u"rapid_exit"_s};
+    return s.contains(state);
+}
+
+QString shortDate(const QString& yyyymmdd) { return yyyymmdd.size() >= 8 ? yyyymmdd.mid(4, 2) + u'/' + yyyymmdd.mid(6, 2) : yyyymmdd; }
+
+}  // namespace
+
+Task<QList<OJson>> guardFillHistory(std::shared_ptr<execution::BrokerRouter> router) {
+    QList<OJson> rows;
+    if (!router) co_return rows;
+    for (const auto& session : router->sessions()) {
+        if (!session->has(execution::Cap::ExecutionHistory)) continue;
+        const auto details = co_await raceTimeout(qtRuntime(), session->executionHistory(7), 30'000, [] { return util::JsError(u"读 7 天成交超时"_s); });
+        if (!details) continue;
+        for (const auto& d : *details) {
+            static const OJson emptyObj = js::object();
+            const auto row = execution::fillRow(js::nullish(&d.contract) ? emptyObj : d.contract, js::nullish(&d.execution) ? emptyObj : d.execution);
+            if (row) rows.append(*row);
+        }
+    }
+    co_return rows;
+}
+
+Task<> GuardService::maybeReport() {
+    if (reportBusy_) co_return;
+    const domain::EtNow at = wiring_.clock ? wiring_.clock() : domain::nowEt();
+    if (reportedDate_ == at.date || !settings().isTradingDay(at.date)) co_return;
+    const double close = settings().early_close_days.contains(at.date) ? 13 * 60 : 16 * 60;
+    if (at.minutes < close + 15) co_return;
+    // 今天已经发过(重启之后):流水里有这一天的 guard_report 就不再发
+    for (const OJson& r : store().guard().guardAudit(QDateTime::currentDateTimeUtc().addDays(-2).toString(Qt::ISODate)))
+        if (js::str(r.get(u"action"_s)) == u"guard_report" && js::str(js::prop(r.get(u"detail"_s), u"date"_s)) == at.date) {
+            reportedDate_ = at.date;
+            co_return;
+        }
+    reportBusy_ = true;
+    const std::weak_ptr<bool> alive = alive_;
+    QString text;
+    std::exception_ptr failure;
+    try {
+        text = co_await composeReport(at);
+    } catch (...) {
+        failure = std::current_exception();
+    }
+    if (alive.expired()) co_return;
+    reportBusy_ = false;
+    if (failure) {
+        if (nag(u"report|"_s + at.date, now_)) journal(u"guard_report_failed"_s, js::object({{u"date"_s, js::S(at.date)}, {u"error"_s, js::S(errorText(failure))}}));
+        co_return;
+    }
+    reportedDate_ = at.date;
+    OJson navs = js::object();
+    for (const contract::AccountConfig& a : settings().accounts) {
+        if (a.connection == u"futu") continue;
+        if (const auto nav = wiring_.navOf ? wiring_.navOf(a.alias) : std::nullopt) navs.set(a.alias, js::N(*nav));
+    }
+    journal(u"guard_report"_s, js::object({{u"date"_s, js::S(at.date)}, {u"navs"_s, navs}}));
+    const QString dir = QFileInfo(inboxPath()).path() + u"/reports"_s;
+    QDir().mkpath(dir);
+    QSaveFile f(dir + u'/' + at.date + u".txt"_s);
+    if (f.open(QIODevice::WriteOnly)) {
+        f.write((text + u'\n').toUtf8());
+        f.commit();
+    }
+    try {
+        eng().notifier().notify(u"每日报告"_s, text.section(u'\n', 1, 3), QString());
+    } catch (...) {
+    }
+    emitEvent(u"guard_report"_s, js::object({{u"date"_s, js::S(at.date)}, {u"text"_s, js::S(text)}}));
+    // Pushover 一条最多 1024 字、Telegram 4096:超长的截掉,全文在 reports/ 里
+    QString body = text;
+    if (body.size() > 1000) body = body.left(960) + u"\n…全文见 guard/reports/%1.txt"_s.arg(at.date);
+    enqueuePush(u"每日报告 "_s + at.date, body, true);
+}
+
+Task<QString> GuardService::composeReport(domain::EtNow at) {
+    const QString today = at.date;
+    const double weekday = util::weekdayOfDate(today);  // 0 = 周一
+    const QString weekStart = addDays(today, -int(weekday));
+    const auto aliasOfId = [this](const QString& id) -> QString {
+        for (const contract::AccountConfig& a : settings().accounts)
+            if (a.account_id == id) return a.alias;
+        return {};
+    };
+
+    // 持仓:正股 alias|symbol、期权腿 alias|symbol|到期|行权价|C/P → 带符号的数量
+    QList<OJson> rows;
+    bool connected = false;
+    if (const auto router = routerPort(); router && router->hasSessions()) {
+        connected = router->upstreamOk();
+        try {
+            rows = co_await router->positions();
+        } catch (...) {
+        }
+    }
+    QHash<QString, double> held;
+    for (const OJson& r : rows) {
+        const QString st = js::str(r.get(u"sec_type"_s));
+        const QString alias = js::str(r.get(u"account"_s));
+        const QString symbol = js::str(r.get(u"symbol"_s));
+        const double q = js::num(r.get(u"quantity"_s));
+        if (st == u"STK") held.insert(alias + u'|' + symbol, q);
+        else if (st == u"OPT" || st == u"FOP") {
+            const OJson* c = r.get(u"contract"_s);
+            QString k = QString::number(js::num(js::prop(c, u"strike"_s)), 'f', 4);
+            while (k.contains(u'.') && (k.endsWith(u'0') || k.endsWith(u'.'))) k.chop(1);
+            held.insert(alias + u'|' + symbol + u'|' + js::str(js::prop(c, u"lastTradeDateOrContractMonth"_s)).left(8) + u'|' + k + u'|' +
+                            js::str(js::prop(c, u"right"_s)).left(1).toUpper(),
+                        q);
+        }
+    }
+
+    // 成交:7 天历史,账号换成别名,按美东日期标(TWS 的"今天"在北京午夜翻篇,不能拿它的当日成交)
+    QList<rp::Fill> fills;
+    if (wiring_.fillHistory) {
+        for (const OJson& f : co_await wiring_.fillHistory()) {
+            const QString alias = aliasOfId(js::str(f.get(u"account_id"_s)));
+            if (alias.isEmpty()) continue;
+            const OJson* c = f.get(u"contract"_s);
+            rp::Fill x;
+            x.alias = alias;
+            x.symbol = js::str(js::prop(c, u"symbol"_s));
+            x.secType = js::str(js::prop(c, u"secType"_s));
+            x.expiry = js::str(js::prop(c, u"expiry"_s)).left(8);
+            x.right = js::str(js::prop(c, u"right"_s)).left(1).toUpper();
+            x.strike = js::num(js::prop(c, u"strike"_s));
+            if (!std::isfinite(x.strike)) x.strike = 0;
+            x.side = js::str(f.get(u"side"_s));
+            const OJson* perm = f.get(u"perm_id"_s);
+            x.permId = js::nullish(perm) ? QString() : util::jsNumberToString(js::num(perm));
+            x.time = js::str(f.get(u"time"_s));
+            x.etDate = etDateOfIso(x.time);
+            x.shares = js::num(f.get(u"shares"_s));
+            x.price = js::num(f.get(u"price"_s));
+            fills.append(x);
+        }
+    }
+    const QList<rp::Order> orders = rp::groupOrders(fills);
+    const QList<OJson> intents = store().guard().listAll();
+    // 这一单开仓的时候有没有在用的意图:建在成交之前、那时还没关
+    const auto intentFor = [&](const rp::Order& o) -> std::optional<OJson> {
+        for (const OJson& i : intents) {
+            if (js::str(i.get(u"account"_s)) != o.alias || js::str(i.get(u"symbol"_s)).toUpper() != o.symbol.toUpper()) continue;
+            const QString created = js::str(i.get(u"created_at"_s));
+            const QString closed = js::str(i.get(u"closed_at"_s));
+            if (created > o.time || (!closed.isEmpty() && closed < o.time)) continue;
+            const OJson* body = i.get(u"intent"_s);
+            if (o.kind == u"stock" && js::str(i.get(u"kind"_s)) == u"stock") return i;
+            if (o.kind != u"stock" && js::str(i.get(u"kind"_s)) == u"option") {
+                QList<double> want;
+                if (const OJson* ks = js::prop(body, u"strikes"_s); js::isArr(ks))
+                    for (const OJson& k : ks->items) want.append(k.n);
+                std::sort(want.begin(), want.end());
+                if (want == o.strikes && js::str(js::prop(body, u"expiry"_s)).remove(u'-') == o.expiry) return i;
+            }
+        }
+        return std::nullopt;
+    };
+
+    rp::Input in;
+    in.date = today;
+    in.friday = weekday == 4;
+    in.connected = connected;
+
+    // 净值:和上一份报告比
+    OJson prevNavs = js::object();
+    const QList<OJson> audit = store().guard().guardAudit(QDateTime::currentDateTimeUtc().addDays(-14).toString(Qt::ISODate));
+    for (const OJson& r : audit)
+        if (js::str(r.get(u"action"_s)) == u"guard_report" && js::str(js::prop(r.get(u"detail"_s), u"date"_s)) < today)
+            prevNavs = *js::prop(r.get(u"detail"_s), u"navs"_s);
+    for (const contract::AccountConfig& a : settings().accounts) {
+        if (a.connection == u"futu") continue;
+        rp::Account acc;
+        acc.alias = a.alias;
+        acc.nav = wiring_.navOf ? wiring_.navOf(a.alias) : std::nullopt;
+        if (!acc.nav) continue;  // 没连着 / 读不到的账户不进报告
+        const OJson* prev = js::prop(&prevNavs, a.alias);
+        if (js::isNum(prev) && prev->n > 0) acc.changePct = (*acc.nav - prev->n) / prev->n * 100.0;
+        in.accounts.append(acc);
+    }
+
+    // 开仓:今天(美东)的单里此刻还按那个方向持有的
+    for (const rp::Order& o : orders) {
+        if (o.etDate != today || !rp::isOpen(o, held)) continue;
+        const QString intent = intentFor(o) ? u"有意图"_s : u"无意图"_s;
+        if (o.kind == u"stock")
+            in.opened << u"%1 %2 %3 股（%4）"_s.arg(o.symbol, o.side == u"BOT" ? u"买入"_s : u"卖空"_s, util::jsNumberToString(o.qty), intent);
+        else
+            in.opened << u"%1 ×%2（%3）"_s.arg(o.label(), util::jsNumberToString(o.qty), intent);
+    }
+
+    // 止损触发、违规、断线:今天与本周的流水
+    QMap<QString, QStringList> violations;  // 代码 → 说法(先后)
+    QStringList symbolsOrder;
+    int disconnects = 0;
+    QHash<QString, double> defaultStops;  // 本周默认止损价(正股,别名|代码)
+    for (const OJson& r : audit) {
+        const QString d = etDateOfIso(js::str(r.get(u"at"_s)));
+        const QString action = js::str(r.get(u"action"_s));
+        const OJson* det = r.get(u"detail"_s);
+        const QString symbol = js::str(js::prop(det, u"symbol"_s));
+        if (d >= weekStart && d <= today) {
+            if (action == u"guard_violation") in.weekViolations += 1;
+            if (action == u"guard_fired" && stopLike(js::str(js::prop(det, u"state"_s)))) in.weekStops += 1;
+            if (action == u"guard_default_stop")
+                defaultStops.insert(js::str(js::prop(det, u"account"_s)) + u'|' + symbol, js::num(js::prop(det, u"stop"_s)));
+        }
+        if (d != today) continue;
+        if (action == u"guard_disconnect") disconnects += 1;
+        if (action == u"guard_fired" && stopLike(js::str(js::prop(det, u"state"_s)))) {
+            const QString line = symbol + u" 止损"_s;
+            if (!in.fired.contains(line)) in.fired << line;
+        }
+        if (action == u"guard_violation") {
+            const QString kind = js::str(js::prop(det, u"kind"_s));
+            QString say;
+            if (kind == u"no_intent") say = (js::num(js::prop(det, u"quantity"_s)) < 0 ? u"手动卖空"_s : u"手动买入"_s) + u"无意图记录"_s;
+            else if (kind == u"default_stop") say = u"默认止损已挂 @"_s + util::jsNumberToString(js::num(js::prop(det, u"stop"_s)));
+            else if (kind == u"stop_lowered") say = u"止损被放松(已恢复)"_s;
+            else if (kind == u"stop_cancelled") say = u"止损单被撤(已重挂)"_s;
+            else if (kind == u"combo_unmatched") say = u"组合认不出"_s;
+            else if (kind == u"track_without_stop") say = u"追踪没有止损"_s;
+            else say = kind;
+            const QString key = symbol.isEmpty() ? u"?"_s : symbol;
+            if (!symbolsOrder.contains(key)) symbolsOrder << key;
+            if (!violations[key].contains(say)) violations[key] << say;
+        }
+    }
+    for (const QString& s : symbolsOrder) in.violations << s + u' ' + violations.value(s).join(u'，');
+    in.disconnects = disconnects;
+
+    // 明日到期:下一个交易日到期的组合与单腿期权
+    QString next = addDays(today, 1);
+    for (int i = 0; i < 10 && !settings().isTradingDay(next); ++i) next = addDays(next, 1);
+    const QString nextExp = QString(next).remove(u'-');
+    QSet<QString> comboBuckets;
+    for (const OJson& r : domain::withCombos(rows)) {
+        if (js::str(r.get(u"sec_type"_s)) != u"BAG") continue;
+        const QString leg = js::str(r.get(u"leg"_s));
+        if (!leg.startsWith(nextExp)) continue;
+        comboBuckets.insert(js::str(r.get(u"account"_s)) + u'|' + js::str(r.get(u"symbol"_s)) + u'|' + nextExp);
+        rp::Order o;
+        o.kind = u"combo"_s;
+        o.symbol = js::str(r.get(u"symbol"_s));
+        QSet<QString> rights;
+        for (const QString& part : leg.section(u'|', 1).split(u',')) {
+            const qsizetype x = part.indexOf(u'x');
+            if (x < 0) continue;
+            QString k = part.mid(x + 1);
+            QString rt;
+            if (k.endsWith(u'C') || k.endsWith(u'P')) {
+                rt = k.right(1);
+                k.chop(1);
+            }
+            rights.insert(rt);
+            if (!o.strikes.contains(k.toDouble())) o.strikes.append(k.toDouble());
+            o.legKeys.append(part);
+        }
+        std::sort(o.strikes.begin(), o.strikes.end());
+        if (rights.size() == 1) o.right = *rights.cbegin();
+        in.expiring << u"%1 ×%2（%3）"_s.arg(o.label(), util::jsNumberToString(std::abs(js::num(r.get(u"quantity"_s)))), shortDate(nextExp));
+    }
+    for (const OJson& r : rows) {
+        if (js::str(r.get(u"sec_type"_s)) != u"OPT") continue;
+        const OJson* c = r.get(u"contract"_s);
+        if (js::str(js::prop(c, u"lastTradeDateOrContractMonth"_s)).left(8) != nextExp) continue;
+        if (comboBuckets.contains(js::str(r.get(u"account"_s)) + u'|' + js::str(r.get(u"symbol"_s)) + u'|' + nextExp)) continue;
+        QString k = QString::number(js::num(js::prop(c, u"strike"_s)), 'f', 4);
+        while (k.contains(u'.') && (k.endsWith(u'0') || k.endsWith(u'.'))) k.chop(1);
+        in.expiring << u"%1 %2%3 ×%4（%5）"_s.arg(js::str(r.get(u"symbol"_s)), k, js::str(js::prop(c, u"right"_s)).left(1).toUpper(),
+                                                util::jsNumberToString(js::num(r.get(u"quantity"_s))), shortDate(nextExp));
+    }
+
+    // 周五:本周做完的每一笔交易的 R 倍数(止损用开仓时意图里的原始止损价,不是抬过的)
+    if (in.friday) {
+        for (const rp::Trade& t : rp::closedTrades(orders, weekStart, held)) {
+            rp::WeekTrade w;
+            w.label = t.label;
+            std::optional<double> stop;
+            // 找开这一笔的那一单,认当时的意图
+            for (const rp::Order& o : orders) {
+                if (o.instrument() != t.instrument || o.etDate != t.openDate) continue;
+                if (const auto i = intentFor(o)) {
+                    const OJson* body = i->get(u"intent"_s);
+                    if (o.kind == u"stock") stop = js::num(js::prop(body, u"stop_price"_s));
+                    else if (const OJson* x = js::path(body, {u"exits"_s, u"stop_loss_x"_s}); js::isNum(x)) stop = t.entry * x->n;
+                } else if (o.kind == u"stock") {
+                    const auto it = defaultStops.constFind(o.alias + u'|' + o.symbol);
+                    if (it != defaultStops.cend()) stop = *it;
+                }
+                break;
+            }
+            w.r = rp::rMultiple(t, stop);
+            if (!w.r) w.note = stop ? u"止损价不对"_s : u"无止损"_s;
+            in.weekTrades.append(w);
+        }
+    }
+    co_return rp::build(in);
 }
 
 }  // namespace ibkr::orchestrate

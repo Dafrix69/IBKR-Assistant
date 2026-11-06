@@ -495,6 +495,7 @@ void EngineServer::install() {
     guardWiring.updateTrack = [trackerPtr](OJson params) { return trackerPtr->trackerUpdateDirect(std::move(params)); };
     // 推送:token 只从凭证库读;没配或读不到就抛,由排队重试
     guardWiring.push = [p = &i](QString title, QString body) { return orch::guard_push::sendWithKeychain(p->settings.guard.push, std::move(title), std::move(body)); };
+    guardWiring.fillHistory = [p = &i] { return orch::guardFillHistory(p->router); };
     guardWiring.runDir = util::run_marker::dirFor(i.settingsPath.value_or(domain::defaultConfigPath()));
     guardWiring.coveredAccounts = [p = &i]() -> std::optional<QStringList> {
         if (!p->router) return std::nullopt;

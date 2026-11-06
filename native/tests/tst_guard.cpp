@@ -2,6 +2,7 @@
 // 全部离线:假的 router / 宿主 / 券商,真的交易库放临时目录,时间由测试给。
 #include "js_fixture.h"
 
+#include "analysis/guard_report.h"
 #include "analysis/guard_rules.h"
 #include "domain/config.h"
 #include "domain/positions.h"
@@ -91,6 +92,23 @@ OJson flyIntent(const QString& structure, double cost = 157) {
     if (!v.ok) qFatal("flyIntent: %s", qPrintable(v.error));
     return v.intent;
 }
+
+/// fillRow 的样子
+OJson fillOf(const QString& accountId, const QString& secType, const QString& symbol, const QString& side, double shares, double price, const QString& timeUtc,
+             double perm, double strike = 0, const QString& right = {}, const QString& expiry = {}) {
+    return js::object({{u"exec_id"_s, js::S(timeUtc + symbol + QString::number(strike) + side)},
+                       {u"time"_s, js::S(timeUtc)},
+                       {u"account_id"_s, js::S(accountId)},
+                       {u"contract"_s, js::object({{u"secType"_s, js::S(secType)}, {u"symbol"_s, js::S(symbol)}, {u"expiry"_s, js::S(expiry)},
+                                                   {u"strike"_s, strike ? js::N(strike) : js::Null()}, {u"right"_s, js::S(right)}})},
+                       {u"side"_s, js::S(side)},
+                       {u"shares"_s, js::N(shares)},
+                       {u"price"_s, js::N(price)},
+                       {u"perm_id"_s, js::N(perm)}});
+}
+
+/// 美东某一刻:冬令时 UTC − 5
+ibkr::domain::EtNow etAtUtc(const QString& iso) { return ibkr::domain::etNowFromEpoch(double(QDateTime::fromString(iso, Qt::ISODate).toMSecsSinceEpoch())); }
 
 OJson bar(const QString& date, double low, double high) {
     return js::object({{u"date"_s, js::S(date)}, {u"open"_s, js::N(low)}, {u"high"_s, js::N(high)}, {u"low"_s, js::N(low)}, {u"close"_s, js::N(high)}});
@@ -182,6 +200,8 @@ struct SvcRig {
     std::optional<QString> addFails;
     std::optional<QStringList> covered;
     QStringList pushed;
+    QList<OJson> fills;
+    std::optional<ibkr::domain::EtNow> et;
     bool pushFails = false;
     bool pushHangs = false;
     std::optional<ibkr::util::Deferred<>> hang;
@@ -253,6 +273,8 @@ struct SvcRig {
             co_return;
         };
         w.runDir = dir.path() + u"/guard-run"_s;
+        w.fillHistory = [this]() -> Task<QList<OJson>> { co_return fills; };
+        w.clock = [this] { return et ? *et : ibkr::domain::nowEt(); };
         svc->attach(std::move(w));
     }
     FakePort& port() { return *host->port_; }
@@ -988,6 +1010,143 @@ private slots:
         bare.writeInbox({u"{\"push_test\": true}"_s});
         const OJson out = bare.svc->ingestInbox();
         QCOMPARE(js::num(out.get(u"rejected"_s)), 1.0);
+    }
+    // ================================================================ Step 4:每日报告
+    void reportMatchesSpecSample() {
+        namespace rp = ibkr::analysis::guard_report;
+        rp::Input in;
+        in.date = u"2026-11-06"_s;
+        in.accounts = {rp::Account{u"主账户"_s, 15165.0, -0.6}};
+        in.opened = {u"QQQ 660/670/680 fly ×1（有意图）"_s};
+        in.violations = {u"BE 手动买入无意图记录，默认止损已挂 @179.4"_s};
+        in.expiring = {u"QQQ fly ×2（11/09）"_s};
+        const QString want = u"datrix guard 2026-11-06\n"
+                             u"净值 $15,165（-0.6%）\n"
+                             u"开仓：QQQ 660/670/680 fly ×1（有意图）\n"
+                             u"止损触发：无\n"
+                             u"违规：BE 手动买入无意图记录，默认止损已挂 @179.4\n"
+                             u"明日到期：QQQ fly ×2（11/09）\n"
+                             u"心跳：正常，断线 0 次"_s;
+        QCOMPARE(rp::build(in), want);
+        // 周五多两行;多个账户各一行
+        in.friday = true;
+        in.weekViolations = 3;
+        in.weekStops = 1;
+        in.weekTrades = {rp::WeekTrade{u"BE"_s, 1.0, {}}, rp::WeekTrade{u"AXTX"_s, std::nullopt, u"无止损"_s}};
+        in.accounts.append(rp::Account{u"账户3311"_s, 1234567.4, std::nullopt});
+        const QString got = rp::build(in);
+        QVERIFY2(got.contains(u"净值 主账户 $15,165（-0.6%）\n净值 账户3311 $1,234,567\n"_s), qPrintable(got));
+        QVERIFY2(got.endsWith(u"本周：违规 3 次，止损触发 1 次\n本周 R 倍数：BE +1.0R；AXTX —（无止损）"_s), qPrintable(got));
+        QCOMPARE(rp::pct(0.04), u"0.0%"_s);
+        QCOMPARE(rp::pct(0.44), u"+0.4%"_s);
+    }
+    void ordersOpensAndRMultiples() {
+        namespace rp = ibkr::analysis::guard_report;
+        const auto f = [](const QString& st, const QString& sym, const QString& side, double qty, double px, const QString& perm, const QString& date, double k = 0,
+                          const QString& right = {}) {
+            rp::Fill x;
+            x.alias = u"模拟"_s;
+            x.secType = st;
+            x.symbol = sym;
+            x.side = side;
+            x.shares = qty;
+            x.price = px;
+            x.permId = perm;
+            x.etDate = date;
+            x.time = date + u"T15:00:00Z"_s;
+            x.strike = k;
+            x.right = right;
+            x.expiry = st == u"STK" ? QString() : u"20261109"_s;
+            return x;
+        };
+        const QList<rp::Fill> fills{
+            f(u"STK"_s, u"BE"_s, u"BOT"_s, 20, 195, u"1"_s, u"2026-11-02"_s),
+            f(u"STK"_s, u"BE"_s, u"SLD"_s, 10, 204, u"2"_s, u"2026-11-04"_s),
+            f(u"STK"_s, u"BE"_s, u"SLD"_s, 10, 204, u"3"_s, u"2026-11-05"_s),
+            f(u"BAG"_s, u"QQQ"_s, u"BOT"_s, 1, 1.57, u"9"_s, u"2026-11-06"_s),
+            f(u"OPT"_s, u"QQQ"_s, u"BOT"_s, 1, 10.1, u"9"_s, u"2026-11-06"_s, 660, u"C"_s),
+            f(u"OPT"_s, u"QQQ"_s, u"SLD"_s, 2, 5.68, u"9"_s, u"2026-11-06"_s, 670, u"C"_s),
+            f(u"OPT"_s, u"QQQ"_s, u"BOT"_s, 1, 2.8, u"9"_s, u"2026-11-06"_s, 680, u"C"_s),
+        };
+        const QList<rp::Order> orders = rp::groupOrders(fills);
+        QCOMPARE(orders.size(), 4);
+        const rp::Order& fly = orders.last();
+        QCOMPARE(fly.kind, u"combo"_s);
+        QCOMPARE(fly.label(), u"QQQ 660/670/680 call fly"_s);
+        QCOMPARE(fly.qty, 1.0);
+        const QHash<QString, double> held{{u"模拟|QQQ|20261109|660|C"_s, 1}, {u"模拟|QQQ|20261109|670|C"_s, -2}, {u"模拟|QQQ|20261109|680|C"_s, 1}};
+        QVERIFY(rp::isOpen(fly, held));
+        QVERIFY(!rp::isOpen(orders[0], held));  // BE 已经平光
+        const QList<rp::Trade> trades = rp::closedTrades(orders, u"2026-11-02"_s, held);
+        QCOMPARE(trades.size(), 1);  // 蝶还拿着,不算做完
+        QCOMPARE(trades[0].label, u"BE"_s);
+        QCOMPARE(trades[0].entry, 195.0);
+        QCOMPARE(trades[0].exit, 204.0);
+        QCOMPARE(*rp::rMultiple(trades[0], 186.0), 1.0);  // (204 − 195) ÷ (195 − 186)
+        QVERIFY(!rp::rMultiple(trades[0], std::nullopt));
+        QVERIFY(!rp::rMultiple(trades[0], 200.0));  // 止损在入场价上方:不对
+    }
+    void dailyReportSentOncePerDay() {
+        SvcRig rig(true, false, true);
+        const QString id = rig.host->settings_.accountByAlias(u"模拟"_s)->account_id;
+        // 周五 16:10 美东:还没到 16:15
+        rig.et = etAtUtc(u"2026-11-06T21:10:00Z"_s);
+        rig.port().rows = {stockRow(u"模拟"_s, u"TTWO"_s, 20, 202.5, 212.66),
+                           optRow(u"模拟"_s, u"QQQ"_s, u"20261109"_s, 660, u"C"_s, 1, 1010), optRow(u"模拟"_s, u"QQQ"_s, u"20261109"_s, 670, u"C"_s, -2, 568),
+                           optRow(u"模拟"_s, u"QQQ"_s, u"20261109"_s, 680, u"C"_s, 1, 281)};
+        // 美东 10:30 买的蝶(北京时间已经是周六凌晨,TWS 的"今天"早翻篇了);周一买 BE、周三卖光
+        rig.fills = {fillOf(id, u"BAG"_s, u"QQQ"_s, u"BOT"_s, 1, 1.57, u"2026-11-06T15:30:00Z"_s, 9),
+                     fillOf(id, u"OPT"_s, u"QQQ"_s, u"BOT"_s, 1, 10.1, u"2026-11-06T15:30:00Z"_s, 9, 660, u"C"_s, u"20261109"_s),
+                     fillOf(id, u"OPT"_s, u"QQQ"_s, u"SLD"_s, 2, 5.68, u"2026-11-06T15:30:00Z"_s, 9, 670, u"C"_s, u"20261109"_s),
+                     fillOf(id, u"OPT"_s, u"QQQ"_s, u"BOT"_s, 1, 2.8, u"2026-11-06T15:30:00Z"_s, 9, 680, u"C"_s, u"20261109"_s),
+                     fillOf(id, u"STK"_s, u"BE"_s, u"BOT"_s, 20, 195, u"2026-11-02T15:00:00Z"_s, 1),
+                     fillOf(id, u"STK"_s, u"BE"_s, u"SLD"_s, 20, 204, u"2026-11-04T15:00:00Z"_s, 2)};
+        // 周一建过 BE 的意图(止损 186);上一份报告的净值 15,100
+        rig.store().guard().add(stockIntent(u"BE"_s, u"BUY"_s, 186));
+        ibkr::util::sqlite::Database db(rig.host->settings_.db_path);
+        db.prepare(u"UPDATE guard_intents SET created_at='2026-11-01T00:00:00Z'"_s).run();
+        const OJson prevReport = js::object({{u"date"_s, js::S(u"2026-11-05"_s)}, {u"navs"_s, js::object({{u"模拟"_s, js::N(15100)}})}});
+        rig.store().audit(u"guard"_s, u"guard_report"_s, &prevReport);
+        rig.tick(0);
+        QVERIFY(!rig.pushed.join(u'\n').contains(u"每日报告"_s));
+        // 16:20:发
+        rig.et = etAtUtc(u"2026-11-06T21:20:00Z"_s);
+        rig.tick(1000);
+        QString report;
+        for (const QString& p : rig.pushed)
+            if (p.startsWith(u"Datrix:每日报告 2026-11-06|"_s)) report = p.section(u'|', 1);
+        QVERIFY2(!report.isEmpty(), qPrintable(rig.pushed.join(u"\n---\n"_s)));
+        QVERIFY2(report.startsWith(u"datrix guard 2026-11-06\n"_s), qPrintable(report));
+        // 假的净值三个账户都给 15,000:三行,带别名;只有「模拟」有上一份可比
+        QVERIFY2(report.contains(u"净值 模拟 $15,000（-0.7%）\n净值 主账户 $15,000\n"_s), qPrintable(report));
+        QVERIFY2(report.contains(u"开仓：QQQ 660/670/680 call fly ×1（无意图）"_s), qPrintable(report));
+        QVERIFY2(report.contains(u"明日到期：QQQ 660/670/680 call fly ×1（11/09）"_s), qPrintable(report));
+        QVERIFY2(report.contains(u"本周 R 倍数：BE +1.0R"_s), qPrintable(report));
+        QVERIFY2(report.contains(u"违规：TTWO 手动买入无意图记录"_s), qPrintable(report));
+        QVERIFY(!report.contains(id));  // 账号不进报告
+        QVERIFY(QFile::exists(QFileInfo(rig.svc->inboxPath()).path() + u"/reports/2026-11-06.txt"_s));
+        QVERIFY(rig.auditActions().contains(u"guard_report"_s));
+        // 同一天不再发;换一个服务实例(重启)也不再发
+        const qsizetype n = rig.pushed.size();
+        rig.tick(2000);
+        rig.svc = std::make_unique<orch::GuardService>(*rig.host);
+        orch::GuardWiring w;
+        w.push = [&rig](QString t, QString b) -> Task<> {
+            rig.pushed << t + u'|' + b;
+            co_return;
+        };
+        w.fillHistory = [&rig]() -> Task<QList<OJson>> { co_return rig.fills; };
+        w.clock = [&rig] { return *rig.et; };
+        rig.svc->attach(std::move(w));
+        rig.tick(3000);
+        QCOMPARE(rig.pushed.filter(u"每日报告"_s).size(), 1);
+        (void)n;
+    }
+    void noReportOnWeekend() {
+        SvcRig rig(true, false, true);
+        rig.et = etAtUtc(u"2026-11-07T21:20:00Z"_s);  // 周六
+        rig.tick(0);
+        QVERIFY(rig.pushed.filter(u"每日报告"_s).isEmpty());
     }
     void intentDirectionMustMatch() {
         SvcRig rig;

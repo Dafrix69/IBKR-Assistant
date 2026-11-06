@@ -95,6 +95,24 @@ void GuardStore::markSeen(double id) {
     db_.prepare(u"UPDATE guard_intents SET seen_position=1, updated_at=? WHERE id=? AND seen_position=0"_s).run({util::nowIsoSeconds(), id});
 }
 
+QList<OJson> GuardStore::listAll() {
+    ensure();
+    QList<OJson> out;
+    for (const OJson& r : db_.prepare(u"SELECT "_s + QString::fromUtf16(kColumns) + u" FROM guard_intents ORDER BY id ASC"_s).all()) out.append(rowOf(r));
+    return out;
+}
+
+QList<OJson> GuardStore::guardAudit(const QString& sinceIso) {
+    QList<OJson> out;
+    for (const OJson& r : db_.prepare(u"SELECT at, action, detail FROM audit_log WHERE actor='guard' AND at >= ? ORDER BY seq ASC"_s).all({sinceIso})) {
+        OJson row = r;
+        const auto d = js::parse(js::str(r.get(u"detail"_s)));
+        row.set(u"detail"_s, d ? *d : js::object());
+        out.append(row);
+    }
+    return out;
+}
+
 bool GuardStore::setIntentField(double id, const QString& key, const OJson& value) {
     ensure();
     const auto row = db_.prepare(u"SELECT intent FROM guard_intents WHERE id=?"_s).get({id});

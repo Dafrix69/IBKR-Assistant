@@ -26,6 +26,10 @@ public:
     double close(const QString& account, const QString& symbol, const QString& reason, const QString& kind = {});
     /// 这份意图对应的持仓已经出现过(之后持仓没了就自动关掉)
     void markSeen(double id);
+    /// 全部意图(在用的与关掉的),先建的在前。每日报告认"开仓时有没有意图"用
+    QList<util::OJson> listAll();
+    /// actor = 'guard' 的流水,at ≥ sinceIso(ISO,UTC);detail 解析成对象。每日报告读
+    QList<util::OJson> guardAudit(const QString& sinceIso);
     /// 意图里那一份 JSON 上改一个键(跟踪止损抬上去的底线 stop_now 等);回改没改成
     bool setIntentField(double id, const QString& key, const util::OJson& value);
 
