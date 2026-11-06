@@ -220,7 +220,14 @@ struct SvcRig {
                 for (const auto& [k, v] : a->fields) merged.set(k, v);
                 fields.set(u"auto_close"_s, merged);
             }
-            if (const OJson* e = params.get(u"enabled"_s)) fields.set(u"enabled"_s, *e);
+            if (const OJson* e = params.get(u"enabled"_s)) {
+                fields.set(u"enabled"_s, *e);
+                // 同 tracker.update:重新启用 = 解开上一次触发的闩
+                if (js::truthy(e)) {
+                    fields.set(u"fired_at"_s, js::Null());
+                    fields.set(u"fired_state"_s, js::S(QString()));
+                }
+            }
             store().updateTrack(id, fields);
             co_return js::object({{u"track"_s, js::object()}});
         };
@@ -628,6 +635,44 @@ private slots:
         QCOMPARE(rig.updated.size(), 2);
         QVERIFY(js::truthy(rig.updated[1].get(u"enabled"_s)));
         QVERIFY(js::truthy(rig.store().getTrack(js::str(t.get(u"id"_s)))->get(u"enabled"_s)));
+    }
+    void latchedTrackIsReArmed() {
+        SvcRig rig;
+        rig.store().guard().add(stockIntent(u"BE"_s, u"BUY"_s, 186));
+        const OJson t = rig.store().addTrack(js::object({{u"account"_s, js::S(u"模拟"_s)}, {u"symbol"_s, js::S(u"BE"_s)}, {u"sec_type"_s, js::S(u"STK"_s)},
+                                                         {u"targets"_s, js::object({{u"stop_loss"_s, js::N(186)}})},
+                                                         {u"auto_close"_s, js::object({{u"enabled"_s, js::B(true)}, {u"host_at_broker"_s, js::B(true)}})}}));
+        const QString id = js::str(t.get(u"id"_s));
+        rig.port().rows = {stockRow(u"模拟"_s, u"BE"_s, 20, 195, 196)};
+        // 刚触发:持仓可能还没来得及消失,不动
+        rig.store().updateTrack(id, js::object({{u"fired_at"_s, js::S(QDateTime::currentDateTimeUtc().toString(Qt::ISODate))}, {u"fired_state"_s, js::S(u"stop_loss"_s)}}));
+        rig.tick(0);
+        QVERIFY(rig.updated.isEmpty());
+        QVERIFY(rig.added.isEmpty());
+        // 触发过一会儿了、仓位还在(平完又开了新仓):重新上膛,不算违规
+        rig.store().updateTrack(id, js::object({{u"fired_at"_s, js::S(u"2026-11-01T15:00:00+00:00"_s)}}));
+        rig.tick(2000);
+        QCOMPARE(rig.updated.size(), 1);
+        QCOMPARE(js::num(rig.updated[0].get(u"stop_loss"_s)), 186.0);
+        QVERIFY(rig.auditActions().contains(u"guard_re_armed"_s));
+        QVERIFY(!rig.auditActions().contains(u"guard_violation"_s));
+        QVERIFY(js::nullish(rig.store().getTrack(id)->get(u"fired_at"_s)));
+    }
+    void latchedTrackWithoutIntentGetsDefaultStop() {
+        SvcRig rig;
+        const OJson t = rig.store().addTrack(js::object({{u"account"_s, js::S(u"模拟"_s)}, {u"symbol"_s, js::S(u"TTWO"_s)}, {u"sec_type"_s, js::S(u"STK"_s)},
+                                                         {u"targets"_s, js::object({{u"stop_loss"_s, js::N(150)}, {u"take_profit"_s, js::N(260)}})},
+                                                         {u"auto_close"_s, js::object({{u"enabled"_s, js::B(true)}, {u"host_at_broker"_s, js::B(true)}})}}));
+        rig.store().updateTrack(js::str(t.get(u"id"_s)), js::object({{u"fired_at"_s, js::S(u"2026-11-01T15:00:00+00:00"_s)}}));
+        rig.port().rows = {stockRow(u"模拟"_s, u"TTWO"_s, 20, 202.5, 212.66)};
+        const OJson t0 = rig.tick(0);
+        QCOMPARE(js::num(js::path(&t0, {u"positions"_s, u"warned"_s})), 1.0);  // 落了闩的追踪不算保护
+        rig.tick(61000);
+        QVERIFY(rig.added.isEmpty());
+        QCOMPARE(rig.updated.size(), 1);
+        QCOMPARE(js::num(rig.updated[0].get(u"stop_loss"_s)), 186.3);  // 默认规则重算(没取到日线:入场 × 0.92)
+        QCOMPARE(js::num(rig.updated[0].get(u"take_profit"_s)), 260.0);
+        QVERIFY(rig.auditActions().contains(u"guard_default_stop"_s));
     }
     void tighterStopIsLeftAlone() {
         SvcRig rig;

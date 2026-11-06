@@ -2,6 +2,7 @@
 
 #include "analysis/guard_rules.h"
 #include "domain/positions.h"
+#include "orchestrate/tracker.h"
 #include "util/error.h"
 #include "util/jsformat.h"
 #include "util/js_runtime.h"
@@ -38,9 +39,22 @@ QString errorText(std::exception_ptr e) {
 
 QString money(double v) { return util::jsNumberToString(std::round(v * 100.0) / 100.0); }
 
-/// 这条追踪是不是已经替这只股票管着止损:启用、打开了自动平仓、有止损价或跟踪止损
+/// 落了闩(触发过)的追踪:托管对账把它的券商侧单子撤了,不再算保护
+bool fired(const OJson& t) { return js::truthy(t.get(u"fired_at"_s)); }
+
+/// 触发过、又不在追价平仓中、而且已经过了 kReArmMs:仓位还在,说明是平完又开了新仓(或平仓没成),可以重新上膛。
+/// 刚触发的那一会儿持仓可能还没来得及消失,这时重新上膛就是给一个刚平掉的仓再挂一张止损——一碰就反向开仓
+constexpr double kReArmMs = 30'000;
+bool staleLatch(const OJson& t) {
+    if (!fired(t) || tracker::sweepReason(t)) return false;
+    const QDateTime at = QDateTime::fromString(js::str(t.get(u"fired_at"_s)), Qt::ISODate);
+    if (!at.isValid()) return true;
+    return util::dateNow() - double(at.toMSecsSinceEpoch()) >= kReArmMs;
+}
+
+/// 这条追踪是不是已经替这只股票管着止损:启用、没落闩、打开了自动平仓、有止损价或跟踪止损
 bool trackProtects(const OJson& t) {
-    if (!js::truthy(t.get(u"enabled"_s))) return false;
+    if (!js::truthy(t.get(u"enabled"_s)) || fired(t)) return false;
     if (!js::truthy(js::prop(t.get(u"auto_close"_s), u"enabled"_s))) return false;
     const OJson* targets = t.get(u"targets"_s);
     return !js::nullish(js::prop(targets, u"stop_loss"_s)) || !js::nullish(js::prop(targets, u"trail_pct"_s));
@@ -294,9 +308,11 @@ Task<OJson> GuardService::watchPositions(double nowMs, QString today) {
         // 已经有追踪替它管着止损:不管
         bool tracked = false;
         bool protectedByTrack = false;
+        std::optional<OJson> stkTrack;
         for (const OJson& t : tracks) {
             if (js::str(t.get(u"account"_s)) != alias || js::str(t.get(u"symbol"_s)) != symbol || js::str(t.get(u"sec_type"_s)) != u"STK") continue;
             tracked = true;
+            stkTrack = t;
             if (trackProtects(t)) protectedByTrack = true;
         }
         if (protectedByTrack) {
@@ -323,7 +339,10 @@ Task<OJson> GuardService::watchPositions(double nowMs, QString today) {
         }
         Watch& w = it.value();
         if (w.stopPlaced || nowMs - w.firstSeenMs < cfg.grace_s * 1000) continue;
-        if (tracked) {
+        // 上一次的止损触发过、落了闩:这份仓位是新开的(或没平成),把那条追踪重新上膛,止损按默认规则重算
+        const bool reArm = tracked && stkTrack && staleLatch(*stkTrack);
+        if (tracked && stkTrack && fired(*stkTrack) && !reArm) continue;  // 刚触发 / 追价中:等它自己收尾
+        if (tracked && !reArm) {
             // 已经有一条追踪但没管止损:不改别人的追踪,只提醒
             if (nowMs - w.lastNagMs >= kNagMs) {
                 w.lastNagMs = nowMs;
@@ -354,6 +373,16 @@ Task<OJson> GuardService::watchPositions(double nowMs, QString today) {
                                    {u"stop"_s, js::N(stop)}});
         std::exception_ptr failure;
         try {
+            if (reArm) {
+                if (!wiring_.updateTrack) throw util::JsError(u"改追踪的通道没有接上"_s);
+                OJson params = carriedTargets(*stkTrack);
+                params.set(u"id"_s, js::copyOrNull(stkTrack->get(u"id"_s)));
+                params.set(u"enabled"_s, js::B(true));
+                params.set(u"auto_close"_s, js::object({{u"enabled"_s, js::B(true)}, {u"host_at_broker"_s, js::B(true)}}));
+                params.set(u"stop_loss"_s, js::N(stop));
+                co_await wiring_.updateTrack(params);
+                detail.set(u"re_armed"_s, js::B(true));
+            } else {
             if (!wiring_.addTrack) throw util::JsError(u"建追踪的通道没有接上"_s);
             const QString note = u"guard 默认止损:没有交易意图,入场 %1 × %2% 与前 %3 日%4 %5 取更近的一条"_s.arg(
                 money(entry), util::jsNumberToString(100 - (isLong ? cfg.default_stop_pct : -cfg.default_stop_pct)), util::jsNumberToString(cfg.default_low_days),
@@ -363,6 +392,7 @@ Task<OJson> GuardService::watchPositions(double nowMs, QString today) {
                                                   {u"auto_close"_s, js::B(true)},
                                                   {u"host_at_broker"_s, js::B(true)},
                                                   {u"note"_s, js::S(note)}}));
+            }
         } catch (...) {
             failure = std::current_exception();
         }
@@ -458,7 +488,11 @@ Task<> GuardService::protectStock(OJson row, OJson intentRow, QList<OJson> track
         const bool autoOn = js::truthy(js::prop(ac, u"enabled"_s));
         const bool hosted = js::truthy(js::prop(ac, u"host_at_broker"_s));
         const bool tightEnough = current && gr::atLeastAsTight(isLong, *current, floor);
-        if (enabled && autoOn && hosted && tightEnough) co_return;
+        const bool latched = fired(t);
+        if (latched && !staleLatch(t)) co_return;  // 刚触发 / 追价中:等它自己收尾
+        if (enabled && autoOn && hosted && tightEnough && !latched) co_return;
+        // 上一次的止损触发过、仓位还在(平完又按意图开了新仓):重新上膛,不算违规
+        const bool reArmOnly = latched && enabled && autoOn && hosted && tightEnough;
         // 只差在底线刚抬上去(跟踪止损):不是违规,照抬
         const bool trailOnly = enabled && autoOn && hosted && current && prev && gr::atLeastAsTight(isLong, *current, *prev);
         const double want = tightEnough ? *current : floor;
@@ -474,7 +508,10 @@ Task<> GuardService::protectStock(OJson row, OJson intentRow, QList<OJson> track
             failure = std::current_exception();
         }
         if (!failure) {
-            if (trailOnly) {
+            if (reArmOnly) {
+                journal(u"guard_re_armed"_s, js::object({{u"account"_s, js::S(alias)}, {u"symbol"_s, js::S(symbol)}, {u"stop"_s, js::N(want)}}));
+                tell(u"止损已重新挂上"_s, u"%1 上一次的止损触发过,仓位还在,已按意图重新挂止损 @%2。"_s.arg(symbol, money(want)), symbol);
+            } else if (trailOnly) {
                 journal(u"guard_stop_raised"_s, js::object({{u"account"_s, js::S(alias)}, {u"symbol"_s, js::S(symbol)}, {u"stop"_s, js::N(want)}}));
             } else {
                 OJson detail = js::object({{u"kind"_s, js::S(u"stop_lowered"_s)}, {u"account"_s, js::S(alias)}, {u"symbol"_s, js::S(symbol)},
@@ -579,7 +616,9 @@ Task<> GuardService::watchOptions(QList<OJson> rows, QList<OJson> tracks, QStrin
             } else {
                 const OJson& t = *track;
                 const std::optional<double> currentSl = numOpt(js::path(&t, {u"targets"_s, u"stop_loss"_s}));
-                const bool ok = js::truthy(t.get(u"enabled"_s)) && js::truthy(js::path(&t, {u"auto_close"_s, u"enabled"_s})) && currentSl && *currentSl >= stopLoss - 1e-9;
+                if (fired(t) && !staleLatch(t)) continue;  // 刚触发 / 追价中:等它自己收尾
+                const bool ok = js::truthy(t.get(u"enabled"_s)) && js::truthy(js::path(&t, {u"auto_close"_s, u"enabled"_s})) && currentSl && *currentSl >= stopLoss - 1e-9 &&
+                                !fired(t);
                 const bool needExit = expiryDay && !timeStop.isEmpty() && js::str(js::path(&t, {u"targets"_s, u"exit_at"_s})) != timeStop;
                 if (!ok || needExit) {
                     if (!wiring_.updateTrack) throw util::JsError(u"改追踪的通道没有接上"_s);
@@ -590,7 +629,7 @@ Task<> GuardService::watchOptions(QList<OJson> rows, QList<OJson> tracks, QStrin
                     params.set(u"enabled"_s, js::B(true));
                     params.set(u"auto_close"_s, js::object({{u"enabled"_s, js::B(true)}}));
                     co_await wiring_.updateTrack(params);
-                    done = ok ? u"time_stop"_s : u"restored"_s;
+                    done = ok ? u"time_stop"_s : fired(t) ? u"re_armed"_s : u"restored"_s;
                 }
             }
         } catch (...) {
@@ -615,6 +654,9 @@ Task<> GuardService::watchOptions(QList<OJson> rows, QList<OJson> tracks, QStrin
         } else if (done == u"restored"_s) {
             journal(u"guard_violation"_s, js::object({{u"kind"_s, js::S(u"stop_lowered"_s)}, {u"account"_s, js::S(alias)}, {u"symbol"_s, js::S(symbol)}, {u"intent"_s, js::N(id)}}));
             tell(u"组合出场规则被放松,已恢复"_s, u"%1 的出场追踪被停掉或止损被改松,已恢复。"_s.arg(js::str(js::prop(body, u"structure"_s))), symbol);
+            bump(out, u"restored"_s);
+        } else if (done == u"re_armed"_s) {
+            journal(u"guard_re_armed"_s, js::object({{u"account"_s, js::S(alias)}, {u"symbol"_s, js::S(symbol)}, {u"intent"_s, js::N(id)}}));
             bump(out, u"restored"_s);
         } else if (done == u"time_stop"_s) {
             journal(u"guard_time_stop_set"_s, js::object({{u"account"_s, js::S(alias)}, {u"symbol"_s, js::S(symbol)}, {u"intent"_s, js::N(id)}, {u"exit_at"_s, js::S(timeStop)}}));
