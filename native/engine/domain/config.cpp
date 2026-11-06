@@ -707,6 +707,29 @@ contract::FlyEntryAssistConfig buildFlyEntryAssist(V raw) {
     return c;
 }
 
+contract::GuardConfig buildGuard(V raw) {
+    const QString label = u"guard"_s;
+    rejectUnknown({u"enabled"_s, u"grace_s"_s, u"max_loss_pct_nav"_s, u"wide_stop_pct"_s, u"default_stop_pct"_s, u"default_low_days"_s, u"tick_s"_s,
+                   u"inbox_path"_s},
+                  raw, label);
+    contract::GuardConfig c;
+    c.enabled = flag(raw, u"enabled"_s, false, label);
+    c.grace_s = numReq(raw, u"grace_s"_s, false, 60.0, label, {5.0, u"5"_s, 3600.0, u"3600"_s});
+    c.max_loss_pct_nav = numReq(raw, u"max_loss_pct_nav"_s, false, 2.0, label, {0.1, u"0.1"_s, 100.0, u"100"_s});
+    c.wide_stop_pct = numReq(raw, u"wide_stop_pct"_s, false, 8.0, label, {0.1, u"0.1"_s, 100.0, u"100"_s});
+    c.default_stop_pct = numReq(raw, u"default_stop_pct"_s, false, 8.0, label, {0.1, u"0.1"_s, 50.0, u"50"_s});
+    c.default_low_days = numReq(raw, u"default_low_days"_s, false, 10.0, label, {1.0, u"1"_s, 60.0, u"60"_s});
+    if (c.default_low_days != std::floor(c.default_low_days)) throw JsError(u"guard.default_low_days 必须是整数,收到 %1"_s.arg(util::pyFloat(c.default_low_days)));
+    c.tick_s = numReq(raw, u"tick_s"_s, false, 5.0, label, {1.0, u"1"_s, 60.0, u"60"_s});
+    if (c.tick_s > c.grace_s) throw JsError(u"guard.tick_s 不能大于 grace_s(收到 %1 与 %2)"_s.arg(util::pyFloat(c.tick_s), util::pyFloat(c.grace_s)));
+    const V inbox = get(raw, u"inbox_path"_s);
+    if (!inbox.nullish()) {
+        if (!inbox.isStr()) throw JsError(u"guard.inbox_path 必须是字符串,收到 %1"_s.arg(repr(inbox)));
+        c.inbox_path = trim(inbox.p->s);
+    }
+    return c;
+}
+
 struct AccountLimitKey {
     QString key;
     bool isInt;
@@ -1044,6 +1067,7 @@ Settings fromDict(const OJson& rawJson, const std::optional<QString>& source) {
     s.risk_budget = buildRiskBudget(orElse(get(raw, u"risk_budget"_s), emptyObject()));
     s.follow = buildFollow(orElse(get(raw, u"follow"_s), emptyObject()));
     s.fly_entry_assist = buildFlyEntryAssist(orElse(get(raw, u"fly_entry_assist"_s), emptyObject()));
+    s.guard = buildGuard(orElse(get(raw, u"guard"_s), emptyObject()));
     s.accounts = accounts;
     s.connections = connections;
     const V aliasRaw = orElse(get(raw, u"symbol_aliases"_s), emptyObject());

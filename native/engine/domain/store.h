@@ -4,6 +4,7 @@
 // 时刻(nowIso)用墙上的钟(util::dateNow),不用注入的美东钟;id 用 util::randomUUID——两样测试都换成可复现的。
 #pragma once
 
+#include "domain/guard_store.h"
 #include "domain/imported_trades.h"
 #include "domain/log_stores.h"
 #include "domain/risk_queries.h"
@@ -37,6 +38,7 @@ public:
 
     const QString dbPath;
     ImportedTradesStore& imports() { return *imports_; }
+    GuardStore& guard() { return *guard_; }
     IdeaVectorStore& vectors() { return *vectors_; }
     SignalLogStore& signalLog() { return *signals_; }  // TS 的 store.signals(signals 是 Qt 的宏)
     FollowLogStore& follow() { return *follow_; }
@@ -133,6 +135,7 @@ private:
     std::unique_ptr<util::sqlite::Database> db_;
     bool ideasFts_ = false;
     std::unique_ptr<ImportedTradesStore> imports_;
+    std::unique_ptr<GuardStore> guard_;
     std::unique_ptr<IdeaVectorStore> vectors_;
     std::unique_ptr<SignalLogStore> signals_;
     std::unique_ptr<FollowLogStore> follow_;

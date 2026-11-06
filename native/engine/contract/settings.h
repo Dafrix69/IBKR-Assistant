@@ -96,4 +96,17 @@ struct FlyEntryAssistConfig {
     QString late_entry_et;
 };
 
+/// 交易纪律守护(guard):开仓前要有交易意图、股票仓位必须有止损。见 docs/features/guard.md。
+/// enabled 默认关:它会替没有止损的股票仓位在券商挂止损单,第一次打开之前先在纸面账户上看它跑一遍
+struct GuardConfig {
+    bool enabled = false;
+    double grace_s = 60;            // 发现没有意图的股票仓位后,等多久补录再挂默认止损
+    double max_loss_pct_nav = 2.0;  // 单笔最坏亏损占净值的上限
+    double wide_stop_pct = 8.0;     // 止损距离超过入场价的这个比例,数量先减半再比
+    double default_stop_pct = 8.0;  // 默认止损:入场价往不利方向让这么多
+    double default_low_days = 10;   // 默认止损:前几个交易日的最低价(空头取最高价)
+    double tick_s = 5;              // 盯仓位的节拍
+    QString inbox_path;             // 意图收件文件;空 = 交易库同目录下的 guard/intents.jsonl
+};
+
 }  // namespace ibkr::contract

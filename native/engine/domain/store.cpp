@@ -218,7 +218,7 @@ const char16_t* const kIdeasFts = uR"SQL(        BEGIN;
 
 const QSet<QString>& terminalStatuses() {
     static const QSet<QString> s{u"filled"_s, u"partially_filled"_s, u"cancelled"_s, u"expired_untriggered"_s, u"rejected_by_validator"_s,
-                                 u"rejected_by_llm"_s, u"ibkr_error"_s, u"halted_by_breaker"_s};
+                                 u"rejected_by_llm"_s, u"rejected_by_guard"_s, u"ibkr_error"_s, u"halted_by_breaker"_s};
     return s;
 }
 
@@ -398,6 +398,7 @@ TradeStore::TradeStore(QString path, bool safety) : dbPath(std::move(path)) {
         if (safety) guardOnOpen(*db_, dbPath, fresh);
         db_->exec(QString::fromUtf16(kStoreSchema));
         imports_ = std::make_unique<ImportedTradesStore>(*db_);
+        guard_ = std::make_unique<GuardStore>(*db_);
         vectors_ = std::make_unique<IdeaVectorStore>(*db_);
         signals_ = std::make_unique<SignalLogStore>(*db_);
         follow_ = std::make_unique<FollowLogStore>(*db_);

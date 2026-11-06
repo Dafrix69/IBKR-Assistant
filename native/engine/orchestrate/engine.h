@@ -185,6 +185,9 @@ public:
     Rec trackerLoop;
     /// 每轮结束的回调(RPC 层据此把触发 / 被拦推给界面)
     std::function<void(const Rec& poll, const Rec& hosted)> onTrackerTick;
+    /// 交易纪律守护(guard):程序真要发出去的股票开仓单放不放(只在发单那一步问,只解析不发送的不问;减已有持仓的单不问)。
+    /// 返回拒的原因;空 = 放行。RPC 层按 guard.enabled 注入
+    std::function<std::optional<QString>(const parsing::validator::ApprovedOrder&)> openGate;
     wake::WakeGuard wakeGuard;
     /// RPC 层注入的共享锁(跨引擎实例同一把;rpc::SerialLock::runVoid 即符合)。空 = 用引擎自己的队
     std::function<util::Task<>(std::function<util::Task<>()>)> sharedTrackerLock;

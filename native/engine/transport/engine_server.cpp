@@ -8,7 +8,10 @@
 #include "orchestrate/engine.h"
 #include "orchestrate/services/alerts_service.h"
 #include "orchestrate/services/anomaly_service.h"
+#include "analysis/guard_rules.h"
+#include "execution/account_feeds.h"
 #include "orchestrate/services/assignment_watch.h"
+#include "orchestrate/services/guard_service.h"
 #include "orchestrate/services/broker_link.h"
 #include "orchestrate/services/events.h"
 #include "orchestrate/services/fill_sync.h"
@@ -153,6 +156,7 @@ struct EngineServer::Impl {
     std::unique_ptr<orch::StockTripsService> stockTrips;
     std::unique_ptr<orch::FillSyncService> fillSync;
     std::unique_ptr<orch::AssignmentWatchService> assignmentWatch;
+    std::unique_ptr<orch::GuardService> guard;
     std::unique_ptr<orch::TradeHistoryService> tradeHistory;
     std::unique_ptr<orch::SimilarContextService> similarContext;
     std::unique_ptr<orch::IdeaSemanticService> ideaSemantic;
@@ -289,6 +293,12 @@ orch::TradingEngine& EngineServer::Impl::engine() {
             const OJson* blocked = js::prop(&poll, u"blocked"_s);
             if ((fired && !fired->items.isEmpty()) || (blocked && !blocked->items.isEmpty())) server.emitEvent(u"tracker"_s, poll);
         };
+        // 交易纪律守护:程序发的股票开仓单要有交易意图。开关每次现读配置
+        engineInstance->openGate = [this](const parsing::validator::ApprovedOrder& approved) -> std::optional<QString> {
+            if (!settings.guard.enabled || !engineInstance) return std::nullopt;
+            const QString symbol = analysis::guard::orderSymbol(approved.order);
+            return analysis::guard::gateOrder(engineInstance->store().guard().openStock(approved.account.alias, symbol), approved.order);
+        };
         // 连着券商就起节拍器:建追踪、调价都靠它,不靠界面驱动
         if (router) engineInstance->startTrackerLoop();
     }
@@ -391,6 +401,7 @@ void EngineServer::install() {
     i.stockTrips = std::make_unique<orch::StockTripsService>(h);
     i.fillSync = std::make_unique<orch::FillSyncService>(h);
     i.assignmentWatch = std::make_unique<orch::AssignmentWatchService>(h);
+    i.guard = std::make_unique<orch::GuardService>(h);
     i.tradeHistory = std::make_unique<orch::TradeHistoryService>(h, *i.market, *i.stockTrips);
     i.similarContext = std::make_unique<orch::SimilarContextService>(h, *i.market);
     i.ideaSemantic = std::make_unique<orch::IdeaSemanticService>(h);
@@ -456,6 +467,18 @@ void EngineServer::install() {
     wiring.addTrack = [trackerPtr](OJson params) { return trackerPtr->trackerAdd(std::move(params)); };
     wiring.marks = i.flyPlanner->marks.get();
     i.follow->attach(std::move(wiring));
+    // 交易纪律守护的默认止损同样走 tracker.add;净值先认人填的(risk_budget.equity_usd),再认券商报的
+    orch::GuardWiring guardWiring;
+    guardWiring.addTrack = [trackerPtr](OJson params) { return trackerPtr->trackerAdd(std::move(params)); };
+    guardWiring.navOf = [p = &i](const QString& alias) -> std::optional<double> {
+        const double manual = p->settings.risk_budget.equity_usd.value(alias, 0);
+        if (manual > 0) return manual;
+        const contract::AccountConfig* account = p->settings.accountByAlias(alias);
+        if (!account || !p->router) return std::nullopt;
+        const auto live = p->router->sessions();
+        return execution::accountNetLiquidation(execution::SessionList(live.begin(), live.end()), account->account_id);
+    };
+    i.guard->attach(std::move(guardWiring));
 
     std::vector<HandlerBase*> raw;
     for (auto& d : i.domains) raw.push_back(d.get());
@@ -492,6 +515,7 @@ void EngineServer::install() {
         p->follow->stop();
         p->fillSync->stop();
         p->assignmentWatch->stop();
+        p->guard->stop();
         p->flyPlanner->marks->close();
         p->brokerLink->stop();
     };
@@ -508,6 +532,8 @@ void EngineServer::startBackground() {
     i.fillSync->start();
     // 到期日空头腿的指派提醒同理,只在这里起:它要读真的持仓与现价
     i.assignmentWatch->start();
+    // 交易纪律守护同理:收意图、盯股票仓位;guard.enabled 关着时每一轮什么都不做
+    i.guard->start();
 }
 
 }  // namespace ibkr::rpc

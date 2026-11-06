@@ -86,6 +86,7 @@ public:
     contract::RiskBudgetConfig risk_budget;
     contract::FollowConfig follow;
     contract::FlyEntryAssistConfig fly_entry_assist;
+    contract::GuardConfig guard;
     std::vector<contract::AccountConfig> accounts;
     contract::OrderedMap<contract::ConnectionConfig> connections;
     contract::OrderedMap<QString> symbol_aliases;

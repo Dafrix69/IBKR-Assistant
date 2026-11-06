@@ -426,6 +426,40 @@ Task<EngineResult> TradingEngine::handleInstruction(QString instruction, QString
             continue;
         }
 
+        // 交易纪律守护:股票开仓单要有交易意图(docs/features/guard.md)。减已有持仓的照发;读不到持仓认不准,当开仓问
+        if (openGate && js::isStr(js::prop(js::prop(&approved.order, u"contract"_s), u"secType"_s)) &&
+            js::str(js::prop(js::prop(&approved.order, u"contract"_s), u"secType"_s)) == u"STK"_s) {
+            bool reducing = false;
+            if (router_) {
+                if (guardState == GuardRows::Unread) {
+                    try {
+                        guardRows = co_await router_->positions();
+                        guardState = GuardRows::Read;
+                    } catch (...) {
+                        guardState = GuardRows::Unreadable;
+                    }
+                }
+                reducing = guardState == GuardRows::Read && reducesPositions(approved.order, approved.account.alias, guardRows);
+            }
+            if (!reducing) {
+                if (const std::optional<QString> why = openGate(approved)) {
+                    storePort_->setFinalStatus(recordId, u"rejected_by_guard"_s, *why);
+                    storePort_->audit(u"guard"_s, u"guard_reject"_s,
+                                      js::object({{u"what"_s, js::S(u"order"_s)},
+                                                  {u"record"_s, js::S(recordId)},
+                                                  {u"account"_s, js::S(approved.account.alias)},
+                                                  {u"symbol"_s, js::S(js::strOr(js::prop(js::prop(&approved.order, u"contract"_s), u"symbol"_s), QString()))},
+                                                  {u"reason"_s, js::S(*why)}}));
+                    notifier_->rejection(u"GUARD_NO_INTENT"_s, *why);
+                    result.rejections << js::object({{u"source"_s, js::S(u"guard"_s)},
+                                                     {u"code"_s, js::S(u"GUARD_NO_INTENT"_s)},
+                                                     {u"message"_s, js::S(*why)},
+                                                     {u"record_id"_s, js::S(recordId)}});
+                    continue;
+                }
+            }
+        }
+
         // 保护规则:接连止损 / 回撤过大 / 同一标的刚平过仓。挡下的单停在"仅校验未发送",不落终态——保护期过了原样再发一次就行
         const QString symbol = js::strOr(js::prop(js::prop(&approved.order, u"contract"_s), u"symbol"_s), QString());
         std::optional<QString> guard = util::protectionBlock(protectionState(), symbol, util::dateNow(), approved.account.alias, orderLegId(approved.order));

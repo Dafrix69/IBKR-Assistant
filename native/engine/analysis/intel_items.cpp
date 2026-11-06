@@ -32,7 +32,7 @@ const OJson& signalTable() {
 const OJson& statusTable() {
     static OJson h;
     static const OJson& t = table({{"filled", u"已成交"}, {"partially_filled", u"部分成交"}, {"cancelled", u"已撤单"}, {"expired_untriggered", u"未触发过期"},
-                                   {"rejected_by_validator", u"校验拒绝"}, {"rejected_by_llm", u"模型拒绝"}, {"ibkr_error", u"券商报错"}, {"halted_by_breaker", u"熔断拦下"}},
+                                   {"rejected_by_validator", u"校验拒绝"}, {"rejected_by_llm", u"模型拒绝"}, {"rejected_by_guard", u"纪律拦下"}, {"ibkr_error", u"券商报错"}, {"halted_by_breaker", u"熔断拦下"}},
                                   h);
     return t;
 }

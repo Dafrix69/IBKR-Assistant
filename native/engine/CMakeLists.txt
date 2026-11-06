@@ -53,6 +53,7 @@ qt_add_library(ibkr_domain STATIC
     domain/risk_queries.h domain/risk_queries.cpp
     domain/log_stores.h domain/log_stores.cpp
     domain/imported_trades.h domain/imported_trades.cpp
+    domain/guard_store.h domain/guard_store.cpp
     domain/store.h domain/store.cpp
     domain/models.h domain/models.cpp
     domain/positions.h domain/positions.cpp

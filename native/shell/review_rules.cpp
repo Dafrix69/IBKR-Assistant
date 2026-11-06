@@ -32,7 +32,7 @@ QString money(const QJsonValue& v) { return track::fmtMoney(v); }
 const QHash<QString, QString>& finalStatusLabel() {
     static const QHash<QString, QString> m{{u"filled"_s, u"已成交"_s}, {u"partially_filled"_s, u"部分成交"_s}, {u"cancelled"_s, u"已撤单"_s},
                                            {u"expired_untriggered"_s, u"当日未触发"_s}, {u"rejected_by_validator"_s, u"校验拒绝"_s},
-                                           {u"rejected_by_llm"_s, u"模型拒绝"_s}, {u"ibkr_error"_s, u"券商报错"_s}, {u"halted_by_breaker"_s, u"熔断拦下"_s}};
+                                           {u"rejected_by_llm"_s, u"模型拒绝"_s}, {u"rejected_by_guard"_s, u"纪律拦下"_s}, {u"ibkr_error"_s, u"券商报错"_s}, {u"halted_by_breaker"_s, u"熔断拦下"_s}};
     return m;
 }
 QString reviewKind(const QJsonValue& kind) {

@@ -8,5 +8,6 @@ target_sources(ibkr_analysis PRIVATE
     analysis/idea_retrieval.h analysis/idea_retrieval.cpp
     analysis/open_risk.h analysis/open_risk.cpp
     analysis/assignment_risk.h analysis/assignment_risk.cpp
+    analysis/guard_rules.h analysis/guard_rules.cpp
     analysis/optionwall.h analysis/optionwall.cpp
     analysis/option_flow.h analysis/option_flow.cpp)
