@@ -340,10 +340,12 @@ Task<OJson> GuardService::watchPositions(double nowMs, QString today) {
         if (!present.contains(it.key())) it = watch_.erase(it);
         else ++it;
     }
-    // 意图对应的持仓出现过、现在没了:自动关掉
+    // 意图对应的持仓出现过、现在没了:自动关掉。那个账户的会话没连着时持仓里本来就没有它,不下结论
+    const std::optional<QStringList> covered = wiring_.coveredAccounts ? wiring_.coveredAccounts() : std::nullopt;
     for (const OJson& intent : store().guard().listOpen()) {
         if (js::str(intent.get(u"kind"_s)) != u"stock" || !js::truthy(intent.get(u"seen_position"_s))) continue;
         const QString alias = js::str(intent.get(u"account"_s));
+        if (covered && !covered->contains(alias)) continue;
         const QString symbol = js::str(intent.get(u"symbol"_s));
         if (heldStocks.contains(alias + u'|' + symbol)) continue;
         const double n = store().guard().close(alias, symbol, u"持仓已平"_s, u"stock"_s);

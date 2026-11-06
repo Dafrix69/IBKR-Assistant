@@ -478,6 +478,10 @@ void EngineServer::install() {
         const auto live = p->router->sessions();
         return execution::accountNetLiquidation(execution::SessionList(live.begin(), live.end()), account->account_id);
     };
+    guardWiring.coveredAccounts = [p = &i]() -> std::optional<QStringList> {
+        if (!p->router) return std::nullopt;
+        return p->router->coveredAccounts();
+    };
     i.guard->attach(std::move(guardWiring));
 
     std::vector<HandlerBase*> raw;

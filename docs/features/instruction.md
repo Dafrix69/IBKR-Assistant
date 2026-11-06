@@ -16,6 +16,7 @@
 7. 通过的订单:
    - 只解析(`instruction.submit` 带 `execute: false`,即「解析并校验」按钮,是试算不是闸门):停在「仅校验未发送」(`ValidatedOnly`),后台预先确认合约,点「发送」时组合腿不用再等券商往返;
    - 每笔发出前重查熔断,已合上的落终态 `halted_by_breaker`;
+   - 交易纪律守护打开时,真要发出去的股票开仓单没有对应的交易意图就拒(`GUARD_NO_INTENT`,终态 `rejected_by_guard`),只解析的与减仓单不问,见 [交易纪律守护](guard.md)。
    - 保护规则拦下的停在 `ValidatedOnly`,平仓单照发,见 [保护规则](protections.md)。
 8. 发单:先写一条 `submit_intent` 事件再调券商(见 [数据与配置的保险](durability.md))。
    - 条件单用 AUTO_MID 定价,或券商没有原生条件单(富途):进软件盯盘队列(`PendingTrigger`),软件关着就不会触发;

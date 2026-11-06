@@ -142,6 +142,7 @@ struct SvcRig {
     std::unique_ptr<orch::GuardService> svc;
     QList<OJson> added;
     std::optional<QString> addFails;
+    std::optional<QStringList> covered;
 
     explicit SvcRig(bool enabled = true) {
         host = std::make_unique<FakeHost>(settingsWith(dir.path(), js::object({{u"enabled"_s, js::B(enabled)}})));
@@ -153,6 +154,7 @@ struct SvcRig {
             co_return js::object({{u"track"_s, js::object()}});
         };
         w.navOf = [](const QString&) -> std::optional<double> { return 15000.0; };
+        w.coveredAccounts = [this] { return covered; };
         svc->attach(std::move(w));
     }
     FakePort& port() { return *host->port_; }
@@ -535,6 +537,22 @@ private slots:
         rig.port().failPositions = true;
         rig.tick(1000);
         QVERIFY(rig.store().guard().openStock(u"模拟"_s, u"BE"_s));  // 读不到持仓不当成平了
+    }
+    void uncoveredAccountIsNotTreatedAsFlat() {
+        SvcRig rig;
+        rig.store().guard().add(js::object({{u"kind"_s, js::S(u"stock"_s)}, {u"account"_s, js::S(u"模拟"_s)}, {u"symbol"_s, js::S(u"BE"_s)},
+                                            {u"side"_s, js::S(u"BUY"_s)}, {u"qty"_s, js::N(20)}}));
+        rig.port().rows = {stockRow(u"模拟"_s, u"BE"_s, 20, 195, 196)};
+        rig.tick(0);
+        // 纸面那条连接断了、实盘还连着:持仓里没有它,但不是平了
+        rig.covered = QStringList{u"主账户"_s};
+        rig.port().rows = {};
+        rig.tick(1000);
+        QVERIFY(rig.store().guard().openStock(u"模拟"_s, u"BE"_s));
+        // 连回来、确实没了:才关
+        rig.covered = QStringList{u"模拟"_s, u"主账户"_s};
+        rig.tick(2000);
+        QVERIFY(!rig.store().guard().openStock(u"模拟"_s, u"BE"_s));
     }
     void inboxIngest() {
         SvcRig rig;

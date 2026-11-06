@@ -6,7 +6,7 @@
 //   · 盯仓位:读持仓,每只股票仓位(多空都看)——有在用的意图就不管(止损由 Step 2 管);已经有带止损、打开了自动平仓的持仓追踪也不管;
 //     其余的第一次看见就记一笔违规、发通知,过了 grace_s 还没补录,就按默认规则算止损价、经 tracker.add 建一条托管到券商的追踪
 //     (券商侧的 GTC STP)。默认止损价已经在现价那一侧挂不上的,不平仓,只每五分钟提醒一次。
-//   · 意图对应的持仓出现过、后来没了:自动关掉那份意图(理由「持仓已平」)。
+//   · 意图对应的持仓出现过、后来没了:自动关掉那份意图(理由「持仓已平」)。那个账户的会话没连着时不下结论(持仓里没有它不等于平了)。
 //
 // guard.enabled 关着时一轮什么都不做(不读文件、不读持仓)。
 #pragma once
@@ -28,6 +28,8 @@ struct GuardWiring {
     std::function<util::Task<util::OJson>(util::OJson params)> addTrack;
     /// 账户别名 → 净值(美元);人在 risk_budget.equity_usd 里填了的优先,其余用券商报的
     std::function<std::optional<double>(const QString& alias)> navOf;
+    /// 哪些账户别名此刻有会话管着(持仓读得到);空函数或回空 = 认不出,当全都管着
+    std::function<std::optional<QStringList>()> coveredAccounts;
 };
 
 class GuardService : public SvcBase {
