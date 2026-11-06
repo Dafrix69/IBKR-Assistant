@@ -26,6 +26,8 @@ public:
     double close(const QString& account, const QString& symbol, const QString& reason, const QString& kind = {});
     /// 这份意图对应的持仓已经出现过(之后持仓没了就自动关掉)
     void markSeen(double id);
+    /// 意图里那一份 JSON 上改一个键(跟踪止损抬上去的底线 stop_now 等);回改没改成
+    bool setIntentField(double id, const QString& key, const util::OJson& value);
 
 private:
     void ensure();

@@ -105,7 +105,8 @@ struct GuardConfig {
     double wide_stop_pct = 8.0;     // 止损距离超过入场价的这个比例,数量先减半再比
     double default_stop_pct = 8.0;  // 默认止损:入场价往不利方向让这么多
     double default_low_days = 10;   // 默认止损:前几个交易日的最低价(空头取最高价)
-    double tick_s = 5;              // 盯仓位的节拍
+    double tick_s = 2;              // 盯仓位的节拍(成交后几秒内要挂上止损,所以短)
+    bool trail_r = false;           // 跟踪止损:盈利过 1R 抬到成本价,过 2R 抬到成本 + 1R
     QString inbox_path;             // 意图收件文件;空 = 交易库同目录下的 guard/intents.jsonl
 };
 

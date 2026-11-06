@@ -95,4 +95,14 @@ void GuardStore::markSeen(double id) {
     db_.prepare(u"UPDATE guard_intents SET seen_position=1, updated_at=? WHERE id=? AND seen_position=0"_s).run({util::nowIsoSeconds(), id});
 }
 
+bool GuardStore::setIntentField(double id, const QString& key, const OJson& value) {
+    ensure();
+    const auto row = db_.prepare(u"SELECT intent FROM guard_intents WHERE id=?"_s).get({id});
+    if (!row) return false;
+    auto parsed = js::parse(js::str(row->get(u"intent"_s)));
+    OJson intent = parsed && js::isObj(&*parsed) ? *parsed : js::object();
+    intent.set(key, value);
+    return db_.prepare(u"UPDATE guard_intents SET intent=?, updated_at=? WHERE id=?"_s).run({js::stringify(intent), util::nowIsoSeconds(), id}).changes > 0;
+}
+
 }  // namespace ibkr::domain

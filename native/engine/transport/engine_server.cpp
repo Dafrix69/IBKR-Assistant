@@ -299,6 +299,10 @@ orch::TradingEngine& EngineServer::Impl::engine() {
             const QString symbol = analysis::guard::orderSymbol(approved.order);
             return analysis::guard::gateOrder(engineInstance->store().guard().openStock(approved.account.alias, symbol), approved.order);
         };
+        // 托管止损单被别人撤了:交易纪律守护记违规(重挂是托管对账自己的事)
+        engineInstance->hostedOrders().onExternalCancel = [this](const OJson& track, const QString& kind, const QString& reason) {
+            if (guard) guard->onExternalCancel(track, kind, reason);
+        };
         // 连着券商就起节拍器:建追踪、调价都靠它,不靠界面驱动
         if (router) engineInstance->startTrackerLoop();
     }
@@ -478,6 +482,7 @@ void EngineServer::install() {
         const auto live = p->router->sessions();
         return execution::accountNetLiquidation(execution::SessionList(live.begin(), live.end()), account->account_id);
     };
+    guardWiring.updateTrack = [trackerPtr](OJson params) { return trackerPtr->trackerUpdateDirect(std::move(params)); };
     guardWiring.coveredAccounts = [p = &i]() -> std::optional<QStringList> {
         if (!p->router) return std::nullopt;
         return p->router->coveredAccounts();

@@ -314,6 +314,13 @@ util::Task<Rec> HostedOrders::syncHosted(std::optional<QList<Rec>> rows) {
                 hostedRetryAt_[retryKey].warn = false;
                 retry->warn = false;
                 host_.notifier().warning(js::str(js::prop(&track, u"symbol"_s)) + u" 的"_s + label + u":"_s + retry->reason + u"。60 秒后再挂,期间这一项没有券商侧的单"_s);
+                if (onExternalCancel) {
+                    try {
+                        onExternalCancel(track, kind, retry->reason);
+                    } catch (...) {
+                        /* 回调出错不影响对账 */
+                    }
+                }
             }
             if (!cur && retry) {
                 if (retry->at > nowMs()) {

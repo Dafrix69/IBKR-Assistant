@@ -710,7 +710,7 @@ contract::FlyEntryAssistConfig buildFlyEntryAssist(V raw) {
 contract::GuardConfig buildGuard(V raw) {
     const QString label = u"guard"_s;
     rejectUnknown({u"enabled"_s, u"grace_s"_s, u"max_loss_pct_nav"_s, u"wide_stop_pct"_s, u"default_stop_pct"_s, u"default_low_days"_s, u"tick_s"_s,
-                   u"inbox_path"_s},
+                   u"inbox_path"_s, u"trail_r"_s},
                   raw, label);
     contract::GuardConfig c;
     c.enabled = flag(raw, u"enabled"_s, false, label);
@@ -720,7 +720,8 @@ contract::GuardConfig buildGuard(V raw) {
     c.default_stop_pct = numReq(raw, u"default_stop_pct"_s, false, 8.0, label, {0.1, u"0.1"_s, 50.0, u"50"_s});
     c.default_low_days = numReq(raw, u"default_low_days"_s, false, 10.0, label, {1.0, u"1"_s, 60.0, u"60"_s});
     if (c.default_low_days != std::floor(c.default_low_days)) throw JsError(u"guard.default_low_days 必须是整数,收到 %1"_s.arg(util::pyFloat(c.default_low_days)));
-    c.tick_s = numReq(raw, u"tick_s"_s, false, 5.0, label, {1.0, u"1"_s, 60.0, u"60"_s});
+    c.tick_s = numReq(raw, u"tick_s"_s, false, 2.0, label, {1.0, u"1"_s, 60.0, u"60"_s});
+    c.trail_r = flag(raw, u"trail_r"_s, false, label);
     if (c.tick_s > c.grace_s) throw JsError(u"guard.tick_s 不能大于 grace_s(收到 %1 与 %2)"_s.arg(util::pyFloat(c.tick_s), util::pyFloat(c.grace_s)));
     const V inbox = get(raw, u"inbox_path"_s);
     if (!inbox.nullish()) {

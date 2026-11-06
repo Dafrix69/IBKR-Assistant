@@ -4,6 +4,7 @@
 
 #include "analysis/guard_rules.h"
 #include "domain/config.h"
+#include "domain/positions.h"
 #include "orchestrate/engine.h"
 #include "orchestrate/services/guard_service.h"
 #include "util/error.h"
@@ -54,6 +55,39 @@ OJson stockRow(const QString& alias, const QString& symbol, double qty, double a
                        {u"avg_cost"_s, js::N(avg)},
                        {u"market_price"_s, js::N(price)},
                        {u"contract"_s, js::object({{u"secType"_s, js::S(u"STK"_s)}, {u"symbol"_s, js::S(symbol)}})}});
+}
+
+QString util_strike(double k) { return QString::number(k); }
+
+OJson optRow(const QString& alias, const QString& symbol, const QString& expiry, double strike, const QString& right, double qty, double avg) {
+    const QString k = util_strike(strike);
+    return js::object({{u"key"_s, js::S(alias + u'|' + symbol + u"|OPT|"_s + expiry + u'|' + k + u'|' + right)},
+                       {u"account"_s, js::S(alias)},
+                       {u"symbol"_s, js::S(symbol)},
+                       {u"sec_type"_s, js::S(u"OPT"_s)},
+                       {u"leg"_s, js::S(expiry + u'|' + k + u'|' + right)},
+                       {u"quantity"_s, js::N(qty)},
+                       {u"multiplier"_s, js::N(100)},
+                       {u"avg_cost"_s, js::N(avg)},
+                       {u"market_price"_s, js::N(avg / 100)},
+                       {u"contract"_s, js::object({{u"secType"_s, js::S(u"OPT"_s)}, {u"symbol"_s, js::S(symbol)}, {u"lastTradeDateOrContractMonth"_s, js::S(expiry)},
+                                                   {u"strike"_s, js::N(strike)}, {u"right"_s, js::S(right)}, {u"multiplier"_s, js::S(u"100"_s)}})}});
+}
+
+OJson stockIntent(const QString& symbol, const QString& side, double stop, double entry = 195) {
+    return js::object({{u"kind"_s, js::S(u"stock"_s)}, {u"account"_s, js::S(u"模拟"_s)}, {u"symbol"_s, js::S(symbol)}, {u"side"_s, js::S(side)},
+                       {u"qty"_s, js::N(20)}, {u"entry_price"_s, js::N(entry)}, {u"stop_price"_s, js::N(stop)}, {u"stop_reason"_s, js::S(u"13周低点"_s)}});
+}
+
+OJson flyIntent(const QString& structure, double cost = 157) {
+    const auto v = gr::checkOptionIntent(js::object({{u"symbol"_s, js::S(u"QQQ"_s)}, {u"structure"_s, js::S(structure)}, {u"expiry"_s, js::S(u"2026-11-09"_s)},
+                                                     {u"cost_usd"_s, js::N(cost)},
+                                                     {u"exit_rules"_s, js::object({{u"take_profit"_s, js::S(u"中间价 >= 成本 × 2.5"_s)},
+                                                                                   {u"stop_loss"_s, js::S(u"中间价 <= 成本 × 0.4"_s)},
+                                                                                   {u"time_stop"_s, js::S(u"到期日 15:00 ET"_s)}})}}),
+                                         u"模拟"_s);
+    if (!v.ok) qFatal("flyIntent: %s", qPrintable(v.error));
+    return v.intent;
 }
 
 OJson bar(const QString& date, double low, double high) {
@@ -141,16 +175,53 @@ struct SvcRig {
     std::unique_ptr<FakeHost> host;
     std::unique_ptr<orch::GuardService> svc;
     QList<OJson> added;
+    QList<OJson> updated;
     std::optional<QString> addFails;
     std::optional<QStringList> covered;
 
-    explicit SvcRig(bool enabled = true) {
-        host = std::make_unique<FakeHost>(settingsWith(dir.path(), js::object({{u"enabled"_s, js::B(enabled)}})));
+    explicit SvcRig(bool enabled = true, bool trail = false) {
+        host = std::make_unique<FakeHost>(settingsWith(dir.path(), js::object({{u"enabled"_s, js::B(enabled)}, {u"trail_r"_s, js::B(trail)}})));
         svc = std::make_unique<orch::GuardService>(*host);
         orch::GuardWiring w;
         w.addTrack = [this](OJson params) -> Task<OJson> {
             if (addFails) throw ibkr::util::JsError(*addFails);
             added << params;
+            // 同 tracker.add:按 key 在持仓(含组合行)里找那一行,落一条追踪
+            const QString key = js::str(params.get(u"key"_s));
+            for (const OJson& r : ibkr::domain::withCombos(port().rows)) {
+                if (js::str(r.get(u"key"_s)) != key) continue;
+                OJson targets = js::object();
+                for (const QString& k : {u"take_profit"_s, u"stop_loss"_s, u"spot_stop_below"_s, u"spot_stop_above"_s, u"exit_at"_s})
+                    if (const OJson* v = params.get(k)) targets.set(k, *v);
+                const bool host = js::truthy(params.get(u"host_at_broker"_s));
+                store().addTrack(js::object({{u"account"_s, *r.get(u"account"_s)}, {u"symbol"_s, *r.get(u"symbol"_s)}, {u"sec_type"_s, *r.get(u"sec_type"_s)},
+                                             {u"leg"_s, r.get(u"leg"_s) ? *r.get(u"leg"_s) : js::S(QString())}, {u"targets"_s, targets},
+                                             {u"auto_close"_s, js::object({{u"enabled"_s, js::B(host || js::truthy(params.get(u"auto_close"_s)))}, {u"host_at_broker"_s, js::B(host)}})}}));
+            }
+            co_return js::object({{u"track"_s, js::object()}});
+        };
+        // 同 tracker.update:给了目标就整套换成给的;auto_close 合并
+        w.updateTrack = [this](OJson params) -> Task<OJson> {
+            updated << params;
+            const QString id = js::str(params.get(u"id"_s));
+            const auto t = store().getTrack(id);
+            if (!t) throw ibkr::util::JsError(u"没有这个追踪"_s);
+            OJson fields = js::object();
+            OJson targets = js::object();
+            bool given = false;
+            for (const QString& k : {u"take_profit"_s, u"stop_loss"_s, u"trail_pct"_s, u"spot_stop_below"_s, u"spot_stop_above"_s, u"exit_at"_s, u"take_profit_tiers"_s})
+                if (const OJson* v = params.get(k)) {
+                    targets.set(k, *v);
+                    given = true;
+                }
+            if (given) fields.set(u"targets"_s, targets);
+            if (const OJson* a = params.get(u"auto_close"_s)) {
+                OJson merged = *t->get(u"auto_close"_s);
+                for (const auto& [k, v] : a->fields) merged.set(k, v);
+                fields.set(u"auto_close"_s, merged);
+            }
+            if (const OJson* e = params.get(u"enabled"_s)) fields.set(u"enabled"_s, *e);
+            store().updateTrack(id, fields);
             co_return js::object({{u"track"_s, js::object()}});
         };
         w.navOf = [](const QString&) -> std::optional<double> { return 15000.0; };
@@ -505,19 +576,188 @@ private slots:
         rig.store().addTrack(js::object({{u"account"_s, js::S(u"模拟"_s)}, {u"symbol"_s, js::S(u"GLD"_s)}, {u"sec_type"_s, js::S(u"STK"_s)},
                                          {u"targets"_s, js::object({{u"stop_loss"_s, js::N(380)}})},
                                          {u"auto_close"_s, js::object({{u"enabled"_s, js::B(true)}})}}));
-        rig.store().guard().add(js::object({{u"kind"_s, js::S(u"stock"_s)}, {u"account"_s, js::S(u"模拟"_s)}, {u"symbol"_s, js::S(u"BE"_s)},
-                                            {u"side"_s, js::S(u"BUY"_s)}, {u"qty"_s, js::N(20)}}));
+        rig.store().guard().add(stockIntent(u"BE"_s, u"BUY"_s, 186));
         rig.port().rows = {stockRow(u"模拟"_s, u"GLD"_s, 5, 390, 395), stockRow(u"模拟"_s, u"BE"_s, 20, 195, 196)};
         const OJson t0 = rig.tick(0);
         QCOMPARE(js::num(js::path(&t0, {u"positions"_s, u"warned"_s})), 0.0);
         rig.tick(120000);
-        QVERIFY(rig.added.isEmpty());
-        QVERIFY(rig.host->engine_.notifier_.titles.isEmpty());
+        // GLD 已有追踪管着:不动;BE 有意图:按意图挂了一次,没有违规
+        QCOMPARE(rig.added.size(), 1);
+        QCOMPARE(js::str(rig.added[0].get(u"key"_s)), u"模拟|BE|STK"_s);
+        QVERIFY(!rig.auditActions().contains(u"guard_violation"_s));
         // 意图对应的持仓平掉了:意图自动关掉
         rig.port().rows = {stockRow(u"模拟"_s, u"GLD"_s, 5, 390, 395)};
         const OJson t2 = rig.tick(130000);
         QCOMPARE(js::num(js::path(&t2, {u"positions"_s, u"auto_closed"_s})), 1.0);
         QVERIFY(!rig.store().guard().openStock(u"模拟"_s, u"BE"_s));
+    }
+    // ================================================================ Step 2:按意图挂止损、守住止损
+    void intentPositionGetsStopOnFirstTick() {
+        SvcRig rig;
+        rig.store().guard().add(stockIntent(u"BE"_s, u"BUY"_s, 186));
+        rig.port().rows = {stockRow(u"模拟"_s, u"BE"_s, 20, 195.2, 196)};
+        const OJson t0 = rig.tick(0);
+        QCOMPARE(js::num(js::path(&t0, {u"positions"_s, u"placed"_s})), 1.0);
+        QCOMPARE(rig.added.size(), 1);
+        QCOMPARE(js::num(rig.added[0].get(u"stop_loss"_s)), 186.0);
+        QVERIFY(js::truthy(rig.added[0].get(u"host_at_broker"_s)));
+        QVERIFY(rig.auditActions().contains(u"guard_stop_placed"_s));
+        // 追踪在了、止损对得上:之后每一轮什么都不做
+        rig.tick(2000);
+        rig.tick(4000);
+        QCOMPARE(rig.added.size(), 1);
+        QVERIFY(rig.updated.isEmpty());
+    }
+    void loosenedOrDisabledStopIsRestored() {
+        SvcRig rig;
+        rig.store().guard().add(stockIntent(u"BE"_s, u"BUY"_s, 186));
+        const OJson t = rig.store().addTrack(js::object({{u"account"_s, js::S(u"模拟"_s)}, {u"symbol"_s, js::S(u"BE"_s)}, {u"sec_type"_s, js::S(u"STK"_s)},
+                                                         {u"targets"_s, js::object({{u"stop_loss"_s, js::N(180)}, {u"take_profit"_s, js::N(230)}})},
+                                                         {u"auto_close"_s, js::object({{u"enabled"_s, js::B(true)}, {u"host_at_broker"_s, js::B(true)}})}}));
+        rig.port().rows = {stockRow(u"模拟"_s, u"BE"_s, 20, 195, 196)};
+        const OJson t0 = rig.tick(0);
+        QCOMPARE(js::num(js::path(&t0, {u"positions"_s, u"restored"_s})), 1.0);
+        QCOMPARE(rig.updated.size(), 1);
+        const OJson& u = rig.updated[0];
+        QCOMPARE(js::num(u.get(u"stop_loss"_s)), 186.0);
+        QCOMPARE(js::num(u.get(u"take_profit"_s)), 230.0);  // 其余目标原样带回去
+        QVERIFY(rig.auditActions().contains(u"guard_violation"_s));
+        // 有人在追踪页把它停掉:再恢复一次
+        rig.store().updateTrack(js::str(t.get(u"id"_s)), js::object({{u"enabled"_s, js::B(false)}}));
+        rig.tick(2000);
+        QCOMPARE(rig.updated.size(), 2);
+        QVERIFY(js::truthy(rig.updated[1].get(u"enabled"_s)));
+        QVERIFY(js::truthy(rig.store().getTrack(js::str(t.get(u"id"_s)))->get(u"enabled"_s)));
+    }
+    void tighterStopIsLeftAlone() {
+        SvcRig rig;
+        rig.store().guard().add(stockIntent(u"BE"_s, u"BUY"_s, 186));
+        rig.store().addTrack(js::object({{u"account"_s, js::S(u"模拟"_s)}, {u"symbol"_s, js::S(u"BE"_s)}, {u"sec_type"_s, js::S(u"STK"_s)},
+                                         {u"targets"_s, js::object({{u"stop_loss"_s, js::N(190)}})},
+                                         {u"auto_close"_s, js::object({{u"enabled"_s, js::B(true)}, {u"host_at_broker"_s, js::B(true)}})}}));
+        rig.port().rows = {stockRow(u"模拟"_s, u"BE"_s, 20, 195, 196)};
+        rig.tick(0);
+        QVERIFY(rig.added.isEmpty());
+        QVERIFY(rig.updated.isEmpty());
+    }
+    void shortIntentStopAbove() {
+        SvcRig rig;
+        rig.store().guard().add(stockIntent(u"XYZ"_s, u"SELL"_s, 54, 50));
+        rig.port().rows = {stockRow(u"模拟"_s, u"XYZ"_s, -20, 50, 49)};
+        rig.tick(0);
+        QCOMPARE(rig.added.size(), 1);
+        QCOMPARE(js::num(rig.added[0].get(u"stop_loss"_s)), 54.0);
+    }
+    void trailingRaisesOnlyUp() {
+        SvcRig rig(true, true);
+        rig.store().guard().add(stockIntent(u"BE"_s, u"BUY"_s, 186));
+        rig.port().rows = {stockRow(u"模拟"_s, u"BE"_s, 20, 195, 196)};
+        rig.tick(0);
+        QCOMPARE(js::num(rig.added[0].get(u"stop_loss"_s)), 186.0);
+        // R = 9。过 1R(204):抬到成本 195
+        rig.port().rows = {stockRow(u"模拟"_s, u"BE"_s, 20, 195, 205)};
+        const OJson t1 = rig.tick(2000);
+        QCOMPARE(js::num(js::path(&t1, {u"positions"_s, u"raised"_s})), 1.0);
+        QCOMPARE(rig.updated.size(), 1);
+        QCOMPARE(js::num(rig.updated[0].get(u"stop_loss"_s)), 195.0);
+        QVERIFY(rig.auditActions().contains(u"guard_stop_raised"_s));
+        QVERIFY(!rig.auditActions().contains(u"guard_violation"_s));  // 跟踪上抬不是违规
+        // 回落:不降
+        rig.port().rows = {stockRow(u"模拟"_s, u"BE"_s, 20, 195, 199)};
+        rig.tick(4000);
+        QCOMPARE(rig.updated.size(), 1);
+        // 过 2R(213):抬到 204
+        rig.port().rows = {stockRow(u"模拟"_s, u"BE"_s, 20, 195, 214)};
+        rig.tick(6000);
+        QCOMPARE(rig.updated.size(), 2);
+        QCOMPARE(js::num(rig.updated[1].get(u"stop_loss"_s)), 204.0);
+    }
+    void stockFloorRule() {
+        QCOMPARE(gr::stockFloor(true, 195, 186, 196, true, std::nullopt), 186.0);
+        QCOMPARE(gr::stockFloor(true, 195, 186, 204, true, std::nullopt), 195.0);
+        QCOMPARE(gr::stockFloor(true, 195, 186, 213, true, std::nullopt), 204.0);
+        QCOMPARE(gr::stockFloor(true, 195, 186, 190, true, 204.0), 204.0);  // 只升不降
+        QCOMPARE(gr::stockFloor(true, 195, 186, 213, false, std::nullopt), 186.0);  // 没开跟踪
+        QCOMPARE(gr::stockFloor(false, 50, 54, 46, true, std::nullopt), 50.0);  // 空头过 1R
+        QCOMPARE(gr::stockFloor(false, 50, 54, 42, true, std::nullopt), 46.0);  // 空头过 2R
+    }
+    void externalCancelIsAViolation() {
+        SvcRig rig;
+        const OJson stk = js::object({{u"account"_s, js::S(u"模拟"_s)}, {u"symbol"_s, js::S(u"BE"_s)}, {u"sec_type"_s, js::S(u"STK"_s)}});
+        rig.svc->onExternalCancel(stk, u"sl"_s, u"券商侧撤掉了这张托管单"_s);
+        QVERIFY(rig.auditActions().contains(u"guard_violation"_s));
+        QCOMPARE(rig.host->engine_.notifier_.titles.value(0), u"止损单被撤"_s);
+        // 止盈单被撤、组合的单被撤:不算
+        SvcRig other;
+        other.svc->onExternalCancel(stk, u"tp"_s, u"x"_s);
+        OJson bag = stk;
+        bag.set(u"sec_type"_s, js::S(u"BAG"_s));
+        other.svc->onExternalCancel(bag, u"sl"_s, u"x"_s);
+        QVERIFY(other.auditActions().isEmpty());
+    }
+    void exitRulesParse() {
+        const auto a = gr::parseExitRules(js::object({{u"take_profit"_s, js::S(u"中间价 >= 成本 × 2.5"_s)}, {u"stop_loss"_s, js::S(u"中间价 <= 成本 x 0.4"_s)},
+                                                      {u"time_stop"_s, js::S(u"到期日 9:45 ET"_s)}, {u"level_stop"_s, js::S(u"标的收盘 < 647"_s)}}));
+        QVERIFY2(a.error.isEmpty(), qPrintable(a.error));
+        QCOMPARE(*a.take_profit_x, 2.5);
+        QCOMPARE(*a.stop_loss_x, 0.4);
+        QCOMPARE(a.time_stop_et, u"09:45"_s);
+        QCOMPARE(*a.level_below, 647.0);
+        const auto b = gr::parseExitRules(js::object({{u"take_profit_x"_s, js::N(3)}, {u"stop_loss_x"_s, js::N(0.5)}, {u"time_stop_et"_s, js::S(u"15:00"_s)},
+                                                      {u"level_stop_above"_s, js::N(700)}}));
+        QVERIFY(b.error.isEmpty());
+        QCOMPARE(*b.level_above, 700.0);
+        QVERIFY(!gr::parseExitRules(js::object({{u"take_profit"_s, js::S(u"翻倍"_s)}, {u"stop_loss"_s, js::S(u"× 0.4"_s)}, {u"time_stop"_s, js::S(u"15:00"_s)}})).error.isEmpty());
+        QVERIFY(!gr::parseExitRules(js::object({{u"take_profit_x"_s, js::N(2)}, {u"stop_loss_x"_s, js::N(1.2)}, {u"time_stop_et"_s, js::S(u"15:00"_s)}})).error.isEmpty());
+        const auto s = gr::parseStructure(u"QQQ 660/670/680 call fly"_s);
+        QCOMPARE(s.strikes, (QList<double>{660, 670, 680}));
+        QCOMPARE(s.right, u"C"_s);
+        QCOMPARE(gr::parseStructure(u"SPX 7700/7725 put spread"_s).right, u"P"_s);
+        // 贷方:拒
+        QVERIFY(!gr::checkOptionIntent(js::object({{u"symbol"_s, js::S(u"SPX"_s)}, {u"structure"_s, js::S(u"7700/7725 put spread"_s)}, {u"expiry"_s, js::S(u"2026-11-09"_s)},
+                                                   {u"cost_usd"_s, js::N(-120)}, {u"exit_rules"_s, js::object()}}),
+                                       u"模拟"_s)
+                     .ok);
+    }
+    void comboIntentTracksExits() {
+        SvcRig rig;
+        rig.store().guard().add(flyIntent(u"QQQ 660/670/680 call fly"_s));
+        rig.port().rows = {optRow(u"模拟"_s, u"QQQ"_s, u"20261109"_s, 660, u"C"_s, 1, 1010), optRow(u"模拟"_s, u"QQQ"_s, u"20261109"_s, 670, u"C"_s, -2, 568),
+                           optRow(u"模拟"_s, u"QQQ"_s, u"20261109"_s, 680, u"C"_s, 1, 281)};
+        const OJson t0 = rig.tick(0, u"2026-11-06"_s);
+        QCOMPARE(js::num(js::path(&t0, {u"positions"_s, u"combo_tracked"_s})), 1.0);
+        QCOMPARE(rig.added.size(), 1);
+        const OJson& p = rig.added[0];
+        QVERIFY(js::str(p.get(u"key"_s)).contains(u"BAG"_s));
+        QCOMPARE(js::num(p.get(u"take_profit"_s)), 3.93);  // 1.57 × 2.5
+        QCOMPARE(js::num(p.get(u"stop_loss"_s)), 0.63);    // 1.57 × 0.4
+        QVERIFY(!p.get(u"exit_at"_s));                     // 不是到期日:不写几点平
+        QVERIFY(!js::truthy(p.get(u"host_at_broker"_s)));
+        // 到期日当天:补上 15:00 平
+        rig.tick(2000, u"2026-11-09"_s);
+        QCOMPARE(rig.updated.size(), 1);
+        QCOMPARE(js::str(rig.updated[0].get(u"exit_at"_s)), u"15:00"_s);
+        QCOMPARE(js::num(rig.updated[0].get(u"take_profit"_s)), 3.93);
+        rig.tick(4000, u"2026-11-09"_s);
+        QCOMPARE(rig.updated.size(), 1);
+        // 平掉了:意图自动关
+        rig.port().rows = {};
+        rig.tick(6000, u"2026-11-09"_s);
+        QVERIFY(rig.store().guard().listOpen().isEmpty());
+    }
+    void interleavedFliesAreUnmatched() {
+        SvcRig rig;
+        rig.store().guard().add(flyIntent(u"QQQ 660/670/680 call fly"_s));
+        const QString e = u"20261109"_s;
+        rig.port().rows = {optRow(u"模拟"_s, u"QQQ"_s, e, 660, u"C"_s, 1, 1010), optRow(u"模拟"_s, u"QQQ"_s, e, 664, u"C"_s, 1, 868),
+                           optRow(u"模拟"_s, u"QQQ"_s, e, 670, u"C"_s, -2, 568),  optRow(u"模拟"_s, u"QQQ"_s, e, 674, u"C"_s, -2, 461),
+                           optRow(u"模拟"_s, u"QQQ"_s, e, 680, u"C"_s, 1, 281),   optRow(u"模拟"_s, u"QQQ"_s, e, 684, u"C"_s, 1, 213)};
+        const OJson t0 = rig.tick(0);
+        QCOMPARE(js::num(js::path(&t0, {u"positions"_s, u"combo_unmatched"_s})), 1.0);
+        rig.tick(2000);
+        QCOMPARE(rig.host->engine_.notifier_.titles.count(u"认不出这只组合"_s), 1);  // 只说一次
+        QVERIFY(rig.added.isEmpty());
+        QCOMPARE(rig.store().guard().listOpen().size(), 1);  // 没出现过,不当成平了
     }
     void intentDirectionMustMatch() {
         SvcRig rig;
@@ -561,7 +801,7 @@ private slots:
             u"{\"symbol\":\"BE\",\"side\":\"BUY\",\"qty\":20,\"entry_price\":195,\"stop_price\":186,\"stop_reason\":\"13周低点\",\"thesis\":\"t\",\"invalidation\":\"i\"}"_s,
             u"{\"symbol\":\"BE\",\"side\":\"BUY\",\"qty\":40,\"entry_price\":195,\"stop_price\":186,\"stop_reason\":\"13周低点\"}"_s,
             u"{\"account\":\"主账户\",\"symbol\":\"QQQ\",\"structure\":\"QQQ 660/670/680 call fly\",\"expiry\":\"2026-11-09\",\"cost_usd\":157,"
-            "\"exit_rules\":{\"take_profit\":\"a\",\"stop_loss\":\"b\",\"time_stop\":\"c\"}}"_s,
+            "\"exit_rules\":{\"take_profit\":\"中间价 >= 成本 × 2.5\",\"stop_loss\":\"中间价 <= 成本 × 0.4\",\"time_stop\":\"到期日 15:00 ET\"}}"_s,
             u"不是 JSON"_s,
             u"{\"symbol\":\"X\",\"side\":\"BUY\",\"qty\":1,\"entry_price\":10,\"stop_price\":9,\"stop_reason\":\"r\",\"account\":\"不存在\"}"_s,
             u"{\"close\":\"QQQ\",\"account\":\"主账户\"}"_s,

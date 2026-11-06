@@ -24,8 +24,34 @@ struct IntentVerdict {
 /// 超过 max_loss_pct_nav 就拒,并给出这个止损下最多能买多少股
 IntentVerdict checkStockIntent(const util::OJson& line, const QString& account, double nav, const contract::GuardConfig& cfg);
 
-/// 期权组合意图:只录、不拦。结构、到期日、成本、出场规则(止盈、止损、时间止损必填,标的止损可选)
+/// 期权组合意图:不拦开仓,出场交给持仓追踪。结构(从里面认出行权价与看涨 / 看跌,或另给 strikes / right)、到期日、成本(借方,> 0)、
+/// 出场规则:止盈倍数、止损倍数、到期日几点平(必填),标的止损线(可选)。规则可以写数(take_profit_x 2.5),也可以写一句话
+/// (「中间价 >= 成本 × 2.5」「到期日 15:00 ET」「标的收盘 < 647」),认不出就拒
 IntentVerdict checkOptionIntent(const util::OJson& line, const QString& account);
+
+/// 出场规则认出来的数
+struct ExitRules {
+    std::optional<double> take_profit_x, stop_loss_x, level_below, level_above;
+    QString time_stop_et;  // "HH:MM",空 = 没有
+    QString error;         // 非空 = 认不出
+};
+ExitRules parseExitRules(const util::OJson& rules);
+
+/// 从结构那一句里认行权价(「660/670/680」)与方向(call / put / C / P / 看涨 / 看跌);认不出 strikes 为空
+struct Structure {
+    QList<double> strikes;
+    QString right;  // "C" / "P" / 空
+};
+Structure parseStructure(const QString& text);
+
+/// 持仓里的一行组合(withCombos 的 BAG 行)是不是这份期权意图说的那一只:同账户、同标的、同到期日、行权价集合相同(方向给了就也要相同)
+bool comboMatches(const util::OJson& comboRow, const util::OJson& intent);
+
+/// 股票的止损底线:意图的止损价,打开跟踪时按 R 往有利方向抬(1R → 成本价,2R → 成本 + 1R),只升不降。
+/// prevFloor = 上一次的底线(没有就是意图止损价)。多头"抬"是往上,空头是往下
+double stockFloor(bool isLong, double cost, double intentStop, double price, bool trail, std::optional<double> prevFloor);
+/// a 是不是不比 b 松(多头:a ≥ b;空头:a ≤ b)
+inline bool atLeastAsTight(bool isLong, double a, double b) { return isLong ? a >= b - 1e-9 : a <= b + 1e-9; }
 
 /// 默认止损(手动开仓没补录意图时用,只是兜底)。
 /// 多头:入场价 × (1 − pct) 与前几日最低价取较高者(更近的那条);空头:入场价 × (1 + pct) 与前几日最高价取较低者。

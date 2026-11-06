@@ -26,6 +26,8 @@ public:
 
     /// services/follow 的 attach({addTrack}) 直接调它(跟单建追踪走同一个 handler,不过 schema)
     util::Task<util::OJson> trackerAdd(util::OJson params);
+    /// 交易纪律守护直接调它(恢复被改松的止损、到期日补上几点平;不过 schema):params 当 raw 用,给了的键才算改
+    util::Task<util::OJson> trackerUpdateDirect(util::OJson params) { return trackerUpdate(params, params); }
 
 private:
     using OJson = util::OJson;
