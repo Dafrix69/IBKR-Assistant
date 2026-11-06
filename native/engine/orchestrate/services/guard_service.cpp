@@ -180,6 +180,10 @@ void GuardService::enqueuePush(const QString& title, const QString& body) {
     if (!cfg.enabled || !wiring_.push || !guard_push::configured(cfg.push)) return;
     // 同一件事 10 分钟内只推一次(五分钟一次的提醒不该变成每小时 12 次震动)
     const QString key = title + u'\n' + body;
+    for (auto it = pushSeen_.begin(); it != pushSeen_.end();) {
+        if (now_ - it.value() >= kPushDedupMs) it = pushSeen_.erase(it);
+        else ++it;
+    }
     if (const auto it = pushSeen_.constFind(key); it != pushSeen_.cend() && now_ - *it < kPushDedupMs) return;
     pushSeen_.insert(key, now_);
     if (pushQueue_.size() >= kPushQueueCap) pushQueue_.removeFirst();
@@ -244,14 +248,15 @@ void GuardService::watchLink(double nowMs) {
         if (!downSince_) {
             downSince_ = nowMs;
             downSinceIso_ = QDateTime::currentDateTimeUtc().toString(Qt::ISODate);
+            downSinceLocal_ = QDateTime::currentDateTime().toString(u"HH:mm"_s);
         }
         if (!downTold_ && nowMs - *downSince_ >= cfg.disconnect_alert_s * 1000) {
             downTold_ = true;
             const double minutes = std::round((nowMs - *downSince_) / 60'000);
             journal(u"guard_disconnect"_s, js::object({{u"since"_s, js::S(downSinceIso_)}, {u"router"_s, js::B(router != nullptr)}}));
             tell(u"IBKR 断开"_s,
-                 u"和 IBKR 的连接断了 %1 分钟(TWS 没开、登出了,或 TWS 与 IBKR 服务器断开)。这期间引擎盯的组合出场、补挂止损都停着;券商侧已挂的止损单不受影响。"_s
-                     .arg(util::jsNumberToString(std::max(1.0, minutes))),
+                 u"和 IBKR 的连接从本机 %1 起断了 %2 分钟(TWS 没开、登出了,或 TWS 与 IBKR 服务器断开)。这期间引擎盯的组合出场、补挂止损都停着;券商侧已挂的止损单不受影响。"_s
+                     .arg(downSinceLocal_, util::jsNumberToString(std::max(1.0, minutes))),
                  QString(), true);
         }
         return;
@@ -260,7 +265,7 @@ void GuardService::watchLink(double nowMs) {
         if (downTold_) {
             const double minutes = std::round((nowMs - *downSince_) / 60'000);
             journal(u"guard_reconnect"_s, js::object({{u"since"_s, js::S(downSinceIso_)}, {u"minutes"_s, js::N(minutes)}}));
-            tell(u"IBKR 已恢复"_s, u"和 IBKR 的连接恢复了,断了约 %1 分钟。"_s.arg(util::jsNumberToString(std::max(1.0, minutes))), QString(), true);
+            tell(u"IBKR 已恢复"_s, u"和 IBKR 的连接恢复了(本机 %1 起断的),断了约 %2 分钟。"_s.arg(downSinceLocal_, util::jsNumberToString(std::max(1.0, minutes))), QString(), true);
         }
         downSince_.reset();
         downSinceIso_.clear();
@@ -420,7 +425,8 @@ Task<OJson> GuardService::tickOnce(std::optional<double> nowArg, std::optional<Q
     out.set(u"positions"_s, co_await watchPositions(nowMs, today));
     if (alive.expired()) co_return out;
     writeHeartbeat(nowMs);
-    co_await drainPushes(nowMs);
+    // 推送不挡这一轮:读钥匙串最多等 20 秒、发送最多 15 秒,不能让下一轮盯仓位跟着晚。pushBusy_ 防重入
+    util::detach(drainPushes(nowMs));
     co_return out;
 }
 
@@ -428,11 +434,17 @@ Task<OJson> GuardService::watchPositions(double nowMs, QString today) {
     OJson out = js::object({{u"warned"_s, js::N(0)}, {u"stopped"_s, js::N(0)}, {u"failed"_s, js::N(0)}, {u"auto_closed"_s, js::N(0)}, {u"placed"_s, js::N(0)},
                             {u"restored"_s, js::N(0)}, {u"raised"_s, js::N(0)}, {u"combo_tracked"_s, js::N(0)}, {u"combo_unmatched"_s, js::N(0)}});
     const auto router = routerPort();
-    if (!router || !router->hasSessions()) co_return out;
+    if (!router || !router->hasSessions()) {
+        nPositions_.reset();  // 心跳里写 null:这一轮没读到,不拿旧数冒充
+        nStops_.reset();
+        co_return out;
+    }
     QList<OJson> rows;
     try {
         rows = co_await router->positions();
     } catch (...) {
+        nPositions_.reset();
+        nStops_.reset();
         co_return out;  // 读不到持仓:不当成空仓,下一轮再看
     }
     const contract::GuardConfig cfg = settings().guard;

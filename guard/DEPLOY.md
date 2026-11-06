@@ -83,11 +83,21 @@ Datrix 的界面进程崩了(或被强制结束),由 launchd 重新打开它;引
 </plist>
 ```
 
-装上:
+装之前**先 ⌘Q 退出正在开着的 Datrix**。Datrix 只许开一个:launchd 拉起来的那个发现已经有一个开着,会把它叫到前台然后自己正常退出(退出码 0),
+launchd 就不再管了——你手动开的那个崩了不会有人拉。退出之后再装,装上就由 launchd 打开:
 
 ```bash
 launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.dafri.datrix.keepalive.plist
 ```
+
+已经装过、想让 launchd 重新接手(比如中途手动开过一次):先 ⌘Q,再
+
+```bash
+launchctl kickstart -k gui/$(id -u)/com.dafri.datrix.keepalive
+```
+
+**要盯的一件事**:`kill -9` 之后单实例的锁是否会残留,没有核对过。如果被拉起来的 Datrix 在日志里只写一句「已经开着一个,叫它到前台」就退了、窗口没出来,
+就是锁没放掉——把这个现象告诉我。
 
 - `KeepAlive / SuccessfulExit = false`:只在**不是正常退出**时重新打开(崩溃、被 `kill -9`、退出码非 0)。你用 ⌘Q 正常退出,它不会再把 Datrix 打开。
   **前提是 ⌘Q 退出时退出码是 0,这一点没有核对过**:装好后 ⌘Q 一次,看 Datrix 是不是没被重新打开。

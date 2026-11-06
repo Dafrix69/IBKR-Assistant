@@ -183,6 +183,8 @@ struct SvcRig {
     std::optional<QStringList> covered;
     QStringList pushed;
     bool pushFails = false;
+    bool pushHangs = false;
+    std::optional<ibkr::util::Deferred<>> hang;
 
     explicit SvcRig(bool enabled = true, bool trail = false, bool push = false) {
         OJson g = js::object({{u"enabled"_s, js::B(enabled)}, {u"trail_r"_s, js::B(trail)}});
@@ -241,6 +243,11 @@ struct SvcRig {
         w.navOf = [](const QString&) -> std::optional<double> { return 15000.0; };
         w.coveredAccounts = [this] { return covered; };
         w.push = [this](QString title, QString body) -> Task<> {
+            if (pushHangs) {
+                hang.emplace();
+                co_await hang->task();  // 一直不回(钥匙串弹窗没人点)
+                co_return;
+            }
             if (pushFails) throw ibkr::util::JsError(u"推送连不上"_s);
             pushed << title + u'|' + body;
             co_return;
@@ -883,6 +890,16 @@ private slots:
         QCOMPARE(rig.svc->pendingPushes(), 0);
         ibkr::util::setDateNowForTests({});
     }
+    void stuckPushDoesNotHoldTheTick() {
+        SvcRig rig(true, false, true);
+        rig.pushHangs = true;
+        rig.port().rows = {stockRow(u"模拟"_s, u"TTWO"_s, 20, 202.5, 212.66)};
+        rig.tick(0);  // wait() 里 5 秒没跑完会 qFatal
+        rig.tick(61000);
+        QCOMPARE(rig.added.size(), 1);  // 推送卡着,默认止损照挂
+        QCOMPARE(rig.svc->pendingPushes(), 2);
+        rig.hang->resolve();
+    }
     void disconnectPushedOnceThenRecovery() {
         SvcRig rig(true, false, true);
         rig.port().upstream = false;  // TWS 与 IBKR 服务器断开(1100 / 2110)也算
@@ -898,14 +915,24 @@ private slots:
         rig.tick(400'000);
         QCOMPARE(rig.pushed.size(), 2);
         QVERIFY2(rig.pushed[1].contains(u"断了约 7 分钟"_s), qPrintable(rig.pushed[1]));
+        // 心跳:断着时持仓数写 null
+        rig.port().sessions = false;
+        rig.tick(450'000);
+        rig.tick(800'000);
+        QFile f(QFileInfo(rig.svc->inboxPath()).path() + u"/heartbeat.json"_s);
+        QVERIFY(f.open(QIODevice::ReadOnly));
+        QVERIFY(js::nullish(js::parse(QString::fromUtf8(f.readAll()))->get(u"n_positions"_s)));
+        rig.port().sessions = true;
+        rig.tick(810'000);
+        const qsizetype before = rig.pushed.size();
         QVERIFY(rig.auditActions().contains(u"guard_disconnect"_s));
         QVERIFY(rig.auditActions().contains(u"guard_reconnect"_s));
         // 两分钟内恢复的不推
         rig.port().sessions = false;
-        rig.tick(500'000);
+        rig.tick(900'000);
         rig.port().sessions = true;
-        rig.tick(560'000);
-        QCOMPARE(rig.pushed.size(), 2);
+        rig.tick(960'000);
+        QCOMPARE(rig.pushed.size(), before);
     }
     void heartbeatFile() {
         SvcRig rig;

@@ -117,6 +117,7 @@ private:
 
     std::optional<double> downSince_;  // IBKR 断开的起点(单调钟)
     QString downSinceIso_;
+    QString downSinceLocal_;  // 本机时区的 HH:mm,写进推送正文(也让两次断开的话不一样,不被去重吞掉)
     bool downTold_ = false;
     double heartbeatAt_ = -1e18;
     std::optional<double> nPositions_, nStops_;
