@@ -19,7 +19,8 @@
 //
 //   · 每日报告(第四步):交易日收盘后 15 分钟(美东,提前收盘日 13:15)拼一份报告:净值、开仓、止损触发、违规、明日到期、心跳;
 //     周五多一段本周违规与止损次数、每笔交易的 R 倍数。推到手机、写进 guard/reports/<日期>.txt、记一笔 guard_report。
-//     那个钟点没开着就在当天(美东日期)之内补发;一天只发一份。
+//     那个钟点没开着就在当天(美东日期)之内补发;一天只发一份。TWS 没连着时先不发、每轮再看,到美东 20:00 还没连上
+//     就发一份注明"TWS 断开"的(净值、持仓读不到),免得一份空报告占掉当天。
 //
 // guard.enabled 关着时一轮什么都不做(不读文件、不读持仓、不写心跳、不推送)。
 #pragma once
@@ -141,6 +142,9 @@ private:
     bool restartsChecked_ = false;
     bool reportBusy_ = false;
     QString reportedDate_;
+    QString reportScanned_;          // 这一天已经查过流水、没有 guard_report(不用每一轮都扫)
+    double reportRetryAt_ = -1e18;   // 拼失败之后,隔一会儿再试
+    bool lastComposeDisconnected_ = false;
     int timer_ = 0;
     int gen_ = 0;
     bool running_ = false;

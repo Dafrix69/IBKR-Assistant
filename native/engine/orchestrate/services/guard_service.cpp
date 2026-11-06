@@ -905,13 +905,21 @@ Task<> GuardService::maybeReport() {
     const domain::EtNow at = wiring_.clock ? wiring_.clock() : domain::nowEt();
     if (reportedDate_ == at.date || !settings().isTradingDay(at.date)) co_return;
     const double close = settings().early_close_days.contains(at.date) ? 13 * 60 : 16 * 60;
-    if (at.minutes < close + 15) co_return;
-    // 今天已经发过(重启之后):流水里有这一天的 guard_report 就不再发
-    for (const OJson& r : store().guard().guardAudit(QDateTime::currentDateTimeUtc().addDays(-2).toString(Qt::ISODate)))
-        if (js::str(r.get(u"action"_s)) == u"guard_report" && js::str(js::prop(r.get(u"detail"_s), u"date"_s)) == at.date) {
-            reportedDate_ = at.date;
-            co_return;
-        }
+    if (at.minutes < close + 15 || now_ < reportRetryAt_) co_return;
+    // 今天已经发过(重启之后):流水里有这一天的 guard_report 就不再发。查一次就记住
+    if (reportScanned_ != at.date) {
+        for (const OJson& r : store().guard().guardAudit(QDateTime::currentDateTimeUtc().addDays(-2).toString(Qt::ISODate)))
+            if (js::str(r.get(u"action"_s)) == u"guard_report" && js::str(js::prop(r.get(u"detail"_s), u"date"_s)) == at.date) {
+                reportedDate_ = at.date;
+                co_return;
+            }
+        reportScanned_ = at.date;
+    }
+    // TWS 没连着(比如美东 10:45 自动登出了还没登回来):先不发,每轮再看;到 20:00 还没连上才发一份注明断开的
+    constexpr double kDisconnectedCutoff = 20 * 60;
+    const auto router = routerPort();
+    const bool up = router && router->hasSessions() && router->upstreamOk();
+    if (!up && at.minutes < kDisconnectedCutoff) co_return;
     reportBusy_ = true;
     const std::weak_ptr<bool> alive = alive_;
     QString text;
@@ -924,8 +932,15 @@ Task<> GuardService::maybeReport() {
     if (alive.expired()) co_return;
     reportBusy_ = false;
     if (failure) {
+        reportRetryAt_ = now_ + 5 * 60 * 1000;  // 7 天成交读超时这类:别每一轮都去问一遍卡住的 TWS
         if (nag(u"report|"_s + at.date, now_)) journal(u"guard_report_failed"_s, js::object({{u"date"_s, js::S(at.date)}, {u"error"_s, js::S(errorText(failure))}}));
         co_return;
+    }
+    // 拼的过程中持仓没读到(刚好断了):还没到 20:00 就当没拼,下一轮再来
+    if (lastComposeDisconnected_ && at.minutes < kDisconnectedCutoff) co_return;
+    if (lastComposeDisconnected_) {
+        const qsizetype nl = text.indexOf(u'\n');
+        text.insert(nl < 0 ? text.size() : nl + 1, u"TWS 断开,持仓、成交与净值读不到(到美东 20:00 还没连上)\n"_s);
     }
     reportedDate_ = at.date;
     OJson navs = js::object();
@@ -970,8 +985,10 @@ Task<QString> GuardService::composeReport(domain::EtNow at) {
         try {
             rows = co_await router->positions();
         } catch (...) {
+            connected = false;
         }
     }
+    lastComposeDisconnected_ = !connected;
     QHash<QString, double> held;
     for (const OJson& r : rows) {
         const QString st = js::str(r.get(u"sec_type"_s));

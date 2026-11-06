@@ -1142,6 +1142,37 @@ private slots:
         QCOMPARE(rig.pushed.filter(u"每日报告"_s).size(), 1);
         (void)n;
     }
+    void reportWaitsForTwsThenFallsBackAtEight() {
+        SvcRig rig(true, false, true);
+        rig.port().sessions = false;  // 10:45 自动登出了,还没登回来
+        rig.et = etAtUtc(u"2026-11-06T21:20:00Z"_s);  // 16:20
+        rig.tick(0);
+        QVERIFY(rig.pushed.filter(u"每日报告"_s).isEmpty());
+        // 17:00 登回来了:发完整的
+        rig.port().sessions = true;
+        rig.port().rows = {stockRow(u"模拟"_s, u"TTWO"_s, 20, 202.5, 212.66)};
+        rig.et = etAtUtc(u"2026-11-06T22:00:00Z"_s);
+        rig.tick(1000);
+        const QStringList sent = rig.pushed.filter(u"每日报告"_s);
+        QCOMPARE(sent.size(), 1);
+        QVERIFY(!sent[0].contains(u"TWS 断开"_s));
+        QVERIFY(sent[0].contains(u"心跳：正常"_s));
+
+        // 另一天一直断着:20:00 之前不发,20:00 发一份注明断开的
+        SvcRig off(true, false, true);
+        off.port().sessions = false;
+        off.et = etAtUtc(u"2026-11-05T21:20:00Z"_s);
+        off.tick(0);
+        off.et = etAtUtc(u"2026-11-06T00:59:00Z"_s);  // 美东 11-05 19:59
+        off.tick(1000);
+        QVERIFY(off.pushed.filter(u"每日报告"_s).isEmpty());
+        off.et = etAtUtc(u"2026-11-06T01:00:00Z"_s);  // 美东 11-05 20:00
+        off.tick(2000);
+        const QStringList late = off.pushed.filter(u"每日报告"_s);
+        QCOMPARE(late.size(), 1);
+        QVERIFY2(late[0].contains(u"datrix guard 2026-11-05\nTWS 断开"_s), qPrintable(late[0]));
+        QVERIFY(late[0].contains(u"心跳：断开中"_s));
+    }
     void noReportOnWeekend() {
         SvcRig rig(true, false, true);
         rig.et = etAtUtc(u"2026-11-07T21:20:00Z"_s);  // 周六
