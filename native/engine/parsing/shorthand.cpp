@@ -131,6 +131,25 @@ std::optional<double> takeQty(QString& work, QStringList& warnings) {
     return qty;
 }
 
+/// 价格口语(只在价差里认):「8毛」= 0.8、「8毛5」= 0.85、「1块2」= 1.2、「1块」「1块钱」= 1。换成小数写回原处,
+/// 前面带负号的照样是收钱(「-8毛」= -0.8)。只认阿拉伯数字;「八毛」不认,剩下的「毛」让整句交给大模型
+void takeSlangPrice(QString& work) {
+    // 毛 / 块后面紧跟的数才是零头;后面接着「张」的是张数(「8毛5张」= 0.8、5 张),零头不吃它
+    const QString notQty = u"(?!"_s + sp() + u"*张|[\\d.])"_s;
+    static const QRegularExpression mao = rx(u"(?<![\\d.])([1-9])"_s + sp() + u"*毛(?:([1-9])"_s + notQty + u")?"_s);
+    static const QRegularExpression kuai = rx(u"(?<![\\d.])(\\d{1,3})"_s + sp() + u"*块钱?(?:(\\d{1,2})"_s + notQty + u")?"_s);
+    for (const QRegularExpression* re : {&mao, &kuai}) {
+        while (true) {
+            const QRegularExpressionMatch m = re->match(work);
+            if (!m.hasMatch()) break;
+            const QString whole = re == &mao ? u"0"_s : m.captured(1);
+            const QString frac = re == &mao ? m.captured(1) + m.captured(2) : m.captured(2);
+            const QString value = frac.isEmpty() ? whole : whole + u'.' + frac;
+            work = work.left(m.capturedStart(0)) + u' ' + value + u' ' + work.mid(m.capturedEnd(0));
+        }
+    }
+}
+
 /// 到期:默认当日;「明天」= 下一交易日(只跳周末);「周五」「下周五」「11月6日」按写的那天。
 /// 周末默认当日的、写的那天已经过了或落在周末的:回拒绝(rejection 放进 out)。节假日不查,合约不存在时由券商确认那一步拦下
 struct Expiry {
@@ -270,6 +289,7 @@ OJson parseCreditSpread(const QString& full, const QString& text, const QString&
     const bool bullPut = plain ? test(putWord, mType->captured(0)) : test(bull, mType->captured(1));  // plain:是不是 put
     const Common c = takeCommon(work);
     if (c.clash) return OJson::null();
+    takeSlangPrice(work);  // 在到期日(「11月6日」)摘掉之后、认负号之前:「-8毛」要变成「-0.8」
 
     static const QRegularExpression creditRe = rx(u"(?<![\\d.])-"_s + sp() + u"*(\\d+(?:\\.\\d+)?)(?:"_s + sp() + u"*(?:到|至|~|-)?"_s + sp() + u"*-"_s + sp() +
                                                   u"*(\\d+(?:\\.\\d+)?))?"_s);
@@ -345,7 +365,12 @@ OJson parseCreditSpread(const QString& full, const QString& text, const QString&
     } else if (absolute) {
         lo = jm::min(num(tokens[0]), num(tokens[1]));
         hi = jm::max(num(tokens[0]), num(tokens[1]));
-        if (spot && std::fabs((lo + hi) / 2 - *spot) / *spot > 0.2) return OJson::null();
+        if (spot && std::fabs((lo + hi) / 2 - *spot) / *spot > 0.2) {
+            // 没写标的、默认的 SPX 离行权价太远:多半是漏写了 SPY / QQQ 一类,在本地说清楚,不猜、也不等大模型
+            if (!mSym && *spot > 0)
+                return rejectionOf(full, u"「%1/%2」离 %3 现价 %4 太远;没写标的时默认按 %3,请写明标的,如 'spy %1 %2 …'。"_s.arg(tokens[0], tokens[1], symbol, fmt(*spot)));
+            return OJson::null();
+        }
     } else {
         return OJson::null();
     }
@@ -652,13 +677,30 @@ OJson tryParseShorthand(const QString& instruction, const OJson& snapshot, const
     const QString fullRaw = util::jsTrim(util::jsNormalizeNfkc(instruction));
     const QString full = maskSurrogates(fullRaw);
     QString reason = u"本地速记解析"_s;
+    bool hasReason = false;
     QString text = full;
     static const QRegularExpression reasonRe = rx(u"[,,。;;"_s + S() + u"]*理由"_s + sp() + u"*:?"_s + sp() + u"*("_s + kDot + u"*)\\z"_s);
     if (const QRegularExpressionMatch m = reasonRe.match(full); m.hasMatch()) {
         const QString reasonText = util::jsTrim(fullRaw.mid(m.capturedStart(1), m.capturedLength(1)));
         if (reasonText.isEmpty()) return OJson::null();
         reason = reasonText;
+        hasReason = true;
         text = util::jsTrim(full.left(m.capturedStart(0)));
+    }
+    if (manual) {
+        // 句中「对冲(下 / 一下)」加紧跟的一串汉字是说明(「对冲下选举」),摘下来写进 reason,不影响下单。
+        // 这一串遇到数字、字母、空格、标点就停;串里有交易词(买卖、张数、日期、价格口语、止损……)就不摘,留着让整句交给大模型
+        static const QRegularExpression hedgeRe = rx(u"对冲(?:一下|下)?(\\p{Han}*)"_s);
+        static const QRegularExpression tradeWord = rx(
+            u"卖|买|张|股|挂|周|星期|礼拜|月|日|号|明天|毛|块|止损|止盈|平仓|蝴蝶|铁蝶|价差|看涨|看跌|到期|盘外|隔夜|夜盘|盘前|盘后|理由|市价|限价|"
+            u"如果|或者|时候|涨到|跌到|突破|跌破|破了|站稳|守不住|翻倍|取消|撤单|加仓|接货|上移|下移|日历|正股|海鸥|[一两二三四五六七八九十]"_s);
+        if (const QRegularExpressionMatch m = hedgeRe.match(text); m.hasMatch()) {
+            if (!test(tradeWord, m.captured(1))) {
+                const QString hedgeText = fullRaw.mid(m.capturedStart(0), m.capturedLength(0));
+                reason = hasReason ? hedgeText + u";"_s + reason : hedgeText;
+                text = util::jsTrim(text.left(m.capturedStart(0)) + u' ' + text.mid(m.capturedEnd(0)));
+            }
+        }
     }
     if (text.isEmpty() || text.size() > 80) return OJson::null();
     if (manual)

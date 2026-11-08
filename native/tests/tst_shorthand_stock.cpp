@@ -71,7 +71,7 @@ private slots:
         QCOMPARE(ord(p, u"orderType"_s), u"\"LMT\""_s);
         QCOMPARE(ord(p, u"price_mode"_s), u"\"EXPLICIT\""_s);
         QCOMPARE(ord(p, u"tif"_s), u"\"DAY\""_s);
-        QVERIFY(js::stringify(*order0(p).get(u"warnings"_s)).contains(u"shorthand-v10"_s));
+        QVERIFY(js::stringify(*order0(p).get(u"warnings"_s)).contains(u"shorthand-v11"_s));
         OJson o = order0(p);
         o.set(u"account"_s, js::S(u"模拟"_s));
         const domain::Settings s = settings();

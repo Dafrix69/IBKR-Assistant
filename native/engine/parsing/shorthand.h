@@ -11,7 +11,7 @@
 namespace ibkr::parsing::shorthand {
 
 inline const QString kLocalModel = QStringLiteral("local-shorthand");
-inline const QString kGrammarVersion = QStringLiteral("shorthand-v10");
+inline const QString kGrammarVersion = QStringLiteral("shorthand-v11");
 
 /// manual = 手动下单页:多认「put / call spread」(价格带负号 = 收钱,否则 = 付钱)。跟单不开,没写 bull / bear 照旧不跟
 bool looksLikeShorthand(const QString& text, bool manual = false);

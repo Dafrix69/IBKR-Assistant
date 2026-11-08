@@ -64,6 +64,7 @@ private slots:
             if (c.get(u"out"_s) && c.get(u"out"_s)->type == OJson::Object) ++hits;
         }
         QVERIFY(hits > 600);
+        jsfix::rewrite(u"shorthand.json"_s, fx_);  // 只在 IBKR_REBASELINE 设了时写
     }
 };
 
