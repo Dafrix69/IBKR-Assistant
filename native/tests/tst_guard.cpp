@@ -17,6 +17,7 @@
 
 #include <QElapsedTimer>
 #include <QFile>
+#include <QScopeGuard>
 #include <QTemporaryDir>
 #include <QTest>
 
@@ -1096,6 +1097,10 @@ private slots:
         const QString id = rig.host->settings_.accountByAlias(u"模拟"_s)->account_id;
         // 周五 16:10 美东:还没到 16:15
         rig.et = etAtUtc(u"2026-11-06T21:10:00Z"_s);
+        // 流水的 at 由库按 util::dateNow() 写;报告按 rig.et 的美东日挑「今天」的违规。两只钟不拨到一起,
+        // 换一天跑(11-08 起)TTWO 的违规就记在真实日期上、进不了 11-06 的报告
+        ibkr::util::setDateNowForTests([&rig] { return rig.et->epochMs; });
+        const auto unpin = qScopeGuard([] { ibkr::util::setDateNowForTests({}); });
         rig.port().rows = {stockRow(u"模拟"_s, u"TTWO"_s, 20, 202.5, 212.66),
                            optRow(u"模拟"_s, u"QQQ"_s, u"20261109"_s, 660, u"C"_s, 1, 1010), optRow(u"模拟"_s, u"QQQ"_s, u"20261109"_s, 670, u"C"_s, -2, 568),
                            optRow(u"模拟"_s, u"QQQ"_s, u"20261109"_s, 680, u"C"_s, 1, 281)};
