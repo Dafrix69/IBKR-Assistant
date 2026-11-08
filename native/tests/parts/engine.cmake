@@ -12,3 +12,7 @@ target_link_libraries(tst_fly_fast_exit PRIVATE ibkr_orchestrate Qt6::Test)
 
 ibkr_test(tst_guard js_fixture.h)
 target_link_libraries(tst_guard PRIVATE ibkr_orchestrate Qt6::Test)
+
+# 下单时延模拟:真引擎 + 真会话,假 TWS 在 socket 层按时延表回话(sim_tws.h)
+ibkr_test(tst_order_latency js_fixture.h sim_tws.h)
+target_link_libraries(tst_order_latency PRIVATE ibkr_orchestrate Qt6::Test)

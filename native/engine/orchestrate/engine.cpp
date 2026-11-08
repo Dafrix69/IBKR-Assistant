@@ -11,6 +11,7 @@
 #include "orchestrate/services/follow_service.h"
 #include "orchestrate/session_hours.h"
 #include "parsing/shorthand.h"
+#include "util/awake_clock.h"
 #include "util/jsformat.h"
 #include "util/jsobj.h"
 #include "util/py.h"
@@ -169,6 +170,23 @@ Rec EngineResult::toJson() const {
     return o;
 }
 
+StageClock::StageClock() : t0_(util::awakeMicros()), last_(t0_) {}
+
+void StageClock::mark(const QString& stage) {
+    const qint64 now = util::awakeMicros();
+    stages_.append({stage, double(now - last_) / 1000.0});
+    last_ = now;
+}
+
+double StageClock::totalMs() const { return double(last_ - t0_) / 1000.0; }
+
+QString StageClock::line(const QString& parseKind) const {
+    QStringList parts;
+    for (const auto& [stage, ms] : stages_) parts << stage + u' ' + util::jsNumberToString(util::jsRound(ms));
+    const QString kind = parseKind == u"local"_s ? u"本地速记"_s : parseKind == u"llm"_s ? u"大模型"_s : u"未解析"_s;
+    return u"[order] 指令时延 %1 ms(%2):%3"_s.arg(util::jsNumberToString(util::jsRound(totalMs())), kind, parts.join(u" · "_s));
+}
+
 std::optional<double> SessionEmCache::today(const domain::EtNow& at) {
     if (cached_ && cached_->date == at.date && at.epochMs - cached_->atMs < kTtlMs && at.epochMs >= cached_->atMs) return cached_->em;
     const domain::Settings& s = settings_();
@@ -254,6 +272,12 @@ Task<Rec> TradingEngine::buildSnapshot(QStringList symbols, Rec cached) {
 Task<EngineResult> TradingEngine::handleInstruction(QString instruction, QString channel, std::optional<domain::EtNow> moment, std::optional<Rec> snapshot,
                                                     std::optional<QStringList> accounts, bool dryRun, InstructionScope scope) {
     EngineResult result;
+    StageClock clock;
+    // 每一个出口都写一行分段时延(熔断、解析失败也写:它们同样是"按了没反应多久")
+    const auto finishTiming = [this, &clock, &result]() {
+        result.timing = clock.stages();
+        if (timingSink) timingSink(clock.line(result.parseKind));
+    };
     const domain::EtNow at = moment ? *moment : domain::nowEt();
     const QStringList targets = resolveFanoutAccounts(settings, accounts);
 
@@ -262,6 +286,8 @@ Task<EngineResult> TradingEngine::handleInstruction(QString instruction, QString
         const QString message = u"已熔断("_s + breaker.reason + u"),本条指令未解析。请在软件里手动解除后重试。"_s;
         notifier_->breaker(message);
         result.warnings << message;
+        clock.mark(u"熔断"_s);
+        finishTiming();
         co_return result;
     }
 
@@ -270,11 +296,13 @@ Task<EngineResult> TradingEngine::handleInstruction(QString instruction, QString
         const QStringList symbols = analysis::market::extractSymbols(instruction, settings);
         snap = co_await buildSnapshot(symbols, snap);
     }
+    clock.mark(u"现价"_s);
 
     // 本地速记优先:固定行话不等大模型,解析不了回空交给大模型。它会往 snap 里补现价
     const std::optional<Rec> localPayload = co_await tryLocalShorthand(*impl_->shorthandHost, instruction, &snap, at, nullptr, true);
 
     providers::LLMResponse response;
+    result.parseKind = localPayload ? u"local"_s : u"llm"_s;
     if (localPayload) {
         response.text = util::stringifyOJson(*localPayload, 0);
         response.model = js::S(parsing::shorthand::kLocalModel);
@@ -301,6 +329,8 @@ Task<EngineResult> TradingEngine::handleInstruction(QString instruction, QString
                                              {u"code"_s, js::S(u"LLM_ERROR"_s)},
                                              {u"message"_s, js::S(*llmError)},
                                              {u"original_text"_s, js::S(instruction)}});
+            clock.mark(u"解析"_s);
+            finishTiming();
             co_return result;
         }
     }
@@ -326,8 +356,11 @@ Task<EngineResult> TradingEngine::handleInstruction(QString instruction, QString
                                          {u"code"_s, js::S(u"BAD_PAYLOAD"_s)},
                                          {u"message"_s, js::S(*payloadError)},
                                          {u"original_text"_s, js::S(instruction)}});
+        clock.mark(u"解析"_s);
+        finishTiming();
         co_return result;
     }
+    clock.mark(u"解析"_s);
 
     if (const OJson* se = js::prop(&parsed, u"schema_errors"_s); js::isArr(se)) {
         for (const OJson& e : se->items) result.warnings << js::str(&e);
@@ -358,6 +391,7 @@ Task<EngineResult> TradingEngine::handleInstruction(QString instruction, QString
     }
     // 先把期权/组合的合约时段问一遍(按天缓存,一天只有一次网络往返):校验链路是同步的,读不到缓存就只能退回正股日历
     co_await prewarmContractHours(*impl_->hoursHost, orders);
+    clock.mark(u"合约时段"_s);
     QList<Rec> priced = autoOutsideRth(*impl_->hoursHost, orders, at);
     const QList<Rec> recent = storePort_->recentOrderDetails(settings.limits.duplicate_window_minutes, at.epochMs);
     const val::MarketStatusFn statusFn = [this, at](const OJson& o) { return orderMarketStatus(*impl_->hoursHost, o, at); };
@@ -385,6 +419,8 @@ Task<EngineResult> TradingEngine::handleInstruction(QString instruction, QString
         setDefined(r, u"intent_summary"_s, js::prop(&rejected.order, u"intent_summary"_s));
         result.rejections << r;
     }
+
+    clock.mark(u"校验"_s);
 
     // 3. 通过的订单。保护规则放行平仓要看持仓:一批只读一次(undefined = 还没读,null = 读不到)
     enum class GuardRows { Unread, Unreadable, Read } guardState = GuardRows::Unread;
@@ -489,7 +525,8 @@ Task<EngineResult> TradingEngine::handleInstruction(QString instruction, QString
 
         std::optional<QString> brokerError;
         try {
-            const Rec extra = co_await execute(recordId, approved);
+            clock.mark(u"落库"_s);
+            const Rec extra = co_await execute(recordId, approved, &clock);
             jsx::assign(summary, extra);
         } catch (const execution::BrokerError& exc) {
             brokerError = exc.message();
@@ -508,6 +545,8 @@ Task<EngineResult> TradingEngine::handleInstruction(QString instruction, QString
             result.submitted << summary;
         }
     }
+    clock.mark(u"收尾"_s);
+    finishTiming();
     co_return result;
 }
 
@@ -526,7 +565,7 @@ Task<> TradingEngine::prewarmRun(Rec contract, contract::AccountConfig account) 
     }
 }
 
-Task<Rec> TradingEngine::execute(QString recordId, val::ApprovedOrder approved) {
+Task<Rec> TradingEngine::execute(QString recordId, val::ApprovedOrder approved, StageClock* clock) {
     if (!router_) throw execution::BrokerError(u"未接入券商连接(router=None),无法下单。"_s);
     const Rec parsed = approved.order;
     const OJson* trigger = js::prop(&parsed, u"trigger"_s);
@@ -557,6 +596,7 @@ Task<Rec> TradingEngine::execute(QString recordId, val::ApprovedOrder approved) 
     std::optional<double> limitOverride;
     if (js::str(js::prop(orderSpec, u"price_mode"_s)) == u"AUTO_MID") {
         const double limit = co_await priceAutoMid(approved);
+        if (clock) clock->mark(u"中间价"_s);
         limitOverride = limit;
         const QString note = approved.account.is_paper ? u"(纸面账户:无实时期权订阅时按延迟盘口定价,成交价参考性有限)"_s : QString();
         storePort_->appendEvent(recordId, u"warning"_s,
@@ -566,6 +606,7 @@ Task<Rec> TradingEngine::execute(QString recordId, val::ApprovedOrder approved) 
 
     storePort_->markSubmitIntent(recordId);  // 先留痕再发单:发到一半进程被杀,对账与重复单防抖还认得出这条记录
     const execution::PlacementResult placement = co_await router_->place(recordId, approved, limitOverride);
+    if (clock) clock->mark(u"发单"_s);
     indexPlacement(recordId, placement);
     const auto idOrNull = [](const std::optional<int>& v) { return v ? js::N(*v) : js::Null(); };
     storePort_->appendEvent(recordId, u"status"_s,

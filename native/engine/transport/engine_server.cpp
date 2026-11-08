@@ -288,6 +288,9 @@ orch::TradingEngine& EngineServer::Impl::engine() {
         engineInstance = std::make_unique<orch::TradingEngine>(std::move(a));
         engineBroker = router;
         if (retired) engineInstance->continueFrom(*retired, retiredBroker == router);  // 回报账只在同一个 router 上接;条件单队列换了连接也接着盯
+        // 每条指令一行分段时延,和 [rpc] 慢请求同一条路进主日志(docs/features/perf-log.md)
+        // 测试模式不写:对拍的进程输出不该多一行随时长变的字
+        if (!quiet) engineInstance->timingSink = [](const QString& line) { std::fprintf(stderr, "%s\n", line.toUtf8().constData()); };
         engineInstance->sharedTrackerLock = [this](std::function<Task<>()> fn) { return trackerLock.runVoid(std::move(fn)); };
         // 触发了、或者到价却发不出去,当场推给界面——不能等界面下一次来读
         engineInstance->onTrackerTick = [this](const OJson& poll, const OJson&) {

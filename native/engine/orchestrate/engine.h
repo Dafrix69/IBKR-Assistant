@@ -70,12 +70,32 @@
 
 namespace ibkr::orchestrate {
 
+/// 一条指令从进引擎到交给券商,每一段花了多久(docs/features/perf-log.md「下单时延」)。只记段名与毫秒,不记指令内容与账户。
+/// 钟是 util::awakeMicros(不算睡眠);每次 mark 记的是从上一次 mark 到这一刻
+class StageClock {
+public:
+    StageClock();
+    void mark(const QString& stage);
+    double totalMs() const;
+    /// [{stage, ms}],按发生先后
+    const QList<QPair<QString, double>>& stages() const { return stages_; }
+    /// `[order] 指令时延 <总> ms(<解析方式>):现价 3 · 解析 2 · …`
+    QString line(const QString& parseKind) const;
+
+private:
+    qint64 t0_ = 0, last_ = 0;
+    QList<QPair<QString, double>> stages_;
+};
+
 /// engine.ts 的 EngineResult(键序 submitted / queued / validated_only / rejections / warnings / llm)
 struct EngineResult {
     QList<Rec> submitted, queued, validated_only, rejections;
     QStringList warnings;
     /// {model, prompt_version, prompt_fingerprint, latency_ms, usage};没解析到就是空(null)
     std::optional<Rec> llm;
+    /// 分段时延(不进 toJson:界面与夹具看到的回包不变)。parseKind = "local" / "llm" / ""(没走到解析)
+    QList<QPair<QString, double>> timing;
+    QString parseKind;
     Rec toJson() const;
 };
 
@@ -185,6 +205,8 @@ public:
     Rec trackerLoop;
     /// 每轮结束的回调(RPC 层据此把触发 / 被拦推给界面)
     std::function<void(const Rec& poll, const Rec& hosted)> onTrackerTick;
+    /// 每条指令处理完写一行分段时延(EngineServer 接到 stderr → 主日志)。空 = 不写
+    std::function<void(const QString&)> timingSink;
     /// 交易纪律守护(guard):程序真要发出去的股票开仓单放不放(只在发单那一步问,只解析不发送的不问;减已有持仓的单不问)。
     /// 返回拒的原因;空 = 放行。RPC 层按 guard.enabled 注入
     std::function<std::optional<QString>(const parsing::validator::ApprovedOrder&)> openGate;
@@ -279,7 +301,7 @@ public:
 
 private:
     // 指令主线
-    util::Task<Rec> execute(QString recordId, parsing::validator::ApprovedOrder approved);
+    util::Task<Rec> execute(QString recordId, parsing::validator::ApprovedOrder approved, StageClock* clock = nullptr);
     util::Task<double> priceAutoMid(parsing::validator::ApprovedOrder approved);
     void prewarm(const parsing::validator::ApprovedOrder& approved);
     util::Task<> prewarmRun(Rec contract, contract::AccountConfig account);
