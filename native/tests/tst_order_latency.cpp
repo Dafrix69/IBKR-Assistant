@@ -11,7 +11,7 @@
 // 本机直连的按 80 ms 再跑一遍。期权订阅后第一笔买卖价 350 ms,下一个订单号 3 ms(TWS 本机答)。这些是设定不是实测,
 // 结论只看"同一份设定下改之前、改之后差多少",以及哪一段占了大头;真机的数以主日志里的 `[order] 指令时延` 为准。
 //
-// 断言(预算)只卡结构性的东西:N 条腿的合约确认不能是 N 次串行往返、AUTO_MID 不能多等一个轮询周期……
+// 断言(预算)只卡结构性的东西:N 条腿的合约确认不能是 N 次串行往返、AUTO_MID 等盘口不能是 250 毫秒一看、撤订阅不能排在发单前面……
 // 预算按时延表算出来再留余量,不是拿某一次跑出来的数抄上去。SIM_REPORT=<文件> 时把每一单的分段写成 JSON。
 #include "domain/config.h"
 #include "domain/store.h"
@@ -280,7 +280,8 @@ private slots:
     }
 
     /// 预算:按时延表算出来的结构上限,不是某一次跑出来的数。D = 合约详情一次往返,T = 期权首笔价。
-    /// 写了价的组合:合约确认一次往返(各腿同时问、和合约时段同时问)→ < 2D。中间价组合:一次往返 + 首笔价 + 一个轮询 → < D + T + 250。
+    /// 写了价的组合:合约确认一次往返(各腿同时问、和合约时段同时问)→ < 2D。中间价组合:一次往返 + 首笔价 + 一个轮询 → < D + T + 250,
+    /// 其中「中间价」那一段 < T + 100(25 毫秒一看;250 毫秒一看会超)。
     /// 改之前(逐条串行、250 毫秒轮询、撤订阅挤在发单前):写价蝶 1015 / 756,中间价蝶 1577 / 826,铁蝶 1886 / 1677
     void budgets() {
         sim::SimProfile p;
@@ -307,6 +308,15 @@ private slots:
             const double budget = (mid ? D + T + 250 : 2 * D) + (r.persona == u"iron_mid"_s ? 100 : 0) + slack;
             QVERIFY2(r.toBrokerMs > 0 && r.toBrokerMs < budget,
                      qPrintable(u"%1 %2:到券商 %3 ms,预算 %4 ms"_s.arg(r.persona, r.which, fmt(r.toBrokerMs), fmt(budget))));
+            // 中间价那一段(合约号已在缓存):订行情 → 首笔价 → 看到齐了。25 毫秒一看时约 T + 20;250 毫秒一看会到 T + 150 上下
+            if (mid) {
+                double quoteMs = -1;
+                for (const auto& [stage, ms] : r.stages)
+                    if (stage == u"中间价"_s) quoteMs = ms;
+                // 铁蝶四条腿的订阅加上纸面账户切行情类型那一条是 5 条消息,第五条等一个限速窗口(100)
+                const double quoteBudget = T + 100 + (r.persona == u"iron_mid"_s ? 100 : 0) + slack;
+                QVERIFY2(quoteMs > 0 && quoteMs < quoteBudget, qPrintable(u"%1 %2:中间价 %3 ms"_s.arg(r.persona, r.which, fmt(quoteMs))));
+            }
             // 中间价单腿上的行情订阅:每条腿撤一次(不漏、占着线路配额),都在 placeOrder 之后(不和发单抢限速名额)
             if (mid) {
                 QCOMPARE(r.cancels, r.persona == u"iron_mid"_s ? 4 : 3);
@@ -353,7 +363,11 @@ private slots:
         p.optionFirstTickMs = 200;
         p.indexFirstTickMs = 80;
         const QList<Run> runs = runProfile(p);
-        for (const Run& r : runs) QVERIFY(r.submitted == 1);
+        for (const Run& r : runs) {
+            QVERIFY(r.submitted == 1);
+            // 链路快的时候,各腿的合约确认、订单号把限速名额(每 100 毫秒 4 条)用满,placeOrder 会在引擎返回之后才落到 socket 上
+            QVERIFY2(r.toBrokerMs > 0, qPrintable(r.persona + u" "_s + r.which + u" 没有 placeOrder"_s));
+        }
     }
 
     void cleanupTestCase() {
