@@ -390,25 +390,30 @@ Task<EngineResult> TradingEngine::handleInstruction(QString instruction, QString
                           js::object({{u"accounts"_s, js::strings(targets)}, {u"orders"_s, js::N(parsedOrders.size())}, {u"expanded"_s, js::N(orders.size())}}));
     }
     // 合约号和合约时段同时去问(两样都要到 IBKR 服务器往返一次):发单时组合腿直接命中合约号缓存,不再在时段之后再排一次往返。
-    // 这时还没校验,问的是解析出来的合约;问不到、问错都无害——发单时 place 正式再确认一遍并报真实的错。只解析的不等它(同原来的解析预热)
+    // 这时还没校验,问的是解析出来的合约;问不到、问错都无害——发单时 place 正式再确认一遍并报真实的错。
+    // 只问期权与组合(股票的合约号取现价时已经确认过);只解析的不问(它在校验之后自己预热,见 prewarm);同一合约只问一次。
+    // 不在这里等:第一张真要发出去的单发之前才等它(下面 awaitWarming),被校验、守护、保护规则拦下的不陪着等
     std::vector<Task<>> warming;
-    if (router_) {
+    if (router_ && !dryRun) {
+        QSet<QString> asked;
         for (const Rec& order : orders) {
             const OJson* contract = js::prop(&order, u"contract"_s);
             if (!contract || contract->type != OJson::Object) continue;
+            const QString secType = js::strOr(js::prop(contract, u"secType"_s), QString());
+            if (secType != u"OPT"_s && secType != u"FOP"_s && secType != u"BAG"_s) continue;
             const contract::AccountConfig* account = settings.accountByAlias(js::strOr(js::prop(&order, u"account"_s), QString()));
             if (!account) account = settings.defaultAccount();
             if (!account) continue;
+            const QString key = account->connection + u'|' + util::stringifyOJson(*contract, 0);
+            if (asked.contains(key)) continue;
+            asked.insert(key);
             warming.push_back(router_->warmQualify(*contract, *account));
         }
     }
+    bool warmed = warming.empty();
     // 先把期权/组合的合约时段问一遍(按天缓存,一天只有一次网络往返):校验链路是同步的,读不到缓存就只能退回正股日历
     co_await prewarmContractHours(*impl_->hoursHost, orders);
-    if (!dryRun)
-        for (Task<>& t : warming) co_await t;
-    else if (!warming.empty())
-        prewarmPromise = warming.back();
-    clock.mark(u"合约确认"_s);
+    clock.mark(u"合约时段"_s);
     QList<Rec> priced = autoOutsideRth(*impl_->hoursHost, orders, at);
     const QList<Rec> recent = storePort_->recentOrderDetails(settings.limits.duplicate_window_minutes, at.epochMs);
     const val::MarketStatusFn statusFn = [this, at](const OJson& o) { return orderMarketStatus(*impl_->hoursHost, o, at); };
@@ -543,6 +548,12 @@ Task<EngineResult> TradingEngine::handleInstruction(QString instruction, QString
         std::optional<QString> brokerError;
         try {
             clock.mark(u"落库"_s);
+            if (!warmed) {
+                // 第一张真要发出去的单:等上面那几笔合约号预取回来(多半在合约时段那一问期间就回来了)
+                warmed = true;
+                for (Task<>& t : warming) co_await t;
+                clock.mark(u"合约号"_s);
+            }
             const Rec extra = co_await execute(recordId, approved, &clock);
             jsx::assign(summary, extra);
         } catch (const execution::BrokerError& exc) {

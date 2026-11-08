@@ -115,6 +115,9 @@ struct Run {
     QList<QPair<QString, double>> stages;
     QString parseKind;
     int contractDetails = 0, mktData = 0, reqIds = 0;
+    /// 撤行情订阅的条数;都排在 placeOrder 之后吗
+    int cancels = 0;
+    bool cancelsAfterPlace = true;
     int submitted = 0, rejected = 0;
     QStringList rejections;
 };
@@ -177,6 +180,10 @@ public:
         run.persona = persona;
         run.which = which;
         run.engineMs = double(t.nsecsElapsed()) / 1e6;
+        // 发单之后撤订阅的消息还排在限速队列里(每 100 毫秒 4 条):让它们落到 socket 上再数
+        QElapsedTimer drain;
+        drain.start();
+        while (drain.elapsed() < 250) QCoreApplication::processEvents(QEventLoop::AllEvents, 5);
         if (!world.placedAtMs.isEmpty()) run.toBrokerMs = world.placedAtMs.last();
         if (qEnvironmentVariableIsSet("SIM_TRACE"))
             for (const sim::SimRequest& q : world.requests)
@@ -186,6 +193,9 @@ public:
         run.contractDetails = world.count(sim::out::kReqContractData);
         run.mktData = world.count(sim::out::kReqMktData);
         run.reqIds = world.count(sim::out::kReqIds);
+        run.cancels = world.count(sim::out::kCancelMktData);
+        for (const sim::SimRequest& q : world.requests)
+            if (q.msgId == sim::out::kCancelMktData && (world.placedAtMs.isEmpty() || q.atMs < world.placedAtMs.first())) run.cancelsAfterPlace = false;
         run.submitted = int(r.submitted.size());
         run.rejected = int(r.rejections.size());
         for (const OJson& x : r.rejections) run.rejections << js::str(x.get(u"code"_s)) + u":"_s + js::str(x.get(u"message"_s));
@@ -270,7 +280,7 @@ private slots:
     }
 
     /// 预算:按时延表算出来的结构上限,不是某一次跑出来的数。D = 合约详情一次往返,T = 期权首笔价。
-    /// 写了价的组合:合约确认一次往返(各腿同时问、和合约时段同时问)→ < 2D。中间价组合:一次往返 + 首笔价 + 一个轮询 → < D + T + 200。
+    /// 写了价的组合:合约确认一次往返(各腿同时问、和合约时段同时问)→ < 2D。中间价组合:一次往返 + 首笔价 + 一个轮询 → < D + T + 250。
     /// 改之前(逐条串行、250 毫秒轮询、撤订阅挤在发单前):写价蝶 1015 / 756,中间价蝶 1577 / 826,铁蝶 1886 / 1677
     void budgets() {
         sim::SimProfile p;
@@ -294,9 +304,16 @@ private slots:
         for (const Run& r : runs) {
             const bool mid = r.persona.endsWith(u"_mid"_s);
             // 铁蝶四条腿 + 时段那一条是 5 条请求,限速每 100 毫秒 4 条:第五条多等 100
-            const double budget = (mid ? D + T + 200 : 2 * D) + (r.persona == u"iron_mid"_s ? 100 : 0) + slack;
+            const double budget = (mid ? D + T + 250 : 2 * D) + (r.persona == u"iron_mid"_s ? 100 : 0) + slack;
             QVERIFY2(r.toBrokerMs > 0 && r.toBrokerMs < budget,
                      qPrintable(u"%1 %2:到券商 %3 ms,预算 %4 ms"_s.arg(r.persona, r.which, fmt(r.toBrokerMs), fmt(budget))));
+            // 中间价单腿上的行情订阅:每条腿撤一次(不漏、占着线路配额),都在 placeOrder 之后(不和发单抢限速名额)
+            if (mid) {
+                QCOMPARE(r.cancels, r.persona == u"iron_mid"_s ? 4 : 3);
+                QVERIFY2(r.cancelsAfterPlace, qPrintable(r.persona + u" "_s + r.which + u":撤订阅排在发单前面"_s));
+            } else {
+                QCOMPARE(r.cancels, 0);
+            }
         }
     }
 

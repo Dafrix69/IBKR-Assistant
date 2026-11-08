@@ -305,8 +305,9 @@ private:
     /// 正在算的基差(按 cacheKey):同一时刻要现价的几处(下单前的取价、行情页、情报)共用这一趟,不各自再等一遍 K 线
     QHash<QString, util::Task<util::OJson>> basisInflight_;
     util::Task<util::OJson> fetchBasis(SessionPtr session, contract::IndexConfig cfg, IbContract fut, QString sessionDate, int closeMin, QString cacheKey);
-    /// 基差那两段 30 根 1 分钟 K 线的等待上限:平时一两秒就回;农场不回话时等满会话缺省的 90 秒没有意义
-    static constexpr double kBasisBarsTimeoutMs = 20'000;
+    /// 基差那两段 30 根 1 分钟 K 线的等待上限:农场不回话时等满会话缺省的 90 秒没有意义。30 秒是估的、没量过——
+    /// 历史数据农场"闲置、按需启用"时第一条要多久没有记录;日志里 `[order] 指令时延` 的「现价」段会说明够不够
+    static constexpr double kBasisBarsTimeoutMs = 30'000;
     QHash<QString, std::shared_ptr<FutStream>> futStreams_;
     QHash<QString, double> futuresBackoff_;
     QString lastFuturesError_;

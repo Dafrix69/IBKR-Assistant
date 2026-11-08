@@ -183,7 +183,9 @@ Task<HeldLegQuotes> BrokerRouter::legQuotesHeld(OJson contract, contract::Accoun
     } catch (...) {
         failure = std::current_exception();
     }
-    // finally:撤订阅(不撤会一直占着行情线路配额)、行情类型切回、摘掉报错监听。成功时交给调用方在发单之后做
+    // finally:撤订阅(不撤会一直占着行情线路配额)、行情类型切回、摘掉报错监听。成功时交给调用方在发单之后做。
+    // 注意 cancelTicker 不计引用:同一合约别处也订着(持仓的常驻流、另一路取价)时会一起撤掉——老问题,这里留到发单之后撤,
+    // 窗口比原来长了 placeOrder 那一段(合约号多半已在缓存,几毫秒)
     std::weak_ptr<IbSession> weak = session;
     std::function<void()> release = [weak, opts, subscribed, delayedOk, hasOnError, token]() {
         const SessionPtr s = weak.lock();
