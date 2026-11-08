@@ -42,6 +42,8 @@ struct SimProfile {
     int orderAckMs = 40;
     /// 握手 / 报到
     int handshakeMs = 5;
+    /// 历史 K 线(夜盘算基差要两段 30 根 1 分钟线);< 0 = 一直不回(农场不回话)
+    int historicalMs = 600;
 };
 
 /// 一条请求的记录
@@ -172,6 +174,9 @@ private:
         case out::kReqMktData:
             marketData(f);
             break;
+        case out::kReqHistoricalData:
+            if (p.historicalMs >= 0) say(p.historicalMs, {historicalReply(f)});
+            break;
         case out::kPlaceOrder: {
             w_->placedAtMs.append(w_->now());
             const QString orderId = f.value(1);
@@ -199,7 +204,7 @@ private:
         }
         QString tradingClass = f.value(14);
         if (tradingClass.isEmpty()) tradingClass = option && symbol == u"SPX"_s ? u"SPXW"_s : symbol;
-        const QString exchange = secType == u"IND"_s ? u"CBOE"_s : u"SMART"_s;
+        const QString exchange = !f.value(10).isEmpty() ? f.value(10) : secType == u"IND"_s ? u"CBOE"_s : u"SMART"_s;
         const int conId = simConId(symbol, secType, expiry, strike, right);
         const QString day = u"20261104"_s, next = u"20261105"_s;
         const QString hours = day + u":0930-"_s + day + u":1615;"_s + next + u":0930-"_s + next + u":1615"_s;
@@ -209,6 +214,20 @@ private:
                       u"1"_s, u"0"_s, symbol, QString(), QString(), QString(), QString(), QString(), u"America/New_York"_s, hours, hours, QString(),
                       QString(), u"0"_s, u"1"_s, symbol, u"IND"_s, u"26"_s, option ? expiry : QString(), QString(), u"1"_s, u"1"_s, u"1"_s, u"0"_s};
         return {m, {u"52"_s, u"1"_s, reqId}};
+    }
+
+    /// REQ_HISTORICAL_DATA(sv 193):[20, reqId, conId, symbol, secType, ...]。回 15:35–16:00 美东每分钟一根,
+    /// 指数收 underlying、期货收 underlying + 30(基差 30)
+    QStringList historicalReply(const QStringList& f) {
+        const QString reqId = f.value(1), secType = f.value(4);
+        const double close = secType == u"FUT"_s ? w_->underlying + 30 : w_->underlying;
+        QStringList m{u"17"_s, reqId, u"20261104 15:35:00"_s, u"20261104 16:05:00"_s, u"26"_s};
+        for (int minute = 35; minute <= 60; ++minute) {
+            const QString t = minute == 60 ? u"16:00"_s : u"15:%1"_s.arg(minute);
+            const QString px = QString::number(close, 'f', 2);
+            m << u"20261104 %1:00 America/New_York"_s.arg(t) << px << px << px << px << u"-1"_s << u"-1"_s << u"0"_s;
+        }
+        return m;
     }
 
     /// REQ_MKT_DATA:[1, 11, reqId, conId, symbol, secType, expiry, strike, right, ...]
@@ -224,7 +243,8 @@ private:
             const double mid = std::round((intrinsic + 6.0 * std::exp(-std::abs(k - w_->underlying) / 25.0) + 0.05) * 20.0) / 20.0;
             say(w_->profile.optionFirstTickMs, {tick(1, std::max(0.05, mid - 0.05)), tick(2, mid + 0.05), tick(4, mid)});
         } else {
-            const double px = secType == u"IND"_s ? w_->underlying : 213.0;
+            // 期货比指数高 30 点(基差);股票一律 213
+            const double px = secType == u"IND"_s ? w_->underlying : secType == u"FUT"_s ? w_->underlying + 30 : 213.0;
             say(w_->profile.indexFirstTickMs, {tick(1, px - 0.05), tick(2, px + 0.05), tick(4, px), tick(9, px - 10)});
         }
     }

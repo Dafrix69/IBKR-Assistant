@@ -302,7 +302,8 @@ public:
 private:
     // 指令主线
     util::Task<Rec> execute(QString recordId, parsing::validator::ApprovedOrder approved, StageClock* clock = nullptr);
-    util::Task<double> priceAutoMid(parsing::validator::ApprovedOrder approved);
+    /// release 非空:腿上的行情订阅留着,撤订阅的函数交给调用方在发单之后叫(见 BrokerRouter::legQuotesHeld)
+    util::Task<double> priceAutoMid(parsing::validator::ApprovedOrder approved, std::function<void()>* release = nullptr);
     void prewarm(const parsing::validator::ApprovedOrder& approved);
     util::Task<> prewarmRun(Rec contract, contract::AccountConfig account);
     void indexPlacement(const QString& recordId, const execution::PlacementResult& placement);

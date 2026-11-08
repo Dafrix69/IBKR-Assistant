@@ -41,6 +41,8 @@ namespace {
 
 /// 美东 2026-11-04 周三 10:30(冬令时)
 constexpr double kRth = 1793806200000.0;
+/// 同一天美东 21:00:SPX 不计算,现价按 ES − 基差推算
+constexpr double kNight = kRth + 10.5 * 3600'000;
 
 template <class T>
 T wait(Task<T> t, int limitMs = 20000) {
@@ -119,9 +121,9 @@ struct Run {
 
 class Rig {
 public:
-    explicit Rig(const sim::SimProfile& profile) {
-        util::setDateNowForTests([] { return kRth; });
-        domain::setClock(kRth);
+    explicit Rig(const sim::SimProfile& profile, double at = kRth, bool warm = true) : at_(at) {
+        util::setDateNowForTests([at] { return at; });
+        domain::setClock(at);
         world.profile = profile;
         const OJson fx = jsfix::load(u"engine_core.json"_s);
         OJson base = jsfix::dec(*fx.get(u"base"_s));
@@ -150,8 +152,9 @@ public:
         a.notifier = std::make_shared<util::Notifier>(false, std::vector<util::Notifier::Sink>{});
         engine = std::make_unique<orch::TradingEngine>(std::move(a));
         engine->setTimerHook([](int ms, std::function<void()> fn) { QTimer::singleShot(ms, std::move(fn)); });
-        // 软件开着时的样子:连接已经连上,SPX 的常驻行情已经订上
-        wait(broker->indexPrice(u"SPX"_s));
+        // 软件开着时的样子:连接已经连上,SPX 的常驻行情已经订上(夜盘场景只连上、不预先取价)
+        if (warm) wait(broker->indexPrice(u"SPX"_s));
+        else wait(broker->connect(u"paper"_s));
     }
     ~Rig() {
         engine.reset();
@@ -162,10 +165,14 @@ public:
     }
 
     Run submit(const QString& persona, const QString& which, const QString& text) {
+        // 人连着下两单之间至少隔几百毫秒:限速名额(每 100 毫秒 4 条)早就回来了
+        QElapsedTimer idle;
+        idle.start();
+        while (idle.elapsed() < 300) QCoreApplication::processEvents(QEventLoop::AllEvents, 5);
         world.reset();
         QElapsedTimer t;
         t.start();
-        const orch::EngineResult r = wait(engine->handleInstruction(text, u"manual"_s, domain::etNowFromEpoch(kRth), std::nullopt, std::nullopt, false));
+        const orch::EngineResult r = wait(engine->handleInstruction(text, u"manual"_s, domain::etNowFromEpoch(at_), std::nullopt, std::nullopt, false), 60000);
         Run run;
         run.persona = persona;
         run.which = which;
@@ -185,6 +192,7 @@ public:
         return run;
     }
 
+    double at_;
     QTemporaryDir dir;
     sim::SimWorld world;
     domain::Settings settings;
@@ -259,6 +267,65 @@ private slots:
             QVERIFY2(r.submitted == 1 && r.rejected == 0, qPrintable(r.persona + u" "_s + r.which + u":"_s + r.rejections.join(u";"_s)));
             QVERIFY2(r.toBrokerMs > 0, qPrintable(r.persona + u" 没有 placeOrder"_s));
         }
+    }
+
+    /// 预算:按时延表算出来的结构上限,不是某一次跑出来的数。D = 合约详情一次往返,T = 期权首笔价。
+    /// 写了价的组合:合约确认一次往返(各腿同时问、和合约时段同时问)→ < 2D。中间价组合:一次往返 + 首笔价 + 一个轮询 → < D + T + 200。
+    /// 改之前(逐条串行、250 毫秒轮询、撤订阅挤在发单前):写价蝶 1015 / 756,中间价蝶 1577 / 826,铁蝶 1886 / 1677
+    void budgets() {
+        sim::SimProfile p;
+        // 带 sanitizer 的构建里代码本身慢几倍:只放宽代码自己那一份(固定加 300)
+#if defined(__has_feature)
+#if __has_feature(address_sanitizer) || __has_feature(thread_sanitizer)
+        const double slack = 300;
+#else
+        const double slack = 0;
+#endif
+#else
+        const double slack = 0;
+#endif
+        const double D = p.contractDetailsMs, T = p.optionFirstTickMs;
+        QList<Run> runs;
+        for (const Persona& persona : personas()) {
+            if (persona.key == u"llm"_s || persona.key == u"stock"_s) continue;
+            Rig rig(p);
+            for (const auto& [which, text] : {std::pair{u"首单"_s, persona.first}, std::pair{u"次单"_s, persona.second}}) runs << rig.submit(persona.key, which, text);
+        }
+        for (const Run& r : runs) {
+            const bool mid = r.persona.endsWith(u"_mid"_s);
+            // 铁蝶四条腿 + 时段那一条是 5 条请求,限速每 100 毫秒 4 条:第五条多等 100
+            const double budget = (mid ? D + T + 200 : 2 * D) + (r.persona == u"iron_mid"_s ? 100 : 0) + slack;
+            QVERIFY2(r.toBrokerMs > 0 && r.toBrokerMs < budget,
+                     qPrintable(u"%1 %2:到券商 %3 ms,预算 %4 ms"_s.arg(r.persona, r.which, fmt(r.toBrokerMs), fmt(budget))));
+        }
+    }
+
+    /// 夜盘:SPX 现价要 ES − 基差,基差要两段历史 K 线。行情页先要了一次现价(基差正在算),1.2 秒后来了一张蝶:
+    /// 它等的是同一趟基差,不再自己发两段请求、各等一遍
+    void overnightSharesBasis() {
+        sim::SimProfile p;
+        p.historicalMs = 1500;
+        Rig rig(p, kNight, false);
+        rig.world.reset();
+        util::Task<std::optional<double>> board = rig.broker->indexPrice(u"SPX"_s);
+        QElapsedTimer gap;
+        gap.start();
+        while (gap.elapsed() < 1200) QCoreApplication::processEvents(QEventLoop::AllEvents, 5);
+        const int histBefore = rig.world.count(sim::out::kReqHistoricalData);
+        QElapsedTimer t;
+        t.start();
+        const orch::EngineResult r = wait(rig.engine->handleInstruction(u"1.8 挂15蝴蝶 15CM"_s, u"manual"_s, domain::etNowFromEpoch(kNight), std::nullopt, std::nullopt, true));
+        const double snapshotMs = r.timing.isEmpty() ? -1 : r.timing[0].second;
+        wait(board);
+        qInfo().noquote() << u"[night] 现价 %1 ms(基差请求 %2 条,蝶来之前已发 %3 条)| 现价 %4"_s.arg(fmt(snapshotMs))
+                                 .arg(rig.world.count(sim::out::kReqHistoricalData))
+                                 .arg(histBefore)
+                                 .arg(fmt(board.result().value_or(-1)));
+        QVERIFY(histBefore >= 1);  // 蝶来的时候,行情页那一趟基差已经在算
+        QCOMPARE(rig.world.count(sim::out::kReqHistoricalData), 2);  // 指数、期货各一段;蝶没有另发
+        QCOMPARE(board.result().value_or(-1), 6800.0);  // ES 6830 − 基差 30
+        // 等的是行情页那一趟剩下的部分(约 2H + 0.5 秒 − 1.2 秒),不是自己从头再来一遍(两段串着各 H,> 2H)
+        QVERIFY2(snapshotMs > 0 && snapshotMs < 2 * p.historicalMs, qPrintable(fmt(snapshotMs)));
     }
 
     void localProfile() {

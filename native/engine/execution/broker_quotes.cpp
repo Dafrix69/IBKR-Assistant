@@ -42,14 +42,20 @@ std::optional<double> readPriceFrom(const TickerData& t) {
     return std::nullopt;
 }
 
+/// 对着 TS 夹具逐字比的券商场景:轮询步长换回 TS 的样子(见 setLegacyQuotePollForTests)
+bool legacyQuotePoll = false;
+/// 组合盘口 / 现价看一次到没到的间隔(生产)。首笔报价一到就该走:100 / 250 毫秒一看,平均白等一半
+constexpr int kQuotePollMs = 25;
+
 /// 轮询而不是死等:价格到了立刻返回,waitMs 只是上限。固定 settle(1000) 意味着哪怕 tick 在第 80ms 就到了也要陪满一秒。
 Task<std::optional<double>> pollTicker(std::shared_ptr<IbSession> session, std::shared_ptr<TickerHandle> ticker, int waitMs) {
+    const int step = legacyQuotePoll ? 100 : kQuotePollMs;
     int waited = 0;
     for (;;) {
         if (const auto price = readPriceFrom(ticker->read())) co_return price;
         if (waited >= waitMs) co_return std::nullopt;
-        co_await session->settle(std::min(100, waitMs - waited));
-        waited += 100;
+        co_await session->settle(std::min(step, waitMs - waited));
+        waited += step;
     }
 }
 
@@ -89,11 +95,19 @@ QString toUpperJs(const QString& s) { return s.toUpper(); }
 
 // ---- 行情 -----------------------------------------------------------
 
+void BrokerRouter::setLegacyQuotePollForTests(bool legacy) { legacyQuotePoll = legacy; }
+
 Task<std::vector<LegQuote>> BrokerRouter::legQuotes(OJson contract, contract::AccountConfig account) {
+    HeldLegQuotes held = co_await legQuotesHeld(std::move(contract), std::move(account));
+    if (held.release) held.release();
+    co_return std::move(held.quotes);
+}
+
+Task<HeldLegQuotes> BrokerRouter::legQuotesHeld(OJson contract, contract::AccountConfig account) {
     const SessionPtr session = co_await forAccount(account);
     const OJson* legsP = prop(contract, u"legs"_s);
     const QList<OJson> legs = js::nullish(legsP) ? QList<OJson>() : legsP->items;
-    if (legs.isEmpty()) co_return std::vector<LegQuote>{};
+    if (legs.isEmpty()) co_return HeldLegQuotes{};
     const bool delayedOk = account.is_paper;
     const QString symbol = js::str(prop(contract, u"symbol"_s));
     const QString exchange = js::str(prop(contract, u"exchange"_s));
@@ -134,9 +148,12 @@ Task<std::vector<LegQuote>> BrokerRouter::legQuotes(OJson contract, contract::Ac
         };
         // 某条腿的订阅被拒(实盘会话同时在线时 10197 时不时来一下),当场重订那一条,而不是干等到超时报「盘口不可用」
         std::vector<bool> resubscribed(opts.size(), false);
+        // 生产:先看一眼(常驻流可能早就有价)、之后每 25 毫秒看一次;TS 夹具:先睡 250 再看
+        const int pollMs = legacyQuotePoll ? 250 : kQuotePollMs;
         while (waited < kQuoteWaitMs) {
-            co_await session->settle(250);
-            waited += 250;
+            if (!legacyQuotePoll && ready()) break;
+            co_await session->settle(pollMs);
+            waited += pollMs;
             if (ready()) break;
             for (size_t i = 0; i < handles.size(); ++i) {
                 if (!resubscribed[i] && errTruthy(handles[i]->read())) {
@@ -166,20 +183,31 @@ Task<std::vector<LegQuote>> BrokerRouter::legQuotes(OJson contract, contract::Ac
     } catch (...) {
         failure = std::current_exception();
     }
-    // finally
-    for (size_t i = 0; i < subscribed; ++i) {
-        try {
-            session->cancelTicker(opts[i]);  // 不撤会一直占着行情线路配额
-        } catch (...) {
-            /* 撤订阅失败不该盖住真正的错误 */
+    // finally:撤订阅(不撤会一直占着行情线路配额)、行情类型切回、摘掉报错监听。成功时交给调用方在发单之后做
+    std::weak_ptr<IbSession> weak = session;
+    std::function<void()> release = [weak, opts, subscribed, delayedOk, hasOnError, token]() {
+        const SessionPtr s = weak.lock();
+        if (!s) return;
+        for (size_t i = 0; i < subscribed; ++i) {
+            try {
+                s->cancelTicker(opts[i]);
+            } catch (...) {
+                /* 撤订阅失败不该盖住真正的错误 */
+            }
         }
+        if (delayedOk) s->reqMarketDataType(1);
+        if (hasOnError) s->offError(token);
+    };
+    if (failure) {
+        release();
+        std::rethrow_exception(failure);
     }
-    if (delayedOk) session->reqMarketDataType(1);
-    if (hasOnError) session->offError(token);
-    if (failure) std::rethrow_exception(failure);
     const bool missing = std::any_of(quotes.begin(), quotes.end(), [](const LegQuote& q) { return !(q.bid > 0 && q.ask > 0); });
-    if (missing && !mdErrors->empty()) throw BrokerError(quoteErrorMessage(symbol, *mdErrors));
-    co_return quotes;
+    if (missing && !mdErrors->empty()) {
+        release();
+        throw BrokerError(quoteErrorMessage(symbol, *mdErrors));
+    }
+    co_return HeldLegQuotes{std::move(quotes), std::move(release)};
 }
 
 /// IBKR 什么都能报(订阅到位的话),恒回空。
@@ -424,47 +452,21 @@ Task<std::optional<OJson>> BrokerRouter::futuresSpot(SessionPtr session, contrac
     const QString cacheKey = u"%1%2|%3"_s.arg(cfg.futures, month, sessionDate);
     std::optional<OJson> basis = loadBasis(cacheKey);
     if (!basis) {
-        const double endEpoch = util::wallToEpoch(util::WallParts{sessionDate.mid(0, 4).toDouble(), sessionDate.mid(5, 2).toDouble(), sessionDate.mid(8, 2).toDouble(),
-                                                                  double(closeMin / 60), double(closeMin % 60 + 5), 0},
-                                                  QString::fromUtf16(util::kET));
-        QString endUtc = util::isoString(endEpoch).left(19);
-        endUtc.remove(u'-');
-        const qsizetype t = endUtc.indexOf(u'T');
-        if (t >= 0) endUtc.replace(t, 1, u'-');
-        HistoricalRequest opts;
-        opts.endDateTime = endUtc;
-        opts.durationStr = u"1800 S"_s;
-        opts.barSizeSetting = u"1 min"_s;
-        opts.whatToShow = u"TRADES"_s;
-        IbContract idx = indexContract(cfg.symbol, cfg.exchange);
-        co_await qualifyOrRaise(session, &idx);
-        std::vector<RawBar> idxBars, futBars;
-        std::exception_ptr failure;
-        try {
-            HistoricalRequest idxOpts = opts;
-            idxOpts.useRTH = true;
-            idxBars = co_await session->historicalData(idx, idxOpts);
-            HistoricalRequest futOpts = opts;
-            futOpts.useRTH = false;
-            futBars = co_await session->historicalData(fut, futOpts);
-        } catch (...) {
-            failure = std::current_exception();
+        // 同一个基差同一时刻只算一趟:后来的人等前面那一趟的结果(成功、失败都一样),不各自再发两段 K 线请求各等一遍
+        util::Task<OJson> pending;
+        if (const auto it = basisInflight_.constFind(cacheKey); it != basisInflight_.cend()) {
+            pending = it.value();
+        } else {
+            pending = fetchBasis(session, cfg, fut, sessionDate, closeMin, cacheKey);
+            if (!pending.done()) {
+                basisInflight_.insert(cacheKey, pending);
+                const std::weak_ptr<bool> alive = alive_;
+                pending.onDone([this, alive, cacheKey] {
+                    if (!alive.expired()) basisInflight_.remove(cacheKey);
+                });
+            }
         }
-        if (failure) throw BrokerError(u"取 %1 / %2 收盘分钟线失败:%3"_s.arg(cfg.symbol, cfg.futures, messageOf(failure)));
-        std::vector<TimedClose> idxClose, futClose;
-        for (const RawBar& b : idxBars) idxClose.push_back({barTimestamp(b.date), b.close});
-        for (const RawBar& b : futBars) futClose.push_back({barTimestamp(b.date), b.close});
-        const auto matched = contemporaneousBasis(idxClose, futClose);
-        if (!matched) {
-            throw BrokerError(u"%1 收盘前找不到 %2 与 %3 同一分钟的 K 线,算不出基差"_s.arg(sessionDate, cfg.symbol, cfg.futures));
-        }
-        OJson row = js::object({{u"basis"_s, js::N(matched->basis)},
-                                {u"time"_s, js::S(matched->time)},
-                                {u"index_close"_s, js::N(matched->index_close)},
-                                {u"futures_close"_s, js::N(matched->futures_close)},
-                                {u"session"_s, js::S(sessionDate)}});
-        basis = row;
-        saveBasis(cacheKey, row);
+        basis = co_await pending;
     }
 
     const std::optional<double> futPrice = co_await futuresPrice(session, cfg.futures + month, fut);
@@ -482,6 +484,53 @@ Task<std::optional<OJson>> BrokerRouter::futuresSpot(SessionPtr session, contrac
                                                                    util::jsNumberToString(util::pyRound(b, 2))) +
                              u"(基差取 %1 同一分钟)"_s.arg(js::str(prop(*basis, u"time"_s)))));
     co_return out;
+}
+
+/// 基差:上一个常规时段最后同一分钟的指数与期货 K 线相减(contemporaneousBasis),算出来落盘。失败抛 BrokerError
+Task<OJson> BrokerRouter::fetchBasis(SessionPtr session, contract::IndexConfig cfg, IbContract fut, QString sessionDate, int closeMin, QString cacheKey) {
+    const double endEpoch = util::wallToEpoch(util::WallParts{sessionDate.mid(0, 4).toDouble(), sessionDate.mid(5, 2).toDouble(), sessionDate.mid(8, 2).toDouble(),
+                                                              double(closeMin / 60), double(closeMin % 60 + 5), 0},
+                                              QString::fromUtf16(util::kET));
+    QString endUtc = util::isoString(endEpoch).left(19);
+    endUtc.remove(u'-');
+    const qsizetype t = endUtc.indexOf(u'T');
+    if (t >= 0) endUtc.replace(t, 1, u'-');
+    HistoricalRequest opts;
+    opts.endDateTime = endUtc;
+    opts.durationStr = u"1800 S"_s;
+    opts.barSizeSetting = u"1 min"_s;
+    opts.whatToShow = u"TRADES"_s;
+    opts.timeoutMs = kBasisBarsTimeoutMs;
+    IbContract idx = indexContract(cfg.symbol, cfg.exchange);
+    co_await qualifyOrRaise(session, &idx);
+    std::vector<RawBar> idxBars, futBars;
+    std::exception_ptr failure;
+    try {
+        // 先指数、再期货(同原版):指数那段被拒就不再要期货那段
+        HistoricalRequest idxOpts = opts;
+        idxOpts.useRTH = true;
+        idxBars = co_await session->historicalData(idx, idxOpts);
+        HistoricalRequest futOpts = opts;
+        futOpts.useRTH = false;
+        futBars = co_await session->historicalData(fut, futOpts);
+    } catch (...) {
+        failure = std::current_exception();
+    }
+    if (failure) throw BrokerError(u"取 %1 / %2 收盘分钟线失败:%3"_s.arg(cfg.symbol, cfg.futures, messageOf(failure)));
+    std::vector<TimedClose> idxClose, futClose;
+    for (const RawBar& b : idxBars) idxClose.push_back({barTimestamp(b.date), b.close});
+    for (const RawBar& b : futBars) futClose.push_back({barTimestamp(b.date), b.close});
+    const auto matched = contemporaneousBasis(idxClose, futClose);
+    if (!matched) {
+        throw BrokerError(u"%1 收盘前找不到 %2 与 %3 同一分钟的 K 线,算不出基差"_s.arg(sessionDate, cfg.symbol, cfg.futures));
+    }
+    OJson row = js::object({{u"basis"_s, js::N(matched->basis)},
+                            {u"time"_s, js::S(matched->time)},
+                            {u"index_close"_s, js::N(matched->index_close)},
+                            {u"futures_close"_s, js::N(matched->futures_close)},
+                            {u"session"_s, js::S(sessionDate)}});
+    saveBasis(cacheKey, row);
+    co_return row;
 }
 
 /// 批量拉股票/ETF 报价;绝不用于订单定价。

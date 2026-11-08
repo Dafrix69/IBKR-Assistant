@@ -456,7 +456,9 @@ public:
     // 这两样 TWS 有时一直不回(没有报错、连接也还在):不设上限,等它的读请求就永远挂着
     Task<std::vector<RawBar>> historicalData(IbContract contract, HistoricalRequest opts) override {
         Runtime::Scope s(*rt_);
-        return withTimeout(historicalCo(shared_from_this(), std::move(contract), std::move(opts)), kHistoricalTimeoutMs, u"历史 K 线 90 秒没有回音"_s);
+        const double limit = opts.timeoutMs.value_or(kHistoricalTimeoutMs);
+        return withTimeout(historicalCo(shared_from_this(), std::move(contract), std::move(opts)), limit,
+                           u"历史 K 线 %1 秒没有回音"_s.arg(util::jsNumberToString(util::jsRound(limit / 1000))));
     }
     Task<std::vector<OptChainParam>> secDefOptParams(QString symbol, QString secType, int conId) override {
         Runtime::Scope s(*rt_);
@@ -1059,20 +1061,27 @@ std::optional<NetLiquidation> IbApiNextSession::netLiquidation(const QString& ac
 }
 
 Task<> IbApiNextSession::qualifyLoop(std::weak_ptr<IbApiNextSession> weak, std::vector<IbContract*> contracts, std::shared_ptr<bool> timedOut) {
-    // 每张合约的请求都用开头那一刻的样子(TS 读的也是它:前面写回去的只改那一张自己);超时之后照样把请求发完(同 TS),
-    // 但不再写调用方的对象——调用方给的是裸指针,超时之后它可能已经不在了(见头文件)
+    // 每张合约的请求都用开头那一刻的样子(TS 读的也是它:前面写回去的只改那一张自己);超时之后不再写调用方的对象——
+    // 调用方给的是裸指针,超时之后它可能已经不在了(见头文件)。
+    // 请求先按次序一次全发出去,再按同一个次序等回话:组合的 N 条腿是一次往返,不是 N 次(TS 原版逐条等,
+    // 一只三腿蝶在下单路径上要多等两次到 IBKR 服务器的往返,见 docs/features/perf-log.md「下单时延」)。
+    // 发出去的字节与先后和逐条等时一样,只是不等前一条的回话;TWS 的限速(每 100 毫秒 4 条)由 ApiNext 排队
     std::vector<IbContract> snapshots;
     snapshots.reserve(contracts.size());
     for (IbContract* c : contracts) snapshots.push_back(*c);
+    std::vector<ibnext::Task<ibnext::JsList>> pending;
+    pending.reserve(contracts.size());
+    {
+        // 发请求时才拿着会话;等结果的时候只拿弱引用:结果在订阅表里,等不到时协程帧留着也不能把会话拖住
+        auto self = weak.lock();
+        if (!self) co_return;
+        for (const IbContract& snap : snapshots) pending.push_back(self->api_->getContractDetails(toIbContract(snap)));
+    }
     for (std::size_t i = 0; i < contracts.size(); ++i) {
         std::optional<ResolvedContract> resolved;
         bool failed = false;
-        // 等结果的时候不拿着会话(只拿弱引用):结果在订阅表里,等不到时协程帧留着也不能把会话拖住
-        ibnext::Task<ibnext::JsList> pending;
-        if (auto self = weak.lock()) pending = self->api_->getContractDetails(toIbContract(snapshots[i]));
-        else co_return;
         try {
-            const ibnext::JsList details = co_await pending;
+            const ibnext::JsList details = co_await pending[i];
             auto self = weak.lock();
             if (!self) co_return;
             OJson arr = js::array(details);

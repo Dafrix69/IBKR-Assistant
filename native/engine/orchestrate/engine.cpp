@@ -389,9 +389,26 @@ Task<EngineResult> TradingEngine::handleInstruction(QString instruction, QString
         storePort_->audit(u"engine"_s, u"fanout"_s,
                           js::object({{u"accounts"_s, js::strings(targets)}, {u"orders"_s, js::N(parsedOrders.size())}, {u"expanded"_s, js::N(orders.size())}}));
     }
+    // 合约号和合约时段同时去问(两样都要到 IBKR 服务器往返一次):发单时组合腿直接命中合约号缓存,不再在时段之后再排一次往返。
+    // 这时还没校验,问的是解析出来的合约;问不到、问错都无害——发单时 place 正式再确认一遍并报真实的错。只解析的不等它(同原来的解析预热)
+    std::vector<Task<>> warming;
+    if (router_) {
+        for (const Rec& order : orders) {
+            const OJson* contract = js::prop(&order, u"contract"_s);
+            if (!contract || contract->type != OJson::Object) continue;
+            const contract::AccountConfig* account = settings.accountByAlias(js::strOr(js::prop(&order, u"account"_s), QString()));
+            if (!account) account = settings.defaultAccount();
+            if (!account) continue;
+            warming.push_back(router_->warmQualify(*contract, *account));
+        }
+    }
     // 先把期权/组合的合约时段问一遍(按天缓存,一天只有一次网络往返):校验链路是同步的,读不到缓存就只能退回正股日历
     co_await prewarmContractHours(*impl_->hoursHost, orders);
-    clock.mark(u"合约时段"_s);
+    if (!dryRun)
+        for (Task<>& t : warming) co_await t;
+    else if (!warming.empty())
+        prewarmPromise = warming.back();
+    clock.mark(u"合约确认"_s);
     QList<Rec> priced = autoOutsideRth(*impl_->hoursHost, orders, at);
     const QList<Rec> recent = storePort_->recentOrderDetails(settings.limits.duplicate_window_minutes, at.epochMs);
     const val::MarketStatusFn statusFn = [this, at](const OJson& o) { return orderMarketStatus(*impl_->hoursHost, o, at); };
@@ -592,10 +609,22 @@ Task<Rec> TradingEngine::execute(QString recordId, val::ApprovedOrder approved, 
         co_return js::object({{u"queued"_s, js::B(true)}, {u"mode"_s, js::S(u"software_watch"_s)}});
     }
 
-    // 立即执行的 AUTO_MID 组合:现在就取盘口中间价定限价
+    // 立即执行的 AUTO_MID 组合:现在就取盘口中间价定限价。腿上的行情订阅等这张单发出去(或这一趟出错)再撤:
+    // 撤订阅的消息排在 placeOrder 前面会占掉 TWS 的限速名额(guard 析构时撤,协程正常走完与抛异常都走到)
+    struct ReleaseQuotes {
+        std::function<void()> fn;
+        ~ReleaseQuotes() {
+            if (!fn) return;
+            try {
+                fn();
+            } catch (...) {
+                /* 撤订阅失败不影响这张单 */
+            }
+        }
+    } releaseQuotes;
     std::optional<double> limitOverride;
     if (js::str(js::prop(orderSpec, u"price_mode"_s)) == u"AUTO_MID") {
-        const double limit = co_await priceAutoMid(approved);
+        const double limit = co_await priceAutoMid(approved, &releaseQuotes.fn);
         if (clock) clock->mark(u"中间价"_s);
         limitOverride = limit;
         const QString note = approved.account.is_paper ? u"(纸面账户:无实时期权订阅时按延迟盘口定价,成交价参考性有限)"_s : QString();
@@ -607,6 +636,7 @@ Task<Rec> TradingEngine::execute(QString recordId, val::ApprovedOrder approved, 
     storePort_->markSubmitIntent(recordId);  // 先留痕再发单:发到一半进程被杀,对账与重复单防抖还认得出这条记录
     const execution::PlacementResult placement = co_await router_->place(recordId, approved, limitOverride);
     if (clock) clock->mark(u"发单"_s);
+    { ReleaseQuotes now{std::exchange(releaseQuotes.fn, nullptr)}; }  // 单已经在线上了:现在撤腿上的行情订阅(撤不掉不影响这张单)
     indexPlacement(recordId, placement);
     const auto idOrNull = [](const std::optional<int>& v) { return v ? js::N(*v) : js::Null(); };
     storePort_->appendEvent(recordId, u"status"_s,
@@ -682,10 +712,17 @@ Task<QList<Rec>> TradingEngine::firePending(Rec prices) {
     co_return fired;
 }
 
-Task<double> TradingEngine::priceAutoMid(val::ApprovedOrder approved) {
+Task<double> TradingEngine::priceAutoMid(val::ApprovedOrder approved, std::function<void()>* release) {
     const OJson* contract = js::prop(&approved.order, u"contract"_s);
     const Rec contractRec = contract ? *contract : js::Null();
-    const std::vector<execution::LegQuote> quotes = co_await router_->legQuotes(contractRec, approved.account);
+    std::vector<execution::LegQuote> quotes;
+    if (release) {
+        execution::HeldLegQuotes held = co_await router_->legQuotesHeld(contractRec, approved.account);
+        quotes = std::move(held.quotes);
+        *release = std::move(held.release);
+    } else {
+        quotes = co_await router_->legQuotes(contractRec, approved.account);
+    }
     // 让价两种算法二选一:盘口价差的一份(auto_mid_spread_share > 0),或固定金额(max_spread_slippage)
     const double share = settings.limits.auto_mid_spread_share;
     const QString action = js::str(js::prop(js::prop(&approved.order, u"order"_s), u"action"_s));

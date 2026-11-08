@@ -136,6 +136,9 @@ struct TradeLike {
 struct HistoricalRequest {
     QString endDateTime, durationStr, barSizeSetting, whatToShow;
     bool useRTH = false;
+    /// 等回话的上限(毫秒);空 = 会话的缺省(90 秒,给大批量的拉取)。小请求自己给短的:TWS 的历史数据农场不回话时,
+    /// 等满 90 秒只是让排在后面的请求(包括下单前的取价)跟着干等
+    std::optional<double> timeoutMs;
 };
 
 struct DepthRow {

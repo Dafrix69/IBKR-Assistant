@@ -61,6 +61,19 @@ public:
     virtual void setSessionHook(std::function<void(const SessionPtr&)> hook) { (void)hook; }
 
     virtual util::Task<std::vector<execution::LegQuote>> legQuotes(Rec contract, contract::AccountConfig account) = 0;
+    /// 发单前预取合约号(和合约时段同时问,见 TradingEngine::handleInstruction)。缺省什么都不做:脚本化的替身 router 不记这一笔,
+    /// 对着 TS 夹具的调用轨迹不变;真 router 去 qualify 填合约号缓存。失败吞掉,发单时正式再确认
+    virtual util::Task<> warmQualify(Rec contract, contract::AccountConfig account) {
+        (void)contract;
+        (void)account;
+        co_return;
+    }
+    /// 订阅留到发单之后再撤的那一种(见 BrokerRouter::legQuotesHeld)。缺省 = legQuotes,没有要撤的
+    virtual util::Task<execution::HeldLegQuotes> legQuotesHeld(Rec contract, contract::AccountConfig account) {
+        execution::HeldLegQuotes held;
+        held.quotes = co_await legQuotes(std::move(contract), std::move(account));
+        co_return held;
+    }
     virtual util::Task<execution::PlacementResult> place(QString recordId, parsing::validator::ApprovedOrder approved, std::optional<double> limitOverride) = 0;
     virtual util::Task<int> cancelAllOpen() = 0;
 
@@ -113,6 +126,16 @@ public:
     void setSessionHook(std::function<void(const SessionPtr&)> hook) override { r_->sessionHook = std::move(hook); }
     util::Task<std::vector<execution::LegQuote>> legQuotes(Rec contract, contract::AccountConfig account) override {
         return r_->legQuotes(std::move(contract), std::move(account));
+    }
+    util::Task<execution::HeldLegQuotes> legQuotesHeld(Rec contract, contract::AccountConfig account) override {
+        return r_->legQuotesHeld(std::move(contract), std::move(account));
+    }
+    util::Task<> warmQualify(Rec contract, contract::AccountConfig account) override {
+        try {
+            co_await r_->qualify(std::move(contract), std::move(account));
+        } catch (...) {
+            /* 预取失败无害:发单时 place 正式再确认一遍,报真实的错 */
+        }
     }
     util::Task<execution::PlacementResult> place(QString recordId, parsing::validator::ApprovedOrder approved, std::optional<double> limitOverride) override {
         return r_->place(std::move(recordId), std::move(approved), limitOverride);

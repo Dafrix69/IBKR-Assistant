@@ -184,6 +184,12 @@ public:
 
     // ---- 行情
     util::Task<std::vector<LegQuote>> legQuotes(util::OJson contract, contract::AccountConfig account);
+    /// 同 legQuotes,只是腿上的行情订阅不当场撤,交给调用方在订单发出去之后 release():撤订阅的消息排在 placeOrder 前面,
+    /// 会占掉 ApiNext 每 100 毫秒 4 条的限速名额,发单就要多等一拍(docs/features/perf-log.md「下单时延」)。取价失败时当场撤、照常抛
+    util::Task<HeldLegQuotes> legQuotesHeld(util::OJson contract, contract::AccountConfig account);
+    /// 组合盘口与现价多久看一次到没到:生产 25 毫秒,组合盘口看之前不先睡。对着 TS 夹具逐字比的券商场景换回 TS 的样子
+    /// (组合盘口先睡 250 再看,现价 100 毫秒一看)
+    static void setLegacyQuotePollForTests(bool legacy);
     std::optional<QString> quoteCapability(const QString& symbol) const;
     /// 最近一次 indexPrice 是怎么得来的;没有回空
     std::optional<util::OJson> spotInfo(const QString& symbol) const;
@@ -296,6 +302,11 @@ private:
     QHash<QString, std::array<QString, 4>> hoursCache_;  // [查询日, tradingHours, liquidHours, tzId]
     QHash<QString, util::OJson> spotInfos_;
     QHash<QString, util::OJson> basisCache_;
+    /// 正在算的基差(按 cacheKey):同一时刻要现价的几处(下单前的取价、行情页、情报)共用这一趟,不各自再等一遍 K 线
+    QHash<QString, util::Task<util::OJson>> basisInflight_;
+    util::Task<util::OJson> fetchBasis(SessionPtr session, contract::IndexConfig cfg, IbContract fut, QString sessionDate, int closeMin, QString cacheKey);
+    /// 基差那两段 30 根 1 分钟 K 线的等待上限:平时一两秒就回;农场不回话时等满会话缺省的 90 秒没有意义
+    static constexpr double kBasisBarsTimeoutMs = 20'000;
     QHash<QString, std::shared_ptr<FutStream>> futStreams_;
     QHash<QString, double> futuresBackoff_;
     QString lastFuturesError_;

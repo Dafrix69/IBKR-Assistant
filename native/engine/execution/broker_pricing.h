@@ -7,6 +7,7 @@
 
 #include <QString>
 
+#include <functional>
 #include <vector>
 
 namespace ibkr::execution {
@@ -20,6 +21,12 @@ public:
 struct LegQuote {
     QString action;  // BUY / SELL
     double ratio = 0, bid = 0, ask = 0;
+};
+
+/// 取到的各腿盘口 + 撤掉这些订阅的函数(只许叫一次;空 = 没有要撤的)
+struct HeldLegQuotes {
+    std::vector<LegQuote> quotes;
+    std::function<void()> release;
 };
 
 /// 组合净价的最小跳动(broker.DEFAULT_COMBO_TICK)

@@ -257,6 +257,8 @@ public:
     int linkDownTyped = 0, linkDownUntyped = 0;
     std::deque<std::function<void()>> io;
     QList<QStringList> frames;
+    /// run(sentMayLead) 时:原库到上一步为止每种消息发过几条(解析 $f 占位按它数)
+    QHash<QString, int>* tsSentCounts_ = nullptr;
     QString unmodelled;
 
     void rec(const QString& key, const OJson& v) {
@@ -275,9 +277,16 @@ public:
         }
     }
 
-    bool run(QString* failure, bool compare = true) {
+    /// sentMayLead:发给 TWS 的消息(与限速挂的计时器)照样逐条比(同样的字节、同样的先后),但允许比原库**早**发——合约确认一次把 N 条请求全发出去,
+    /// 原库是收到上一条的回话才发下一条(见 ib_session.cpp 的 qualifyLoop)。每一步都要求原库到这一步为止发过的,是 C++ 已发的前缀;
+    /// 脚本跑完两边一模一样。别的键(回调、结果、socket 动作)照旧逐步比
+    bool run(QString* failure, bool compare = true, bool sentMayLead = false) {
         const OJson& steps = at(sc_, u"steps"_s);
         const OJson& trace = at(sc_, u"trace"_s);
+        // sent:发给 TWS 的消息;fired:到点的计时器(限速每发一条就挂一个 100 毫秒的,早发就早到点)
+        QHash<QString, QStringList> wantLead, gotLead;
+        QHash<QString, int> tsCounts;
+        if (sentMayLead && compare) tsSentCounts_ = &tsCounts;
         for (qsizetype i = 0; i < steps.items.size(); ++i) {
             step = js::object();
             doStep(steps.items[i]);
@@ -296,6 +305,39 @@ public:
             for (const QString& k : keys) {
                 const OJson w = want.get(k) ? *want.get(k) : js::array();
                 const OJson g = step.get(k) ? *step.get(k) : js::array();
+                if (sentMayLead && k == u"fired"_s) {
+                    // 限速的 100 毫秒计时器跟着发出去的条数走,只比累计个数(C++ 不少于原库、跑完相等);别的计时器照旧逐步比
+                    QStringList wOther, gOther;
+                    for (const OJson& f : jsfix::stripUndefined(w).items) {
+                        if (js::stringify(f) == u"100"_s) wantLead[k] << u"100"_s;
+                        else wOther << js::stringify(f);
+                    }
+                    for (const OJson& f : jsfix::enc(g).items) {
+                        if (js::stringify(f) == u"100"_s) gotLead[k] << u"100"_s;
+                        else gOther << js::stringify(f);
+                    }
+                    if (wOther != gOther || gotLead[k].size() < wantLead[k].size()) {
+                        *failure = u"第 %1 步 %2 的「fired」不同\n  TS :%3(限速累计 %4)\n  C++:%5(限速累计 %6)"_s.arg(QString::number(i), js::stringify(steps.items[i]).left(300),
+                                       wOther.join(u','), QString::number(wantLead[k].size()), gOther.join(u','), QString::number(gotLead[k].size()));
+                        return false;
+                    }
+                    continue;
+                }
+                if (sentMayLead && k == u"sent"_s) {
+                    QStringList& ws = wantLead[k];
+                    QStringList& gs = gotLead[k];
+                    for (const OJson& f : jsfix::stripUndefined(w).items) {
+                        ws << js::stringify(f);
+                        if (k == u"sent"_s && f.type == OJson::Array && !f.items.isEmpty()) tsCounts[js::str(&f.items[0])] += 1;
+                    }
+                    for (const OJson& f : jsfix::enc(g).items) gs << js::stringify(f);
+                    if (gs.size() < ws.size() || gs.mid(0, ws.size()) != ws) {
+                        *failure = u"第 %1 步 %2 的「%3」不是原库的前缀\n  TS :%4\n  C++:%5"_s.arg(QString::number(i), js::stringify(steps.items[i]).left(300), k,
+                                                                                    ws.join(u',').left(1500), gs.join(u',').left(1500));
+                        return false;
+                    }
+                    continue;
+                }
                 const QString ws = js::stringify(jsfix::stripUndefined(w)), gs = js::stringify(jsfix::enc(g));
                 if (ws != gs) {
                     *failure = u"第 %1 步 %2 的「%3」不同\n  TS :%4\n  C++:%5"_s.arg(QString::number(i), js::stringify(steps.items[i]).left(300), k, ws.left(1500), gs.left(1500));
@@ -303,6 +345,12 @@ public:
                 }
             }
         }
+        tsSentCounts_ = nullptr;
+        for (const QString& k : wantLead.keys())
+            if (sentMayLead && compare && gotLead.value(k) != wantLead.value(k)) {
+                *failure = u"脚本跑完,「%1」与原库不同\n  TS :%2\n  C++:%3"_s.arg(k, wantLead.value(k).join(u',').left(1500), gotLead.value(k).join(u',').left(1500));
+                return false;
+            }
         return true;
     }
     ~Harness() {
@@ -369,6 +417,8 @@ private:
         QList<QStringList> hits;
         for (const QStringList& f : frames)
             if (f.value(0) == msg) hits.append(f);
+        // 按原库的视角数:C++ 早发了几条时,"最近发的第 k 条"指的是原库到这一步为止发过的那些里的(见 run 的 sentMayLead)
+        if (tsSentCounts_) hits = hits.mid(0, std::min<qsizetype>(hits.size(), tsSentCounts_->value(msg)));
         const qsizetype n = hits.size() - 1 - k;
         if (n < 0) {
             unmodelled = u"占位 "_s + x.s + u" 指向的请求还没发过"_s;
@@ -608,6 +658,7 @@ private:
             r.barSizeSetting = js::str(arg(1).get(u"barSizeSetting"_s));
             r.whatToShow = js::str(arg(1).get(u"whatToShow"_s));
             r.useRTH = js::truthy(arg(1).get(u"useRTH"_s));
+            if (const OJson* t = arg(1).get(u"timeoutMs"_s); t && t->type == OJson::Number) r.timeoutMs = t->n;
             later<std::vector<RawBar>>(id, s.historicalData(contractFrom(arg(0)), r), [](const std::vector<RawBar>& bars) {
                 OJson out = js::array();
                 for (const auto& b : bars)
@@ -1160,6 +1211,9 @@ private slots:
     /// 有意偏离原库的场景:原库收到 1100 / 2110(TWS 与 IBKR 服务器断了)就把本机 socket 断开重连,C++ 版不断(见 ib_api_next.cpp)。
     /// 这几条 TS 轨迹拿 1100 当断线的触发,之后的每一步都按断开重连录的,对不上是应该的:照样跑(不许走到没建模的路径、放手后不许留东西),
     /// 只是不逐步对照;新行为由 upstreamLossKeepsTheSocket 单独钉住
+    /// 合约确认一次把请求全发出去(qualifyLoop):这些脚本里 C++ 发得比原库早,按 sentMayLead 比
+    static bool sentLeads(const QString& name) { return name.contains(u"qualify"_s) || name == u"contract_falsy_keys"; }
+
     static bool deviates(const QString& name) {
         return name == u"info_1100_2110" || name == u"disconnect_while_reconnecting" || name == u"callbacks_two_listeners" ||
                name == u"disconnect_during_drop_same_tick";
@@ -1214,6 +1268,59 @@ private slots:
         QCOMPARE(field(int(h.got.size()) - 1, u"res"_s), u"[[44,\"ok\",true]]"_s);
     }
 
+    /// 合约确认:N 条腿的请求在调用的那一刻全发出去(不等前一条的回话),回话不按次序来也各归各的;某一条被拒只有它的 conId 是 0
+    void qualifySendsAllAtOnce() {
+        const QString detail = QStringLiteral(R"(["10","%1","SPX","OPT","20261020","20261020","%2","P","SMART","USD","","","SPXW","%3","0.05","100","","","1","0","","","","","","","US/Eastern","20261020:0930-20261020:1615","20261020:0930-20261020:1600","","0","0","1","","","","20261020","","1","1","1","0"])");
+        const QString leg = QStringLiteral(R"({"secType":"OPT","symbol":"SPX","exchange":"SMART","currency":"USD","lastTradeDateOrContractMonth":"20261020","strike":%1,"right":"P","multiplier":"100","tradingClass":"SPXW"})");
+        const OJson sc = *util::parseOJson(QStringLiteral(R"({"name":"qualify-batch","steps":[
+            {"op":"call","id":60,"m":"create","a":[{"host":"127.0.0.1","port":7497,"clientId":12,"readonly":false}]},
+            {"op":"accept"},{"op":"send","msgs":[["193","20261020 10:00:00 Asia/Shanghai"]]},{"op":"send","msgs":[["15","1","U1234567"]]},{"op":"send","msgs":[["9","1","1"]]},
+            {"op":"call","id":61,"m":"qualifyContracts","a":[[%1,%2,%3],5000]},
+            {"op":"advance","ms":100},
+            {"op":"send","msgs":[%4,["52","1","$f:9:2:0"]]},
+            {"op":"send","msgs":[%5,["52","1","$f:9:2:2"]]},
+            {"op":"send","msgs":[["4","2","$f:9:2:1","200","No security definition has been found for the request",""]]},
+            {"op":"advance","ms":100}
+        ],"trace":[]})").arg(leg.arg(6700), leg.arg(6710), leg.arg(6720), detail.arg(u"$f:9:2:0"_s, u"6720"_s, u"2003"_s), detail.arg(u"$f:9:2:2"_s, u"6700"_s, u"2001"_s)));
+        QString failure;
+        Harness h(sc);
+        QVERIFY2(h.run(&failure, false), qPrintable(failure));
+        const auto field = [&](int i, const QString& k) { return h.got[i].get(k) ? js::stringify(jsfix::enc(*h.got[i].get(k))) : QString(); };
+        // 调用那一步:三条 REQ_CONTRACT_DATA(9)都已经在线上,按腿的次序
+        const QString sent = field(5, u"sent"_s);
+        QCOMPARE(sent.count(u"[\"9\",\"8\","_s), 3);
+        QVERIFY2(sent.indexOf(u"6700"_s) < sent.indexOf(u"6710"_s) && sent.indexOf(u"6710"_s) < sent.indexOf(u"6720"_s), qPrintable(sent));
+        // 第三条腿的回话先到、第一条后到、第二条被拒:结果按腿各归各的
+        QString res;
+        for (int i = 6; i < int(h.got.size()); ++i) res += field(i, u"res"_s);
+        QVERIFY2(res.contains(u"[61,\"ok\",[{\"conId\":2001"_s), qPrintable(res));
+        QVERIFY2(res.contains(u"{\"conId\":0,"_s), qPrintable(res));
+        QVERIFY2(res.contains(u"{\"conId\":2003"_s), qPrintable(res));
+        QVERIFY2(res.indexOf(u"2001"_s) < res.indexOf(u"\"conId\":0"_s) && res.indexOf(u"\"conId\":0"_s) < res.indexOf(u"2003"_s), qPrintable(res));
+    }
+
+    /// 历史 K 线带自己的等待上限(基差那两段小请求给 20 秒):到点就报"20 秒没有回音",不等会话缺省的 90 秒;不给照旧 90 秒
+    void historicalOwnTimeout() {
+        const QString call = QStringLiteral(R"({"op":"call","id":%1,"m":"historicalData","a":[{"secType":"IND","symbol":"SPX","exchange":"CBOE","currency":"USD"},{"endDateTime":"20261104-21:05:00","durationStr":"1800 S","barSizeSetting":"1 min","whatToShow":"TRADES","useRTH":true%2}]})");
+        const OJson sc = *util::parseOJson(QStringLiteral(R"({"name":"hist-timeout","steps":[
+            {"op":"call","id":70,"m":"create","a":[{"host":"127.0.0.1","port":7497,"clientId":12,"readonly":false}]},
+            {"op":"accept"},{"op":"send","msgs":[["193","20261020 10:00:00 Asia/Shanghai"]]},{"op":"send","msgs":[["15","1","U1234567"]]},{"op":"send","msgs":[["9","1","1"]]},
+            %1,
+            %2,
+            {"op":"advance","ms":19900},
+            {"op":"advance","ms":200},
+            {"op":"advance","ms":70000}
+        ],"trace":[]})").arg(call.arg(u"71"_s, u",\"timeoutMs\":20000"_s), call.arg(u"72"_s, QString())));
+        QString failure;
+        Harness h(sc);
+        QVERIFY2(h.run(&failure, false), qPrintable(failure));
+        const auto field = [&](int i, const QString& k) { return h.got[i].get(k) ? js::stringify(jsfix::enc(*h.got[i].get(k))) : QString(); };
+        QCOMPARE(field(7, u"res"_s), QString());  // 19.9 秒:还在等
+        QVERIFY2(field(8, u"res"_s).contains(u"71"_s) && field(8, u"res"_s).contains(u"20 秒没有回音"_s), qPrintable(field(8, u"res"_s)));
+        QVERIFY2(!field(8, u"res"_s).contains(u"[72,"_s), qPrintable(field(8, u"res"_s)));
+        QVERIFY2(field(9, u"res"_s).contains(u"72"_s) && field(9, u"res"_s).contains(u"90 秒没有回音"_s), qPrintable(field(9, u"res"_s)));
+    }
+
     /// 上游断着(1100 / 2110)时下单 / 撤单当场按 LinkDownError 拒(托管 / 追价按类型等它恢复),不排队;1102 之后照常发
     void upstreamLossRefusesOrders() {
         const QString place = QStringLiteral(R"({"op":"call","id":%1,"m":"placeOrder","a":[{"secType":"OPT","symbol":"SPX","exchange":"SMART","currency":"USD","lastTradeDateOrContractMonth":"20261020","strike":6700,"right":"P","multiplier":"100","tradingClass":"SPXW"},{"orderType":"LMT","action":"BUY","totalQuantity":1,"lmtPrice":2.5,"auxPrice":null,"trailingPercent":null,"tif":"DAY","outsideRth":false,"account":"U1234567","transmit":true}]})");
@@ -1255,7 +1362,7 @@ private slots:
         const int apiNext0 = ibnext::LiveCounts::apiNext, subs0 = ibnext::LiveCounts::subscriptions, entries0 = ibnext::LiveCounts::entries;
         {
             Harness h(sc);
-            QVERIFY2(h.run(&failure, !deviates(at(sc, u"name"_s).s)), qPrintable(failure));
+            QVERIFY2(h.run(&failure, !deviates(at(sc, u"name"_s).s), sentLeads(at(sc, u"name"_s).s)), qPrintable(failure));
             QVERIFY2(h.afterlife(&failure), qPrintable(failure));
         }
         // 库这一层(ApiNext / 订阅 / 订阅表条目)也都放干净了:没有互相拉着的强引用
@@ -1278,7 +1385,7 @@ private slots:
         QString failure;
         if (deviates(at(sc, u"name"_s).s)) QSKIP("有意偏离原库:1100 / 2110 不断 socket,见 upstreamLossKeepsTheSocket");
         Harness h(sc);
-        const bool ok = h.run(&failure);
+        const bool ok = h.run(&failure, true, sentLeads(at(sc, u"name"_s).s));
         QVERIFY2(ok, qPrintable(failure));
     }
 };
