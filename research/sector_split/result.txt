@@ -1,0 +1,169 @@
+days 523 2024-10-01..2026-10-30, classified COMMON names 1276, split-like days dropped 97
+
+================ universe: all modules (IBKR category), hot = top K by 20-day dollar volume ================
+
+K=3 h=1d  rows=74430 dates=492 modules=52 names=328
+  mean  A +0.041%  B +0.041%   (equal by construction)
+  std   A 3.33%  B 2.58%   ratio B/A 0.777 [0.763, 0.791]  implied rho 0.40   (uncorrelated would give 0.577)
+  long tail   p5  A -4.7%  B -3.9% | p1  A -9.6%  B -7.2% | worst A -74.6%  B -27.3%
+  short tail  p95 A +4.8%  B +3.9% | p99 A +9.7%  B +7.4% | worst A +52.2%  B +24.0%
+  module moved >= median size: single name ended on the other side in 22.0% [21.0, 22.9] of cases (n=37215)
+  share of single-name variance explained by the rest of the module (R^2): 0.23
+  SPY worst 10% days   rms(B)/rms(A) 0.861  implied rho 0.61  (rows 7527)
+  SPY middle 80% days  rms(B)/rms(A) 0.735  implied rho 0.31  (rows 59370)
+  SPY best 10% days    rms(B)/rms(A) 0.847  implied rho 0.58  (rows 7533)
+
+K=3 h=5d  rows=14814 dates=98 modules=52 names=318
+  mean  A +0.187%  B +0.187%   (equal by construction)
+  std   A 7.08%  B 5.31%   ratio B/A 0.750 [0.735, 0.765]  implied rho 0.34   (uncorrelated would give 0.577)
+  long tail   p5  A -10.1%  B -7.9% | p1  A -18.5%  B -14.2% | worst A -85.0%  B -29.4%
+  short tail  p95 A +10.6%  B +8.6% | p99 A +21.0%  B +15.0% | worst A +131.1%  B +47.6%
+  module moved >= median size: single name ended on the other side in 23.6% [21.8, 25.5] of cases (n=7407)
+  share of single-name variance explained by the rest of the module (R^2): 0.18
+
+K=3 h=20d  rows=3621 dates=24 modules=52 names=297
+  mean  A +0.801%  B +0.801%   (equal by construction)
+  std   A 13.25%  B 9.93%   ratio B/A 0.750 [0.722, 0.778]  implied rho 0.34   (uncorrelated would give 0.577)
+  long tail   p5  A -18.3%  B -14.1% | p1  A -31.3%  B -23.8% | worst A -85.9%  B -35.4%
+  short tail  p95 A +21.1%  B +16.9% | p99 A +40.0%  B +30.4% | worst A +95.2%  B +47.2%
+  module moved >= median size: single name ended on the other side in 25.2% [22.0, 29.5] of cases (n=1811)
+  share of single-name variance explained by the rest of the module (R^2): 0.18
+
+K=5 h=1d  rows=108010 dates=492 modules=45 names=433
+  mean  A +0.053%  B +0.053%   (equal by construction)
+  std   A 3.75%  B 2.52%   ratio B/A 0.673 [0.632, 0.712]  implied rho 0.32   (uncorrelated would give 0.447)
+  long tail   p5  A -4.8%  B -3.7% | p1  A -9.6%  B -6.8% | worst A -74.6%  B -25.8%
+  short tail  p95 A +4.9%  B +3.7% | p99 A +10.1%  B +6.8% | worst A +351.2%  B +70.3%
+  module moved >= median size: single name ended on the other side in 20.7% [19.8, 21.6] of cases (n=54005)
+  share of single-name variance explained by the rest of the module (R^2): 0.20
+  SPY worst 10% days   rms(B)/rms(A) 0.812  implied rho 0.57  (rows 10875)
+  SPY middle 80% days  rms(B)/rms(A) 0.613  implied rho 0.22  (rows 86210)
+  SPY best 10% days    rms(B)/rms(A) 0.806  implied rho 0.56  (rows 10925)
+
+K=5 h=5d  rows=21495 dates=98 modules=45 names=420
+  mean  A +0.252%  B +0.252%   (equal by construction)
+  std   A 8.88%  B 5.43%   ratio B/A 0.611 [0.545, 0.685]  implied rho 0.22   (uncorrelated would give 0.447)
+  long tail   p5  A -10.2%  B -7.4% | p1  A -18.9%  B -13.1% | worst A -85.0%  B -25.3%
+  short tail  p95 A +10.8%  B +7.9% | p99 A +22.2%  B +14.7% | worst A +710.3%  B +143.6%
+  module moved >= median size: single name ended on the other side in 22.1% [20.3, 23.9] of cases (n=10748)
+  share of single-name variance explained by the rest of the module (R^2): 0.11
+
+K=5 h=20d  rows=5220 dates=24 modules=45 names=395
+  mean  A +0.947%  B +0.947%   (equal by construction)
+  std   A 16.08%  B 10.02%   ratio B/A 0.623 [0.563, 0.693]  implied rho 0.24   (uncorrelated would give 0.447)
+  long tail   p5  A -18.8%  B -14.0% | p1  A -32.3%  B -21.2% | worst A -85.9%  B -31.5%
+  short tail  p95 A +21.2%  B +16.8% | p99 A +42.9%  B +29.5% | worst A +569.0%  B +118.0%
+  module moved >= median size: single name ended on the other side in 23.2% [20.4, 26.0] of cases (n=2610)
+  share of single-name variance explained by the rest of the module (R^2): 0.13
+
+================ universe: tech modules only (Semiconductors, Software, Computers, Internet, Telecommunications) ================
+
+K=3 h=1d  rows=7377 dates=492 modules=5 names=40
+  mean  A +0.132%  B +0.132%   (equal by construction)
+  std   A 4.28%  B 3.23%   ratio B/A 0.754 [0.732, 0.775]  implied rho 0.35   (uncorrelated would give 0.577)
+  long tail   p5  A -6.3%  B -5.0% | p1  A -11.1%  B -9.1% | worst A -74.6%  B -25.0%
+  short tail  p95 A +6.4%  B +4.9% | p99 A +12.8%  B +9.7% | worst A +47.9%  B +20.4%
+  module moved >= median size: single name ended on the other side in 25.3% [23.5, 27.4] of cases (n=3689)
+  share of single-name variance explained by the rest of the module (R^2): 0.18
+  SPY worst 10% days   rms(B)/rms(A) 0.871  implied rho 0.64  (rows 747)
+  SPY middle 80% days  rms(B)/rms(A) 0.707  implied rho 0.25  (rows 5880)
+  SPY best 10% days    rms(B)/rms(A) 0.834  implied rho 0.54  (rows 750)
+
+K=3 h=5d  rows=1470 dates=98 modules=5 names=40
+  mean  A +0.753%  B +0.753%   (equal by construction)
+  std   A 9.62%  B 6.98%   ratio B/A 0.725 [0.690, 0.761]  implied rho 0.29   (uncorrelated would give 0.577)
+  long tail   p5  A -12.1%  B -9.0% | p1  A -20.5%  B -17.1% | worst A -74.2%  B -26.6%
+  short tail  p95 A +14.9%  B +11.9% | p99 A +29.4%  B +19.3% | worst A +131.1%  B +47.6%
+  module moved >= median size: single name ended on the other side in 27.3% [23.0, 31.6] of cases (n=735)
+  share of single-name variance explained by the rest of the module (R^2): 0.13
+
+K=3 h=20d  rows=357 dates=24 modules=5 names=37
+  mean  A +4.193%  B +4.193%   (equal by construction)
+  std   A 18.45%  B 13.95%   ratio B/A 0.756 [0.703, 0.795]  implied rho 0.36   (uncorrelated would give 0.577)
+  long tail   p5  A -19.2%  B -17.0% | p1  A -31.8%  B -23.8% | worst A -36.2%  B -26.1%
+  short tail  p95 A +36.4%  B +30.3% | p99 A +74.7%  B +44.3% | worst A +95.2%  B +47.2%
+  module moved >= median size: single name ended on the other side in 23.5% [16.0, 33.3] of cases (n=179)
+  share of single-name variance explained by the rest of the module (R^2): 0.19
+
+K=5 h=1d  rows=12290 dates=492 modules=5 names=50
+  mean  A +0.138%  B +0.138%   (equal by construction)
+  std   A 4.20%  B 2.81%   ratio B/A 0.668 [0.646, 0.693]  implied rho 0.31   (uncorrelated would give 0.447)
+  long tail   p5  A -6.2%  B -4.6% | p1  A -11.0%  B -7.7% | worst A -74.6%  B -15.8%
+  short tail  p95 A +6.4%  B +4.6% | p99 A +12.8%  B +7.8% | worst A +47.9%  B +19.8%
+  module moved >= median size: single name ended on the other side in 25.5% [23.7, 27.4] of cases (n=6145)
+  share of single-name variance explained by the rest of the module (R^2): 0.20
+  SPY worst 10% days   rms(B)/rms(A) 0.807  implied rho 0.56  (rows 1245)
+  SPY middle 80% days  rms(B)/rms(A) 0.608  implied rho 0.21  (rows 9795)
+  SPY best 10% days    rms(B)/rms(A) 0.766  implied rho 0.48  (rows 1250)
+
+K=5 h=5d  rows=2445 dates=98 modules=5 names=50
+  mean  A +0.698%  B +0.698%   (equal by construction)
+  std   A 9.30%  B 5.95%   ratio B/A 0.640 [0.604, 0.677]  implied rho 0.26   (uncorrelated would give 0.447)
+  long tail   p5  A -12.1%  B -9.7% | p1  A -20.2%  B -14.2% | worst A -74.2%  B -16.7%
+  short tail  p95 A +15.4%  B +11.4% | p99 A +29.8%  B +16.0% | worst A +131.1%  B +29.6%
+  module moved >= median size: single name ended on the other side in 25.3% [21.4, 29.9] of cases (n=1223)
+  share of single-name variance explained by the rest of the module (R^2): 0.15
+
+K=5 h=20d  rows=595 dates=24 modules=5 names=48
+  mean  A +2.891%  B +2.891%   (equal by construction)
+  std   A 17.98%  B 12.05%   ratio B/A 0.670 [0.595, 0.732]  implied rho 0.31   (uncorrelated would give 0.447)
+  long tail   p5  A -21.9%  B -15.1% | p1  A -34.6%  B -25.5% | worst A -72.9%  B -29.7%
+  short tail  p95 A +34.1%  B +25.6% | p99 A +65.9%  B +36.7% | worst A +95.2%  B +38.3%
+  module moved >= median size: single name ended on the other side in 27.5% [19.5, 35.3] of cases (n=298)
+  share of single-name variance explained by the rest of the module (R^2): 0.20
+
+================ universe: smallcap: the 15 study names as one module (hindsight list, descriptive) ================
+
+K=3 h=1d  rows=1476 dates=492 modules=1 names=12
+  mean  A +0.267%  B +0.267%   (equal by construction)
+  std   A 7.13%  B 5.67%   ratio B/A 0.795 [0.768, 0.822]  implied rho 0.45   (uncorrelated would give 0.577)
+  long tail   p5  A -10.1%  B -8.8% | p1  A -14.4%  B -11.8% | worst A -43.3%  B -27.2%
+  short tail  p95 A +11.5%  B +9.2% | p99 A +18.7%  B +14.7% | worst A +55.5%  B +22.7%
+  module moved >= median size: single name ended on the other side in 22.1% [18.1, 26.6] of cases (n=738)
+  share of single-name variance explained by the rest of the module (R^2): 0.28
+  SPY worst 10% days   rms(B)/rms(A) 0.884  implied rho 0.67  (rows 150)
+  SPY middle 80% days  rms(B)/rms(A) 0.772  implied rho 0.39  (rows 1176)
+  SPY best 10% days    rms(B)/rms(A) 0.825  implied rho 0.52  (rows 150)
+
+K=3 h=5d  rows=294 dates=98 modules=1 names=12
+  mean  A +1.317%  B +1.317%   (equal by construction)
+  std   A 16.12%  B 12.73%   ratio B/A 0.790 [0.729, 0.840]  implied rho 0.44   (uncorrelated would give 0.577)
+  long tail   p5  A -21.8%  B -18.6% | p1  A -31.6%  B -31.8% | worst A -62.7%  B -43.5%
+  short tail  p95 A +29.2%  B +20.7% | p99 A +42.2%  B +31.5% | worst A +76.2%  B +34.9%
+  module moved >= median size: single name ended on the other side in 17.0% [10.2, 25.9] of cases (n=147)
+  share of single-name variance explained by the rest of the module (R^2): 0.26
+
+K=3 h=20d  rows=72 dates=24 modules=1 names=12
+  mean  A +7.099%  B +7.099%   (equal by construction)
+  std   A 29.78%  B 24.58%   ratio B/A 0.825 [0.724, 0.875]  implied rho 0.52   (uncorrelated would give 0.577)
+  long tail   p5  A -34.0%  B -30.8% | p1  A -40.9%  B -35.9% | worst A -47.7%  B -35.9%
+  short tail  p95 A +62.7%  B +54.8% | p99 A +88.3%  B +63.5% | worst A +92.5%  B +63.5%
+  module moved >= median size: single name ended on the other side in 16.7% [2.8, 36.1] of cases (n=36)
+  share of single-name variance explained by the rest of the module (R^2): 0.36
+
+K=5 h=1d  rows=2460 dates=492 modules=1 names=13
+  mean  A +0.416%  B +0.416%   (equal by construction)
+  std   A 7.28%  B 5.18%   ratio B/A 0.711 [0.675, 0.745]  implied rho 0.38   (uncorrelated would give 0.447)
+  long tail   p5  A -9.7%  B -8.1% | p1  A -14.2%  B -12.1% | worst A -43.3%  B -17.9%
+  short tail  p95 A +11.6%  B +8.4% | p99 A +21.1%  B +13.2% | worst A +55.5%  B +23.7%
+  module moved >= median size: single name ended on the other side in 20.8% [17.8, 23.4] of cases (n=1230)
+  share of single-name variance explained by the rest of the module (R^2): 0.27
+  SPY worst 10% days   rms(B)/rms(A) 0.796  implied rho 0.54  (rows 250)
+  SPY middle 80% days  rms(B)/rms(A) 0.670  implied rho 0.31  (rows 1960)
+  SPY best 10% days    rms(B)/rms(A) 0.815  implied rho 0.58  (rows 250)
+
+K=5 h=5d  rows=490 dates=98 modules=1 names=13
+  mean  A +2.330%  B +2.330%   (equal by construction)
+  std   A 20.77%  B 12.12%   ratio B/A 0.584 [0.487, 0.723]  implied rho 0.18   (uncorrelated would give 0.447)
+  long tail   p5  A -19.9%  B -15.8% | p1  A -28.2%  B -24.5% | worst A -62.7%  B -30.6%
+  short tail  p95 A +30.6%  B +19.8% | p99 A +45.0%  B +33.4% | worst A +301.2%  B +56.6%
+  module moved >= median size: single name ended on the other side in 21.6% [14.7, 30.2] of cases (n=245)
+  share of single-name variance explained by the rest of the module (R^2): 0.08
+
+K=5 h=20d  rows=120 dates=24 modules=1 names=13
+  mean  A +9.059%  B +9.059%   (equal by construction)
+  std   A 30.71%  B 20.05%   ratio B/A 0.653 [0.505, 0.763]  implied rho 0.28   (uncorrelated would give 0.447)
+  long tail   p5  A -31.5%  B -26.0% | p1  A -37.9%  B -30.7% | worst A -47.7%  B -30.7%
+  short tail  p95 A +67.4%  B +44.8% | p99 A +94.7%  B +46.0% | worst A +118.9%  B +46.0%
+  module moved >= median size: single name ended on the other side in 20.0% [8.2, 37.7] of cases (n=60)
+  share of single-name variance explained by the rest of the module (R^2): 0.17

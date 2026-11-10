@@ -2,3 +2,10 @@
 *.parquet
 *.csv.gz
 __pycache__/
+src/validator/*_cache/
+src/validator/*_tables/*.parquet
+src/validator/V-*_cache/
+src/proposer/*_cache/
+src/proposer/*_tables/*.parquet
+# 根目录的 data/ 规则会挡住这里的评估文档；它们不含行情数据，放回来
+!data/

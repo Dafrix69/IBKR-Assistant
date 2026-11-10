@@ -1,0 +1,65 @@
+symbols 40, entries 2024-10-31 .. 2026-10-26, last expiry 2026-10-30
+
+=== train ===
+ P-0021 (long 3w call, static hedge):
+  Δ0.35 k0.5: n 2019 mean -0.380 [-0.754,+0.056] Bonf[-0.805,+0.120] med -1.443 trim2% -0.849 syms+ 14/40 ex-HIMS -0.490 ex-best5wk -0.789
+  Δ0.35 k1: n 2019 mean -0.573 [-0.954,-0.137] Bonf[-1.007,-0.069] med -1.589 trim2% -1.028 syms+ 11/40 ex-HIMS -0.683 ex-best5wk -0.981
+  Δ0.35 k0: n 2019 mean -0.187 [-0.559,+0.249] Bonf[-0.606,+0.318] med -1.291 trim2% -0.665 syms+ 15/40 ex-HIMS -0.296 ex-best5wk -0.596
+  Δ0.25 k0.5: n 2058 mean -0.347 [-0.704,+0.075] Bonf[-0.743,+0.139] med -1.347 trim2% -0.881 syms+ 12/40 ex-HIMS -0.452 ex-best5wk -0.704
+  Δ0.5 k0.5: n 1996 mean -0.417 [-0.832,+0.033] Bonf[-0.895,+0.099] med -1.366 trim2% -0.779 syms+ 13/40 ex-HIMS -0.519 ex-best5wk -0.837
+  Δ0.15 k0.5: n 2056 mean -0.252 [-0.562,+0.120] Bonf[-0.595,+0.185] med -0.996 trim2% -0.810 syms+ 11/40 ex-HIMS -0.360 ex-best5wk -0.563
+ P-0021 interpretation check (same rule, daily hedge):
+  Δ0.35 daily k0.5: n 2019 mean -0.411 [-0.607,-0.228] Bonf[-0.636,-0.200] med -0.604 trim2% -0.491 syms+ 10/40 ex-IONQ -0.457 ex-best5wk -0.586
+  Δ0.35 daily k0: n 2019 mean -0.218 [-0.417,-0.025] Bonf[-0.445,+0.003] med -0.458 trim2% -0.314 syms+ 12/40 ex-IONQ -0.264 ex-best5wk -0.391
+  Δ0.35 daily k1: n 2019 mean -0.605 [-0.800,-0.426] Bonf[-0.829,-0.399] med -0.769 trim2% -0.662 syms+ 6/40 ex-IONQ -0.649 ex-best5wk -0.782
+ P-0022 (short weekly put after ret5 > 0.0948, daily hedge):
+  signal k0.5: n 694 mean -0.055 [-0.218,+0.098] Bonf[-0.245,+0.125] med +0.214 trim2% +0.109 syms+ 26/40 ex-SMCI -0.088 ex-best5wk -0.180
+  signal k0: n 694 mean +0.001 [-0.166,+0.155] Bonf[-0.193,+0.183] med +0.246 trim2% +0.162 syms+ 27/40 ex-W -0.032 ex-best5wk -0.137
+  signal k1: n 694 mean -0.110 [-0.271,+0.041] Bonf[-0.296,+0.067] med +0.164 trim2% +0.055 syms+ 23/40 ex-SMCI -0.145 ex-best5wk -0.233
+  signal Δ-0.25 k0.5: n 331 mean -0.115 [-0.307,+0.063] Bonf[-0.339,+0.091] med +0.225 trim2% +0.047 syms+ 24/40 ex-W -0.157 ex-best5wk -0.263
+  signal Δ-0.1 k0.5: n 363 mean +0.000 [-0.140,+0.136] Bonf[-0.163,+0.159] med +0.200 trim2% +0.166 syms+ 26/40 ex-SMCI -0.027 ex-best5wk -0.103
+  control same weeks ret5<=cut k0.5: n 2790 mean +0.051 [+0.001,+0.105] Bonf[-0.006,+0.114] med +0.120 trim2% +0.090 syms+ 22/40 ex-DJT +0.036 ex-best5wk -0.025
+  all weeks, no signal filter k0.5: n 3780 mean -0.023 [-0.122,+0.061] Bonf[-0.141,+0.071] med +0.119 trim2% +0.047 syms+ 21/40 ex-DJT -0.040 ex-best5wk -0.092
+
+=== test ===
+ P-0021 (long 3w call, static hedge):
+  Δ0.35 k0.5: n 1835 mean -0.124 [-0.425,+0.199] Bonf[-0.470,+0.250] med -1.046 trim2% -0.504 syms+ 10/40 ex-MRNA -0.287 ex-best5wk -0.425
+  Δ0.35 k1: n 1835 mean -0.376 [-0.686,-0.045] Bonf[-0.727,+0.005] med -1.319 trim2% -0.750 syms+ 9/40 ex-MRNA -0.539 ex-best5wk -0.679
+  Δ0.35 k0: n 1835 mean +0.129 [-0.166,+0.446] Bonf[-0.213,+0.494] med -0.838 trim2% -0.255 syms+ 15/40 ex-MRNA -0.036 ex-best5wk -0.174
+  Δ0.25 k0.5: n 1878 mean -0.076 [-0.333,+0.198] Bonf[-0.373,+0.245] med -0.931 trim2% -0.514 syms+ 10/40 ex-MRNA -0.254 ex-best5wk -0.341
+  Δ0.5 k0.5: n 1813 mean -0.382 [-0.750,+0.003] Bonf[-0.798,+0.058] med -1.460 trim2% -0.664 syms+ 11/40 ex-MRNA -0.511 ex-best5wk -0.752
+  Δ0.15 k0.5: n 1910 mean -0.122 [-0.349,+0.125] Bonf[-0.384,+0.164] med -0.742 trim2% -0.563 syms+ 10/40 ex-MRNA -0.287 ex-best5wk -0.373
+ P-0021 interpretation check (same rule, daily hedge):
+  Δ0.35 daily k0.5: n 1835 mean -0.299 [-0.487,-0.078] Bonf[-0.509,-0.039] med -0.651 trim2% -0.521 syms+ 12/40 ex-MRNA -0.454 ex-best5wk -0.462
+  Δ0.35 daily k0: n 1835 mean -0.046 [-0.246,+0.187] Bonf[-0.271,+0.229] med -0.433 trim2% -0.281 syms+ 17/40 ex-MRNA -0.202 ex-best5wk -0.212
+  Δ0.35 daily k1: n 1835 mean -0.551 [-0.729,-0.342] Bonf[-0.751,-0.308] med -0.875 trim2% -0.757 syms+ 6/40 ex-MRNA -0.705 ex-best5wk -0.716
+ P-0022 (short weekly put after ret5 > 0.0948, daily hedge):
+  signal k0.5: n 509 mean +0.011 [-0.097,+0.122] Bonf[-0.117,+0.138] med +0.109 trim2% +0.050 syms+ 21/39 ex-LCID -0.027 ex-best5wk -0.112
+  signal k0: n 509 mean +0.089 [-0.018,+0.197] Bonf[-0.038,+0.213] med +0.156 trim2% +0.127 syms+ 23/39 ex-LCID +0.050 ex-best5wk -0.034
+  signal k1: n 509 mean -0.066 [-0.176,+0.046] Bonf[-0.196,+0.064] med +0.041 trim2% -0.026 syms+ 16/39 ex-LCID -0.103 ex-best5wk -0.186
+  signal Δ-0.25 k0.5: n 245 mean -0.051 [-0.235,+0.144] Bonf[-0.265,+0.173] med +0.054 trim2% -0.029 syms+ 19/38 ex-LCID -0.104 ex-best5wk -0.241
+  signal Δ-0.1 k0.5: n 264 mean +0.069 [-0.014,+0.150] Bonf[-0.028,+0.163] med +0.118 trim2% +0.124 syms+ 19/38 ex-LCID +0.045 ex-best5wk -0.010
+  control same weeks ret5<=cut k0.5: n 2811 mean -0.106 [-0.240,+0.030] Bonf[-0.258,+0.049] med +0.101 trim2% +0.001 syms+ 15/40 ex-UPST -0.121 ex-best5wk -0.190
+  all weeks, no signal filter k0.5: n 3596 mean -0.082 [-0.191,+0.023] Bonf[-0.206,+0.039] med +0.115 trim2% +0.018 syms+ 18/40 ex-UPST -0.093 ex-best5wk -0.155
+
+=== all ===
+ P-0021 (long 3w call, static hedge):
+  Δ0.35 k0.5: n 3854 mean -0.258 [-0.532,+0.031] Bonf[-0.568,+0.077] med -1.242 trim2% -0.687 syms+ 11/40 ex-HIMS -0.341 ex-best5wk -0.486
+  Δ0.35 k1: n 3854 mean -0.479 [-0.745,-0.196] Bonf[-0.785,-0.152] med -1.446 trim2% -0.897 syms+ 10/40 ex-HIMS -0.564 ex-best5wk -0.708
+  Δ0.35 k0: n 3854 mean -0.037 [-0.319,+0.260] Bonf[-0.357,+0.305] med -1.057 trim2% -0.473 syms+ 15/40 ex-HIMS -0.118 ex-best5wk -0.264
+  Δ0.25 k0.5: n 3936 mean -0.218 [-0.476,+0.048] Bonf[-0.512,+0.093] med -1.109 trim2% -0.703 syms+ 10/40 ex-MRNA -0.296 ex-best5wk -0.418
+  Δ0.5 k0.5: n 3809 mean -0.400 [-0.677,-0.107] Bonf[-0.718,-0.063] med -1.414 trim2% -0.727 syms+ 13/40 ex-HIMS -0.476 ex-best5wk -0.636
+  Δ0.15 k0.5: n 3966 mean -0.190 [-0.401,+0.043] Bonf[-0.432,+0.078] med -0.853 trim2% -0.692 syms+ 12/40 ex-MRNA -0.264 ex-best5wk -0.371
+ P-0021 interpretation check (same rule, daily hedge):
+  Δ0.35 daily k0.5: n 3854 mean -0.358 [-0.503,-0.200] Bonf[-0.521,-0.180] med -0.625 trim2% -0.502 syms+ 8/40 ex-MRNA -0.429 ex-best5wk -0.468
+  Δ0.35 daily k0: n 3854 mean -0.136 [-0.292,+0.036] Bonf[-0.313,+0.057] med -0.450 trim2% -0.296 syms+ 13/40 ex-MRNA -0.207 ex-best5wk -0.246
+  Δ0.35 daily k1: n 3854 mean -0.579 [-0.715,-0.432] Bonf[-0.736,-0.413] med -0.812 trim2% -0.704 syms+ 7/40 ex-MRNA -0.650 ex-best5wk -0.690
+ P-0022 (short weekly put after ret5 > 0.0948, daily hedge):
+  signal k0.5: n 1203 mean -0.027 [-0.126,+0.070] Bonf[-0.139,+0.083] med +0.156 trim2% +0.088 syms+ 23/40 ex-LCID -0.045 ex-best5wk -0.095
+  signal k0: n 1203 mean +0.038 [-0.066,+0.137] Bonf[-0.079,+0.152] med +0.211 trim2% +0.152 syms+ 25/40 ex-LCID +0.019 ex-best5wk -0.031
+  signal k1: n 1203 mean -0.091 [-0.187,+0.002] Bonf[-0.200,+0.015] med +0.113 trim2% +0.025 syms+ 22/40 ex-LCID -0.109 ex-best5wk -0.159
+  signal Δ-0.25 k0.5: n 576 mean -0.088 [-0.213,+0.037] Bonf[-0.228,+0.056] med +0.176 trim2% +0.025 syms+ 21/40 ex-LCID -0.112 ex-best5wk -0.187
+  signal Δ-0.1 k0.5: n 627 mean +0.029 [-0.057,+0.114] Bonf[-0.070,+0.126] med +0.148 trim2% +0.150 syms+ 25/40 ex-SMCI +0.011 ex-best5wk -0.024
+  control same weeks ret5<=cut k0.5: n 5601 mean -0.028 [-0.112,+0.050] Bonf[-0.124,+0.060] med +0.115 trim2% +0.047 syms+ 18/40 ex-UPST -0.039 ex-best5wk -0.072
+  all weeks, no signal filter k0.5: n 7376 mean -0.052 [-0.120,+0.011] Bonf[-0.130,+0.020] med +0.118 trim2% +0.033 syms+ 17/40 ex-DJT -0.062 ex-best5wk -0.090
+

@@ -1,0 +1,204 @@
+V-0022-pools stats (P-0022 frozen rule on ex-ante pools); k0.5 cells: mean [95%] Bonf[97.5%] P(boot<=0)
+
+==================== pool 20181031 ====================
+trades 1751 (2018-11-12 .. 2019-10-28, exp max 2019-11-01); weeks in frame 51; (stock,week) units 945, signal units 110 (11.6%); stocks 21
+SIGNAL n 213  k0 +0.159  k1 -0.057 -0.057 [-0.372,+0.210]
+SIGNAL k0.5  +0.051 [-0.237,+0.291] Bonf[-0.291,+0.319] P<=0 0.345
+CONTROL same-week n 1045  k0.5 -0.087 [-0.239,+0.047]   | all-week control n 1538 k0.5 -0.074 [-0.180,+0.019]
+ALL trades (no signal) n 1751  k0.5 -0.059 [-0.140,+0.018]  k1 -0.138
+SIGNAL - same-week control k0.5 +0.138 [-0.214,+0.436] P(diff<=0) 0.212
+stocks positive (k0.5, unit sym): 11/21
+drop top contributor TLRY (sum +14.7, n 8): k0.5 -0.019 [-0.319,+0.225]  k1 -0.127
+drop best 5 weeks (2019-02-25, 2018-11-12, 2019-01-28, 2019-01-07, 2019-06-10; sum +39.7 of total +10.9): k0.5 -0.188 [-0.433,+0.096]
+  tgt -0.25: n 103 k0 +0.224 k0.5 +0.081 [-0.303,+0.396] k1 -0.063
+  tgt -0.1: n 110 k0 +0.098 k0.5 +0.023 [-0.201,+0.203] k1 -0.051
+  k0.5 median +0.239; win 67.6% [61.1%,73.5%]; commission 1 USD/contract k0.5 +0.020; unhedged -0.172; static hedge -0.088
+  (post-hoc, descriptive) strike ITM at entry (K >= S0, stub-quote artifact): 0 signal trades, sum k0.5 +0.0; without them k0.5 +0.051; control without them -0.087
+  liquidity: half-spread/mid median 16.7%; k0.5 cost mean 0.108% of spot; S0 median 48.0; mid median 0.38; entry contract volume median 142; bid=0 share median 41.9%; IV carried 1; trades with missing hold days 0
+VERDICT pool 20181031: FAIL (not proven)   [row1 k0.5>0 & CIs exclude 0: False; row2 k1>0: False; row3 control<signal: True]
+
+==================== pool 20191031 ====================
+trades 1428 (2019-11-11 .. 2020-10-26, exp max 2020-10-30); weeks in frame 51; (stock,week) units 844, signal units 170 (20.1%); stocks 19
+SIGNAL n 307  k0 +0.271  k1 -0.069 -0.069 [-0.249,+0.102]
+SIGNAL k0.5  +0.101 [-0.109,+0.286] Bonf[-0.138,+0.310] P<=0 0.169
+CONTROL same-week n 913  k0.5 +0.207 [+0.126,+0.277]   | all-week control n 1121 k0.5 +0.134 [+0.002,+0.244]
+ALL trades (no signal) n 1428  k0.5 +0.127 [+0.016,+0.224]  k1 -0.027
+SIGNAL - same-week control k0.5 -0.105 [-0.340,+0.092] P(diff<=0) 0.833
+stocks positive (k0.5, unit sym): 13/18
+drop top contributor TLRY (sum +17.8, n 16): k0.5 +0.046 [-0.127,+0.210]  k1 -0.128
+drop best 5 weeks (2020-07-20, 2020-05-25, 2020-10-12, 2020-04-13, 2020-04-27; sum +42.9 of total +31.1): k0.5 -0.049 [-0.250,+0.149]
+  tgt -0.25: n 146 k0 +0.300 k0.5 +0.085 [-0.223,+0.338] k1 -0.130
+  tgt -0.1: n 161 k0 +0.246 k0.5 +0.116 [-0.024,+0.249] k1 -0.013
+  k0.5 median +0.313; win 64.2% [58.7%,69.3%]; commission 1 USD/contract k0.5 +0.032; unhedged +0.166; static hedge +0.093
+  (post-hoc, descriptive) strike ITM at entry (K >= S0, stub-quote artifact): 0 signal trades, sum k0.5 +0.0; without them k0.5 +0.101; control without them +0.207
+  liquidity: half-spread/mid median 20.0%; k0.5 cost mean 0.170% of spot; S0 median 21.9; mid median 0.23; entry contract volume median 327; bid=0 share median 37.2%; IV carried 7; trades with missing hold days 0
+VERDICT pool 20191031: FAIL (not proven)   [row1 k0.5>0 & CIs exclude 0: False; row2 k1>0: False; row3 control<signal: False]
+
+==================== pool 20201030 ====================
+trades 3892 (2020-11-09 .. 2021-10-25, exp max 2021-10-29); weeks in frame 51; (stock,week) units 2023, signal units 306 (15.1%); stocks 40
+SIGNAL n 594  k0 +0.007  k1 -0.112 -0.112 [-0.314,+0.078]
+SIGNAL k0.5  -0.053 [-0.252,+0.137] Bonf[-0.280,+0.160] P<=0 0.692
+CONTROL same-week n 2769  k0.5 -0.025 [-0.126,+0.067]   | all-week control n 3298 k0.5 -0.010 [-0.121,+0.087]
+ALL trades (no signal) n 3892  k0.5 -0.016 [-0.117,+0.072]  k1 -0.061
+SIGNAL - same-week control k0.5 -0.028 [-0.242,+0.187] P(diff<=0) 0.593
+stocks positive (k0.5, unit sym): 20/40
+drop top contributor HYLN (sum +16.2, n 18): k0.5 -0.083 [-0.280,+0.111]  k1 -0.140
+drop best 5 weeks (2021-04-26, 2021-06-28, 2021-02-08, 2021-03-15, 2020-11-23; sum +69.9 of total -31.3): k0.5 -0.231 [-0.497,+0.005]
+  tgt -0.25: n 288 k0 -0.031 k0.5 -0.110 [-0.415,+0.183] k1 -0.189
+  tgt -0.1: n 306 k0 +0.043 k0.5 +0.001 [-0.105,+0.111] k1 -0.040
+  k0.5 median +0.104; win 56.4% [52.4%,60.3%]; commission 1 USD/contract k0.5 -0.076; unhedged +0.304; static hedge -0.048
+  (post-hoc, descriptive) strike ITM at entry (K >= S0, stub-quote artifact): 0 signal trades, sum k0.5 +0.0; without them k0.5 -0.053; control without them -0.025
+  liquidity: half-spread/mid median 9.1%; k0.5 cost mean 0.060% of spot; S0 median 75.1; mid median 0.50; entry contract volume median 458; bid=0 share median 26.0%; IV carried 5; trades with missing hold days 0
+VERDICT pool 20201030: FAIL (refuted: k0.5 <= 0)   [row1 k0.5>0 & CIs exclude 0: False; row2 k1>0: False; row3 control<signal: False]
+
+==================== pool 20211029 ====================
+trades 3058 (2021-11-08 .. 2022-10-24, exp max 2022-10-28); weeks in frame 51; (stock,week) units 1824, signal units 302 (16.6%); stocks 40
+SIGNAL n 527  k0 +0.264  k1 -0.049 -0.049 [-0.364,+0.245]
+SIGNAL k0.5  +0.107 [-0.142,+0.333] Bonf[-0.174,+0.347] P<=0 0.200
+CONTROL same-week n 1866  k0.5 +0.250 [+0.118,+0.400]   | all-week control n 2531 k0.5 +0.269 [+0.143,+0.402]
+ALL trades (no signal) n 3058  k0.5 +0.241 [+0.124,+0.359]  k1 +0.090
+SIGNAL - same-week control k0.5 -0.142 [-0.458,+0.156] P(diff<=0) 0.784
+stocks positive (k0.5, unit sym): 25/40
+drop top contributor AMC (sum +29.8, n 22): k0.5 +0.053 [-0.209,+0.293]  k1 -0.109
+drop best 5 weeks (2021-12-20, 2022-03-21, 2022-05-30, 2022-03-28, 2022-06-27; sum +90.6 of total +56.7): k0.5 -0.088 [-0.327,+0.220]
+  tgt -0.25: n 236 k0 +0.273 k0.5 +0.008 [-0.311,+0.311] k1 -0.257
+  tgt -0.1: n 291 k0 +0.257 k0.5 +0.188 [-0.018,+0.370] k1 +0.119
+  k0.5 median +0.200; win 59.2% [55.0%,63.3%]; commission 1 USD/contract k0.5 +0.000; unhedged -0.139; static hedge +0.131
+  (post-hoc, descriptive) strike ITM at entry (K >= S0, stub-quote artifact): 1 signal trades, sum k0.5 -10.3; without them k0.5 +0.127; control without them +0.236
+  liquidity: half-spread/mid median 9.7%; k0.5 cost mean 0.156% of spot; S0 median 17.7; mid median 0.18; entry contract volume median 437; bid=0 share median 25.5%; IV carried 6; trades with missing hold days 4
+VERDICT pool 20211029: FAIL (not proven)   [row1 k0.5>0 & CIs exclude 0: False; row2 k1>0: False; row3 control<signal: False]
+
+==================== pool 20221031 ====================
+trades 3798 (2022-11-07 .. 2023-10-30, exp max 2023-11-03); weeks in frame 52; (stock,week) units 2028, signal units 284 (14.0%); stocks 40
+SIGNAL n 538  k0 +0.140  k1 +0.078 +0.078 [-0.260,+0.307]
+SIGNAL k0.5  +0.109 [-0.232,+0.340] Bonf[-0.296,+0.368] P<=0 0.229
+CONTROL same-week n 2614  k0.5 -0.003 [-0.148,+0.118]   | all-week control n 3260 k0.5 +0.027 [-0.092,+0.131]
+ALL trades (no signal) n 3798  k0.5 +0.039 [-0.076,+0.148]  k1 +0.011
+SIGNAL - same-week control k0.5 +0.112 [-0.207,+0.348] P(diff<=0) 0.196
+stocks positive (k0.5, unit sym): 27/39
+drop top contributor BBBY (sum +18.8, n 5): k0.5 +0.075 [-0.253,+0.300]  k1 +0.045
+drop best 5 weeks (2023-05-08, 2023-02-20, 2023-07-17, 2023-02-06, 2022-11-14; sum +126.3 of total +58.7): k0.5 -0.173 [-0.596,+0.064]
+  tgt -0.25: n 254 k0 +0.212 k0.5 +0.175 [-0.214,+0.458] k1 +0.138
+  tgt -0.1: n 284 k0 +0.076 k0.5 +0.050 [-0.257,+0.249] k1 +0.025
+  k0.5 median +0.180; win 62.1% [57.9%,66.1%]; commission 1 USD/contract k0.5 +0.061; unhedged +0.098; static hedge +0.180
+  (post-hoc, descriptive) strike ITM at entry (K >= S0, stub-quote artifact): 0 signal trades, sum k0.5 +0.0; without them k0.5 +0.109; control without them -0.003
+  liquidity: half-spread/mid median 6.2%; k0.5 cost mean 0.031% of spot; S0 median 39.8; mid median 0.28; entry contract volume median 856; bid=0 share median 29.8%; IV carried 2; trades with missing hold days 0
+VERDICT pool 20221031: FAIL (not proven)   [row1 k0.5>0 & CIs exclude 0: False; row2 k1>0: True; row3 control<signal: True]
+
+==================== pool 20231031 ====================
+trades 3397 (2023-11-13 .. 2024-10-28, exp max 2024-11-01); weeks in frame 51; (stock,week) units 1904, signal units 304 (16.0%); stocks 40
+SIGNAL n 556  k0 +0.272  k1 +0.048 +0.048 [-0.145,+0.221]
+SIGNAL k0.5  +0.160 [-0.005,+0.333] Bonf[-0.028,+0.359] P<=0 0.028
+CONTROL same-week n 2713  k0.5 +0.069 [-0.043,+0.166]   | all-week control n 2841 k0.5 +0.077 [-0.037,+0.171]
+ALL trades (no signal) n 3397  k0.5 +0.091 [+0.006,+0.173]  k1 +0.012
+SIGNAL - same-week control k0.5 +0.090 [-0.122,+0.308] P(diff<=0) 0.195
+stocks positive (k0.5, unit sym): 22/40
+drop top contributor CHPT (sum +35.0, n 5): k0.5 +0.097 [-0.095,+0.274]  k1 +0.039
+drop best 5 weeks (2024-05-13, 2023-11-20, 2023-12-04, 2024-05-06, 2024-07-08; sum +106.9 of total +88.8): k0.5 -0.041 [-0.194,+0.111]
+  tgt -0.25: n 261 k0 +0.340 k0.5 +0.159 [-0.057,+0.391] k1 -0.022
+  tgt -0.1: n 295 k0 +0.211 k0.5 +0.160 [+0.028,+0.297] k1 +0.109
+  k0.5 median +0.118; win 57.7% [53.6%,61.8%]; commission 1 USD/contract k0.5 +0.101; unhedged +0.322; static hedge +0.219
+  (post-hoc, descriptive) strike ITM at entry (K >= S0, stub-quote artifact): 1 signal trades, sum k0.5 +29.2; without them k0.5 +0.107; control without them +0.060
+  liquidity: half-spread/mid median 8.3%; k0.5 cost mean 0.112% of spot; S0 median 32.9; mid median 0.27; entry contract volume median 511; bid=0 share median 34.5%; IV carried 13; trades with missing hold days 0
+VERDICT pool 20231031: FAIL (not proven)   [row1 k0.5>0 & CIs exclude 0: False; row2 k1>0: True; row3 control<signal: True]
+
+==================== pool 20241031 ====================
+trades 7297 (2024-11-11 .. 2026-10-26, exp max 2026-10-30); weeks in frame 103; (stock,week) units 3917, signal units 632 (16.1%); stocks 40
+SIGNAL n 1201  k0 +0.038  k1 -0.092 -0.092 [-0.189,+0.006]
+SIGNAL k0.5  -0.027 [-0.128,+0.074] Bonf[-0.143,+0.088] P<=0 0.691
+CONTROL same-week n 5601  k0.5 -0.028 [-0.112,+0.051]   | all-week control n 6096 k0.5 -0.059 [-0.142,+0.018]
+ALL trades (no signal) n 7297  k0.5 -0.054 [-0.125,+0.012]  k1 -0.121
+SIGNAL - same-week control k0.5 +0.001 [-0.132,+0.144] P(diff<=0) 0.499
+stocks positive (k0.5, unit sym): 23/40
+drop top contributor LCID (sum +21.3, n 17): k0.5 -0.045 [-0.145,+0.053]  k1 -0.109
+drop best 5 weeks (2024-12-09, 2026-07-06, 2026-05-11, 2024-11-25, 2025-04-14; sum +71.5 of total -32.2): k0.5 -0.095 [-0.203,+0.013]
+  tgt -0.25: n 575 k0 -0.015 k0.5 -0.088 [-0.218,+0.048] k1 -0.162
+  tgt -0.1: n 626 k0 +0.086 k0.5 +0.030 [-0.060,+0.118] k1 -0.027
+  k0.5 median +0.161; win 58.5% [55.7%,61.3%]; commission 1 USD/contract k0.5 -0.062; unhedged -0.049; static hedge +0.048
+  (post-hoc, descriptive) strike ITM at entry (K >= S0, stub-quote artifact): 0 signal trades, sum k0.5 +0.0; without them k0.5 -0.027; control without them -0.028
+  liquidity: half-spread/mid median 10.2%; k0.5 cost mean 0.065% of spot; S0 median 43.0; mid median 0.36; entry contract volume median 382; bid=0 share median 31.7%; IV carried 18; trades with missing hold days 1
+VERDICT pool 20241031: FAIL (refuted: k0.5 <= 0)   [row1 k0.5>0 & CIs exclude 0: False; row2 k1>0: False; row3 control<signal: True]
+
+==================== pool 20241031 train segment (entry < 2025-11-01) ====================
+trades 3701 (2024-11-11 .. 2025-10-27, exp max 2025-10-31); weeks in frame 51; (stock,week) units 1975, signal units 365 (18.5%); stocks 40
+SIGNAL n 692  k0 +0.001  k1 -0.111 -0.111 [-0.276,+0.050]
+SIGNAL k0.5  -0.055 [-0.225,+0.108] Bonf[-0.252,+0.129] P<=0 0.748
+CONTROL same-week n 2790  k0.5 +0.051 [+0.002,+0.104]   | all-week control n 3009 k0.5 -0.020 [-0.142,+0.068]
+ALL trades (no signal) n 3701  k0.5 -0.027 [-0.129,+0.058]  k1 -0.085
+SIGNAL - same-week control k0.5 -0.106 [-0.273,+0.051] P(diff<=0) 0.908
+stocks positive (k0.5, unit sym): 26/40
+drop top contributor SMCI (sum +20.8, n 24): k0.5 -0.088 [-0.272,+0.084]  k1 -0.145
+drop best 5 weeks (2024-11-11, 2025-06-09, 2024-12-09, 2024-11-25, 2025-04-14; sum +62.9 of total -38.0): k0.5 -0.181 [-0.361,-0.009]
+  tgt -0.25: n 330 k0 -0.052 k0.5 -0.116 [-0.319,+0.077] k1 -0.181
+  tgt -0.1: n 362 k0 +0.048 k0.5 +0.001 [-0.145,+0.140] k1 -0.047
+  k0.5 median +0.217; win 61.0% [57.3%,64.5%]; commission 1 USD/contract k0.5 -0.090; unhedged -0.096; static hedge -0.029
+  (post-hoc, descriptive) strike ITM at entry (K >= S0, stub-quote artifact): 0 signal trades, sum k0.5 +0.0; without them k0.5 -0.055; control without them +0.051
+  liquidity: half-spread/mid median 8.4%; k0.5 cost mean 0.056% of spot; S0 median 39.4; mid median 0.35; entry contract volume median 472; bid=0 share median 30.3%; IV carried 9; trades with missing hold days 1
+VERDICT pool 20241031 train segment (entry < 2025-11-01): FAIL (refuted: k0.5 <= 0)   [row1 k0.5>0 & CIs exclude 0: False; row2 k1>0: False; row3 control<signal: False]
+
+==================== pool 20241031 test segment (entry >= 2025-11-01) ====================
+trades 3596 (2025-11-03 .. 2026-10-26, exp max 2026-10-30); weeks in frame 52; (stock,week) units 1942, signal units 267 (13.7%); stocks 40
+SIGNAL n 509  k0 +0.089  k1 -0.066 -0.066 [-0.183,+0.046]
+SIGNAL k0.5  +0.011 [-0.103,+0.121] Bonf[-0.121,+0.136] P<=0 0.413
+CONTROL same-week n 2811  k0.5 -0.106 [-0.240,+0.032]   | all-week control n 3087 k0.5 -0.098 [-0.215,+0.021]
+ALL trades (no signal) n 3596  k0.5 -0.082 [-0.190,+0.024]  k1 -0.159
+SIGNAL - same-week control k0.5 +0.118 [-0.039,+0.276] P(diff<=0) 0.074
+stocks positive (k0.5, unit sym): 21/39
+drop top contributor LCID (sum +19.2, n 11): k0.5 -0.027 [-0.145,+0.080]  k1 -0.103
+drop best 5 weeks (2026-06-29, 2026-06-22, 2026-09-21, 2026-07-06, 2026-05-11; sum +52.6 of total +5.8): k0.5 -0.112 [-0.269,+0.025]
+  tgt -0.25: n 245 k0 +0.034 k0.5 -0.051 [-0.241,+0.140] k1 -0.136
+  tgt -0.1: n 264 k0 +0.139 k0.5 +0.069 [-0.020,+0.149] k1 -0.000
+  k0.5 median +0.109; win 55.2% [50.9%,59.5%]; commission 1 USD/contract k0.5 -0.022; unhedged +0.014; static hedge +0.154
+  (post-hoc, descriptive) strike ITM at entry (K >= S0, stub-quote artifact): 0 signal trades, sum k0.5 +0.0; without them k0.5 +0.011; control without them -0.106
+  liquidity: half-spread/mid median 12.5%; k0.5 cost mean 0.077% of spot; S0 median 48.8; mid median 0.39; entry contract volume median 276; bid=0 share median 32.7%; IV carried 9; trades with missing hold days 0
+VERDICT pool 20241031 test segment (entry >= 2025-11-01): FAIL (not proven)   [row1 k0.5>0 & CIs exclude 0: False; row2 k1>0: False; row3 control<signal: True]
+
+==================== POOLED all 7 pools (primary) ====================
+trades 24621 (2018-11-12 .. 2026-10-26, exp max 2026-10-30); weeks in frame 416; (stock,week) units 13485, signal units 2108 (15.6%); stocks 240
+SIGNAL n 3936  k0 +0.135  k1 -0.042 -0.042 [-0.124,+0.038]
+SIGNAL k0.5  +0.046 [-0.033,+0.124] Bonf[-0.044,+0.135] P<=0 0.124
+CONTROL same-week n 17521  k0.5 +0.030 [-0.021,+0.079]   | all-week control n 20685 k0.5 +0.031 [-0.021,+0.082]
+ALL trades (no signal) n 24621  k0.5 +0.033 [-0.014,+0.081]  k1 -0.043
+SIGNAL - same-week control k0.5 +0.017 [-0.068,+0.102] P(diff<=0) 0.359
+stocks positive (k0.5, unit pool/sym): 141/238
+drop top contributor LCID (sum +41.7, n 44): k0.5 +0.036 [-0.043,+0.114]  k1 -0.053
+drop best 5 weeks (2022-06-27, 2024-05-06, 2023-02-06, 2024-07-08, 2022-11-14; sum +148.1 of total +182.6): k0.5 +0.009 [-0.066,+0.084]
+  tgt -0.25: n 1863 k0 +0.138 k0.5 +0.014 [-0.090,+0.118] k1 -0.110
+  tgt -0.1: n 2073 k0 +0.133 k0.5 +0.076 [+0.011,+0.138] k1 +0.018
+  k0.5 median +0.162; win 59.6% [58.1%,61.1%]; commission 1 USD/contract k0.5 -0.004; unhedged +0.075; static hedge +0.083
+  (post-hoc, descriptive) strike ITM at entry (K >= S0, stub-quote artifact): 2 signal trades, sum k0.5 +18.9; without them k0.5 +0.042; control without them +0.027
+  liquidity: half-spread/mid median 9.1%; k0.5 cost mean 0.089% of spot; S0 median 37.8; mid median 0.31; entry contract volume median 448; bid=0 share median 31.0%; IV carried 52; trades with missing hold days 5
+  within-week permutation (1000, (pool,stock,week) units, signal - all control): observed +0.016, null mean +0.021 sd 0.033, p 0.575
+VERDICT POOLED all 7 pools (primary): FAIL (not proven)   [row1 k0.5>0 & CIs exclude 0: False; row2 k1>0: False; row3 control<signal: True]
+
+==================== POOLED 6 pre-sample pools 2018-2023 ====================
+trades 17324 (2018-11-12 .. 2024-10-28, exp max 2024-11-01); weeks in frame 312; (stock,week) units 9568, signal units 1476 (15.4%); stocks 200
+SIGNAL n 2735  k0 +0.178  k1 -0.021 -0.021 [-0.128,+0.082]
+SIGNAL k0.5  +0.079 [-0.022,+0.175] Bonf[-0.036,+0.190] P<=0 0.064
+CONTROL same-week n 11920  k0.5 +0.057 [+0.000,+0.114]   | all-week control n 14589 k0.5 +0.068 [+0.011,+0.125]
+ALL trades (no signal) n 17324  k0.5 +0.070 [+0.016,+0.122]  k1 -0.009
+SIGNAL - same-week control k0.5 +0.022 [-0.085,+0.125] P(diff<=0) 0.343
+stocks positive (k0.5, unit pool/sym): 118/198
+drop top contributor AMC (sum +39.4, n 50): k0.5 +0.065 [-0.026,+0.154]  k1 -0.035
+drop best 5 weeks (2022-06-27, 2024-05-06, 2023-02-06, 2024-07-08, 2022-11-14; sum +148.1 of total +214.8): k0.5 +0.026 [-0.073,+0.122]
+  tgt -0.25: n 1288 k0 +0.206 k0.5 +0.060 [-0.074,+0.191] k1 -0.086
+  tgt -0.1: n 1447 k0 +0.153 k0.5 +0.095 [+0.015,+0.174] k1 +0.037
+  k0.5 median +0.164; win 60.1% [58.2%,61.9%]; commission 1 USD/contract k0.5 +0.021; unhedged +0.129; static hedge +0.098
+  (post-hoc, descriptive) strike ITM at entry (K >= S0, stub-quote artifact): 2 signal trades, sum k0.5 +18.9; without them k0.5 +0.072; control without them +0.052
+  liquidity: half-spread/mid median 9.1%; k0.5 cost mean 0.099% of spot; S0 median 34.0; mid median 0.30; entry contract volume median 480; bid=0 share median 30.8%; IV carried 34; trades with missing hold days 4
+  within-week permutation (1000, (pool,stock,week) units, signal - all control): observed +0.010, null mean +0.013 sd 0.038, p 0.546
+VERDICT POOLED 6 pre-sample pools 2018-2023: FAIL (not proven)   [row1 k0.5>0 & CIs exclude 0: False; row2 k1>0: False; row3 control<signal: True]
+
+==================== SUMMARY ====================
+                                           group  n_sig    k05            ci95           ci975     P0     k1    ctl    all   diff         diff_ci     pos  drop_top  drop_b5                   verdict
+                                   pool 20181031    213 +0.051 [-0.237,+0.291] [-0.291,+0.319] +0.345 -0.057 -0.087 -0.059 +0.138 [-0.214,+0.436]   11/21    -0.019   -0.188         FAIL (not proven)
+                                   pool 20191031    307 +0.101 [-0.109,+0.286] [-0.138,+0.310] +0.169 -0.069 +0.207 +0.127 -0.105 [-0.340,+0.092]   13/18    +0.046   -0.049         FAIL (not proven)
+                                   pool 20201030    594 -0.053 [-0.252,+0.137] [-0.280,+0.160] +0.692 -0.112 -0.025 -0.016 -0.028 [-0.242,+0.187]   20/40    -0.083   -0.231 FAIL (refuted: k0.5 <= 0)
+                                   pool 20211029    527 +0.107 [-0.142,+0.333] [-0.174,+0.347] +0.200 -0.049 +0.250 +0.241 -0.142 [-0.458,+0.156]   25/40    +0.053   -0.088         FAIL (not proven)
+                                   pool 20221031    538 +0.109 [-0.232,+0.340] [-0.296,+0.368] +0.229 +0.078 -0.003 +0.039 +0.112 [-0.207,+0.348]   27/39    +0.075   -0.173         FAIL (not proven)
+                                   pool 20231031    556 +0.160 [-0.005,+0.333] [-0.028,+0.359] +0.028 +0.048 +0.069 +0.091 +0.090 [-0.122,+0.308]   22/40    +0.097   -0.041         FAIL (not proven)
+                                   pool 20241031   1201 -0.027 [-0.128,+0.074] [-0.143,+0.088] +0.691 -0.092 -0.028 -0.054 +0.001 [-0.132,+0.144]   23/40    -0.045   -0.095 FAIL (refuted: k0.5 <= 0)
+pool 20241031 train segment (entry < 2025-11-01)    692 -0.055 [-0.225,+0.108] [-0.252,+0.129] +0.748 -0.111 +0.051 -0.027 -0.106 [-0.273,+0.051]   26/40    -0.088   -0.181 FAIL (refuted: k0.5 <= 0)
+pool 20241031 test segment (entry >= 2025-11-01)    509 +0.011 [-0.103,+0.121] [-0.121,+0.136] +0.413 -0.066 -0.106 -0.082 +0.118 [-0.039,+0.276]   21/39    -0.027   -0.112         FAIL (not proven)
+                    POOLED all 7 pools (primary)   3936 +0.046 [-0.033,+0.124] [-0.044,+0.135] +0.124 -0.042 +0.030 +0.033 +0.017 [-0.068,+0.102] 141/238    +0.036   +0.009         FAIL (not proven)
+             POOLED 6 pre-sample pools 2018-2023   2735 +0.079 [-0.022,+0.175] [-0.036,+0.190] +0.064 -0.021 +0.057 +0.070 +0.022 [-0.085,+0.125] 118/198    +0.065   +0.026         FAIL (not proven)

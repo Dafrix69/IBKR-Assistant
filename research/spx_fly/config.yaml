@@ -17,10 +17,12 @@ fills:
   k_levels: [0.0, 0.25, 0.5]   # 0 = mid, 1 = full spread
   k_default: 0.20              # was 0.25. Calibrated 2026-10-31: median effective combo k of the trader's own fills, 21 combos / 64 0DTE legs, 2026-10 (reports/calibration.md). Nothing in src/ requires it to be in k_levels
   # Fill-model note from the quant loop (research/quant_loop, validations V-0019 / V-0020; NOT applied, values above unchanged):
-  #   - Iron fly / butterfly combos on the exchange combo book clear about 2 USD/combo against the seller of the iron fly
-  #     (= buyer of the put fly). In D_own terms (|fill - own-leg NBBO mid| / own half-spread H) the effective k is asymmetric:
-  #     ~0.285 on the opening side, ~0.115 on the closing side (V-0019, out-of-sample 2024-11 -> 2026-10, tick-by-tick combo prints).
-  #     Use these two numbers when a backtest wants separate open/close fills for flies; k_default stays the symmetric pooled value.
+  #   - Iron fly / butterfly combo prints, tick-by-tick, test period 2025-11-01 -> 2026-10 (V-0019): about twice as many prints
+  #     clear above the own-leg NBBO mid (against the seller of the iron fly = buyer of the fly) as below it (53% vs 27%, 20% at mid);
+  #     both sides sit about the same distance from mid (~7 USD/combo, median k 0.25), so the mean offset is ~+1.9 USD/combo.
+  #     This is a fact about the print distribution, NOT a per-side k: the tape has no aggressor flag and no combo-book quote.
+  #     The earlier "0.285 opening / 0.115 closing" note was withdrawn by the 2026-11-10 review
+  #     (quant_loop/validations/P-0019_review.md). Backtests keep the symmetric k; do not adjust by side.
   #   - Vertical spreads showed no such asymmetry: keep the symmetric 0.20 (V-0020).
   multiplier: 100
   # USD per contract, public customer, IBKR Pro, as listed 2026-10-30; applied to the whole sample

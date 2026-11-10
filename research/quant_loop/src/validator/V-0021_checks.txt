@@ -1,0 +1,72 @@
+ALAB: files 505 2024-10-31..2026-11-05 roots ['ALAB'] multi-underlying-files 0 thin-files 0 jumps>0.4 0
+APLD: files 505 2024-10-31..2026-11-05 roots ['APLD'] multi-underlying-files 0 thin-files 0 jumps>0.4 1
+   jump 2025-04-14->2025-04-15: S 5.370->3.440  log(medK/S) +0.33->+0.78  rows 520->520
+AXTI: files 505 2024-10-31..2026-11-05 roots ['AXTI'] multi-underlying-files 0 thin-files 0 jumps>0.4 0
+CLSK: files 504 2024-10-31..2026-11-05 roots ['CLSK'] multi-underlying-files 0 thin-files 0 jumps>0.4 0
+CRDO: files 505 2024-10-31..2026-11-05 roots ['CRDO'] multi-underlying-files 0 thin-files 0 jumps>0.4 0
+IREN: files 505 2024-10-31..2026-11-05 roots ['IREN'] multi-underlying-files 0 thin-files 0 jumps>0.4 0
+LITE: files 505 2024-10-31..2026-11-05 roots ['LITE'] multi-underlying-files 0 thin-files 0 jumps>0.4 0
+NBIS: files 505 2024-10-31..2026-11-05 roots ['NBIS'] multi-underlying-files 0 thin-files 0 jumps>0.4 2
+   jump 2025-01-24->2025-01-27: S 41.690->26.080  log(medK/S) -0.19->+0.31  rows 954->892
+   jump 2025-09-08->2025-09-09: S 64.060->95.720  log(medK/S) -0.10->-0.38  rows 1152->1408
+NVTS: files 505 2024-10-31..2026-11-05 roots ['NVTS'] multi-underlying-files 0 thin-files 0 jumps>0.4 1
+   jump 2025-05-21->2025-05-22: S 1.910->5.050  log(medK/S) +0.36->-0.12  rows 120->200
+OKLO: files 505 2024-10-31..2026-11-05 roots ['OKLO'] multi-underlying-files 0 thin-files 0 jumps>0.4 0
+QBTS: files 505 2024-10-31..2026-11-05 roots ['QBTS'] multi-underlying-files 0 thin-files 0 jumps>0.4 3
+   jump 2025-01-07->2025-01-08: S 9.550->6.100  log(medK/S) -0.03->+0.44  rows 572->606
+   jump 2025-01-10->2025-01-13: S 5.770->3.830  log(medK/S) +0.44->+0.80  rows 642->566
+   jump 2025-05-07->2025-05-08: S 6.890->10.420  log(medK/S) +0.27->-0.20  rows 546->580
+QUBT: files 505 2024-10-31..2026-11-05 roots ['QUBT'] multi-underlying-files 0 thin-files 0 jumps>0.4 8
+   jump 2024-11-12->2024-11-13: S 1.380->2.660  log(medK/S) +0.37->-0.29  rows 56->56
+   jump 2024-11-13->2024-11-14: S 2.660->4.400  log(medK/S) -0.29->-0.79  rows 56->70
+   jump 2024-12-13->2024-12-16: S 6.705->11.080  log(medK/S) +0.18->-0.36  rows 514->448
+   jump 2024-12-16->2024-12-17: S 11.080->16.790  log(medK/S) -0.36->-0.34  rows 448->734
+   jump 2024-12-17->2024-12-18: S 16.790->25.680  log(medK/S) -0.34->-0.61  rows 734->838
+   jump 2024-12-18->2024-12-19: S 25.680->15.140  log(medK/S) -0.61->+0.12  rows 838->994
+   jump 2025-01-07->2025-01-08: S 17.490->9.910  log(medK/S) +0.18->+0.71  rows 1086->1128
+   jump 2025-01-14->2025-01-15: S 7.430->11.550  log(medK/S) +0.88->+0.44  rows 1128->1128
+RKLB: files 505 2024-10-31..2026-11-05 roots ['RKLB'] multi-underlying-files 0 thin-files 0 jumps>0.4 0
+SNDK: files 424 2025-03-03..2026-11-05 roots ['SNDK'] multi-underlying-files 0 thin-files 0 jumps>0.4 0
+WOLF: files 496 2024-10-31..2026-11-05 roots ['WOLF'] multi-underlying-files 0 thin-files 0 jumps>0.4 8
+   jump 2024-11-06->2024-11-07: S 13.710->8.330  log(medK/S) +0.38->+0.82  rows 1214->1256
+   jump 2025-03-27->2025-03-28: S 5.380->2.590  log(medK/S) +0.51->+1.25  rows 798->810
+   jump 2025-05-20->2025-05-21: S 3.130->1.280  log(medK/S) +0.80->+1.70  rows 650->650
+   jump 2025-06-30->2025-07-01: S 0.399->0.790  log(medK/S) +2.71->+2.03  rows 540->540
+   jump 2025-07-02->2025-07-03: S 0.773->1.180  log(medK/S) +2.05->+1.63  rows 540->548
+   jump 2025-07-03->2025-07-07: S 1.180->2.310  log(medK/S) +1.63->+0.95  rows 548->534
+   jump 2025-09-25->2025-09-26: S 1.850->1.210  log(medK/S) +0.99->+1.42  rows 648->648
+   jump 2025-09-26->2025-10-10: S 1.210->31.100  log(medK/S) +1.42->+0.04  rows 648->48
+SPY: files 1134 2022-05-02..2026-11-05 roots ['SPY'] multi-underlying-files 0 thin-files 0 jumps>0.4 0
+QQQ: files 1134 2022-05-02..2026-11-05 roots ['QQQ'] multi-underlying-files 0 thin-files 0 jumps>0.4 0
+IWM: files 1134 2022-05-02..2026-11-05 roots ['IWM'] multi-underlying-files 0 thin-files 0 jumps>0.4 0
+ALAB: missing vs SPY [] extra []
+APLD: missing vs SPY [] extra []
+AXTI: missing vs SPY [] extra []
+CLSK: missing vs SPY ['2024-11-08'] extra []
+CRDO: missing vs SPY [] extra []
+IREN: missing vs SPY [] extra []
+LITE: missing vs SPY [] extra []
+NBIS: missing vs SPY [] extra []
+NVTS: missing vs SPY [] extra []
+OKLO: missing vs SPY [] extra []
+QBTS: missing vs SPY [] extra []
+QUBT: missing vs SPY [] extra []
+RKLB: missing vs SPY [] extra []
+SNDK: missing vs SPY [] extra []
+WOLF: missing vs SPY ['2025-09-29', '2025-09-30', '2025-10-01', '2025-10-02', '2025-10-03', '2025-10-06', '2025-10-07', '2025-10-08', '2025-10-09'] extra []
+SPY: NYSE days 1134 files 1134 missing [] extra []
+QQQ: NYSE days 1134 files 1134 missing [] extra []
+IWM: NYSE days 1134 files 1134 missing [] extra []
+      date  nrows     S  k_med syms
+2025-09-22    632  2.24    5.0 WOLF
+2025-09-23    632  2.01    5.0 WOLF
+2025-09-24    632  2.22    5.0 WOLF
+2025-09-25    648  1.85    5.0 WOLF
+2025-09-26    648  1.21    5.0 WOLF
+2025-10-10     48 31.10   32.5 WOLF
+2025-10-13     64 32.57   32.5 WOLF
+2025-10-14     64 32.58   32.5 WOLF
+2025-10-15     64 32.43   32.5 WOLF
+2025-10-16     82 32.44   30.0 WOLF
+2025-10-17     82 31.00   30.0 WOLF
+2025-10-20     66 30.00   30.0 WOLF

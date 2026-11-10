@@ -1,0 +1,21 @@
+cycles: mine 54, proposer 54; same (pool,M) set True
+rows mine 1720, proposer call rows 1720, joined 1720
+IVOL: both valid 1696, max |diff| 1.46e-01, mine-only 0, theirs-only 0
+VOV : max |diff| 1.25e-16, n diff > 1e-6: 0, mine-only 0, theirs-only 0
+excl: mine 20 theirs 20 disagree 0
+S_E max |diff| 0.00e+00
+IVOL quintile agreement: 1675/1677; Q5 mine 316 theirs 316 both 316
+diag structure vs proposer call+put on common trades: n 1622, strikes equal C 1.000 P 1.000; |diff| median 0.0000, p99 0.0000, max 0.018; mean mine +0.017 theirs +0.017
+                          d_Kc     K  d_Kp   K_p   d_pnl_k05       str05          diff
+pool     M          sym                                                               
+20221031 2023-07-21 AMC    4.5   4.5   4.5   4.5   29.336114   29.317728  1.838578e-02
+20191031 2020-11-20 FIT    7.0   7.0   7.0   7.0    0.486648    0.488203 -1.554420e-03
+20201030 2021-02-19 HYLN  16.5  16.5  16.5  16.5  -10.266958  -10.266958  1.225686e-13
+20221031 2023-09-15 AMC    3.5   3.5   3.5   3.5 -298.893609 -298.893609 -1.136868e-13
+20211029 2022-09-16 WISH   1.5   1.5   1.5   1.5    3.609861    3.609861  1.056932e-13
+         2022-11-18 DWAC  17.5  17.5  17.5  17.5  -45.545298  -45.545298  9.947598e-14
+         2022-02-18 TLRY   6.0   6.0   6.0   6.0    3.241272    3.241272 -9.858780e-14
+         2022-04-14 SPCE   7.0   7.0   7.0   7.0    0.130659    0.130659 -9.756085e-14
+diag ok mine 1622 vs proposer both-legs-ok 1622; mine-not-theirs 0, theirs-not-mine 0
+Q5 diag k0.5 mine +1.545 (n 300)
+Q5 call+put k0.5 from proposer's table with proposer's quintiles +1.545 (n 300)

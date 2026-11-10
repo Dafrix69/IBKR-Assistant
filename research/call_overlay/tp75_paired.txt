@@ -1,0 +1,30 @@
+== stop 2x credit, k=0.5, stock stop 8%, all dates: trades closed by 75% take profit vs same trade without it ==
+A w=0.05: TP trades 274 (23%);  TP minus no-TP per TP trade: mean +8.77 median -9.49 USD; no-TP outcome of those trades: expiry 88%, spread stop 0%, stock stop 12%;  TP helped 15 (avg +635), cost 259 (avg -27.5);  days before expiry: median 1;  other trades unchanged: True
+     test period: total change +1615 USD over 487 trades; all dates: +2402 USD
+A w=0.1: TP trades 348 (30%);  TP minus no-TP per TP trade: mean -5.57 median -11.12 USD; no-TP outcome of those trades: expiry 86%, spread stop 0%, stock stop 14%;  TP helped 22 (avg +473), cost 326 (avg -37.8);  days before expiry: median 1;  other trades unchanged: True
+     test period: total change -1382 USD over 491 trades; all dates: -1938 USD
+B w=0.05: TP trades 161 (12%);  TP minus no-TP per TP trade: mean +33.37 median -8.42 USD; no-TP outcome of those trades: expiry 94%, spread stop 0%, stock stop 6%;  TP helped 18 (avg +649), cost 143 (avg -44.1);  days before expiry: median 1;  other trades unchanged: True
+     test period: total change +2522 USD over 518 trades; all dates: +5373 USD
+B w=0.1: TP trades 223 (17%);  TP minus no-TP per TP trade: mean +8.27 median -12.99 USD; no-TP outcome of those trades: expiry 91%, spread stop 0%, stock stop 8%;  TP helped 27 (avg +596), cost 196 (avg -72.6);  days before expiry: median 1;  other trades unchanged: True
+     test period: total change -4145 USD over 518 trades; all dates: +1843 USD
+== stop 1x credit, k=0.5, stock stop 8%, all dates: trades closed by 75% take profit vs same trade without it ==
+A w=0.05: TP trades 257 (22%);  TP minus no-TP per TP trade: mean +11.59 median -9.06 USD; no-TP outcome of those trades: expiry 88%, spread stop 0%, stock stop 12%;  TP helped 15 (avg +636), cost 242 (avg -27.1);  days before expiry: median 1;  other trades unchanged: True
+     test period: total change +2075 USD over 488 trades; all dates: +2979 USD
+A w=0.1: TP trades 324 (27%);  TP minus no-TP per TP trade: mean -1.12 median -10.84 USD; no-TP outcome of those trades: expiry 85%, spread stop 1%, stock stop 15%;  TP helped 21 (avg +496), cost 303 (avg -35.5);  days before expiry: median 1;  other trades unchanged: True
+     test period: total change -238 USD over 492 trades; all dates: -364 USD
+B w=0.05: TP trades 157 (12%);  TP minus no-TP per TP trade: mean +35.50 median -8.24 USD; no-TP outcome of those trades: expiry 94%, spread stop 0%, stock stop 6%;  TP helped 18 (avg +649), cost 139 (avg -43.9);  days before expiry: median 1;  other trades unchanged: True
+     test period: total change +2697 USD over 519 trades; all dates: +5574 USD
+B w=0.1: TP trades 217 (16%);  TP minus no-TP per TP trade: mean +13.00 median -12.81 USD; no-TP outcome of those trades: expiry 91%, spread stop 0%, stock stop 8%;  TP helped 27 (avg +596), cost 190 (avg -69.8);  days before expiry: median 1;  other trades unchanged: True
+     test period: total change -3176 USD over 520 trades; all dates: +2820 USD
+
+== same comparison in % of 100-share notional (the grid's unit), test period, k=0.5 stop 8%; plus trades that exist only with TP ==
+A w=0.05: paired trades 487, mean pct change per trade -0.0478; TP-only trades 1 (base skipped them: no expiry-day settle) mean pct +0.621, syms ['AXTI']; TP trades by sym (pct change sum): {'ALAB': -1.33, 'APLD': -2.42, 'AXTI': -0.18, 'CLSK': -1.92, 'CRDO': -1.01, 'IREN': -3.18, 'LITE': -1.5, 'NBIS': -2.04, 'NVTS': -1.65, 'OKLO': -2.28, 'QBTS': -3.48, 'QUBT': -1.43, 'RKLB': -3.33, 'SNDK': 2.91, 'WOLF': -0.43}
+A w=0.1: paired trades 491, mean pct change per trade -0.0817; TP-only trades 1 (base skipped them: no expiry-day settle) mean pct +1.199, syms ['AXTI']; TP trades by sym (pct change sum): {'ALAB': -2.52, 'APLD': -3.98, 'AXTI': -0.46, 'CLSK': -4.26, 'CRDO': -2.33, 'IREN': -3.99, 'LITE': -1.65, 'NBIS': -2.86, 'NVTS': -2.7, 'OKLO': -3.75, 'QBTS': -4.77, 'QUBT': -2.95, 'RKLB': -4.94, 'SNDK': 1.91, 'WOLF': -0.83}
+B w=0.05: paired trades 518, mean pct change per trade -0.0494; TP-only trades 2 (base skipped them: no expiry-day settle) mean pct +1.983, syms ['AXTI', 'IREN']; TP trades by sym (pct change sum): {'ALAB': -0.45, 'APLD': -2.59, 'AXTI': -0.37, 'CLSK': -3.36, 'CRDO': -0.73, 'IREN': -2.2, 'LITE': -2.31, 'NBIS': 2.88, 'NVTS': -3.1, 'OKLO': -3.07, 'QBTS': -4.04, 'QUBT': -5.83, 'RKLB': -1.42, 'SNDK': 2.23, 'WOLF': -1.26}
+B w=0.1: paired trades 518, mean pct change per trade -0.0936; TP-only trades 2 (base skipped them: no expiry-day settle) mean pct +3.374, syms ['AXTI', 'IREN']; TP trades by sym (pct change sum): {'ALAB': -2.25, 'APLD': -4.23, 'AXTI': -1.9, 'CLSK': -7.22, 'CRDO': -1.07, 'IREN': -3.23, 'LITE': -5.27, 'NBIS': 3.04, 'NVTS': -4.64, 'OKLO': -5.28, 'QBTS': -5.62, 'QUBT': -7.71, 'RKLB': -1.21, 'SNDK': 0.21, 'WOLF': -2.11}
+
+== TP trades (2x stop, k=0.5, stock stop 8%, all dates): share that held to the end would have expired worthless (exit_cost_base == 0) ==
+A w=0.05: 274 TP trades; worthless at expiry if held 86%; holding was better 95%
+A w=0.1: 348 TP trades; worthless at expiry if held 84%; holding was better 94%
+B w=0.05: 161 TP trades; worthless at expiry if held 82%; holding was better 89%
+B w=0.1: 223 TP trades; worthless at expiry if held 79%; holding was better 88%

@@ -1,0 +1,40 @@
+P-0024 signal=vov  training pools 2018..2022, entry and exit < 2023-10-31  weeks in bootstrap grid 249
+rows 3440 (stock x cycle x right); excluded by defects 40; missing signal 310; status counts {'no_atm': 103, 'no_entry_or_settle': 46, 'no_quote': 32, 'ok': 3259}
+call cross-sections 54; ranked stocks per cycle median 32; Q5 picked 289, Q5 traded 283 (skipped: {'no_atm': 5, 'no_entry_or_settle': 1})
+
+== MAIN: Q5 short ATM monthly call, daily delta-hedged, held to expiry, % of S_E ==
+Q5 all pools: n  283 | k0 +0.134 [-0.50,+0.71] | k0.5 -0.077 [-0.72,+0.49] Bonf [-0.91,+0.64] p1s 0.593 | k1 -0.289 [-0.93,+0.28] | med +0.560 trim2% +0.236
+   pool 20181031: n  39 k0 +0.348 k0.5 +0.122 k1 -0.105 med +0.648
+   pool 20191031: n  26 k0 -0.891 k0.5 -1.307 k1 -1.723 med -0.851
+   pool 20201030: n  78 k0 +0.369 k0.5 +0.239 k1 +0.109 med +1.090
+   pool 20211029: n  67 k0 +0.959 k0.5 +0.644 k1 +0.329 med +0.263
+   pool 20221031: n  73 k0 -0.622 k0.5 -0.746 k1 -0.870 med +0.207
+   entry year 2018: n   4 k0.5 -0.066
+   entry year 2019: n  38 k0.5 -0.219
+   entry year 2020: n  31 k0.5 +0.040
+   entry year 2021: n  78 k0.5 -0.020
+   entry year 2022: n  67 k0.5 +0.228
+   entry year 2023: n  65 k0.5 -0.435
+   stocks positive (k0.5 mean > 0): 49/84
+   largest contributor SAVA (n 8, sum +31.66); without it k0.5 -0.195; largest loser BBBY (sum -55.77); without it +0.123
+   drop best 5 entry weeks (2022-03-14, 2023-03-20, 2021-06-14, 2021-03-15, 2020-12-14): k0.5 -0.468; drop worst 5: +0.417
+   (dS-C) unit k0.5 mean -0.216 %  median +1.248
+   + option commission 1 USD/contract: k0.5 -0.151
+   half-spread/S median 0.251 %; hedge turnover median 2.33 x (5 bp ~ 0.112 % S); break-even option k 0.32; k0.5 with zero hedge fee ~ +0.035
+
+== Descriptive: all quintiles (calls) ==
+Q1: n  318 | k0 +0.151 [-0.16,+0.45] | k0.5 +0.019 [-0.30,+0.31] Bonf [-0.39,+0.39] p1s 0.444 | k1 -0.114 [-0.44,+0.18] | med +0.184 trim2% +0.123
+Q2: n  312 | k0 -0.044 [-0.51,+0.39] | k0.5 -0.172 [-0.65,+0.27] Bonf [-0.79,+0.38] p1s 0.776 | k1 -0.300 [-0.79,+0.15] | med +0.235 trim2% +0.022
+Q3: n  300 | k0 +0.293 [-0.03,+0.59] | k0.5 +0.164 [-0.18,+0.47] Bonf [-0.27,+0.55] p1s 0.165 | k1 +0.035 [-0.32,+0.35] | med +0.446 trim2% +0.237
+Q4: n  312 | k0 +0.039 [-0.34,+0.39] | k0.5 -0.115 [-0.51,+0.23] Bonf [-0.62,+0.32] p1s 0.725 | k1 -0.269 [-0.68,+0.09] | med +0.500 trim2% +0.099
+Q5: n  283 | k0 +0.134 [-0.50,+0.71] | k0.5 -0.077 [-0.72,+0.49] Bonf [-0.91,+0.64] p1s 0.593 | k1 -0.289 [-0.93,+0.28] | med +0.560 trim2% +0.236
+ALL: n 1525 | k0 +0.113 [-0.17,+0.37] | k0.5 -0.037 [-0.32,+0.22] Bonf [-0.40,+0.29] p1s 0.610 | k1 -0.187 [-0.48,+0.08] | med +0.346 trim2% +0.139
+Q5-Q1 (k0.5, per-cycle paired): mean -0.093 [-0.82,+0.58] Bonf [-1.02,+0.78] p1s 0.599, cycles 53, positive 32; by pool 20181031:+0.13 20191031:-0.52 20201030:+0.11 20211029:+0.19 20221031:-0.45
+Q5-ALL (k0.5, per-cycle paired): mean +0.020 [-0.62,+0.60] Bonf [-0.82,+0.77] p1s 0.469, cycles 53, positive 30; by pool 20181031:+0.52 20191031:-0.26 20201030:-0.11 20211029:+0.51 20221031:-0.65
+
+== Descriptive variants (counted) ==
+Top tercile call: n  494 | k0 +0.181 [-0.24,+0.58] | k0.5 -0.007 [-0.43,+0.38] Bonf [-0.54,+0.49] p1s 0.505 | k1 -0.195 [-0.63,+0.19] | med +0.592 trim2% +0.241
+Q5 put: n  283 | k0 +1.570 [+0.77,+2.37] | k0.5 +1.352 [+0.57,+2.14] Bonf [+0.37,+2.35] p1s 0.000 | k1 +1.134 [+0.35,+1.90] | med +1.135 trim2% +1.332
+Q1 put: n  318 | k0 +0.297 [-0.02,+0.61] | k0.5 +0.167 [-0.16,+0.48] Bonf [-0.24,+0.56] p1s 0.148 | k1 +0.036 [-0.29,+0.35] | med +0.231 trim2% +0.249
+Q5 call sorted by vovp: n  285 | k0 +0.183 [-0.44,+0.75] | k0.5 -0.025 [-0.65,+0.53] Bonf [-0.85,+0.69] p1s 0.523 | k1 -0.232 [-0.86,+0.32] | med +0.733 trim2% +0.307
+IVOL vs VOV cross-sectional Spearman: mean +0.24 (cycles 54); Q5 overlap 0.39

@@ -1,0 +1,29 @@
+=== H1 reproduction. Published: test 439 / 62.4% / +110 / +92 (widths 25/50/75, put fly, k 0.25, TWS spot, no min fee);
+    ledger 基准-A: test 439 / 61.0% / +100, train 543 / 58.0% / +59 (widths 20/25/30/50/75)
+0 published panel, widths (25, 50, 75)                         | train n 543 win 58.9% ev +54.4 ev_k05 +32.8 | test n 439 win 62.4% ev +109.5 ev_k05 +91.8
+0 published panel, widths (20, 25, 30, 50, 75)                 | train n 543 win 58.0% ev +58.5 ev_k05 +37.0 | test n 439 win 61.0% ev +99.9 ev_k05 +82.6
+1 raw rebuild, widths (25, 50, 75), put/put, TWS, k.25, no min | train n 543 win 58.9% ev +54.4 ev_k05 +32.8 | test n 439 win 62.4% ev +109.4 ev_k05 +91.8
+1 raw rebuild, widths (20, 25, 30, 50, 75), put/put, TWS, k.25, no min | train n 543 win 58.0% ev +58.4 ev_k05 +36.9 | test n 439 win 61.0% ev +99.9 ev_k05 +82.6
+2 + spot = underlying_1m 14:00                                 | train n 543 win 58.0% ev +58.1 ev_k05 +36.6 | test n 439 win 60.8% ev +98.3 ev_k05 +81.3
+3 + prev-ret NaN -> skip                                       | train n 541 win 58.0% ev +63.5 ev_k05 +42.2 | test n 439 win 60.8% ev +98.3 ev_k05 +81.3
+4 + $1 min commission per leg                                  | train n 541 win 58.0% ev +62.8 ev_k05 +41.5 | test n 439 win 60.8% ev +97.6 ev_k05 +80.6
+5 + k 0.2 (pnl col; k05 col unchanged)                         | train n 541 win 58.2% ev +67.0 ev_k05 +41.5 | test n 439 win 60.8% ev +101.0 ev_k05 +80.6
+6 + select width on iron legs, put fly P&L                     | train n 540 win 58.3% ev +68.5 ev_k05 +43.0 | test n 439 win 60.8% ev +101.0 ev_k05 +80.6
+7 = FROZEN H1: iron fly P&L                                    | train n 541 win 58.6% ev +76.3 ev_k05 +65.0 | test n 439 win 60.8% ev +109.7 ev_k05 +101.3
+7b frozen, tie -> larger width (report only)                   | train n 541 win 58.6% ev +76.1 ev_k05 +64.8 | test n 439 win 60.8% ev +109.9 ev_k05 +101.6
+ATM strike differs TWS vs underlying_1m: 16 of 982 days; width differs: 0
+spot_u - spot_tws at 14:00: median 0.00, |.| p95 0.20, max 1.94
+
+=== H2 reproduction. Published (全样本, every qualifying strike counted): 15 wide 14:00 k0.25 74% / +38, k0.5 +32
+0 published panel rows [3,4] (credit_3_4_by_year.csv): n 875 days 773 win 73.7% ev +36.3 k05 +30.4
+0 published panel rows (3,4] (by_credit.csv bucket = published row): n 862 days 766 win 73.8% ev +37.7 k05 +31.9
+1 raw rebuild, all rows, TWS, k.25, no min         | full n 861 days 766 win 73.6% ev +37.0 k05 +31.2
+   split                                                       | train n 462 win 71.6% ev +19.8 ev_k05 +12.7 | test n 399 win 75.9% ev +56.8 ev_k05 +52.5
+2 + one per day (closest 3.5, tie higher K)        | full n 766 days 766 win 72.5% ev +27.9 k05 +23.7
+   split                                                       | train n 421 win 70.8% ev +14.5 ev_k05 +9.6 | test n 345 win 74.5% ev +44.2 ev_k05 +40.8
+3 + spot underlying_1m                             | full n 766 days 766 win 72.5% ev +27.9 k05 +23.7
+   split                                                       | train n 421 win 70.8% ev +14.5 ev_k05 +9.6 | test n 345 win 74.5% ev +44.2 ev_k05 +40.8
+4 + $1 min per leg                                 | full n 766 days 766 win 72.3% ev +27.2 k05 +23.0
+   split                                                       | train n 421 win 70.5% ev +13.8 ev_k05 +8.9 | test n 345 win 74.5% ev +43.5 ev_k05 +40.1
+5 = FROZEN H2 at k 0.2                             | full n 766 days 766 win 72.5% ev +28.0 k05 +23.0
+   split                                                       | train n 421 win 70.8% ev +14.7 ev_k05 +8.9 | test n 345 win 74.5% ev +44.2 ev_k05 +40.1

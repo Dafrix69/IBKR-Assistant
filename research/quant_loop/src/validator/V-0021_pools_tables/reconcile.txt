@@ -1,0 +1,18 @@
+== 20181031: mine 956, proposer (in window) 959, common 956; strike differs 0, expiry differs 0; static k0 max|diff| 2.8e-14; daily k0 |diff|>0.01pp 0 (mean diff -0.0000, max 0.00)
+   only proposer: MOMO 2019-03-18->2019-04-05; MOMO 2019-03-25->2019-04-12; MOMO 2019-04-01->2019-04-18
+== 20191031: mine 842, proposer (in window) 841, common 841; strike differs 0, expiry differs 0; static k0 max|diff| 2.1e-14; daily k0 |diff|>0.01pp 18 (mean diff -0.0170, max 12.06)
+   only mine: OSTK 2020-04-27 (sta_k0.5 -4.82)
+   daily diffs: OSTK 2020-03-09 -12.06; SIG 2020-03-09 -5.95; WLL 2020-03-23 -2.05; SIG 2020-02-24 -0.96; OSTK 2020-02-24 -0.87; BBBY 2020-03-02 -0.73; WW 2020-02-24 -0.71; WW 2020-02-18 -0.70; WLL 2020-02-18 -0.22; AMRN 2020-03-23 -0.12; TLRY 2020-08-10 +0.16; OSTK 2020-02-18 +0.19; WLL 2020-03-16 +0.62; TEVA 2020-03-09 +0.80; SIG 2020-03-02 +1.29; CRON 2020-09-08 +1.68; TLRY 2020-02-24 +2.55; WLL 2020-04-20 +2.78
+== 20201030: mine 2071, proposer (in window) 2072, common 2069; strike differs 0, expiry differs 0; static k0 max|diff| 2.3e-13; daily k0 |diff|>0.01pp 5 (mean diff -0.0002, max 0.47)
+   only mine: BIIB 2020-10-30 (sta_k0.5 -4.57); BIIB 2020-11-02 (sta_k0.5 -4.82)
+   only proposer: RKT 2021-02-16->2021-03-12; RKT 2021-02-22->2021-03-12; RKT 2021-03-01->2021-03-19
+   daily diffs: GME 2021-01-11 -0.47; INO 2021-02-16 -0.31; INO 2021-03-15 -0.21; INO 2021-07-19 +0.18; INO 2021-07-06 +0.39
+== 20211029: mine 1746, proposer (in window) 1754, common 1746; strike differs 0, expiry differs 0; static k0 max|diff| 1.8e-14; daily k0 |diff|>0.01pp 2 (mean diff +0.0000, max 0.21)
+   only proposer: LCID 2022-07-26->2022-08-19; LCID 2022-08-02->2022-08-26; LCID 2022-08-10->2022-09-02; LCID 2022-08-18->2022-09-09; LMND 2022-07-26->2022-08-19; LMND 2022-08-02->2022-08-26; LMND 2022-08-10->2022-09-02; LMND 2022-08-18->2022-09-09
+   daily diffs: SAVA 2022-04-04 -0.15; MVIS 2022-10-10 +0.21
+== 20221031: mine 2004, proposer (in window) 2004, common 2004; strike differs 0, expiry differs 0; static k0 max|diff| 2.8e-14; daily k0 |diff|>0.01pp 1 (mean diff +0.0003, max 0.56)
+   daily diffs: BBBY 2023-03-13 +0.56
+== 20231031: mine 1879, proposer (in window) 1879, common 1879; strike differs 0, expiry differs 0; static k0 max|diff| 5.7e-14; daily k0 |diff|>0.01pp 4 (mean diff +0.0008, max 2.64)
+   daily diffs: BYND 2024-06-10 -1.01; SAVA 2024-06-24 -0.28; OSTK 2024-10-14 +0.12; CHPT 2024-01-02 +2.64
+== 20241031: mine 3854, proposer (in window) 3854, common 3854; strike differs 0, expiry differs 0; static k0 max|diff| 2.1e-14; daily k0 |diff|>0.01pp 1 (mean diff -0.0005, max 2.12)
+   daily diffs: SEDG 2025-03-24 -2.12

@@ -1,0 +1,376 @@
+
+===== pool 20181031: 21 syms, calendar 277 days 2018-10-31..2019-12-05
+NVDA: files 276 2018-10-31..2019-12-05 roots ['NVDA'] other-root call rows 0 | missing 1 2019-08-28 | S<=0 0 multi-S files 0 stale-runs 0
+TLRY: files 274 2018-10-31..2019-12-05 roots ['TLRY'] other-root call rows 0 | missing 3 2019-08-27,2019-08-28,2019-08-30 | S<=0 0 multi-S files 0 stale-runs 0
+AMD: files 277 2018-10-31..2019-12-05 roots ['AMD'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+CGC: files 277 2018-10-31..2019-12-05 roots ['CGC'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+ROKU: files 276 2018-10-31..2019-12-05 roots ['ROKU'] other-root call rows 0 | missing 1 2019-08-28 | S<=0 0 multi-S files 0 stale-runs 0
+TWLO: files 275 2018-10-31..2019-12-05 roots ['TWLO'] other-root call rows 0 | missing 2 2019-08-27,2019-08-30 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2018-11-06->2018-11-07 S 71.020->96.190 (+35.4%) grid-kept 1.00 over 4 exp
+OLED: files 276 2018-10-31..2019-12-05 roots ['OLED'] other-root call rows 0 | missing 1 2019-08-28 | S<=0 0 multi-S files 0 stale-runs 0
+DDD: files 277 2018-10-31..2019-12-05 roots ['DDD'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+AMRN: files 276 2018-10-31..2019-12-05 roots ['AMRN'] other-root call rows 0 | missing 1 2019-11-14 | S<=0 0 multi-S files 0 stale-runs 0
+W: files 275 2018-10-31..2019-12-05 roots ['W'] other-root call rows 0 | missing 2 2019-08-27,2019-08-30 | S<=0 0 multi-S files 0 stale-runs 0
+TTD: files 275 2018-10-31..2019-12-05 roots ['TTD'] other-root call rows 0 | missing 2 2019-08-27,2019-08-30 | S<=0 0 multi-S files 0 stale-runs 0
+WB: files 275 2018-10-31..2019-12-05 roots ['WB'] other-root call rows 0 | missing 2 2019-08-27,2019-08-30 | S<=0 0 multi-S files 0 stale-runs 0
+CRON: files 277 2018-10-31..2019-12-05 roots ['CRON'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+STMP: files 274 2018-10-31..2019-12-05 roots ['STMP'] other-root call rows 0 | missing 3 2019-08-27,2019-08-28,2019-08-30 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2019-02-21->2019-02-22 S 198.080->83.650 (-57.8%) grid-kept 1.00 over 5 exp
+   FLAG 2019-05-08->2019-05-09 S 83.390->36.900 (-55.8%) grid-kept 1.00 over 5 exp
+MOMO: files 276 2018-10-31..2019-12-05 roots ['MOMO'] other-root call rows 0 | missing 1 2019-08-28 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2019-04-03->2019-04-04 S 40.670->39.760 (-2.2%) grid-kept 0.00 over 5 exp
+TNDM: files 274 2018-10-31..2019-12-05 roots ['TNDM'] other-root call rows 0 | missing 3 2019-08-27,2019-08-28,2019-08-30 | S<=0 0 multi-S files 0 stale-runs 0
+FIT: files 277 2018-10-31..2019-12-05 roots ['FIT'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 1 2019-04-04
+GPRO: files 277 2018-10-31..2019-12-05 roots ['GPRO'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+OSTK: files 276 2018-10-31..2019-12-05 roots ['OSTK'] other-root call rows 0 | missing 1 2019-08-28 | S<=0 0 multi-S files 0 stale-runs 0
+GOOS: files 277 2018-10-31..2019-12-05 roots ['GOOS'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+TSRO: files 55 2018-10-31..2019-01-22 roots ['TSRO'] other-root call rows 0 | missing 0 | S<=0 1 multi-S files 0 stale-runs 0
+   FLAG 2018-11-30->2018-12-03 S 46.380->73.500 (+58.5%) grid-kept 1.00 over 4 exp
+   FLAG 2019-01-18->2019-01-22 S 74.960->0.000 (-100.0%) grid-kept 1.00 over 4 exp
+   S<=0 on 2019-01-22
+
+===== pool 20191031: 19 syms, calendar 277 days 2019-10-31..2020-12-04
+ROKU: files 277 2019-10-31..2020-12-04 roots ['ROKU'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+UBER: files 277 2019-10-31..2020-12-04 roots ['UBER'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2020-03-18->2020-03-19 S 14.820->20.490 (+38.3%) grid-kept 1.00 over 5 exp
+PINS: files 277 2019-10-31..2020-12-04 roots ['PINS'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2020-07-30->2020-07-31 S 25.190->34.290 (+36.1%) grid-kept 1.00 over 5 exp
+CGC: files 277 2019-10-31..2020-12-04 roots ['CGC'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+PCG: files 277 2019-10-31..2020-12-04 roots ['PCG'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+TLRY: files 277 2019-10-31..2020-12-04 roots ['TLRY'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2020-03-18->2020-03-19 S 2.470->3.850 (+55.9%) grid-kept 1.00 over 5 exp
+   FLAG 2020-03-25->2020-03-26 S 5.040->7.900 (+56.7%) grid-kept 1.00 over 5 exp
+CRON: files 277 2019-10-31..2020-12-04 roots ['CRON'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+AMRN: files 276 2019-10-31..2020-12-04 roots ['AMRN'] other-root call rows 0 | missing 1 2019-11-14 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2020-03-30->2020-03-31 S 13.580->4.000 (-70.5%) grid-kept 1.00 over 4 exp
+FIT: files 277 2019-10-31..2020-12-04 roots ['FIT'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 1 2020-11-18
+BBBY: files 277 2019-10-31..2020-12-04 roots ['BBBY'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+PTON: files 277 2019-10-31..2020-12-04 roots ['PTON'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+ACB: files 276 2019-10-31..2020-12-04 roots ['ACB'] other-root call rows 0 | missing 1 2020-05-11 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2020-05-08->2020-05-12 S 0.672->6.460 (+861.9%) grid-kept nan over 0 exp
+   FLAG 2020-05-14->2020-05-15 S 6.640->11.200 (+68.7%) grid-kept 1.00 over 5 exp
+   FLAG 2020-05-15->2020-05-18 S 11.200->17.100 (+52.7%) grid-kept 1.00 over 4 exp
+   FLAG 2020-05-20->2020-05-21 S 12.750->17.400 (+36.5%) grid-kept 1.00 over 5 exp
+   FLAG 2020-11-04->2020-11-05 S 4.430->6.270 (+41.5%) grid-kept 1.00 over 5 exp
+   FLAG 2020-11-05->2020-11-06 S 6.270->9.790 (+56.1%) grid-kept 1.00 over 5 exp
+TEVA: files 277 2019-10-31..2020-12-04 roots ['TEVA'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+WW: files 277 2019-10-31..2020-12-04 roots ['WW'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+STMP: files 277 2019-10-31..2020-12-04 roots ['STMP'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2020-02-19->2020-02-20 S 95.460->157.990 (+65.5%) grid-kept 1.00 over 5 exp
+WLL: files 244 2019-10-31..2020-12-04 roots ['WLL'] other-root call rows 0 | missing 33 2020-09-03,2020-09-04,2020-09-08,2020-09-09,2020-09-10,2020-09-11 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2020-03-06->2020-03-09 S 1.330->0.800 (-39.8%) grid-kept 1.00 over 4 exp
+   FLAG 2020-03-12->2020-03-13 S 0.752->1.300 (+72.8%) grid-kept 1.00 over 5 exp
+   FLAG 2020-03-18->2020-03-19 S 1.050->1.420 (+35.2%) grid-kept 1.00 over 5 exp
+   FLAG 2020-03-31->2020-04-01 S 0.670->0.372 (-44.5%) grid-kept 1.00 over 4 exp
+   FLAG 2020-04-21->2020-04-22 S 0.383->0.837 (+118.8%) grid-kept 1.00 over 4 exp
+   FLAG 2020-04-22->2020-04-23 S 0.837->1.680 (+100.7%) grid-kept 1.00 over 4 exp
+   FLAG 2020-06-04->2020-06-05 S 0.850->1.380 (+62.4%) grid-kept 1.00 over 3 exp
+   FLAG 2020-06-05->2020-06-08 S 1.380->3.480 (+152.2%) grid-kept 1.00 over 2 exp
+   FLAG 2020-08-03->2020-08-04 S 0.770->1.080 (+40.3%) grid-kept 1.00 over 3 exp
+   FLAG 2020-09-01->2020-09-02 S 0.567->19.500 (+3342.2%) grid-kept 1.00 over 4 exp
+OSTK: files 276 2019-10-31..2020-12-04 roots ['OSTK'] other-root call rows 0 | missing 1 2020-04-24 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2020-04-23->2020-04-27 S 8.010->11.600 (+44.8%) grid-kept 0.29 over 1 exp
+Z: files 277 2019-10-31..2020-12-04 roots ['Z'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+SIG: files 277 2019-10-31..2020-12-04 roots ['SIG'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2020-01-15->2020-01-16 S 21.490->30.130 (+40.2%) grid-kept 1.00 over 5 exp
+
+===== pool 20201030: 40 syms, calendar 276 days 2020-10-30..2021-12-03
+ZM: files 276 2020-10-30..2021-12-03 roots ['ZM'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+PINS: files 276 2020-10-30..2021-12-03 roots ['PINS'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+FSLY: files 276 2020-10-30..2021-12-03 roots ['FSLY'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+NIO: files 276 2020-10-30..2021-12-03 roots ['NIO'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+PTON: files 276 2020-10-30..2021-12-03 roots ['PTON'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2021-11-04->2021-11-05 S 86.060->55.640 (-35.3%) grid-kept 1.00 over 5 exp
+ROKU: files 276 2020-10-30..2021-12-03 roots ['ROKU'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+BYND: files 276 2020-10-30..2021-12-03 roots ['BYND'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+TTD: files 276 2020-10-30..2021-12-03 roots ['TTD'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2021-06-16->2021-06-17 S 590.200->62.140 (-89.5%) grid-kept 0.00 over 5 exp
+DKNG: files 276 2020-10-30..2021-12-03 roots ['DKNG'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+WKHS: files 276 2020-10-30..2021-12-03 roots ['WKHS'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2021-02-22->2021-02-23 S 31.340->16.465 (-47.5%) grid-kept 1.00 over 4 exp
+SNOW: files 276 2020-10-30..2021-12-03 roots ['SNOW'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+OSTK: files 276 2020-10-30..2021-12-03 roots ['OSTK'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+CVNA: files 276 2020-10-30..2021-12-03 roots ['CVNA'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+RCL: files 276 2020-10-30..2021-12-03 roots ['RCL'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+NKLA: files 276 2020-10-30..2021-12-03 roots ['NKLA'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+W: files 274 2020-10-30..2021-12-03 roots ['W'] other-root call rows 0 | missing 2 2021-11-19,2021-11-22 | S<=0 0 multi-S files 0 stale-runs 0
+PENN: files 276 2020-10-30..2021-12-03 roots ['PENN'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+MRNA: files 276 2020-10-30..2021-12-03 roots ['MRNA'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+RKT: files 276 2020-10-30..2021-12-03 roots ['RKT'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2021-03-01->2021-03-02 S 24.300->41.600 (+71.2%) grid-kept 1.00 over 4 exp
+   FLAG 2021-03-05->2021-03-08 S 25.100->24.710 (-1.6%) grid-kept 0.00 over 4 exp
+DDOG: files 276 2020-10-30..2021-12-03 roots ['DDOG'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+SPCE: files 276 2020-10-30..2021-12-03 roots ['SPCE'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2021-06-24->2021-06-25 S 40.260->55.910 (+38.9%) grid-kept 1.00 over 5 exp
+NVAX: files 276 2020-10-30..2021-12-03 roots ['NVAX'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2021-01-28->2021-01-29 S 134.010->220.940 (+64.9%) grid-kept 1.00 over 5 exp
+SE: files 276 2020-10-30..2021-12-03 roots ['SE'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+AAL: files 276 2020-10-30..2021-12-03 roots ['AAL'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+GME: files 276 2020-10-30..2021-12-03 roots ['GME'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2021-01-12->2021-01-13 S 19.950->31.400 (+57.4%) grid-kept 1.00 over 4 exp
+   FLAG 2021-01-21->2021-01-22 S 43.030->65.010 (+51.1%) grid-kept 1.00 over 5 exp
+   FLAG 2021-01-25->2021-01-26 S 76.790->147.980 (+92.7%) grid-kept 1.00 over 4 exp
+   FLAG 2021-01-26->2021-01-27 S 147.980->347.510 (+134.8%) grid-kept 1.00 over 4 exp
+   FLAG 2021-01-27->2021-01-28 S 347.510->193.600 (-44.3%) grid-kept 1.00 over 5 exp
+   FLAG 2021-01-28->2021-01-29 S 193.600->325.000 (+67.9%) grid-kept 1.00 over 5 exp
+   FLAG 2021-02-01->2021-02-02 S 225.000->90.000 (-60.0%) grid-kept 1.00 over 4 exp
+   FLAG 2021-02-03->2021-02-04 S 92.410->53.500 (-42.1%) grid-kept 1.00 over 5 exp
+   FLAG 2021-02-23->2021-02-24 S 44.970->91.710 (+103.9%) grid-kept 1.00 over 4 exp
+   FLAG 2021-03-05->2021-03-08 S 137.740->194.500 (+41.2%) grid-kept 1.00 over 4 exp
+   FLAG 2021-03-24->2021-03-25 S 120.340->183.750 (+52.7%) grid-kept 1.00 over 5 exp
+CHWY: files 276 2020-10-30..2021-12-03 roots ['CHWY'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+CCL: files 276 2020-10-30..2021-12-03 roots ['CCL'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2020-11-06->2020-11-09 S 13.820->19.250 (+39.3%) grid-kept 1.00 over 4 exp
+UBER: files 276 2020-10-30..2021-12-03 roots ['UBER'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+PLUG: files 276 2020-10-30..2021-12-03 roots ['PLUG'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2021-01-06->2021-01-07 S 35.000->47.290 (+35.1%) grid-kept 1.00 over 5 exp
+BIIB: files 276 2020-10-30..2021-12-03 roots ['BIIB'] other-root call rows 0 | missing 0 | S<=0 1 multi-S files 0 stale-runs 0
+   FLAG 2020-11-03->2020-11-04 S 247.010->355.630 (+44.0%) grid-kept 1.00 over 4 exp
+   FLAG 2020-11-05->2020-11-06 S 328.900->0.000 (-100.0%) grid-kept 1.00 over 5 exp
+   FLAG 2020-11-06->2020-11-09 S 0.000->236.260 (+inf%) grid-kept 1.00 over 4 exp
+   FLAG 2021-06-04->2021-06-07 S 286.140->395.850 (+38.3%) grid-kept 1.00 over 4 exp
+   S<=0 on 2020-11-06
+UAL: files 276 2020-10-30..2021-12-03 roots ['UAL'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+NCLH: files 276 2020-10-30..2021-12-03 roots ['NCLH'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+WYNN: files 276 2020-10-30..2021-12-03 roots ['WYNN'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+MGM: files 276 2020-10-30..2021-12-03 roots ['MGM'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+BBBY: files 276 2020-10-30..2021-12-03 roots ['BBBY'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2021-01-26->2021-01-27 S 36.870->52.890 (+43.4%) grid-kept 1.00 over 4 exp
+   FLAG 2021-01-27->2021-01-28 S 52.890->33.640 (-36.4%) grid-kept 1.00 over 5 exp
+   FLAG 2021-06-01->2021-06-02 S 27.260->44.190 (+62.1%) grid-kept 1.00 over 4 exp
+HYLN: files 276 2020-10-30..2021-12-03 roots ['HYLN'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+INO: files 276 2020-10-30..2021-12-03 roots ['INO'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2020-11-09->2020-11-10 S 8.500->11.510 (+35.4%) grid-kept 1.00 over 4 exp
+Z: files 276 2020-10-30..2021-12-03 roots ['Z'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+NET: files 276 2020-10-30..2021-12-03 roots ['NET'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+LYFT: files 276 2020-10-30..2021-12-03 roots ['LYFT'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+
+===== pool 20211029: 40 syms, calendar 277 days 2021-10-29..2022-12-05
+LCID: files 257 2021-10-29..2022-12-05 roots ['LCID'] other-root call rows 0 | missing 20 2022-06-16,2022-06-24,2022-06-28,2022-07-08,2022-07-12,2022-07-20 | S<=0 0 multi-S files 0 stale-runs 0
+AMC: files 276 2021-10-29..2022-12-05 roots ['AMC'] other-root call rows 0 | missing 1 2022-08-22 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2022-03-25->2022-03-28 S 20.240->29.330 (+44.9%) grid-kept 1.00 over 4 exp
+   FLAG 2022-08-19->2022-08-23 S 18.020->9.560 (-46.9%) grid-kept 0.48 over 1 exp
+UPST: files 277 2021-10-29..2022-12-05 roots ['UPST'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2022-02-15->2022-02-16 S 109.110->148.010 (+35.7%) grid-kept 1.00 over 4 exp
+   FLAG 2022-05-09->2022-05-10 S 77.130->33.610 (-56.4%) grid-kept 1.00 over 4 exp
+AFRM: files 277 2021-10-29..2022-12-05 roots ['AFRM'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+MARA: files 277 2021-10-29..2022-12-05 roots ['MARA'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+NVAX: files 276 2021-10-29..2022-12-05 roots ['NVAX'] other-root call rows 0 | missing 1 2022-06-07 | S<=0 0 multi-S files 0 stale-runs 0
+FUTU: files 277 2021-10-29..2022-12-05 roots ['FUTU'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2022-03-15->2022-03-16 S 26.250->36.630 (+39.5%) grid-kept 1.00 over 5 exp
+DWAC: files 277 2021-10-29..2022-12-05 roots ['DWAC'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2022-11-04->2022-11-07 S 17.480->29.100 (+66.5%) grid-kept 1.00 over 4 exp
+RIOT: files 277 2021-10-29..2022-12-05 roots ['RIOT'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+SPCE: files 277 2021-10-29..2022-12-05 roots ['SPCE'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+QS: files 277 2021-10-29..2022-12-05 roots ['QS'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+PLUG: files 277 2021-10-29..2022-12-05 roots ['PLUG'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+MVIS: files 277 2021-10-29..2022-12-05 roots ['MVIS'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+TLRY: files 277 2021-10-29..2022-12-05 roots ['TLRY'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+CHPT: files 277 2021-10-29..2022-12-05 roots ['CHPT'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+SAVA: files 277 2021-10-29..2022-12-05 roots ['SAVA'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2021-11-03->2021-11-04 S 56.660->84.400 (+49.0%) grid-kept 1.00 over 5 exp
+   FLAG 2022-09-21->2022-09-22 S 37.640->51.060 (+35.7%) grid-kept 1.00 over 5 exp
+IRNT: files 277 2021-10-29..2022-12-05 roots ['IRNT'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2022-09-14->2022-09-15 S 2.200->1.220 (-44.5%) grid-kept 1.00 over 5 exp
+FUBO: files 277 2021-10-29..2022-12-05 roots ['FUBO'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2022-08-15->2022-08-16 S 4.380->6.350 (+45.0%) grid-kept 1.00 over 4 exp
+BNTX: files 277 2021-10-29..2022-12-05 roots ['BNTX'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+SOFI: files 277 2021-10-29..2022-12-05 roots ['SOFI'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+HUT: files 277 2021-10-29..2022-12-05 roots ['HUT'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+FSLY: files 277 2021-10-29..2022-12-05 roots ['FSLY'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+BBIG: files 269 2021-10-29..2022-12-05 roots ['BBIG'] other-root call rows 0 | missing 8 2022-06-30,2022-08-05,2022-08-08,2022-08-09,2022-08-10,2022-08-11 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2022-06-29->2022-07-01 S 1.970->1.270 (-35.5%) grid-kept 0.53 over 5 exp
+   FLAG 2022-08-04->2022-08-16 S 0.712->1.130 (+58.8%) grid-kept 1.00 over 1 exp
+APPS: files 277 2021-10-29..2022-12-05 roots ['APPS'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2022-11-09->2022-11-10 S 10.770->17.330 (+60.9%) grid-kept 1.00 over 5 exp
+LMND: files 257 2021-10-29..2022-12-05 roots ['LMND'] other-root call rows 0 | missing 20 2022-06-16,2022-06-24,2022-06-28,2022-07-08,2022-07-12,2022-07-20 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2022-08-02->2022-08-10 S 20.970->28.660 (+36.7%) grid-kept 1.00 over 3 exp
+JMIA: files 277 2021-10-29..2022-12-05 roots ['JMIA'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+SPWR: files 277 2021-10-29..2022-12-05 roots ['SPWR'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+OCGN: files 277 2021-10-29..2022-12-05 roots ['OCGN'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+CLOV: files 277 2021-10-29..2022-12-05 roots ['CLOV'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+BLNK: files 277 2021-10-29..2022-12-05 roots ['BLNK'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+FCEL: files 277 2021-10-29..2022-12-05 roots ['FCEL'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+SKLZ: files 277 2021-10-29..2022-12-05 roots ['SKLZ'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+WKHS: files 277 2021-10-29..2022-12-05 roots ['WKHS'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 1 2022-06-29
+NKLA: files 277 2021-10-29..2022-12-05 roots ['NKLA'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+FSR: files 277 2021-10-29..2022-12-05 roots ['FSR'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+OPEN: files 277 2021-10-29..2022-12-05 roots ['OPEN'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+WISH: files 277 2021-10-29..2022-12-05 roots ['WISH'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+CGC: files 277 2021-10-29..2022-12-05 roots ['CGC'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+ACB: files 277 2021-10-29..2022-12-05 roots ['ACB'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2022-05-26->2022-05-27 S 2.730->1.680 (-38.5%) grid-kept 1.00 over 5 exp
+GRWG: files 277 2021-10-29..2022-12-05 roots ['GRWG'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2022-11-07->2022-11-08 S 3.310->4.470 (+35.0%) grid-kept 1.00 over 4 exp
+
+===== pool 20221031: 40 syms, calendar 276 days 2022-10-31..2023-12-05
+GME: files 276 2022-10-31..2023-12-05 roots ['GME'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2023-03-21->2023-03-22 S 17.650->23.870 (+35.2%) grid-kept 1.00 over 4 exp
+SHOP: files 276 2022-10-31..2023-12-05 roots ['SHOP'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+COIN: files 276 2022-10-31..2023-12-05 roots ['COIN'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+SQ: files 276 2022-10-31..2023-12-05 roots ['SQ'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+SNOW: files 276 2022-10-31..2023-12-05 roots ['SNOW'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+ROKU: files 276 2022-10-31..2023-12-05 roots ['ROKU'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+MELI: files 276 2022-10-31..2023-12-05 roots ['MELI'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+UBER: files 276 2022-10-31..2023-12-05 roots ['UBER'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+RBLX: files 276 2022-10-31..2023-12-05 roots ['RBLX'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+RIVN: files 276 2022-10-31..2023-12-05 roots ['RIVN'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+NIO: files 276 2022-10-31..2023-12-05 roots ['NIO'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 1 2023-02-10
+JD: files 276 2022-10-31..2023-12-05 roots ['JD'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+BBBY: files 126 2022-10-31..2023-05-02 roots ['BBBY'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2023-01-10->2023-01-11 S 2.070->3.490 (+68.6%) grid-kept 1.00 over 4 exp
+   FLAG 2023-01-11->2023-01-12 S 3.490->5.240 (+50.1%) grid-kept 1.00 over 5 exp
+   FLAG 2023-02-03->2023-02-06 S 3.050->5.860 (+92.1%) grid-kept 1.00 over 4 exp
+   FLAG 2023-02-06->2023-02-07 S 5.860->3.010 (-48.6%) grid-kept 1.00 over 4 exp
+   FLAG 2023-04-18->2023-04-19 S 0.343->0.464 (+35.3%) grid-kept 1.00 over 2 exp
+   FLAG 2023-04-19->2023-04-20 S 0.464->0.300 (-35.3%) grid-kept 1.00 over 3 exp
+   FLAG 2023-04-21->2023-04-24 S 0.293->0.189 (-35.7%) grid-kept 1.00 over 2 exp
+   FLAG 2023-04-25->2023-04-26 S 0.199->0.112 (-43.8%) grid-kept 1.00 over 2 exp
+DKNG: files 276 2022-10-31..2023-12-05 roots ['DKNG'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+LCID: files 276 2022-10-31..2023-12-05 roots ['LCID'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2023-01-26->2023-01-27 S 9.000->12.870 (+43.0%) grid-kept 1.00 over 5 exp
+UPST: files 276 2022-10-31..2023-12-05 roots ['UPST'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+AMC: files 274 2022-10-31..2023-12-05 roots ['AMC'] other-root call rows 0 | missing 2 2023-08-23,2023-08-24 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2023-08-11->2023-08-14 S 5.260->3.390 (-35.6%) grid-kept 1.00 over 4 exp
+   FLAG 2023-08-22->2023-08-25 S 2.550->12.430 (+387.5%) grid-kept 0.25 over 3 exp
+   FLAG 2023-09-05->2023-09-06 S 13.640->8.620 (-36.8%) grid-kept 1.00 over 4 exp
+ZM: files 276 2022-10-31..2023-12-05 roots ['ZM'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+ETSY: files 276 2022-10-31..2023-12-05 roots ['ETSY'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+PDD: files 276 2022-10-31..2023-12-05 roots ['PDD'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+SNAP: files 276 2022-10-31..2023-12-05 roots ['SNAP'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+MSTR: files 276 2022-10-31..2023-12-05 roots ['MSTR'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+AFRM: files 276 2022-10-31..2023-12-05 roots ['AFRM'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+DASH: files 276 2022-10-31..2023-12-05 roots ['DASH'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+BYND: files 276 2022-10-31..2023-12-05 roots ['BYND'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+CVNA: files 276 2022-10-31..2023-12-05 roots ['CVNA'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2022-11-03->2022-11-04 S 14.350->8.760 (-39.0%) grid-kept 1.00 over 5 exp
+   FLAG 2022-12-06->2022-12-07 S 6.710->3.830 (-42.9%) grid-kept 1.00 over 4 exp
+   FLAG 2023-01-11->2023-01-12 S 5.500->8.030 (+46.0%) grid-kept 1.00 over 5 exp
+   FLAG 2023-06-07->2023-06-08 S 15.530->24.230 (+56.0%) grid-kept 1.00 over 5 exp
+   FLAG 2023-07-18->2023-07-19 S 39.800->55.800 (+40.2%) grid-kept 1.00 over 4 exp
+TTD: files 276 2022-10-31..2023-12-05 roots ['TTD'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+NET: files 276 2022-10-31..2023-12-05 roots ['NET'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+CAR: files 276 2022-10-31..2023-12-05 roots ['CAR'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+MARA: files 276 2022-10-31..2023-12-05 roots ['MARA'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+HOOD: files 276 2022-10-31..2023-12-05 roots ['HOOD'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+TWLO: files 276 2022-10-31..2023-12-05 roots ['TWLO'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+PLUG: files 276 2022-10-31..2023-12-05 roots ['PLUG'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2023-11-09->2023-11-10 S 5.930->3.530 (-40.5%) grid-kept 1.00 over 5 exp
+MDB: files 276 2022-10-31..2023-12-05 roots ['MDB'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+DDOG: files 276 2022-10-31..2023-12-05 roots ['DDOG'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+ZS: files 276 2022-10-31..2023-12-05 roots ['ZS'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+SOFI: files 276 2022-10-31..2023-12-05 roots ['SOFI'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+CHWY: files 276 2022-10-31..2023-12-05 roots ['CHWY'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+SE: files 276 2022-10-31..2023-12-05 roots ['SE'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2022-11-14->2022-11-15 S 45.800->62.310 (+36.0%) grid-kept 1.00 over 4 exp
+RCL: files 276 2022-10-31..2023-12-05 roots ['RCL'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+
+===== pool 20231031: 40 syms, calendar 277 days 2023-10-31..2024-12-05
+SQ: files 277 2023-10-31..2024-12-05 roots ['SQ'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+COIN: files 277 2023-10-31..2024-12-05 roots ['COIN'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+SMCI: files 277 2023-10-31..2024-12-05 roots ['SMCI'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2024-01-18->2024-01-19 S 311.440->423.360 (+35.9%) grid-kept 1.00 over 5 exp
+   FLAG 2024-09-30->2024-10-01 S 416.400->40.550 (-90.3%) grid-kept 0.00 over 4 exp
+MSTR: files 277 2023-10-31..2024-12-05 roots ['MSTR'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2024-08-07->2024-08-08 S 1246.850->135.990 (-89.1%) grid-kept 0.02 over 5 exp
+PLTR: files 277 2023-10-31..2024-12-05 roots ['PLTR'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+SRPT: files 277 2023-10-31..2024-12-05 roots ['SRPT'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+ROKU: files 277 2023-10-31..2024-12-05 roots ['ROKU'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+CVNA: files 277 2023-10-31..2024-12-05 roots ['CVNA'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+UPST: files 277 2023-10-31..2024-12-05 roots ['UPST'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2024-08-06->2024-08-07 S 23.870->33.300 (+39.5%) grid-kept 1.00 over 4 exp
+   FLAG 2024-11-07->2024-11-08 S 55.470->81.000 (+46.0%) grid-kept 1.00 over 5 exp
+W: files 277 2023-10-31..2024-12-05 roots ['W'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+SEDG: files 277 2023-10-31..2024-12-05 roots ['SEDG'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+ELF: files 277 2023-10-31..2024-12-05 roots ['ELF'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+RIVN: files 277 2023-10-31..2024-12-05 roots ['RIVN'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+AMC: files 277 2023-10-31..2024-12-05 roots ['AMC'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2024-05-10->2024-05-13 S 2.910->5.190 (+78.4%) grid-kept 1.00 over 4 exp
+MARA: files 277 2023-10-31..2024-12-05 roots ['MARA'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+U: files 277 2023-10-31..2024-12-05 roots ['U'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+RIOT: files 277 2023-10-31..2024-12-05 roots ['RIOT'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+CELH: files 277 2023-10-31..2024-12-05 roots ['CELH'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2023-11-14->2023-11-15 S 156.760->51.590 (-67.1%) grid-kept 0.04 over 4 exp
+AI: files 277 2023-10-31..2024-12-05 roots ['AI'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+AFRM: files 277 2023-10-31..2024-12-05 roots ['AFRM'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+RBLX: files 277 2023-10-31..2024-12-05 roots ['RBLX'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+NIO: files 277 2023-10-31..2024-12-05 roots ['NIO'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+NET: files 277 2023-10-31..2024-12-05 roots ['NET'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+SE: files 277 2023-10-31..2024-12-05 roots ['SE'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+LCID: files 277 2023-10-31..2024-12-05 roots ['LCID'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+RUN: files 277 2023-10-31..2024-12-05 roots ['RUN'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+LYFT: files 277 2023-10-31..2024-12-05 roots ['LYFT'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2024-02-13->2024-02-14 S 12.130->16.390 (+35.1%) grid-kept 1.00 over 4 exp
+JBLU: files 277 2023-10-31..2024-12-05 roots ['JBLU'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+SAVA: files 276 2023-10-31..2024-12-05 roots ['SAVA'] other-root call rows 0 | missing 1 2023-12-21 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2024-11-22->2024-11-25 S 26.480->4.295 (-83.8%) grid-kept 1.00 over 4 exp
+PLUG: files 277 2023-10-31..2024-12-05 roots ['PLUG'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2023-11-09->2023-11-10 S 5.930->3.530 (-40.5%) grid-kept 1.00 over 5 exp
+XPEV: files 277 2023-10-31..2024-12-05 roots ['XPEV'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+CHPT: files 277 2023-10-31..2024-12-05 roots ['CHPT'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 1 2024-11-14
+   FLAG 2023-11-16->2023-11-17 S 3.130->2.020 (-35.5%) grid-kept 1.00 over 5 exp
+VFS: files 277 2023-10-31..2024-12-05 roots ['VFS'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2024-05-10->2024-05-13 S 3.010->4.560 (+51.5%) grid-kept 1.00 over 4 exp
+IONQ: files 277 2023-10-31..2024-12-05 roots ['IONQ'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+BYND: files 277 2023-10-31..2024-12-05 roots ['BYND'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+ANF: files 277 2023-10-31..2024-12-05 roots ['ANF'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+APLS: files 271 2023-10-31..2024-12-05 roots ['APLS'] other-root call rows 0 | missing 6 2024-05-20,2024-05-21,2024-08-19,2024-08-20,2024-11-18,2024-11-19 | S<=0 0 multi-S files 0 stale-runs 0
+TOST: files 277 2023-10-31..2024-12-05 roots ['TOST'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+OSTK: files 277 2023-10-31..2024-12-05 roots ['BYON', 'OSTK'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+FL: files 277 2023-10-31..2024-12-05 roots ['FL'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+
+===== pool 20241031: 40 syms, calendar 505 days 2024-10-31..2026-11-05
+SMCI: files 505 2024-10-31..2026-11-05 roots ['SMCI'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+MSTR: files 505 2024-10-31..2026-11-05 roots ['MSTR'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+DJT: files 505 2024-10-31..2026-11-05 roots ['DJT'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2025-12-17->2025-12-18 S 10.470->14.860 (+41.9%) grid-kept 1.00 over 5 exp
+COIN: files 505 2024-10-31..2026-11-05 roots ['COIN'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+PLTR: files 505 2024-10-31..2026-11-05 roots ['PLTR'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+ARM: files 505 2024-10-31..2026-11-05 roots ['ARM'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+INTC: files 505 2024-10-31..2026-11-05 roots ['INTC'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+MARA: files 505 2024-10-31..2026-11-05 roots ['MARA'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+GME: files 504 2024-10-31..2026-11-05 roots ['GME'] other-root call rows 0 | missing 1 2025-10-03 | S<=0 0 multi-S files 0 stale-runs 0
+CELH: files 505 2024-10-31..2026-11-05 roots ['CELH'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+UPST: files 505 2024-10-31..2026-11-05 roots ['UPST'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2024-11-07->2024-11-08 S 55.470->81.000 (+46.0%) grid-kept 1.00 over 5 exp
+AFRM: files 505 2024-10-31..2026-11-05 roots ['AFRM'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+MRNA: files 505 2024-10-31..2026-11-05 roots ['MRNA'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2026-08-18->2026-08-19 S 62.960->174.380 (+177.0%) grid-kept 1.00 over 4 exp
+FSLR: files 505 2024-10-31..2026-11-05 roots ['FSLR'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+ELF: files 505 2024-10-31..2026-11-05 roots ['ELF'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2025-11-05->2025-11-06 S 117.830->76.540 (-35.0%) grid-kept 1.00 over 5 exp
+W: files 505 2024-10-31..2026-11-05 roots ['W'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+SQ: files 505 2024-10-31..2026-11-05 roots ['SQ', 'XYZ'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+RIOT: files 505 2024-10-31..2026-11-05 roots ['RIOT'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+APP: files 505 2024-10-31..2026-11-05 roots ['APP'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2024-11-06->2024-11-07 S 168.550->246.530 (+46.3%) grid-kept 1.00 over 5 exp
+HIMS: files 505 2024-10-31..2026-11-05 roots ['HIMS'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2026-03-06->2026-03-09 S 15.740->22.160 (+40.8%) grid-kept 1.00 over 4 exp
+VST: files 505 2024-10-31..2026-11-05 roots ['VST'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+RIVN: files 505 2024-10-31..2026-11-05 roots ['RIVN'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+LMND: files 505 2024-10-31..2026-11-05 roots ['LMND'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+ASTS: files 505 2024-10-31..2026-11-05 roots ['ASTS'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+SMR: files 505 2024-10-31..2026-11-05 roots ['SMR'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+ANF: files 505 2024-10-31..2026-11-05 roots ['ANF'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2025-11-24->2025-11-25 S 65.610->90.240 (+37.5%) grid-kept 1.00 over 4 exp
+   FLAG 2026-08-25->2026-08-26 S 108.900->147.750 (+35.7%) grid-kept 1.00 over 4 exp
+CAVA: files 505 2024-10-31..2026-11-05 roots ['CAVA'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+MBLY: files 505 2024-10-31..2026-11-05 roots ['MBLY'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+PTON: files 505 2024-10-31..2026-11-05 roots ['PTON'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+VKTX: files 505 2024-10-31..2026-11-05 roots ['VKTX'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2025-08-18->2025-08-19 S 42.090->24.360 (-42.1%) grid-kept 1.00 over 4 exp
+   FLAG 2026-09-21->2026-09-22 S 30.110->40.850 (+35.7%) grid-kept 1.00 over 4 exp
+PINS: files 505 2024-10-31..2026-11-05 roots ['PINS'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+IONQ: files 505 2024-10-31..2026-11-05 roots ['IONQ'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2025-01-07->2025-01-08 S 49.590->30.250 (-39.0%) grid-kept 1.00 over 4 exp
+   FLAG 2025-05-21->2025-05-22 S 33.540->45.790 (+36.5%) grid-kept 1.00 over 5 exp
+CPRI: files 499 2024-10-31..2026-11-05 roots ['CPRI'] other-root call rows 0 | missing 6 2026-01-20,2026-05-18,2026-07-20,2026-07-21,2026-10-19,2026-10-20 | S<=0 0 multi-S files 0 stale-runs 0
+NIO: files 505 2024-10-31..2026-11-05 roots ['NIO'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+SEDG: files 505 2024-10-31..2026-11-05 roots ['SEDG'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+ENVX: files 504 2024-10-31..2026-11-05 roots ['ENVX'] other-root call rows 0 | missing 1 2025-07-17 | S<=0 0 multi-S files 0 stale-runs 0
+U: files 505 2024-10-31..2026-11-05 roots ['U'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0
+BILI: files 503 2024-10-31..2026-11-05 roots ['BILI'] other-root call rows 0 | missing 2 2026-10-19,2026-10-20 | S<=0 0 multi-S files 0 stale-runs 0
+LCID: files 504 2024-10-31..2026-11-05 roots ['LCID'] other-root call rows 0 | missing 1 2025-09-02 | S<=0 0 multi-S files 0 stale-runs 0
+   FLAG 2025-07-16->2025-07-17 S 2.290->3.120 (+36.2%) grid-kept 1.00 over 5 exp
+   FLAG 2025-08-29->2025-09-03 S 1.980->16.785 (+747.7%) grid-kept 0.07 over 1 exp
+LYFT: files 505 2024-10-31..2026-11-05 roots ['LYFT'] other-root call rows 0 | missing 0 | S<=0 0 multi-S files 0 stale-runs 0

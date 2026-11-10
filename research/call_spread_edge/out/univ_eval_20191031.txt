@@ -1,0 +1,23 @@
+symbols 19, entries 2019-10-31 .. 2020-10-26, last expiry 2020-11-20
+
+=== pool ===
+ P-0021 (long 3w call, static hedge):
+  Δ0.35 k0.5: n 841 mean -0.246 [-1.390,+0.977] Bonf[-1.546,+1.196] med -1.320 trim2% -0.510 syms+ 6/19 ex-BBBY -0.401 ex-best5wk -1.092
+  Δ0.35 k1: n 841 mean -0.704 [-1.959,+0.568] Bonf[-2.138,+0.787] med -1.562 trim2% -0.905 syms+ 5/19 ex-BBBY -0.862 ex-best5wk -1.569
+  Δ0.35 k0: n 841 mean +0.212 [-0.830,+1.414] Bonf[-0.981,+1.608] med -1.083 trim2% -0.101 syms+ 7/19 ex-OSTK +0.053 ex-best5wk -0.617
+  Δ0.25 k0.5: n 860 mean -0.592 [-1.739,+0.535] Bonf[-1.886,+0.720] med -1.318 trim2% -0.818 syms+ 4/19 ex-BBBY -0.716 ex-best5wk -1.302
+  Δ0.5 k0.5: n 821 mean -0.379 [-1.660,+1.030] Bonf[-1.823,+1.259] med -1.409 trim2% -0.528 syms+ 7/19 ex-OSTK -0.644 ex-best5wk -1.384
+  Δ0.15 k0.5: n 874 mean -0.609 [-1.387,+0.195] Bonf[-1.474,+0.309] med -1.091 trim2% -0.913 syms+ 4/19 ex-BBBY -0.734 ex-best5wk -1.074
+ P-0021 interpretation check (same rule, daily hedge):
+  Δ0.35 daily k0.5: n 841 mean -0.616 [-1.188,-0.047] Bonf[-1.252,+0.032] med -0.835 trim2% -0.731 syms+ 4/19 ex-WLL -0.712 ex-best5wk -0.978
+  Δ0.35 daily k0: n 841 mean -0.159 [-0.633,+0.358] Bonf[-0.697,+0.423] med -0.635 trim2% -0.345 syms+ 8/19 ex-WLL -0.280 ex-best5wk -0.510
+  Δ0.35 daily k1: n 841 mean -1.074 [-1.770,-0.412] Bonf[-1.860,-0.309] med -1.075 trim2% -1.114 syms+ 2/19 ex-WLL -1.144 ex-best5wk -1.448
+ P-0022 (short weekly put after ret5 > 0.0948, daily hedge):
+  signal k0.5: n 309 mean +0.092 [-0.108,+0.264] Bonf[-0.131,+0.283] med +0.302 trim2% +0.240 syms+ 13/18 ex-TLRY +0.036 ex-best5wk -0.059
+  signal k0: n 309 mean +0.262 [+0.021,+0.464] Bonf[-0.009,+0.486] med +0.377 trim2% +0.403 syms+ 15/18 ex-TLRY +0.209 ex-best5wk +0.089
+  signal k1: n 309 mean -0.078 [-0.245,+0.080] Bonf[-0.275,+0.105] med +0.195 trim2% +0.077 syms+ 11/18 ex-TLRY -0.137 ex-best5wk -0.220
+  signal Δ-0.25 k0.5: n 147 mean +0.067 [-0.211,+0.301] Bonf[-0.255,+0.330] med +0.393 trim2% +0.220 syms+ 13/18 ex-TLRY -0.008 ex-best5wk -0.167
+  signal Δ-0.1 k0.5: n 162 mean +0.115 [-0.020,+0.243] Bonf[-0.042,+0.262] med +0.282 trim2% +0.240 syms+ 12/18 ex-TLRY +0.076 ex-best5wk -0.040
+  control same weeks ret5<=cut k0.5: n 913 mean +0.208 [+0.132,+0.280] Bonf[+0.122,+0.289] med +0.225 trim2% +0.218 syms+ 12/19 ex-TLRY +0.167 ex-best5wk +0.134
+  all weeks, no signal filter k0.5: n 1461 mean +0.144 [+0.025,+0.243] Bonf[+0.006,+0.255] med +0.236 trim2% +0.210 syms+ 12/19 ex-TLRY +0.113 ex-best5wk +0.070
+

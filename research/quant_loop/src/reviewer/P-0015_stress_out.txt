@@ -1,0 +1,73 @@
+  d["stratum"] = d.index.year * 10 + d.index.dayofweek
+  d["stratum"] = d.index.year * 10 + d.index.dayofweek
+== S1 own permutation (test period)
+  combined (minutes + beige)   DiD +1.122  one-sided p 0.00265
+  minutes only                 DiD +2.158  one-sided p 0.00025
+  beige only                   DiD +0.154  one-sided p 0.35938
+  minutes G_ev n 14 mean +2.071 [+0.584, +3.760]  bootstrap P(mean<=0) 0.0014
+  combined G_ev n 29 mean +1.063 [+0.243, +2.020]  bootstrap P(mean<=0) 0.0035
+
+== S2 fragility of the minutes-only cell (test)
+  per day: 24-11-26 +2.50  25-02-19 +3.09  25-05-28 -1.50  25-07-09 +1.50  25-08-20 +4.41  25-10-08 +0.59  25-11-19 +9.00  25-12-30 +2.50  26-02-18 +7.50  26-04-08 -2.00  26-05-20 +1.41  26-07-08 +0.00  26-08-19 +0.00  26-10-07 -0.00
+  + 9 / - 2 / 0 3; sign test (zeros dropped) one-sided p 0.0327
+  controls: n 394 mean -0.244, share G >= +2.5: 0.018, >= +4: 0.000, >= +7.5: 0.0000; minutes days >= +2.5: 6/14
+  drop best 1: n 13 mean +1.538 [+0.276, +2.958]  DiD +1.612 perm p 0.0006
+  drop best 2: n 12 mean +1.042 [+0.019, +2.068]  DiD +1.141 perm p 0.0036
+  drop best 3: n 11 mean +0.735 [-0.190, +1.645]  DiD +0.820 perm p 0.0178
+  drop best 5: n 9 mean +0.278 [-0.611, +1.157]  DiD +0.279 perm p 0.2643
+  first half   n 6 mean +1.765 [+0.182, +3.212]
+  second half  n 8 mean +2.301 [-0.011, +5.000]
+  2025         n 7 mean +2.799 [+0.669, +5.227]
+  2026         n 6 mean +1.152 [-0.667, +3.750]
+  last 6       n 6 mean +1.152 [-0.765, +3.985]
+  last 4       n 4 mean +0.353 [-0.000, +1.058]
+  2025 alone: minutes DiD +3.074 perm p 0.0004
+  2026 alone: minutes DiD +0.922 perm p 0.1382
+
+== S3 decay: minutes-day G_ev by year (train + test)
+      count  mean  median
+date                     
+2022      3  6.80    8.50
+2023      4  6.50    6.75
+2024      7  7.36    6.50
+2025      7  2.80    2.50
+2026      6  1.15    0.00
+  beige:
+      count  mean  median
+date                     
+2022      5  0.52    0.50
+2023      7  1.14    0.50
+2024      6  0.23    0.25
+2025      7  0.40    0.00
+2026      7 -0.36   -0.50
+
+== S4 multiplicity scenarios -> adjusted p -> posterior upper bound (Sellke-Bayarri-Berger), prior 5% / 15% / 30%
+  combined, single pre-registered test (raw)                                         p 0.0026  posterior <= 55% / 81% / 91%
+  combined, one-sided max-T over 12 cells (validator, post hoc family)               p 0.0320  posterior <= 15% / 37% / 59%
+  combined, two-sided max-T over 17 cells (validator)                                p 0.0755  posterior <= 9% / 25% / 45%
+  combined, Bonferroni x53 (protocol rule 6 literal)                                 p 0.1404  posterior <= 7% / 19% / 36%
+  minutes only, raw                                                                  p 0.0002  posterior <= 90% / 97% / 99%
+  minutes only, x2 (combined or minutes, the two readings the proposal pre-declared) p 0.0005  posterior <= 84% / 94% / 98%
+  minutes only, x3 (combined / minutes / beige)                                      p 0.0007  posterior <= 78% / 92% / 97%
+  minutes only, one-sided max-T 12 cells (validator)                                 p 0.0015  posterior <= 67% / 87% / 94%
+  minutes only, two-sided max-T 17 cells (validator)                                 p 0.0085  posterior <= 32% / 62% / 80%
+  minutes only, Bonferroni x53                                                       p 0.0132  posterior <= 25% / 53% / 73%
+
+== S5 tick (validator extract tick_test.parquet; NBBO attached to prints)
+  minutes    days  14  ratio 14:00:00-:10 / 13:55:00-13:59:30: mean 2.56 median 2.00 p90 4.65  share > 1.5: 0.71
+  beige_book days  15  ratio 14:00:00-:10 / 13:55:00-13:59:30: mean 1.05 median 1.00 p90 1.12  share > 1.5: 0.07
+  control    days 147  ratio 14:00:00-:10 / 13:55:00-13:59:30: mean 1.07 median 1.01 p90 1.19  share > 1.5: 0.03
+  control 95th pct ratio 1.31; minutes days above it: 12/14
+  minutes days: 24-11-26 1.98  25-02-19 2.43  25-05-28 2.01  25-07-09 1.38  25-08-20 2.92  25-10-08 1.92  25-11-19 6.26  25-12-30 1.27  26-02-18 2.83  26-04-08 3.62  26-05-20 5.10  26-07-08 1.50  26-08-19 1.43  26-10-07 1.24
+
+  four-leg half-spread sum by window, minus same day's 13:55:00-13:59:30, x 20 = USD at k 0.20 (day needs all 4 legs printed)
+  window_s  minutes_n  minutes_mean  minutes_med  beige_book_n  beige_book_mean  beige_book_med  control_n  control_mean  control_med  min-ctrl            ci
+  -30..-10         13          0.15         0.11            15            -0.02           -0.08        142         -0.06        -0.03      0.21 [+0.04,+0.39]
+   -10..+0         13          0.75         0.27            15            -0.03           -0.00        114         -0.09        -0.09      0.84 [+0.40,+1.36]
+   +0..+10         14          5.23         3.19            15             0.35            0.12        146          0.33         0.08      4.90 [+2.47,+7.80]
+  +10..+30         14          1.17         1.08            15             0.03           -0.04        146          0.15         0.04      1.02 [+0.64,+1.43]
+  +30..+60         14          0.70         0.62            15             0.09            0.12        146          0.10        -0.02      0.60 [+0.29,+0.94]
+  +60..+90         14          0.31         0.22            15             0.18            0.11        147          0.06        -0.01      0.26 [+0.06,+0.45]
+ +90..+120         14          0.03        -0.06            15             0.49            0.00        145         -0.05        -0.10      0.08 [-0.06,+0.23]
++120..+300         14          0.21         0.20            15             0.47            0.03        147          0.09        -0.02      0.12 [-0.06,+0.33]
++300..+600         14          0.13         0.04            15             0.09            0.06        147          0.23        -0.03     -0.10 [-0.26,+0.10]

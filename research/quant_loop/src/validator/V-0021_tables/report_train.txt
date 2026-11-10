@@ -1,0 +1,91 @@
+===== train: 2183 trades; Δ0.35 n 554; weeks 51; entries 2024-10-31..2025-10-13; exp max 2025-10-31
+
+-- §5 primary rows --
+Δ0.35 sta_k0.5: n  554 mean +1.786 [+0.39,+3.27] bonf [+0.22,+3.47] P(boot<=0) 0.004 | wk-mean CI [+0.45,+3.27] | med -1.203 trim2% +1.094 win 43.7% syms+ 12/15 ex-QBTS +1.446 win-Wilson [39.6%,47.8%]
+Δ0.35 sta_k1: n  554 mean +1.535 [+0.10,+3.05] bonf [-0.06,+3.25] P(boot<=0) 0.016 | wk-mean CI [+0.14,+3.04] | med -1.368 trim2% +0.858 win 42.2% syms+ 12/15 ex-QBTS +1.194 win-Wilson [38.2%,46.4%]
+Δ0.35 dyn_k0.5: n  554 mean +0.339 [-0.21,+0.94] bonf [-0.28,+1.01] P(boot<=0) 0.116 | wk-mean CI [-0.14,+0.94] | med -0.537 trim2% +0.017 win 44.0% syms+ 8/15 ex-QUBT +0.165 win-Wilson [40.0%,48.2%]
+Δ0.35 dyn10_k0.5: n  554 mean +0.352 [-0.20,+0.96] bonf [-0.28,+1.03] P(boot<=0) 0.109 | wk-mean CI [-0.13,+0.96] | med -0.537 trim2% +0.031 win 44.0% syms+ 8/15 ex-QUBT +0.180 win-Wilson [40.0%,48.2%]
+Δ0.35 dyn_k1: n  554 mean +0.088 [-0.47,+0.71] bonf [-0.55,+0.79] P(boot<=0) 0.395 | wk-mean CI [-0.40,+0.70] | med -0.685 trim2% -0.214 win 40.4% syms+ 5/15 ex-QUBT -0.071 win-Wilson [36.4%,44.6%]
+Δ0.25 sta_k0.5: n  552 mean +1.283 [-0.06,+2.72] bonf [-0.23,+2.94] P(boot<=0) 0.032 | wk-mean CI [+0.09,+2.83] | med -1.443 trim2% +0.432 win 39.1% syms+ 10/14 ex-QBTS +1.006 win-Wilson [35.1%,43.3%]
+Δ0.25 dyn_k0.5: n  552 mean +0.204 [-0.34,+0.78] bonf [-0.42,+0.86] P(boot<=0) 0.239 | wk-mean CI [-0.27,+0.76] | med -0.772 trim2% -0.186 win 38.4% syms+ 7/14 ex-QBTS +0.021 win-Wilson [34.4%,42.5%]
+Δ0.50 sta_k0.5: n  529 mean +1.396 [+0.07,+2.83] bonf [-0.12,+3.01] P(boot<=0) 0.019 | wk-mean CI [+0.18,+3.00] | med -0.836 trim2% +0.860 win 45.7% syms+ 12/15 ex-QBTS +1.031 win-Wilson [41.5%,50.0%]
+Δ0.50 dyn_k0.5: n  529 mean +0.283 [-0.18,+0.74] bonf [-0.26,+0.80] P(boot<=0) 0.107 | wk-mean CI [-0.12,+0.85] | med -0.206 trim2% +0.109 win 46.5% syms+ 8/15 ex-NBIS +0.148 win-Wilson [42.3%,50.8%]
+Δ0.15 sta_k0.5: n  548 mean +0.483 [-0.52,+1.57] bonf [-0.63,+1.73] P(boot<=0) 0.182 | wk-mean CI [-0.49,+1.67] | med -1.416 trim2% -0.215 win 32.3% syms+ 9/15 ex-QBTS +0.199 win-Wilson [28.5%,36.3%]
+Δ0.15 dyn_k0.5: n  548 mean -0.122 [-0.55,+0.40] bonf [-0.59,+0.47] P(boot<=0) 0.707 | wk-mean CI [-0.53,+0.31] | med -0.796 trim2% -0.361 win 33.8% syms+ 6/15 ex-QUBT -0.302 win-Wilson [29.9%,37.8%]
+Δ0.25+0.35 dyn_k0.5: n 1106 mean +0.272 [-0.25,+0.83] bonf [-0.32,+0.92] P(boot<=0) 0.164 | wk-mean CI [-0.17,+0.84] | med -0.688 trim2% -0.084 win 41.2% syms+ 8/15 ex-QBTS +0.104 win-Wilson [38.4%,44.2%]
+
+-- commissions (not in P-0021 §3; protocol rule 5), Δ0.35 k0.5 --
+  sta_k0.5 with $0.65/contract + $0.0035/share: n  554 mean +1.695 [+0.30,+3.18] bonf [+0.13,+3.39] P(boot<=0) 0.007 | wk-mean CI [+0.35,+3.18] | med -1.234 trim2% +1.006 win 43.1% syms+ 12/15 ex-QBTS +1.359 win-Wilson [39.1%,47.3%]
+  dyn_k0.5 with $0.65/contract + $0.0035/share: n  554 mean +0.247 [-0.30,+0.86] bonf [-0.38,+0.92] P(boot<=0) 0.199 | wk-mean CI [-0.23,+0.85] | med -0.630 trim2% -0.067 win 42.8% syms+ 8/15 ex-QUBT +0.076 win-Wilson [38.7%,46.9%]
+  sta_k0.5 with 1-lot $1 min per leg/order: n  554 mean +1.514 [+0.11,+3.01] bonf [-0.05,+3.21] P(boot<=0) 0.016 | wk-mean CI [+0.16,+3.00] | med -1.353 trim2% +0.832 win 42.6% syms+ 12/15 ex-QBTS +1.186 win-Wilson [38.5%,46.8%]
+  dyn_k0.5 with 1-lot $1 min per leg/order: n  554 mean +0.067 [-0.48,+0.69] bonf [-0.57,+0.76] P(boot<=0) 0.418 | wk-mean CI [-0.42,+0.68] | med -0.778 trim2% -0.231 win 40.6% syms+ 7/15 ex-QUBT -0.102 win-Wilson [36.6%,44.8%]
+  median commission ($0.65 version) 0.060 % of S0; median S0 18.37
+
+-- k 0 / 0.5 / 1, Δ0.35 --
+  sta k0 +2.037  sta k0.5 +1.786  sta k1 +1.535
+  dyn k0 +0.590  dyn k0.5 +0.339  dyn k1 +0.088
+
+-- drop best 5 weeks (by weekly pnl sum), Δ0.35 --
+  sta_k0.5: best weeks [202519, 202537, 202449, 202538, 202518] (sum +654.6 of total +989.6) -> n 497 mean +0.674 [-0.15,+1.56]
+  dyn_k0.5: best weeks [202537, 202449, 202508, 202509, 202536] (sum +226.3 of total +187.8) -> n 496 mean -0.078 [-0.52,+0.37]
+  sta_k0.5: best 5 trades sum +331.0 of total +989.6; mean without them +1.200
+  dyn_k0.5: best 5 trades sum +150.8 of total +187.8; mean without them +0.067
+
+-- by stock, Δ0.35 k0.5 --
+       n  sta_mean  sta_sum  dyn_mean  dyn_sum  S_ret_mean%
+sym                                                        
+WOLF  32    -0.578  -18.507    -0.452  -14.453      -18.425
+CLSK  51    -0.161   -8.194    -0.833  -42.498        4.660
+AXTI   1    -4.548   -4.548    -2.965   -2.965       -2.165
+CRDO  26     0.420   10.931     0.025    0.652       11.907
+IREN  48     0.358   17.192    -1.403  -67.360       14.121
+RKLB  51     0.663   33.836    -0.388  -19.800       12.747
+LITE  25     1.412   35.298    -0.387   -9.663        9.814
+NVTS  24     1.714   41.127    -0.159   -3.825        6.335
+ALAB  43     1.233   53.031     0.721   31.010        6.817
+APLD  51     1.435   73.175     0.573   29.199       13.835
+OKLO  51     1.774   90.488     0.178    9.076       14.788
+SNDK  12     8.813  105.755     0.177    2.129       25.471
+NBIS  47     2.641  124.145     1.710   80.357       12.186
+QUBT  46     3.926  180.602     2.256  103.753       14.534
+QBTS  46     5.550  255.309     2.003   92.139       24.725
+  drop top contributor QBTS (+255.3 of +989.6) sta_k0.5: mean +1.446 [+0.31,+2.66]
+  drop top-2 ['QBTS', 'QUBT'] sta_k0.5: mean +1.199
+  drop top contributor QUBT (+103.8 of +187.8) dyn_k0.5: mean +0.165 [-0.36,+0.74]
+  drop top-2 ['QUBT', 'QBTS'] dyn_k0.5: mean -0.018
+
+-- by quarter (entry), Δ0.35 --
+          n    sta    dyn   S_ret
+entry                            
+2024Q4   96  1.419  0.770  13.277
+2025Q1  140  0.537  0.082  -3.739
+2025Q2  143  2.616  0.107  18.737
+2025Q3  149  2.825  0.625  16.852
+2025Q4   26 -0.647 -0.237   6.794
+
+-- max drawdown (cum. sum of weekly mean pnl %, entry order), Δ0.35: sta_k0.5 -14.45  dyn_k0.5 -9.21
+
+-- decomposition, Δ0.35 k0.5 (per trade, % of S0) --
+  static - daily = +1.447  [hedge-path term +1.384, cost term +0.063]
+  unhedged long call (none_k0.5) mean +5.568; stock move over the hold (S_T/S0-1) mean +11.043%; h0·move mean +3.826
+  regress sta_k0.5 on stock move: corr +0.582; dyn_k0.5 corr +0.411
+  stock up over hold: n 330 sta +2.907 dyn +0.650
+  stock down/flat: n 224 sta +0.135 dyn -0.119
+
+-- within-trade shuffle of daily log-returns (keeps S0, S_T, payoff, static pnl; IV path & T grid fixed), 1000 x, Δ0.35 k0.5 --
+  observed daily mean +0.339; shuffled-path daily mean: median +1.321 [2.5% +1.143, 97.5% +1.501]
+  observed static-daily gap +1.447; shuffled gap median +0.466; one-sided p (shuffled gap >= observed) 0.000
+
+-- week-block sign-flip (report only; invalid under strong skew), Δ0.35 k0.5 --
+  sta_k0.5: one-sided p 0.0047
+  dyn_k0.5: one-sided p 0.1286
+
+-- liquidity / capacity (chosen Δ0.35 contract at entry) --
+  half-spread/mid median 0.060, p75 0.111; full spread % of S0 median 0.599
+  entry-day volume of the contract: median 89, zero-volume share 3.8%; 10% of day volume → median 9 contracts
+  cost of k 0.5 vs mid per trade: 0.251 % of S0
+  Δ0.10–0.60 region at entry: quotes 8912, bid=0 share 15.6%
+  per-stock half-spread/mid median: ALAB 0.05, APLD 0.05, AXTI 0.50, CLSK 0.04, CRDO 0.06, IREN 0.06, LITE 0.06, NBIS 0.07, NVTS 0.11, OKLO 0.06, QBTS 0.07, QUBT 0.09, RKLB 0.05, SNDK 0.09, WOLF 0.11
+
+-- context: equal-weight buy-and-hold of the names over the period (from entry-day closes) --
+  ALAB +166%, APLD +413%, AXTI +209%, CLSK +68%, CRDO +398%, IREN +566%, LITE +216%, NBIS +512%, NVTS +445%, OKLO +491%, QBTS +3396%, QUBT +1392%, RKLB +489%, SNDK +296%, WOLF -91%; equal-weight mean +598%

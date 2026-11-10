@@ -1,0 +1,69 @@
+rows 721906 {'iron': 577742, 'call': 91616, 'put': 52548}
+
+[A] put - iron mean|net-asof| (USD) per exact w vs k-model 20*(H_put-H_iron); ratio = measured/model
+   w  n_put  n_iron  asof_usd  common_usd  model_usd  asof/model  common/model  median_diff_usd
+15.0  19177   54659      1.88        0.42       2.96        0.63          0.14             2.50
+20.0  13161   98259      2.38        1.51       3.42        0.70          0.44             2.50
+25.0   5758   66395      3.17        2.07       4.38        0.72          0.47             2.50
+30.0   5203  104591      2.73        2.39       4.73        0.58          0.51             2.50
+35.0   1896   23496      2.74        2.94       5.71        0.48          0.51             2.50
+40.0   2798   46513      2.72        3.84       6.87        0.40          0.56             2.14
+45.0    376   16484      4.68        3.14       8.20        0.57          0.38             5.00
+50.0   3756  141969      3.48        2.24       8.74        0.40          0.26             2.50
+ put-count-weighted: asof 2.45 common 1.5 model 4.17
+
+[B] reference staleness by structure (asof): the asof reference is fresher when the four iron legs just printed
+           count  mean    std  min   25%   50%   75%    90%      max
+struct                                                              
+call     91580.0  3.92   7.35  0.0  0.87  1.96  4.22   8.57   616.65
+iron    577679.0  4.72  10.05  0.0  0.62  1.87  4.77  10.98   888.59
+put      52515.0  4.39  18.47  0.0  0.88  1.94  4.18   8.82  2033.62
+  stale (0,0.5] band 15-29: n put 6049 iron 54187  put-iron mean|asof| USD +2.31  model +5.52
+  stale (0,0.5] band 30-79: n put 1093 iron 69960  put-iron mean|asof| USD +3.84  model +11.99
+  stale (0.5,2] band 15-29: n put 15709 iron 77690  put-iron mean|asof| USD +1.56  model +2.92
+  stale (0.5,2] band 30-79: n put 3911 iron 97603  put-iron mean|asof| USD +1.76  model +6.04
+  stale (2,5] band 15-29: n put 11036 iron 55433  put-iron mean|asof| USD +2.36  model +2.84
+  stale (2,5] band 30-79: n put 3983 iron 84702  put-iron mean|asof| USD +1.95  model +6.01
+  stale (5,10] band 15-29: n put 3855 iron 22288  put-iron mean|asof| USD +2.89  model +3.26
+  stale (5,10] band 30-79: n put 2476 iron 50952  put-iron mean|asof| USD +2.51  model +6.08
+
+[C] 13:30-14:30 ET only, 1-lots only (what a 14:00 one-lot order competes with)
+  band 15-29: n put 4154 iron 26654  asof +2.13  common +1.66  own +2.29  model +3.21  k_own iron mean 0.236 med 0.200
+  band 30-79: n put 1866 iron 49276  asof +2.47  common +2.63  own +4.04  model +6.29  k_own iron mean 0.263 med 0.250
+
+[D] matched cells: same date, same minute, same K, same w, both a put fly and an iron fly printed.
+    Within a cell the chain 'common' reference is literally the same number, so structure mix cannot move it.
+  put vs iron, band all: cells 9169 days 497 | abs-dev diff USD +1.85 [1.37 2.34] | signed level diff USD -0.12 [-0.68  0.45] | model +4.03
+  put vs iron, band 15-29: cells 6555 days 494 | abs-dev diff USD +1.66 [1.16 2.17] | signed level diff USD +0.30 [-0.28  0.93] | model +3.20
+  put vs iron, band 30-79: cells 2614 days 477 | abs-dev diff USD +2.34 [1.13 3.5 ] | signed level diff USD -1.19 [-2.43  0.01] | model +6.16
+  call vs iron, band all: cells 15698 days 498 | abs-dev diff USD +1.34 [0.98 1.7 ] | signed level diff USD -0.92 [-1.34 -0.52] | model +3.24
+  call vs iron, band 15-29: cells 11435 days 496 | abs-dev diff USD +1.41 [1.01 1.8 ] | signed level diff USD -0.98 [-1.45 -0.47] | model +2.84
+  call vs iron, band 30-79: cells 4263 days 493 | abs-dev diff USD +1.12 [0.37 1.87] | signed level diff USD -0.73 [-1.54  0.12] | model +4.47
+
+[E] signed level of prints vs the iron-leg fair debit (USD/combo; >0 = printed above fair, i.e. against the fly buyer / iron seller)
+        sg_own  sg_common  sg_asof
+struct                            
+call      0.94      -0.18     0.29
+iron      2.15       1.56     1.41
+put       0.56       0.61     0.11
+              sg_own  sg_common  sg_asof
+band  struct                            
+15-29 call      0.90      -0.02     0.39
+      iron      1.97       1.92     1.36
+      put       0.45       1.13     0.19
+30-79 call      1.08      -0.66    -0.07
+      iron      2.26       1.34     1.43
+      put       0.87      -0.79    -0.16
+
+[F] where the difference sits: share of prints by |net-asof| bucket (points)
+s_asof  <=0.025   0.05   0.10   0.20  >0.20
+struct                                     
+call      0.255  0.213  0.231  0.188  0.114
+iron      0.270  0.236  0.231  0.170  0.093
+put       0.246  0.210  0.223  0.192  0.129
+ own-ref:
+s_own   <=0.025   0.05   0.10   0.20  >0.20
+struct                                     
+call      0.381  0.172  0.263  0.140  0.043
+iron      0.383  0.313  0.224  0.068  0.013
+put       0.343  0.208  0.252  0.144  0.053

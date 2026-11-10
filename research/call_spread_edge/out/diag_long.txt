@@ -1,0 +1,60 @@
+== daily: long 3w calls 0.25/0.35  (n=1106) ==
+  k=0.0: mean +0.532 [+0.10,+1.08] med -0.487 trim2% +0.154 h1 +0.456 h2 +0.606 syms+ 9/15
+  k=0.5: mean +0.281 [-0.16,+0.83] med -0.688 trim2% -0.076 h1 +0.114 h2 +0.446 syms+ 8/15
+  k=1.0: mean +0.030 [-0.43,+0.59] med -0.811 trim2% -0.304 h1 -0.228 h2 +0.285 syms+ 7/15
+  by sym (k=0.5): IREN -142, CLSK -81, RKLB -53, NVTS -27, LITE -21, AXTI -3, CRDO -3, APLD +2, SNDK +16, OKLO +29, ALAB +43, WOLF +46, NBIS +125, QUBT +177, QBTS +202
+  total +310.9; top-5 trades sum +194.9: [{'sym': 'WOLF', 'entry': Timestamp('2025-06-30 00:00:00'), 'tgt': 0.25, 'long_k0.5': 51.08892713222644}, {'sym': 'WOLF', 'entry': Timestamp('2025-09-08 00:00:00'), 'tgt': 0.35, 'long_k0.5': 38.939976012724095}, {'sym': 'QUBT', 'entry': Timestamp('2024-12-02 00:00:00'), 'tgt': 0.25, 'long_k0.5': 37.32578923394293}, {'sym': 'WOLF', 'entry': Timestamp('2025-09-02 00:00:00'), 'tgt': 0.25, 'long_k0.5': 36.54115131163071}, {'sym': 'WOLF', 'entry': Timestamp('2025-06-23 00:00:00'), 'tgt': 0.25, 'long_k0.5': 31.00877806891853}]
+== daily: long weekly calls 0.15–0.35 when term > 1.126 (front richer)  (n=482) ==
+  k=0.0: mean +0.502 [+0.21,+1.28] med -0.353 trim2% +0.211 h1 +0.347 h2 +0.659 syms+ 6/14
+  k=0.5: mean +0.366 [+0.06,+1.15] med -0.437 trim2% +0.083 h1 +0.176 h2 +0.557 syms+ 5/14
+  k=1.0: mean +0.229 [-0.09,+1.01] med -0.511 trim2% -0.045 h1 +0.005 h2 +0.455 syms+ 4/14
+  by sym (k=0.5): IREN -58, RKLB -24, CLSK -18, NVTS -14, NBIS -13, LITE -12, CRDO -11, SNDK -4, APLD -2, ALAB +1, OKLO +56, QBTS +75, WOLF +88, QUBT +111
+  total +176.2; top-5 trades sum +130.0: [{'sym': 'WOLF', 'entry': Timestamp('2025-06-30 00:00:00'), 'tgt': 0.35, 'long_k0.5': 40.45115692334603}, {'sym': 'WOLF', 'entry': Timestamp('2025-09-08 00:00:00'), 'tgt': 0.15, 'long_k0.5': 27.820997516754087}, {'sym': 'QUBT', 'entry': Timestamp('2024-12-16 00:00:00'), 'tgt': 0.25, 'long_k0.5': 21.395257917967907}, {'sym': 'QBTS', 'entry': Timestamp('2025-05-05 00:00:00'), 'tgt': 0.35, 'long_k0.5': 20.81927649257791}, {'sym': 'QUBT', 'entry': Timestamp('2024-12-16 00:00:00'), 'tgt': 0.35, 'long_k0.5': 19.552608677871877}]
+== daily: long weekly ATM call+put (straddle legs) when term > 1.126  (n=285) ==
+  k=0.0: mean +0.093 [-0.87,+1.11] med -0.682 trim2% -0.072 h1 +0.332 h2 -0.121 syms+ 6/14
+  k=0.5: mean -0.144 [-1.13,+0.89] med -0.830 trim2% -0.268 h1 +0.071 h2 -0.337 syms+ 5/14
+  k=1.0: mean -0.381 [-1.40,+0.65] med -1.044 trim2% -0.464 h1 -0.190 h2 -0.553 syms+ 4/14
+  by sym (k=0.5): NBIS -32, IREN -26, NVTS -24, CLSK -21, LITE -15, RKLB -13, CRDO -11, ALAB -10, SNDK -0, APLD +2, WOLF +9, QUBT +23, OKLO +35, QBTS +43
+  total -41.0; top-5 trades sum +85.9: [{'sym': 'QBTS', 'entry': Timestamp('2025-05-05 00:00:00'), 'tgt': -0.5, 'long_k0.5': 21.11094527953647}, {'sym': 'QBTS', 'entry': Timestamp('2025-05-05 00:00:00'), 'tgt': 0.5, 'long_k0.5': 20.412506453875846}, {'sym': 'QUBT', 'entry': Timestamp('2024-12-16 00:00:00'), 'tgt': 0.5, 'long_k0.5': 15.412451362647623}, {'sym': 'QUBT', 'entry': Timestamp('2024-12-16 00:00:00'), 'tgt': -0.5, 'long_k0.5': 15.113902108990379}, {'sym': 'QUBT', 'entry': Timestamp('2025-01-13 00:00:00'), 'tgt': -0.5, 'long_k0.5': 13.865528500178312}]
+== daily: long weekly ATM call+put, all weeks  (n=867) ==
+  k=0.0: mean +0.054 [-0.33,+0.59] med -0.263 trim2% -0.072 h1 +0.238 h2 -0.082 syms+ 8/14
+  k=0.5: mean -0.166 [-0.55,+0.35] med -0.427 trim2% -0.244 h1 -0.055 h2 -0.248 syms+ 2/14
+  k=1.0: mean -0.386 [-0.77,+0.12] med -0.574 trim2% -0.418 h1 -0.349 h2 -0.414 syms+ 2/14
+  by sym (k=0.5): RKLB -43, NVTS -23, APLD -22, CLSK -19, IREN -17, LITE -17, QBTS -12, NBIS -11, ALAB -9, QUBT -9, CRDO -4, WOLF -3, SNDK +10, OKLO +36
+  total -143.7; top-5 trades sum +98.1: [{'sym': 'QBTS', 'entry': Timestamp('2025-05-05 00:00:00'), 'tgt': -0.5, 'long_k0.5': 21.11094527953647}, {'sym': 'NBIS', 'entry': Timestamp('2025-09-08 00:00:00'), 'tgt': -0.5, 'long_k0.5': 20.571322183349462}, {'sym': 'NBIS', 'entry': Timestamp('2025-09-08 00:00:00'), 'tgt': 0.5, 'long_k0.5': 20.495580036240625}, {'sym': 'QBTS', 'entry': Timestamp('2025-05-05 00:00:00'), 'tgt': 0.5, 'long_k0.5': 20.412506453875846}, {'sym': 'WOLF', 'entry': Timestamp('2025-05-19 00:00:00'), 'tgt': -0.5, 'long_k0.5': 15.476263592908065}]
+== daily: long 3w ATM call+put, all weeks  (n=1062) ==
+  k=0.0: mean +0.340 [-0.24,+1.03] med -0.056 trim2% +0.285 h1 +0.482 h2 +0.198 syms+ 10/15
+  k=0.5: mean -0.030 [-0.60,+0.65] med -0.303 trim2% -0.018 h1 -0.004 h2 -0.055 syms+ 7/15
+  k=1.0: mean -0.399 [-0.98,+0.29] med -0.564 trim2% -0.321 h1 -0.490 h2 -0.308 syms+ 6/15
+  by sym (k=0.5): WOLF -236, CLSK -93, IREN -79, RKLB -36, LITE -18, NVTS -3, OKLO -2, AXTI -2, SNDK +16, CRDO +16, ALAB +34, QUBT +40, APLD +84, QBTS +109, NBIS +139
+  total -31.4; top-5 trades sum +130.4: [{'sym': 'NBIS', 'entry': Timestamp('2025-08-25 00:00:00'), 'tgt': -0.5, 'long_k0.5': 28.54342109329286}, {'sym': 'NBIS', 'entry': Timestamp('2025-08-25 00:00:00'), 'tgt': 0.5, 'long_k0.5': 27.945676363140976}, {'sym': 'QUBT', 'entry': Timestamp('2024-12-09 00:00:00'), 'tgt': 0.5, 'long_k0.5': 27.460023434196234}, {'sym': 'QUBT', 'entry': Timestamp('2024-12-02 00:00:00'), 'tgt': 0.5, 'long_k0.5': 23.44724567034123}, {'sym': 'QUBT', 'entry': Timestamp('2024-12-09 00:00:00'), 'tgt': -0.5, 'long_k0.5': 22.972903734514112}]
+== static: long 3w calls 0.25/0.35  (n=1106) ==
+  k=0.0: mean +1.785 [+0.62,+3.21] med -1.163 trim2% +1.003 h1 +1.083 h2 +2.478 syms+ 13/15
+  k=0.5: mean +1.535 [+0.32,+2.99] med -1.306 trim2% +0.764 h1 +0.741 h2 +2.317 syms+ 12/15
+  k=1.0: mean +1.284 [+0.03,+2.77] med -1.482 trim2% +0.529 h1 +0.399 h2 +2.157 syms+ 11/15
+  by sym (k=0.5): CLSK -30, CRDO -5, AXTI -5, IREN +1, WOLF +45, NVTS +48, APLD +60, LITE +68, ALAB +80, RKLB +81, OKLO +187, SNDK +187, NBIS +214, QUBT +313, QBTS +452
+  total +1697.6; top-5 trades sum +388.6: [{'sym': 'QBTS', 'entry': Timestamp('2025-05-05 00:00:00'), 'tgt': 0.25, 'long_k0.5': 89.26429439665931}, {'sym': 'QBTS', 'entry': Timestamp('2025-05-05 00:00:00'), 'tgt': 0.35, 'long_k0.5': 83.54106568174483}, {'sym': 'QUBT', 'entry': Timestamp('2024-12-02 00:00:00'), 'tgt': 0.25, 'long_k0.5': 74.1493328479223}, {'sym': 'SNDK', 'entry': Timestamp('2025-08-25 00:00:00'), 'tgt': 0.35, 'long_k0.5': 71.71209759831723}, {'sym': 'QUBT', 'entry': Timestamp('2024-12-02 00:00:00'), 'tgt': 0.35, 'long_k0.5': 69.913825872983}]
+== static: long weekly calls 0.15–0.35 when term > 1.126 (front richer)  (n=482) ==
+  k=0.0: mean +0.480 [+0.43,+2.08] med -0.841 trim2% -0.156 h1 +0.073 h2 +0.890 syms+ 7/14
+  k=0.5: mean +0.343 [+0.29,+1.95] med -0.970 trim2% -0.286 h1 -0.098 h2 +0.787 syms+ 6/14
+  k=1.0: mean +0.206 [+0.14,+1.82] med -1.059 trim2% -0.415 h1 -0.269 h2 +0.685 syms+ 4/14
+  by sym (k=0.5): IREN -79, RKLB -73, CLSK -43, APLD -23, CRDO -17, SNDK -17, LITE -11, NBIS -2, NVTS +2, ALAB +5, QUBT +16, OKLO +55, WOLF +144, QBTS +209
+  total +165.2; top-5 trades sum +307.2: [{'sym': 'WOLF', 'entry': Timestamp('2025-06-30 00:00:00'), 'tgt': 0.35, 'long_k0.5': 100.223866310866}, {'sym': 'QBTS', 'entry': Timestamp('2025-03-10 00:00:00'), 'tgt': 0.15, 'long_k0.5': 69.63149862323336}, {'sym': 'QBTS', 'entry': Timestamp('2025-03-10 00:00:00'), 'tgt': 0.25, 'long_k0.5': 68.837865188798}, {'sym': 'WOLF', 'entry': Timestamp('2025-09-08 00:00:00'), 'tgt': 0.15, 'long_k0.5': 47.75071155372855}, {'sym': 'QBTS', 'entry': Timestamp('2025-05-05 00:00:00'), 'tgt': 0.35, 'long_k0.5': 20.728780284211325}]
+== static: long weekly ATM call+put (straddle legs) when term > 1.126  (n=285) ==
+  k=0.0: mean -0.102 [-0.50,+1.38] med -1.307 trim2% -0.248 h1 -0.229 h2 +0.011 syms+ 4/14
+  k=0.5: mean -0.339 [-0.76,+1.17] med -1.595 trim2% -0.463 h1 -0.489 h2 -0.205 syms+ 4/14
+  k=1.0: mean -0.577 [-1.03,+0.95] med -1.888 trim2% -0.669 h1 -0.750 h2 -0.420 syms+ 4/14
+  by sym (k=0.5): RKLB -49, CLSK -43, NBIS -35, IREN -34, NVTS -22, LITE -20, SNDK -18, ALAB -13, WOLF -9, CRDO -7, QUBT +11, APLD +12, OKLO +62, QBTS +69
+  total -96.8; top-5 trades sum +82.1: [{'sym': 'QBTS', 'entry': Timestamp('2025-05-05 00:00:00'), 'tgt': -0.5, 'long_k0.5': 19.0377937957064}, {'sym': 'QBTS', 'entry': Timestamp('2025-05-05 00:00:00'), 'tgt': 0.5, 'long_k0.5': 18.652637879879013}, {'sym': 'NVTS', 'entry': Timestamp('2025-10-13 00:00:00'), 'tgt': 0.5, 'long_k0.5': 14.942883417383015}, {'sym': 'NVTS', 'entry': Timestamp('2025-10-13 00:00:00'), 'tgt': -0.5, 'long_k0.5': 14.812325895017636}, {'sym': 'QBTS', 'entry': Timestamp('2025-05-19 00:00:00'), 'tgt': 0.5, 'long_k0.5': 14.610551112045023}]
+== static: long weekly ATM call+put, all weeks  (n=867) ==
+  k=0.0: mean +0.200 [-0.30,+0.72] med -0.764 trim2% +0.045 h1 +0.325 h2 +0.106 syms+ 9/14
+  k=0.5: mean -0.020 [-0.52,+0.50] med -0.933 trim2% -0.132 h1 +0.032 h2 -0.060 syms+ 7/14
+  k=1.0: mean -0.241 [-0.74,+0.26] med -1.094 trim2% -0.307 h1 -0.261 h2 -0.225 syms+ 6/14
+  by sym (k=0.5): RKLB -60, CLSK -49, NVTS -29, ALAB -21, LITE -16, IREN -7, CRDO -1, NBIS +5, SNDK +9, QUBT +23, OKLO +26, QBTS +28, WOLF +34, APLD +40
+  total -17.7; top-5 trades sum +114.4: [{'sym': 'WOLF', 'entry': Timestamp('2025-03-24 00:00:00'), 'tgt': 0.5, 'long_k0.5': 24.27778701353223}, {'sym': 'WOLF', 'entry': Timestamp('2025-03-24 00:00:00'), 'tgt': -0.5, 'long_k0.5': 24.20193477185797}, {'sym': 'WOLF', 'entry': Timestamp('2025-05-19 00:00:00'), 'tgt': 0.5, 'long_k0.5': 23.908110715404128}, {'sym': 'WOLF', 'entry': Timestamp('2025-05-19 00:00:00'), 'tgt': -0.5, 'long_k0.5': 22.90985463876603}, {'sym': 'QBTS', 'entry': Timestamp('2025-09-15 00:00:00'), 'tgt': -0.5, 'long_k0.5': 19.102607299395267}]
+== static: long 3w ATM call+put, all weeks  (n=1062) ==
+  k=0.0: mean +1.461 [+0.22,+3.06] med -0.769 trim2% +1.063 h1 +1.253 h2 +1.670 syms+ 12/15
+  k=0.5: mean +1.091 [-0.17,+2.72] med -1.091 trim2% +0.750 h1 +0.766 h2 +1.417 syms+ 12/15
+  k=1.0: mean +0.721 [-0.57,+2.37] med -1.433 trim2% +0.443 h1 +0.280 h2 +1.164 syms+ 12/15
+  by sym (k=0.5): WOLF -294, CLSK -62, AXTI -10, RKLB +29, CRDO +44, NVTS +56, LITE +63, ALAB +64, SNDK +66, APLD +101, OKLO +108, IREN +133, NBIS +170, QUBT +231, QBTS +462
+  total +1158.7; top-5 trades sum +312.4: [{'sym': 'QUBT', 'entry': Timestamp('2024-12-02 00:00:00'), 'tgt': 0.5, 'long_k0.5': 69.34650880225115}, {'sym': 'QBTS', 'entry': Timestamp('2025-05-05 00:00:00'), 'tgt': -0.5, 'long_k0.5': 65.05700870511313}, {'sym': 'QBTS', 'entry': Timestamp('2025-05-05 00:00:00'), 'tgt': 0.5, 'long_k0.5': 65.04303983578926}, {'sym': 'QUBT', 'entry': Timestamp('2024-12-02 00:00:00'), 'tgt': -0.5, 'long_k0.5': 61.92860181662937}, {'sym': 'QUBT', 'entry': Timestamp('2024-12-09 00:00:00'), 'tgt': 0.5, 'long_k0.5': 51.03388071096735}]

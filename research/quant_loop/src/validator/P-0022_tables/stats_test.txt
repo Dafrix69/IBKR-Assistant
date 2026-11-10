@@ -1,0 +1,52 @@
+V-0022 stats, period=test, trades in file 1424, entries 2025-11-03 .. 2026-10-26, exp max 2026-10-30
+weeks in bootstrap frame: 52 (2025-11-03 .. 2026-10-26), block 8, reps 10000
+(stock, week) units with >=1 trade and ret5: 740; ret5 > cut: 190 (25.7%)
+
+=== SIGNAL ret5 > 0.0948 (both deltas pooled) ===
+daily_k0                                     n  373 mean +0.152 CI95 [-0.032,+0.341] CI97.5 [-0.063,+0.368] P(boot<=0) 0.051 med +0.266 trim2 +0.191 win 60.9% [55.8%,65.7%]
+daily_k0.5                                   n  373 mean +0.050 CI95 [-0.136,+0.243] CI97.5 [-0.164,+0.272] P(boot<=0) 0.287 med +0.172 trim2 +0.090 win 57.6% [52.6%,62.6%]
+daily_k1                                     n  373 mean -0.052 CI95 [-0.240,+0.147] CI97.5 [-0.270,+0.176] P(boot<=0) 0.688 med +0.053 trim2 -0.011 win 53.9% [48.8%,58.9%]
+  tgt -0.25 daily_k0                         n  184 mean +0.142 CI95 [-0.114,+0.421] CI97.5 [-0.155,+0.464] P(boot<=0) 0.135 med +0.363 trim2 +0.177 win 59.8% [52.6%,66.6%]
+  tgt -0.25 daily_k0.5                       n  184 mean +0.022 CI95 [-0.235,+0.300] CI97.5 [-0.276,+0.341] P(boot<=0) 0.425 med +0.256 trim2 +0.058 win 57.1% [49.8%,64.0%]
+  tgt -0.25 daily_k1                         n  184 mean -0.099 CI95 [-0.356,+0.179] CI97.5 [-0.397,+0.218] P(boot<=0) 0.756 med +0.118 trim2 -0.061 win 54.9% [47.7%,61.9%]
+  tgt -0.1 daily_k0                          n  189 mean +0.162 CI95 [+0.013,+0.316] CI97.5 [-0.008,+0.337] P(boot<=0) 0.017 med +0.209 trim2 +0.192 win 61.9% [54.8%,68.5%]
+  tgt -0.1 daily_k0.5                        n  189 mean +0.078 CI95 [-0.075,+0.238] CI97.5 [-0.097,+0.264] P(boot<=0) 0.160 med +0.112 trim2 +0.108 win 58.2% [51.1%,65.0%]
+  tgt -0.1 daily_k1                          n  189 mean -0.007 CI95 [-0.165,+0.164] CI97.5 [-0.187,+0.192] P(boot<=0) 0.525 med +0.028 trim2 +0.023 win 52.9% [45.8%,59.9%]
+  stocks positive (k0.5): 8/15   by stock: SNDK -0.46(n42,sum-19.1), AXTI -0.36(n26,sum-9.3), WOLF -0.34(n27,sum-9.3), CRDO -0.31(n28,sum-8.6), ALAB -0.21(n24,sum-5.0), OKLO -0.12(n18,sum-2.2), LITE -0.03(n34,sum-1.0), QBTS +0.16(n16,sum+2.5), NVTS +0.21(n25,sum+5.4), RKLB +0.28(n22,sum+6.2), QUBT +0.63(n13,sum+8.2), IREN +0.48(n24,sum+11.4), CLSK +0.67(n18,sum+12.0), APLD +0.47(n28,sum+13.0), NBIS +0.52(n28,sum+14.6)
+  drop top contributor NBIS                  n  345 mean +0.012 CI95 [-0.177,+0.210] CI97.5 [-0.203,+0.238] P(boot<=0) 0.439 med +0.113 trim2 +0.048 win 55.9% [50.7%,61.1%]
+  drop NBIS daily_k0                         n  345 mean +0.120 med +0.243 trim2 +0.154 win 59.4% [54.2%,64.5%]
+  drop NBIS daily_k1                         n  345 mean -0.096 med +0.026 trim2 -0.058 win 51.9% [46.6%,57.1%]
+  drop best 5 weeks                          n  289 mean -0.164 CI95 [-0.341,+0.019] CI97.5 [-0.367,+0.037] P(boot<=0) 0.957 med +0.008 trim2 -0.124 win 50.5% [44.8%,56.2%]  (weeks 2026-03-16, 2026-01-12, 2026-09-07, 2026-09-21, 2026-05-11)
+  drop worst 5 weeks (descriptive)           n  298 mean +0.219 med +0.333 trim2 +0.254 win 62.8% [57.1%,68.0%]
+  quarter 2025Q4                             n   57 mean -0.128 med +0.113 trim2 -0.086 win 56.1% [43.3%,68.2%]
+  quarter 2026Q1                             n   67 mean +0.246 med +0.477 trim2 +0.277 win 65.7% [53.7%,75.9%]
+  quarter 2026Q2                             n  153 mean -0.154 med +0.028 trim2 -0.108 win 51.0% [43.1%,58.8%]
+  quarter 2026Q3                             n   88 mean +0.414 med +0.396 trim2 +0.434 win 65.9% [55.5%,75.0%]
+  quarter 2026Q4                             n    8 mean -0.410 med -0.298 trim2 -0.410 win 37.5% [13.7%,69.4%]
+  first half (< 2026-04-20)                  n  156 mean -0.081 med +0.102 trim2 -0.049 win 55.1% [47.3%,62.7%]
+  second half                                n  217 mean +0.145 med +0.213 trim2 +0.190 win 59.4% [52.8%,65.8%]
+  hedge variant none_k0.5                    n  373 mean -0.075 CI95 [-0.592,+0.348] CI97.5 [-0.677,+0.404] P(boot<=0) 0.633 med +0.619 trim2 +0.145 win 82.0% [77.8%,85.6%]
+  hedge variant static_k0.5                  n  373 mean -0.001 CI95 [-0.255,+0.261] CI97.5 [-0.297,+0.299] P(boot<=0) 0.495 med +0.418 trim2 +0.091 win 59.5% [54.5%,64.4%]
+  cumulative sum k0.5 (sum of per-trade % of spot) +18.69; max drawdown -40.91
+  liquidity: half-spread/mid median 11.1% (p75 20.2%); k0.5 cost per trade (0.5*hs/S0) mean 0.102% of spot; mid median $0.91; entry-day contract volume median 314, zero-volume share 0.0%; bid=0 share of that expiry's puts median 29.2%; IV carried-forward days 3/1048
+
+=== CONTROL row 4 (primary): ret5 <= 0.0948, same ISO weeks as a signal trade ===
+daily_k0                                     n  700 mean -0.198 CI95 [-0.457,+0.056] CI97.5 [-0.505,+0.094] P(boot<=0) 0.936 med +0.096 trim2 -0.103 win 53.3% [49.6%,57.0%]
+daily_k0.5                                   n  700 mean -0.280 CI95 [-0.543,-0.025] CI97.5 [-0.591,+0.014] P(boot<=0) 0.984 med +0.021 trim2 -0.185 win 51.0% [47.3%,54.7%]
+daily_k1                                     n  700 mean -0.363 CI95 [-0.629,-0.106] CI97.5 [-0.677,-0.067] P(boot<=0) 0.997 med -0.043 trim2 -0.268 win 48.0% [44.3%,51.7%]
+
+=== CONTROL (secondary): ret5 <= 0.0948, all weeks ===
+daily_k0                                     n 1051 mean -0.161 CI95 [-0.358,+0.029] CI97.5 [-0.388,+0.054] P(boot<=0) 0.951 med +0.078 trim2 -0.081 win 52.7% [49.7%,55.7%]
+daily_k0.5                                   n 1051 mean -0.243 CI95 [-0.439,-0.053] CI97.5 [-0.469,-0.028] P(boot<=0) 0.994 med +0.012 trim2 -0.162 win 50.5% [47.5%,53.5%]
+daily_k1                                     n 1051 mean -0.325 CI95 [-0.521,-0.135] CI97.5 [-0.551,-0.111] P(boot<=0) 1.000 med -0.054 trim2 -0.244 win 47.7% [44.7%,50.7%]
+  signal - same-week control daily_k0.5: +0.330 block-boot CI95 [-0.002,+0.672] P(diff<=0) 0.025
+  signal - same-week control daily_k0: +0.350 block-boot CI95 [+0.018,+0.690] P(diff<=0) 0.018
+  signal - same-week control daily_k1: +0.311 block-boot CI95 [-0.020,+0.654] P(diff<=0) 0.033
+  signal - all-week control daily_k0.5: +0.293 block-boot CI95 [+0.019,+0.574] P(diff<=0) 0.019
+  signal - all-week control daily_k0: +0.313 block-boot CI95 [+0.038,+0.595] P(diff<=0) 0.013
+  signal - all-week control daily_k1: +0.273 block-boot CI95 [-0.000,+0.553] P(diff<=0) 0.025
+  permutation (signal label, (stock,week) units, k0.5): observed diff +0.293; within-week p(>=obs) 0.177; global p(>=obs) 0.010
+
+=== threshold +-1 notch (descriptive only) ===
+ret5 > 0.0679                                n  421 mean +0.057 CI95 [-0.126,+0.247] CI97.5 [-0.155,+0.273] P(boot<=0) 0.255 med +0.161 trim2 +0.097 win 57.2% [52.5%,61.9%]
+ret5 > 0.1479                                n  254 mean -0.071 CI95 [-0.234,+0.071] CI97.5 [-0.260,+0.093] P(boot<=0) 0.836 med +0.113 trim2 -0.027 win 55.5% [49.4%,61.5%]

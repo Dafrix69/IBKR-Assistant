@@ -1,0 +1,205 @@
+
+===== 20181031: Δ0.35 n 956, weeks 53, syms 21, entries 2018-10-31..2019-10-28, exp max 2019-11-15
+  [判定] 静态 k0.5 +0.060 [-0.27,+0.38] bonf [-0.32,+0.43] P(<=0) 0.349
+  [判定] 静态 k1   -0.139 [-0.49,+0.18] bonf [-0.54,+0.23] P(<=0) 0.792
+  [判定] (1) True (2) False (3) False -> FAIL
+  [解读] 每日 k0.5 -0.277 [-0.43,-0.12] bonf [-0.46,-0.10] P(<=0) 1.000 -> 动量 / 终值波动敞口，不是期权便宜
+  win 43.3% Wilson [40.2%,46.5%] median -0.686 trim2% -0.180
+  syms + 11/21 (52%); top contributor ROKU (sum +130.6 of +57.1) -> ex-top -0.081
+  drop best 5 weeks sta_k0.5: [201849, 201852, 201919, 201901, 201908] (sum +255.3 of +57.1) -> -0.230 [-0.54,+0.07] bonf [-0.60,+0.11] P(<=0) 0.930
+  drop best 5 weeks dyn_k0.5: [201908, 201906, 201847, 201919, 201907] (sum +99.0 of -265.2) -> -0.421 [-0.64,-0.23] bonf [-0.67,-0.21] P(<=0) 1.000
+  adjacent sta k0.5: Δ0.25 -0.004 Δ0.50 +0.144 (same sign: False); Δ0.15 -0.113
+  k0/0.5/1: sta +0.258/+0.060/-0.139  dyn -0.079/-0.277/-0.476
+  halves (split 2019-05-01): +0.055 / +0.064  dyn -0.330 / -0.221
+  maxDD (cum weekly mean) sta -5.1 dyn -14.5
+  sens r=0 financing: sta k0.5 -0.010 [-0.34,+0.31] bonf [-0.39,+0.35] P(<=0) 0.516; commission $0.65/ct+$0.0035/sh: sta +0.018 dyn -0.319
+  liquidity: half-spread/mid median 0.071 (p75 0.143); k0.5 cost % S0 median 0.108; contract volume median 11, zero 26.2%; Δ0.10–0.60 bid=0 9.9%
+
+===== 20191031: Δ0.35 n 842, weeks 53, syms 19, entries 2019-10-31..2020-10-26, exp max 2020-11-20
+  [判定] 静态 k0.5 -0.252 [-1.43,+0.97] bonf [-1.60,+1.18] P(<=0) 0.681
+  [判定] 静态 k1   -0.710 [-1.99,+0.56] bonf [-2.22,+0.75] P(<=0) 0.871
+  [判定] (1) False (2) False (3) False -> FAIL
+  [解读] 每日 k0.5 -0.640 [-1.23,-0.07] bonf [-1.32,+0.00] P(<=0) 0.987 -> 静态 ≤ 0，解读不适用
+  win 38.4% Wilson [35.1%,41.7%] median -1.323 trim2% -0.515
+  syms + 6/19 (32%); top contributor BBBY (sum +111.6 of -211.9) -> ex-top -0.407
+  drop best 5 weeks sta_k0.5: [202010, 202008, 202009, 202006, 202001] (sum +623.1 of -211.9) -> -1.097 [-2.11,-0.26] bonf [-2.27,-0.18] P(<=0) 0.999
+  drop best 5 weeks dyn_k0.5: [202008, 202010, 202023, 202009, 202044] (sum +225.0 of -539.2) -> -1.004 [-1.55,-0.51] bonf [-1.62,-0.45] P(<=0) 1.000
+  adjacent sta k0.5: Δ0.25 -0.592 Δ0.50 -0.374 (same sign: True); Δ0.15 -0.623
+  k0/0.5/1: sta +0.206/-0.252/-0.710  dyn -0.182/-0.640/-1.098
+  halves (split 2020-04-30): -0.018 / -0.490  dyn -0.491 / -0.793
+  maxDD (cum weekly mean) sta -54.8 dyn -44.4
+  sens r=0 financing: sta k0.5 -0.319 [-1.50,+0.91] bonf [-1.66,+1.11] P(<=0) 0.717; commission $0.65/ct+$0.0035/sh: sta -0.352 dyn -0.741
+  liquidity: half-spread/mid median 0.118 (p75 0.220); k0.5 cost % S0 median 0.200; contract volume median 33, zero 16.5%; Δ0.10–0.60 bid=0 18.2%
+
+===== 20201030: Δ0.35 n 2071, weeks 53, syms 40, entries 2020-10-30..2021-10-25, exp max 2021-11-12
+  [判定] 静态 k0.5 +0.447 [-0.55,+1.79] bonf [-0.63,+1.98] P(<=0) 0.273
+  [判定] 静态 k1   +0.252 [-0.75,+1.59] bonf [-0.84,+1.78] P(<=0) 0.361
+  [判定] (1) True (2) False (3) True -> FAIL
+  [解读] 每日 k0.5 -0.467 [-0.79,-0.14] bonf [-0.83,-0.10] P(<=0) 0.998 -> 动量 / 终值波动敞口，不是期权便宜
+  win 36.6% Wilson [34.6%,38.7%] median -1.190 trim2% -0.589
+  syms + 14/40 (35%); top contributor GME (sum +1449.4 of +926.4) -> ex-top -0.259
+  drop best 5 weeks sta_k0.5: [202102, 202107, 202108, 202101, 202126] (sum +1884.2 of +926.4) -> -0.511 [-1.05,+0.04] bonf [-1.12,+0.11] P(<=0) 0.967
+  drop best 5 weeks dyn_k0.5: [202104, 202102, 202045, 202108, 202142] (sum +318.0 of -968.1) -> -0.686 [-0.94,-0.44] bonf [-0.97,-0.41] P(<=0) 1.000
+  adjacent sta k0.5: Δ0.25 +0.552 Δ0.50 +0.265 (same sign: True); Δ0.15 +0.449
+  k0/0.5/1: sta +0.643/+0.447/+0.252  dyn -0.272/-0.467/-0.663
+  halves (split 2021-04-30): +1.092 / -0.223  dyn -0.518 / -0.415
+  maxDD (cum weekly mean) sta -23.3 dyn -28.9
+  sens r=0 financing: sta k0.5 +0.377 [-0.62,+1.72] bonf [-0.70,+1.90] P(<=0) 0.306; commission $0.65/ct+$0.0035/sh: sta +0.421 dyn -0.494
+  liquidity: half-spread/mid median 0.058 (p75 0.111); k0.5 cost % S0 median 0.091; contract volume median 36, zero 9.4%; Δ0.10–0.60 bid=0 2.0%
+
+===== 20211029: Δ0.35 n 1746, weeks 53, syms 40, entries 2021-10-29..2022-10-24, exp max 2022-11-11
+  [判定] 静态 k0.5 -0.790 [-1.64,-0.00] bonf [-1.78,+0.11] P(<=0) 0.975
+  [判定] 静态 k1   -1.085 [-1.97,-0.27] bonf [-2.10,-0.15] P(<=0) 0.996
+  [判定] (1) False (2) False (3) False -> FAIL
+  [解读] 每日 k0.5 -0.651 [-0.87,-0.43] bonf [-0.91,-0.39] P(<=0) 1.000 -> 静态 ≤ 0，解读不适用
+  win 43.9% Wilson [41.6%,46.2%] median -0.917 trim2% -0.944
+  syms + 10/40 (25%); top contributor SPWR (sum +50.0 of -1379.2) -> ex-top -0.844
+  drop best 5 weeks sta_k0.5: [202201, 202214, 202146, 202230, 202211] (sum +899.7 of -1379.2) -> -1.448 [-2.14,-0.78] bonf [-2.23,-0.69] P(<=0) 1.000
+  drop best 5 weeks dyn_k0.5: [202231, 202201, 202143, 202238, 202144] (sum +142.5 of -1136.5) -> -0.813 [-1.03,-0.60] bonf [-1.06,-0.57] P(<=0) 1.000
+  adjacent sta k0.5: Δ0.25 -0.889 Δ0.50 -0.815 (same sign: True); Δ0.15 -0.699
+  k0/0.5/1: sta -0.495/-0.790/-1.085  dyn -0.356/-0.651/-0.946
+  halves (split 2022-04-30): -0.091 / -1.689  dyn -0.540 / -0.793
+  maxDD (cum weekly mean) sta -57.8 dyn -36.3
+  sens r=0 financing: sta k0.5 -0.854 [-1.71,-0.06] bonf [-1.84,+0.05] P(<=0) 0.984; commission $0.65/ct+$0.0035/sh: sta -0.905 dyn -0.766
+  liquidity: half-spread/mid median 0.070 (p75 0.129); k0.5 cost % S0 median 0.165; contract volume median 48, zero 9.0%; Δ0.10–0.60 bid=0 7.3%
+
+===== 20221031: Δ0.35 n 2004, weeks 53, syms 40, entries 2022-10-31..2023-10-30, exp max 2023-11-17
+  [判定] 静态 k0.5 -0.160 [-0.79,+0.48] bonf [-0.88,+0.58] P(<=0) 0.692
+  [判定] 静态 k1   -0.248 [-0.88,+0.39] bonf [-0.98,+0.50] P(<=0) 0.782
+  [判定] (1) False (2) False (3) False -> FAIL
+  [解读] 每日 k0.5 -0.161 [-0.38,+0.06] bonf [-0.42,+0.09] P(<=0) 0.931 -> 静态 ≤ 0，解读不适用
+  win 40.3% Wilson [38.1%,42.4%] median -0.938 trim2% -0.486
+  syms + 17/40 (42%); top contributor MARA (sum +105.0 of -321.3) -> ex-top -0.219
+  drop best 5 weeks sta_k0.5: [202301, 202302, 202326, 202252, 202331] (sum +1029.6 of -321.3) -> -0.746 [-1.28,-0.29] bonf [-1.35,-0.24] P(<=0) 1.000
+  drop best 5 weeks dyn_k0.5: [202304, 202245, 202305, 202303, 202244] (sum +264.7 of -322.6) -> -0.325 [-0.53,-0.15] bonf [-0.57,-0.13] P(<=0) 1.000
+  adjacent sta k0.5: Δ0.25 -0.147 Δ0.50 -0.293 (same sign: True); Δ0.15 -0.125
+  k0/0.5/1: sta -0.073/-0.160/-0.248  dyn -0.073/-0.161/-0.249
+  halves (split 2023-05-01): -0.422 / +0.120  dyn -0.206 / -0.112
+  maxDD (cum weekly mean) sta -27.5 dyn -12.9
+  sens r=0 financing: sta k0.5 -0.231 [-0.86,+0.41] bonf [-0.95,+0.51] P(<=0) 0.767; commission $0.65/ct+$0.0035/sh: sta -0.209 dyn -0.210
+  liquidity: half-spread/mid median 0.036 (p75 0.056); k0.5 cost % S0 median 0.058; contract volume median 34, zero 9.4%; Δ0.10–0.60 bid=0 0.6%
+
+===== 20231031: Δ0.35 n 1879, weeks 53, syms 40, entries 2023-10-31..2024-10-28, exp max 2024-11-15
+  [判定] 静态 k0.5 -0.074 [-0.82,+0.69] bonf [-0.90,+0.81] P(<=0) 0.575
+  [判定] 静态 k1   -0.279 [-1.05,+0.51] bonf [-1.13,+0.63] P(<=0) 0.740
+  [判定] (1) False (2) False (3) False -> FAIL
+  [解读] 每日 k0.5 -0.469 [-0.70,-0.25] bonf [-0.74,-0.21] P(<=0) 1.000 -> 静态 ≤ 0，解读不适用
+  win 39.9% Wilson [37.7%,42.1%] median -0.935 trim2% -0.422
+  syms + 17/40 (42%); top contributor MSTR (sum +207.7 of -139.6) -> ex-top -0.190
+  drop best 5 weeks sta_k0.5: [202348, 202346, 202352, 202429, 202414] (sum +774.5 of -139.6) -> -0.539 [-1.12,-0.04] bonf [-1.20,+0.01] P(<=0) 0.985
+  drop best 5 weeks dyn_k0.5: [202348, 202428, 202406, 202444, 202418] (sum +181.9 of -881.8) -> -0.627 [-0.86,-0.43] bonf [-0.89,-0.41] P(<=0) 1.000
+  adjacent sta k0.5: Δ0.25 -0.159 Δ0.50 -0.112 (same sign: True); Δ0.15 -0.208
+  k0/0.5/1: sta +0.131/-0.074/-0.279  dyn -0.264/-0.469/-0.674
+  halves (split 2024-05-01): +0.348 / -0.546  dyn -0.383 / -0.565
+  maxDD (cum weekly mean) sta -26.2 dyn -25.7
+  sens r=0 financing: sta k0.5 -0.144 [-0.89,+0.62] bonf [-0.97,+0.74] P(<=0) 0.639; commission $0.65/ct+$0.0035/sh: sta -0.142 dyn -0.537
+  liquidity: half-spread/mid median 0.053 (p75 0.111); k0.5 cost % S0 median 0.096; contract volume median 34, zero 12.4%; Δ0.10–0.60 bid=0 8.3%
+
+===== 20241031 全: Δ0.35 n 3854, weeks 103, syms 40, entries 2024-10-31..2026-10-12, exp max 2026-10-30
+  [判定] 静态 k0.5 -0.258 [-0.53,+0.03] bonf [-0.57,+0.06] P(<=0) 0.961
+  [判定] 静态 k1   -0.479 [-0.74,-0.20] bonf [-0.78,-0.16] P(<=0) 0.999
+  [判定] (1) False (2) False (3) False -> FAIL
+  [解读] 每日 k0.5 -0.358 [-0.50,-0.20] bonf [-0.52,-0.18] P(<=0) 1.000 -> 静态 ≤ 0，解读不适用
+  win 37.1% Wilson [35.6%,38.7%] median -1.242 trim2% -0.687
+  syms + 11/40 (28%); top contributor HIMS (sum +284.5 of -994.4) -> ex-top -0.341
+  drop best 5 weeks sta_k0.5: [202445, 202614, 202444, 202508, 202512] (sum +785.6 of -994.4) -> -0.486 [-0.72,-0.26] bonf [-0.75,-0.23] P(<=0) 1.000
+  drop best 5 weeks dyn_k0.5: [202634, 202514, 202633, 202513, 202445] (sum +338.5 of -1381.3) -> -0.468 [-0.59,-0.36] bonf [-0.61,-0.34] P(<=0) 1.000
+  adjacent sta k0.5: Δ0.25 -0.218 Δ0.50 -0.400 (same sign: True); Δ0.15 -0.190
+  k0/0.5/1: sta -0.037/-0.258/-0.479  dyn -0.137/-0.358/-0.580
+  halves (split 2025-11-01): -0.380 / -0.124  dyn -0.413 / -0.299
+  maxDD (cum weekly mean) sta -39.3 dyn -40.7
+  sens r=0 financing: sta k0.5 -0.326 [-0.60,-0.04] bonf [-0.63,-0.00] P(<=0) 0.988; commission $0.65/ct+$0.0035/sh: sta -0.300 dyn -0.400
+  liquidity: half-spread/mid median 0.071 (p75 0.139); k0.5 cost % S0 median 0.128; contract volume median 35, zero 10.5%; Δ0.10–0.60 bid=0 11.5%
+
+===== 20241031 训练段: Δ0.35 n 1940, weeks 51, syms 40, entries 2024-10-31..2025-10-13, exp max 2025-10-31
+  [判定] 静态 k0.5 -0.421 [-0.77,-0.03] bonf [-0.82,+0.03] P(<=0) 0.984
+  [判定] 静态 k1   -0.612 [-0.97,-0.22] bonf [-1.02,-0.15] P(<=0) 0.998
+  [判定] (1) False (2) False (3) False -> FAIL
+  [解读] 每日 k0.5 -0.409 [-0.61,-0.22] bonf [-0.63,-0.19] P(<=0) 1.000 -> 静态 ≤ 0，解读不适用
+  win 35.3% Wilson [33.2%,37.5%] median -1.506 trim2% -0.898
+  syms + 12/40 (30%); top contributor HIMS (sum +191.6 of -817.0) -> ex-top -0.534
+  drop best 5 weeks sta_k0.5: [202445, 202444, 202508, 202512, 202513] (sum +676.3 of -817.0) -> -0.852 [-1.21,-0.52] bonf [-1.27,-0.47] P(<=0) 1.000
+  drop best 5 weeks dyn_k0.5: [202514, 202513, 202445, 202512, 202508] (sum +241.1 of -793.8) -> -0.590 [-0.84,-0.39] bonf [-0.87,-0.38] P(<=0) 1.000
+  adjacent sta k0.5: Δ0.25 -0.378 Δ0.50 -0.473 (same sign: True); Δ0.15 -0.269
+  k0/0.5/1: sta -0.230/-0.421/-0.612  dyn -0.218/-0.409/-0.600
+  maxDD (cum weekly mean) sta -31.8 dyn -22.5
+  sens r=0 financing: sta k0.5 -0.490 [-0.84,-0.10] bonf [-0.89,-0.04] P(<=0) 0.992; commission $0.65/ct+$0.0035/sh: sta -0.465 dyn -0.453
+  liquidity: half-spread/mid median 0.053 (p75 0.101); k0.5 cost % S0 median 0.095; contract volume median 40, zero 8.6%; Δ0.10–0.60 bid=0 9.4%
+
+===== 20241031 测试段: Δ0.35 n 1835, weeks 50, syms 40, entries 2025-11-03..2026-10-12, exp max 2026-10-30
+  [判定] 静态 k0.5 -0.124 [-0.42,+0.20] bonf [-0.46,+0.24] P(<=0) 0.795
+  [判定] 静态 k1   -0.376 [-0.67,-0.05] bonf [-0.72,-0.00] P(<=0) 0.988
+  [判定] (1) False (2) False (3) False -> FAIL
+  [解读] 每日 k0.5 -0.299 [-0.49,-0.07] bonf [-0.51,-0.03] P(<=0) 0.993 -> 静态 ≤ 0，解读不适用
+  win 38.3% Wilson [36.1%,40.6%] median -1.046 trim2% -0.504
+  syms + 10/40 (25%); top contributor MRNA (sum +285.9 of -226.8) -> ex-top -0.287
+  drop best 5 weeks sta_k0.5: [202614, 202615, 202545, 202605, 202601] (sum +471.3 of -226.8) -> -0.425 [-0.63,-0.22] bonf [-0.66,-0.19] P(<=0) 1.000
+  drop best 5 weeks dyn_k0.5: [202634, 202633, 202606, 202601, 202636] (sum +215.8 of -548.4) -> -0.462 [-0.55,-0.36] bonf [-0.57,-0.35] P(<=0) 1.000
+  adjacent sta k0.5: Δ0.25 -0.076 Δ0.50 -0.382 (same sign: True); Δ0.15 -0.122
+  k0/0.5/1: sta +0.129/-0.124/-0.376  dyn -0.046/-0.299/-0.551
+  maxDD (cum weekly mean) sta -10.6 dyn -16.9
+  sens r=0 financing: sta k0.5 -0.191 [-0.48,+0.13] bonf [-0.53,+0.18] P(<=0) 0.893; commission $0.65/ct+$0.0035/sh: sta -0.165 dyn -0.340
+  liquidity: half-spread/mid median 0.099 (p75 0.174); k0.5 cost % S0 median 0.173; contract volume median 31, zero 12.6%; Δ0.10–0.60 bid=0 14.1%
+
+===== 合并 7 池: Δ0.35 n 13352, weeks 416, syms 142, entries 2018-10-31..2026-10-12, exp max 2026-10-30
+  [判定] 静态 k0.5 -0.155 [-0.45,+0.16] bonf [-0.49,+0.22] P(<=0) 0.838
+  [判定] 静态 k1   -0.372 [-0.68,-0.05] bonf [-0.73,+0.00] P(<=0) 0.987
+  [判定] (1) False (2) False (3) False -> FAIL
+  [解读] 每日 k0.5 -0.412 [-0.52,-0.31] bonf [-0.53,-0.30] P(<=0) 1.000 -> 静态 ≤ 0，解读不适用
+  win 39.3% Wilson [38.5%,40.2%] median -1.089 trim2% -0.587
+  syms + 41/142 (29%); top contributor GME (sum +1258.3 of -2063.0) -> ex-top -0.253
+  top code×pool ('GME', '20201030') (sum +1449.4) -> ex -0.264
+  per pool sta k0.5: 2018 +0.060  2019 -0.252  2020 +0.447  2021 -0.790  2022 -0.160  2023 -0.074  2024 -0.258
+  drop best 5 weeks sta_k0.5: [202102, 202301, 202348, 202107, 202445] (sum +2300.5 of -2063.0) -> -0.332 [-0.56,-0.11] bonf [-0.59,-0.08] P(<=0) 0.999
+  drop best 5 weeks dyn_k0.5: [202634, 202104, 202304, 202008, 202514] (sum +450.3 of -5494.6) -> -0.451 [-0.55,-0.36] bonf [-0.57,-0.34] P(<=0) 1.000
+  adjacent sta k0.5: Δ0.25 -0.183 Δ0.50 -0.251 (same sign: True); Δ0.15 -0.184
+  k0/0.5/1: sta +0.063/-0.155/-0.372  dyn -0.194/-0.412/-0.629
+  maxDD (cum weekly mean) sta -112.3 dyn -183.7
+  sens r=0 financing: sta k0.5 -0.223 [-0.52,+0.09] bonf [-0.56,+0.15] P(<=0) 0.918; commission $0.65/ct+$0.0035/sh: sta -0.212 dyn -0.469
+  liquidity: half-spread/mid median 0.061 (p75 0.122); k0.5 cost % S0 median 0.108; contract volume median 34, zero 11.7%; Δ0.10–0.60 bid=0 7.8%
+
+===== 合并 2018–2023 六池: Δ0.35 n 9498, weeks 314, syms 127, entries 2018-10-31..2024-10-28, exp max 2024-11-15
+  [判定] 静态 k0.5 -0.113 [-0.51,+0.32] bonf [-0.57,+0.38] P(<=0) 0.716
+  [判定] 静态 k1   -0.329 [-0.75,+0.11] bonf [-0.80,+0.17] P(<=0) 0.936
+  [判定] (1) False (2) False (3) False -> FAIL
+  [解读] 每日 k0.5 -0.433 [-0.57,-0.30] bonf [-0.59,-0.29] P(<=0) 1.000 -> 静态 ≤ 0，解读不适用
+  win 40.2% Wilson [39.2%,41.2%] median -1.015 trim2% -0.550
+  syms + 41/127 (32%); top contributor GME (sum +1419.8 of -1068.6) -> ex-top -0.265
+  top code×pool ('GME', '20201030') (sum +1449.4) -> ex -0.267
+  per pool sta k0.5: 2018 +0.060  2019 -0.252  2020 +0.447  2021 -0.790  2022 -0.160  2023 -0.074  2024 +nan
+  drop best 5 weeks sta_k0.5: [202102, 202301, 202348, 202107, 202108] (sum +2274.7 of -1068.6) -> -0.359 [-0.66,-0.06] bonf [-0.70,-0.03] P(<=0) 0.992
+  drop best 5 weeks dyn_k0.5: [202104, 202304, 202008, 202102, 202045] (sum +403.5 of -4113.3) -> -0.484 [-0.61,-0.36] bonf [-0.63,-0.34] P(<=0) 1.000
+  adjacent sta k0.5: Δ0.25 -0.169 Δ0.50 -0.189 (same sign: True); Δ0.15 -0.182
+  k0/0.5/1: sta +0.104/-0.113/-0.329  dyn -0.217/-0.433/-0.650
+  maxDD (cum weekly mean) sta -83.4 dyn -145.7
+  sens r=0 financing: sta k0.5 -0.181 [-0.58,+0.25] bonf [-0.64,+0.31] P(<=0) 0.812; commission $0.65/ct+$0.0035/sh: sta -0.176 dyn -0.497
+  liquidity: half-spread/mid median 0.057 (p75 0.113); k0.5 cost % S0 median 0.100; contract volume median 34, zero 12.2%; Δ0.10–0.60 bid=0 6.1%
+
+===== exclusion counts (symbol-weeks; per target for the Δ rows)
+pool                                20181031  20191031  20201030  20211029  20221031  20231031  20241031
+S<=0 days                                1.0       0.0       1.0       0.0       0.0       0.0       0.0
+other-root rows                          0.0       0.0       0.0       0.0       0.0       0.0       0.0
+dup quote rows                           0.0       0.0       0.0       0.0       0.0       0.0       0.0
+symbol-weeks                          1113.0    1007.0    2120.0    2120.0    2120.0    2120.0    4240.0
+trades Δ0.15                          1003.0     875.0    2053.0    2018.0    2070.0    2004.0    3966.0
+trades Δ0.25                           960.0     860.0    2066.0    1875.0    2046.0    1932.0    3936.0
+trades Δ0.35                           956.0     842.0    2071.0    1746.0    2004.0    1879.0    3854.0
+trades Δ0.5                            951.0     822.0    2059.0    1665.0    1975.0    1836.0    3809.0
+x no strike within 0.05 of Δ0.5        109.0     169.0      52.0     426.0     113.0     258.0     273.0
+x no strike within 0.05 of Δ0.35       104.0     149.0      40.0     345.0      84.0     215.0     228.0
+x unsettleable (no file at expiry)       9.0       1.0       1.0      12.0       3.0       0.0     119.0
+x no strike within 0.05 of Δ0.15        57.0     116.0      58.0      73.0      18.0      90.0     116.0
+x no strike within 0.05 of Δ0.25       100.0     131.0      45.0     216.0      42.0     162.0     146.0
+x crosses defect day                     3.0       7.0       6.0       5.0       3.0       9.0       2.0
+x no file/S on entry                    41.0       8.0       0.0      11.0      26.0       2.0       6.0
+x no expiry DTE 14-28                    0.0       0.0       2.0       0.0       0.0      15.0      30.0
+x no usable quote                        0.0       0.0       0.0       1.0       0.0       0.0       1.0
+
+===== equal-weight buy & hold over each pool window (background; split / reorg days chain-linked)
+  20181031: mean +14.6% median -3.7% up 10/21
+  20191031: mean +54.5% median +13.6% up 12/19
+  20201030: mean +84.5% median +33.5% up 29/40
+  20211029: mean -70.3% median -73.2% up 0/40
+  20221031: mean -3.3% median -12.4% up 16/40
+  20231031: mean +56.5% median +29.6% up 27/40
+  20241031: mean +21.1% median +5.7% up 22/40

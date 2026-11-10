@@ -1,0 +1,143 @@
+=== S sample account
+0DTE days (quote files): 372 | by weekday: {'Wed': 121, 'Fri': 115, 'Mon': 110, 'Tue': 16, 'Thu': 10}
+half days hard-coded: [datetime.date(2020, 11, 27), datetime.date(2020, 12, 24), datetime.date(2021, 11, 26)] | generic (underlying stops < 14:00): [datetime.date(2020, 11, 27), datetime.date(2020, 12, 24), datetime.date(2021, 11, 26)]
+days with no 14:00 0DTE rows: 0 | no 14:00 spot: 0 | no settle: 0
+trading days (greeks_eod): 587 | MWF trading days without a 0DTE quote file: 0 []
+greeks_eod files with non-constant underlying_price: 0
+settle vs last underlying_1m print: median 0.27, 95% 1.34, max 5.91 (2020-03-18); days > 5 pts: [datetime.date(2020, 3, 18)]
+14:00 spot distinct values within the row set > 1: 0
+
+=== H1 (P-0028) skips: {'no_prev_ret': 1, 'prev_ret<=-1%': 54, 'half_day': 3} | traded 314
+width distribution: {20: 156, 25: 48, 30: 65, 50: 39, 75: 6} | width fallbacks (closest width had a missing leg): 7 [datetime.date(2020, 3, 16), datetime.date(2020, 3, 18), datetime.date(2020, 4, 29), datetime.date(2021, 3, 17), datetime.date(2021, 6, 16), datetime.date(2021, 7, 28), datetime.date(2021, 12, 15)]
+I > 37.5: 8 days; w/I < 1.5: 7 days; I median 11.3, 90% 22.6, max 62.5; w/I median 2.07
+ATM straddle sum of half-spreads (pts) median by year: {'2020': 0.35, '2021': 0.213, '2022-01..04': 0.3} | as % of straddle mid: {'2020': 2.92, '2021': 2.3, '2022-01..04': 1.52}
+
+=== H1 iron (primary): n 314
+win k0.5: 160/314 = 51.0% Wilson [45.4%, 56.4%]
+win k0.2: 162/314 = 51.6% Wilson [46.1%, 57.1%]
+mean k0.0: -118.4  95% [-213.9, -34.8]  97.5% [-227.6, -23.3]  one-sided p 0.9974
+mean k0.2: -131.6  95% [-227.8, -47.1]  97.5% [-241.5, -35.6]  one-sided p 0.9994
+mean k0.5: -151.4  95% [-249.1, -65.2]  97.5% [-262.4, -53.4]  one-sided p 0.9999
+mean k1.0: -184.3  95% [-285.2, -95.4]  97.5% [-299.8, -83.5]  one-sided p 1.0000
+sd k0.5 892; worst day -3843 (2020-03-20); best day +2656 (2020-03-11)
+drop best 5 (k0.5): -186.6; drop worst 1: -139.6; max drawdown k0.5 -47822, k0.2 -41794; cumulative k0.5 -47529
+               cut   n  win_k0.5   k0.0   k0.2   k0.5   k1.0
+              2020 131     0.527 -129.1 -144.1 -166.8 -204.5
+              2021 148     0.520  -45.6  -57.4  -75.1 -104.6
+       2022-01..04  35     0.400 -386.5 -398.3 -416.1 -445.6
+COVID 02-20..04-30  20     0.550 -321.1 -354.1 -403.6 -486.2
+      ex-COVID all 294     0.507 -104.6 -116.5 -134.2 -163.8
+     ex-COVID 2020 111     0.523  -94.5 -106.3 -124.1 -153.8
+               Mon  91     0.418 -206.6 -214.5 -226.4 -246.2
+               Tue  16     0.562 -258.1 -267.0 -280.2 -302.3
+               Wed 104     0.519  -77.4 -100.4 -134.9 -192.4
+               Thu   9     0.333 -453.5 -462.7 -476.6 -499.6
+               Fri  94     0.596  -22.6  -31.1  -43.9  -65.2
+               EOM  26     0.500 -286.1 -295.0 -308.2 -330.4
+           not EOM 288     0.510 -103.3 -116.9 -137.2 -171.1
+       MWF not EOM 271     0.509 -100.0 -113.9 -134.7 -169.5
+COVID worst 5 (k0.5): [(datetime.date(2020, 3, 20), -3843), (datetime.date(2020, 3, 25), -3529), (datetime.date(2020, 3, 2), -2615), (datetime.date(2020, 4, 8), -1722), (datetime.date(2020, 3, 16), -1629)]
+ex-COVID k0.5 95% [-223.5, -50.5] p 0.9998
+cost 2020: n 131 SH median 0.450 mean 0.755; fee 6.38; E(k0.2)=21.5 E(k0.5)=44.1 E(k1.0)=81.8
+cost 2021: n 148 SH median 0.300 mean 0.590; fee 6.37; E(k0.2)=18.2 E(k0.5)=35.9 E(k1.0)=65.4
+cost 2022-01..04: n 35 SH median 0.400 mean 0.591; fee 6.44; E(k0.2)=18.3 E(k0.5)=36.0 E(k1.0)=65.6
+cost all: SH median 0.375 mean 0.659; fee 6.38; E(k0.2)=19.6 E(k0.5)=39.3 E(k1.0)=72.3
+H1 mechanism: mean |settle - spot|/I 1.058 (median 0.863); by year {'2020': 1.079, '2021': 1.005, '2022-01..04': 1.21}
+  mean credit/w 0.426 vs mean min(|settle-K|,w)/w 0.459; P(|settle-K| < w) 0.889
+put fly unavailable at chosen (K,w): 0 days
+
+=== H1 putfly (report): n 314
+win k0.5: 156/314 = 49.7% Wilson [44.2%, 55.2%]
+win k0.2: 160/314 = 51.0% Wilson [45.4%, 56.4%]
+mean k0.0: -116.8  95% [-211.2, -34.2]  97.5% [-224.9, -22.3]  one-sided p 0.9977
+mean k0.2: -147.1  95% [-243.6, -62.4]  97.5% [-257.0, -51.1]  one-sided p 0.9998
+mean k0.5: -192.6  95% [-291.8, -104.8]  97.5% [-305.6, -93.0]  one-sided p 1.0000
+mean k1.0: -268.4  95% [-373.9, -175.3]  97.5% [-389.7, -162.2]  one-sided p 1.0000
+sd k0.5 894; worst day -3972 (2020-03-20); best day +2595 (2020-03-11)
+drop best 5 (k0.5): -226.6; drop worst 1: -180.5; max drawdown k0.5 -60559, k0.2 -46454; cumulative k0.5 -60477
+               cut   n  win_k0.5   k0.0   k0.2   k0.5   k1.0
+              2020 131     0.496 -126.9 -164.6 -221.2 -315.6
+              2021 148     0.520  -43.0  -68.4 -106.3 -169.7
+       2022-01..04  35     0.400 -391.1 -414.7 -450.1 -509.1
+COVID 02-20..04-30  20     0.450 -326.2 -396.7 -502.5 -678.8
+      ex-COVID all 294     0.500 -102.6 -130.2 -171.5 -240.5
+     ex-COVID 2020 111     0.505  -91.0 -122.8 -170.6 -250.2
+               Mon  91     0.418 -206.7 -225.5 -253.6 -300.6
+               Tue  16     0.500 -262.3 -288.5 -327.8 -393.3
+               Wed 104     0.519  -72.8 -123.1 -198.5 -324.2
+               Thu   9     0.333 -447.6 -468.5 -500.0 -552.3
+               Fri  94     0.564  -22.1  -43.1  -74.5 -126.9
+               EOM  26     0.462 -284.7 -307.8 -342.3 -399.9
+           not EOM 288     0.500 -101.7 -132.6 -179.1 -256.5
+       MWF not EOM 271     0.498  -98.0 -129.6 -177.0 -256.1
+COVID worst 5 (k0.5): [(datetime.date(2020, 3, 20), -3972), (datetime.date(2020, 3, 25), -3802), (datetime.date(2020, 3, 2), -2680), (datetime.date(2020, 4, 8), -1811), (datetime.date(2020, 3, 16), -1651)]
+ex-COVID k0.5 95% [-259.7, -88.9] p 1.0000
+cost 2020: n 131 SH median 1.100 mean 1.887; fee 5.76; E(k0.2)=43.5 E(k0.5)=100.1 E(k1.0)=194.5
+cost 2021: n 148 SH median 0.662 mean 1.266; fee 5.75; E(k0.2)=31.1 E(k0.5)=69.1 E(k1.0)=132.4
+cost 2022-01..04: n 35 SH median 0.750 mean 1.180; fee 5.80; E(k0.2)=29.4 E(k0.5)=64.8 E(k1.0)=123.8
+cost all: SH median 0.825 mean 1.516; fee 5.76; E(k0.2)=36.1 E(k0.5)=81.5 E(k1.0)=157.3
+iron - put fly, k0.5 daily diff mean +41.2 (k0 -1.6, k1 +84.1)
+
+=== H2 (P-0029) skips: {'no_candidate': 129, 'half_day': 3} | traded 240
+candidates per day: {0.0: 129, 1.0: 215, 2.0: 21, 3.0: 3, 4.0: 1}
+skip rate by year: {'2020': {'sum': 57, 'count': 158, 'mean': 0.361}, '2021': {'sum': 68, 'count': 158, 'mean': 0.43}, '2022-01..04': {'sum': 4, 'count': 53, 'mean': 0.075}}
+I terciles (A-hist non-half days) cuts [ 9.83 16.07]; skip rate: {'low': {'sum': 73, 'count': 123, 'mean': 0.593}, 'mid': {'sum': 47, 'count': 123, 'mean': 0.382}, 'high': {'sum': 9, 'count': 123, 'mean': 0.073}}
+I median: skipped 9.3, traded 15.4
+
+=== H2 bearcall (primary): n 240
+win k0.5: 152/240 = 63.3% Wilson [57.1%, 69.2%]
+win k0.2: 153/240 = 63.7% Wilson [57.5%, 69.6%]
+mean k0.0: -73.3  95% [-137.9, -8.9]  97.5% [-147.5, +3.0]  one-sided p 0.9851
+mean k0.2: -79.8  95% [-145.0, -14.7]  97.5% [-154.8, -3.0]  one-sided p 0.9899
+mean k0.5: -89.7  95% [-156.2, -23.7]  97.5% [-166.0, -11.8]  one-sided p 0.9953
+mean k1.0: -106.2  95% [-175.0, -38.2]  97.5% [-184.6, -26.6]  one-sided p 0.9988
+sd k0.5 583; worst day -1311 (2022-03-16); best day +389 (2021-05-10)
+drop best 5 (k0.5): -99.8; drop worst 1: -84.6; max drawdown k0.5 -23773, k0.2 -21532; cumulative k0.5 -21531
+               cut   n  win_k0.5   k0.0   k0.2   k0.5   k1.0
+              2020 101     0.604 -137.0 -144.9 -156.8 -176.6
+              2021  90     0.678    2.6   -2.9  -11.3  -25.1
+       2022-01..04  49     0.612  -81.3  -87.0  -95.5 -109.7
+COVID 02-20..04-30  27     0.556 -239.0 -252.6 -273.0 -306.9
+      ex-COVID all 213     0.643  -52.3  -57.9  -66.5  -80.7
+     ex-COVID 2020  74     0.622  -99.8 -105.6 -114.4 -129.1
+               Mon  64     0.516 -253.1 -257.8 -264.8 -276.5
+               Tue  10     0.800  135.4  130.4  122.8  110.2
+               Wed  80     0.750   41.0   30.9   15.7   -9.6
+               Thu   7     0.857  233.5  229.3  223.1  212.8
+               Fri  79     0.570  -96.8 -101.8 -109.2 -121.6
+               EOM  17     0.529 -129.5 -135.1 -143.5 -157.4
+           not EOM 223     0.641  -69.0  -75.6  -85.6 -102.3
+       MWF not EOM 212     0.627  -87.4  -94.2 -104.4 -121.3
+COVID worst 5 (k0.5): [(datetime.date(2020, 2, 28), -1228), (datetime.date(2020, 3, 2), -1215), (datetime.date(2020, 3, 4), -1196), (datetime.date(2020, 3, 18), -1196), (datetime.date(2020, 3, 6), -1193)]
+ex-COVID k0.5 95% [-128.8, -1.5] p 0.9777
+cost 2020: n 101 SH median 0.225 mean 0.397; fee 3.22; E(k0.2)=11.2 E(k0.5)=23.0 E(k1.0)=42.9
+cost 2021: n 90 SH median 0.150 mean 0.277; fee 3.20; E(k0.2)=8.7 E(k0.5)=17.1 E(k1.0)=30.9
+cost 2022-01..04: n 49 SH median 0.200 mean 0.284; fee 3.26; E(k0.2)=8.9 E(k0.5)=17.5 E(k1.0)=31.7
+cost all: SH median 0.200 mean 0.329; fee 3.22; E(k0.2)=9.8 E(k0.5)=19.7 E(k1.0)=36.1
+H2 mechanism: mean credit/15 0.231 vs mean loss/15 0.277; P(settle > K) 0.433
+  short-leg distance: median 6.4, IQR 2.7..13.9; dist/I median 0.43; K < spot 21 days
+  drift settle - 14:00 spot: H2 trade days mean +0.91 by year {'2020': 3.41, '2021': -0.19, '2022-01..04': -2.23}
+  drift all non-half 0DTE days mean +0.39 by year {'2020': 2.32, '2021': -0.74, '2022-01..04': -2.01}
+  drift / I on H2 trade days mean +0.010
+
+=== PASS table H1 iron (P-0028)
+  1 k0.5 mean > 0              NO   -151.4
+  2 95% CI excludes 0          NO   [-249.1, -65.2]
+  3 97.5% CI excludes 0        NO   [-262.4, -53.4]
+  4 k1 mean > 0                NO   -184.3
+  5 2020 and 2021 k0.5 > 0     NO   2020 -166.8, 2021 -75.1
+  6 ex-COVID k0.5 > 0          NO   -134.2
+  7 drop best 5 k0.5 > 0       NO   -186.6
+  ALL 7: FAIL | posterior: p 0.9999, BF upper 1.00, posterior upper 5.0% (prior 5 %)
+
+=== PASS table H2 bear call (P-0029)
+  1 k0.5 mean > 0              NO   -89.7
+  2 95% CI excludes 0          NO   [-156.2, -23.7]
+  3 97.5% CI excludes 0        NO   [-166.0, -11.8]
+  4 k1 mean > 0                NO   -106.2
+  5 2020 and 2021 k0.5 > 0     NO   2020 -156.8, 2021 -11.3
+  6 ex-COVID k0.5 > 0          NO   -66.5
+  7 drop best 5 k0.5 > 0       NO   -99.8
+  ALL 7: FAIL | posterior: p 0.9953, BF upper 1.00, posterior upper 5.0% (prior 5 %)
+
+seed 20261110 | fees: 2026 IBKR/Cboe schedule applied to 2020-22

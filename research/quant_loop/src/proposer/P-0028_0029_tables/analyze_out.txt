@@ -1,0 +1,141 @@
+=== H1 (P-0028) primary: short iron fly, 14:00, w in {20,25,30,50,75} closest to 2*I, skip prev <= -1 %
+skips: {'no_prev_ret': 2, 'prev_ret<=-1%': 135, 'half_day': 9, 'no_atm_straddle': 1} | traded: 980 | of 1127 0DTE days
+set                      H1 iron ALL          H1 iron MWF      H1 iron MWF+EOM        H1 putfly ALL        H1 putfly MWF
+n                                980                  568                  584                  979                  568
+win_k0.2         59.6% [56.5%,62.6%]  60.2% [56.1%,64.2%]  59.4% [55.4%,63.3%]  59.4% [56.3%,62.5%]  60.2% [56.1%,64.2%]
+win_k0.5         59.5% [56.4%,62.5%]  60.2% [56.1%,64.2%]  59.4% [55.4%,63.3%]  58.9% [55.8%,62.0%]  59.9% [55.8%,63.8%]
+mean_k0.0                       97.9                 98.7                 84.6                 98.6                 99.2
+mean_k0.2                       91.2                 90.5                 76.6                 83.1                 80.3
+mean_k0.5                       81.2                 78.3                 64.5                 59.9                 52.0
+mean_k1.0                       64.6                 58.0                 44.5                 21.2                  4.8
+ci95_k0.0                 [+41,+159]           [+14,+186]            [+4,+169]           [+42,+160]           [+14,+187]
+ci975_k0.0                [+33,+167]            [+5,+197]            [-7,+179]           [+32,+168]            [+5,+198]
+p1_k0.0                       0.0001               0.0093               0.0196               0.0001               0.0093
+ci95_k0.2                 [+35,+152]            [+6,+178]            [-5,+161]           [+26,+144]            [-4,+168]
+ci975_k0.2                [+26,+160]            [-4,+189]           [-15,+172]           [+17,+153]           [-15,+179]
+p1_k0.2                       0.0007                0.017               0.0327               0.0018               0.0316
+ci95_k0.5                 [+24,+142]            [-7,+166]           [-17,+148]            [+3,+121]           [-33,+139]
+ci975_k0.5                [+16,+150]           [-17,+177]           [-28,+160]            [-6,+130]           [-44,+151]
+p1_k0.5                       0.0017               0.0362               0.0604                 0.02               0.1149
+ci95_k1.0                  [+8,+126]           [-28,+146]           [-39,+129]            [-37,+83]            [-83,+93]
+ci975_k1.0                 [-1,+134]           [-39,+157]           [-48,+140]            [-46,+91]           [-94,+104]
+p1_k1.0                       0.0138               0.0912               0.1437               0.2417               0.4538
+drop_best5_k0.5                 63.7                 51.1                 37.9                 42.3                 24.8
+worst_day_k0.5    -3980 (2026-06-17)   -3980 (2026-06-17)   -3980 (2026-06-17)   -4301 (2026-06-17)   -4301 (2026-06-17)
+sd_k0.5                        977.0               1026.0               1024.0                981.0               1034.0
+put fly unavailable at the chosen (K, w): 1 days
+          set  cut   n  win_k0.5  mean_k0.0  mean_k0.2  mean_k0.5  mean_k1.0
+  H1 iron ALL 2022 126     0.603      126.7      114.0       94.9       63.2
+  H1 iron ALL 2023 220     0.555       -6.6      -13.2      -23.0      -39.4
+  H1 iron ALL 2024 229     0.607      144.9      139.7      131.7      118.5
+  H1 iron ALL 2025 218     0.601      157.6      151.8      143.2      128.8
+  H1 iron ALL 2026 187     0.615       74.4       68.9       60.7       47.0
+  H1 iron ALL  Fri 190     0.647      155.1      150.6      143.8      132.6
+  H1 iron ALL  Mon 173     0.590       81.2       77.1       70.8       60.5
+  H1 iron ALL  Thu 197     0.589      133.6      128.9      121.9      110.2
+  H1 iron ALL  Tue 215     0.581       63.3       58.6       51.7       40.1
+  H1 iron ALL  Wed 205     0.571       61.1       46.3       24.0      -13.2
+  H1 iron ALL  EOM  46     0.413     -368.1     -373.1     -380.5     -392.8
+  H1 iron MWF 2022  74     0.608      131.0      114.2       89.1       47.3
+  H1 iron MWF 2023 126     0.579       -3.8      -11.8      -23.8      -43.8
+  H1 iron MWF 2024 134     0.597      127.2      121.1      112.1       97.0
+  H1 iron MWF 2025 127     0.614      155.5      148.9      138.9      122.3
+  H1 iron MWF 2026 107     0.617       93.8       87.1       76.9       60.1
+  H1 iron MWF  Fri 190     0.647      155.1      150.6      143.8      132.6
+  H1 iron MWF  Mon 173     0.590       81.2       77.1       70.8       60.5
+  H1 iron MWF  Wed 205     0.571       61.1       46.3       24.0      -13.2
+  H1 iron MWF  EOM  30     0.467     -343.1     -348.4     -356.3     -369.5
+H1 putfly ALL 2022 125     0.600      135.3      106.3       62.8       -9.8
+H1 putfly ALL 2023 220     0.545       -7.7      -22.0      -43.4      -79.2
+H1 putfly ALL 2024 229     0.598      142.8      129.7      110.1       77.4
+H1 putfly ALL 2025 218     0.601      157.6      145.0      126.0       94.5
+H1 putfly ALL 2026 187     0.610       76.0       62.0       40.8        5.6
+H1 putfly ALL  Fri 190     0.642      154.6      144.4      129.1      103.7
+H1 putfly ALL  Mon 173     0.590       81.7       72.3       58.1       34.5
+H1 putfly ALL  Thu 196     0.587      135.8      124.5      107.6       79.4
+H1 putfly ALL  Tue 215     0.567       63.1       52.8       37.2       11.3
+H1 putfly ALL  Wed 205     0.566       62.5       27.6      -24.7     -112.0
+H1 putfly ALL  EOM  46     0.391     -369.0     -381.2     -399.5     -430.0
+width chosen (ALL): {20: 374, 25: 197, 30: 254, 50: 118, 75: 37} | MWF: {20: 216, 25: 116, 30: 136, 50: 70, 75: 30}
+w/I: median 2.02, share < 1.5: 1.0% | I median 12.7, 90% 23.8, max 86.3
+cost/lot ALL: H median 0.22 pts mean 0.33; fee mean 6.38; E(k0.2)=13.1  E(k0.5)=23.1  E(k1)=39.7 USD | putfly E(k0.5)=44.5
+cost/lot MWF: H median 0.22 pts mean 0.41; fee mean 6.39; E(k0.2)=14.5  E(k0.5)=26.7  E(k1)=47.1 USD | putfly E(k0.5)=52.9
+  2022: H median 0.33, mean 0.64, E(k0.5) 38.2
+  2023: H median 0.22, mean 0.33, E(k0.5) 22.8
+  2024: H median 0.20, mean 0.26, E(k0.5) 19.6
+  2025: H median 0.22, mean 0.29, E(k0.5) 20.8
+  2026: H median 0.18, mean 0.27, E(k0.5) 20.1
+
+=== H2 (P-0029) primary: bear call 15 wide, 14:00, mid credit in (3,4] closest to 3.5, tie -> higher K
+skips: {'no_candidate': 352, 'half_day': 9} | traded: 766 | candidates per day: {0: 352, 1: 692, 2: 63, 3: 6, 4: 2, 5: 2, 7: 1}
+set                           H2 ALL               H2 MWF           H2 MWF+EOM
+n                                766                  456                  469
+win_k0.2         72.5% [69.2%,75.5%]  72.6% [68.3%,76.5%]  72.3% [68.1%,76.1%]
+win_k0.5         72.2% [68.9%,75.2%]  72.1% [67.9%,76.1%]  71.9% [67.6%,75.7%]
+mean_k0.0                       31.4                 27.0                 23.1
+mean_k0.2                       28.0                 23.0                 19.2
+mean_k0.5                       23.0                 16.9                 13.2
+mean_k1.0                       14.6                  6.9                  3.2
+ci95_k0.0                   [-4,+66]            [-26,+78]            [-32,+76]
+ci975_k0.0                 [-10,+71]            [-33,+84]            [-40,+82]
+p1_k0.0                       0.0396               0.1581               0.1952
+ci95_k0.2                   [-7,+62]            [-31,+74]            [-36,+72]
+ci975_k0.2                 [-13,+67]            [-38,+80]            [-44,+78]
+p1_k0.2                       0.0576               0.1972               0.2409
+ci95_k0.5                  [-12,+57]            [-37,+68]            [-43,+66]
+ci975_k0.5                 [-18,+63]            [-45,+75]            [-51,+72]
+p1_k0.5                       0.0966                0.262                0.309
+ci95_k1.0                  [-21,+49]            [-48,+59]            [-54,+57]
+ci975_k1.0                 [-27,+54]            [-56,+65]            [-62,+63]
+p1_k1.0                       0.1991               0.3945               0.4541
+drop_best5_k0.5                 20.6                 12.8                  9.1
+worst_day_k0.5    -1246 (2023-02-01)   -1246 (2023-02-01)   -1246 (2023-02-01)
+sd_k0.5                        524.0                529.0                533.0
+   set  cut   n  win_k0.5  mean_k0.0  mean_k0.2  mean_k0.5  mean_k1.0
+H2 ALL 2022 146     0.712       34.2       28.5       19.9        5.5
+H2 ALL 2023 151     0.642      -39.9      -42.8      -47.3      -54.7
+H2 ALL 2024 149     0.758       76.7       74.0       69.8       63.0
+H2 ALL 2025 173     0.711        9.7        6.7        2.2       -5.3
+H2 ALL 2026 147     0.789       81.2       78.8       75.1       69.0
+H2 ALL  Fri 162     0.710        2.9        0.6       -2.9       -8.7
+H2 ALL  Mon 136     0.750       55.8       53.4       49.9       44.0
+H2 ALL  Thu 163     0.761       75.6       73.3       69.7       63.8
+H2 ALL  Tue 147     0.680       -4.3       -6.7      -10.2      -16.1
+H2 ALL  Wed 158     0.709       27.0       19.8        8.9       -9.2
+H2 ALL  EOM  40     0.550     -246.9     -249.7     -253.8     -260.8
+H2 MWF 2022  89     0.685       19.5       12.1        1.0      -17.5
+H2 MWF 2023  88     0.614      -81.5      -84.9      -90.1      -98.7
+H2 MWF 2024  83     0.795       92.2       89.1       84.3       76.4
+H2 MWF 2025 104     0.692      -22.0      -25.5      -30.7      -39.4
+H2 MWF 2026  92     0.826      134.8      132.0      127.8      120.9
+H2 MWF  Fri 162     0.710        2.9        0.6       -2.9       -8.7
+H2 MWF  Mon 136     0.750       55.8       53.4       49.9       44.0
+H2 MWF  Wed 158     0.709       27.0       19.8        8.9       -9.2
+H2 MWF  EOM  27     0.519     -311.3     -314.4     -318.9     -326.6
+short strike OTM distance: median 6.8, IQR 3.6-11.6; dist/I median 0.45; K < spot: 22 days
+cost/lot ALL: H median 0.12 mean 0.17; fee 3.22; E(k0.2)=6.6 E(k0.5)=11.6
+cost/lot MWF: H median 0.12 mean 0.20; fee 3.23; E(k0.2)=7.3 E(k0.5)=13.3
+H2 skipped days by year: {2022: 20, 2023: 97, 2024: 100, 2025: 74, 2026: 61}
+
+=== MWF training resampled to an A-hist-sized sample (122 ISO weeks, stationary blocks of 4)
+H1 iron MWF k0.0: mean +98.7; A-hist-size 95% range [-18,+219], SE 60; P(mean>0) 0.95; P(mean > 2.24*SE) 0.28
+H1 iron MWF k0.2: mean +90.5; A-hist-size 95% range [-26,+211], SE 60; P(mean>0) 0.93; P(mean > 2.24*SE) 0.23
+H1 iron MWF k0.5: mean +78.3; A-hist-size 95% range [-38,+199], SE 60; P(mean>0) 0.91; P(mean > 2.24*SE) 0.17
+H1 iron MWF k1.0: mean +58.0; A-hist-size 95% range [-61,+180], SE 61; P(mean>0) 0.84; P(mean > 2.24*SE) 0.10
+H1 iron MWF+EOM k0.0: mean +84.6; A-hist-size 95% range [-28,+200], SE 58; P(mean>0) 0.93; P(mean > 2.24*SE) 0.22
+H1 iron MWF+EOM k0.2: mean +76.6; A-hist-size 95% range [-37,+192], SE 58; P(mean>0) 0.91; P(mean > 2.24*SE) 0.18
+H1 iron MWF+EOM k0.5: mean +64.5; A-hist-size 95% range [-49,+180], SE 58; P(mean>0) 0.87; P(mean > 2.24*SE) 0.13
+H1 iron MWF+EOM k1.0: mean +44.5; A-hist-size 95% range [-70,+160], SE 59; P(mean>0) 0.78; P(mean > 2.24*SE) 0.07
+H2 MWF k0.0: mean +27.0; A-hist-size 95% range [-44,+96], SE 36; P(mean>0) 0.78; P(mean > 2.24*SE) 0.07
+H2 MWF k0.2: mean +23.0; A-hist-size 95% range [-48,+92], SE 36; P(mean>0) 0.75; P(mean > 2.24*SE) 0.05
+H2 MWF k0.5: mean +16.9; A-hist-size 95% range [-55,+86], SE 36; P(mean>0) 0.69; P(mean > 2.24*SE) 0.04
+H2 MWF k1.0: mean +6.9; A-hist-size 95% range [-66,+78], SE 37; P(mean>0) 0.59; P(mean > 2.24*SE) 0.02
+H2 MWF+EOM k0.0: mean +23.1; A-hist-size 95% range [-48,+93], SE 37; P(mean>0) 0.74; P(mean > 2.24*SE) 0.05
+H2 MWF+EOM k0.2: mean +19.2; A-hist-size 95% range [-53,+89], SE 37; P(mean>0) 0.71; P(mean > 2.24*SE) 0.04
+H2 MWF+EOM k0.5: mean +13.2; A-hist-size 95% range [-60,+84], SE 37; P(mean>0) 0.65; P(mean > 2.24*SE) 0.03
+H2 MWF+EOM k1.0: mean +3.2; A-hist-size 95% range [-71,+74], SE 38; P(mean>0) 0.55; P(mean > 2.24*SE) 0.01
+
+H1 ALL: mean |settle - spot_14|/I = 0.907 (median 0.702); P(|settle-K| < w) = 0.906; mean credit/w = 0.447; mean min(|settle-K|,w)/w = 0.417
+H1 MWF: mean |settle - spot_14|/I = 0.909 (median 0.695); P(|settle-K| < w) = 0.905; mean credit/w = 0.446; mean min(|settle-K|,w)/w = 0.417
+H2 ALL: P(settle > K_short) = 0.367; mean credit/15 = 0.232; mean loss/15 = 0.209; mean (settle - spot_14) = -0.17 pts
+H2 MWF: P(settle > K_short) = 0.373; mean credit/15 = 0.232; mean loss/15 = 0.212; mean (settle - spot_14) = +0.17 pts

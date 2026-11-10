@@ -1,0 +1,205 @@
+K=5; days 523 2024-10-01..2026-10-30; no costs; sign convention: G follow the gap, M long winner/short loser, R follow the move
+
+================ all modules ================
+
+--- G  gap >= 3% at the open, hold open -> close
+  both sides: trades 8586, dates 488, names 379, win rate A 46.1%  B 47.3%, per-trade sd A 5.55%  B 3.05%
+    A  single name                     mean -0.154%  t -1.09  per-date sd 3.12%  mean/sd -0.049
+    B  basket of the K hot names       mean -0.033%  t -0.44  per-date sd 1.65%  mean/sd -0.020
+    S  module without the name         mean -0.002%  t -0.03  per-date sd 1.50%  mean/sd -0.002
+    X  = A - S  stock-specific part    mean -0.152%  t -1.32  per-date sd 2.55%  mean/sd -0.060
+    A - B  (paired)                    mean -0.122%  t -1.32  per-date sd 2.04%  mean/sd -0.060
+  LONG signals: trades 4362, dates 444, names 349, win rate A 43.5%  B 45.0%, per-trade sd A 5.58%  B 2.96%
+    A  single name                     mean -0.282%  t -1.25  per-date sd 4.76%  mean/sd -0.059
+    B  basket of the K hot names       mean -0.091%  t -0.89  per-date sd 2.16%  mean/sd -0.042
+    S  module without the name         mean -0.044%  t -0.48  per-date sd 1.92%  mean/sd -0.023
+    X  = A - S  stock-specific part    mean -0.239%  t -1.20  per-date sd 4.19%  mean/sd -0.057
+    A - B  (paired)                    mean -0.191%  t -1.20  per-date sd 3.36%  mean/sd -0.057
+  SHORT signals: trades 4224, dates 430, names 358, win rate A 48.7%  B 49.7%, per-trade sd A 5.52%  B 3.14%
+    A  single name                     mean +0.401%  t +1.66  per-date sd 5.01%  mean/sd +0.080
+    B  basket of the K hot names       mean +0.243%  t +2.31  per-date sd 2.19%  mean/sd +0.111
+    S  module without the name         mean +0.204%  t +2.20  per-date sd 1.92%  mean/sd +0.106
+    X  = A - S  stock-specific part    mean +0.197%  t +0.91  per-date sd 4.46%  mean/sd +0.044
+    A - B  (paired)                    mean +0.157%  t +0.91  per-date sd 3.57%  mean/sd +0.044
+  first half: A -0.360%  B -0.118%  (dates 266)
+  second half: A +0.093%  B +0.069%  (dates 222)
+
+--- M  20-day winner long / loser short within the hot set, hold 5 days
+  both sides: trades 8596, dates 98, names 401, win rate A 50.5%  B 50.0%, per-trade sd A 11.35%  B 5.43%
+    A  single name                     mean -0.087%  t -0.67  per-date sd 1.28%  mean/sd -0.068
+    B  basket of the K hot names       mean -0.000%  t -0.83  per-date sd 0.00%  mean/sd -0.084
+    S  module without the name         mean +0.022%  t +0.67  per-date sd 0.32%  mean/sd +0.068
+    X  = A - S  stock-specific part    mean -0.109%  t -0.67  per-date sd 1.60%  mean/sd -0.068
+    A - B  (paired)                    mean -0.087%  t -0.67  per-date sd 1.28%  mean/sd -0.068
+  LONG signals: trades 4298, dates 98, names 368, win rate A 51.2%  B 51.4%, per-trade sd A 13.89%  B 5.43%
+    A  single name                     mean +0.170%  t +0.47  per-date sd 3.58%  mean/sd +0.048
+    B  basket of the K hot names       mean +0.247%  t +0.97  per-date sd 2.52%  mean/sd +0.098
+    S  module without the name         mean +0.267%  t +1.09  per-date sd 2.41%  mean/sd +0.111
+    X  = A - S  stock-specific part    mean -0.097%  t -0.42  per-date sd 2.30%  mean/sd -0.042
+    A - B  (paired)                    mean -0.077%  t -0.42  per-date sd 1.84%  mean/sd -0.042
+  SHORT signals: trades 4298, dates 98, names 369, win rate A 49.7%  B 48.6%, per-trade sd A 8.05%  B 5.43%
+    A  single name                     mean -0.344%  t -1.16  per-date sd 2.94%  mean/sd -0.117
+    B  basket of the K hot names       mean -0.247%  t -0.97  per-date sd 2.52%  mean/sd -0.098
+    S  module without the name         mean -0.223%  t -0.88  per-date sd 2.50%  mean/sd -0.089
+    X  = A - S  stock-specific part    mean -0.121%  t -0.81  per-date sd 1.48%  mean/sd -0.082
+    A - B  (paired)                    mean -0.097%  t -0.81  per-date sd 1.18%  mean/sd -0.082
+  first half: A -0.104%  B -0.000%  (dates 49)
+  second half: A -0.070%  B -0.000%  (dates 49)
+
+--- R  |1-day move| >= 5%, hold the next day
+  both sides: trades 10358, dates 492, names 393, win rate A 48.6%  B 49.0%, per-trade sd A 7.46%  B 3.68%
+    A  single name                     mean -0.003%  t -0.02  per-date sd 3.27%  mean/sd -0.001
+    B  basket of the K hot names       mean -0.078%  t -0.95  per-date sd 1.83%  mean/sd -0.043
+    S  module without the name         mean -0.097%  t -1.31  per-date sd 1.65%  mean/sd -0.059
+    X  = A - S  stock-specific part    mean +0.095%  t +0.85  per-date sd 2.46%  mean/sd +0.038
+    A - B  (paired)                    mean +0.076%  t +0.85  per-date sd 1.97%  mean/sd +0.038
+  LONG signals: trades 5245, dates 466, names 372, win rate A 49.3%  B 51.0%, per-trade sd A 7.15%  B 3.50%
+    A  single name                     mean +0.088%  t +0.49  per-date sd 3.90%  mean/sd +0.023
+    B  basket of the K hot names       mean +0.089%  t +0.66  per-date sd 2.90%  mean/sd +0.031
+    S  module without the name         mean +0.089%  t +0.64  per-date sd 3.01%  mean/sd +0.030
+    X  = A - S  stock-specific part    mean -0.001%  t -0.01  per-date sd 3.41%  mean/sd -0.000
+    A - B  (paired)                    mean -0.001%  t -0.01  per-date sd 2.72%  mean/sd -0.000
+  SHORT signals: trades 5113, dates 462, names 376, win rate A 47.9%  B 47.0%, per-trade sd A 7.75%  B 3.87%
+    A  single name                     mean -0.107%  t -0.44  per-date sd 5.29%  mean/sd -0.020
+    B  basket of the K hot names       mean -0.119%  t -1.01  per-date sd 2.53%  mean/sd -0.047
+    S  module without the name         mean -0.122%  t -1.18  per-date sd 2.21%  mean/sd -0.055
+    X  = A - S  stock-specific part    mean +0.015%  t +0.07  per-date sd 4.40%  mean/sd +0.003
+    A - B  (paired)                    mean +0.012%  t +0.07  per-date sd 3.52%  mean/sd +0.003
+  first half: A -0.036%  B -0.133%  (dates 269)
+  second half: A +0.037%  B -0.013%  (dates 223)
+
+================ tech modules ================
+
+--- G  gap >= 3% at the open, hold open -> close
+  both sides: trades 1768, dates 417, names 47, win rate A 47.7%  B 47.3%, per-trade sd A 5.01%  B 2.72%
+    A  single name                     mean +0.049%  t +0.23  per-date sd 4.23%  mean/sd +0.011
+    B  basket of the K hot names       mean -0.072%  t -0.73  per-date sd 2.02%  mean/sd -0.036
+    S  module without the name         mean -0.102%  t -1.16  per-date sd 1.80%  mean/sd -0.057
+    X  = A - S  stock-specific part    mean +0.151%  t +0.86  per-date sd 3.60%  mean/sd +0.042
+    A - B  (paired)                    mean +0.121%  t +0.86  per-date sd 2.88%  mean/sd +0.042
+  LONG signals: trades 926, dates 294, names 42, win rate A 45.2%  B 46.5%, per-trade sd A 5.27%  B 2.66%
+    A  single name                     mean +0.002%  t +0.01  per-date sd 4.72%  mean/sd +0.001
+    B  basket of the K hot names       mean -0.039%  t -0.30  per-date sd 2.26%  mean/sd -0.017
+    S  module without the name         mean -0.050%  t -0.41  per-date sd 2.07%  mean/sd -0.024
+    X  = A - S  stock-specific part    mean +0.052%  t +0.21  per-date sd 4.19%  mean/sd +0.013
+    A - B  (paired)                    mean +0.042%  t +0.21  per-date sd 3.35%  mean/sd +0.013
+  SHORT signals: trades 842, dates 244, names 47, win rate A 50.5%  B 48.1%, per-trade sd A 4.71%  B 2.80%
+    A  single name                     mean -0.084%  t -0.33  per-date sd 3.95%  mean/sd -0.021
+    B  basket of the K hot names       mean -0.059%  t -0.41  per-date sd 2.22%  mean/sd -0.026
+    S  module without the name         mean -0.052%  t -0.38  per-date sd 2.15%  mean/sd -0.024
+    X  = A - S  stock-specific part    mean -0.031%  t -0.14  per-date sd 3.42%  mean/sd -0.009
+    A - B  (paired)                    mean -0.025%  t -0.14  per-date sd 2.73%  mean/sd -0.009
+  first half: A +0.046%  B -0.140%  (dates 257)
+  second half: A +0.052%  B +0.037%  (dates 160)
+
+--- M  20-day winner long / loser short within the hot set, hold 5 days
+  both sides: trades 978, dates 98, names 47, win rate A 49.9%  B 50.0%, per-trade sd A 10.26%  B 5.99%
+    A  single name                     mean -0.067%  t -0.20  per-date sd 3.38%  mean/sd -0.020
+    B  basket of the K hot names       mean +0.000%  t +1.64  per-date sd 0.00%  mean/sd +0.166
+    S  module without the name         mean +0.017%  t +0.20  per-date sd 0.85%  mean/sd +0.020
+    X  = A - S  stock-specific part    mean -0.084%  t -0.20  per-date sd 4.23%  mean/sd -0.020
+    A - B  (paired)                    mean -0.067%  t -0.20  per-date sd 3.38%  mean/sd -0.020
+  LONG signals: trades 489, dates 98, names 44, win rate A 50.5%  B 51.3%, per-trade sd A 11.07%  B 5.95%
+    A  single name                     mean +0.453%  t +0.64  per-date sd 7.00%  mean/sd +0.065
+    B  basket of the K hot names       mean +0.684%  t +1.52  per-date sd 4.46%  mean/sd +0.153
+    S  module without the name         mean +0.741%  t +1.70  per-date sd 4.33%  mean/sd +0.171
+    X  = A - S  stock-specific part    mean -0.289%  t -0.52  per-date sd 5.53%  mean/sd -0.052
+    A - B  (paired)                    mean -0.231%  t -0.52  per-date sd 4.42%  mean/sd -0.052
+  SHORT signals: trades 489, dates 98, names 42, win rate A 49.3%  B 48.7%, per-trade sd A 9.36%  B 5.95%
+    A  single name                     mean -0.586%  t -1.05  per-date sd 5.54%  mean/sd -0.106
+    B  basket of the K hot names       mean -0.684%  t -1.52  per-date sd 4.46%  mean/sd -0.153
+    S  module without the name         mean -0.708%  t -1.53  per-date sd 4.58%  mean/sd -0.155
+    X  = A - S  stock-specific part    mean +0.122%  t +0.28  per-date sd 4.35%  mean/sd +0.028
+    A - B  (paired)                    mean +0.097%  t +0.28  per-date sd 3.48%  mean/sd +0.028
+  first half: A -0.185%  B +0.000%  (dates 48)
+  second half: A +0.047%  B +0.000%  (dates 50)
+
+--- R  |1-day move| >= 5%, hold the next day
+  both sides: trades 1909, dates 452, names 48, win rate A 50.5%  B 50.1%, per-trade sd A 6.14%  B 3.35%
+    A  single name                     mean +0.113%  t +0.46  per-date sd 5.18%  mean/sd +0.022
+    B  basket of the K hot names       mean +0.048%  t +0.41  per-date sd 2.48%  mean/sd +0.019
+    S  module without the name         mean +0.032%  t +0.30  per-date sd 2.21%  mean/sd +0.014
+    X  = A - S  stock-specific part    mean +0.081%  t +0.39  per-date sd 4.42%  mean/sd +0.018
+    A - B  (paired)                    mean +0.065%  t +0.39  per-date sd 3.54%  mean/sd +0.018
+  LONG signals: trades 992, dates 326, names 46, win rate A 52.8%  B 55.4%, per-trade sd A 5.51%  B 3.02%
+    A  single name                     mean +0.651%  t +2.27  per-date sd 5.18%  mean/sd +0.126
+    B  basket of the K hot names       mean +0.241%  t +1.65  per-date sd 2.64%  mean/sd +0.091
+    S  module without the name         mean +0.138%  t +1.03  per-date sd 2.42%  mean/sd +0.057
+    X  = A - S  stock-specific part    mean +0.513%  t +2.10  per-date sd 4.41%  mean/sd +0.116
+    A - B  (paired)                    mean +0.410%  t +2.10  per-date sd 3.53%  mean/sd +0.116
+  SHORT signals: trades 917, dates 287, names 48, win rate A 48.0%  B 44.3%, per-trade sd A 6.72%  B 3.66%
+    A  single name                     mean -0.600%  t -1.68  per-date sd 6.05%  mean/sd -0.099
+    B  basket of the K hot names       mean -0.244%  t -1.32  per-date sd 3.14%  mean/sd -0.078
+    S  module without the name         mean -0.155%  t -0.91  per-date sd 2.89%  mean/sd -0.054
+    X  = A - S  stock-specific part    mean -0.444%  t -1.48  per-date sd 5.08%  mean/sd -0.087
+    A - B  (paired)                    mean -0.355%  t -1.48  per-date sd 4.06%  mean/sd -0.087
+  first half: A +0.211%  B +0.039%  (dates 269)
+  second half: A -0.031%  B +0.062%  (dates 183)
+
+================ smallcap 15 (hindsight list) ================
+
+--- G  gap >= 3% at the open, hold open -> close
+  both sides: trades 862, dates 370, names 12, win rate A 47.1%  B 48.3%, per-trade sd A 6.75%  B 4.64%
+    A  single name                     mean -0.388%  t -1.29  per-date sd 5.79%  mean/sd -0.067
+    B  basket of the K hot names       mean -0.273%  t -1.27  per-date sd 4.13%  mean/sd -0.066
+    S  module without the name         mean -0.244%  t -1.14  per-date sd 4.12%  mean/sd -0.059
+    X  = A - S  stock-specific part    mean -0.144%  t -0.62  per-date sd 4.49%  mean/sd -0.032
+    A - B  (paired)                    mean -0.115%  t -0.62  per-date sd 3.59%  mean/sd -0.032
+  LONG signals: trades 464, dates 234, names 12, win rate A 43.5%  B 47.8%, per-trade sd A 6.91%  B 4.55%
+    A  single name                     mean -0.162%  t -0.39  per-date sd 6.44%  mean/sd -0.025
+    B  basket of the K hot names       mean -0.216%  t -0.75  per-date sd 4.38%  mean/sd -0.049
+    S  module without the name         mean -0.229%  t -0.80  per-date sd 4.41%  mean/sd -0.052
+    X  = A - S  stock-specific part    mean +0.067%  t +0.19  per-date sd 5.39%  mean/sd +0.012
+    A - B  (paired)                    mean +0.054%  t +0.19  per-date sd 4.31%  mean/sd +0.012
+  SHORT signals: trades 398, dates 167, names 12, win rate A 51.3%  B 48.7%, per-trade sd A 6.57%  B 4.74%
+    A  single name                     mean -0.245%  t -0.51  per-date sd 6.17%  mean/sd -0.040
+    B  basket of the K hot names       mean -0.290%  t -0.85  per-date sd 4.40%  mean/sd -0.066
+    S  module without the name         mean -0.302%  t -0.89  per-date sd 4.39%  mean/sd -0.069
+    X  = A - S  stock-specific part    mean +0.057%  t +0.15  per-date sd 4.78%  mean/sd +0.012
+    A - B  (paired)                    mean +0.045%  t +0.15  per-date sd 3.83%  mean/sd +0.012
+  first half: A -0.855%  B -0.560%  (dates 194)
+  second half: A +0.127%  B +0.043%  (dates 176)
+
+--- M  20-day winner long / loser short within the hot set, hold 5 days
+  both sides: trades 196, dates 98, names 13, win rate A 49.0%  B 50.0%, per-trade sd A 26.09%  B 12.37%
+    A  single name                     mean +1.066%  t +0.59  per-date sd 18.01%  mean/sd +0.059
+    B  basket of the K hot names       mean +0.000%  t +nan  per-date sd 0.00%  mean/sd +nan
+    S  module without the name         mean -0.267%  t -0.59  per-date sd 4.50%  mean/sd -0.059
+    X  = A - S  stock-specific part    mean +1.333%  t +0.59  per-date sd 22.51%  mean/sd +0.059
+    A - B  (paired)                    mean +1.066%  t +0.59  per-date sd 18.01%  mean/sd +0.059
+  LONG signals: trades 98, dates 98, names 11, win rate A 49.0%  B 60.2%, per-trade sd A 34.57%  B 12.17%
+    A  single name                     mean +3.382%  t +0.97  per-date sd 34.57%  mean/sd +0.098
+    B  basket of the K hot names       mean +2.330%  t +1.89  per-date sd 12.17%  mean/sd +0.191
+    S  module without the name         mean +2.067%  t +1.85  per-date sd 11.04%  mean/sd +0.187
+    X  = A - S  stock-specific part    mean +1.315%  t +0.38  per-date sd 34.31%  mean/sd +0.038
+    A - B  (paired)                    mean +1.052%  t +0.38  per-date sd 27.45%  mean/sd +0.038
+  SHORT signals: trades 98, dates 98, names 12, win rate A 49.0%  B 39.8%, per-trade sd A 12.77%  B 12.17%
+    A  single name                     mean -1.249%  t -0.97  per-date sd 12.77%  mean/sd -0.098
+    B  basket of the K hot names       mean -2.330%  t -1.89  per-date sd 12.17%  mean/sd -0.191
+    S  module without the name         mean -2.600%  t -1.85  per-date sd 13.89%  mean/sd -0.187
+    X  = A - S  stock-specific part    mean +1.351%  t +0.86  per-date sd 15.57%  mean/sd +0.087
+    A - B  (paired)                    mean +1.081%  t +0.86  per-date sd 12.46%  mean/sd +0.087
+  first half: A +2.215%  B +0.000%  (dates 49)
+  second half: A -0.082%  B +0.000%  (dates 49)
+
+--- R  |1-day move| >= 5%, hold the next day
+  both sides: trades 1005, dates 424, names 13, win rate A 49.5%  B 50.6%, per-trade sd A 7.82%  B 5.31%
+    A  single name                     mean +0.186%  t +0.56  per-date sd 6.82%  mean/sd +0.027
+    B  basket of the K hot names       mean +0.125%  t +0.55  per-date sd 4.69%  mean/sd +0.027
+    S  module without the name         mean +0.110%  t +0.49  per-date sd 4.65%  mean/sd +0.024
+    X  = A - S  stock-specific part    mean +0.076%  t +0.29  per-date sd 5.35%  mean/sd +0.014
+    A - B  (paired)                    mean +0.061%  t +0.29  per-date sd 4.28%  mean/sd +0.014
+  LONG signals: trades 538, dates 279, names 12, win rate A 51.3%  B 56.7%, per-trade sd A 7.93%  B 4.61%
+    A  single name                     mean +0.685%  t +1.48  per-date sd 7.72%  mean/sd +0.089
+    B  basket of the K hot names       mean +0.406%  t +1.41  per-date sd 4.81%  mean/sd +0.085
+    S  module without the name         mean +0.337%  t +1.21  per-date sd 4.66%  mean/sd +0.072
+    X  = A - S  stock-specific part    mean +0.348%  t +0.94  per-date sd 6.22%  mean/sd +0.056
+    A - B  (paired)                    mean +0.279%  t +0.94  per-date sd 4.98%  mean/sd +0.056
+  SHORT signals: trades 467, dates 217, names 13, win rate A 47.3%  B 43.7%, per-trade sd A 7.65%  B 5.97%
+    A  single name                     mean -0.672%  t -1.42  per-date sd 7.00%  mean/sd -0.096
+    B  basket of the K hot names       mean -0.256%  t -0.66  per-date sd 5.75%  mean/sd -0.045
+    S  module without the name         mean -0.152%  t -0.39  per-date sd 5.81%  mean/sd -0.026
+    X  = A - S  stock-specific part    mean -0.520%  t -1.57  per-date sd 4.88%  mean/sd -0.107
+    A - B  (paired)                    mean -0.416%  t -1.57  per-date sd 3.90%  mean/sd -0.107
+  first half: A +0.410%  B +0.052%  (dates 219)
+  second half: A -0.053%  B +0.203%  (dates 205)

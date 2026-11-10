@@ -1,0 +1,23 @@
+symbols 40, entries 2023-10-31 .. 2024-10-28, last expiry 2024-11-15
+
+=== pool ===
+ P-0021 (long 3w call, static hedge):
+  Δ0.35 k0.5: n 1879 mean -0.074 [-0.813,+0.699] Bonf[-0.895,+0.803] med -0.935 trim2% -0.422 syms+ 17/40 ex-MSTR -0.190 ex-best5wk -0.539
+  Δ0.35 k1: n 1879 mean -0.279 [-1.043,+0.516] Bonf[-1.127,+0.625] med -1.155 trim2% -0.597 syms+ 16/40 ex-MSTR -0.396 ex-best5wk -0.754
+  Δ0.35 k0: n 1879 mean +0.131 [-0.582,+0.883] Bonf[-0.666,+0.984] med -0.829 trim2% -0.243 syms+ 22/40 ex-MSTR +0.017 ex-best5wk -0.325
+  Δ0.25 k0.5: n 1932 mean -0.159 [-0.773,+0.485] Bonf[-0.849,+0.572] med -1.064 trim2% -0.589 syms+ 17/40 ex-MSTR -0.273 ex-best5wk -0.542
+  Δ0.5 k0.5: n 1836 mean -0.112 [-0.876,+0.716] Bonf[-0.968,+0.829] med -0.951 trim2% -0.365 syms+ 17/40 ex-MSTR -0.218 ex-best5wk -0.585
+  Δ0.15 k0.5: n 2004 mean -0.208 [-0.660,+0.273] Bonf[-0.710,+0.337] med -0.992 trim2% -0.669 syms+ 14/40 ex-SMCI -0.304 ex-best5wk -0.522
+ P-0021 interpretation check (same rule, daily hedge):
+  Δ0.35 daily k0.5: n 1879 mean -0.470 [-0.706,-0.248] Bonf[-0.738,-0.221] med -0.635 trim2% -0.521 syms+ 9/40 ex-SMCI -0.545 ex-best5wk -0.628
+  Δ0.35 daily k0: n 1879 mean -0.265 [-0.485,-0.062] Bonf[-0.513,-0.035] med -0.481 trim2% -0.344 syms+ 14/40 ex-SMCI -0.336 ex-best5wk -0.419
+  Δ0.35 daily k1: n 1879 mean -0.675 [-0.935,-0.432] Bonf[-0.970,-0.405] med -0.761 trim2% -0.695 syms+ 5/40 ex-SMCI -0.754 ex-best5wk -0.836
+ P-0022 (short weekly put after ret5 > 0.0948, daily hedge):
+  signal k0.5: n 555 mean +0.107 [-0.079,+0.275] Bonf[-0.104,+0.297] med +0.116 trim2% +0.133 syms+ 22/40 ex-UPST +0.075 ex-best5wk -0.059
+  signal k0: n 555 mean +0.166 [-0.019,+0.334] Bonf[-0.044,+0.357] med +0.154 trim2% +0.186 syms+ 26/40 ex-UPST +0.134 ex-best5wk -0.003
+  signal k1: n 555 mean +0.049 [-0.141,+0.215] Bonf[-0.167,+0.239] med +0.084 trim2% +0.079 syms+ 19/40 ex-UPST +0.015 ex-best5wk -0.115
+  signal Δ-0.25 k0.5: n 260 mean +0.047 [-0.228,+0.271] Bonf[-0.274,+0.301] med +0.153 trim2% +0.085 syms+ 21/40 ex-AMC +0.002 ex-best5wk -0.176
+  signal Δ-0.1 k0.5: n 295 mean +0.160 [+0.029,+0.286] Bonf[+0.010,+0.306] med +0.102 trim2% +0.157 syms+ 27/40 ex-UPST +0.130 ex-best5wk +0.016
+  control same weeks ret5<=cut k0.5: n 2722 mean +0.060 [-0.053,+0.152] Bonf[-0.071,+0.163] med +0.131 trim2% +0.124 syms+ 25/40 ex-AMC +0.048 ex-best5wk -0.018
+  all weeks, no signal filter k0.5: n 3545 mean +0.074 [-0.005,+0.153] Bonf[-0.017,+0.165] med +0.138 trim2% +0.136 syms+ 25/40 ex-AMC +0.061 ex-best5wk +0.005
+

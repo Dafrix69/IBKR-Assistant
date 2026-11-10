@@ -1,0 +1,62 @@
+V-0027 train: pools ['20181031', '20191031', '20201030', '20211029', '20221031']; cycles 54; entry weeks grid 249 (2018-12-17 .. 2023-09-18); seed 270270
+stock-cycle rows 1720; defect-excluded 20 ({'exclude_span': 20}); IVOL missing 24; VOV missing 155
+ranked per cycle median 38; Q5 picked 316, traded 300; Q5 skipped {'no_atm': 8, 'no_quote': 7, 'no_entry_or_settle': 1}
+
+== MAIN (P-0027 structure): Q5 short ATM straddle, one strike, net-delta hedged daily, held to M, % of S_E ==
+Q5: n  300 | k0 +2.122 [+0.39,+3.55] | k0.5 +1.601 [-0.17,+3.03] p1s 0.0350 | k1 +1.080 [-0.75,+2.52] | med +2.637 trim2% +2.071
+   win rate k0.5 195/300 = 0.650, Wilson 95% [0.594, 0.702]
+   pool 20181031: n  41 k0 +0.417 k0.5 -0.147 [-4.06,+3.95] k1 -0.712 med +1.514
+   pool 20191031: n  30 k0 -1.675 k0.5 -2.713 [-9.86,+3.55] k1 -3.750 med +0.469
+   pool 20201030: n  84 k0 +1.235 k0.5 +0.873 [-2.97,+4.08] k1 +0.512 med +2.392
+   pool 20211029: n  74 k0 +4.271 k0.5 +3.630 [+0.31,+5.39] k1 +2.990 med +3.335
+   pool 20221031: n  71 k0 +3.522 k0.5 +3.179 [+0.37,+5.81] k1 +2.836 med +3.749
+   entry year 2018: n   4 k0.5 +3.475 med +2.772
+   entry year 2019: n  40 k0.5 -0.169 med +0.691
+   entry year 2020: n  35 k0.5 -1.084 med +1.941
+   entry year 2021: n  84 k0.5 +0.395 med +2.090
+   entry year 2022: n  74 k0.5 +3.591 med +3.393
+   entry year 2023: n  63 k0.5 +3.368 med +3.749
+   positive stocks (sum of k0.5 over the stock's Q5 trades > 0): 45/73 by symbol; 63/101 by (pool, symbol)
+   largest contributor AMC (n 9, sum +113.93); without it k0.5 +1.259 [-0.46,+2.68]; largest loser WLL (sum -60.97); without it +1.835
+   drop best 5 entry weeks (2021-08-16, 2020-12-14, 2021-03-15, 2022-01-17, 2023-02-13): k0.5 +0.650 [-1.39,+2.25]; drop worst 5: +2.930
+   per-cycle Q5 mean: 54 cycles, positive 37; cumulative +56.08; max drawdown -59.06 (% S, sum of cycle means)
+   % of entry straddle mid (k0.5): mean +5.49 %, median +12.93 %; straddle mid median 23.04 % S
+   + option commission 1 USD/contract/leg (0.02 USD per share-straddle): k0.5 +1.430
+   costs: half-spread sum / S median 0.659 % (k0.5 entry cost median 0.330 %); half-spread / mid median 0.030; hedge turnover median 3.37 x (5 bp ~ 0.169 % S)
+   liquidity: entry volume at K call median 231, put median 102; zero-volume legs call 0.01 put 0.04; min(call,put) volume p25 19
+   delta0 (net, entry) median +0.125; days held median 22
+
+== Quintiles (P-0027 structure), k0 / k0.5 / k1 ==
+Q1: n  328 | k0 +0.051 [-1.07,+0.89] | k0.5 -0.230 [-1.37,+0.61] p1s 0.6734 | k1 -0.512 [-1.68,+0.35] | med +0.839 trim2% +0.291
+Q2: n  323 | k0 +0.682 [+0.03,+1.35] | k0.5 +0.413 [-0.24,+1.05] p1s 0.1036 | k1 +0.143 [-0.50,+0.77] | med +0.650 trim2% +0.521
+Q3: n  324 | k0 +0.416 [-0.18,+0.99] | k0.5 +0.110 [-0.52,+0.70] p1s 0.3553 | k1 -0.197 [-0.87,+0.42] | med +0.404 trim2% +0.343
+Q4: n  324 | k0 +0.688 [-0.09,+1.48] | k0.5 +0.331 [-0.43,+1.09] p1s 0.1895 | k1 -0.026 [-0.78,+0.71] | med +1.032 trim2% +0.686
+Q5: n  300 | k0 +2.122 [+0.39,+3.55] | k0.5 +1.601 [-0.17,+3.03] p1s 0.0350 | k1 +1.080 [-0.75,+2.52] | med +2.637 trim2% +2.071
+ALL: n 1599 | k0 +0.770 [+0.19,+1.29] | k0.5 +0.426 [-0.17,+0.94] p1s 0.0784 | k1 +0.081 [-0.55,+0.60] | med +0.965 trim2% +0.724
+Q5-Q1 (k0.5, per-cycle paired, mean over cycles): +1.866 [-0.09,+3.71] p1s 0.0316; cycles 54, positive 36; by pool 20181031:+2.87 20191031:+0.68 20201030:+0.03 20211029:+3.46 20221031:+2.32
+Q5-ALL (k0.5, per-cycle paired, mean over cycles): +0.885 [-0.61,+2.20] p1s 0.1156; cycles 54, positive 38; by pool 20181031:+0.46 20191031:-1.28 20201030:+0.23 20211029:+2.74 20221031:+2.42
+
+== Borrow (net short hedge) ==
+   net short share-days: mean 1.3316 % S_E-years per trade (i.e. 1 %/yr fee costs 0.0133 % S), trades with any short day 0.82
+   break-even annual borrow fee (Q5 k0.5 mean -> 0): 120.2 %
+   k0.5 after 10 %/yr borrow on net short: +1.468 [-0.30,+2.90] p1s 0.0481
+   k0.5 after 25 %/yr borrow on net short: +1.268 [-0.49,+2.70] p1s 0.0713
+   k0.5 after 50 %/yr borrow on net short: +0.935 [-0.81,+2.36] p1s 0.1348
+
+== Mechanism reading: Q5 split by entry put-call IV gap (same K) at the Q5 median of this phase ==
+   low gap (<= median): n 150 gap median -0.0021 | k0.5 +0.559 [-1.09,+1.91] p1s 0.2291 | k1 +0.241 | med +1.740 | short-days mean 1.5176 | by pool 20181031:-0.39(n21) 20191031:+1.52(n11) 20201030:-0.38(n59) 20211029:+2.03(n32) 20221031:+1.22(n27)
+   high gap (> median): n 150 gap median +0.1183 | k0.5 +2.643 [-0.00,+4.62] p1s 0.0253 | k1 +1.919 | med +3.845 | short-days mean 1.1455 | by pool 20181031:+0.10(n20) 20191031:-5.17(n19) 20201030:+3.84(n25) 20211029:+4.85(n42) 20221031:+4.38(n44)
+   median gap (Q5) +0.0229; mean +0.1368; corr(k0.5, gap) +0.06
+
+== VOV sort (P-0024 signal), Q5 k0.5 ==
+VOV Q5: n  282 | k0 +1.768 [+0.52,+2.96] | k0.5 +1.346 [+0.11,+2.50] p1s 0.0169 | k1 +0.924 [-0.31,+2.05] | med +1.894 trim2% +1.707
+   overlap with IVOL Q5: 110/282
+
+== Training-diagnostic structure (each leg own nearest strike, own hedge, own 5 bp), IVOL Q5 ==
+   Q1: n 330 k0 +0.019 k0.5 -0.267 [-1.38,+0.57] p1s 0.7044 k1 -0.553 med +0.845
+   Q5: n 300 k0 +2.066 k0.5 +1.545 [-0.23,+2.98] p1s 0.0410 k1 +1.024 med +2.585; by pool 20181031:-0.20(n41) 20191031:-2.79(n30) 20201030:+0.82(n84) 20211029:+3.58(n74) 20221031:+3.13(n71)
+   Q5 diag: strikes differ in 0.00 of trades; diag gap median +0.0233
+   same Q5 trades in both structures: n 300; spec +1.601 vs diag +1.545; corr +1.000
+
+Permutation (1000 within-cycle shuffles of quintile labels among traded rows), Q5-Q1 k0.5: observed +1.866, p(perm >= obs) 0.0050
+Posterior bound: one-sided p 0.0350 -> BF <= 3.135 -> posterior <= 35.6 % (prior 15 %)
