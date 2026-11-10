@@ -41,6 +41,7 @@
 #include "orchestrate/clock.h"
 #include "orchestrate/engine_router.h"
 #include "orchestrate/exits.h"
+#include "orchestrate/earnings_watch.h"
 #include "orchestrate/fast_exit.h"
 #include "orchestrate/heartbeat.h"
 #include "orchestrate/hosted.h"
@@ -142,6 +143,11 @@ struct EngineArgs {
     std::shared_ptr<BreakerPort> breakerPort;
 };
 
+/// 平仓单是谁触发的。earnings:财报止盈——正股限价单也追价;overnight 再把单送到夜盘那个交易所
+struct CloseVia {
+    bool earnings = false, overnight = false;
+};
+
 class TradingEngine {
 public:
     explicit TradingEngine(EngineArgs args);
@@ -228,6 +234,7 @@ public:
     bool earlyTick = false;
     /// 测试用:推送那一路
     FastExit& fastExit() { return *fastExit_; }
+    EarningsWatch& earningsWatch() { return *earningsWatch_; }
     Rec trackerHeartbeat() const;
 
     // ---- 持仓追踪
@@ -238,7 +245,8 @@ public:
     util::Task<std::optional<double>> naturalCloseFor(Rec raw, tracker::Position position, Rec positions);
     bool accountIsPaper(const QString& alias);
     /// 真的把平仓单发出去,并且先落闩再发。回 TrackFired {id, symbol, state, record_id, reason, order_id} 或空
-    util::Task<std::optional<Rec>> closePosition(Rec track, tracker::Position position, Rec autoClose, Rec result, std::optional<QString> marketStatus = std::nullopt);
+    util::Task<std::optional<Rec>> closePosition(Rec track, tracker::Position position, Rec autoClose, Rec result, std::optional<QString> marketStatus = std::nullopt,
+                                                 CloseVia via = {});
     util::Task<std::optional<ChaseQuote>> chaseQuote(Rec raw, tracker::Position position, Rec positions, Rec autoClose, std::optional<double> prev, double rounds,
                                                      std::optional<QString> reason);
     void chaseWarnIfStuck(const Rec& track, Rec& entry, double limit, double natural);
@@ -356,6 +364,9 @@ private:
     /// 推送第一次叫醒的时刻(这一段提前醒跑完清掉):发单的审计里记从叫醒到发单多久
     std::optional<double> wokeAt_;
     std::unique_ptr<FastExit> fastExit_;
+    std::unique_ptr<EarningsWatch> earningsWatch_;
+    /// 财报止盈这一轮立刻能成交的价(追踪 id → 价):正股平仓单追价时拿它当立刻成交价。每一轮盯盘重填
+    QHash<QString, double> earningsExec_;
     Forwards forwards_;
     std::shared_ptr<bool> alive_ = std::make_shared<bool>(true);
 };

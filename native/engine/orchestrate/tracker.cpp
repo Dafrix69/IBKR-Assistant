@@ -80,13 +80,16 @@ OJson makeTargets(const OJson& raw) {
         const OJson* v = get(raw, k);
         out.set(QString::fromUtf16(k), js::nullish(v) ? OJson::null() : *v);
     }
+    // 财报止盈(C++ 先有):设了才带这个键——没用到它的追踪和 TS 版的样子逐字一样
+    if (const OJson* e = get(raw, u"earnings_tp"); js::isObj(e)) out.set(u"earnings_tp"_s, *e);
     return out;
 }
 
 bool targetsEmpty(const OJson& t) {
     return isNull(get(t, u"take_profit")) && isNull(get(t, u"stop_loss")) && isNull(get(t, u"trail_pct")) && isNull(get(t, u"profit_drawdown_pct")) &&
            !hasLength(get(t, u"profit_drawdown_tiers")) && isNull(get(t, u"spot_target")) && isNull(get(t, u"spot_stop_below")) &&
-           isNull(get(t, u"spot_stop_above")) && isNull(get(t, u"exit_at_ms")) && !hasLength(get(t, u"take_profit_tiers"));
+           isNull(get(t, u"spot_stop_above")) && isNull(get(t, u"exit_at_ms")) && !hasLength(get(t, u"take_profit_tiers")) &&
+           !js::isObj(get(t, u"earnings_tp"));
 }
 
 // ================================================================ 结构

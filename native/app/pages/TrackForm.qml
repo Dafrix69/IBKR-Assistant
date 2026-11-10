@@ -16,7 +16,7 @@ Item {
     // 表单的值:初值照 React 版的 useState(组合的平仓方式默认限价、利润回撤门槛 10)
     property var v: ({ tp: null, sl: null, trail: null, profitDd: null, ddArm: 10, tiers: false, spotTarget: null, stopBelow: null, stopAbove: null,
                        fraction: null, chaseMax: null, autoPicked: null, orderType: isCombo ? "LMT" : "MKT", host: false, brokerSpotStop: false, spotStopLimit: null,
-                       exits: { exitAt: "", stopConfirm: null, stopBasis: "mid", chaseGrace: null, chaseStep: null, chaseMax: null, chaseLead: null, chaseInterval: null, rapidWindow: null, rapidPct: null, peakConfirm: false, tiers: [] } })
+                       exits: { exitAt: "", stopConfirm: null, stopBasis: "mid", chaseGrace: null, chaseStep: null, chaseMax: null, chaseLead: null, chaseInterval: null, rapidWindow: null, rapidPct: null, peakConfirm: false, tiers: [], earningsPct: null, earningsDate: "", earningsTiming: "" } })
     function set(part) { var n = Object.assign({}, v); for (var k in part) n[k] = part[k]; v = n }
     function setExit(part) { var e = Object.assign({}, v.exits); for (var k in part) e[k] = part[k]; set({ exits: e }) }
     readonly property bool hasSpotTarget: v.spotTarget !== null && v.spotTarget > 0
@@ -373,7 +373,7 @@ Item {
                 y: 4
                 spacing: 6
                 Text { anchors.verticalCenter: summaryL.verticalCenter; text: "›"; rotation: ex.open ? 90 : 0; color: Theme.labelSecondary; font.pixelSize: 12 }
-                Label { id: summaryL; text: "更多出场规则(急跌保护、到点平仓、分批止盈、止损与追价)"; size: 12; color: Theme.labelSecondary }
+                Label { id: summaryL; text: "更多出场规则(财报止盈、急跌保护、到点平仓、分批止盈、止损与追价)"; size: 12; color: Theme.labelSecondary }
             }
             TapHandler { onTapped: ex.open = !ex.open }
         }
@@ -387,6 +387,24 @@ Item {
                 label: "到点平仓(美东 HH:MM)"
                 tip: "下一次到这个钟点(美东)时持仓还在就平,记作到点平仓,不算止损。夜盘里填 03:00 指的是今晚过了零点的 03:00。软件关着不盯。"
                 Input { width: parent.width; placeholder: "如 15:45;不填 = 不设"; text: root.v.exits.exitAt; onEdited: function (t) { root.setExit({ exitAt: t }) } }
+            }
+            Field {
+                visible: !root.derivative
+                label: "财报止盈(比财报前收盘 %)"
+                tip: "只给正股。财报出来之后,立刻能成交的价(多头看买价,空头看卖价)比财报前最后一个收盘价有利这么多个百分点就平,记作止盈。从财报前那个收盘起盯,盘后、夜盘、次日盘前都判,到财报后第一个常规时段收盘为止;过了没到价就作废。盘后与夜盘发限价单并追价到成交,夜盘的单送 IBKR 夜盘交易所。托管到券商的追踪夜盘那一段不判。软件关着不盯。"
+                InputNumber { objectName: "earningsPctInput"; width: parent.width; min: 0.1; max: 500; step: 0.5; placeholder: "如 8;不填 = 不设"; value: root.v.exits.earningsPct; onValueEdited: function (x) { root.setExit({ earningsPct: x }) } }
+            }
+            Field {
+                visible: !root.derivative
+                label: "财报日(美东 YYYY-MM-DD)"
+                tip: "不填 = 照 IBKR 财报日历(Wall Street Horizon)自动取下一场已确认的财报,日期变了会跟着改。账户没有这份日历、或日期还没确认时在这里手填,并选盘前还是盘后。"
+                Input { width: parent.width; placeholder: "不填 = 照 IBKR 财报日历"; text: root.v.exits.earningsDate; onEdited: function (t) { root.setExit({ earningsDate: t }) } }
+            }
+            Field {
+                visible: !root.derivative
+                label: "财报发布时段"
+                tip: "手填财报日时要选:盘后发布(基准是财报日当天的收盘价)还是盘前发布(基准是前一个交易日的收盘价)。"
+                Select { width: parent.width; value: root.v.exits.earningsTiming; options: [{ value: "", label: "照 IBKR 财报日历" }, { value: "after", label: "盘后发布" }, { value: "before", label: "盘前发布" }]; onActivated: function (x) { root.setExit({ earningsTiming: x }) } }
             }
             Field {
                 label: root.derivative ? "标的止损确认(秒)" : "止损确认(秒)"

@@ -683,6 +683,66 @@ Task<OJson> BrokerRouter::streamQuotes(QStringList symbols) {
     co_return out;
 }
 
+/**
+ * 正股的买卖价,给财报止盈判触发与定价。日盘(盘前 / 盘中 / 盘后)订 SMART,夜盘订 OVERNIGHT 那个交易所——SMART 那条流夜里不跳。
+ * 第一次调用建订阅,之后只读当前值。订不上或被拒的(没有夜盘行情、认不出代码)隔 60 秒再试,不让盯盘每一轮都等一次首笔报价。
+ */
+Task<OJson> BrokerRouter::stockBook(QString symbol, bool overnight) {
+    const auto live = sessions();
+    const SessionPtr session = live.empty() ? nullptr : live[0];
+    if (!session) co_return OJson::null();
+    const QString key = symbol + (overnight ? u"|overnight"_s : u"|day"_s);
+    const double now = util::dateNow();
+    auto it = bookStreams_.find(key);
+    if (it != bookStreams_.end() && it->handle && (it->session != session || !it->session->isConnected() || errTruthy(it->handle->read()))) {
+        // 会话换了的句柄不会再更新,被拒的流不会自己活过来:摘掉,按订不上处理
+        const bool rejected = it->session == session && errTruthy(it->handle->read());
+        try {
+            it->session->cancelTicker(it->target);
+        } catch (...) {
+            /* 撤不掉也要重订 */
+        }
+        if (rejected) {
+            it->handle = nullptr;
+            it->failedAt = now;
+        } else {
+            bookStreams_.erase(it);
+            it = bookStreams_.end();
+        }
+    }
+    if (it != bookStreams_.end() && !it->handle) {
+        if (now - it->failedAt < 60'000) co_return OJson::null();
+        bookStreams_.erase(it);
+        it = bookStreams_.end();
+    }
+    if (it == bookStreams_.end()) {
+        IbContract target = stockContract(symbol);
+        bool known = true;
+        try {
+            co_await qualifyOrRaise(session, &target);
+        } catch (const BrokerError&) {
+            known = false;
+        }
+        BookStream entry;
+        entry.session = session;
+        if (!known) {
+            entry.failedAt = now;
+            bookStreams_.insert(key, entry);
+            co_return OJson::null();
+        }
+        entry.target = overnight ? overnightContract(target) : target;
+        entry.handle = session->subscribeTicker(entry.target);
+        bookStreams_.insert(key, entry);
+        co_await session->settle(1500);
+        it = bookStreams_.find(key);
+        if (it == bookStreams_.end() || !it->handle) co_return OJson::null();
+    }
+    const TickerData t = it->handle->read();
+    if (errTruthy(t)) co_return OJson::null();
+    const auto px = [](double v) { return std::isfinite(v) && v > 0 ? js::N(v) : js::Null(); };
+    co_return js::object({{u"bid"_s, px(t.bid)}, {u"ask"_s, px(t.ask)}, {u"last"_s, detail::numOrNull(cleanPrice(t.last))}});
+}
+
 // ---- 异动监控的常驻量能流 -------------------------------------------------
 
 namespace {

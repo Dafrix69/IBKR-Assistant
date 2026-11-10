@@ -68,6 +68,7 @@ private:
     Task<QList<OJson>> livePositions();
 
     OJson targetsInputOf(const OJson& params, const OJson& raw, const std::function<std::optional<double>()>& spotTarget);
+    std::optional<OJson> earningsTpOf(const OJson& params, const OJson& raw);
 
     Handlers1Ports& ports_;
 };

@@ -77,6 +77,37 @@ private slots:
         stock.stock = true;
         QVERIFY(!track::exitProblems(fields, stock).isEmpty());
     }
+    void earningsTpFields() {
+        track::ProblemOpts stock;
+        stock.stock = true;
+        // 没填:载荷里一个财报的键都没有(和以前逐字一样)
+        const auto none = track::exitSpec(track::ExitFields::fromJson(QJsonObject{}), false);
+        QVERIFY(!none.contains(u"earnings_tp_pct"_s) && !none.contains(u"earnings_date"_s) && !none.contains(u"earnings_timing"_s));
+        // 只填涨幅:照 IBKR 财报日历,不带日期两个键
+        auto fields = track::ExitFields::fromJson(QJsonObject{{u"earningsPct"_s, 8.0}});
+        auto spec = track::exitSpec(fields, false);
+        QCOMPARE(spec.value(u"earnings_tp_pct"_s).toString(), u"8"_s);
+        QVERIFY(!spec.contains(u"earnings_date"_s));
+        QVERIFY(track::exitProblems(fields, stock).isEmpty());
+        QVERIFY(track::exitConfirmLines(fields, false).contains(u"财报止盈"_s));
+        QVERIFY(!track::exitProblems(fields, {}).isEmpty());  // 期权 / 组合不给
+        // 手填日期:两样一起带
+        fields = track::ExitFields::fromJson(QJsonObject{{u"earningsPct"_s, 8.0}, {u"earningsDate"_s, u" 2026-08-13 "_s}, {u"earningsTiming"_s, u"after"_s}});
+        spec = track::exitSpec(fields, false);
+        QCOMPARE(spec.value(u"earnings_date"_s).toString(), u"2026-08-13"_s);
+        QCOMPARE(spec.value(u"earnings_timing"_s).toString(), u"after"_s);
+        QVERIFY(track::exitProblems(fields, stock).isEmpty());
+        // 只填一样、日期写错、没填涨幅却填了日期、涨幅越界:都拦
+        for (const QJsonObject& bad : {QJsonObject{{u"earningsPct"_s, 8.0}, {u"earningsDate"_s, u"2026-08-13"_s}},
+                                       QJsonObject{{u"earningsPct"_s, 8.0}, {u"earningsDate"_s, u"8/13"_s}, {u"earningsTiming"_s, u"after"_s}},
+                                       QJsonObject{{u"earningsDate"_s, u"2026-08-13"_s}, {u"earningsTiming"_s, u"after"_s}},
+                                       QJsonObject{{u"earningsPct"_s, 0.0}},
+                                       QJsonObject{{u"earningsPct"_s, 600.0}}})
+            QVERIFY(!track::exitProblems(track::ExitFields::fromJson(bad), stock).isEmpty());
+        // 卡片摘要
+        const QStringList summary = track::exitSummary(QJsonObject{{u"earnings_tp"_s, QJsonObject{{u"pct"_s, 8}, {u"date"_s, u"2026-08-13"_s}, {u"timing"_s, u"AFTER MARKET"_s}, {u"target"_s, 108.0}}}}, {}, true);
+        QVERIFY2(summary.contains(u"财报止盈 8% · 2026-08-13 盘后 → 108.00"_s), qPrintable(summary.join(u'|')));
+    }
     void matchesTsModule_data() {
         QTest::addColumn<QString>("fn");
         QTest::addColumn<QJsonArray>("args");
