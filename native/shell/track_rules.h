@@ -57,6 +57,10 @@ struct ExitFields {
     std::optional<double> rapidPct;
     bool peakConfirm = false;
     QList<TierField> tiers;
+    /// 财报止盈(只给正股):比财报前收盘涨(空头:跌)百分之几就平;空 = 不设
+    std::optional<double> earningsPct;
+    /// 手填的财报日(YYYY-MM-DD)与发布时段("after" 盘后 / "before" 盘前);两样都空 = 照 IBKR 财报日历
+    QString earningsDate, earningsTiming;
     /// fromJson 时既不是空、也读不成数的那几项(键名)。React 版的输入框只交数或 null,这里不该有;有了就是界面的毛病,
     /// 绝不能当成"没填"——那会让一道保护悄悄没设上(startTrack 见到它就不往下走)
     QStringList invalid;

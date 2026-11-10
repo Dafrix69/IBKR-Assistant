@@ -238,6 +238,16 @@ TradingEngine::TradingEngine(EngineArgs args)
     reconciler_ = std::make_unique<Reconciler>(*impl_->reconHost);
     callbacks_ = std::make_unique<IbCallbacks>(*impl_->cbHost);
     fastExit_ = std::make_unique<FastExit>([this]() { return router_.get(); }, [this]() { wakeTracker(); });
+    {
+        EarningsWatch::Host h;
+        h.router = [this]() { return router_; };
+        h.saveTargets = [this](const QString& tid, const Rec& targets) { storePort_->updateTrack(tid, js::object({{u"targets"_s, targets}})); };
+        h.warn = [this](const QString& message) { notifier_->warning(message); };
+        h.calendar.tradingDay = [this](const QString& d) { return settings.isTradingDay(d); };
+        h.calendar.earlyClose = [this](const QString& d) { return settings.early_close_days.contains(d); };
+        h.baseStatus = [this](const domain::EtNow& at) { return settings.marketStatus(at); };
+        earningsWatch_ = std::make_unique<EarningsWatch>(std::move(h));
+    }
 }
 
 TradingEngine::~TradingEngine() { *alive_ = false; }

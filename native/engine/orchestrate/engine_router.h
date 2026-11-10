@@ -108,6 +108,23 @@ public:
         co_return;
     }
     /// typeof router.modifyHosted === "function"
+    // ---- 财报止盈(orchestrate/earnings_watch):财报日历、日线、正股买卖价。假券商不实现 = 没有这一路
+    virtual bool hasEarningsData() const { return false; }
+    /// IBKR WSH 的原始回包(util::earningsView 认的那一份);可以抛
+    virtual util::Task<Rec> earnings(QString symbol) {
+        (void)symbol;
+        co_return Rec::null();
+    }
+    /// 日线 [{date, close, …}],两头都含;没有数据可以抛
+    virtual util::Task<QList<Rec>> dailyBars(QString symbol, QString start, QString end) {
+        (void)symbol, (void)start, (void)end;
+        co_return QList<Rec>{};
+    }
+    /// {bid, ask, last} 或 null;overnight = 夜盘那个交易所的盘口
+    virtual util::Task<Rec> stockBook(QString symbol, bool overnight) {
+        (void)symbol, (void)overnight;
+        co_return Rec::null();
+    }
     virtual bool hasModifyHosted() const { return true; }
     /// refPrefix 空 = 没传参(券商侧默认 "trk:")
     virtual util::Task<QList<Rec>> listHostedOpenWith(std::optional<QString> refPrefix) = 0;
@@ -154,6 +171,12 @@ public:
         return refPrefix ? r_->listHostedOpen(*refPrefix) : r_->listHostedOpen();
     }
 
+    bool hasEarningsData() const override { return true; }
+    util::Task<Rec> earnings(QString symbol) override { return r_->earnings(std::move(symbol)); }
+    util::Task<QList<Rec>> dailyBars(QString symbol, QString start, QString end) override {
+        return r_->historicalBars(std::move(symbol), std::move(start), std::move(end));
+    }
+    util::Task<Rec> stockBook(QString symbol, bool overnight) override { return r_->stockBook(std::move(symbol), overnight); }
     // ---- 共用
     util::Task<QList<Rec>> positions() override { return r_->positions(); }
     util::Task<std::optional<double>> indexPrice(const QString& symbol) override { return r_->indexPrice(symbol); }

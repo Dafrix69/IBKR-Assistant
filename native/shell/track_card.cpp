@@ -269,7 +269,7 @@ QJsonObject trackCardModel(const CardInput& in) {
     }
 
     const bool watching = !fired && enabled;
-    return {
+    QJsonObject card{
         {u"id"_s, t.value("id"_L1)},
         {u"symbol"_s, symbol},
         {u"tone"_s, tone},
@@ -288,6 +288,10 @@ QJsonObject trackCardModel(const CardInput& in) {
         {u"blocked"_s, live.value("blocked"_L1).toArray()},
         {u"toggle"_s, enabled ? u"暂停"_s : u"恢复"_s},
     };
+    // 财报止盈这一轮的状态(引擎照实说:在等财报、在取收盘价、此刻买价多少、为什么这一轮不判)。设了才带这个键
+    const QString etp = live.value("earnings_tp"_L1).toObject().value("reason"_L1).toString();
+    if (!etp.isEmpty()) card.insert(u"earningsTp"_s, etp);
+    return card;
 }
 
 QStringList cardTexts(const QJsonObject& m) {
@@ -303,6 +307,7 @@ QStringList cardTexts(const QJsonObject& m) {
     items(m[u"meta"]);
     items(m[u"tiers"]);
     str(m[u"stopBasis"]);
+    str(m[u"earningsTp"]);
     items(m[u"hosted"]);
     if (m[u"pnl"].isObject()) {
         str(m[u"pnl"][u"text"]);

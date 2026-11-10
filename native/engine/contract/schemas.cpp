@@ -357,6 +357,10 @@ Shape targetsInput() {
         {u"spot_stop_above"_s, numberField()},
         {u"spot_stop_confirm_s"_s, numberField()},
         {u"exit_at"_s, optional(str())},
+        // 财报止盈:相对财报前收盘的涨幅(%);财报日与盘前 / 盘后可以不填(照 IBKR 财报日历)
+        {u"earnings_tp_pct"_s, numberField()},
+        {u"earnings_date"_s, optional(str())},
+        {u"earnings_timing"_s, optional(str())},
         {u"take_profit_tiers"_s,
          optional(unionOf({
              zod::literal(OJson::string(QString())),

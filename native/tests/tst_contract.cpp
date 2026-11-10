@@ -226,7 +226,8 @@ private slots:
                                      "\"profit_drawdown_preset\":\"fly\",\"profit_drawdown_tiers\":[{\"above\":\"0\",\"pct\":\"35\"}],"
                                      "\"profit_drawdown_late\":{\"after\":\"15:30\",\"factor\":\"0.6\"},\"profit_drawdown_arm_pct\":\"5\","
                                      "\"spot_target\":\"1\",\"spot_stop_below\":\"1\",\"spot_stop_above\":\"1\",\"spot_stop_confirm_s\":\"1\","
-                                     "\"exit_at\":\"15:45\",\"take_profit_tiers\":[{\"price\":\"1\",\"fraction_pct\":\"50\"}],\"auto_close\":true,"
+                                     "\"exit_at\":\"15:45\",\"earnings_tp_pct\":\"8\",\"earnings_date\":\"2026-08-13\",\"earnings_timing\":\"after\","
+                                     "\"take_profit_tiers\":[{\"price\":\"1\",\"fraction_pct\":\"50\"}],\"auto_close\":true,"
                                      "\"order_type\":\"LMT\",\"slippage_pct\":\"0.5\",\"close_fraction_pct\":\"50\",\"host_at_broker\":true,"
                                      "\"chase_max_pct\":\"0\",\"stop_basis\":\"mid\",\"stop_chase_grace\":\"2\",\"stop_chase_step\":1,"
                                      "\"stop_chase_max_pct\":\"10\",\"peak_confirm\":true,\"note\":\"n\"}"_s;

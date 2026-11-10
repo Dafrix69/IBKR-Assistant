@@ -196,6 +196,8 @@ public:
     util::Task<std::optional<double>> indexPrice(QString symbol);
     /// {symbol: {last, close, change_pct}}
     util::Task<util::OJson> earnings(QString symbol);
+    /// 一只正股此刻的买卖价(常驻订阅,只读当前值):{bid, ask, last};overnight = 订 IBKR 夜盘那个交易所。财报止盈拿它判、拿它定价
+    util::Task<util::OJson> stockBook(QString symbol, bool overnight);
     util::Task<util::OJson> stockQuotes(QStringList symbols);
     /// 日线历史:每根 {date, open, high, low, close, volume}
     util::Task<QList<util::OJson>> historicalBars(QString symbol, QString start, QString end);
@@ -291,6 +293,13 @@ private:
     contract::OrderedMap<SessionPtr> connectionsMap_;
     QHash<QString, QString> accountRoute_;
     contract::OrderedMap<std::shared_ptr<TickerHandle>> streams_;  // 空指针 = TS 的 null(认不出的记号)
+    struct BookStream {
+        SessionPtr session;
+        IbContract target;
+        std::shared_ptr<TickerHandle> handle;  // 空 = 订不上(认不出、被拒),failedAt 之后隔一阵再试
+        double failedAt = 0;
+    };
+    QHash<QString, BookStream> bookStreams_;  // 「代码|day」「代码|overnight」
     UpstreamWatch upstream_;
     HeldStreams optionStreams_;
     /// onOptionTick 的回调表(shared_ptr:会话上挂的转发闭包拿着它,router 先没了也不悬空)

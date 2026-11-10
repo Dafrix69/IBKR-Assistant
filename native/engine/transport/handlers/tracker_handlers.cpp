@@ -1,5 +1,7 @@
 #include "transport/handlers/tracker_handlers.h"
 
+#include "analysis/earnings_tp.h"
+
 #include "analysis/fly_model.h"
 #include "analysis/tracker_rules.h"
 #include "domain/positions.h"
@@ -425,6 +427,58 @@ util::Task<TrackerHandlers::SpotInputs> TrackerHandlers::spotInputs(OJson raw, O
     co_return out;
 }
 
+/// 财报止盈的入参 → targets.earnings_tp;没填涨幅回空。财报日手填了的当场排窗口(排不出当场拒),没填的由引擎照 IBKR 财报日历排
+std::optional<OJson> TrackerHandlers::earningsTpOf(const OJson& params, const OJson& raw) {
+    namespace etp = an::etp;
+    const std::optional<double> pct = optFloat(params.get(u"earnings_tp_pct"_s));
+    const QString date = hu::strOr(params.get(u"earnings_date"_s)).trimmed();
+    const QString timingIn = hu::strOr(params.get(u"earnings_timing"_s)).trimmed();
+    if (!pct) {
+        if (!date.isEmpty() || !timingIn.isEmpty()) invalid(u"填了财报日或发布时段,还要填财报止盈的涨幅(%)。"_s);
+        return std::nullopt;
+    }
+    if (const auto issue = etp::pctIssue(*pct)) invalid(*issue);
+    if (!secIs(raw, u"STK"_s)) invalid(u"财报止盈只给正股:期权在盘后与夜盘不交易,到价了也平不掉。"_s);
+    OJson e = js::object({{u"pct"_s, js::N(*pct)}, {u"manual"_s, js::B(false)}});
+    if (date.isEmpty() && timingIn.isEmpty()) return e;
+    if (date.isEmpty() || timingIn.isEmpty()) invalid(u"手填财报日期时,日期(YYYY-MM-DD)与盘前 / 盘后要一起填;两样都不填就照 IBKR 财报日历。"_s);
+    const QString upper = timingIn.toUpper();
+    const QString timing = (upper == u"AFTER" || upper == etp::kAfter || timingIn == u"盘后") ? etp::kAfter
+                           : (upper == u"BEFORE" || upper == etp::kBefore || timingIn == u"盘前") ? etp::kBefore
+                                                                                                  : QString();
+    if (timing.isEmpty()) invalid(u"财报发布时段只认「盘前」或「盘后」。"_s);
+    etp::Calendar cal;
+    cal.tradingDay = [this](const QString& d) { return settings().isTradingDay(d); };
+    cal.earlyClose = [this](const QString& d) { return settings().early_close_days.contains(d); };
+    const etp::Planned p = etp::planWindow(date, timing, cal);
+    if (!p.window) invalid(p.issue);
+    if (p.window->endMs <= domain::nowEt().epochMs) invalid(u"财报日 %1 之后的第一个常规时段(%2)已经收盘了,这一场用不上。"_s.arg(p.window->date, p.window->reactDate));
+    e.set(u"manual"_s, js::B(true));
+    e.set(u"date"_s, js::S(p.window->date));
+    e.set(u"timing"_s, js::S(p.window->timing));
+    e.set(u"ref_date"_s, js::S(p.window->refDate));
+    e.set(u"react_date"_s, js::S(p.window->reactDate));
+    e.set(u"start_ms"_s, js::N(p.window->startMs));
+    e.set(u"end_ms"_s, js::N(p.window->endMs));
+    return e;
+}
+
+/// 改目标时财报止盈没换场次的:排好的窗口与取到的基准收盘价留着,不重新查一遍
+static void carryEarningsTp(OJson& targets, const OJson& before) {
+    const OJson* next = targets.get(u"earnings_tp"_s);
+    const OJson* prev = before.get(u"earnings_tp"_s);
+    if (!js::isObj(next) || !js::isObj(prev)) return;
+    OJson e = *next;
+    const bool bothAuto = !js::truthy(e.get(u"manual"_s)) && !js::truthy(prev->get(u"manual"_s));
+    if (bothAuto)
+        for (const QString& k : {u"date"_s, u"timing"_s, u"ref_date"_s, u"react_date"_s, u"start_ms"_s, u"end_ms"_s})
+            if (const OJson* v = prev->get(k)) e.set(k, *v);
+    const OJson* ref = e.get(u"ref_date"_s);
+    if (js::isStr(ref) && js::isStr(prev->get(u"ref_date"_s)) && ref->s == prev->get(u"ref_date"_s)->s && !js::nullish(prev->get(u"ref_close"_s)))
+        e.set(u"ref_close"_s, *prev->get(u"ref_close"_s));
+    targets.set(u"earnings_tp"_s, e);
+}
+
 OJson TrackerHandlers::targetsInputOf(const OJson& params, const OJson& raw, const std::function<std::optional<double>()>& spotTarget) {
     OJson in = js::object();
     in.set(u"take_profit"_s, js::NOrNull(optFloat(params.get(u"take_profit"_s))));
@@ -438,6 +492,7 @@ OJson TrackerHandlers::targetsInputOf(const OJson& params, const OJson& raw, con
     in.set(u"spot_stop_above"_s, js::NOrNull(optFloat(params.get(u"spot_stop_above"_s))));
     const OJson exits = exitSettingsOf(params, domain::nowEt().epochMs);
     for (const auto& [k, v] : exits.fields) in.set(k, v);
+    if (const auto e = earningsTpOf(params, raw)) in.set(u"earnings_tp"_s, *e);
     return in;
 }
 
@@ -598,7 +653,7 @@ util::Task<OJson> TrackerHandlers::trackerUpdateLocked(OJson params, OJson rawPa
     bool targetsGiven = false;
     for (const QString& k : {u"take_profit"_s, u"stop_loss"_s, u"trail_pct"_s, u"profit_drawdown_pct"_s, u"profit_drawdown_tiers"_s, u"profit_drawdown_preset"_s,
                              u"profit_drawdown_arm_pct"_s, u"spot_target"_s, u"spot_stop_below"_s, u"spot_stop_above"_s, u"spot_stop_confirm_s"_s, u"exit_at"_s,
-                             u"take_profit_tiers"_s})
+                             u"take_profit_tiers"_s, u"earnings_tp_pct"_s, u"earnings_date"_s, u"earnings_timing"_s})
         if (given(k)) targetsGiven = true;
     const bool brokerSpotChanged = given(u"auto_close"_s) &&
         (js::truthy(js::prop(trackAuto, u"spot_stop_at_broker"_s)) || js::truthy(js::prop(autoSource, u"spot_stop_at_broker"_s)));
@@ -624,6 +679,7 @@ util::Task<OJson> TrackerHandlers::trackerUpdateLocked(OJson params, OJson rawPa
         if (targetsGiven) {
             const auto carried = an::carryTierMarks(targets.get(u"take_profit_tiers"_s), before.get(u"take_profit_tiers"_s));
             targets.set(u"take_profit_tiers"_s, carried ? *carried : js::Null());
+            carryEarningsTp(targets, before);
         }
         const OJson* autoNow = fields.get(u"auto_close"_s);
         const OJson autoClose = tk::makeAutoClose(autoNow ? *autoNow : (js::nullish(trackAuto) ? emptyObj : *trackAuto));

@@ -16,6 +16,7 @@ StatusCard {
     Meta { items: root.c.meta || []; width: parent.width; topPadding: 2 }
     Meta { items: (root.c.tiers || []).map(function (t) { return { text: t } }); width: parent.width }
     Label { visible: !!root.c.stopBasis; width: parent.width; wrap: true; text: root.c.stopBasis || ""; size: 11; color: Theme.labelSecondary }
+    Label { objectName: "earningsTpLine"; visible: !!root.c.earningsTp; width: parent.width; wrap: true; text: root.c.earningsTp || ""; size: 11; color: Theme.labelSecondary }
     Meta { items: root.c.hosted || []; width: parent.width }
 
     // 盈亏:pos-hero compact(上 2;20px 字重 750、行高 1.1;百分比那一截是正常字重)

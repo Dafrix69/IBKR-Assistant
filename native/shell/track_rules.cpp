@@ -147,6 +147,9 @@ ExitFields ExitFields::fromJson(const QJsonObject& o) {
     f.chaseInterval = formNumber(o.value("chaseInterval"_L1), u"chaseInterval"_s, &f.invalid);
     f.rapidWindow = formNumber(o.value("rapidWindow"_L1), u"rapidWindow"_s, &f.invalid);
     f.rapidPct = formNumber(o.value("rapidPct"_L1), u"rapidPct"_s, &f.invalid);
+    f.earningsPct = formNumber(o.value("earningsPct"_L1), u"earningsPct"_s, &f.invalid);
+    f.earningsDate = text("earningsDate", QString());
+    f.earningsTiming = text("earningsTiming", QString());
     const QJsonValue peak = o.value("peakConfirm"_L1);
     if (!peak.isBool() && !peak.isNull() && !peak.isUndefined()) f.invalid << u"peakConfirm"_s;
     f.peakConfirm = peak.toBool();
@@ -167,6 +170,14 @@ QJsonObject exitSpec(const ExitFields& f, bool derivative) {
         {u"spot_stop_confirm_s"_s, str(f.stopConfirm)},
         {u"take_profit_tiers"_s, tiers.isEmpty() ? QJsonValue(QString()) : QJsonValue(tierJson)},
     };
+    // 财报止盈:填了才带(没填的载荷和以前逐字一样);财报日与时段两样都填了才带
+    if (f.earningsPct) {
+        out.insert(u"earnings_tp_pct"_s, str(f.earningsPct));
+        if (!jsTrim(f.earningsDate).isEmpty() || !jsTrim(f.earningsTiming).isEmpty()) {
+            out.insert(u"earnings_date"_s, jsTrim(f.earningsDate));
+            out.insert(u"earnings_timing"_s, jsTrim(f.earningsTiming));
+        }
+    }
     // 正股没有「可成交价」与追价(引擎会拒),所以不是期权 / 组合时这几项一律不带;原模块里是 undefined 的键不带
     if (!derivative) return out;
     out.insert(u"stop_basis"_s, f.stopBasis);
@@ -187,6 +198,16 @@ QStringList exitProblems(const ExitFields& f, const ProblemOpts& opts) {
     if (f.rapidWindow && (*f.rapidWindow < 0.25 || *f.rapidWindow > 5)) out << u"急跌观察窗口要在 0.25–5 秒之间。"_s;
     if (f.rapidPct && (*f.rapidPct < 0.01 || *f.rapidPct > 100)) out << u"急跌不利变动阈值要在 0.01–100% 之间。"_s;
     if (opts.stock && (f.rapidWindow || f.rapidPct)) out << u"急跌保护只支持单腿期权与组合。"_s;
+    if (f.earningsPct) {
+        static const QRegularExpression ymd(u"^\\d{4}-\\d{2}-\\d{2}\\z"_s);
+        const QString date = jsTrim(f.earningsDate), timing = jsTrim(f.earningsTiming);
+        if (!opts.stock) out << u"财报止盈只给正股:期权在盘后与夜盘不交易。"_s;
+        else if (!(*f.earningsPct > 0 && *f.earningsPct <= 500)) out << u"财报止盈的涨幅要在 0(不含)到 500 之间(百分比)。"_s;
+        else if (date.isEmpty() != timing.isEmpty()) out << u"手填财报日期时,日期与盘前 / 盘后要一起填;两样都不填就照 IBKR 财报日历。"_s;
+        else if (!date.isEmpty() && !ymd.match(date).hasMatch()) out << u"财报日要写成 YYYY-MM-DD(美东日期)。"_s;
+    } else if (!jsTrim(f.earningsDate).isEmpty() || !jsTrim(f.earningsTiming).isEmpty()) {
+        out << u"填了财报日或发布时段,还要填财报止盈的涨幅(%)。"_s;
+    }
     if (!jsTrim(f.exitAt).isEmpty() && !clockOk(f.exitAt)) out << u"到点平仓的时刻要写成美东时间的 HH:MM,如 15:45。"_s;
     if (std::any_of(f.tiers.begin(), f.tiers.end(), [](const TierField& t) { return t.price.has_value() != t.fraction.has_value(); }))
         out << u"分批止盈的每一档要把价和比例都填上。"_s;
@@ -207,6 +228,11 @@ QString exitConfirmLines(const ExitFields& f, bool derivative) {
     QStringList out;
     if (derivative && f.rapidWindow && f.rapidPct)
         out << u"急跌保护:最近 %1 秒内可平仓报价向不利方向变动达到 %2% 就平,独立于利润回撤线,亏损时也生效。只在软件开着并取得新鲜同步的实时报价时检测;沿用平仓比例和让价上限,不保证成交价。"_s.arg(jsNumberToString(*f.rapidWindow), jsNumberToString(*f.rapidPct));
+    if (!derivative && f.earningsPct) {
+        const QString when = jsTrim(f.earningsDate).isEmpty() ? u"财报日照 IBKR 财报日历"_s
+                                                              : u"财报 %1 %2"_s.arg(jsTrim(f.earningsDate), jsTrim(f.earningsTiming) == u"before" ? u"盘前"_s : u"盘后"_s);
+        out << u"财报止盈:%1;从财报前最后一个收盘起,到财报后第一个常规时段收盘为止,立刻能成交的价比财报前收盘有利 %2% 就平。盘后、夜盘、盘前都盯,限价单追价到成交;软件开着时才盯。"_s.arg(when, jsNumberToString(*f.earningsPct));
+    }
     const QString at = jsTrim(f.exitAt);
     if (!at.isEmpty()) out << u"到点平仓:下一次到美东 %1 时持仓还在就平(不算止损);软件开着时才盯。"_s.arg(at);
     const QList<FilledTier> tiers = filledTiers(f.tiers);
@@ -248,6 +274,14 @@ QStringList exitSummary(const QJsonObject& targets, const QJsonObject& autoClose
     QStringList out;
     if (!nullish(autoClose.value("rapid_exit_window_s"_L1)) && !nullish(autoClose.value("rapid_exit_pct"_L1)))
         out << u"急跌保护 %1 秒 / %2%"_s.arg(jsString(autoClose.value("rapid_exit_window_s"_L1)), jsString(autoClose.value("rapid_exit_pct"_L1)));
+    if (const QJsonObject e = targets.value("earnings_tp"_L1).toObject(); !e.isEmpty()) {
+        QString text = u"财报止盈 %1%"_s.arg(jsString(e.value("pct"_L1)));
+        if (jsTruthy(e.value("lapsed"_L1))) text += u"(已过期)"_s;
+        else if (e.value("date"_L1).isString())
+            text += u" · %1 %2"_s.arg(e.value("date"_L1).toString(), e.value("timing"_L1) == u"BEFORE MARKET"_s ? u"盘前"_s : u"盘后"_s);
+        if (e.value("target"_L1).isDouble()) text += u" → "_s + QString::number(e.value("target"_L1).toDouble(), 'f', 2);
+        out << text;
+    }
     if (jsTruthy(targets.value("exit_at"_L1))) {
         // 时刻被清掉了 = 到点那天没平掉、这一次已经作废(引擎当时提醒过);点「恢复」或重新设置才有下一次
         const QJsonValue ms = targets.value("exit_at_ms"_L1);

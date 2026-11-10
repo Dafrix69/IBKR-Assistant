@@ -424,7 +424,7 @@ void HostedOrders::onTriggered(const TriggeredArgs& args, Rec& row, Rec& out) {
     for (const QString& k : coveringKinds(args.state)) covered = covered || live.contains(k);
     // 组合没有按持仓净价判断的停损单;原生标的条件也不能覆盖这类止损。其余品种要对过一次账才作数(见 synced)
     const bool uncoveredForSure = secType == u"BAG" && args.state != tk::kStateTakeProfit;
-    const bool sweep = (derivative && args.spotReached) || args.spotStop || uncoveredForSure || (!covered && synced_.contains(tid));
+    const bool sweep = (derivative && args.spotReached) || args.spotStop || args.force || uncoveredForSure || (!covered && synced_.contains(tid));
     if (sweep && !tk::sweepReason(track) && !js::truthy(js::prop(&track, u"fired_at"_s))) {
         const util::BreakerState breaker = host_.killswitch().state();
         const Rec auto_ = tk::makeAutoClose(js::nullish(js::prop(&track, u"auto_close"_s)) ? js::object() : *js::prop(&track, u"auto_close"_s));

@@ -328,6 +328,7 @@ Task<Rec> TradingEngine::pollTrackers(std::optional<domain::EtNow> moment, std::
 
     if (!closeChaseAdopted_) co_await adoptCloseChase(tracks);
     if (!earlyTick) exits_->nextRound();
+    earningsExec_.clear();
     const util::BreakerState breaker = breakerPort_->state();
     const std::optional<QSet<QString>> covered = router_->coveredAccounts();
     for (const Rec& track : tracks) {
@@ -410,6 +411,24 @@ Task<Rec> TradingEngine::pollTrackers(std::optional<domain::EtNow> moment, std::
             }
         }
 
+        // 财报止盈(正股):窗口里按立刻能成交的价判;止损类已经触发的不改写。还在盯的、和平仓单正在追价的才取数
+        const bool hostedTrack = js::truthy(js::prop(&auto_, u"host_at_broker"_s)) && router_->supportsHostedClose();
+        const bool etpActive = closeChase_.contains(tid) || (js::truthy(js::prop(&track, u"enabled"_s)) && !js::truthy(js::prop(&track, u"fired_at"_s)));
+        std::optional<EarningsWatch::Step> etp;
+        if (js::isObj(js::prop(js::prop(&track, u"targets"_s), u"earnings_tp"_s))) etp = co_await earningsWatch_->step(track, raw, position, at, etpActive, hostedTrack);
+        bool etpHit = false;
+        if (etp) {
+            if (etp->exec) earningsExec_.insert(tid, *etp->exec);
+            const QString st = js::str(result.get(u"state"_s));
+            if (etp->hit && (st == tk::kStateHolding || st == tk::kStateTakeProfit)) {
+                etpHit = true;
+                result.set(u"state"_s, js::S(tk::kStateTakeProfit));
+                result.set(u"reason"_s, *etp->row.get(u"reason"_s));
+                result.set(u"price"_s, js::N(*etp->exec));
+                result.remove(u"tier"_s);  // 财报止盈按整条追踪的平仓比例平,不走分批止盈的某一档
+            }
+        }
+
         // 峰值只在变了的时候写
         const OJson* peak = js::prop(&result, u"peak"_s);
         if (peak && peak->type != OJson::Null && !js::strictEqual(peak, js::prop(&track, u"peak"_s))) storePort_->updateTrack(tid, js::object({{u"peak"_s, *peak}}));
@@ -420,6 +439,7 @@ Task<Rec> TradingEngine::pollTrackers(std::optional<domain::EtNow> moment, std::
         row.set(u"position"_s, raw);
         if (spotTargetRow) row.set(u"spot_target"_s, *spotTargetRow);
         if (spotStopRow) row.set(u"spot_stop"_s, *spotStopRow);
+        if (etp) row.set(u"earnings_tp"_s, etp->row);
         if (brokerSpot) row.set(u"spot_stop"_s, js::object({{u"spot"_s, js::Null()},
             {u"reason"_s, js::S(u"标的止损由 IBKR 条件单按常规时段官方行情触发;挂单状态见托管订单。"_s)}}));
         outRows->items.append(row);
@@ -457,11 +477,14 @@ Task<Rec> TradingEngine::pollTrackers(std::optional<domain::EtNow> moment, std::
             ta.reason = resultReason;
             ta.spotReached = spotTargetRow && js::truthy(js::prop(&*spotTargetRow, u"reached"_s));
             ta.spotStop = spotStopRow && js::truthy(js::prop(&*spotStopRow, u"hit"_s));
+            ta.force = etpHit;
             hostedOrders_->onTriggered(ta, row, out);
             continue;
         }
         // 追踪止盈全时段有效:盘前/盘后照样平,只有休市才真的发不出去。期权/组合按**合约自己的**时段判
-        const QString marketStatus = co_await marketStatusFor(raw, at);
+        // 财报止盈在夜盘到价:正股日历说休市,但夜盘那个交易所开着——按盘外处理(只收限价、打 outsideRth),单送夜盘
+        const bool etpOvernight = etpHit && etp->overnight;
+        const QString marketStatus = etpOvernight ? u"盘外"_s : co_await marketStatusFor(raw, at);
         tk::CloseGateArgs gate;
         gate.autoClose = &auto_;
         gate.position = &position;
@@ -496,8 +519,8 @@ Task<Rec> TradingEngine::pollTrackers(std::optional<domain::EtNow> moment, std::
             }
         }
         // 分批止盈:这一档先记成在等成交,平的比例换成这一档的(不是分批的触发,auto 原样)
-        const Rec tierAuto = exits_->tierAuto(track, targets, result, auto_, position);
-        const std::optional<Rec> fired = co_await closePosition(track, position, tierAuto, closeResult, marketStatus);
+        const Rec tierAuto = etpHit ? auto_ : exits_->tierAuto(track, targets, result, auto_, position);
+        const std::optional<Rec> fired = co_await closePosition(track, position, etpHit ? auto_ : tierAuto, closeResult, marketStatus, CloseVia{etpHit, etpOvernight});
         if (fired) outFired->items.append(*fired);
         else exits_->tierNotSent(track);
     }
@@ -572,13 +595,21 @@ std::optional<Rec> TradingEngine::closeUnbuildable(const Rec& track, const QStri
     return std::nullopt;
 }
 
-Task<std::optional<Rec>> TradingEngine::closePosition(Rec track, tk::Position position, Rec autoClose, Rec result, std::optional<QString> marketStatus) {
+Task<std::optional<Rec>> TradingEngine::closePosition(Rec track, tk::Position position, Rec autoClose, Rec result, std::optional<QString> marketStatus,
+                                                      CloseVia via) {
     Rec payload;
     std::optional<QString> buildFailure;
     try {
         payload = tk::buildCloseOrder(position, autoClose, numOrNull(js::prop(&result, u"price"_s)), js::str(js::prop(&result, u"state"_s)),
                                       js::nullish(js::prop(&track, u"contract"_s)) ? js::object() : *js::prop(&track, u"contract"_s),
                                       marketStatus ? *marketStatus : settings.marketStatus(domain::nowEt()));
+        // 夜盘:SMART 的单夜里不送交易所,要直接送 IBKR 夜盘那个交易所(限价、当日有效,03:50 收盘时失效)
+        if (via.overnight && position.sec_type == u"STK") {
+            Rec c = *payload.get(u"contract"_s);
+            c.set(u"exchange"_s, js::S(analysis::etp::kOvernightExchange));
+            payload.set(u"contract"_s, c);
+            payload.set(u"intent_summary"_s, js::S(js::str(payload.get(u"intent_summary"_s)) + u"[夜盘]"_s));
+        }
     } catch (...) {
         buildFailure = jsx::errorMessage(std::current_exception());
     }
@@ -659,8 +690,9 @@ Task<std::optional<Rec>> TradingEngine::closePosition(Rec track, tk::Position po
     // 期权 / 组合的限价平仓单发出去只是开始:挂在自然价上未必立刻成交,之后每轮按最新买卖价追那张单(chaseCloseOrder)。正股与市价单不追
     const QString secType = js::str(js::prop(js::prop(&order, u"contract"_s), u"secType"_s));
     const OJson* orderSpec = js::prop(&order, u"order"_s);
-    const bool chase = placement.order_id && *placement.order_id != 0 && js::str(js::prop(orderSpec, u"orderType"_s)) == u"LMT" && isDerivative(secType) &&
-                       router_->hasModifyHosted();
+    // 财报止盈发的正股限价单也追:盘后 / 夜盘盘口薄,挂一次未必成交
+    const bool chase = placement.order_id && *placement.order_id != 0 && js::str(js::prop(orderSpec, u"orderType"_s)) == u"LMT" &&
+                       (isDerivative(secType) || via.earnings) && router_->hasModifyHosted();
     if (chase) {
         const int orderId = *placement.order_id;
         const OJson* actionV = js::prop(orderSpec, u"action"_s);
@@ -730,6 +762,8 @@ Task<std::optional<Rec>> TradingEngine::chaseCloseOrder(Rec track, Rec raw, tk::
     if (it == closeChase_.constEnd()) co_return std::nullopt;
     const std::shared_ptr<Rec> entry = it.value();
     const std::optional<QString> sweep = tk::sweepReason(track);
+    // 财报止盈的正股平仓单:立刻成交价拿这一轮的买卖价(多头买价、空头卖价)——盘后的最新成交价可能是几分钟前的一笔
+    if (const auto ex = earningsExec_.constFind(tid); ex != earningsExec_.constEnd() && position.sec_type == u"STK") position.market_price = *ex;
     const std::optional<ChaseQuote> q = co_await chaseQuote(raw, position, positions, autoClose, numOrNull(entry->get(u"limit"_s)), jsx::numOr(entry->get(u"rounds"_s), 0), sweep);
     if (!q) co_return std::nullopt;
     entry->set(u"natural"_s, js::N(q->natural));

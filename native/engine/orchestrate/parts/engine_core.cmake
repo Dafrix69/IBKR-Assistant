@@ -6,4 +6,5 @@ target_sources(ibkr_orchestrate PRIVATE
     orchestrate/engine_tracker.cpp
     orchestrate/engine_hosts.cpp
     orchestrate/fast_exit.h orchestrate/fast_exit.cpp
+    orchestrate/earnings_watch.h orchestrate/earnings_watch.cpp
 )
