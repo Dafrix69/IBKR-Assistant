@@ -275,7 +275,9 @@ struct SvcRig {
         };
         w.runDir = dir.path() + u"/guard-run"_s;
         w.fillHistory = [this]() -> Task<QList<OJson>> { co_return fills; };
-        w.clock = [this] { return et ? *et : ibkr::domain::nowEt(); };
+        // 没拨钟的用例一律当作周五美东 12:00:读墙上时间的话,工作日美东 20:00 之后跑,
+        // 「TWS 没连上、到 20:00 照发每日报告」那一条会多推一条,数推送条数的用例就挂
+        w.clock = [this] { return et ? *et : etAtUtc(u"2026-11-06T17:00:00Z"_s); };
         svc->attach(std::move(w));
     }
     FakePort& port() { return *host->port_; }
