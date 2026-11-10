@@ -908,7 +908,8 @@ Task<> GuardService::maybeReport() {
     if (at.minutes < close + 15 || now_ < reportRetryAt_) co_return;
     // 今天已经发过(重启之后):流水里有这一天的 guard_report 就不再发。查一次就记住
     if (reportScanned_ != at.date) {
-        for (const OJson& r : store().guard().guardAudit(QDateTime::currentDateTimeUtc().addDays(-2).toString(Qt::ISODate)))
+        // 回看窗口跟"今天"用同一只钟(wiring_.clock),不另读墙上时间:两只钟一错开,窗口就会把今天的流水切掉
+        for (const OJson& r : store().guard().guardAudit(util::utcIso(at.epochMs - 2 * 86'400'000.0)))
             if (js::str(r.get(u"action"_s)) == u"guard_report" && js::str(js::prop(r.get(u"detail"_s), u"date"_s)) == at.date) {
                 reportedDate_ = at.date;
                 co_return;
@@ -1060,7 +1061,7 @@ Task<QString> GuardService::composeReport(domain::EtNow at) {
 
     // 净值:和上一份报告比
     OJson prevNavs = js::object();
-    const QList<OJson> audit = store().guard().guardAudit(QDateTime::currentDateTimeUtc().addDays(-14).toString(Qt::ISODate));
+    const QList<OJson> audit = store().guard().guardAudit(util::utcIso(at.epochMs - 14 * 86'400'000.0));  // 同上:按报告的钟回看
     for (const OJson& r : audit)
         if (js::str(r.get(u"action"_s)) == u"guard_report" && js::str(js::prop(r.get(u"detail"_s), u"date"_s)) < today)
             prevNavs = *js::prop(r.get(u"detail"_s), u"navs"_s);
